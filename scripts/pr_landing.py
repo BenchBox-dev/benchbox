@@ -1123,14 +1123,19 @@ def _check_dropped_paths(repo: Path, member: str, row: dict, recorded: object, h
     ]:
         return [f"current acceptance for member {member} ran a command differing from its receipt beyond dropped paths"]
     for path in dropped:
-        present = subprocess.run(
-            ["git", "cat-file", "-e", f"{head}:{path.split('::', 1)[0]}"],
+        listed = subprocess.run(
+            ["git", "ls-tree", "--name-only", head, "--", path.split("::", 1)[0]],
             cwd=repo,
             check=False,
             capture_output=True,
+            encoding="utf-8",
             timeout=60,
         )
-        if present.returncode == 0:
+        if listed.returncode != 0:
+            failures.append(
+                f"current acceptance for member {member} dropped {path}, which could not be checked at the PR head"
+            )
+        elif listed.stdout.strip():
             failures.append(f"current acceptance for member {member} dropped {path}, which exists at the PR head")
     return failures
 

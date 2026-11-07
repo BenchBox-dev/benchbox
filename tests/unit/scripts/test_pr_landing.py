@@ -1712,6 +1712,15 @@ def test_batch_evidence_refuses_a_dropped_path_that_still_exists_at_the_head(tmp
     assert any("exists at the PR head" in failure for failure in failures)
 
 
+def test_dropped_path_check_refuses_when_git_cannot_read_the_head(tmp_path: Path) -> None:
+    repo = _repo(tmp_path / "r")
+    row = {"ran_command": ["pytest", "-q", "tests/here.py::test_one", "a"], "dropped_paths": ["tests/gone.py"]}
+
+    failures = landing._check_dropped_paths(repo, "a", row, list(RECEIPT_COMMAND), "f" * 40)
+
+    assert any("could not be checked at the PR head" in failure for failure in failures)
+
+
 @pytest.mark.parametrize(
     "ran",
     [
