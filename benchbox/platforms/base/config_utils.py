@@ -132,6 +132,9 @@ def build_platform_config(
     defaults = field_defaults or {}
     for field in platform_fields:
         config_dict[field] = merged_options.get(field, defaults.get(field))
+    for field in FETCH_FORWARD_KEYS:
+        if merged_options.get(field) is not None:
+            config_dict[field] = merged_options[field]
 
     config_dict["benchmark"] = overrides.get("benchmark")
     config_dict["scale_factor"] = overrides.get("scale_factor")
