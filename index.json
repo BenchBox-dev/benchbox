@@ -4791,7 +4791,7 @@
         }
       },
       "integration_branch": "feat/release-v2-remediation",
-      "integration_head": "b8e016a7f4cf4eda62733ceefa3cc5d4bbace5a5",
+      "integration_head": "6ad4631a722a085f7cf845ee4f5c9cc73ba305a3",
       "integration_log": [
         {
           "at": "2026-11-06T13:41:20Z",
@@ -5471,6 +5471,33 @@
           "op_id": "142b45c084504b61b15b4faeb98504d2",
           "previous_head": "4d0569c860adfba29f96703ad397494702d50006",
           "seq": 12
+        },
+        {
+          "at": "2026-11-07T19:11:58Z",
+          "changed_files": [
+            "docs/internal/adr/adr-dev-loop-v2.md",
+            "docs/internal/oracle-review-v2.md",
+            "docs/internal/release-guide.md",
+            "docs/internal/theseus-pin-bump.md",
+            "docs/internal/trunk-uat.md",
+            "docs/internal/uat-rubric.md",
+            "tests/uat/README.md"
+          ],
+          "head": "6ad4631a722a085f7cf845ee4f5c9cc73ba305a3",
+          "kind": "fix",
+          "op_id": "bcd465c5a8e347e48d6133e83ec4324a",
+          "previous_head": "b8e016a7f4cf4eda62733ceefa3cc5d4bbace5a5",
+          "requires_acceptance": [
+            "rv2r-01-adr-guardrails",
+            "rv2r-02-trunk-uat-nightly",
+            "rv2r-03-release-evidence-check",
+            "rv2r-04-uat-rubric-automation",
+            "rv2r-05-release-probe-mode",
+            "rv2r-07-oracle-pinned-dependency",
+            "rv2r-09-trunk-dist-every-commit",
+            "rv2r-14-maintenance-release-branches"
+          ],
+          "seq": 13
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-release-v2-remediation",
