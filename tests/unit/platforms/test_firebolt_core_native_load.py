@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from benchbox.platforms.base.data_loading import CsvDialect
-from benchbox.platforms.firebolt import FireboltAdapter
+from benchbox.platforms.firebolt import FireboltAdapter, FireboltColumnCountError
 
 pytestmark = [
     pytest.mark.unit,
@@ -303,6 +303,34 @@ class TestSafetyChecks:
             pytest.raises(RuntimeError, match="expected 2"),
         ):
             _adapter()._load_file_via_core_upload(cursor, "t", '"t"', f, TBL_DIALECT)
+
+    @pytest.mark.parametrize("content", ["1|a|\n2|\n3|c|\n", "1|a|\n2|b|c|\n"])
+    def test_malformed_row_raises_column_count_error_before_upload(self, tmp_path, content):
+        f = tmp_path / "t.tbl"
+        f.write_text(content)
+        cursor = _cursor(["integer", "text"], [])
+        with (
+            patch.object(FireboltAdapter, "_post_core_upload") as post,
+            pytest.raises(FireboltColumnCountError, match="line 2"),
+        ):
+            _adapter()._load_file_via_core_upload(cursor, "t", '"t"', f, TBL_DIALECT)
+        assert not post.called
+
+    def test_malformed_file_is_not_reported_as_zero_row_load(self, tmp_path):
+        f = tmp_path / "region.tbl"
+        f.write_text("0|AFRICA|\n1|\n")
+        cursor = _cursor(["integer", "text"], [])
+        connection = Mock()
+        connection.cursor.return_value = cursor
+        with pytest.raises(FireboltColumnCountError, match="Inconsistent column count"):
+            _adapter()._load_data_via_insert(_benchmark(f), connection, tmp_path)
+
+    def test_insert_fallback_inconsistent_rows_raise_column_count_error(self, tmp_path):
+        f = tmp_path / "region.tbl"
+        f.write_text("0|AFRICA|\n1|\n")
+        cursor = Mock()
+        with pytest.raises(FireboltColumnCountError):
+            _adapter()._load_file_via_insert(cursor, "?", '"region"', f, TBL_DIALECT)
 
     def test_scan_counts_non_blank_rows(self, tmp_path):
         f = tmp_path / "t.tbl"
