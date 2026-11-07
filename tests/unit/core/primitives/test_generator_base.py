@@ -67,19 +67,44 @@ class TestGetTpchRowCount:
         assert gen._get_tpch_row_count("lineitem") == expected
 
 
-class TestWriteTblFile:
-    def test_writes_pipe_delimited(self, tmp_path: Path):
+class TestWriteStagingFile:
+    def test_strips_trailing_delimiter(self, tmp_path: Path):
         gen = _make_gen(tmp_path)
-        rows = [("1", "hello", "world"), ("2", "foo", "bar")]
-        path = gen._write_tbl_file("test.tbl", rows)
-        content = path.read_text()
-        assert "1|hello|world\n" in content
-        assert "2|foo|bar\n" in content
+        (tmp_path / "orders.tbl").write_bytes(b"1|hello|world|\n2|foo|bar|\n")
+        path = gen._write_staging_file("orders_stage.tbl", "orders.tbl*")
+        assert path.read_bytes() == b"1|hello|world\n2|foo|bar\n"
 
-    def test_empty_rows(self, tmp_path: Path):
+    def test_keeps_all_columns_without_trailing_delimiter(self, tmp_path: Path):
         gen = _make_gen(tmp_path)
-        path = gen._write_tbl_file("empty.tbl", [])
-        assert path.read_text() == ""
+        (tmp_path / "orders.tbl").write_bytes(b"1|hello\n2|world\n")
+        path = gen._write_staging_file("orders_stage.tbl", "orders.tbl*")
+        assert path.read_bytes() == b"1|hello\n2|world\n"
+
+    def test_preserves_empty_fields_and_text(self, tmp_path: Path):
+        gen = _make_gen(tmp_path)
+        (tmp_path / "orders.tbl").write_bytes(b"1||007|0.10|\n")
+        path = gen._write_staging_file("orders_stage.tbl", "orders.tbl*")
+        assert path.read_bytes() == b"1||007|0.10\n"
+
+    def test_limit_spans_shards(self, tmp_path: Path):
+        gen = _make_gen(tmp_path)
+        (tmp_path / "orders.tbl.1").write_bytes(b"1|a|\n2|b|\n")
+        (tmp_path / "orders.tbl.2").write_bytes(b"3|c|\n4|d|\n")
+        path = gen._write_staging_file("orders_stage.tbl", "orders.tbl*", limit=3)
+        assert path.read_bytes() == b"1|a\n2|b\n3|c\n"
+
+    def test_reads_gzip_source(self, tmp_path: Path):
+        gen = _make_gen(tmp_path)
+        with gzip.open(tmp_path / "orders.tbl.gz", "wb") as f:
+            f.write(b"1|a|\n2|b|\n")
+        path = gen._write_staging_file("orders_stage.tbl", "orders.tbl*")
+        assert path.read_bytes() == b"1|a\n2|b\n"
+
+    def test_empty_source(self, tmp_path: Path):
+        gen = _make_gen(tmp_path)
+        (tmp_path / "orders.tbl").write_bytes(b"")
+        path = gen._write_staging_file("orders_stage.tbl", "orders.tbl*")
+        assert path.read_bytes() == b""
 
 
 class TestReadTblFile:

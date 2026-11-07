@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import csv
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -18,6 +17,7 @@ from benchbox.core.tsbs_devops.schema import (
     TABLE_ORDER,
     TSBS_DEVOPS_SCHEMA,
 )
+from benchbox.utils.arrow_rows import ArrowRowWriter
 from benchbox.utils.cloud_storage import normalize_output_dir
 from benchbox.utils.compression_mixin import CompressionMixin
 from benchbox.utils.verbosity import VerbosityMixin, compute_verbosity
@@ -157,12 +157,9 @@ class TSBSDevOpsDataGenerator(CompressionMixin, VerbosityMixin):
 
         columns = list(TSBS_DEVOPS_SCHEMA["tags"]["columns"].keys())
 
-        with self.open_output_file(output_path, "wt") as f:
-            writer = csv.DictWriter(f, fieldnames=columns)
-            writer.writeheader()
-
-            for host in self.hosts:
-                writer.writerow(host)
+        with self.open_output_file(output_path, "wb") as f, ArrowRowWriter(f, ",") as writer:
+            writer.writerow(columns)
+            writer.writerows([host.get(column, "") for column in columns] for host in self.hosts)
 
         self._table_row_counts["tags"] = len(self.hosts)
         self.log_verbose(f"  tags: {len(self.hosts)} rows")
@@ -173,8 +170,7 @@ class TSBSDevOpsDataGenerator(CompressionMixin, VerbosityMixin):
         columns = list(TSBS_DEVOPS_SCHEMA["cpu"]["columns"].keys())
 
         total_rows = 0
-        with self.open_output_file(output_path, "wt") as f:
-            writer = csv.writer(f)
+        with self.open_output_file(output_path, "wb") as f, ArrowRowWriter(f, ",") as writer:
             writer.writerow(columns)
 
             for host in self.hosts:
@@ -228,8 +224,7 @@ class TSBSDevOpsDataGenerator(CompressionMixin, VerbosityMixin):
         columns = list(TSBS_DEVOPS_SCHEMA["mem"]["columns"].keys())
 
         total_rows = 0
-        with self.open_output_file(output_path, "wt") as f:
-            writer = csv.writer(f)
+        with self.open_output_file(output_path, "wb") as f, ArrowRowWriter(f, ",") as writer:
             writer.writerow(columns)
 
             for host in self.hosts:
@@ -277,8 +272,7 @@ class TSBSDevOpsDataGenerator(CompressionMixin, VerbosityMixin):
         devices = ["sda", "sdb"]
         total_rows = 0
 
-        with self.open_output_file(output_path, "wt") as f:
-            writer = csv.writer(f)
+        with self.open_output_file(output_path, "wb") as f, ArrowRowWriter(f, ",") as writer:
             writer.writerow(columns)
 
             for host in self.hosts:
@@ -337,8 +331,7 @@ class TSBSDevOpsDataGenerator(CompressionMixin, VerbosityMixin):
         interfaces = ["eth0", "lo"]
         total_rows = 0
 
-        with self.open_output_file(output_path, "wt") as f:
-            writer = csv.writer(f)
+        with self.open_output_file(output_path, "wb") as f, ArrowRowWriter(f, ",") as writer:
             writer.writerow(columns)
 
             for host in self.hosts:

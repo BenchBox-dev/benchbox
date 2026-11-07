@@ -228,7 +228,7 @@
       "WA003": 1
     },
     "tests/unit/core/primitives/test_generator_base.py": {
-      "WA003": 4
+      "WA003": 2
     },
     "tests/unit/core/publishing/test_publish_store.py": {
       "WA003": 1

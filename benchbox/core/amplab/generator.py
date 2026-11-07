@@ -4,13 +4,13 @@
 
 from __future__ import annotations
 
-import csv
 import random
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Union
 
 from benchbox.core.manifest_utils import write_delimited_manifest
+from benchbox.utils.arrow_rows import ArrowRowWriter
 from benchbox.utils.cloud_storage import CloudStorageGeneratorMixin, create_path_handler
 from benchbox.utils.compression_mixin import CompressionMixin
 
@@ -241,9 +241,7 @@ class AMPLabDataGenerator(CompressionMixin, CloudStorageGeneratorMixin):
         file_path = self.output_dir / filename
         num_rankings = int(self.base_rankings * self.scale_factor)
 
-        with self.open_output_file(file_path, "wt") as f:
-            writer = csv.writer(f, delimiter="|")
-
+        with self.open_output_file(file_path, "wb") as f, ArrowRowWriter(f) as writer:
             for i in range(1, num_rankings + 1):
                 page_url = self._generate_url(i)
 
@@ -268,9 +266,7 @@ class AMPLabDataGenerator(CompressionMixin, CloudStorageGeneratorMixin):
         end_date = datetime(2000, 3, 31)
         total_days = (end_date - start_date).days
 
-        with self.open_output_file(file_path, "wt") as f:
-            writer = csv.writer(f, delimiter="|")
-
+        with self.open_output_file(file_path, "wb") as f, ArrowRowWriter(f) as writer:
             for _i in range(num_visits):
                 source_ip = self._generate_ip_address()
 
@@ -318,9 +314,7 @@ class AMPLabDataGenerator(CompressionMixin, CloudStorageGeneratorMixin):
         file_path = self.output_dir / filename
         num_documents = int(self.base_documents * self.scale_factor)
 
-        with self.open_output_file(file_path, "wt") as f:
-            writer = csv.writer(f, delimiter="|")
-
+        with self.open_output_file(file_path, "wb") as f, ArrowRowWriter(f) as writer:
             for i in range(1, num_documents + 1):
                 url = self._generate_url(i)
 

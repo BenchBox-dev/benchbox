@@ -14,9 +14,7 @@ class DimensionGenerationMixin:
         end_date = datetime(2025, 12, 31)
         total_days = (end_date - start_date).days + 1
 
-        with open(file_path, "w", newline="", buffering=self.buffer_size, encoding="utf-8") as f:
-            writer = PipeRowWriter(f)
-
+        with PipeRowWriter(file_path) as writer:
             current_date = start_date
             sk_date_id = 1
             chunk_buffer = []
@@ -89,9 +87,7 @@ class DimensionGenerationMixin:
     def _generate_dimtime_data(self) -> str:
         file_path = self.output_dir / "DimTime.tbl"
 
-        with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = PipeRowWriter(f)
-
+        with PipeRowWriter(file_path) as writer:
             sk_time_id = 1
 
             for hour in range(24):
@@ -128,9 +124,7 @@ class DimensionGenerationMixin:
         file_path = self.output_dir / "DimCompany.tbl"
         num_companies = int(self.base_companies * self.scale_factor)
 
-        with open(file_path, "w", newline="", buffering=self.buffer_size, encoding="utf-8") as f:
-            writer = PipeRowWriter(f)
-
+        with PipeRowWriter(file_path) as writer:
             for chunk_start in range(1, num_companies + 1, self.chunk_size):
                 chunk_end = min(chunk_start + self.chunk_size, num_companies + 1)
                 chunk_rows = []
@@ -211,9 +205,7 @@ class DimensionGenerationMixin:
         num_securities = int(self.base_securities * self.scale_factor)
         num_companies = int(self.base_companies * self.scale_factor)
 
-        with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = PipeRowWriter(f)
-
+        with PipeRowWriter(file_path) as writer:
             for i in range(1, num_securities + 1):
                 sk_security_id = i
                 symbol = f"SYM{i:04d}"
@@ -263,9 +255,7 @@ class DimensionGenerationMixin:
         file_path = self.output_dir / "DimCustomer.tbl"
         num_customers = int(self.base_customers * self.scale_factor)
 
-        with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = PipeRowWriter(f)
-
+        with PipeRowWriter(file_path) as writer:
             for i in range(1, num_customers + 1):
                 sk_customer_id = i
                 customer_id = i
@@ -356,9 +346,7 @@ class DimensionGenerationMixin:
         num_accounts = int(self.base_accounts * self.scale_factor)
         num_customers = int(self.base_customers * self.scale_factor)
 
-        with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = PipeRowWriter(f)
-
+        with PipeRowWriter(file_path) as writer:
             for i in range(1, num_accounts + 1):
                 sk_account_id = i
                 account_id = i
@@ -395,9 +383,7 @@ class DimensionGenerationMixin:
     def _generate_industry_data(self) -> str:
         file_path = self.output_dir / "Industry.tbl"
 
-        with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = PipeRowWriter(f)
-
+        with PipeRowWriter(file_path) as writer:
             industry_data = self.financial_patterns.get_industry_data()
             for industry_id, industry_name, sector_code in industry_data:
                 row = [industry_id, industry_name, sector_code]
@@ -410,9 +396,7 @@ class DimensionGenerationMixin:
     def _generate_statustype_data(self) -> str:
         file_path = self.output_dir / "StatusType.tbl"
 
-        with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = PipeRowWriter(f)
-
+        with PipeRowWriter(file_path) as writer:
             status_data = self.financial_patterns.get_status_types()
             for status_id, status_name in status_data:
                 row = [status_id, status_name]
@@ -425,9 +409,7 @@ class DimensionGenerationMixin:
     def _generate_taxrate_data(self) -> str:
         file_path = self.output_dir / "TaxRate.tbl"
 
-        with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = PipeRowWriter(f)
-
+        with PipeRowWriter(file_path) as writer:
             tax_data = generate_realistic_tax_rates()
             for tax_id, tax_name, tax_rate in tax_data:
                 row = [tax_id, tax_name, tax_rate]
@@ -440,9 +422,7 @@ class DimensionGenerationMixin:
     def _generate_tradetype_data(self) -> str:
         file_path = self.output_dir / "TradeType.tbl"
 
-        with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = PipeRowWriter(f)
-
+        with PipeRowWriter(file_path) as writer:
             trade_data = self.financial_patterns.get_trade_types()
             for type_id, type_name, is_sell, is_market in trade_data:
                 row = [type_id, type_name, is_sell, is_market]
@@ -456,9 +436,7 @@ class DimensionGenerationMixin:
         file_path = self.output_dir / "DimBroker.tbl"
         num_brokers = max(100, int(self.scale_factor * 50))
 
-        with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = PipeRowWriter(f)
-
+        with PipeRowWriter(file_path) as writer:
             managers = []
             for i in range(1, min(21, num_brokers // 5) + 1):
                 managers.append(i)
