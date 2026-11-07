@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "With explicit approval and AWS credentials, capture real EXPLAIN (FORMAT JSON) output for a scan+filter, join, aggregate and union query via the Athena adapter's own acquisition.",
+    "Add captured fixtures with .meta.json sidecars (provenance: captured, validated_against_live: true) and semantic tests like tests/unit/query_plans/test_captured_plan_semantics.py.",
+    "Fix any parser defect the real output exposes; update PROVENANCE.md."
+  ],
+  "context": "Blocked on owner approval for live cloud and credentials (AGENTS.md). Use status blocked until approved. Verification rubric: real captured output, semantic tests, comment-policy and ruff, PR merged with green CI.",
+  "description": "Athena shares the Presto/Trino plan parser. Presto and Trino were validated live; Athena is the one route still checked only against synthetic output, recorded as not live-validated in the query-plan PROVENANCE.md. It needs AWS credentials and costs a few cents per query.",
+  "links": [
+    "benchbox/platforms/athena",
+    "tests/unit/query_plans",
+    "live-cloud-corpus-athena-tpch-first-20261006"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-07T00:51:42Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "bdd18f833dde4daaa856df43d7a4cee3",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    }
+  ]
+}

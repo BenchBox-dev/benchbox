@@ -25048,6 +25048,13 @@
       "status": "done",
       "title": "Query Latency Histogram Visualization"
     },
+    "query-plan-athena-live-validation-20261106": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Validate the Athena plan parser against a real Athena EXPLAIN"
+    },
     "query-plan-capture-bigquery-contract-and-normalization": {
       "claim": null,
       "needs": [],
