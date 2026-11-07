@@ -33591,6 +33591,13 @@
       "status": "done",
       "title": "Verify the zip-loaded SQLGlot runtime on Windows"
     },
+    "sqlglot-delivery-arm-waits-for-daily-run-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "SQLGlot delivery consumer arms its adoption PR only on its next daily run"
+    },
     "sqlglot-dialect-translation-code-review-implementation": {
       "claim": null,
       "needs": [],

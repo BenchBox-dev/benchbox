@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "An adoption PR whose CI and review verdict pass is armed without a manual dispatch and without waiting for the next scheduled run.",
+    "The re-arm path refuses a PR not owned by the delivery App, a moved head, a human hold or a human disarm, with tests.",
+    "The kill switch off and dry-run paths perform no arm."
+  ],
+  "description": "Problem. .github/workflows/sqlglot-delivery.yml runs daily at 06:37 UTC and on dispatch. The run that opens the App-authored adoption PR calls arm immediately, which correctly refuses because CI and the review verdict have not finished. Nothing re-arms the PR when they complete, so the PR sits until the next daily run, up to 24 h later. Observed on #3997 (30.30.0.1): the opening run 42326742524 reported not-armed (no verify-fast-duration verdict, no review verdict); arming happened only after a second manual dispatch (run 42331547173), which armed and merged it. This adds a day of latency to every release and makes a manual dispatch the routine fast path, which the first-release certification forbids.\n\nChange. Re-attempt arming of an open automation-owned adoption PR when its CI and review verdict complete, for example a workflow_run or check_suite trigger that runs only the arm step with the same ownership and live re-validation rules. Keep the kill switch, dry-run default and the rule that a human hold or disarm is never overridden.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3997",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/42326742524",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/42331547173"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f",
+      "at": "2026-11-07T14:55:26Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "de22977f69fc47fcad145ce8e911af8d",
+      "session_id": "2f41579dd2194a049659596cdd9a4f3d"
+    }
+  ]
+}
