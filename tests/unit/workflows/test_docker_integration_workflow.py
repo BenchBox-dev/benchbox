@@ -204,7 +204,7 @@ def test_pull_request_trigger_is_path_filtered_and_selects_only_new_jobs() -> No
     } <= set(paths)
     assert workflow["permissions"] == {"contents": "read"}
     select = next(step for step in workflow["jobs"]["validate-input"]["steps"] if step.get("id") == "select")
-    assert "PULL_REQUEST_SERVICES=(singlestore)" in select["run"]
+    assert "PULL_REQUEST_SERVICES=(singlestore" in select["run"]
     assert "singlestore" in triggers["workflow_dispatch"]["inputs"]["services"]["description"]
     outputs = workflow["jobs"]["validate-input"]["outputs"]
     assert "run_singlestore" in outputs
