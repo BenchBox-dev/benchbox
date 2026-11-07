@@ -1527,17 +1527,19 @@ class ResultCaptureMixin:
                 power_refresh_first_set = getattr(getattr(last_power_result, "config", None), "refresh_first_set", None)
             power_query_count = getattr(last_power_result, "queries_executed", None)
             power_success = getattr(last_power_result, "success", None)
-            power_total_time = getattr(last_power_result, "total_time", None)
-            if (
-                execution_type == "combined"
-                and isinstance(power_total_time, (int, float))
-                and not isinstance(power_total_time, bool)
-                and power_total_time > 0
-            ):
+            if execution_type == "combined":
+                durations = [
+                    row.get("execution_time_seconds")
+                    for row in getattr(last_power_result, "query_results", None) or []
+                    if isinstance(row, dict)
+                ]
+                valid = bool(durations) and all(
+                    isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0 for value in durations
+                )
                 power_timing = (
                     self._format_timestamp(getattr(last_power_result, "start_time", None)),
                     self._format_timestamp(getattr(last_power_result, "end_time", None)),
-                    int(power_total_time * 1000),
+                    int(sum(durations) * 1000) if valid else 0,
                 )
             self._last_power_test_result = None
 

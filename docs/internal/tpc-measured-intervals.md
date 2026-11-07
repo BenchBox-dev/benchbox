@@ -121,13 +121,13 @@ TPC-DS 4.0.0 clauses 7.4.2, 7.4.6 to 7.4.9 and 7.6.3. A run that executes the `p
 QphDS@Size = floor(SF x Q / (T_PT x T_TT x T_DM x T_LD)^(1/4)), where:
 
 - SF is the scale factor and Q = 99 x S.
-- T_PT = T_Power x S, with T_Power the elapsed time of the Power Test (clause 7.6.3 defines T_PT this way).
+- T_PT = T_Power x S (clause 7.6.3). T_Power is the sum of the per-query elapsed times QD of the power stream, not `TPCDSPowerTest.total_time` (F2: that includes stream construction, preflight generation and connection open and close). Serial execution makes the sum the interval minus the gaps between queries; when any query has no recorded positive duration the metric is withheld.
 - T_TT = TT1 + TT2, the elapsed times of Throughput Test 1 and 2.
 - T_DM = DM1 + DM2, the elapsed times of Data Maintenance Test 1 and 2.
-- T_LD = 0.01 x S x T_load, with T_load the elapsed time of the database load phase captured in the same run.
+- T_LD = 0.01 x S x T_load, with T_load the sum of the table creation, data loading, statistics gathering, post-load maintenance and merge settle durations captured in the same run.
 - Every term is in decimal hours.
 
-Official-export rule: `qphds_at_size` is exported in `summary.tpc_metrics` only when every input is valid: official compliance class (scale factor 1 or more, no query subset, no failed query), S an even number of at least 4, a Power Test that ran all 99 queries, two successful Throughput Tests with the stream numbers above and no outstanding stream work, two successful Data Maintenance Tests with S/2 refresh runs each and consecutive refresh sets, and a database load of this run (not a reused database) with a captured, positive duration. When any input is missing or invalid the export carries `qphds_unavailable`, the list of reasons, and no `qphds_at_size`. The exported `qphds_terms` hold Q and the four terms in hours.
+Official-export rule: `qphds_at_size` is exported in `summary.tpc_metrics` only when every input is valid: official compliance class (scale factor 1 or more, no query subset, no failed query), S an even number of at least 4, a Power Test that ran all 99 queries, two successful Throughput Tests with the stream numbers above and no outstanding stream work, two successful Data Maintenance Tests with S/2 refresh runs each and consecutive refresh sets, and a database load of this run (`setup.database_reused` false) with captured, successful, positive-duration load-side phases. Outstanding streams from either throughput test stop every later throughput and maintenance test of the run. When any input is missing or invalid the export carries `qphds_unavailable`, the list of reasons, and no `qphds_at_size`. The exported `qphds_terms` hold Q and the four terms in hours.
 
 `benchbox metrics qphh` does not compute QphDS@Size, because it needs the load time and both throughput and maintenance tests of a single run.
 

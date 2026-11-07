@@ -68,6 +68,8 @@ def _load_seconds(setup: Any) -> tuple[float | None, list[str]]:
         return None, ["database load time was not captured"]
     problems: list[str] = []
     total_ms = 0.0
+    if getattr(setup, "database_reused", False):
+        problems.append("database load was reused, so its time was not measured in this run")
     timed = (
         ("table creation", getattr(setup, "schema_creation", None)),
         ("data loading", loading),

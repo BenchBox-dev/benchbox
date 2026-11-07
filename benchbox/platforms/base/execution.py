@@ -949,19 +949,30 @@ class TestDriversMixin:
                     }
                 )
                 continue
-            if phase_key == "maintenance":
-                boundary = check_phase_boundary(getattr(self, "_last_throughput_test_result", None))
+            gated = phase_key == "maintenance" or (phase_key == "throughput" and bool(phase_round and phase_round > 1))
+            if gated:
+                prior = [
+                    recorded[key] for key in sorted(recorded) if key[0] == "throughput" and recorded[key] is not None
+                ]
+                current = getattr(self, "_last_throughput_test_result", None)
+                if current is not None and all(current is not result for result in prior):
+                    prior.append(current)
+                boundary = next(
+                    (decision for decision in map(check_phase_boundary, prior) if not decision.proceed),
+                    check_phase_boundary(None),
+                )
                 if not boundary.proceed:
-                    refusal = f"Maintenance Test refused: {boundary.reason}"
+                    phase_name = "Maintenance Test" if phase_key == "maintenance" else "Throughput Test"
+                    refusal = f"{phase_name} refused: {boundary.reason}"
                     console.print(f"[red]❌ {refusal}[/red]")
                     all_results.append(
                         {
-                            "query_id": "maintenance_test_contained",
+                            "query_id": f"{phase_key}_test_contained",
                             "execution_time_seconds": 0.0,
                             "status": "FAILED",
                             "rows_returned": 0,
                             "error": refusal,
-                            "test_type": "maintenance",
+                            "test_type": phase_key,
                             "contained": True,
                             "outstanding_stream_ids": list(boundary.outstanding_stream_ids),
                         }

@@ -672,6 +672,7 @@ class PlatformAdapter(
                 statistics_gathering=statistics_phase,
                 post_load_maintenance=self.build_post_load_maintenance_phase(),
                 merge_settle=self.build_merge_settle_phase(),
+                database_reused=bool(self.database_was_reused),
             )
 
             execution_phases, total_exec_time, power_test_phase, throughput_test_phase = self._build_execution_phases(

@@ -138,6 +138,7 @@ class SetupPhase:
     statistics_gathering: StatisticsGatheringPhase | None = None
     post_load_maintenance: PostLoadMaintenancePhase | None = None
     merge_settle: MergeSettlePhase | None = None
+    database_reused: bool = False
 
 
 @dataclass(init=False)

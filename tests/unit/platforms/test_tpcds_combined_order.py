@@ -21,6 +21,7 @@ ORDER = ["load", "power", "throughput 1", "maintenance 1", "throughput 2", "main
 
 class _RecordingAdapter(_LifecycleAdapter):
     supports_refresh_functions = True
+    power_query_results: list[dict[str, Any]] = [{"execution_time_seconds": 1.0}] * 100
 
     def __init__(self, order: list[str], **config: Any) -> None:
         super().__init__(**config)
@@ -36,7 +37,8 @@ class _RecordingAdapter(_LifecycleAdapter):
         self.order.append("power")
         self._last_power_test_result = SimpleNamespace(
             power_at_size=1.0,
-            total_time=100.0,
+            total_time=999.0,
+            query_results=self.power_query_results,
             queries_executed=99,
             success=True,
             start_time="2026-01-01T00:00:00",
@@ -46,6 +48,7 @@ class _RecordingAdapter(_LifecycleAdapter):
 
 
 class _FakeThroughputTest:
+    outstanding_first: list[int] = []
     windows: list[tuple[int, int]] = []
     order: list[str] = []
 
@@ -55,6 +58,7 @@ class _FakeThroughputTest:
     def run(self, config: Any) -> TPCDSThroughputTestResult:
         round_number = 1 if config.first_stream_id == 1 else 2
         self.order.append(f"throughput {round_number}")
+        outstanding = list(self.outstanding_first) if round_number == 1 else []
         self.windows.append((config.first_stream_id, config.num_streams))
         streams = [
             ThroughputStreamResult(
@@ -78,6 +82,7 @@ class _FakeThroughputTest:
             streams_executed=config.num_streams,
             streams_successful=config.num_streams,
             stream_results=streams,
+            outstanding_stream_ids=outstanding,
             success=True,
             stream_numbering={"basis": "tpc_spec_throughput_streams_1_to_s", "first_stream_id": config.first_stream_id},
         )
@@ -127,9 +132,17 @@ class _FakeMaintenanceTest:
         }
 
 
-@pytest.fixture
-def recorded_run(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> tuple[Any, list[str], Any]:
+def _run(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    *,
+    outstanding_first: list[int] | None = None,
+    power_query_results: list[dict[str, Any]] | None = None,
+) -> tuple[Any, list[str], Any]:
     order: list[str] = []
+    _FakeThroughputTest.outstanding_first = outstanding_first or []
+    if power_query_results is not None:
+        monkeypatch.setattr(_RecordingAdapter, "power_query_results", power_query_results)
     _FakeThroughputTest.windows = []
     _FakeThroughputTest.order = order
     _FakeMaintenanceTest.windows = []
@@ -149,6 +162,36 @@ def recorded_run(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> tuple[Any, 
         output_dir=tmp_path,
     )
     return result, order, adapter
+
+
+@pytest.fixture
+def recorded_run(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> tuple[Any, list[str], Any]:
+    return _run(monkeypatch, tmp_path)
+
+
+def test_outstanding_first_round_streams_stop_every_later_phase(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _result, order, _adapter = _run(monkeypatch, tmp_path, outstanding_first=[2])
+
+    assert order == ["load", "power", "throughput 1"]
+
+
+def test_power_time_is_the_sum_of_query_times_not_the_test_wall_time(recorded_run: tuple[Any, list[str], Any]) -> None:
+    result, _order, _adapter = recorded_run
+
+    assert result.phases.power_test.duration_ms == 100_000
+
+
+def test_power_time_without_query_durations_withholds_qphds(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    result, _order, _adapter = _run(monkeypatch, tmp_path, power_query_results=[{}] * 99)
+
+    evaluation = evaluate_qphds(
+        result.phases, scale_factor=1.0, compliance_class="official", failed_query_count=0, query_subset=None
+    )
+
+    assert evaluation.qphds_at_size is None
+    assert any("Power Test elapsed time" in item for item in evaluation.unavailable)
 
 
 def test_phases_run_in_spec_order(recorded_run: tuple[Any, list[str], Any]) -> None:

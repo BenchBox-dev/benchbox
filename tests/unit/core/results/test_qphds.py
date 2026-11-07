@@ -401,3 +401,16 @@ def test_exported_result_round_trips_through_save_and_load(tmp_path) -> None:
         assert second["phases"][phase] == first["phases"][phase], phase
     assert second["summary"]["tpc_metrics"]["qphds_at_size"] == EXPECTED_QPHDS
     json.dumps(second)
+
+
+def test_reused_database_with_statistics_gathering_withholds_the_metric() -> None:
+    from benchbox.core.results.models import StatisticsGatheringPhase
+
+    setup = _loading(0.0)
+    setup.database_reused = True
+    setup.statistics_gathering = StatisticsGatheringPhase(duration_ms=200_000, status="COMPLETED", stats_mode="all")
+
+    evaluation = _evaluate(replace(_phases(), setup=setup))
+
+    assert evaluation.qphds_at_size is None
+    assert any("database load was reused" in item for item in evaluation.unavailable)
