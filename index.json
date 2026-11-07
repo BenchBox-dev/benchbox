@@ -27932,6 +27932,13 @@
       "status": "done",
       "title": "Make QuestDB parquet chunk row count tunable via platform config"
     },
+    "questdb-rest-accepts-invalid-int-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "QuestDB REST import accepts an invalid INT value instead of rejecting the row"
+    },
     "questdb-rest-and-databend-partial-load-loud-20261106": {
       "claim": null,
       "needs": [],
