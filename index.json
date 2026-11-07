@@ -3765,6 +3765,7 @@
         "rv2r-02-trunk-uat-nightly": "6d698e1b0497c5056f431710e80ea67aca08afdd",
         "rv2r-03-release-evidence-check": "80bc23504dcc42cdaddaf2542427de765ab99df7",
         "rv2r-04-uat-rubric-automation": "8a83e4ad1531a772bd03f8374c33358c8cf634ed",
+        "rv2r-05-release-probe-mode": "9d3875fffce5e4fdb627dd4d85710499c0c3a02d",
         "rv2r-06-fail-closed-detectors": "fcc3a048a6e2ebd2c712ed5621735cf01a91907b",
         "rv2r-07-oracle-pinned-dependency": "2c7130e0f6de08eed6af8531fcf4f13b3b7511db",
         "rv2r-09-trunk-dist-every-commit": "35511fbd3be478ccbf54e1b3d348d098d5e3da3a",
@@ -3845,6 +3846,27 @@
           "integration_head": "d58757cfbd6cf9bfbbdb9905da03c0e925a2adbd",
           "integration_seq": 2
         },
+        "rv2r-05-release-probe-mode": {
+          "accepted_head": "9d3875fffce5e4fdb627dd4d85710499c0c3a02d",
+          "changed_files": [
+            ".github/workflows/release-v2-probe.yml",
+            ".github/workflows/release-v2.yml",
+            "changelog.d/rv2r-05-release-probe-mode.json",
+            "docs/internal/release-guide.md",
+            "scripts/release_probe.py",
+            "scripts/release_probe_graph.py",
+            "scripts/release_probe_launch.py",
+            "scripts/release_probe_uat.py",
+            "tests/unit/scripts/test_release_probe.py",
+            "tests/unit/scripts/test_release_probe_graph.py",
+            "tests/unit/scripts/test_release_probe_launch.py",
+            "tests/unit/scripts/test_release_probe_uat.py",
+            "tests/unit/workflows/test_release_v2_probe.py",
+            "tests/unit/workflows/test_release_v2_workflow.py"
+          ],
+          "integration_head": "e1e5948eab1471c558ea9e3ce02ab2e4d9981f49",
+          "integration_seq": 9
+        },
         "rv2r-06-fail-closed-detectors": {
           "accepted_head": "fcc3a048a6e2ebd2c712ed5621735cf01a91907b",
           "changed_files": [
@@ -3907,7 +3929,7 @@
         }
       },
       "integration_branch": "feat/release-v2-remediation",
-      "integration_head": "541e9b86848825601323749043800c86de2ea6c7",
+      "integration_head": "e1e5948eab1471c558ea9e3ce02ab2e4d9981f49",
       "integration_log": [
         {
           "at": "2026-11-06T13:41:20Z",
@@ -4116,6 +4138,15 @@
           "op_id": "8e7a43cf16fe42b291c149ce8a37b735",
           "previous_head": "3fe88f96e243e5a31232a2a5336129969e687f46",
           "seq": 8
+        },
+        {
+          "at": "2026-11-07T06:05:56Z",
+          "head": "e1e5948eab1471c558ea9e3ce02ab2e4d9981f49",
+          "kind": "prepare",
+          "member": "rv2r-05-release-probe-mode",
+          "op_id": "1a1b39bebe1d425abf7b340ffed9bb3b",
+          "previous_head": "541e9b86848825601323749043800c86de2ea6c7",
+          "seq": 9
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-release-v2-remediation",
@@ -30020,17 +30051,12 @@
       "title": "Pin UAT images and automate the owner-approved gate-tuning rubric"
     },
     "rv2r-05-release-probe-mode": {
-      "claim": {
-        "expires_at": "2026-11-08T05:46:04Z",
-        "generation": "759f9391701749799d0b52f2d91e89ff",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec"
-      },
+      "claim": null,
       "needs": [
         "rv2r-03-release-evidence-check"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Add a release-v2 probe mode that executes the real job graph before any workflow change merges"
     },
     "rv2r-06-fail-closed-detectors": {
