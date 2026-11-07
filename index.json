@@ -30241,6 +30241,13 @@
       "status": "open",
       "title": "Spark Parquet/ORC DDL keeps column-level REFERENCES clauses that it should strip"
     },
+    "spark-local-default-jvm-exceeds-heavy-run-budget-20261106": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Make a default local Spark run fit the heavy-run memory budget"
+    },
     "spark-mixin-open-table-format-loading": {
       "claim": null,
       "needs": [],

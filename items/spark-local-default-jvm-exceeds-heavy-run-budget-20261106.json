@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Measure peak JVM memory for the default local Spark SF0.01 run.",
+    "Either set a bounded default driver memory for local mode, or fail early with a message naming driver_memory when the default would exceed the budget.",
+    "A TPC-H SF0.01 generate,load,power run on local Spark completes under make heavy-run without extra options."
+  ],
+  "context": "Found while landing the Spark create_connection fix. Local only, no cloud. Verification rubric: measurement before/after, smoke run recorded in the PR body, focused tests, comment-policy, CI green.",
+  "description": "A TPC-H SF0.01 power run on local Spark with default settings was killed by the heavy-run memory watchdog: the JVM used 8.56 GiB against the 8 GiB budget. The run only passed with --platform-option driver_memory=3g. Users and agents hit a kill with no hint about the option.",
+  "links": [
+    "benchbox/platforms/spark.py",
+    "docs/agent"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-07T00:51:45Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "7392b273aeab4e959d78ed7b3e193298",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    }
+  ]
+}
