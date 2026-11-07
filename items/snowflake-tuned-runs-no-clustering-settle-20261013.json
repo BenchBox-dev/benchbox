@@ -3,7 +3,7 @@
     "Snowflake tuned runs either wait for a stable clustering depth (recorded settle phase with timeout) or load pre-sorted data; the bundle records average depth and clustering credits.",
     "Unit tests cover settled and timed-out paths with a fake driver."
   ],
-  "context": "Found 2026-10-13 by an adversarial review of Snowflake tuning at origin/develop 77048bfb9. The Snowflake trial-exit tuned campaign works around this with an external settle step.",
+  "context": "Found 2026-10-13 by an adversarial review of Snowflake tuning at origin/develop 77048bfb9. The Snowflake trial-exit tuned campaign works around this with an external settle step.\n\n2026-11-06 owner: live-cloud spend for this item was asked about and declined for now (\"Not now\"). Ask again before any live run.",
   "description": "## Problem\nFor Snowflake tuned runs, the order is: CREATE TABLE, then `ALTER TABLE … CLUSTER BY` on the empty table, then COPY, then `RESUME RECLUSTER` (`benchbox/platforms/base/adapter.py:935-971`, `benchbox/platforms/snowflake.py:1635-1650`).\n- Nothing waits for automatic clustering. `build_merge_settle_phase` returns None for Snowflake (`benchbox/platforms/base/tuning.py:138`), and no code calls `SYSTEM$CLUSTERING_INFORMATION`.\n- At sf10 and above, reclustering takes minutes to hours, so tuned timings depend on when the queries happen to run.\n- Reclustering credits never appear in the bundle.\n- `RESUME RECLUSTER` is redundant, because defining a clustering key already enables automatic clustering.\n- The auto-clustering flag check accepts ON/TRUE/1 (`snowflake.py:1688-1692`), while INFORMATION_SCHEMA likely returns YES/NO.\n\n## Change\nPick one approach, then record the result:\n- **Settle phase:** add a Snowflake settle phase that polls `SYSTEM$CLUSTERING_INFORMATION` until average depth is stable across 3 polls, with a recorded timeout and unsettled flag.\n- **Sorted load:** load the data already sorted (`CREATE TABLE … CLUSTER BY (…) AS SELECT … ORDER BY …`) while preserving keys and constraints. Coordinate with `tuning-ctas-rewrite-safety-20261001`.\n\nIn either case, record clustering depth and automatic-clustering credits in the result. The measurement-harness item `cloud-tuned-benefit-measurement-20261008` covers its own harness only; this item covers ordinary `benchbox run` tuned runs.",
   "links": [
     "benchbox/platforms/snowflake.py",
@@ -18,6 +18,14 @@
       "op": "create",
       "op_id": "e3e68bbc0fb34017a755c6dd1452993a",
       "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T01:06:50Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c014d8465c7149b0907bc23d93f2557f",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
 }
