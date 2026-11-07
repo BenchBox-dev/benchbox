@@ -9,7 +9,7 @@
         "Digests and row values match collect() for scalar, decimal, date, timestamp, binary, array, map and struct columns, verified on PySpark 4.2.0 with JDK 17.",
         "Set the fetch_mode platform option to rows to use collect()."
       ],
-      "platforms": ["spark", "lakesail", "velox"]
+      "platforms": ["spark", "pyspark", "lakesail", "velox"]
     }
   ]
 }

@@ -263,6 +263,19 @@ class TestResultDatabase:
         assert sum(trend.sample_count for trend in trends) == 1
         assert trends[0].avg_geometric_mean_ms == 100.0
 
+    def test_trends_have_no_series_when_the_newest_run_is_mixed(self, tmp_path):
+        db = ResultDatabase(tmp_path / "r.db")
+        now = datetime.now(timezone.utc)
+        db.store_result(_stored("old", "DuckDB", "rows", 400.0, now - timedelta(days=40)))
+        mixed = _stored("new", "DuckDB", "arrow", 100.0, now - timedelta(days=1))
+        mixed.query_results = [
+            {"query_id": "1", "status": "SUCCESS", "fetch_mode": "arrow"},
+            {"query_id": "2", "status": "SUCCESS", "fetch_mode": "rows"},
+        ]
+        db.store_result(mixed)
+        trends = db.get_performance_trends("DuckDB", "TPC-H", 1.0, periods=3, period_days=30)
+        assert sum(trend.sample_count for trend in trends) == 0
+
 
 class TestUnrecordedEntriesAndMixedRuns:
     def test_entries_without_a_mode_do_not_make_a_run_mixed(self):

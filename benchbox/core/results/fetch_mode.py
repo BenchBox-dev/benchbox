@@ -48,6 +48,7 @@ FETCH_MODE_PLATFORMS = (
     "clickhouse",
     "clickhouse-local",
     "spark",
+    "pyspark",
     "lakesail",
     "velox",
 )

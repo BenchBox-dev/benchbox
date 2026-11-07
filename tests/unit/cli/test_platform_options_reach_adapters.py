@@ -80,6 +80,7 @@ OPTION_CASES: dict[str, dict[str, tuple[str, str, Any]]] = {
     "pyspark": {
         "driver_memory": ("12g", "driver_memory", "12g"),
         "shuffle_partitions": ("64", "shuffle_partitions", 64),
+        "fetch_mode": ("rows", "fetch_mode", "rows"),
     },
     "spark": {
         "adaptive_enabled": ("false", "adaptive_enabled", False),

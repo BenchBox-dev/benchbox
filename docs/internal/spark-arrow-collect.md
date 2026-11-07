@@ -1,6 +1,6 @@
 # Spark-family result fetch
 
-Spark-family adapters that share `SparkQueryExecutionMixin` (`spark`, `lakesail`, `velox`) receive a query result inside the query timer through one of three paths, chosen at run time from the DataFrame the session returns. The fetch timing contract is in `tpc-measured-intervals.md`: the full result is received inside the interval, and Python rows for digests and validation are built after it.
+Spark-family adapters that share `SparkQueryExecutionMixin` (`spark`, `pyspark`, `lakesail`, `velox`) receive a query result inside the query timer through one of three paths, chosen at run time from the DataFrame the session returns. The fetch timing contract is in `tpc-measured-intervals.md`: the full result is received inside the interval, and Python rows for digests and validation are built after it.
 
 ## Paths
 
@@ -25,7 +25,7 @@ Rows built from the Arrow table match `collect()` for scalar, decimal, date, tim
 
 | Adapter | Default | Reason |
 |---|---|---|
-| `spark` | `arrow` when the installed pyspark has `DataFrame.toArrow`, otherwise `rows` | Digest parity run locally on PySpark 4.2.0 with JDK 17 (`toArrow` and `toPandas` paths) |
+| `spark`, `pyspark` | `arrow` when the installed pyspark has `DataFrame.toArrow`, otherwise `rows` | Digest parity run locally on PySpark 4.2.0 with JDK 17 (`toArrow` and `toPandas` paths) |
 | `lakesail`, `velox` | `rows` | No local parity run |
 | EMR Serverless, Glue, Dataproc, Dataproc Serverless, Fabric Spark, Synapse Spark, Athena Spark, Quanton | `rows`, unchanged | They submit jobs and read serialized results through cloud APIs; no DataFrame is returned to the adapter |
 | `snowpark-connect` | `rows`, unchanged | Excluded: Snowpark 1.48.1 has `DataFrame.to_arrow` and its connector gate (`installed_pandas`) passes under pandas 3.1.1 with pyarrow 26, but no Snowflake account is available to execute a query, so no parity run exists |

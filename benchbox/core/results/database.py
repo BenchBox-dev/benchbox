@@ -821,6 +821,8 @@ class ResultDatabase:
                 for row in cursor.fetchall()
             ]
         newest_mode = stored_fetch_mode(parsed[0][2]) if parsed else None
+        if newest_mode == MIXED_FETCH_MODE:
+            return []
         return [
             (timestamp, value, _stored_variant(platform, metadata))
             for timestamp, value, metadata in parsed
