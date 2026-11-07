@@ -9,7 +9,7 @@
     "implementation_dependencies": [],
     "member_id": "spark-test-connection-stops-shared-session"
   },
-  "context": "Noticed while fixing create_connection after drop-database; not touched there. Local only.",
+  "context": "Noticed while fixing create_connection after drop-database; not touched there. Local only.\n\nDelivered in PR #3993 (merge commit 4bec907c8).",
   "description": "SparkAdapter.test_connection() calls spark.stop() on a session from getOrCreate(). When a session is already live in the process, getOrCreate() returns that same session, so the check would stop it, the same class of defect fixed for create_connection/close_connection in the Spark dagScheduler fix.",
   "links": [
     "benchbox/platforms/spark.py",
@@ -105,6 +105,14 @@
       "generation": "23586663205748e4a2045f54ac383053",
       "op": "prepare",
       "op_id": "f42b7e7dfcac416c9797fdd73dc3df7e",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-07T02:57:07Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "667777e38ef7423787254d3edfdf663f",
       "session_id": "dc59872de7f0484eafa9032416c81607"
     }
   ]
