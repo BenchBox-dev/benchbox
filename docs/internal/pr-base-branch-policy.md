@@ -54,7 +54,7 @@ calm (an empty check list), not broken. The change reached `develop` only
 when the parent merged, never validated on its own and attributed to the
 parent's PR.
 
-`.github/workflows/ci.yml` does not filter `pull_request` by base, so a PR against any other base now gets the six
+`.github/workflows/ci.yml` does not filter `pull_request` by base, so a PR against any other base now gets the five
 unit results. Units run against a parent branch validate the child on top of its
 parent, not the tree that lands on `develop`. So the rebase onto `develop` and
 the CI rerun after it are what gate the merge.
@@ -63,9 +63,9 @@ the CI rerun after it are what gate the merge.
 
 The first step of the `ci-paths` job in `.github/workflows/ci.yml` checks the
 base branch, before any PR code is checked out. `ci-paths` runs on every
-`pull_request`, and the `core`, `results-data` and `tooling` units require it
-to succeed, so a bad base turns all three required checks red. It always
-reports:
+`pull_request`, and the `core`, `explorer`, `results-data`, `docs` and
+`tooling` units all require it to succeed, so a bad base turns all five unit
+checks red. It always reports:
 
 - Base is `develop` / `published-results`: pass in seconds; the
   normal CI lanes apply.
@@ -80,9 +80,8 @@ or marking a draft ready re-evaluates it. A PR pointed at a feature branch, or
 a draft marked ready, must not keep a stale result. It does not listen for
 `converted_to_draft`: a draft cannot merge, and converting to draft can only
 relax the check, which runs again when the PR is marked ready. On a ready PR
-against a non-integration base, `core`, `results-data` and `tooling` are red
-by design while the `explorer`, `docs` and `landing` units from
-`site-docs.yml` still report. This is expected, not a separate defect.
+against a non-integration base, all five units are red by
+design. This is expected, not a separate defect.
 
 Unit pins live in `tests/unit/workflows/test_stacked_pr_base_guard.py`.
 

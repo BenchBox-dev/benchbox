@@ -178,7 +178,7 @@ while the merge queue was still in use, is in
 It keeps `pull_request` and `merge_group` evidence separate and does not
 authorize changing required contexts or skipping jobs.
 
-The six-unit CI retired the strict-base refresh shadow
+The unit-based CI (2026-09-29) retired the strict-base refresh shadow
 (`develop-refresh-shadow.yml`) and the `pr-certification-identity` and
 `pr-certification-lanes` artifacts `pr.yml` uploaded for it. The shadow was
 observational and never a required context. `scripts/pr_refresh_certification.py`
@@ -736,8 +736,8 @@ TODO):
   credential-free-non-fast, and the release-canary-result aggregator) had run.
 - Same class, other instances: `phase3-promotion-review.yml` (quarterly) and
   `orphaned-commit-detector.yml` (weekly) were also on `develop` but absent from
-  `origin/main`, so their schedules never fired either. The six-unit CI retired
-  both, so this history needs no action.
+  `origin/main`, so their schedules never fired either. The unit-based CI (2026-09-29)
+  retired both, so this history needs no action.
 
 Activation options considered while the default branch was still `main`:
 

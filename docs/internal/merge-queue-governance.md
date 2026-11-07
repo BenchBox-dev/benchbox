@@ -497,6 +497,6 @@ blocks a merge.
 Until 2026-10-03 the repository ran a GitHub merge queue on `develop` with the
 strict up-to-date rule. The queue configuration, follower visual baseline
 policy and queue canary rehearsal are in
-`_project/decisions/native-merge-queue-activation-20260822.md`,
-`_project/decisions/visual-baseline-site-equivalent-ancestor-2026-09-27.md`
-and `docs/internal/merge-queue-canary-runbook.md`. They no longer apply.
+`_project/decisions/native-merge-queue-activation-20260822.md`
+and `_project/decisions/visual-baseline-site-equivalent-ancestor-2026-09-27.md`.
+They no longer apply.

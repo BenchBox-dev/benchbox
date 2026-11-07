@@ -1511,10 +1511,11 @@ Merged PRs predate this and never re-run the gate. The oracle signal needs
 `findings_delivery: review`, under which every run reaching a result, pending
 included, posts a review then a status in the same state.
 
-The `oracle-review` workflow is a notification, not a check: it triggers only on
+The `review-request` workflow is a notification, not a check: it triggers only on
 `pull_request_review` edited and dismissed (never submitted), holds no token
 permissions, and runs one `review-event` job with a single no-op step (no
-checkout, secrets or API calls), producing no check run named `oracle-review`.
+checkout, secrets or API calls), producing no check run named `oracle-review` (the check that
+stopped being required on 2026-10-24).
 `edited` keeps edits to oracle reviews visible in run history; the gate never
 reads review bodies for its decision but rejects edited receipts when binding a
 status.
@@ -1614,7 +1615,7 @@ success would count and the gate property would not hold.
   previous body) contains the stand-in marker anywhere, so leading whitespace,
   which the checker strips, still triggers; the checker decides on the exact
   text;
-- completion of `oracle-review` (the bridge for oracle review edits and
+- completion of `review-request` (the bridge for oracle review edits and
   dismissals, which have no trusted trigger; verdict runs post the gate
   themselves);
 - `workflow_dispatch` with a `pr` input;
@@ -1668,7 +1669,7 @@ timeout.
 `oracle-gate` became required on 2026-10-21, scoped to the `benchbox-oracle`
 App's integration ID, alongside `oracle-review`, which stopped being required on
 2026-10-24 after a side-by-side comparison
-(`_project/decisions/oracle-review-check-retired-2026-10-24.md`). Its workflow
+(`_project/decisions/oracle-review-check-retired-2026-10-24.md`). The notification workflow, `review-request`,
 now only notifies; its completion after a review event is how `oracle-gate`
 re-evaluates without a trusted trigger of its own.
 
