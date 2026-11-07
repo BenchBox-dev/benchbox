@@ -34697,7 +34697,12 @@
       "title": "✅ SQLGlot Dialect Translation Code Review Implementation"
     },
     "sqlglot-e2e-activation-proof": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T21:54:14Z",
+        "generation": "e095497f93e64ff986718734021c3b97",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f"
+      },
       "needs": [
         "sqlglot-e2e-fork-wheel-delivery",
         "sqlglot-e2e-lifecycle-controller",
@@ -34707,7 +34712,7 @@
         "sql-execution-gate-sqlite-q19-timeout"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Prove and activate fork delivery plus minimal core consumption"
     },
     "sqlglot-e2e-automated-delivery": {
