@@ -33598,6 +33598,13 @@
       "status": "open",
       "title": "SQLGlot delivery consumer arms its adoption PR only on its next daily run"
     },
+    "sqlglot-delivery-dry-runs-miss-write-prerequisites-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "SQLGlot fork and core dry runs pass while their write prerequisites are missing"
+    },
     "sqlglot-dialect-translation-code-review-implementation": {
       "claim": null,
       "needs": [],

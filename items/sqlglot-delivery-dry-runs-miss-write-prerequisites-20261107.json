@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "A core dry run reports a missing or wrongly scoped delivery App installation.",
+    "A fork dry run reports Issues disabled and a missing controller App installation.",
+    "Neither check needs or exposes a write credential; tests cover present, missing and wrongly scoped cases."
+  ],
+  "description": "Problem. Both SQLGlot automation dry runs succeed without checking what their write paths need, so a misconfiguration surfaces only on the first real run. Core: the sqlglot-delivery.yml dry run 42298338422 passed, but the first enabled run 42326369414 failed at 'Mint the App token' with 404 on GET /repos/BenchBox-dev/BenchBox/installation because the delivery App was created but not installed on the repository. Fork: the controller files refresh conflicts and failures as issues, but BenchBox-dev/benchbox-sqlglot has Issues disabled (has_issues=false, read live 2026-11-07); every dry run passed and a real failure would fail the publish job and lose the report. Covers both repositories: the fork check lands through a fork PR.\n\nChange. Add a prerequisite readback to each dry run that needs no write credential: core confirms the delivery App is installed on this repository with exactly contents and pull-requests write; fork confirms Issues are enabled and the controller App is installed on the fork only. Report missing prerequisites in the job summary, and fail the enabled path before any mutation.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/42326369414",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/42298338422"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f",
+      "at": "2026-11-07T14:55:33Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "2b1c72d4dd3b42adbe4f3c3f5ea3c649",
+      "session_id": "2f41579dd2194a049659596cdd9a4f3d"
+    }
+  ]
+}
