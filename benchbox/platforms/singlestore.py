@@ -107,6 +107,23 @@ _DECIMAL_TEXT_PATTERN = r"'^-?[0-9]+(\\.[0-9]+)?$'"
 _OUT_OF_RANGE_DECIMAL = "1e30"
 
 
+def _decimal_guarded_load_tail(columns: Sequence[tuple[str, str]], pass_null: bool) -> tuple[str, str]:
+    targets = []
+    guards = []
+    for name, data_type in columns:
+        if data_type.upper().startswith("DECIMAL"):
+            targets.append(f"@{name}")
+            null_test = f"@{name} IS NULL OR " if pass_null else ""
+            guards.append(
+                f"`{name}` = IF({null_test}@{name} REGEXP {_DECIMAL_TEXT_PATTERN}, @{name}, {_OUT_OF_RANGE_DECIMAL})"
+            )
+        else:
+            targets.append(f"`{name}`")
+    if not guards:
+        return "", ""
+    return f" ({', '.join(targets)})", f" SET {', '.join(guards)}"
+
+
 class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapter):
     plan_capture_phase_eligible = True
     supports_refresh_functions = True
@@ -309,17 +326,9 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
     ) -> int:
         if not self._validate_identifier(table_name):
             raise ValueError(f"Invalid table identifier: {table_name!r}")
-        targets = []
-        guards = []
-        for name, data_type in columns:
-            if data_type.upper().startswith("DECIMAL"):
-                targets.append(f"@{name}")
-                null_test = f"@{name} IS NULL OR " if null_marker is not None else ""
-                guards.append(
-                    f"`{name}` = IF({null_test}@{name} REGEXP {_DECIMAL_TEXT_PATTERN}, @{name}, {_OUT_OF_RANGE_DECIMAL})"
-                )
-            else:
-                targets.append(f"`{name}`")
+        column_list, set_clause = _decimal_guarded_load_tail(columns, pass_null=null_marker is not None)
+        if not column_list:
+            column_list = f" ({', '.join(f'`{name}`' for name, _ in columns)})"
         escaped_path = str(path).replace("\\", "\\\\").replace("'", "\\'")
         null_clause = ""
         if null_marker is not None:
@@ -327,10 +336,8 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
             null_clause = f" NULL DEFINED BY '{escaped_null}'"
         sql = (
             f"LOAD DATA LOCAL INFILE '{escaped_path}' INTO TABLE `{table_name}` "
-            f"FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n'{null_clause} ({', '.join(targets)})"
+            f"FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n'{null_clause}{column_list}{set_clause}"
         )
-        if guards:
-            sql += f" SET {', '.join(guards)}"
         raw_connection = getattr(connection, "connection", connection)
         cursor = raw_connection.cursor()
         try:
@@ -349,9 +356,19 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
             pre_row = cursor.fetchone()
             pre_count = int(pre_row[0]) if pre_row else 0
 
+            escaped_table = table_name.replace("\\", "\\\\").replace("'", "\\'")
+            cursor.execute(
+                "SELECT COLUMN_NAME, COLUMN_TYPE FROM information_schema.COLUMNS "
+                f"WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{escaped_table}' ORDER BY ORDINAL_POSITION"
+            )
+            table_columns = []
+            while (column_row := cursor.fetchone()) is not None:
+                table_columns.append((str(column_row[0]), str(column_row[1])))
+            column_list, set_clause = _decimal_guarded_load_tail(table_columns, pass_null=True)
+
             escaped_path = str(load_path).replace("\\", "\\\\").replace("'", "\\'")
             sql = " ".join([f"LOAD DATA LOCAL INFILE '{escaped_path}'", f"INTO TABLE `{table_name}`", *clauses])
-            cursor.execute(sql)
+            cursor.execute(f"{sql}{column_list}{set_clause}")
 
             cursor.execute(f"SELECT COUNT(*) FROM `{table_name}`")
             post_row = cursor.fetchone()
