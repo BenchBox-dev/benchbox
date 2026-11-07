@@ -33521,12 +33521,17 @@
       "title": "TPC-DS data maintenance: dsdgen refresh sets, timed staged load, spec-defined functions, monotonic timers"
     },
     "tpcds-maintenance-seed-through-callers-20261106": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T00:52:04Z",
+        "generation": "70bb0fe3429e41e790d82be23adae639",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [
         "tpcds-maintenance-timer-hygiene-20261103"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Carry the TPC-DS maintenance seed from the run configuration through production callers into exported results"
     },
     "tpcds-maintenance-timer-hygiene-20261103": {
