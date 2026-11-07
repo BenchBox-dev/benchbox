@@ -2064,20 +2064,46 @@
       "terminal_outcome": "deliver"
     },
     "batch-optin-remediation-20261107": {
-      "accepted_members": {},
+      "accepted_members": {
+        "batch-mode-opt-in-policy-docs-20261107": "32c88aa7dbc8536308b73bf383501de317dcf966"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "batch-mode-opt-in-policy-docs-20261107": {
+          "accepted_head": "32c88aa7dbc8536308b73bf383501de317dcf966",
+          "changed_files": [
+            "AGENTS.md",
+            "_project/decisions/batch-integration-loop-2026-11-01.md",
+            "changelog.d/batch-mode-opt-in-policy-docs-20261107.json",
+            "docs/agent/README.md",
+            "docs/agent/batch-feature-delivery.md",
+            "docs/agent/review-protocol.md",
+            "docs/internal/dev-loop-worktrees.md"
+          ],
+          "integration_head": "2650c1b2fee915e237b0bb902bac00cd4a3a7b95",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/batch-optin-remediation-20261107",
-      "integration_head": "4fe6b3aac7b884bd170cdd3ef61697af5bffbeec",
+      "integration_head": "2650c1b2fee915e237b0bb902bac00cd4a3a7b95",
       "integration_log": [
         {
           "at": "2026-11-07T21:52:46Z",
           "head": "4fe6b3aac7b884bd170cdd3ef61697af5bffbeec",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-07T22:02:12Z",
+          "head": "2650c1b2fee915e237b0bb902bac00cd4a3a7b95",
+          "kind": "prepare",
+          "member": "batch-mode-opt-in-policy-docs-20261107",
+          "op_id": "bf60f643cdc8444b90f2d645bbe079da",
+          "previous_head": "4fe6b3aac7b884bd170cdd3ef61697af5bffbeec",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-feat-batch-optin-remediation",
@@ -9847,15 +9873,10 @@
       "title": "Add batch-start, batch-member-create and batch-member-check, and refuse pr-open and pr-fanout in member worktrees"
     },
     "batch-mode-opt-in-policy-docs-20261107": {
-      "claim": {
-        "expires_at": "2026-11-08T22:02:07Z",
-        "generation": "8f51dd44a3e84fb5bd0e6063bdd43c8a",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Make feature-batch delivery owner opt-in and one feature branch per feature the default"
     },
     "batch-native-bulk-load-remainder-umbrella-20261104": {

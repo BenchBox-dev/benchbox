@@ -19,6 +19,59 @@
     "_project/decisions/batch-integration-loop-2026-11-01.md",
     "https://github.com/BenchBox-dev/benchbox/pull/3999"
   ],
+  "prepared": {
+    "accepted_head": "32c88aa7dbc8536308b73bf383501de317dcf966",
+    "batch_id": "batch-optin-remediation-20261107",
+    "changed_files": [
+      "AGENTS.md",
+      "_project/decisions/batch-integration-loop-2026-11-01.md",
+      "changelog.d/batch-mode-opt-in-policy-docs-20261107.json",
+      "docs/agent/README.md",
+      "docs/agent/batch-feature-delivery.md",
+      "docs/agent/review-protocol.md",
+      "docs/internal/dev-loop-worktrees.md"
+    ],
+    "integration_head": "2650c1b2fee915e237b0bb902bac00cd4a3a7b95",
+    "integration_seq": 1,
+    "member_id": "batch-mode-opt-in-policy-docs-20261107",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "ef1a84e69173fa75ee61042b62fb8aa7b960fb0e6b8d5991ebad445334e60d4f",
+    "source_base": "4fe6b3aac7b884bd170cdd3ef61697af5bffbeec",
+    "source_revision": "32c88aa7dbc8536308b73bf383501de317dcf966",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-feat-batch-optin-remediation--docs",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/unit/scripts/test_agent_instruction_audit.py",
+        "tests/unit/scripts/test_doc_reference_inventory.py",
+        "tests/unit/test_ledger_coverage.py"
+      ],
+      "review": {
+        "base_sha": "4fe6b3aac7b884bd170cdd3ef61697af5bffbeec",
+        "head_sha": "32c88aa7dbc8536308b73bf383501de317dcf966",
+        "head_tree": "52a53ac9f5ae3e6aaa33721ac1b7f63f335f9dd0",
+        "outcome": "clear",
+        "patch_digest": "cf504c229f8411be73c54acc32c3cb57",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "4fe6b3aac7b884bd170cdd3ef61697af5bffbeec"
+      },
+      "revision": "32c88aa7dbc8536308b73bf383501de317dcf966",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae",
@@ -51,6 +104,15 @@
       "generation": "8f51dd44a3e84fb5bd0e6063bdd43c8a",
       "op": "take",
       "op_id": "5c93327b1c804fbe817a0cd04d036e6a",
+      "session_id": "4e1f5de86962468394697835ee28c6b3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae",
+      "at": "2026-11-07T22:02:12Z",
+      "client": "omp-coding-agent",
+      "generation": "8f51dd44a3e84fb5bd0e6063bdd43c8a",
+      "op": "prepare",
+      "op_id": "bf60f643cdc8444b90f2d645bbe079da",
       "session_id": "4e1f5de86962468394697835ee28c6b3"
     }
   ]
