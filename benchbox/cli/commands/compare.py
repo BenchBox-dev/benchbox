@@ -22,6 +22,7 @@ from rich.table import Table
 from benchbox.cli.host_lock_optin import host_guarded
 from benchbox.cli.shared import console
 from benchbox.core.results.exporter import ResultExporter
+from benchbox.core.results.fetch_mode import FETCH_MODE_OPTION_HELP, FETCH_MODE_PLATFORMS, FETCH_MODES
 from benchbox.core.results.loader import (
     ResultLoadError,
     UnsupportedSchemaError,
@@ -347,6 +348,12 @@ def _discover_result_files_with_metadata(
     is_flag=True,
     help="Allow comparing runs with different execution variants (deployment, engine, gateway)",
 )
+@click.option(
+    "--fetch-mode",
+    type=click.Choice(FETCH_MODES),
+    default=None,
+    help=f"{FETCH_MODE_OPTION_HELP} Applies to platform runs; defaults to BENCHBOX_FETCH_MODE when set.",
+)
 @click.pass_context
 @host_guarded(
     "compare",
@@ -381,6 +388,7 @@ def compare(
     include_plans,
     plan_threshold,
     allow_heterogeneous_comparison: bool = False,
+    fetch_mode: str | None = None,
 ):
     if list_platforms:
         _list_available_platforms()
@@ -397,6 +405,9 @@ def compare(
 
     if min_aggregate_regression_delta is not None and platforms:
         raise click.UsageError("--min-aggregate-regression-delta applies to result file comparison, not platform runs")
+
+    if fetch_mode is not None and result_files:
+        raise click.UsageError("--fetch-mode applies to platform runs, not result file comparison")
 
     if run_mode_flag:
         warnings.warn(
@@ -434,6 +445,7 @@ def compare(
             output_file=output_file,
             generate_charts=generate_charts,
             theme=theme,
+            fetch_mode=fetch_mode,
         )
     elif has_files:
         _run_file_comparison(
@@ -474,6 +486,7 @@ def compare(
             show_all_queries=show_all_queries,
             min_regression_delta=min_regression_delta,
             min_aggregate_regression_delta=min_aggregate_regression_delta,
+            fetch_mode=fetch_mode,
         )
 
 
@@ -486,6 +499,7 @@ def _run_interactive_wizard(
     show_all_queries: bool,
     min_regression_delta: str | None = None,
     min_aggregate_regression_delta: str | None = None,
+    fetch_mode: str | None = None,
 ):
     console.print("\n[bold blue]BenchBox Platform Comparison[/bold blue]")
     console.print("Compare benchmark performance across different platforms.\n")
@@ -512,8 +526,11 @@ def _run_interactive_wizard(
             output_file=output_file,
             generate_charts=generate_charts,
             theme=theme,
+            fetch_mode=fetch_mode,
         )
     else:
+        if fetch_mode is not None:
+            raise click.UsageError("--fetch-mode applies to platform runs, not result file comparison")
         _interactive_file_comparison(
             output_format=output_format,
             output_file=output_file,
@@ -529,6 +546,7 @@ def _interactive_platform_comparison(
     output_file: str | None,
     generate_charts: bool,
     theme: str,
+    fetch_mode: str | None = None,
 ):
     from benchbox.platforms import (
         list_available_dataframe_platforms,
@@ -636,6 +654,7 @@ def _interactive_platform_comparison(
         output_file=output_file,
         generate_charts=generate_charts,
         theme=theme,
+        fetch_mode=fetch_mode,
     )
 
 
@@ -896,7 +915,7 @@ def _list_available_platforms():
     console.print("  benchbox compare                               # Interactive wizard")
 
 
-def _build_platform_runner():
+def _build_platform_runner(fetch_mode: str | None = None):
     from benchbox.cli.database import DatabaseManager
     from benchbox.cli.orchestrator import BenchmarkOrchestrator
     from benchbox.cli.system import SystemProfiler
@@ -936,16 +955,23 @@ def _build_platform_runner():
         if data_dir is not None:
             orchestrator.set_custom_output_dir(str(data_dir))
 
+        platform_options = (
+            {"fetch_mode": fetch_mode} if fetch_mode and platform.lower() in FETCH_MODE_PLATFORMS else None
+        )
         result = orchestrator.execute_benchmark(
             benchmark_config,
             SystemProfiler().get_system_profile(),
-            DatabaseManager().create_config(platform),
+            DatabaseManager().create_config(
+                platform,
+                platform_options,
+                explicit_option_keys=platform_options.keys() if platform_options else None,
+            ),
             ["data", "schema", "load", "power"],
         )
         mode_differences = results_mode_differences([*executed, result])
         if mode_differences:
             raise ValueError(
-                f"{IncomparableModesError(mode_differences)} Set BENCHBOX_FETCH_MODE=rows or arrow to measure every platform the same way."
+                f"{IncomparableModesError(mode_differences)} Pass --fetch-mode rows or arrow to measure every platform the same way."
             )
         executed.append(result)
         return result
@@ -966,6 +992,7 @@ def _run_platform_comparison(
     output_file: str | None,
     generate_charts: bool,
     theme: str,
+    fetch_mode: str | None = None,
 ):
     from benchbox.core.comparison import (
         PlatformType,
@@ -1006,7 +1033,7 @@ def _run_platform_comparison(
         benchmark_iterations=iterations,
     )
 
-    suite = UnifiedBenchmarkSuite(config=config, platform_runner=_build_platform_runner())
+    suite = UnifiedBenchmarkSuite(config=config, platform_runner=_build_platform_runner(fetch_mode))
 
     console.print("\n[bold]Cross-Platform Benchmark Comparison[/bold]")
     console.print(f"Platforms: {', '.join(platforms)}")

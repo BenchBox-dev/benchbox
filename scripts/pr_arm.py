@@ -299,10 +299,12 @@ def batch_refusals(
 ) -> list[str]:
     batch_role = _worktree_config(run, "benchbox.batch.role")
     batch_id = _worktree_config(run, "benchbox.batch.id")
+    tracker: dict | None = None
     if batch_role == "integration":
         if batch_id is None:
             return ["the integration worktree names no batch (benchbox.batch.id is unset)"]
-        discovered_id: str | None = batch_id
+        tracker = pr_landing.read_batch_tracker(batch_id)
+        discovered_id: str | None = None if tracker.get("lifecycle") == "aborted" else batch_id
     else:
         v = view or {}
         discovery_fn = discover or pr_landing.discover_batch
@@ -318,7 +320,8 @@ def batch_refusals(
     )
     if evidence is None:
         return [f"batch {discovered_id} has no final evidence file at .todo-batch/{discovered_id}/final-evidence.json"]
-    tracker = pr_landing.read_batch_tracker(discovered_id)
+    if tracker is None:
+        tracker = pr_landing.read_batch_tracker(discovered_id)
 
     reasons: list[str] = []
     if tracker.get("lifecycle") != "active":
@@ -326,7 +329,11 @@ def batch_refusals(
     final_pr = tracker.get("final_pr")
     if not isinstance(final_pr, dict) or final_pr.get("number") != number:
         reasons.append(f"batch {discovered_id} is not bound to PR #{number}")
-    reasons.extend(pr_landing.check_batch_evidence(checkout, evidence or {}, head, tracker))
+    try:
+        base = pr_landing._git(checkout, "rev-parse", "origin/develop")
+    except subprocess.CalledProcessError:
+        base = None
+    reasons.extend(pr_landing.check_batch_evidence(checkout, evidence or {}, head, tracker, base))
     return reasons
 
 

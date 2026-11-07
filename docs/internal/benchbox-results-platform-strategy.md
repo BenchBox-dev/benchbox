@@ -365,7 +365,7 @@ support navigation into and out of comparisons. They are necessary but secondary
 | **Explorer home + browse** | Navigation | Landing page with summary cards; benchmark and platform index pages with filterable result lists and "compare" checkboxes | Users can navigate to any result and select results for comparison |
 | **Result detail page** | Supporting | Stable URL per result showing metadata, query timings, validation status, and raw bundle download | Detail page works for all seed corpus results |
 | **DuckDB-WASM filtering** | Interaction | Client-side filtering by benchmark, platform, scale factor, date range | Filters work over the full corpus |
-| **GitHub Pages integration** | Deployment | Explorer builds and deploys alongside existing landing + docs + blog | Single `git push` to `main` deploys everything |
+| **GitHub Pages integration** | Deployment | Explorer builds and deploys alongside existing landing + docs + blog | Design-time target (before the site moved to `BenchBox-dev/benchbox-site`): single `git push` to `main` deploys everything |
 
 ### What Does NOT Ship in Phase 1
 
@@ -479,7 +479,7 @@ if the results platform becomes a core product with sustained community usage.
 | Constraint | Evidence | Strategy implication |
 | --- | --- | --- |
 | Canonical results already exist as schema-v2 bundles with companion files | `benchbox/core/results/exporter.py` | All downstream paths ingest the real exported bundle, not a second payload |
-| Public site is currently static GitHub Pages assembled from landing + docs + blog | `.github/workflows/docs.yml`, `docs/conf.py` | The public explorer must be a static subsite - no server dependency |
+| At design time (before the site moved to `BenchBox-dev/benchbox-site`), the public site was static GitHub Pages assembled from landing + docs + blog | `.github/workflows/docs.yml`, `docs/conf.py` (both since removed) | The public explorer must be a static subsite - no server dependency |
 | BenchBox already hints at a hosted service contract | `_project/_archive/specs/cli/config.md` documents `submit_to_service` and `service_url` (archived) | CLI public submission (`benchbox submit`) is a legitimate future direction, but Phase 1 does not require it |
 | Existing publishing is process-local | `benchbox/core/publishing/bundle_publisher.py`, `benchbox/core/publishing/store.py` (the earlier `artifacts.py`/`permalink.py` prototype was removed in v0.2.1) | The current bundle publisher does local/cloud artifact publication only; it is not the hosted service architecture |
 

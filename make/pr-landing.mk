@@ -22,19 +22,27 @@ pr-preflight:
 		exit 2; \
 	fi; \
 	sh scripts/check_primary_clone_clean.sh report; \
-	$(MAKE) -s changelog-check; \
 	PREFLIGHT_BASE="$(or $(BASE),origin/develop)"; \
 	if [ -z "$(BASE)" ]; then git fetch origin develop --quiet; fi; \
 	PY_LIST=$$(mktemp); \
 	TEST_LIST=$$(mktemp); \
 	LINUX_LIST=$$(mktemp); \
-	trap 'rm -f "$$PY_LIST" "$$TEST_LIST" "$$LINUX_LIST"' EXIT; \
+	STAGE=$$(mktemp); \
+	ALLOW=$$(mktemp); \
+	trap 'RC=$$?; python3 scripts/preflight_receipt.py finalize --stage "$$STAGE" --exit-status "$$RC" --allowlist "$$ALLOW" || true; rm -f "$$PY_LIST" "$$TEST_LIST" "$$LINUX_LIST" "$$STAGE" "$$ALLOW"; exit "$$RC"' EXIT; \
+	git show HEAD:.github/preflight-known-failures.json > "$$ALLOW" 2>/dev/null || rm -f "$$ALLOW"; \
+	python3 scripts/preflight_receipt.py begin --stage "$$STAGE" --base-ref "$$PREFLIGHT_BASE"; \
+	RECORD="python3 scripts/preflight_receipt.py step --stage $$STAGE --allowlist $$ALLOW"; \
+	NOTE="python3 scripts/preflight_receipt.py note --stage $$STAGE"; \
+	$$RECORD --name changelog-check -- $(MAKE) -s changelog-check; \
 	uv run -- python _project/scripts/preflight_targets.py python --base-ref "$$PREFLIGHT_BASE" > "$$PY_LIST"; \
 	uv run -- python _project/scripts/preflight_targets.py tests --base-ref "$$PREFLIGHT_BASE" > "$$TEST_LIST"; \
+	$$NOTE python_files="$$(grep -c . "$$PY_LIST" || true)"; \
+	$$NOTE test_files="$$(grep -c . "$$TEST_LIST" || true)"; \
 	if [ -s "$$PY_LIST" ]; then \
 		echo "==> ruff (changed Python files)"; \
-		uv run -- ruff check --force-exclude $$(cat "$$PY_LIST"); \
-		uv run -- ruff format --check --force-exclude $$(cat "$$PY_LIST"); \
+		$$RECORD --name ruff-check -- uv run -- ruff check --force-exclude $$(cat "$$PY_LIST"); \
+		$$RECORD --name ruff-format -- uv run -- ruff format --check --force-exclude $$(cat "$$PY_LIST"); \
 	else \
 		echo "No Python files changed; skipping ruff."; \
 	fi; \
@@ -44,13 +52,14 @@ pr-preflight:
 	fi; \
 	echo "==> tests for changed files"; \
 	STATUS=0; \
-	env $$(env | sed -n 's/^\(GIT_[A-Za-z0-9_]*\)=.*/-u \1/p') uv run -- python -m pytest -q -n 0 --tb=short --ff $$(cat "$$TEST_LIST") || STATUS=$$?; \
+	$$RECORD --name pytest --ok-codes 0,5 -- env $$(env | sed -n 's/^\(GIT_[A-Za-z0-9_]*\)=.*/-u \1/p') uv run -- python -m pytest -q -n 0 --tb=short --ff $$(cat "$$TEST_LIST") || STATUS=$$?; \
 	if [ "$$STATUS" -eq 5 ]; then echo "Mapped tests are all deselected by the default markers."; STATUS=0; fi; \
 	if [ "$$STATUS" -eq 0 ]; then \
 		uv run -- python _project/scripts/preflight_targets.py linux --base-ref "$$PREFLIGHT_BASE" > "$$LINUX_LIST"; \
+		$$NOTE linux_files="$$(grep -c . "$$LINUX_LIST" || true)"; \
 		if [ -s "$$LINUX_LIST" ]; then \
 			echo "==> Linux run (change touches platform-branching code or platform skips)"; \
-			bash scripts/linux_preflight_pytest.sh "$$LINUX_LIST" || STATUS=$$?; \
+			$$RECORD --name linux-pytest -- bash scripts/linux_preflight_pytest.sh "$$LINUX_LIST" || STATUS=$$?; \
 		fi; \
 	fi; \
 	exit "$$STATUS"
@@ -216,13 +225,18 @@ pr-open:
 	git diff --name-only --diff-filter=A "$$STACK_BASE"...HEAD > "$$CL_DIR/added.txt"; \
 	uv run -- python scripts/changelog_fragments.py required --title "$$CL_TITLE" --changed-files-from "$$CL_DIR/changed.txt" --added-files-from "$$CL_DIR/added.txt" --release-base-sha "$$(git rev-parse origin/develop)" || { rm -rf "$$CL_DIR"; echo "Refusing to open PR: add a changelog fragment (make changelog-entry) or fix the title." >&2; exit 1; }; \
 	rm -rf "$$CL_DIR"; \
+	REVIEWED=$$(git rev-parse HEAD); \
+	RECEIPT_FILE=$$(mktemp); \
+	ALLOW_FILE=$$(mktemp); \
+	trap 'rm -f "$$RECEIPT_FILE" "$$ALLOW_FILE"' EXIT; \
+	git show "$$REVIEWED:.github/preflight-known-failures.json" > "$$ALLOW_FILE" 2>/dev/null || rm -f "$$ALLOW_FILE"; \
+	python3 scripts/preflight_receipt.py verify --head "$$REVIEWED" --allowlist "$$ALLOW_FILE" --summary-out "$$RECEIPT_FILE" --base-ref "$$STACK_BASE" || { echo "Refusing to open PR: no passing preflight receipt matches the tree being pushed. Nothing was pushed." >&2; exit 1; }; \
 	TRUNK_MODE=$$(uv run -- python scripts/trunk_revert.py gate --branch "$$CURRENT" --repo "$$REPOSITORY"); \
 	DRAFT_FLAG=; \
 	if [ "$$TRUNK_MODE" = "draft" ] || [ -n "$$PR_OPEN_PARENT" ]; then DRAFT_FLAG=--draft; fi; \
-	REVIEWED=$$(git rev-parse HEAD); \
 	RECORD_FILE=$$(mktemp); \
 	UNAVAILABLE_FILE=$$(mktemp); \
-	trap 'rm -f "$$RECORD_FILE" "$$UNAVAILABLE_FILE"' EXIT; \
+	trap 'rm -f "$$RECORD_FILE" "$$UNAVAILABLE_FILE" "$$RECEIPT_FILE" "$$ALLOW_FILE"' EXIT; \
 	LOCAL_STATUS=0; \
 	python3 scripts/oracle_local_review.py --policy .github/oracle-reviewers.yml --base-ref "$$STACK_BASE" --trusted-ref origin/develop --head "$$REVIEWED" --rebuttals "$$PR_OPEN_REBUTTALS" --adjudicate "$$PR_OPEN_ADJUDICATE" --record-out "$$RECORD_FILE" --unavailable-out "$$UNAVAILABLE_FILE" || LOCAL_STATUS=$$?; \
 	UNAVAILABLE_CAUSE=; \
@@ -236,7 +250,7 @@ pr-open:
 	git push origin "$$REVIEWED:refs/heads/$$CURRENT" || { echo "Push failed for $$CURRENT — aborting before opening a PR (remote branch may be stale)." >&2; exit 1; }; \
 	git branch --set-upstream-to="origin/$$CURRENT" "$$CURRENT" >/dev/null 2>&1 || true; \
 	PUBLISHED=$$(uv run -- python scripts/pr_open_rest.py --repo "$$REPOSITORY" --head-owner "$$ORIGIN_OWNER" \
-		--branch "$$CURRENT" --head-spec "$$HEAD_SPEC" --title "$$PR_OPEN_TITLE" --body-file "$$PR_OPEN_BODY_FILE" --record-file "$$RECORD_FILE" $${UNAVAILABLE_CAUSE:+--local-review-unavailable "$$UNAVAILABLE_CAUSE"} $$DRAFT_FLAG $$PARENT_ARGS); \
+		--branch "$$CURRENT" --head-spec "$$HEAD_SPEC" --title "$$PR_OPEN_TITLE" --body-file "$$PR_OPEN_BODY_FILE" --record-file "$$RECORD_FILE" --receipt-file "$$RECEIPT_FILE" $${UNAVAILABLE_CAUSE:+--local-review-unavailable "$$UNAVAILABLE_CAUSE"} $$DRAFT_FLAG $$PARENT_ARGS); \
 	PR_STATUS="$${PUBLISHED%% *}"; \
 	PR_NUMBER="$${PUBLISHED#* }"; \
 	URL="$${PR_NUMBER#* }"; \
@@ -314,9 +328,8 @@ pr-arm:
 	fi; \
 	uv run -- python scripts/pr_arm.py
 
-REMOTE_CLOSEOUT_TARGETS := pr-arm-remote pr-landing-remote-bind pr-landing-remote-record \
-	pr-landing-remote-manifest pr-landing-remote-review pr-landing-remote-withdraw pr-landing-remote-ready
-REMOTE_CLOSEOUT_VARIABLES := PR HEAD REPO BRANCH ITEM RECORD BUILDER_HEAD OWNER_EXPLAINED MODEL REVIEWER DRY_RUN RESUME
+REMOTE_CLOSEOUT_TARGETS := pr-arm-remote pr-landing-remote
+REMOTE_CLOSEOUT_VARIABLES := PR HEAD REPO BRANCH ITEM RECORD BUILDER_HEAD OWNER_EXPLAINED MODEL REVIEWER DRY_RUN RESUME ACTION
 .PHONY: $(REMOTE_CLOSEOUT_TARGETS)
 $(foreach name,$(REMOTE_CLOSEOUT_VARIABLES),$(eval $(REMOTE_CLOSEOUT_TARGETS): override $(name) := $$(value $(name))))
 $(foreach name,$(REMOTE_CLOSEOUT_VARIABLES),$(eval $(REMOTE_CLOSEOUT_TARGETS): export REMOTE_CLOSEOUT_$(name) := $$($(name))))
@@ -329,19 +342,13 @@ REMOTE_ARM_GATE = if [ -n "$${REMOTE_CLOSEOUT_PR:-}" ]; then \
 pr-arm-remote:
 	@set -eu; $(REMOTE_ARM_GATE); \
 	uv run --no-project -- python scripts/remote_closeout.py arm
-pr-landing-remote-bind:
-	@uv run --no-project -- python scripts/remote_closeout.py bind
-pr-landing-remote-record:
-	@uv run --no-project -- python scripts/remote_closeout.py record
-pr-landing-remote-manifest:
-	@uv run --no-project -- python scripts/remote_closeout.py manifest
-pr-landing-remote-review:
-	@uv run --no-project -- python scripts/remote_review.py
-pr-landing-remote-withdraw:
-	@uv run --no-project -- python scripts/remote_closeout.py withdraw
-pr-landing-remote-ready:
-	@set -eu; $(REMOTE_ARM_GATE); \
-	uv run --no-project -- python scripts/remote_closeout.py ready
+pr-landing-remote:
+	@set -eu; case "$$REMOTE_CLOSEOUT_ACTION" in \
+		bind|record|manifest|withdraw) uv run --no-project -- python scripts/remote_closeout.py "$$REMOTE_CLOSEOUT_ACTION" ;; \
+		review) uv run --no-project -- python scripts/remote_review.py ;; \
+		ready) $(REMOTE_ARM_GATE); uv run --no-project -- python scripts/remote_closeout.py ready ;; \
+		*) echo "pr-landing-remote: ACTION must be bind, record, manifest, review, withdraw or ready" >&2; exit 2 ;; \
+	esac
 
 .PHONY: trunk-revert
 trunk-revert:

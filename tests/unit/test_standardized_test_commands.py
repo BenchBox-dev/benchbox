@@ -121,20 +121,6 @@ class TestStandardizedTestCommands:
         assert "markers =" in pytest_ini_content
         assert "not slow and not stress and not live_integration and not resource_heavy" in pytest_ini_content
 
-    def test_coverage_commands_use_pytest(self):
-        makefile_path = Path(__file__).resolve().parent.parent.parent / "Makefile"
-        makefile_content = make_targets.makefile_sources(makefile_path.parent)
-
-        coverage_section = False
-        for line in makefile_content.split("\n"):
-            if line.startswith("coverage:"):
-                coverage_section = True
-                continue
-            if coverage_section and line.startswith("\t"):
-                assert "python -m pytest" in line
-                assert "--cov=" in line
-                break
-
 
 class TestMakefileCommands:
     def test_makefile_test_targets_defined(self):
@@ -150,7 +136,6 @@ class TestMakefileCommands:
             "test-medium:",
             "test-slow:",
             "coverage:",
-            "coverage-html:",
         ]
 
         for target in expected_targets:
@@ -162,14 +147,14 @@ class TestMakefileCommands:
         lock_dir.mkdir(parents=True)
         lock_path = lock_dir / "test.lock"
         lock_path.write_text("stale lock\n", encoding="utf-8")
-        interpreter_dir = tmp_path / "interpreter"
-        interpreter_dir.mkdir()
-        (interpreter_dir / "python3").symlink_to(sys.executable)
+        bin_dir = tmp_path / "bin"
+        bin_dir.mkdir()
+        (bin_dir / "python3").symlink_to(sys.executable)
         env = {
             **subprocess.os.environ,
             "BENCHBOX_TEST_LOCK_DIR": "~/tmp/benchbox-lock-probe",
             "HOME": str(home),
-            "PATH": os.pathsep.join(["/usr/bin", "/bin", str(interpreter_dir)]),
+            "PATH": f"{bin_dir}:/usr/bin:/bin",
         }
 
         result = subprocess.run(
@@ -393,15 +378,57 @@ class TestMakefileCommands:
         assert coverage_run["branch"] is True
         assert "benchbox/core/tpcdi/etl/scd_processor.py" in coverage_run["omit"]
         assert _marker_names(repo_root / "pytest.ini") == _marker_names(repo_root / "pytest-ci.ini")
-        for target in ("coverage-fast", "coverage-all", "coverage-opt-in-all", "coverage-html", "coverage-report"):
-            assert "--cov-fail-under=0" in _makefile_target_body(makefile_content, target)
 
-        coverage_filter = '-m "not (stress or resource_heavy or live_integration)"'
-        for target in ("coverage-all", "coverage-html", "coverage-report"):
-            assert coverage_filter in _makefile_target_body(makefile_content, target)
-        assert '-m "not (stress or resource_heavy or live_integration)"' not in _makefile_target_body(
-            makefile_content, "coverage-opt-in-all"
+    @pytest.mark.parametrize(
+        ("assignments", "marker_filter", "reports"),
+        [
+            (
+                (),
+                '-m "not (stress or resource_heavy or live_integration)"',
+                ["term-missing:skip-covered", "html:htmlcov", "xml:coverage.xml"],
+            ),
+            (
+                ("COVERAGE_SCOPE=fast",),
+                '-m "fast and not (slow or stress or resource_heavy or live_integration or cloud_import)"',
+                ["term-missing:skip-covered"],
+            ),
+            (("COVERAGE_SCOPE=opt-in",), None, ["term-missing:skip-covered", "html:htmlcov", "xml:coverage.xml"]),
+            (
+                ("COVERAGE_REPORTS=xml term-full",),
+                '-m "not (stress or resource_heavy or live_integration)"',
+                ["xml:coverage.xml", "term-missing"],
+            ),
+        ],
+    )
+    def test_coverage_scope_selects_the_marker_filter_and_reports(self, assignments, marker_filter, reports):
+        done = subprocess.run(
+            ["make", "-n", "--no-print-directory", "coverage", *assignments],
+            cwd=REPO_ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
         )
+        assert done.returncode == 0, done.stderr
+        command = done.stdout.strip().splitlines()[-1]
+        assert command.startswith("uv run -- python -m pytest -c pytest-ci.ini ")
+        assert command.endswith("--cov-fail-under=0")
+        assert re.findall(r"--cov-report=(\S+)", command) == reports
+        if marker_filter is None:
+            assert ' -m "' not in command
+        else:
+            assert marker_filter in command
+
+    @pytest.mark.parametrize("assignment", ["COVERAGE_SCOPE=all", "COVERAGE_REPORTS=json"])
+    def test_coverage_refuses_an_unknown_scope_or_report(self, assignment):
+        done = subprocess.run(
+            ["make", "--no-print-directory", "coverage", assignment],
+            cwd=REPO_ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        assert done.returncode == 2
+        assert "COVERAGE_" in done.stderr
 
     def test_coverage_threshold_policy_distinguishes_blocking_and_advisory_thresholds(self):
         repo_root = Path(__file__).resolve().parent.parent.parent

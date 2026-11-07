@@ -33,9 +33,9 @@ changes the gate code or policy, the hourly sweep, or on demand with
 
 The develop ruleset requires `oracle-gate` bound to the `benchbox-oracle`
 App's integration ID, so only a status that App posts satisfies it, and the
-`oracle-gate` workflow runs only `develop` code. The `oracle-review` workflow
-is a no-op `review-event` notification on `pull_request_review` edited and
-dismissed events only; a completed `oracle-review` run is how `oracle-gate`
+`oracle-gate` workflow runs only `develop` code. The `review-request` workflow
+is a no-op notification on `pull_request_review` edited and
+dismissed events only; a completed `review-request` run is how `oracle-gate`
 learns that a review was edited or dismissed. The verdict run posts the gate
 for the head it reviewed. It produces no check.
 
@@ -120,7 +120,7 @@ back under 24h on a fresh push, etc.). Do not hand-manage it — the next
 ## The digest issue
 
 No workflow runs the report on a schedule any more: the daily
-`soundness-drain.yml` was retired with the six-unit CI; the `benchbox-oracle`
+`soundness-drain.yml` was retired with the unit-based CI (2026-09-29); the `benchbox-oracle`
 App now reviews soundness-path PRs. Run
 `make soundness-drain-report` for the read-only view, or the script with
 `--apply` when you want the label and issue updated. The digest is posted to a single pinned issue titled

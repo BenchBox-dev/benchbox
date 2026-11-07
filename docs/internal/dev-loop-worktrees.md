@@ -284,7 +284,7 @@ kernel lock; it never removes the lock pathname.
 Runs that use xdist, and serial runs that select a heavy marker (slow, stress, resource_heavy, live_*, docker_integration),
 take the lock; heavy runs also pass host admission and run under the watchdog. `make pr-preflight` lints the changed
 Python files and runs the tests mapped from the changed paths serially
-(`-n 0`), so its pytest step never waits on the lock and writes no local receipt. The one exception is
+(`-n 0`), so its pytest step never waits on the lock and writes no host-lock run receipt. (It does write the tree-bound preflight receipt that `make pr-open` requires; see `docs/agent/preflight-receipt.md`.) The one exception is
 the Linux container step it adds when the change branches on platform: that step boots the Linux machine under
 `python -m benchbox.utils.host_lock run --admit --guard` and waits on the lock like any heavy run. Use
 `make pr-preflight-fast-tests` to run the full fast lane locally under the

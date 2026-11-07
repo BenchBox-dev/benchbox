@@ -425,3 +425,48 @@ def test_member_worktree_safety_is_rechecked_before_removal(
     assert _status(report)["zeta"] == "refused"
     assert fin.tip("zeta")
     assert retained[0].is_dir() and fin.integration.is_dir()
+
+
+def _recorded_forms(slug: str) -> list[str]:
+    return [
+        slug,
+        slug.upper(),
+        f"{slug}.git",
+        f"https://github.com/{slug}.git",
+        f"https://github.com/{slug.upper()}/",
+        f"git@github.com:{slug}.git",
+        f"ssh://git@github.com/{slug}",
+    ]
+
+
+def test_every_recorded_form_of_the_origin_repository_is_accepted(fin: Finished) -> None:
+    slug = bi._repo_slug(str(fin.world.origin))
+    for form in _recorded_forms(slug):
+        fin.world.tracker.final_pr["repository"] = form
+        repository, number = bi._merged_final_pr(fin.integration, bi.read_tracker(fin.integration, BATCH))
+        assert (repository, number) == (slug, PR_NUMBER), form
+
+
+@pytest.mark.parametrize("other", ["someone/else", "https://github.com/someone/else.git", "", "not a repository"])
+def test_another_repository_is_refused_in_any_form(fin: Finished, other: str) -> None:
+    fin.world.tracker.final_pr["repository"] = other
+    with pytest.raises(bi.BatchError, match="the final PR belongs to"):
+        bi._merged_final_pr(fin.integration, bi.read_tracker(fin.integration, BATCH))
+
+
+def test_finish_executes_when_the_final_pr_was_bound_with_a_git_url(fin: Finished) -> None:
+    _remove_unaccepted_member(fin)
+    fin.world.tracker.final_pr["repository"] = f"https://github.com/{bi._repo_slug(str(fin.world.origin)).upper()}.git"
+    report = fin.finish()
+    assert report["ok"] and report["final_pr"]["repository"] == bi._repo_slug(str(fin.world.origin))
+    assert not fin.integration.exists()
+
+
+def test_the_exit_status_matches_the_reported_result(fin: Finished, capsys: pytest.CaptureFixture[str]) -> None:
+    refused = bi.main(["--worktree", str(fin.integration), "finish"])
+    assert json.loads(capsys.readouterr().out)["ok"] is False and refused == 1
+    _remove_unaccepted_member(fin)
+    accepted = bi.main(["--worktree", str(fin.integration), "finish"])
+    assert json.loads(capsys.readouterr().out)["ok"] is True and accepted == 0
+    executed = bi.main(["--worktree", str(fin.integration), "finish", "--execute"])
+    assert json.loads(capsys.readouterr().out)["ok"] is True and executed == 0

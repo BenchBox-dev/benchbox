@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "make pr-preflight records a tree-bound receipt, and make pr-open refuses to push without a passing receipt for that tree and renders a summary of it into the PR body."}

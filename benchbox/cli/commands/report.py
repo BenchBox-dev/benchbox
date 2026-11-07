@@ -16,7 +16,7 @@ from benchbox.core.results.database import (
     RankingConfig,
     ResultDatabase,
 )
-from benchbox.core.results.fetch_mode import env_fetch_mode
+from benchbox.core.results.fetch_mode import FETCH_MODES, env_fetch_mode
 from benchbox.core.results.regression_policy import is_meaningful_improvement
 
 
@@ -88,6 +88,12 @@ def report() -> None:
     help="Consider results from last N days",
 )
 @click.option(
+    "--fetch-mode",
+    type=click.Choice(FETCH_MODES),
+    default=None,
+    help="Rank only results recorded in this fetch mode, rows or arrow. Defaults to BENCHBOX_FETCH_MODE when set.",
+)
+@click.option(
     "--db-path",
     type=click.Path(path_type=Path),
     help="Path to result database (default: ~/.benchbox/results.db)",
@@ -98,6 +104,7 @@ def rankings(
     metric: str,
     min_samples: int,
     lookback_days: int,
+    fetch_mode: str | None,
     db_path: Path | None,
 ) -> None:
     db = ResultDatabase(db_path)
@@ -109,9 +116,11 @@ def rankings(
     )
 
     try:
-        rankings_list = db.calculate_rankings(benchmark, scale_factor, config, fetch_mode=env_fetch_mode())
+        rankings_list = db.calculate_rankings(
+            benchmark, scale_factor, config, fetch_mode=fetch_mode or env_fetch_mode()
+        )
     except IncomparableModesError as exc:
-        raise click.ClickException(f"{exc} Set BENCHBOX_FETCH_MODE=rows or arrow to rank one mode.") from exc
+        raise click.ClickException(f"{exc} Pass --fetch-mode rows or arrow to rank one mode.") from exc
 
     if not rankings_list:
         console.print(f"[yellow]No results found for {benchmark} at scale factor {scale_factor}[/yellow]")

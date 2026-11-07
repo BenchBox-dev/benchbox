@@ -340,7 +340,8 @@ class World:
             )
             return self.review(argv, Path(cwd))
         if "pytest" in argv or "ruff" in argv:
-            failing = any(item in self.failing_tests for item in argv)
+            missing = [a for a in argv if a.startswith("tests/") and not (Path(cwd) / a.split("::")[0]).exists()]
+            failing = bool(missing) or any(item in self.failing_tests for item in argv)
             return done(1 if failing else 0, stderr="verification failed" if failing else "")
         raise AssertionError(f"unexpected external command {argv}")
 

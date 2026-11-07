@@ -79,6 +79,17 @@ fails it. It enforces two things:
   replaces or consolidates an existing one; raising the ceiling needs the
   owner's agreement.
 
+Related variants are one target with a parameter rather than one target each.
+These targets check the parameter before anything runs and exit 2 on an
+unknown value:
+
+| Target | Parameter | Values |
+|---|---|---|
+| `coverage` | `COVERAGE_SCOPE`, `COVERAGE_REPORTS` | `fast`, `routine` (default), `opt-in`; any of `term`, `term-full`, `html`, `xml` |
+| `comment-policy-scan` | `COMMENT_POLICY_MODE` | `strict`, `report`, `scope` |
+| `duplicate-check` | `DUPLICATE_CHECK_FORMAT` | `text` (default), `json` |
+| `pr-landing-remote` | `ACTION` | `bind`, `record`, `manifest`, `review`, `withdraw`, `ready` |
+
 Tests that need a target's prerequisites, recipe or target-specific variables,
 such as the timed-target check below, read them through the same script.
 

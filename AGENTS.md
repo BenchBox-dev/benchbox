@@ -72,7 +72,7 @@ make agent-write-preflight
 
 Stop if `git rev-parse --show-toplevel` is the primary clone; emergency writes there need explicit authorization plus `BENCHBOX_ALLOW_MAIN_CLONE_WRITE=1`. Preserve unrelated dirty work; never use destructive Git/filesystem commands without approval. Use `rg`; stage only authorized paths; never `git add -A`.
 
-`[REMOTE-CLOSEOUT-001]` A local closer of a cloud-built branch may skip the worktree: fetch the PR head in the primary clone, then run the `make pr-arm-remote` and `pr-landing-remote-*` targets listed in `docs/agent/remote-closeout.md`, arming only on a stored reviewer record for that head and changing no repository file, local branch, or config. Feature, batch, stack, and soundness PRs use a worktree, as does every PR until those targets exist.
+`[REMOTE-CLOSEOUT-001]` A local closer of a cloud-built branch may skip the worktree: fetch the PR head in the primary clone, then run the `make pr-arm-remote` and `pr-landing-remote` targets listed in `docs/agent/remote-closeout.md`, arming only on a stored reviewer record for that head and changing no repository file, local branch, or config. Feature, batch, stack, and soundness PRs use a worktree, as does every PR until those targets exist.
 
 A disposable clone (remote session, CI runner) declares `BENCHBOX_EPHEMERAL_CLONE=1`. Local sessions must use linked worktrees, except under `[REMOTE-CLOSEOUT-001]`. Never run `git worktree prune` or `gc` inside a container mounting `.git` (pruning destroys host registrations); unlock only after confirming the mount is inactive.
 
@@ -94,7 +94,7 @@ For long output, write `/tmp/<slug>.log` (report status + short tail). UAT/stres
 
 `[EVIDENCE-FRESHNESS-001]` Assert tracker state, timings, and gate outcomes from a live read; a scheduled validation of the `todo-state` branch dates a past state, never a current one. A validator pass is not a `submit` pass.
 
-Before publication, self-review with the `code` review action and fix all Critical and Required findings; nits and considerations are optional. Run `make pr-preflight` once, then `make pr-open`. Low-effort subagents may handle boilerplate gates; you choose commands and interpret failures. Check CI on a schedule, never in a loop. Wait on pending checks.
+Before publication, self-review with the `code` review action and fix all Critical and Required findings; nits and considerations are optional. `make pr-open` needs a `pr-preflight` receipt. Low-effort subagents may handle boilerplate gates; you choose commands and interpret failures. Check CI on a schedule, never in a loop. Wait on pending checks.
 
 Dev PRs target `develop` (or `published-results`); squash-merge, never direct-push protected branches. Force-push feature branches only with `--force-with-lease`. Soundness paths need oracle review: resolve `benchbox-oracle` threads; arm only on its success review of the current head (rerun if pending/absent). Land drift/pinning guards with required-CI wiring. Five `ci.yml` unit checks pass even when untouched. Stacks: each at most 3 PRs deep, one agent and tracker item; upper PRs are parent-branch drafts. Caps chain depth, not PR count. No other agent's unmerged branch (batch members exempt); deeper work uses a batch. After parent squash-merge, retarget to `develop`, `git rebase --onto origin/develop <old parent tip>`, mark ready, pass CI and review on that head, then arm.
 

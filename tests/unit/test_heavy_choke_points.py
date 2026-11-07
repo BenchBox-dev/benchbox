@@ -6,7 +6,6 @@ import re
 import shutil
 import subprocess
 import sys
-import uuid
 from pathlib import Path
 
 import pytest
@@ -189,6 +188,10 @@ esac
 """
 
 
+def _machine_name(tmp_path: Path) -> str:
+    return f"m-{os.getpid()}-{tmp_path.name}"
+
+
 def _stub_env(tmp_path: Path, status: str, **extra: str) -> dict[str, str]:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir(exist_ok=True)
@@ -206,7 +209,7 @@ def _stub_env(tmp_path: Path, status: str, **extra: str) -> dict[str, str]:
         BENCHBOX_HEAVY_ADMIT="force",
         BENCHBOX_HEAVY_WATCHDOG="off",
         **{
-            "STUB_MACHINE": f"m-{uuid.uuid4().hex[:12]}",
+            "STUB_MACHINE": _machine_name(tmp_path),
             "BENCHBOX_PYTHON": sys.executable,
             "STUB_GUEST_IGNORES_POWEROFF": "1",
             "BENCHBOX_LINUX_POWEROFF_WAIT_SECONDS": "0",
@@ -225,10 +228,6 @@ def _stub_env(tmp_path: Path, status: str, **extra: str) -> dict[str, str]:
     return env
 
 
-def _machine(env: dict[str, str]) -> str:
-    return env["STUB_MACHINE"]
-
-
 def _calls(tmp_path: Path) -> list[str]:
     log = tmp_path / "calls.log"
     lines = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
@@ -237,7 +236,7 @@ def _calls(tmp_path: Path) -> list[str]:
 
 def _wrapper(env: dict[str, str], *args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        ["bash", "scripts/linux_machine_run.sh", env.get("STUB_MACHINE", "m"), *args],
+        ["bash", "scripts/linux_machine_run.sh", env["STUB_MACHINE"], *args],
         env=env,
         capture_output=True,
         text=True,
@@ -257,7 +256,7 @@ def _locked_wrapper(env: dict[str, str], *args: str) -> subprocess.CompletedProc
             "--",
             "bash",
             str(WRAPPER_PATH),
-            env.get("STUB_MACHINE", "m"),
+            env["STUB_MACHINE"],
             *args,
         ],
         env=env,
@@ -282,16 +281,14 @@ def test_a_machine_this_run_started_is_stopped_afterwards_and_the_lock_is_held_m
     probe = tmp_path / "probe"
     check = "from benchbox.utils import host_lock as h; print(h.lock_is_held(h.lock_path()))"
     hook = f'{sys.executable} -c "{check}" > {probe}'
-    env = _stub_env(tmp_path, "stopped", STUB_RUN_HOOK=hook)
-    machine = _machine(env)
-    result = _locked_wrapper(env, "-e", "A=1", "--", "true")
+    result = _locked_wrapper(_stub_env(tmp_path, "stopped", STUB_RUN_HOOK=hook), "-e", "A=1", "--", "true")
     assert result.returncode == 0, result.stderr
     assert probe.read_text(encoding="utf-8").strip() == "True"
     calls = _calls(tmp_path)
     assert [call for call in calls if call != "machine list --format json"][-3:] == [
-        f"machine run -n {machine} -e A=1 -- true",
-        f"machine run -n {machine} -- systemctl poweroff --no-block",
-        f"machine stop {machine}",
+        f"machine run -n {_machine_name(tmp_path)} -e A=1 -- true",
+        f"machine run -n {_machine_name(tmp_path)} -- systemctl poweroff --no-block",
+        f"machine stop {_machine_name(tmp_path)}",
     ]
 
 
@@ -299,10 +296,9 @@ def test_a_machine_this_run_started_is_stopped_afterwards_and_the_lock_is_held_m
 @needs_bash
 @pytest.mark.parametrize("prior", ["running", "stopped", "unknown"])
 def test_the_machine_is_stopped_after_a_run_whatever_state_it_was_in(tmp_path: Path, prior: str) -> None:
-    env = _stub_env(tmp_path, prior)
-    result = _locked_wrapper(env, "--", "true")
+    result = _locked_wrapper(_stub_env(tmp_path, prior), "--", "true")
     assert result.returncode == 0, result.stderr
-    assert _calls(tmp_path)[-1] == f"machine stop {_machine(env)}"
+    assert _calls(tmp_path)[-1] == f"machine stop {_machine_name(tmp_path)}"
 
 
 @posix_only
@@ -352,8 +348,14 @@ def test_a_failing_cleanup_helper_leaves_the_machine_running_with_a_warning_and_
 @posix_only
 @needs_bash
 def test_the_real_process_check_finds_no_foreign_run_and_the_machine_is_stopped(tmp_path: Path) -> None:
-    env = _stub_env(tmp_path, "running", BENCHBOX_PYTHON=sys.executable, STUB_RUN_HOOK="sleep 0.2")
-    machine = _machine(env)
+    machine = f"m-{tmp_path.name}"
+    env = _stub_env(
+        tmp_path,
+        "running",
+        BENCHBOX_PYTHON=sys.executable,
+        STUB_MACHINE=machine,
+        STUB_RUN_HOOK="sleep 0.2",
+    )
     result = _locked_wrapper(env, "-e", "A=1", "--", "true")
     assert result.returncode == 0, result.stderr
     assert "left running" not in result.stderr
@@ -399,7 +401,7 @@ def test_a_hanging_stop_that_leaves_the_machine_running_is_diagnosed_and_the_sta
     assert result.returncode == 4, result.stderr
     assert "timed out after 6s" in result.stderr
     assert "Error: XPC connection interrupted" in result.stderr
-    assert f"ERROR: linux machine '{_machine(env)}' is still running" in result.stderr
+    assert f"ERROR: linux machine '{env['STUB_MACHINE']}' is still running" in result.stderr
     assert "no force-stop" in result.stderr
     assert not _stop_pid_alive(tmp_path)
 
@@ -432,7 +434,7 @@ def test_a_guest_that_powers_off_is_stopped_without_machine_stop(tmp_path: Path)
     result = _locked_wrapper(env, "--", "true")
     assert result.returncode == 0, result.stderr
     calls = _calls(tmp_path)
-    assert calls[-1] == f"machine run -n {_machine(env)} -- systemctl poweroff --no-block"
+    assert calls[-1] == f"machine run -n {env['STUB_MACHINE']} -- systemctl poweroff --no-block"
     assert not any(call.startswith("machine stop") for call in calls)
     assert "could not confirm" not in result.stderr and "ERROR" not in result.stderr
 
@@ -443,10 +445,9 @@ def test_a_guest_that_ignores_poweroff_falls_back_to_machine_stop(tmp_path: Path
     env = _stub_env(tmp_path, "running", BENCHBOX_LINUX_POWEROFF_WAIT_SECONDS="1")
     result = _locked_wrapper(env, "--", "true")
     assert result.returncode == 0, result.stderr
-    machine = _machine(env)
     assert _calls(tmp_path)[-2:] == [
-        f"machine run -n {machine} -- systemctl poweroff --no-block",
-        f"machine stop {machine}",
+        f"machine run -n {env['STUB_MACHINE']} -- systemctl poweroff --no-block",
+        f"machine stop {env['STUB_MACHINE']}",
     ]
     assert "ERROR" not in result.stderr
 
@@ -458,7 +459,7 @@ def test_a_zero_exit_stop_that_leaves_the_machine_running_is_still_an_error(tmp_
     result = _locked_wrapper(env, "--", "true")
     assert result.returncode == 0, result.stderr
     assert (
-        f"ERROR: linux machine '{_machine(env)}' is still running after 'container machine stop' (exit 0"
+        f"ERROR: linux machine '{env['STUB_MACHINE']}' is still running after 'container machine stop' (exit 0"
         in result.stderr
     )
 
@@ -466,14 +467,15 @@ def test_a_zero_exit_stop_that_leaves_the_machine_running_is_still_an_error(tmp_
 @posix_only
 @needs_bash
 def test_the_cleanup_is_recorded_with_the_run_id_and_the_actual_outcome(tmp_path: Path) -> None:
+    machine = f"m-{tmp_path.name}"
     env = _stub_env(
         tmp_path,
         "running",
         BENCHBOX_PYTHON=sys.executable,
+        STUB_MACHINE=machine,
         BENCHBOX_HEAVY_RUN_ID="run-123",
         STUB_STOP_STUCK="1",
     )
-    machine = _machine(env)
     result = _locked_wrapper(env, "--", "true")
     assert result.returncode == 0, result.stderr
     rows = [
@@ -510,19 +512,17 @@ def test_a_signal_during_the_run_exits_with_its_conventional_code_and_still_stop
     tmp_path: Path, signal_name: str, code: int
 ) -> None:
     hook = f'kill -{signal_name} "$(ps -o ppid= -p $PPID | tr -d " ")"'
-    env = _stub_env(tmp_path, "stopped", STUB_RUN_HOOK=hook)
-    result = _locked_wrapper(env, "--", "true")
+    result = _locked_wrapper(_stub_env(tmp_path, "stopped", STUB_RUN_HOOK=hook), "--", "true")
     assert result.returncode == code, result.stderr
-    assert _calls(tmp_path)[-1] == f"machine stop {_machine(env)}"
+    assert _calls(tmp_path)[-1] == f"machine stop {_machine_name(tmp_path)}"
 
 
 @posix_only
 @needs_bash
 def test_the_run_status_survives_the_stop(tmp_path: Path) -> None:
-    env = _stub_env(tmp_path, "stopped", STUB_RUN_EXIT="7", STUB_STOP_EXIT="1")
-    result = _locked_wrapper(env, "--", "false")
+    result = _locked_wrapper(_stub_env(tmp_path, "stopped", STUB_RUN_EXIT="7", STUB_STOP_EXIT="1"), "--", "false")
     assert result.returncode == 7
-    assert _calls(tmp_path)[-1] == f"machine stop {_machine(env)}"
+    assert _calls(tmp_path)[-1] == f"machine stop {_machine_name(tmp_path)}"
 
 
 STUB_ENGINE = """#!/usr/bin/env bash
