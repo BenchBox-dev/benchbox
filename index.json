@@ -16755,12 +16755,7 @@
       "title": "Rewrite the Makefile into grouped modules and replace the inventory contract with a documented-target test"
     },
     "dlv2-83-docs-cleanup": {
-      "claim": {
-        "expires_at": "2026-11-08T17:24:21Z",
-        "generation": "24d71550f5a64d8fa648f53590a7e787",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:95654933fcc78b44d934f92f"
-      },
+      "claim": null,
       "needs": [
         "dlv2-53-retire-legacy-release-path",
         "dlv2-70-retire-scheduled-workflows",
@@ -16770,7 +16765,7 @@
         "site-split-53-landing-stub-removal"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Rewrite dev-loop documentation and delete obsolete runbooks"
     },
     "dlv2-84-final-audit-and-metrics": {
