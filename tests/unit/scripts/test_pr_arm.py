@@ -1049,8 +1049,12 @@ def _other_pr(tracker: dict, evidence: dict) -> None:
     evidence["tracker"]["final_pr"]["number"] = 8
 
 
-def _finished_batch(tracker: dict, evidence: dict) -> None:
+def _aborted_batch(tracker: dict, evidence: dict) -> None:
     tracker["lifecycle"] = "aborted"
+
+
+def _completed_batch(tracker: dict, evidence: dict) -> None:
+    tracker["lifecycle"] = "completed"
 
 
 def _reviewed_with_findings(tracker: dict, evidence: dict) -> None:
@@ -1059,7 +1063,7 @@ def _reviewed_with_findings(tracker: dict, evidence: dict) -> None:
 
 @pytest.mark.parametrize(
     "mutate",
-    [_drop_acceptance, _move_tracker_head, _other_pr, _finished_batch, _reviewed_with_findings],
+    [_drop_acceptance, _move_tracker_head, _other_pr, _completed_batch, _reviewed_with_findings],
 )
 def test_an_integration_worktree_refuses_a_pr_whose_batch_evidence_does_not_hold(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mutate
@@ -1068,6 +1072,16 @@ def test_an_integration_worktree_refuses_a_pr_whose_batch_evidence_does_not_hold
 
     assert code == 2
     assert gh.merged() == []
+
+
+def test_an_aborted_batch_is_armed_as_an_ordinary_pr_despite_the_worktree_markers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    code, gh, reads = _batch_arm(tmp_path, monkeypatch, overlap=True, mutate=_aborted_batch, write_evidence=False)
+
+    assert code == 0
+    assert reads == ["b"]
+    assert len(gh.merged()) == 1
 
 
 def test_an_integration_worktree_without_a_batch_id_refuses(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

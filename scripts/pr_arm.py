@@ -290,10 +290,12 @@ def batch_refusals(
 ) -> list[str]:
     batch_role = _worktree_config(run, "benchbox.batch.role")
     batch_id = _worktree_config(run, "benchbox.batch.id")
+    tracker: dict | None = None
     if batch_role == "integration":
         if batch_id is None:
             return ["the integration worktree names no batch (benchbox.batch.id is unset)"]
-        discovered_id: str | None = batch_id
+        tracker = pr_landing.read_batch_tracker(batch_id)
+        discovered_id: str | None = None if tracker.get("lifecycle") == "aborted" else batch_id
     else:
         v = view or {}
         discovery_fn = discover or pr_landing.discover_batch
@@ -309,7 +311,8 @@ def batch_refusals(
     )
     if evidence is None:
         return [f"batch {discovered_id} has no final evidence file at .todo-batch/{discovered_id}/final-evidence.json"]
-    tracker = pr_landing.read_batch_tracker(discovered_id)
+    if tracker is None:
+        tracker = pr_landing.read_batch_tracker(discovered_id)
 
     reasons: list[str] = []
     if tracker.get("lifecycle") != "active":
