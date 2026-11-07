@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "The Doris adapter always loads data through Stream Load because `requests` is a core dependency; the unreachable INSERT fallback and the `requests_available` and `stream_load_available` platform-info keys are removed."
+    }
+  ]
+}

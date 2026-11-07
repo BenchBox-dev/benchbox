@@ -1,6 +1,21 @@
+from types import SimpleNamespace
+from unittest.mock import Mock
+
 import pytest
 
-from .common import create_smoke_benchmark, install_doris_stub, run_smoke_benchmark
+from .common import DorisStubState, create_smoke_benchmark, install_doris_stub, run_smoke_benchmark
+
+
+def _install_stream_load(monkeypatch) -> tuple[DorisStubState, Mock]:
+    state = install_doris_stub(monkeypatch)
+    response = Mock(status_code=200)
+    response.json.return_value = {"Status": "Success", "NumberLoadedRows": 2}
+    put = Mock(return_value=response)
+    import benchbox.platforms.doris as adapter_module
+
+    monkeypatch.setattr(adapter_module, "_requests", SimpleNamespace(put=put))
+    return state, put
+
 
 pytestmark = [
     pytest.mark.integration,
@@ -62,7 +77,7 @@ def test_doris_smoke_schema_creation(monkeypatch, tmp_path):
 @pytest.mark.platform_smoke
 def test_doris_smoke_data_loading(monkeypatch, tmp_path):
 
-    state = install_doris_stub(monkeypatch)
+    state, put = _install_stream_load(monkeypatch)
 
     from benchbox.platforms.doris import DorisAdapter
 
@@ -83,7 +98,7 @@ def test_doris_smoke_data_loading(monkeypatch, tmp_path):
         assert "lineitem" in table_stats
         assert table_stats["lineitem"] == 2
 
-        assert len(state.inserts) > 0, "Expected INSERT statements to be executed"
+        assert put.call_count == 1, "Expected one Stream Load request"
     finally:
         adapter.close_connection(connection)
 
@@ -120,7 +135,7 @@ def test_doris_smoke_query_execution(monkeypatch, tmp_path):
 @pytest.mark.platform_smoke
 def test_doris_smoke_full_workflow(monkeypatch, tmp_path):
 
-    state = install_doris_stub(monkeypatch)
+    state, _ = _install_stream_load(monkeypatch)
 
     from benchbox.platforms.doris import DorisAdapter
 
