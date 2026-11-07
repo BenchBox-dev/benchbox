@@ -162,11 +162,14 @@ class TestMakefileCommands:
         lock_dir.mkdir(parents=True)
         lock_path = lock_dir / "test.lock"
         lock_path.write_text("stale lock\n", encoding="utf-8")
+        interpreter_dir = tmp_path / "interpreter"
+        interpreter_dir.mkdir()
+        (interpreter_dir / "python3").symlink_to(sys.executable)
         env = {
             **subprocess.os.environ,
             "BENCHBOX_TEST_LOCK_DIR": "~/tmp/benchbox-lock-probe",
             "HOME": str(home),
-            "PATH": "/usr/bin:/bin",
+            "PATH": os.pathsep.join(["/usr/bin", "/bin", str(interpreter_dir)]),
         }
 
         result = subprocess.run(
