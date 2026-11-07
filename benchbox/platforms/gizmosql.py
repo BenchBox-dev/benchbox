@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from benchbox.core.execution_engine import ExecutionEngineReceipt, platform_default_receipt
+from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW, FETCH_MODE_ROWS
 from benchbox.core.results.platform_options import sanitize_platform_options
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dialect_utils import split_sql_statements
@@ -423,10 +424,19 @@ class GizmoSQLDryRunConnection:
         return None
 
 
+def _fetch_arrow_table(cursor: Any) -> Any:
+    if cursor.description is None:
+        import pyarrow as pa
+
+        return pa.table({})
+    return cursor.fetch_arrow_table()
+
+
 class GizmoSQLAdapter(PlatformAdapter):
     driver_isolation_capability = DriverIsolationCapability.FEASIBLE_CLIENT_ONLY
     plan_capture_phase_eligible = True
     physical_identifier_case = "lower"
+    default_fetch_mode = FETCH_MODE_ARROW
     _supported_tuning_type_names = ()
 
     @property
@@ -1108,6 +1118,8 @@ class GizmoSQLAdapter(PlatformAdapter):
             scale_factor=scale_factor,
             validate_row_count=validate_row_count,
             stream_id=stream_id,
+            fetch_mode=FETCH_MODE_ROWS if self.dry_run_mode else self.fetch_mode,
+            fetch_arrow=_fetch_arrow_table,
         )
         if result.get("error"):
             result["error"] = self._redact(str(result["error"]))

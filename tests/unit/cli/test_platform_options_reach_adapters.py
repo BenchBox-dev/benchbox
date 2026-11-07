@@ -181,6 +181,15 @@ def test_adapter_is_constructed_without_platform_options(
     assert _constructor_kwargs(monkeypatch, tmp_path, platform)
 
 
+@pytest.mark.parametrize("platform", ["datafusion", "gizmosql", "clickhouse"])
+def test_fetch_mode_option_reaches_the_native_arrow_adapters(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, platform: str
+) -> None:
+    kwargs = _constructor_kwargs(monkeypatch, tmp_path, platform, "fetch_mode=rows")
+
+    assert kwargs["fetch_mode"] == "rows"
+
+
 @pytest.mark.parametrize("platform", ["duckdb", "postgresql", "datafusion", "sqlite", "snowflake"])
 @pytest.mark.parametrize(("options", "expected"), [((), False), (("force_recreate=true",), True)])
 def test_force_recreate_option_reaches_the_adapter_without_force_datagen(

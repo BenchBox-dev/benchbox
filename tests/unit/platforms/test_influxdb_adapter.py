@@ -383,6 +383,29 @@ class TestInfluxDBConnectionWrite:
             conn.write_line_protocol(["cpu,host=a value=1.0"])
 
 
+class TestInfluxDBFlightSQLRows:
+    def _connection(self, table):
+        conn = InfluxDBConnection(host="localhost", token="test-token", database="test_db")
+        client = Mock()
+        client.execute.return_value.endpoints = [Mock(ticket="ticket")]
+        client.do_get.return_value.read_all.return_value = table
+        conn._client = client
+        conn._client_type = "flightsql"
+        return conn
+
+    def test_rows_are_built_column_wise_in_row_order(self):
+        pa = pytest.importorskip("pyarrow")
+        table = pa.table({"host": ["a", "b", None], "value": [1.5, None, 3.0], "count": [1, 2, 3]})
+
+        assert self._connection(table).execute("SELECT 1") == [("a", 1.5, 1), ("b", None, 2), (None, 3.0, 3)]
+
+    def test_empty_result_returns_no_rows(self):
+        pa = pytest.importorskip("pyarrow")
+        table = pa.table({"host": pa.array([], type=pa.string())})
+
+        assert self._connection(table).execute("SELECT 1") == []
+
+
 class TestInfluxDBTlsCertValidation:
     def test_connection_defaults_verify_ssl_true_no_ca_cert(self):
         conn = InfluxDBConnection(host="localhost", token="tok", database="db")

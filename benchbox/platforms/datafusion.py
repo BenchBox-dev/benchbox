@@ -29,7 +29,9 @@ except ImportError:
 
 from benchbox.core.dataframe.schema_utils import extract_schema_columns
 from benchbox.core.errors import PlanCaptureError
+from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW
 from benchbox.platforms.base import DriverIsolationCapability, PlatformAdapter
+from benchbox.platforms.base.arrow_result import fetch_result
 from benchbox.platforms.base.data_loading import (
     NO_BENCHMARK,
     DataSource,
@@ -93,6 +95,24 @@ class DataFusionCursorCompat:
         return self._materialize()
 
 
+def _datafusion_batches_to_rows(batches: list[Any]) -> list[tuple[Any, ...]]:
+    rows: list[tuple[Any, ...]] = []
+    for batch in batches:
+        if batch.num_columns == 0:
+            rows.extend([()] * batch.num_rows)
+        else:
+            rows.extend(zip(*(column.to_pylist() for column in batch.columns), strict=True))
+    return rows
+
+
+def _datafusion_batches_to_table(batches: list[Any], dataframe: Any) -> Any:
+    import pyarrow as pa
+
+    if not batches:
+        return pa.Table.from_batches([], schema=dataframe.schema())
+    return pa.Table.from_batches(batches)
+
+
 class DataFusionConnectionCompat:
     def __init__(self, context: Any):
         self._context = context
@@ -147,6 +167,7 @@ class DataFusionAdapter(NoConstraintEnforcementMixin, PlatformAdapter):
     supports_external_tables = True
     plan_capture_phase_eligible = True
     ledger_execute_verbs = ("sql",)
+    default_fetch_mode = FETCH_MODE_ARROW
 
     _process_working_dir_lock_depth: dict[str, int] = {}
     _process_working_dir_lock_guard = threading.Lock()
@@ -261,9 +282,9 @@ class DataFusionAdapter(NoConstraintEnforcementMixin, PlatformAdapter):
 
         adapter_config["force_recreate"] = config.get("force", False)
 
-        from benchbox.platforms.base.config_utils import PLAN_FORWARD_KEYS
+        from benchbox.platforms.base.config_utils import FETCH_FORWARD_KEYS, PLAN_FORWARD_KEYS
 
-        for key in PLAN_FORWARD_KEYS:
+        for key in (*PLAN_FORWARD_KEYS, *FETCH_FORWARD_KEYS):
             if key in config and config[key] is not None:
                 adapter_config[key] = config[key]
         for key in [
@@ -1355,18 +1376,13 @@ class DataFusionAdapter(NoConstraintEnforcementMixin, PlatformAdapter):
             df = connection.sql(query)
 
             result_batches = df.collect()
+            fetched = fetch_result(
+                self.fetch_mode,
+                fetch_rows=lambda: _datafusion_batches_to_rows(result_batches),
+                fetch_arrow=lambda: _datafusion_batches_to_table(result_batches, df),
+            )
 
-            actual_row_count = sum(batch.num_rows for batch in result_batches)
-
-            first_row = None
-            if result_batches and result_batches[0].num_rows > 0:
-                first_batch = result_batches[0]
-                first_row = tuple(
-                    first_batch.column(i)[0].as_py()
-                    if hasattr(first_batch.column(i)[0], "as_py")
-                    else first_batch.column(i)[0]
-                    for i in range(first_batch.num_columns)
-                )
+            actual_row_count = fetched.row_count
 
             execution_time = elapsed_seconds(start_time)
             logger.debug(f"Query {query_id} completed in {execution_time:.3f}s, returned {actual_row_count} rows")
@@ -1398,18 +1414,10 @@ class DataFusionAdapter(NoConstraintEnforcementMixin, PlatformAdapter):
                 query_id=query_id,
                 execution_time=execution_time,
                 actual_row_count=actual_row_count,
-                first_row=first_row,
+                first_row=fetched.first_row,
                 validation_result=validation_result,
-                materialized_rows=lambda: [
-                    tuple(
-                        batch.column(column_index)[row_index].as_py()
-                        if hasattr(batch.column(column_index)[row_index], "as_py")
-                        else batch.column(column_index)[row_index]
-                        for column_index in range(batch.num_columns)
-                    )
-                    for batch in result_batches
-                    for row_index in range(batch.num_rows)
-                ],
+                materialized_rows=fetched.rows,
+                fetch_mode=fetched.fetch_mode,
             )
 
             if not self.capture_plans:
