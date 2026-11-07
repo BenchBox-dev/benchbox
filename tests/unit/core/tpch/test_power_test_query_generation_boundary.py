@@ -155,3 +155,30 @@ def test_generation_failure_aborts_before_any_timer_or_execution(monkeypatch):
 
     assert executed == []
     assert watch.depth == 1
+
+
+def test_arrow_conversion_during_execute_is_excluded_from_the_query_interval():
+    import time
+
+    pa = pytest.importorskip("pyarrow")
+    from benchbox.platforms.base.arrow_result import ArrowRows
+
+    conversion_seconds = 0.3
+    rows = ArrowRows(pa.table({"a": [1, 2]}))
+    rows.convert_columns({0: lambda value: time.sleep(conversion_seconds) or value})
+    connection, _ = _connection()
+    original_execute = connection.execute.side_effect
+    connection.execute.side_effect = lambda sql: (list(rows), original_execute(sql))[1]
+    benchmark = _TimerWatchFree().stub()
+
+    result = _power(benchmark, connection, query_subset=["1"]).run()
+
+    assert result.queries_successful == 1
+    assert result.query_results[0]["execution_time_seconds"] < conversion_seconds
+
+
+class _TimerWatchFree:
+    def stub(self):
+        benchmark = Mock()
+        benchmark.get_query.side_effect = lambda query_id, **kwargs: f"SELECT {query_id}"
+        return benchmark

@@ -223,25 +223,28 @@ class ClickHouseLocalClient:
             if query.strip().upper().startswith("INSERT") and params:
                 return self._execute_insert(query, params)
 
-            result = (
-                self._conn.query(query, "ArrowStream")
-                if self._is_persistent
-                else self._conn.query(query, format="ArrowStream")
-            )
-            return _ResultProxy(self._arrow_to_dataframe(result))
+            return _ResultProxy(self._arrow_table(self._query_arrow_stream(query)).to_pandas())
 
         except Exception as e:
             raise RuntimeError(f"ClickHouse local query failed: {e}") from e
 
-    @staticmethod
-    def _arrow_to_dataframe(result):
-        import pandas as pd
+    def execute_arrow(self, query: str):
+        try:
+            return self._arrow_table(self._query_arrow_stream(query))
+        except Exception as e:
+            raise RuntimeError(f"ClickHouse local query failed: {e}") from e
 
+    def _query_arrow_stream(self, query: str):
+        if self._is_persistent:
+            return self._conn.query(query, "ArrowStream")
+        return self._conn.query(query, format="ArrowStream")
+
+    @staticmethod
+    def _arrow_table(result):
         data = result.bytes()
         if not data:
-            return pd.DataFrame()
-        reader = pa.ipc.open_stream(io.BytesIO(data))
-        return reader.read_all().to_pandas()
+            return pa.table({})
+        return pa.ipc.open_stream(io.BytesIO(data)).read_all()
 
     def close(self):
         if hasattr(self, "_conn"):

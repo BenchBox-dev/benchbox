@@ -5,7 +5,6 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from benchbox.core.tpcds.maintenance_operations import DEFAULT_MAINTENANCE_SEED
 from benchbox.core.tpcds.official_benchmark import TPCDSOfficialBenchmark, TPCDSOfficialBenchmarkConfig
 
 pytestmark = [
@@ -170,7 +169,7 @@ class TestMaintenanceSeed:
 
         assert phases.maintenance.return_value.run.call_args.args[0].seed == 777
 
-    def test_unset_seed_uses_the_fixed_default(self, tmp_path, phases):
+    def test_unset_seed_leaves_the_kit_default(self, tmp_path, phases):
         _run(_official(tmp_path), phases)
 
-        assert phases.maintenance.return_value.run.call_args.args[0].seed == DEFAULT_MAINTENANCE_SEED
+        assert phases.maintenance.return_value.run.call_args.args[0].seed is None

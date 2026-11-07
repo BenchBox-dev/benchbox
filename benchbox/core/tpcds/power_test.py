@@ -15,6 +15,8 @@ from benchbox.core.connection import DatabaseConnection
 from benchbox.core.plan_capture_phase import (
     propagate_query_execution_metadata,
 )
+from benchbox.core.result_receipt import cursor_result_count
+from benchbox.core.results.fetch_mode import ConversionClock
 from benchbox.core.validation.query_validation import (
     clear_reference_seed_context,
     set_reference_seed_context,
@@ -275,6 +277,8 @@ class TPCDSPowerTest:
 
             label = f"Position_{position + 1}_Query_{query_display_id}"
             query_start = mono_time()
+            conversion_clock = ConversionClock().start()
+            query_result["start_monotonic"] = query_start
             try:
                 if hasattr(connection, "set_query_context"):
                     connection.set_query_context(query_display_id, stream_id=self.config.stream_id)
@@ -293,7 +297,7 @@ class TPCDSPowerTest:
                             raise RuntimeError(error_msg)
                         propagate_query_execution_metadata(result_dict, query_result)
 
-                    result_count = self._query_result_count(cursor)
+                    result_count = cursor_result_count(cursor)
 
                     if hasattr(connection, "commit"):
                         connection.commit()
@@ -302,7 +306,8 @@ class TPCDSPowerTest:
             finally:
                 self.captured_items.append((label, query_text))
 
-            execution_time = elapsed_seconds(query_start)
+            execution_time = max(0.0, elapsed_seconds(query_start) - conversion_clock.finish())
+            query_result["end_monotonic"] = query_start + execution_time
             query_result.update(
                 {
                     "execution_time_seconds": execution_time,
@@ -316,6 +321,8 @@ class TPCDSPowerTest:
 
         except Exception as e:
             execution_time = elapsed_seconds(query_start) if query_start is not None else 0.0
+            if query_start is not None:
+                query_result["end_monotonic"] = query_start + execution_time
             query_result.update(
                 {
                     "execution_time_seconds": execution_time,
@@ -330,17 +337,6 @@ class TPCDSPowerTest:
 
         result.query_results.append(query_result)
         result.queries_executed += 1
-
-    @staticmethod
-    def _query_result_count(cursor: Any) -> int:
-        platform_result = getattr(cursor, "platform_result", None)
-        if isinstance(platform_result, dict):
-            reported = platform_result.get("rows_returned")
-            if isinstance(reported, int) and reported >= 0:
-                return reported
-        if hasattr(cursor, "fetchall"):
-            return len(cursor.fetchall())
-        return 0
 
     def _finalize_power_metrics(self, result: TPCDSPowerTestResult, start_time: float) -> None:
         total_execution_time = elapsed_seconds(start_time)
@@ -526,7 +522,7 @@ class TPCDSPowerTest:
 
         try:
             cursor = self.connection.execute(query_text)
-            result["result_count"] = self._query_result_count(cursor)
+            result["result_count"] = cursor_result_count(cursor)
             self.connection.commit()
         except Exception as e:
             result["status"] = "error"

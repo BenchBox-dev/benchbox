@@ -48,8 +48,9 @@ def metrics_group():
         "two throughput streams. Refresh functions run on DuckDB, SQLite,\n"
         "PostgreSQL, Snowflake and SingleStore. For\n"
         "any other pair the command reports Power@Size and Throughput@Size and\n"
-        "lists why QphH@Size is unavailable. QphDS@Size is not computed because\n"
-        "BenchBox does not run the TPC-DS data maintenance phases it requires.\n"
+        "lists why QphH@Size is unavailable. QphDS@Size needs the load, power,\n"
+        "two throughput and two data maintenance tests of a single run, so this\n"
+        "command does not compute it; a full TPC-DS run reports it in its own results.\n"
         "\n"
         "The command refuses result files with suppressed metrics, an unofficial\n"
         "sub-scale or non-standard compliance class, failed queries or a failed\n"
@@ -221,7 +222,7 @@ def _format_text_output(result: dict) -> str:
         lines.append("QphH@Size is not reported:")
         lines.extend(f"  - {reason}" for reason in result["qphh_unavailable"])
     else:
-        lines.append("Composite QphDS@Size is not computed; TPC-DS maintenance support is not implemented.")
+        lines.append("QphDS@Size is not computed here; a full TPC-DS run reports it in its own results.")
     lines.append("  Power@Size = 3600 × SF / geometric_mean(final power iteration times, plus RF1 and RF2 when run)")
     lines.append("  Throughput@Size = Queries × 3600 × SF / Throughput_Phase_Wall_Time")
     lines.append("")

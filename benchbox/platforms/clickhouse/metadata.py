@@ -86,6 +86,12 @@ class ClickHouseMetadataMixin:
             if key in config:
                 adapter_config[key] = config[key]
 
+        from benchbox.platforms.base.config_utils import FETCH_FORWARD_KEYS
+
+        for key in FETCH_FORWARD_KEYS:
+            if config.get(key) is not None:
+                adapter_config[key] = config[key]
+
         return cls(**adapter_config)
 
     def get_database_path(self, **connection_config) -> str | None:

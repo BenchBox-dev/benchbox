@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from benchbox.core.tuning.introspection import has_order_by_clause
+from benchbox.platforms.base.arrow_result import fetch_result
 from benchbox.platforms.base.result_capture import strip_leading_sql_comments
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.cloud_storage import get_cloud_path_info, is_cloud_path
@@ -735,10 +736,18 @@ class ClickHouseWorkloadMixin:
             transformed_query = rewrite_query_for_clickhouse(query, additional_settings)
 
             start_time = mono_time()
-            result = connection.execute(transformed_query)
+            fetched = fetch_result(
+                self.fetch_mode,
+                fetch_rows=lambda: connection.execute(transformed_query) or [],
+                fetch_arrow=(
+                    (lambda: connection.execute_arrow(transformed_query))
+                    if hasattr(connection, "execute_arrow")
+                    else None
+                ),
+            )
 
             execution_time = elapsed_seconds(start_time)
-            actual_row_count = len(result) if result else 0
+            actual_row_count = fetched.row_count
 
             validation_result = None
             if validate_row_count and benchmark_type:
@@ -776,7 +785,8 @@ class ClickHouseWorkloadMixin:
                             "error": validation_result.error_message,
                         },
                         "error": validation_result.error_message,
-                        "first_row": result[0] if result else None,
+                        "first_row": fetched.first_row,
+                        "fetch_mode": fetched.fetch_mode,
                         "translated_query": None,
                     }
 
@@ -785,7 +795,8 @@ class ClickHouseWorkloadMixin:
                 "status": "SUCCESS",
                 "execution_time_seconds": execution_time,
                 "rows_returned": actual_row_count,
-                "first_row": result[0] if result else None,
+                "first_row": fetched.first_row,
+                "fetch_mode": fetched.fetch_mode,
                 "translated_query": None,
             }
 
@@ -801,7 +812,7 @@ class ClickHouseWorkloadMixin:
 
             from benchbox.platforms.base.result_capture import apply_materialized_result_validation
 
-            apply_materialized_result_validation(result_dict, query_id, result)
+            apply_materialized_result_validation(result_dict, query_id, fetched.rows)
 
         except Exception as e:
             execution_time = elapsed_seconds(start_time)

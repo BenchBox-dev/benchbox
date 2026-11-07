@@ -321,8 +321,7 @@ class TestMaintenanceSessions:
         self, family, patch_target, run_config, expected
     ):
         driver = _Driver()
-        if family == "tpch":
-            driver.supports_refresh_functions = True
+        driver.supports_refresh_functions = True
         seen: list[str | None] = []
 
         def new_stream_connection(connection, *, benchmark_type=None):

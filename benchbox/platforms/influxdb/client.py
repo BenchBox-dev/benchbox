@@ -329,11 +329,7 @@ class InfluxDBConnection:
         if table.num_rows == 0:
             return []
 
-        rows = []
-        for i in range(table.num_rows):
-            row = tuple(table.column(j)[i].as_py() for j in range(table.num_columns))
-            rows.append(row)
-        return rows
+        return list(zip(*(column.to_pylist() for column in table.columns), strict=True))
 
     def fetchone(self) -> tuple | None:
         raise NotImplementedError(

@@ -704,7 +704,7 @@ class DryRunExecutor:
                 verbose=False,
             )
 
-            operations = maintenance_test.get_maintenance_operations_sql(placeholder="?")
+            operations = maintenance_test.get_maintenance_operations_sql()
 
             result = {}
             for op_id, statements in operations.items():
@@ -1161,7 +1161,7 @@ class DryRunExecutor:
                 return "Throughput test execution (concurrent streams)"
         elif test_execution_type == "maintenance":
             if benchmark_name == "tpcds":
-                return "TPC-DS MaintenanceTest (data operations: INSERT/UPDATE/DELETE)"
+                return "TPC-DS MaintenanceTest (data operations: INSERT/DELETE)"
             else:
                 return "Maintenance test execution (data operations)"
         else:

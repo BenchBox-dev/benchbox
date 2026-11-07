@@ -36,6 +36,7 @@ query_key_order:
 - request_count
 - result_bytes
 - platform_timing
+- fetch_mode
 config_key_order:
 - compression
 - seed

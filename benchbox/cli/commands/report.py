@@ -11,10 +11,12 @@ from rich.markup import escape
 from rich.table import Table
 
 from benchbox.cli.shared import console
+from benchbox.core.results.comparison_modes import IncomparableModesError
 from benchbox.core.results.database import (
     RankingConfig,
     ResultDatabase,
 )
+from benchbox.core.results.fetch_mode import env_fetch_mode
 from benchbox.core.results.regression_policy import is_meaningful_improvement
 
 
@@ -106,7 +108,10 @@ def rankings(
         require_success=True,
     )
 
-    rankings_list = db.calculate_rankings(benchmark, scale_factor, config)
+    try:
+        rankings_list = db.calculate_rankings(benchmark, scale_factor, config, fetch_mode=env_fetch_mode())
+    except IncomparableModesError as exc:
+        raise click.ClickException(f"{exc} Set BENCHBOX_FETCH_MODE=rows or arrow to rank one mode.") from exc
 
     if not rankings_list:
         console.print(f"[yellow]No results found for {benchmark} at scale factor {scale_factor}[/yellow]")

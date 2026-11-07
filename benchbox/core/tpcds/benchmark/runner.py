@@ -1041,7 +1041,6 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         stream_executor: Optional[Any] = None,
         dialect: str = "standard",
     ) -> MaintenanceTestResult:
-        from benchbox.core.tpcds.maintenance_operations import resolve_maintenance_seed
         from benchbox.core.tpcds.maintenance_test import (
             TPCDSMaintenanceTest,
             TPCDSMaintenanceTestConfig,
@@ -1068,17 +1067,14 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             dialect=dialect,
         )
 
-        maintenance_operations = getattr(config, "maintenance_operations", 4)
-
         tpcds_config = TPCDSMaintenanceTestConfig(
             scale_factor=config.scale_factor,
-            maintenance_operations=maintenance_operations,
-            operation_interval=0.0,
-            concurrent_with_queries=False,
+            refresh_runs=config.refresh_runs,
+            first_refresh_set=config.first_refresh_set,
             validate_integrity=True,
             verbose=config.verbose,
             output_dir=config.output_dir,
-            seed=resolve_maintenance_seed(getattr(config, "seed", None)),
+            seed=getattr(config, "seed", None),
         )
 
         result_dict = maintenance_test.run(config=tpcds_config)
@@ -1087,7 +1083,7 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         for operation in result_dict["operations"]:
             maintenance_operations.append(
                 {
-                    "operation": f"{operation.operation_type}_{operation.table_name}",
+                    "operation": operation.function,
                     "start_time": operation.start_time,
                     "end_time": operation.end_time,
                     "duration": operation.duration,
@@ -1106,6 +1102,7 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             maintenance_operations=maintenance_operations,
             error_details=result_dict["errors"],
             seed=result_dict.get("seed", tpcds_config.seed),
+            maintenance_method=result_dict["maintenance_method"],
         )
 
         return result

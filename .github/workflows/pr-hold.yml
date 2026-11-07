@@ -22,14 +22,14 @@ jobs:
       - name: Refuse to merge while the durable hold label is present
         env:
           GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
           HOLD_LABEL: no-auto-merge
         run: |
           set -eu
-          labels=$(gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/labels" --paginate --jq '.[].name')
-          if printf '%s\n' "$labels" | grep -Fxq -- "$HOLD_LABEL"; then
-            echo "::error::PR carries the durable hold label '${HOLD_LABEL}'. Only the owner releases it, by naming this PR in a current request."
+          labels="$(gh api "repos/$REPO/pulls/$PR" --jq '.labels[].name')"
+          if printf '%s\n' "$labels" | grep -Fxiq "$HOLD_LABEL"; then
+            echo "::error::PR carries the durable hold label '$HOLD_LABEL'. Only the owner releases it, by naming this PR in a current request."
             exit 1
           fi
           echo "No durable hold label."

@@ -41,11 +41,8 @@ def test_correctness_partitions_preserve_each_gate_once() -> None:
         "make tpchavoc-dataframe-equivalence-report",
     }
     for gate in GATES:
-        target = gate.replace("_", "-")
-        if gate == "joinorder":
-            target = "joinorder-synthetic"
-        expected.add(f"make {target}-cross-surface-equivalence-report")
-    expected.add("make tpcds-pandas-cross-surface-equivalence-report")
+        expected.add(f"make cross-surface-equivalence-report CROSS_SURFACE_BENCHMARK={gate}")
+    expected.add("make cross-surface-equivalence-report CROSS_SURFACE_BENCHMARK=tpcds CROSS_SURFACE_BACKEND=pandas")
     moved = _moved(job)
     steps = [step for step in job["steps"] if str(step.get("run", "")).startswith("make ") and step not in moved]
     assert Counter(step["run"] for step in steps) == Counter(dict.fromkeys(expected, 1))

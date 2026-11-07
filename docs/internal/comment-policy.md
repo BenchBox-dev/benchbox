@@ -300,6 +300,15 @@ pull request.
   file and delete the old one, point `[tool.uv.sources]` at it, run `uv lock`
   in that project, change only `path` in the policy entry, and commit them
   together.
+  The checker has one declared exception: the upstream product behind the
+  vendored tracker wheel was renamed, so the policy entry may move from
+  distribution `todo-db` to distribution `tractable`. The new entry must keep
+  the same vendor directory and `provenance`, and its `owner` and file name
+  must both use the new name; the old entry must go, and every check above
+  applies to the new wheel under the new `owner`. The rename is declared in
+  the checker itself, not in the policy file, works in this direction only,
+  and is the only exception to the same-distribution rule. Remove it from the
+  checker once the switch to `tractable` has landed.
 - Generated first-party code and `_sources/compilation` scripts are in scope.
   TPC templates and catalog-owned skill mirrors are not; they have their own
   provenance.

@@ -306,7 +306,7 @@ it starts inside a process that holds the lock.
   `origin/develop` is published without a refresh. The old `STALE=1` bypass is
   not accepted for this path.
 - Follow-up ownership persists per key under `~/.benchbox/pr-landing/`
-  (`make pr-followup-record/resume`, `scripts/pr_landing.py followup-*`):
+  (`make pr-followup-resume`, `scripts/pr_landing.py followup-*`):
   explicit owner, session, scope, attempts, due date, claim expiry, and next
   action from pre-PR assembly through post-merge. A pre-PR batch record also
   binds its batch ID, owner generation, integrator, ordered member set,

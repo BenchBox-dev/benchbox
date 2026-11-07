@@ -29,6 +29,7 @@ from benchbox.core.results.anonymization import (
     anonymize_plans_payload,
 )
 from benchbox.core.results.canonical_json import canonical_json_text
+from benchbox.core.results.comparison_modes import IncomparableModesError, bundle_mode_differences
 from benchbox.core.results.models import BenchmarkResults
 from benchbox.core.results.normalizer import get_query_map, normalize_result_dict
 from benchbox.core.results.platform_options import REDACTED_VALUE, _is_username_key
@@ -720,6 +721,13 @@ class ResultExporter:
 
         baseline_data = baseline_result["data"]
         current_data = current_result["data"]
+        mode_differences = bundle_mode_differences(baseline_data, current_data)
+        if mode_differences:
+            return {
+                "error": str(IncomparableModesError(mode_differences)),
+                "error_code": "VALIDATION_ERROR",
+                "details": {"differences": mode_differences},
+            }
         baseline_version = baseline_result.get("result_schema_version") or baseline_result.get("version", "unknown")
         current_version = current_result.get("result_schema_version") or current_result.get("version", "unknown")
 

@@ -424,13 +424,14 @@ class TestTPCTestIntegration:
 
         with patch("benchbox.core.tpcds.maintenance_test.TPCDSMaintenanceTest") as mock_maintenance_class:
             mock_ops = []
-            for op_type, table in [
-                ("COUNT_VALIDATION", "customer"),
-                ("INDEX_CHECK", "store_sales"),
-                ("DATA_INTEGRITY", "item"),
-                ("REFERENTIAL_CHECK", "date_dim"),
+            for function, op_type, table in [
+                ("DF_SS", "DELETE", "store_returns, store_sales"),
+                ("DF_I", "DELETE", "inventory"),
+                ("LF_SS", "INSERT", "store_sales"),
+                ("LF_I", "INSERT", "inventory"),
             ]:
                 mock_op = Mock()
+                mock_op.function = function
                 mock_op.operation_type = op_type
                 mock_op.table_name = table
                 mock_op.duration = 0.1
@@ -441,10 +442,10 @@ class TestTPCTestIntegration:
             mock_maintenance_instance = Mock()
             mock_maintenance_instance.run.return_value = {
                 "success": True,
+                "maintenance_method": "dsdgen_refresh_sets",
                 "operations": mock_ops,
-                "insert_operations": 1,
-                "update_operations": 1,
-                "delete_operations": 1,
+                "insert_operations": 2,
+                "delete_operations": 2,
                 "total_operations": 4,
                 "successful_operations": 4,
                 "total_time": 0.4,
@@ -463,11 +464,5 @@ class TestTPCTestIntegration:
                 assert "table_name" in op_result
                 assert "operation_type" in op_result
 
-            expected_operations = [
-                "COUNT_VALIDATION",
-                "INDEX_CHECK",
-                "DATA_INTEGRITY",
-                "REFERENTIAL_CHECK",
-            ]
-            actual_operations = [r["operation_type"] for r in result]
-            assert set(actual_operations) == set(expected_operations)
+            assert [r["query_id"] for r in result] == ["DF_SS", "DF_I", "LF_SS", "LF_I"]
+            assert [r["operation_type"] for r in result] == ["DELETE", "DELETE", "INSERT", "INSERT"]
