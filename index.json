@@ -2066,6 +2066,7 @@
     "ci-and-preflight-reliability": {
       "accepted_members": {
         "deployment-modes-test-host-dependent": "9803064a09f0c965855a4c57f885bf4650d62d69",
+        "pr-arm-rerun-contradictory-guidance-20261027": "53a69242276f99b4bb9fe9b532c3d0a2f95cd78a",
         "pr-preflight-linux-vm-env-failures-20261102": "c735c7276ede0fa9ffeb1683a790f0075da70c9a"
       },
       "batch_schema": 2,
@@ -2082,6 +2083,17 @@
           "integration_head": "2e45e23273108bbeb108b1f638fde70c7df77faf",
           "integration_seq": 1
         },
+        "pr-arm-rerun-contradictory-guidance-20261027": {
+          "accepted_head": "53a69242276f99b4bb9fe9b532c3d0a2f95cd78a",
+          "changed_files": [
+            "changelog.d/feat-ci-and-preflight-reliability--pr-arm-rerun-contradictory-guidance-20261027.json",
+            "docs/agent/merge-authority.md",
+            "scripts/pr_arm.py",
+            "tests/unit/scripts/test_pr_arm.py"
+          ],
+          "integration_head": "824f955a1f527c674ea811574c63c8888106b690",
+          "integration_seq": 3
+        },
         "pr-preflight-linux-vm-env-failures-20261102": {
           "accepted_head": "c735c7276ede0fa9ffeb1683a790f0075da70c9a",
           "changed_files": [
@@ -2094,7 +2106,7 @@
         }
       },
       "integration_branch": "feat/ci-and-preflight-reliability",
-      "integration_head": "f851fa6dcb1b13f3354d900e82596331bc62ec4c",
+      "integration_head": "824f955a1f527c674ea811574c63c8888106b690",
       "integration_log": [
         {
           "at": "2026-11-07T14:24:40Z",
@@ -2119,6 +2131,15 @@
           "op_id": "e7dfd8493a8143f2844a9c502dbbfd62",
           "previous_head": "2e45e23273108bbeb108b1f638fde70c7df77faf",
           "seq": 2
+        },
+        {
+          "at": "2026-11-07T16:39:07Z",
+          "head": "824f955a1f527c674ea811574c63c8888106b690",
+          "kind": "prepare",
+          "member": "pr-arm-rerun-contradictory-guidance-20261027",
+          "op_id": "05a7feeb27e240be855ac5ec2abb9314",
+          "previous_head": "f851fa6dcb1b13f3354d900e82596331bc62ec4c",
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-ci-and-preflight-reliability",
@@ -26578,15 +26599,10 @@
       "title": "Let make pr-arm land a PR that is already mergeable instead of refusing"
     },
     "pr-arm-rerun-contradictory-guidance-20261027": {
-      "claim": {
-        "expires_at": "2026-11-08T16:39:04Z",
-        "generation": "649293a463204d08af702ff60345ddb2",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Make pr-arm and pr-rerun agree on what to do while a head's full CI run is still in progress"
     },
     "pr-arm-stale-hold-suite-needs-new-head-20261106": {
