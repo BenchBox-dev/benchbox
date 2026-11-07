@@ -10,6 +10,52 @@
   },
   "context": "During the chdb-4x tuning follow-up (merged as PR #2719), the 4.x engine could not be loaded locally (dyld mis-aligned LINKEDIT; long venv paths truncated the diagnosis), so whether 4.x resolves the 3.6.0 timestamp/hang reports was never directly verified. The merge-time conclusion rests on inference, not on loading the engine.\n\n2026-11-07: the locked chDB 4.1.6 wheel still does not load on macOS arm64 (seen during #4012). Arrow parity ran on 3.7.2 instead; see chdb-rows-nan-vs-arrow-null-q17-20261107.",
   "description": "Load a 4.x chDB engine in an environment where it runs (CI Linux or a clean venv with short paths) and directly verify the 3.6.0 timestamp/hang behavior. Record the outcome; if it reproduces, file a defect with the reproduction.",
+  "prepared": {
+    "accepted_head": "b041fa6faf086c57a524ef8b3f3f6fffd7bca004",
+    "batch_id": "result-validity",
+    "changed_files": [
+      "scripts/verify_chdb_engine.py",
+      "tests/integration/platforms/test_chdb_engine_load.py"
+    ],
+    "integration_head": "91ed8e11c35d1a907fd9f6ffb3b64c28e2f2d228",
+    "integration_seq": 3,
+    "member_id": "chdb-4x-engine-load-verification-20261006",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "11e4796de2c971b9fc776447d58903977813cc305b8c6a00ba389fe4f35784b0",
+    "source_base": "5d8537b76faab7303991219605fbc10f73bf1ed3",
+    "source_revision": "b041fa6faf086c57a524ef8b3f3f6fffd7bca004",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-result-validity--chdb-4x-engine-load-verification-20261006",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/platforms/test_chdb_engine_load.py"
+      ],
+      "review": {
+        "base_sha": "5d8537b76faab7303991219605fbc10f73bf1ed3",
+        "head_sha": "b041fa6faf086c57a524ef8b3f3f6fffd7bca004",
+        "head_tree": "672f49c39580e5ac2c836157ad6c2b86680661fc",
+        "outcome": "clear",
+        "patch_digest": "53d77e9e65862433d1828c69578eb4c2",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "766364b8a32f55ac19a09feca8dead5008a2fd80"
+      },
+      "revision": "b041fa6faf086c57a524ef8b3f3f6fffd7bca004",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:tbh:joe@joe-mac-mini.local:d90c17f1dbc58577e72c0803",
@@ -42,6 +88,15 @@
       "generation": "87b2b4a2515e491a8bd75ea94e629fac",
       "op": "take",
       "op_id": "20544b572ad6456da5e77b427e9155ab",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T15:10:04Z",
+      "client": "omp-coding-agent",
+      "generation": "87b2b4a2515e491a8bd75ea94e629fac",
+      "op": "prepare",
+      "op_id": "8fecbec12de641aabeee8934254dd2fd",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]

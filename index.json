@@ -4969,6 +4969,7 @@
     },
     "result-validity": {
       "accepted_members": {
+        "chdb-4x-engine-load-verification-20261006": "b041fa6faf086c57a524ef8b3f3f6fffd7bca004",
         "chdb-rows-nan-vs-arrow-null-q17-20261107": "b8e3fc9fc25d0b108f042e1f408401d9a7af6d05",
         "tpch-parity-test-skips-without-cached-extension-20261107": "e0f3677671a09f3f2022bb3e994e3c82e07bcb06"
       },
@@ -4977,6 +4978,15 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "chdb-4x-engine-load-verification-20261006": {
+          "accepted_head": "b041fa6faf086c57a524ef8b3f3f6fffd7bca004",
+          "changed_files": [
+            "scripts/verify_chdb_engine.py",
+            "tests/integration/platforms/test_chdb_engine_load.py"
+          ],
+          "integration_head": "91ed8e11c35d1a907fd9f6ffb3b64c28e2f2d228",
+          "integration_seq": 3
+        },
         "chdb-rows-nan-vs-arrow-null-q17-20261107": {
           "accepted_head": "b8e3fc9fc25d0b108f042e1f408401d9a7af6d05",
           "changed_files": [
@@ -5001,7 +5011,7 @@
         }
       },
       "integration_branch": "feat/result-validity",
-      "integration_head": "5d8537b76faab7303991219605fbc10f73bf1ed3",
+      "integration_head": "91ed8e11c35d1a907fd9f6ffb3b64c28e2f2d228",
       "integration_log": [
         {
           "at": "2026-11-07T14:16:47Z",
@@ -5026,6 +5036,15 @@
           "op_id": "93548253ab9444a5a79a966ef438ab76",
           "previous_head": "6b255f022b1dd64a9f93908ea33928301a54a0fb",
           "seq": 2
+        },
+        {
+          "at": "2026-11-07T15:10:04Z",
+          "head": "91ed8e11c35d1a907fd9f6ffb3b64c28e2f2d228",
+          "kind": "prepare",
+          "member": "chdb-4x-engine-load-verification-20261006",
+          "op_id": "8fecbec12de641aabeee8934254dd2fd",
+          "previous_head": "5d8537b76faab7303991219605fbc10f73bf1ed3",
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-result-validity",
@@ -10176,15 +10195,10 @@
       "title": "Remove test-file paths from the unreleased CHANGELOG entries"
     },
     "chdb-4x-engine-load-verification-20261006": {
-      "claim": {
-        "expires_at": "2026-11-08T15:10:00Z",
-        "generation": "87b2b4a2515e491a8bd75ea94e629fac",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "chDB 4.x timestamp/hang fix never verified by loading the 4.x engine"
     },
     "chdb-4x-native-load-and-old-engine-hang-20261005": {
