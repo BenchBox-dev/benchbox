@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 from benchbox.core.deployment import deployment_class
 from benchbox.platforms.base import DriverIsolationCapability, PlatformAdapter
 from benchbox.platforms.base.data_loading import DataLoadingError, FileFormatRegistry, _open_binary_stream
+from benchbox.platforms.base.sql_execution import execute_sql_query
 from benchbox.utils.dependencies import (
     check_platform_dependencies,
     get_dependency_error_message,
@@ -375,23 +376,56 @@ class InfluxDBAdapter(
         connection: Any,
         query: str,
         query_id: str,
-        iteration: int = 1,
+        benchmark_type: str | None = None,
+        scale_factor: float | None = None,
+        validate_row_count: bool = True,
         stream_id: int | None = None,
-    ) -> tuple[float, int, dict[str, Any] | None]:
-        import time
+    ) -> dict[str, Any]:
+        if self.dry_run_mode:
+            self.capture_sql(query, "query", None)
+            return {
+                "query_id": query_id,
+                "status": "DRY_RUN",
+                "execution_time_seconds": 0.0,
+                "rows_returned": 0,
+                "first_row": None,
+                "error": None,
+                "dry_run": True,
+            }
+        return self.execute_query_with_plan_capture(
+            self._execute_sql,
+            connection=connection,
+            query=query,
+            query_id=query_id,
+            benchmark_type=benchmark_type,
+            scale_factor=scale_factor,
+            validate_row_count=validate_row_count,
+            stream_id=stream_id,
+        )
 
-        start_time = time.perf_counter()
-
-        try:
-            result = connection.execute(query)
-            row_count = len(result) if result else 0
-        except Exception as e:
-            self.logger.error(f"Query {query_id} failed: {e}")
-            raise
-
-        execution_time = time.perf_counter() - start_time
-
-        return execution_time, row_count, None
+    def _execute_sql(
+        self,
+        connection: Any,
+        query: str,
+        query_id: str,
+        benchmark_type: str | None = None,
+        scale_factor: float | None = None,
+        validate_row_count: bool = True,
+        stream_id: int | None = None,
+    ) -> dict[str, Any]:
+        return execute_sql_query(
+            connection,
+            query,
+            query_id,
+            log_verbose=self.log_verbose,
+            build_query_result_with_validation=self._build_query_result_with_validation,
+            benchmark_type=benchmark_type,
+            scale_factor=scale_factor,
+            validate_row_count=validate_row_count,
+            stream_id=stream_id,
+            fetch_mode=self.fetch_mode,
+            fetch_arrow=lambda cursor: cursor.fetch_arrow_table(),
+        )
 
 
 __all__ = ["InfluxDBAdapter"]
