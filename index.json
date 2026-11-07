@@ -5188,20 +5188,94 @@
       "terminal_outcome": "deliver"
     },
     "tpcds-dsdgen-maintenance": {
-      "accepted_members": {},
+      "accepted_members": {
+        "tpcds-maintenance-dsdgen-refresh-data-20261103": "ccd6d219046a58d82ba8e0c8ca336066292a079b"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "tpcds-maintenance-dsdgen-refresh-data-20261103": {
+          "accepted_head": "ccd6d219046a58d82ba8e0c8ca336066292a079b",
+          "changed_files": [
+            "benchbox/cli/commands/compare.py",
+            "benchbox/cli/dryrun.py",
+            "benchbox/core/analysis/comparison.py",
+            "benchbox/core/contracts/__init__.py",
+            "benchbox/core/contracts/platform_capabilities.py",
+            "benchbox/core/dryrun.py",
+            "benchbox/core/results/analytics.py",
+            "benchbox/core/results/comparison_modes.py",
+            "benchbox/core/results/loader.py",
+            "benchbox/core/results/maintenance_method.py",
+            "benchbox/core/results/models.py",
+            "benchbox/core/results/schema.py",
+            "benchbox/core/tpcds/benchmark/config.py",
+            "benchbox/core/tpcds/benchmark/results.py",
+            "benchbox/core/tpcds/benchmark/runner.py",
+            "benchbox/core/tpcds/generator/runner.py",
+            "benchbox/core/tpcds/maintenance_functions.py",
+            "benchbox/core/tpcds/maintenance_operations.py",
+            "benchbox/core/tpcds/maintenance_test.py",
+            "benchbox/core/tpcds/official_benchmark.py",
+            "benchbox/core/tpcds/refresh_data.py",
+            "benchbox/platforms/base/execution.py",
+            "benchbox/platforms/base/result_capture.py",
+            "benchbox/platforms/duckdb.py",
+            "benchbox/platforms/postgresql.py",
+            "benchbox/platforms/singlestore.py",
+            "benchbox/platforms/sqlite.py",
+            "changelog.d/feat-tpcds-dsdgen-maintenance--tpcds-maintenance-dsdgen-refresh-data-20261103.json",
+            "docs/internal/tpc-measured-intervals.md",
+            "quality/comment-cleanup-scope.json",
+            "quality/comment-policy.json",
+            "tests/integration/test_tpc_power_tests.py",
+            "tests/integration/test_tpcds_maintenance_test.py",
+            "tests/integration/test_tpcds_refresh_functions_duckdb.py",
+            "tests/unit/core/results/test_compare_maintenance_methods.py",
+            "tests/unit/core/results/test_comparison_modes.py",
+            "tests/unit/core/results/test_maintenance_method_round_trip.py",
+            "tests/unit/core/results/test_variant_comparability_end_to_end.py",
+            "tests/unit/core/test_tpcds_maintenance_delete_portability.py",
+            "tests/unit/core/test_tpcds_maintenance_operations.py",
+            "tests/unit/core/tpcds/benchmark/test_tpcds_runner_coverage.py",
+            "tests/unit/core/tpcds/test_maintenance_functions.py",
+            "tests/unit/core/tpcds/test_maintenance_returns_composite_key.py",
+            "tests/unit/core/tpcds/test_maintenance_timer_boundaries.py",
+            "tests/unit/core/tpcds/test_official_benchmark_phases.py",
+            "tests/unit/core/tpcds/test_refresh_data.py",
+            "tests/unit/core/tpcds/test_tpcds_maintenance_coverage.py",
+            "tests/unit/platforms/test_base_adapter.py",
+            "tests/unit/platforms/test_deployment_modes_recorded.py",
+            "tests/unit/platforms/test_singlestore_refresh_ingest_nulls.py",
+            "tests/unit/platforms/test_throughput_run_options.py",
+            "tests/unit/platforms/test_tpcds_maintenance_execution.py",
+            "tests/unit/platforms/test_tpcds_maintenance_primary_keys.py",
+            "tests/unit/platforms/test_tpcds_maintenance_seed.py",
+            "tests/unit/test_cli_dryrun_test_modes.py"
+          ],
+          "integration_head": "16aee3cc1b7bf9466ce9f9b7e374d311aac32a73",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/tpcds-dsdgen-maintenance",
-      "integration_head": "006703692cf0ab94d9709a45a6b62e6e991fe854",
+      "integration_head": "16aee3cc1b7bf9466ce9f9b7e374d311aac32a73",
       "integration_log": [
         {
           "at": "2026-11-07T04:13:50Z",
           "head": "006703692cf0ab94d9709a45a6b62e6e991fe854",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-07T05:42:24Z",
+          "head": "16aee3cc1b7bf9466ce9f9b7e374d311aac32a73",
+          "kind": "prepare",
+          "member": "tpcds-maintenance-dsdgen-refresh-data-20261103",
+          "op_id": "870d6dd1ad514de59e956928d3c00c2b",
+          "previous_head": "006703692cf0ab94d9709a45a6b62e6e991fe854",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcds-dsdgen-maintenance",
@@ -35265,18 +35339,13 @@
       "title": "TPC-DS maintenance DELETE ... LIMIT is a syntax error on DuckDB, is swallowed as a warning, and the operation still reports success"
     },
     "tpcds-maintenance-dsdgen-refresh-data-20261103": {
-      "claim": {
-        "expires_at": "2026-11-08T05:42:18Z",
-        "generation": "7b012a0bcd1f4d80811d0524fe95c9ff",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [
         "tpcds-maintenance-data-source-decision-20261103",
         "tpcds-maintenance-timer-hygiene-20261103"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "TPC-DS data maintenance: dsdgen refresh sets, timed staged load, spec-defined functions, monotonic timers"
     },
     "tpcds-maintenance-seed-through-callers-20261106": {
