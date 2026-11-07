@@ -3,6 +3,11 @@
     "TPC-DS loads on SingleStore.",
     "Each other listed cell passes or is pruned with a documented reason."
   ],
+  "batch": {
+    "batch_id": "load-value-integrity",
+    "implementation_dependencies": [],
+    "member_id": "singlestore-uat-failures-20261030"
+  },
   "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), artifact release-uat-v0.5.0rc2-stage3-olap. The artifact does not keep result JSON, so query-level causes need a local rerun of the named cells.",
   "description": "Stage 3 olap shard, run 40971306663. tpcds 0.01 load: '1261: Leaf Error: In the input file, row N does not contain data for all columns' for store_sales, time_dim and web_returns. joinorder SF1: 'Required benchmark tables are missing or empty'. Query failures: tpcdi, clickbench, read_primitives, write_primitives, tpchavoc, nyctaxi and vector_search at 0.01; metadata_primitives SF1. tpcds_obt and transaction_primitives are covered by foreign-table-guard-blocks-shared-database-20261030.",
   "links": [
@@ -16,6 +21,14 @@
       "op": "create",
       "op_id": "bb8c8bf8b87649faa30beab200cd1d0e",
       "session_id": "dfb93797c41c440a9261d3ab38ceb76e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T14:17:52Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "418444e4a565408a8b5dc9a57c53551c",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
 }
