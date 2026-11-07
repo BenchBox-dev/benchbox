@@ -381,17 +381,6 @@ class InfluxDBAdapter(
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
-        if self.dry_run_mode:
-            self.capture_sql(query, "query", None)
-            return {
-                "query_id": query_id,
-                "status": "DRY_RUN",
-                "execution_time_seconds": 0.0,
-                "rows_returned": 0,
-                "first_row": None,
-                "error": None,
-                "dry_run": True,
-            }
         return self.execute_query_with_plan_capture(
             self._execute_sql,
             connection=connection,
