@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Reproduce with a Polars run that has --capture-plans and show the paths in the generated .plans.json.",
+    "Redact or relativize data paths at capture time (before fingerprinting decisions are made, or document the fingerprint effect), without changing plan structure.",
+    "Fix the empty test-type key so Polars keys follow the same shape as other platforms, with a migration note if existing results are affected.",
+    "A test asserts no absolute home or output path appears in a Polars plans companion."
+  ],
+  "context": "Found by the site viewer work (benchbox-site PR #124). Privacy-class defect: check published bundles for leaked paths too. Verification rubric: reproduction before; fix; regression test; focused suites; comment-policy and ruff; PR merged with green CI and passing oracle review.",
+  "description": "The Polars DataFrame plans companion stores plan_data.logical_plan text that includes absolute local Parquet paths (for example /Users/<name>/...). Any published Polars .plans.json would expose a contributor's directory layout and username; the site only reads the file and cannot fix it. The same companion keys entries with an empty test type (Q1#0:), unlike the DuckDB and SQLite keys, so key shape differs by platform.",
+  "links": [
+    "benchbox/core/results/schema.py",
+    "benchbox/platforms/dataframe",
+    "BenchBox-dev/benchbox-site#124"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-07T16:49:16Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "512565d5c79941edbaaee10281694bb8",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    }
+  ]
+}
