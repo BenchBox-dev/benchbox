@@ -77,14 +77,35 @@ limit). Measured runtimes were not recorded in the legacy files.
 
 ## Fast-test duration policy
 
-Fast-tier duration is gated in aggregate, not per test. The weekly
-`fast-duration-baseline-refresh.yml` run regenerates the committed baseline in
-`tests/fixtures/fast_tier_baseline/` through
-`scripts/build_fast_duration_baseline.py`, and the `verify-fast-duration`
-verdict blocks a head whose fast tier regresses against it. The repository
-owner retired the earlier 0.5 second per-test budget on 2026-10-27: it read an
-empty bootstrap file and never failed a test. Collection in `tests/conftest.py`
-now enforces only the quarantine marker contract (owner, issue and unexpired
+Fast-tier duration is gated in aggregate, not per test. In PR CI, the `core`
+aggregate runs `verify-fast-duration` when the fast suite runs. It normalizes
+JUnit test durations with the runner calibration and compares their effective
+sum with the committed baseline in `tests/fixtures/fast_tier_baseline/`.
+It blocks only when **both** the summed ratio exceeds **1.30** and the
+increase exceeds **360 seconds**. New test IDs contribute only their duration
+above a 0.5-second allowance per ID; this is not a per-test speed limit.
+The metric is summed normalized test time, not job wall time or queue delay.
+
+The gate also fails when evidence is rejected, nothing is comparable, or fewer
+than 95% of baseline test IDs are present. Inspect the `verify-fast-duration`
+step summary and `fast-duration-verdict-<pr>-<sha>` artifact for the verdict,
+calibration, sums and coverage. The source durations and calibration are in
+`fast-junit-<pr>-<sha>`. Content-only heads without a fast run record
+`not-applicable`; a title/body edit reuses a full CI result on the same head
+instead of rerunning the measurement.
+
+`fast-duration-baseline-refresh.yml` runs weekly and on manual dispatch. Its
+fast job rebuilds the baseline from recent merged-PR artifacts through
+`scripts/build_fast_duration_baseline.py`, checks it against current collection,
+and opens a `chore/fast-baseline-*` PR when it changes. An independent job
+refreshes medium-shard weights from successful Trunk runs. Both regenerate
+`quality/docs-reference-inventory.json` before opening their PRs. The
+`CROSS_SURFACE_BASELINE_PR_TOKEN` secret lets those PRs trigger normal CI;
+the fallback `GITHUB_TOKEN` cannot trigger the normal downstream PR workflows.
+These are reviewed baseline changes, not an automatic waiver for a failing PR.
+
+The earlier 0.5-second per-test budget and `duration_exempt` marker are retired.
+Collection enforces the quarantine marker contract (owner, issue and unexpired
 expiry) and skips quarantined tests outside T3. The `t3:durations` artifact is
 a measurement record and is not read at collection time.
 

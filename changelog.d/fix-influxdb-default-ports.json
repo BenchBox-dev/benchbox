@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "InfluxDB now defaults to port 8181 in core mode and 443 in cloud mode, matching InfluxDB 3 and the repository compose stack. InfluxDB 2 users must now pass port=8086 (--platform-option port=8086)."
+    }
+  ]
+}

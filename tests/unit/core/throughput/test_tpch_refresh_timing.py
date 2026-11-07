@@ -61,9 +61,8 @@ def test_sub_millisecond_refresh_functions_keep_positive_duration_evidence(monke
 
     update_set = SimpleNamespace(set_id=1)
     connection = SimpleNamespace(close=lambda: None)
-    monkeypatch.setattr(power_test, "check_rf1_preconditions", lambda *_args: None)
+    monkeypatch.setattr(power_test, "check_rf1_applied", lambda *_args: None)
     monkeypatch.setattr(power_test, "apply_rf1", lambda *_args: 1)
-    monkeypatch.setattr(throughput_test, "check_rf1_preconditions", lambda *_args: None)
     monkeypatch.setattr(throughput_test, "apply_rf1", lambda *_args: 1)
     monkeypatch.setattr(power_test, "elapsed_seconds", lambda _start: 0.0001)
     monkeypatch.setattr(throughput_test, "elapsed_seconds", lambda _start: 0.0001)

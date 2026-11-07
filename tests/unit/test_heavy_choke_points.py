@@ -169,9 +169,15 @@ printf '%s\\n' "$*" >> "$STUB_LOG"
 case "$1 $2" in
   "machine list")
     status="$STUB_STATUS"
+    [ -f "$STUB_LOG.running" ] && status=running
     [ -f "$STUB_LOG.stopped" ] && status=stopped
     printf '[{"status":"%s","id":"%s","default":true},{"status":"running","id":"other"}]\\n' "$status" "${STUB_MACHINE:-m}" ;;
-  "machine run") [ -n "${STUB_RUN_HOOK:-}" ] && bash -c "$STUB_RUN_HOOK"; exit "${STUB_RUN_EXIT:-0}" ;;
+  "machine run")
+    case "$*" in
+      *"systemctl poweroff"*) [ -n "${STUB_GUEST_IGNORES_POWEROFF:-}" ] || touch "$STUB_LOG.stopped"; exit 0 ;;
+    esac
+    rm -f "$STUB_LOG.stopped"; touch "$STUB_LOG.running"
+    [ -n "${STUB_RUN_HOOK:-}" ] && bash -c "$STUB_RUN_HOOK"; exit "${STUB_RUN_EXIT:-0}" ;;
   "machine stop")
     [ -n "${STUB_STOP_STUCK:-}" ] || touch "$STUB_LOG.stopped"
     [ -n "${STUB_STOP_OUT:-}" ] && echo "$STUB_STOP_OUT"
@@ -197,7 +203,12 @@ def _stub_env(tmp_path: Path, status: str, **extra: str) -> dict[str, str]:
         BENCHBOX_TEST_LOCK_WAIT_SECONDS="0",
         BENCHBOX_HEAVY_ADMIT="force",
         BENCHBOX_HEAVY_WATCHDOG="off",
-        **{"BENCHBOX_PYTHON": sys.executable, **extra},
+        **{
+            "BENCHBOX_PYTHON": sys.executable,
+            "STUB_GUEST_IGNORES_POWEROFF": "1",
+            "BENCHBOX_LINUX_POWEROFF_WAIT_SECONDS": "0",
+            **extra,
+        },
     )
     for key in (
         "BENCHBOX_TEST_SESSION_OWNER",
@@ -268,8 +279,9 @@ def test_a_machine_this_run_started_is_stopped_afterwards_and_the_lock_is_held_m
     assert result.returncode == 0, result.stderr
     assert probe.read_text(encoding="utf-8").strip() == "True"
     calls = _calls(tmp_path)
-    assert [call for call in calls if call != "machine list --format json"][-2:] == [
+    assert [call for call in calls if call != "machine list --format json"][-3:] == [
         "machine run -n m -e A=1 -- true",
+        "machine run -n m -- systemctl poweroff --no-block",
         "machine stop m",
     ]
 
@@ -376,12 +388,12 @@ def test_a_hanging_stop_that_leaves_the_machine_running_is_diagnosed_and_the_sta
         STUB_STOP_HANG="1",
         STUB_STOP_STUCK="1",
         STUB_STOP_OUT="Error: XPC connection interrupted",
-        BENCHBOX_LINUX_STOP_TIMEOUT_SECONDS="1",
+        BENCHBOX_LINUX_STOP_TIMEOUT_SECONDS="6",
         STUB_RUN_EXIT="4",
     )
     result = _locked_wrapper(env, "--", "true")
     assert result.returncode == 4, result.stderr
-    assert "timed out after 1s" in result.stderr
+    assert "timed out after 6s" in result.stderr
     assert "Error: XPC connection interrupted" in result.stderr
     assert "ERROR: linux machine 'm' is still running" in result.stderr
     assert "no force-stop" in result.stderr
@@ -391,10 +403,10 @@ def test_a_hanging_stop_that_leaves_the_machine_running_is_diagnosed_and_the_sta
 @posix_only
 @needs_bash
 def test_a_slow_stop_that_lands_after_the_timeout_is_reconciled_to_the_actual_state(tmp_path: Path) -> None:
-    env = _stub_env(tmp_path, "running", STUB_STOP_HANG="1", BENCHBOX_LINUX_STOP_TIMEOUT_SECONDS="1")
+    env = _stub_env(tmp_path, "running", STUB_STOP_HANG="1", BENCHBOX_LINUX_STOP_TIMEOUT_SECONDS="6")
     result = _locked_wrapper(env, "--", "true")
     assert result.returncode == 0, result.stderr
-    assert "timed out after 1s but the machine is now 'stopped'" in result.stderr
+    assert "timed out after 6s but the machine is now 'stopped'" in result.stderr
     assert "ERROR" not in result.stderr
 
 
@@ -406,6 +418,28 @@ def test_a_failing_stop_shows_the_cli_output_and_a_machine_that_did_stop_is_not_
     assert result.returncode == 0, result.stderr
     assert "Error: machine already stopping" in result.stderr
     assert "exit 1 but the machine is now 'stopped'" in result.stderr
+    assert "ERROR" not in result.stderr
+
+
+@posix_only
+@needs_bash
+def test_a_guest_that_powers_off_is_stopped_without_machine_stop(tmp_path: Path) -> None:
+    env = _stub_env(tmp_path, "running", STUB_GUEST_IGNORES_POWEROFF="", BENCHBOX_LINUX_POWEROFF_WAIT_SECONDS="5")
+    result = _locked_wrapper(env, "--", "true")
+    assert result.returncode == 0, result.stderr
+    calls = _calls(tmp_path)
+    assert calls[-1] == "machine run -n m -- systemctl poweroff --no-block"
+    assert not any(call.startswith("machine stop") for call in calls)
+    assert "could not confirm" not in result.stderr and "ERROR" not in result.stderr
+
+
+@posix_only
+@needs_bash
+def test_a_guest_that_ignores_poweroff_falls_back_to_machine_stop(tmp_path: Path) -> None:
+    env = _stub_env(tmp_path, "running", BENCHBOX_LINUX_POWEROFF_WAIT_SECONDS="1")
+    result = _locked_wrapper(env, "--", "true")
+    assert result.returncode == 0, result.stderr
+    assert _calls(tmp_path)[-2:] == ["machine run -n m -- systemctl poweroff --no-block", "machine stop m"]
     assert "ERROR" not in result.stderr
 
 

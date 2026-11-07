@@ -454,7 +454,7 @@ def test_worktree_shell_and_make_paths_select_the_worktree_tests(repo: Path, pat
 
 @pytest.mark.parametrize("path", ["make/worktrees.mk", "Makefile"])
 def test_make_paths_select_the_make_interface_tests(repo: Path, path: str) -> None:
-    assert "tests/unit/scripts/test_check_makefile_inventory.py" in pt.map_tests(repo, [path])
+    assert "tests/unit/scripts/test_check_make_targets.py" in pt.map_tests(repo, [path])
 
 
 def test_make_path_selection_reaches_the_cli_through_a_git_diff(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:

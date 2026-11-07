@@ -872,12 +872,6 @@ jobs:
         shell: bash
         run: uv run -- python scripts/theseus_cli.py --trusted-ref "$(git rev-parse HEAD)" path
 
-      - name: Summarize Make interface changes
-        continue-on-error: true
-        env:
-          BASE_REF: ${{ github.event.pull_request.base.sha }}
-        run: python make/interface_summary.py --base-ref "$BASE_REF" --summary "$GITHUB_STEP_SUMMARY"
-
       - name: Pre-build the assertion-rewrite cache
         run: |
           find tests \( -name 'test_*.py' -o -name '*_test.py' \) -not -path '*/__pycache__/*' | sort \

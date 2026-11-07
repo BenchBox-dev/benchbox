@@ -780,7 +780,7 @@ class TestQuestDBAdapter:
 
             def do_POST(self):
                 captured["imports"].append(self.rfile.read(int(self.headers["Content-Length"])))
-                body = b"| Rows imported | 1 |"
+                body = b"| Rows imported | 2 |"
                 self.send_response(200)
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()

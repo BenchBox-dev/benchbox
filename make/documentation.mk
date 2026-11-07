@@ -9,6 +9,9 @@ docs-validate:
 	@echo ""
 	@echo "Checking Markdown heading anchors..."
 	@uv run -- python scripts/check_doc_anchors.py
+	@echo ""
+	@echo "Checking make targets named in the documentation..."
+	@uv run -- python scripts/check_make_targets.py
 
 prompt-quickstarts-check:
 	@uv run -- python scripts/generate_landing_quickstarts.py

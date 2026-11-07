@@ -16,11 +16,11 @@ from benchbox.core.plan_capture_phase import (
 from benchbox.core.tpch.benchmark import binds_answer_set_parameters, has_answer_set, power_stream_seed
 from benchbox.core.tpch.refresh import (
     TPCHRefreshUpdateSet,
+    applied_counts,
     apply_rf1,
     apply_rf2,
-    check_rf1_preconditions,
+    check_rf1_applied,
     check_rf2_applied,
-    check_rf2_preconditions,
 )
 from benchbox.core.validation.query_validation import (
     clear_reference_seed_context,
@@ -256,6 +256,7 @@ class TPCHPowerTest:
                             "duration_ms": 0,
                             "rows": 0,
                             "status": "SKIPPED",
+                            "check_status": "NOT_RUN",
                             "error": "RF1 failed; RF2 was not run",
                         }
                     )
@@ -426,24 +427,27 @@ class TPCHPowerTest:
         if function not in {"RF1", "RF2"}:
             raise ValueError(f"Unsupported TPC-H refresh function: {function}")
 
-        rows = 0
+        counts: dict[str, int] = {"rows": 0}
         status = "FAILED"
+        check_status = "NOT_RUN"
         error = None
         duration_ms = 0
         try:
             if self.refresh_update_set is None or connection is None:
                 raise RuntimeError("TPC-H refresh functions require an update set and a separate session")
+            start_time = mono_time()
             if function == "RF1":
-                check_rf1_preconditions(connection, self.refresh_update_set)
-                start_time = mono_time()
-                rows = apply_rf1(connection, self.refresh_update_set)
+                applied = apply_rf1(connection, self.refresh_update_set)
             else:
-                deleted_lineitems = check_rf2_preconditions(connection, self.refresh_update_set)
-                start_time = mono_time()
-                rows = apply_rf2(connection, self.refresh_update_set, deleted_lineitems)
+                applied = apply_rf2(connection, self.refresh_update_set)
             duration_ms = max(1, round(elapsed_seconds(start_time) * 1000))
-            if function == "RF2":
-                check_rf2_applied(connection, self.refresh_update_set)
+            counts = applied_counts(applied)
+            check_status = "FAILED"
+            if function == "RF1":
+                check_rf1_applied(connection, self.refresh_update_set, counts["rows_inserted"])
+            else:
+                check_rf2_applied(connection, self.refresh_update_set, counts["orders_deleted"])
+            check_status = "PASSED"
             status = "SUCCESS"
         except Exception as exc:
             error = str(exc)
@@ -452,8 +456,9 @@ class TPCHPowerTest:
             "function": function,
             "update_set": self.refresh_update_set.set_id if self.refresh_update_set is not None else None,
             "duration_ms": duration_ms if status == "SUCCESS" else 0,
-            "rows": rows,
+            **counts,
             "status": status,
+            "check_status": check_status,
             "error": error,
         }
 

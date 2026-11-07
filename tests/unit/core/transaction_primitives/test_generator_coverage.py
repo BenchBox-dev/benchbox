@@ -153,17 +153,19 @@ def test_write_bulk_load_metadata_writes_json(generator: TransactionPrimitivesDa
     assert "generated_at" in data
 
 
-def test_write_tbl_file_without_compression(generator: TransactionPrimitivesDataGenerator) -> None:
+def test_write_staging_file_without_compression(generator: TransactionPrimitivesDataGenerator) -> None:
     generator.tpch_generator = SimpleNamespace(should_use_compression=lambda: False)
+    (generator.output_dir / "orders.tbl").write_text("1|2|\n3|4|\n", encoding="utf-8")
 
-    output = generator._write_tbl_file("orders_stage.tbl", [("1", "2"), ("3", "4")])
+    output = generator._write_staging_file("orders_stage.tbl", "orders.tbl*")
 
     assert Path(output).exists()
     assert Path(output).read_text(encoding="utf-8").splitlines() == ["1|2", "3|4"]
 
 
-def test_write_tbl_file_with_compression(generator: TransactionPrimitivesDataGenerator) -> None:
+def test_write_staging_file_with_compression(generator: TransactionPrimitivesDataGenerator) -> None:
     compressed_path = generator.output_dir / "orders_stage.tbl.gz"
+    (generator.output_dir / "orders.tbl").write_text("1|2|\n", encoding="utf-8")
 
     class Compressor:
         def compress_file(self, source_path: Path) -> Path:
@@ -172,7 +174,7 @@ def test_write_tbl_file_with_compression(generator: TransactionPrimitivesDataGen
 
     generator.tpch_generator = SimpleNamespace(should_use_compression=lambda: True, get_compressor=lambda: Compressor())
 
-    output = generator._write_tbl_file("orders_stage.tbl", [("1", "2")])
+    output = generator._write_staging_file("orders_stage.tbl", "orders.tbl*")
 
     assert output == compressed_path
     assert compressed_path.exists()
@@ -186,8 +188,7 @@ def test_generate_staging_table_files_with_source_tables(
     (generator.output_dir / "orders.tbl").write_text("1|2|\n", encoding="utf-8")
     (generator.output_dir / "lineitem.tbl").write_text("1|2|\n", encoding="utf-8")
 
-    monkeypatch.setattr(generator, "_read_tbl_files", lambda *_args, **_kwargs: [("1", "2")])
-    monkeypatch.setattr(generator, "_write_tbl_file", lambda filename, _rows: generator.output_dir / filename)
+    monkeypatch.setattr(generator, "_write_staging_file", lambda filename, _pattern: generator.output_dir / filename)
 
     result = generator._generate_staging_table_files()
 

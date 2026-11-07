@@ -11,9 +11,11 @@ retry:
       - anthropic/claude-sonnet-5-5:medium
       - google-antigravity/gemini-3.8-flash:medium
     anthropic/claude-sonnet-5-5:
+      - google-antigravity/claude-sonnet-5-5:high
       - openai-codex/gpt-6.1-sol:medium
       - google-antigravity/gemini-3.8-flash:high
     anthropic/claude-opus-5-5:
+      - google-antigravity/claude-opus-5-5:high
       - openai-codex/gpt-6.1-sol:high
       - google-antigravity/gemini-4-argon:medium
     anthropic/claude-fable-5-1:

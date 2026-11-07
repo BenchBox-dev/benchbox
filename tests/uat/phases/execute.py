@@ -550,6 +550,18 @@ def _check_docker_platform_readiness(
             "after `up --wait` reported success"
         )
 
+    settings_reason = managed_runtime.check_declared_settings(
+        config,
+        spec=spec,
+        project_name=project_name,
+        docker_runner=docker_runner,
+        docker_events=docker_events,
+        record_event=_record_docker_event,
+        log_dir=log_dir,
+        benchmark_runs_dir=benchmark_runs_dir,
+    )
+    if settings_reason is not None:
+        return settings_reason
     if not probe_platform_reachability(platform, timeout_s=config.execute.liveness_probe_timeout_s or 2.0):
         endpoint = docker_assets.host_reachability_endpoint(platform) or platform
         return (

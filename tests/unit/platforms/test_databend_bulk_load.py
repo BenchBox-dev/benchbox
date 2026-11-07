@@ -27,8 +27,13 @@ class _NativeConnection:
         self.rows = []
         self.calls = []
         self.methods = []
+        self.truncated = []
 
     def exec(self, sql):
+        if sql.startswith("TRUNCATE TABLE "):
+            self.truncated.append(sql)
+            self.rows.clear()
+            return
         if not sql.startswith("USE "):
             raise AssertionError(f"unexpected exec: {sql[:80]}")
 
@@ -222,6 +227,48 @@ class TestNativeLoadPath:
 
         with pytest.raises(RuntimeError, match="source has 3, loaded 2"):
             _run(adapter, connection, benchmark, tmp_path)
+
+    def test_row_count_mismatch_truncates_the_partial_table_and_says_so(self, adapter, tmp_path):
+        benchmark = _benchmark(tmp_path, "t", "1,a\n2,b\n3,c\n", ".csv")
+        connection = _NativeConnection()
+        original = connection.load_file
+
+        def dropping(sql, fp, method=None, format_options=None, copy_options=None):
+            original(sql, fp, method, format_options)
+            connection.rows.pop()
+            return _Stats(2)
+
+        connection.load_file = dropping
+
+        with pytest.raises(RuntimeError, match=r"t: table truncated: Row count mismatch .*source has 3, loaded 2"):
+            _run(adapter, connection, benchmark, tmp_path)
+
+        assert connection.rows == []
+        assert connection.truncated == ["TRUNCATE TABLE `t`"]
+
+    def test_row_count_mismatch_reports_a_partial_table_when_truncate_fails(self, adapter, tmp_path):
+        benchmark = _benchmark(tmp_path, "t", "1,a\n2,b\n3,c\n", ".csv")
+        connection = _NativeConnection()
+        original = connection.load_file
+        original_exec = connection.exec
+
+        def dropping(sql, fp, method=None, format_options=None, copy_options=None):
+            original(sql, fp, method, format_options)
+            connection.rows.pop()
+            return _Stats(2)
+
+        def failing_exec(sql):
+            if sql.startswith("TRUNCATE"):
+                raise RuntimeError("server unavailable")
+            original_exec(sql)
+
+        connection.load_file = dropping
+        connection.exec = failing_exec
+
+        with pytest.raises(RuntimeError, match=r"t: table left partially loaded, truncate failed: Row count mismatch"):
+            _run(adapter, connection, benchmark, tmp_path)
+
+        assert len(connection.rows) == 2
 
     def test_quoted_embedded_newline_counts_as_one_source_record(self, adapter, tmp_path):
         path = tmp_path / "q.csv"

@@ -61,6 +61,7 @@ services:
           echo "WARNING: FE heap max cap not applied - fe.conf uses a non-standard JVM option string" >&2
         grep -q 'Xms1536m' /opt/apache-doris/fe/conf/fe.conf ||
           echo "WARNING: FE heap min cap not applied - fe.conf uses a non-standard JVM option string" >&2
+        touch /tmp/.benchbox-entrypoint-applied
         exec bash /usr/local/bin/entry_point.sh
     ports:
       - "${DORIS_HOST_PORT:-19031}:9030"

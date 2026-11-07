@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import types
 from collections.abc import Iterable
@@ -1240,6 +1241,7 @@ __all__ = [
     "PostgreSQLStubState",
     "InfluxDBStubState",
     "StarRocksStubState",
+    "StarRocksStreamLoadRequest",
     "DatabendStubState",
     "DorisStubState",
     "LakeSailStubState",
@@ -1249,7 +1251,7 @@ __all__ = [
 @dataclass
 class InfluxDBStubState:
     host: str = "localhost"
-    port: int = 8086
+    port: int = 8181
     token: str = "test-token"
     database: str = "benchbox"
     org: str | None = None
@@ -1302,7 +1304,7 @@ def install_influxdb_stub(
     monkeypatch,
     *,
     host: str = "localhost",
-    port: int = 8086,
+    port: int = 8181,
     token: str = "test-token",
     database: str = "benchbox",
     mode: str = "core",
@@ -1771,13 +1773,48 @@ def install_dataproc_serverless_stub(
 
 
 @dataclass
+class StarRocksStreamLoadRequest:
+    url: str
+    headers: dict[str, str]
+    body: bytes
+
+    @property
+    def rows(self) -> int:
+        return self.body.count(b"\n")
+
+
+@dataclass
 class StarRocksStubState:
     host: str = "localhost"
     port: int = 9030
+    http_port: int = 8040
     database: str = "benchbox"
     statements: list[str] = field(default_factory=list)
     row_counts: dict[str, int] = field(default_factory=lambda: {"lineitem": 2})
     inserts: list[tuple[str, Any]] = field(default_factory=list)
+    stream_loads: list[StarRocksStreamLoadRequest] = field(default_factory=list)
+
+
+class _StarRocksStreamLoadResponse:
+    status_code = 200
+
+    def __init__(self, loaded_rows: int) -> None:
+        self.text = json.dumps({"Status": "Success", "Message": "OK", "NumberLoadedRows": loaded_rows})
+
+
+class _StarRocksHttpClient:
+    class ConnectionError(Exception):
+        pass
+
+    def __init__(self, state: StarRocksStubState) -> None:
+        self._state = state
+
+    def put(
+        self, url: str, headers: dict[str, str], data: Iterable[bytes], timeout: float
+    ) -> _StarRocksStreamLoadResponse:
+        request = StarRocksStreamLoadRequest(url=url, headers=dict(headers), body=b"".join(data))
+        self._state.stream_loads.append(request)
+        return _StarRocksStreamLoadResponse(request.rows)
 
 
 class _StarRocksCursor:
@@ -1896,6 +1933,8 @@ def install_starrocks_stub(
     monkeypatch.setattr(deps_module, "PyMySQLDictCursor", cursors_module.DictCursor)
     monkeypatch.setattr(deps_module, "PYMYSQL_AVAILABLE", True)
     monkeypatch.setattr(deps_module, "STARROCKS_AVAILABLE", True)
+    monkeypatch.setattr(deps_module, "requests", _StarRocksHttpClient(state))
+    monkeypatch.setattr(deps_module, "REQUESTS_AVAILABLE", True)
 
     import benchbox.platforms.starrocks.setup as setup_module
 

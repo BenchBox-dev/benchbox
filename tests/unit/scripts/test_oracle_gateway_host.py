@@ -16,6 +16,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
+import yaml
 
 from tests.utilities.posix_shell import run_posix_shell
 
@@ -33,8 +34,8 @@ pytestmark = [
 ]
 BOOTSTRAP_RELATIVE = "_project/scripts/theseus_bootstrap.py"
 TOKENS = {"review-ci": "i" * 48, "review-local": "l" * 48, "review-cloud": "c" * 48}
-MODELS = ["anthropic/model-a", "openai-codex/model-b"]
 PROVIDERS = ("anthropic", "openai-codex", "google-antigravity")
+MODELS = ["anthropic/from-develop", "openai-codex/model-b", "google-antigravity/model-c"]
 GIT_IDENTITY = {
     "GIT_AUTHOR_NAME": "Test",
     "GIT_AUTHOR_EMAIL": "test@example.com",
@@ -44,11 +45,167 @@ GIT_IDENTITY = {
 WHEEL_PATH = "/_assets/github.com/joeharris76/theseus/releases/download/v0.1.6/theseus_reviewer-0.1.6-py3-none-any.whl"
 RETAINED_PATH = WHEEL_PATH.replace(".whl", ".retained.whl")
 
-FAKE_THESEUS = """\
+FAKE_THESEUS = r"""
 import hashlib
 import json
 import os
+import re
 import sys
+
+NO_LOGIN = "no logged-in broker account"
+OWNER = "excluded by owner"
+
+
+def parse(args):
+    options, named, excluded = {}, [], []
+    index = 1
+    while index < len(args):
+        flag = args[index]
+        if flag == "--json":
+            options[flag] = True
+            index += 1
+            continue
+        value = args[index + 1]
+        if flag == "--client":
+            named.append(value)
+        elif flag == "--exclude-provider":
+            excluded.append(value)
+        else:
+            options[flag] = value
+        index += 2
+    return options, named, excluded
+
+
+def config_models(path):
+    with open(path, encoding="utf-8") as handle:
+        text = handle.read()
+    found = []
+    for match in re.findall(r"([a-z][a-z0-9-]*/[A-Za-z0-9._-]+)", text):
+        if match not in found:
+            found.append(match)
+    return found
+
+
+def accounts_by_provider(path):
+    with open(path, encoding="utf-8") as handle:
+        listed = json.load(handle).get("accounts", [])
+    result = {}
+    for entry in listed:
+        result.setdefault(entry["provider"], []).append(entry.get("identityKey", ""))
+    return result
+
+
+def split(models):
+    routed = []
+    for model in models:
+        provider = model.split("/", 1)[0]
+        if provider not in routed:
+            routed.append(provider)
+    return routed
+
+
+def gateway_clients(args):
+    options, named, excluded = parse(args)
+    models = config_models(options["--omp-config"])
+    routed = split(models)
+    present = accounts_by_provider(options["--accounts"]) if "--accounts" in options else {p: ["k"] for p in routed}
+    omitted = {}
+    for provider in routed:
+        if provider in excluded:
+            omitted[provider] = OWNER
+        elif provider not in present:
+            omitted[provider] = NO_LOGIN
+    granted = [p for p in routed if p not in omitted]
+    report = {
+        "granted": granted,
+        "excluded": {
+            p: {"reason": reason, "models": [m for m in models if m.startswith(p + "/")]}
+            for p, reason in omitted.items()
+        },
+    }
+    if "--report" in options:
+        with open(options["--report"], "w", encoding="utf-8") as handle:
+            json.dump(report, handle)
+    if not granted:
+        print("no configured provider has a broker login", file=sys.stderr)
+        return 1
+    for provider, details in report["excluded"].items():
+        print(f"excluded: {provider} ({details['reason']}): {', '.join(details['models'])}")
+    tokens = {"review-ci": options["--token-file"]}
+    for item in named:
+        name, path = item.split("=", 1)
+        tokens[name] = path
+    granted_models = [m for m in models if m.split("/", 1)[0] in granted]
+    clients = {}
+    for name, path in tokens.items():
+        with open(path, "rb") as handle:
+            digest = hashlib.sha256(handle.read()).hexdigest()
+        clients[name] = {
+            "tokenSha256": digest,
+            "models": granted_models,
+            "accounts": {p: present[p] for p in granted},
+        }
+    with open(options["--out"], "w", encoding="utf-8") as handle:
+        json.dump(clients, handle, indent=2)
+        handle.write("\n")
+    os.chmod(options["--out"], 0o600)
+    return 0
+
+
+def served_models(options, models):
+    path = os.environ.get("SERVED_FILE")
+    if path and os.path.exists(path):
+        with open(path, encoding="utf-8") as handle:
+            return [line.strip() for line in handle if line.strip()]
+    if "--clients" in options:
+        with open(options["--clients"], encoding="utf-8") as handle:
+            return json.load(handle)["review-ci"]["models"]
+    return models
+
+
+def gateway_providers(args):
+    options, _, excluded = parse(args)
+    models = config_models(options["--omp-config"])
+    routed = split(models)
+    present = accounts_by_provider(options["--accounts"]) if "--accounts" in options else None
+    pinned = None
+    if "--clients" in options:
+        with open(options["--clients"], encoding="utf-8") as handle:
+            pinned = json.load(handle)["review-ci"].get("accounts", {})
+    error = os.environ.get("FAKE_SERVED_ERROR") if "--served-url" in options else None
+    served = split(served_models(options, models)) if "--served-url" in options and not error else None
+    providers = {}
+    for provider in routed:
+        logged = None if present is None else provider in present
+        stale = None
+        if present is not None and pinned is not None and provider in pinned and logged:
+            stale = sorted(pinned[provider]) != sorted(present[provider])
+        owner = provider in excluded
+        granted = not owner and logged is not False
+        is_served = None if served is None else provider in served
+        reason = ""
+        if owner:
+            reason = OWNER
+        elif logged is False:
+            reason = NO_LOGIN
+        elif stale:
+            reason = "stale pin"
+        elif granted and is_served is False:
+            reason = "granted but not served"
+        providers[provider] = {
+            "routed": True,
+            "logged_in": logged,
+            "stale_pin": stale,
+            "excluded_by_owner": owner,
+            "granted": granted,
+            "served": is_served,
+            "reason": reason,
+        }
+    broken = error is not None or not any(p["granted"] for p in providers.values())
+    degraded = any(p["reason"] and not p["excluded_by_owner"] for p in providers.values()) or bool(os.environ.get("FAKE_FORCE_DEGRADED"))
+    state = "broken" if broken else "degraded" if degraded else "healthy"
+    print(json.dumps({"state": state, "served_error": error, "providers": providers, "roles": {}}))
+    return {"healthy": 0, "degraded": 3, "broken": 1}[state]
 
 
 def main():
@@ -56,17 +213,10 @@ def main():
     log = os.environ.get("FAKE_THESEUS_LOG")
     if log:
         with open(log, "a", encoding="utf-8") as handle:
-            handle.write(json.dumps(args) + "\\n")
-    command, options, named = args[0], {}, []
-    index = 1
-    while index < len(args):
-        if args[index] == "--client":
-            named.append(args[index + 1])
-        else:
-            options[args[index]] = args[index + 1]
-        index += 2
+            handle.write(json.dumps(args) + "\n")
+    command = args[0]
     if command == "install-omp":
-        with open(options["--policy"], encoding="utf-8") as handle:
+        with open(args[2], encoding="utf-8") as handle:
             for line in handle.read().splitlines():
                 if line.startswith("omp_binary:"):
                     print(line.split(":", 1)[1].strip())
@@ -74,29 +224,19 @@ def main():
         print("no omp build is pinned for this platform", file=sys.stderr)
         return 1
     if command == "gateway-clients":
-        with open(options["--omp-config"], encoding="utf-8") as handle:
-            default = next(line.split(":", 1)[1].strip() for line in handle.read().splitlines() if line.startswith("default:"))
-        tokens = {"review-ci": options["--token-file"]}
-        for item in named:
-            name, path = item.split("=", 1)
-            tokens[name] = path
-        clients = {}
-        for name, path in tokens.items():
-            with open(path, "rb") as handle:
-                digest = hashlib.sha256(handle.read()).hexdigest()
-            clients[name] = {"tokenSha256": digest, "models": [default, "openai-codex/model-b"]}
-        with open(options["--out"], "w", encoding="utf-8") as handle:
-            json.dump(clients, handle, indent=2)
-            handle.write("\\n")
-        os.chmod(options["--out"], 0o600)
-        return 0
+        return gateway_clients(args)
+    if command == "gateway-providers":
+        return gateway_providers(args)
     return 2
 """
 
 
-def _fake_omp(providers: tuple[str, ...] = PROVIDERS, clients: bool = True) -> str:
-    accounts = ",".join(f'{{"provider":"{provider}"}}' for provider in providers)
+def _fake_omp(providers: tuple[str, ...] = PROVIDERS, clients: bool = True, probe_fails: bool = False) -> str:
+    accounts = ",".join(
+        f'{{"provider":"{provider}","identityKey":"email:{provider}@example.com"}}' for provider in providers
+    )
     flag = "--clients=<value>" if clients else "--bind=<value>"
+    probe = 'echo "401 from anthropic"; exit 1' if probe_fails else "echo ok"
     return (
         "#!/bin/sh\n"
         'case "$*" in\n'
@@ -104,6 +244,7 @@ def _fake_omp(providers: tuple[str, ...] = PROVIDERS, clients: bool = True) -> s
         f'  *"serve --help"*) echo "{flag}";;\n'
         '  *"auth-broker status"*) echo \'{"ok":true}\';;\n'
         f'  *"usage accounts"*) echo \'{{"accounts":[{accounts}]}}\';;\n'
+        f'  *"auth-gateway check"*) {probe};;\n'
         '  *) echo "omp/1.2.3";;\n'
         "esac\n"
     )
@@ -126,8 +267,11 @@ case "$*" in
       */v1/models)
         if [ -n "${CURL_ODD_TOKEN:-}" ] && [ "$token" = "$CURL_ODD_TOKEN" ]; then
           echo '{"data":[{"id":"x/other"},{"id":"openai-codex/model-b"}]}'
+        elif [ -n "${SERVED_FILE:-}" ] && [ -f "$SERVED_FILE" ]; then
+          ids=$(sed 's/.*/{"id":"&"}/' "$SERVED_FILE" | paste -sd, -)
+          echo "{\\"data\\":[$ids]}"
         else
-          echo '{"data":[{"id":"anthropic/from-develop"},{"id":"openai-codex/model-b"}]}'
+          jq -c '{data: [."review-ci".models[] | {id: .}]}' "$GATEWAY_DIR/clients.json"
         fi;;
     esac;;
 esac
@@ -206,15 +350,19 @@ def _policy(omp: Path | None) -> str:
     return "version: 1\n" + (f"omp_binary: {omp}\n" if omp else "")
 
 
-def _config(model: str) -> str:
-    return f"default: {model}\n"
+def _config(model: str, extra_chain: str = "") -> str:
+    return (
+        f"modelRoles:\n  default: {model}:high\nretry:\n  fallbackChains:\n    {model}:\n"
+        "      - openai-codex/model-b:medium\n      - google-antigravity/model-c:medium\n"
+        f"{extra_chain}"
+    )
 
 
 def _entry(token: str) -> dict:
     return {
         "tokenSha256": hashlib.sha256(token.encode()).hexdigest(),
         "models": MODELS,
-        "accounts": {"anthropic": ["email:a@example.com"], "openai-codex": ["email:o@example.com"]},
+        "accounts": {provider: [f"email:{provider}@example.com"] for provider in PROVIDERS},
     }
 
 
@@ -291,6 +439,7 @@ def host(tmp_path: Path, mirror: dict[str, bytes]) -> dict:
     for tool in ("gh", "omp"):
         _executable(stubs / tool, f'#!/bin/sh\necho "{tool} $*" >> "{calls}"\nexit 1\n')
     _executable(stubs / "curl", CURL_STUB)
+    _executable(stubs / "osascript", f'#!/bin/sh\necho "$*" >> "{tmp_path}/notifications.log"\n')
     _executable(stubs / "plutil", "#!/bin/sh\nexit 0\n")
     _executable(
         stubs / "launchctl",
@@ -313,6 +462,7 @@ def host(tmp_path: Path, mirror: dict[str, bytes]) -> dict:
         "THESEUS_OMP_CACHE": str(tmp_path / "omp-cache"),
         "REVIEW_PROMOTION_MIRROR": mirror["url"].decode(),
         "FAKE_THESEUS_LOG": str(tmp_path / "theseus-calls.log"),
+        "SERVED_FILE": str(tmp_path / "served.txt"),
     }
     return {
         "dir": gateway_dir,
@@ -328,6 +478,9 @@ def host(tmp_path: Path, mirror: dict[str, bytes]) -> dict:
         "home": home,
         "theseus_log": tmp_path / "theseus-calls.log",
         "tmp": tmp_path,
+        "stubs": stubs,
+        "served": tmp_path / "served.txt",
+        "notifications": tmp_path / "notifications.log",
     }
 
 
@@ -476,7 +629,7 @@ def test_the_clients_check_refuses_models_that_differ_from_oracle_ci(host: dict)
 def test_the_live_scope_check_passes_when_every_client_sees_the_same_models(host: dict) -> None:
     result = _source(host, 'check_gateway_scope "http://127.0.0.1:4000"')
     assert result.returncode == 0, result.stderr
-    assert "review-local models=2/2 usage=403" in result.stdout
+    assert "review-local models=3/3 usage=403" in result.stdout
 
 
 def test_the_live_scope_check_refuses_a_client_that_sees_different_models(host: dict) -> None:
@@ -618,7 +771,7 @@ def test_gateway_clients_are_generated_from_origin_develop_not_the_checked_out_b
     clients = json.loads((host["dir"] / "clients.json").read_text(encoding="utf-8"))
     assert sorted(clients) == ["review-ci", "review-cloud", "review-local"]
     for name, token in TOKENS.items():
-        assert clients[name]["models"] == ["anthropic/from-develop", "openai-codex/model-b"]
+        assert clients[name]["models"] == MODELS
         assert clients[name]["tokenSha256"] == hashlib.sha256(token.encode()).hexdigest()
     invocations = [json.loads(line) for line in host["theseus_log"].read_text(encoding="utf-8").splitlines()]
     generated = next(args for args in invocations if args[0] == "gateway-clients")
@@ -643,11 +796,316 @@ def test_gateway_clients_follow_a_develop_config_that_changed_after_the_checkout
     assert clients["review-ci"]["models"][0] == "anthropic/newer-develop"
 
 
-def test_the_gateway_refuses_before_writing_clients_when_a_broker_login_is_missing(host: dict) -> None:
-    _executable(host["good_omp"], _fake_omp(PROVIDERS[:-1]))
+FAKE_GH = """#!/bin/sh
+echo "$*" >> "$GH_LOG"
+case "$1 $2" in
+  "secret list") printf 'ORACLE_GATEWAY_TOKEN\\nORACLE_GATEWAY_URL\\n';;
+  "issue list") [ -f "$GH_STATE/open" ] && cat "$GH_STATE/open";;
+  "issue create")
+    [ -z "${GH_FAIL_CREATE:-}" ] || exit 1
+    echo 7 > "$GH_STATE/open"
+    echo https://github.com/o/r/issues/7;;
+  "issue close") rm -f "$GH_STATE/open";;
+esac
+exit 0
+"""
+
+
+def _fake_gh(host: dict, **extra: str) -> Path:
+    state = host["tmp"] / "gh-state"
+    state.mkdir(exist_ok=True)
+    log = host["tmp"] / "gh.log"
+    _executable(host["stubs"] / "gh", FAKE_GH)
+    host["env"] = {**host["env"], "GH_LOG": str(log), "GH_STATE": str(state), **extra}
+    return log
+
+
+def _logins(host: dict, providers: tuple[str, ...] | list[str], **options: bool) -> None:
+    _executable(host["good_omp"], _fake_omp(tuple(providers), **options))
+
+
+def _clients(host: dict) -> dict:
+    return json.loads((host["dir"] / "clients.json").read_text(encoding="utf-8"))
+
+
+def _check(host: dict, *args: str) -> subprocess.CompletedProcess[str]:
+    _fake_gh(host)
+    return _source(host, "check_builds() { :; }; cmd_check " + " ".join(args))
+
+
+def _monitor(host: dict) -> subprocess.CompletedProcess[str]:
+    return _source(host, "check_builds() { :; }; cmd_monitor")
+
+
+def _deny(host: dict, *providers: str, mode: int = 0o600) -> None:
+    path = host["dir"] / "disabled-providers"
+    path.write_text("# owner removals\n" + "".join(f"{provider}\n" for provider in providers), encoding="utf-8")
+    path.chmod(mode)
+
+
+@pytest.mark.parametrize("lost", PROVIDERS)
+def test_a_provider_without_a_login_is_excluded_and_the_gateway_still_starts(host: dict, lost: str) -> None:
+    _logins(host, [provider for provider in PROVIDERS if provider != lost])
+    result = _script(host, "gateway")
+    assert result.returncode == 0, result.stderr
+    assert f"excluded: {lost} (no logged-in broker account)" in result.stdout
+    for entry in _clients(host).values():
+        assert not [model for model in entry["models"] if model.startswith(f"{lost}/")]
+        assert set(entry["accounts"]) == set(PROVIDERS) - {lost}
+    calls = host["calls"].read_text(encoding="utf-8")
+    assert "launchctl bootstrap" in calls and "tailscale serve --bg" in calls
+    checked = _check(host)
+    assert checked.returncode == 3, checked.stdout + checked.stderr
+    assert f"degraded: {lost}: no logged-in broker account" in checked.stdout
+
+
+@pytest.mark.parametrize("only", PROVIDERS)
+def test_one_logged_in_provider_is_enough_to_serve(host: dict, only: str) -> None:
+    _logins(host, [only])
+    result = _script(host, "gateway")
+    assert result.returncode == 0, result.stderr
+    for entry in _clients(host).values():
+        assert {model.split("/")[0] for model in entry["models"]} == {only}
+    checked = _check(host)
+    assert checked.returncode == 3
+    for other in set(PROVIDERS) - {only}:
+        assert f"degraded: {other}: no logged-in broker account" in checked.stdout
+
+
+def test_the_gateway_refuses_and_touches_nothing_when_no_provider_has_a_login(host: dict) -> None:
+    _logins(host, [])
     before = (host["dir"] / "clients.json").read_bytes()
     result = _script(host, "gateway")
     assert result.returncode != 0
-    assert "no broker login for: google-antigravity" in result.stderr
+    assert "no configured provider has a broker login" in result.stderr
+    assert (host["dir"] / "clients.json").read_bytes() == before
+    assert not (host["dir"] / "run.sh").exists()
+    assert not host["calls"].exists()
+    assert not (host["home"] / "Library").exists()
+
+
+def test_a_develop_provider_without_a_login_that_the_script_never_heard_of_is_excluded_not_refused(host: dict) -> None:
+    extra = "      - unknown-co/model-x:medium\n"
+    _develop(host, {".github/oracle-omp-config.yml": _config("anthropic/from-develop", extra)})
+    result = _script(host, "gateway")
+    assert result.returncode == 0, result.stderr
+    assert "excluded: unknown-co (no logged-in broker account): unknown-co/model-x" in result.stdout
+    assert "unknown-co/model-x" not in (host["dir"] / "clients.json").read_text(encoding="utf-8")
+
+
+def test_the_owner_denylist_excludes_a_logged_in_provider_and_is_written_to_the_gateway_home(host: dict) -> None:
+    _deny(host, "openai-codex")
+    result = _script(host, "gateway")
+    assert result.returncode == 0, result.stderr
+    assert "excluded: openai-codex (excluded by owner)" in result.stdout
+    for entry in _clients(host).values():
+        assert not [model for model in entry["models"] if model.startswith("openai-codex/")]
+    config = host["dir"] / "home" / ".omp" / "agent" / "config.yml"
+    assert config.read_text(encoding="utf-8") == "disabledProviders:\n  - openai-codex\n"
+    assert (config.stat().st_mode & 0o777) == 0o600
+    invocations = [json.loads(line) for line in host["theseus_log"].read_text(encoding="utf-8").splitlines()]
+    generated = next(args for args in invocations if args[0] == "gateway-clients")
+    assert generated[generated.index("--exclude-provider") :][:2] == ["--exclude-provider", "openai-codex"]
+    checked = _check(host)
+    assert checked.returncode == 0, checked.stdout + checked.stderr
+    assert "notice: openai-codex removed by owner; develop still names openai-codex" in checked.stdout
+
+
+def test_without_a_denylist_the_gateway_home_lists_no_disabled_provider(host: dict) -> None:
+    assert _script(host, "gateway").returncode == 0
+    config = host["dir"] / "home" / ".omp" / "agent" / "config.yml"
+    assert config.read_text(encoding="utf-8") == "disabledProviders: []\n"
+
+
+@pytest.mark.parametrize(
+    ("content", "mode", "message"),
+    [("openai-codex\n", 0o644, "chmod 600"), ("Bad Name\n", 0o600, "one lowercase provider id per line")],
+)
+def test_an_unsafe_or_malformed_denylist_refuses_before_anything_is_written(
+    host: dict, content: str, mode: int, message: str
+) -> None:
+    path = host["dir"] / "disabled-providers"
+    path.write_text(content, encoding="utf-8")
+    path.chmod(mode)
+    before = (host["dir"] / "clients.json").read_bytes()
+    result = _script(host, "gateway")
+    assert result.returncode != 0
+    assert message in result.stderr
     assert (host["dir"] / "clients.json").read_bytes() == before
     assert not host["calls"].exists()
+
+
+def test_a_stale_account_pin_is_reported_by_check_and_repinned_by_gateway(host: dict) -> None:
+    clients = _clients(host)
+    clients["review-ci"]["accounts"]["anthropic"] = ["email:old@example.com"]
+    (host["dir"] / "clients.json").write_text(json.dumps(clients), encoding="utf-8")
+    checked = _check(host)
+    assert checked.returncode == 3, checked.stdout + checked.stderr
+    assert "degraded: anthropic: stale pin" in checked.stdout
+    assert _script(host, "gateway").returncode == 0
+    assert _clients(host)["review-ci"]["accounts"]["anthropic"] == ["email:anthropic@example.com"]
+    assert _check(host).returncode == 0
+
+
+def test_check_passes_when_every_provider_is_granted_and_served(host: dict) -> None:
+    checked = _check(host)
+    assert checked.returncode == 0, checked.stdout + checked.stderr
+    assert "usage probes: ok" in checked.stdout
+    assert "secrets: ORACLE_GATEWAY_TOKEN and ORACLE_GATEWAY_URL are set" in checked.stdout
+
+
+def test_check_names_a_granted_provider_the_gateway_does_not_serve(host: dict) -> None:
+    host["served"].write_text("anthropic/from-develop\nopenai-codex/model-b\n", encoding="utf-8")
+    checked = _check(host)
+    assert checked.returncode == 3, checked.stdout + checked.stderr
+    assert "degraded: google-antigravity: granted but not served" in checked.stdout
+    assert "lists 2 of the 3 granted models" in checked.stdout
+
+
+def test_check_fails_when_the_gateway_serves_a_model_the_clients_file_does_not_grant(host: dict) -> None:
+    host["served"].write_text("\n".join([*MODELS, "x/unlisted"]) + "\n", encoding="utf-8")
+    checked = _check(host)
+    assert checked.returncode == 1
+    assert "models the clients file does not grant: x/unlisted" in checked.stderr
+
+
+def test_check_is_broken_when_the_served_set_cannot_be_read(host: dict) -> None:
+    _fake_gh(host)
+    env = {**host["env"], "FAKE_SERVED_ERROR": "gateway unreachable"}
+    checked = _source(host, "check_builds() { :; }; cmd_check", env)
+    assert checked.returncode == 1
+    assert "gateway unreachable" in checked.stderr
+
+
+def test_check_reports_a_failed_usage_probe_as_degraded(host: dict) -> None:
+    _logins(host, PROVIDERS, probe_fails=True)
+    checked = _check(host)
+    assert checked.returncode == 3, checked.stdout + checked.stderr
+    assert "degraded: usage probe: omp auth-gateway check failed" in checked.stdout
+    assert "401 from anthropic" not in checked.stdout
+
+
+def test_a_degraded_exit_with_no_provider_reason_is_still_degraded(host: dict) -> None:
+    _fake_gh(host)
+    env = {**host["env"], "FAKE_FORCE_DEGRADED": "1"}
+    checked = _source(host, "check_builds() { :; }; cmd_check", env)
+    assert checked.returncode == 3, checked.stdout + checked.stderr
+    assert "degraded: gateway-providers reports a degraded state with no provider reason" in checked.stdout
+
+
+def test_check_json_gives_the_state_and_each_message(host: dict) -> None:
+    _logins(host, PROVIDERS[:-1])
+    checked = _check(host, "--json")
+    assert checked.returncode == 3, checked.stdout + checked.stderr
+    report = json.loads(checked.stdout)
+    assert report["state"] == "degraded"
+    assert f"degraded: {PROVIDERS[-1]}: no logged-in broker account" in report["degraded"]
+    _logins(host, PROVIDERS)
+    healthy = json.loads(_check(host, "--json").stdout)
+    assert healthy == {"state": "healthy", "degraded": [], "notices": []}
+
+
+def test_the_broker_command_advises_a_login_for_each_missing_provider(host: dict) -> None:
+    _logins(host, PROVIDERS[:-1])
+    result = _script(host, "broker")
+    assert result.returncode == 0, result.stderr
+    assert f"auth-broker login {PROVIDERS[-1]}" in result.stdout
+    assert f"auth-broker login {PROVIDERS[0]}" not in result.stdout
+
+
+def test_the_monitor_alerts_once_per_change_and_closes_the_issue_on_recovery(host: dict) -> None:
+    log = _fake_gh(host)
+    first = _monitor(host)
+    assert first.returncode == 0, first.stdout + first.stderr
+    assert "unchanged" in first.stdout
+    assert not log.exists() and not host["notifications"].exists()
+
+    _logins(host, PROVIDERS[1:])
+    degraded = _monitor(host)
+    assert degraded.returncode == 0, degraded.stdout + degraded.stderr
+    gh_calls = log.read_text(encoding="utf-8")
+    assert "label create review-gateway-health" in gh_calls
+    assert "issue create" in gh_calls and "--title Review gateway degraded" in gh_calls
+    assert len(host["notifications"].read_text(encoding="utf-8").splitlines()) == 1
+
+    before = log.read_text(encoding="utf-8")
+    assert "unchanged" in _monitor(host).stdout
+    assert log.read_text(encoding="utf-8") == before
+    assert len(host["notifications"].read_text(encoding="utf-8").splitlines()) == 1
+
+    _logins(host, PROVIDERS[2:])
+    assert _monitor(host).returncode == 0
+    assert "issue edit 7" in log.read_text(encoding="utf-8")
+    assert len(host["notifications"].read_text(encoding="utf-8").splitlines()) == 2
+
+    _logins(host, PROVIDERS)
+    recovered = _monitor(host)
+    assert recovered.returncode == 0, recovered.stdout + recovered.stderr
+    assert "issue close 7" in log.read_text(encoding="utf-8")
+    notifications = host["notifications"].read_text(encoding="utf-8").splitlines()
+    assert len(notifications) == 3 and "recovered" in notifications[-1]
+    assert (host["dir"] / "monitor.state").read_text(encoding="utf-8") == "healthy\n"
+
+
+def test_a_monitor_run_whose_issue_cannot_be_filed_records_nothing_so_the_next_run_retries(host: dict) -> None:
+    _fake_gh(host, GH_FAIL_CREATE="1")
+    _logins(host, PROVIDERS[1:])
+    result = _monitor(host)
+    assert result.returncode != 0
+    assert not (host["dir"] / "monitor.state").exists()
+    assert len(host["notifications"].read_text(encoding="utf-8").splitlines()) == 1
+
+
+def test_the_issue_body_carries_no_gateway_url_or_home_path(host: dict) -> None:
+    log = _fake_gh(host)
+    host["served"].write_text("anthropic/from-develop\nopenai-codex/model-b\n", encoding="utf-8")
+    assert _monitor(host).returncode == 0
+    gh_calls = log.read_text(encoding="utf-8")
+    assert "issue create" in gh_calls and "lists 2 of the 3 granted models" in gh_calls
+    assert "ts.net" not in gh_calls and "127.0.0.1" not in gh_calls and str(host["home"]) not in gh_calls
+
+
+def test_check_refuses_an_unsafe_denylist_instead_of_skipping_it(host: dict) -> None:
+    _deny(host, "openai-codex", mode=0o644)
+    checked = _check(host)
+    assert checked.returncode == 1
+    assert "chmod 600" in checked.stderr
+
+
+def test_a_deliberate_removal_is_a_notice_and_does_not_alert(host: dict) -> None:
+    log = _fake_gh(host)
+    _deny(host, "openai-codex")
+    result = _monitor(host)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "unchanged" in result.stdout
+    assert not log.exists() and not host["notifications"].exists()
+
+
+def test_monitor_install_renders_a_fifteen_minute_agent_that_runs_the_monitor(host: dict) -> None:
+    result = _script(host, "monitor-install")
+    assert result.returncode == 0, result.stderr
+    plist = (host["home"] / "Library" / "LaunchAgents" / "dev.omp.review-gateway-monitor.plist").read_text(
+        encoding="utf-8"
+    )
+    assert "<key>StartInterval</key>\n  <integer>900</integer>" in plist
+    assert "<key>RunAtLoad</key>" in plist and "<key>KeepAlive</key>" not in plist
+    snapshot = host["dir"] / "monitor-host.sh"
+    assert (
+        "<string>/usr/bin/env</string>\n"
+        f"    <string>GATEWAY_HOST_REPO={host['checkout']}</string>\n"
+        f"    <string>/bin/bash</string>\n    <string>{snapshot}</string>\n    <string>monitor</string>"
+    ) in plist
+    assert str(host["script"]) not in plist
+    assert snapshot.read_bytes() == (host["origin"] / HOST_RELATIVE).read_bytes()
+    assert (snapshot.stat().st_mode & 0o777) == 0o700
+    assert "launchctl bootstrap" in host["calls"].read_text(encoding="utf-8")
+
+
+def test_the_host_script_names_no_provider_and_holds_no_provider_list() -> None:
+    script = (SCRIPTS / "oracle_gateway_host.sh").read_text(encoding="utf-8")
+    config = yaml.safe_load((REPO_ROOT / ".github" / "oracle-omp-config.yml").read_text(encoding="utf-8"))
+    targets = [*config["modelRoles"].values(), *config["retry"]["fallbackChains"]]
+    targets += [entry for chain in config["retry"]["fallbackChains"].values() for entry in chain]
+    for provider in {target.split("/", 1)[0] for target in targets}:
+        assert provider not in script
+    assert "PROVIDERS" not in script

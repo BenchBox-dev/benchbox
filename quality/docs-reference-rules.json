@@ -100,10 +100,12 @@
     {
       "id": "doc-link-and-example-checkers",
       "match": [
-        "scripts/validate_example_references.py"
+        "scripts/validate_example_references.py",
+        "scripts/check_make_targets.py",
+        "tests/unit/scripts/test_check_make_targets.py"
       ],
       "disposition": "governance-stays",
-      "reason": "Validates file references in the retained docs tree against retained example files; relative and external link checking moved to site CI."
+      "reason": "Validates file references in the retained docs tree against retained example files, and that every make target the retained docs name exists; relative and external link checking moved to site CI."
     },
     {
       "id": "publication-policy-readers",

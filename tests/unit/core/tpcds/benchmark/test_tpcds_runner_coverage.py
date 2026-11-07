@@ -768,3 +768,67 @@ def test_get_queries_returns_dict_with_string_keys(tpcds_benchmark):
     assert all(isinstance(k, str) for k in queries)
 
     assert all(isinstance(v, str) and len(v) > 0 for v in queries.values())
+
+
+def _recording_maintenance_test(configs):
+    class RecordingMaintenanceTest:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+        def run(self, config):
+            configs.append(config)
+            return {
+                "total_time": 1.0,
+                "total_operations": 0,
+                "successful_operations": 0,
+                "failed_operations": 0,
+                "overall_throughput": 0.0,
+                "operations": [],
+                "errors": [],
+                "seed": config.seed,
+            }
+
+    return RecordingMaintenanceTest
+
+
+def test_run_maintenance_test_passes_the_configured_seed(tpcds_benchmark, monkeypatch):
+    from benchbox.core.tpcds.benchmark.config import MaintenanceTestConfig
+
+    configs = []
+    monkeypatch.setattr(
+        "benchbox.core.tpcds.maintenance_test.TPCDSMaintenanceTest", _recording_maintenance_test(configs)
+    )
+
+    result = tpcds_benchmark.run_maintenance_test(connection=_Conn(), config=MaintenanceTestConfig(seed=4321))
+
+    assert configs[0].seed == 4321
+    assert result.seed == 4321
+
+
+def test_run_maintenance_test_without_a_seed_uses_the_default(tpcds_benchmark, monkeypatch):
+    from benchbox.core.tpcds.maintenance_operations import DEFAULT_MAINTENANCE_SEED
+
+    configs = []
+    monkeypatch.setattr(
+        "benchbox.core.tpcds.maintenance_test.TPCDSMaintenanceTest", _recording_maintenance_test(configs)
+    )
+
+    result = tpcds_benchmark.run_maintenance_test(connection=_Conn())
+
+    assert configs[0].seed == DEFAULT_MAINTENANCE_SEED
+    assert result.seed == DEFAULT_MAINTENANCE_SEED
+
+
+def test_official_run_threads_the_seed_into_the_maintenance_phase(tpcds_benchmark, monkeypatch):
+    monkeypatch.setattr(tpcds_benchmark, "run_power_test", lambda **kwargs: {"total_time": 1.0, "power_at_size": 16.0})
+    monkeypatch.setattr(
+        tpcds_benchmark,
+        "run_throughput_test",
+        lambda **kwargs: SimpleNamespace(throughput_at_size=9.0, success=True),
+    )
+    maintenance = Mock(return_value=SimpleNamespace(successful_operations=1, total_operations=1))
+    monkeypatch.setattr(tpcds_benchmark, "run_maintenance_test", maintenance)
+
+    tpcds_benchmark.run_official_benchmark(object(), adapter=object(), seed=2468)
+
+    assert maintenance.call_args.kwargs["config"].seed == 2468

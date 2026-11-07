@@ -479,8 +479,10 @@ class TestDriversMixin:
 
     def _execute_tpcds_maintenance_test(self, benchmark, connection: Any, run_config: dict) -> list[dict[str, Any]]:
 
-        from benchbox.core.tpcds.maintenance_test import TPCDSMaintenanceTest
+        from benchbox.core.tpcds.maintenance_operations import resolve_maintenance_seed
+        from benchbox.core.tpcds.maintenance_test import TPCDSMaintenanceTest, TPCDSMaintenanceTestConfig
 
+        self._last_maintenance_test_result = None
         self._plan_capture_checkpoint(connection)
 
         console = quiet_console
@@ -501,16 +503,25 @@ class TestDriversMixin:
                 conn_wrapper.scale_factor = scale_factor
                 return conn_wrapper
 
+            output_path = Path(output_dir) if isinstance(output_dir, str) else output_dir
             maintenance_test = TPCDSMaintenanceTest(
                 benchmark=benchmark,
                 connection_factory=connection_factory,
                 scale_factor=scale_factor,
-                output_dir=Path(output_dir) if isinstance(output_dir, str) else output_dir,
+                output_dir=output_path,
                 verbose=verbose,
                 dialect=self.get_target_dialect(),
             )
 
-            maintenance_test_result = maintenance_test.run()
+            maintenance_test_result = maintenance_test.run(
+                TPCDSMaintenanceTestConfig(
+                    scale_factor=scale_factor,
+                    verbose=verbose,
+                    output_dir=output_path,
+                    seed=resolve_maintenance_seed(run_config.get("seed")),
+                )
+            )
+            self._last_maintenance_test_result = maintenance_test_result
 
             if maintenance_test_result["success"]:
                 console.print("[green]✅ TPC-DS Maintenance Test completed[/green]")

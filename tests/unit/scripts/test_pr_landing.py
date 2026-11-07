@@ -1294,6 +1294,9 @@ with open(os.environ["CALLS"], "a", encoding="utf-8") as handle:
 if "--verify-parent" in sys.argv:
     sys.exit(int(os.environ.get("VERIFY_EXIT", "0")))
 if "scripts/oracle_local_review.py" in sys.argv:
+    if os.environ.get("LOCAL_REVIEW_CAUSE"):
+        with open(sys.argv[sys.argv.index("--unavailable-out") + 1], "w", encoding="utf-8") as handle:
+            handle.write("availability: " + os.environ["LOCAL_REVIEW_CAUSE"] + "\\n")
     sys.exit(int(os.environ["LOCAL_REVIEW_EXIT"]))
 if "scripts/pr_open_rest.py" in sys.argv:
     print(os.environ["PUBLISH"], 7, "https://github.com/BenchBox-dev/BenchBox/pull/7")
@@ -1340,6 +1343,7 @@ def _run_pr_open_result(
         "LOCAL_REVIEW_EXIT": str(local_review_exit),
         "HEAD_MOVES": "1" if head_moves else "",
         "VERIFY_EXIT": os.environ.get("VERIFY_EXIT", "0"),
+        "LOCAL_REVIEW_CAUSE": os.environ.get("LOCAL_REVIEW_CAUSE", ""),
     }
     result = subprocess.run(
         ["make", "-s", "pr-open", f"MAKE={stubs / 'fake-make'}", *variables],
@@ -1469,6 +1473,36 @@ def test_pr_open_with_a_refused_parent_stops_before_the_review_and_any_push(
 def test_pr_open_refuses_before_any_push_when_the_local_oracle_review_does_not_clear(
     tmp_path: Path, exit_code: int
 ) -> None:
+    result, calls, pushes = _run_pr_open_result(tmp_path, "created", exit_code)
+
+    assert result.returncode != 0
+    assert "local oracle review did not clear this head" in result.stderr.decode()
+    assert pushes == []
+    assert not [args for _, args in calls if "scripts/pr_open_rest.py" in args]
+
+
+@requires_posix_make
+def test_pr_open_opens_a_draft_with_the_cause_when_the_local_review_is_unavailable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("LOCAL_REVIEW_CAUSE", "gateway unreachable")
+    result, calls, pushes = _run_pr_open_result(tmp_path, "created", 2, "READY=1")
+
+    assert result.returncode == 0, result.stderr.decode()
+    (publisher,) = [args for name, args in calls if name == "uv" and "scripts/pr_open_rest.py" in args]
+    assert ("--local-review-unavailable", "gateway unreachable") in _adjacent(publisher)
+    assert "--draft" in publisher
+    assert len(pushes) == 1
+    assert not [m for m in _makes(calls) if "pr-arm" in m or "pr-ready" in m]
+    assert "hosted review-verdict decides" in result.stdout.decode()
+
+
+@requires_posix_make
+@pytest.mark.parametrize(("exit_code", "cause"), [(2, ""), (1, "gateway unreachable"), (3, "gateway unreachable")])
+def test_pr_open_still_refuses_unless_the_unavailable_exit_names_an_availability_cause(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, exit_code: int, cause: str
+) -> None:
+    monkeypatch.setenv("LOCAL_REVIEW_CAUSE", cause)
     result, calls, pushes = _run_pr_open_result(tmp_path, "created", exit_code)
 
     assert result.returncode != 0

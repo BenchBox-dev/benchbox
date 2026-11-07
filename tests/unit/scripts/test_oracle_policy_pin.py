@@ -102,6 +102,8 @@ def test_the_gate_paths_cover_the_theseus_wiring() -> None:
         "scripts/theseus_release_check.py",
         "tests/unit/scripts/test_theseus_release_check.py",
         "tests/unit/scripts/test_oracle_gateway_host.py",
+        "tests/unit/scripts/test_review_provider_diversity.py",
+        "tests/fixtures/review_provider_diversity/omp_catalog_windows.json",
         "tests/integration/oracle/test_curated_capture_fixtures.py",
         "tests/fixtures/oracle_reviewers/provenance.json",
         "_project/scripts/oracle_gateway_host.sh",

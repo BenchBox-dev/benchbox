@@ -1097,17 +1097,7 @@ def _build_phases_block(result: BenchmarkResults) -> dict[str, Any]:
     if result.execution_phases and result.execution_phases.throughput_test:
         phases["throughput_test"] = _throughput_phase_payload(result.execution_phases.throughput_test)
 
-    if result.execution_phases and result.execution_phases.migration:
-        m = result.execution_phases.migration
-        phases["migration"] = {
-            "status": m.status,
-            "duration_ms": m.duration_ms,
-            "tables_migrated": m.tables_migrated,
-            "tables_failed": m.tables_failed,
-            "storage_before_bytes": m.storage_before_bytes,
-            "storage_after_bytes": m.storage_after_bytes,
-            "storage_delta_bytes": m.storage_delta_bytes,
-        }
+    phases.update(_maintenance_and_migration_payloads(result.execution_phases))
 
     if isinstance(result.execution_metadata, Mapping):
         phase_status = result.execution_metadata.get("phase_status") or {}
@@ -1120,6 +1110,48 @@ def _build_phases_block(result: BenchmarkResults) -> dict[str, Any]:
             phases[phase] = {"status": "NOT_RUN"}
 
     return phases
+
+
+def _maintenance_and_migration_payloads(execution_phases: Any) -> dict[str, Any]:
+    payloads: dict[str, Any] = {}
+    if execution_phases is None:
+        return payloads
+    if execution_phases.maintenance_test:
+        payloads["maintenance_test"] = _maintenance_phase_payload(execution_phases.maintenance_test)
+    if execution_phases.migration:
+        m = execution_phases.migration
+        payloads["migration"] = {
+            "status": m.status,
+            "duration_ms": m.duration_ms,
+            "tables_migrated": m.tables_migrated,
+            "tables_failed": m.tables_failed,
+            "storage_before_bytes": m.storage_before_bytes,
+            "storage_after_bytes": m.storage_after_bytes,
+            "storage_delta_bytes": m.storage_delta_bytes,
+        }
+    return payloads
+
+
+def _maintenance_phase_payload(maintenance: Any) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "status": "COMPLETED" if maintenance.success else "FAILED",
+        "duration_ms": maintenance.duration_ms,
+        "operations": [
+            {
+                "operation": operation.operation,
+                "operation_type": operation.operation_type,
+                "table": operation.table,
+                "duration_ms": operation.execution_time_ms,
+                "rows_affected": operation.rows_affected,
+                "status": operation.status,
+                **({"error": operation.error_message} if operation.error_message else {}),
+            }
+            for operation in maintenance.maintenance_operations
+        ],
+    }
+    if maintenance.seed is not None:
+        payload["seed"] = maintenance.seed
+    return payload
 
 
 def _power_phase_payload(power_test: Any) -> dict[str, Any]:
