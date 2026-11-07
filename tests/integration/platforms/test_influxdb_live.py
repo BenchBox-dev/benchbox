@@ -70,13 +70,14 @@ class TestLiveInfluxDBQueryExecution:
 
         connection = influxdb_adapter.create_connection()
         try:
-            execution_time, row_count, error = influxdb_adapter.execute_query(
+            result = influxdb_adapter.execute_query(
                 connection,
                 "SELECT * FROM cpu",
                 query_id="Q0",
-                iteration=1,
+                validate_row_count=False,
             )
-            assert error is None
-            assert row_count >= 1
+            assert result["status"] == "SUCCESS"
+            assert result["rows_returned"] >= 1
+            assert result["fetch_mode"] == influxdb_adapter.fetch_mode
         finally:
             influxdb_adapter.close_connection(connection)
