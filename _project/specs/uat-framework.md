@@ -631,7 +631,7 @@ sees with the declaration (`tests/uat/declared_settings.py`):
 
 | Declared | What the container is asked | Failure when |
 |---|---|---|
-| memory | cgroup `memory.max` (or v1 `memory.limit_in_bytes`) and `/proc/meminfo` `MemTotal`; the smaller is the effective limit | effective limit is below 85% of the declared size |
+| memory | cgroup `memory.max` (or v1 `memory.limit_in_bytes`) and `/proc/meminfo` `MemTotal`; the smaller is the effective limit. Not probed for `clickhouse-server` and `starrocks`, whose runtime `stats` limit is already checked after the mocker memory reconcile | effective limit is below 85% of the declared size |
 | `ulimits` (`memlock`, `nofile`, `nproc`) | `ulimit -S` and `ulimit -H` for the matching resource | soft or hard limit is below the declaration, or not unlimited when `-1` is declared |
 | `platform` | `uname -m` | machine does not match `linux/amd64` or `linux/arm64` |
 | `entrypoint` | the marker file `/tmp/.benchbox-entrypoint-applied` | marker absent |

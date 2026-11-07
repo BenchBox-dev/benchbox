@@ -9,6 +9,8 @@ import pytest
 from benchbox.utils import host_lock
 from tests.uat import declared_settings, docker_assets, managed_runtime, matrix
 from tests.uat.config import validate_config
+from tests.uat.conftest import healthy_ps_stdout, platform_reachability
+from tests.uat.phases import execute as exec_phase
 
 GIB = 1024**3
 
@@ -345,3 +347,53 @@ def test_managed_check_is_skipped_in_a_dry_run(tmp_path: Path):
         benchmark_runs_dir=tmp_path,
     )
     assert reason is None and runner.calls == []
+
+
+def test_memory_is_left_to_the_runtime_stats_check_for_clickhouse_and_starrocks():
+    env = {"CLICKHOUSE_MEMORY_LIMIT": "4g"}
+    for platform in ("clickhouse-server", "starrocks"):
+        declared = declared_settings.compose_declared_settings(docker_assets.docker_platform_spec(platform), env=env)
+        assert all(settings.memory_bytes is None for settings in declared.values())
+
+
+def _readiness(tmp_path: Path, probe_stdout: str, *, reachable: bool = True):
+    events: list = []
+
+    def runner(argv, **kwargs):
+        stdout = probe_stdout if "exec" in argv else healthy_ps_stdout("doris")
+        return docker_assets.DockerCommandResult(tuple(argv), 0, stdout, "")
+
+    with platform_reachability(reachable):
+        reason = exec_phase._check_docker_platform_readiness(
+            _config("doris"),
+            spec=docker_assets.docker_platform_spec("doris"),
+            project_name="proj",
+            platform="doris",
+            docker_runner=runner,
+            docker_events=events,
+            log_dir=None,
+            benchmark_runs_dir=tmp_path,
+            sleep_fn=lambda seconds: None,
+            memory_reader=lambda: None,
+        )
+    return reason, events
+
+
+def test_execute_readiness_fails_a_started_stack_whose_engine_dropped_a_declared_setting(tmp_path: Path):
+    reason, events = _readiness(tmp_path, _probe(entrypoint_marker="absent"))
+    assert reason is not None
+    assert "declared-settings check failed for doris" in reason
+    assert "entrypoint: declared entrypoint did not run" in reason
+    assert [event.status for event in events if event.action == "declared-settings"] == ["failed"]
+    assert not any(event.action == "readiness" and event.status == "ok" for event in events)
+
+
+def test_execute_readiness_names_the_dropped_setting_even_when_the_server_is_unreachable(tmp_path: Path):
+    reason, _ = _readiness(tmp_path, _probe(entrypoint_marker="absent"), reachable=False)
+    assert reason is not None and "declared-settings check failed" in reason
+
+
+def test_execute_readiness_passes_when_every_declared_setting_was_applied(tmp_path: Path):
+    reason, events = _readiness(tmp_path, _probe())
+    assert reason is None
+    assert ("declared-settings", "ok") in [(event.action, event.status) for event in events]

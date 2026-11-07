@@ -13,6 +13,7 @@ from tests.uat import docker_assets
 ENTRYPOINT_MARKER_PATH = "/tmp/.benchbox-entrypoint-applied"
 
 MEMORY_SHORTFALL_TOLERANCE = 0.85
+MEMORY_VERIFIED_BY_RUNTIME_STATS = frozenset({"clickhouse-server", "starrocks"})
 
 _UNLIMITED = -1
 _CGROUP_UNLIMITED_FLOOR = 1 << 60
@@ -152,7 +153,9 @@ def compose_declared_settings(
             platform = service.get("platform")
             settings = DeclaredServiceSettings(
                 service=str(name),
-                memory_bytes=_declared_memory(service, environment),
+                memory_bytes=None
+                if spec.platform in MEMORY_VERIFIED_BY_RUNTIME_STATS
+                else _declared_memory(service, environment),
                 ulimits=_declared_ulimits(service.get("ulimits"), environment),
                 platform=_interpolate(platform, environment) if platform else None,
                 entrypoint=bool(entrypoint),
