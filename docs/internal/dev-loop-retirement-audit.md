@@ -103,36 +103,92 @@ The later capability-preserving consolidation decision supersedes the original
 | --- | --- | --- |
 | Public Make targets, same database method | 211 | 190 |
 | Retained workflow files | 46 | 42 |
-| T1 CI job p95, including job setup | 1,458 s | 669 s; n=2, cleanup-only cohort, not a trailing-30-day measurement |
-| T2 CI job p95, collector through last shard | 1,761 s | 980 s; n=2, the same cleanup-only cohort |
-| Merges per day | 401 merged PRs / 30 days | Unavailable: no current merged-PR cohort result is asserted. |
-| PR CI run-level retry rate | No comparable all-attempt denominator captured | Unavailable from the legacy report; requires the all-attempt usage report. First-pass green rate is not retry rate. |
-| Red-Trunk incidents | Historical report says zero, using queue failures and incident labels | Not measured by the legacy collector. Count failed `develop` push attempts until recovery using current Trunk history, not incident-label absence. |
+| T1 CI job p95, including job setup | 1,458 s | 943 s; n=43 successful, unretried CI runs in the bounded cohort below |
+| T2 CI job p95, collector through last shard | 1,761 s | 1,165 s; n=43, the same bounded cohort |
+| Merges per day | 401 merged PRs / 30 days | 45 merged `develop` PRs / 1 day |
+| PR CI run-level retry rate | No comparable all-attempt denominator captured | 39 of 140 runs, or 27.9%; reruns are not necessarily flakes |
+| Red-Trunk incidents | Historical report says zero, using queue failures and incident labels | 3 incident groups opened in the bounded window; all recovered within it. Carry-in red state is not measured. |
 
-The timed-out collector source is Git blob
-`bea8ba830091645bf956133498d70aad059011cf`, available at the audit source revision.
-No missing measurement above is a zero or a threshold pass.
+### Current bounded cohort
 
-The bounded timing cohort consists only of successful first-attempt full CI runs
-on the final merged heads of the two cleanup changes:
+The current snapshot covers runs created from `2026-11-06T18:00:00Z` through
+`2026-11-07T18:00:00Z`, inclusive. Authenticated API retrieval completed on
+2026-11-07 at approximately 19:09 UTC. This is a one-day current snapshot, not
+the separate post-cleanup 30-day comparison.
 
-- [Makefile consolidation run 42393941936](https://github.com/BenchBox-dev/benchbox/actions/runs/42393941936),
-  head `5f358660623fdfb9acacb147f9c0c917277d27a0`.
-- [Documentation cleanup run 42398430449](https://github.com/BenchBox-dev/benchbox/actions/runs/42398430449),
-  head `8f0e4706427625dbbdcf39d2717e95890d0ed7ca`.
+The workflow-specific listings were complete: 140 `ci.yml` / `pull_request`
+runs and 45 `trunk.yml` / `push` / `develop` runs. Pagination returned the same
+number of unique run IDs as each endpoint's `total_count`, below the 1,000-run
+search cap. The merged-PR search returned all 45 results with
+`incomplete_results=false`.
 
-The authenticated Actions API supplied attempt-1 job timestamps. T1 selects the
-single successful `test (ubuntu-latest, 3.14)` job, including setup. T2 measures
-from `medium-collect` start through the last of all four shard completions.
-The existing `_pct` and `_partitioned_medium_seconds` helpers at
-`ec29389e7e8f6492c39cce84f799e5273d47287e` compute the two distributions.
-This deliberately narrow cohort cannot certify a change against the 30-day
-baseline. Its observed p95s exceed the nominal seven- and fifteen-minute goals.
+Reproduce the cohort queries with:
 
-The full 30-day timing cohort remains unavailable: the legacy collector timed out
-after 3,600 seconds without a snapshot, and its fast-job selector still names
-Python 3.12. Neither the timeout nor the bounded observation is a substitute for
-the separate 30-day comparison.
+```bash
+gh api --paginate --slurp \
+  'repos/BenchBox-dev/benchbox/actions/workflows/ci.yml/runs?event=pull_request&created=2026-11-06T18:00:00Z..2026-11-07T18:00:00Z&per_page=100'
+gh api --paginate --slurp \
+  'repos/BenchBox-dev/benchbox/actions/workflows/trunk.yml/runs?event=push&branch=develop&created=2026-11-06T18:00:00Z..2026-11-07T18:00:00Z&per_page=100'
+gh api --method GET search/issues \
+  -f q='repo:BenchBox-dev/benchbox is:pr is:merged base:develop merged:2026-11-06T18:00:00Z..2026-11-07T18:00:00Z' \
+  -f per_page=100
+```
+
+The retry numerator counts listed CI runs whose observed `run_attempt` exceeds
+one; the denominator includes all listed CI runs, including failures and
+cancellations. Attempts are observed at retrieval time, not frozen at the cohort
+end. Separate replacement runs do not count as reruns. This is a run-level retry
+proxy, not a measured flaky-test rate.
+
+Timing selects the 43 CI runs whose latest conclusion was success and
+`run_attempt` was one. Every selected run had a complete attempt-1 jobs response,
+one successful `test (ubuntu-latest, 3.14)` job and all five medium jobs.
+T1 uses that fast job's start and completion timestamps, including setup.
+T2 uses `medium-collect` start through the last of all four shard completions.
+The existing `_elapsed_seconds`, `_partitioned_medium_seconds` and `_pct`
+helpers at `d408b43bd1b0a89953ed6d4b3b4f0d3f22a67864` derive the durations and p95.
+Failed, cancelled and rerun CI runs are excluded from the timing distributions.
+Both observed p95s exceed the nominal seven- and fifteen-minute goals.
+
+The selected run IDs are:
+
+```text
+42276330949, 42291373929, 42294001933, 42297773394, 42298302467, 42300885453, 42302973276, 42303066477
+42314865320, 42321241073, 42321630334, 42322831612, 42324358336, 42324641405, 42327299667, 42327397198
+42328071196, 42329613436, 42329707372, 42330740235, 42331963709, 42333488467, 42333658561, 42335435960
+42341229787, 42342740969, 42343459298, 42344340347, 42345646964, 42347149599, 42351845692, 42356878831
+42358981121, 42384221820, 42389122473, 42389759390, 42389955577, 42393293583, 42393941936, 42394716919
+42396595088, 42396615190, 42398430449
+```
+
+Retrieve each selected run's jobs with
+`gh api --paginate --slurp repos/BenchBox-dev/benchbox/actions/runs/<id>/attempts/1/jobs?per_page=100`.
+
+Trunk uses each run's latest metadata plus every earlier attempt's metadata
+from `actions/runs/<id>/attempts/<number>`. The existing `run_facts`,
+`_trunk_outcomes` and `_trunk_incidents` helpers at the same revision group the
+33 conclusive attempt results whose completion timestamps fall inside the
+window. No job-duration data is needed for this incident calculation.
+
+| First red run | Opened, UTC | Recovered, UTC |
+| --- | --- | --- |
+| [42366385936](https://github.com/BenchBox-dev/benchbox/actions/runs/42366385936) | 2026-11-07 11:14:22 | 2026-11-07 14:34:18 |
+| [42366385936](https://github.com/BenchBox-dev/benchbox/actions/runs/42366385936), later attempt | 2026-11-07 14:44:48 | 2026-11-07 15:30:54 |
+| [42390745012](https://github.com/BenchBox-dev/benchbox/actions/runs/42390745012) | 2026-11-07 16:40:59 | 2026-11-07 16:59:02 |
+
+This counts groups opening among the observed results, not red state carried
+into the window. It does not use the absence of incident labels as evidence.
+
+### Full-cohort collection limits
+
+The legacy 30-day collector timed out after 3,600 seconds without a snapshot;
+its fast-job selector still names Python 3.12. Its source is Git blob
+`bea8ba830091645bf956133498d70aad059011cf` at the audit source revision.
+The all-workflow usage report below also timed out after 3,600 seconds, after
+reporting 3,000 of 36,479 runs processed. Its resumable response cache remains
+outside the repository. Neither timeout is a zero, a threshold pass, or a
+substitute for the separate 30-day comparison. The bounded snapshot above does
+not claim complete runner usage, required-gate timing or flaky-test attribution.
 
 The specified record-based Make database filter and the maintained
 `scripts.check_make_targets.targets` parser both returned 211 and 190. To
