@@ -1158,6 +1158,34 @@ def _trailing_test_run_start(command: list) -> int | None:
     return start
 
 
+def _plainly_deleted(repo: Path, anchor: str, tip: str, path: str) -> bool:
+    diff = subprocess.run(
+        ["git", "diff", "-M", "--name-status", "-z", anchor, tip],
+        cwd=repo,
+        check=False,
+        capture_output=True,
+        encoding="utf-8",
+        timeout=120,
+    )
+    if diff.returncode != 0:
+        return False
+    tokens = diff.stdout.split("\0")
+    deleted = False
+    index = 0
+    while index < len(tokens) and tokens[index]:
+        status = tokens[index]
+        width = 2 if status[0] in "RC" else 1
+        names = tokens[index + 1 : index + 1 + width]
+        if len(names) != width:
+            return False
+        if status == "D" and names[0] == path:
+            deleted = True
+        if status[0] in "RC" and names[0] == path:
+            return False
+        index += 1 + width
+    return deleted
+
+
 def _check_dropped_paths(
     repo: Path, member: str, row: dict, recorded: object, head: str, base: str | None, tracker: dict
 ) -> list[str]:
@@ -1197,6 +1225,14 @@ def _check_dropped_paths(
                 f"current acceptance for member {member} dropped {path}, which did not exist on develop "
                 "at the batch start or any merged develop parent"
             )
+        else:
+            for anchor, present in zip(anchors, seen, strict=True):
+                if present and not _plainly_deleted(repo, anchor, base, file_part):
+                    failures.append(
+                        f"current acceptance for member {member} dropped {path}, which develop did not plainly "
+                        "delete (a rename, copy or unreadable diff)"
+                    )
+                    break
         for label, revision in (("PR head", head), ("PR base", base)):
             present = _present_in_tree(repo, revision, file_part)
             if present is None:

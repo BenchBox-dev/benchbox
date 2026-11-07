@@ -1686,10 +1686,11 @@ RAN_COMMAND = ["pytest", "a", "-q", "tests/here.py::test_one"]
 def _dropped_batch(tmp_path: Path, mode: str = "owned") -> tuple[fx.BatchFixture, dict, str]:
     repo = _repo(tmp_path / "r")
     base = ""
-    if mode == "owned":
+    if mode in ("owned", "renamed"):
         fx.write_commit(repo, {"tests/gone.py": "old\n"}, "develop adds test")
         fx.git(repo, "checkout", "-q", "-b", "dev")
-        base = fx.write_commit(repo, {"tests/gone.py": None}, "develop deletes test")
+        moved = {"tests/gone_new.py": "old\n"} if mode == "renamed" else {}
+        base = fx.write_commit(repo, {"tests/gone.py": None, **moved}, "develop deletes or renames test")
         fx.git(repo, "checkout", "-q", "main")
     elif mode == "reused":
         fx.write_commit(repo, {"tests/gone.py": "old\n"}, "develop adds test")
@@ -1720,6 +1721,14 @@ def test_batch_evidence_accepts_a_develop_deleted_path_with_the_matching_ran_com
     batch, evidence, base = _dropped_batch(tmp_path)
 
     assert _dropped_verdict(batch, evidence, base) == []
+
+
+def test_batch_evidence_refuses_a_path_develop_renamed(tmp_path: Path) -> None:
+    batch, evidence, base = _dropped_batch(tmp_path, "renamed")
+
+    failures = _dropped_verdict(batch, evidence, base)
+
+    assert any("did not plainly delete" in failure for failure in failures)
 
 
 @pytest.mark.parametrize("mode", ["member", "reused"])

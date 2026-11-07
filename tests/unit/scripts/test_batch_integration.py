@@ -828,6 +828,18 @@ def _develop_deletes(world: World, *paths: str) -> tuple[Path, str]:
     return integration, base
 
 
+def test_a_rerun_does_not_drop_a_test_develop_renamed(world: World) -> None:
+    integration = world.start()
+    git(world.seed, "mv", "tests/test_alpha.py", "tests/test_alpha_new.py")
+    git(world.seed, "commit", "-qm", "develop renames the test")
+    git(world.seed, "push", "-q", "origin", "develop")
+    git(integration, "fetch", "-q", "origin")
+    git(integration, "merge", "-q", "--no-edit", bi.DEVELOP_REF)
+    recorded = [*PYTEST, "tests/test_zeta.py", "tests/test_alpha.py"]
+    entry = bi._rerun(integration, _ledger(integration), "zeta", recorded, "member-tests", "fix:x")
+    assert entry["dropped_paths"] == [] and entry["ran_command"] == recorded
+
+
 def test_a_rerun_drops_a_develop_deleted_test_path_runs_the_rest_and_records_both_commands(world: World) -> None:
     integration, _ = _develop_deletes(world, "tests/test_alpha.py")
     recorded = [*PYTEST, "tests/test_zeta.py::test_one", "tests/test_alpha.py"]

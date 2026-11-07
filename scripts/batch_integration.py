@@ -763,10 +763,42 @@ def _develop_anchors(repo: Path, ledger: dict) -> list[str] | None:
     return anchors
 
 
+def _plainly_deleted(repo: Path, anchor: str, tip: str, path: str) -> bool:
+    diff = subprocess.run(
+        ["git", "diff", "-M", "--name-status", "-z", anchor, tip],
+        cwd=repo,
+        check=False,
+        capture_output=True,
+        encoding="utf-8",
+        timeout=120,
+    )
+    if diff.returncode != 0:
+        return False
+    tokens = diff.stdout.split("\0")
+    deleted = False
+    index = 0
+    while index < len(tokens) and tokens[index]:
+        status = tokens[index]
+        width = 2 if status[0] in "RC" else 1
+        names = tokens[index + 1 : index + 1 + width]
+        if len(names) != width:
+            return False
+        if status == "D" and names[0] == path:
+            deleted = True
+        if status[0] in "RC" and names[0] == path:
+            return False
+        index += 1 + width
+    return deleted
+
+
 def _deleted_by_develop(repo: Path, path: str, anchors: list[str]) -> bool:
     if (repo / path).exists() or _tree_has(repo, DEVELOP_REF, path) is not False:
         return False
-    return any(_tree_has(repo, anchor, path) is True for anchor in anchors)
+    states = [_tree_has(repo, anchor, path) for anchor in anchors]
+    if None in states:
+        return False
+    existing = [anchor for anchor, present in zip(anchors, states, strict=True) if present]
+    return bool(existing) and all(_plainly_deleted(repo, anchor, DEVELOP_REF, path) for anchor in existing)
 
 
 def _trailing_test_run_start(command: list[str]) -> int | None:
