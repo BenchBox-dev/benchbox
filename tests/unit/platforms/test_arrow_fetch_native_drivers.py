@@ -8,6 +8,7 @@ pa = pytest.importorskip("pyarrow")
 
 from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW, FETCH_MODE_ROWS
 from benchbox.core.results.result_digest import compute_result_digest
+from benchbox.platforms.base.arrow_result import ArrowRows
 from benchbox.platforms.base.result_capture import materialized_result_validation
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -178,10 +179,45 @@ class TestClickHouseLocalFetchMode:
         result = self._client(TABLE).execute("SELECT 1")
         assert len(result) == 3
 
-    def test_rows_stay_the_default(self):
+    def test_local_mode_defaults_to_arrow(self):
         from benchbox.platforms.clickhouse import ClickHouseAdapter
 
-        assert ClickHouseAdapter.default_fetch_mode == FETCH_MODE_ROWS
+        assert (
+            ClickHouseAdapter.default_fetch_mode.fget(self._config_only({"deployment_mode": "local"}))
+            == FETCH_MODE_ARROW
+        )
+        assert ClickHouseAdapter.default_fetch_mode.fget(self._config_only({})) == FETCH_MODE_ARROW
+
+    @pytest.mark.parametrize(
+        "config",
+        [{"deployment_mode": "server"}, {"deployment_mode": "cloud", "_is_cloud_subclass": True}],
+    )
+    def test_server_and_cloud_modes_default_to_rows(self, config):
+        from benchbox.platforms.clickhouse import ClickHouseAdapter
+
+        assert ClickHouseAdapter.default_fetch_mode.fget(self._config_only(config)) == FETCH_MODE_ROWS
+
+    @staticmethod
+    def _config_only(config):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(platform_config=config)
+
+    def test_local_mode_rows_keep_null_aggregates_as_none(self):
+        table = pa.table({"avg_yearly": pa.array([None], type=pa.float64())})
+        rows = self._client(table).execute("SELECT 1").fetchall()
+        assert rows == [(None,)]
+        assert compute_result_digest(rows) == compute_result_digest(list(ArrowRows(table)))
+
+    def test_local_mode_rows_keep_nulls_in_integer_columns_exact(self):
+        rows = self._client(TABLE).execute("SELECT 1").fetchall()
+        assert rows == ROWS
+        assert type(rows[0][0]) is int
+
+    def test_local_mode_rows_of_an_empty_result_are_empty(self):
+        result = self._client(pa.table({})).execute("SELECT 1")
+        assert len(result) == 0
+        assert result.fetchone() is None
 
     @pytest.mark.parametrize("mode", [FETCH_MODE_ROWS, FETCH_MODE_ARROW])
     def test_workload_records_the_mode_and_returns_identical_rows(self, mode, monkeypatch):
