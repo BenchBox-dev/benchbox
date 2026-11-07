@@ -9438,10 +9438,15 @@
       "title": "BenchBox MCP Server for AI Agent Integration"
     },
     "benchbox-pr-open-preflight-receipt-20261107": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T17:29:18Z",
+        "generation": "c37dbf5c18644b88ba763c150a53432d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "make pr-open requires a preflight receipt bound to the pushed tree and shows it in the PR body"
     },
     "benchbox-relock-theseus-v017-20261105": {
