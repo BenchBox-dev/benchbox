@@ -11443,7 +11443,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "Keep the Databricks deferred plan-capture live check as an opt-in test and exercise the stock CLI path"
     },
     "databricks-example-modernization-completed": {
