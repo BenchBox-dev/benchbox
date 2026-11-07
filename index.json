@@ -4571,6 +4571,66 @@
       "start_head": "e3b793bdf55a538e06c8dcffd5530fc548fedad9",
       "terminal_outcome": "deliver"
     },
+    "tpcds-dsdgen-maintenance": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/tpcds-dsdgen-maintenance",
+      "integration_head": "006703692cf0ab94d9709a45a6b62e6e991fe854",
+      "integration_log": [
+        {
+          "at": "2026-11-07T04:13:50Z",
+          "head": "006703692cf0ab94d9709a45a6b62e6e991fe854",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcds-dsdgen-maintenance",
+      "lifecycle": "active",
+      "members": [
+        "tpcds-maintenance-dsdgen-refresh-data-20261103"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "owner_epoch": 0,
+      "owner_generation": "9599b826d6efd459838c5d495aea4340",
+      "project_id": "benchbox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "tpcds-maintenance-dsdgen-refresh-data-20261103": [
+          "benchbox/cli/commands/compare.py",
+          "benchbox/cli/dryrun.py",
+          "benchbox/core/analysis/comparison.py",
+          "benchbox/core/contracts/*",
+          "benchbox/core/dryrun.py",
+          "benchbox/core/results/*",
+          "benchbox/core/tpcds/*",
+          "benchbox/platforms/base/*",
+          "benchbox/platforms/duckdb.py",
+          "benchbox/platforms/postgresql.py",
+          "benchbox/platforms/singlestore.py",
+          "benchbox/platforms/sqlite.py",
+          "tests/integration/test_tpc_power_tests.py",
+          "tests/integration/test_tpcds_*",
+          "tests/unit/core/results/*",
+          "tests/unit/core/test_tpcds_*",
+          "tests/unit/core/test_tpc_*",
+          "tests/unit/core/tpcds/*",
+          "tests/unit/platforms/*",
+          "tests/unit/test_cli_dryrun_test_modes.py",
+          "docs/internal/tpc-measured-intervals.md",
+          "quality/*",
+          "tests/fixtures/*",
+          "changelog.d/feat-tpcds-dsdgen-maintenance--tpcds-maintenance-dsdgen-refresh-data-20261103*"
+        ]
+      },
+      "scope_hash": "54ad11b93182b6bc80dc714388c17056c8b3f18cfe85c21623a955e0f6f0d68b",
+      "start_head": "006703692cf0ab94d9709a45a6b62e6e991fe854",
+      "terminal_outcome": "deliver"
+    },
     "tpch-refresh-path": {
       "accepted_members": {
         "perf-tpch-rf1-bulk-load-20261031": "5e88433033745c63876856eec5cf25b1efbe8453",
