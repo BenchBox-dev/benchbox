@@ -167,54 +167,12 @@ tpchavoc-dataframe-equivalence-report:
 EXECUTION_ENGINE ?=
 EXECUTION_ENGINE_OPTION = $(if $(strip $(EXECUTION_ENGINE)),--execution-engine $(EXECUTION_ENGINE),)
 
-.PHONY: ssb-cross-surface-equivalence-report
-ssb-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark ssb $(EXECUTION_ENGINE_OPTION)
+CROSS_SURFACE_ARGS_tpcds := --backend expression --backend datafusion
 
-.PHONY: amplab-cross-surface-equivalence-report
-amplab-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark amplab $(EXECUTION_ENGINE_OPTION)
-
-.PHONY: coffeeshop-cross-surface-equivalence-report
-coffeeshop-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark coffeeshop $(EXECUTION_ENGINE_OPTION)
-
-.PHONY: clickbench-cross-surface-equivalence-report
-clickbench-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark clickbench $(EXECUTION_ENGINE_OPTION)
-
-.PHONY: joinorder-synthetic-cross-surface-equivalence-report
-joinorder-synthetic-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark joinorder_synthetic $(EXECUTION_ENGINE_OPTION)
-
-.PHONY: h2odb-cross-surface-equivalence-report
-h2odb-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark h2odb $(EXECUTION_ENGINE_OPTION)
-
-.PHONY: read-primitives-cross-surface-equivalence-report
-read-primitives-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark read_primitives $(EXECUTION_ENGINE_OPTION)
-
-flightdata-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark flightdata $(EXECUTION_ENGINE_OPTION)
-
-datavault-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark datavault $(EXECUTION_ENGINE_OPTION)
-
-nyctaxi-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark nyctaxi $(EXECUTION_ENGINE_OPTION)
-
-tsbs-devops-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark tsbs_devops $(EXECUTION_ENGINE_OPTION)
-
-tpch-skew-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark tpch_skew $(EXECUTION_ENGINE_OPTION)
-
-tpch-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark tpch $(EXECUTION_ENGINE_OPTION)
-
-tpcds-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark tpcds --backend expression --backend datafusion $(EXECUTION_ENGINE_OPTION)
+.PHONY: cross-surface-equivalence-report
+cross-surface-equivalence-report:
+	@[ -n "$(CROSS_SURFACE_BENCHMARK)" ] || { echo "CROSS_SURFACE_BENCHMARK is required: a gate name from benchbox.core.equivalence.cross_surface.GATES, for example tpch or joinorder_synthetic" >&2; exit 2; }
+	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark $(CROSS_SURFACE_BENCHMARK) $(if $(CROSS_SURFACE_BACKEND),--backend $(CROSS_SURFACE_BACKEND),$(CROSS_SURFACE_ARGS_$(CROSS_SURFACE_BENCHMARK)) $(EXECUTION_ENGINE_OPTION))
 
 .PHONY: polars-df-compat-check
 polars-df-compat-check:
@@ -231,10 +189,6 @@ polars-df-compat-check:
 		uv run --no-sync -- python -m benchbox.core.equivalence.cross_surface --benchmark "$$benchmark"; \
 	done; \
 	uv run --no-sync -- python -m benchbox.core.equivalence.cross_surface --benchmark tpcds --backend expression --backend datafusion
-
-.PHONY: tpcds-pandas-cross-surface-equivalence-report
-tpcds-pandas-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark tpcds --backend pandas
 
 .PHONY: tpcds-cross-surface-draws-report
 tpcds-cross-surface-draws-report:

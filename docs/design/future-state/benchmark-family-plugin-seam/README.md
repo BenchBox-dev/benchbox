@@ -65,7 +65,7 @@ The first interface should be small and registry-backed:
 This interface is piloted on SSB only. SSB is `support_status: stable`,
 declares scale `0.01` (about 1-5 minutes, synthetic data), has
 `supports_streams: false`, and already has
-`make ssb-cross-surface-equivalence-report`. JoinOrder cannot produce a cheap
+`make cross-surface-equivalence-report CROSS_SURFACE_BENCHMARK=ssb`. JoinOrder cannot produce a cheap
 before/after measurement (canonical scale 1.0, licensing, no CI path). TPC-DS
 streams and compliance would obscure the seam. TPC-H is runnable at 0.01 but
 has `supports_streams: true`.
