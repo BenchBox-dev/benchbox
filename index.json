@@ -1112,6 +1112,57 @@
       "start_head": "20a0045113e6c8ba13c3e7c4f78351e3fe81f81e",
       "terminal_outcome": "deliver"
     },
+    "hold-label-and-batch-e2e-v2-20261106": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/hold-label-and-batch-e2e-v2-20261106",
+      "integration_head": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67",
+      "integration_log": [
+        {
+          "at": "2026-11-07T00:31:48Z",
+          "head": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-feat-hold-label-and-batch-e2e-v2",
+      "lifecycle": "active",
+      "members": [
+        "pr-hold-stale-label-suite-unclearable-20261106",
+        "batch-loop-e2e-review-binding-failures-20261106"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae",
+      "owner_epoch": 0,
+      "owner_generation": "478d8db66682f1916d545ebd2e541723",
+      "project_id": "benchbox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "batch-loop-e2e-review-binding-failures-20261106": [
+          ".github/workflows/batch-loop-e2e.yml",
+          "tests/unit/workflows/test_batch_loop_e2e_workflow.py",
+          "tests/integration/worktree/test_batch_loop_e2e.py",
+          "tests/integration/worktree/batch_loop_*",
+          "docs/internal/dev-loop-property-ledger.md",
+          "changelog.d/batch-loop-e2e*"
+        ],
+        "pr-hold-stale-label-suite-unclearable-20261106": [
+          ".github/workflows/pr-hold.yml",
+          "tests/unit/workflows/test_pr_hold_workflow.py",
+          "docs/agent/merge-authority.md",
+          "docs/internal/repo-admin-settings.md",
+          "docs/internal/dev-loop-property-ledger.md",
+          "changelog.d/pr-hold*"
+        ]
+      },
+      "scope_hash": "aaf6ea6cf9b03bbf146d8c376d963309ee0134b7b0bab8c6b6fc12cdd180d7dd",
+      "start_head": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67",
+      "terminal_outcome": "deliver"
+    },
     "load-path-live-fixes": {
       "accepted_members": {
         "databend-load-file-method-arg-20261106": "722e7ddb5891672deca7a840a373ac18985a816b",
