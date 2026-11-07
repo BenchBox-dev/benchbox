@@ -26759,10 +26759,15 @@
       "title": "`make pr-preflight` does not run the landing quickstarts check, so stale quickstarts surface only in CI"
     },
     "pr-preflight-linux-vm-env-failures-20261102": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T16:29:10Z",
+        "generation": "d002ba5174094d9ebb23c829520eec6d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Two tests fail in make pr-preflight's Linux VM leg on unmodified develop"
     },
     "pr-preflight-maps-no-tests-for-workflow-edits-20261031": {
