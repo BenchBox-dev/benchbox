@@ -12,8 +12,9 @@ import tarfile
 import traceback
 import zipfile
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
+RELEASE_TAG = re.compile(r"v(\d+\.\d+\.\d+(?:(?:a|b|rc)\d+)?)")
 FINAL_TAG = re.compile(r"v(\d+\.\d+\.\d+)")
 RC_TAG = re.compile(r"v(\d+\.\d+\.\d+)rc(\d+)")
 GATE_JOB_NAME = "release UAT gate"
@@ -28,18 +29,34 @@ GUARDED_TREES = (
     "scripts/uat-bring-up",
 )
 WORKFLOW_PATH = ".github/workflows/release-v2.yml"
+TRUNK_WORKFLOW_FILE = "trunk-uat.yml"
+TRUNK_WORKFLOW_PATH = ".github/workflows/trunk-uat.yml"
+TRUNK_GUARDED_TREES = (*GUARDED_TREES, TRUNK_WORKFLOW_PATH)
+TRUNK_BRANCH = "develop"
+TRUNK_REF = f"refs/remotes/origin/{TRUNK_BRANCH}"
+TRUNK_EVENTS = ("schedule", "workflow_dispatch")
+TRUNK_RUN_LIMIT = 15
+TRUNK_RUN_PAGE = 50
+TRUNK_GATE_ARTIFACT = re.compile(r"trunk-uat-gate-([0-9a-f]{40})")
 STAGE_JOBS = ("uat-stage1", "uat-stage2", "uat-stage3")
 SCHEDULING_KEYS = ("needs", "if")
 VERDICT_GREEN = "green"
+RETRY_PASSED = "retry_passed"
+RETRYABLE_FIRST_ATTEMPT_STATUSES = ("failed", "timed-out")
 PLACEHOLDER = b"@@VERSION@@"
 IGNORED = object()
 MAX_MEMBER_BYTES = 512 * 1024 * 1024
+
+KIND_TRUNK = "trunk"
+KIND_RELEASE_CANDIDATE = "release-candidate"
 
 _VERSION_LINE = "Version: {v}"
 _RELEASE_LINE = "Current release: v{v}."
 _RELEASE_LINE_CODE = "Current release: `v{v}`."
 _DUNDER_LINE = '__version__ = "{v}"'
 _PYPROJECT_LINE = 'version = "{v}"'
+_WHEEL_NAME = re.compile(r"benchbox-([^-]+)-[^/\\]+\.whl")
+_SDIST_NAME = re.compile(r"benchbox-(.+)\.tar\.gz")
 
 WHEEL_RULES: dict[str, Any] = {
     "benchbox/__init__.py": (_DUNDER_LINE,),
@@ -72,7 +89,7 @@ class Report:
         lines = [
             "### Release UAT evidence reuse",
             "",
-            f"Decision: **{'reuse the release candidate evidence' if reuse else 'run the full UAT stages'}**",
+            f"Decision: **{'reuse earlier UAT evidence' if reuse else 'run the full UAT stages'}**",
             "",
             "| Condition | Result | Detail |",
             "| --- | --- | --- |",
@@ -80,6 +97,23 @@ class Report:
         for condition, ok, detail in self.rows:
             lines.append(f"| {condition} | {'pass' if ok else 'FAIL'} | {detail.replace('|', '/')} |")
         return "\n".join(lines) + "\n"
+
+
+class Context(NamedTuple):
+    repo_dir: Path
+    repository: str
+    head_sha: str
+    final_version: str
+    final_dist: Path
+    work: Path
+
+
+class Source(NamedTuple):
+    kind: str
+    tag: str
+    sha: str
+    run_id: int
+    digest: str
 
 
 def sha256_hex(data: bytes) -> str:
@@ -112,6 +146,17 @@ def distribution_digest(directory: Path) -> str:
     wheel, sdist = distribution_files(directory)
     text = "".join(f"{sha256_hex(path.read_bytes())}  {path.name}\n" for path in (wheel, sdist))
     return sha256_hex(text.encode("ascii"))
+
+
+def distribution_version(directory: Path) -> str:
+    wheel, sdist = distribution_files(directory)
+    wheel_match = _WHEEL_NAME.fullmatch(wheel.name)
+    sdist_match = _SDIST_NAME.fullmatch(sdist.name)
+    if wheel_match is None or sdist_match is None:
+        raise ValueError(f"{wheel.name} and {sdist.name} are not benchbox distribution file names")
+    if wheel_match.group(1) != sdist_match.group(1):
+        raise ValueError(f"{wheel.name} and {sdist.name} carry different versions")
+    return wheel_match.group(1)
 
 
 def _normalize(data: bytes, templates: tuple[str, ...], version: str) -> bytes:
@@ -161,44 +206,44 @@ def _sdist_members(path: Path, version: str) -> dict[str, bytes]:
 
 def _compare_members(
     label: str,
-    rc_members: dict[str, bytes],
+    candidate_members: dict[str, bytes],
     final_members: dict[str, bytes],
-    rc_version: str,
+    candidate_version: str,
     final_version: str,
     rules: dict[str, Any],
 ) -> list[str]:
     differences: list[str] = []
-    for name in sorted(set(rc_members) - set(final_members)):
-        differences.append(f"{label}: {name} exists only in the release candidate")
-    for name in sorted(set(final_members) - set(rc_members)):
+    for name in sorted(set(candidate_members) - set(final_members)):
+        differences.append(f"{label}: {name} exists only in the candidate distribution")
+    for name in sorted(set(final_members) - set(candidate_members)):
         differences.append(f"{label}: {name} exists only in the final distribution")
-    for name in sorted(set(rc_members) & set(final_members)):
+    for name in sorted(set(candidate_members) & set(final_members)):
         rule = rules.get(name)
         if rule is IGNORED:
             continue
-        rc_data, final_data = rc_members[name], final_members[name]
+        candidate_data, final_data = candidate_members[name], final_members[name]
         if rule:
-            rc_data = _normalize(rc_data, rule, rc_version)
+            candidate_data = _normalize(candidate_data, rule, candidate_version)
             final_data = _normalize(final_data, rule, final_version)
-        if rc_data != final_data:
+        if candidate_data != final_data:
             differences.append(f"{label}: {name} differs beyond the version references")
     return differences
 
 
-def dist_differences(rc_dir: Path, final_dir: Path, rc_version: str, final_version: str) -> list[str]:
-    rc_wheel, rc_sdist = distribution_files(rc_dir)
+def dist_differences(candidate_dir: Path, final_dir: Path, candidate_version: str, final_version: str) -> list[str]:
+    candidate_wheel, candidate_sdist = distribution_files(candidate_dir)
     final_wheel, final_sdist = distribution_files(final_dir)
     differences: list[str] = []
-    if rc_wheel.name.replace(rc_version, "@") != final_wheel.name.replace(final_version, "@"):
-        differences.append(f"wheel file names differ: {rc_wheel.name} vs {final_wheel.name}")
-    if rc_sdist.name.replace(rc_version, "@") != final_sdist.name.replace(final_version, "@"):
-        differences.append(f"sdist file names differ: {rc_sdist.name} vs {final_sdist.name}")
+    if candidate_wheel.name.replace(candidate_version, "@") != final_wheel.name.replace(final_version, "@"):
+        differences.append(f"wheel file names differ: {candidate_wheel.name} vs {final_wheel.name}")
+    if candidate_sdist.name.replace(candidate_version, "@") != final_sdist.name.replace(final_version, "@"):
+        differences.append(f"sdist file names differ: {candidate_sdist.name} vs {final_sdist.name}")
     differences.extend(
         _compare_members(
             "wheel",
-            _wheel_members(rc_wheel, rc_version),
+            _wheel_members(candidate_wheel, candidate_version),
             _wheel_members(final_wheel, final_version),
-            rc_version,
+            candidate_version,
             final_version,
             WHEEL_RULES,
         )
@@ -206,9 +251,9 @@ def dist_differences(rc_dir: Path, final_dir: Path, rc_version: str, final_versi
     differences.extend(
         _compare_members(
             "sdist",
-            _sdist_members(rc_sdist, rc_version),
+            _sdist_members(candidate_sdist, candidate_version),
             _sdist_members(final_sdist, final_version),
-            rc_version,
+            candidate_version,
             final_version,
             SDIST_RULES,
         )
@@ -227,6 +272,13 @@ def _git_out(*args: str, cwd: Path | None = None) -> str:
     if result.returncode != 0:
         raise ValueError(f"git {' '.join(args)} failed: {result.stderr.strip()}")
     return result.stdout
+
+
+def _is_ancestor(repo: Path, ancestor: str, descendant: str) -> bool:
+    result = _git("merge-base", "--is-ancestor", ancestor, descendant, cwd=repo)
+    if result.returncode not in (0, 1):
+        raise ValueError(f"git merge-base failed: {result.stderr.strip()}")
+    return result.returncode == 0
 
 
 def normalize_lock(text: str, version: str) -> str | None:
@@ -258,36 +310,54 @@ def _stage_job_definitions(text: str) -> dict[str, Any]:
     return definitions
 
 
-def workflow_differences(rc_sha: str, final_sha: str, repo: Path) -> list[str]:
-    rc = _stage_job_definitions(_git_out("show", f"{rc_sha}:{WORKFLOW_PATH}", cwd=repo))
+def workflow_differences(base_sha: str, final_sha: str, repo: Path) -> list[str]:
+    base = _stage_job_definitions(_git_out("show", f"{base_sha}:{WORKFLOW_PATH}", cwd=repo))
     final = _stage_job_definitions(_git_out("show", f"{final_sha}:{WORKFLOW_PATH}", cwd=repo))
     differences: list[str] = []
     for name in STAGE_JOBS:
-        if rc[name] is None or final[name] is None:
+        if base[name] is None or final[name] is None:
             differences.append(f"{WORKFLOW_PATH}: {name} is missing")
-        elif rc[name] != final[name]:
+        elif base[name] != final[name]:
             differences.append(f"{WORKFLOW_PATH}: {name} differs beyond needs and if")
-    if rc["env"] != final["env"]:
+    if base["env"] != final["env"]:
         differences.append(f"{WORKFLOW_PATH}: workflow-level env differs")
     return differences
 
 
-def tree_differences(rc_sha: str, final_sha: str, rc_version: str, final_version: str, repo: Path) -> list[str]:
+def guarded_differences(base_sha: str, final_sha: str, repo: Path, trees: tuple[str, ...] = GUARDED_TREES) -> list[str]:
     differences: list[str] = []
-    diff = _git("diff", "--quiet", f"{rc_sha}..{final_sha}", "--", *GUARDED_TREES, cwd=repo)
+    diff = _git("diff", "--quiet", f"{base_sha}..{final_sha}", "--", *trees, cwd=repo)
     if diff.returncode == 1:
-        names = _git_out("diff", "--name-only", f"{rc_sha}..{final_sha}", "--", *GUARDED_TREES, cwd=repo).split()
-        differences.append(f"guarded trees changed since the release candidate: {', '.join(names[:10])}")
+        names = _git_out("diff", "--name-only", f"{base_sha}..{final_sha}", "--", *trees, cwd=repo).split()
+        differences.append(f"guarded trees changed since the evidence commit: {', '.join(names[:10])}")
     elif diff.returncode != 0:
         raise ValueError(f"git diff failed: {diff.stderr.strip()}")
-    differences.extend(workflow_differences(rc_sha, final_sha, repo))
-    rc_lock = normalize_lock(_git_out("show", f"{rc_sha}:uv.lock", cwd=repo), rc_version)
-    final_lock = normalize_lock(_git_out("show", f"{final_sha}:uv.lock", cwd=repo), final_version)
-    if rc_lock is None or final_lock is None:
-        differences.append("uv.lock has no single benchbox package version line matching its release")
-    elif rc_lock != final_lock:
-        differences.append("uv.lock differs beyond the benchbox package version line")
+    differences.extend(workflow_differences(base_sha, final_sha, repo))
     return differences
+
+
+def lock_differences(base_sha: str, final_sha: str, base_version: str, final_version: str, repo: Path) -> list[str]:
+    base_lock = normalize_lock(_git_out("show", f"{base_sha}:uv.lock", cwd=repo), base_version)
+    final_lock = normalize_lock(_git_out("show", f"{final_sha}:uv.lock", cwd=repo), final_version)
+    if base_lock is None or final_lock is None:
+        return ["uv.lock has no single benchbox package version line matching its release"]
+    if base_lock != final_lock:
+        return ["uv.lock differs beyond the benchbox package version line"]
+    return []
+
+
+def tree_differences(
+    base_sha: str,
+    final_sha: str,
+    base_version: str,
+    final_version: str,
+    repo: Path,
+    trees: tuple[str, ...] = GUARDED_TREES,
+) -> list[str]:
+    return [
+        *guarded_differences(base_sha, final_sha, repo, trees),
+        *lock_differences(base_sha, final_sha, base_version, final_version, repo),
+    ]
 
 
 def _gh_bytes(*args: str) -> bytes:
@@ -317,79 +387,59 @@ def _download_artifact(repo: str, artifact_id: int) -> dict[str, bytes]:
     return files
 
 
-def find_release_run(repo: str, rc_tag: str, rc_sha: str, report: Report) -> int | None:
-    payload = _gh_json(
-        f"repos/{repo}/actions/workflows/{WORKFLOW_FILE}/runs?event=push&head_branch={rc_tag}&per_page=100"
-    )
-    runs = [
-        run
-        for run in payload.get("workflow_runs", [])
-        if run.get("head_sha") == rc_sha and run.get("event") == "push" and run.get("head_branch") == rc_tag
-    ]
-    if not runs:
-        report.add("(a) release candidate run", False, f"no {WORKFLOW_FILE} push run for {rc_tag} at {rc_sha[:10]}")
-        return None
-    newest = max(runs, key=lambda run: (int(run["run_number"]), int(run.get("run_attempt", 1))))
-    run_id = int(newest["id"])
-    if newest.get("status") != "completed":
-        report.add("(a) release candidate run", False, f"run {run_id} is {newest.get('status')}, not completed")
-        return None
-    jobs = _gh_json(f"repos/{repo}/actions/runs/{run_id}/jobs?filter=latest&per_page=100").get("jobs", [])
-    gate = [job for job in jobs if job.get("name") == GATE_JOB_NAME]
-    if len(gate) != 1 or gate[0].get("conclusion") != "success":
-        conclusion = gate[0].get("conclusion") if len(gate) == 1 else f"{len(gate)} matching jobs"
-        report.add("(a) release candidate run", False, f"run {run_id} release-uat job: {conclusion}")
-        return None
-    report.add("(a) release candidate run", True, f"run {run_id} release-uat concluded success")
-    return run_id
-
-
-def acquire_rc_evidence_and_dist(
-    repo: str, rc_tag: str, rc_sha: str, run_id: int, destination: Path, report: Report
-) -> str | None:
-    by_name = {a["name"]: a for a in _artifact_listing(repo, run_id) if not a.get("expired")}
-    for number in (1, 2, 3):
-        prefix = f"release-uat-{rc_tag}-stage{number}-"
-        if not any(name.startswith(prefix) for name in by_name):
-            report.add("(a) release candidate shard evidence", False, f"no unexpired stage {number} shard artifacts")
-            return None
-    gate_name = f"release-uat-{rc_tag}"
-    if gate_name not in by_name:
-        report.add("(a) release candidate gate evidence", False, f"artifact {gate_name} is missing or expired")
-        return None
-    files = _download_artifact(repo, int(by_name[gate_name]["id"]))
-    if "dist-digest.txt" not in files or "uat-gate-summary.json" not in files:
-        report.add("(a) release candidate gate evidence", False, "dist-digest.txt or uat-gate-summary.json missing")
-        return None
-    rc_digest = sha256_hex(files["dist-digest.txt"])
-    problems = gate_evidence_problems(json.loads(files["uat-gate-summary.json"]), rc_sha, rc_digest)
-    if problems:
-        report.add("(a) release candidate gate evidence", False, "; ".join(problems))
-        return None
-    report.add(
-        "(a) release candidate gate evidence",
-        True,
-        f"verdict green, source {rc_sha[:10]}, digest {rc_digest[:16]}",
-    )
-    rc_dist = destination / "rc-dist"
-    source = _fetch_rc_dist(repo, rc_tag, rc_sha, run_id, by_name, rc_digest, rc_dist)
-    if source is None:
-        report.add(
-            "(c) release candidate distribution", False, "unavailable or expired; digest-matching dist not found"
-        )
-        return None
-    report.add("(c) release candidate distribution", True, f"obtained from {source}, digest matches the admitted one")
-    return rc_digest
-
-
-def gate_evidence_problems(summary: dict[str, Any], rc_sha: str, rc_digest: str) -> list[str]:
+def gate_evidence_problems(summary: dict[str, Any], source_sha: str, source_digest: str) -> list[str]:
     problems: list[str] = []
     if summary.get("verdict") != VERDICT_GREEN:
         problems.append(f"verdict is {summary.get('verdict')!r}")
-    if summary.get("source_commit_sha") != rc_sha:
-        problems.append(f"source commit {summary.get('source_commit_sha')!r} is not {rc_sha}")
-    if summary.get("distribution_digest") != rc_digest:
-        problems.append(f"distribution digest {summary.get('distribution_digest')!r} is not {rc_digest}")
+    if summary.get("source_commit_sha") != source_sha:
+        problems.append(f"source commit {summary.get('source_commit_sha')!r} is not {source_sha}")
+    if summary.get("distribution_digest") != source_digest:
+        problems.append(f"distribution digest {summary.get('distribution_digest')!r} is not {source_digest}")
+    return problems
+
+
+def _retry_row_problem(row: Any) -> str | None:
+    if not isinstance(row, dict):
+        return "row is not an object"
+    outcome = row.get("retry_outcome")
+    attempt = row.get("attempt") or 1
+    if outcome is None:
+        return None if attempt == 1 else f"attempt {attempt} has no recorded retry outcome"
+    if outcome != RETRY_PASSED:
+        return f"retry outcome is {outcome!r}, not {RETRY_PASSED!r}"
+    problems: list[str] = []
+    if attempt != 2:
+        problems.append(f"attempt is {attempt}, not 2")
+    if row.get("status") != "passed":
+        problems.append(f"attempt 2 finished as {row.get('status')!r}")
+    if not row.get("retry_signature"):
+        problems.append("no infrastructure failure signature")
+    if row.get("first_attempt_status") not in RETRYABLE_FIRST_ATTEMPT_STATUSES:
+        problems.append(f"attempt 1 finished as {row.get('first_attempt_status')!r}")
+    return "; ".join(problems) or None
+
+
+def retry_problems(evidence: Path, tag: str) -> list[str]:
+    cell_files = sorted(evidence.glob(f"release-uat-{tag}-stage*-*/run/cells.jsonl"))
+    if not cell_files:
+        return [f"no cells.jsonl under {evidence} for {tag}"]
+    problems: list[str] = []
+    for path in cell_files:
+        shard = path.parent.parent.name
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if not line.strip():
+                continue
+            try:
+                row = json.loads(line)
+            except ValueError as exc:
+                problems.append(f"{shard} line {number}: unreadable cell row: {exc}")
+                continue
+            problem = _retry_row_problem(row)
+            if problem is not None:
+                cell = (
+                    f"{row.get('platform')}/{row.get('benchmark')}/{row.get('scale')}" if isinstance(row, dict) else "?"
+                )
+                problems.append(f"{shard} line {number} ({cell}): {problem}")
     return problems
 
 
@@ -404,21 +454,12 @@ def _stage_candidate(files: dict[str, bytes], target: Path) -> bool:
     return True
 
 
-def _fetch_rc_dist(
-    repo: str,
-    rc_tag: str,
-    rc_sha: str,
-    run_id: int,
-    by_name: dict[str, dict[str, Any]],
-    rc_digest: str,
-    target: Path,
+def _fetch_candidate_dist(
+    repo: str, sha: str, admitted: list[tuple[str, int]], digest: str, target: Path
 ) -> str | None:
-    candidates: list[tuple[str, int]] = []
-    admitted = by_name.get(f"admitted-{rc_tag}")
-    if admitted is not None:
-        candidates.append((f"admitted-{rc_tag} of run {run_id}", int(admitted["id"])))
+    candidates = list(admitted)
     for attempt in range(1, 10):
-        name = f"dist-{rc_sha}-attempt-{attempt}"
+        name = f"dist-{sha}-attempt-{attempt}"
         listing = _gh_json(f"repos/{repo}/actions/artifacts?name={name}&per_page=10").get("artifacts", [])
         candidates.extend((name, int(a["id"])) for a in listing if not a.get("expired"))
     for label, artifact_id in candidates:
@@ -433,58 +474,280 @@ def _fetch_rc_dist(
             scratch.rmdir()
         if not _stage_candidate(files, scratch):
             continue
-        if distribution_digest(scratch) == rc_digest:
+        if distribution_digest(scratch) == digest:
             scratch.rename(target)
             return label
     return None
 
 
-def decide(args: argparse.Namespace, report: Report, outputs: dict[str, str]) -> bool:
-    repo = Path(args.repo_dir)
-    match = FINAL_TAG.fullmatch(args.tag)
-    if match is None:
-        return report.add("final tag", False, f"{args.tag} is not a vX.Y.Z tag")
-    final_version = match.group(1)
-    tags = _git_out("tag", "--list", f"v{final_version}rc*", cwd=repo).split()
-    rc_tag = newest_release_candidate(args.tag, tags)
-    if rc_tag is None:
-        return report.add("release candidate", False, f"no v{final_version}rcN tag exists")
-    rc_version = rc_tag[1:]
-    if _git_out("cat-file", "-t", rc_tag, cwd=repo).strip() != "tag":
-        return report.add("release candidate", False, f"{rc_tag} is not an annotated tag")
-    rc_sha = _git_out("rev-parse", f"{rc_tag}^{{commit}}", cwd=repo).strip()
-    report.add("release candidate", True, f"newest candidate {rc_tag} at {rc_sha[:10]}")
-    outputs.update(rc_tag=rc_tag, rc_sha=rc_sha)
+def _acquire_evidence(
+    ctx: Context,
+    report: Report,
+    label: str,
+    tag: str,
+    sha: str,
+    run_id: int,
+    artifacts: list[dict[str, Any]],
+    gate_name: str,
+    admitted_names: list[str],
+) -> tuple[str, Path] | None:
+    live = {a["name"]: a for a in artifacts if not a.get("expired")}
+    expired = sorted(a["name"] for a in artifacts if a.get("expired"))
+    for number in (1, 2, 3):
+        prefix = f"release-uat-{tag}-stage{number}-"
+        if not any(name.startswith(prefix) for name in live):
+            lapsed = [name for name in expired if name.startswith(prefix)]
+            detail = f"expired artifact: {lapsed[0]}" if lapsed else f"no stage {number} shard artifacts"
+            report.add(f"{label}: shard evidence", False, detail)
+            return None
+    if gate_name not in live:
+        detail = f"expired artifact: {gate_name}" if gate_name in expired else f"artifact {gate_name} is missing"
+        report.add(f"{label}: gate evidence", False, detail)
+        return None
+    files = _download_artifact(ctx.repository, int(live[gate_name]["id"]))
+    if "dist-digest.txt" not in files or "uat-gate-summary.json" not in files:
+        report.add(f"{label}: gate evidence", False, "dist-digest.txt or uat-gate-summary.json missing")
+        return None
+    digest = sha256_hex(files["dist-digest.txt"])
+    problems = gate_evidence_problems(json.loads(files["uat-gate-summary.json"]), sha, digest)
+    if problems:
+        report.add(f"{label}: gate evidence", False, "; ".join(problems))
+        return None
+    report.add(f"{label}: gate evidence", True, f"verdict green, source {sha[:10]}, digest {digest[:16]}")
+    admitted = [(f"{name} of run {run_id}", int(live[name]["id"])) for name in admitted_names if name in live]
+    target = ctx.work / f"{label.replace(' ', '-')}-dist"
+    source = _fetch_candidate_dist(ctx.repository, sha, admitted, digest, target)
+    if source is None:
+        lapsed = [name for name in expired if name in admitted_names]
+        detail = "unavailable or expired; digest-matching dist not found"
+        if lapsed:
+            detail += f" (expired artifact: {lapsed[0]})"
+        report.add(f"{label}: distribution", False, detail)
+        return None
+    report.add(f"{label}: distribution", True, f"obtained from {source}, digest matches the gate evidence")
+    return digest, target
 
-    run_id = find_release_run(args.github_repository, rc_tag, rc_sha, report)
-    if run_id is None:
-        return False
-    outputs["rc_run_id"] = str(run_id)
 
-    ancestor = _git("merge-base", "--is-ancestor", rc_sha, args.head_sha, cwd=repo)
-    if ancestor.returncode not in (0, 1):
-        raise ValueError(f"git merge-base failed: {ancestor.stderr.strip()}")
-    if not report.add("(b) ancestry", ancestor.returncode == 0, f"{rc_tag} commit ancestor of {args.tag} commit"):
-        return False
-
-    drift = tree_differences(rc_sha, args.head_sha, rc_version, final_version, repo)
+def _verify_source(
+    ctx: Context,
+    report: Report,
+    *,
+    kind: str,
+    label: str,
+    tag: str,
+    sha: str,
+    run_id: int,
+    artifacts: list[dict[str, Any]],
+    gate_name: str,
+    admitted_names: list[str],
+    trees: tuple[str, ...],
+) -> Source | None:
+    ancestor = _is_ancestor(ctx.repo_dir, sha, ctx.head_sha)
+    relation = "is an ancestor of" if ancestor else "is not an ancestor of"
     if not report.add(
-        "(d) UAT inputs", not drift, "; ".join(drift) or "tests/uat, docker, env action, uv.lock unchanged"
+        f"{label}: ancestry", ancestor, f"evidence commit {sha[:10]} {relation} the tagged commit {ctx.head_sha[:10]}"
     ):
-        return False
-
-    work = Path(args.work)
-    work.mkdir(parents=True, exist_ok=True)
-    rc_digest = acquire_rc_evidence_and_dist(args.github_repository, rc_tag, rc_sha, run_id, work, report)
-    if rc_digest is None:
-        return False
-    outputs["rc_dist_digest"] = rc_digest
-
-    differences = dist_differences(work / "rc-dist", Path(args.final_dist), rc_version, final_version)
+        return None
+    drift = guarded_differences(sha, ctx.head_sha, ctx.repo_dir, trees)
+    if not report.add(
+        f"{label}: UAT inputs", not drift, "; ".join(drift) or "tests/uat, docker, env action, workflows unchanged"
+    ):
+        return None
+    acquired = _acquire_evidence(ctx, report, label, tag, sha, run_id, artifacts, gate_name, admitted_names)
+    if acquired is None:
+        return None
+    digest, dist_dir = acquired
+    candidate_version = distribution_version(dist_dir)
+    lock = lock_differences(sha, ctx.head_sha, candidate_version, ctx.final_version, ctx.repo_dir)
+    if not report.add(f"{label}: uv.lock", not lock, "; ".join(lock) or "differs only in the benchbox version line"):
+        return None
+    differences = dist_differences(dist_dir, ctx.final_dist, candidate_version, ctx.final_version)
     shown = "; ".join(differences[:10]) + (f"; and {len(differences) - 10} more" if len(differences) > 10 else "")
-    return report.add(
-        "(c) distribution equivalence", not differences, shown or "wheel and sdist match member by member"
+    if not report.add(
+        f"{label}: distribution equivalence", not differences, shown or "wheel and sdist match member by member"
+    ):
+        return None
+    return Source(kind=kind, tag=tag, sha=sha, run_id=run_id, digest=digest)
+
+
+def _trunk_run_problem(run: dict[str, Any]) -> str | None:
+    if run.get("event") not in TRUNK_EVENTS:
+        return f"event {run.get('event')!r} is not schedule or workflow_dispatch"
+    if run.get("head_branch") != TRUNK_BRANCH:
+        return f"ran on {run.get('head_branch')!r}, not {TRUNK_BRANCH}"
+    if run.get("conclusion") != "success":
+        return f"concluded {run.get('conclusion')!r}, not 'success'"
+    return None
+
+
+def _evaluate_trunk_run(ctx: Context, run: dict[str, Any], report: Report) -> Source | None:
+    run_id = int(run["id"])
+    label = f"trunk run {run_id}"
+    problem = _trunk_run_problem(run)
+    if problem is not None:
+        report.add(f"{label}: run", False, problem)
+        return None
+    artifacts = _artifact_listing(ctx.repository, run_id)
+    gates = [a["name"] for a in artifacts if TRUNK_GATE_ARTIFACT.fullmatch(str(a.get("name")))]
+    if len(gates) != 1:
+        detail = (
+            "no trunk UAT gate artifact; the run skipped, was deferred or kept no evidence"
+            if not gates
+            else f"{len(gates)} trunk UAT gate artifacts"
+        )
+        report.add(f"{label}: gate evidence", False, detail)
+        return None
+    sha = gates[0].removeprefix("trunk-uat-gate-")
+    report.add(f"{label}: run", True, f"{run['event']} run on {TRUNK_BRANCH} concluded success, source {sha[:10]}")
+    run_head = run.get("head_sha")
+    if not isinstance(run_head, str) or not run_head:
+        report.add(f"{label}: {TRUNK_WORKFLOW_FILE}", False, "the run records no head commit")
+        return None
+    workflow_diff = _git("diff", "--quiet", run_head, ctx.head_sha, "--", TRUNK_WORKFLOW_PATH, cwd=ctx.repo_dir)
+    if workflow_diff.returncode not in (0, 1):
+        raise ValueError(f"git diff failed: {workflow_diff.stderr.strip()}")
+    if not report.add(
+        f"{label}: {TRUNK_WORKFLOW_FILE}",
+        workflow_diff.returncode == 0,
+        f"the workflow file the run executed, at {run_head[:10]}, "
+        f"{'equals' if workflow_diff.returncode == 0 else 'differs from'} the one at the tagged commit",
+    ):
+        return None
+    return _verify_source(
+        ctx,
+        report,
+        kind=KIND_TRUNK,
+        label=label,
+        tag=f"trunk-{sha}",
+        sha=sha,
+        run_id=run_id,
+        artifacts=artifacts,
+        gate_name=gates[0],
+        admitted_names=sorted(a["name"] for a in artifacts if str(a.get("name")).startswith("admitted-")),
+        trees=TRUNK_GUARDED_TREES,
     )
+
+
+def find_trunk_candidate(ctx: Context, report: Report) -> Source | None:
+    payload = _gh_json(
+        f"repos/{ctx.repository}/actions/workflows/{TRUNK_WORKFLOW_FILE}/runs?status=completed&per_page={TRUNK_RUN_PAGE}"
+    )
+    runs = [run for run in payload.get("workflow_runs", []) if run.get("status") == "completed"]
+    runs.sort(key=lambda run: (str(run.get("created_at")), int(run["id"])), reverse=True)
+    if not runs:
+        report.add("trunk UAT runs", False, f"no completed {TRUNK_WORKFLOW_FILE} run found")
+        return None
+    for run in runs[:TRUNK_RUN_LIMIT]:
+        try:
+            source = _evaluate_trunk_run(ctx, run, report)
+        except Exception as exc:
+            report.add(f"trunk run {run.get('id')}: evaluation", False, f"{type(exc).__name__}: {exc}")
+            continue
+        if source is not None:
+            return source
+    report.add("trunk UAT runs", False, f"none of the newest {min(len(runs), TRUNK_RUN_LIMIT)} runs qualified")
+    return None
+
+
+def find_release_run(repo: str, rc_tag: str, rc_sha: str, report: Report) -> int | None:
+    label = f"release candidate {rc_tag}"
+    payload = _gh_json(
+        f"repos/{repo}/actions/workflows/{WORKFLOW_FILE}/runs?event=push&head_branch={rc_tag}&per_page=100"
+    )
+    runs = [
+        run
+        for run in payload.get("workflow_runs", [])
+        if run.get("head_sha") == rc_sha and run.get("event") == "push" and run.get("head_branch") == rc_tag
+    ]
+    if not runs:
+        report.add(f"{label}: run", False, f"no {WORKFLOW_FILE} push run for {rc_tag} at {rc_sha[:10]}")
+        return None
+    newest = max(runs, key=lambda run: (int(run["run_number"]), int(run.get("run_attempt", 1))))
+    run_id = int(newest["id"])
+    if newest.get("status") != "completed":
+        report.add(f"{label}: run", False, f"run {run_id} is {newest.get('status')}, not completed")
+        return None
+    jobs = _gh_json(f"repos/{repo}/actions/runs/{run_id}/jobs?filter=latest&per_page=100").get("jobs", [])
+    gate = [job for job in jobs if job.get("name") == GATE_JOB_NAME]
+    if len(gate) != 1 or gate[0].get("conclusion") != "success":
+        conclusion = gate[0].get("conclusion") if len(gate) == 1 else f"{len(gate)} matching jobs"
+        report.add(f"{label}: run", False, f"run {run_id} release-uat job: {conclusion}")
+        return None
+    report.add(f"{label}: run", True, f"run {run_id} release-uat concluded success")
+    return run_id
+
+
+def find_release_candidate(ctx: Context, report: Report) -> Source | None:
+    tags = _git_out("tag", "--list", f"v{ctx.final_version}rc*", cwd=ctx.repo_dir).split()
+    rc_tag = newest_release_candidate(f"v{ctx.final_version}", tags)
+    if rc_tag is None:
+        report.add("release candidate", False, f"no v{ctx.final_version}rcN tag exists")
+        return None
+    if _git_out("cat-file", "-t", rc_tag, cwd=ctx.repo_dir).strip() != "tag":
+        report.add("release candidate", False, f"{rc_tag} is not an annotated tag")
+        return None
+    rc_sha = _git_out("rev-parse", f"{rc_tag}^{{commit}}", cwd=ctx.repo_dir).strip()
+    report.add("release candidate", True, f"newest candidate {rc_tag} at {rc_sha[:10]}")
+    run_id = find_release_run(ctx.repository, rc_tag, rc_sha, report)
+    if run_id is None:
+        return None
+    return _verify_source(
+        ctx,
+        report,
+        kind=KIND_RELEASE_CANDIDATE,
+        label=f"release candidate {rc_tag}",
+        tag=rc_tag,
+        sha=rc_sha,
+        run_id=run_id,
+        artifacts=_artifact_listing(ctx.repository, run_id),
+        gate_name=f"release-uat-{rc_tag}",
+        admitted_names=[f"admitted-{rc_tag}"],
+        trees=GUARDED_TREES,
+    )
+
+
+def _on_trunk(ctx: Context) -> tuple[bool, str]:
+    if _git("rev-parse", "--verify", "--quiet", TRUNK_REF, cwd=ctx.repo_dir).returncode != 0:
+        return False, f"{TRUNK_REF} is not fetched, so the tagged commit cannot be placed on {TRUNK_BRANCH}"
+    on_trunk = _is_ancestor(ctx.repo_dir, ctx.head_sha, TRUNK_REF)
+    detail = (
+        f"tagged commit {ctx.head_sha[:10]} is on {TRUNK_BRANCH}"
+        if on_trunk
+        else f"tagged commit {ctx.head_sha[:10]} is not on {TRUNK_BRANCH}; trunk UAT evidence does not cover it"
+    )
+    return on_trunk, detail
+
+
+def decide(args: argparse.Namespace, report: Report, outputs: dict[str, str]) -> bool:
+    match = RELEASE_TAG.fullmatch(args.tag)
+    if match is None:
+        return report.add("release tag", False, f"{args.tag} is not a vX.Y.Z or vX.Y.Z(a|b|rc)N tag")
+    ctx = Context(
+        repo_dir=Path(args.repo_dir),
+        repository=args.github_repository,
+        head_sha=args.head_sha,
+        final_version=match.group(1),
+        final_dist=Path(args.final_dist),
+        work=Path(args.work),
+    )
+    ctx.work.mkdir(parents=True, exist_ok=True)
+    source: Source | None = None
+    on_trunk, detail = _on_trunk(ctx)
+    if report.add("trunk line", on_trunk, detail):
+        source = find_trunk_candidate(ctx, report)
+    if source is None and FINAL_TAG.fullmatch(args.tag):
+        source = find_release_candidate(ctx, report)
+    if source is None:
+        return False
+    outputs.update(
+        source_kind=source.kind,
+        source_tag=source.tag,
+        source_sha=source.sha,
+        source_run_id=str(source.run_id),
+        source_dist_digest=source.digest,
+    )
+    origin = "trunk UAT run" if source.kind == KIND_TRUNK else f"release candidate run of {source.tag}"
+    return report.add("reused evidence", True, f"reused {origin} {source.run_id} for {source.sha}")
 
 
 def _write_outputs(path: str | None, outputs: dict[str, str]) -> None:
@@ -516,7 +779,9 @@ def _handle_decide(args: argparse.Namespace) -> int:
 
 
 def _handle_equivalent(args: argparse.Namespace) -> int:
-    differences = dist_differences(Path(args.rc_dist), Path(args.final_dist), args.rc_version, args.final_version)
+    differences = dist_differences(
+        Path(args.candidate_dist), Path(args.final_dist), args.candidate_version, args.final_version
+    )
     for difference in differences:
         print(f"[reuse] DIFFERENT {difference}", file=sys.stderr)
     return 1 if differences else 0
@@ -524,16 +789,18 @@ def _handle_equivalent(args: argparse.Namespace) -> int:
 
 def _handle_verify_gate(args: argparse.Namespace) -> int:
     summary = json.loads(Path(args.summary).read_text(encoding="utf-8"))
-    problems = gate_evidence_problems(summary, args.rc_sha, args.rc_digest)
+    problems = gate_evidence_problems(summary, args.source_sha, args.source_digest)
+    problems.extend(retry_problems(Path(args.evidence), args.source_tag))
     for problem in problems:
         print(f"[reuse] gate evidence: {problem}", file=sys.stderr)
     if problems:
         return 1
     receipt = {
-        "reused_from_tag": args.rc_tag,
-        "reused_from_run_id": args.rc_run_id,
-        "source_commit_sha": args.rc_sha,
-        "distribution_digest": args.rc_digest,
+        "reused_from_kind": args.source_kind,
+        "reused_from_tag": args.source_tag,
+        "reused_from_run_id": args.source_run_id,
+        "source_commit_sha": args.source_sha,
+        "distribution_digest": args.source_digest,
     }
     Path(args.receipt).write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
     return 0
@@ -545,7 +812,7 @@ def _handle_digest(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Decide and verify reuse of release candidate UAT evidence.")
+    parser = argparse.ArgumentParser(description="Decide and verify reuse of earlier UAT evidence for a release.")
     sub = parser.add_subparsers(dest="command", required=True)
 
     decide_parser = sub.add_parser("decide")
@@ -559,18 +826,20 @@ def main(argv: list[str] | None = None) -> int:
     decide_parser.set_defaults(handler=_handle_decide)
 
     equivalent = sub.add_parser("equivalent")
-    equivalent.add_argument("--rc-dist", required=True)
+    equivalent.add_argument("--candidate-dist", required=True)
     equivalent.add_argument("--final-dist", required=True)
-    equivalent.add_argument("--rc-version", required=True)
+    equivalent.add_argument("--candidate-version", required=True)
     equivalent.add_argument("--final-version", required=True)
     equivalent.set_defaults(handler=_handle_equivalent)
 
     verify = sub.add_parser("verify-gate")
     verify.add_argument("--summary", required=True)
-    verify.add_argument("--rc-tag", required=True)
-    verify.add_argument("--rc-run-id", required=True)
-    verify.add_argument("--rc-sha", required=True)
-    verify.add_argument("--rc-digest", required=True)
+    verify.add_argument("--evidence", required=True)
+    verify.add_argument("--source-kind", required=True, choices=(KIND_TRUNK, KIND_RELEASE_CANDIDATE))
+    verify.add_argument("--source-tag", required=True)
+    verify.add_argument("--source-run-id", required=True)
+    verify.add_argument("--source-sha", required=True)
+    verify.add_argument("--source-digest", required=True)
     verify.add_argument("--receipt", required=True)
     verify.set_defaults(handler=_handle_verify_gate)
 

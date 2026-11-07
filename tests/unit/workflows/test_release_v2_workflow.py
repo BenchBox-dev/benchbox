@@ -35,6 +35,10 @@ def _step_commands(job: dict) -> str:
     return "\n".join(step.get("run", "") for step in job["steps"])
 
 
+def _decide_step() -> dict:
+    return next(s for s in _jobs()["uat-reuse"]["steps"] if s.get("id") == "decide")
+
+
 def _tag_shape_regex() -> re.Pattern[str]:
     step = next(s for s in _jobs()["admit"]["steps"] if s.get("name") == "Validate tag shape")
     match = re.search(r"=~ (\^v.*\$) \]\]", step["run"])
@@ -140,6 +144,7 @@ def test_admit_job_runs_every_pre_publish_gate():
     assert "make release-check" in run
     assert "ruleset_drift_check.py" in run
     assert "release_blocker_check.py" in run
+    assert "release_canary_freshness.py" in run
     assert "unset RELEASE_READINESS_OVERRIDE_SHA RELEASE_READINESS_OVERRIDE_REASON" in run
     assert "RELEASE_READINESS_OVERRIDE" not in "".join(str(s.get("env", "")) for s in admit["steps"])
 
@@ -216,21 +221,22 @@ def test_release_uat_gate_checks_every_shard_against_the_admitted_digest():
     assert not any("uat-sweep" in step.get("run", "") for step in gate["steps"])
 
 
-def test_release_uat_reuse_path_regates_the_release_candidates_shards_with_its_admitted_digest():
+def test_release_uat_reuse_path_regates_the_reused_runs_shards_with_its_admitted_digest():
     gate = _jobs()["release-uat"]
-    download = next(s for s in gate["steps"] if s.get("name") == "Download the release candidate's shard evidence")
+    download = next(s for s in gate["steps"] if s.get("name") == "Download the reused run's shard evidence")
     assert download["if"] == "${{ needs.uat-reuse.outputs.reuse == 'true' }}"
-    assert download["with"]["run-id"] == "${{ needs.uat-reuse.outputs.rc_run_id }}"
+    assert download["with"]["run-id"] == "${{ needs.uat-reuse.outputs.source_run_id }}"
     assert download["with"]["github-token"] == "${{ github.token }}"
-    assert download["with"]["pattern"] == "release-uat-${{ needs.uat-reuse.outputs.rc_tag }}-stage*"
-    verify = next(s for s in gate["steps"] if s.get("name", "").startswith("Re-verify the release candidate"))
+    assert download["with"]["pattern"] == "release-uat-${{ needs.uat-reuse.outputs.source_tag }}-stage*"
+    verify = next(s for s in gate["steps"] if s.get("name", "").startswith("Re-verify the reused run's evidence"))
     assert verify["if"] == "${{ needs.uat-reuse.outputs.reuse == 'true' }}"
-    assert verify["env"]["RC_DIST_DIGEST"] == "${{ needs.uat-reuse.outputs.rc_dist_digest }}"
-    assert 'DIST_DIGEST="$RC_DIST_DIGEST"' in verify["run"]
+    assert verify["env"]["SOURCE_DIST_DIGEST"] == "${{ needs.uat-reuse.outputs.source_dist_digest }}"
+    assert 'DIST_DIGEST="$SOURCE_DIST_DIGEST"' in verify["run"]
     assert "make uat-gate-check" in verify["run"]
     assert "release_reuse_uat_evidence.py verify-gate" in verify["run"]
+    assert '--evidence "$evidence"' in verify["run"]
     for number in (1, 2, 3):
-        assert f'release-uat-"$RC_TAG"-stage{number}-*/run' in verify["run"]
+        assert f'release-uat-"$SOURCE_TAG"-stage{number}-*/run' in verify["run"]
 
 
 def test_release_uat_gate_fails_unless_every_shard_job_succeeded_or_was_replaced_by_verified_reuse():
@@ -249,12 +255,19 @@ def test_release_uat_gate_fails_unless_every_shard_job_succeeded_or_was_replaced
     assert 'exit "$status"' in run
 
 
-def test_uat_reuse_runs_only_for_final_tags_and_only_after_admission():
+def test_uat_reuse_runs_for_every_tag_and_only_after_admission():
     job = _jobs()["uat-reuse"]
     assert job["needs"] == "admit"
-    assert job["if"] == "${{ needs.admit.outputs.target == 'pypi' }}"
+    assert "if" not in job
     assert job["permissions"] == {"contents": "read", "actions": "read"}
-    assert set(job["outputs"]) == {"reuse", "rc_tag", "rc_sha", "rc_run_id", "rc_dist_digest"}
+    assert set(job["outputs"]) == {
+        "reuse",
+        "source_kind",
+        "source_tag",
+        "source_sha",
+        "source_run_id",
+        "source_dist_digest",
+    }
     for value in job["outputs"].values():
         assert value.startswith("${{ steps.decide.outputs.")
 
@@ -607,13 +620,66 @@ def test_release_uat_requires_executed_cells_before_the_combined_gate_on_both_pa
     steps = _jobs()["release-uat"]["steps"]
     names = [step.get("name") for step in steps]
     fresh = steps[names.index("Require executed cells in every stage's shard evidence")]
-    reused = steps[names.index("Require executed cells in the release candidate's shard evidence")]
+    reused = steps[names.index("Require executed cells in the reused run's shard evidence")]
     assert fresh["if"] == "${{ needs.uat-reuse.outputs.reuse != 'true' }}"
     assert reused["if"] == "${{ needs.uat-reuse.outputs.reuse == 'true' }}"
     assert fresh["env"]["RELEASE_TAG"] == "${{ inputs.tag || github.ref_name }}"
-    assert reused["env"]["RC_TAG"] == "${{ needs.uat-reuse.outputs.rc_tag }}"
-    for step, tag in ((fresh, "RELEASE_TAG"), (reused, "RC_TAG")):
+    assert reused["env"]["SOURCE_TAG"] == "${{ needs.uat-reuse.outputs.source_tag }}"
+    for step, tag in ((fresh, "RELEASE_TAG"), (reused, "SOURCE_TAG")):
         assert f'scripts/release_uat_evidence_check.py --root "$RUNNER_TEMP/uat-evidence" --tag "${tag}"' in step["run"]
     assert names.index(fresh["name"]) < names.index("Check the combined release gate over every shard")
-    gate_check = "Re-verify the release candidate's evidence with the combined release gate"
+    gate_check = "Re-verify the reused run's evidence with the combined release gate"
     assert names.index(reused["name"]) < names.index(gate_check)
+
+
+def test_admit_refuses_a_release_without_a_fresh_green_canary_before_admitting_artifacts():
+    steps = _jobs()["admit"]["steps"]
+    names = [step.get("name") for step in steps]
+    canary = steps[names.index("Require a fresh green release canary on an ancestor of the tagged commit")]
+    assert names.index(canary["name"]) < names.index("Admit the trunk-tested artifacts")
+    assert canary["env"] == {"GH_TOKEN": "${{ github.token }}"}
+    assert "release_canary_freshness.py check" in canary["run"]
+    assert '--head-sha "$(git rev-parse HEAD)"' in canary["run"]
+    assert "continue-on-error" not in canary
+    assert "if" not in canary
+
+
+def test_every_downstream_job_waits_for_the_admission_that_checks_the_canary():
+    jobs = _jobs()
+    for name in ("uat-reuse", "install-matrix", "uat-stage1", "uat-stage2", "uat-stage3", "release-uat", "publish"):
+        needs = jobs[name]["needs"]
+        assert "admit" in ([needs] if isinstance(needs, str) else needs), name
+    for name in ("uat-stage1", "uat-stage2", "uat-stage3", "release-uat", "publish"):
+        assert "needs.admit.result == 'success'" in jobs[name]["if"], name
+
+
+def test_the_reuse_decision_never_asks_uv_run_to_skip_the_project_install():
+    run = _decide_step()["run"]
+    assert "uv sync --locked --no-dev --no-install-project" in run
+    for command in re.findall(r"uv run[^\n]*", run):
+        assert "--no-install-project" not in command
+        assert "--no-sync" in command
+
+
+def test_the_reuse_decision_reports_an_unrunnable_decision_as_a_full_uat_run_not_a_job_failure():
+    run = _decide_step()["run"]
+    assert run.startswith("set -uo pipefail\n")
+    assert 'echo "reuse=false" >> "$GITHUB_OUTPUT"' in run
+    assert "::warning::" in run
+
+
+def test_every_stage_sweep_outlasts_the_infrastructure_retry_budget_of_its_config():
+    from tests.uat.config import load_config
+
+    configs = {
+        "uat-stage1": "release-gate-01-native-dataframe.yaml",
+        "uat-stage2": "release-gate-02-docker-nonoltp.yaml",
+        "uat-stage3": "release-gate-03-docker-oltp.yaml",
+    }
+    for name, config_name in configs.items():
+        budget_s = load_config(
+            REPO_ROOT / "tests" / "uat" / "configs" / config_name
+        ).execute.infrastructure_retry_job_budget_s
+        sweep = next(s for s in _jobs()[name]["steps"] if "make uat-sweep" in s.get("run", ""))
+        assert budget_s is not None
+        assert budget_s / 60 + 15 <= sweep["timeout-minutes"], name
