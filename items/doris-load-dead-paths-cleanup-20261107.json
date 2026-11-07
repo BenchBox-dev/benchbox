@@ -3,6 +3,11 @@
     "No production-unreachable helper remains in the Doris load path.",
     "Doris unit and integration tests pass."
   ],
+  "batch": {
+    "batch_id": "load-value-integrity",
+    "implementation_dependencies": [],
+    "member_id": "doris-load-dead-paths-cleanup-20261107"
+  },
   "description": "After #3949 (Doris Stream Load without the per-line rewrite), `_empty_fields_to_null` in benchbox/platforms/doris.py has no production caller but stays because a test outside that batch's scope imports it. The `requests`-missing executemany fallback also stays because an integration test asserts it. Both are dead weight on the load path.\n\nChange. Remove `_empty_fields_to_null` and update its test. Decide whether the requests-missing fallback is still a supported configuration (requests is part of the doris extra?); if not, remove it and its test.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; heavy work only through make heavy-run; container checks under mocker one stack at a time (limits in tests/uat docs and the uat-mocker-compose-gaps-20261106 context); no live cloud without owner approval; no explanatory comments; changelog fragment if user-facing.",
   "sessions": [
     {
@@ -11,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "f9c3831a83c4470b8a47243531a5a271",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T14:18:06Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "2b5121c4585546a0953e0ab5ede58a41",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
