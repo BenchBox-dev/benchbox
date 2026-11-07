@@ -26,8 +26,8 @@ default: the schema 4 members minus `docs` and `downloads` (11 members:
 `repo-files.json`, the five `explorer/` members, `landing/prompt-catalog.json`,
 `api-public-symbols.json`, `attestations.json`, plus `docs-data` and
 `doc-contracts.json`). The publication workflow never passes a profile.
-`exact3` is the rollback profile: it emits the previous schema 3 bundle,
-which the site still accepts.
+`exact3` emits the retired schema 3 bundle. The site verifier accepts only
+schemas 4 and 5, so an `exact3` bundle cannot be deployed.
 
 Schema 5 keeps the schema 4 contract checks: `verify` selects the exact member
 set from `manifest.schema` and rejects any other set, validates
@@ -43,8 +43,12 @@ in `.github/workflows/site-inputs.yml`.
 
 The consumer must accept a schema before core emits it: a site that predates
 schema 5 rejects the default bundle, so deploy the site first. Rollback after
-the docs removal means building from a core revision that still has the docs
-sources and generators: `schema4`, `exact3` and `candidate4` stay selectable,
-but building a bundle that needs the relocated `docs` or `downloads` members
-fails fast with an error pointing at the pre-removal core revision. `verify`
-still accepts those older schemas.
+the docs removal is a site operation, not a bundle rebuild: dispatch the site
+deploy workflow with `mode=rollback` and the `receipt_run_id` of a deploy from
+before the removal, which restores that run's built artifact. Building a
+`schema4` or `candidate4` bundle from a pre-removal core revision does not
+bring the old pages back, because the site no longer reads the `docs` or
+`downloads` members. Those profiles and `exact3` stay selectable, but building
+a bundle that needs the relocated `docs` or `downloads` members fails fast
+with an error pointing at the pre-removal core revision. `verify` still
+accepts those older schemas.
