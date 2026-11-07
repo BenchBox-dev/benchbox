@@ -5749,7 +5749,7 @@
         }
       },
       "integration_branch": "feat/result-validity",
-      "integration_head": "f6c55800ec1e02c7155dfe29e3620e6ccd5a28af",
+      "integration_head": "c161b1aca23ade94739badc6028a311bc81eee05",
       "integration_log": [
         {
           "at": "2026-11-07T14:16:47Z",
@@ -5985,6 +5985,22 @@
             "tpch-power-validation-after-rf1-q13-20261106"
           ],
           "seq": 9
+        },
+        {
+          "at": "2026-11-07T20:36:13Z",
+          "changed_files": [
+            "tests/conftest.py",
+            "tests/unit/core/tpch/test_power_validation_after_refresh.py"
+          ],
+          "head": "c161b1aca23ade94739badc6028a311bc81eee05",
+          "kind": "fix",
+          "op_id": "3f96a954f3b44574987168dbb91cce2e",
+          "previous_head": "f6c55800ec1e02c7155dfe29e3620e6ccd5a28af",
+          "requires_acceptance": [
+            "tpch-parity-test-skips-without-cached-extension-20261107",
+            "tpch-power-validation-after-rf1-q13-20261106"
+          ],
+          "seq": 10
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-result-validity",
