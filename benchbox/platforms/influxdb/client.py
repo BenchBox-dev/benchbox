@@ -24,6 +24,32 @@ from ._dependencies import (
 logger = logging.getLogger(__name__)
 
 
+def arrow_table_rows(table: Any) -> list[tuple]:
+    if table.num_rows == 0:
+        return []
+    return list(zip(*(column.to_pylist() for column in table.columns), strict=True))
+
+
+class InfluxResultCursor:
+    def __init__(self, client: Any) -> None:
+        self._client = client
+        self._table: Any = None
+        self.description: tuple[tuple[str, ...], ...] | None = None
+
+    def execute(self, query: str) -> None:
+        self._table = self._client.execute_arrow(query)
+        self.description = tuple((name,) for name in self._table.column_names) or None
+
+    def fetchall(self) -> list[tuple]:
+        return arrow_table_rows(self._table)
+
+    def fetch_arrow_table(self) -> Any:
+        return self._table
+
+    def close(self) -> None:
+        self._table = None
+
+
 def escape_tag_value(value: str) -> str:
     return value.replace("\\", "\\\\").replace(",", "\\,").replace("=", "\\=").replace(" ", "\\ ")
 
@@ -288,52 +314,39 @@ class InfluxDBConnection:
         except Exception as e:
             raise ConnectionError(f"Failed to connect to InfluxDB at {self.host}:{self.port}: {e}") from e
 
-    def execute(self, query: str, params: dict[str, Any] | None = None) -> list[tuple]:
+    def execute_arrow(self, query: str) -> Any:
         if self._client is None:
             raise RuntimeError("Not connected. Call connect() first.")
 
         try:
             if self._client_type == "influxdb3":
-                return self._execute_influxdb3(query)
+                table = self._client.query(query)
             elif self._client_type == "flightsql":
-                return self._execute_flightsql(query)
+                table = self._flightsql_table(query)
             else:
                 raise RuntimeError(f"Unknown client type: {self._client_type}")
         except Exception as e:
             raise RuntimeError(f"InfluxDB query failed: {e}") from e
+        if table is None:
+            import pyarrow as pa
 
-    def _execute_influxdb3(self, query: str) -> list[tuple]:
-        table = self._client.query(query)
+            return pa.table({})
+        return table
 
-        if table is None or table.num_rows == 0:
-            return []
+    def execute(self, query: str, params: dict[str, Any] | None = None) -> list[tuple]:
+        return arrow_table_rows(self.execute_arrow(query))
 
-        dict_data = table.to_pydict()
-        if not dict_data:
-            return []
-        columns = list(dict_data.keys())
-        num_rows = len(dict_data[columns[0]])
-        return [tuple(dict_data[col][i] for col in columns) for i in range(num_rows)]
+    def cursor(self) -> InfluxResultCursor:
+        return InfluxResultCursor(self)
 
-    def _execute_flightsql(self, query: str) -> list[tuple]:
+    def _flightsql_table(self, query: str) -> Any:
         info = self._client.execute(query)
 
         if not info.endpoints:
-            return []
+            return None
 
         ticket = info.endpoints[0].ticket
-        reader = self._client.do_get(ticket)
-
-        table = reader.read_all()
-
-        if table.num_rows == 0:
-            return []
-
-        rows = []
-        for i in range(table.num_rows):
-            row = tuple(table.column(j)[i].as_py() for j in range(table.num_columns))
-            rows.append(row)
-        return rows
+        return self._client.do_get(ticket).read_all()
 
     def fetchone(self) -> tuple | None:
         raise NotImplementedError(

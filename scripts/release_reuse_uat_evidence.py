@@ -26,6 +26,7 @@ GUARDED_TREES = (
     "docker",
     ".github/actions/release-uat-env",
     "Makefile",
+    "make",
     "scripts/uat-bring-up",
 )
 WORKFLOW_PATH = ".github/workflows/release-v2.yml"

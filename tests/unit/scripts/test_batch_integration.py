@@ -306,6 +306,110 @@ def test_member_steps_ignore_primary_clone_edits_outside_every_scope(world: Worl
     assert result["status"] == "merged"
 
 
+def test_member_create_refuses_while_the_primary_clone_has_tracked_changes(world: World) -> None:
+    world.start()
+    (world.primary / "docs" / "note.md").write_text("stray\n")
+    (world.primary / "owner-notes.txt").write_text("untracked is ignored\n")
+    with _raises(r"primary clone .* uncommitted tracked changes: docs/note.md;"):
+        world.member("zeta")
+    git(world.primary, "checkout", "--", "docs/note.md")
+    assert world.member("zeta").is_dir()
+
+
+def test_member_check_refuses_tracked_primary_changes_outside_every_scope(world: World) -> None:
+    world.start()
+    member = world.member("zeta")
+    world.commit(member, {"src/a.py": "member\n"})
+    (world.primary / ".gitignore").write_text(".todo-batch/\nstray\n")
+    (world.primary / "tests" / "test_mid.py").write_text("stray\n")
+    with _raises(r"uncommitted tracked changes: .gitignore, tests/test_mid.py;"):
+        world.check(member, ["tests/test_zeta.py"])
+    assert bi._read_check(member, git(member, "rev-parse", "HEAD"), world.head()) is None
+    git(world.primary, "checkout", "--", ".gitignore", "tests/test_mid.py")
+    assert world.check(member, ["tests/test_zeta.py"])["review_outcome"] == "clear"
+
+
+def test_a_long_review_finding_is_printed_in_full_and_saved(world: World) -> None:
+    world.start()
+    member = world.member("zeta")
+    head = world.commit(member, {"src/a.py": "member\n"})
+    finding = "High finding: " + "detail " * 200 + "END-OF-FINDING"
+    original = world.review
+
+    def long_review(argv, cwd):
+        result = original(argv, cwd)
+        result.stderr = finding
+        return result
+
+    world.review = long_review
+    world.review_rc = 1
+    with pytest.raises(bi.BatchError) as raised:
+        world.check(member, ["tests/test_zeta.py"])
+    assert finding in str(raised.value)
+    saved = Path(git(member, "rev-parse", "--absolute-git-dir")) / f"member-review-{head[:12]}.txt"
+    assert saved.read_text(encoding="utf-8").strip() == finding
+    assert str(saved) in str(raised.value)
+    assert git(member, "status", "--porcelain") == ""
+
+
+def test_recover_takes_over_the_batch_worktrees_and_records_the_handoff(
+    world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    integration = world.start()
+    member = world.member("zeta")
+    claims: list[tuple[Path, bool]] = []
+
+    def claim(path: Path, takeover: bool = False) -> str:
+        claims.append((path, takeover))
+        return "taken-over"
+
+    monkeypatch.setattr("scripts.worktree_lifecycle_metadata.claim_worktree", claim)
+    payload = bi.recover_owner(integration, **_recover_args())
+    assert claims == [(integration.resolve(), True), (member.resolve(), True)]
+    assert payload["worktree_takeover"] == [
+        {"worktree": str(integration.resolve()), "status": "taken-over"},
+        {"worktree": str(member.resolve()), "status": "taken-over"},
+    ]
+    handoffs = _ledger(integration)["handoffs"]
+    assert len(handoffs) == 1
+    assert handoffs[0]["expected_owner"] == "leader" and handoffs[0]["reason"] == "leader died"
+    assert handoffs[0]["new_owner_generation"] == payload["arguments"]["new_owner_generation"]
+    assert handoffs[0]["worktrees"] == payload["worktree_takeover"]
+
+
+def test_recover_reports_a_takeover_that_could_not_be_recorded(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    integration = world.start()
+    from scripts import worktree_lifecycle_metadata as lifecycle
+
+    def claim(path: Path, takeover: bool = False) -> str:
+        raise lifecycle.MetadataError("owner record unreadable")
+
+    monkeypatch.setattr(lifecycle, "claim_worktree", claim)
+    payload = bi.recover_owner(integration, **_recover_args())
+    assert payload["worktree_takeover"][0]["status"] == "failed: owner record unreadable"
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "owner/name",
+        "Owner/Name",
+        "owner/name.git",
+        "https://github.com/owner/name.git",
+        "git@github.com:Owner/Name.git",
+    ],
+)
+def test_repository_identity_ignores_form_case_and_git_suffix(value: str) -> None:
+    assert bi.canonical_repository(value) == "owner/name"
+    assert bi._same_repository(value, "https://github.com/OWNER/name")
+
+
+@pytest.mark.parametrize("value", ["", "owner"])
+def test_repository_identity_refuses_what_names_no_repository(value: str) -> None:
+    with pytest.raises(bi.BatchError):
+        bi.canonical_repository(value)
+
+
 def _session(op: str, op_id: str, at: str) -> dict:
     return {"op": op, "op_id": op_id, "at": at, "actor": "mcp:omp-coding-agent:joe@host:shared"}
 
@@ -814,6 +918,108 @@ def test_an_overlap_reruns_the_earlier_members_recorded_verification_and_records
     assert entry["reason"] == "overlap:alpha"
 
 
+PYTEST = ["uv", "run", "--", "python", "-m", "pytest", "-n", "0", "-q"]
+
+
+def _develop_deletes(world: World, *paths: str) -> tuple[Path, str]:
+    integration = world.start()
+    base = world.head()
+    git(world.seed, "rm", "-q", *paths)
+    git(world.seed, "commit", "-qm", "develop deletes tests")
+    git(world.seed, "push", "-q", "origin", "develop")
+    git(integration, "fetch", "-q", "origin")
+    git(integration, "merge", "-q", "--no-edit", bi.DEVELOP_REF)
+    return integration, base
+
+
+def _develop_commit_merged(world: World, integration: Path, *commands: list[str]) -> None:
+    for command in commands:
+        git(world.seed, *command)
+    git(world.seed, "commit", "-qm", "develop change")
+    git(world.seed, "push", "-q", "origin", "develop")
+    git(integration, "fetch", "-q", "origin")
+    git(integration, "merge", "-q", "--no-edit", bi.DEVELOP_REF)
+
+
+def _rerun_alpha(integration: Path) -> dict:
+    recorded = [*PYTEST, "tests/test_zeta.py", "tests/test_alpha.py"]
+    return bi._rerun(integration, _ledger(integration), "zeta", recorded, "member-tests", "fix:x")
+
+
+def test_a_rerun_does_not_drop_a_test_develop_renamed(world: World) -> None:
+    integration = world.start()
+    _develop_commit_merged(world, integration, ["mv", "tests/test_alpha.py", "tests/test_alpha_new.py"])
+    entry = _rerun_alpha(integration)
+    assert entry["dropped_paths"] == []
+
+
+def test_a_rerun_does_not_drop_a_test_develop_replaced_by_a_heavily_edited_move(world: World) -> None:
+    integration = world.start()
+    (world.seed / "tests" / "test_alpha_new.py").write_text("def test_other():\n    assert 1 + 1 == 2\n")
+    _develop_commit_merged(world, integration, ["rm", "-q", "tests/test_alpha.py"], ["add", "tests/test_alpha_new.py"])
+    entry = _rerun_alpha(integration)
+    assert entry["dropped_paths"] == []
+
+
+def test_a_rerun_does_not_drop_a_test_deleted_in_a_commit_adding_an_unrelated_test(world: World) -> None:
+    integration = world.start()
+    (world.seed / "tests" / "test_unrelated.py").write_text("def test_u():\n    assert True\n")
+    _develop_commit_merged(world, integration, ["rm", "-q", "tests/test_alpha.py"], ["add", "tests/test_unrelated.py"])
+    entry = _rerun_alpha(integration)
+    assert entry["dropped_paths"] == []
+
+
+def test_a_rerun_drops_a_test_deleted_in_a_commit_adding_only_a_changelog_file(world: World) -> None:
+    integration = world.start()
+    (world.seed / "changelog.d").mkdir()
+    (world.seed / "changelog.d" / "retire.json").write_text("{}\n")
+    _develop_commit_merged(world, integration, ["rm", "-q", "tests/test_alpha.py"], ["add", "changelog.d/retire.json"])
+    entry = _rerun_alpha(integration)
+    assert entry["dropped_paths"] == ["tests/test_alpha.py"]
+
+
+def test_a_rerun_drops_a_develop_deleted_test_path_runs_the_rest_and_records_both_commands(world: World) -> None:
+    integration, _ = _develop_deletes(world, "tests/test_alpha.py")
+    recorded = [*PYTEST, "tests/test_zeta.py::test_one", "tests/test_alpha.py"]
+    world.calls.clear()
+    entry = bi._rerun(integration, _ledger(integration), "zeta", recorded, "member-tests", "overlap:alpha")
+    assert entry["status"] == "passed"
+    assert entry["command"] == recorded
+    assert entry["ran_command"] == [*PYTEST, "tests/test_zeta.py::test_one"]
+    assert entry["dropped_paths"] == ["tests/test_alpha.py"]
+    assert [call[0] for call in world.calls if "pytest" in call[0]] == [entry["ran_command"]]
+
+
+def test_a_rerun_whose_test_paths_are_all_deleted_fails_closed_without_running_pytest(world: World) -> None:
+    integration, _ = _develop_deletes(world, "tests/test_alpha.py", "tests/test_mid.py")
+    recorded = [*PYTEST, "tests/test_alpha.py", "tests/test_mid.py"]
+    world.calls.clear()
+    entry = bi._rerun(integration, _ledger(integration), "zeta", recorded, "member-tests", "final-evidence")
+    assert entry["status"] == "failed"
+    assert entry["dropped_paths"] == ["tests/test_alpha.py", "tests/test_mid.py"]
+    assert "absent from the tree" in entry["output"]
+    assert not [call for call in world.calls if "pytest" in call[0]]
+
+
+def test_a_rerun_fails_closed_when_only_an_option_value_names_a_test_after_dropping(world: World) -> None:
+    integration, _ = _develop_deletes(world, "tests/test_alpha.py")
+    world.commit(integration, {"tests/test_keep.py": "kept\n"}, "add test")
+    recorded = [*PYTEST[:-1], "--deselect", "tests/test_keep.py::test_one", "-q", "tests/test_alpha.py"]
+    world.calls.clear()
+    entry = bi._rerun(integration, _ledger(integration), "zeta", recorded, "member-tests", "final-evidence")
+    assert entry["status"] == "failed"
+    assert entry["dropped_paths"] == ["tests/test_alpha.py"]
+    assert not [call for call in world.calls if "pytest" in call[0]]
+
+
+def test_a_rerun_never_drops_a_missing_argument_that_is_not_a_test_path(world: World) -> None:
+    integration = world.start()
+    world.commit(integration, {"tests/test_keep.py": "kept\n"}, "add test")
+    recorded = [*PYTEST, "--rootdir", "missing_dir", "tests/test_keep.py"]
+    entry = bi._rerun(integration, _ledger(integration), "zeta", recorded, "member-tests", "fix:x")
+    assert entry["ran_command"] == recorded and entry["dropped_paths"] == []
+
+
 def test_no_overlap_triggers_no_rerun(world: World) -> None:
     world.start()
     world.deliver("zeta", {"src/a.py": "zeta change\n"})
@@ -1024,6 +1230,78 @@ def test_advance_refuses_when_there_is_nothing_new_or_a_member_is_unprepared(wor
         bi.advance_head(integration, "fix")
 
 
+def test_a_rerun_does_not_drop_a_test_the_batch_itself_deleted_while_develop_still_has_it(world: World) -> None:
+    integration = world.start()
+    git(integration, "rm", "-q", "tests/test_alpha.py")
+    git(integration, "commit", "-qm", "delete own test")
+    recorded = [*PYTEST, "tests/test_alpha.py", "tests/test_zeta.py"]
+    entry = bi._rerun(integration, _ledger(integration), "zeta", recorded, "member-tests", "fix:x")
+    assert entry["dropped_paths"] == [] and entry["ran_command"] == recorded
+
+
+def test_a_rerun_does_not_drop_a_test_the_batch_added_and_later_deleted(world: World) -> None:
+    integration = world.start()
+    world.commit(integration, {"tests/test_new.py": "new\n"}, "add test")
+    git(integration, "rm", "-q", "tests/test_new.py")
+    git(integration, "commit", "-qm", "delete added test")
+    recorded = [*PYTEST, "tests/test_new.py", "tests/test_zeta.py"]
+    entry = bi._rerun(integration, _ledger(integration), "zeta", recorded, "member-tests", "fix:x")
+    assert entry["dropped_paths"] == [] and entry["ran_command"] == recorded
+
+
+@pytest.mark.parametrize(
+    "tail",
+    [
+        ["--deselect", "tests/test_alpha.py::t", "tests/test_zeta.py"],
+        ["tests/test_zeta.py", "--ignore", "tests/test_alpha.py"],
+        ["--ignore", "tests/test_alpha.py", "tests/test_zeta.py", "tests/test_alpha.py"],
+    ],
+)
+def test_a_rerun_never_drops_a_path_outside_the_trailing_positional_run(world: World, tail: list[str]) -> None:
+    integration, _ = _develop_deletes(world, "tests/test_alpha.py")
+    recorded = [*PYTEST, *tail]
+    entry = bi._rerun(integration, _ledger(integration), "zeta", recorded, "member-tests", "fix:x")
+    assert entry["dropped_paths"] == [] and entry["ran_command"] == recorded
+
+
+def test_a_rerun_drops_a_file_develop_added_after_the_start_merged_in_and_later_deleted(world: World) -> None:
+    integration = world.start()
+    git(world.seed, "checkout", "-q", "-b", "adds")
+    (world.seed / "tests" / "test_new.py").write_text("def test_n():\n    assert True\n")
+    git(world.seed, "add", "tests/test_new.py")
+    git(world.seed, "commit", "-qm", "develop adds a test")
+    git(world.seed, "push", "-q", "origin", "adds:develop")
+    git(integration, "fetch", "-q", "origin")
+    git(integration, "merge", "-q", "--no-ff", "--no-edit", bi.DEVELOP_REF)
+    ledger = _ledger(integration)
+    ledger["advances"].append({"kind": "develop-merge", "head": world.head()})
+    git(world.seed, "rm", "-q", "tests/test_new.py")
+    git(world.seed, "commit", "-qm", "develop deletes it")
+    git(world.seed, "push", "-q", "origin", "adds:develop")
+    git(integration, "fetch", "-q", "origin")
+    git(integration, "merge", "-q", "--no-ff", "--no-edit", bi.DEVELOP_REF)
+    recorded = [*PYTEST, "tests/test_new.py", "tests/test_zeta.py"]
+    entry = bi._rerun(integration, ledger, "zeta", recorded, "member-tests", "fix:x")
+    assert entry["dropped_paths"] == ["tests/test_new.py"]
+
+
+def test_a_rerun_does_not_drop_a_reused_filename_develop_deleted_before_the_start(world: World) -> None:
+    (world.seed / "tests" / "test_old.py").write_text("def test_o():\n    assert True\n")
+    git(world.seed, "add", "tests/test_old.py")
+    git(world.seed, "commit", "-qm", "develop adds a test")
+    git(world.seed, "rm", "-q", "tests/test_old.py")
+    git(world.seed, "commit", "-qm", "develop deletes it")
+    git(world.seed, "push", "-q", "origin", "develop")
+    git(world.primary, "fetch", "-q", "origin")
+    integration = world.start()
+    world.commit(integration, {"tests/test_old.py": "member re-adds\n"}, "member reuses the name")
+    git(integration, "rm", "-q", "tests/test_old.py")
+    git(integration, "commit", "-qm", "member deletes it")
+    recorded = [*PYTEST, "tests/test_old.py", "tests/test_zeta.py"]
+    entry = bi._rerun(integration, _ledger(integration), "zeta", recorded, "member-tests", "fix:x")
+    assert entry["dropped_paths"] == [] and entry["ran_command"] == recorded
+
+
 def test_a_develop_merge_is_recorded_without_any_member_rerun(world: World) -> None:
     integration = _landed_pair(world)
     (world.seed / "other").mkdir()
@@ -1210,7 +1488,7 @@ def test_tracker_reads_page_every_section_with_the_revision_pin(world: World) ->
     world.calls.clear()
     tracker = bi.read_tracker(integration, BATCH)
     assert tracker["receipts"] == expected["receipts"] and tracker["integration_log"] == expected["integration_log"]
-    base = [*bi.TODO_DB_COMMAND, "batch", "show", BATCH]
+    base = [*bi.TRACTABLE_COMMAND, "batch", "show", BATCH]
     argvs = [call[0] for call in world.calls]
     assert argvs[0] == base
     assert [

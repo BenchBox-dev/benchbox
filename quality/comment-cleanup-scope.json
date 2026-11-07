@@ -183,9 +183,6 @@
           "path": "benchbox/core/tpcds/constants.py"
         },
         {
-          "path": "benchbox/core/tpcds/maintenance_operations.py"
-        },
-        {
           "path": "benchbox/core/tpcds/maintenance_test.py"
         },
         {
@@ -2702,7 +2699,7 @@
           "prefix": "_project/"
         },
         {
-          "prefix": ".todo-db/"
+          "prefix": ".tractable/"
         }
       ],
       "owner": "comment-cleanup-final-enforcement",

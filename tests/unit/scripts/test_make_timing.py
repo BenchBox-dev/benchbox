@@ -338,7 +338,7 @@ def test_report_on_a_missing_file_says_there_is_nothing_to_show(tmp_path: Path) 
 
 
 def _makefile_text() -> str:
-    return (ROOT / "Makefile").read_text(encoding="utf-8")
+    return make_targets.makefile_sources(ROOT)
 
 
 def _timed_targets() -> list[str]:

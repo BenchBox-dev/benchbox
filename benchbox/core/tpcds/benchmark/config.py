@@ -19,7 +19,8 @@ class ThroughputTestConfig:
 class MaintenanceTestConfig:
     scale_factor: float = 1.0
     concurrent_streams: int = 2
-    maintenance_interval: float = 30.0
+    refresh_runs: int = 1
+    first_refresh_set: int = 1
     verbose: bool = False
     output_dir: Optional[Path] = None
     seed: Optional[int] = None

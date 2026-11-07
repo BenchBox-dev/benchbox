@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch
 
+import pyarrow as pa
 import pytest
 
 from benchbox.platforms.datafusion import DataFusionAdapter
@@ -90,6 +91,7 @@ class TestDataFusionPlanCapture:
 
         fake_result = MagicMock()
         fake_result.collect.return_value = []
+        fake_result.schema.return_value = pa.schema([("a", pa.int64())])
         conn.sql.return_value = fake_result
 
         with _patch.object(
@@ -109,6 +111,7 @@ class TestDataFusionPlanCapture:
         conn = MagicMock()
         fake_result = MagicMock()
         fake_result.collect.return_value = []
+        fake_result.schema.return_value = pa.schema([("a", pa.int64())])
         conn.sql.return_value = fake_result
 
         with patch.object(
@@ -126,6 +129,7 @@ class TestDataFusionPlanCapture:
         conn = MagicMock()
         fake_result = MagicMock()
         fake_result.collect.return_value = []
+        fake_result.schema.return_value = pa.schema([("a", pa.int64())])
         conn.sql.return_value = fake_result
 
         capture_called = []
@@ -144,6 +148,7 @@ class TestDataFusionPlanCapture:
         conn = MagicMock()
         fake_result = MagicMock()
         fake_result.collect.return_value = []
+        fake_result.schema.return_value = pa.schema([("a", pa.int64())])
         conn.sql.return_value = fake_result
 
         display_calls = []

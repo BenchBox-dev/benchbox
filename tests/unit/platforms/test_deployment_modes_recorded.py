@@ -29,6 +29,14 @@ from tests.fixtures.result_dict_fixtures import make_benchmark_results
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
+
+@pytest.fixture(autouse=True)
+def _native_execution_class(monkeypatch):
+    native = {"execution_class": "native", "execution_class_source": "observed"}
+    for module in ("benchbox.core.results.environment", "benchbox.core.system", "benchbox.utils.system_info"):
+        monkeypatch.setattr(f"{module}.detect_execution_class", lambda: dict(native))
+
+
 CONNECTION = {"host": "db.example.com", "password": "secret", "benchmark": "tpch", "scale_factor": 0.01}
 RECORDED_PLATFORMS = {
     "timescaledb": ("TimescaleDB", CONNECTION),

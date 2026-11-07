@@ -219,7 +219,7 @@ class TestPowerTestReferenceSeedContext:
 
         raw_connection.execute = Mock(side_effect=raw_execute)
 
-        adapter = DuckDBAdapter()
+        adapter = DuckDBAdapter(fetch_mode="rows")
         connection = PlatformAdapterConnection(raw_connection, adapter)
         connection.benchmark_type = "tpch"
         connection.scale_factor = 1.0
@@ -259,7 +259,7 @@ class TestPowerTestReferenceSeedContext:
 
         raw_connection.execute = Mock(side_effect=raw_execute)
 
-        adapter = DuckDBAdapter()
+        adapter = DuckDBAdapter(fetch_mode="rows")
         connection = PlatformAdapterConnection(raw_connection, adapter)
         connection.benchmark_type = "tpch"
         connection.scale_factor = 1.0

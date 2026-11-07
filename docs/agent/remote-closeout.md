@@ -4,7 +4,7 @@
 narrow exception it makes to the read-only primary clone, the reviewer record
 that gates it, and the PRs it never applies to. The checkout-free path also
 needs the builder to open its own PR. Until `make pr-open` works in cloud
-sessions and `make pr-arm-remote` and the `make pr-landing-remote-*` targets
+sessions and the `make pr-arm-remote` and `make pr-landing-remote` targets
 exist, every PR closes out from a linked worktree as
 `docs/agent/cloud-builder.md` describes.
 
@@ -53,10 +53,8 @@ In the primary clone, the closer may:
   and `git show`;
 - run these targets, which store their records under `~/.benchbox/reviews/`
   and change no repository file, local branch, or config:
-  `make pr-arm-remote`, `make pr-landing-remote-bind`,
-  `make pr-landing-remote-manifest`, `make pr-landing-remote-review`,
-  `make pr-landing-remote-record`, `make pr-landing-remote-withdraw`, and
-  `make pr-landing-remote-ready`.
+  `make pr-arm-remote` and `make pr-landing-remote ACTION=<action>`, where
+  `<action>` is `bind`, `manifest`, `review`, `record`, `withdraw`, or `ready`.
 
 It never checks out a change, edits a working-tree file, creates or moves a
 local branch, changes local Git config, commits, pushes, or arms with a raw
@@ -110,13 +108,13 @@ filesystem could write one, so it is enforced by audit, like the rules in
 When the builder's report first names the PR, the closer binds it:
 
 ```bash
-make pr-landing-remote-bind PR=<n> BRANCH=<head branch> ITEM=<tracker item>
+make pr-landing-remote ACTION=bind PR=<n> BRANCH=<head branch> ITEM=<tracker item>
 ```
 
 `ITEM` is optional. The binding stores the PR number, the head branch, the node
 ID GitHub reports, and the item, and it never changes afterwards.
 
-`make pr-landing-remote-manifest PR=<n> HEAD=<sha>` fetches as above and prints
+`make pr-landing-remote ACTION=manifest PR=<n> HEAD=<sha>` fetches as above and prints
 the base SHA and manifest digest. The reviewer takes both from this target
 rather than computing them itself. The digest is the SHA-256 of the exact
 output of `git diff --raw --no-renames --no-abbrev <base> <head>`, whose full
@@ -137,7 +135,7 @@ The closer publishes the findings, then stores the record with the head the
 builder's latest report names:
 
 ```bash
-make pr-landing-remote-record PR=<n> RECORD=<record.json> BUILDER_HEAD=<sha>
+make pr-landing-remote ACTION=record PR=<n> RECORD=<record.json> BUILDER_HEAD=<sha>
 ```
 
 The target refuses a record with a missing or unknown field, a SHA that is not
@@ -154,8 +152,8 @@ a change stores the owner's statement, passed as
 
 ## Review run
 
-`make pr-landing-remote-review PR=<n> HEAD=<sha> BUILDER_HEAD=<sha>` starts the
-reviewer, builds its record, stores it as `make pr-landing-remote-record` does,
+`make pr-landing-remote ACTION=review PR=<n> HEAD=<sha> BUILDER_HEAD=<sha>` starts
+the reviewer, builds its record, stores it as `ACTION=record` does,
 and publishes the findings. `REVIEWER=codex` is the default. `MODEL=<model>`
 picks that backend's model: otherwise Codex uses its configuration and Claude
 uses `sonnet`. `REVIEWER=claude` starts Claude directly. A failed Codex run falls
@@ -164,7 +162,7 @@ limit, ignoring case. Output text that merely mentions a usage limit, and every
 other Codex failure, refuses without a fallback.
 `DRY_RUN=1` prints the record and creates, publishes, and stores nothing, so it
 needs no `BUILDER_HEAD`. Temporary review inputs are still prepared and removed.
-`make pr-landing-remote-review PR=<n> RESUME=1` runs no reviewer: it only
+`make pr-landing-remote ACTION=review PR=<n> RESUME=1` runs no reviewer: it only
 finishes the publication steps an earlier run left pending.
 
 The target needs a binding. It fetches and pins the base, head, and digest as
@@ -212,7 +210,7 @@ keys, other environment credentials, MCP logins, or the user's configuration.
 installed CLI must support all isolation flags or the target refuses to run it.
 
 The review store is not locked while either reviewer runs, so
-`make pr-landing-remote-withdraw` is never kept waiting; the target then waits
+`make pr-landing-remote ACTION=withdraw` is never kept waiting; the target then waits
 up to three minutes for the lock. A run that exceeds an hour is killed
 with its process group. The target deletes the temporary directory afterwards.
 For Codex it first copies back a login refreshed during the run if the original
@@ -237,7 +235,7 @@ steps first, finding an already posted review by its hidden marker instead of
 posting it again. A step that can never succeed, because the thread was deleted
 or GitHub refuses the review even without inline comments, is marked abandoned,
 and its record stays unpublished until a new review replaces it.
-`make pr-landing-remote-record` refuses an `approve` record while a blocking
+`make pr-landing-remote ACTION=record` refuses an `approve` record while a blocking
 finding is open.
 
 ## Arm conditions
@@ -280,9 +278,9 @@ armed PR, and merges the new head once its required checks pass:
 `--match-head-commit` is checked only when auto-merge is enabled. This was
 observed on 2026-10-18 in a test repository. A push to an armed PR would
 therefore merge unreviewed code. Before a builder revises an armed PR, the closer
-runs `make pr-landing-remote-withdraw`, which disables auto-merge, and only
-then hands the finding or CI failure to the builder. The builder pushes only
-after that hand-back. `make pr-landing-remote-ready` re-applies every arm
+runs `make pr-landing-remote ACTION=withdraw`, which disables auto-merge, and
+only then hands the finding or CI failure to the builder. The builder pushes
+only after that hand-back. `make pr-landing-remote ACTION=ready` re-applies every arm
 condition to the new head and requires a new record. If a push reaches an armed
 PR anyway, the closer withdraws at once.
 

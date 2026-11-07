@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import dataclasses
+import logging
 import signal
 from datetime import datetime
 from pathlib import Path
@@ -32,6 +33,7 @@ from benchbox.core.throughput.entrypoints import (
     require_stream_minimum,
     warn_legacy_throughput_api,
 )
+from benchbox.core.throughput.result import THROUGHPUT_FIRST_STREAM_ID
 from benchbox.core.tpch.platform_power import _power_query_result, _power_test_error_result
 from benchbox.platforms.base.connection_wrappers import (
     PlatformAdapterConnection,
@@ -57,6 +59,39 @@ def _resolve_requested_stream_count(run_config: dict, default: int = MIN_THROUGH
     if value is None:
         return default
     return require_stream_minimum(int(value), "concurrent_streams")
+
+
+_COMBINED_BASE_SEQUENCE = ("power", "throughput", "maintenance")
+
+
+def _combined_phase_plan(
+    combined: Any, requested_phases: set[str], *, spec_order: bool
+) -> list[tuple[str, int | None]]:
+    spec_sequence = tuple(getattr(combined, "spec_sequence", ()) or ())
+    if spec_order and spec_sequence and set(spec_sequence) <= requested_phases:
+        counts: dict[str, int] = {}
+        plan: list[tuple[str, int | None]] = []
+        for phase_key in spec_sequence:
+            counts[phase_key] = counts.get(phase_key, 0) + 1
+            plan.append((phase_key, counts[phase_key]))
+        return plan
+    return [(phase_key, None) for phase_key in _COMBINED_BASE_SEQUENCE if phase_key in requested_phases]
+
+
+def _refresh_window(run_config: dict, benchmark: Any) -> tuple[int, int]:
+    base_first_set = run_config.get("tpcds_refresh_first_set", getattr(benchmark, "tpcds_refresh_first_set", 1))
+    phase_round = run_config.get("_phase_round")
+    if phase_round is None:
+        return run_config.get("tpcds_refresh_runs", 1), base_first_set
+    refresh_runs = max(_resolve_requested_stream_count(run_config) // 2, 1)
+    requested_runs = run_config.get("tpcds_refresh_runs")
+    if requested_runs is not None and requested_runs != refresh_runs:
+        logging.getLogger(__name__).warning(
+            "tpcds_refresh_runs=%s ignored in spec order: each Data Maintenance Test runs S/2 = %s refresh runs",
+            requested_runs,
+            refresh_runs,
+        )
+    return refresh_runs, base_first_set + (phase_round - 1) * refresh_runs
 
 
 def _throughput_benchmark_id(benchmark: Any) -> str:
@@ -277,6 +312,7 @@ class TestDriversMixin:
             cfg = TPCDSThroughputTestConfig(
                 scale_factor=scale_factor,
                 num_streams=num_streams,
+                first_stream_id=THROUGHPUT_FIRST_STREAM_ID + (run_config.get("_phase_round", 1) - 1) * num_streams,
                 **_throughput_config_options(run_config),
             )
             console.print(f"[dim]{_describe_stream_timeout(cfg, run_config)}[/dim]")
@@ -479,13 +515,31 @@ class TestDriversMixin:
 
     def _execute_tpcds_maintenance_test(self, benchmark, connection: Any, run_config: dict) -> list[dict[str, Any]]:
 
-        from benchbox.core.tpcds.maintenance_operations import resolve_maintenance_seed
-        from benchbox.core.tpcds.maintenance_test import TPCDSMaintenanceTest, TPCDSMaintenanceTestConfig
+        from benchbox.core.results.maintenance_method import MAINTENANCE_METHOD
+        from benchbox.core.tpcds.maintenance_test import (
+            TPCDSMaintenanceTest,
+            TPCDSMaintenanceTestConfig,
+            maintenance_unsupported_reason,
+        )
+
+        console = quiet_console
+
+        unsupported_reason = maintenance_unsupported_reason(self)
+        if unsupported_reason is not None:
+            console.print(f"[yellow]TPC-DS Maintenance Test skipped: {unsupported_reason}[/yellow]")
+            return [
+                {
+                    "query_id": "maintenance_not_supported",
+                    "execution_time_seconds": 0.0,
+                    "status": "SKIPPED",
+                    "rows_returned": 0,
+                    "error": unsupported_reason,
+                    "test_type": "maintenance",
+                }
+            ]
 
         self._last_maintenance_test_result = None
         self._plan_capture_checkpoint(connection)
-
-        console = quiet_console
 
         try:
             scale_factor = run_config.get("scale_factor", 1.0)
@@ -498,7 +552,7 @@ class TestDriversMixin:
 
             def connection_factory():
                 stream_connection = open_stream_connection(self, connection, benchmark_type)
-                conn_wrapper = PlatformAdapterConnection(stream_connection, self)
+                conn_wrapper = PlatformAdapterConnection(stream_connection, self, maintenance_mode=True)
                 conn_wrapper.benchmark_type = "tpcds"
                 conn_wrapper.scale_factor = scale_factor
                 return conn_wrapper
@@ -513,23 +567,27 @@ class TestDriversMixin:
                 dialect=self.get_target_dialect(),
             )
 
+            refresh_runs, first_refresh_set = _refresh_window(run_config, benchmark)
             maintenance_test_result = maintenance_test.run(
                 TPCDSMaintenanceTestConfig(
                     scale_factor=scale_factor,
+                    refresh_runs=refresh_runs,
+                    first_refresh_set=first_refresh_set,
+                    validate_integrity=run_config.get("validate_integrity", True),
                     verbose=verbose,
-                    output_dir=output_path,
-                    seed=resolve_maintenance_seed(run_config.get("seed")),
+                    output_dir=maintenance_test.output_dir,
+                    seed=run_config.get("seed"),
                 )
             )
-            self._last_maintenance_test_result = maintenance_test_result
 
+            self._last_maintenance_test_result = maintenance_test_result
             if maintenance_test_result["success"]:
                 console.print("[green]✅ TPC-DS Maintenance Test completed[/green]")
-                console.print(f"  Insert operations: {maintenance_test_result['insert_operations']}")
-                console.print(f"  Update operations: {maintenance_test_result['update_operations']}")
-                console.print(f"  Delete operations: {maintenance_test_result['delete_operations']}")
+                console.print(f"  Maintenance method: {MAINTENANCE_METHOD}")
+                console.print(f"  Insert functions: {maintenance_test_result['insert_operations']}")
+                console.print(f"  Delete functions: {maintenance_test_result['delete_operations']}")
                 console.print(
-                    f"  Total operations: {maintenance_test_result['total_operations']}, Successful: {maintenance_test_result['successful_operations']}"
+                    f"  Total functions: {maintenance_test_result['total_operations']}, Successful: {maintenance_test_result['successful_operations']}"
                 )
                 console.print(f"  Total execution time: {maintenance_test_result['total_time']:.2f}s")
                 console.print(f"  Throughput: {maintenance_test_result['overall_throughput']:.2f} ops/sec")
@@ -542,7 +600,7 @@ class TestDriversMixin:
             query_results = []
             for operation in maintenance_test_result["operations"]:
                 platform_result = {
-                    "query_id": f"{operation.operation_type.lower()}_{operation.table_name}",
+                    "query_id": operation.function,
                     "execution_time_seconds": operation.duration,
                     "status": "SUCCESS" if operation.success else "FAILED",
                     "rows_returned": operation.rows_affected,
@@ -553,6 +611,18 @@ class TestDriversMixin:
                 if not operation.success:
                     platform_result["error"] = operation.error or "Unknown error"
                 query_results.append(platform_result)
+
+            if not maintenance_test_result["success"] and not any(row["status"] == "FAILED" for row in query_results):
+                query_results.append(
+                    {
+                        "query_id": "maintenance_test_error",
+                        "execution_time_seconds": 0.0,
+                        "status": "FAILED",
+                        "rows_returned": 0,
+                        "error": "; ".join(maintenance_test_result["errors"]) or "Maintenance Test failed",
+                        "test_type": "maintenance",
+                    }
+                )
 
             return query_results
 
@@ -716,7 +786,12 @@ class TestDriversMixin:
         return results
 
     def _contain_outstanding_throughput_work(self, run_config: dict[str, Any]) -> bool:
-        result = getattr(self, "_last_throughput_test_result", None)
+        for attribute in ("_last_throughput_test_result", "_second_throughput_test_result"):
+            if not self._contain_throughput_result(getattr(self, attribute, None), run_config):
+                return False
+        return True
+
+    def _contain_throughput_result(self, result: Any, run_config: dict[str, Any]) -> bool:
         if not getattr(result, "outstanding_stream_ids", None):
             return True
 
@@ -838,52 +913,82 @@ class TestDriversMixin:
         console.print(f"[blue]Running combined {combined.label} test[/blue]")
 
         all_results: list[dict[str, Any]] = []
-        phases = (
-            ("power", "Power Test", combined.power_method),
-            ("throughput", "Throughput Test", combined.throughput_method),
-            ("maintenance", "Maintenance Test", combined.maintenance_method),
-        )
-        for phase_key, phase_label, method_name in phases:
-            if phase_key in requested_phases:
-                if phase_key == "maintenance" and skip_maintenance:
-                    warning = (
-                        "Maintenance Test skipped: the greybeam gateway does not reflect refresh writes in its "
-                        "CDC-fed Iceberg replica; pass --phases without maintenance to silence this warning"
-                    )
-                    console.print(f"[bold red]WARNING: {warning}[/bold red]")
-                    self.logger.warning(warning)
+        labels = {
+            "power": ("Power Test", combined.power_method),
+            "throughput": ("Throughput Test", combined.throughput_method),
+            "maintenance": ("Maintenance Test", combined.maintenance_method),
+        }
+        plan = _combined_phase_plan(combined, requested_phases, spec_order=not skip_maintenance)
+        result_attrs = {
+            "throughput": "_last_throughput_test_result",
+            "maintenance": "_last_maintenance_test_result",
+        }
+        recorded: dict[tuple[str, int], Any] = {}
+        for phase_key, phase_round in plan:
+            phase_label, method_name = labels[phase_key]
+            phase_config = run_config
+            if phase_round is not None:
+                phase_label = f"{phase_label} {phase_round}"
+                phase_config = {**run_config, "_phase_round": phase_round}
+            if phase_key == "maintenance" and skip_maintenance:
+                warning = (
+                    "Maintenance Test skipped: the greybeam gateway does not reflect refresh writes in its "
+                    "CDC-fed Iceberg replica; pass --phases without maintenance to silence this warning"
+                )
+                console.print(f"[bold red]WARNING: {warning}[/bold red]")
+                self.logger.warning(warning)
+                all_results.append(
+                    {
+                        "query_id": "maintenance_skipped",
+                        "execution_time_seconds": 0.0,
+                        "status": "SKIPPED",
+                        "rows_returned": 0,
+                        "error": warning,
+                        "test_type": "maintenance",
+                        "maintenance_skipped": True,
+                    }
+                )
+                continue
+            gated = phase_key == "maintenance" or (phase_key == "throughput" and bool(phase_round and phase_round > 1))
+            if gated:
+                prior = [
+                    recorded[key] for key in sorted(recorded) if key[0] == "throughput" and recorded[key] is not None
+                ]
+                current = getattr(self, "_last_throughput_test_result", None)
+                if current is not None and all(current is not result for result in prior):
+                    prior.append(current)
+                boundary = next(
+                    (decision for decision in map(check_phase_boundary, prior) if not decision.proceed),
+                    check_phase_boundary(None),
+                )
+                if not boundary.proceed:
+                    phase_name = "Maintenance Test" if phase_key == "maintenance" else "Throughput Test"
+                    refusal = f"{phase_name} refused: {boundary.reason}"
+                    console.print(f"[red]❌ {refusal}[/red]")
                     all_results.append(
                         {
-                            "query_id": "maintenance_skipped",
+                            "query_id": f"{phase_key}_test_contained",
                             "execution_time_seconds": 0.0,
-                            "status": "SKIPPED",
+                            "status": "FAILED",
                             "rows_returned": 0,
-                            "error": warning,
-                            "test_type": "maintenance",
-                            "maintenance_skipped": True,
+                            "error": refusal,
+                            "test_type": phase_key,
+                            "contained": True,
+                            "outstanding_stream_ids": list(boundary.outstanding_stream_ids),
                         }
                     )
                     continue
-                if phase_key == "maintenance":
-                    boundary = check_phase_boundary(getattr(self, "_last_throughput_test_result", None))
-                    if not boundary.proceed:
-                        refusal = f"Maintenance Test refused: {boundary.reason}"
-                        console.print(f"[red]❌ {refusal}[/red]")
-                        all_results.append(
-                            {
-                                "query_id": "maintenance_test_contained",
-                                "execution_time_seconds": 0.0,
-                                "status": "FAILED",
-                                "rows_returned": 0,
-                                "error": refusal,
-                                "test_type": "maintenance",
-                                "contained": True,
-                                "outstanding_stream_ids": list(boundary.outstanding_stream_ids),
-                            }
-                        )
-                        continue
-                console.print(f"[cyan]Phase: {phase_label}[/cyan]")
-                all_results.extend(getattr(self, method_name)(benchmark, connection, run_config))
+            if phase_round is not None and phase_key in result_attrs:
+                setattr(self, result_attrs[phase_key], None)
+            console.print(f"[cyan]Phase: {phase_label}[/cyan]")
+            all_results.extend(getattr(self, method_name)(benchmark, connection, phase_config))
+            if phase_round is not None and phase_key in result_attrs:
+                recorded[(phase_key, phase_round)] = getattr(self, result_attrs[phase_key], None)
+        if recorded:
+            self._second_throughput_test_result = recorded.get(("throughput", 2))
+            self._second_maintenance_test_result = recorded.get(("maintenance", 2))
+            self._last_throughput_test_result = recorded.get(("throughput", 1))
+            self._last_maintenance_test_result = recorded.get(("maintenance", 1))
         return all_results
 
     def _get_runtime_platform_version(self, connection: Any | None) -> str | None:

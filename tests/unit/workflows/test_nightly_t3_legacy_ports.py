@@ -9,6 +9,8 @@ from typing import Any
 import pytest
 import yaml
 
+import scripts.check_make_targets as make_targets
+
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -16,7 +18,6 @@ WORKFLOWS_DIR = REPO_ROOT / ".github" / "workflows"
 NIGHTLY_V2 = WORKFLOWS_DIR / "nightly-v2.yml"
 SWEEP = WORKFLOWS_DIR / "green-unmerged-sweep.yml"
 RUNBOOK = REPO_ROOT / "docs" / "internal" / "nightly-t3.md"
-MAKEFILE = REPO_ROOT / "Makefile"
 SMOKE_MARKERS = "platform_smoke or (integration and fast)"
 LEGACY_JOBS = (
     "test",
@@ -56,7 +57,7 @@ def _run_text(job: dict[str, Any]) -> str:
 
 
 def _make_targets() -> set[str]:
-    return set(re.findall(r"(?m)^([A-Za-z0-9_.-]+):", MAKEFILE.read_text(encoding="utf-8")))
+    return set(re.findall(r"(?m)^([A-Za-z0-9_.-]+):", make_targets.makefile_sources(REPO_ROOT)))
 
 
 def _diff_module() -> Any:
@@ -81,7 +82,7 @@ def test_integration_smoke_runs_the_make_target_marker_on_ubuntu_and_windows() -
     assert legs == {"ubuntu-latest", "windows-latest"}
     assert job["strategy"]["fail-fast"] is False
     assert job["env"]["BENCHBOX_TEST_TIER"] == "t2"
-    makefile = MAKEFILE.read_text(encoding="utf-8")
+    makefile = make_targets.makefile_sources(REPO_ROOT)
     assert f'-m "{SMOKE_MARKERS}"' in makefile.split("test-integration-smoke:", 1)[1].split(".PHONY", 1)[0]
     by_condition = {str(step.get("if")): str(step["run"]) for step in job["steps"] if "if" in step and "run" in step}
     assert by_condition["runner.os != 'Windows'"] == "make test-integration-smoke"

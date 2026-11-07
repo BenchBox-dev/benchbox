@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from dataclasses import asdict, is_dataclass
 from typing import TYPE_CHECKING, Any, Callable
 
+from benchbox.core.results.fetch_mode import parse_fetch_mode
 from benchbox.core.results.timing_fields import platform_timing_problems
 
 if TYPE_CHECKING:
@@ -34,6 +35,7 @@ COMPACT_V2_QUERY_FIELDS = frozenset(
         "request_count",
         "result_bytes",
         "platform_timing",
+        "fetch_mode",
     }
 )
 
@@ -192,6 +194,7 @@ LEGACY_QUERY_FIELDS = frozenset(
         "request_count",
         "result_bytes",
         "platform_timing",
+        "fetch_mode",
     }
 )
 
@@ -331,6 +334,15 @@ def normalize_platform_timing(value: Any) -> dict[str, Any] | None:
     return dict(value)
 
 
+def normalize_fetch_mode(value: Any) -> str | None:
+    if value is None:
+        return None
+    try:
+        return parse_fetch_mode(value)
+    except ValueError as exc:
+        raise QueryExecutionContractError(str(exc)) from exc
+
+
 def normalize_row_count_validation(value: Any, *, rows_returned: int | None) -> dict[str, Any] | None:
     if value is None:
         return None
@@ -441,6 +453,7 @@ def validate_query_execution(execution: QueryExecution) -> QueryExecution:
         request_count=execution.request_count,
         result_bytes=execution.result_bytes,
         platform_timing=execution.platform_timing,
+        fetch_mode=execution.fetch_mode,
     )
 
 
@@ -501,6 +514,7 @@ def legacy_query_execution_mapping(value: Any) -> Mapping[str, Any]:
         "request_count",
         "result_bytes",
         "platform_timing",
+        "fetch_mode",
     )
     extracted = {field: getattr(value, field) for field in contract_fields if hasattr(value, field)}
     if extracted:
@@ -621,6 +635,7 @@ def query_execution_from_legacy_dict(
         request_count=source.get("request_count"),
         result_bytes=source.get("result_bytes"),
         platform_timing=source.get("platform_timing"),
+        fetch_mode=source.get("fetch_mode"),
     )
 
 
@@ -666,6 +681,7 @@ def query_execution_to_legacy_dict(
         "request_count",
         "result_bytes",
         "platform_timing",
+        "fetch_mode",
     )
     for field in optional_fields:
         value = getattr(execution, field)
@@ -720,7 +736,7 @@ def query_execution_to_compact_v2(execution: QueryExecution) -> dict[str, Any]:
         result["dataframe_skip_summary"] = execution.dataframe_skip_summary
     if execution.plan_capture_error is not None:
         result["plan_capture_error"] = execution.plan_capture_error
-    for field in ("request_count", "result_bytes", "platform_timing"):
+    for field in ("request_count", "result_bytes", "platform_timing", "fetch_mode"):
         value = getattr(execution, field)
         if value is not None:
             result[field] = value

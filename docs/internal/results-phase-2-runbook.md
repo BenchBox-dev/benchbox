@@ -212,7 +212,7 @@ Two honest limits on what the new status does and does not buy, so nobody
 reads more protection into a green badge than is there:
 
 - **It is advisory, not enforcing.** No ruleset targets `published-results` —
-  the repo's rulesets target `develop`, `release`, `v*` branches, and tags — so
+  the repo's rulesets target `develop` and `v*` tags (there is no release branch) — so
   a maintainer can still flip a mirror PR ready and merge it with the status
   red. The status makes the verdict *visible*; the maintainer review step the
   draft state exists for is still what enforces it.

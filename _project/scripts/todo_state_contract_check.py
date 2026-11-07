@@ -17,13 +17,13 @@ class StateContractError(ValueError):
 
 EXPECTED_REMOTE = "https://github.com/BenchBox-dev/BenchBox.git"
 EXPECTED_BRANCH = "todo-state"
-EXPECTED_VERSION = "0.15.0"
-EXPECTED_WHEEL = f"todo_db-{EXPECTED_VERSION}-py3-none-any.whl"
+EXPECTED_VERSION = "1.0.0"
+EXPECTED_WHEEL = f"tractable-{EXPECTED_VERSION}-py3-none-any.whl"
 
 
 def validate_contract(*, repo_root: Path) -> None:
     vendor = repo_root / "_project/scripts/vendor"
-    wheels = sorted(vendor.glob("todo_db-*-py3-none-any.whl"))
+    wheels = sorted(vendor.glob("tractable-*-py3-none-any.whl"))
     if [wheel.name for wheel in wheels] != [EXPECTED_WHEEL]:
         raise StateContractError(f"expected exactly {EXPECTED_WHEEL}, found {[wheel.name for wheel in wheels]!r}")
 
@@ -33,7 +33,7 @@ def validate_contract(*, repo_root: Path) -> None:
     if re.search(r"(?i)libsql|turso|hosted", pyproject):
         raise StateContractError("_project/scripts/pyproject.toml still contains the retired hosted database runtime")
 
-    config_path = repo_root / ".todo-db/config.json"
+    config_path = repo_root / ".tractable/config.json"
     try:
         config = json.loads(config_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -48,11 +48,16 @@ def validate_contract(*, repo_root: Path) -> None:
     try:
         with zipfile.ZipFile(wheels[0]) as archive:
             names = set(archive.namelist())
-            required = {"todo_db/git_backend.py", "todo_db/cli.py", "todo_db/mcp/server.py", "todo_db/mcp/tools.py"}
+            required = {
+                "tractable/git_backend.py",
+                "tractable/cli.py",
+                "tractable/mcp/server.py",
+                "tractable/mcp/tools.py",
+            }
             missing = sorted(required - names)
             if missing:
                 raise StateContractError(f"{wheels[0]} is missing JSON/Git implementation files: {missing!r}")
-            if "todo_db/database.py" in names or any(name.startswith("todo_db/migrations/") for name in names):
+            if "tractable/database.py" in names or any(name.startswith("tractable/migrations/") for name in names):
                 raise StateContractError(f"{wheels[0]} still contains the retired SQLite implementation")
             try:
                 metadata_name = next(name for name in names if name.endswith(".dist-info/METADATA"))
@@ -61,8 +66,8 @@ def validate_contract(*, repo_root: Path) -> None:
                 raise StateContractError(f"cannot read package metadata from {wheels[0]}") from exc
     except (OSError, zipfile.BadZipFile) as exc:
         raise StateContractError(f"cannot inspect {wheels[0]}: {exc}") from exc
-    if "Name: todo-db\n" not in metadata or f"Version: {EXPECTED_VERSION}\n" not in metadata:
-        raise StateContractError(f"{wheels[0]} does not identify the reviewed todo-db {EXPECTED_VERSION} runtime")
+    if "Name: tractable\n" not in metadata or f"Version: {EXPECTED_VERSION}\n" not in metadata:
+        raise StateContractError(f"{wheels[0]} does not identify the reviewed tractable {EXPECTED_VERSION} runtime")
 
 
 def main(argv: list[str] | None = None) -> int:

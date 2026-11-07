@@ -71,7 +71,7 @@ follow merged-only member cleanup and leader-last worktree finish in
 4. Dropping an item as unnecessary is a human decision — report it with the
    fixing revision identified, do not `drop` it yourself. When the owner
    decides to drop, call `drop(id=..., reason=...)` with their decision and
-   any successor item as the `reason` (todo-db 0.12.0 or later); do not add a
+   any successor item as the `reason`; do not add a
    separate `context_append` note.
 
 ## Report

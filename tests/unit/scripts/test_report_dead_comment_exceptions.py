@@ -8,6 +8,8 @@ from pathlib import Path
 import pytest
 from report_dead_comment_exceptions import dead_exceptions, main, registration
 
+import scripts.check_make_targets as make_targets
+
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 POLICY_PATH = "quality/comment-policy.json"
@@ -90,7 +92,7 @@ def test_report_is_not_wired_into_ci_or_hooks() -> None:
         )
     ]
     assert wired == []
-    makefile = (root / "Makefile").read_text(encoding="utf-8")
+    makefile = make_targets.makefile_sources(root)
     for line in makefile.splitlines():
         if line.startswith("\t") and "comment-policy-dead-exceptions" in line:
             raise AssertionError(line)

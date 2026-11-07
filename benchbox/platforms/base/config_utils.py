@@ -132,6 +132,9 @@ def build_platform_config(
     defaults = field_defaults or {}
     for field in platform_fields:
         config_dict[field] = merged_options.get(field, defaults.get(field))
+    for field in FETCH_FORWARD_KEYS:
+        if merged_options.get(field) is not None:
+            config_dict[field] = merged_options[field]
 
     config_dict["benchmark"] = overrides.get("benchmark")
     config_dict["scale_factor"] = overrides.get("scale_factor")
@@ -238,6 +241,8 @@ PLAN_FORWARD_KEYS: tuple[str, ...] = (
     "plan_max_depth",
 )
 
+FETCH_FORWARD_KEYS: tuple[str, ...] = ("fetch_mode",)
+
 PLAN_OPTION_KEYS: tuple[str, ...] = ("plan_capture_timeout_seconds", "plan_max_depth")
 
 
@@ -283,6 +288,10 @@ def build_adapter_config(
 
     for key in PLAN_FORWARD_KEYS:
         if key in config and config[key] is not None:
+            adapter_config[key] = config[key]
+
+    for key in FETCH_FORWARD_KEYS:
+        if config.get(key) is not None:
             adapter_config[key] = config[key]
 
     return adapter_config

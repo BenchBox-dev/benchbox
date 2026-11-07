@@ -453,22 +453,6 @@
    ]
   },
   {
-   "disposition": "wiring-updated",
-   "kinds": {
-    "extra": 1
-   },
-   "occurrences": 1,
-   "path": "Makefile",
-   "rule": "build-and-ignore-wiring",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "extra",
-     "target": "scripts/check_public_contract_drift.py"
-    }
-   ]
-  },
-  {
    "disposition": "prose-link-pinned",
    "kinds": {
     "file": 1
@@ -568,17 +552,6 @@
    },
    "occurrences": 1,
    "path": "_project/analysis/ingest-architecture-design.md",
-   "rule": "project-records",
-   "target_count": 1,
-   "targets_sha256": "c6cb1d80756c978e7a08ed40a31ce5c0b8451e1360be8ba2e3659f6cb51633a2"
-  },
-  {
-   "disposition": "historical-record",
-   "kinds": {
-    "unresolved": 1
-   },
-   "occurrences": 2,
-   "path": "_project/analysis/phase-3-promotion-metrics.md",
    "rule": "project-records",
    "target_count": 1,
    "targets_sha256": "c6cb1d80756c978e7a08ed40a31ce5c0b8451e1360be8ba2e3659f6cb51633a2"
@@ -2120,6 +2093,22 @@
   {
    "disposition": "wiring-updated",
    "kinds": {
+    "extra": 1
+   },
+   "occurrences": 1,
+   "path": "make/quality.mk",
+   "rule": "build-and-ignore-wiring",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "extra",
+     "target": "scripts/check_public_contract_drift.py"
+    }
+   ]
+  },
+  {
+   "disposition": "wiring-updated",
+   "kinds": {
     "root": 1,
     "unresolved": 2
    },
@@ -3187,7 +3176,7 @@
    "kinds": {
     "unresolved": 1
    },
-   "occurrences": 2,
+   "occurrences": 5,
    "path": "tests/unit/scripts/test_batch_integration.py",
    "rule": "test-sample-data",
    "target_count": 1,
@@ -4149,13 +4138,13 @@
    "contract-tooling": 6,
    "fixture-data": 37,
    "governance-stays": 11,
-   "historical-record": 112,
+   "historical-record": 111,
    "lock-test": 4,
    "prose-link-pinned": 12,
    "site-pipeline-cutover": 4,
    "wiring-updated": 31
   },
-  "files": 218,
+  "files": 217,
   "kinds": {
    "built-url": 29037,
    "dir": 163,
@@ -4164,9 +4153,9 @@
    "generated": 3,
    "pattern": 332,
    "root": 200,
-   "unresolved": 2050
+   "unresolved": 2051
   },
-  "references": 33199,
+  "references": 33200,
   "unclassified": 0
  }
 }

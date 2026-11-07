@@ -13,6 +13,7 @@ from typing import Any
 import pytest
 import yaml
 
+import scripts.check_make_targets as make_targets
 from benchbox.core.results.anonymization import public_pseudonym_salt_path
 
 pytestmark = [
@@ -425,7 +426,7 @@ def test_ledger_seed_is_committed_only_with_corpus_changes() -> None:
 
 
 def test_ledger_seed_gate_target_runs_the_publication_suites() -> None:
-    makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    makefile = make_targets.makefile_sources(REPO_ROOT)
 
     for suite in (
         "tests/unit/scripts/publication/test_ledger_seed.py",

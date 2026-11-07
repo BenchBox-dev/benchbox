@@ -1226,6 +1226,7 @@ class TestClickHouseWorkloadCoverage:
     def _adapter(deployment_mode: str = "server") -> ClickHouseAdapter:
         adapter = ClickHouseAdapter.__new__(ClickHouseAdapter)
         adapter.deployment_mode = deployment_mode
+        adapter.fetch_mode = "rows"
         logger = logging.getLogger(f"benchbox.tests.clickhouse.{deployment_mode}")
         logger.debug = Mock()
         adapter.logger = logger

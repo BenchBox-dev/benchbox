@@ -480,8 +480,8 @@ jobs:
           mkdir -p "$RUNNER_TEMP/skill-home/Developer"
           git clone --quiet https://github.com/joeharris76/skill-sync-skills.git \
             "$RUNNER_TEMP/skill-home/Developer/skill-sync-skills"
-          git clone --quiet https://github.com/joeharris76/todo-db.git \
-            "$RUNNER_TEMP/skill-home/Developer/todo-db"
+          git clone --quiet https://github.com/joeharris76/tractable.git \
+            "$RUNNER_TEMP/skill-home/Developer/tractable"
           git clone --quiet https://github.com/joeharris76/skill-sync.git \
             "$RUNNER_TEMP/skill-home/Developer/skill-sync"
 

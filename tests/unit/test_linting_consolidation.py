@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 
+import scripts.check_make_targets as make_targets
+
 pytestmark = [
     pytest.mark.unit,
     pytest.mark.fast,
@@ -95,10 +97,7 @@ class TestLintingConsolidation:
         assert result.returncode == 0, f"ruff format failed: {result.stderr}"
 
     def test_makefile_targets_use_ruff(self):
-        makefile_path = Path(__file__).parent.parent.parent / "Makefile"
-
-        with open(makefile_path, encoding="utf-8") as f:
-            makefile_content = f.read()
+        makefile_content = make_targets.makefile_sources(Path(__file__).parent.parent.parent)
 
         assert "lint:" in makefile_content
         assert "uv run ruff check ." in makefile_content

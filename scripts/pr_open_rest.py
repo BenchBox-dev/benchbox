@@ -19,6 +19,9 @@ INTEGRATION_BRANCHES = frozenset({"develop", "published-results"})
 MAX_STACK_DEPTH = 3
 RECORD_MARKER = re.compile(r"<!-- (?:review|oracle)-local-record: v1 [A-Za-z0-9_-]+ -->")
 UNAVAILABLE_MARKER = re.compile(r"Local review: unavailable \(.*\); the hosted review decides")
+RECEIPT_BEGIN = re.compile(r"<!-- preflight-receipt: v1 begin tree=[0-9a-f]+ -->")
+RECEIPT_END = "<!-- preflight-receipt: v1 end -->"
+RECEIPT_BLOCK = re.compile(RECEIPT_BEGIN.pattern + r".*?" + re.escape(RECEIPT_END) + r"\n?", re.DOTALL)
 
 Runner = Callable[[list[str]], tuple[int, str]]
 
@@ -160,14 +163,26 @@ def with_unavailable(body: str, cause: str) -> str:
     return "\n".join(_without_markers(body)).rstrip() + f"\n\n{unavailable_marker(cause)}\n"
 
 
-def _stamp(text: str, record: str, unavailable: str, clear: bool = False) -> str | None:
+def with_receipt(body: str, block: str) -> str:
+    kept: list[str] = []
+    markers: list[str] = []
+    for line in RECEIPT_BLOCK.sub("", body.replace("\r\n", "\n")).split("\n"):
+        is_marker = RECORD_MARKER.fullmatch(line.strip()) or UNAVAILABLE_MARKER.fullmatch(line.strip())
+        (markers if is_marker else kept).append(line)
+    stamped = "\n".join(kept).rstrip() + f"\n\n{block.strip()}\n"
+    return stamped + "".join(f"\n{marker}\n" for marker in markers)
+
+
+def _stamp(text: str, record: str, unavailable: str, clear: bool = False, receipt: str = "") -> str | None:
+    stamped = with_receipt(text, receipt) if receipt else None
+    current = text if stamped is None else stamped
     if unavailable:
-        return with_unavailable(text, unavailable)
+        return with_unavailable(current, unavailable)
     if record:
-        return with_record(text, record)
-    if clear and any(UNAVAILABLE_MARKER.fullmatch(line.strip()) for line in text.replace("\r\n", "\n").split("\n")):
-        return "\n".join(_without_markers(text)).rstrip() + "\n"
-    return None
+        return with_record(current, record)
+    if clear and any(UNAVAILABLE_MARKER.fullmatch(line.strip()) for line in current.replace("\r\n", "\n").split("\n")):
+        return "\n".join(_without_markers(current)).rstrip() + "\n"
+    return stamped
 
 
 def publish(
@@ -182,6 +197,7 @@ def publish(
     parent: str | None = None,
     record: str = "",
     unavailable: str = "",
+    receipt: str = "",
 ) -> PublishedPr:
     base = parent or BASE_BRANCH
     if parent:
@@ -197,6 +213,7 @@ def publish(
             record,
             unavailable,
             clear=body_file is None,
+            receipt=receipt,
         )
         if stamped is not None:
             if stamped.rstrip() != str(existing.get("body") or "").replace("\r\n", "\n").rstrip():
@@ -215,9 +232,9 @@ def publish(
     resolved_title = title or default_title(commits, base_ref)
     cmd = ["gh", "api", "--method", "POST", f"repos/{repo}/pulls"]
     cmd += ["-f", f"title={resolved_title}", "-f", f"head={head_spec}", "-f", f"base={base}"]
-    if record or unavailable:
+    if record or unavailable or receipt:
         text = body_file.read_text(encoding="utf-8") if body_file is not None else default_body(commits)
-        cmd += ["-f", f"body={_stamp(text, record, unavailable)}"]
+        cmd += ["-f", f"body={_stamp(text, record, unavailable, receipt=receipt)}"]
     elif body_file is not None:
         cmd += ["-F", f"body=@{body_file}"]
     else:
@@ -237,6 +254,7 @@ def main(argv: Sequence[str] | None = None, run: Runner = live_run) -> int:
     parser.add_argument("--body-file", default="")
     parser.add_argument("--record-file", default="")
     parser.add_argument("--local-review-unavailable", default="")
+    parser.add_argument("--receipt-file", default="")
     parser.add_argument("--draft", action="store_true")
     parser.add_argument("--parent", default="")
     parser.add_argument("--verify-parent", action="store_true")
@@ -258,6 +276,16 @@ def main(argv: Sequence[str] | None = None, run: Runner = live_run) -> int:
         if record and not RECORD_MARKER.fullmatch(record):
             print("pr-open: the findings record file does not hold one record marker", file=sys.stderr)
             return 1
+    receipt = ""
+    if args.receipt_file:
+        try:
+            receipt = Path(args.receipt_file).read_text(encoding="utf-8").strip()
+        except OSError as exc:
+            print(f"pr-open: the preflight receipt summary cannot be read: {exc}", file=sys.stderr)
+            return 1
+        if not RECEIPT_BLOCK.fullmatch(receipt + "\n") or receipt.count(RECEIPT_END) != 1:
+            print("pr-open: the preflight receipt summary is not one receipt block", file=sys.stderr)
+            return 1
     try:
         if args.verify_parent:
             verify_parent(run, args.repo, args.branch, args.parent)
@@ -274,6 +302,7 @@ def main(argv: Sequence[str] | None = None, run: Runner = live_run) -> int:
             args.parent or None,
             record,
             args.local_review_unavailable,
+            receipt,
         )
     except (PrOpenError, OSError) as exc:
         print(f"pr-open: {exc}", file=sys.stderr)

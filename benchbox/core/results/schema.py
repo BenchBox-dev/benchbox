@@ -18,6 +18,7 @@ from benchbox.core.results.environment import (
     build_platform_metadata_payload,
 )
 from benchbox.core.results.execution_variant import execution_engine_payload, gateway_payload
+from benchbox.core.results.fetch_mode import summarize_fetch_modes
 from benchbox.core.results.metrics import UNOFFICIAL_COMPLIANCE_CLASSES, percentile_ms
 from benchbox.core.results.platform_options import sanitize_platform_options
 from benchbox.core.results.query_execution import (
@@ -248,6 +249,9 @@ def build_result_payload(result: BenchmarkResults, *, sanitize_platform_secrets:
     if scan_bytes:
         summary["cost"] = scan_bytes
     run = _build_run_section(result, query_times_ms, iterations_set, streams_set)
+    run_fetch_mode = _run_fetch_mode(queries_list)
+    if run_fetch_mode is not None:
+        run["fetch_mode"] = run_fetch_mode
     benchmark = _build_benchmark_section(result)
     driver_metadata = _collect_driver_metadata(result)
     platform = _build_platform_section(result, driver_metadata, sanitize_platform_secrets=sanitize_platform_secrets)
@@ -276,9 +280,11 @@ def build_result_payload(result: BenchmarkResults, *, sanitize_platform_secrets:
                 "iterations",
                 "streams",
                 "query_subset",
+                "maintenance_method",
                 "timing_method",
                 "net_estimate_status",
                 "platform_timing",
+                "fetch_mode",
             ],
         ),
         "benchmark": order_dict(benchmark, ["id", "name", "scale_factor", "test_type"]),
@@ -349,6 +355,10 @@ def _build_query_results_section(
             streams_set.add(int(stream_id))
             if qr.test_type == "throughput":
                 throughput_streams_set.add(int(stream_id))
+    phases = getattr(result, "execution_phases", None)
+    first_round = getattr(phases, "throughput_test", None)
+    if getattr(phases, "throughput_test_2", None) is not None and first_round is not None:
+        throughput_streams_set = {sid for sid in throughput_streams_set if sid <= first_round.num_streams}
     if throughput_streams_set:
         streams_set = throughput_streams_set
 
@@ -463,6 +473,13 @@ def _build_summary_section(
     return summary
 
 
+def _run_fetch_mode(queries: list[dict[str, Any]]) -> str | None:
+    successful = [query for query in queries if query.get("status") == "SUCCESS"]
+    if not any(query.get("fetch_mode") for query in successful):
+        return None
+    return summarize_fetch_modes(query.get("fetch_mode") for query in successful)
+
+
 def _build_run_section(
     result: BenchmarkResults,
     query_times_ms: list[float],
@@ -479,6 +496,9 @@ def _build_run_section(
     run["streams"] = len(streams_set) if streams_set else 1
     if result.query_subset:
         run["query_subset"] = result.query_subset
+    maintenance_phase = getattr(getattr(result, "execution_phases", None), "maintenance_test", None)
+    if maintenance_phase is not None and maintenance_phase.maintenance_method is not None:
+        run["maintenance_method"] = maintenance_phase.maintenance_method
     timing_method = getattr(result, "timing_method", None)
     if timing_method is not None:
         run["timing_method"] = timing_method
@@ -1097,6 +1117,9 @@ def _build_phases_block(result: BenchmarkResults) -> dict[str, Any]:
     if result.execution_phases and result.execution_phases.throughput_test:
         phases["throughput_test"] = _throughput_phase_payload(result.execution_phases.throughput_test)
 
+    if getattr(result.execution_phases, "throughput_test_2", None):
+        phases["throughput_test_2"] = _throughput_phase_payload(result.execution_phases.throughput_test_2)
+
     phases.update(_maintenance_and_migration_payloads(result.execution_phases))
 
     if isinstance(result.execution_metadata, Mapping):
@@ -1118,6 +1141,8 @@ def _maintenance_and_migration_payloads(execution_phases: Any) -> dict[str, Any]
         return payloads
     if execution_phases.maintenance_test:
         payloads["maintenance_test"] = _maintenance_phase_payload(execution_phases.maintenance_test)
+    if getattr(execution_phases, "maintenance_test_2", None):
+        payloads["maintenance_test_2"] = _maintenance_phase_payload(execution_phases.maintenance_test_2)
     if execution_phases.migration:
         m = execution_phases.migration
         payloads["migration"] = {
@@ -1145,12 +1170,17 @@ def _maintenance_phase_payload(maintenance: Any) -> dict[str, Any]:
                 "rows_affected": operation.rows_affected,
                 "status": operation.status,
                 **({"error": operation.error_message} if operation.error_message else {}),
+                **({"refresh_set": operation.refresh_set} if operation.refresh_set is not None else {}),
+                **({"staged_rows": operation.staged_rows} if operation.staged_rows is not None else {}),
+                **({"rows_by_table": operation.rows_by_table} if operation.rows_by_table is not None else {}),
             }
             for operation in maintenance.maintenance_operations
         ],
     }
     if maintenance.seed is not None:
         payload["seed"] = maintenance.seed
+    if maintenance.maintenance_method is not None:
+        payload["maintenance_method"] = maintenance.maintenance_method
     return payload
 
 
@@ -1676,6 +1706,14 @@ def _build_tpc_metrics(result: BenchmarkResults) -> dict[str, Any] | None:
             metrics["refresh_included"] = result.refresh_included
         if getattr(result, "qphh_unavailable", None):
             metrics["qphh_unavailable"] = list(result.qphh_unavailable)
+
+    if getattr(result, "benchmark_id", None) == "tpcds":
+        if getattr(result, "qph_at_size", None) is not None:
+            metrics["qphds_at_size"] = result.qph_at_size
+        if getattr(result, "qphds_terms", None):
+            metrics["qphds_terms"] = dict(result.qphds_terms)
+        if getattr(result, "qphds_unavailable", None):
+            metrics["qphds_unavailable"] = list(result.qphds_unavailable)
 
     return metrics if metrics else None
 

@@ -641,6 +641,8 @@ def test_candidate_selection_preserves_ordinary_prose_dependency_and_source_edit
         "scripts/check_dependency_bounds.py",
         ".github/workflows/ci.yml",
         "Makefile",
+        "make/build.mk",
+        "make/quality.mk",
     ],
 )
 def test_candidate_selection_includes_committed_enforcement_changes(

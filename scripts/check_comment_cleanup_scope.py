@@ -1435,23 +1435,6 @@ def verify_bound_wheel(
         raise ValueError(f"{label}: {exc}") from exc
 
 
-DECLARED_WHEEL_RENAME = ("todo-db", "tractable")
-
-
-def _wheel_distribution(entry: dict) -> str:
-    return _normalized_name(PurePosixPath(entry["path"]).name.split("-", 1)[0])
-
-
-def _is_declared_wheel_rename(candidate_entry: dict, baseline_entry: dict) -> bool:
-    old_name, new_name = DECLARED_WHEEL_RENAME
-    return (
-        _normalized_name(str(baseline_entry.get("owner"))) == old_name
-        and _normalized_name(str(candidate_entry.get("owner"))) == new_name
-        and _wheel_distribution(baseline_entry) == old_name
-        and _wheel_distribution(candidate_entry) == new_name
-    )
-
-
 def is_wheel_bump(candidate_entry: dict, baseline_entry: dict) -> bool:
     cand_path = PurePosixPath(candidate_entry["path"])
     base_path = PurePosixPath(baseline_entry["path"])
@@ -1459,13 +1442,13 @@ def is_wheel_bump(candidate_entry: dict, baseline_entry: dict) -> bool:
         return False
     if cand_path.parent != base_path.parent:
         return False
-    if candidate_entry.get("provenance") != baseline_entry.get("provenance"):
-        return False
-    if _is_declared_wheel_rename(candidate_entry, baseline_entry):
-        return True
     if candidate_entry.get("owner") != baseline_entry.get("owner"):
         return False
-    return _wheel_distribution(candidate_entry) == _wheel_distribution(baseline_entry)
+    if candidate_entry.get("provenance") != baseline_entry.get("provenance"):
+        return False
+    cand_dist = cand_path.name.split("-", 1)[0]
+    base_dist = base_path.name.split("-", 1)[0]
+    return _normalized_name(cand_dist) == _normalized_name(base_dist)
 
 
 def check_ratchet(policy: dict, baseline: dict) -> None:

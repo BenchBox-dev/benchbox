@@ -13,6 +13,7 @@ from typing import Sequence
 
 import pytest
 
+import scripts.check_make_targets as make_targets
 from tests.utilities.posix_shell import posix_shell, skip_without_posix_shell
 
 pytestmark = [
@@ -639,7 +640,7 @@ def test_fail_on_pending_uses_full_queue_before_max_comments(monkeypatch, capsys
 
 
 def test_makefile_wires_resolved_audit_and_fail_on_pending_to_list_only() -> None:
-    makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    makefile = make_targets.makefile_sources(REPO_ROOT)
 
     assert "PR_REVIEW_INCLUDE_RESOLVED ?= 0" in makefile
     assert "PR_REVIEW_INCLUDE_POST_MERGE ?= 0" in makefile

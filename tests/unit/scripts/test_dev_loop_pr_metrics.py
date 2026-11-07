@@ -7,6 +7,8 @@ from types import SimpleNamespace
 
 import pytest
 
+import scripts.check_make_targets as make_targets
+
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -1972,7 +1974,7 @@ def test_client_waits_for_the_rate_limit_reset_before_the_reserve_is_spent(monke
 
 
 def test_make_target_and_help_expose_the_usage_report() -> None:
-    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+    makefile = make_targets.makefile_sources(ROOT)
     assert "\nci-usage-report:\n" in makefile
     assert "--usage-report --since" in makefile
     assert "ci-usage-report" in (ROOT / "make" / "help.mk").read_text(encoding="utf-8")

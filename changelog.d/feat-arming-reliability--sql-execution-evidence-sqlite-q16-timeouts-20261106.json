@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "The SQL execution evidence gate indexes the join and correlation keys of its SQLite datasets, so TPC-DS q16 no longer times out on the hosted runner's SQLite 3.46.1, and it now prints the slowest executions per engine."
+}

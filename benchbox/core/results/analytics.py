@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from benchbox.core.results.comparison_modes import IncomparableModesError, bundle_mode_differences, modes_comparable
 from benchbox.core.results.execution_variant import (
     IncomparableVariantsError,
     bundle_variant_differences,
@@ -144,7 +145,7 @@ def _load_regression_runs(
             if not _matches_filters(run_platform, run_benchmark, platform, benchmark):
                 continue
 
-            if runs and not variants_comparable(runs[0]["data"], data):
+            if runs and not (variants_comparable(runs[0]["data"], data) and modes_comparable(runs[0]["data"], data)):
                 other_variants.append(file_path.name)
                 continue
 
@@ -297,6 +298,13 @@ def compare_results(
                     "baseline_variant": read_execution_variant(baseline["data"]).describe(),
                     "current_variant": read_execution_variant(current["data"]).describe(),
                 },
+            }
+        mode_differences = bundle_mode_differences(baseline["data"], current["data"])
+        if mode_differences:
+            return {
+                "error": str(IncomparableModesError(mode_differences)),
+                "error_code": "VALIDATION_ERROR",
+                "details": {"differences": mode_differences},
             }
     comparison = exporter.compare_results(file1, file2)
     if "error" in comparison:

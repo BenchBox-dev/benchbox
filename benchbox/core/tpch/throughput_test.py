@@ -12,6 +12,8 @@ from typing import Any, Callable, Optional
 from benchbox.core.plan_capture_phase import (
     propagate_query_execution_metadata,
 )
+from benchbox.core.result_receipt import cursor_result_count
+from benchbox.core.results.fetch_mode import ConversionClock
 from benchbox.core.throughput.result import ThroughputResult, ThroughputStreamResult, throughput_stream_ids
 from benchbox.core.throughput.runner import StreamRunner
 from benchbox.core.tpch.power_test import _parse_tpch_query_id
@@ -91,17 +93,6 @@ def _stream_permutation(stream_id: int, query_subset: Optional[list[str]]) -> li
     if unknown:
         raise ValueError(f"Invalid TPC-H query ids in query_subset: {unknown} (expected 1-22)")
     return [query_id for query_id in permutation if query_id in wanted]
-
-
-def _count_cursor_rows(cursor: Any) -> int:
-    counter = getattr(cursor, "row_count", None)
-    if callable(counter):
-        return counter()
-
-    rowcount = getattr(cursor, "rowcount", None)
-    if isinstance(rowcount, int) and rowcount >= 0:
-        return rowcount
-    return len(cursor.fetchall())
 
 
 @dataclass
@@ -554,6 +545,7 @@ class TPCHThroughputTest:
                     break
 
                 query_start = mono_time()
+                conversion_clock = ConversionClock().start()
                 query_result: dict[str, Any] = {
                     "query_id": query_id,
                     "position": position + 1,
@@ -592,8 +584,8 @@ class TPCHThroughputTest:
                         if hasattr(self, "captured_items"):
                             self.captured_items.append((label, query_text))
 
-                    result_count = _count_cursor_rows(cursor)
-                    execution_time = elapsed_seconds(query_start)
+                    result_count = cursor_result_count(cursor)
+                    execution_time = max(0.0, elapsed_seconds(query_start) - conversion_clock.finish())
 
                     query_result.update(
                         {

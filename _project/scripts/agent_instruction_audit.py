@@ -86,7 +86,7 @@ PROJECT_COMMIT_ANCHORS = {
     )
 }
 PROJECT_REVIEW_ANCHORS = {
-    "REVIEW-CAPTURE-001": ("~/.todo-db/finding-drafts/", "todo-db-mcp"),
+    "REVIEW-CAPTURE-001": ("~/.tractable/finding-drafts/", "tractable-mcp"),
     "REVIEW-PARITY-001": ("canonical skill governs behavior", "only BenchBox-specific bindings"),
     "REVIEW-PLAN-RECON-001": (
         "future-state index/tiers",
@@ -135,7 +135,7 @@ HANDBACK_TEXT = (
     "docs/internal/pr-triage.md",
     "docs/internal/repo-admin-settings.md",
     "Makefile",
-    "make/help.mk",
+    "make/*.mk",
 )
 HANDBACK_PATTERNS = {
     "auto-merge withheld": r"\bauto[- ]merge\s+(?:is\s+|stays\s+|remains\s+)?withheld\b",

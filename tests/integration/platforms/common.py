@@ -1271,13 +1271,10 @@ class _InfluxDBStubClient:
         self._state.statements.append(sql)
         lowered = sql.strip().lower()
 
-        class MockTable:
-            def __init__(self, data: dict[str, list[Any]], num_rows: int):
-                self._data = data
-                self.num_rows = num_rows
+        import pyarrow as pa
 
-            def to_pydict(self) -> dict[str, list[Any]]:
-                return self._data
+        def MockTable(data: dict[str, list[Any]], num_rows: int) -> Any:
+            return pa.table(data)
 
         if lowered == "select 1":
             return MockTable({"result": [1]}, 1)

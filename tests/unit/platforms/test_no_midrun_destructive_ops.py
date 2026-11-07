@@ -456,6 +456,8 @@ class Fake:
             return STREAM_LOAD_RESPONSE
         if attribute == "status_code":
             return 200
+        if attribute == "columns" and self._name.endswith(".query()"):
+            return [Fake(self._ledger, f"{self._name}.column")]
         return Fake(self._ledger, f"{self._name}.{attribute}")
 
     def __setattr__(self, attribute: str, value: Any) -> None:
@@ -473,6 +475,8 @@ class Fake:
             return list(rows)
         if leaf in FETCH_ONE:
             return rows[0] if rows else None
+        if leaf == "to_pylist":
+            return [row[0] for row in rows]
         if leaf == "bytes":
             return self._ledger.count_stream()
         if leaf == "json":

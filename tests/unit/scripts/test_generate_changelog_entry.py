@@ -838,6 +838,7 @@ def test_commit_subject_drafting_and_summarizer_are_gone() -> None:
         REPO_ROOT / "scripts" / "generate_changelog_entry.py",
         REPO_ROOT / "scripts" / "release_flow.py",
         REPO_ROOT / "Makefile",
+        *sorted((REPO_ROOT / "make").glob("*.mk")),
         REPO_ROOT / "docs" / "internal" / "release-guide.md",
     ]
     for path in sources:

@@ -138,6 +138,7 @@ class SetupPhase:
     statistics_gathering: StatisticsGatheringPhase | None = None
     post_load_maintenance: PostLoadMaintenancePhase | None = None
     merge_settle: MergeSettlePhase | None = None
+    database_reused: bool = False
 
 
 @dataclass(init=False)
@@ -167,6 +168,7 @@ class QueryExecution:
     request_count: int | None = None
     result_bytes: int | None = None
     platform_timing: dict[str, Any] | None = None
+    fetch_mode: str | None = None
 
     def __init__(
         self,
@@ -195,11 +197,13 @@ class QueryExecution:
         request_count: int | None = None,
         result_bytes: int | None = None,
         platform_timing: dict[str, Any] | None = None,
+        fetch_mode: str | None = None,
         *,
         execution_time_seconds: float | None = None,
     ) -> None:
         from benchbox.core.results.query_execution import (
             normalize_duration_ms,
+            normalize_fetch_mode,
             normalize_non_negative_integer,
             normalize_platform_timing,
             normalize_status,
@@ -244,6 +248,7 @@ class QueryExecution:
             normalize_non_negative_integer("result_bytes", result_bytes) if result_bytes is not None else None
         )
         self.platform_timing = normalize_platform_timing(platform_timing)
+        self.fetch_mode = normalize_fetch_mode(fetch_mode)
 
     @property
     def execution_time_seconds(self) -> float | None:
@@ -308,6 +313,9 @@ class MaintenanceOperation:
     rows_affected: int
     status: str
     error_message: str | None = None
+    refresh_set: int | None = None
+    staged_rows: dict[str, int] | None = None
+    rows_by_table: dict[str, int] | None = None
 
 
 @dataclass
@@ -318,6 +326,7 @@ class MaintenanceTestPhase:
     maintenance_operations: list[MaintenanceOperation]
     query_executions: list[QueryExecution]
     seed: int | None = None
+    maintenance_method: str | None = None
     success: bool = True
 
 
@@ -350,6 +359,8 @@ class ExecutionPhases:
     throughput_test: ThroughputTestPhase | None = None
     maintenance_test: MaintenanceTestPhase | None = None
     migration: MigrationPhase | None = None
+    throughput_test_2: ThroughputTestPhase | None = None
+    maintenance_test_2: MaintenanceTestPhase | None = None
 
 
 @dataclass
@@ -408,6 +419,8 @@ class BenchmarkResults:
     qph_at_size: float | None = None
     refresh_included: bool | None = None
     qphh_unavailable: list[str] | None = None
+    qphds_unavailable: list[str] | None = None
+    qphds_terms: dict[str, float] | None = None
     geometric_mean_execution_time: float | None = None
     validation_status: str = "PASSED"
     validation_details: dict[str, Any] | None = None

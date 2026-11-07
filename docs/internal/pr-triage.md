@@ -51,15 +51,16 @@ side had already closed out.
   after a short wait; never conclude anything (mergeable or not) from
   `unknown` itself.
 
-## The two standing sweeps
+## The two read-only sweeps
 
-Two automated, read-only sweeps cover complementary parts of the "PR is
-green but stuck" problem; neither one enables auto-merge, merges, or edits
-a PR's mergeability — both only alert.
+Two read-only sweeps cover complementary parts of the "PR is green but
+stuck" problem: one runs on demand and one runs nightly. Neither one enables
+auto-merge, merges, or edits a PR's mergeability; both only alert.
 
-- **Soundness-drain daily digest**
-  (`_project/scripts/soundness_drain_report.py`, scheduled via a daily
-  workflow) — for PRs that touch a soundness-critical path (or have the
+- **Soundness-drain digest**
+  (`_project/scripts/soundness_drain_report.py`, run on demand with
+  `make soundness-drain-report`; no workflow schedules it) — for PRs that
+  touch a soundness-critical path (or have the
   owner as a requested reviewer): flags ones parked more than 24h since
   their required lane went green, so they don't sit forgotten accumulating
   conflicts while waiting on the review that `oracle-gate` requires.
@@ -71,7 +72,8 @@ a PR's mergeability — both only alert.
   the PR timeline shows prior arm intent that was lost. "Required lane
   green" means **every** `develop-squash-only` required context is
   latest-success — the documented required contexts are
-  `core`, `explorer`, `results-data`, `docs`, `landing`, and `tooling` — so a
+  `core`, `explorer`, `results-data`, `docs` and `tooling`, plus `hold` and
+  `oracle-gate` — so a
   PR that is green on one and red or silent on another is not green and is not
   alerted.
   `--apply` only

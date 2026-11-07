@@ -9,12 +9,13 @@ from pathlib import Path
 
 import pytest
 
+import scripts.check_make_targets as make_targets
+
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT = REPO_ROOT / "_project" / "scripts" / "check_complexity.py"
 PYPROJECT = REPO_ROOT / "pyproject.toml"
-MAKEFILE = REPO_ROOT / "Makefile"
 PR_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 
 
@@ -418,7 +419,7 @@ def test_repo_policy_pins_scope_commands_and_required_ci_together() -> None:
     config = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
     ruff = config["tool"]["ruff"]
     complexity = config["tool"]["benchbox"]["complexity"]
-    makefile = MAKEFILE.read_text(encoding="utf-8")
+    makefile = make_targets.makefile_sources(REPO_ROOT)
     workflow = PR_WORKFLOW.read_text(encoding="utf-8")
 
     assert "_project" not in ruff["exclude"]

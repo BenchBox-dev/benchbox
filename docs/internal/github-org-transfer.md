@@ -2,8 +2,11 @@
 
 Operator runbook for the ownership cutover authorized by
 `_project/decisions/github-org-transfer-benchbox-dev-2026-08-21.md`.
-This file is the transfer restore checklist. Live develop/release/tag
-semantics stay in `repo-admin-settings.md`.
+This file is the transfer restore checklist. Live develop/tag semantics stay
+in `repo-admin-settings.md`. The `release` branch, the `release-only` and
+`v-release-branches-minimal` rulesets and the `release` deployment-branch
+policies were deleted on 2026-11-07; the steps below that mention them record
+the state at transfer time and no longer apply.
 
 Do not enable merge queue. Do not add `develop-squash-only` bypass actors.
 GitHub Pages domain verification is exclusive. do not click Verify on
@@ -44,10 +47,10 @@ edited as part of transfer.
    (different hostname from the user challenge). Do not change apex
    A/AAAA (they already point at GitHub Pages IPs). Do not retarget
    `www.benchbox.dev` (today `CNAME joeharris76.github.io`) before G4.
-9. Org PAT / fine-grained token policy must allow
-   `RULESET_DRIFT_TOKEN` and `TODO_EXPORT_PR_TOKEN` against
-   `BenchBox-dev/BenchBox`, or replace those secrets with
-   org-approved tokens **before** G4.
+9. Org PAT / fine-grained token policy must allow `RULESET_DRIFT_TOKEN`
+   against `BenchBox-dev/BenchBox`, or replace it with an org-approved token
+   **before** G4. `TODO_EXPORT_PR_TOKEN` was deleted on 2026-11-07 with the
+   retired export workflow; do not recreate it.
 
 ## G2 — PyPI trusted publishers (operator)
 
@@ -63,8 +66,8 @@ project.
 1. No `v*` tag in flight; no `incident:develop-red`.
 2. Accept that open develop PRs move with the repo.
 3. Save **full JSON** for every ruleset and environment, including
-   `github-pages` `deployment-branch-policies` (live: branch `release`
-   only) and develop `require_extra_approval_for_unattributed_changes`.
+   `github-pages` `deployment-branch-policies` (at transfer time: branch
+   `release` only; deleted 2026-11-07) and develop `require_extra_approval_for_unattributed_changes`.
 4. Snapshot Pages: `gh api repos/joeharris76/BenchBox/pages` (`cname`,
    `protected_domain_state=verified`, HTTPS approved) and
    `curl -fsSI https://benchbox.dev/` plus `https://www.benchbox.dev/`
@@ -90,17 +93,18 @@ Order:
    `can_approve_pull_request_reviews=true`.
 2. `actions/permissions`: `enabled=true`, `allowed_actions=all`,
    `sha_pinning_required=false`.
-3. Recreate four named rulesets from the G3 JSON:
+3. Recreate the named rulesets from the G3 JSON:
    `develop-squash-only`, `release-only`,
-   `v-release-branches-minimal`, `v-tag-restricted`.
+   `v-release-branches-minimal`, `v-tag-restricted`. (`release-only` and
+   `v-release-branches-minimal` were deleted on 2026-11-07; recreate only
+   `develop-squash-only` and `v-tag-restricted`.)
    Develop: no bypass_actors. Tag: bypass `User:57046` always.
    Capture **new IDs** for the pin-update PR.
 4. Rebuild environments `github-pages` (deployment-branch `release`
-   only), `pypi` (required reviewer `joeharris76` / 57046,
+   only; that policy was deleted on 2026-11-07), `pypi` (required reviewer `joeharris76` / 57046,
    `can_admins_bypass: true`, `prevent_self_review: false`),
    `test-pypi` (empty protection).
-5. Confirm secret **names** exist, then prove
-   `RULESET_DRIFT_TOKEN` and `TODO_EXPORT_PR_TOKEN` **authenticate**
+5. Confirm `RULESET_DRIFT_TOKEN` exists, then prove it **authenticates**
    against `BenchBox-dev/BenchBox` (name presence is not enough).
 6. Pages serving-only: `curl -fsSI https://benchbox.dev/` and
    `https://www.benchbox.dev/` HTTP 200.
@@ -134,8 +138,8 @@ green; org Pages `protected_domain_state=verified` for `benchbox.dev`;
 apex and www HTTP 200; `www` CNAME `BenchBox-dev.github.io` (or still
 GitHub Pages with 200).
 
-G7b: first post-transfer `push` to `release` proves Pages publish.
-Serving-only success at G5 does not close G7b.
+G7b: does not apply. The `release` branch was deleted on 2026-11-07, so
+there is no push to `release` to prove.
 
 > Historical note: this transfer predates independent publication and the site split. Production
 > Pages is now deployed from `BenchBox-dev/benchbox-site`; see

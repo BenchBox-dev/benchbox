@@ -27,11 +27,11 @@ history yourself.
   this to `blocked` when the wait has a known end.
 - `update_item(id=..., context_append="...")` adds a note to the end of the
   current context when the write lands, without resending the existing text.
-  It cannot be combined with `context`. Requires todo-db 0.11.0 or later.
+  It cannot be combined with `context`.
 - Closing goes through `finish`. Dropping is a human decision reported to the
   user. Once the owner decides, `drop(id=..., reason="...")` records their
   decision and any successor in the same commit as the status change, with no
-  separate `context_append`; `reason` is required (todo-db 0.12.0 or later)
+  separate `context_append`; `reason` is required
   and `drop` also needs the `generation` if the task is claimed.
 
 ## Managing output limits

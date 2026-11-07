@@ -186,7 +186,7 @@ class McpServer:
                 "_project/scripts",
                 "--locked",
                 "--",
-                "todo-db-mcp",
+                "tractable-mcp",
                 "--state-remote",
                 str(world.tracker_remote),
                 "--state-branch",
@@ -209,7 +209,7 @@ class McpServer:
             {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": actor, "version": "1"}},
         )
         self.server_info = init["result"]["serverInfo"]
-        self.capability = init["result"]["capabilities"]["experimental"]["todo_db_batch"]
+        self.capability = init["result"]["capabilities"]["experimental"]["tractable_batch"]
         assert self.proc.stdin is not None
         self.proc.stdin.write(json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}) + "\n")
         self.proc.stdin.flush()
@@ -278,7 +278,9 @@ class World:
         env = {
             key: value
             for key, value in os.environ.items()
-            if not key.startswith(("BENCHBOX_", "GIT_", "VIRTUAL_ENV", "UV_PROJECT", "PYTHONPATH", "PYTEST", "TODO_DB"))
+            if not key.startswith(
+                ("BENCHBOX_", "GIT_", "VIRTUAL_ENV", "UV_PROJECT", "PYTHONPATH", "PYTEST", "TRACTABLE")
+            )
         }
         uv_cache = subprocess.run(["uv", "cache", "dir"], check=True, capture_output=True, text=True).stdout.strip()
         uv_python = subprocess.run(["uv", "python", "dir"], check=True, capture_output=True, text=True).stdout.strip()
@@ -337,7 +339,7 @@ class World:
             target = self.primary / name
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content)
-        config = self.primary / ".todo-db" / "config.json"
+        config = self.primary / ".tractable" / "config.json"
         config.parent.mkdir()
         config.write_text(
             json.dumps({"state_branch": "todo-state", "state_remote": str(self.tracker_remote)}, indent=2) + "\n"
@@ -364,7 +366,7 @@ class World:
                 "_project/scripts",
                 "--locked",
                 "--",
-                "todo-db",
+                "tractable",
                 "bootstrap",
                 "--state-remote",
                 str(self.tracker_remote),

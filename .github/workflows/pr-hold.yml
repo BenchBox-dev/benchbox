@@ -6,7 +6,8 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, edited, ready_for_review, labeled, unlabeled]
 
-permissions: {}
+permissions:
+  pull-requests: read
 
 concurrency:
   group: pr-hold-${{ github.event.pull_request.number }}
@@ -20,11 +21,15 @@ jobs:
     steps:
       - name: Refuse to merge while the durable hold label is present
         env:
-          HELD: ${{ contains(github.event.pull_request.labels.*.name, 'no-auto-merge') }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          HOLD_LABEL: no-auto-merge
         run: |
           set -eu
-          if [ "$HELD" = "true" ]; then
-            echo "::error::PR carries the durable hold label 'no-auto-merge'. Only the owner releases it, by naming this PR in a current request."
+          labels="$(gh api "repos/$REPO/pulls/$PR" --jq '.labels[].name')"
+          if printf '%s\n' "$labels" | grep -Fxiq "$HOLD_LABEL"; then
+            echo "::error::PR carries the durable hold label '$HOLD_LABEL'. Only the owner releases it, by naming this PR in a current request."
             exit 1
           fi
           echo "No durable hold label."
