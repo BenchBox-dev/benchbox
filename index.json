@@ -14413,12 +14413,7 @@
       "title": "Remove obsolete test and CI config files"
     },
     "dlv2-82-makefile-rewrite": {
-      "claim": {
-        "expires_at": "2026-11-08T03:35:44Z",
-        "generation": "d425f8e19bf44a56a968c109f5d35cac",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:95654933fcc78b44d934f92f"
-      },
+      "claim": null,
       "needs": [
         "dlv2-42-retire-dev-loop-scripts-tests",
         "dlv2-53-retire-legacy-release-path",
@@ -14426,7 +14421,7 @@
         "site-split-50-core-site-removal"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "Rewrite the Makefile into grouped modules and replace the inventory contract with a documented-target test"
     },
     "dlv2-83-docs-cleanup": {
