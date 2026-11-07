@@ -17098,10 +17098,15 @@
       "title": "Audit metric/scope truthfulness across all historical DONE items and add a recurrence guard"
     },
     "doris-load-dead-paths-cleanup-20261107": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T15:21:55Z",
+        "generation": "af071b4cc43148608ab34f0340aa0ece",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Remove Doris load leftovers kept only because out-of-scope tests import them"
     },
     "doris-uat-failures-20261030": {
