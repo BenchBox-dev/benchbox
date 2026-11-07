@@ -33752,7 +33752,7 @@
     "sqlglot-guard-tests-scan-ignored-venvs-20261102": {
       "claim": null,
       "needs": [],
-      "priority": "low",
+      "priority": "medium",
       "status": "open",
       "title": "Two sqlglot guard tests fail when a git-ignored _project/scripts/.venv exists"
     },
