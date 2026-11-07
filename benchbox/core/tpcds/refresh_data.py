@@ -42,12 +42,13 @@ class RefreshSourceTable:
         return f"DROP TABLE IF EXISTS {self.name}"
 
 
+def _column(spec: tuple[str, str] | tuple[str, str, bool]) -> tuple[str, str, bool]:
+    name, sql_type, *nullable = spec
+    return (str(name), str(sql_type), bool(nullable[0]) if nullable else True)
+
+
 def _table(name: str, file_stem: str, *columns: tuple[str, str] | tuple[str, str, bool]) -> RefreshSourceTable:
-    return RefreshSourceTable(
-        name=name,
-        file_stem=file_stem,
-        columns=tuple((column[0], column[1], column[2] if len(column) == 3 else True) for column in columns),
-    )
+    return RefreshSourceTable(name=name, file_stem=file_stem, columns=tuple(_column(column) for column in columns))
 
 
 _INT = "INTEGER"
