@@ -32298,9 +32298,7 @@
     },
     "t3-perf-aggregate-gate-tolerance-decision-20261009": {
       "claim": null,
-      "needs": [
-        "t3-perf-execution-variants-regression-20261010"
-      ],
+      "needs": [],
       "priority": "high",
       "status": "open",
       "title": "Owner decision: close the aggregate-floor item on landed evidence, or keep it waiting on the 640 ms investigation"
