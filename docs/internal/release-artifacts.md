@@ -163,15 +163,36 @@ read, but it does not defend against a hostile writer on the same filesystem.
 
 ## Release requirements
 
-The publishing workflow still requires the live `v-tag-restricted` rule,
-verifiable provenance attestation, all twelve Python 3.11–3.14 installation and
-smoke cells across Linux/macOS/Windows, artifact-bound release UAT (satisfied by
-verified reuse of trunk or release-candidate UAT evidence, or by the full stages;
-described under "Gates"), a green release canary at most 48 hours old on an
-ancestor of the tagged commit, the binary
-manifest, `make release-check`, ruleset drift checks, and no open
-release-blocking `t3:*` issue. Linux correctness evidence remains separate from
-the deferred Darwin digest certification.
+A release is four checks on the tagged commit: admit, the install matrix, a check
+of UAT evidence, and a fresh release canary. The full UAT run is a fallback, not
+part of the normal path.
+
+- **Admit.** The publishing workflow requires the live `v-tag-restricted` rule,
+  verifiable provenance attestation, the binary manifest, `make release-check`,
+  ruleset drift checks, and no open release-blocking `t3:*` issue (see "Gates").
+- **Install matrix.** All twelve Python 3.11–3.14 installation and smoke cells
+  across Linux/macOS/Windows pass against the admitted wheel.
+- **UAT evidence check.** Continuous UAT on `develop`, run by
+  `.github/workflows/trunk-uat.yml` nightly at 02:00 UTC and skipped when nothing
+  relevant changed, produces the evidence. A release reuses the newest
+  qualifying trunk UAT run or, for a final tag, the UAT run of its newest release
+  candidate, and re-verifies that evidence against the admitted distribution
+  instead of trusting it (see "Gates", step 3).
+- **Fresh canary.** The newest `release-canary.yml` run on an ancestor of the
+  release commit is green and started at most 48 hours before the admit check.
+  This applies to every tag, whichever UAT path it takes.
+- **Fallback.** When no source qualifies, the release runs the full UAT described
+  under "Gates", step 3.
+
+Linux correctness evidence remains separate from the deferred Darwin digest
+certification.
+
+The artifact-bound release UAT that `release-v2.yml` gained in #2490, which tied
+UAT to the digest of the wheel being released and ran it on every tag, is
+superseded: reused evidence is checked against the admitted distribution, and
+the full stages run only when no evidence qualifies. A tag on a `release/X.Y.x`
+maintenance branch passes the same checks, with no trunk evidence to reuse (see
+"Gates", step 3).
 
 TestPyPI rehearsals must exercise refusal paths and verify installed hashes.
 Production PyPI retains owner approval.
@@ -209,8 +230,9 @@ Gates, in order:
    summary records a non-success component), when it started more than 48 hours
    ago, or when there is no completed run (`missing`) or none on an ancestor
    (`non-ancestor`). An older green run never overrides a newer red one. A
-   tag on a maintenance branch passes only when a canary run tested an
-   ancestor on that line.
+   tag on a maintenance branch cannot pass yet: the canary workflow tests
+   `develop` only, so no canary run tests an ancestor of that line's commit
+   until the canary can test a release line.
 2. The install matrix installs the staged wheel on Python 3.11 to 3.14 across
    Linux, macOS, and Windows.
 3. Release UAT runs each `release-gate-*.yaml` config against the staged wheel
@@ -324,8 +346,10 @@ Gates, in order:
    their hashes, and publishes them to `test-pypi` or `pypi`.
 
 Verify a published release with `gh attestation verify <file> --repo
-BenchBox-dev/BenchBox --signer-workflow
-BenchBox-dev/BenchBox/.github/workflows/release-v2.yml`.
+BenchBox-dev/benchbox --signer-workflow
+BenchBox-dev/benchbox/.github/workflows/release-v2.yml`. The repository name is
+lowercase and `--signer-workflow` matches case-sensitively, so the mixed-case
+`BenchBox-dev/BenchBox` form exits 1.
 
 PyPI and TestPyPI trusted publishers are bound to the workflow file name, so
 the owner must register `release-v2.yml` publishers before the first
