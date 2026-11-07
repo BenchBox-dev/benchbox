@@ -1106,6 +1106,36 @@ def _check_evidence_acceptance(repo: Path, evidence: dict, head: str, tracker: d
     return failures
 
 
+def _check_evidence_dropped_paths(repo: Path, evidence: dict, head: str, tracker: dict, receipts: dict) -> list[str]:
+    dropped = evidence.get("dropped_receipt_paths")
+    if dropped is None or dropped == {}:
+        return []
+    if not isinstance(dropped, dict):
+        return ["batch evidence dropped_receipt_paths is not an object"]
+    excluded, _problems = develop_exclusions(repo, head, tracker, receipts)
+    members = set(_tracker_members(tracker))
+    failures: list[str] = []
+    for member, paths in sorted(dropped.items()):
+        receipt = receipts.get(member)
+        verification = receipt.get("verification") if isinstance(receipt, dict) else None
+        command = verification.get("command") if isinstance(verification, dict) else None
+        named = (
+            {arg.split("::", 1)[0] for arg in command if isinstance(arg, str)} if isinstance(command, list) else set()
+        )
+        if member not in members or not isinstance(paths, list) or not all(isinstance(p, str) for p in paths):
+            failures.append(f"dropped receipt paths for {member} are malformed")
+            continue
+        for path in paths:
+            present = subprocess.run(["git", "cat-file", "-e", f"{head}:{path}"], cwd=repo, capture_output=True)
+            if path not in named:
+                failures.append(f"dropped path {path} is not named by member {member}'s receipt command")
+            elif path not in excluded:
+                failures.append(f"dropped path {path} was not removed by a recorded develop merge")
+            elif present.returncode == 0:
+                failures.append(f"dropped path {path} still exists at the PR head")
+    return failures
+
+
 def _check_evidence_changed_files(repo: Path, evidence: dict, head: str, tracker: dict, receipts: dict) -> list[str]:
     start_head = _revision(tracker.get("start_head"))
     if start_head is None:
@@ -1282,6 +1312,7 @@ def check_batch_evidence(repo: Path, evidence: dict, head: str, tracker: dict) -
     failures.extend(_check_evidence_receipts(repo, members, receipts, head))
     failures.extend(_check_evidence_acceptance(repo, evidence, head, tracker, receipts))
     failures.extend(_check_evidence_changed_files(repo, evidence, head, tracker, receipts))
+    failures.extend(_check_evidence_dropped_paths(repo, evidence, head, tracker, receipts))
     failures.extend(_check_evidence_reviews(repo, evidence, members, receipts))
     return failures
 
