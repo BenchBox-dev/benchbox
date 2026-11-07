@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import statistics
+from decimal import ROUND_FLOOR, Decimal
 from typing import TYPE_CHECKING
 
 from benchbox.core.results.subscale_policy import bundle_compliance_class
@@ -169,7 +170,16 @@ class TPCMetricsCalculator:
             scale_factor, num_streams, power_seconds, throughput_seconds, maintenance_seconds, load_seconds
         )
         product = terms["t_pt_hours"] * terms["t_tt_hours"] * terms["t_dm_hours"] * terms["t_ld_hours"]
-        return float(math.floor(scale_factor * terms["q"] / product**0.25))
+        return TPCMetricsCalculator.floor_qphds(scale_factor, terms["q"], product)
+
+    @staticmethod
+    def floor_qphds(scale_factor: float, q: float, hours_product: float) -> float:
+        value = (
+            Decimal(repr(float(scale_factor)))
+            * Decimal(repr(float(q)))
+            / Decimal(repr(float(hours_product))).sqrt().sqrt()
+        )
+        return float(value.to_integral_value(rounding=ROUND_FLOOR))
 
     @staticmethod
     def calculate_geometric_mean(times: Sequence[float]) -> float:

@@ -29,7 +29,9 @@ STREAMS = 4
 EXPECTED_QPHDS = 11453.0
 
 
-def _throughput(first_stream_id: int, seconds: float, *, success: bool = True) -> ThroughputTestPhase:
+def _throughput(
+    first_stream_id: int, seconds: float, *, success: bool = True, total_queries: int | None = None
+) -> ThroughputTestPhase:
     return ThroughputTestPhase(
         start_time="2026-01-01T00:00:00",
         end_time="2026-01-01T00:10:00",
@@ -45,7 +47,7 @@ def _throughput(first_stream_id: int, seconds: float, *, success: bool = True) -
             )
             for stream_id in range(first_stream_id, first_stream_id + STREAMS)
         ],
-        total_queries_executed=99 * STREAMS,
+        total_queries_executed=total_queries if total_queries is not None else 99 * STREAMS,
         throughput_at_size=1.0,
         success=success,
         stream_numbering=throughput_stream_numbering(first_stream_id),
@@ -219,13 +221,25 @@ class TestQphDSEvaluation:
                 "load failed",
                 {"setup": _loading(status="FAILED")},
                 {},
-                "database load did not complete",
+                "database load data loading did not complete",
             ),
             (
                 "load reused",
                 {"setup": _loading(table_status="REUSED")},
                 {},
                 "database load was reused",
+            ),
+            (
+                "short streams",
+                {"throughput_test_2": _throughput(STREAMS + 1, 300.0, total_queries=99 * STREAMS - 1)},
+                {},
+                "streams did not execute all 99 queries",
+            ),
+            (
+                "non contiguous refresh sets",
+                {"maintenance_test": _maintenance(1, 10.0), "maintenance_test_2": _maintenance(4, 20.0)},
+                {},
+                "refresh sets that follow",
             ),
             ("zero load time", {"setup": _loading(0.0)}, {}, "database load elapsed time"),
             ("no power test", {"power_test": None}, {}, "Power Test did not run"),
@@ -308,3 +322,82 @@ class TestQphDSExport:
         metrics = payload["summary"]["tpc_metrics"]
         assert "qphds_at_size" not in metrics
         assert any("Throughput Test 2 did not run" in reason for reason in metrics["qphds_unavailable"])
+
+
+class TestQphDSLoadTime:
+    def test_load_time_sums_every_load_side_phase(self) -> None:
+        from benchbox.core.results.models import (
+            MergeSettlePhase,
+            PostLoadMaintenancePhase,
+            SchemaCreationPhase,
+            StatisticsGatheringPhase,
+        )
+
+        setup = _loading(1000.0)
+        setup.schema_creation = SchemaCreationPhase(
+            duration_ms=100_000,
+            status="SUCCESS",
+            tables_created=1,
+            constraints_applied=0,
+            indexes_created=0,
+            per_table_creation={},
+        )
+        setup.statistics_gathering = StatisticsGatheringPhase(duration_ms=200_000, status="COMPLETED", stats_mode="all")
+        setup.post_load_maintenance = PostLoadMaintenancePhase(duration_ms=300_000)
+        setup.merge_settle = MergeSettlePhase(settled=True, waited_seconds=400.0, active_parts=0, timeout_seconds=900.0)
+
+        evaluation = _evaluate(replace(_phases(), setup=setup))
+
+        assert evaluation.terms["t_ld_hours"] == pytest.approx(0.01 * STREAMS * 2000.0 / 3600.0)
+
+    def test_failed_load_side_phase_withholds_the_metric(self) -> None:
+        from benchbox.core.results.models import StatisticsGatheringPhase
+
+        setup = _loading(1000.0)
+        setup.statistics_gathering = StatisticsGatheringPhase(duration_ms=1, status="FAILED", stats_mode="all")
+
+        evaluation = _evaluate(replace(_phases(), setup=setup))
+
+        assert evaluation.qphds_at_size is None
+        assert any("statistics gathering did not complete" in item for item in evaluation.unavailable)
+
+    def test_skipped_schema_creation_withholds_the_metric(self) -> None:
+        from benchbox.core.results.models import SchemaCreationPhase
+
+        setup = _loading(1000.0)
+        setup.schema_creation = SchemaCreationPhase(
+            duration_ms=0,
+            status="SKIPPED",
+            tables_created=0,
+            constraints_applied=0,
+            indexes_created=0,
+            per_table_creation={},
+        )
+
+        evaluation = _evaluate(replace(_phases(), setup=setup))
+
+        assert evaluation.qphds_at_size is None
+
+
+class TestExactFloor:
+    def test_exact_integer_boundary_is_not_floored_down(self) -> None:
+        assert TPCMetricsCalculator.floor_qphds(1.0, 396.0, 0.0001) == 3960.0
+        assert TPCMetricsCalculator.floor_qphds(1.0, 396.0, 16.0) == 198.0
+
+    def test_just_below_the_boundary_floors_down(self) -> None:
+        assert TPCMetricsCalculator.floor_qphds(1.0, 396.0, 16.000001) == 197.0
+
+
+def test_exported_result_round_trips_through_save_and_load(tmp_path) -> None:
+    import json
+
+    from benchbox.core.results.loader import reconstruct_benchmark_results
+
+    first = _payload(_phases(), 1.0, "official")
+    reloaded = reconstruct_benchmark_results(first)
+    second = build_result_payload(reloaded)
+
+    for phase in ("throughput_test", "throughput_test_2", "maintenance_test", "maintenance_test_2"):
+        assert second["phases"][phase] == first["phases"][phase], phase
+    assert second["summary"]["tpc_metrics"]["qphds_at_size"] == EXPECTED_QPHDS
+    json.dumps(second)

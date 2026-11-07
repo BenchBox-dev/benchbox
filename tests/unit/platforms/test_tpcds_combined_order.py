@@ -251,3 +251,13 @@ class TestRefreshWindow:
         benchmark = SimpleNamespace(tpcds_refresh_first_set=7)
 
         assert _refresh_window({"num_streams": 6, "_phase_round": phase_round}, benchmark) == expected
+
+
+def test_user_refresh_runs_override_is_logged(caplog: pytest.LogCaptureFixture) -> None:
+    benchmark = SimpleNamespace(tpcds_refresh_first_set=1)
+
+    with caplog.at_level("WARNING"):
+        runs, _first = _refresh_window({"num_streams": 4, "tpcds_refresh_runs": 1, "_phase_round": 1}, benchmark)
+
+    assert runs == 2
+    assert "tpcds_refresh_runs=1 ignored" in caplog.text

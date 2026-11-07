@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import dataclasses
+import logging
 import signal
 from datetime import datetime
 from pathlib import Path
@@ -83,6 +84,13 @@ def _refresh_window(run_config: dict, benchmark: Any) -> tuple[int, int]:
     if phase_round is None:
         return run_config.get("tpcds_refresh_runs", 1), base_first_set
     refresh_runs = max(_resolve_requested_stream_count(run_config) // 2, 1)
+    requested_runs = run_config.get("tpcds_refresh_runs")
+    if requested_runs is not None and requested_runs != refresh_runs:
+        logging.getLogger(__name__).warning(
+            "tpcds_refresh_runs=%s ignored in spec order: each Data Maintenance Test runs S/2 = %s refresh runs",
+            requested_runs,
+            refresh_runs,
+        )
     return refresh_runs, base_first_set + (phase_round - 1) * refresh_runs
 
 
