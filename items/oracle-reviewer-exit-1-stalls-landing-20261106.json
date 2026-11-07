@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Pull the reviewer attempt logs for the affected heads and state the actual exit-1 cause (quota, sandbox, config, input size or other).",
+    "Fix the cause, or make the gate retry automatically with a bounded count so a rerun by hand is not needed.",
+    "Document in docs/agent what an agent may do when all attempts error, without needing an owner comment for a plain rerun.",
+    "Show the fix with a before/after on a PR head that previously failed, or a test of the retry path."
+  ],
+  "context": "Evidence: PR #3887, #3888, #3891, #3896 on 2026-11-01..06. Also seen: the gate job failing after 35m-1h32m and a trunk.yml run queued over 69 minutes; check whether runner queueing is a separate cause. Verification rubric: reproduce or inspect logs first; fix; confirm a head that failed now gets a verdict; CI green.",
+  "description": "During one batch, several PR heads (#3887 first head, #3888 first head, #3891, #3896) got no oracle verdict: every reviewer attempt ended 'absent (error): exit code 1', so oracle-gate stayed failing and make pr-arm refused. Recovery was by hand: gh run rerun of the verdict workflow, or amending the commit to force a new head. make oracle-backoff-reset needs an owner instruction comment, so workers could not use it. This added hours to landing. Root cause is unknown.",
+  "links": [
+    "docs/agent/review-protocol.md",
+    ".github/workflows"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-07T00:51:36Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "7985fd1dcb944cc8a986af250faaae4d",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    }
+  ]
+}
