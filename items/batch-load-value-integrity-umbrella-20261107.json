@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Final PR merged with the new docker-integration SingleStore and Firebolt Core jobs green on it",
+    "All members finished, batch completed, this umbrella closed"
+  ],
+  "context": "Owner decisions 2026-11-07: Q13 skip post-RF1 queries and record why; add both CI jobs; no live cloud; no manual nightly dispatches.",
+  "description": "Umbrella for feature-delivery batch load-value-integrity. Members in landing order: mocker-doris-singlestore-stacks-start-20261107, singlestore-decimal-text-loads-as-zero-20261107, singlestore-uat-failures-20261030, singlestore-ci-and-tpcds-maintenance-20261107, firebolt-core-native-load-unverified-20261107 (depends on the SingleStore CI member for the shared workflow file), questdb-rest-accepts-invalid-int-20261107, doris-load-dead-paths-cleanup-20261107.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T14:16:59Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "2035862d366341e38c2b01f392a57774",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}

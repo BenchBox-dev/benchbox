@@ -8483,6 +8483,13 @@
       "status": "done",
       "title": "Batch load-hardening: UAT compose bring-up setting-drop detection, QuestDB REST and Databend partial-load failures"
     },
+    "batch-load-value-integrity-umbrella-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Batch load-value-integrity: umbrella notes (not a member)"
+    },
     "batch-loop-default-mode-20261101": {
       "claim": null,
       "needs": [
