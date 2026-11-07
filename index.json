@@ -20513,10 +20513,15 @@
       "title": "Add TLS Certificate Validation Options to HTTP-Based Data Loading"
     },
     "hudi-bundle-fails-on-spark-4-2-20261107": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T16:26:59Z",
+        "generation": "6e5d6fcf14a44e1b88d75f507b589322",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Hudi maintenance cannot run on Spark 4.2: hudi-spark4.0-bundle 1.1.0 fails with HoodieException: Unable to load class"
     },
     "hudi-support-parity": {
