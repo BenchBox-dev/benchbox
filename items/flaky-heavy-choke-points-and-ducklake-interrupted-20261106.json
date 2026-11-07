@@ -4,7 +4,7 @@
     "Fix the cause, or mark with a reason and a tracked removal condition; never a silent skip.",
     "Run each test 50 times in CI conditions (or a loop) with no failures after the change."
   ],
-  "context": "May overlap rv2r-10-flaky-ci-investigation (open); check it first and merge scope if it already covers these tests. Verification rubric: failing-before reproduction or loop evidence; fix; repeat-run proof.",
+  "context": "May overlap rv2r-10-flaky-ci-investigation (open); check it first and merge scope if it already covers these tests. Verification rubric: failing-before reproduction or loop evidence; fix; repeat-run proof.\n\n2026-11-06/07 recurrences: test_heavy_choke_points failures blocked CI on #3979 (machine-stop ordering, three cases), on #3981 (ubuntu, three failures), on #4012 (py3.14, with heavy_watchdog) and on #4016. Each cleared on rerun.",
   "description": "Two unrelated tests failed once in CI and passed on rerun, each blocking an armed PR or turning develop red until rerun by hand. (1) tests/unit/test_heavy_choke_points.py: test_a_signal_during_the_run_exits_with_its_conventional_code_and_still_stops_the_machine[TERM-143] and test_the_run_status_survives_the_stop failed on ubuntu-latest Python 3.14 in PR #3977. (2) tests/unit/utils/format_converters/test_ducklake_converter.py::TestDuckLakeConversion::test_overwrite_existing_table failed on trunk run 41239086046 with 'Failed to load DuckLake extension ... Query interrupted' and made pr-arm refuse because develop was red.",
   "links": [
     "tests/unit/test_heavy_choke_points.py",
@@ -19,6 +19,14 @@
       "op": "create",
       "op_id": "d7a78aa7a05d4a39a0c823cfa652227a",
       "session_id": "dc59872de7f0484eafa9032416c81607"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T13:49:14Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "34cdd5f92e02446c82455a0fb82fd5cb",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
 }
