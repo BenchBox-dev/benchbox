@@ -12,6 +12,8 @@ from tests.uat.config import validate_config
 from tests.uat.conftest import healthy_ps_stdout, platform_reachability
 from tests.uat.phases import execute as exec_phase
 
+pytestmark = pytest.mark.medium
+
 GIB = 1024**3
 
 HEALTHY_PROBE = (
