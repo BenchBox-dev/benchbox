@@ -800,7 +800,7 @@ def _rerun(
     clean_before = _is_clean(repo)
     recorded = _validate_verification_command(command)
     ran_command, dropped_paths = _without_deleted_test_paths(recorded, repo, ledger)
-    if dropped_paths and not any(_is_test_path_arg(arg) for arg in ran_command):
+    if dropped_paths and _trailing_test_run_start(ran_command) is None:
         proc = None
     else:
         proc = _run(ran_command, repo)

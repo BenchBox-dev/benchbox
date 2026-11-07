@@ -851,6 +851,17 @@ def test_a_rerun_whose_test_paths_are_all_deleted_fails_closed_without_running_p
     assert not [call for call in world.calls if "pytest" in call[0]]
 
 
+def test_a_rerun_fails_closed_when_only_an_option_value_names_a_test_after_dropping(world: World) -> None:
+    integration, _ = _develop_deletes(world, "tests/test_alpha.py")
+    world.commit(integration, {"tests/test_keep.py": "kept\n"}, "add test")
+    recorded = [*PYTEST[:-1], "--deselect", "tests/test_keep.py::test_one", "-q", "tests/test_alpha.py"]
+    world.calls.clear()
+    entry = bi._rerun(integration, _ledger(integration), "zeta", recorded, "member-tests", "final-evidence")
+    assert entry["status"] == "failed"
+    assert entry["dropped_paths"] == ["tests/test_alpha.py"]
+    assert not [call for call in world.calls if "pytest" in call[0]]
+
+
 def test_a_rerun_never_drops_a_missing_argument_that_is_not_a_test_path(world: World) -> None:
     integration = world.start()
     world.commit(integration, {"tests/test_keep.py": "kept\n"}, "add test")
