@@ -2063,6 +2063,57 @@
       "start_head": "5cfea582d2197ecc150d80c6125a65130c02f23a",
       "terminal_outcome": "deliver"
     },
+    "batch-optin-remediation-20261107": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/batch-optin-remediation-20261107",
+      "integration_head": "4fe6b3aac7b884bd170cdd3ef61697af5bffbeec",
+      "integration_log": [
+        {
+          "at": "2026-11-07T21:52:46Z",
+          "head": "4fe6b3aac7b884bd170cdd3ef61697af5bffbeec",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-feat-batch-optin-remediation",
+      "lifecycle": "active",
+      "members": [
+        "batch-mode-opt-in-policy-docs-20261107",
+        "ledger-coverage-test-mapped-in-preflight-20261107"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae",
+      "owner_epoch": 0,
+      "owner_generation": "17118b852967a02bd9b1529d1fcec397",
+      "project_id": "benchbox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "batch-mode-opt-in-policy-docs-20261107": [
+          "AGENTS.md",
+          "docs/agent/batch-feature-delivery.md",
+          "docs/agent/README.md",
+          "docs/agent/review-protocol.md",
+          "docs/internal/dev-loop-worktrees.md",
+          "_project/decisions/batch-integration-loop-2026-11-01.md",
+          "docs/internal/dev-loop-property-ledger.md",
+          "changelog.d/batch-mode-opt-in*"
+        ],
+        "ledger-coverage-test-mapped-in-preflight-20261107": [
+          "_project/scripts/preflight_targets.py",
+          "tests/unit/scripts/test_preflight_targets.py",
+          "docs/internal/dev-loop-property-ledger.md",
+          "changelog.d/ledger-coverage*"
+        ]
+      },
+      "scope_hash": "ef1a84e69173fa75ee61042b62fb8aa7b960fb0e6b8d5991ebad445334e60d4f",
+      "start_head": "4fe6b3aac7b884bd170cdd3ef61697af5bffbeec",
+      "terminal_outcome": "deliver"
+    },
     "ci-and-preflight-reliability": {
       "accepted_members": {},
       "batch_schema": 2,
