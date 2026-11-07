@@ -4870,7 +4870,7 @@
         }
       },
       "integration_branch": "feat/plan-companion-publication-hygiene",
-      "integration_head": "6c532c4956a339b00bc8f7ab954d7b44a93e018e",
+      "integration_head": "29f09b11c248e1b9d1073f3e637245f5369cab3d",
       "integration_log": [
         {
           "at": "2026-11-07T22:11:18Z",
@@ -4904,6 +4904,28 @@
           "op_id": "83496047757642878f65f366614d1fe2",
           "previous_head": "c288a73116da65ad788b3ab6bfb221ebbdaea310",
           "seq": 3
+        },
+        {
+          "at": "2026-11-07T23:30:43Z",
+          "changed_files": [
+            "benchbox/core/dataframe/benchmark_suite.py",
+            "benchbox/core/dataframe/profiling.py",
+            "benchbox/platforms/base/result_capture.py",
+            "benchbox/platforms/dataframe/benchmark_mixin.py",
+            "changelog.d/feat-plan-companion-publication-hygiene--polars-plan-leaks.json",
+            "docs/internal/dataframe-plan-capture.md",
+            "tests/unit/core/dataframe/test_plan_path_redaction.py",
+            "tests/unit/platforms/databricks/test_databricks_df_plan_capture.py"
+          ],
+          "head": "29f09b11c248e1b9d1073f3e637245f5369cab3d",
+          "kind": "fix",
+          "op_id": "8a7ace2a9523454fa483496a3565e104",
+          "previous_head": "6c532c4956a339b00bc8f7ab954d7b44a93e018e",
+          "requires_acceptance": [
+            "core-docs-plan-fingerprint-variation-fields-20261107",
+            "polars-plan-companion-leaks-local-paths-20261107"
+          ],
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-companion-publication-hygiene",
