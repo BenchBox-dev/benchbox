@@ -4,6 +4,7 @@
     "App secrets stay in a separate trusted job, never in upstream refresh preparation; probe performs only read-only operations.",
     "Enabled mutations are refused on failed readiness; dry runs and kill switch off perform no hosted mutations."
   ],
+  "context": "Fork PR #86 merged 4e518548. Isolated trusted readiness uses JWT full-installation checks, read-only installation token and revocation, single-repo and Issues checks. Live dry run 42405321898 success: prepare/readiness succeeded, publish skipped. Owner approved authenticated read-only probing.",
   "description": "Split from sqlglot-delivery-dry-runs-miss-write-prerequisites-20261107. Fork controller dry runs previously succeeded with Issues disabled, preventing failure reporting. Verify Issues enabled plus configured App authentication, installation and intended permissions in an isolated trusted preflight. Owner approved read-only authenticated probing with App credentials, never exposing credentials to upstream-influenced refresh preparation. Implement only in BenchBox-dev/benchbox-sqlglot.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "1de7ea65def0418a85fdbbf92c88e3bd",
+      "session_id": "2f41579dd2194a049659596cdd9a4f3d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f",
+      "at": "2026-11-07T21:51:39Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "be074c67cb204180ae761426472875fe",
       "session_id": "2f41579dd2194a049659596cdd9a4f3d"
     }
   ]
