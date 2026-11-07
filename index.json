@@ -2100,7 +2100,7 @@
         }
       },
       "integration_branch": "feat/batch-optin-remediation-20261107",
-      "integration_head": "8d30f14867cb46cdbef4c104fd34c173aed624c3",
+      "integration_head": "0746fb8fd754bd7cf44e5e2bc02ca656bee99fbe",
       "integration_log": [
         {
           "at": "2026-11-07T21:52:46Z",
@@ -2139,6 +2139,21 @@
           "op_id": "982009f96f684186a5639fe4dbf3af8d",
           "previous_head": "7d2ca88d40152744989613f903994f74c8086918",
           "seq": 3
+        },
+        {
+          "at": "2026-11-07T23:00:56Z",
+          "changed_files": [
+            "_project/scripts/preflight_targets.py",
+            "tests/unit/scripts/test_preflight_targets.py"
+          ],
+          "head": "0746fb8fd754bd7cf44e5e2bc02ca656bee99fbe",
+          "kind": "fix",
+          "op_id": "07aee11a373b44a88004287f6db75ff1",
+          "previous_head": "8d30f14867cb46cdbef4c104fd34c173aed624c3",
+          "requires_acceptance": [
+            "ledger-coverage-test-mapped-in-preflight-20261107"
+          ],
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-feat-batch-optin-remediation",
