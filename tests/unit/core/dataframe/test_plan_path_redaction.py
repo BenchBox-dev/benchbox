@@ -176,3 +176,22 @@ def test_loaded_data_directories_are_redaction_roots_outside_the_detector():
 
     assert "/srv/benchbox-data" not in redacted.plan_text
     assert redacted.plan_text == "Parquet SCAN [<redacted>]\nParquet SCAN [<redacted>]"
+
+
+def test_object_store_paths_without_a_leading_slash_are_redacted(tmp_path):
+    data_dir = tmp_path / "datagen"
+    relative_home = str(Path.home()).lstrip("/")
+    relative_data = str(data_dir / "orders.parquet").lstrip("/")
+    plan = QueryPlan(
+        "lakesail",
+        "extended",
+        f"DataSourceExec: file_groups={{1 group: [[{relative_home}/data/lineitem.parquet]]}}, projection=[a]\n"
+        f"DataSourceExec: file_groups={{1 group: [[{relative_data}]]}}",
+    )
+
+    redacted = redact_plan_local_paths(plan, [data_dir])
+
+    assert relative_home not in redacted.plan_text
+    assert relative_data not in redacted.plan_text
+    assert redacted.plan_text.count("[[<redacted>]]") == 2
+    assert "projection=[a]" in redacted.plan_text

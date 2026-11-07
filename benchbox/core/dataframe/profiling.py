@@ -459,12 +459,14 @@ def _local_path_redactor(roots: Iterable[str | Path]) -> Callable[[str], str]:
             variants.add(text)
             with contextlib.suppress(OSError, RuntimeError):
                 variants.add(str(Path(text).resolve()).rstrip("/\\"))
+    alternatives = []
+    for variant in sorted(variants, key=len, reverse=True):
+        escaped = re.escape(variant)
+        alternatives.append(rf"(?<![A-Za-z0-9_]){escaped}")
+        if variant.startswith("/"):
+            alternatives.append(rf"(?<![A-Za-z0-9_/.]){re.escape(variant[1:])}")
     root_re = (
-        re.compile(
-            r"(?<![A-Za-z0-9_])(?:"
-            + "|".join(re.escape(v) for v in sorted(variants, key=len, reverse=True))
-            + r")(?=[/\\\s'\",;)\]]|$)(?:[/\\][^\s'\",;)\]]*)?"
-        )
+        re.compile("(?:" + "|".join(alternatives) + r")(?=[/\\\s'\",;)\]]|$)(?:[/\\][^\s'\",;)\]]*)?")
         if variants
         else None
     )
