@@ -2088,7 +2088,7 @@
         }
       },
       "integration_branch": "feat/batch-optin-remediation-20261107",
-      "integration_head": "2650c1b2fee915e237b0bb902bac00cd4a3a7b95",
+      "integration_head": "7d2ca88d40152744989613f903994f74c8086918",
       "integration_log": [
         {
           "at": "2026-11-07T21:52:46Z",
@@ -2104,6 +2104,20 @@
           "op_id": "bf60f643cdc8444b90f2d645bbe079da",
           "previous_head": "4fe6b3aac7b884bd170cdd3ef61697af5bffbeec",
           "seq": 1
+        },
+        {
+          "at": "2026-11-07T22:06:58Z",
+          "changed_files": [
+            "docs/agent/batch-feature-delivery.md"
+          ],
+          "head": "7d2ca88d40152744989613f903994f74c8086918",
+          "kind": "fix",
+          "op_id": "27e0db6be75e485ca01fab49f685baca",
+          "previous_head": "2650c1b2fee915e237b0bb902bac00cd4a3a7b95",
+          "requires_acceptance": [
+            "batch-mode-opt-in-policy-docs-20261107"
+          ],
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-feat-batch-optin-remediation",
