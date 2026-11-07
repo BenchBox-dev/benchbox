@@ -419,7 +419,7 @@ predicate and its blocking default with explicit override.
 ## Retired `release` branch
 
 The legacy `release` branch and its rulesets (`release-only`,
-`v-release-branches-minimal`) were deleted on <DATE>, together with the
+`v-release-branches-minimal`) were deleted on 2026-11-07, together with the
 `release` deployment-branch policies on the `test-pypi` and `github-pages`
 environments. `scripts/ruleset_drift_check.py` fails if a `release` branch or a
 ruleset targeting `refs/heads/release` reappears.
@@ -602,7 +602,7 @@ diagnose.
 Deployment policies (applied 2026-10-23): both environments admit only
 selected refs, so a workflow run on an arbitrary branch cannot request them.
 `pypi` accepts deployments from tags matching `v*` only. `test-pypi` accepts
-tags matching `v*` and the `develop` branch (verified live on <DATE>). A manual
+tags matching `v*` and the `develop` branch (verified live on 2026-11-07). A manual
 `release-v2.yml` dispatch deploys under the ref it was started from, so start
 it from the release tag
 (`gh workflow run release-v2.yml --ref vX.Y.Z -f tag=vX.Y.Z`); a dispatch from
