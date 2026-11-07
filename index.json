@@ -20491,10 +20491,15 @@
       "title": "History-retention ADR and the publish allowlist reference documentation paths that no longer exist in core"
     },
     "hold-label-and-batch-e2e-20261106-umbrella": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T16:37:58Z",
+        "generation": "c9101c0d607e4fb39fe75dac0021d26a",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Batch notes: pr-hold live-label check and batch-loop e2e restoration"
     },
     "holistic-review-followup-metadata-truth": {
