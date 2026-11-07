@@ -22989,6 +22989,13 @@
       "status": "done",
       "title": "Measure actual uncompressed sizes at SF=1 for all benchmarks"
     },
+    "measure-first-ci-failure-after-preflight-receipt-20261205": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Re-measure the first-CI failure rate four weeks after the preflight receipt landed"
+    },
     "medium-datagen-tests-build-full-scale-factor-data": {
       "claim": null,
       "needs": [

@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "The first-CI failure rate and the share of PRs with a failed CI run for the four weeks are reported against the baseline, with the method.",
+    "If the target is missed, the main failure categories are named and follow-up items filed."
+  ],
+  "description": "#4025 (6d2c431, merged 2026-11-07) made `make pr-open` require a preflight receipt bound to the pushed tree. Baseline (2026-10-28 to 11-07): 47 of 286 first CI runs failed (16.4%), and 35% of PRs had a failed CI run. The target is a first-CI failure rate of 10% or less. Measure 2026-11-08 to 2026-12-05 the same way, and review whether `.github/preflight-known-failures.json` has grown.",
+  "not_before": "2026-12-05T00:00:00Z",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-07T17:29:40Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "91dddc50241b41e78279c26768c0fc53",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    }
+  ]
+}
