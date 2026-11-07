@@ -12,6 +12,8 @@ from benchbox.core.results.execution_variant import read_execution_engine, read_
 from benchbox.core.results.models import (
     BenchmarkResults,
     ExecutionPhases,
+    MaintenanceOperation,
+    MaintenanceTestPhase,
     MigrationPhase,
     NativeComparison,
     NativeComparisonEntry,
@@ -748,7 +750,31 @@ def _reconstruct_execution_phases(
             refresh_stream=dict(refresh_stream) if isinstance(refresh_stream, dict) else None,
         )
 
-    if power is None and migration is None and throughput is None:
+    maintenance = None
+    maintenance_data = phases_section.get("maintenance_test")
+    if maintenance_data and maintenance_data.get("status") != "NOT_RUN":
+        maintenance = MaintenanceTestPhase(
+            start_time="",
+            end_time="",
+            duration_ms=maintenance_data.get("duration_ms", 0),
+            maintenance_operations=[
+                MaintenanceOperation(
+                    operation=operation.get("operation", ""),
+                    operation_type=operation.get("operation_type", ""),
+                    table=operation.get("table", ""),
+                    execution_time_ms=operation.get("duration_ms", 0),
+                    rows_affected=operation.get("rows_affected", 0),
+                    status=operation.get("status", "UNKNOWN"),
+                    error_message=operation.get("error"),
+                )
+                for operation in maintenance_data.get("operations", [])
+            ],
+            query_executions=[],
+            seed=maintenance_data.get("seed"),
+            success=maintenance_data.get("status") == "COMPLETED",
+        )
+
+    if power is None and migration is None and throughput is None and maintenance is None:
         return None
 
     return ExecutionPhases(
@@ -756,6 +782,7 @@ def _reconstruct_execution_phases(
         power_test=power,
         migration=migration,
         throughput_test=throughput,
+        maintenance_test=maintenance,
     )
 
 

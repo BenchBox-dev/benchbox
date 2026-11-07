@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from benchbox.core.tpcds.maintenance_operations import DEFAULT_MAINTENANCE_SEED
 from benchbox.core.tpcds.official_benchmark import TPCDSOfficialBenchmark, TPCDSOfficialBenchmarkConfig
 
 pytestmark = [
@@ -159,3 +160,17 @@ class TestAdapterGate:
 
         assert phases.throughput.call_args.args[1] in connections
         assert phases.throughput.call_args.args[1].close.called
+
+
+class TestMaintenanceSeed:
+    def test_configured_seed_reaches_the_maintenance_run(self, tmp_path, phases):
+        official = TPCDSOfficialBenchmark(scale_factor=0.01, output_dir=tmp_path, verbose=False, seed=777)
+
+        _run(official, phases)
+
+        assert phases.maintenance.return_value.run.call_args.args[0].seed == 777
+
+    def test_unset_seed_uses_the_fixed_default(self, tmp_path, phases):
+        _run(_official(tmp_path), phases)
+
+        assert phases.maintenance.return_value.run.call_args.args[0].seed == DEFAULT_MAINTENANCE_SEED

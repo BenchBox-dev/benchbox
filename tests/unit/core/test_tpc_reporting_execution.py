@@ -18,6 +18,7 @@ from benchbox.core.tpcds.benchmark import (
 )
 from benchbox.core.tpcds.c_tools import DSQGenBinary, TPCDSCTools, _resolve_tpcds_tool_and_template_paths
 from benchbox.core.tpcds.generator.runner import DsdgenRunnerMixin
+from benchbox.core.tpcds.maintenance_test import TPCDSMaintenanceTestConfig
 from benchbox.core.tpcds.official_benchmark import (
     TPCDSOfficialBenchmark,
     TPCDSOfficialBenchmarkConfig,
@@ -312,11 +313,13 @@ def test_tpcds_power_and_official_benchmark_helpers(monkeypatch: pytest.MonkeyPa
         def __init__(self, **kwargs):
             pass
 
-        def run(self):
+        def run(self, config=None):
             return {"ok": True}
 
     fake_power_mod = types.SimpleNamespace(TPCDSPowerTest=_PowerPhase)
-    fake_m_mod = types.SimpleNamespace(TPCDSMaintenanceTest=_MaintPhase)
+    fake_m_mod = types.SimpleNamespace(
+        TPCDSMaintenanceTest=_MaintPhase, TPCDSMaintenanceTestConfig=TPCDSMaintenanceTestConfig
+    )
     monkeypatch.setitem(__import__("sys").modules, "benchbox.core.tpcds.power_test", fake_power_mod)
     monkeypatch.setitem(__import__("sys").modules, "benchbox.core.tpcds.maintenance_test", fake_m_mod)
 

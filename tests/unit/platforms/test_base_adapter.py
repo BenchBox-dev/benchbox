@@ -2850,7 +2850,8 @@ class TestTPCHAndTPCDSExecutionHelpers:
             def __init__(self, **kwargs):
                 captured["init"] = kwargs
 
-            def run(self):
+            def run(self, config):
+                captured["config"] = config
                 captured["wrapped_connection"] = captured["init"]["connection_factory"]()
                 return maintenance_result
 
