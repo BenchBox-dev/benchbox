@@ -30378,7 +30378,9 @@
     },
     "spark-local-default-jvm-exceeds-heavy-run-budget-20261106": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "spark-test-connection-stops-shared-session"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Make a default local Spark run fit the heavy-run memory budget"
