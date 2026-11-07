@@ -1516,20 +1516,48 @@
       "terminal_outcome": "deliver"
     },
     "load-hardening": {
-      "accepted_members": {},
+      "accepted_members": {
+        "uat-mocker-compose-gaps-20261106": "efcffc25f9ded5c3d4cdb3f2ad65ff22c1073d22"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "uat-mocker-compose-gaps-20261106": {
+          "accepted_head": "efcffc25f9ded5c3d4cdb3f2ad65ff22c1073d22",
+          "changed_files": [
+            "_project/specs/uat-framework.md",
+            "changelog.d/feat-load-hardening--uat-mocker-compose-gaps-20261106.json",
+            "docker/doris/docker-compose.yml",
+            "scripts/uat-bring-up/uat_bring_up.py",
+            "tests/uat/conftest.py",
+            "tests/uat/declared_settings.py",
+            "tests/uat/managed_runtime.py",
+            "tests/uat/phases/execute.py",
+            "tests/uat/test_declared_settings.py"
+          ],
+          "integration_head": "4b8c4b45511e36563a0f2837afb0909754d4de9e",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/load-hardening",
-      "integration_head": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67",
+      "integration_head": "4b8c4b45511e36563a0f2837afb0909754d4de9e",
       "integration_log": [
         {
           "at": "2026-11-07T00:53:18Z",
           "head": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-07T01:31:34Z",
+          "head": "4b8c4b45511e36563a0f2837afb0909754d4de9e",
+          "kind": "prepare",
+          "member": "uat-mocker-compose-gaps-20261106",
+          "op_id": "619f87fd9cc64e24b97dcea65e77abbd",
+          "previous_head": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-load-hardening",
@@ -36373,15 +36401,10 @@
       "title": "UAT free-memory floor is a placeholder calibrated from a different metric than it gates on"
     },
     "uat-mocker-compose-gaps-20261106": {
-      "claim": {
-        "expires_at": "2026-11-08T01:31:14Z",
-        "generation": "d77999f2b6a94e5ba2d6b21ca4c8328c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Under mocker, UAT compose stacks lose entrypoint, memory, ulimit and port settings (Doris, Firebolt Core, QuestDB)"
     },
     "uat-native-dataframe-compatibility-rules": {
