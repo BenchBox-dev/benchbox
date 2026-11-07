@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed InfluxDB loads of compressed TSBS data (the default zstd output) loading zero rows; loads now read gzip, bzip2 and zstd files, verify the row count against the source, and fail instead of reporting success when rows are missing.",
+      "platforms": [
+        "influxdb"
+      ]
+    }
+  ]
+}

@@ -109,6 +109,23 @@ def stubborn_holder(directory: str, mib: str) -> None:
     time.sleep(60)
 
 
+def slow_wrapper(directory: str, cleanup_seconds: str, machine: str) -> None:
+    import signal
+
+    root = Path(directory)
+    spawn("stubborn", directory, "1")
+
+    def cleanup(signum: int, frame: object) -> None:
+        time.sleep(float(cleanup_seconds))
+        (root / "cleaned").write_text("cleaned", encoding="utf-8")
+        raise SystemExit(143)
+
+    signal.signal(signal.Signals["SIGTERM"], cleanup)
+    (root / "wrapper.ready").write_text(machine, encoding="utf-8")
+    while True:
+        time.sleep(0.1)
+
+
 def driver(config_json: str) -> None:
     from benchbox.utils import heavy_watchdog as hw
 
@@ -136,6 +153,7 @@ ROLES = {
     "stubborn": stubborn,
     "intermediate": intermediate,
     "stubborn_holder": stubborn_holder,
+    "slow_wrapper": slow_wrapper,
     "driver": driver,
 }
 

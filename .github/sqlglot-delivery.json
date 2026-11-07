@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "producer": {
+    "repository": "BenchBox-dev/benchbox-sqlglot",
+    "workflowPath": ".github/workflows/benchbox-delivery.yml",
+    "branch": "main",
+    "events": ["workflow_run", "workflow_dispatch"],
+    "artifactPrefix": "benchbox-sqlglot-delivery-a",
+    "record": {
+      "schema": 1,
+      "kind": "benchbox-sqlglot-verified-delivery"
+    }
+  },
+  "consumer": {
+    "repository": "BenchBox-dev/BenchBox",
+    "base": "develop",
+    "branchPrefix": "chore/sqlglot-",
+    "trunkRedDisarmActors": ["github-actions[bot]"]
+  },
+  "suppressed": []
+}

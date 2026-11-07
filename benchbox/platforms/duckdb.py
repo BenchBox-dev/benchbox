@@ -123,6 +123,45 @@ def _duckdb_cluster_index_sql(table_name: str, column_names: list[str]) -> str:
     return _duckdb_index_sql(table_name, column_names, "cluster")
 
 
+def _duckdb_handler_factory(file_path, adapter, benchmark_instance, table_name=None, data_source=None):
+    from benchbox.platforms.base.data_loading import (
+        DataSource,
+        DuckDBDeltaHandler,
+        DuckDBDuckLakeHandler,
+        DuckDBNativeHandler,
+        DuckDBParquetHandler,
+        DuckDBVortexHandler,
+        FileFormatRegistry,
+        IcebergFileHandler,
+        resolve_csv_dialect,
+    )
+
+    if file_path.is_dir():
+        if (file_path / "metadata.ducklake").exists():
+            return DuckDBDuckLakeHandler(adapter)
+        if (file_path / "_delta_log").is_dir():
+            return DuckDBDeltaHandler(adapter)
+        if (file_path / "metadata").is_dir():
+            return IcebergFileHandler()
+
+    base_ext = FileFormatRegistry.get_base_data_extension(file_path)
+
+    if base_ext in (".tbl", ".dat", ".csv"):
+        dialect_source = data_source or DataSource(source_type="duckdb_handler", tables={})
+        dialect = resolve_csv_dialect(dialect_source, table_name or file_path.stem, file_path, benchmark_instance)
+        return DuckDBNativeHandler(
+            dialect.delimiter,
+            adapter,
+            benchmark_instance,
+            null_marker=dialect.null_marker,
+        )
+    if base_ext == ".parquet":
+        return DuckDBParquetHandler(adapter)
+    if base_ext == ".vortex":
+        return DuckDBVortexHandler(adapter)
+    return None
+
+
 def _resolve_external_data_source(benchmark: Any, data_dir: Path, adapter: Any = None) -> Any:
     from benchbox.platforms.base.data_loading import DataSourceResolver
 
@@ -892,45 +931,12 @@ class DuckDBAdapter(PlatformAdapter):
             self.log_verbose(f"Loading data from cloud storage: {path_info['provider']} bucket '{path_info['bucket']}'")
             emit(f"  Loading data from {path_info['provider']} cloud storage")
 
-        def duckdb_handler_factory(file_path, adapter, benchmark_instance, table_name=None, data_source=None):
-            from benchbox.platforms.base.data_loading import (
-                DuckDBDeltaHandler,
-                DuckDBNativeHandler,
-                DuckDBParquetHandler,
-                FileFormatRegistry,
-                resolve_csv_dialect,
-            )
-
-            if file_path.is_dir():
-                delta_log_dir = file_path / "_delta_log"
-                if delta_log_dir.exists() and delta_log_dir.is_dir():
-                    return DuckDBDeltaHandler(adapter)
-
-            base_ext = FileFormatRegistry.get_base_data_extension(file_path)
-
-            if base_ext in (".tbl", ".dat", ".csv"):
-                from benchbox.platforms.base.data_loading import DataSource
-
-                dialect_source = data_source or DataSource(source_type="duckdb_handler", tables={})
-                dialect = resolve_csv_dialect(
-                    dialect_source, table_name or file_path.stem, file_path, benchmark_instance
-                )
-                return DuckDBNativeHandler(
-                    dialect.delimiter,
-                    adapter,
-                    benchmark_instance,
-                    null_marker=dialect.null_marker,
-                )
-            elif base_ext == ".parquet":
-                return DuckDBParquetHandler(adapter)
-            return None
-
         loader = DataLoader(
             adapter=self,
             benchmark=benchmark,
             connection=connection,
             data_dir=data_dir,
-            handler_factory=duckdb_handler_factory,
+            handler_factory=_duckdb_handler_factory,
             tuning_config=self.unified_tuning_configuration if self.tuning_enabled else None,
         )
         table_stats, loading_time = loader.load()

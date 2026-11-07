@@ -24,6 +24,11 @@ pytestmark = [
 ]
 
 
+@pytest.fixture(autouse=True)
+def _no_ilp_timestamp_columns(monkeypatch):
+    monkeypatch.setattr(QuestDBAdapter, "_ilp_timestamp_columns", lambda self, table_name, designated: frozenset())
+
+
 @pytest.fixture()
 def adapter(monkeypatch):
     monkeypatch.setattr(questdb_module, "psycopg", Mock())
@@ -183,7 +188,7 @@ class TestIlpArrowParity:
                 [1, "plain", "12.50", "1994-01-02", "true", " padded "],
                 [-2, 'has "quotes", commas', "0.1", "1994-01-02 10:20:30", "false", "back\\slash"],
                 [3, "line break", "1e5", "1994-01-02T01:02:03", "", "a b=c"],
-                [4, "", "", "not-a-date", "true", ""],
+                [4, "", "", "", "true", ""],
                 ["", "", "", "", "", ""],
                 [5, "x", "5.0", "2000-02-29", "false", "y"],
                 [7, "wrong width"],

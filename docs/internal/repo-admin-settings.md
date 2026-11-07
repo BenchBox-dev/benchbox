@@ -62,12 +62,12 @@ Required status checks:
 
 Five of these contexts are always-reporting result jobs in
 `.github/workflows/ci.yml`. `oracle-gate` is a commit status that
-`.github/workflows/oracle-gate.yml` posts through the `benchbox-oracle` App;
+`.github/workflows/review-gate.yml` posts through the `benchbox-oracle` App;
 it passes at once for a change confined to inert paths (see Inert-path
 manifest in `docs/internal/oracle-review-v2.md`). `hold` comes from
 `.github/workflows/pr-hold.yml` and fails while the PR carries the
 `no-auto-merge` label; it re-runs when a label is added or removed.
-`.github/workflows/oracle-review.yml` reports no check: it runs a no-op
+`.github/workflows/review-request.yml` reports no check: it runs a no-op
 `review-event` job on oracle review edited and dismissed events only, and its
 completion makes `oracle-gate` re-evaluate that head.
 
@@ -87,7 +87,7 @@ Markdown routes to the `docs` unit alone unless a test or audit reads it. `.gith
 | `results-data` | `results-data/`, submission validator, `benchbox/core/results/` | corpus inventory and validation, submission validator sync, corpus and explorer-pipeline contract tests |
 | `docs` | `docs/`, examples, the prompt catalog, CLI and registries | example and docs reference validation, docs generators, spell check |
 | `tooling` | every event | content guard, skill integrity, and audit checks by path |
-| `oracle-gate` | every PR, from `develop` code on trusted triggers | `benchbox-oracle` success `oracle-verdict` status on the current head, or the stand-in approval; inert-only changes report success. Open review threads are enforced by the ruleset's required thread resolution, not by this status. Posted by the `benchbox-oracle` App from the verdict run right after its review and from `oracle-gate.yml` for stand-in comments, head and base changes and the scheduled sweep, so it needs `ORACLE_APP_ID` and `ORACLE_APP_PRIVATE_KEY` in the `oracle` environment, else nothing is posted and the head cannot merge |
+| `oracle-gate` | every PR, from `develop` code on trusted triggers | `benchbox-oracle` success `oracle-verdict` status on the current head, or the stand-in approval; inert-only changes report success. Open review threads are enforced by the ruleset's required thread resolution, not by this status. Posted by the `benchbox-oracle` App from the verdict run right after its review and from `review-gate.yml` for stand-in comments, head and base changes and the scheduled sweep, so it needs `ORACLE_APP_ID` and `ORACLE_APP_PRIVATE_KEY` in the `oracle` environment, else nothing is posted and the head cannot merge |
 
 The Windows PR selection excludes tests changed only on `develop` unless the PR changes them or the
 coverage, importer or reader selection reaches them. POSIX-only repository
@@ -241,11 +241,12 @@ History of the required contexts:
 
 `develop-squash-only` (ruleset id `15611785`) has had no `merge_queue` rule
 since 2026-10-03; see `_project/decisions/merge-queue-retirement-2026-10-03.md`.
-Agents arm a PR with `make pr-arm`, which enables auto-merge; the PR
+Agents arm a PR with `make pr-arm`, which enables auto-merge; the SQLGlot
+delivery workflow arms its own adoption PRs under the same rules. The PR
 squash-merges when the required checks pass and every review thread is
 resolved. The drift check reports a `merge_queue` rule that reappears.
 
-The required `oracle-gate` check (`.github/workflows/oracle-gate.yml`) passes
+The required `oracle-gate` check (`.github/workflows/review-gate.yml`) passes
 when any of these holds:
 
 - The change touches only inert paths (see Inert-path manifest in `docs/internal/oracle-review-v2.md`).
@@ -254,7 +255,7 @@ when any of these holds:
   deleting a review cannot change the result; statuses from any other creator
   and the legacy `oracle-review-shadow` context are ignored.
 - An account in `consumer.attesters` (`.github/oracle-reviewers.yml`)
-  posted `Stand-in oracle review: APPROVE <full head SHA>` for the exact head,
+  posted `Stand-in review: APPROVE <full head SHA>` for the exact head,
   after any retarget and after the oracle's latest verdict status on that head. Per
   `docs/agent/merge-authority.md`, an agent posts a stand-in only when the owner
   names the PR and its head in the current request, with a preceding `Owner instruction`
@@ -269,7 +270,7 @@ fresh gate evaluation, run with `origin/develop`'s gate code and policy, does
 not pass. A stale gate on an armed PR is re-evaluated by a review edit or
 dismissal, a `develop` push that changes the gate code or policy, or the hourly
 sweep; to force it, run
-`gh workflow run oracle-gate.yml --ref develop -f pr=<number>`.
+`gh workflow run review-gate.yml --ref develop -f pr=<number>`.
 
 The live `develop-squash-only` ruleset binds `oracle-gate` to
 `integration_id` 5201041, the `benchbox-oracle` App's ID
@@ -280,7 +281,7 @@ pull request heads reviewed from 2026-10-22: they agreed on 195; on one,
 `oracle-gate` passed after the oracle's success while the `oracle-review` run
 had gone stale, and two heads were replaced before the gate ran.
 
-`.github/workflows/oracle-gate.yml` runs only `develop` code and posts
+`.github/workflows/review-gate.yml` runs only `develop` code and posts
 `oracle-gate` for the pull request head as a commit status through the same
 oracle App. `test_only_the_theseus_caller_jobs_can_post_the_gate_context` fails when any
 other workflow, or any caller job not pinned to the Theseus gate workflow, could
@@ -369,7 +370,11 @@ The soundness gate, as operated:
   ancestor. It does not verify a merge queue or merge `develop` itself. Refresh
   a conflicting PR near its landing turn, then rerun CI and get review on the
   resulting head before arming.
-- No workflow arms auto-merge. One workflow disarms: when a `trunk.yml` run
+- One workflow arms auto-merge: `.github/workflows/sqlglot-delivery.yml` arms
+  the SQLGlot adoption PR it opens, as the delivery App, through the same
+  `scripts/pr_arm.py` rules as `make pr-arm`. It never arms after a human hold
+  or disarm; only a `trunk-red-disarm` disarm may be re-armed. No other
+  workflow arms auto-merge. One workflow disarms: when a `trunk.yml` run
   on `develop` completes red, `.github/workflows/trunk-red-disarm.yml` disables
   auto-merge on each open PR against `develop` that has it enabled and that
   `scripts/trunk_revert.py arm-gate` would refuse, through the GraphQL
@@ -386,7 +391,8 @@ The soundness gate, as operated:
   check, so the PR cannot merge even though auto-merge stays on. Disable
   auto-merge too (`gh pr merge <n> --disable-auto`) so the PR shows no false
   intent to land. See `docs/internal/pr-triage.md` "Durable auto-merge holds".
-- `make pr-arm` refuses drafts, non-develop bases, durable holds, requested
+- `make pr-arm` (and the delivery workflow, through `scripts/pr_arm.py`)
+  refuses drafts, non-develop bases, durable holds, requested
   changes, unresolved threads, unpublished work, and a remote head that differs
   from local HEAD. It enables squash auto-merge for the exact reviewed head.
   Required checks and thread resolution control the merge.

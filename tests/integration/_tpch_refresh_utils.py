@@ -164,6 +164,35 @@ def _load_sf001_base_postgres(connection: Any) -> dict[str, int]:
         shutil.rmtree(staging, ignore_errors=True)
 
 
+def _load_sf001_base_singlestore(connection: Any) -> dict[str, int]:
+    import shutil
+    import tempfile
+
+    from benchbox.core.tpch.generator import TPCHDataGenerator
+
+    staging = Path(tempfile.mkdtemp(prefix="tpch-base-"))
+    try:
+        TPCHDataGenerator(scale_factor=0.01, output_dir=staging, quiet=True).generate()
+        counts = {}
+        for table, filename in ((ORDERS, "orders.tbl"), (LINEITEM, "lineitem.tbl")):
+            columns = ", ".join(f"{column.name} {column.get_sql_type()}" for column in table.columns)
+            connection.execute(f"CREATE TABLE {table.name} ({columns})")
+            names = ", ".join(column.name for column in table.columns)
+            cursor = connection.cursor()
+            try:
+                cursor.execute(
+                    f"LOAD DATA LOCAL INFILE '{staging / filename}' INTO TABLE {table.name} "
+                    f"FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n' ({names})"
+                )
+            finally:
+                cursor.close()
+            counts[table.name] = _table_count(connection, table.name)
+        connection.commit()
+        return counts
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+
+
 def _column_checksums(connection: Any, table: Any) -> dict[str, str]:
     import hashlib
 

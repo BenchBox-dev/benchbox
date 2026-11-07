@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "SQLGlot wheel adoption now requires the caller's expected version and fork and upstream SHAs to match before any change, and runtime changes run package-smoke"}

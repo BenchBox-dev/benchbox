@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import subprocess
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -72,10 +73,12 @@ def find_vacuous_overlays(path: Path, text: str) -> list[str]:
     return findings
 
 
-def _scan_files() -> list[Path]:
+def _scan_files(root: Path = REPO_ROOT) -> list[Path]:
+    listed = subprocess.run(["git", "ls-files", "-z"], cwd=root, capture_output=True, check=True).stdout
+    tracked = {root / name for name in listed.decode("utf-8").split("\0") if name}
     files: set[Path] = set()
     for pattern in SCAN_GLOBS:
-        files.update(path for path in REPO_ROOT.glob(pattern) if path.is_file())
+        files.update(path for path in root.glob(pattern) if path in tracked and path.is_file())
     return sorted(files)
 
 
@@ -91,6 +94,16 @@ def test_scan_covers_workflows_makefile_and_scripts() -> None:
     assert "Makefile" in names
     assert any(name.startswith(".github/workflows/") for name in names)
     assert any(name.startswith("scripts/") for name in names)
+
+
+def test_scan_ignores_untracked_files(tmp_path: Path) -> None:
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    (tmp_path / "Makefile").write_text("check:\n\tuv run pytest\n", encoding="utf-8")
+    venv = tmp_path / "_project" / "scripts" / ".venv" / "lib"
+    venv.mkdir(parents=True)
+    (venv / "tool.py").write_text('subprocess.run(["pip", "install", "sqlglot"])\n', encoding="utf-8")
+    subprocess.run(["git", "add", "Makefile"], cwd=tmp_path, check=True)
+    assert [path.relative_to(tmp_path).as_posix() for path in _scan_files(tmp_path)] == ["Makefile"]
 
 
 @pytest.mark.parametrize(

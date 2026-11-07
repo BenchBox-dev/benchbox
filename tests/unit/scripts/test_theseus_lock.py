@@ -35,7 +35,7 @@ def test_the_artifact_has_two_distinct_https_sources() -> None:
     assert all(url.startswith("https://") for url in urls)
 
 
-@pytest.mark.parametrize("name", ["oracle-verdict.yml", "oracle-gate.yml"])
+@pytest.mark.parametrize("name", ["review-verdict.yml", "review-gate.yml"])
 def test_each_caller_workflow_is_pinned_to_the_locked_commit_in_both_places(name: str) -> None:
     text = (ROOT / ".github" / "workflows" / name).read_text(encoding="utf-8")
     pins = re.findall(r"joeharris76/theseus/\.github/workflows/\w+\.yml@([0-9a-f]{40})", text)

@@ -210,3 +210,56 @@ def test_row_level_operations_raise_when_delta_support_is_unavailable(monkeypatc
         ops._do_update("tbl", "id > 1", {"x": "1"})
     with pytest.raises(NotImplementedError, match="MERGE requires Delta Lake"):
         ops._do_merge("tbl", [{"id": 1}], "target.id = source.id", None, None)
+
+
+def test_arrow_table_goes_direct_to_spark_on_spark4(monkeypatch):
+    pa = pytest.importorskip("pyarrow")
+    monkeypatch.setattr(pyspark_maintenance, "_supports_direct_arrow_ingest", lambda: True)
+    spark = MagicMock()
+    table = pa.table({"a": [1, None]})
+
+    result = pyspark_maintenance.create_spark_dataframe_from_arrow(spark, table)
+
+    spark.createDataFrame.assert_called_once_with(table)
+    assert result is spark.createDataFrame.return_value
+    spark.conf.set.assert_not_called()
+
+
+def test_arrow_table_pre_spark4_enables_arrow_conversion_and_restores(monkeypatch):
+    pa = pytest.importorskip("pyarrow")
+    pytest.importorskip("pandas")
+    monkeypatch.setattr(pyspark_maintenance, "_supports_direct_arrow_ingest", lambda: False)
+    spark = MagicMock()
+    spark.conf.get.return_value = "false"
+    seen = []
+    spark.createDataFrame.side_effect = lambda df: seen.append(list(spark.conf.set.call_args_list)) or "df"
+
+    result = pyspark_maintenance.create_spark_dataframe_from_arrow(spark, pa.table({"a": [1, 2]}))
+
+    key = "spark.sql.execution.arrow.pyspark.enabled"
+    assert result == "df"
+    assert seen[0][-1].args == (key, "true")
+    assert spark.conf.set.call_args_list[-1].args == (key, "false")
+
+
+def test_pandas_conversion_unsets_arrow_key_when_previously_unset():
+    spark = MagicMock()
+    spark.conf.get.return_value = None
+
+    pyspark_maintenance.create_spark_dataframe_from_pandas(spark, object())
+
+    spark.conf.unset.assert_called_once_with("spark.sql.execution.arrow.pyspark.enabled")
+
+
+def test_convert_arrow_table_uses_arrow_path(monkeypatch):
+    pa = pytest.importorskip("pyarrow")
+    pytest.importorskip("pyspark")
+    monkeypatch.setattr(pyspark_maintenance, "PYSPARK_AVAILABLE", True)
+    monkeypatch.setattr(pyspark_maintenance, "_supports_direct_arrow_ingest", lambda: True)
+    spark = MagicMock()
+    ops = pyspark_maintenance.PySparkMaintenanceOperations(spark_session=spark, prefer_delta=False)
+    table = pa.table({"a": [1]})
+
+    ops._convert_to_spark_df(table)
+
+    spark.createDataFrame.assert_called_once_with(table)

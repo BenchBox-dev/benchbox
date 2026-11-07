@@ -429,6 +429,18 @@ def test_a_reused_pr_replaces_a_stale_marker_and_keeps_the_rest_of_its_body() ->
     assert _fields(patch) == {"body": f"Hand written.\n\n{MARKER}\n"}
 
 
+@pytest.mark.parametrize("word", ["review", "oracle"])
+def test_either_marker_spelling_is_embedded_and_replaces_the_other(word: str) -> None:
+    marker = f"<!-- {word}-local-record: v1 abc_DEF-123 -->"
+    stale = "<!-- oracle-local-record: v1 zzz -->" if word == "review" else "<!-- review-local-record: v1 zzz -->"
+    gh = FakeGh([_pull("BenchBox-dev", "feat/widget", body=f"Hand written.\n\n{stale}\n")])
+
+    pr_open_rest.publish(REPO, "BenchBox-dev", "feat/widget", "feat/widget", None, None, gh, record=marker)
+
+    (patch,) = gh.api("PATCH")
+    assert _fields(patch) == {"body": f"Hand written.\n\n{marker}\n"}
+
+
 def test_a_reused_pr_whose_body_already_ends_in_the_marker_is_left_alone() -> None:
     gh = FakeGh([_pull("BenchBox-dev", "feat/widget", body=f"Hand written.\n\n{MARKER}\n")])
 
@@ -452,4 +464,4 @@ def test_main_embeds_the_record_file_and_refuses_one_that_is_not_a_marker(tmp_pa
     record.write_text("")
     empty = FakeGh([], _log(("feat: add widget", "Why.")))
     assert pr_open_rest.main([*args, "--record-file", str(record)], empty) == 0
-    assert "oracle-local-record" not in _fields(empty.api("POST")[0])["body"]
+    assert "local-record" not in _fields(empty.api("POST")[0])["body"]

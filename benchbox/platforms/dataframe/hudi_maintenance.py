@@ -8,6 +8,10 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from benchbox.platforms.dataframe.pyspark_maintenance import (
+    create_spark_dataframe_from_arrow,
+    create_spark_dataframe_from_pandas,
+)
 from benchbox.utils.clock import mono_time
 
 try:
@@ -76,15 +80,18 @@ class HudiMaintenanceOperations(BaseDataFrameMaintenanceOperations):
             import pyarrow as pa
 
             if isinstance(dataframe, pa.Table):
-                return self.spark.createDataFrame(dataframe.to_pandas())
+                return create_spark_dataframe_from_arrow(self.spark, dataframe)
         except ImportError:
             pass
 
+        if hasattr(dataframe, "to_arrow"):
+            return create_spark_dataframe_from_arrow(self.spark, dataframe.to_arrow())
+
         if hasattr(dataframe, "to_dict") and hasattr(dataframe, "columns"):
-            return self.spark.createDataFrame(dataframe)
+            return create_spark_dataframe_from_pandas(self.spark, dataframe)
 
         if hasattr(dataframe, "to_pandas"):
-            return self.spark.createDataFrame(dataframe.to_pandas())
+            return create_spark_dataframe_from_pandas(self.spark, dataframe.to_pandas())
 
         if isinstance(dataframe, list):
             return self.spark.createDataFrame(dataframe)

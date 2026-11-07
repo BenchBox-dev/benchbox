@@ -65,6 +65,9 @@ class TestInfluxAdapterCoverage:
                 seen.append((measurement, table.to_pydict(), tag_columns, timestamp_column))
                 return table.num_rows
 
+            def execute(self, query):
+                return [(1,)]
+
         with patch("benchbox.platforms.influxdb._dependencies.INFLUXDB3_AVAILABLE", True):
             rows, duration, meta = adapter.load_data(benchmark=None, connection=Conn(), data_dir=tmp_path)
 

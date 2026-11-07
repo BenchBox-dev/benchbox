@@ -233,6 +233,7 @@
     "docs/internal/throughput-result-alignment.md": "core-only",
     "docs/internal/todo-db-benchbox-extraction.md": "core-only",
     "docs/internal/tpc-binary-release.md": "core-only",
+    "docs/internal/tpc-measured-intervals.md": "core-only",
     "docs/internal/transactional-benchmark-alignment.md": "core-only",
     "docs/internal/uat-release-campaign.md": "core-only",
     "docs/internal/unified_frame_any_survey.md": "core-only",

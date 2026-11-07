@@ -96,9 +96,9 @@ file	_project/scripts/soundness_paths.py
 file	_project/scripts/inert_paths.py
 file	.github/inert-paths.txt
 file	_project/inert-doc-readers.json
-file	.github/workflows/oracle-review.yml
-file	.github/workflows/oracle-verdict.yml
-file	.github/workflows/oracle-gate.yml
+file	.github/workflows/review-request.yml
+file	.github/workflows/review-verdict.yml
+file	.github/workflows/review-gate.yml
 file	_project/scripts/check_soundness_review.py
 file	.github/oracle-reviewers.yml
 file	.github/oracle-omp-config.yml
@@ -152,6 +152,11 @@ file	tests/unit/scripts/test_sql_execution_gate.py
 file	tests/unit/scripts/test_sync_sqlglot_runtime.py
 file	tests/unit/scripts/test_check_sqlglot_repro_retirement.py
 file	tests/unit/scripts/test_sqlglot_fork_diff.py
+file	.github/sqlglot-delivery.json
+file	scripts/sqlglot_delivery.py
+file	.github/workflows/sqlglot-delivery.yml
+file	tests/unit/scripts/test_sqlglot_delivery.py
+file	tests/unit/workflows/test_sqlglot_delivery_workflow.py
 file	tests/unit/utils/test_dialect_utils.py
 file	tests/unit/utils/test_apply_rewrite.py
 file	tests/unit/utils/test_apply_rewrite_engines.py

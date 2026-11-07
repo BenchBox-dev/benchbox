@@ -29,7 +29,7 @@ def test_the_live_policy_enforces_and_posts_where_the_gate_reads() -> None:
     assert POLICY["version"] == 2
     assert POLICY["mode"] == "enforce"
     assert POLICY["findings_delivery"] == "review"
-    assert POLICY["status_context"] == "oracle-verdict"
+    assert POLICY["status_context"] == "review-verdict"
     assert POLICY["bot_login"] == "benchbox-oracle"
 
 

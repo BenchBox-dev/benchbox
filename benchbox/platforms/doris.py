@@ -75,9 +75,14 @@ def _stream_load_text_body(data: bytes) -> bytes:
     return normalize_line_breaks(data if data.isascii() else data.decode("latin-1").encode("utf-8"))
 
 
-def _null_mapped_columns_header(columns: list[str]) -> str:
+def _stream_load_string_literal(value: str) -> str:
+    return "'" + value.replace("\\", "\\\\").replace("'", "\\'") + "'"
+
+
+def _null_mapped_columns_header(columns: list[str], null_marker: str) -> str:
     sources = [f"tmp_{index}" for index in range(len(columns))]
-    mappings = [f"{column}=nullif({source},'')" for column, source in zip(columns, sources, strict=True)]
+    marker = _stream_load_string_literal(null_marker)
+    mappings = [f"{column}=nullif({source},{marker})" for column, source in zip(columns, sources, strict=True)]
     return ",".join(sources + mappings)
 
 
@@ -586,6 +591,7 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         is_tpc: bool = False,
         skip_header: bool = False,
         columns: list[str] | None = None,
+        null_marker: str | None = None,
     ) -> dict[str, str]:
         headers = {
             "Expect": "100-continue",
@@ -596,8 +602,8 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
             headers["column_separator"] = delimiter
         if is_tpc:
             headers["trim_double_quotes"] = "true"
-            if columns:
-                headers["columns"] = _null_mapped_columns_header(columns)
+            if columns and null_marker is not None:
+                headers["columns"] = _null_mapped_columns_header(columns, null_marker)
         if skip_header:
             headers["skip_lines"] = "1"
         return headers
@@ -644,7 +650,12 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         url = f"{scheme}://{self.host}:{self.http_port}/api/{self.database}/{table_name}/_stream_load"
 
         headers = self._stream_load_headers(
-            format_name="csv", delimiter=delimiter, is_tpc=is_tpc, skip_header=dialect.has_header, columns=columns
+            format_name="csv",
+            delimiter=delimiter,
+            is_tpc=is_tpc,
+            skip_header=dialect.has_header,
+            columns=columns,
+            null_marker=dialect.null_marker,
         )
 
         if is_tpc:
@@ -676,7 +687,9 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         scheme = "https" if self.use_tls else "http"
         url = f"{scheme}://{self.host}:{self.http_port}/api/{self.database}/{table_name}/_stream_load"
 
-        headers = self._stream_load_headers(format_name="csv", delimiter=delimiter, is_tpc=is_tpc, columns=columns)
+        headers = self._stream_load_headers(
+            format_name="csv", delimiter=delimiter, is_tpc=is_tpc, columns=columns, null_marker=dialect.null_marker
+        )
 
         total_rows = 0
         chunk_num = 0

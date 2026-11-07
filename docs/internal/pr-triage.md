@@ -90,11 +90,15 @@ a PR's mergeability — both only alert.
     `EVIDENCE=<path>` or `BATCH=1` it runs the evidence transaction instead,
     and the evidence file declares `delivery_mode` (`batch` evidence must
     include the complete batch binding)
+  - `.github/workflows/sqlglot-delivery.yml`, which arms the one SQLGlot
+    adoption PR it opens, as the delivery App, through the same
+    `scripts/pr_arm.py` rules. It never arms after a human hold or disarm;
+    only a `trunk-red-disarm` disarm may be re-armed.
 
-  No workflow arms auto-merge: a draft→ready arm point never fired once and
-  was deleted (see
+  No other workflow arms auto-merge: a draft→ready arm point never fired once
+  and was deleted (see
   `_project/decisions/auto-merge-policy-consolidation-2026-08-06.md`, D2).
-  The Makefile paths refuse while the PR carries the `no-auto-merge` label or
+  The Makefile paths and the delivery workflow refuse while the PR carries the `no-auto-merge` label or
   is a draft. Nothing disarms a PR that is already armed when the label is
   added later: to hold an armed PR, disable auto-merge
   (`gh pr merge <n> --disable-auto`) or withdraw it with
@@ -112,7 +116,7 @@ a PR's mergeability — both only alert.
   a PR that is already armed, re-evaluate it from `develop`:
 
   ```bash
-  gh workflow run oracle-gate.yml --repo BenchBox-dev/BenchBox --ref develop -f pr=<pr>
+  gh workflow run review-gate.yml --repo BenchBox-dev/BenchBox --ref develop -f pr=<pr>
   ```
 
   The workflow reads the PR's current head itself, so this also works for a

@@ -78,12 +78,12 @@ record() {
 
 http_status() {
   if [ "${2:-}" = auth ]; then
-    printf 'header = "Authorization: Bearer %s"\n' "$ORACLE_CLOUD_GATEWAY_TOKEN" |
+    printf 'header = "Authorization: Bearer %s"\n' "$REVIEW_CLOUD_GATEWAY_TOKEN" |
       curl -sS -K - --proxy "http://127.0.0.1:$proxy_port" --max-time 20 -o /dev/null -w '%{http_code}' \
-        "${ORACLE_GATEWAY_URL%/}$1" 2>/dev/null || printf '000'
+        "${REVIEW_GATEWAY_URL%/}$1" 2>/dev/null || printf '000'
   else
     curl -sS --proxy "http://127.0.0.1:$proxy_port" --max-time 20 -o /dev/null -w '%{http_code}' \
-      "${ORACLE_GATEWAY_URL%/}$1" 2>/dev/null || printf '000'
+      "${REVIEW_GATEWAY_URL%/}$1" 2>/dev/null || printf '000'
   fi
 }
 
@@ -189,11 +189,11 @@ finish_failed() {
 
 up() {
   omp_state=not-installed
-  if [ -z "${TS_AUTHKEY:-}" ] || [ -z "${ORACLE_GATEWAY_URL:-}" ] || [ -z "${ORACLE_CLOUD_GATEWAY_TOKEN:-}" ]; then
+  if [ -z "${TS_AUTHKEY:-}" ] || [ -z "${REVIEW_GATEWAY_URL:-}" ] || [ -z "${REVIEW_CLOUD_GATEWAY_TOKEN:-}" ]; then
     stop_daemon
     rm -f "$state_dir/omp-binary" "$state_dir/omp-install.log"
-    record unavailable "TS_AUTHKEY, ORACLE_GATEWAY_URL and ORACLE_CLOUD_GATEWAY_TOKEN are not all set"
-    say "gateway unavailable: TS_AUTHKEY, ORACLE_GATEWAY_URL and ORACLE_CLOUD_GATEWAY_TOKEN are not all set"
+    record unavailable "TS_AUTHKEY, REVIEW_GATEWAY_URL and REVIEW_CLOUD_GATEWAY_TOKEN are not all set"
+    say "gateway unavailable: TS_AUTHKEY, REVIEW_GATEWAY_URL and REVIEW_CLOUD_GATEWAY_TOKEN are not all set"
     return 0
   fi
 

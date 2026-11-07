@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Batch landing no longer counts leader tracker writes that share a clock second with the member worktree creation or the landing, and the power-test call-count test matches single query generation"
+}

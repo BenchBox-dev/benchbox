@@ -978,7 +978,7 @@ def test_collect_pull_carries_the_comment_author_type_and_update_time(monkeypatc
     assert pull.base_changed_at == AFTER
 
 
-ORACLE_PATH = ".github/workflows/oracle-review.yml@refs/pull/7/merge"
+ORACLE_PATH = ".github/workflows/review-request.yml@refs/pull/7/merge"
 
 
 def oracle_run(at, event="synchronize"):
@@ -1062,7 +1062,7 @@ def test_the_digest_no_longer_reads_head_workflow_runs(monkeypatch):
 ORACLE_BOT = "benchbox-oracle[bot]"
 
 
-def oracle_verdict(sha, state="success", context="oracle-verdict"):
+def oracle_verdict(sha, state="success", context="review-verdict"):
     return f"### {context}: {state} for `{sha}`\n\nDetails."
 
 
@@ -1115,7 +1115,9 @@ def test_connector_signals_count_only_for_merges_before_the_cut_over():
     assert digest.review_signals(evidence(**signals)) == ("connector-review", "connector-approval")
 
 
-@pytest.mark.parametrize("context", ["oracle-verdict", "oracle-review-shadow"], ids=["current", "legacy"])
+@pytest.mark.parametrize(
+    "context", ["review-verdict", "oracle-verdict", "oracle-review-shadow"], ids=["current", "previous", "legacy"]
+)
 def test_the_digest_reads_both_first_lines(context):
     success = evidence(reviews=(review(ORACLE_BOT, HEAD, user_type="Bot", body=oracle_verdict(HEAD, context=context)),))
     failure = evidence(
@@ -1203,7 +1205,7 @@ def gate_accepts(verdicts, standin_at, base_change):
     statuses = [
         {
             "id": index,
-            "context": "oracle-verdict",
+            "context": "review-verdict",
             "state": state,
             "description": f"large: {state} [run {run_uuid}]" if state == "success" else "",
             "login": ORACLE_BOT,
@@ -2126,7 +2128,7 @@ def app_review(body, node_id="PRR_1", submitted_at=AFTER):
 def app_status(state, description="d", created_at=AFTER, creator=APP_CREATOR, id_=1):
     return {
         "id": id_,
-        "context": "oracle-verdict",
+        "context": "review-verdict",
         "state": state,
         "description": description,
         "creator": creator,
@@ -2200,7 +2202,7 @@ def test_a_marker_decision_contradicting_the_review_header_is_unverifiable(monke
 def test_a_non_app_success_status_never_verifies_a_review(monkeypatch):
     serve_verification(monkeypatch, statuses=[app_status("success", creator={"login": "joe", "type": "User"})])
     (checked,) = digest.verify_oracle_reviews("o/r", [app_review(oracle_review_body())])
-    assert "no oracle-verdict status" in checked.unverifiable
+    assert "no review-verdict status" in checked.unverifiable
 
 
 def test_the_review_is_matched_to_the_status_by_its_run_id(monkeypatch):
