@@ -4,14 +4,17 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
+import re
 import threading
 import time
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Iterable
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 try:
@@ -446,18 +449,76 @@ def plan_capture_support(platform: str) -> PlanCaptureSupport:
     return _PLAN_CAPTURE_SUPPORT.get(normalize_dataframe_platform(platform), PlanCaptureSupport.UNSUPPORTED)
 
 
+def _local_path_redactor(roots: Iterable[str | Path]) -> Callable[[str], str]:
+    from benchbox.core.results.anonymization import _PRIVATE_LOCAL_PATH_RE, PUBLIC_REDACTED_VALUE
+
+    variants: set[str] = set()
+    for root in (Path.home(), *roots):
+        text = str(root).rstrip("/\\")
+        if len(text) > 1 and (text.startswith("/") or text[1:3] == ":\\"):
+            variants.add(text)
+            with contextlib.suppress(OSError, RuntimeError):
+                variants.add(str(Path(text).resolve()).rstrip("/\\"))
+    alternatives = []
+    for variant in sorted(variants, key=len, reverse=True):
+        escaped = re.escape(variant)
+        alternatives.append(rf"(?<![A-Za-z0-9_]){escaped}")
+        if variant.startswith("/"):
+            alternatives.append(rf"(?<![A-Za-z0-9_/.]){re.escape(variant[1:])}")
+    root_re = (
+        re.compile("(?:" + "|".join(alternatives) + r")(?=[/\\\s'\",;)\]]|$)(?:[/\\][^\s'\",;)\]]*)?")
+        if variants
+        else None
+    )
+
+    def _replace(match: re.Match[str]) -> str:
+        matched = match.group(0)
+        stripped = matched.rstrip("]")
+        return PUBLIC_REDACTED_VALUE + matched[len(stripped) :]
+
+    def _redact_text(text: str) -> str:
+        if root_re is not None:
+            text = root_re.sub(PUBLIC_REDACTED_VALUE, text)
+        return _PRIVATE_LOCAL_PATH_RE.sub(_replace, text)
+
+    return _redact_text
+
+
+def _redact_plan_value(value: Any, redact_text: Callable[[str], str]) -> Any:
+    if isinstance(value, str):
+        return redact_text(value)
+    if isinstance(value, dict):
+        return {key: _redact_plan_value(child, redact_text) for key, child in value.items()}
+    if isinstance(value, list):
+        return [_redact_plan_value(child, redact_text) for child in value]
+    return value
+
+
+def redact_plan_local_paths(plan: QueryPlan, roots: Iterable[str | Path] = ()) -> QueryPlan:
+    redact_text = _local_path_redactor(roots)
+    return replace(
+        plan,
+        plan_text=redact_text(plan.plan_text),
+        plan_data=_redact_plan_value(plan.plan_data, redact_text),
+        optimization_hints=_redact_plan_value(plan.optimization_hints, redact_text),
+    )
+
+
 def capture_query_plan(df: Any, platform: str) -> QueryPlan | None:
     platform_lower = normalize_dataframe_platform(platform)
 
+    plan: QueryPlan | None = None
     if platform_lower == "polars":
         if hasattr(df, "explain"):
-            return capture_polars_plan(df)
+            plan = capture_polars_plan(df)
     elif platform_lower == "datafusion":
-        return capture_datafusion_plan(df)
+        plan = capture_datafusion_plan(df)
     elif platform_lower in _SPARK_FAMILY_PLATFORMS:
-        return capture_pyspark_plan(df, platform=platform_lower)
+        plan = capture_pyspark_plan(df, platform=platform_lower)
 
-    return None
+    if plan is None:
+        return None
+    return redact_plan_local_paths(plan)
 
 
 def _analyze_polars_plan(plan: str) -> list[str]:
