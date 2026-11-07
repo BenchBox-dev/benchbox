@@ -3665,7 +3665,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-spark-family-fixes",
-      "lifecycle": "active",
+      "lifecycle": "completed",
       "members": [
         "platform-options-forwarding-gaps-20261014",
         "spark-test-connection-stops-shared-session",
@@ -31212,17 +31212,12 @@
       "title": "Spark Parquet/ORC DDL keeps column-level REFERENCES clauses that it should strip"
     },
     "spark-local-default-jvm-exceeds-heavy-run-budget-20261106": {
-      "claim": {
-        "expires_at": "2026-11-08T02:57:19Z",
-        "generation": "f72a54cbd95c4dbaa751bedd4a7fed45",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54"
-      },
+      "claim": null,
       "needs": [
         "spark-test-connection-stops-shared-session"
       ],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Make a default local Spark run fit the heavy-run memory budget"
     },
     "spark-mixin-open-table-format-loading": {
