@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Either pass remote close-out values through files or environment instead of make arguments, or unexport the REMOTE_CLOSEOUT_VARIABLES names and export the raw $(value) text, without changing other targets that use the same names.",
+    "A test proves a $(shell ...) value in PR, OWNER_EXPLAINED and ACTION never executes and arrives byte-for-byte."
+  ],
+  "description": "make pr-arm-remote and the pr-landing-remote targets promise to hand values over untouched; tests/unit/scripts/test_remote_closeout.py::test_the_make_wrapper_hands_values_over_untouched_and_runs_no_shell_metacharacters proves shell metacharacters do not run. Make-function syntax does: `make pr-arm-remote 'PR=$(shell touch /tmp/x)'` creates /tmp/x (reproduced 2026-11-07 on develop for PR, ACTION and OWNER_EXPLAINED). Two mechanisms: GNU Make exports command-line variables into every recipe environment and expands them on export (a two-line Makefile with no reference reproduces it; only `unexport X` prevents it), and make/pr-landing.mk exports REMOTE_CLOSEOUT_<name> with `:= $$($(name))`, which expands the command-line value at parse time. Values that contain `$` are also altered (PR=7$5 arrives as 7). The risk is real only if an agent builds the command line from untrusted text, for example an owner statement copied into OWNER_EXPLAINED.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:95654933fcc78b44d934f92f",
+      "at": "2026-11-07T14:13:26Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "54dae9d4819a44f0a274d29514c735d4",
+      "session_id": "c925cef22c8f4d6fa75a3c3995e6df7d"
+    }
+  ]
+}
