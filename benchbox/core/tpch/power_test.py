@@ -401,14 +401,14 @@ class TPCHPowerTest:
 
                     if hasattr(cursor, "platform_result"):
                         result_dict = cursor.platform_result
+                        if isinstance(result_dict.get("row_count_validation"), dict):
+                            query_result["row_count_validation"] = result_dict["row_count_validation"]
                         if result_dict.get("status") == "FAILED":
                             error_msg = result_dict.get(
                                 "error", result_dict.get("row_count_validation_error", "Query validation failed")
                             )
                             raise RuntimeError(error_msg)
                         propagate_query_execution_metadata(result_dict, query_result)
-                        if isinstance(result_dict.get("row_count_validation"), dict):
-                            query_result["row_count_validation"] = result_dict["row_count_validation"]
 
                     result_count = cursor_result_count(cursor)
 

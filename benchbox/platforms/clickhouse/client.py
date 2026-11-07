@@ -9,8 +9,6 @@ from collections.abc import Sequence
 
 import pyarrow as pa
 
-from benchbox.platforms.base.arrow_result import ArrowRows
-
 from .statements import (
     CREATE_READY,
     DROP,
@@ -210,7 +208,9 @@ class ClickHouseLocalClient:
             if query.strip().upper().startswith("INSERT") and params:
                 return self._execute_insert(query, params)
 
-            return _ResultProxy(ArrowRows(self._arrow_table(self._query_arrow_stream(query))))
+            table = self._arrow_table(self._query_arrow_stream(query))
+            columns = [column.to_pylist() for column in table.columns]
+            return _ResultProxy(list(zip(*columns)) if columns else [()] * table.num_rows)
 
         except Exception as e:
             raise RuntimeError(f"ClickHouse local query failed: {e}") from e

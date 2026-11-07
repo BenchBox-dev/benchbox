@@ -130,6 +130,7 @@ def test_run_without_refresh_still_fails_a_wrong_row_count() -> None:
 
     assert result.success is False
     assert "Query validation FAILED" in result.errors[0]
+    assert result.validation["failed_queries"] == [13]
 
 
 def test_validation_disabled_records_no_summary() -> None:
