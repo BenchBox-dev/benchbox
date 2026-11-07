@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "QuestDB REST loads now fail when any chunk fails or QuestDB rejects rows, naming the failing chunk, and a Databend load whose row count does not match its source fails with the partially loaded table truncated, instead of leaving silently partial data.",
+      "platforms": [
+        "questdb",
+        "databend"
+      ]
+    }
+  ]
+}
