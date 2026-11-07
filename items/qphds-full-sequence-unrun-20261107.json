@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "A DuckDB SF1 run exports QphDS@Size, with each input traced to its phase timing in the result.",
+    "Forcing one invalid input (for example a reused load) withholds the metric with the reason recorded."
+  ],
+  "description": "#4016 implemented the spec QphDS@Size metric and its execution order (TPC-DS 4.0.0 clause 7.4.2), exporting it only when every input is valid. It was verified by unit tests with stubbed phases; the full sequence was not run on a platform. Maintenance now refuses to run on DuckDB, PostgreSQL and SQLite when a target table has an enforced primary key (owner decision on the dsdgen key overlap), so the run must use notuning or non-enforced keys.\n\nChange. Run the full official TPC-DS sequence on DuckDB at SF1 with --tuning notuning. Confirm QphDS@Size is computed and exported, that each input (T_PT, T_TT1, T_TT2, T_DM1, T_DM2, T_LD) is present and comes from the right phase, and that the withholding rules trigger when an input is invalid. Fix any defect found.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; heavy work only through make heavy-run; container checks under mocker one stack at a time (limits in tests/uat docs and the uat-mocker-compose-gaps-20261106 context); no live cloud without owner approval; no explanatory comments; changelog fragment if user-facing.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T13:48:47Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1f91e1fef7804fb5b0d8e2a5dfce1024",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}

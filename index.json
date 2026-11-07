@@ -27317,6 +27317,13 @@
       "status": "done",
       "title": "Harden plan-history version awareness: platform partition and CLI metrics"
     },
+    "qphds-full-sequence-unrun-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "The TPC-DS QphDS@Size sequence (load, power, two throughput tests, two maintenance runs) has never been run end to end on a real platform"
+    },
     "quality-add-cross-platform-result-validation": {
       "claim": null,
       "needs": [],
