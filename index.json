@@ -15982,10 +15982,15 @@
       "title": "Define BenchBox results platform product boundary and launch strategy"
     },
     "delete-aborted-hold-e2e-batch-branches-20261107": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T21:52:19Z",
+        "generation": "d918dca0e50448269b39ac8006e6d0d7",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Delete the branches left by the aborted hold-label-and-batch-e2e batches"
     },
     "delete-benchbox-core-runner-dataframe-runner-py-completely": {
