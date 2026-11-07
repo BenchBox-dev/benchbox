@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from benchbox.utils import host_lock
-from tests.uat import declared_settings, docker_assets, managed_runtime, matrix
+from tests.uat import docker_assets, managed_runtime, matrix
 from tests.uat.config import validate_config
 from tests.uat.conftest import healthy_ps_stdout, platform_reachability
 from tests.uat.phases import execute as exec_phase
@@ -35,7 +35,7 @@ def _spec(tmp_path: Path, body: str) -> docker_assets.DockerPlatformSpec:
 
 
 def _probe(mem_gib: float = 16, **overrides: str) -> str:
-    observed = declared_settings.parse_probe_output(HEALTHY_PROBE.format(mem_kb=int(mem_gib * GIB / 1024)))
+    observed = managed_runtime.parse_probe_output(HEALTHY_PROBE.format(mem_kb=int(mem_gib * GIB / 1024)))
     observed.update(overrides)
     return "\n".join(f"{key}={value}" for key, value in observed.items())
 
@@ -66,9 +66,9 @@ def test_compose_declared_settings_reads_every_supported_declaration(tmp_path: P
         "    entrypoint:\n"
         "      - sh\n"
         "      - -c\n"
-        f"      - touch {declared_settings.ENTRYPOINT_MARKER_PATH}\n",
+        f"      - touch {managed_runtime.ENTRYPOINT_MARKER_PATH}\n",
     )
-    settings = declared_settings.compose_declared_settings(spec, env={})["db"]
+    settings = managed_runtime.compose_declared_settings(spec, env={})["db"]
     assert settings.platform == "linux/amd64"
     assert settings.memory_bytes == 6 * GIB
     assert settings.entrypoint is True
@@ -76,7 +76,7 @@ def test_compose_declared_settings_reads_every_supported_declaration(tmp_path: P
         ("memlock", 8589934592, 8589934592),
         ("nofile", 65536, 65536),
     }
-    overridden = declared_settings.compose_declared_settings(
+    overridden = managed_runtime.compose_declared_settings(
         spec, env={"FAKE_PLATFORM": "linux/arm64", "FAKE_MEM": "2g"}
     )["db"]
     assert overridden.platform == "linux/arm64" and overridden.memory_bytes == 2 * GIB
@@ -84,31 +84,31 @@ def test_compose_declared_settings_reads_every_supported_declaration(tmp_path: P
 
 def test_compose_declared_settings_ignores_services_that_declare_nothing(tmp_path: Path):
     spec = _spec(tmp_path, "services:\n  db:\n    image: postgres:16\n")
-    assert declared_settings.compose_declared_settings(spec, env={}) == {}
+    assert managed_runtime.compose_declared_settings(spec, env={}) == {}
 
 
 def test_compose_declared_settings_refuses_an_entrypoint_without_the_marker(tmp_path: Path):
     spec = _spec(tmp_path, "services:\n  db:\n    entrypoint: [sh, -c, 'exec true']\n")
     with pytest.raises(docker_assets.DockerAssetError, match="cannot be detected"):
-        declared_settings.compose_declared_settings(spec, env={})
+        managed_runtime.compose_declared_settings(spec, env={})
 
 
 def test_compose_declared_settings_refuses_an_unsupported_ulimit(tmp_path: Path):
     spec = _spec(tmp_path, "services:\n  db:\n    ulimits:\n      core: 0\n")
     with pytest.raises(docker_assets.DockerAssetError, match="core"):
-        declared_settings.compose_declared_settings(spec, env={})
+        managed_runtime.compose_declared_settings(spec, env={})
 
 
 def test_compose_declared_settings_requires_unset_variables_without_a_default(tmp_path: Path):
     spec = _spec(tmp_path, "services:\n  db:\n    mem_limit: ${FAKE_REQUIRED_MEM}\n")
     with pytest.raises(docker_assets.DockerAssetError, match="FAKE_REQUIRED_MEM"):
-        declared_settings.compose_declared_settings(spec, env={})
+        managed_runtime.compose_declared_settings(spec, env={})
 
 
 def test_every_shipped_compose_stack_can_be_verified():
     env = {"CLICKHOUSE_MEMORY_LIMIT": "4g"}
     for platform, spec in docker_assets.docker_platform_specs().items():
-        declared_settings.compose_declared_settings(spec, env=env)
+        managed_runtime.compose_declared_settings(spec, env=env)
 
 
 @pytest.mark.parametrize(
@@ -121,8 +121,8 @@ def test_every_shipped_compose_stack_can_be_verified():
 )
 def test_shipped_stacks_declare_the_settings_the_engines_have_dropped(platform: str, expected: set[str]):
     spec = docker_assets.docker_platform_spec(platform)
-    declared = declared_settings.compose_declared_settings(spec, env={})
-    names = {name for settings in declared.values() for name in declared_settings._declared_names(settings).split(", ")}
+    declared = managed_runtime.compose_declared_settings(spec, env={})
+    names = {name for settings in declared.values() for name in managed_runtime._declared_names(settings).split(", ")}
     assert expected <= names
 
 
@@ -130,85 +130,85 @@ def test_the_firebolt_compose_file_declares_its_memlock_ulimit():
     spec = docker_assets.DockerPlatformSpec(
         platform="firebolt", compose_files=(docker_assets.REPO_ROOT / "docker/firebolt/docker-compose.yml",)
     )
-    [settings] = declared_settings.compose_declared_settings(spec, env={}).values()
+    [settings] = managed_runtime.compose_declared_settings(spec, env={}).values()
     assert [(limit.name, limit.soft) for limit in settings.ulimits] == [("memlock", 8589934592)]
 
 
 def test_doris_entrypoint_marker_is_created_before_the_server_is_exec_ed():
     text = (docker_assets.REPO_ROOT / "docker/doris/docker-compose.yml").read_text(encoding="utf-8")
-    assert text.index(declared_settings.ENTRYPOINT_MARKER_PATH) < text.index("exec bash /usr/local/bin/entry_point.sh")
+    assert text.index(managed_runtime.ENTRYPOINT_MARKER_PATH) < text.index("exec bash /usr/local/bin/entry_point.sh")
 
 
 def test_a_container_that_honors_every_setting_has_no_violations():
-    settings = declared_settings.DeclaredServiceSettings(
+    settings = managed_runtime.DeclaredServiceSettings(
         service="db",
         memory_bytes=4 * GIB,
-        ulimits=(declared_settings.DeclaredUlimit("memlock", 8 * GIB, 8 * GIB),),
+        ulimits=(managed_runtime.DeclaredUlimit("memlock", 8 * GIB, 8 * GIB),),
         platform="linux/amd64",
         entrypoint=True,
     )
-    observed = declared_settings.parse_probe_output(_probe(mem_gib=3.9))
-    assert declared_settings.declared_settings_violations(settings, observed) == []
+    observed = managed_runtime.parse_probe_output(_probe(mem_gib=3.9))
+    assert managed_runtime.declared_settings_violations(settings, observed) == []
 
 
 def test_a_dropped_memory_limit_names_the_declared_and_observed_sizes():
-    settings = declared_settings.DeclaredServiceSettings(service="db", memory_bytes=8 * GIB)
-    observed = declared_settings.parse_probe_output(_probe(mem_gib=1112 / 1024))
-    [violation] = declared_settings.declared_settings_violations(settings, observed)
+    settings = managed_runtime.DeclaredServiceSettings(service="db", memory_bytes=8 * GIB)
+    observed = managed_runtime.parse_probe_output(_probe(mem_gib=1112 / 1024))
+    [violation] = managed_runtime.declared_settings_violations(settings, observed)
     assert violation.startswith("memory: declared 8.00 GiB, container sees 1.09 GiB")
 
 
 def test_a_numeric_cgroup_limit_below_the_vm_memory_wins():
-    settings = declared_settings.DeclaredServiceSettings(service="db", memory_bytes=8 * GIB)
-    observed = declared_settings.parse_probe_output(_probe(mem_gib=16, cgroup_memory=str(2 * GIB)))
-    assert declared_settings.declared_settings_violations(settings, observed)
-    observed = declared_settings.parse_probe_output(_probe(mem_gib=16, cgroup_memory=str(8 * GIB)))
-    assert declared_settings.declared_settings_violations(settings, observed) == []
+    settings = managed_runtime.DeclaredServiceSettings(service="db", memory_bytes=8 * GIB)
+    observed = managed_runtime.parse_probe_output(_probe(mem_gib=16, cgroup_memory=str(2 * GIB)))
+    assert managed_runtime.declared_settings_violations(settings, observed)
+    observed = managed_runtime.parse_probe_output(_probe(mem_gib=16, cgroup_memory=str(8 * GIB)))
+    assert managed_runtime.declared_settings_violations(settings, observed) == []
 
 
 def test_a_memory_limit_the_container_cannot_report_is_a_violation():
-    settings = declared_settings.DeclaredServiceSettings(service="db", memory_bytes=GIB)
-    [violation] = declared_settings.declared_settings_violations(settings, {})
+    settings = managed_runtime.DeclaredServiceSettings(service="db", memory_bytes=GIB)
+    [violation] = managed_runtime.declared_settings_violations(settings, {})
     assert "did not report a memory limit" in violation
 
 
 def test_a_dropped_memlock_ulimit_is_a_violation():
-    settings = declared_settings.DeclaredServiceSettings(
-        service="db", ulimits=(declared_settings.DeclaredUlimit("memlock", 8 * GIB, 8 * GIB),)
+    settings = managed_runtime.DeclaredServiceSettings(
+        service="db", ulimits=(managed_runtime.DeclaredUlimit("memlock", 8 * GIB, 8 * GIB),)
     )
-    observed = declared_settings.parse_probe_output(_probe(ulimit_l_soft="64", ulimit_l_hard="64"))
-    [violation] = declared_settings.declared_settings_violations(settings, observed)
+    observed = managed_runtime.parse_probe_output(_probe(ulimit_l_soft="64", ulimit_l_hard="64"))
+    [violation] = managed_runtime.declared_settings_violations(settings, observed)
     assert violation.startswith("ulimit memlock soft: declared 8388608, container has 64")
 
 
 def test_an_unlimited_declared_ulimit_requires_an_unlimited_container():
-    settings = declared_settings.DeclaredServiceSettings(
-        service="db", ulimits=(declared_settings.DeclaredUlimit("memlock", -1, -1),)
+    settings = managed_runtime.DeclaredServiceSettings(
+        service="db", ulimits=(managed_runtime.DeclaredUlimit("memlock", -1, -1),)
     )
-    observed = declared_settings.parse_probe_output(_probe(ulimit_l_soft="65536", ulimit_l_hard="unlimited"))
-    [violation] = declared_settings.declared_settings_violations(settings, observed)
+    observed = managed_runtime.parse_probe_output(_probe(ulimit_l_soft="65536", ulimit_l_hard="unlimited"))
+    [violation] = managed_runtime.declared_settings_violations(settings, observed)
     assert "declared unlimited" in violation
 
 
 def test_a_raised_ulimit_satisfies_the_declaration():
-    settings = declared_settings.DeclaredServiceSettings(
-        service="db", ulimits=(declared_settings.DeclaredUlimit("nofile", 60000, 60000),)
+    settings = managed_runtime.DeclaredServiceSettings(
+        service="db", ulimits=(managed_runtime.DeclaredUlimit("nofile", 60000, 60000),)
     )
-    observed = declared_settings.parse_probe_output(_probe(ulimit_n_soft="1048576", ulimit_n_hard="1048576"))
-    assert declared_settings.declared_settings_violations(settings, observed) == []
+    observed = managed_runtime.parse_probe_output(_probe(ulimit_n_soft="1048576", ulimit_n_hard="1048576"))
+    assert managed_runtime.declared_settings_violations(settings, observed) == []
 
 
 def test_a_dropped_platform_is_a_violation():
-    settings = declared_settings.DeclaredServiceSettings(service="db", platform="linux/amd64")
-    observed = declared_settings.parse_probe_output(_probe(arch="aarch64"))
-    [violation] = declared_settings.declared_settings_violations(settings, observed)
+    settings = managed_runtime.DeclaredServiceSettings(service="db", platform="linux/amd64")
+    observed = managed_runtime.parse_probe_output(_probe(arch="aarch64"))
+    [violation] = managed_runtime.declared_settings_violations(settings, observed)
     assert violation == "platform: declared linux/amd64, container reports machine aarch64"
 
 
 def test_a_dropped_entrypoint_is_a_violation():
-    settings = declared_settings.DeclaredServiceSettings(service="db", entrypoint=True)
-    observed = declared_settings.parse_probe_output(_probe(entrypoint_marker="absent"))
-    [violation] = declared_settings.declared_settings_violations(settings, observed)
+    settings = managed_runtime.DeclaredServiceSettings(service="db", entrypoint=True)
+    observed = managed_runtime.parse_probe_output(_probe(entrypoint_marker="absent"))
+    [violation] = managed_runtime.declared_settings_violations(settings, observed)
     assert violation.startswith("entrypoint: declared entrypoint did not run")
 
 
@@ -223,7 +223,7 @@ def test_verification_reports_every_dropped_setting_of_every_service(tmp_path: P
         "    entrypoint: [sh, -c, 'touch /tmp/.benchbox-entrypoint-applied']\n",
     )
     runner = _runner(_probe(mem_gib=1, ulimit_l_soft="64", ulimit_l_hard="64", entrypoint_marker="absent"))
-    reason = declared_settings.verify_declared_settings(spec, "proj", env={}, runner=runner)
+    reason = managed_runtime.verify_declared_settings(spec, "proj", env={}, runner=runner)
     assert reason is not None
     assert "did not apply the compose settings declared for fake" in reason
     assert "service db:" in reason
@@ -237,27 +237,27 @@ def test_verification_reports_every_dropped_setting_of_every_service(tmp_path: P
 
 def test_verification_passes_for_a_container_with_the_declared_settings(tmp_path: Path):
     spec = _spec(tmp_path, "services:\n  db:\n    mem_limit: 4g\n    platform: linux/amd64\n")
-    assert declared_settings.verify_declared_settings(spec, "proj", env={}, runner=_runner(_probe(mem_gib=3.9))) is None
+    assert managed_runtime.verify_declared_settings(spec, "proj", env={}, runner=_runner(_probe(mem_gib=3.9))) is None
 
 
 def test_verification_runs_no_probe_when_nothing_is_declared(tmp_path: Path):
     spec = _spec(tmp_path, "services:\n  db:\n    image: postgres:16\n")
     runner = _runner("")
-    assert declared_settings.verify_declared_settings(spec, "proj", env={}, runner=runner) is None
+    assert managed_runtime.verify_declared_settings(spec, "proj", env={}, runner=runner) is None
     assert runner.calls == []
 
 
 def test_verification_fails_loudly_when_the_probe_cannot_run(tmp_path: Path):
     spec = _spec(tmp_path, "services:\n  db:\n    mem_limit: 4g\n")
     runner = _runner("", returncode=1, stderr="container is not running")
-    reason = declared_settings.verify_declared_settings(spec, "proj", env={}, runner=runner)
+    reason = managed_runtime.verify_declared_settings(spec, "proj", env={}, runner=runner)
     assert reason is not None
     assert "could not read the container's effective settings to verify memory: container is not running" in reason
 
 
 def test_verification_reports_an_unreadable_declaration(tmp_path: Path):
     spec = _spec(tmp_path, "services:\n  db:\n    mem_limit: ${FAKE_REQUIRED_MEM}\n")
-    reason = declared_settings.verify_declared_settings(spec, "proj", env={}, runner=_runner(""))
+    reason = managed_runtime.verify_declared_settings(spec, "proj", env={}, runner=_runner(""))
     assert reason is not None and "FAKE_REQUIRED_MEM" in reason
 
 
@@ -352,7 +352,7 @@ def test_managed_check_is_skipped_in_a_dry_run(tmp_path: Path):
 def test_memory_is_left_to_the_runtime_stats_check_for_clickhouse_and_starrocks():
     env = {"CLICKHOUSE_MEMORY_LIMIT": "4g"}
     for platform in ("clickhouse-server", "starrocks"):
-        declared = declared_settings.compose_declared_settings(docker_assets.docker_platform_spec(platform), env=env)
+        declared = managed_runtime.compose_declared_settings(docker_assets.docker_platform_spec(platform), env=env)
         assert all(settings.memory_bytes is None for settings in declared.values())
 
 

@@ -627,7 +627,7 @@ without them can report healthy while the server inside is dead or starved.
 After `compose up --wait` succeeds, both `make uat-bring-up` and the managed
 execute phase probe every service that declares one of these settings with
 `compose exec -T <service> sh -c ...` and compare what the container actually
-sees with the declaration (`tests/uat/declared_settings.py`):
+sees with the declaration (`tests/uat/managed_runtime.py`):
 
 | Declared | What the container is asked | Failure when |
 |---|---|---|

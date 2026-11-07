@@ -12,7 +12,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from benchbox.utils import host_lock
-from tests.uat import declared_settings, docker_assets, matrix
+from tests.uat import docker_assets, managed_runtime, matrix
 
 DOCUMENT_ONLY_PLATFORMS = frozenset()
 
@@ -171,7 +171,7 @@ def main(argv: list[str] | None = None) -> int:
 
     matrix.invalidate_reachability_cache_after_lifecycle_change()
     if not args.dry_run:
-        dropped = declared_settings.verify_declared_settings(
+        dropped = managed_runtime.verify_declared_settings(
             spec,
             project_name,
             env=compose_env,
