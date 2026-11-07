@@ -23652,6 +23652,15 @@
       "status": "open",
       "title": "Let execution paths receive results as Arrow and build rows lazily for digest and validation, per the recorded fetch-timing contract"
     },
+    "perf-arrow-fetch-cloud-adapters-20261107": {
+      "claim": null,
+      "needs": [
+        "perf-arrow-fetch-native-drivers-20261030"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Arrow result fetch for cloud adapters (MotherDuck, Databricks, Athena, BigQuery, Snowflake, ClickHouse Cloud) once live-cloud parity runs are approved"
+    },
     "perf-arrow-fetch-native-drivers-20261030": {
       "claim": null,
       "needs": [
