@@ -375,6 +375,8 @@ def select_candidate(root: Path, base_sha: str) -> tuple[bool, str, bool, bool]:
         "benchbox/_vendor/sqlglot.json",
         "_project/scripts/check_uv_lock_revision.py",
         "Makefile",
+        "make/build.mk",
+        "make/quality.mk",
         ".github/workflows/ci.yml",
     }
     changed_paths = set(changed.splitlines())
