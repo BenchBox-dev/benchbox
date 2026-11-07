@@ -32,6 +32,33 @@ from benchbox.core.dataframe.maintenance_interface import (
 
 logger = logging.getLogger(__name__)
 
+HUDI_VERSION = "1.1.0"
+HUDI_BUNDLES_BY_SPARK: dict[tuple[int, int], str] = {
+    (3, 5): f"org.apache.hudi:hudi-spark3.5-bundle_2.12:{HUDI_VERSION}",
+    (4, 0): f"org.apache.hudi:hudi-spark4.0-bundle_2.13:{HUDI_VERSION}",
+}
+
+
+def hudi_bundle_for_spark(spark_version: str) -> str | None:
+    parts = spark_version.split(".")
+    try:
+        return HUDI_BUNDLES_BY_SPARK.get((int(parts[0]), int(parts[1])))
+    except (IndexError, ValueError):
+        return None
+
+
+def validate_hudi_spark_version(spark_session: Any) -> None:
+    version = getattr(spark_session, "version", None)
+    if not isinstance(version, str) or hudi_bundle_for_spark(version) is not None:
+        return
+    supported = ", ".join(
+        f"Spark {major}.{minor} with {bundle}" for (major, minor), bundle in HUDI_BUNDLES_BY_SPARK.items()
+    )
+    raise RuntimeError(
+        f"Hudi {HUDI_VERSION} has no bundle that works on Spark {version}. Supported pairs: {supported}. "
+        "Use one of these Spark versions for Hudi maintenance."
+    )
+
 
 class HudiMaintenanceOperations(BaseDataFrameMaintenanceOperations):
     def __init__(
@@ -48,7 +75,7 @@ class HudiMaintenanceOperations(BaseDataFrameMaintenanceOperations):
             raise ImportError(
                 "PySpark is not installed. Install with: pip install pyspark\n"
                 "For Hudi support, also configure Spark with:\n"
-                "  spark.jars.packages=org.apache.hudi:hudi-spark3.5-bundle_2.12:0.14.0"
+                f"  spark.jars.packages={HUDI_BUNDLES_BY_SPARK[(3, 5)]}"
             )
 
         if spark_session is None:
@@ -56,9 +83,11 @@ class HudiMaintenanceOperations(BaseDataFrameMaintenanceOperations):
                 "spark_session is required. Create one with:\n"
                 "  spark = SparkSession.builder \\\n"
                 "      .appName('benchbox') \\\n"
-                "      .config('spark.jars.packages', 'org.apache.hudi:hudi-spark3.5-bundle_2.12:0.14.0') \\\n"
+                f"      .config('spark.jars.packages', '{HUDI_BUNDLES_BY_SPARK[(3, 5)]}') \\\n"
                 "      .getOrCreate()"
             )
+
+        validate_hudi_spark_version(spark_session)
 
         self.spark = spark_session
         self.record_key = record_key

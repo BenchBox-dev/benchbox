@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Hudi maintenance now refuses a Spark version that has no working Hudi 1.1.0 bundle (anything other than Spark 3.5 and 4.0) with a message naming the supported Spark and bundle pairs, instead of failing with HoodieException: Unable to load class"
+    }
+  ]
+}
