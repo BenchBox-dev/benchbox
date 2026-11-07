@@ -409,7 +409,7 @@ def tpch_sf001_data(tmp_path_factory: pytest.TempPathFactory):
 
     cache_root = tmp_path_factory.mktemp("shared_tpch_sf001")
     cached_dir = cache_root / "tpch_sf001"
-    assert normalize_output_root(str(cache_root), "tpch", 0.01) == str(cached_dir)
+    assert normalize_output_root(str(cache_root), "tpch", 0.01).replace("\\", "/") == str(cached_dir).replace("\\", "/")
     cli_config = ConfigManager()
     compress = cli_config.get("output.compression.enabled", False) and os.getenv(
         "BENCHBOX_NO_COMPRESSION", ""
@@ -447,10 +447,12 @@ def tpch_sf001_duckdb(tpch_sf001_data, tmp_path_factory: pytest.TempPathFactory)
     from benchbox.core.tpch.queries import TPCHQueries
     from benchbox.core.tpch.schema import TABLES
 
-    tpch_dir = Path(tpch_sf001_data(tmp_path_factory.mktemp("tpch_sf001_duckdb") / "data")) / "tpch_sf001"
+    destination = tmp_path_factory.mktemp("tpch_sf001_duckdb") / "data"
+    tpch_sf001_data(destination)
+    tpch_dir = destination / "tpch_sf001"
     connection = duckdb.connect()
     for table in TABLES:
-        files = sorted(str(path) for path in tpch_dir.glob(f"{table.name}.tbl*"))
+        files = sorted(path.as_posix() for path in tpch_dir.glob(f"{table.name}.tbl*"))
         assert files, f"BenchBox generator produced no data files for {table.name}"
         connection.execute(table.get_create_table_sql())
         names = [column.name for column in table.columns]

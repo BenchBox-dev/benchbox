@@ -11,7 +11,7 @@ from benchbox.core.tpch.power_test import TPCHPowerTest
 from benchbox.core.validation.query_validation import QueryValidator
 from benchbox.platforms.base.connection_wrappers import PlatformAdapterCursor
 
-pytestmark = pytest.mark.fast
+pytestmark = [pytest.mark.unit, pytest.mark.fast, pytest.mark.tpch]
 
 BASE_Q13_ROWS = 33
 REFRESHED_Q13_ROWS = 34
