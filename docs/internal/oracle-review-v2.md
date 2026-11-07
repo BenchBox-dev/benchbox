@@ -1320,7 +1320,9 @@ a `chore/omp-pin-<version>` pull request whose body
 carries the suite output, the per-platform hashes, the `--version` transcript
 and the `--help` difference from the previous build. A red candidate opens
 nothing: the old pin stands and the run fails with the suite output in its
-summary. `make omp-bump-prepare` runs the same preparation locally.
+summary. The workflow's preparation step is `theseus omp-bump prepare`, run
+through the verified Theseus install that `scripts/theseus_cli.py` resolves;
+running that step's command locally repeats the preparation.
 
 Preparation records the `develop` commit it validated. The opener refuses to
 publish if its checkout no longer matches that commit. For an existing open

@@ -211,7 +211,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_check_complexity.py` | tooling |
 | `test_check_dependency_bounds.py` | product-safety |
 | `test_check_duplicate_code.py` | tooling |
-| `test_check_makefile_inventory.py` | tooling |
+| `test_check_make_targets.py` | tooling |
 | `test_check_project_references.py` | product-safety |
 | `test_check_rerun_shard_retention.py` | tooling |
 | `test_check_sqlglot_repro_retirement.py` | tooling |
@@ -347,6 +347,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `site_inputs.py` | product-safety | Site-inputs bundle build and verify |
 | `site_inputs_parent.py` | product-safety | Site-inputs parent resolution by SHA |
 | `check_duplicate_code.py` | tooling | Hygiene |
+| `check_make_targets.py` | tooling | Make targets named in the documentation exist; reads GNU Make's rule database for the Make interface tests |
 | `check_windows_antipatterns.py` | tooling | Hygiene |
 | `path_filter_decision.py` | tooling | Path classifier shared with ci.yml units |
 | `pytest_shard_evidence.py` | product-safety | Exact assigned, collected, and executed medium test evidence |
