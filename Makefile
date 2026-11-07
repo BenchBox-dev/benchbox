@@ -482,10 +482,6 @@ sqlglot-adopt-wheel:
 sqlglot-advisory-check:
 	uv run -- python scripts/check_sqlglot_advisories.py
 
-.PHONY: sqlglot-fork-diff
-sqlglot-fork-diff:
-	uv run -- python -m scripts.sqlglot_fork_diff $(if $(OLD),--old "$(OLD)",) $(if $(NEW),--new "$(NEW)",) $(if $(BASE_REF),--base-ref "$(BASE_REF)",) $(if $(OUT),--output "$(OUT)",)
-
 .PHONY: sql-execution-gate
 sql-execution-gate:
 	uv run -- python -m scripts.sql_execution_gate $(SQL_EXECUTION_GATE_ARGS)

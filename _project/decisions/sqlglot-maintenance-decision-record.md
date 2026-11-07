@@ -40,17 +40,21 @@ BenchBox core only consumes the delivery:
 - `SQLGLOT_DELIVERY_ENABLED` is the kill switch; the default is dry run.
 - Wrapper, install and adoption exceptions are core issues. The core App has
   contents and pull-requests write only, and core holds no fork-write
-  credential once activation retires the legacy token.
+  credential.
 - Core no longer reviews fork source at adoption. The oracle reviews the actual
   core PR as for any PR; Theseus is unchanged. Fork-side diagnostics are native
   `git diff` in the fork and the delivery record.
 - Manual fallback: `make sqlglot-adopt-wheel WHEEL=<path> SHA256=<digest>
   EXPECTED_VERSION=<version> FORK_SHA=<sha> UPSTREAM_SHA=<sha>`.
 
-Legacy and retiring until activation removes them: the core
-`.github/workflows/sqlglot-fork-refresh.yml`, `scripts/sqlglot_fork_refresh.py`,
-`SQLGLOT_FORK_REFRESH_TOKEN`, `make sqlglot-fork-diff` and the PR-template
-fork-diff checkbox. `scripts/check_sqlglot_upstream_freshness.py` and
+Activated 2026-11-07. Upstream v30.30.0 went through the automated path: the
+fork controller opened and merged the refresh (fork PR #85), the fork delivered
+30.30.0.1, and the core App opened, armed and merged the adoption (#3997). The
+legacy core producer was then removed: `.github/workflows/sqlglot-fork-refresh.yml`,
+`scripts/sqlglot_fork_refresh.py`, `make sqlglot-fork-diff`
+(`scripts/sqlglot_fork_diff.py`), their tests and the PR-template fork-diff
+checkbox; its `SQLGLOT_FORK_REFRESH_TOKEN` secret is deleted with it.
+`scripts/check_sqlglot_upstream_freshness.py` and
 `scripts/check_sqlglot_advisories.py` stay release policy, not adoption
 orchestration.
 

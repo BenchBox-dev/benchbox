@@ -507,9 +507,6 @@
     "tests/unit/scripts/test_soundness_merge_digest.py": {
       "WA007": 1
     },
-    "tests/unit/scripts/test_sqlglot_fork_diff.py": {
-      "WA007": 1
-    },
     "tests/unit/scripts/test_todo_state_workflow.py": {
       "WA003": 1
     },
