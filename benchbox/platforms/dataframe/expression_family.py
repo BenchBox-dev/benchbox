@@ -827,7 +827,7 @@ class ExpressionFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, 
             if capture_plan:
                 profile_ctx.start_plan_capture()
                 try:
-                    plan = capture_query_plan(lazy_result, self.platform_name)
+                    plan = capture_query_plan(lazy_result, self.platform_name, local_roots=(self.working_dir,))
                     if plan:
                         profile_ctx.set_query_plan(plan)
                 except Exception as e:

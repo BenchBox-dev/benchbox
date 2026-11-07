@@ -1049,6 +1049,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                     result["iteration"] = 0
                     result["stream_id"] = warmup_stream_id
                     result["run_type"] = "warmup"
+                    result["test_type"] = "power"
                     query_results.append(result)
 
     @staticmethod
@@ -1191,6 +1192,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
             raw_result["iteration"] = iteration
             raw_result["stream_id"] = stream_id
             raw_result["run_type"] = "measurement"
+            raw_result["test_type"] = "power"
             return raw_result
 
         if monitor:
