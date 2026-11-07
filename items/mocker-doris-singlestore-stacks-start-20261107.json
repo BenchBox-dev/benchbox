@@ -3,6 +3,11 @@
     "`make uat-bring-up PLATFORM=doris` and `PLATFORM=singlestore` start healthy stacks under mocker 0.7.x.",
     "The declared-settings probe passes on both."
   ],
+  "batch": {
+    "batch_id": "load-value-integrity",
+    "implementation_dependencies": [],
+    "member_id": "mocker-doris-singlestore-stacks-start-20261107"
+  },
   "description": "#3998 made bring-up detect and fail loudly when mocker drops a compose stack's entrypoint, memory, ulimit or platform setting. The stacks still cannot start through compose on macOS. Doris needed `mocker run -m 4g --entrypoint bash` with the repo's entrypoint script. SingleStore needed `mocker run --platform linux/amd64 -m 4g -c 4`. Every live check on these engines needs hand-written commands.\n\nChange. Give bring-up an engine-aware launch for mocker (for example translating the compose service into the mocker run flags that work), so `make uat-bring-up PLATFORM=doris|singlestore` starts a healthy stack on macOS. Keep the loud failure for settings that still cannot be applied.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; heavy work only through make heavy-run; container checks under mocker one stack at a time (limits in tests/uat docs and the uat-mocker-compose-gaps-20261106 context); no live cloud without owner approval; no explanatory comments; changelog fragment if user-facing.",
   "sessions": [
     {
@@ -11,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "a387d0c61ac04b89bfdbb5603dc4aba6",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T14:17:45Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "97fe9e59c58849dd8eb7f02c54dbebca",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
