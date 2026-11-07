@@ -3200,6 +3200,7 @@
     "release-v2-remediation": {
       "accepted_members": {
         "rv2r-02-trunk-uat-nightly": "6d698e1b0497c5056f431710e80ea67aca08afdd",
+        "rv2r-03-release-evidence-check": "80bc23504dcc42cdaddaf2542427de765ab99df7",
         "rv2r-04-uat-rubric-automation": "8a83e4ad1531a772bd03f8374c33358c8cf634ed",
         "rv2r-06-fail-closed-detectors": "fcc3a048a6e2ebd2c712ed5621735cf01a91907b",
         "rv2r-07-oracle-pinned-dependency": "2c7130e0f6de08eed6af8531fcf4f13b3b7511db",
@@ -3224,6 +3225,23 @@
           ],
           "integration_head": "91443a9c1e022ece68b06b537a63ddb6d76cf8ca",
           "integration_seq": 5
+        },
+        "rv2r-03-release-evidence-check": {
+          "accepted_head": "80bc23504dcc42cdaddaf2542427de765ab99df7",
+          "changed_files": [
+            ".github/workflows/release-v2.yml",
+            "changelog.d/rv2r-03-release-evidence-check.json",
+            "docs/internal/release-artifacts.md",
+            "docs/internal/release-guide.md",
+            "scripts/release_canary_freshness.py",
+            "scripts/release_reuse_uat_evidence.py",
+            "tests/unit/scripts/test_release_canary_freshness.py",
+            "tests/unit/scripts/test_release_reuse_uat_evidence.py",
+            "tests/unit/workflows/test_release_v2_workflow.py",
+            "tests/unit/workflows/test_release_v2_workflow_reuse_step.py"
+          ],
+          "integration_head": "541e9b86848825601323749043800c86de2ea6c7",
+          "integration_seq": 8
         },
         "rv2r-04-uat-rubric-automation": {
           "accepted_head": "8a83e4ad1531a772bd03f8374c33358c8cf634ed",
@@ -3326,7 +3344,7 @@
         }
       },
       "integration_branch": "feat/release-v2-remediation",
-      "integration_head": "3fe88f96e243e5a31232a2a5336129969e687f46",
+      "integration_head": "541e9b86848825601323749043800c86de2ea6c7",
       "integration_log": [
         {
           "at": "2026-11-06T13:41:20Z",
@@ -3526,6 +3544,15 @@
           "op_id": "7db3120a5d244e4ebb42fb5f12f0db91",
           "previous_head": "feabcc139e684a48dbf2a17a3ecb27e4cba6d7cb",
           "seq": 7
+        },
+        {
+          "at": "2026-11-07T04:40:41Z",
+          "head": "541e9b86848825601323749043800c86de2ea6c7",
+          "kind": "prepare",
+          "member": "rv2r-03-release-evidence-check",
+          "op_id": "8e7a43cf16fe42b291c149ce8a37b735",
+          "previous_head": "3fe88f96e243e5a31232a2a5336129969e687f46",
+          "seq": 8
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-release-v2-remediation",
@@ -29310,18 +29337,13 @@
       "title": "Run the release-gate UAT matrix nightly on trunk and keep per-cell history"
     },
     "rv2r-03-release-evidence-check": {
-      "claim": {
-        "expires_at": "2026-11-08T04:20:40Z",
-        "generation": "a568e8140d864033903ece0aea8b5658",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec"
-      },
+      "claim": null,
       "needs": [
         "rv2r-02-trunk-uat-nightly",
         "release-canary-green-after-0-5-0"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Make release-v2 check trunk UAT evidence instead of running UAT, with full UAT as fallback"
     },
     "rv2r-04-uat-rubric-automation": {

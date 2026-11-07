@@ -21,6 +21,157 @@
     ".github/workflows/release-v2.yml",
     "tests/unit/scripts/test_release_reuse_uat_evidence.py"
   ],
+  "prepared": {
+    "accepted_head": "80bc23504dcc42cdaddaf2542427de765ab99df7",
+    "batch_id": "release-v2-remediation",
+    "changed_files": [
+      ".github/workflows/release-v2.yml",
+      "changelog.d/rv2r-03-release-evidence-check.json",
+      "docs/internal/release-artifacts.md",
+      "docs/internal/release-guide.md",
+      "scripts/release_canary_freshness.py",
+      "scripts/release_reuse_uat_evidence.py",
+      "tests/unit/scripts/test_release_canary_freshness.py",
+      "tests/unit/scripts/test_release_reuse_uat_evidence.py",
+      "tests/unit/workflows/test_release_v2_workflow.py",
+      "tests/unit/workflows/test_release_v2_workflow_reuse_step.py"
+    ],
+    "integration_head": "541e9b86848825601323749043800c86de2ea6c7",
+    "integration_seq": 8,
+    "member_id": "rv2r-03-release-evidence-check",
+    "overlaps": [
+      {
+        "kind": "member",
+        "member": "rv2r-02-trunk-uat-nightly",
+        "paths": [
+          "docs/internal/release-guide.md"
+        ]
+      },
+      {
+        "kind": "member",
+        "member": "rv2r-06-fail-closed-detectors",
+        "paths": [
+          ".github/workflows/release-v2.yml",
+          "tests/unit/workflows/test_release_v2_workflow.py"
+        ]
+      },
+      {
+        "kind": "member",
+        "member": "rv2r-09-trunk-dist-every-commit",
+        "paths": [
+          "docs/internal/release-artifacts.md",
+          "docs/internal/release-guide.md"
+        ]
+      },
+      {
+        "kind": "member",
+        "member": "rv2r-14-maintenance-release-branches",
+        "paths": [
+          ".github/workflows/release-v2.yml",
+          "docs/internal/release-guide.md",
+          "tests/unit/workflows/test_release_v2_workflow.py"
+        ]
+      }
+    ],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "f33d54323bf1878db20222c7a0bd92dc4fd11f0368b68bd2c0854c6f21904012",
+    "source_base": "3fe88f96e243e5a31232a2a5336129969e687f46",
+    "source_revision": "80bc23504dcc42cdaddaf2542427de765ab99df7",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-rv2r-03-release-evidence-check",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/uat/test_release_gate_shards.py",
+        "tests/unit/scripts/test_release_canary_freshness.py",
+        "tests/unit/scripts/test_release_flow.py",
+        "tests/unit/scripts/test_release_reuse_uat_evidence.py",
+        "tests/unit/scripts/test_trunk_uat.py",
+        "tests/unit/test_release_infrastructure.py",
+        "tests/unit/workflows/test_ci_aggregate_cancelled.py",
+        "tests/unit/workflows/test_ci_changelog_gate.py",
+        "tests/unit/workflows/test_ci_maintenance_base.py",
+        "tests/unit/workflows/test_ci_medium_collect_cache.py",
+        "tests/unit/workflows/test_ci_shadow_miss_step.py",
+        "tests/unit/workflows/test_ci_text_edit_refresh_workflow.py",
+        "tests/unit/workflows/test_ci_text_edit_skip.py",
+        "tests/unit/workflows/test_ci_verify_fast_duration_step.py",
+        "tests/unit/workflows/test_ci_windows_pr_leg.py",
+        "tests/unit/workflows/test_comment_policy_nightly_workflow.py",
+        "tests/unit/workflows/test_corpus_event_bridge.py",
+        "tests/unit/workflows/test_corpus_trust_boundary.py",
+        "tests/unit/workflows/test_docker_integration_workflow.py",
+        "tests/unit/workflows/test_evidence_artifact_reruns.py",
+        "tests/unit/workflows/test_fast_duration_baseline_refresh.py",
+        "tests/unit/workflows/test_fast_tier_junit_emit.py",
+        "tests/unit/workflows/test_medium_suite_setup_parity.py",
+        "tests/unit/workflows/test_nightly_t3_durations.py",
+        "tests/unit/workflows/test_nightly_t3_legacy_ports.py",
+        "tests/unit/workflows/test_nightly_t3_report_lifecycle.py",
+        "tests/unit/workflows/test_nightly_t3_workflow.py",
+        "tests/unit/workflows/test_nightly_throughput_uat_contract.py",
+        "tests/unit/workflows/test_omp_pin_bump_workflow.py",
+        "tests/unit/workflows/test_omp_pin_watch_workflow.py",
+        "tests/unit/workflows/test_oracle_gate_workflow.py",
+        "tests/unit/workflows/test_oracle_review_workflow.py",
+        "tests/unit/workflows/test_oracle_verdict_workflow.py",
+        "tests/unit/workflows/test_pr_hold_workflow.py",
+        "tests/unit/workflows/test_published_results_base_ci.py",
+        "tests/unit/workflows/test_release_canary_shard_evidence.py",
+        "tests/unit/workflows/test_release_v2_workflow.py",
+        "tests/unit/workflows/test_release_v2_workflow_reuse_step.py",
+        "tests/unit/workflows/test_seed_corpus_pr_base.py",
+        "tests/unit/workflows/test_site_inputs_concurrency.py",
+        "tests/unit/workflows/test_site_inputs_reporter.py",
+        "tests/unit/workflows/test_site_inputs_workflow.py",
+        "tests/unit/workflows/test_sqlglot_delivery_workflow.py",
+        "tests/unit/workflows/test_sqlglot_fork_refresh_workflow.py",
+        "tests/unit/workflows/test_stacked_pr_base_guard.py",
+        "tests/unit/workflows/test_t2_partition_workflow.py",
+        "tests/unit/workflows/test_theseus_pin_consistency.py",
+        "tests/unit/workflows/test_trunk_coverage_workflow.py",
+        "tests/unit/workflows/test_trunk_lane_pre_merge.py",
+        "tests/unit/workflows/test_trunk_red_disarm_workflow.py",
+        "tests/unit/workflows/test_trunk_uat_workflow.py",
+        "tests/unit/workflows/test_trunk_workflow.py",
+        "tests/unit/workflows/test_validate_submission_changed_bundles.py",
+        "tests/unit/workflows/test_validate_submission_comment_security.py",
+        "tests/unit/workflows/test_validate_submission_corpus_allowlist.py",
+        "tests/unit/workflows/test_validate_submission_fail_open.py",
+        "tests/unit/workflows/test_validate_submission_override_approval.py",
+        "tests/unit/workflows/test_validate_submission_trusted_checkout.py",
+        "tests/unit/workflows/test_validate_submission_vendor_gate.py",
+        "tests/unit/workflows/test_validate_submission_workflow_guard_mirror.py",
+        "tests/unit/workflows/test_windows_fast_workflow.py",
+        "tests/unit/workflows/test_workflow_context_availability.py",
+        "tests/unit/workflows/test_workflow_dispatch_dedupe.py",
+        "tests/unit/workflows/test_workflow_expression_contexts.py",
+        "tests/unit/workflows/test_workflow_trigger_events.py"
+      ],
+      "review": {
+        "base_sha": "3fe88f96e243e5a31232a2a5336129969e687f46",
+        "head_sha": "80bc23504dcc42cdaddaf2542427de765ab99df7",
+        "head_tree": "f9f1350d76ded74eaa802844d35feb16f82ae1d4",
+        "outcome": "clear",
+        "patch_digest": "66b1cd9a6e7d934f2b6063d2f10d8305",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "ff9c2882f2f48c89852b47e2f7347497d72d86e6"
+      },
+      "revision": "80bc23504dcc42cdaddaf2542427de765ab99df7",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a3eb8cbf1b5dc744e4710e1c",
@@ -93,6 +244,15 @@
       "generation": "a568e8140d864033903ece0aea8b5658",
       "op": "take",
       "op_id": "1f62b2ce831e4b8eb61bf2e97b97b771",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-07T04:40:41Z",
+      "client": "omp-coding-agent",
+      "generation": "a568e8140d864033903ece0aea8b5658",
+      "op": "prepare",
+      "op_id": "8e7a43cf16fe42b291c149ce8a37b735",
       "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]
