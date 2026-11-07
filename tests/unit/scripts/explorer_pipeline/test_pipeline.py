@@ -474,7 +474,7 @@ class TestExplorerPipelineRun:
         bundle_path = bundles_dir / "with_plans.json"
         bundle_path.write_text(json.dumps(MINIMAL_BUNDLE), encoding="utf-8")
         bundle_path.with_name("with_plans.plans.json").write_text(
-            '{"queries": [{"query_id": "Q1", "plan": "SCAN tpch.lineitem"}]}',
+            json.dumps({"queries": {"Q1": {"plan": "SCAN tpch.lineitem", "plan_format": "text"}}, "errors": None}),
             encoding="utf-8",
         )
 
@@ -484,8 +484,42 @@ class TestExplorerPipelineRun:
         rows = _duckdb_results(output)
         assert len(rows) == 1
         result_id = rows[0]["result_id"]
+        assert rows[0]["has_plans"] is True
         assert rows[0]["plans_published"] is True
         assert (output / "bundles" / f"{result_id}.plans.json").exists()
+
+    def test_errors_only_plans_sidecar_is_published_without_has_plans(self, tmp_path: Path) -> None:
+        bundles_dir = tmp_path / "data" / "bundles"
+        bundles_dir.mkdir(parents=True)
+        bundle_path = bundles_dir / "errors_only.json"
+        bundle_path.write_text(json.dumps(MINIMAL_BUNDLE), encoding="utf-8")
+        errors = [{"query_id": "Q1", "error": "Query plan not captured"}]
+        bundle_path.with_name("errors_only.plans.json").write_text(
+            json.dumps({"queries": {}, "errors": errors}), encoding="utf-8"
+        )
+
+        output = tmp_path / "out"
+        ExplorerPipeline().run(tmp_path / "data", output)
+
+        row = _duckdb_results(output)[0]
+        assert row["has_plans"] is False
+        assert row["plans_published"] is True
+        published = json.loads((output / "bundles" / f"{row['result_id']}.plans.json").read_text(encoding="utf-8"))
+        assert published["errors"] == errors
+
+    @pytest.mark.parametrize("content", ["{}", '{"queries": {}}', "{not json"])
+    def test_empty_or_malformed_plans_sidecar_has_no_plans(self, tmp_path: Path, content: str) -> None:
+        bundles_dir = tmp_path / "data" / "bundles"
+        bundles_dir.mkdir(parents=True)
+        bundle_path = bundles_dir / "empty.json"
+        bundle_path.write_text(json.dumps(MINIMAL_BUNDLE), encoding="utf-8")
+        bundle_path.with_name("empty.plans.json").write_text(content, encoding="utf-8")
+
+        output = tmp_path / "out"
+        ExplorerPipeline().run(tmp_path / "data", output)
+
+        row = _duckdb_results(output)[0]
+        assert row["has_plans"] is False
 
     def test_plans_published_false_when_no_sidecar(self, data_dir: Path, tmp_path: Path) -> None:
         output = tmp_path / "out"
