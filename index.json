@@ -1297,20 +1297,43 @@
       "terminal_outcome": "deliver"
     },
     "hold-label-and-batch-e2e-v2-20261106": {
-      "accepted_members": {},
+      "accepted_members": {
+        "batch-loop-e2e-review-binding-failures-20261106": "cf0d9fd1a85c6bcf0df20697077e6b3f50e6f330"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "batch-loop-e2e-review-binding-failures-20261106": {
+          "accepted_head": "cf0d9fd1a85c6bcf0df20697077e6b3f50e6f330",
+          "changed_files": [
+            ".github/workflows/batch-loop-e2e.yml",
+            "changelog.d/batch-loop-e2e-review-binding-failures-20261106.json",
+            "docs/internal/dev-loop-property-ledger.md",
+            "tests/unit/workflows/test_batch_loop_e2e_workflow.py"
+          ],
+          "integration_head": "66759d25ad5d9649fcedc39bdc10bc9b1a3288ed",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/hold-label-and-batch-e2e-v2-20261106",
-      "integration_head": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67",
+      "integration_head": "66759d25ad5d9649fcedc39bdc10bc9b1a3288ed",
       "integration_log": [
         {
           "at": "2026-11-07T00:31:48Z",
           "head": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-07T01:14:51Z",
+          "head": "66759d25ad5d9649fcedc39bdc10bc9b1a3288ed",
+          "kind": "prepare",
+          "member": "batch-loop-e2e-review-binding-failures-20261106",
+          "op_id": "12226807e6e44777b61f88274ffed034",
+          "previous_head": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-feat-hold-label-and-batch-e2e-v2",
@@ -6336,15 +6359,10 @@
       "title": "Document the integration batch loop in AGENTS.md and docs/agent, keeping it opt-in until the pilot passes"
     },
     "batch-loop-e2e-review-binding-failures-20261106": {
-      "claim": {
-        "expires_at": "2026-11-08T01:14:46Z",
-        "generation": "669cdac877ef4163b0f1fe09250e824d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Restore the batch-loop end-to-end tests broken by the theseus_cli review binding"
     },
     "batch-loop-pilot-20261101": {
