@@ -183,7 +183,7 @@ def test_maintenance_pairs_against_in_memory_database(tmp_path: Path, engine: st
         repeated = maintenance.run_maintenance_test(maintenance_pairs=2, rf1_interval=0.0, rf2_interval=0.0)
         assert not repeated.success
         assert repeated.config.concurrent_with_queries is True
-        assert "already applied" in repeated.errors[0]
+        assert "the database needs a reload before refresh set 3 is applied again" in repeated.errors[0]
     finally:
         connection.close()
 
