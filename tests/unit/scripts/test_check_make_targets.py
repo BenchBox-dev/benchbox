@@ -17,7 +17,7 @@ pytestmark = [
 ]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-TARGET_CEILING = 265
+TARGET_CEILING = 217
 
 
 def _copy_make_files(destination: Path) -> None:

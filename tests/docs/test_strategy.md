@@ -203,7 +203,7 @@ establish live-platform certification.
 
 [Athena](../integration/platforms/test_athena_live.py) uses a real workgroup.
 Set `ATHENA_REGION` and `ATHENA_S3_OUTPUT`, provide AWS credentials through the
-normal provider chain, then run `make test-live-athena`. `ATHENA_WORKGROUP`
+normal provider chain, then run `make test-live LIVE_PLATFORM=athena`. `ATHENA_WORKGROUP`
 defaults to `primary` and `ATHENA_DATABASE` to `default`. Connection, metadata,
 and a simple query exercise the adapter; this suite does not establish a spending
 budget.
@@ -212,7 +212,7 @@ budget.
 Configure credentials with `benchbox platforms setup --platform redshift` or set
 `REDSHIFT_HOST`, `REDSHIFT_USER` (or `REDSHIFT_USERNAME`), and
 `REDSHIFT_PASSWORD`. `REDSHIFT_DATABASE` defaults to `dev` and
-`REDSHIFT_PORT` to 5439. Run `make test-live-redshift`. COPY tests also
+`REDSHIFT_PORT` to 5439. Run `make test-live LIVE_PLATFORM=redshift`. COPY tests also
 require an S3 staging location from saved configuration or `REDSHIFT_S3_BUCKET`,
 AWS credentials for uploads, and a usable COPY role (`REDSHIFT_IAM_ROLE` or the
 cluster default role). The staged COPY case writes two CSV chunks containing

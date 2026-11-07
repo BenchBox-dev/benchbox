@@ -33,8 +33,6 @@ DEVELOPMENT_TREE_ONLY_TARGETS := \
 	platform-manifest-check test-docker-parity blind-spots-list blind-spots-report \
 	soundness-drain-report soundness-drain-self-test worktree-audit worktree-finish worktree-reap oracle-mutation-test corpus-stage-local
 
-.PHONY: coverage-check
-
 .PHONY: test
 test: test-fast
 	@echo "Default test run completed. Use 'make help' to see all test options."
@@ -48,13 +46,6 @@ $(DEVELOPMENT_TREE_ONLY_TARGETS): .development-tree-required
 		echo "Error: this target requires the BenchBox development tree (full development tree required); curated releases retain only the Results Explorer publication helpers under _project/scripts/." >&2; \
 		exit 2; \
 	fi
-
-.PHONY: publication-help
-publication-help:
-	@echo "Publication flow:"
-	@echo "  benchbox.dev is built and deployed from BenchBox-dev/benchbox-site, not from this repository."
-	@echo "  Data and pipeline changes reach it through the site-inputs bundle (site-inputs.yml)."
-	@echo "  Site, Explorer, landing and blog sources live in that repository; see CONTRIBUTING.md."
 
 .PHONY: test-all
 test-all:
@@ -70,20 +61,6 @@ test-unit:
 .PHONY: test-integration
 test-integration:
 	BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest -m "integration and not live_integration and not stress" --tb=short
-
-.PHONY: test-tpch
-test-tpch:
-	BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest -m "tpch" --tb=short
-
-test-quick:
-	BENCHBOX_TEST_TIER=t1 uv run -- python -m pytest -m "fast and not (slow or stress or resource_heavy or live_integration)" --tb=short --maxfail=5 --timeout=120
-
-test-verbose:
-	BENCHBOX_TEST_TIER=t3 uv run -- python -m pytest -v
-
-.PHONY: test-pytest
-test-pytest:
-	BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest -m "not stress"
 
 .PHONY: test-fast
 test-fast:
@@ -136,11 +113,6 @@ test-slow:
 test-stress:
 	BENCHBOX_TEST_TIER=t3 uv run -- python -m pytest -m "stress" -n 0 --tb=short -v --timeout=1800
 
-test-dev:
-	BENCHBOX_TEST_TIER=t1 uv run -- python -m pytest -m "fast and unit and not (slow or stress or resource_heavy or live_integration)" --tb=short --maxfail=3 --timeout=120
-
-test-smoke: test-quick
-
 CORRECTNESS_GATE_QUERY_IDS := 1,2,3,4,5,6,7,8,9,10,12,13,14,15,17,19,21,22
 
 .PHONY: test-correctness-gate
@@ -186,19 +158,7 @@ tpch-subscale-row-counts-regen:
 
 .PHONY: tpchavoc-equivalence-report
 tpchavoc-equivalence-report:
-	uv run -- python -m benchbox.core.tpchavoc.equivalence
-
-.PHONY: tpchavoc-equivalence-report-postgres
-tpchavoc-equivalence-report-postgres:
-	uv run -- python -m benchbox.core.tpchavoc.equivalence --engine postgres
-
-.PHONY: tpchavoc-equivalence-report-datafusion
-tpchavoc-equivalence-report-datafusion:
-	uv run -- python -m benchbox.core.tpchavoc.equivalence --engine datafusion
-
-.PHONY: tpchavoc-equivalence-report-clickhouse
-tpchavoc-equivalence-report-clickhouse:
-	uv run -- python -m benchbox.core.tpchavoc.equivalence --engine clickhouse
+	uv run -- python -m benchbox.core.tpchavoc.equivalence $(if $(TPCHAVOC_ENGINE),--engine $(TPCHAVOC_ENGINE))
 
 .PHONY: tpchavoc-dataframe-equivalence-report
 tpchavoc-dataframe-equivalence-report:
@@ -349,55 +309,23 @@ joinorder-verify-reference-results:
 		--queries "$(JOINORDER_QUERIES)" \
 		--reference "$(JOINORDER_REFERENCE)"
 
-.PHONY: test-duckdb
-test-duckdb:
-	uv run -- python -m pytest -m "duckdb" --tb=short
-
-.PHONY: test-sqlite
-test-sqlite:
-	uv run -- python -m pytest -m "sqlite" --tb=short
+.PHONY: test-marker
+test-marker:
+	@[ -n "$(TEST_MARKER)" ] || { echo 'TEST_MARKER is required, for example TEST_MARKER="tpch or tpcds"' >&2; exit 2; }
+	uv run -- python -m pytest -m "$(TEST_MARKER)" --tb=short
 
 .PHONY: test-pyspark
 test-pyspark:
 	./scripts/run_pyspark_tests.sh
-
-.PHONY: test-read-primitives
-test-read-primitives:
-	uv run -- python -m pytest -m "primitives" --tb=short
-
-.PHONY: test-benchmarks
-test-benchmarks:
-	uv run -- python -m pytest -m "tpch or tpcds or ssb or amplab or clickbench or h2odb or merge" --tb=short
-
-test-tpcds:
-	uv run -- python -m pytest -m "tpcds" --tb=short
 
 TPCDS_OBT_EQUIVALENCE_SF ?= 0.01
 .PHONY: tpcds-obt-equivalence
 tpcds-obt-equivalence:
 	BENCHBOX_TEST_TIER=t2 BENCHBOX_OBT_EQUIVALENCE_REQUIRED=1 BENCHBOX_OBT_EQUIVALENCE_SF=$(TPCDS_OBT_EQUIVALENCE_SF) uv run -- python -m pytest tests/integration/test_tpcds_obt_equivalence.py --tb=short -n 0 --timeout=3600 $(PYTEST_ARGS)
 
-test-olap:
-	uv run -- python -m pytest -m "olap" --tb=short
-
-test-window:
-	uv run -- python -m pytest -m "window_functions" --tb=short
-
 .PHONY: test-ci
 test-ci:
 	uv run -- python -m pytest -c pytest-ci.ini -m "not (slow or stress or resource_heavy or live_integration)" --cov=benchbox --cov-report=term-missing:skip-covered --cov-report=xml:coverage.xml --cov-fail-under=0 --timeout=300
-
-test-no-cloud:
-	uv run -- python -m pytest -m "not (slow or cloud_import)" --ignore=tests/unit/platforms/databricks --ignore=tests/unit/platforms/snowflake --ignore=tests/unit/platforms/bigquery --ignore=tests/unit/platforms/redshift --tb=short
-
-test-full:
-	uv run -- python -m pytest -m "not stress" --tb=short -v
-
-test-parallel:
-	uv run -- python -m pytest -n auto --tb=short
-
-test-parallel-fast:
-	uv run -- python -m pytest -n auto -m "fast and not (slow or stress or resource_heavy or live_integration)" --tb=short --timeout=120
 
 include $(BENCHBOX_MAKEFILE_ROOT)make/platform-tests.mk
 
@@ -469,10 +397,6 @@ lint:
 uv-lock-revision-check:
 	uv run -- python _project/scripts/check_uv_lock_revision.py $(if $(BASE_REF),--baseline-ref "$(BASE_REF)",)
 	for project in _project/sql-translation-ml _project/scripts; do uv lock --check --project "$$project" || exit 1; done
-
-.PHONY: sqlglot-upstream-freshness-check
-sqlglot-upstream-freshness-check:
-	uv run -- python scripts/check_sqlglot_upstream_freshness.py
 
 .PHONY: sqlglot-adopt-wheel
 sqlglot-adopt-wheel:
@@ -902,8 +826,6 @@ ci-linux:
 typecheck:
 	uv run -- python -m scripts.typecheck
 
-typecheck-uv: typecheck
-
 .PHONY: validate-imports
 validate-imports: lint-imports
 
@@ -911,9 +833,6 @@ validate-imports: lint-imports
 catalog-schema-check:
 	uv run -- python -m benchbox.core.catalog_schema
 
-.PHONY: dependency-check
-dependency-check:
-	uv run -- python -m benchbox.utils.dependency_validation $(ARGS)
 .PHONY: format
 format:
 	uv run ruff format .
@@ -924,9 +843,6 @@ include $(BENCHBOX_MAKEFILE_ROOT)make/site-inputs.mk
 
 dist: clean
 	uv build
-
-run-test:
-	uv run -- python $(TEST)
 
 .PHONY: release-prep
 release-prep:
@@ -1075,11 +991,6 @@ pr-landing-ready:
 		$(if $(PR_NODE_ID),--pr-node-id "$(PR_NODE_ID)",) ready --pr "$(PR)" \
 		--expected-head "$(HEAD)" --evidence-json "$(EVIDENCE)" \
 		$(if $(ARM),--arm,) $(if $(BATCH),--require-batch,)
-
-pr-followup-record:
-	@[ -n "$(KEY)" ] || { echo "KEY is required" >&2; exit 2; }; \
-	@[ -n "$(STATE)" ] || { echo "STATE is required" >&2; exit 2; }; \
-	uv run -- python scripts/pr_landing.py --worktree . followup-record --key "$(KEY)" --state-json "$(STATE)"
 
 pr-followup-resume:
 	@[ -n "$(KEY)" ] || { echo "KEY is required" >&2; exit 2; }; \
