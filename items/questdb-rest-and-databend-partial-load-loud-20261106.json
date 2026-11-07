@@ -10,6 +10,148 @@
     "member_id": "questdb-rest-and-databend-partial-load-loud-20261106"
   },
   "description": "Leftovers from the load-path fixes in #3981. (1) QuestDB's REST /imp path still swallows per-chunk load failures, unlike the ILP path, which now fails on any count mismatch. (2) Databend detects a row-count mismatch only after COPY INTO has run, so a partial load stays in the table until the next run recreates the schema. Both must fail loudly and leave no silently partial data.\n\nGuardrails: work in a linked worktree; live checks under mocker through make heavy-run (see uat-mocker-compose-gaps-20261106); no explanatory comments; changelog fragment.",
+  "final_evidence": {
+    "batch_id": "load-hardening",
+    "changed_files": [
+      "_project/specs/uat-framework.md",
+      "benchbox/platforms/databend/adapter.py",
+      "benchbox/platforms/questdb.py",
+      "changelog.d/feat-load-hardening--questdb-rest-and-databend-partial-load-loud-20261106.json",
+      "changelog.d/feat-load-hardening--uat-mocker-compose-gaps-20261106.json",
+      "docker/doris/docker-compose.yml",
+      "scripts/uat-bring-up/uat_bring_up.py",
+      "tests/uat/conftest.py",
+      "tests/uat/managed_runtime.py",
+      "tests/uat/phases/execute.py",
+      "tests/uat/test_declared_settings.py",
+      "tests/unit/platforms/test_databend_bulk_load.py",
+      "tests/unit/platforms/test_questdb_adapter.py",
+      "tests/unit/platforms/test_questdb_coverage.py"
+    ],
+    "clean": true,
+    "current_acceptance": {
+      "questdb-rest-and-databend-partial-load-loud-20261106": {
+        "clean": true,
+        "command": [
+          "uv",
+          "run",
+          "--",
+          "python",
+          "-m",
+          "pytest",
+          "-n",
+          "0",
+          "-q",
+          "tests/integration/platforms/test_databend_smoke.py",
+          "tests/integration/test_manifest_driven_loading.py",
+          "tests/integration/test_misc_plan_capture_live.py",
+          "tests/system/test_module_size_thresholds.py",
+          "tests/uat/test_connection_registry_drift.py",
+          "tests/unit/core/test_compute_resource_unification.py",
+          "tests/unit/core/tuning/test_capability_registry_parity.py",
+          "tests/unit/platforms/test_databend_adapter.py",
+          "tests/unit/platforms/test_databend_bulk_load.py",
+          "tests/unit/platforms/test_deployment_modes_recorded.py",
+          "tests/unit/platforms/test_misc_plan_capture.py",
+          "tests/unit/platforms/test_questdb_adapter.py",
+          "tests/unit/platforms/test_questdb_coverage.py",
+          "tests/unit/platforms/test_questdb_ilp_arrow.py",
+          "tests/unit/platforms/test_questdb_join_scope.py",
+          "tests/unit/platforms/test_questdb_rewrites.py",
+          "tests/unit/platforms/test_questdb_schema_enhancement.py",
+          "tests/unit/platforms/test_throughput_session_capability.py",
+          "tests/unit/utils/test_dialect_utils.py"
+        ],
+        "revision": "c37b8637757492ca49d3bce9e69fb60d480687d2",
+        "status": "passed",
+        "suite": "member-tests",
+        "worktree": "/Users/joe/Developer/BenchBox.wt-load-hardening"
+      },
+      "uat-mocker-compose-gaps-20261106": {
+        "clean": true,
+        "command": [
+          "uv",
+          "run",
+          "--",
+          "python",
+          "-m",
+          "pytest",
+          "-n",
+          "0",
+          "-q",
+          "tests/uat/test_cleanup.py",
+          "tests/uat/test_cli_dispatch.py",
+          "tests/uat/test_clickhouse_certification.py",
+          "tests/uat/test_clickhouse_memory.py",
+          "tests/uat/test_config.py",
+          "tests/uat/test_connection_registry_drift.py",
+          "tests/uat/test_container_cleanup.py",
+          "tests/uat/test_dask_cluster_failure.py",
+          "tests/uat/test_declared_settings.py",
+          "tests/uat/test_docker_assets.py",
+          "tests/uat/test_docker_cleanup.py",
+          "tests/uat/test_docker_path_helpers.py",
+          "tests/uat/test_e2e_integration.py",
+          "tests/uat/test_ladder.py",
+          "tests/uat/test_matrix.py",
+          "tests/uat/test_no_cli_surface_drift.py",
+          "tests/uat/test_orchestrator.py",
+          "tests/uat/test_output_root_hygiene.py",
+          "tests/uat/test_package.py",
+          "tests/uat/test_phases.py",
+          "tests/uat/test_preflight.py",
+          "tests/uat/test_preflight_budget.py",
+          "tests/uat/test_release_gate_shards.py",
+          "tests/uat/test_replay_2026_05_02.py",
+          "tests/uat/test_report.py",
+          "tests/uat/test_report_accounting.py",
+          "tests/uat/test_report_regen_prune.py",
+          "tests/uat/test_runner.py",
+          "tests/uat/test_runner_timeout_process_group.py",
+          "tests/uat/test_sweep_durability.py",
+          "tests/uat/test_throughput.py",
+          "tests/uat/test_throughput_baseline.py",
+          "tests/uat/test_timeouts.py",
+          "tests/uat/test_tuning_coverage.py",
+          "tests/uat/test_validate.py",
+          "tests/unit/test_heavy_choke_points.py"
+        ],
+        "revision": "c37b8637757492ca49d3bce9e69fb60d480687d2",
+        "status": "passed",
+        "suite": "member-tests",
+        "worktree": "/Users/joe/Developer/BenchBox.wt-load-hardening"
+      }
+    },
+    "final_pr": {
+      "head": "c37b8637757492ca49d3bce9e69fb60d480687d2",
+      "node_id": "PR_kwDOQ7J64c8AAAABNctc5A",
+      "number": 3998,
+      "repository": "BenchBox-dev/BenchBox"
+    },
+    "integration_branch": "feat/load-hardening",
+    "integration_head": "c37b8637757492ca49d3bce9e69fb60d480687d2",
+    "member_heads": {
+      "questdb-rest-and-databend-partial-load-loud-20261106": "4d79a477023592a91d90efe93c159e80084dd745",
+      "uat-mocker-compose-gaps-20261106": "efcffc25f9ded5c3d4cdb3f2ad65ff22c1073d22"
+    },
+    "member_ranges": {
+      "questdb-rest-and-databend-partial-load-loud-20261106": {
+        "base": "4b8c4b45511e36563a0f2837afb0909754d4de9e",
+        "head": "4d79a477023592a91d90efe93c159e80084dd745"
+      },
+      "uat-mocker-compose-gaps-20261106": {
+        "base": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67",
+        "head": "efcffc25f9ded5c3d4cdb3f2ad65ff22c1073d22"
+      }
+    },
+    "project_id": "benchbox",
+    "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+    "scope_hash": "d95d5b5e5ed237a896a1df1afb282f11f8908e38025d361c138d2971a1953baf",
+    "status": "passed",
+    "suite": "member-reruns",
+    "tree_revision": "c37b8637757492ca49d3bce9e69fb60d480687d2",
+    "tree_worktree": "/Users/joe/Developer/BenchBox.wt-load-hardening"
+  },
   "prepared": {
     "accepted_head": "4d79a477023592a91d90efe93c159e80084dd745",
     "batch_id": "load-hardening",
@@ -120,6 +262,15 @@
       "generation": "cb726a0b97fb42a69b2f6704150c1b1e",
       "op": "take",
       "op_id": "54cf246d642b4e88bd165e440b22e96f",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T03:32:31Z",
+      "client": "omp-coding-agent",
+      "generation": "cb726a0b97fb42a69b2f6704150c1b1e",
+      "op": "finish",
+      "op_id": "2b5771158a2f441e9bc1c9293b91d20d",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
