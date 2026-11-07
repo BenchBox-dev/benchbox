@@ -1277,6 +1277,39 @@ class TestSparkAdapterTestConnection:
         assert result is True
         mock_spark_session.stop.assert_called_once()
 
+    def test_test_connection_does_not_stop_live_session(self):
+        from benchbox.platforms.spark import SparkAdapter
+
+        mock_session_class, mock_spark_session, _ = self._make_builder_and_session()
+        mock_df = MagicMock()
+        mock_df.collect.return_value = [1]
+        mock_spark_session.sql.return_value = mock_df
+
+        with patch("benchbox.platforms.spark.SparkSession", mock_session_class):
+            adapter = SparkAdapter(master="local[*]")
+            adapter._spark_session = mock_spark_session
+            result = adapter.test_connection()
+
+        assert result is True
+        mock_spark_session.stop.assert_not_called()
+        assert adapter._spark_session is mock_spark_session
+
+    def test_test_connection_does_not_stop_externally_active_session(self):
+        from benchbox.platforms.spark import SparkAdapter
+
+        mock_session_class, mock_spark_session, _ = self._make_builder_and_session()
+        mock_session_class.getActiveSession.return_value = mock_spark_session
+        mock_df = MagicMock()
+        mock_df.collect.return_value = [1]
+        mock_spark_session.sql.return_value = mock_df
+
+        with patch("benchbox.platforms.spark.SparkSession", mock_session_class):
+            adapter = SparkAdapter(master="local[*]")
+            result = adapter.test_connection()
+
+        assert result is True
+        mock_spark_session.stop.assert_not_called()
+
     def test_test_connection_suppresses_window_exec_warnings(self):
         from benchbox.platforms.spark import SparkAdapter
 

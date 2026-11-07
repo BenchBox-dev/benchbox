@@ -589,14 +589,17 @@ class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
             for key, value in spark_conf.items():
                 builder = builder.config(key, value)
 
+            existing = (self._spark_session, SparkSession.getActiveSession())
             spark = builder.getOrCreate()
+            borrowed = any(session is spark for session in existing)
             self._configure_runtime_logging(spark)
 
             try:
                 spark.sql("SELECT 1").collect()
                 return True
             finally:
-                spark.stop()
+                if not borrowed:
+                    spark.stop()
         except Exception as e:
             self.logger.debug(f"Connection test failed: {e}")
             return False
