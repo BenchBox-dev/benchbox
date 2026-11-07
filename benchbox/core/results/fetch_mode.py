@@ -30,3 +30,19 @@ def summarize_fetch_modes(modes: Iterable[Any]) -> str | None:
     if len(recorded) == 1:
         return next(iter(recorded))
     return MIXED_FETCH_MODE
+
+
+FETCH_MODE_PLATFORMS = ("duckdb",)
+FETCH_MODE_OPTION_HELP = (
+    "Result fetch mode, rows or arrow. Arrow receives the full result as Arrow inside the query timer "
+    "and builds Python rows only for digests and validation."
+)
+
+
+def register_fetch_mode_specs() -> None:
+    from benchbox.core.hooks.platform_hooks import PlatformHookRegistry, PlatformOptionSpec
+
+    spec = PlatformOptionSpec(name="fetch_mode", help=FETCH_MODE_OPTION_HELP, choices=FETCH_MODES)
+    for platform in FETCH_MODE_PLATFORMS:
+        if "fetch_mode" not in PlatformHookRegistry.list_option_specs(platform):
+            PlatformHookRegistry.register_option_specs(platform, spec)

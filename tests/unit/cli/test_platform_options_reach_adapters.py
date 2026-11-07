@@ -70,6 +70,7 @@ OPTION_CASES: dict[str, dict[str, tuple[str, str, Any]]] = {
         "temp_directory": ("/var/tmp/duckdb-spill", "temp_directory", "/var/tmp/duckdb-spill"),
         "plan_max_depth": ("7", "plan_max_depth", 7),
         "plan_capture_timeout_seconds": ("9", "plan_capture_timeout_seconds", 9),
+        "fetch_mode": ("rows", "fetch_mode", "rows"),
     },
     "sqlite": {
         "database_path": ("/var/tmp/options.db", "database_path", "/var/tmp/options.db"),

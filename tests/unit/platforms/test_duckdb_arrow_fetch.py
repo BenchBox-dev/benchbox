@@ -63,6 +63,12 @@ class TestFetchModeConfiguration:
         )
         assert adapter.fetch_mode == FETCH_MODE_ROWS
 
+    def test_subclasses_without_a_parity_run_default_to_rows(self):
+        class Variant(DuckDBAdapter):
+            pass
+
+        assert Variant(database_path=":memory:").fetch_mode == FETCH_MODE_ROWS
+
 
 class TestDigestParity:
     @pytest.mark.parametrize("mode", [FETCH_MODE_ROWS, FETCH_MODE_ARROW])

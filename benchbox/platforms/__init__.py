@@ -815,7 +815,6 @@ driver_auto_install|Automatically install the requested driver version using uv 
 plan_max_depth|Maximum query-plan tree depth persisted to the plans companion and used for the capture-time size estimate.|{'parser': 'int'}
 plan_capture_timeout_seconds|Timeout in seconds for EXPLAIN plan-capture queries.|{'parser': 'int'}
 force_recreate|Drop and recreate the benchmark database before loading, reusing the existing data files (true or false).|{'parser': 'parse_bool'}
-fetch_mode|Result fetch mode, rows or arrow. Arrow receives the full result as Arrow inside the query timer and builds Python rows only for digests and validation. Platforms without an Arrow path record rows.|{'choices': ('rows', 'arrow')}
 """
 
     from benchbox.core.platform_manifest import PLATFORM_MANIFEST
@@ -830,9 +829,11 @@ fetch_mode|Result fetch mode, rows or arrow. Arrow receives the full result as A
 
     from benchbox.core.compute_resource import register_compute_specs
     from benchbox.core.gateway import register_gateway_connection_specs
+    from benchbox.core.results.fetch_mode import register_fetch_mode_specs
 
     register_compute_specs()
     register_gateway_connection_specs()
+    register_fetch_mode_specs()
 
     PlatformHookRegistry.register_config_builder(
         "motherduck", _make_lazy_config_builder(".motherduck", "_build_motherduck_config")

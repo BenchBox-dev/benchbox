@@ -17,7 +17,7 @@ except ImportError:
     duckdb = None
 
 from benchbox.core.errors import PlanCaptureError
-from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW
+from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW, FETCH_MODE_ROWS
 from benchbox.utils.cloud_storage import get_cloud_path_info, is_cloud_path
 from benchbox.utils.printing import emit
 
@@ -543,6 +543,11 @@ class DuckDBAdapter(PlatformAdapter):
     default_fetch_mode = FETCH_MODE_ARROW
     index_ddl_unsupported_reason: str | None = None
     _catalog_lookup_active: bool = False
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        if "default_fetch_mode" not in cls.__dict__:
+            cls.default_fetch_mode = FETCH_MODE_ROWS
 
     @property
     def platform_name(self) -> str:
