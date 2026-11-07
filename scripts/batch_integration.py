@@ -2051,12 +2051,18 @@ def _unprepared_state(repo: Path, ledger: dict, tracker: dict, member: str) -> t
         return "merged-unprepared", None, str(exc)
 
 
-def _excluded_paths(repo: Path, final_head: str, tracker: dict) -> set[str]:
+def _pr_landing_module():
     scripts = str(Path(__file__).resolve().parent)
     if scripts not in sys.path:
         sys.path.insert(0, scripts)
     _checkout_root_modules()
     import pr_landing
+
+    return pr_landing
+
+
+def _excluded_paths(repo: Path, final_head: str, tracker: dict) -> set[str]:
+    pr_landing = _pr_landing_module()
 
     excluded, problems = pr_landing.develop_exclusions(repo, final_head, tracker, _receipts(tracker))
     if problems:
@@ -2064,25 +2070,26 @@ def _excluded_paths(repo: Path, final_head: str, tracker: dict) -> set[str]:
     return excluded
 
 
-def _is_verification_target(arg: str) -> bool:
-    path = arg.split("::", 1)[0]
-    return not arg.startswith("-") and ("/" in path or path.endswith(".py"))
-
-
 def _drop_develop_deleted_targets(
-    repo: Path, head: str, member: str, command: list[str], excluded: set[str]
+    repo: Path, head: str, member: str, command: list[str], excluded: set[str], tracker: dict
 ) -> tuple[list[str], list[str]]:
-    prefix = next(len(item) for item in ALLOWED_VERIFICATION_PREFIXES if tuple(command[: len(item)]) == item)
-    kept = list(command[:prefix])
+    pr_landing = _pr_landing_module()
+    start = pr_landing.trailing_test_run_start(command) if "pytest" in command else None
+    if start is None:
+        return list(command), []
+    kept = list(command[:start])
     removed: set[str] = set()
-    for arg in command[prefix:]:
+    for arg in command[start:]:
         path = arg.split("::", 1)[0]
-        in_tree = _git_ok(repo, "cat-file", "-e", f"{head}:{path}")
-        if _is_verification_target(arg) and path in excluded and not in_tree:
+        if (
+            path in excluded
+            and not _git_ok(repo, "cat-file", "-e", f"{head}:{path}")
+            and pr_landing.develop_plainly_deleted(repo, tracker, path)
+        ):
             removed.add(path)
         else:
             kept.append(arg)
-    if removed and not any(_is_verification_target(arg) for arg in kept[prefix:]):
+    if removed and len(kept) == start:
         raise BatchError(
             f"every verification path in member {member!r}'s receipt was removed by a recorded develop merge "
             f"({', '.join(sorted(removed))}); re-prepare the member with current verification"
@@ -2124,7 +2131,7 @@ def build_evidence(repo: Path) -> dict:
     for member in members:
         verification = receipts[member]["verification"]
         command = _validate_verification_command(verification.get("command"))
-        rerun_command, removed = _drop_develop_deleted_targets(repo, final_head, member, command, excluded)
+        rerun_command, removed = _drop_develop_deleted_targets(repo, final_head, member, command, excluded, tracker)
         if removed:
             dropped[member] = removed
         rerun_entry = _rerun(repo, ledger, member, rerun_command, str(verification.get("suite", "")), "final-evidence")

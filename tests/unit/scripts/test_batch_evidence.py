@@ -278,6 +278,31 @@ def test_evidence_refuses_when_a_develop_merge_removed_every_receipt_verificatio
         bi.build_evidence(integration)
 
 
+def test_a_develop_rename_of_a_receipt_test_is_not_a_plain_deletion(world: World) -> None:
+    integration = _legacy_batch(world)
+    git(world.seed, "mv", LEGACY_TEST, "tests/test_renamed.py")
+    git(world.seed, "commit", "-qm", "develop renames the legacy test")
+    git(world.seed, "push", "-q", "origin", "develop")
+    _merge_develop(world, integration)
+    tracker = _tracker_view(world)
+    assert not pr_landing.develop_plainly_deleted(integration, tracker, LEGACY_TEST)
+    forged = {"dropped_receipt_paths": {"zeta": [LEGACY_TEST]}}
+    failures = pr_landing._check_evidence_dropped_paths(integration, forged, world.head(), tracker, tracker["receipts"])
+    assert any("not plainly deleted" in item and LEGACY_TEST in item for item in failures)
+
+
+def test_a_deleted_path_outside_the_trailing_test_run_is_never_dropped(world: World) -> None:
+    integration = _legacy_batch(world)
+    _develop_commit(world, "develop retires the legacy test", remove=[LEGACY_TEST])
+    _merge_develop(world, integration)
+    tracker = bi.read_tracker(integration, BATCH)
+    excluded = bi._excluded_paths(integration, world.head(), tracker)
+    command = ["uv", "run", "--", "python", "-m", "pytest", "-q", "--ignore", LEGACY_TEST, "tests/test_zeta.py"]
+    kept, removed = bi._drop_develop_deleted_targets(integration, world.head(), "zeta", command, excluded, tracker)
+    assert kept == command
+    assert removed == []
+
+
 def _tracker_view(world: World) -> dict:
     payload = json.loads(world.tracker.show(["batch", "show", BATCH]).stdout)["data"]
     return {key: value for key, value in payload.items() if key != "sections"}
