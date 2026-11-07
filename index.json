@@ -9795,6 +9795,13 @@
       "status": "done",
       "title": "Add batch-start, batch-member-create and batch-member-check, and refuse pr-open and pr-fanout in member worktrees"
     },
+    "batch-mode-opt-in-policy-docs-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Make feature-batch delivery owner opt-in and one feature branch per feature the default"
+    },
     "batch-native-bulk-load-remainder-umbrella-20261104": {
       "claim": null,
       "needs": [],
