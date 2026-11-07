@@ -2217,6 +2217,22 @@
    ]
   },
   {
+   "disposition": "governance-stays",
+   "kinds": {
+    "root": 1
+   },
+   "occurrences": 1,
+   "path": "scripts/check_make_targets.py",
+   "rule": "doc-link-and-example-checkers",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "root",
+     "target": "docs/"
+    }
+   ]
+  },
+  {
    "disposition": "fixture-data",
    "kinds": {
     "unresolved": 1
@@ -2526,12 +2542,12 @@
    "disposition": "fixture-data",
    "kinds": {
     "file": 1,
-    "pattern": 3
+    "pattern": 2
    },
-   "occurrences": 5,
+   "occurrences": 4,
    "path": "tests/fixtures/fast_tier_baseline/tests-00.json",
    "rule": "test-sample-data",
-   "target_count": 4,
+   "target_count": 3,
    "targets": [
     {
      "kind": "pattern",
@@ -2540,10 +2556,6 @@
     {
      "kind": "pattern",
      "target": "docs/publish-exclusions.txt]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/reference/threat-model.md]"
     },
     {
      "kind": "file",
@@ -2605,13 +2617,13 @@
    "disposition": "fixture-data",
    "kinds": {
     "file": 1,
-    "pattern": 9,
+    "pattern": 8,
     "unresolved": 1
    },
-   "occurrences": 12,
+   "occurrences": 11,
    "path": "tests/fixtures/fast_tier_baseline/tests-02.json",
    "rule": "test-sample-data",
-   "target_count": 11,
+   "target_count": 10,
    "targets": [
     {
      "kind": "pattern",
@@ -2638,10 +2650,6 @@
      "target": "docs/guides/intro.md]"
     },
     {
-     "kind": "pattern",
-     "target": "docs/internal/results-phase-3-runbook.md]"
-    },
-    {
      "kind": "unresolved",
      "target": "docs/page.md-unsafe"
     },
@@ -2662,15 +2670,14 @@
   {
    "disposition": "fixture-data",
    "kinds": {
-    "extra": 1,
     "file": 1,
-    "pattern": 5,
+    "pattern": 7,
     "unresolved": 1
    },
-   "occurrences": 11,
+   "occurrences": 12,
    "path": "tests/fixtures/fast_tier_baseline/tests-03.json",
    "rule": "test-sample-data",
-   "target_count": 8,
+   "target_count": 9,
    "targets": [
     {
      "kind": "unresolved",
@@ -2678,7 +2685,7 @@
     },
     {
      "kind": "pattern",
-     "target": "docs/internal/independent-publication-threat-model.md]"
+     "target": "docs/internal/adr/adr-duckdb-datasketches-vendoring.md]"
     },
     {
      "kind": "pattern",
@@ -2687,6 +2694,14 @@
     {
      "kind": "pattern",
      "target": "docs/internal/release-guide.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/internal/results-phase-2-runbook.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/internal/site-deploy.md]"
     },
     {
      "kind": "pattern",
@@ -2699,10 +2714,6 @@
     {
      "kind": "pattern",
      "target": "docs/uv.lock]"
-    },
-    {
-     "kind": "extra",
-     "target": "quality/docs-ownership.json"
     }
    ]
   },
@@ -2710,12 +2721,12 @@
    "disposition": "fixture-data",
    "kinds": {
     "file": 1,
-    "pattern": 5
+    "pattern": 3
    },
-   "occurrences": 6,
+   "occurrences": 4,
    "path": "tests/fixtures/fast_tier_baseline/tests-04.json",
    "rule": "test-sample-data",
-   "target_count": 6,
+   "target_count": 4,
    "targets": [
     {
      "kind": "pattern",
@@ -2724,14 +2735,6 @@
     {
      "kind": "pattern",
      "target": "docs/blog/post.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/internal/adr/adr-duckdb-datasketches-vendoring.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/internal/site-deploy.md]"
     },
     {
      "kind": "pattern",
@@ -2746,14 +2749,15 @@
   {
    "disposition": "fixture-data",
    "kinds": {
+    "extra": 1,
     "file": 1,
-    "pattern": 2,
+    "pattern": 3,
     "unresolved": 1
    },
-   "occurrences": 5,
+   "occurrences": 7,
    "path": "tests/fixtures/fast_tier_baseline/tests-05.json",
    "rule": "test-sample-data",
-   "target_count": 4,
+   "target_count": 6,
    "targets": [
     {
      "kind": "unresolved",
@@ -2761,15 +2765,23 @@
     },
     {
      "kind": "pattern",
-     "target": "docs/internal/release-guide.md]"
+     "target": "docs/internal/adr/adr-independent-publication-authorities.md]"
     },
     {
      "kind": "pattern",
-     "target": "docs/internal/results-phase-2-runbook.md]"
+     "target": "docs/internal/independent-publication-threat-model.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/internal/release-guide.md]"
     },
     {
      "kind": "file",
      "target": "docs/usage/getting-started.md"
+    },
+    {
+     "kind": "extra",
+     "target": "quality/docs-ownership.json"
     }
    ]
   },
@@ -2777,12 +2789,12 @@
    "disposition": "fixture-data",
    "kinds": {
     "file": 1,
-    "pattern": 5
+    "pattern": 6
    },
-   "occurrences": 6,
+   "occurrences": 7,
    "path": "tests/fixtures/fast_tier_baseline/tests-06.json",
    "rule": "test-sample-data",
-   "target_count": 6,
+   "target_count": 7,
    "targets": [
     {
      "kind": "pattern",
@@ -2791,6 +2803,10 @@
     {
      "kind": "pattern",
      "target": "docs/development/testing.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/internal/adr/adr-published-results-slim-corpus-branch.md]"
     },
     {
      "kind": "pattern",
@@ -2840,11 +2856,11 @@
     },
     {
      "kind": "pattern",
-     "target": "docs/internal/adr/adr-independent-publication-authorities.md]"
+     "target": "docs/internal/results-phase-3-runbook.md]"
     },
     {
      "kind": "pattern",
-     "target": "docs/internal/adr/adr-published-results-slim-corpus-branch.md]"
+     "target": "docs/reference/threat-model.md]"
     },
     {
      "kind": "file",
@@ -3239,6 +3255,26 @@
     {
      "kind": "unresolved",
      "target": "docs/a.md"
+    }
+   ]
+  },
+  {
+   "disposition": "governance-stays",
+   "kinds": {
+    "unresolved": 2
+   },
+   "occurrences": 3,
+   "path": "tests/unit/scripts/test_check_make_targets.py",
+   "rule": "doc-link-and-example-checkers",
+   "target_count": 2,
+   "targets": [
+    {
+     "kind": "unresolved",
+     "target": "docs/guide.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/internal/adr/adr-old.md"
     }
    ]
   },
@@ -4112,14 +4148,14 @@
    "contract-replaced": 1,
    "contract-tooling": 6,
    "fixture-data": 37,
-   "governance-stays": 9,
+   "governance-stays": 11,
    "historical-record": 112,
    "lock-test": 4,
    "prose-link-pinned": 12,
    "site-pipeline-cutover": 4,
    "wiring-updated": 31
   },
-  "files": 216,
+  "files": 218,
   "kinds": {
    "built-url": 29037,
    "dir": 163,
@@ -4127,10 +4163,10 @@
    "file": 1377,
    "generated": 3,
    "pattern": 332,
-   "root": 199,
-   "unresolved": 2047
+   "root": 200,
+   "unresolved": 2050
   },
-  "references": 33195,
+  "references": 33199,
   "unclassified": 0
  }
 }

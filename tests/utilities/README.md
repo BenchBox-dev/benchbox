@@ -26,7 +26,7 @@ make test
 make test-all
 make test-unit
 make test-integration
-make test-tpch
+make test-marker TEST_MARKER=tpch
 make coverage
 ```
 
@@ -124,7 +124,7 @@ development, and tests for one benchmark. The last command runs unit tests with 
 make test-fast
 uv run -- python -m pytest -m fast
 
-make test-tpch
+make test-marker TEST_MARKER=tpch
 uv run -- python -m pytest -m tpch
 
 uv run -- python -m pytest -m unit -v
@@ -133,8 +133,8 @@ uv run -- python -m pytest -m unit -v
 ### CI/CD Pipeline
 `make test-ci` is comprehensive CI testing, and `make coverage-report` runs tests with coverage for CI. Each is
 equivalent to the `pytest` command after it. `make coverage-opt-in-all` includes stress and live tests, so use it only
-when their services and credentials are available. `make test-parallel` is explicit full-tree parallel testing and
-requires live services and credentials.
+when their services and credentials are available. `uv run -- python -m pytest -n auto --tb=short` is explicit
+full-tree parallel testing and requires live services and credentials.
 ```bash
 make test-ci
 uv run -- python -m pytest -c pytest-ci.ini -m "not (slow or stress or resource_heavy or live_integration)"
@@ -144,7 +144,6 @@ uv run -- python -m pytest -c pytest-ci.ini -m "not (stress or resource_heavy or
 
 make coverage-opt-in-all
 
-make test-parallel
 uv run -- python -m pytest -n auto --tb=short
 ```
 
@@ -152,7 +151,7 @@ uv run -- python -m pytest -n auto --tb=short
 The commands run DuckDB integration testing, the full integration test suite, and integration tests with coverage.
 Each `make` target is equivalent to the `pytest` command after it.
 ```bash
-make test-duckdb
+make test-marker TEST_MARKER=duckdb
 uv run -- python -m pytest -m duckdb
 
 make test-integration
@@ -176,7 +175,7 @@ The first command is the old way. The `make` target and `pytest` command are the
 ```bash
 python tests/run_tpch_tests.py
 
-make test-tpch
+make test-marker TEST_MARKER=tpch
 uv run -- python -m pytest -m tpch
 ```
 
@@ -185,7 +184,7 @@ The first command is the old way. The `make` target and `pytest` command are the
 ```bash
 python tests/run_tpcds_tests.py minimal
 
-make test-tpcds
+make test-marker TEST_MARKER="tpcds and fast"
 uv run -- python -m pytest -m "tpcds and fast"
 ```
 

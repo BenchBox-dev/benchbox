@@ -254,13 +254,12 @@ uv run -- python -m pytest tests/e2e/test_cli_options.py -v
 ```
 
 ### Comprehensive Testing
-Each `make` target is equivalent to the `pytest` command after it. The targets run all tests, run tests in parallel,
+Each `make` target is equivalent to the `pytest` command after it. The commands run all tests, run tests in parallel,
 and run integration tests. The performance tests have no `make` target.
 ```bash
 make test-all
 uv run -- python -m pytest
 
-make test-parallel
 uv run -- python -m pytest -n auto
 
 make test-integration
@@ -341,17 +340,16 @@ Tests are organized using pytest markers for selective execution:
 - `primitives`: Primitive operations tests
 
 ### Example Usage
-Each `make` target is equivalent to the `pytest` command after it. The examples run only fast unit tests, run
+The `make` targets are equivalent to the `pytest` command after them. The examples run only fast unit tests, run
 integration tests excluding slow ones, and run TPC-H related tests. The last command runs all tests except memory
 intensive ones.
 ```bash
-make test-dev
 uv run -- python -m pytest -m "unit and fast"
 
 make test-integration
 uv run -- python -m pytest -m "integration and not slow"
 
-make test-tpch
+make test-marker TEST_MARKER=tpch
 uv run -- python -m pytest -m tpch
 
 uv run -- python -m pytest -m "not memory_intensive"
@@ -778,7 +776,6 @@ uv run -- python tests/utilities/performance_profiler.py python -m pytest tests/
 make test-fast
 uv run -- python -m pytest -m fast
 
-make test-parallel
 uv run -- python -m pytest -n auto
 ```
 

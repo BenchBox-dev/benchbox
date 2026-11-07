@@ -13,7 +13,6 @@
     "tests/unit/test_release_infrastructure.py"
   ],
   "AGENTS.md": [
-    "tests/unit/scripts/test_check_makefile_inventory.py",
     "tests/unit/workflows/test_stacked_pr_base_guard.py"
   ],
   "CHANGELOG.md": [

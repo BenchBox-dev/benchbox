@@ -33,27 +33,19 @@ DEVELOPMENT_TREE_ONLY_TARGETS := \
 	platform-manifest-check test-docker-parity blind-spots-list blind-spots-report \
 	soundness-drain-report soundness-drain-self-test worktree-audit worktree-finish worktree-reap oracle-mutation-test corpus-stage-local
 
-.PHONY: coverage-check
-
 .PHONY: test
 test: test-fast
 	@echo "Default test run completed. Use 'make help' to see all test options."
 
 $(DEVELOPMENT_TREE_ONLY_TARGETS): .development-tree-required
 
+.development-tree-required: SHELL := /bin/sh
 .PHONY: .development-tree-required
 .development-tree-required:
 	@if [ ! -d "$(BENCHBOX_MAKEFILE_ROOT)_project/decisions" ]; then \
 		echo "Error: this target requires the BenchBox development tree (full development tree required); curated releases retain only the Results Explorer publication helpers under _project/scripts/." >&2; \
 		exit 2; \
 	fi
-
-.PHONY: publication-help
-publication-help:
-	@echo "Publication flow:"
-	@echo "  benchbox.dev is built and deployed from BenchBox-dev/benchbox-site, not from this repository."
-	@echo "  Data and pipeline changes reach it through the site-inputs bundle (site-inputs.yml)."
-	@echo "  Site, Explorer, landing and blog sources live in that repository; see CONTRIBUTING.md."
 
 .PHONY: test-all
 test-all:
@@ -69,20 +61,6 @@ test-unit:
 .PHONY: test-integration
 test-integration:
 	BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest -m "integration and not live_integration and not stress" --tb=short
-
-.PHONY: test-tpch
-test-tpch:
-	BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest -m "tpch" --tb=short
-
-test-quick:
-	BENCHBOX_TEST_TIER=t1 uv run -- python -m pytest -m "fast and not (slow or stress or resource_heavy or live_integration)" --tb=short --maxfail=5 --timeout=120
-
-test-verbose:
-	BENCHBOX_TEST_TIER=t3 uv run -- python -m pytest -v
-
-.PHONY: test-pytest
-test-pytest:
-	BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest -m "not stress"
 
 .PHONY: test-fast
 test-fast:
@@ -135,11 +113,6 @@ test-slow:
 test-stress:
 	BENCHBOX_TEST_TIER=t3 uv run -- python -m pytest -m "stress" -n 0 --tb=short -v --timeout=1800
 
-test-dev:
-	BENCHBOX_TEST_TIER=t1 uv run -- python -m pytest -m "fast and unit and not (slow or stress or resource_heavy or live_integration)" --tb=short --maxfail=3 --timeout=120
-
-test-smoke: test-quick
-
 CORRECTNESS_GATE_QUERY_IDS := 1,2,3,4,5,6,7,8,9,10,12,13,14,15,17,19,21,22
 
 .PHONY: test-correctness-gate
@@ -185,19 +158,7 @@ tpch-subscale-row-counts-regen:
 
 .PHONY: tpchavoc-equivalence-report
 tpchavoc-equivalence-report:
-	uv run -- python -m benchbox.core.tpchavoc.equivalence
-
-.PHONY: tpchavoc-equivalence-report-postgres
-tpchavoc-equivalence-report-postgres:
-	uv run -- python -m benchbox.core.tpchavoc.equivalence --engine postgres
-
-.PHONY: tpchavoc-equivalence-report-datafusion
-tpchavoc-equivalence-report-datafusion:
-	uv run -- python -m benchbox.core.tpchavoc.equivalence --engine datafusion
-
-.PHONY: tpchavoc-equivalence-report-clickhouse
-tpchavoc-equivalence-report-clickhouse:
-	uv run -- python -m benchbox.core.tpchavoc.equivalence --engine clickhouse
+	uv run -- python -m benchbox.core.tpchavoc.equivalence $(if $(TPCHAVOC_ENGINE),--engine $(TPCHAVOC_ENGINE))
 
 .PHONY: tpchavoc-dataframe-equivalence-report
 tpchavoc-dataframe-equivalence-report:
@@ -206,54 +167,12 @@ tpchavoc-dataframe-equivalence-report:
 EXECUTION_ENGINE ?=
 EXECUTION_ENGINE_OPTION = $(if $(strip $(EXECUTION_ENGINE)),--execution-engine $(EXECUTION_ENGINE),)
 
-.PHONY: ssb-cross-surface-equivalence-report
-ssb-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark ssb $(EXECUTION_ENGINE_OPTION)
+CROSS_SURFACE_ARGS_tpcds := --backend expression --backend datafusion
 
-.PHONY: amplab-cross-surface-equivalence-report
-amplab-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark amplab $(EXECUTION_ENGINE_OPTION)
-
-.PHONY: coffeeshop-cross-surface-equivalence-report
-coffeeshop-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark coffeeshop $(EXECUTION_ENGINE_OPTION)
-
-.PHONY: clickbench-cross-surface-equivalence-report
-clickbench-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark clickbench $(EXECUTION_ENGINE_OPTION)
-
-.PHONY: joinorder-synthetic-cross-surface-equivalence-report
-joinorder-synthetic-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark joinorder_synthetic $(EXECUTION_ENGINE_OPTION)
-
-.PHONY: h2odb-cross-surface-equivalence-report
-h2odb-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark h2odb $(EXECUTION_ENGINE_OPTION)
-
-.PHONY: read-primitives-cross-surface-equivalence-report
-read-primitives-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark read_primitives $(EXECUTION_ENGINE_OPTION)
-
-flightdata-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark flightdata $(EXECUTION_ENGINE_OPTION)
-
-datavault-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark datavault $(EXECUTION_ENGINE_OPTION)
-
-nyctaxi-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark nyctaxi $(EXECUTION_ENGINE_OPTION)
-
-tsbs-devops-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark tsbs_devops $(EXECUTION_ENGINE_OPTION)
-
-tpch-skew-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark tpch_skew $(EXECUTION_ENGINE_OPTION)
-
-tpch-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark tpch $(EXECUTION_ENGINE_OPTION)
-
-tpcds-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark tpcds --backend expression --backend datafusion $(EXECUTION_ENGINE_OPTION)
+.PHONY: cross-surface-equivalence-report
+cross-surface-equivalence-report:
+	@[ -n "$(CROSS_SURFACE_BENCHMARK)" ] || { echo "CROSS_SURFACE_BENCHMARK is required: a gate name from benchbox.core.equivalence.cross_surface.GATES, for example tpch or joinorder_synthetic" >&2; exit 2; }
+	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark $(CROSS_SURFACE_BENCHMARK) $(if $(CROSS_SURFACE_BACKEND),--backend $(CROSS_SURFACE_BACKEND),$(CROSS_SURFACE_ARGS_$(CROSS_SURFACE_BENCHMARK)) $(EXECUTION_ENGINE_OPTION))
 
 .PHONY: polars-df-compat-check
 polars-df-compat-check:
@@ -270,10 +189,6 @@ polars-df-compat-check:
 		uv run --no-sync -- python -m benchbox.core.equivalence.cross_surface --benchmark "$$benchmark"; \
 	done; \
 	uv run --no-sync -- python -m benchbox.core.equivalence.cross_surface --benchmark tpcds --backend expression --backend datafusion
-
-.PHONY: tpcds-pandas-cross-surface-equivalence-report
-tpcds-pandas-cross-surface-equivalence-report:
-	uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark tpcds --backend pandas
 
 .PHONY: tpcds-cross-surface-draws-report
 tpcds-cross-surface-draws-report:
@@ -348,55 +263,23 @@ joinorder-verify-reference-results:
 		--queries "$(JOINORDER_QUERIES)" \
 		--reference "$(JOINORDER_REFERENCE)"
 
-.PHONY: test-duckdb
-test-duckdb:
-	uv run -- python -m pytest -m "duckdb" --tb=short
-
-.PHONY: test-sqlite
-test-sqlite:
-	uv run -- python -m pytest -m "sqlite" --tb=short
+.PHONY: test-marker
+test-marker:
+	@[ -n "$(TEST_MARKER)" ] || { echo 'TEST_MARKER is required, for example TEST_MARKER="tpch or tpcds"' >&2; exit 2; }
+	uv run -- python -m pytest -m "$(TEST_MARKER)" --tb=short
 
 .PHONY: test-pyspark
 test-pyspark:
 	./scripts/run_pyspark_tests.sh
-
-.PHONY: test-read-primitives
-test-read-primitives:
-	uv run -- python -m pytest -m "primitives" --tb=short
-
-.PHONY: test-benchmarks
-test-benchmarks:
-	uv run -- python -m pytest -m "tpch or tpcds or ssb or amplab or clickbench or h2odb or merge" --tb=short
-
-test-tpcds:
-	uv run -- python -m pytest -m "tpcds" --tb=short
 
 TPCDS_OBT_EQUIVALENCE_SF ?= 0.01
 .PHONY: tpcds-obt-equivalence
 tpcds-obt-equivalence:
 	BENCHBOX_TEST_TIER=t2 BENCHBOX_OBT_EQUIVALENCE_REQUIRED=1 BENCHBOX_OBT_EQUIVALENCE_SF=$(TPCDS_OBT_EQUIVALENCE_SF) uv run -- python -m pytest tests/integration/test_tpcds_obt_equivalence.py --tb=short -n 0 --timeout=3600 $(PYTEST_ARGS)
 
-test-olap:
-	uv run -- python -m pytest -m "olap" --tb=short
-
-test-window:
-	uv run -- python -m pytest -m "window_functions" --tb=short
-
 .PHONY: test-ci
 test-ci:
 	uv run -- python -m pytest -c pytest-ci.ini -m "not (slow or stress or resource_heavy or live_integration)" --cov=benchbox --cov-report=term-missing:skip-covered --cov-report=xml:coverage.xml --cov-fail-under=0 --timeout=300
-
-test-no-cloud:
-	uv run -- python -m pytest -m "not (slow or cloud_import)" --ignore=tests/unit/platforms/databricks --ignore=tests/unit/platforms/snowflake --ignore=tests/unit/platforms/bigquery --ignore=tests/unit/platforms/redshift --tb=short
-
-test-full:
-	uv run -- python -m pytest -m "not stress" --tb=short -v
-
-test-parallel:
-	uv run -- python -m pytest -n auto --tb=short
-
-test-parallel-fast:
-	uv run -- python -m pytest -n auto -m "fast and not (slow or stress or resource_heavy or live_integration)" --tb=short --timeout=120
 
 include $(BENCHBOX_MAKEFILE_ROOT)make/platform-tests.mk
 
@@ -469,10 +352,6 @@ uv-lock-revision-check:
 	uv run -- python _project/scripts/check_uv_lock_revision.py $(if $(BASE_REF),--baseline-ref "$(BASE_REF)",)
 	for project in _project/sql-translation-ml _project/scripts; do uv lock --check --project "$$project" || exit 1; done
 
-.PHONY: sqlglot-upstream-freshness-check
-sqlglot-upstream-freshness-check:
-	uv run -- python scripts/check_sqlglot_upstream_freshness.py
-
 .PHONY: sqlglot-adopt-wheel
 sqlglot-adopt-wheel:
 	@test -n "$(WHEEL)" -a -n "$(EXPECTED_VERSION)" -a -n "$(FORK_SHA)" -a -n "$(UPSTREAM_SHA)" || { echo "usage: make sqlglot-adopt-wheel WHEEL=path/to/benchbox_sqlglot-X.whl EXPECTED_VERSION=X.Y.Z.N FORK_SHA=<sha> UPSTREAM_SHA=<sha> [SHA256=<digest>] [DRY_RUN=1]"; exit 2; }
@@ -481,10 +360,6 @@ sqlglot-adopt-wheel:
 .PHONY: sqlglot-advisory-check
 sqlglot-advisory-check:
 	uv run -- python scripts/check_sqlglot_advisories.py
-
-.PHONY: sqlglot-fork-diff
-sqlglot-fork-diff:
-	uv run -- python -m scripts.sqlglot_fork_diff $(if $(OLD),--old "$(OLD)",) $(if $(NEW),--new "$(NEW)",) $(if $(BASE_REF),--base-ref "$(BASE_REF)",) $(if $(OUT),--output "$(OUT)",)
 
 .PHONY: sql-execution-gate
 sql-execution-gate:
@@ -643,10 +518,6 @@ duplicate-check-json:
 duplicate-check-delta:
 	uv run -- python scripts/check_duplicate_code.py --delta-vs "$(if $(BASE_REF),$(BASE_REF),origin/develop)"
 
-.PHONY: makefile-inventory-check
-makefile-inventory-check:
-	uv run -- python make/check_makefile_inventory.py
-
 .PHONY: mutation-test
 mutation-test:
 	@echo "Running mutation tests on critical modules..."
@@ -744,8 +615,6 @@ ci-lint:
 	[ $$? -eq 0 ] || failed="$$failed oracle-coverage-map-check"; \
 	$(MAKE) pricing-data-check; \
 	[ $$? -eq 0 ] || failed="$$failed pricing-data-check"; \
-	$(MAKE) makefile-inventory-check; \
-	[ $$? -eq 0 ] || failed="$$failed makefile-inventory-check"; \
 	uv run -- python scripts/check_public_contract_drift.py; \
 	[ $$? -eq 0 ] || failed="$$failed public-contract-drift"; \
 	$(MAKE) doc-contracts-guard; \
@@ -911,8 +780,6 @@ ci-linux:
 typecheck:
 	uv run -- python -m scripts.typecheck
 
-typecheck-uv: typecheck
-
 .PHONY: validate-imports
 validate-imports: lint-imports
 
@@ -920,9 +787,6 @@ validate-imports: lint-imports
 catalog-schema-check:
 	uv run -- python -m benchbox.core.catalog_schema
 
-.PHONY: dependency-check
-dependency-check:
-	uv run -- python -m benchbox.utils.dependency_validation $(ARGS)
 .PHONY: format
 format:
 	uv run ruff format .
@@ -933,9 +797,6 @@ include $(BENCHBOX_MAKEFILE_ROOT)make/site-inputs.mk
 
 dist: clean
 	uv build
-
-run-test:
-	uv run -- python $(TEST)
 
 .PHONY: release-prep
 release-prep:
@@ -1084,11 +945,6 @@ pr-landing-ready:
 		$(if $(PR_NODE_ID),--pr-node-id "$(PR_NODE_ID)",) ready --pr "$(PR)" \
 		--expected-head "$(HEAD)" --evidence-json "$(EVIDENCE)" \
 		$(if $(ARM),--arm,) $(if $(BATCH),--require-batch,)
-
-pr-followup-record:
-	@[ -n "$(KEY)" ] || { echo "KEY is required" >&2; exit 2; }; \
-	@[ -n "$(STATE)" ] || { echo "STATE is required" >&2; exit 2; }; \
-	uv run -- python scripts/pr_landing.py --worktree . followup-record --key "$(KEY)" --state-json "$(STATE)"
 
 pr-followup-resume:
 	@[ -n "$(KEY)" ] || { echo "KEY is required" >&2; exit 2; }; \
