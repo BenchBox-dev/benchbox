@@ -3,6 +3,7 @@
     "CI runs the live_singlestore tests on a schedule or on relevant PRs, with a green run linked.",
     "TPC-DS maintenance on SingleStore SF0.01 either completes all 11 functions with row evidence, or stays skipped with the failing statements recorded."
   ],
+  "context": "2026-11-07 owner decision (Joe, answering a choice dialog): \"Add both jobs\". Add a SingleStore job (amd64) to .github/workflows/docker-integration.yml that runs the live_singlestore tests.",
   "description": "(1) #3979 added live SingleStore RF1 tests under the `live_singlestore` marker, but .github/workflows/docker-integration.yml has no SingleStore job, so they run only on a developer host. Under mocker the compose stack needs `mocker run --platform linux/amd64 -m 4g` because compose ignores the platform and the default 1 GiB VM aborts (uat-mocker-compose-gaps-20261106 context).\n(2) The dsdgen maintenance change (#4015) reports TPC-DS maintenance on SingleStore as skipped, because the oracle review found its refresh SQL likely invalid there and it could not be validated.\n\nChange. Add a SingleStore job to docker-integration (amd64 runner) that runs the live_singlestore marker. Validate the 11 TPC-DS maintenance functions on SingleStore and enable them, or record why they cannot run.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; heavy work only through make heavy-run; container checks under mocker one stack at a time (limits in tests/uat docs and the uat-mocker-compose-gaps-20261106 context); no live cloud without owner approval; no explanatory comments; changelog fragment if user-facing.",
   "sessions": [
     {
@@ -11,6 +12,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "04ad4f79c3564738bb000a82a64cc06d",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T14:13:50Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "fdcb2870f2e2488e88bb77c8de0d4c2c",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
