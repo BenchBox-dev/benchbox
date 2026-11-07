@@ -3191,20 +3191,51 @@
       "terminal_outcome": "deliver"
     },
     "load-value-integrity": {
-      "accepted_members": {},
+      "accepted_members": {
+        "mocker-doris-singlestore-stacks-start-20261107": "bc85ff2e9c475cb55d4f9e6c06cae18c119f16c4"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "mocker-doris-singlestore-stacks-start-20261107": {
+          "accepted_head": "bc85ff2e9c475cb55d4f9e6c06cae18c119f16c4",
+          "changed_files": [
+            "_project/specs/uat-framework.md",
+            "changelog.d/feat-load-value-integrity--mocker-doris-singlestore-stacks-start-20261107.json",
+            "docker/doris/docker-compose.yml",
+            "docker/singlestore/docker-compose.yml",
+            "docs/operations/local-platform-provisioning.tsv",
+            "make/help.mk",
+            "make/uat.mk",
+            "scripts/uat-bring-up/uat_bring_up.py",
+            "tests/uat/managed_runtime.py",
+            "tests/uat/mocker_launch.py",
+            "tests/uat/phases/execute.py",
+            "tests/uat/test_mocker_launch.py"
+          ],
+          "integration_head": "3ad5a260a056e93e9b079f5f66d16dd8baa4bdcc",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/load-value-integrity",
-      "integration_head": "766364b8a32f55ac19a09feca8dead5008a2fd80",
+      "integration_head": "3ad5a260a056e93e9b079f5f66d16dd8baa4bdcc",
       "integration_log": [
         {
           "at": "2026-11-07T14:17:34Z",
           "head": "766364b8a32f55ac19a09feca8dead5008a2fd80",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-07T15:14:25Z",
+          "head": "3ad5a260a056e93e9b079f5f66d16dd8baa4bdcc",
+          "kind": "prepare",
+          "member": "mocker-doris-singlestore-stacks-start-20261107",
+          "op_id": "8a2881d2aa1249ae979d7d9bee89e318",
+          "previous_head": "766364b8a32f55ac19a09feca8dead5008a2fd80",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-load-value-integrity",
@@ -23264,15 +23295,10 @@
       "title": "Audit function-local imports in the files mirrored to published-results"
     },
     "mocker-doris-singlestore-stacks-start-20261107": {
-      "claim": {
-        "expires_at": "2026-11-08T15:14:11Z",
-        "generation": "c7f35bbac41d44419092fbead0fe83df",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "open",
       "title": "Make the Doris and SingleStore UAT stacks start under mocker, not only fail loudly"
     },
     "modin-cudf-and-dask-adapter-integration-into-cross-platform": {

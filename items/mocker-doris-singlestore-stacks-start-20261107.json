@@ -9,6 +9,76 @@
     "member_id": "mocker-doris-singlestore-stacks-start-20261107"
   },
   "description": "#3998 made bring-up detect and fail loudly when mocker drops a compose stack's entrypoint, memory, ulimit or platform setting. The stacks still cannot start through compose on macOS. Doris needed `mocker run -m 4g --entrypoint bash` with the repo's entrypoint script. SingleStore needed `mocker run --platform linux/amd64 -m 4g -c 4`. Every live check on these engines needs hand-written commands.\n\nChange. Give bring-up an engine-aware launch for mocker (for example translating the compose service into the mocker run flags that work), so `make uat-bring-up PLATFORM=doris|singlestore` starts a healthy stack on macOS. Keep the loud failure for settings that still cannot be applied.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; heavy work only through make heavy-run; container checks under mocker one stack at a time (limits in tests/uat docs and the uat-mocker-compose-gaps-20261106 context); no live cloud without owner approval; no explanatory comments; changelog fragment if user-facing.",
+  "prepared": {
+    "accepted_head": "bc85ff2e9c475cb55d4f9e6c06cae18c119f16c4",
+    "batch_id": "load-value-integrity",
+    "changed_files": [
+      "_project/specs/uat-framework.md",
+      "changelog.d/feat-load-value-integrity--mocker-doris-singlestore-stacks-start-20261107.json",
+      "docker/doris/docker-compose.yml",
+      "docker/singlestore/docker-compose.yml",
+      "docs/operations/local-platform-provisioning.tsv",
+      "make/help.mk",
+      "make/uat.mk",
+      "scripts/uat-bring-up/uat_bring_up.py",
+      "tests/uat/managed_runtime.py",
+      "tests/uat/mocker_launch.py",
+      "tests/uat/phases/execute.py",
+      "tests/uat/test_mocker_launch.py"
+    ],
+    "integration_head": "3ad5a260a056e93e9b079f5f66d16dd8baa4bdcc",
+    "integration_seq": 1,
+    "member_id": "mocker-doris-singlestore-stacks-start-20261107",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "e0d6ab2a29cc96153e2c959e9911cbcb8b990d8be2041b4a69da84103076f877",
+    "source_base": "766364b8a32f55ac19a09feca8dead5008a2fd80",
+    "source_revision": "bc85ff2e9c475cb55d4f9e6c06cae18c119f16c4",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-load-value-integrity--mocker-doris-singlestore-stacks-start-20261107",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/uat/test_cleanup.py",
+        "tests/uat/test_cli_dispatch.py",
+        "tests/uat/test_container_cleanup.py",
+        "tests/uat/test_declared_settings.py",
+        "tests/uat/test_docker_assets.py",
+        "tests/uat/test_docker_cleanup.py",
+        "tests/uat/test_mocker_launch.py",
+        "tests/uat/test_orchestrator.py",
+        "tests/uat/test_phases.py",
+        "tests/uat/test_report.py",
+        "tests/uat/test_sweep_durability.py",
+        "tests/unit/scripts/test_check_make_targets.py",
+        "tests/unit/scripts/test_pr_preflight_base.py",
+        "tests/unit/test_heavy_choke_points.py",
+        "tests/unit/test_standardized_test_commands.py"
+      ],
+      "review": {
+        "base_sha": "766364b8a32f55ac19a09feca8dead5008a2fd80",
+        "head_sha": "bc85ff2e9c475cb55d4f9e6c06cae18c119f16c4",
+        "head_tree": "28f6d78d4bdfbe76939820c9e166f6865c622f35",
+        "outcome": "clear",
+        "patch_digest": "b3409f8371e80daa060a76853c92e9f8",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "766364b8a32f55ac19a09feca8dead5008a2fd80"
+      },
+      "revision": "bc85ff2e9c475cb55d4f9e6c06cae18c119f16c4",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
@@ -33,6 +103,15 @@
       "generation": "c7f35bbac41d44419092fbead0fe83df",
       "op": "take",
       "op_id": "e68191dd3a304916acc81ea0c42b5512",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T15:14:25Z",
+      "client": "omp-coding-agent",
+      "generation": "c7f35bbac41d44419092fbead0fe83df",
+      "op": "prepare",
+      "op_id": "8a2881d2aa1249ae979d7d9bee89e318",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
