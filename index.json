@@ -4831,7 +4831,20 @@
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
-      "final_pr_history": [],
+      "final_pr": {
+        "head": "29f09b11c248e1b9d1073f3e637245f5369cab3d",
+        "node_id": "PR_kwDOQ7J64c8AAAABNltCCg",
+        "number": 4041,
+        "repository": "BenchBox-dev/BenchBox"
+      },
+      "final_pr_history": [
+        {
+          "at": "2026-11-07T23:42:41Z",
+          "head": "29f09b11c248e1b9d1073f3e637245f5369cab3d",
+          "op_id": "4df2b9f870ea43d9aa49177826a0bb23",
+          "previous_head": null
+        }
+      ],
       "integrated_members": {
         "core-docs-plan-fingerprint-variation-fields-20261107": {
           "accepted_head": "f56d5a5d5183be2b13115801921ae43edcc1c21c",
