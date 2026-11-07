@@ -14140,9 +14140,9 @@
     },
     "dlv2-evidence-reconcile": {
       "claim": {
-        "expires_at": "2026-11-08T01:56:03Z",
-        "generation": "0a1fd7d469ac46128274a8e7845b1fa3",
-        "renewals": 0,
+        "expires_at": "2026-11-08T01:56:28Z",
+        "generation": "584436029a32477aa6855beda653a24d",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:95654933fcc78b44d934f92f"
       },
       "needs": [],
