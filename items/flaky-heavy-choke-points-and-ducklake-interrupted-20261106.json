@@ -16,6 +16,54 @@
     "tests/unit/utils/format_converters/test_ducklake_converter.py",
     "rv2r-10-flaky-ci-investigation"
   ],
+  "prepared": {
+    "accepted_head": "e3191771f539a6844184d9c5af54f1b2d28b8ca0",
+    "batch_id": "ci-and-preflight-reliability",
+    "changed_files": [
+      "changelog.d/feat-ci-and-preflight-reliability--flaky-heavy-choke-points-and-ducklake-interrupted-20261106.json",
+      "tests/unit/test_heavy_choke_points.py",
+      "tests/unit/utils/format_converters/test_ducklake_converter.py"
+    ],
+    "integration_head": "0b6f6c414e9456d2fac3243c1f21204f09e34cb3",
+    "integration_seq": 4,
+    "member_id": "flaky-heavy-choke-points-and-ducklake-interrupted-20261106",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "56072a7c78fa331722f91b6f8eb451f154aa61a099fd859cbd2f92c02f36abdc",
+    "source_base": "824f955a1f527c674ea811574c63c8888106b690",
+    "source_revision": "e3191771f539a6844184d9c5af54f1b2d28b8ca0",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-ci-and-preflight-reliability--flaky-heavy-choke-points-and-ducklake-interrupted-20261106",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/unit/test_heavy_choke_points.py",
+        "tests/unit/utils/format_converters/test_ducklake_converter.py"
+      ],
+      "review": {
+        "base_sha": "824f955a1f527c674ea811574c63c8888106b690",
+        "head_sha": "e3191771f539a6844184d9c5af54f1b2d28b8ca0",
+        "head_tree": "d908a18fdd1992a8ee12add4274d6da0d11c03e5",
+        "outcome": "clear",
+        "patch_digest": "e016e9e78c3a5d33eb0121981e9bff3e",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "d605d4f38d0627aaef421df019caa2bde0a3afcc"
+      },
+      "revision": "e3191771f539a6844184d9c5af54f1b2d28b8ca0",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
@@ -56,6 +104,15 @@
       "generation": "d6e0c65036cd42d5a9e0ad6f2ef17924",
       "op": "take",
       "op_id": "7263824c1807481dbae782e9ad4f06e8",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T16:45:22Z",
+      "client": "omp-coding-agent",
+      "generation": "d6e0c65036cd42d5a9e0ad6f2ef17924",
+      "op": "prepare",
+      "op_id": "e18f26154b06465b8d54fbe5f6af795c",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
