@@ -296,7 +296,7 @@ def batch_mode_failures(
         failures.append(f"batch {batch_id} is not bound to PR #{evidence.pr_number} in the tracker")
     if fresh.get("integration_branch") != evidence.branch:
         failures.append("tracker integration branch does not match the current checkout")
-    failures.extend(check_batch_evidence(repo, batch, head, fresh, identity.base))
+    failures.extend(check_batch_evidence(repo, batch, head, fresh))
     return failures
 
 
@@ -1073,9 +1073,7 @@ def _check_evidence_receipts(repo: Path, members: list[str], receipts: dict, hea
     return failures
 
 
-def _check_evidence_acceptance(
-    repo: Path, evidence: dict, head: str, tracker: dict, receipts: dict, base: str | None = None
-) -> list[str]:
+def _check_evidence_acceptance(repo: Path, evidence: dict, head: str, tracker: dict, receipts: dict) -> list[str]:
     failures: list[str] = []
     acceptance = evidence.get("current_acceptance")
     if not isinstance(acceptance, dict):
@@ -1105,154 +1103,6 @@ def _check_evidence_acceptance(
             failures.append(f"current acceptance for member {member} ran outside the integration worktree")
         if row.get("suite") != verification.get("suite") or row.get("command") != verification.get("command"):
             failures.append(f"current acceptance for member {member} is not its own receipt verification")
-            continue
-        failures.extend(_check_dropped_paths(repo, member, row, verification.get("command"), head, base, tracker))
-    return failures
-
-
-TEST_RUN_ANCHORS = ("-q", "pytest")
-
-
-def _present_in_tree(repo: Path, revision: str, path: str) -> bool | None:
-    listed = subprocess.run(
-        ["git", "ls-tree", "--name-only", revision, "--", path],
-        cwd=repo,
-        check=False,
-        capture_output=True,
-        encoding="utf-8",
-        timeout=60,
-    )
-    if listed.returncode != 0:
-        return None
-    return bool(listed.stdout.strip())
-
-
-def _develop_anchors(repo: Path, tracker: dict) -> list[str] | None:
-    start_head = _revision(tracker.get("start_head"))
-    log = tracker.get("integration_log")
-    if start_head is None or not isinstance(log, list):
-        return None
-    anchors = [start_head]
-    for entry in log:
-        if not isinstance(entry, dict) or entry.get("kind") != "develop-merge":
-            continue
-        merge = _revision(entry.get("head"))
-        if merge is None:
-            return None
-        try:
-            parents = _git(repo, "rev-list", "--parents", "-n", "1", merge).split()[1:]
-        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
-            return None
-        if len(parents) != 2:
-            return None
-        anchors.append(parents[1])
-    return anchors
-
-
-def _trailing_test_run_start(command: list) -> int | None:
-    start = len(command)
-    while start > 0 and isinstance(command[start - 1], str) and command[start - 1].startswith("tests/"):
-        start -= 1
-    if start == len(command) or start == 0 or command[start - 1] not in TEST_RUN_ANCHORS:
-        return None
-    return start
-
-
-def _plainly_deleted(repo: Path, anchor: str, tip: str, path: str) -> bool:
-    logged = subprocess.run(
-        [
-            "git",
-            "log",
-            "--format=%H",
-            "--no-renames",
-            "--diff-filter=D",
-            f"{anchor}..{tip}",
-            "--",
-            f":(literal){path}",
-        ],
-        cwd=repo,
-        check=False,
-        capture_output=True,
-        encoding="utf-8",
-        timeout=120,
-    )
-    if logged.returncode != 0:
-        return False
-    commits = logged.stdout.split()
-    if not commits:
-        return False
-    for commit in commits:
-        shown = subprocess.run(
-            ["git", "show", "--format=", "--no-renames", "--name-status", "-z", "--diff-filter=A", commit],
-            cwd=repo,
-            check=False,
-            capture_output=True,
-            encoding="utf-8",
-            timeout=120,
-        )
-        if shown.returncode != 0:
-            return False
-        tokens = shown.stdout.split("\0")
-        if any(token.startswith("tests/") for token in tokens[1::2]):
-            return False
-    return True
-
-
-def _check_dropped_paths(
-    repo: Path, member: str, row: dict, recorded: object, head: str, base: str | None, tracker: dict
-) -> list[str]:
-    dropped = row.get("dropped_paths", [])
-    ran = row.get("ran_command", recorded)
-    if not isinstance(recorded, list) or not isinstance(dropped, list) or not isinstance(ran, list):
-        return [f"current acceptance for member {member} has malformed ran_command or dropped_paths"]
-    if not dropped:
-        if ran != recorded:
-            return [f"current acceptance for member {member} ran a command other than its receipt verification"]
-        return []
-    start = _trailing_test_run_start(recorded)
-    if (
-        start is None
-        or "pytest" not in recorded
-        or not all(isinstance(path, str) and path in recorded[start:] for path in dropped)
-        or ran != [*recorded[:start], *(arg for arg in recorded[start:] if arg not in dropped)]
-    ):
-        return [f"current acceptance for member {member} ran a command differing from its receipt beyond dropped paths"]
-    if not any(isinstance(arg, str) and arg.startswith("tests/") for arg in ran[start:]):
-        return [f"current acceptance for member {member} dropped every test path; refusing a run without tests"]
-    if not base:
-        return [f"current acceptance for member {member} dropped paths but the PR base revision is unavailable"]
-    anchors = _develop_anchors(repo, tracker)
-    if anchors is None:
-        return [f"current acceptance for member {member} dropped paths but the develop start or merges are unreadable"]
-    failures: list[str] = []
-    for path in dropped:
-        file_part = path.split("::", 1)[0]
-        seen = [_present_in_tree(repo, anchor, file_part) for anchor in anchors]
-        if None in seen:
-            failures.append(
-                f"current acceptance for member {member} dropped {path}, which could not be checked at the batch start"
-            )
-        elif not any(seen):
-            failures.append(
-                f"current acceptance for member {member} dropped {path}, which did not exist on develop "
-                "at the batch start or any merged develop parent"
-            )
-        else:
-            for anchor, present in zip(anchors, seen, strict=True):
-                if present and not _plainly_deleted(repo, anchor, base, file_part):
-                    failures.append(
-                        f"current acceptance for member {member} dropped {path}, which develop did not plainly "
-                        "delete (a rename, copy or unreadable diff)"
-                    )
-                    break
-        for label, revision in (("PR head", head), ("PR base", base)):
-            present = _present_in_tree(repo, revision, file_part)
-            if present is None:
-                failures.append(
-                    f"current acceptance for member {member} dropped {path}, which could not be checked at the {label}"
-                )
-            elif present:
-                failures.append(f"current acceptance for member {member} dropped {path}, which exists at the {label}")
     return failures
 
 
@@ -1461,7 +1311,7 @@ def _review_binding_failures(repo: Path, member: str, review: dict, receipt: dic
     return []
 
 
-def check_batch_evidence(repo: Path, evidence: dict, head: str, tracker: dict, base: str | None = None) -> list[str]:
+def check_batch_evidence(repo: Path, evidence: dict, head: str, tracker: dict) -> list[str]:
     if not isinstance(evidence, dict):
         return ["batch evidence must be an object"]
     if not isinstance(tracker, dict):
@@ -1471,7 +1321,7 @@ def check_batch_evidence(repo: Path, evidence: dict, head: str, tracker: dict, b
     failures = [] if members else ["tracker batch has no members"]
     failures.extend(_check_evidence_binding(repo, evidence, head, tracker))
     failures.extend(_check_evidence_receipts(repo, members, receipts, head))
-    failures.extend(_check_evidence_acceptance(repo, evidence, head, tracker, receipts, base))
+    failures.extend(_check_evidence_acceptance(repo, evidence, head, tracker, receipts))
     failures.extend(_check_evidence_changed_files(repo, evidence, head, tracker, receipts))
     failures.extend(_check_evidence_dropped_paths(repo, evidence, head, tracker, receipts))
     failures.extend(_check_evidence_reviews(repo, evidence, members, receipts))
