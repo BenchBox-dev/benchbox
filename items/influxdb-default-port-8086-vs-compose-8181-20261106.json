@@ -3,7 +3,7 @@
     "owner decision recorded on the default port per mode",
     "metadata, setup, adapter and compose agree"
   ],
-  "context": "Not part of batch load-path-live-fixes by parent ruling.",
+  "context": "Not part of batch load-path-live-fixes by parent ruling.\n\n2026-11-06 owner decision (Joe, answering a choice dialog): \"8181 for core, 443 for cloud\". The InfluxDB core-mode default port becomes 8181 and the cloud-mode default 443. InfluxDB 2 users pass port=8086. Agent-actionable now.",
   "description": "Found by live verification of #3952 and split out of influxdb-load-ignores-compressed-tsbs-files-20261106. benchbox/platforms/influxdb/metadata.py, setup.py and the platform option spec default to 8086 (InfluxDB 2's port) while docker/influxdb/docker-compose.yml and the adapter's default_service_port use 8181 (InfluxDB 3), so `--platform-option port=8181` is needed against the repo's stack. Changing the default affects InfluxDB 2 users and needs an owner decision on whether the core/cloud modes should default differently (for example 8181 for core, 443 for cloud) before any edit.",
   "links": [
     "benchbox/platforms/influxdb/metadata.py",
@@ -16,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "7fea8736e081468a818877cb0602a425",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T01:06:43Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5bd222f524b24fe9880485da165543aa",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
