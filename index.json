@@ -33838,6 +33838,13 @@
       "status": "done",
       "title": "BenchBox: make the retirement checker exercise the wrapper and fix the baseline's workaround paths"
     },
+    "sqlglot-fork-controller-merge-waits-for-daily-run-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Fork upstream controller merges a refresh PR only on its next daily run"
+    },
     "sqlglot-fork-d1-delete-wrapper-fixups": {
       "claim": null,
       "needs": [

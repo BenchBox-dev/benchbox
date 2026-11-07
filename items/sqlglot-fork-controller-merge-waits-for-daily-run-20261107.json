@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "A refresh PR whose required checks pass is merged by the controller without a manual dispatch or waiting for the next schedule.",
+    "The triggered path re-reads live state and refuses a moved head, changed marker or failing check, with tests in tests/test_downstream_controller.py.",
+    "BENCHBOX_UPSTREAM_ENABLED unset or a dry run performs no merge."
+  ],
+  "description": "Problem. In BenchBox-dev/benchbox-sqlglot, .github/workflows/benchbox-upstream.yml (downstream/controller.py) runs daily at 05:41 UTC. One run opens the refresh PR; merging it after the fork's 20 required checks pass needs another controller run. Observed for v30.30.0: run 42323862808 opened fork PR #85; its checks passed about 10 minutes later; the merge happened only because run 42324868577 was dispatched by hand. Unattended, the merge waits up to 24 h, and the core adoption (see sqlglot-delivery-arm-waits-for-daily-run-20261107) waits another day. Fork-repository work: changes land through a fork PR, not a BenchBox PR.\n\nChange. Trigger the controller's merge step when the refresh PR's required checks complete (for example workflow_run on the fork's required workflows, filtered to refresh/upstream-* heads), keeping the read-only prepare job, the App-token-only publish job, live re-reads before every action and the kill switch.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-sqlglot/pull/85",
+    "https://github.com/BenchBox-dev/benchbox-sqlglot/actions/runs/42323862808",
+    "https://github.com/BenchBox-dev/benchbox-sqlglot/actions/runs/42324868577"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f",
+      "at": "2026-11-07T14:55:29Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "4b61af52d7c14d2d80a0dd89c62efb89",
+      "session_id": "2f41579dd2194a049659596cdd9a4f3d"
+    }
+  ]
+}
