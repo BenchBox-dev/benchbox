@@ -9030,10 +9030,15 @@
       "title": "Document the integration batch loop in AGENTS.md and docs/agent, keeping it opt-in until the pilot passes"
     },
     "batch-loop-e2e-review-binding-failures-20261106": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T16:37:48Z",
+        "generation": "24e5f38520de4a10b64e0bd4f58ead88",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Restore the batch-loop end-to-end tests broken by the theseus_cli review binding"
     },
     "batch-loop-pilot-20261101": {
