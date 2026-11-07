@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "UAT bring-up and the managed UAT execute phase now verify inside each started container that the compose entrypoint, memory limit, ulimits and platform were applied, and fail with the dropped setting named instead of reporting a stack healthy when the container engine ignored it."
+    }
+  ]
+}
