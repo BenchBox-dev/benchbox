@@ -854,7 +854,9 @@ def test_withdraw_refuses_an_unbound_pr(world: World, capsys: pytest.CaptureFixt
 
 def test_arm_refuses_a_withdrawn_pr(world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str]) -> None:
     assert remote_closeout.withdraw("7", run=ready_pr) == 0
-    assert "the PR is withdrawn; re-arm it with make pr-landing-remote-ready" in _refusal(world, ready_pr, capsys)
+    assert "the PR is withdrawn; re-arm it with make pr-landing-remote ACTION=ready" in _refusal(
+        world, ready_pr, capsys
+    )
 
 
 def test_arm_refuses_a_pr_already_armed_at_another_head(
@@ -865,7 +867,9 @@ def test_arm_refuses_a_pr_already_armed_at_another_head(
     ready_pr.set_head(revised)
     assert store(tmp_path, ready_pr, review(world, head=revised), revised) == 0
     assert arm(world, ready_pr, head=revised) == 2
-    assert "the PR was already armed; withdraw it with make pr-landing-remote-withdraw" in capsys.readouterr().err
+    assert "the PR was already armed; withdraw it with make pr-landing-remote ACTION=withdraw" in (
+        capsys.readouterr().err
+    )
     assert ready_pr.arms() == [merge_command(world.head)]
 
 
@@ -993,7 +997,7 @@ def test_a_head_that_is_not_a_full_lowercase_sha_is_refused_before_any_command(
     assert "full lowercase commit SHA" in capsys.readouterr().err
 
 
-def _make_env(tmp_path: Path, target: str, *assignments: str) -> dict[str, str]:
+def _make_run(tmp_path: Path, target: str, *assignments: str) -> subprocess.CompletedProcess[str]:
     shim = tmp_path / "uv"
     shim.write_text(
         '#!/bin/sh\necho "$@" > "$RECORD_DIR/argv"\n'
@@ -1013,10 +1017,11 @@ def _make_env(tmp_path: Path, target: str, *assignments: str) -> dict[str, str]:
         "MODEL",
         "DRY_RUN",
         "RESUME",
+        "ACTION",
     }
     env = {k: v for k, v in os.environ.items() if k not in names and not k.startswith("REMOTE_CLOSEOUT_")}
     env.update({"PATH": f"{tmp_path}{os.pathsep}{env['PATH']}", "RECORD_DIR": str(tmp_path)})
-    result = subprocess.run(
+    return subprocess.run(
         ["make", "--no-print-directory", target, *assignments],
         cwd=ROOT,
         env=env,
@@ -1025,6 +1030,10 @@ def _make_env(tmp_path: Path, target: str, *assignments: str) -> dict[str, str]:
         timeout=60,
         check=False,
     )
+
+
+def _make_env(tmp_path: Path, target: str, *assignments: str) -> dict[str, str]:
+    result = _make_run(tmp_path, target, *assignments)
     assert result.returncode == 0, result.stderr
     pairs = [line.split("=", 1) for line in (tmp_path / "env").read_text(encoding="utf-8").splitlines()]
     return dict(pairs)
@@ -1043,7 +1052,7 @@ def test_the_make_wrapper_hands_values_over_untouched_and_runs_no_shell_metachar
 @skip_on_windows
 def test_the_review_target_hands_its_options_to_the_review_script(tmp_path: Path) -> None:
     options = ("PR=7", f"HEAD={OTHER_SHA}", "MODEL=gpt-x", "REVIEWER=claude", "DRY_RUN=1", "RESUME=1")
-    env = _make_env(tmp_path, "pr-landing-remote-review", *options)
+    env = _make_env(tmp_path, "pr-landing-remote", "ACTION=review", *options)
     argv = (tmp_path / "argv").read_text(encoding="utf-8").split()
     assert argv == ["run", "--no-project", "--", "python", "scripts/remote_review.py"]
     assert env["REMOTE_CLOSEOUT_HEAD"] == OTHER_SHA
@@ -1051,6 +1060,34 @@ def test_the_review_target_hands_its_options_to_the_review_script(tmp_path: Path
     assert env["REMOTE_CLOSEOUT_REVIEWER"] == "claude"
     assert env["REMOTE_CLOSEOUT_DRY_RUN"] == env["REMOTE_CLOSEOUT_RESUME"] == "1"
     assert env["PYTHONDONTWRITEBYTECODE"] == "1"
+
+
+@skip_on_windows
+@pytest.mark.parametrize(
+    ("action", "script"),
+    [
+        ("bind", ["scripts/remote_closeout.py", "bind"]),
+        ("record", ["scripts/remote_closeout.py", "record"]),
+        ("manifest", ["scripts/remote_closeout.py", "manifest"]),
+        ("withdraw", ["scripts/remote_closeout.py", "withdraw"]),
+        ("review", ["scripts/remote_review.py"]),
+        ("ready", ["scripts/remote_closeout.py", "ready"]),
+    ],
+)
+def test_the_remote_target_runs_the_script_its_action_names(tmp_path: Path, action: str, script: list[str]) -> None:
+    env = _make_env(tmp_path, "pr-landing-remote", f"ACTION={action}", "PR=7")
+    assert (tmp_path / "argv").read_text(encoding="utf-8").split() == ["run", "--no-project", "--", "python", *script]
+    assert env["REMOTE_CLOSEOUT_ACTION"] == action
+
+
+@skip_on_windows
+def test_the_remote_target_refuses_an_unknown_action_before_running_anything(tmp_path: Path) -> None:
+    marker = tmp_path / "ran"
+    result = _make_run(tmp_path, "pr-landing-remote", f"ACTION=bind; touch {marker}", "PR=7")
+    assert result.returncode == 2
+    assert "ACTION must be bind, record, manifest, review, withdraw or ready" in result.stderr
+    assert not marker.exists()
+    assert not (tmp_path / "argv").exists()
 
 
 FAKE_CODEX = """
@@ -1814,7 +1851,7 @@ def test_review_waits_only_a_bounded_time_for_the_review_store_lock(
     assert [line for line in err.splitlines() if held in line] == [
         f"{held}; waiting again (1 of 3)",
         f"{held}; waiting again (2 of 3)",
-        f"pr-landing-remote-review: refusing: {held}, 3 time(s)",
+        f"pr-landing-remote ACTION=review: refusing: {held}, 3 time(s)",
     ]
 
 
@@ -1908,7 +1945,7 @@ def test_review_refuses_to_store_when_the_pr_was_armed_while_the_reviewer_ran(
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr(remote_review, "_run_reviewer", armed_meanwhile)
         err = _review_refusal(world, bound, capsys)
-    assert "PR #7 was armed while the reviewer ran; withdraw it with make pr-landing-remote-withdraw" in err
+    assert "PR #7 was armed while the reviewer ran; withdraw it with make pr-landing-remote ACTION=withdraw" in err
 
 
 def test_claude_is_an_explicit_backend_with_the_same_record_and_publication_pipeline(

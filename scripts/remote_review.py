@@ -140,7 +140,7 @@ def _kill_group(pid: int) -> None:
 
 
 def _warn(message: str) -> None:
-    print(f"pr-landing-remote-review: warning: {message}", file=sys.stderr)
+    print(f"pr-landing-remote ACTION=review: warning: {message}", file=sys.stderr)
 
 
 def _drain(proc: subprocess.Popen) -> None:
@@ -894,7 +894,8 @@ def _store(
             raise Refused(f"the binding of PR #{number} changed while the reviewer ran")
         if len(state.get("arms") or []) > len(snapshot.get("arms") or []):
             raise Refused(
-                f"PR #{number} was armed while the reviewer ran; withdraw it with make pr-landing-remote-withdraw, "
+                f"PR #{number} was armed while the reviewer ran; withdraw it with "
+                "make pr-landing-remote ACTION=withdraw, "
                 "then run the review again"
             )
         _review_view(run, repo, number, state["binding"], head)
@@ -1058,13 +1059,13 @@ def review(
     reviewer: str = "codex",
 ) -> int:
     return closeout._guarded(
-        "pr-landing-remote-review",
+        "pr-landing-remote ACTION=review",
         lambda: _review(pr, head, builder_head, model, dry_run, repo, run, codex, reviewer, checkout),
     )
 
 
 def resume(pr: str | None, repo: str = closeout.REPOSITORY, run: Runner = closeout.live_run, flag: str = "1") -> int:
-    return closeout._guarded("pr-landing-remote-review", lambda: _resume(pr, flag, repo, run))
+    return closeout._guarded("pr-landing-remote ACTION=review", lambda: _resume(pr, flag, repo, run))
 
 
 def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None) -> int:

@@ -28,7 +28,7 @@ must be an ancestor of `HEAD`.
 
 Other tools:
 
-- `make comment-policy-strict` scans the whole repository using your branch's
+- `make comment-policy-scan COMMENT_POLICY_MODE=strict` scans the whole repository using your branch's
   exceptions and the base-trusted ownership manifest, so vendored and
   externally owned paths are not reported as first-party findings. The
   manifest comes from the merge-base with `origin/develop`, which is `HEAD`
@@ -36,7 +36,7 @@ Other tools:
   derived. An explicit `--ownership-base` must be an ancestor of the
   merge-base, and is rejected when `origin/develop` is unavailable to anchor
   it. Use it to diagnose; CI does not run it.
-- `make comment-policy-report` lists every violation, including old ones. It
+- `make comment-policy-scan COMMENT_POLICY_MODE=report` lists every violation, including old ones. It
   fails only if configuration or parsing fails.
 - `make comment-policy-dead-exceptions` lists every registered exception with no
   current finding at its path and digest, or whose path no longer exists, or
