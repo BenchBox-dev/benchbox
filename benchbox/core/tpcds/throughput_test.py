@@ -23,6 +23,7 @@ from benchbox.core.validation.query_validation import (
     reset_stream_seed_override_warnings,
     set_reference_seed_context,
 )
+from benchbox.platforms.base.arrow_result import ConversionClock
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 
@@ -381,6 +382,7 @@ class TPCDSThroughputTest:
         variant = stream_query.variant
         query_display_id = f"{query_id}{variant}" if variant else str(query_id)
         query_start = mono_time()
+        conversion_clock = ConversionClock().start()
         query_result = {
             "query_id": query_display_id,
             "position": position + 1,
@@ -412,7 +414,7 @@ class TPCDSThroughputTest:
 
             query_result.update(
                 {
-                    "execution_time_seconds": elapsed_seconds(query_start),
+                    "execution_time_seconds": max(0.0, elapsed_seconds(query_start) - conversion_clock.finish()),
                     "success": True,
                     "result_count": row_count,
                 }

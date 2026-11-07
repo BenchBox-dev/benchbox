@@ -29,6 +29,7 @@ from benchbox.core.validation.query_validation import (
     clear_reference_seed_context,
     set_reference_seed_context,
 )
+from benchbox.platforms.base.arrow_result import ConversionClock
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 
@@ -544,6 +545,7 @@ class TPCHThroughputTest:
                     break
 
                 query_start = mono_time()
+                conversion_clock = ConversionClock().start()
                 query_result: dict[str, Any] = {
                     "query_id": query_id,
                     "position": position + 1,
@@ -583,7 +585,7 @@ class TPCHThroughputTest:
                             self.captured_items.append((label, query_text))
 
                     result_count = cursor_result_count(cursor)
-                    execution_time = elapsed_seconds(query_start)
+                    execution_time = max(0.0, elapsed_seconds(query_start) - conversion_clock.finish())
 
                     query_result.update(
                         {

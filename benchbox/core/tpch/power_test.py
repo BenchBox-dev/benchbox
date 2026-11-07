@@ -27,6 +27,7 @@ from benchbox.core.validation.query_validation import (
     clear_reference_seed_context,
     set_reference_seed_context,
 )
+from benchbox.platforms.base.arrow_result import ConversionClock
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 
@@ -351,6 +352,7 @@ class TPCHPowerTest:
 
                 label = f"Position_{position + 1}_Query_{query_id}"
                 query_start = mono_time()
+                conversion_clock = ConversionClock().start()
                 try:
                     if hasattr(self.connection, "set_query_context"):
                         self.connection.set_query_context(query_id, stream_id=self.config.stream_id)
@@ -376,7 +378,7 @@ class TPCHPowerTest:
                     clear_reference_seed_context()
                     self.captured_items.append((label, query_text))
 
-                execution_time = elapsed_seconds(query_start)
+                execution_time = max(0.0, elapsed_seconds(query_start) - conversion_clock.finish())
 
                 query_result.update(
                     {

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator, Mapping, Sequence
+from contextvars import ContextVar, Token
 from dataclasses import dataclass
 from typing import Any
 
 from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW, FETCH_MODE_ROWS
+from benchbox.utils.clock import elapsed_seconds, mono_time
 
 Row = tuple[Any, ...]
 RowSource = Callable[[], Sequence[Sequence[Any]]]
@@ -25,6 +27,28 @@ def receive_arrow(source: Any) -> Any:
     if not batches:
         raise ValueError("an Arrow result needs at least one record batch to carry its schema")
     return pa.Table.from_batches(batches)
+
+
+_ACTIVE_CLOCK: ContextVar[ConversionClock | None] = ContextVar("arrow_conversion_clock", default=None)
+
+
+class ConversionClock:
+    def __init__(self) -> None:
+        self.seconds = 0.0
+        self._token: Token[ConversionClock | None] | None = None
+
+    def start(self) -> ConversionClock:
+        self._token = _ACTIVE_CLOCK.set(self)
+        return self
+
+    def stop(self) -> None:
+        if self._token is not None:
+            _ACTIVE_CLOCK.reset(self._token)
+            self._token = None
+
+    def finish(self) -> float:
+        self.stop()
+        return self.seconds
 
 
 class ArrowRows(Sequence):
@@ -50,6 +74,7 @@ class ArrowRows(Sequence):
 
     def _materialize(self) -> list[Row]:
         if self._rows is None:
+            started = mono_time()
             columns = [
                 [self._convert(index, value) for value in column.to_pylist()]
                 if index in self._converters
@@ -57,6 +82,9 @@ class ArrowRows(Sequence):
                 for index, column in enumerate(self._table.columns)
             ]
             self._rows = list(zip(*columns)) if columns else [()] * self._table.num_rows
+            clock = _ACTIVE_CLOCK.get()
+            if clock is not None:
+                clock.seconds += elapsed_seconds(started)
         return self._rows
 
     def __getitem__(self, index: Any) -> Any:

@@ -11,8 +11,15 @@ from benchbox.core.hooks.platform_hooks import PlatformHookRegistry, PlatformOpt
 from benchbox.core.result_receipt import cursor_result_count
 from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW, FETCH_MODE_ROWS
 from benchbox.platforms.base import sql_execution
-from benchbox.platforms.base.arrow_result import ArrowRows, FetchedResult, fetch_result, receive_arrow
+from benchbox.platforms.base.arrow_result import (
+    ArrowRows,
+    ConversionClock,
+    FetchedResult,
+    fetch_result,
+    receive_arrow,
+)
 from benchbox.platforms.base.sql_execution import execute_sql_query
+from benchbox.utils.clock import elapsed_seconds, mono_time
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -219,6 +226,30 @@ class TestArrowRows:
         )
         assert fetched.first_row == (5, "0")
         assert fetched.row_count == 1
+
+
+class TestConversionClock:
+    def test_interval_excludes_conversion_run_while_the_clock_is_active(self):
+        rows = ArrowRows(pa.Table.from_batches([_batch(0, 2)]))
+
+        def slow(value: int) -> int:
+            time.sleep(CONVERSION_SECONDS)
+            return value
+
+        rows.convert_columns({0: slow})
+        clock = ConversionClock().start()
+        started = mono_time()
+        time.sleep(RECEIPT_SECONDS)
+        list(rows)
+        interval = elapsed_seconds(started) - clock.finish()
+        assert clock.seconds >= CONVERSION_SECONDS
+        assert RECEIPT_SECONDS <= interval < CONVERSION_SECONDS
+
+    def test_conversion_after_the_clock_stops_is_not_counted(self):
+        clock = ConversionClock().start()
+        clock.finish()
+        list(ArrowRows(pa.Table.from_batches([_batch(0, 2)])))
+        assert clock.seconds == 0.0
 
 
 class CountingCursor:
