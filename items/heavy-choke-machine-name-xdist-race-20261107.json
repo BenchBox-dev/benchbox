@@ -3,6 +3,7 @@
     "Each test uses a machine name unique to the test (for example derived from tmp_path), so concurrent workers never match each other in the in-use scan.",
     "The four tests pass repeatedly under pytest -n auto."
   ],
+  "context": "Fix is included in PR #4022 commit 5f358660623fdfb9acacb147f9c0c917277d27a0: default machine name includes process PID and tmp_path.name, preserving explicit STUB_MACHINE overrides and real foreign-process safety scan. Two runs of the whole file under -n 4 passed 44 tests each; Linux serial smoke with standardized Make tests passed 89. Awaiting merge of #4022; do not mark complete before actual merge.",
   "description": "tests/unit/test_heavy_choke_points.py runs scripts/linux_machine_run.sh against a fake machine named \"m\". benchbox/utils/linux_machine.py:455 leaves the machine running when it finds another live `linux_machine_run.sh m` or `container machine run ... m` process on the host. Under pytest-xdist, another worker running the same tests matches, so the stop is skipped and the tests fail with \"left running: in use by pid N\". Observed on PR #4022 CI run 42382785972 job 128434087591 (2026-11-07): test_a_guest_that_powers_off_is_stopped_without_machine_stop, test_the_machine_is_stopped_after_a_run_whatever_state_it_was_in[running|stopped], test_a_zero_exit_stop_that_leaves_the_machine_running_is_still_an_error. The tests pass serially.",
   "sessions": [
     {
@@ -11,6 +12,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "f493b2fe22b342f88a67ccde93ff192a",
+      "session_id": "c925cef22c8f4d6fa75a3c3995e6df7d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:95654933fcc78b44d934f92f",
+      "at": "2026-11-07T16:58:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "430379306cb64523b87fc02baa631c57",
       "session_id": "c925cef22c8f4d6fa75a3c3995e6df7d"
     }
   ]
