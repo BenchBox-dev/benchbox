@@ -26881,9 +26881,9 @@
     },
     "release-canary-green-after-0-5-0": {
       "claim": {
-        "expires_at": "2026-11-08T02:58:39Z",
+        "expires_at": "2026-11-08T03:20:51Z",
         "generation": "df8c765710d64dffb1d418f418358010",
-        "renewals": 1,
+        "renewals": 2,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e8f787e6eb5c45e15cae7bab"
       },
       "needs": [],
