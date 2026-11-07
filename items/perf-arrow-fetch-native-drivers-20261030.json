@@ -6,6 +6,13 @@
     "Snowflake outcome recorded: works under pandas 3, or excluded with reason.",
     "Before and after measured query time for the largest TPC-H result on DuckDB at SF1 are recorded in the PR with fetch_mode noted; no threshold is asserted."
   ],
+  "batch": {
+    "batch_id": "arrow-result-fetch-2",
+    "implementation_dependencies": [
+      "perf-arrow-aware-result-capture-20261030"
+    ],
+    "member_id": "perf-arrow-fetch-native-drivers-20261030"
+  },
   "context": "2026-11-03: the fetch-timing contract is decided in fetch-timing-contract-decision-20261103 and implemented by perf-arrow-aware-result-capture-20261030. Under the recommended option, full Arrow receipt (including draining streaming readers) stays inside the query timer and fetch_mode is recorded; Arrow-to-rows conversion for digests stays outside it. Re-read the recorded decision before starting; if the owner chose differently, update this item's acceptance. Origin: root-cause analysis of RF1 timing and its adversarial review.\n\nGuardrails (added 2026-11-03): no live-cloud runs (Databricks, Athena, BigQuery, Snowflake, ClickHouse Cloud, MotherDuck) without owner approval quoted in context; an adapter without a passing digest-parity run keeps rows as its default fetch; heavy runs only through make heavy-run or a lock-taking entry point; no explanatory comments in source (make comment-policy-check); changelog.d fragment required; re-read cited symbols before editing, since line numbers drift.",
   "description": "Replace fetchall/list() with Arrow paths in the current drivers (versions from uv.lock): DuckDB 1.5.5 duckdb.py:1049 and MotherDuck motherduck.py:222 — use to_arrow_table/to_arrow_reader (fetch_arrow_table is deprecated); Databricks databricks/adapter.py:2486 (fetchall_arrow); GizmoSQL gizmosql.py:1101 goes through base/sql_execution.py:84 fetchall — use fetch_arrow_table (wrapper at gizmosql.py:310 is only used for schema); Athena athena.py:961 (pyathena 3.36 ArrowCursor / as_arrow); ClickHouse Cloud clickhouse/client.py:257-269 (clickhouse-connect 1.8 query_arrow); chDB clickhouse/client.py:85-107 (keep pa.Table, skip to_pandas); InfluxDB influxdb/client.py:186-196 FlightSQL path only (per-cell as_py; the influxdb3 path at :166-177 is column-wise already). BigQuery bigquery.py:1561: to_arrow works but needs google-cloud-bigquery-storage (not locked) to beat REST; add the bqstorage extra. Snowflake snowflake.py:1323,1334: fetch_arrow_all is gated on the connector's pandas extra, which pins pandas<3 while the project needs pandas>=3 — verify it works or drop Snowflake from this item. Also cover CursorValidationQueryExecutionMixin (core/benchmark_mixins.py:182-189), which calls fetchall inside the timer for Presto/Trino, Redshift and Firebolt; those drivers have no Arrow path, so at minimum avoid double materialization.",
   "sessions": [
@@ -55,6 +62,14 @@
       "client": "omp-coding-agent",
       "op": "abort",
       "op_id": "e3046b002d294079815212d9d795a781",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T01:19:44Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "97f3e05d7b644bc7a873cc595eda5697",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
