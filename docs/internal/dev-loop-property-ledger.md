@@ -143,7 +143,6 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `seed-corpus.yml` | product-safety | Corpus seeding |
 | `site-inputs.yml` | product-safety | Versioned site-inputs bundle build, attestation, artifact upload and site dispatch |
 | `soundness-merge-digest.yml` | product-safety | Post-merge soundness review digest |
-| `sqlglot-fork-refresh.yml` | tooling | Nightly SQLGlot fork refresh: an unprivileged job refreshes a fork checkout onto a new upstream tag, a job holding only the fork token pushes it and opens the fork pull request, and an issue-only job raises or closes the follow-up issue; it never merges or releases |
 | `sqlglot-delivery.yml` | product-safety | Daily SQLGlot delivery consumer: a read-only job plans and prepares the adoption from the fork's verified delivery, and a separate job holding the App token publishes one automation pull request and arms it through the normal arming checks; gated by a kill switch and a dry-run default |
 | `submission-validator-drift-check.yml` | product-safety | Submission validator sync |
 | `sync-results-data-to-published.yml` | product-safety | Corpus trust boundary sync |
@@ -174,7 +173,6 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_oracle_gate_workflow.py` | product-safety | Trusted triggers, develop-only checkout, single per-PR concurrency group, App-only posting and no other workflow posting the gate context |
 | `test_oracle_review_workflow.py` | product-safety | The notification-only shape of the oracle-review workflow: edited and dismissed review triggers, empty permissions, one `review-event` job, no checkout, secrets or tools |
 | `test_oracle_verdict_workflow.py` | product-safety | Oracle review triggers, guards, the single review job's step order and secret scoping, and App-only posting |
-| `test_sqlglot_fork_refresh_workflow.py` | tooling | The refresh workflow checks out no credentials, scopes the fork token to the push step, grants issue write only to the follow-up job and pins every action |
 | `test_sqlglot_delivery_workflow.py` | product-safety | The delivery workflow's read-only credential-free preparation job, App token confined to the publish job, kill switch and dry-run gating, repository and branch guard, and pinned actions |
 | `test_t2_partition_workflow.py` | product-safety | Complete medium selection, correctness gate conservation, and binary framing placement |
 | `test_comment_policy_nightly_workflow.py` | tooling | Nightly comment-policy workflow triggers, develop checkout, read-only permissions, whole-tree launcher call and shared action pins |
@@ -277,7 +275,6 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_soundness_merge_digest.py` | product-safety | Post-merge soundness review digest |
 | `test_sqlglot_generator.py` | product-safety |
 | `test_sqlglot_generator_known_failures.py` | product-safety |
-| `test_sqlglot_fork_refresh.py` | tooling |
 | `test_sqlglot_delivery.py` | product-safety | Delivery planning, trust-root refusals, suppression from the receipt alone, one-active-pull-request reconciliation, ownership proof by recorded commit and body-edit history, and live re-validation before arming |
 | `test_sqlite_extract_repro.py` | product-safety |
 | `test_submission_workflow_waiver.py` | product-safety |
@@ -345,7 +342,6 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `changelog_fragments.py` | tooling | Changelog fragment validation, rendering, required-entry decision and Unreleased guard |
 | `check_sqlglot_upstream_freshness.py` | product-safety | Bundled SQLGlot freshness release gate |
 | `check_sqlglot_advisories.py` | product-safety | Bundled SQLGlot published-advisory release gate |
-| `sqlglot_fork_refresh.py` | tooling | Decides whether a new upstream tag refreshes mechanically, pushes the refresh, and syncs the follow-up issue |
 | `sqlglot_delivery.py` | product-safety | Consumes the fork's verified runtime deliveries: plans against the reviewed trust root, prepares the adoption commit, publishes one automation-owned pull request and arms it only through the existing arming rules |
 | `generate_landing_quickstarts.py` | product-safety | Landing quickstart generation |
 | `site_inputs.py` | product-safety | Site-inputs bundle build and verify |

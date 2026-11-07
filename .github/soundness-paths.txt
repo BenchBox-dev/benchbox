@@ -145,13 +145,11 @@ prefix	scripts/sql_execution_gate/
 prefix	tests/unit/sql_compat/
 file	scripts/sync_sqlglot_runtime.py
 file	scripts/check_sqlglot_repro_retirement.py
-file	scripts/sqlglot_fork_diff.py
 file	Makefile
 prefix	make/
 file	tests/unit/scripts/test_sql_execution_gate.py
 file	tests/unit/scripts/test_sync_sqlglot_runtime.py
 file	tests/unit/scripts/test_check_sqlglot_repro_retirement.py
-file	tests/unit/scripts/test_sqlglot_fork_diff.py
 file	.github/sqlglot-delivery.json
 file	scripts/sqlglot_delivery.py
 file	.github/workflows/sqlglot-delivery.yml
