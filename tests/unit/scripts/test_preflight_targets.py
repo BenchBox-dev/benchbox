@@ -496,7 +496,7 @@ def _with_ledger_test(repo: Path, *files: str) -> None:
         ".github/workflows/batch-loop-e2e.yml",
         "scripts/new_tool.py",
         "_project/scripts/new_audit.py",
-        "_project/scripts/data/table.json",
+        "_project/scripts/pyproject.toml",
         "tests/unit/workflows/test_new_workflow.py",
         "tests/unit/scripts/nested/test_new_script.py",
         "tests/unit/release/test_new_release.py",
