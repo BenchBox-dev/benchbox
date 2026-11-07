@@ -10176,10 +10176,15 @@
       "title": "Remove test-file paths from the unreleased CHANGELOG entries"
     },
     "chdb-4x-engine-load-verification-20261006": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T15:10:00Z",
+        "generation": "87b2b4a2515e491a8bd75ea94e629fac",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "chDB 4.x timestamp/hang fix never verified by loading the 4.x engine"
     },
     "chdb-4x-native-load-and-old-engine-hang-20261005": {
