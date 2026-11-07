@@ -4,6 +4,11 @@
     "Fix the cause, or mark with a reason and a tracked removal condition; never a silent skip.",
     "Run each test 50 times in CI conditions (or a loop) with no failures after the change."
   ],
+  "batch": {
+    "batch_id": "ci-and-preflight-reliability",
+    "implementation_dependencies": [],
+    "member_id": "flaky-heavy-choke-points-and-ducklake-interrupted-20261106"
+  },
   "context": "May overlap rv2r-10-flaky-ci-investigation (open); check it first and merge scope if it already covers these tests. Verification rubric: failing-before reproduction or loop evidence; fix; repeat-run proof.\n\n2026-11-06/07 recurrences: test_heavy_choke_points failures blocked CI on #3979 (machine-stop ordering, three cases), on #3981 (ubuntu, three failures), on #4012 (py3.14, with heavy_watchdog) and on #4016. Each cleared on rerun.",
   "description": "Two unrelated tests failed once in CI and passed on rerun, each blocking an armed PR or turning develop red until rerun by hand. (1) tests/unit/test_heavy_choke_points.py: test_a_signal_during_the_run_exits_with_its_conventional_code_and_still_stops_the_machine[TERM-143] and test_the_run_status_survives_the_stop failed on ubuntu-latest Python 3.14 in PR #3977. (2) tests/unit/utils/format_converters/test_ducklake_converter.py::TestDuckLakeConversion::test_overwrite_existing_table failed on trunk run 41239086046 with 'Failed to load DuckLake extension ... Query interrupted' and made pr-arm refuse because develop was red.",
   "links": [
@@ -34,6 +39,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "b72390ce9a7540d69f5db665f15e418d",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T14:25:03Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "45b49dd109574593918c22464eae48b9",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
