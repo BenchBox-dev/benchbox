@@ -25105,12 +25105,17 @@
       "title": "Rebuild the perf-smoke baseline after power-test query generation leaves the timer"
     },
     "perf-spark-arrow-collect-20261030": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T09:35:39Z",
+        "generation": "2943ee6167484863a29088bba2cc0991",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [
         "perf-arrow-aware-result-capture-20261030"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Use Arrow collect for Spark-family adapters"
     },
     "perf-starrocks-parquet-load-20261030": {
