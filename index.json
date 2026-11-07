@@ -36339,6 +36339,13 @@
       "status": "done",
       "title": "Prove TPC-H refresh functions on DuckLake or stop declaring support"
     },
+    "tpch-parity-test-skips-without-cached-extension-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "The 22-query TPC-H rows-against-Arrow parity test silently skips under the isolated test HOME when the DuckDB tpch extension is not cached"
+    },
     "tpch-power-measured-iterations-stream-and-validation": {
       "claim": null,
       "needs": [],
