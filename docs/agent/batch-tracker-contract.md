@@ -1,8 +1,8 @@
 # Batch tracker contract (BenchBox side)
 
-BenchBox uses todo-db as the canonical tracker. This document records the
+BenchBox uses tractable as the canonical tracker. This document records the
 consumer boundary for serial and prepared feature batches; the implementation
-and API contract live in todo-db (ADR 0012, batch v2), not in BenchBox or its
+and API contract live in tractable (ADR 0012, batch v2), not in BenchBox or its
 generated skill mirrors. The loop that uses this contract is in
 [`batch-feature-delivery.md`](batch-feature-delivery.md).
 
@@ -72,7 +72,7 @@ cannot be edited, and invalidating edits are refused once any member is `done`.
 
 The ledger under `.todo-batch/<batch>/` is the leader's rebuildable cache. It
 holds the owner generation, which no tool serves back. `show_batch` and
-`todo-db batch show` (read-only; page every section named in `data.sections`)
+`tractable batch show` (read-only; page every section named in `data.sections`)
 are the authoritative reads.
 
 ## Recovery
@@ -82,7 +82,7 @@ are the authoritative reads.
   member claim and keeps valid receipts. With the optional all-or-nothing
   `expected_integration_worktree`, `expected_integration_head` and
   `integration_worktree` it also relocates the integration checkout (runtime
-  0.15.0 or later advertises `features.integration_worktree_relocation`);
+  1.0.0 or later advertises `features.integration_worktree_relocation`);
   receipts are never rewritten and old-location final evidence is refused.
 - **Abort:** the owner releases every member claim and calls `abort_batch`. It
   invalidates prepared and final evidence, keeps a bound final PR as history,
@@ -90,7 +90,7 @@ are the authoritative reads.
   any member is `done`. It is the fallback when recovery is impossible.
 - **Rollback:** the final PR is one squash commit, so `make trunk-revert` reverts
   the whole batch. Do not downgrade a live store in place; restore from an
-  accepted snapshot under todo-db's migration and recovery contract.
+  accepted snapshot under tractable's migration and recovery contract.
 
 ## Catalog and runtime pins
 
@@ -99,7 +99,7 @@ skill-sync-skills) describes the same contract generically. BenchBox's
 `skill-sync.conf` pins the catalog revision; the tracked `.claude/skills`
 mirror and the ignored `.agents/skills` materialization are regenerated from
 that pin and never hand-edited. `make skill-sync-check` verifies parity when the
-ignored materialization is present. The tracker runtime is the todo-db wheel
+ignored materialization is present. The tracker runtime is the tractable wheel
 vendored under `_project/scripts/vendor/` and pinned in
 `_project/scripts/pyproject.toml`; scripts call it with
-`uv run --project _project/scripts --locked -- todo-db`.
+`uv run --project _project/scripts --locked -- tractable`.

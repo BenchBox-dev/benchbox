@@ -10,8 +10,8 @@ WORKFLOW = Path(__file__).resolve().parents[3] / ".github" / "workflows" / "todo
 def test_workflow_validates_the_git_state_without_database_credentials() -> None:
     text = WORKFLOW.read_text()
 
-    assert "todo-db validate" in text
-    assert "--config .todo-db/config.json" in text
+    assert "tractable validate" in text
+    assert "--config .tractable/config.json" in text
     assert "uv sync --project _project/scripts --locked" in text
     for forbidden in (
         "TODO_DB_URL",

@@ -1210,7 +1210,7 @@ def test_tracker_reads_page_every_section_with_the_revision_pin(world: World) ->
     world.calls.clear()
     tracker = bi.read_tracker(integration, BATCH)
     assert tracker["receipts"] == expected["receipts"] and tracker["integration_log"] == expected["integration_log"]
-    base = [*bi.TODO_DB_COMMAND, "batch", "show", BATCH]
+    base = [*bi.TRACTABLE_COMMAND, "batch", "show", BATCH]
     argvs = [call[0] for call in world.calls]
     assert argvs[0] == base
     assert [

@@ -47,7 +47,7 @@ dependencies = [
     { name = "duckdb" },
     { name = "pyyaml" },
     { name = "sqlglot" },
-    { name = "todo-db", extra = ["mcp"] },
+    { name = "tractable", extra = ["mcp"] },
     { name = "zstandard" },
 ]
 
@@ -56,7 +56,7 @@ requires-dist = [
     { name = "duckdb", specifier = ">=1.0.0,<2.0.0" },
     { name = "pyyaml", specifier = ">=6.0.0" },
     { name = "sqlglot", specifier = ">=25.6.0,<31.0.0" },
-    { name = "todo-db", extras = ["mcp"], path = "vendor/todo_db-0.15.0-py3-none-any.whl" },
+    { name = "tractable", extras = ["mcp"], path = "vendor/tractable-1.0.0-py3-none-any.whl" },
     { name = "zstandard", specifier = ">=0.20.0" },
 ]
 
@@ -797,11 +797,11 @@ wheels = [
 ]
 
 [[package]]
-name = "todo-db"
-version = "0.15.0"
-source = { path = "vendor/todo_db-0.15.0-py3-none-any.whl" }
+name = "tractable"
+version = "1.0.0"
+source = { path = "vendor/tractable-1.0.0-py3-none-any.whl" }
 wheels = [
-    { filename = "todo_db-0.15.0-py3-none-any.whl", hash = "sha256:9f1985ff0ff8c4d96b0b14d4f6383b1d366236f798940e73e541de5345592468" },
+    { filename = "tractable-1.0.0-py3-none-any.whl", hash = "sha256:b90c68cde0ed6d0c10bc6f040837385b20b6661cf404295f8331c28f6160b8b8" },
 ]
 
 [package.optional-dependencies]

@@ -29,7 +29,7 @@ CLI_DESCRIPTION = (
     "Leader recovery (clean checkout of the integration branch at the recorded head): recover.\n"
     "Member (role=member worktree): member-check.\n"
     "\n"
-    "The todo-db tracker is the authority for recorded heads, receipts and acceptance requirements;\n"
+    "The tractable tracker is the authority for recorded heads, receipts and acceptance requirements;\n"
     "the ledger under .todo-batch/<batch>/ is a rebuildable cache and Git is the authority for history.\n"
     "Every tracker write is printed as a payload for the leader to submit; this script only reads the tracker.\n"
 )
@@ -49,7 +49,7 @@ PREFLIGHT_EXIT_NOT_REVIEWABLE = 3
 PREFLIGHT_REVIEWABLE = "reviewable"
 PREFLIGHT_NOT_REVIEWABLE = "not-reviewable"
 PREFLIGHT_UNDETERMINED = "undetermined"
-TODO_DB_COMMAND = ["uv", "run", "--project", "_project/scripts", "--locked", "--", "todo-db"]
+TRACTABLE_COMMAND = ["uv", "run", "--project", "_project/scripts", "--locked", "--", "tractable"]
 DEFAULT_PREFLIGHT_COMMAND = ["make", "pr-preflight"]
 REVIEW_INTERPRETER = "python3"
 REVIEW_WRAPPER = "scripts/oracle_local_review.py"
@@ -262,12 +262,12 @@ def save_ledger(repo: Path, ledger: dict) -> None:
     _write_json(_ledger_path(repo, ledger["batch_id"]), ledger)
 
 
-def _todo_db_json(repo: Path, args: list[str]) -> dict:
-    argv = [*TODO_DB_COMMAND, *args]
+def _tractable_json(repo: Path, args: list[str]) -> dict:
+    argv = [*TRACTABLE_COMMAND, *args]
     try:
         proc = _run(argv, repo, timeout=300)
     except (OSError, subprocess.TimeoutExpired) as exc:
-        raise BatchError(f"todo-db could not run ({exc}); the tracker read failed: {' '.join(argv)}") from exc
+        raise BatchError(f"tractable could not run ({exc}); the tracker read failed: {' '.join(argv)}") from exc
     try:
         envelope = json.loads(proc.stdout)
     except ValueError:
@@ -284,10 +284,10 @@ def _todo_db_json(repo: Path, args: list[str]) -> dict:
 
 
 def read_tracker(repo: Path, batch_id: str) -> dict:
-    summary = _todo_db_json(repo, ["batch", "show", batch_id])
+    summary = _tractable_json(repo, ["batch", "show", batch_id])
     capability = summary.get("capability")
     if not isinstance(capability, dict) or int(capability.get("version") or 0) < 2:
-        raise BatchError("the todo-db runtime lacks the batch-v2 capability; use the pinned runtime")
+        raise BatchError("the tractable runtime lacks the batch-v2 capability; use the pinned runtime")
     revision = summary.get("rev")
     if summary.get("stale") or summary.get("cached_rev") is not None or not revision:
         raise BatchError("tracker read is stale or carries no revision (offline cache); reconnect and retry")
@@ -302,7 +302,7 @@ def read_tracker(repo: Path, batch_id: str) -> dict:
         while True:
             args = ["batch", "show", batch_id, "--field", name, "--offset", str(offset)]
             args += ["--budget", str(SECTION_BUDGET), "--rev", str(revision)]
-            page = _todo_db_json(repo, args)
+            page = _tractable_json(repo, args)
             window += str(page.get("window", ""))
             continuation = page.get("continuation")
             if not isinstance(continuation, dict):
@@ -549,7 +549,7 @@ def _member_metadata_steps(repo: Path, batch_id: str, members: list[str], depend
     steps = []
     reminders = []
     for member in members:
-        shown = _todo_db_json(repo, ["show", member]).get("needs")
+        shown = _tractable_json(repo, ["show", member]).get("needs")
         current = shown.get("values") if isinstance(shown, dict) else None
         if not isinstance(current, list) or shown.get("total") != len(current):
             raise BatchError(f"the tracker returned no complete needs list for {member!r}")
@@ -1017,7 +1017,7 @@ def _overlap_reruns(
 
 
 def registered_dependencies(repo: Path, batch_id: str, member: str) -> list[str]:
-    batch = _todo_db_json(repo, ["show", member]).get("batch")
+    batch = _tractable_json(repo, ["show", member]).get("batch")
     if not isinstance(batch, dict) or batch.get("batch_id") != batch_id or batch.get("member_id") != member:
         raise BatchError(f"the tracker carries no batch metadata for member {member!r} of batch {batch_id!r}")
     dependencies = batch.get("implementation_dependencies")
@@ -1032,7 +1032,7 @@ def _item_sessions(repo: Path, item: str) -> list[dict]:
     revision: str | None = None
     while True:
         args = ["show", item, "--field", "sessions", "--offset", str(offset), "--budget", str(SECTION_BUDGET)]
-        page = _todo_db_json(repo, [*args, "--rev", revision] if revision else args)
+        page = _tractable_json(repo, [*args, "--rev", revision] if revision else args)
         if page.get("stale") or page.get("cached_rev") is not None or not page.get("rev"):
             raise BatchError("tracker read is stale or carries no revision (offline cache); reconnect and retry")
         revision = str(page["rev"])
@@ -1126,7 +1126,7 @@ def _check_member_writes(
         listed = "; ".join(f"{e.get('op')} {e.get('op_id')} at {e.get('at')} by {e.get('actor')}" for e in unexplained)
         raise BatchError(
             f"member {member!r} has tracker writes between {since} and its first landing ({listed}). "
-            "Members never write to the tracker: run each member in its own session with its own todo-db identity. "
+            "Members never write to the tracker: run each member in its own session with its own tractable identity. "
             "Inspect the writes with show_item, then land again with ACCEPT_WRITES=<op_id,...> to record them as "
             "reviewed"
         )

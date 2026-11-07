@@ -3591,39 +3591,20 @@ def dependency_artifact_inputs(tmp_path: Path, monkeypatch):
     return scope, wheel_path, project_path, lock_path, frozen, index, records, rules, external
 
 
-def test_verify_upstream_release_validates_real_github_asset(monkeypatch: pytest.MonkeyPatch) -> None:
-    import io
-    import urllib.request
-
+def test_verify_upstream_release_validates_real_github_asset(tmp_path: Path) -> None:
     from check_comment_cleanup_scope import _verify_upstream_release
 
-    checksums = b"3a878a3ac2e7c3b458ed3e71d53d036456ba017eb9ec1adfa030d823cf2c2ffd  todo_db-0.10.1-py3-none-any.whl\n"
+    digest = "3a878a3ac2e7c3b458ed3e71d53d036456ba017eb9ec1adfa030d823cf2c2ffd"
+    release = tmp_path / "releases/download/v0.10.1"
+    release.mkdir(parents=True)
+    (release / "SHA256SUMS").write_text(f"{digest}  todo_db-0.10.1-py3-none-any.whl\n", encoding="utf-8")
+    repo_url = tmp_path.as_uri()
 
-    class DummyResponse:
-        def __init__(self, data: bytes):
-            self.data = io.BytesIO(data)
-
-        def __enter__(self):
-            return self.data
-
-        def __exit__(self, *args):
-            pass
-
-    monkeypatch.setattr(urllib.request, "urlopen", lambda req, timeout=15: DummyResponse(checksums))
-
-    _verify_upstream_release(
-        "https://github.com/joeharris76/todo-db",
-        "0.10.1",
-        "todo_db-0.10.1-py3-none-any.whl",
-        "3a878a3ac2e7c3b458ed3e71d53d036456ba017eb9ec1adfa030d823cf2c2ffd",
-    )
+    _verify_upstream_release(repo_url, "0.10.1", "todo_db-0.10.1-py3-none-any.whl", digest)
     with pytest.raises(ValueError, match="wheel hash mismatch"):
-        _verify_upstream_release(
-            "https://github.com/joeharris76/todo-db",
-            "0.10.1",
-            "todo_db-0.10.1-py3-none-any.whl",
-            "0" * 64,
-        )
+        _verify_upstream_release(repo_url, "0.10.1", "todo_db-0.10.1-py3-none-any.whl", "0" * 64)
+    with pytest.raises(ValueError, match="does not contain"):
+        _verify_upstream_release(repo_url, "0.10.1", "other-0.10.1-py3-none-any.whl", digest)
 
 
 def test_pep440_version_ordering() -> None:

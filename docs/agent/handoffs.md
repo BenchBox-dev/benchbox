@@ -6,9 +6,9 @@ each kind of session state goes and why handoff files are retired.
 ## Where state goes
 
 A session that stops before its work is done records what the next session
-needs in the tracker item that work belongs to, through the todo-db MCP tools.
+needs in the tracker item that work belongs to, through the tractable MCP tools.
 Local and cloud sessions use the same tools, so either can resume the other's
-work. If the work has no item yet, create one. If todo-db is unreachable, stop
+work. If the work has no item yet, create one. If tractable is unreachable, stop
 and give the state to the owner in the final reply; do not write it to a file.
 
 | State | Where it goes |

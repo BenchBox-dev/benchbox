@@ -48,10 +48,10 @@ leader's worktree carries `benchbox.batch.role=integration`, a member's
 `benchbox.batch.role=member`, set at creation by the batch targets (a
 worktree's `benchbox.*` keys are never inherited).
 
-The owner check works only when identities differ. todo-db derives a worker's
+The owner check works only when identities differ. tractable derives a worker's
 identity from its MCP server process, and subagents share their parent's
 server. So each leader runs as its own top-level session (or sets its own
-`TODO_DB_ACTOR`), and a member never runs as a subagent of its leader's session
+`TRACTABLE_ACTOR`), and a member never runs as a subagent of its leader's session
 or of another leader's. Parallel leaders that share one identity also share its
 single live-claim slot and block each other's `take`.
 
@@ -87,7 +87,7 @@ Rules that hold for the whole batch:
 | `make batch-finish [EXECUTE=1]` | Leader, integration worktree | After the batch is completed and final PR merged: dry run by default; execute removes qualifying member worktrees/branches, then finishes the integration worktree and local branch last |
 
 The scripts only read the tracker. Every tracker write is printed as a payload
-and submitted by the leader through the todo-db MCP tools.
+and submitted by the leader through the tractable MCP tools.
 
 ## Protocol
 

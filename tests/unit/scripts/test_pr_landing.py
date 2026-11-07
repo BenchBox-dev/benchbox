@@ -1897,7 +1897,7 @@ def test_read_batch_tracker_refuses_a_page_that_never_ends(tmp_path: Path, monke
 
 def test_a_tracker_command_that_cannot_start_is_a_landing_error() -> None:
     with pytest.raises(landing.LandingError, match="cannot run the tracker read"):
-        landing._tracker_stdout(["/nonexistent/todo-db"])
+        landing._tracker_stdout(["/nonexistent/tractable"])
 
 
 def test_a_tracker_command_that_outlives_its_timeout_is_a_landing_error() -> None:
@@ -1913,7 +1913,7 @@ def _capability(**overrides: object) -> dict:
         "supported_schema_versions": [1, 2, 3, 4],
     }
     batch_capability.update(overrides)
-    return {"runtime": {"todo_db_batch": batch_capability, "mcp_handshake": {"result": "pass"}}}
+    return {"runtime": {"tractable_batch": batch_capability, "mcp_handshake": {"result": "pass"}}}
 
 
 def _ready_batch(tmp_path: Path, rollout: dict | None) -> fx.BatchFixture:
@@ -1976,7 +1976,7 @@ def test_batch_ready_refuses_a_runtime_without_the_v2_capability(tmp_path: Path,
 
     failures = _ready(batch, batch.tracker(), batch.evidence())
 
-    assert any("todo_db_batch version 2" in failure for failure in failures)
+    assert any("tractable_batch version 2" in failure for failure in failures)
 
 
 def test_batch_ready_refuses_when_the_tracker_cannot_be_read(tmp_path: Path) -> None:
