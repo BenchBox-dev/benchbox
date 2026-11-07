@@ -41,7 +41,16 @@ def summarize_fetch_modes(modes: Iterable[Any]) -> str | None:
     return MIXED_FETCH_MODE
 
 
-FETCH_MODE_PLATFORMS = ("duckdb",)
+FETCH_MODE_PLATFORMS = (
+    "duckdb",
+    "datafusion",
+    "gizmosql",
+    "clickhouse",
+    "clickhouse-local",
+    "spark",
+    "lakesail",
+    "velox",
+)
 FETCH_MODE_OPTION_HELP = (
     "Result fetch mode, rows or arrow. Arrow receives the full result as Arrow inside the query timer "
     "and builds Python rows only for digests and validation."

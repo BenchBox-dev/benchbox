@@ -63,6 +63,7 @@ OPTION_CASES: dict[str, dict[str, tuple[str, str, Any]]] = {
         "adaptive_enabled": ("false", "adaptive_enabled", False),
         "java_home": ("/opt/jdk", "java_home", "/opt/jdk"),
         "driver_memory": ("12g", "driver_memory", "12g"),
+        "fetch_mode": ("rows", "fetch_mode", "rows"),
     },
     "duckdb": {
         "memory_limit": ("2GB", "memory_limit", "2GB"),
