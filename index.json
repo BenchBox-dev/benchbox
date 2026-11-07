@@ -3370,7 +3370,8 @@
       "accepted_members": {
         "doris-load-dead-paths-cleanup-20261107": "3a6bcd7a4ad249ccaaa9c603b8920b6046c741c6",
         "mocker-doris-singlestore-stacks-start-20261107": "bc85ff2e9c475cb55d4f9e6c06cae18c119f16c4",
-        "questdb-rest-accepts-invalid-int-20261107": "51710e6d21b4e84c3146b07b17415ffcd6e2cb91"
+        "questdb-rest-accepts-invalid-int-20261107": "51710e6d21b4e84c3146b07b17415ffcd6e2cb91",
+        "singlestore-decimal-text-loads-as-zero-20261107": "72a151249d28c400d6384de5e45ef59446c54c42"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -3420,10 +3421,22 @@
           ],
           "integration_head": "accf058df76a6f32effaa402f5a8f1388b0eef3c",
           "integration_seq": 2
+        },
+        "singlestore-decimal-text-loads-as-zero-20261107": {
+          "accepted_head": "72a151249d28c400d6384de5e45ef59446c54c42",
+          "changed_files": [
+            "benchbox/platforms/singlestore.py",
+            "changelog.d/feat-load-value-integrity--singlestore-decimal-text-loads-as-zero-20261107.json",
+            "tests/integration/platforms/test_singlestore_decimal_load_live.py",
+            "tests/unit/platforms/test_singlestore_adapter.py",
+            "tests/unit/platforms/test_singlestore_decimal_load_guard.py"
+          ],
+          "integration_head": "669d42be4ac45b136babbd3f7ce1cf25704eb51a",
+          "integration_seq": 5
         }
       },
       "integration_branch": "feat/load-value-integrity",
-      "integration_head": "63583af3ef63db815465cb7c2b31eefca2066a25",
+      "integration_head": "669d42be4ac45b136babbd3f7ce1cf25704eb51a",
       "integration_log": [
         {
           "at": "2026-11-07T14:17:34Z",
@@ -3469,6 +3482,15 @@
           "op_id": "c8a0be45bfef4dbb96d7f783c6ce9220",
           "previous_head": "95b2aeff395c49223700b04d0a86a398e14d6647",
           "seq": 4
+        },
+        {
+          "at": "2026-11-07T17:05:15Z",
+          "head": "669d42be4ac45b136babbd3f7ce1cf25704eb51a",
+          "kind": "prepare",
+          "member": "singlestore-decimal-text-loads-as-zero-20261107",
+          "op_id": "7a6ed1a699d743b9b70d7ab932bf087a",
+          "previous_head": "63583af3ef63db815465cb7c2b31eefca2066a25",
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-load-value-integrity",
@@ -32447,15 +32469,10 @@
       "title": "SingleStore: live tests are not run in CI, and TPC-DS maintenance is reported skipped because its refresh SQL is unvalidated"
     },
     "singlestore-decimal-text-loads-as-zero-20261107": {
-      "claim": {
-        "expires_at": "2026-11-08T17:05:01Z",
-        "generation": "5423fe012da94474ad964f2a9290060d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "SingleStore silently loads non-numeric DECIMAL text as 0.00 even in strict mode; check every SingleStore load path"
     },
     "singlestore-non-tpc-csv-null-marker": {

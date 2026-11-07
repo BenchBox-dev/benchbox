@@ -10,6 +10,68 @@
     "member_id": "singlestore-decimal-text-loads-as-zero-20261107"
   },
   "description": "Found while implementing SingleStore native RF1 ingest (#3979) on SingleStore 10.9.0 (dev image under mocker). With LOAD DATA, a non-numeric value in a DECIMAL column is stored as 0.00 even in strict mode. INT, DATE and CHAR-length errors are rejected. #3979 guards only the RF1 path, loading DECIMAL columns through @var with SET col = IF(@col REGEXP ..., @col, 1e30) so the server aborts. The bulk data load path (SingleStoreAdapter load_data / LOAD DATA for benchmark tables) and any other LOAD DATA use have not been checked. A malformed decimal in a data file would load as 0.00 and change query answers silently.\n\nChange. Find every SingleStore LOAD DATA path. Prove the behaviour on each with a malformed-decimal file, and apply the same abort guard (or an equivalent the server honours) where needed.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; heavy work only through make heavy-run; container checks under mocker one stack at a time (limits in tests/uat docs and the uat-mocker-compose-gaps-20261106 context); no live cloud without owner approval; no explanatory comments; changelog fragment if user-facing.",
+  "prepared": {
+    "accepted_head": "72a151249d28c400d6384de5e45ef59446c54c42",
+    "batch_id": "load-value-integrity",
+    "changed_files": [
+      "benchbox/platforms/singlestore.py",
+      "changelog.d/feat-load-value-integrity--singlestore-decimal-text-loads-as-zero-20261107.json",
+      "tests/integration/platforms/test_singlestore_decimal_load_live.py",
+      "tests/unit/platforms/test_singlestore_adapter.py",
+      "tests/unit/platforms/test_singlestore_decimal_load_guard.py"
+    ],
+    "integration_head": "669d42be4ac45b136babbd3f7ce1cf25704eb51a",
+    "integration_seq": 5,
+    "member_id": "singlestore-decimal-text-loads-as-zero-20261107",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "e0d6ab2a29cc96153e2c959e9911cbcb8b990d8be2041b4a69da84103076f877",
+    "source_base": "63583af3ef63db815465cb7c2b31eefca2066a25",
+    "source_revision": "72a151249d28c400d6384de5e45ef59446c54c42",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-load-value-integrity--singlestore-decimal-text-loads-as-zero-20261107",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/platforms/test_singlestore_decimal_load_live.py",
+        "tests/integration/platforms/test_singlestore_live.py",
+        "tests/integration/test_manifest_driven_loading.py",
+        "tests/integration/test_misc_plan_capture_live.py",
+        "tests/integration/test_throughput_session_isolation.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_connection_registry_drift.py",
+        "tests/unit/core/tpch/test_tpch_refresh_native_ingest.py",
+        "tests/unit/platforms/test_misc_plan_capture.py",
+        "tests/unit/platforms/test_singlestore_adapter.py",
+        "tests/unit/platforms/test_singlestore_decimal_load_guard.py",
+        "tests/unit/platforms/test_singlestore_refresh_ingest_nulls.py",
+        "tests/unit/platforms/test_tpcds_maintenance_primary_keys.py",
+        "tests/unit/sql_compat/test_singlestore_rules.py"
+      ],
+      "review": {
+        "base_sha": "63583af3ef63db815465cb7c2b31eefca2066a25",
+        "head_sha": "72a151249d28c400d6384de5e45ef59446c54c42",
+        "head_tree": "8f22fba779ee6b11c43099ff8b8aab41c7794752",
+        "outcome": "clear",
+        "patch_digest": "af7aae3de4d83413c25191426e37541b",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "dca0bd92f26da23c10563476f8a8d9a86c32db2f"
+      },
+      "revision": "72a151249d28c400d6384de5e45ef59446c54c42",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
@@ -34,6 +96,15 @@
       "generation": "5423fe012da94474ad964f2a9290060d",
       "op": "take",
       "op_id": "ae5b5dad0dcf415b86d72c349d292403",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T17:05:15Z",
+      "client": "omp-coding-agent",
+      "generation": "5423fe012da94474ad964f2a9290060d",
+      "op": "prepare",
+      "op_id": "7a6ed1a699d743b9b70d7ab932bf087a",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
