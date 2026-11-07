@@ -2,7 +2,7 @@
 
 Repository documentation for agent review, identity, attribution, and
 audit-record conventions. This tree is **not** part of the public
-site. `docs/development/` is the human contributor handbook.
+site. Maintainer documents live in `docs/internal/`.
 
 ## Placement
 
@@ -13,14 +13,14 @@ Choose the first row that matches.
 | Must every agent session load it? | `AGENTS.md` (byte-budgeted) | No |
 | Canonical cross-project behavior? | The `skill-sync-skills` catalog checkout named in `skill-sync.conf` (`shared-*` skills) | No |
 | BenchBox binding, rationale, or harness boundary? | `docs/agent/` | No |
-| How a human runs CI, UAT, release, or GitHub admin? | `docs/operations/` | Only if nav needs it |
-| How a human adds a platform, runs tests, or extends a benchmark? | `docs/development/` | Yes |
-| Product or architecture decision? | `docs/design/adr/` | Yes |
+| How a maintainer runs CI, UAT, release, or GitHub admin? | `docs/internal/` | No |
+| Product or architecture decision? | `docs/internal/adr/` | No |
+| User-facing page (platform guides, benchmarks, how-tos)? | The `BenchBox-dev/benchbox-site` repository | Yes |
 | Generated inventory or completed worksheet? | `_project/` | No |
 
 Referenced-from-outside `_project/` is not enough to publish. Publication also
-requires a human audience that belongs on benchbox.dev. A new
-`docs/development/agent-*.md` fails `make agent-instructions-check`.
+requires a human audience that belongs on benchbox.dev, and user-facing pages
+are owned by the site repository, not this one.
 
 ## Contents
 

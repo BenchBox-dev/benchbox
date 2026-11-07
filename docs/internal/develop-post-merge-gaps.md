@@ -17,10 +17,10 @@ The mechanism (GitHub delivery drop, concurrency edge, or API lag) is not
 fully proven. What is proven is the **observable gap**: `git log
 origin/develop` SHAs with no matching workflow run.
 
-That is a silent failure mode, and every workflow that fires only on `push` to
-develop shares it. The full list of those workflows, what each loses when a push
-is dropped, and how to recover is in
-[`develop-push-drop-inventory.md`](develop-push-drop-inventory.md).
+That is a silent failure mode, and every workflow that fires on `push` to
+develop shares it: `trunk.yml`, `review-gate.yml`, `review-verdict.yml`,
+`sync-results-data-to-published.yml`, `pricing-data-drift-check.yml` and
+`submission-validator-drift-check.yml`.
 
 ## What changed with trunk.yml
 
@@ -178,9 +178,11 @@ requires a push-produced artifact and rejects dispatch as a substitute.
 - **No extra push-adjacent spam** (`pull_request`, `repository_dispatch`, and
   so on) to force more events. That papers over the
   class without bounding exposure cleanly and burns runners on every related
-  event. The one `workflow_run` listener is `.github/workflows/trunk-red-disarm.yml`,
-  which fires only on a completed `trunk.yml` run for a `develop` push, mutates
-  only auto-merge state, and never opens, closes, or comments on anything.
+  event. The one `workflow_run` listener that changes PR state on a Trunk run is
+  `.github/workflows/trunk-red-disarm.yml`, which fires only on a completed
+  `trunk.yml` run for a `develop` push, mutates only auto-merge state, and never
+  opens, closes, or comments on anything. `site-inputs.yml` also listens to
+  Trunk but only builds the site bundle.
 - **No replacement of the push trigger.** Push stays the primary trigger for
   workflows that record state on a develop commit; recovery is dispatch.
 - **No mutation jobs on schedule.** Anything that opens or closes GitHub
