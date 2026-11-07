@@ -486,6 +486,7 @@ def compare(
             show_all_queries=show_all_queries,
             min_regression_delta=min_regression_delta,
             min_aggregate_regression_delta=min_aggregate_regression_delta,
+            fetch_mode=fetch_mode,
         )
 
 
@@ -498,6 +499,7 @@ def _run_interactive_wizard(
     show_all_queries: bool,
     min_regression_delta: str | None = None,
     min_aggregate_regression_delta: str | None = None,
+    fetch_mode: str | None = None,
 ):
     console.print("\n[bold blue]BenchBox Platform Comparison[/bold blue]")
     console.print("Compare benchmark performance across different platforms.\n")
@@ -524,8 +526,11 @@ def _run_interactive_wizard(
             output_file=output_file,
             generate_charts=generate_charts,
             theme=theme,
+            fetch_mode=fetch_mode,
         )
     else:
+        if fetch_mode is not None:
+            raise click.UsageError("--fetch-mode applies to platform runs, not result file comparison")
         _interactive_file_comparison(
             output_format=output_format,
             output_file=output_file,
@@ -541,6 +546,7 @@ def _interactive_platform_comparison(
     output_file: str | None,
     generate_charts: bool,
     theme: str,
+    fetch_mode: str | None = None,
 ):
     from benchbox.platforms import (
         list_available_dataframe_platforms,
@@ -648,6 +654,7 @@ def _interactive_platform_comparison(
         output_file=output_file,
         generate_charts=generate_charts,
         theme=theme,
+        fetch_mode=fetch_mode,
     )
 
 
