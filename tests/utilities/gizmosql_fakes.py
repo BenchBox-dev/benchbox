@@ -112,7 +112,14 @@ class FakeCursor:
         return rows
 
     def fetch_arrow_table(self) -> pa.Table:
-        return self.server.arrow_schema.empty_table()
+        rows, self.rows = self.rows, []
+        if not rows:
+            return self.server.arrow_schema.empty_table()
+        columns = [list(column) for column in zip(*rows, strict=True)]
+        schema = self.server.arrow_schema
+        if len(columns) == len(schema):
+            return pa.table(columns, schema=schema)
+        return pa.table({f"c{index}": column for index, column in enumerate(columns)})
 
     def adbc_ingest(self, table: str, data: Any, mode: str = "create") -> int:
         self.server.statements.append((self.raw.connection_id, f"INGEST {mode} {table}", None))

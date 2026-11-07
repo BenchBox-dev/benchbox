@@ -1022,6 +1022,7 @@ class ResultCaptureMixin:
         error: str | None = None,
         result_digest: str | None = None,
         materialized_rows: MaterializedRowsSource | None = None,
+        fetch_mode: str | None = None,
     ) -> dict[str, Any]:
         from benchbox.core.expected_results.models import ValidationMode
 
@@ -1035,6 +1036,9 @@ class ResultCaptureMixin:
 
         if result_digest is not None:
             result_dict["result_digest"] = result_digest
+
+        if fetch_mode is not None:
+            result_dict["fetch_mode"] = fetch_mode
 
         if error:
             result_dict["error"] = error

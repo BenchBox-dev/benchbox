@@ -12,6 +12,8 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
+FETCH_MODES = ("rows", "arrow")
+
 
 def _load_schema_policy_helpers():
     try:
@@ -716,6 +718,7 @@ def _validate_run_section(run: Any, vr: ValidationResult) -> None:
         vr.error(f"Missing keys in 'run': {sorted(missing_run)}")
 
     _validate_run_timing_fields(run, vr)
+    _validate_fetch_mode("run", run, (*FETCH_MODES, "mixed"), vr)
 
     total_ms = run.get("total_duration_ms")
     if total_ms is None:
@@ -745,6 +748,12 @@ def _validate_query_timing_fields(index: int, q: dict, vr: ValidationResult) -> 
         return
     for problem in platform_timing_problems(q["platform_timing"]):
         vr.error(f"queries[{index}].platform_timing {problem}")
+
+
+def _validate_fetch_mode(path: str, block: dict, allowed: tuple[str, ...], vr: ValidationResult) -> None:
+    value = block.get("fetch_mode")
+    if value is not None and value not in allowed:
+        vr.error(f"{path}.fetch_mode must be one of {list(allowed)}, got {value!r}")
 
 
 def _validate_timing_field_versions(data: dict, version: Any, vr: ValidationResult) -> None:
@@ -1967,6 +1976,7 @@ def _validate_single_query(index: int, q: Any, version: Any, vr: ValidationResul
 
     _validate_row_count_validation(index, q, version, vr)
     _validate_query_timing_fields(index, q, vr)
+    _validate_fetch_mode(f"queries[{index}]", q, FETCH_MODES, vr)
 
     ms = q.get("ms")
     if ms is None:

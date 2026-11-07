@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
+import pyarrow as pa
 import pytest
 
 from benchbox.platforms.base.data_loading import DataSource
@@ -603,10 +604,7 @@ class TestDataFusionAdapter:
 
             mock_conn = Mock()
             mock_df = Mock()
-            mock_batch = Mock()
-            mock_batch.num_rows = 10
-            mock_batch.num_columns = 2
-            mock_batch.column.side_effect = lambda i: [f"value_{i}"]
+            mock_batch = pa.record_batch({"a": list(range(10)), "b": [f"value_{i}" for i in range(10)]})
             mock_df.collect.return_value = [mock_batch]
             mock_conn.sql.return_value = mock_df
 
@@ -630,9 +628,7 @@ class TestDataFusionAdapter:
             adapter = DataFusionAdapter(working_dir=tmpdir)
             mock_conn = Mock()
             mock_df = Mock()
-            mock_batch = Mock()
-            mock_batch.num_rows = 0
-            mock_batch.num_columns = 0
+            mock_batch = pa.record_batch({"a": pa.array([], type=pa.int64())})
             mock_df.collect.return_value = [mock_batch]
             mock_conn.sql.return_value = mock_df
             query = """SELECT ss.s_name

@@ -80,16 +80,19 @@ OPTION_CASES: dict[str, dict[str, tuple[str, str, Any]]] = {
     "pyspark": {
         "driver_memory": ("12g", "driver_memory", "12g"),
         "shuffle_partitions": ("64", "shuffle_partitions", 64),
+        "fetch_mode": ("rows", "fetch_mode", "rows"),
     },
     "spark": {
         "adaptive_enabled": ("false", "adaptive_enabled", False),
         "java_home": ("/opt/jdk", "java_home", "/opt/jdk"),
         "driver_memory": ("12g", "driver_memory", "12g"),
+        "fetch_mode": ("rows", "fetch_mode", "rows"),
     },
     "duckdb": {
         "memory_limit": ("2GB", "memory_limit", "2GB"),
         "threads": ("3", "thread_limit", 3),
         "temp_directory": ("/var/tmp/duckdb-spill", "temp_directory", "/var/tmp/duckdb-spill"),
+        "fetch_mode": ("rows", "fetch_mode", "rows"),
     },
     "sqlite": {
         "database_path": ("/var/tmp/options.db", "database_path", "/var/tmp/options.db"),
@@ -209,6 +212,15 @@ def test_adapter_is_constructed_without_platform_options(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, platform: str
 ) -> None:
     assert _constructor_kwargs(monkeypatch, tmp_path, platform)
+
+
+@pytest.mark.parametrize("platform", ["datafusion", "gizmosql", "clickhouse"])
+def test_fetch_mode_option_reaches_the_native_arrow_adapters(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, platform: str
+) -> None:
+    kwargs = _constructor_kwargs(monkeypatch, tmp_path, platform, "fetch_mode=rows")
+
+    assert kwargs["fetch_mode"] == "rows"
 
 
 @pytest.mark.parametrize("platform", ["duckdb", "postgresql", "datafusion", "sqlite", "snowflake"])

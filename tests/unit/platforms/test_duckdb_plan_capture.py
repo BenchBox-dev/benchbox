@@ -175,7 +175,7 @@ class TestDuckDBDMLPlanGuard:
 
 class TestDuckDBDisplayQueryPlan:
     def _make_adapter(self, capture_plans: bool):
-        return DuckDBAdapter(capture_plans=capture_plans)
+        return DuckDBAdapter(capture_plans=capture_plans, fetch_mode="rows")
 
     def _mock_execute(self, monkeypatch, adapter):
         conn = MagicMock()

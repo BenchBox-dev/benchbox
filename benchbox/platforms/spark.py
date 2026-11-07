@@ -9,6 +9,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW, FETCH_MODE_ROWS
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.heavy_run_events import current_run_id
 from benchbox.utils.resource_limits import heavy_memory_budget_gib
@@ -32,7 +33,11 @@ from ._spark_helpers import (
 )
 from .base import DriverIsolationCapability, PlatformAdapter
 from .base.config_utils import make_registered_platform_config_builder
-from .base.spark_execution_mixin import SparkDataLoadMixin, SparkQueryExecutionMixin
+from .base.spark_execution_mixin import (
+    SparkDataLoadMixin,
+    SparkQueryExecutionMixin,
+    spark_dataframe_supports_arrow,
+)
 from .base.spark_logging import suppress_window_exec_warning
 
 try:
@@ -174,6 +179,10 @@ class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
     plan_capture_phase_eligible = True
 
     driver_isolation_capability = DriverIsolationCapability.NOT_FEASIBLE
+
+    @property
+    def default_fetch_mode(self) -> str:
+        return FETCH_MODE_ARROW if spark_dataframe_supports_arrow() else FETCH_MODE_ROWS
 
     def __init__(self, **config):
         super().__init__(**config)

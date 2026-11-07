@@ -277,7 +277,7 @@ class TestThroughputReferenceSeedContext:
             raw_connection.execute = Mock(side_effect=raw_execute)
             raw_connection.close = Mock()
 
-            adapter = DuckDBAdapter()
+            adapter = DuckDBAdapter(fetch_mode="rows")
             connection = PlatformAdapterConnection(raw_connection, adapter)
             connection.benchmark_type = "tpch"
             connection.scale_factor = 1.0

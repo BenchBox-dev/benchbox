@@ -246,7 +246,7 @@ class TestExecuteQuery:
         mock_df.collect.return_value = [(1,)]
         mock_session.sql.return_value = mock_df
 
-        adapter = SparkAdapter(disable_cache=True)
+        adapter = SparkAdapter(disable_cache=True, fetch_mode="rows")
 
         result = adapter.execute_query(mock_session, "SELECT 1", "q1")
 
@@ -264,7 +264,7 @@ class TestExecuteQuery:
         mock_session.sql.return_value = mock_df
         mock_session.catalog.clearCache.side_effect = lambda: time.sleep(0.3)
 
-        adapter = SparkAdapter(disable_cache=True)
+        adapter = SparkAdapter(disable_cache=True, fetch_mode="rows")
 
         result = adapter.execute_query(mock_session, "SELECT 1", "q1")
 

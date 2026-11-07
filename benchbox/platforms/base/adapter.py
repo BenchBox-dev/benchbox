@@ -10,6 +10,7 @@ from typing import Any
 
 from benchbox.core.execution_engine import ExecutionEngineHook
 from benchbox.core.loaded_tables import is_data_loading_skipped, require_loaded_tables
+from benchbox.core.results.fetch_mode import FETCH_MODE_ROWS, resolve_fetch_mode
 from benchbox.core.results.query_plan_models import DEFAULT_PLAN_MAX_DEPTH
 from benchbox.core.results.schema import compute_plan_capture_stats
 from benchbox.core.throughput.containment import await_quiescence
@@ -121,6 +122,7 @@ class PlatformAdapter(
     plan_capture_phase_eligible: bool = True
     deployment_selected: str | None = None
     deployment_selected_class: str | None = None
+    default_fetch_mode: str = FETCH_MODE_ROWS
 
     def __init__(self, **config):
         self.platform_config = config
@@ -132,6 +134,7 @@ class PlatformAdapter(
         self.show_query_plans = config.get("show_query_plans", False)
         self.capture_plans = config.get("capture_plans", False)
         self.analyze_plans: bool = config.get("analyze_plans", False)
+        self.fetch_mode: str = resolve_fetch_mode(config.get("fetch_mode"), self.default_fetch_mode)
         self.strict_plan_capture = config.get("strict_plan_capture", False)
         self.normalize_plan_literals = config.get("normalize_plan_literals", False)
         self.plan_capture_timeout_seconds = int(config.get("plan_capture_timeout_seconds", 30))

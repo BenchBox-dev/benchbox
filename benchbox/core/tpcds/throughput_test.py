@@ -9,6 +9,8 @@ from benchbox.core.connection import DatabaseConnection
 from benchbox.core.plan_capture_phase import (
     propagate_query_execution_metadata,
 )
+from benchbox.core.result_receipt import cursor_result_count
+from benchbox.core.results.fetch_mode import ConversionClock
 from benchbox.core.results.metrics import TPC_QUERIES_PER_STREAM
 from benchbox.core.throughput.result import (
     THROUGHPUT_FIRST_STREAM_ID,
@@ -70,17 +72,6 @@ def _scored_queries_per_stream(config: TPCDSThroughputTestConfig) -> int:
     if config.queries_per_stream is None:
         return TPC_QUERIES_PER_STREAM["tpcds"]
     return min(config.queries_per_stream, TPC_QUERIES_PER_STREAM["tpcds"])
-
-
-def _count_cursor_rows(cursor: Any) -> int:
-    counter = getattr(cursor, "row_count", None)
-    if callable(counter):
-        return counter()
-
-    rowcount = getattr(cursor, "rowcount", None)
-    if isinstance(rowcount, int) and rowcount >= 0:
-        return rowcount
-    return len(cursor.fetchall())
 
 
 @dataclass
@@ -372,7 +363,7 @@ class TPCDSThroughputTest:
             raise RuntimeError(
                 platform_result.get("error", platform_result.get("row_count_validation_error", "Query failed"))
             )
-        row_count = _count_cursor_rows(cursor)
+        row_count = cursor_result_count(cursor)
         if hasattr(connection, "commit"):
             connection.commit()
         return platform_result, row_count
@@ -391,6 +382,7 @@ class TPCDSThroughputTest:
         variant = stream_query.variant
         query_display_id = f"{query_id}{variant}" if variant else str(query_id)
         query_start = mono_time()
+        conversion_clock = ConversionClock().start()
         query_result = {
             "query_id": query_display_id,
             "position": position + 1,
@@ -422,7 +414,7 @@ class TPCDSThroughputTest:
 
             query_result.update(
                 {
-                    "execution_time_seconds": elapsed_seconds(query_start),
+                    "execution_time_seconds": max(0.0, elapsed_seconds(query_start) - conversion_clock.finish()),
                     "success": True,
                     "result_count": row_count,
                 }
