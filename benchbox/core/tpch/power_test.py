@@ -41,6 +41,7 @@ def summarize_power_validation(query_results: list[dict[str, Any]], data_state: 
     validated: list[int] = []
     failed: list[int] = []
     skipped: list[int] = []
+    errored: list[int] = []
     for query_result in query_results:
         evidence = query_result.get("row_count_validation")
         status = evidence.get("status") if isinstance(evidence, dict) else None
@@ -48,6 +49,8 @@ def summarize_power_validation(query_results: list[dict[str, Any]], data_state: 
             validated.append(query_result["query_id"])
         elif status == "FAILED":
             failed.append(query_result["query_id"])
+        elif query_result.get("error") and not query_result.get("success"):
+            errored.append(query_result["query_id"])
         else:
             skipped.append(query_result["query_id"])
     summary: dict[str, Any] = {
@@ -56,6 +59,7 @@ def summarize_power_validation(query_results: list[dict[str, Any]], data_state: 
         "validated_queries": sorted(validated),
         "failed_queries": sorted(failed),
         "skipped_queries": sorted(skipped),
+        "errored_queries": sorted(errored),
     }
     if data_state == DATA_STATE_REFRESHED:
         summary["skip_reason"] = DATA_REFRESHED_REASON

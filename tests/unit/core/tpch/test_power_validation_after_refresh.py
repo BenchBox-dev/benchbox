@@ -98,6 +98,7 @@ def test_refresh_run_does_not_validate_queries_against_base_answers() -> None:
         "validated_queries": [],
         "failed_queries": [],
         "skipped_queries": [13],
+        "errored_queries": [],
         "skip_reason": "data refreshed",
     }
     assert result.to_dict()["validation"] == result.validation
@@ -118,6 +119,7 @@ def test_run_without_refresh_validates_against_base_answers() -> None:
         "validated_queries": [13],
         "failed_queries": [],
         "skipped_queries": [],
+        "errored_queries": [],
     }
 
 
@@ -131,6 +133,28 @@ def test_run_without_refresh_still_fails_a_wrong_row_count() -> None:
     assert result.success is False
     assert "Query validation FAILED" in result.errors[0]
     assert result.validation["failed_queries"] == [13]
+
+
+class _RaisingConnection:
+    def execute(self, _query: str) -> Any:
+        raise RuntimeError("syntax error")
+
+    def commit(self) -> None:
+        return None
+
+
+@pytest.mark.parametrize("refresh", [True, False])
+def test_query_that_raises_is_errored_not_skipped(refresh: bool) -> None:
+    power_test = _power_test(_RaisingConnection(), refresh=refresh, query_subset=["Q13"])
+    power_test._preflight_validate_generation = lambda _permutation: None
+    if refresh:
+        _patch_refresh(power_test, {"refreshed": False})
+
+    result = power_test.run()
+
+    assert result.validation["errored_queries"] == [13]
+    assert result.validation["skipped_queries"] == []
+    assert result.validation["validated_queries"] == []
 
 
 def test_validation_disabled_records_no_summary() -> None:
