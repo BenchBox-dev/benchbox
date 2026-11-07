@@ -213,7 +213,6 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_check_complexity.py` | tooling |
 | `test_check_dependency_bounds.py` | product-safety |
 | `test_check_duplicate_code.py` | tooling |
-| `test_check_makefile_inventory.py` | tooling |
 | `test_check_project_references.py` | product-safety |
 | `test_check_rerun_shard_retention.py` | tooling |
 | `test_check_sqlglot_repro_retirement.py` | tooling |

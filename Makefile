@@ -41,6 +41,7 @@ test: test-fast
 
 $(DEVELOPMENT_TREE_ONLY_TARGETS): .development-tree-required
 
+.development-tree-required: SHELL := /bin/sh
 .PHONY: .development-tree-required
 .development-tree-required:
 	@if [ ! -d "$(BENCHBOX_MAKEFILE_ROOT)_project/decisions" ]; then \
@@ -643,10 +644,6 @@ duplicate-check-json:
 duplicate-check-delta:
 	uv run -- python scripts/check_duplicate_code.py --delta-vs "$(if $(BASE_REF),$(BASE_REF),origin/develop)"
 
-.PHONY: makefile-inventory-check
-makefile-inventory-check:
-	uv run -- python make/check_makefile_inventory.py
-
 .PHONY: mutation-test
 mutation-test:
 	@echo "Running mutation tests on critical modules..."
@@ -744,8 +741,6 @@ ci-lint:
 	[ $$? -eq 0 ] || failed="$$failed oracle-coverage-map-check"; \
 	$(MAKE) pricing-data-check; \
 	[ $$? -eq 0 ] || failed="$$failed pricing-data-check"; \
-	$(MAKE) makefile-inventory-check; \
-	[ $$? -eq 0 ] || failed="$$failed makefile-inventory-check"; \
 	uv run -- python scripts/check_public_contract_drift.py; \
 	[ $$? -eq 0 ] || failed="$$failed public-contract-drift"; \
 	$(MAKE) doc-contracts-guard; \

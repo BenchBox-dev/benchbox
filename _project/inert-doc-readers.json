@@ -13,7 +13,7 @@
     "tests/unit/test_release_infrastructure.py"
   ],
   "AGENTS.md": [
-    "tests/unit/scripts/test_check_makefile_inventory.py",
+    "tests/unit/test_make_targets.py",
     "tests/unit/workflows/test_stacked_pr_base_guard.py"
   ],
   "CHANGELOG.md": [
@@ -21,7 +21,8 @@
     "tests/unit/test_release_infrastructure.py"
   ],
   "CONTRIBUTING.md": [
-    "tests/unit/test_contributing_pr_open_auto_merge_docs.py"
+    "tests/unit/test_contributing_pr_open_auto_merge_docs.py",
+    "tests/unit/test_make_targets.py"
   ],
   "COPYRIGHT.md": [
     "tests/unit/scripts/test_comment_cleanup_scope.py"

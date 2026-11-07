@@ -13,12 +13,13 @@ from pathlib import Path
 
 import pytest
 
+from tests.utilities import make_database
+
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 ROOT = Path(__file__).resolve().parents[3]
 SCRIPT = ROOT / "scripts" / "make_timing.py"
 SHELL_SHIM = ROOT / "scripts" / "make_timing_shell.sh"
-INVENTORY_SCRIPT = ROOT / "make" / "check_makefile_inventory.py"
 CONCURRENT_APPEND_SKIP = pytest.mark.skipif(
     sys.platform == "win32",
     reason=(
@@ -358,17 +359,16 @@ def _logical_recipe_lines(recipe: str) -> int:
     return count
 
 
-def test_timed_targets_are_prerequisite_free_single_command_recipes() -> None:
-    inventory_module = _load("check_makefile_inventory_for_timing", INVENTORY_SCRIPT)
-    rules = inventory_module.build_inventory(ROOT)["rules"]
+@pytest.mark.skipif(shutil.which("make") is None or sys.platform == "win32", reason="POSIX make is required")
+def test_timed_targets_run_one_recipe_line_and_no_prerequisite_through_the_timing_shell() -> None:
+    rules = make_database.rules(ROOT)
     targets = _timed_targets()
 
     assert len(targets) == len(set(targets))
     for target in targets:
-        recipes = [rule for rule in rules[target] if rule["recipe"].strip()]
-        assert len(recipes) == 1, target
-        assert recipes[0]["header"] == f"{target}:", target
-        assert _logical_recipe_lines(recipes[0]["recipe"]) == 1, target
+        assert _logical_recipe_lines("\n".join(rules[target].recipe)) == 1, target
+        for prerequisite in rules[target].prerequisites:
+            assert rules[prerequisite].variables.get("SHELL") == "/bin/sh", (target, prerequisite)
 
 
 def test_makefile_routes_the_timed_targets_through_the_shell_shim() -> None:
