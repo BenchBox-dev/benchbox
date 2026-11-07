@@ -27068,15 +27068,10 @@
       "title": "Add comprehensive unit tests for release automation (fingerprinting, timestamps, content validation, size checks, scripts)"
     },
     "release-canary-green-after-0-5-0": {
-      "claim": {
-        "expires_at": "2026-11-08T03:42:15Z",
-        "generation": "0b37f9fb4cb545049cd6705ccb6de578",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Make the release canary green again (red since 2026-10-31)"
     },
     "release-canary-incident-alert": {
