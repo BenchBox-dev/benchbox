@@ -460,3 +460,131 @@ def test_unreadable_footprints_are_named_in_the_breach_report() -> None:
     )
     dog.step()
     assert "footprint unreadable" in out.getvalue()
+
+
+def start_machine_wrapper(
+    directory: Path, spawned: list, *, machine: str, cleanup_seconds: float, monkeypatch: pytest.MonkeyPatch
+) -> subprocess.Popen:
+    directory.mkdir(exist_ok=True)
+    proc = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "tests.unit.utils.heavy_watchdog_helper",
+            "slow_wrapper",
+            str(directory),
+            str(cleanup_seconds),
+            machine,
+        ]
+    )
+    spawned.append(proc)
+    read_pid(directory / "stubborn.pid")
+    assert wait_for(lambda: (directory / "wrapper.ready").exists())
+    monkeypatch.setattr(
+        hw.vm_footprint,
+        "argv_runs_wrapper",
+        lambda argv, configured: "slow_wrapper" in argv and argv[-1] == configured,
+    )
+    return proc
+
+
+def wrapper_subtree(*wrappers: subprocess.Popen) -> pt.TreeSample:
+    sample = pt.sample_tree(os.getpid(), frozenset({os.getpid()}))
+    assert sample is not None
+    keep = {
+        pid
+        for wrapper in wrappers
+        for pid in (wrapper.pid, *(child.pid for child in psutil.Process(wrapper.pid).children(recursive=True)))
+    }
+    members = tuple(member for member in sample.members if member.pid in keep)
+    return pt.TreeSample(os.getpid(), members, 0)
+
+
+def kill_with_watchdog(sample: pt.TreeSample, **overrides: object) -> str:
+    out = io.StringIO()
+    dog = hw.Watchdog(policy(mode="kill", grace_seconds=0.5, **overrides), out=out)
+    dog._kill_tree(sample)
+    return out.getvalue()
+
+
+def read_events(path: Path) -> list[dict]:
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+
+
+def test_machine_wrapper_finishes_its_vm_cleanup_after_a_stubborn_child_consumed_the_grace(
+    tmp_path: Path, spawned, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    events = tmp_path / "events.jsonl"
+    monkeypatch.setenv("BENCHBOX_HEAVY_RUNS_FILE", str(events))
+    monkeypatch.setenv("BENCHBOX_HEAVY_RUN_ID", "run-wd")
+    wrapper = start_machine_wrapper(tmp_path, spawned, machine="m", cleanup_seconds=1.5, monkeypatch=monkeypatch)
+    stubborn = read_pid(tmp_path / "stubborn.pid")
+    log = kill_with_watchdog(wrapper_subtree(wrapper), vm_machine="m", vm_cleanup_seconds=8.0)
+    assert not alive(stubborn)
+    assert wrapper.wait(timeout=5) == 143
+    assert (tmp_path / "cleaned").read_text(encoding="utf-8").strip() == "cleaned"
+    assert f"sent SIGKILL to pid {wrapper.pid}" not in log
+    rows = [row for row in read_events(events) if row["event"].startswith("vm_cleanup_")]
+    assert [row["event"] for row in rows] == ["vm_cleanup_started", "vm_cleanup_finished"]
+    assert rows[-1]["outcome"] == "exited"
+    assert rows[-1]["run_id"] == "run-wd"
+    assert rows[-1]["details"]["machine"] == "m"
+
+
+def test_machine_wrapper_cleanup_is_bounded_and_then_killed(
+    tmp_path: Path, spawned, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    events = tmp_path / "events.jsonl"
+    monkeypatch.setenv("BENCHBOX_HEAVY_RUNS_FILE", str(events))
+    wrapper = start_machine_wrapper(tmp_path, spawned, machine="m", cleanup_seconds=30.0, monkeypatch=monkeypatch)
+    started = time.monotonic()
+    log = kill_with_watchdog(wrapper_subtree(wrapper), vm_machine="m", vm_cleanup_seconds=1.0)
+    assert time.monotonic() - started < 6.0
+    assert wrapper.wait(timeout=5) == -9
+    assert not (tmp_path / "cleaned").exists()
+    assert "did not finish its VM cleanup within the shared 1s budget" in log
+    assert read_events(events)[-1]["outcome"] == "killed"
+
+
+def test_only_the_configured_machine_wrapper_gets_a_cleanup_window(
+    tmp_path: Path, spawned, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("BENCHBOX_HEAVY_RUNS_FILE", str(tmp_path / "events.jsonl"))
+    wrapper = start_machine_wrapper(tmp_path, spawned, machine="other", cleanup_seconds=30.0, monkeypatch=monkeypatch)
+    started = time.monotonic()
+    kill_with_watchdog(wrapper_subtree(wrapper), vm_machine="m", vm_cleanup_seconds=20.0)
+    assert time.monotonic() - started < 6.0
+    assert wrapper.wait(timeout=5) == -9
+    assert not (tmp_path / "events.jsonl").exists()
+
+
+def test_a_wrapper_that_is_not_a_descendant_of_the_holder_is_never_signalled(
+    tmp_path: Path, spawned, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("BENCHBOX_HEAVY_RUNS_FILE", str(tmp_path / "events.jsonl"))
+    wrapper = start_machine_wrapper(tmp_path, spawned, machine="m", cleanup_seconds=0.1, monkeypatch=monkeypatch)
+    sample = wrapper_subtree(wrapper)
+    unrelated_holder = policy(mode="kill", grace_seconds=0.5, holder_pid=wrapper.pid + 1_000_000)
+    hw.Watchdog(unrelated_holder, out=io.StringIO())._kill_tree(sample)
+    assert wrapper.poll() is None
+    assert alive(read_pid(tmp_path / "stubborn.pid"))
+
+
+def test_several_wrappers_share_one_cleanup_deadline(tmp_path: Path, spawned, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("BENCHBOX_HEAVY_RUNS_FILE", str(tmp_path / "events.jsonl"))
+    wrappers = [
+        start_machine_wrapper(tmp_path / label, spawned, machine="m", cleanup_seconds=30.0, monkeypatch=monkeypatch)
+        for label in ("a", "b", "c")
+    ]
+    started = time.monotonic()
+    log = kill_with_watchdog(wrapper_subtree(*wrappers), vm_machine="m", vm_cleanup_seconds=2.0)
+    assert time.monotonic() - started < 5.0
+    assert all(wrapper.wait(timeout=5) == -9 for wrapper in wrappers)
+    assert log.count("did not finish its VM cleanup") == 3
+
+
+def test_the_default_cleanup_budget_is_derived_from_the_stop_and_kill_bounds() -> None:
+    bound = hw.vm_footprint.machine_cleanup_bound_seconds
+    assert bound({}) == pytest.approx(86.0)
+    assert bound({"BENCHBOX_LINUX_STOP_TIMEOUT_SECONDS": "15"}) == pytest.approx(41.0)
+    assert bound({"BENCHBOX_LINUX_STOP_TIMEOUT_SECONDS": "x"}) == pytest.approx(86.0)

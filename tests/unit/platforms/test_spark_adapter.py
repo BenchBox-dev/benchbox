@@ -1067,6 +1067,58 @@ class TestSparkAdapterCreateSession:
         sql_calls = [str(c) for c in mock_spark_session.sql.call_args_list]
         assert not any("CREATE DATABASE" in c for c in sql_calls)
 
+    def test_validation_connection_does_not_stop_shared_session(self):
+        from types import SimpleNamespace
+
+        from benchbox.platforms.spark import SparkAdapter
+
+        mock_session_class, mock_spark_session, _ = self._make_builder_and_session()
+        mock_spark_session.catalog.listDatabases.return_value = [SimpleNamespace(name="bench_db")]
+
+        with patch("benchbox.platforms.spark.SparkSession", mock_session_class):
+            adapter = SparkAdapter(master="local[*]", database="bench_db")
+
+            def validate_then_drop(**connection_config):
+                if getattr(adapter, "_validating_database", False):
+                    return
+                adapter._validating_database = True
+                try:
+                    temp_connection = adapter.create_connection(**connection_config)
+                finally:
+                    adapter._validating_database = False
+                adapter.close_connection(temp_connection)
+                adapter.drop_database(**connection_config)
+
+            with patch.object(adapter, "handle_existing_database", side_effect=validate_then_drop):
+                adapter.database_was_reused = False
+                connection = adapter.create_connection()
+
+        mock_spark_session.stop.assert_not_called()
+        assert adapter._spark_session is mock_spark_session
+        assert connection is mock_spark_session
+        assert any("DROP DATABASE" in str(c) for c in mock_spark_session.sql.call_args_list)
+
+    def test_close_connection_stops_session_after_validation_borrow_released(self):
+        from benchbox.platforms.spark import SparkAdapter
+
+        mock_session_class, mock_spark_session, _ = self._make_builder_and_session()
+
+        with patch("benchbox.platforms.spark.SparkSession", mock_session_class):
+            adapter = SparkAdapter(master="local[*]", database="bench_db")
+            with patch.object(adapter, "handle_existing_database"):
+                connection = adapter.create_connection()
+                adapter._validating_database = True
+                try:
+                    temp_connection = adapter.create_connection()
+                finally:
+                    adapter._validating_database = False
+                adapter.close_connection(temp_connection)
+                mock_spark_session.stop.assert_not_called()
+                adapter.close_connection(connection)
+
+        mock_spark_session.stop.assert_called_once()
+        assert adapter._spark_session is None
+
 
 class TestSparkAdapterGetPlatformInfoLive:
     @pytest.fixture

@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "Guarded heavy runs now append per-run timing records (queue wait, admission, execution, cleanup and outcome) to ~/.benchbox/heavy-runs.jsonl, with no command lines or environment captured"
+    }
+  ]
+}

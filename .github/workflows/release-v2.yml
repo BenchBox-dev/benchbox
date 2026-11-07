@@ -32,6 +32,7 @@ jobs:
     outputs:
       head_sha: ${{ steps.admit.outputs.head_sha }}
       target: ${{ steps.route.outputs.target }}
+      branch: ${{ steps.admit.outputs.branch }}
     steps:
       - name: Validate tag shape
         env:
@@ -121,6 +122,8 @@ jobs:
             --source . --tag "$RELEASE_TAG" --output "$RUNNER_TEMP/admitted"
           head_sha="$(git rev-parse HEAD)"
           echo "head_sha=$head_sha" >> "$GITHUB_OUTPUT"
+          branch="$(uv run -- python scripts/release_artifact_consumer.py line --source . --tag "$RELEASE_TAG")"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
           cp -R "$RUNNER_TEMP/admitted" admitted
 
       - name: Upload the admitted directory
@@ -732,6 +735,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
           HEAD_SHA: ${{ needs.admit.outputs.head_sha }}
+          RELEASE_BRANCH: ${{ needs.admit.outputs.branch }}
         shell: bash
         run: |
           set -euo pipefail
@@ -739,11 +743,17 @@ jobs:
           python3 scripts/release_admitted_dist.py --admitted admitted --tag "$RELEASE_TAG" --sha "$HEAD_SHA" --stage staged
           version="${RELEASE_TAG#v}"
           python3 scripts/generate_changelog_entry.py --version "$version" --print-section > release-notes.md
+          latest_flag=
+          case "$RELEASE_BRANCH" in
+            develop) ;;
+            release/*) latest_flag=--latest=false ;;
+            *) echo "::error::Admission reported no release line ('$RELEASE_BRANCH')."; exit 1 ;;
+          esac
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" staged/* --clobber
-            gh release edit "$RELEASE_TAG" --title "BenchBox $version" --notes-file release-notes.md
+            gh release edit "$RELEASE_TAG" --title "BenchBox $version" --notes-file release-notes.md $latest_flag
           else
-            gh release create "$RELEASE_TAG" staged/* --title "BenchBox $version" --notes-file release-notes.md
+            gh release create "$RELEASE_TAG" staged/* --title "BenchBox $version" --notes-file release-notes.md $latest_flag
           fi
 
   release-outcome:

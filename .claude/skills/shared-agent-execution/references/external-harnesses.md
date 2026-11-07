@@ -27,9 +27,7 @@ External `omp` is the exception: it accepts OMP selectors natively, including
 
 | OMP selector | External harness | CLI model ID |
 |---|---|---|
-| `muse-code/muse-wonder-1.0-contributor` | `muse` | `muse-wonder-1.0-contributor` |
-| `muse-code/muse-spark-1.3-contributor` | `muse` | `muse-spark-1.3-contributor` |
-| `anthropic/claude-fable-5` | `claude` | `claude-fable-5` |
+| `anthropic/claude-fable-5-1` | `claude` | `claude-fable-5-1` |
 | `anthropic/claude-opus-5-5` | `claude` | `claude-opus-5-5` |
 | `anthropic/claude-sonnet-5-5` | `claude` | `claude-sonnet-5-5` |
 | `anthropic/claude-haiku-5-5` | `claude` | `claude-haiku-5-5` |
@@ -197,7 +195,7 @@ printf '%s\n' true
 - **claude**
   - Worker (Write): `(cd "$WORKSPACE" && claude --print --model "$MODEL" --effort "$EFFORT" "$PROMPT")`
   - Reviewer (Hard Read-Only): `(cd "$WORKSPACE" && claude --print --tools Read,Grep,Glob --model "$MODEL" --effort "$EFFORT" "$PROMPT")`
-  - Known-good models: `claude-fable-5`, `claude-opus-5-5`, `claude-sonnet-5-5`
+  - Known-good models: `claude-fable-5-1`, `claude-opus-5-5`, `claude-sonnet-5-5`
 - **agy**
   - Worker (Write): `(cd "$WORKSPACE" && agy --model "$MODEL" --print="$PROMPT")`
   - Reviewer (Soft Read-Only): `(cd "$WORKSPACE" && agy --model "$MODEL" --mode plan --print="$PROMPT")`
@@ -231,19 +229,18 @@ printf '%s\n' true
 - **pi**
   - Worker (Write): `(cd "$WORKSPACE" && pi --print --model "$MODEL" --thinking "$EFFORT" "$PROMPT")`
   - Reviewer (Hard Read-Only): `(cd "$WORKSPACE" && pi --print --tools read,grep,find,ls --model "$MODEL" --thinking "$EFFORT" "$PROMPT")`
-  - Catalog-listed role models: `anthropic/claude-fable-5`,
-    `meta/muse-spark-1.3-contributor`. Model listing is not completion or
+  - Catalog-listed role models: `anthropic/claude-fable-5-1`. Model listing is not completion or
     authentication proof; use only identifiers reported by the installed
     `pi --list-models`.
   - Do not infer an OMP provider prefix. A catalog that lists GPT models under
     `openai` does not establish a subscription-backed `openai-codex` route.
     If the required coding-plan model is absent, use its native harness
     rather than silently switching to a billable API provider. Do not replace
-    an unavailable Wonder contributor with the non-contributor Wonder entry.
+    an unavailable model with a non-subscription entry.
 - **jcode**
   - Worker (Write): `jcode run -C "$WORKSPACE" --model "$MODEL" "$PROMPT"`
   - Reviewer (Hard Read-Only): `jcode run -C "$WORKSPACE" --disable-base-tools --tools read --model "$MODEL" "$PROMPT"`
-  - Known-good models: `gpt-6-astra`, `gpt-6.1-sol`, `gpt-6-luna`, `claude-fable-5`, `claude-opus-5-5`, `claude-sonnet-5-5`, `gemini-3.8-flash-tiered`, `muse-spark-1.3-contributor`
+  - Known-good models: `gpt-6-astra`, `gpt-6.1-sol`, `gpt-6-luna`, `claude-fable-5-1`, `claude-opus-5-5`, `claude-sonnet-5-5`, `gemini-3.8-flash-tiered`, `muse-spark-1.3-contributor`
 - **goose**
   - Worker (Write): `(cd "$WORKSPACE" && goose run --text "$PROMPT" --no-session --provider "$PROVIDER" --model "$MODEL")`
   - Reviewer (Soft Read-Only): `(cd "$WORKSPACE" && goose review --prompt "$CRITERIA_FILE" --model "$MODEL")`
@@ -342,11 +339,9 @@ just the primary: an external `omp` reviewer inherits the global
 `retry.fallbackChains`, whose entries can belong to the author's family even
 when the primary is safe, so the reviewer overlay MUST set
 `retry.modelFallback: false` and a failed reviewer is reported absent rather
-than retried into an excluded family. When the author is a Muse model,
-`muse` members are ineligible, so the `review` chain reduces to `codex`
-`gpt-6-astra` then `claude` `claude-fable-5` then `agy` `gemini-4-argon-high`;
-the same family filter applies when the author is a Claude, Codex, or Gemini
-model. Fail closed: if the filter leaves no eligible model, report the panel
+than retried into an excluded family. The `review` chain
+is `codex` `gpt-6.1-sol` then `agy` `gemini-4-argon-high`; the family filter
+applies when the author is a Claude, Codex, or Gemini model. Fail closed: if the filter leaves no eligible model, report the panel
 as blocked instead of reviewing with an excluded family member.
 
 Match effort to the work: `high` for deep or adversarial review, `medium` for

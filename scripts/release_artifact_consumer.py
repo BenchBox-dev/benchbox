@@ -21,10 +21,12 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
+from urllib.parse import quote
 
 REPOSITORY = "BenchBox-dev/BenchBox"
 WORKFLOW = ".github/workflows/trunk.yml"
 PRODUCER_BRANCH = "develop"
+MAINTENANCE_BRANCH = re.compile(r"release/[0-9]+\.[0-9]+\.x")
 PRODUCER_EVENT = "push"
 JOB_NAME = "dist-artifact"
 PRODUCER_RECEIPT = "producer-receipt.json"
@@ -172,11 +174,15 @@ def _pages(api: Api, path: str, key: str) -> list[dict[str, Any]]:
     raise ValueError("API pagination limit exceeded")
 
 
-def _run_identity(run: dict[str, Any], sha: str, repository_id: int) -> None:
+def _is_producer_branch(branch: Any) -> bool:
+    return branch == PRODUCER_BRANCH or (isinstance(branch, str) and MAINTENANCE_BRANCH.fullmatch(branch) is not None)
+
+
+def _run_identity(run: dict[str, Any], sha: str, repository_id: int, branch: Any) -> None:
     _require(bool(re.fullmatch(r"[0-9a-f]{40}", sha)), "invalid candidate SHA")
     _require(_positive(repository_id), "invalid repository ID")
     _require(run.get("head_sha") == sha and run.get("event") == PRODUCER_EVENT, "wrong producer SHA or event")
-    _require(run.get("head_branch") == PRODUCER_BRANCH, "wrong producer branch")
+    _require(_is_producer_branch(branch) and run.get("head_branch") == branch, "wrong producer branch")
     _require(run.get("path") == WORKFLOW, "wrong producer workflow")
     for field in ("repository", "head_repository"):
         repository = run.get(field)
@@ -188,17 +194,20 @@ def _run_identity(run: dict[str, Any], sha: str, repository_id: int) -> None:
     _require(_positive(run.get("id")) and _positive(run.get("run_attempt")), "invalid producer run identity")
 
 
-def select_producer(sha: str, api: Api = github_json) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+def select_producer(
+    sha: str, api: Api = github_json, *, branch: str = PRODUCER_BRANCH
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     repository = api("")
     _require(_is_repository(repository.get("full_name")), "wrong repository")
+    _require(_is_producer_branch(branch), "invalid producer branch")
     runs = _pages(
         api,
-        f"actions/workflows/trunk.yml/runs?head_sha={sha}&event={PRODUCER_EVENT}&branch={PRODUCER_BRANCH}",
+        f"actions/workflows/trunk.yml/runs?head_sha={sha}&event={PRODUCER_EVENT}&branch={quote(branch, safe='')}",
         "workflow_runs",
     )
-    _require(bool(runs), "no trunk producer on develop")
+    _require(bool(runs), f"no trunk producer on {branch}")
     for run in runs:
-        _run_identity(run, sha, repository.get("id"))
+        _run_identity(run, sha, repository.get("id"), branch)
         _timestamp(run.get("created_at"))
         _timestamp(run.get("run_started_at") or run["created_at"])
     latest = max(runs, key=lambda run: (_timestamp(run["created_at"]), run["id"]))
@@ -212,7 +221,7 @@ def select_producer(sha: str, api: Api = github_json) -> tuple[dict[str, Any], d
             "an older producer run has a newer attempt",
         )
     run = api(f"actions/runs/{latest['id']}")
-    _run_identity(run, sha, repository["id"])
+    _run_identity(run, sha, repository["id"], branch)
     _require(run["id"] == latest["id"] and run["run_attempt"] == latest["run_attempt"], "producer attempt changed")
     _require(
         run.get("status") == "completed" and run.get("conclusion") == "success", "latest producer is not successful"
@@ -309,7 +318,7 @@ def running_producer_job(
 
 
 def producer_receipt(directory: Path, run: dict[str, Any], job: dict[str, Any]) -> dict[str, Any]:
-    _run_identity(run, run["head_sha"], run["repository"]["id"])
+    _run_identity(run, run["head_sha"], run["repository"]["id"], run.get("head_branch"))
     _require(job.get("name") == JOB_NAME and _positive(job.get("id")), "invalid producer job")
     _require(
         job.get("run_id") == run["id"]
@@ -397,7 +406,67 @@ def verify_producer_receipt(directory: Path, run: dict[str, Any], job: dict[str,
     return expected
 
 
-def resolve_tag(root: Path, tag: str, develop_ref: str = "refs/remotes/origin/develop") -> dict[str, str]:
+def _remote_branch_tip(root: Path, branch: str) -> str | None:
+    result = _run_git(
+        root,
+        "rev-parse",
+        "--verify",
+        "--quiet",
+        f"refs/remotes/origin/{branch}^{{commit}}",
+        stdout=subprocess.PIPE,
+        text=True,
+        timeout=60,
+    )
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
+def _contains_commit(root: Path, commit: str, branch: str) -> bool:
+    if _remote_branch_tip(root, branch) is None:
+        return False
+    result = _run_git(
+        root,
+        "merge-base",
+        "--is-ancestor",
+        commit,
+        f"refs/remotes/origin/{branch}",
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        timeout=60,
+    )
+    _require(result.returncode in (0, 1), f"cannot compare the tagged commit with {branch}")
+    return result.returncode == 0
+
+
+def maintenance_branch(version: str) -> str:
+    from packaging.version import Version
+
+    major, minor = (*Version(version).release, 0)[:2]
+    return f"release/{major}.{minor}.x"
+
+
+def protected_line(root: Path, tag: str, commit: str) -> str:
+    _require(bool(re.fullmatch(TAG_PATTERN, tag)), "invalid version tag")
+    maintenance = maintenance_branch(tag[1:])
+    on_develop = _contains_commit(root, commit, PRODUCER_BRANCH)
+    on_maintenance = _contains_commit(root, commit, maintenance)
+    _require(
+        on_develop or on_maintenance,
+        f"tagged commit is on neither {PRODUCER_BRANCH} nor {maintenance}; {tag} must be tagged on one of them",
+    )
+    _require(
+        not (on_develop and on_maintenance),
+        f"tagged commit is on both {PRODUCER_BRANCH} and {maintenance}; a release must come from exactly one line",
+    )
+    if on_maintenance:
+        return maintenance
+    _require(
+        _remote_branch_tip(root, maintenance) is None,
+        f"{maintenance} exists, so {tag} must be tagged on it, not on {PRODUCER_BRANCH}",
+    )
+    return PRODUCER_BRANCH
+
+
+def resolve_tag(root: Path, tag: str) -> dict[str, str]:
     _require(bool(re.fullmatch(TAG_PATTERN, tag)), "invalid version tag")
 
     def git(*args: str) -> str:
@@ -408,13 +477,13 @@ def resolve_tag(root: Path, tag: str, develop_ref: str = "refs/remotes/origin/de
     commit = git("rev-parse", f"{ref}^{{commit}}")
     _require(git("rev-parse", "HEAD") == commit, "checkout differs from tagged source")
     _require(not git("status", "--porcelain", "--untracked-files=all"), "tagged source checkout is dirty")
-    _run_git(root, "merge-base", "--is-ancestor", commit, develop_ref, check=True, timeout=60)
     spec = importlib.util.spec_from_file_location("_release_version", Path(__file__).with_name("release_flow.py"))
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     version = tomllib.loads(git("show", f"{commit}:pyproject.toml"))["project"]["version"]
     _require(module.normalize_version(tag[1:]) == module.normalize_version(version) is not None, "tag/version mismatch")
+    protected_line(root, tag, commit)
     return {"tag": tag, "tag_object": git("rev-parse", ref), "head_sha": commit, "version": version}
 
 
@@ -650,7 +719,11 @@ def _download(artifact_id: int, archive: Path) -> None:
 
 def hosted_refspecs(tag: str) -> list[str]:
     _require(bool(re.fullmatch(TAG_PATTERN, tag)), "invalid version tag")
-    return ["develop:refs/remotes/origin/develop", f"+refs/tags/{tag}:refs/tags/{tag}"]
+    return [
+        "develop:refs/remotes/origin/develop",
+        "refs/heads/release/*:refs/remotes/origin/release/*",
+        f"+refs/tags/{tag}:refs/tags/{tag}",
+    ]
 
 
 def fetch_hosted_refs(source: Path, tag: str) -> None:
@@ -667,7 +740,8 @@ def fetch_hosted_refs(source: Path, tag: str) -> None:
 
 def admit(root: Path, tag: str, output: Path, api: Api = github_json) -> dict[str, Any]:
     source = resolve_tag(root, tag)
-    run, job, artifact = select_producer(source["head_sha"], api)
+    branch = protected_line(root, tag, source["head_sha"])
+    run, job, artifact = select_producer(source["head_sha"], api, branch=branch)
     _require(not output.exists(), "output already exists")
     output.parent.mkdir(parents=True, exist_ok=True)
     output = output.parent.resolve(strict=True) / output.name
@@ -691,9 +765,10 @@ def admit(root: Path, tag: str, output: Path, api: Api = github_json) -> dict[st
                 package == "benchbox" and version == Version(source["version"]), "distribution package/version mismatch"
             )
         _verify_committed_binaries(root, source["head_sha"], [stage / name for name in receipt["files"]])
-        current = select_producer(source["head_sha"], api)
+        current = select_producer(source["head_sha"], api, branch=branch)
         _require(current == (run, job, artifact), "producer changed during admission")
         _require(resolve_tag(root, tag) == source, "tagged source changed during admission")
+        _require(protected_line(root, tag, source["head_sha"]) == branch, "release line changed during admission")
         summary = {
             **source,
             "producer": receipt,
@@ -721,6 +796,9 @@ def main(argv: list[str] | None = None) -> int:
     consume.add_argument("--source", type=Path, required=True)
     consume.add_argument("--tag", required=True)
     consume.add_argument("--output", type=Path, required=True)
+    line = commands.add_parser("line")
+    line.add_argument("--source", type=Path, required=True)
+    line.add_argument("--tag", required=True)
     args = parser.parse_args(argv)
     try:
         if args.command == "producer":
@@ -734,6 +812,9 @@ def main(argv: list[str] | None = None) -> int:
             job = running_producer_job(run_id, attempt)
             receipt = producer_receipt(args.dist, run, job)
             (args.dist / PRODUCER_RECEIPT).write_text(json.dumps(receipt, indent=2) + "\n")
+        elif args.command == "line":
+            source = args.source.resolve()
+            print(protected_line(source, args.tag, resolve_tag(source, args.tag)["head_sha"]))
         else:
             fetch_hosted_refs(args.source, args.tag)
             print(json.dumps(admit(args.source.resolve(), args.tag, args.output.absolute()), indent=2))

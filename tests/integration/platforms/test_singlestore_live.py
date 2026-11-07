@@ -197,3 +197,85 @@ class TestLiveSingleStoreDDL:
             except Exception:
                 pass
             singlestore_adapter.close_connection(connection)
+
+
+@pytest.fixture
+def refresh_databases():
+    import uuid
+
+    import singlestoredb as s2
+
+    skip_unless_docker_service("localhost", _HOST_PORT, platform="SingleStore")
+    suffix = uuid.uuid4().hex[:8]
+    admin = s2.connect(host="localhost", port=_HOST_PORT, user="root", password=_PASSWORD)
+    adapters = {}
+    connections = {}
+    opened: list = []
+    admin_cursor = admin.cursor()
+    try:
+        for role in ("native", "values", "atomic"):
+            database = f"rf1_{role}_{suffix}"
+            admin_cursor.execute(f"CREATE DATABASE `{database}`")
+            adapter = SingleStoreAdapter(
+                host="localhost", port=_HOST_PORT, username="root", password=_PASSWORD, database=database
+            )
+            adapter.skip_database_management = True
+            adapters[role] = adapter
+            connections[role] = adapter.create_connection()
+        yield {
+            "adapters": adapters,
+            "connections": connections,
+            "opened": opened,
+        }
+    finally:
+        for stream in opened:
+            stream.rollback()
+            stream.close()
+        for role, connection in connections.items():
+            adapters[role].close_connection(connection)
+        for role in adapters:
+            admin_cursor.execute(f"DROP DATABASE IF EXISTS `rf1_{role}_{suffix}`")
+        admin_cursor.close()
+        admin.close()
+
+
+def _refresh_connection(fixture: dict, role: str, *, native: bool):
+    from unittest.mock import MagicMock
+
+    from benchbox.platforms.base.connection_wrappers import PlatformAdapterConnection
+
+    adapter = fixture["adapters"][role]
+    stream = adapter.new_stream_connection(fixture["connections"][role])
+    fixture["opened"].append(stream)
+    return PlatformAdapterConnection(stream, adapter if native else MagicMock(), maintenance_mode=True)
+
+
+@pytest.mark.slow
+class TestLiveSingleStoreTPCHRefreshIngest:
+    def test_local_infile_is_accepted_by_server_and_driver(self, singlestore_adapter):
+        connection = singlestore_adapter.create_connection()
+        try:
+            cursor = connection.cursor()
+            cursor.execute("SHOW VARIABLES LIKE 'local_infile'")
+            assert cursor.fetchone()[1].upper() in {"ON", "1"}
+        finally:
+            singlestore_adapter.close_connection(connection)
+
+    def test_native_rf1_matches_values_path_for_every_column(self, refresh_databases, tmp_path):
+        from tests.integration._tpch_refresh_utils import _check_native_rf1_matches_values, _load_sf001_base_singlestore
+
+        _check_native_rf1_matches_values(
+            _refresh_connection(refresh_databases, "native", native=True),
+            _refresh_connection(refresh_databases, "values", native=False),
+            tmp_path,
+            _load_sf001_base_singlestore,
+        )
+
+    def test_native_rf1_bad_row_leaves_no_rows_and_connection_usable(self, refresh_databases, tmp_path):
+        from tests.integration._tpch_refresh_utils import _check_rf1_bad_row_is_atomic, _load_sf001_base_singlestore
+
+        refresh_connection = _refresh_connection(refresh_databases, "atomic", native=True)
+
+        _check_rf1_bad_row_is_atomic(refresh_connection, tmp_path, _load_sf001_base_singlestore)
+
+        assert refresh_connection.execute("SELECT 1").fetchone()[0] == 1

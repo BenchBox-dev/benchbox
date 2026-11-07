@@ -148,6 +148,7 @@ def test_resolver_requires_per_class_declaration() -> None:
     from benchbox.platforms.duckdb import DuckDBAdapter
     from benchbox.platforms.ducklake import DuckLakeAdapter
     from benchbox.platforms.postgresql import PostgreSQLAdapter
+    from benchbox.platforms.singlestore import SingleStoreAdapter
     from benchbox.platforms.sqlite import SQLiteAdapter
 
     def resolves(adapter_class: type) -> bool:
@@ -155,6 +156,7 @@ def test_resolver_requires_per_class_declaration() -> None:
 
     assert resolves(DuckDBAdapter)
     assert resolves(PostgreSQLAdapter)
+    assert resolves(SingleStoreAdapter)
     assert not resolves(DuckLakeAdapter)
     assert not resolves(SQLiteAdapter)
     assert not resolves(CedarDBAdapter)
@@ -176,24 +178,87 @@ def test_adapter_without_capability_keeps_values_statements(tmp_path: Path) -> N
     connection.commit.assert_called_once_with()
 
 
-def test_singlestore_stays_on_values_fallback(tmp_path: Path) -> None:
+class _LoadDataCursor:
+    def __init__(self, log: list[str], statements: list[str], rowcount: int) -> None:
+        self.log = log
+        self.statements = statements
+        self.rowcount = rowcount
+
+    def execute(self, statement: str) -> None:
+        self.statements.append(statement)
+        self.log.append("load")
+
+    def close(self) -> None:
+        return None
+
+
+class _SingleStoreConnection(_Connection):
+    def __init__(self, log: list[str], adapter: object, rowcount: int = 1) -> None:
+        super().__init__(log, adapter)
+        self.statements: list[str] = []
+        self.rowcount = rowcount
+
+    def cursor(self) -> _LoadDataCursor:
+        return _LoadDataCursor(self.log, self.statements, self.rowcount)
+
+
+def _singlestore_adapter():
     from benchbox.platforms.singlestore import SingleStoreAdapter
 
-    adapter = SingleStoreAdapter.__new__(SingleStoreAdapter)
-    assert SingleStoreAdapter.supports_refresh_functions is True
-    assert "supports_native_refresh_ingest" not in SingleStoreAdapter.__dict__
-    assert resolve_refresh_ingester(adapter) is None
+    return SingleStoreAdapter.__new__(SingleStoreAdapter)
 
-    connection = MagicMock()
-    connection.platform_adapter = adapter
 
+@pytest.mark.parametrize("site", ["power", "throughput", "maintenance"])
+def test_singlestore_rf1_loads_inside_the_timer_without_pre_timer_reads(
+    site: str, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    update_set = _update_set(tmp_path)
+    events = _Events(monkeypatch, {update_set.orders_path, update_set.lineitem_path}, [_SITE_MODULES[site]])
+    connection = _SingleStoreConnection(events.log, _singlestore_adapter())
+
+    _run_site(site, connection, update_set)
+
+    log = events.log
+    marks = [index for index, event in enumerate(log) if event == "timer_mark"]
+    start = marks[0]
+    stop = log.index("timer_stop") if "timer_stop" in log else marks[1]
+    assert start < log.index("BEGIN") < log.index("load") < log.index("COMMIT") < stop
+    assert log.count("load") == 2
+    assert "read" not in log
+    assert "parse" not in log
+    assert log.count("COMMIT") == 1
+
+
+def test_singlestore_declares_and_resolves_native_ingest(tmp_path: Path) -> None:
+    from benchbox.platforms.singlestore import SingleStoreAdapter
+
+    adapter = _singlestore_adapter()
+    assert SingleStoreAdapter.__dict__["supports_native_refresh_ingest"] is True
+    assert resolve_refresh_ingester(adapter) is adapter
+
+    connection = _SingleStoreConnection([], adapter, rowcount=1)
     assert apply_rf1(connection, _update_set(tmp_path)) == 2
 
-    statements = [call.args[0] for call in connection.execute.call_args_list]
-    assert statements[0] == "BEGIN"
-    assert statements[1].startswith("INSERT INTO orders (") and " VALUES (" in statements[1]
-    assert statements[2].startswith("INSERT INTO lineitem (") and " VALUES (" in statements[2]
-    assert not any("LOAD DATA" in statement.upper() for statement in statements)
+    orders_statement, lineitem_statement = connection.statements
+    assert orders_statement.startswith("LOAD DATA LOCAL INFILE '")
+    assert "INTO TABLE `orders`" in orders_statement
+    assert "INTO TABLE `lineitem`" in lineitem_statement
+    for statement in connection.statements:
+        assert "FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n'" in statement
+        assert " SET " in statement and "REGEXP" in statement and "1e30" in statement
+        assert "IGNORE" not in statement.upper() and "SKIP" not in statement.upper()
+    assert "(`o_orderkey`" in orders_statement.lower()
+    assert "@o_totalprice" in orders_statement.lower()
+    assert "`o_totalprice` = if(@o_totalprice regexp" in orders_statement.lower()
+
+
+def test_singlestore_native_ingest_rejects_unreported_row_count(tmp_path: Path) -> None:
+    connection = _SingleStoreConnection([], _singlestore_adapter(), rowcount=-1)
+
+    with pytest.raises(RuntimeError, match="did not report"):
+        apply_rf1(connection, _update_set(tmp_path))
+
+    assert connection.log == ["BEGIN", "load", "ROLLBACK"]
 
 
 def test_native_rows_failure_rolls_back_and_raises(tmp_path: Path) -> None:

@@ -860,3 +860,19 @@ def test_selection_reports_release_identity_separately_from_enforcement_changes(
 
 
 FRAGMENT_TEXT = "Prep compiles fragment entries into the dated section of the changelog."
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
+@pytest.mark.parametrize(
+    ("version", "expected"),
+    [("0.5.1", "refs/tags/v0.5.0"), ("0.6.1", "refs/tags/v0.6.0"), ("0.7.0", "refs/tags/v0.6.1"), ("0.4.0", None)],
+)
+def test_the_lock_baseline_is_the_newest_older_final_tag_even_when_newer_minors_exist(
+    tmp_path: Path, version: str, expected: str | None
+) -> None:
+    git(tmp_path, "init", "-q", "-b", "develop")
+    git(tmp_path, "commit", "-q", "--allow-empty", "-m", "Fixture")
+    for tag in ("v0.5.0", "v0.5.0rc1", "v0.6.0", "v0.6.1"):
+        git(tmp_path, "tag", "-a", tag, "-m", tag)
+
+    assert release_flow.latest_release_tag(tmp_path, before_version=version) == expected

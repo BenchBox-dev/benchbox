@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Databend bulk load now passes the stage method and format options to databend-driver by keyword, so tables load through COPY INTO instead of failing with an argument type error; loads verify the loaded row count against the source file and fail the run on a mismatch or any failed table"
+    }
+  ]
+}

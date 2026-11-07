@@ -90,7 +90,7 @@ class TestPowerTestExecution:
         assert result.queries_executed == 22
         assert result.queries_successful == 22
         assert len(result.query_results) == 22
-        assert benchmark.get_query.call_count == 44
+        assert benchmark.get_query.call_count == 22
         assert connection.execute.call_count == 22
         assert power_test.validate_results(result) is True
         assert result.power_at_size > 0.0

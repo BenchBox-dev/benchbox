@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "The vendored SQLGlot bypass scan skips dot-directories, so a virtualenv under _project/scripts no longer fails it"}

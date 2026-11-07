@@ -163,33 +163,10 @@ def test_develop_review_rule_can_be_warn_only_for_explicit_migration_override():
     assert blocking_findings(findings) == []
 
 
-def test_release_only_matches_runbook_expectations():
-    expected = parse_expected_rulesets((REPO_ROOT / "docs" / "internal" / "repo-admin-settings.md").read_text())[
-        "release-only"
-    ]
-    live = {
-        "name": "release-only",
-        "enforcement": "active",
-        "conditions": {"ref_name": {"include": ["refs/heads/release"], "exclude": []}},
-        "bypass_actors": [],
-        "rules": [
-            {
-                "type": "required_status_checks",
-                "parameters": {
-                    "strict_required_status_checks_policy": False,
-                    "required_status_checks": [
-                        {"context": "validate-base"},
-                        {"context": "release-required-result"},
-                    ],
-                },
-            },
-            {"type": "required_linear_history"},
-            {"type": "non_fast_forward"},
-            {"type": "deletion"},
-        ],
-    }
+def test_release_only_is_not_expected_by_the_runbook():
+    expected = parse_expected_rulesets((REPO_ROOT / "docs" / "internal" / "repo-admin-settings.md").read_text())
 
-    assert compare_ruleset(expected, live) == []
+    assert set(expected) == {"develop-squash-only", "release-branches"}
 
 
 def test_tag_protection_missing_when_no_tag_ruleset_exists():

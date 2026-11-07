@@ -1,10 +1,12 @@
 # Cutting a BenchBox release
 
-BenchBox releases from a single long-lived branch, `develop`, in
-`BenchBox-dev/BenchBox`. A release is an annotated `vX.Y.Z` tag on a `develop`
-commit whose `trunk.yml` push run is green. Pushing the tag starts
-`.github/workflows/release-v2.yml`, which admits the artifacts that run built,
-verifies them, publishes them with attestations, and creates the GitHub release.
+BenchBox releases from one long-lived branch, `develop`, in
+`BenchBox-dev/BenchBox`, and from on-demand `release/X.Y.x` maintenance
+lines (see "Maintenance releases"). A release is an annotated `vX.Y.Z` tag on a
+commit of one of those branches whose `trunk.yml` push run is green. Pushing the
+tag starts `.github/workflows/release-v2.yml`, which admits the artifacts that
+run built, verifies them, publishes them with attestations, and creates the
+GitHub release.
 This guide is the maintainer runbook. The artifact, admission, and publishing
 contract lives in [release-artifacts.md](release-artifacts.md); this guide does
 not repeat it.
@@ -47,6 +49,81 @@ make release-check VERSION=X.Y.Z RELEASE_PRE_TAG=1
 
 Choose an unused version and resolve any existing `vX.Y.Z` tag before starting.
 Never retag or force-push a published tag.
+
+## Maintenance releases
+
+A maintenance line ships a fix on an older minor without shipping everything on
+`develop`, for example a security fix as `0.5.1` after `0.6.0` is out. Lines
+are on demand: a `release/X.Y.x` branch exists only while that minor is
+supported, and only the owner creates or deletes one (rulesets
+`release-branches` and `release-branch-lifecycle` in
+[repo-admin-settings.md](repo-admin-settings.md)).
+
+Admission (`scripts/release_artifact_consumer.py`) accepts a tag only when its
+commit is on exactly one protected line, `develop` or the `release/X.Y.x`
+branch for the tag's `X.Y`, and that exact commit has a successful `trunk.yml`
+push run on that branch with its `dist-artifact`. It refuses:
+
+- a `vX.Y.Z` tag on a `develop` commit while `release/X.Y.x` exists;
+- a tag for another minor on a maintenance branch (`v0.6.1` on `release/0.5.x`);
+- a commit on both lines, or on neither;
+- a commit whose trunk run is missing, failed, or ran on another branch.
+
+Prerequisite: `trunk.yml` does not yet run on pushes to `release/**`, and
+`oracle-gate` does not yet cover pull requests into a maintenance line. Both
+arrive with a later change (multi-base support in the review gate, plus a
+`release/**` push trigger for `trunk.yml`). Until it lands, admission refuses
+every maintenance tag because no trunk run exists on the branch, and a pull
+request into a maintenance line cannot report `oracle-gate`. A maintenance
+release therefore needs that change first; do not create a line before then.
+See the gate coverage note in [repo-admin-settings.md](repo-admin-settings.md).
+
+The procedure:
+
+1. Once, delete the legacy `release` branch if it still exists: Git cannot hold
+   `release` and `release/X.Y.x` together. Confirm both rulesets are live with
+   `scripts/ruleset_drift_check.py`.
+2. The owner creates the branch from the `vX.Y.0` tag commit, or from the newest
+   `vX.Y.Z` tag of that minor:
+   `git push origin "vX.Y.0^{commit}:refs/heads/release/X.Y.x"`.
+3. The branch starts with the workflows and release scripts of that tag. If the
+   tag predates maintenance-line support, the first pull request into the branch
+   brings `.github/workflows/trunk.yml`, `ci.yml`, `release-v2.yml` and
+   `scripts/release_artifact_consumer.py` (and whatever they need) from
+   `develop`; `ci.yml` accepts a `release/X.Y.x` base.
+4. Land the fix by pull request into `release/X.Y.x`; the pull request
+   squash-merges like any other. Land the same fix on `develop` through its own
+   pull request when `develop` has the defect too. Add a `changelog.d` fragment
+   on each branch.
+5. Prepare the release on the branch, as for `develop`: from a worktree on
+   `release/X.Y.x`, `make release-prep VERSION=X.Y.Z` and
+   `make release-check VERSION=X.Y.Z RELEASE_PRE_TAG=1`, committed as one pull
+   request into the branch. The lock-revision baseline is the newest final tag
+   older than `X.Y.Z`, so `0.5.1` compares with `v0.5.0` even when `v0.6.0`
+   exists.
+6. Wait for the `trunk.yml` push run of the merged commit on `release/X.Y.x`:
+   `gh run list --workflow trunk.yml --branch release/X.Y.x --event push`.
+   `release_flow.py check --releasable-commit` and
+   `scripts/release_releasable.py` look at `develop` only; admission is the
+   check for a maintenance commit.
+7. Tag the commit with an annotated tag and push it. Rehearse with
+   `vX.Y.ZrcN` first: it publishes to TestPyPI from the same checks. For the
+   final tag, release UAT reuses the newest `vX.Y.ZrcN` evidence of the same
+   version when every reuse condition holds, and otherwise runs the full
+   three-stage UAT; a maintenance line has no other UAT evidence to fall back
+   on. The GitHub release is created with `--latest=false`, so "Latest" keeps
+   pointing at the newest minor, and PyPI resolves `pip install benchbox` by
+   version, not by upload time.
+8. Add the release's changelog section to `develop`. Open a pull request into
+   `develop` that copies the `## [X.Y.Z] - <date>` section (print it from the
+   tag with `python scripts/generate_changelog_entry.py --version X.Y.Z
+   --print-section`) into `CHANGELOG.md` below every newer section and above
+   the previous release of that minor, and adds
+   `[X.Y.Z]: https://github.com/BenchBox-dev/BenchBox/compare/vX.Y.(Z-1)...vX.Y.Z`
+   to the link list in the same position. Leave `[Unreleased]` alone. The pull
+   request is a `docs:` change and needs no fragment.
+9. When the line is no longer supported, the owner deletes the branch:
+   `git push origin --delete release/X.Y.x`. The tags stay.
 
 ## Release canary and ruleset drift
 
@@ -302,16 +379,104 @@ problem it finds. It verifies that:
   commit alone, and `scripts/release_releasable.py check --sha <sha>` runs the
   commit check without the release content checks.
 
-To adopt a refreshed fork wheel, run
-`make sqlglot-adopt-wheel WHEEL=<path> SHA256=<digest>` (or put the digest in
-`<wheel>.sha256` beside it; add `DRY_RUN=1` to only verify). The wheel must be
+The `sqlglot-delivery` workflow adopts verified fork deliveries. It runs daily
+on `develop` in `BenchBox-dev/BenchBox` and on `workflow_dispatch`
+(`dry_run`, default true, and `retry`), and is driven by
+`scripts/sqlglot_delivery.py`.
+
+- **Trust root.** `.github/sqlglot-delivery.json` fixes the producer
+  repository, workflow path, branch `main`, allowed events, artifact prefix and
+  record schema and kind. A delivery record can never change it; every field
+  the record repeats must equal what the trusted producer run says.
+- **Plan.** `plan` lists every producer run (it refuses a listing whose count
+  differs from `total_count`), keeps only trusted runs, reads every attempt's
+  jobs, and collects the successful receipt jobs
+  (`delivered benchbox-sqlglot <version> sha256:<digest>`). It picks the newest
+  receipt above the pin, finds the newest run and attempt that still has an
+  unexpired `benchbox-sqlglot-delivery-a<attempt>` artifact, and verifies the
+  record, `SHA256SUMS` and wheel bytes against the receipt. A run that only
+  changes the producer's tooling, with the same version and hash, is not a new
+  adoption. A delivery that fails verification fails the run; it is never
+  skipped for an older one.
+- **Prepare** has no credentials. It runs the adopter
+  (`scripts/adopt_sqlglot_wheel.py`) with the version, fork SHA, upstream SHA
+  and hash from the verified record, requires that only the pin, the wheel
+  archive, the license notice and the baseline identity changed, and emits a
+  git bundle and a pull request title and body. The body carries a marker that
+  binds version, fork SHA, upstream SHA, hash, the producer run and attempt,
+  and the adoption commit and its parent.
+- **Publish** runs only when `SQLGLOT_DELIVERY_ENABLED` is `true`, the run is
+  not a dry run and the plan says `adopt`. It re-checks the bundle, pushes
+  `chore/sqlglot-<version>` and opens the pull request, resuming after an
+  interrupted push or pull request creation. At most one automation adoption
+  pull request is open. Opening the same version and hash again changes
+  nothing. A newer delivery closes an older automation pull request that is
+  unarmed, unheld and not green; it waits behind one that is armed, green or
+  held. A pull request counts as automation-owned only when the live head is
+  the single commit whose SHA and parent the marker recorded, the body has no
+  edit by anyone but the delivery App (read from the GraphQL
+  `userContentEdits` history; an unreadable history refuses), and the author,
+  head repository, branch name and title match. A commit email proves nothing.
+  A branch left behind by an interrupted push is resumed only when its tip is
+  the prepared commit, which is reproducible for an unmoved `develop`;
+  otherwise it is refused and a person deletes it. Human-authored and
+  human-modified pull requests and branches, and any
+  pull request with the `no-auto-merge` hold, are never touched. A pair whose
+  pull request was closed unmerged is not proposed again unless a person
+  dispatches the workflow with `retry`, which uses a fresh
+  `chore/sqlglot-<version>-retryN` branch. A pair whose adoption merged and was
+  reverted is never proposed again.
+- **Arm** runs after publish in the same job and arms an automation pull
+  request only by running `scripts/trunk_revert.py arm-gate` and
+  `scripts/pr_arm.py` on the exact head, as `make pr-arm` does. It re-reads
+  the pull request and repeats the full ownership check live, both when it
+  lists the pull request and again immediately before it runs `pr_arm.py`, and
+  refuses on any mismatch. It never
+  re-arms after a person disabled auto-merge or applied the hold. The one
+  automation disarm it recovers from is the trunk-red disarm by
+  `github-actions[bot]` (`trunk-red-disarm.yml`). The pull request is usually
+  not green on the run that opens it, so the next daily run arms it.
+- **Kill switch and dry run.** Every mutating command refuses unless the
+  repository variable `SQLGLOT_DELIVERY_ENABLED` is exactly `true`. A manual
+  dispatch defaults to `dry_run`: the prepare job verifies the delivery and
+  writes the plan to the run summary with a read-only token, and nothing is
+  published. `publish` and `arm` also take `--dry-run` for a local report of
+  the actions they would take.
+- **Credentials.** The publish job mints a token from the delivery GitHub App
+  with `contents` and `pull-requests` write, using the secrets
+  `SQLGLOT_DELIVERY_APP_ID` and `SQLGLOT_DELIVERY_APP_PRIVATE_KEY`. Without
+  them the job fails with a message and publishes nothing. The prepare job
+  holds no secret and a read-only token, and the publish job never runs code
+  from the prepared artifact.
+- **Rollback.** Revert the adoption pull request on `develop`, and in the same
+  reviewed pull request add `{"version", "sha256", "reason"}` to `suppressed`
+  in `.github/sqlglot-delivery.json` (`forkSha` is optional and informational).
+  A suppressed pair is decided from the producer's receipt alone: it is skipped
+  before any artifact is downloaded, so it stays skipped after its artifact
+  expires or its record stops verifying, and the next best delivery is
+  considered. The skipped pairs are listed in `skippedSuppressed`.
+- **Producer exceptions.** A version delivered with two hashes, or a pinned
+  version delivered with a different hash, fails the run with `Producer
+  exception` and names the fork. The producer owns the fix in
+  `BenchBox-dev/benchbox-sqlglot`; core opens no issue and adopts nothing
+  until the producer publishes a newer version.
+
+To adopt a wheel by hand, for example while the workflow is disabled, run
+`make sqlglot-adopt-wheel WHEEL=<path> SHA256=<digest> EXPECTED_VERSION=<version>
+FORK_SHA=<sha> UPSTREAM_SHA=<sha>` (the digest may instead sit in
+`<wheel>.sha256` beside it; add `DRY_RUN=1` to only verify). Take the version,
+fork and upstream SHAs and wheel digest from the fork's verified delivery
+record; all three identities are required, and a wheel whose identity differs
+is refused before anything is changed or a dry run reports success. The wheel must be
 the verified, clean, pure-Python release artifact and strictly newer than the
 pinned runtime. The command installs it, rewrites `benchbox/_vendor/sqlglot.json`
 and the identity in `scripts/sqlglot_runtime_baseline.json`, runs the runtime pin
 and retirement/baseline checks, and restores the previous files if either fails.
-It publishes nothing; add a `changelog.d` fragment, review any changed baseline
-outcome, then open the pull request. The retirement check executes a QuestDB
-case, so `BENCHBOX_QUESTDB_DSN` must point at a running QuestDB.
+It publishes nothing; review any changed baseline outcome, then open the pull
+request. Give it a `chore(deps)` title with a `changed` changelog fragment, as
+the delivery workflow does.
+The retirement check executes a QuestDB case, so `BENCHBOX_QUESTDB_DSN` must
+point at a running QuestDB.
 
 Both targets need the full development tree, because the lock-revision check
 lives under `_project/`.
@@ -346,35 +511,25 @@ uv run -- python scripts/generate_changelog_entry.py \
 The notes-only recovery does not retag, republish to PyPI, or replace release
 assets.
 
-The `sqlglot-fork-refresh` workflow runs nightly and starts the refresh when a
-newer final upstream tag exists. It refreshes a checkout of the fork's `main`
-with `python -m downstream.refresh auto`, which succeeds only when every carried
-patch applies without a conflict, none is already contained upstream, and the
-refresh leaves the active workflows under `.github/workflows/` unchanged. A
-refresh that succeeds is pushed as `refresh/upstream-X.Y.Z` and opened as a pull
-request in `BenchBox-dev/benchbox-sqlglot`, where its checks run.
+The fork owns the upstream lifecycle. Its `benchbox-upstream.yml` workflow
+discovers a newer final upstream tag, refreshes the fork with
+`python -m downstream.refresh auto`, opens the refresh pull request and merges it
+once the fork's required checks pass; its `benchbox-delivery.yml` workflow then
+publishes the verified wheel delivery that `sqlglot-delivery.yml` adopts here.
+Refresh conflicts, failed refreshes and failing fork checks are issues in
+`BenchBox-dev/benchbox-sqlglot`, not in this repository. The fork runbook,
+`downstream/MAINTAINING.md`, describes its kill switch, dry runs, credentials
+and recovery.
 
-One issue per tag, `SQLGlot fork refresh to vX.Y.Z needs follow-up`, opens in
-this repository when a patch conflicts, a step fails, the refresh pull request
-has failing checks or was closed without merging, a `refresh/upstream-X.Y.Z`
-branch exists with no pull request, or the refresh could not be pushed. The issue
-is updated, with one comment, only when the reason changes. It closes when the
-fork is on the newest tag, when a healthy refresh pull request is open, or when
-a newer tag supersedes it. A refresh pull request that stays open and healthy
-raises no issue; GitHub's pull request notifications and the freshness check
-above are the signals for it. A separate issue, `SQLGlot fork refresh check
-failed`, covers the check itself failing (for example a GitHub API error or a
-failed preparation job); it leaves the per-tag issues as they were and closes on
-the next good run.
-
-The workflow never merges the fork pull request, builds or releases the wheel, or
-adopts it here; those steps stay with the maintainer. Pushing needs the
-repository secret `SQLGLOT_FORK_REFRESH_TOKEN`, a fine-grained personal access
-token limited to `BenchBox-dev/benchbox-sqlglot` with read and write access to
-contents and pull requests. A token is required because the workflow's own token
-cannot write to another repository and pull requests it opens would not start the
-fork's checks. Without the secret the workflow still runs and raises the issue,
-naming the missing secret.
+The `sqlglot-fork-refresh` workflow in this repository is the legacy producer
+and is retiring. Until it is disabled it runs nightly, refreshes a checkout of
+the fork's `main` with the same `auto` command, pushes a successful refresh as
+`refresh/upstream-X.Y.Z` with the `SQLGLOT_FORK_REFRESH_TOKEN` secret, opens the
+fork pull request, and raises a per-tag issue here (`SQLGlot fork refresh to
+vX.Y.Z needs follow-up`, or `SQLGlot fork refresh check failed` for the check
+itself) when it cannot. It never merges or adopts. Disable it before enabling the
+fork's controller, so only one workflow writes upstream refreshes to the fork;
+its workflow, script, tests and secret are then removed.
 
 ## Recovering from common failures
 

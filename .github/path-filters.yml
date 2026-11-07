@@ -103,6 +103,7 @@ packaging:
   - "setup.cfg"
   - "benchbox/__init__.py"
   - "uv.lock"
+  - "benchbox/_vendor/**"
 
 framing:
   - "tests/utilities/**"
@@ -117,6 +118,8 @@ framing:
   - "tests/fixtures/utility_fixtures.py"
   - "_benchbox_pytest_xdist_safety.py"
   - "benchbox/utils/host_lock.py"
+  - "benchbox/utils/heavy_preflight_scope.py"
+  - "benchbox/utils/heavy_run_events.py"
   - "tests/duration_policy.py"
   - "pytest.ini"
   - "tests/unit/core/tpch/test_tpch_dbgen_framing_binaries.py"

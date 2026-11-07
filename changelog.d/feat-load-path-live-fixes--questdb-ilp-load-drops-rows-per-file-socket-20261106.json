@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "QuestDB ILP loads no longer lose rows: each table now loads over a single connection and the row count is confirmed against the rows sent, failing the load on any shortfall; the QuestDB compose stack now publishes the ILP port 9009"
+    }
+  ]
+}

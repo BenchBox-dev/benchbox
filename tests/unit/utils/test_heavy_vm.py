@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import os
+import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -8,6 +11,7 @@ import pytest
 from benchbox.utils import heavy_sentinel as hs, heavy_status, linux_machine as lm, sentinel_launchd
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
+posix_only = pytest.mark.skipif(sys.platform == "win32", reason="POSIX process semantics")
 
 C = "/opt/homebrew/bin/container"
 RUNNING = lm.MachineState("running", 8.0, True)
@@ -19,15 +23,31 @@ IDLE_SECONDS = 600.0
 
 
 class FakeStop:
-    def __init__(self, codes: list[int | None]) -> None:
+    def __init__(self, codes: list[int | None], output: str = "") -> None:
         self.codes = codes
         self.killed = False
+        self.closed = False
+        self._output = output
 
     def poll(self) -> int | None:
         return self.codes.pop(0) if len(self.codes) > 1 else self.codes[0]
 
     def kill(self) -> None:
         self.killed = True
+
+    def output(self) -> str:
+        return self._output
+
+    def close(self) -> None:
+        self.closed = True
+
+
+class FakeLock:
+    def __init__(self) -> None:
+        self.released = False
+
+    def release(self) -> None:
+        self.released = True
 
 
 class Rig:
@@ -40,6 +60,11 @@ class Rig:
         self.stops: list[str] = []
         self.handles: list[FakeStop] = []
         self.handle_codes: list[int | None] = [0]
+        self.stop_lands = True
+        self.stop_output = ""
+        self.lock_free = True
+        self.locks: list[FakeLock] = []
+        self.events: list[tuple[str, dict]] = []
         self.state_calls: list[str] = []
         policy = hs.SentinelPolicy(mode=mode, budget_bytes=None, vm_machine=machine, vm_idle_seconds=IDLE_SECONDS)
         self.watch = hs.VmWatch(
@@ -50,7 +75,16 @@ class Rig:
             process_reader=lambda m, d: list(self.procs),
             stopper=self._stop,
             clock=lambda: self.now,
+            event_recorder=lambda event, **fields: self.events.append((event, fields)),
+            lock_acquirer=self._lock,
         )
+
+    def _lock(self, machine: str):
+        if not self.lock_free:
+            return None
+        lock = FakeLock()
+        self.locks.append(lock)
+        return lock
 
     def _state(self, machine: str):
         self.state_calls.append(machine)
@@ -58,8 +92,10 @@ class Rig:
 
     def _stop(self, machine: str) -> FakeStop:
         self.stops.append(machine)
-        handle = FakeStop(list(self.handle_codes))
+        handle = FakeStop(list(self.handle_codes), self.stop_output)
         self.handles.append(handle)
+        if self.stop_lands:
+            self.state = STOPPED
         return handle
 
     def advance(self, seconds: float) -> None:
@@ -175,6 +211,7 @@ def test_only_the_named_machine_is_read_and_stopped() -> None:
 
 def test_a_stop_failure_is_logged_and_retried_only_after_the_next_window() -> None:
     rig = Rig()
+    rig.stop_lands = False
     rig.handle_codes = [1]
     rig.watch.check()
     rig.advance(IDLE_SECONDS + 1)
@@ -189,18 +226,147 @@ def test_a_stop_failure_is_logged_and_retried_only_after_the_next_window() -> No
 
 def test_a_stop_timeout_kills_the_stop_logs_and_retries_after_the_window() -> None:
     rig = Rig()
+    rig.stop_lands = False
     rig.handle_codes = [None]
+    rig.stop_output = "Error: XPC timeout"
     rig.watch.check()
     rig.advance(IDLE_SECONDS + 1)
     rig.advance(30)
     assert not rig.handles[0].killed
     rig.advance(40)
     assert rig.handles[0].killed
-    assert any("timed out" in line for line in rig.lines)
+    assert any("timed out" in line and "Error: XPC timeout" in line for line in rig.lines)
     rig.advance(IDLE_SECONDS - 60)
     assert len(rig.stops) == 1
     rig.advance(120)
     assert len(rig.stops) == 2
+
+
+def test_a_nonzero_stop_diagnoses_its_output_and_a_machine_already_stopped_counts_as_stopped() -> None:
+    rig = Rig()
+    rig.handle_codes = [1]
+    rig.stop_output = "Error: machine is stopping"
+    rig.watch.check()
+    rig.advance(IDLE_SECONDS + 1)
+    rig.advance(1)
+    assert any("reported exit 1 but the machine is 'stopped'" in line for line in rig.lines)
+    assert any("Error: machine is stopping" in line for line in rig.lines)
+    assert rig.events[-1][1]["outcome"] == "stopped_after_error"
+    rig.advance(IDLE_SECONDS * 2)
+    assert rig.stops == ["m"]
+
+
+def test_exit_zero_with_the_machine_still_running_is_a_failure_not_a_success() -> None:
+    rig = Rig()
+    rig.stop_lands = False
+    rig.handle_codes = [0]
+    rig.watch.check()
+    rig.advance(IDLE_SECONDS + 1)
+    rig.advance(1)
+    assert any("exit 0; machine state 'running', not confirmed stopped" in line for line in rig.lines)
+    assert not any("stopped idle linux machine" in line for line in rig.lines)
+    assert rig.events[-1][1]["outcome"] == "still_running"
+
+
+@pytest.mark.parametrize("after", [lm.MachineState("stopping", 8.0, True), None])
+def test_a_transitional_or_unreadable_state_is_not_a_confirmed_stop_and_retries(after) -> None:
+    rig = Rig()
+    rig.stop_lands = False
+    rig.handle_codes = [0]
+    rig.watch.check()
+    rig.advance(IDLE_SECONDS + 1)
+    rig.state = after
+    rig.advance(1)
+    assert any("could not stop linux machine" in line and "not confirmed stopped" in line for line in rig.lines)
+    assert not any("stopped idle linux machine" in line for line in rig.lines)
+    assert rig.events[-1][1]["outcome"] == "unverified"
+    rig.state = RUNNING
+    rig.advance(IDLE_SECONDS + 1)
+    rig.advance(IDLE_SECONDS + 1)
+    assert len(rig.stops) == 2
+
+
+def test_a_stop_that_times_out_but_lands_is_reconciled_to_the_actual_state() -> None:
+    rig = Rig()
+    rig.handle_codes = [None]
+    rig.watch.check()
+    rig.advance(IDLE_SECONDS + 1)
+    rig.advance(61)
+    assert rig.handles[0].killed
+    assert rig.handles[0].closed
+    assert any("timed out after 60s but the machine is 'stopped'" in line for line in rig.lines)
+    assert not any("could not stop" in line for line in rig.lines)
+    assert rig.events[-1][1]["outcome"] == "stopped_after_timeout"
+
+
+def test_repeated_failures_escalate_to_stuck_but_keep_retrying_every_idle_window() -> None:
+    rig = Rig()
+    rig.stop_lands = False
+    rig.handle_codes = [1]
+    rig.stop_output = "Error: vm unresponsive"
+    rig.watch.check()
+    rig.advance(IDLE_SECONDS + 1)
+    attempts = hs.VM_STOP_ESCALATE_FAILURES + 2
+    for _ in range(attempts):
+        rig.advance(1)
+        rig.advance(IDLE_SECONDS + 1)
+    assert len(rig.stops) == attempts + 1
+    stuck = [line for line in rig.lines if "STUCK" in line]
+    assert len(stuck) == attempts - hs.VM_STOP_ESCALATE_FAILURES + 1
+    assert "no force-stop" in stuck[0]
+    assert "container machine logs" in stuck[0]
+    assert any("Error: vm unresponsive" in line for line in rig.lines)
+
+
+def test_a_success_resets_the_consecutive_failure_count() -> None:
+    rig = Rig()
+    rig.stop_lands = False
+    rig.handle_codes = [1]
+    rig.watch.check()
+    rig.advance(IDLE_SECONDS + 1)
+    rig.advance(1)
+    assert rig.events[-1][1]["details"]["consecutive_failures"] == 1
+    rig.stop_lands = True
+    rig.handle_codes = [0]
+    rig.advance(IDLE_SECONDS + 1)
+    rig.advance(1)
+    assert rig.events[-1][1]["outcome"] == "stopped"
+    assert rig.events[-1][1]["details"]["consecutive_failures"] == 0
+
+
+def test_the_lock_is_still_held_while_the_final_state_is_read() -> None:
+    rig = Rig()
+    rig.handle_codes = [0]
+    rig.watch.check()
+    rig.advance(IDLE_SECONDS + 1)
+    seen: list[bool] = []
+    original = rig.watch._state_reader
+
+    def reading(machine: str):
+        seen.append(rig.locks[-1].released)
+        return original(machine)
+
+    rig.watch._state_reader = reading
+    rig.advance(1)
+    assert seen == [False]
+    assert rig.locks[-1].released
+
+
+def test_a_foreign_run_that_appears_after_the_idle_window_is_rechecked_with_fresh_state() -> None:
+    rig = Rig()
+    rig.watch.check()
+    rig.state = lm.MachineState("running", 8.0, False)
+    reads: list[bool] = []
+    original = rig.watch._process_reader
+
+    def reader(machine: str, is_default: bool):
+        reads.append(is_default)
+        return [FOREIGN] if len(reads) >= 2 else original(machine, is_default)
+
+    rig.watch._process_reader = reader
+    rig.advance(IDLE_SECONDS + 1)
+    assert rig.stops == []
+    assert reads[-1] is False
 
 
 def test_an_unguarded_run_is_reported_once_and_never_signalled() -> None:
@@ -381,3 +547,155 @@ def test_the_sentinel_logs_the_vm_footprint_when_it_changes() -> None:
         "VM m footprint 5.01 GiB x",
         "VM m footprint 6.00 GiB x",
     ]
+
+
+def test_the_stop_waits_for_a_held_host_lock_and_never_blocks_the_sentinel() -> None:
+    rig = Rig()
+    rig.lock_free = False
+    rig.watch.check()
+    rig.advance(IDLE_SECONDS + 1)
+    rig.advance(IDLE_SECONDS)
+    assert rig.stops == []
+    assert len([line for line in rig.lines if "host lock is held by a run" in line]) == 1
+    rig.lock_free = True
+    rig.advance(30)
+    assert rig.stops == ["m"]
+
+
+def test_the_host_lock_is_held_for_the_whole_bounded_stop_and_released_after_it_is_reaped() -> None:
+    rig = Rig()
+    rig.stop_lands = False
+    rig.handle_codes = [None]
+    rig.watch.check()
+    rig.advance(IDLE_SECONDS + 1)
+    assert [lock.released for lock in rig.locks] == [False]
+    rig.advance(30)
+    assert [lock.released for lock in rig.locks] == [False]
+    rig.advance(40)
+    assert rig.handles[0].killed
+    assert [lock.released for lock in rig.locks] == [True]
+
+
+def test_the_host_lock_is_released_when_the_stop_finishes_or_cannot_start() -> None:
+    rig = Rig()
+    rig.watch.check()
+    rig.advance(IDLE_SECONDS + 1)
+    rig.advance(1)
+    assert [lock.released for lock in rig.locks] == [True]
+
+    def boom(machine: str) -> FakeStop:
+        raise OSError("no container")
+
+    failing = Rig()
+    failing.watch._stopper = boom
+    failing.watch.check()
+    failing.advance(IDLE_SECONDS + 1)
+    assert [lock.released for lock in failing.locks] == [True]
+    assert any("no container" in line for line in failing.lines)
+
+
+def test_a_run_that_started_while_the_lock_was_taken_cancels_the_stop_and_frees_the_lock() -> None:
+    rig = Rig()
+    rig.watch.check()
+    calls = {"n": 0}
+    original = rig.watch._process_reader
+
+    def late(machine: str, is_default: bool):
+        calls["n"] += 1
+        return [FOREIGN] if calls["n"] >= 2 else original(machine, is_default)
+
+    rig.watch._process_reader = late
+    rig.advance(IDLE_SECONDS + 1)
+    assert rig.stops == []
+    assert [lock.released for lock in rig.locks] == [True]
+
+
+def test_closing_the_sentinel_kills_an_inflight_stop_and_frees_the_lock() -> None:
+    rig = Rig()
+    rig.stop_lands = False
+    rig.handle_codes = [None]
+    rig.watch.check()
+    rig.advance(IDLE_SECONDS + 1)
+    rig.watch.close()
+    assert rig.handles[0].killed
+    assert rig.handles[0].closed
+    assert rig.events[-1][1]["outcome"] == "cancelled"
+    assert [lock.released for lock in rig.locks] == [True]
+
+
+@posix_only
+def test_the_real_stop_process_is_group_killed_with_its_output_kept_and_no_leaked_worker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    stub = bin_dir / "container"
+    stub.write_text(
+        "#!/usr/bin/env bash\n"
+        'case "$1 $2" in\n'
+        '  "machine list") echo \'[{"id":"m","status":"running"}]\'; exit 0 ;;\n'
+        '  "machine run") exit 0 ;;\n'
+        "esac\n"
+        'echo "Error: apiserver not responding" >&2\n'
+        f"sleep 300 & echo $! > {tmp_path}/worker.pid\n"
+        "trap '' TERM\n"
+        "wait\n",
+        encoding="utf-8",
+    )
+    stub.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+    monkeypatch.setenv(lm.GUEST_POWEROFF_WAIT_ENV, "0")
+    monkeypatch.setattr(lm, "STOP_KILL_STEP_SECONDS", 0.3)
+    handle = hs.start_machine_stop("m")
+    deadline = time.monotonic() + 20
+    while not (tmp_path / "worker.pid").exists() and time.monotonic() < deadline:
+        time.sleep(0.05)
+    worker = int((tmp_path / "worker.pid").read_text(encoding="utf-8"))
+    assert handle.poll() is None
+    handle.kill()
+    assert handle.poll() is not None
+    assert "Error: apiserver not responding" in handle.output()
+    time.sleep(0.2)
+    with pytest.raises(ProcessLookupError):
+        os.kill(worker, 0)
+
+
+def test_the_stop_lock_is_exclusive_and_visible_as_a_held_lock(tmp_path: Path) -> None:
+    from benchbox.utils import host_lock
+
+    path = tmp_path / "host.lock"
+    first = hs.acquire_stop_lock(path, "m")
+    assert first is not None
+    assert host_lock.lock_is_held(path)
+    assert hs.acquire_stop_lock(path, "m") is None
+    first.release()
+    assert not host_lock.lock_is_held(path)
+    second = hs.acquire_stop_lock(path, "m")
+    assert second is not None
+    second.release()
+
+
+def test_the_stop_lock_is_released_if_recheck_raises_an_exception(tmp_path: Path) -> None:
+    from benchbox.utils import host_lock
+
+    path = tmp_path / "host.lock"
+    calls = 0
+
+    def flaky_reader(_m: str) -> lm.MachineState:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return lm.MachineState("running", 6.0, False)
+        raise RuntimeError("boom during recheck")
+
+    watch = hs.VmWatch(
+        hs.SentinelPolicy(mode="kill", budget_bytes=None, vm_machine="m", vm_idle_seconds=0.0),
+        log=lambda _: None,
+        holder_reader=lambda: frozenset(),
+        state_reader=flaky_reader,
+        process_reader=lambda *_: [],
+        lock_acquirer=lambda m: hs.acquire_stop_lock(path, m),
+    )
+    with pytest.raises(RuntimeError, match="boom during recheck"):
+        watch.check()
+    assert not host_lock.lock_is_held(path)
