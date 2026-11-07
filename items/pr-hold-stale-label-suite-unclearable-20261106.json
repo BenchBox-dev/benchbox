@@ -5,7 +5,7 @@
     "A test covers this sequence: push while held, remove the label, then rerun the old suite or arm",
     "No change to required contexts or rulesets; the hold still blocks while the label is present"
   ],
-  "context": "Related but distinct: pr-arm-rerun-contradictory-guidance-20261027 covers pr-arm/pr-rerun advice while a full CI run is still in progress.",
+  "context": "Related but distinct: pr-arm-rerun-contradictory-guidance-20261027 covers pr-arm/pr-rerun advice while a full CI run is still in progress.\n\nDelivered on develop by #4007 (221054590f, 'fix(ci): hold check reads live labels...'). That change came from another session's batch and landed while this item's batch was in flight. pr-hold.yml reads labels through `gh api repos/$REPO/pulls/$PR` under `set -eu`, so it fails closed. test_pr_hold_workflow.py covers a rerun after the label is removed, a failed lookup, look-alike label names and case-insensitive matching; the required contexts are unchanged. This item's own implementation (batches hold-label-and-batch-e2e-20261106 and -v2, both aborted) was dropped in favour of #4007 when #3999 merged develop.",
   "description": "Problem (2026-11-06, PR #3957 head 47049d6e59): .github/workflows/pr-hold.yml computes HELD from github.event.pull_request.labels, the payload of the triggering event. A push made while no-auto-merge was set produced a failed 'hold' suite. Removing the label produced a newer, successful 'unlabeled' run. make pr-arm then refused: the failure is 'hidden behind a newer success; the merge rollup still counts it, so run make pr-rerun'. make pr-rerun reran it, but a rerun replays the original payload, which still carries the label, so it failed again, and pr-arm refused with 'required check hold completed with conclusion failure'. Only a new head cleared it; here that was a rebase onto develop. Every owner-released hold set before the last push hits this loop.\n\nOutcome: after the owner removes the label, the current head can be armed without pushing a new commit.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3957"
@@ -94,6 +94,14 @@
       "generation": "66a33b07e50840e8a41eed5c0c7a382e",
       "op": "take",
       "op_id": "caa305db788541d3938124a46cd0558a",
+      "session_id": "4e1f5de86962468394697835ee28c6b3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae",
+      "at": "2026-11-07T14:00:23Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "19e50686453d4e0b84a9b9a91c61ed05",
       "session_id": "4e1f5de86962468394697835ee28c6b3"
     }
   ]
