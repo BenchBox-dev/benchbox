@@ -77,6 +77,23 @@ def clear_reference_seed_context() -> None:
     _reference_seed_state.is_reference_seed = None
 
 
+DATA_REFRESHED_REASON = "data refreshed"
+
+_data_state_state = threading.local()
+
+
+def set_data_refreshed_context(data_refreshed: bool) -> None:
+    _set_thread_context(_data_state_state, "data_refreshed", data_refreshed)
+
+
+def get_data_refreshed_context() -> bool:
+    return getattr(_data_state_state, "data_refreshed", False)
+
+
+def clear_data_refreshed_context() -> None:
+    _data_state_state.data_refreshed = False
+
+
 _validation_mode_state = threading.local()
 
 
@@ -186,6 +203,20 @@ class QueryValidator:
         query_id_str = str(query_id)
 
         query_id_normalized = self._normalize_query_id(benchmark_type, query_id)
+
+        if get_data_refreshed_context():
+            return ValidationResult(
+                is_valid=True,
+                query_id=query_id_str,
+                expected_row_count=None,
+                actual_row_count=actual_row_count,
+                validation_mode=ValidationMode.SKIP,
+                warning_message=(
+                    f"{DATA_REFRESHED_REASON}: query '{query_id}' ran after refresh functions changed the "
+                    f"'{benchmark_type}' data, so the base-data answer set does not apply. "
+                    f"Row-count validation excluded. Actual rows returned: {actual_row_count}"
+                ),
+            )
 
         if get_reference_seed_context() is False and benchmark_type.lower() in _NON_REFERENCE_SEED_EXCLUDED_BENCHMARKS:
             _warn_stream_seed_override_once(benchmark_type, self._resolve_tpcds_run_mode(benchmark_type))

@@ -1207,6 +1207,8 @@ def _power_phase_payload(power_test: Any) -> dict[str, Any]:
         payload["refresh_first_set"] = power_test.refresh_first_set
     if refresh_functions is not None:
         payload["refresh_functions"] = refresh_functions
+    if power_test.validation is not None:
+        payload["validation"] = power_test.validation
     return payload
 
 
