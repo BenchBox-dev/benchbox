@@ -3,7 +3,7 @@
     "The 3.6.0 timestamp/hang behavior is confirmed fixed or reproduced against a loadable 4.x engine",
     "Result recorded on the chdb item (PR #2719)"
   ],
-  "context": "During the chdb-4x tuning follow-up (merged as PR #2719), the 4.x engine could not be loaded locally (dyld mis-aligned LINKEDIT; long venv paths truncated the diagnosis), so whether 4.x resolves the 3.6.0 timestamp/hang reports was never directly verified. The merge-time conclusion rests on inference, not on loading the engine.",
+  "context": "During the chdb-4x tuning follow-up (merged as PR #2719), the 4.x engine could not be loaded locally (dyld mis-aligned LINKEDIT; long venv paths truncated the diagnosis), so whether 4.x resolves the 3.6.0 timestamp/hang reports was never directly verified. The merge-time conclusion rests on inference, not on loading the engine.\n\n2026-11-07: the locked chDB 4.1.6 wheel still does not load on macOS arm64 (seen during #4012). Arrow parity ran on 3.7.2 instead; see chdb-rows-nan-vs-arrow-null-q17-20261107.",
   "description": "Load a 4.x chDB engine in an environment where it runs (CI Linux or a clean venv with short paths) and directly verify the 3.6.0 timestamp/hang behavior. Record the outcome; if it reproduces, file a defect with the reproduction.",
   "sessions": [
     {
@@ -13,6 +13,14 @@
       "op": "create",
       "op_id": "a4cd94d8043448ebbd5418a398ecc8f4",
       "session_id": "5709cef75a584579a236033476a263ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T13:49:05Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "98354855575540ae9cc49f2913bd732e",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
 }
