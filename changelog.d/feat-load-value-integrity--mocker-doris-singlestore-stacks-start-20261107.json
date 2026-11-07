@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "UAT bring-up launches the Doris and SingleStore stacks with mocker run on macOS, translating platform, memory, cpus, entrypoint, ports and volumes from compose, verifies declared cpus, and adds make uat-bring-down."}
