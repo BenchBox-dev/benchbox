@@ -3,6 +3,7 @@
     "A member review with a long finding shows the full text, or a path to it, in batch-member-check output.",
     "A successor leader can commit in the batch worktrees after a recorded handoff without BENCHBOX_WORKTREE_TAKEOVER."
   ],
+  "context": "2026-11-07: shipped in PR #4027 (merge b097f00fdd). batch-member-check now prints the full member review output (up to 16000 characters) and saves the complete text to member-review-<head12>.txt in the worktree's git directory, naming the path in the refusal. batch-recover takes over session ownership of the integration worktree and every existing member worktree (worktree_lifecycle_metadata claim with takeover), prints the result as worktree_takeover and records the handoff under handoffs in the ledger, so a successor leader commits without BENCHBOX_WORKTREE_TAKEOVER. Covered by test_batch_integration.py. Documented in docs/agent/batch-feature-delivery.md.",
   "description": "Seen across the batches run 2026-11-04 to 2026-11-07. (1) `make batch-member-check` truncates the member review findings to 400 characters, so a High finding is only readable by running scripts/oracle_local_review.py by hand. (2) When a leader session ran out of budget and a new session continued the same batch, commits in the integration and member worktrees needed BENCHBOX_WORKTREE_TAKEOVER=1 because the worktree owner marker named the old session. That is a normal handoff in batch work (handoffs.md), and it currently needs an override flag.\n\nChange. Print full findings, or write them to a file and print the path. Give the documented batch handoff (batch-recover or a successor leader) a supported way to take over worktree ownership, recorded in the ledger, without the generic override.\n\nGuardrails: batch tooling changes ship serially; work in a linked worktree; no explanatory comments.",
   "sessions": [
     {
@@ -20,6 +21,14 @@
       "generation": "92a2811000dc4319a714356d384da7a3",
       "op": "take",
       "op_id": "e2e2d82eb6d746c28a8692b0504e0830",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T17:44:38Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "71c4037ce18648fab36e0286b78e112a",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
