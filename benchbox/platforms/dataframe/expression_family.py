@@ -830,7 +830,9 @@ class ExpressionFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, 
                 try:
                     plan = capture_query_plan(lazy_result, self.platform_name)
                     if plan:
-                        profile_ctx.set_query_plan(redact_plan_local_paths(plan, (self.working_dir,)))
+                        profile_ctx.set_query_plan(
+                            redact_plan_local_paths(plan, (self.working_dir, *getattr(self, "plan_local_roots", ())))
+                        )
                 except Exception as e:
                     plan_capture_error = str(e)
                     self._record_dataframe_plan_capture_failure(qid, plan_capture_error)

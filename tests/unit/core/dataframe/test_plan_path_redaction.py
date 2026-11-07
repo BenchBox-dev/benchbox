@@ -164,3 +164,15 @@ def test_exported_plans_companion_has_no_local_paths(tmp_path, anonymize):
     assert entry["plan"]["plan_text"] == plan.plan_text
     assert "fingerprint" not in entry
     assert build_plans_payload(result)["queries"]["Q1"]["plan"]["plan_text"] == plan.plan_text
+
+
+def test_loaded_data_directories_are_redaction_roots_outside_the_detector():
+    data_dir = Path("/srv/benchbox-data/tpch_sf001")
+    files = {"lineitem": [data_dir / "v8" / "lineitem.1.parquet"], "orders": data_dir / "v8" / "orders.parquet"}
+    roots = BenchmarkExecutionMixin._collect_plan_local_roots(files, data_dir)
+    plan = QueryPlan("polars", "optimized", f"Parquet SCAN [{files['lineitem'][0]}]\nParquet SCAN [{files['orders']}]")
+
+    redacted = redact_plan_local_paths(plan, roots)
+
+    assert "/srv/benchbox-data" not in redacted.plan_text
+    assert redacted.plan_text == "Parquet SCAN [<redacted>]\nParquet SCAN [<redacted>]"

@@ -688,7 +688,7 @@ class ResultCaptureMixin:
         ):
             return None, 0.0
 
-        from benchbox.core.dataframe.profiling import capture_pyspark_plan
+        from benchbox.core.dataframe.profiling import capture_pyspark_plan, redact_plan_local_paths
 
         start_time = time.perf_counter()
         try:
@@ -714,7 +714,9 @@ class ResultCaptureMixin:
             )
             return None, (time.perf_counter() - start_time) * 1000
 
-        return self._parse_captured_plan(query_id, captured.plan_text, start_time)
+        local_roots = [root for root in (getattr(self, "working_dir", None),) if root]
+        plan_text = redact_plan_local_paths(captured, local_roots).plan_text
+        return self._parse_captured_plan(query_id, plan_text, start_time)
 
     def _parse_captured_plan(
         self,
