@@ -1546,7 +1546,20 @@
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
-      "final_pr_history": [],
+      "final_pr": {
+        "head": "9c5329e78636e405c4c189d79c38b21e2684000a",
+        "node_id": "PR_kwDOQ7J64c8AAAABNctc5A",
+        "number": 3998,
+        "repository": "BenchBox-dev/BenchBox"
+      },
+      "final_pr_history": [
+        {
+          "at": "2026-11-07T02:12:40Z",
+          "head": "9c5329e78636e405c4c189d79c38b21e2684000a",
+          "op_id": "7d2285cbbe4643eababf018953927db6",
+          "previous_head": null
+        }
+      ],
       "integrated_members": {
         "questdb-rest-and-databend-partial-load-loud-20261106": {
           "accepted_head": "4d79a477023592a91d90efe93c159e80084dd745",
