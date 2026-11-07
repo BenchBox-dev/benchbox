@@ -1,0 +1,15 @@
+{
+  "bundle_file": "read_primitives_sf01_datafusion_sql_20261028_155941_a45d3e71.json",
+  "bundle_hash": "db58519e2bdeec576f27711390786090f0eeb8fa4de9560bbc9530ab8511ca3b",
+  "funding": "unspecified",
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "sql_translator_version": {
+    "evidence": "Wheel 30.25.0.2 reconciled in results-data/CORPUS_NOTES.md (Wheel consistency, evidence E): the vendored pin benchbox/_vendor/sqlglot.json at checkout a6a78db53. The run log does not print the wheel.",
+    "fork_sha": "9f51489a1721423dd45e2662b87a2870648b61bd",
+    "upstream_sha": "9d2966ed3f8a7f0d370846dbae1579b40ddc2924",
+    "version": "30.25.0.2",
+    "wheel_sha256": "6207c3526bbaf1d90c6c69aec133496d0a4af2b3e2d1d06d2bb52c8c77ec8fa2"
+  },
+  "submitted_by": "maintainer"
+}
