@@ -192,7 +192,7 @@ class TestComparisonSurfaces:
         arrow = reconstruct_benchmark_results(_bundle(["arrow"], platform="datafusion", execution_id="b"))
         validation = PlatformComparison([rows, arrow]).validate()
         assert not validation.is_valid
-        assert any("compared and ranked within one mode" in error for error in validation.errors)
+        assert any("fetch mode differs" in error for error in validation.errors)
         with pytest.raises(ValueError, match="Cannot compare invalid results"):
             PlatformComparison([rows, arrow]).compare()
 
