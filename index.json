@@ -14302,13 +14302,18 @@
       "title": "Rehearse release-v2 on TestPyPI (rc tag, hash and install verification)"
     },
     "dlv2-53-retire-legacy-release-path": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T02:55:43Z",
+        "generation": "3d4a176dfa6d4c399c773f23afd7a7cc",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec"
+      },
       "needs": [
         "dlv2-52-release-rehearsal-and-first-release",
         "ruleset-drift-check-home-20261009"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Retire the release branch, its ruleset, workflows, scripts, targets, and tests"
     },
     "dlv2-60-publication-integration": {
