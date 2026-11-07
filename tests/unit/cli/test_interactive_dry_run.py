@@ -1295,6 +1295,7 @@ class TestPromptPlatformOptions:
 
         mock_confirm.return_value = True
         mock_prompt.side_effect = [
+            "arrow",
             "16GB",
             "",
             "",
