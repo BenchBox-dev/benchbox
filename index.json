@@ -14381,12 +14381,7 @@
       "title": "Retire the scheduled workflows replaced by the nightly T3 domains"
     },
     "dlv2-80-github-cleanup": {
-      "claim": {
-        "expires_at": "2026-11-08T03:36:05Z",
-        "generation": "e1181ee8ab44432f97846d80bddae4b7",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:95654933fcc78b44d934f92f"
-      },
+      "claim": null,
       "needs": [
         "dlv2-53-retire-legacy-release-path",
         "dlv2-70-retire-scheduled-workflows",
@@ -14395,7 +14390,7 @@
         "dlv2-80a-github-cleanup-queue-era"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Delete the release branch and the release-canary and no-auto-merge labels once their code is gone"
     },
     "dlv2-80a-github-cleanup-queue-era": {
