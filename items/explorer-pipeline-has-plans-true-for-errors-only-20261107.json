@@ -14,6 +14,71 @@
   "links": [
     "_project/scripts/explorer_pipeline/transformer.py"
   ],
+  "prepared": {
+    "accepted_head": "2ed78a7427b8924c80e2b508a37795d27d0e8406",
+    "batch_id": "plan-companion-publication-hygiene",
+    "changed_files": [
+      "_project/scripts/explorer_pipeline/transformer.py",
+      "changelog.d/feat-plan-companion-publication-hygiene--explorer-has-plans.json",
+      "tests/unit/scripts/explorer_pipeline/test_pipeline.py",
+      "tests/unit/scripts/explorer_pipeline/test_transformer.py"
+    ],
+    "integration_head": "83168a9802ac3425890848de57ca3319a4449b84",
+    "integration_seq": 1,
+    "member_id": "explorer-pipeline-has-plans-true-for-errors-only-20261107",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "8b1d5663bb9efdafda9170c9958fa51c722772c922d41446c1faaacc82429953",
+    "source_base": "4fe6b3aac7b884bd170cdd3ef61697af5bffbeec",
+    "source_revision": "2ed78a7427b8924c80e2b508a37795d27d0e8406",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-plan-companion-publication-hygiene--explorer-pipeline-has-plans-true-for-errors-only-20261107",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/unit/core/datavault/test_transformer.py",
+        "tests/unit/scripts/explorer_pipeline/test_cpu_hardware_identity.py",
+        "tests/unit/scripts/explorer_pipeline/test_duckdb_browser_contract.py",
+        "tests/unit/scripts/explorer_pipeline/test_duplicate_result_id.py",
+        "tests/unit/scripts/explorer_pipeline/test_estimated_cost.py",
+        "tests/unit/scripts/explorer_pipeline/test_measurement_basis.py",
+        "tests/unit/scripts/explorer_pipeline/test_override_display.py",
+        "tests/unit/scripts/explorer_pipeline/test_pipeline.py",
+        "tests/unit/scripts/explorer_pipeline/test_read_model_contract.py",
+        "tests/unit/scripts/explorer_pipeline/test_read_primitive_query_ids.py",
+        "tests/unit/scripts/explorer_pipeline/test_result_id_contract.py",
+        "tests/unit/scripts/explorer_pipeline/test_throughput_ranking.py",
+        "tests/unit/scripts/explorer_pipeline/test_transformer.py",
+        "tests/unit/scripts/explorer_pipeline/test_variant_identity.py",
+        "tests/unit/scripts/test_corpus_cohort_depth.py",
+        "tests/unit/scripts/test_corpus_execution_class_identity.py",
+        "tests/unit/scripts/test_corpus_translator_version.py",
+        "tests/unit/scripts/test_validate_submission.py"
+      ],
+      "review": {
+        "base_sha": "4fe6b3aac7b884bd170cdd3ef61697af5bffbeec",
+        "head_sha": "2ed78a7427b8924c80e2b508a37795d27d0e8406",
+        "head_tree": "7f8acb377cba6034d6e0f1b9f1be59c5e43a253d",
+        "outcome": "clear",
+        "patch_digest": "e4d696f0f9f457886d9b38c48067d4c9",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "4fe6b3aac7b884bd170cdd3ef61697af5bffbeec"
+      },
+      "revision": "2ed78a7427b8924c80e2b508a37795d27d0e8406",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
@@ -47,6 +112,15 @@
       "generation": "84d8932bcd744ceabc52ded5fd9d3031",
       "op": "take",
       "op_id": "70bc7ff1451d4b298ef5b375097ff1d2",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-07T22:40:14Z",
+      "client": "omp-coding-agent",
+      "generation": "84d8932bcd744ceabc52ded5fd9d3031",
+      "op": "prepare",
+      "op_id": "c0983c1187d84ceeb6729ce909001ae0",
       "session_id": "dc59872de7f0484eafa9032416c81607"
     }
   ]

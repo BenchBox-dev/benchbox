@@ -4795,20 +4795,43 @@
       "terminal_outcome": "deliver"
     },
     "plan-companion-publication-hygiene": {
-      "accepted_members": {},
+      "accepted_members": {
+        "explorer-pipeline-has-plans-true-for-errors-only-20261107": "2ed78a7427b8924c80e2b508a37795d27d0e8406"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "explorer-pipeline-has-plans-true-for-errors-only-20261107": {
+          "accepted_head": "2ed78a7427b8924c80e2b508a37795d27d0e8406",
+          "changed_files": [
+            "_project/scripts/explorer_pipeline/transformer.py",
+            "changelog.d/feat-plan-companion-publication-hygiene--explorer-has-plans.json",
+            "tests/unit/scripts/explorer_pipeline/test_pipeline.py",
+            "tests/unit/scripts/explorer_pipeline/test_transformer.py"
+          ],
+          "integration_head": "83168a9802ac3425890848de57ca3319a4449b84",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/plan-companion-publication-hygiene",
-      "integration_head": "4fe6b3aac7b884bd170cdd3ef61697af5bffbeec",
+      "integration_head": "83168a9802ac3425890848de57ca3319a4449b84",
       "integration_log": [
         {
           "at": "2026-11-07T22:11:18Z",
           "head": "4fe6b3aac7b884bd170cdd3ef61697af5bffbeec",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-07T22:40:14Z",
+          "head": "83168a9802ac3425890848de57ca3319a4449b84",
+          "kind": "prepare",
+          "member": "explorer-pipeline-has-plans-true-for-errors-only-20261107",
+          "op_id": "c0983c1187d84ceeb6729ce909001ae0",
+          "previous_head": "4fe6b3aac7b884bd170cdd3ef61697af5bffbeec",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-companion-publication-hygiene",
@@ -19596,15 +19619,10 @@
       "title": "Project funding into read-model views + render the funding chip/legend + e2e"
     },
     "explorer-pipeline-has-plans-true-for-errors-only-20261107": {
-      "claim": {
-        "expires_at": "2026-11-08T22:40:08Z",
-        "generation": "84d8932bcd744ceabc52ded5fd9d3031",
-        "renewals": 1,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "open",
       "title": "Make has_plans true only when a plans companion holds at least one captured plan"
     },
     "explorer-pipeline-meta-leaderboard-widening": {
