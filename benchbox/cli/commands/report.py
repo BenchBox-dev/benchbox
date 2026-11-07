@@ -11,6 +11,7 @@ from rich.markup import escape
 from rich.table import Table
 
 from benchbox.cli.shared import console
+from benchbox.core.results.comparison_modes import IncomparableModesError
 from benchbox.core.results.database import (
     RankingConfig,
     ResultDatabase,
@@ -86,6 +87,12 @@ def report() -> None:
     help="Consider results from last N days",
 )
 @click.option(
+    "--fetch-mode",
+    type=click.Choice(["rows", "arrow"]),
+    default=None,
+    help="Rank results measured under this fetch mode; required when stored results mix modes",
+)
+@click.option(
     "--db-path",
     type=click.Path(path_type=Path),
     help="Path to result database (default: ~/.benchbox/results.db)",
@@ -96,6 +103,7 @@ def rankings(
     metric: str,
     min_samples: int,
     lookback_days: int,
+    fetch_mode: str | None,
     db_path: Path | None,
 ) -> None:
     db = ResultDatabase(db_path)
@@ -106,7 +114,10 @@ def rankings(
         require_success=True,
     )
 
-    rankings_list = db.calculate_rankings(benchmark, scale_factor, config)
+    try:
+        rankings_list = db.calculate_rankings(benchmark, scale_factor, config, fetch_mode=fetch_mode)
+    except IncomparableModesError as exc:
+        raise click.ClickException(f"{exc} Pass --fetch-mode to rank one mode.") from exc
 
     if not rankings_list:
         console.print(f"[yellow]No results found for {benchmark} at scale factor {scale_factor}[/yellow]")

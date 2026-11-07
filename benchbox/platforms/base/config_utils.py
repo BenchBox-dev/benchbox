@@ -238,6 +238,8 @@ PLAN_FORWARD_KEYS: tuple[str, ...] = (
     "plan_max_depth",
 )
 
+FETCH_FORWARD_KEYS: tuple[str, ...] = ("fetch_mode",)
+
 
 def build_adapter_config(
     config: dict[str, Any],
@@ -275,6 +277,10 @@ def build_adapter_config(
 
     for key in PLAN_FORWARD_KEYS:
         if key in config and config[key] is not None:
+            adapter_config[key] = config[key]
+
+    for key in FETCH_FORWARD_KEYS:
+        if config.get(key) is not None:
             adapter_config[key] = config[key]
 
     return adapter_config

@@ -28,6 +28,7 @@ from benchbox.core.analysis.statistics import (
     welchs_t_test,
 )
 from benchbox.core.cost.models import published_total_cost
+from benchbox.core.results.comparison_modes import IncomparableModesError, results_mode_differences
 from benchbox.core.results.models import BenchmarkResults
 from benchbox.core.results.query_execution import (
     DURATION_CONSISTENCY_TOLERANCE_MS,
@@ -128,6 +129,10 @@ class PlatformComparison:
         benchmark_names = {r.benchmark_name for r in self.results}
         if len(benchmark_names) > 1:
             errors.append(f"Results are from different benchmarks: {benchmark_names}")
+
+        mode_differences = results_mode_differences(self.results)
+        if mode_differences:
+            errors.append(str(IncomparableModesError(mode_differences)))
 
         scale_factors = {r.scale_factor for r in self.results}
         if len(scale_factors) > 1:

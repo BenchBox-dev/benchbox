@@ -18,6 +18,7 @@ from benchbox.core.results.environment import (
     build_platform_metadata_payload,
 )
 from benchbox.core.results.execution_variant import execution_engine_payload, gateway_payload
+from benchbox.core.results.fetch_mode import summarize_fetch_modes
 from benchbox.core.results.metrics import UNOFFICIAL_COMPLIANCE_CLASSES, percentile_ms
 from benchbox.core.results.platform_options import sanitize_platform_options
 from benchbox.core.results.query_execution import (
@@ -248,6 +249,9 @@ def build_result_payload(result: BenchmarkResults, *, sanitize_platform_secrets:
     if scan_bytes:
         summary["cost"] = scan_bytes
     run = _build_run_section(result, query_times_ms, iterations_set, streams_set)
+    run_fetch_mode = _run_fetch_mode(queries_list)
+    if run_fetch_mode is not None:
+        run["fetch_mode"] = run_fetch_mode
     benchmark = _build_benchmark_section(result)
     driver_metadata = _collect_driver_metadata(result)
     platform = _build_platform_section(result, driver_metadata, sanitize_platform_secrets=sanitize_platform_secrets)
@@ -279,6 +283,7 @@ def build_result_payload(result: BenchmarkResults, *, sanitize_platform_secrets:
                 "timing_method",
                 "net_estimate_status",
                 "platform_timing",
+                "fetch_mode",
             ],
         ),
         "benchmark": order_dict(benchmark, ["id", "name", "scale_factor", "test_type"]),
@@ -461,6 +466,13 @@ def _build_summary_section(
         summary["tpc_metrics"] = tpc_metrics
 
     return summary
+
+
+def _run_fetch_mode(queries: list[dict[str, Any]]) -> str | None:
+    successful = [query for query in queries if query.get("status") == "SUCCESS"]
+    if not any(query.get("fetch_mode") for query in successful):
+        return None
+    return summarize_fetch_modes(query.get("fetch_mode") for query in successful)
 
 
 def _build_run_section(

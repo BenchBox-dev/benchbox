@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import logging
 import re
+import uuid
 from collections.abc import Sequence
+from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -15,10 +17,12 @@ except ImportError:
     duckdb = None
 
 from benchbox.core.errors import PlanCaptureError
+from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW
 from benchbox.utils.cloud_storage import get_cloud_path_info, is_cloud_path
 from benchbox.utils.printing import emit
 
 from .base import DriverIsolationCapability, PlatformAdapter
+from .base.arrow_result import ArrowRows, fetch_result
 from .base.ddl_helpers import translate_schema_with_tpcds_fk_strip
 
 if TYPE_CHECKING:
@@ -88,6 +92,31 @@ class DuckDBCursorWrapper:
 
     def fetchmany(self, size=None):
         return self._rows[:size] if size else self._rows
+
+
+def _duckdb_interval_to_timedelta(value: Any) -> timedelta:
+    nanoseconds = value.nanoseconds
+    microseconds = nanoseconds // 1000 if nanoseconds >= 0 else -(-nanoseconds // 1000)
+    return timedelta(days=value.months * 30 + value.days, microseconds=microseconds)
+
+
+_DUCKDB_ARROW_CELL_CONVERTERS = {
+    "HUGEINT": int,
+    "UHUGEINT": int,
+    "UUID": uuid.UUID,
+    "INTERVAL": _duckdb_interval_to_timedelta,
+    "TIMESTAMP_NS": lambda value: value.to_pydatetime(warn=False),
+}
+
+
+def _duckdb_arrow_converters(description: Any) -> dict[int, Any]:
+    converters: dict[int, Any] = {}
+    for index, column in enumerate(description or ()):
+        type_name = str(column[1])
+        converter = dict if type_name.startswith("MAP(") else _DUCKDB_ARROW_CELL_CONVERTERS.get(type_name)
+        if converter is not None:
+            converters[index] = converter
+    return converters
 
 
 def _build_duckdb_ctas_sort_sql(table_name: str, sort_columns) -> str:
@@ -511,6 +540,7 @@ class DuckDBAdapter(PlatformAdapter):
     supports_native_refresh_ingest = True
     plan_capture_phase_eligible = True
     physical_identifier_case = "lower"
+    default_fetch_mode = FETCH_MODE_ARROW
     index_ddl_unsupported_reason: str | None = None
     _catalog_lookup_active: bool = False
 
@@ -613,9 +643,9 @@ class DuckDBAdapter(PlatformAdapter):
         ]:
             if key in config:
                 adapter_config[key] = config[key]
-        from benchbox.platforms.base.config_utils import PLAN_FORWARD_KEYS
+        from benchbox.platforms.base.config_utils import FETCH_FORWARD_KEYS, PLAN_FORWARD_KEYS
 
-        for key in PLAN_FORWARD_KEYS:
+        for key in (*PLAN_FORWARD_KEYS, *FETCH_FORWARD_KEYS):
             if key in config and config[key] is not None:
                 adapter_config[key] = config[key]
         for key in [
@@ -1053,10 +1083,16 @@ class DuckDBAdapter(PlatformAdapter):
                 logger.debug("DuckDB query profiling enabled for this query")
 
             result = connection.execute(query)
-            rows = result.fetchall()
+            fetched = fetch_result(
+                self.fetch_mode,
+                fetch_rows=result.fetchall,
+                fetch_arrow=getattr(result, "to_arrow_table", None),
+            )
 
             execution_time = elapsed_seconds(start_time)
-            actual_row_count = len(rows)
+            actual_row_count = fetched.row_count
+            if isinstance(fetched.rows, ArrowRows):
+                fetched.rows.convert_columns(_duckdb_arrow_converters(result.description))
             logger.debug(f"Query {query_id} completed in {execution_time:.3f}s, returned {actual_row_count} rows")
 
             if not self.capture_plans:
@@ -1087,16 +1123,19 @@ class DuckDBAdapter(PlatformAdapter):
 
             from benchbox.core.results.result_digest import compute_result_digest, result_digest_enabled
 
-            result_digest = compute_result_digest(rows) if result_digest_enabled() and stream_id in (None, 0) else None
+            result_digest = (
+                compute_result_digest(fetched.rows) if result_digest_enabled() and stream_id in (None, 0) else None
+            )
 
             result = self._build_query_result_with_validation(
                 query_id=query_id,
                 execution_time=execution_time,
                 actual_row_count=actual_row_count,
-                first_row=rows[0] if rows else None,
+                first_row=fetched.first_row,
                 validation_result=validation_result,
                 result_digest=result_digest,
-                materialized_rows=rows,
+                materialized_rows=fetched.rows,
+                fetch_mode=fetched.fetch_mode,
             )
 
             self._merge_plan_capture_into_result(result, connection, query, query_id)

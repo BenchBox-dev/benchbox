@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "Query results record a fetch_mode (rows or arrow) per query and per run. DuckDB now receives results as Arrow inside the query timer and builds Python rows only for digests and validation; set the fetch_mode platform option to rows to switch back.",
+      "details": [
+        "Full result receipt stays inside every query interval; Arrow-to-rows conversion is never timed.",
+        "Result comparison, regression detection and rankings work within one fetch mode only: mixed-mode comparisons are refused, and report rankings takes --fetch-mode."
+      ],
+      "platforms": ["duckdb"]
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+from __future__ import annotations
+
+from collections.abc import Iterable
+from typing import Any
+
+FETCH_MODE_ROWS = "rows"
+FETCH_MODE_ARROW = "arrow"
+FETCH_MODES = (FETCH_MODE_ROWS, FETCH_MODE_ARROW)
+LEGACY_FETCH_MODE = FETCH_MODE_ROWS
+MIXED_FETCH_MODE = "mixed"
+SUMMARY_FETCH_MODES = (*FETCH_MODES, MIXED_FETCH_MODE)
+
+
+def parse_fetch_mode(value: Any) -> str:
+    if isinstance(value, str) and value.strip().lower() in FETCH_MODES:
+        return value.strip().lower()
+    raise ValueError(f"fetch_mode must be one of {list(FETCH_MODES)}, got {value!r}")
+
+
+def resolve_fetch_mode(requested: Any, default: str) -> str:
+    if requested is None or requested == "":
+        return default
+    return parse_fetch_mode(requested)
+
+
+def summarize_fetch_modes(modes: Iterable[Any]) -> str | None:
+    recorded = {LEGACY_FETCH_MODE if mode is None else parse_fetch_mode(mode) for mode in modes}
+    if not recorded:
+        return None
+    if len(recorded) == 1:
+        return next(iter(recorded))
+    return MIXED_FETCH_MODE
