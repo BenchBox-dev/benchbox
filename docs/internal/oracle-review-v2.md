@@ -176,8 +176,8 @@ a manual dispatch, a `pull_request_target` event other than a plain edit, and a
    review template and per-file priority, and selects the attempt-1 reviewer. A
    classification failure (an unreachable or failing classifier, not a missing
    key) does not fail the step: when `classifier.unavailable_bucket` is set in
-   the policy, as it is here (`large`), the change is reviewed from that
-   bucket instead (the higher of it and the `large` gate floor), with the
+   the policy, as it is here (`max`), the change is reviewed from that
+   bucket instead (the higher of it and the `large` gate floor, so never weaker than the classifier would have chosen), with the
    `deep` capability, the `gate` template when gate paths are touched and
    `deep` otherwise, and the summary says classification was unavailable;
    without the policy key the attempts stay pending. The bucket names the first reviewer in `.github/oracle-reviewers.yml`;

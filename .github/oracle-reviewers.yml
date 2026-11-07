@@ -107,7 +107,7 @@ buckets:
   huge: huge
   max: max
 classifier:
-  unavailable_bucket: large
+  unavailable_bucket: max
   gate_paths:
     - .github/oracle-reviewers.yml
     - .github/oracle-omp-config.yml
