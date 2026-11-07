@@ -16545,6 +16545,13 @@
       "status": "open",
       "title": "Audit metric/scope truthfulness across all historical DONE items and add a recurrence guard"
     },
+    "doris-load-dead-paths-cleanup-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Remove Doris load leftovers kept only because out-of-scope tests import them"
+    },
     "doris-uat-failures-20261030": {
       "claim": null,
       "needs": [],
