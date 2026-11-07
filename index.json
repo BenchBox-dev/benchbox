@@ -1,20 +1,45 @@
 {
   "batches": {
     "arming-reliability": {
-      "accepted_members": {},
+      "accepted_members": {
+        "pr-arm-stale-hold-suite-needs-new-head-20261106": "1f3279d9b899d733736dfafaa8d2aeb55c0dd16d"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "pr-arm-stale-hold-suite-needs-new-head-20261106": {
+          "accepted_head": "1f3279d9b899d733736dfafaa8d2aeb55c0dd16d",
+          "changed_files": [
+            ".github/workflows/pr-hold.yml",
+            "changelog.d/feat-arming-reliability--pr-arm-stale-hold-suite-needs-new-head-20261106.json",
+            "docs/agent/merge-authority.md",
+            "docs/internal/dev-loop-property-ledger.md",
+            "docs/internal/repo-admin-settings.md",
+            "tests/unit/workflows/test_pr_hold_workflow.py"
+          ],
+          "integration_head": "3b3ce3f84f2186337eb118e888dfda35c909cb3c",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/arming-reliability",
-      "integration_head": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67",
+      "integration_head": "3b3ce3f84f2186337eb118e888dfda35c909cb3c",
       "integration_log": [
         {
           "at": "2026-11-07T01:02:04Z",
           "head": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-07T02:16:18Z",
+          "head": "3b3ce3f84f2186337eb118e888dfda35c909cb3c",
+          "kind": "prepare",
+          "member": "pr-arm-stale-hold-suite-needs-new-head-20261106",
+          "op_id": "a9f8e6c35b5846868ebfdf4a6df16bf0",
+          "previous_head": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-arming-reliability",
@@ -24298,15 +24323,10 @@
       "title": "Make pr-arm and pr-rerun agree on what to do while a head's full CI run is still in progress"
     },
     "pr-arm-stale-hold-suite-needs-new-head-20261106": {
-      "claim": {
-        "expires_at": "2026-11-08T02:16:13Z",
-        "generation": "676024f1c18c4466830162f6b9bf8352",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "After removing no-auto-merge, a stale failed hold suite blocks make pr-arm, and only a new head clears it"
     },
     "pr-arm-stale-remote-race": {
