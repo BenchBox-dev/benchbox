@@ -5059,6 +5059,7 @@
       "accepted_members": {
         "chdb-4x-engine-load-verification-20261006": "b041fa6faf086c57a524ef8b3f3f6fffd7bca004",
         "chdb-rows-nan-vs-arrow-null-q17-20261107": "b8e3fc9fc25d0b108f042e1f408401d9a7af6d05",
+        "qphds-full-sequence-unrun-20261107": "30dbad453e104d0c6f286d29ef824af929040efd",
         "tpch-parity-test-skips-without-cached-extension-20261107": "e0f3677671a09f3f2022bb3e994e3c82e07bcb06"
       },
       "batch_schema": 2,
@@ -5087,6 +5088,14 @@
           "integration_head": "6b255f022b1dd64a9f93908ea33928301a54a0fb",
           "integration_seq": 1
         },
+        "qphds-full-sequence-unrun-20261107": {
+          "accepted_head": "30dbad453e104d0c6f286d29ef824af929040efd",
+          "changed_files": [
+            "docs/internal/tpc-measured-intervals.md"
+          ],
+          "integration_head": "5f873be6858b5bfdec339870624abdc9bfd1d882",
+          "integration_seq": 5
+        },
         "tpch-parity-test-skips-without-cached-extension-20261107": {
           "accepted_head": "e0f3677671a09f3f2022bb3e994e3c82e07bcb06",
           "changed_files": [
@@ -5099,7 +5108,7 @@
         }
       },
       "integration_branch": "feat/result-validity",
-      "integration_head": "ff71f3d0a06f6b17281403d5e229ecc6d1d53a48",
+      "integration_head": "5f873be6858b5bfdec339870624abdc9bfd1d882",
       "integration_log": [
         {
           "at": "2026-11-07T14:16:47Z",
@@ -5148,6 +5157,15 @@
             "chdb-rows-nan-vs-arrow-null-q17-20261107"
           ],
           "seq": 4
+        },
+        {
+          "at": "2026-11-07T16:13:03Z",
+          "head": "5f873be6858b5bfdec339870624abdc9bfd1d882",
+          "kind": "prepare",
+          "member": "qphds-full-sequence-unrun-20261107",
+          "op_id": "fdd43bead1fc4c419e74c94c20449381",
+          "previous_head": "ff71f3d0a06f6b17281403d5e229ecc6d1d53a48",
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-result-validity",
@@ -27936,15 +27954,10 @@
       "title": "Harden plan-history version awareness: platform partition and CLI metrics"
     },
     "qphds-full-sequence-unrun-20261107": {
-      "claim": {
-        "expires_at": "2026-11-08T16:12:58Z",
-        "generation": "e72cbb755e5e476986755f5a0b09f32d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "The TPC-DS QphDS@Size sequence (load, power, two throughput tests, two maintenance runs) has never been run end to end on a real platform"
     },
     "quality-add-cross-platform-result-validation": {
