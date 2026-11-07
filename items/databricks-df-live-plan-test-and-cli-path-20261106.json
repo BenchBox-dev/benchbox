@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Add an opt-in live test (existing live_databricks marker and skip conditions) that runs a small DataFrame power run with capture on and asserts plans attach after the workload, no capture errors, and cleanup of its temporary schema.",
+    "Run the stock CLI path once with explicit approval and record the result.",
+    "Record the serverless prerequisite (databricks-connect, serverless compute available) in the test's skip reason."
+  ],
+  "context": "Needs live-cloud approval and credentials for the CLI run (status blocked until approved). Evidence for the passing smoke: ~/Developer/benchmark_runs/databricks-deferred-plan-live/smoke-ce8b768acf. Verification rubric: test skips cleanly without credentials, passes live, comment-policy, ruff, CI green.",
+  "description": "The live validation passed with a throwaway script (live_smoke.py, kept only under benchmark_runs) that called the adapter's power-test path with hand-built Q1/Q3 DataFrames plus one SQL key. The stock CLI run (benchbox run --platform databricks-df --capture-plans) and the repo's own TPC-H DataFrame query builders were not exercised on real Databricks, and no repeatable live test exists, so a regression in deferred capture would go unseen.",
+  "links": [
+    "benchbox/platforms/databricks/dataframe_adapter.py",
+    "tests/integration/platforms/test_databricks_live.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-07T00:51:48Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "09545661a65048c39fefbdc1db826d89",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    }
+  ]
+}
