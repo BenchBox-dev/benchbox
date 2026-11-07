@@ -721,24 +721,154 @@ def _read_check(member_worktree: Path, member_head: str, integration_head: str) 
     return record if isinstance(record, dict) and record.get("schema") == CHECK_SCHEMA else None
 
 
-def _rerun(repo: Path, ledger: dict, member: str, command: list[str], suite: str, reason: str) -> dict:
+def _is_test_path_arg(arg: str) -> bool:
+    return arg.startswith("tests/")
+
+
+TEST_RUN_ANCHORS = ("-q", "pytest")
+
+
+def _tree_has(repo: Path, revision: str, path: str) -> bool | None:
+    listed = subprocess.run(
+        ["git", "ls-tree", "--name-only", revision, "--", path],
+        cwd=repo,
+        check=False,
+        capture_output=True,
+        encoding="utf-8",
+        timeout=60,
+    )
+    if listed.returncode != 0:
+        return None
+    return bool(listed.stdout.strip())
+
+
+def _develop_anchors(repo: Path, ledger: dict) -> list[str] | None:
+    start_head = ledger.get("start_head")
+    if not isinstance(start_head, str) or not start_head:
+        return None
+    anchors = [start_head]
+    for advance in ledger.get("advances", []):
+        if not isinstance(advance, dict) or advance.get("kind") != "develop-merge":
+            continue
+        merge = advance.get("head")
+        if not isinstance(merge, str) or not merge:
+            return None
+        try:
+            parents = _git(repo, "rev-list", "--parents", "-n", "1", merge).split()[1:]
+        except BatchError:
+            return None
+        if len(parents) != 2:
+            return None
+        anchors.append(parents[1])
+    return anchors
+
+
+def _plainly_deleted(repo: Path, anchor: str, tip: str, path: str) -> bool:
+    logged = subprocess.run(
+        [
+            "git",
+            "log",
+            "--format=%H",
+            "--no-renames",
+            "--diff-filter=D",
+            f"{anchor}..{tip}",
+            "--",
+            f":(literal){path}",
+        ],
+        cwd=repo,
+        check=False,
+        capture_output=True,
+        encoding="utf-8",
+        timeout=120,
+    )
+    if logged.returncode != 0:
+        return False
+    commits = logged.stdout.split()
+    if not commits:
+        return False
+    for commit in commits:
+        shown = subprocess.run(
+            ["git", "show", "--format=", "--no-renames", "--name-status", "-z", "--diff-filter=A", commit],
+            cwd=repo,
+            check=False,
+            capture_output=True,
+            encoding="utf-8",
+            timeout=120,
+        )
+        if shown.returncode != 0:
+            return False
+        tokens = shown.stdout.split("\0")
+        if any(token.startswith("tests/") for token in tokens[1::2]):
+            return False
+    return True
+
+
+def _deleted_by_develop(repo: Path, path: str, anchors: list[str]) -> bool:
+    if (repo / path).exists() or _tree_has(repo, DEVELOP_REF, path) is not False:
+        return False
+    states = [_tree_has(repo, anchor, path) for anchor in anchors]
+    if None in states:
+        return False
+    existing = [anchor for anchor, present in zip(anchors, states, strict=True) if present]
+    return bool(existing) and all(_plainly_deleted(repo, anchor, DEVELOP_REF, path) for anchor in existing)
+
+
+def _trailing_test_run_start(command: list[str]) -> int | None:
+    start = len(command)
+    while start > 0 and _is_test_path_arg(command[start - 1]):
+        start -= 1
+    if start == len(command) or start == 0 or command[start - 1] not in TEST_RUN_ANCHORS:
+        return None
+    return start
+
+
+def _without_deleted_test_paths(command: list[str], repo: Path, ledger: dict) -> tuple[list[str], list[str]]:
+    start = _trailing_test_run_start(command) if "pytest" in command else None
+    anchors = _develop_anchors(repo, ledger) if start is not None else None
+    if start is None or anchors is None:
+        return list(command), []
+    dropped = [arg for arg in command[start:] if _deleted_by_develop(repo, arg.split("::", 1)[0], anchors)]
+    kept = [arg for arg in command[start:] if arg not in dropped]
+    return [*command[:start], *kept], dropped
+
+
+def _rerun(
+    repo: Path,
+    ledger: dict,
+    member: str,
+    command: list[str],
+    suite: str,
+    reason: str,
+) -> dict:
     head = _rev(repo, "HEAD")
     clean_before = _is_clean(repo)
-    proc = _run(_validate_verification_command(command), repo)
+    recorded = _validate_verification_command(command)
+    ran_command, dropped_paths = _without_deleted_test_paths(recorded, repo, ledger)
+    if dropped_paths and _trailing_test_run_start(ran_command) is None:
+        proc = None
+    else:
+        proc = _run(ran_command, repo)
     head_after = _rev(repo, "HEAD")
     clean_after = _is_clean(repo)
-    passed = proc.returncode == 0 and clean_before and clean_after and head_after == head
+    passed = proc is not None and proc.returncode == 0 and clean_before and clean_after and head_after == head
     entry = {
         "status": "passed" if passed else "failed",
         "revision": head,
         "clean": clean_before and clean_after,
         "suite": suite,
         "command": list(command),
+        "ran_command": ran_command,
+        "dropped_paths": dropped_paths,
         "worktree": str(repo.resolve()),
         "reason": reason,
         "at": _now(),
     }
-    if proc.returncode != 0:
+    if proc is None:
+        entry["output"] = (
+            f"every recorded test path is absent from the tree ({', '.join(dropped_paths)}); "
+            "refusing to run pytest without them"
+        )
+    elif proc.returncode != 0:
         entry["output"] = (proc.stderr or proc.stdout).strip()[-400:]
     elif not passed:
         entry["output"] = (
@@ -2029,6 +2159,8 @@ def build_evidence(repo: Path) -> dict:
             "clean": True,
             "suite": receipts[member]["verification"]["suite"],
             "command": receipts[member]["verification"]["command"],
+            "ran_command": rerun_entry["ran_command"],
+            "dropped_paths": rerun_entry["dropped_paths"],
             "worktree": str(repo.resolve()),
         }
 
