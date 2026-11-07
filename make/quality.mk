@@ -1,25 +1,19 @@
-.PHONY: coverage-fast
-coverage-fast:
-	uv run -- python -m pytest -c pytest-ci.ini -m "fast and not (slow or stress or resource_heavy or live_integration or cloud_import)" --cov=benchbox --cov-report=term-missing:skip-covered --cov-fail-under=0 --timeout=120
-
-.PHONY: coverage-all
-coverage-all:
-	uv run -- python -m pytest -c pytest-ci.ini -m "not (stress or resource_heavy or live_integration)" --cov=benchbox --cov-branch --cov-report=term-missing:skip-covered --cov-report=html:htmlcov --cov-report=xml:coverage.xml --cov-fail-under=0
-
-.PHONY: coverage-opt-in-all
-coverage-opt-in-all:
-	uv run -- python -m pytest -c pytest-ci.ini --cov=benchbox --cov-branch --cov-report=term-missing:skip-covered --cov-report=html:htmlcov --cov-report=xml:coverage.xml --cov-fail-under=0
+COVERAGE_SCOPE ?= routine
+COVERAGE_FILTER_fast := -m "fast and not (slow or stress or resource_heavy or live_integration or cloud_import)" --timeout=120
+COVERAGE_FILTER_routine := -m "not (stress or resource_heavy or live_integration)"
+COVERAGE_FILTER_opt-in :=
+COVERAGE_DEFAULT_REPORTS_fast := term
+COVERAGE_REPORTS ?= $(or $(COVERAGE_DEFAULT_REPORTS_$(COVERAGE_SCOPE)),term html xml)
+COVERAGE_REPORT_term := --cov-report=term-missing:skip-covered
+COVERAGE_REPORT_term-full := --cov-report=term-missing
+COVERAGE_REPORT_html := --cov-report=html:htmlcov
+COVERAGE_REPORT_xml := --cov-report=xml:coverage.xml
 
 .PHONY: coverage
-coverage: coverage-all
-
-.PHONY: coverage-html
-coverage-html:
-	uv run -- python -m pytest -c pytest-ci.ini -m "not (stress or resource_heavy or live_integration)" --cov=benchbox --cov-report=html:htmlcov --cov-fail-under=0
-
-.PHONY: coverage-report
-coverage-report:
-	uv run -- python -m pytest -c pytest-ci.ini -m "not (stress or resource_heavy or live_integration)" --cov=benchbox --cov-report=xml:coverage.xml --cov-report=term-missing --cov-fail-under=0
+coverage:
+	@case "$(COVERAGE_SCOPE)" in fast|routine|opt-in) ;; *) echo "COVERAGE_SCOPE must be fast, routine or opt-in, not '$(COVERAGE_SCOPE)'" >&2; exit 2 ;; esac
+	@$(if $(filter-out term term-full html xml,$(COVERAGE_REPORTS)),echo "COVERAGE_REPORTS accepts only term term-full html xml; not '$(filter-out term term-full html xml,$(COVERAGE_REPORTS))'" >&2; exit 2,true)
+	uv run -- python -m pytest -c pytest-ci.ini $(COVERAGE_FILTER_$(COVERAGE_SCOPE)) --cov=benchbox --cov-branch $(foreach report,$(COVERAGE_REPORTS),$(COVERAGE_REPORT_$(report))) --cov-fail-under=0
 
 
 .PHONY: complexity-check
@@ -92,17 +86,13 @@ site-linked-paths-check:
 comment-policy-check:
 	uv run -- python scripts/run_comment_policy.py && uv run -- python scripts/check_comment_cleanup_scope.py --check-drift $(if $(BASE_REF),--base "$(BASE_REF)",)
 
-.PHONY: check-comment-scope
-check-comment-scope:
-	uv run -- python scripts/check_comment_cleanup_scope.py --check-drift $(if $(BASE_REF),--base "$(BASE_REF)",)
-
-.PHONY: comment-policy-strict
-comment-policy-strict:
-	uv run -- python scripts/check_comment_policy.py --mode strict
-
-.PHONY: comment-policy-report
-comment-policy-report:
-	uv run -- python scripts/check_comment_policy.py --mode report
+.PHONY: comment-policy-scan
+comment-policy-scan:
+	@case "$(COMMENT_POLICY_MODE)" in \
+		strict|report) uv run -- python scripts/check_comment_policy.py --mode "$(COMMENT_POLICY_MODE)" ;; \
+		scope) uv run -- python scripts/check_comment_cleanup_scope.py --check-drift $(if $(BASE_REF),--base "$(BASE_REF)",) ;; \
+		*) echo "COMMENT_POLICY_MODE must be strict, report or scope" >&2; exit 2 ;; \
+	esac
 
 .PHONY: comment-policy-dead-exceptions
 comment-policy-dead-exceptions:
@@ -197,15 +187,12 @@ disk-check:
 
 .PHONY: duplicate-check
 duplicate-check:
-	uv run -- python scripts/check_duplicate_code.py
+	@case "$(DUPLICATE_CHECK_FORMAT)" in ""|text|json) ;; *) echo "DUPLICATE_CHECK_FORMAT must be text or json" >&2; exit 2 ;; esac
+	uv run -- python scripts/check_duplicate_code.py $(if $(filter json,$(DUPLICATE_CHECK_FORMAT)),--json,)
 
 .PHONY: duplicate-check-verbose
 duplicate-check-verbose:
 	uv run -- python scripts/check_duplicate_code.py --verbose --top-n 30
-
-.PHONY: duplicate-check-json
-duplicate-check-json:
-	uv run -- python scripts/check_duplicate_code.py --json
 
 .PHONY: duplicate-check-delta
 duplicate-check-delta:

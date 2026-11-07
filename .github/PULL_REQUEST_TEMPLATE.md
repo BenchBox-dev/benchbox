@@ -14,8 +14,10 @@ Brief description of the changes in this PR (the *what* and *why*).
 
 ## Testing
 
-How did you verify the change? Include the commands you ran (e.g.
-`make pr-preflight`, targeted `pytest`, manual smoke).
+`make pr-open` appends the generated "Preflight receipt" section (commands, exit
+codes, test counts, any allowlisted environment-only failure) from
+`make pr-preflight`; do not write it by hand. Add here only verification the
+receipt does not cover (targeted `pytest`, manual smoke).
 
 ## SQL Execution Evidence
 

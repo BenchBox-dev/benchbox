@@ -35,7 +35,7 @@ the newer state.
   Retry when reachable.
 - `E_UNKNOWN`: a push reply was lost and the outcome is undetermined. The
   `recovery` list carries the operation ID. A human reconciles with
-  `todo-db recover --op-id <id>` before anyone re-applies the work.
+  `tractable recover --op-id <id>` before anyone re-applies the work.
 
 ## Schema and state errors
 
@@ -48,7 +48,7 @@ from the first page.
 
 ## Batch recovery
 
-Prepared delivery requires the actual installed runtime's `todo_db_batch` version
+Prepared delivery requires the actual installed runtime's `tractable_batch` version
 2 capability and supported store/receipt schemas. Read live state with
 `show_batch`/`show_item`; ledger hints are not acceptance proof, and private
 generation material is not recoverable from the redacted batch read.
@@ -90,7 +90,7 @@ generation material is not recoverable from the redacted batch read.
   returns the generation. If the expected generation cannot be obtained, report
   that prerequisite: abort also requires it, so tokenless abort is not a fallback.
 - **Lost integration checkout**: require
-  `todo_db_batch.features.integration_worktree_relocation=true` before supplying
+  `tractable_batch.features.integration_worktree_relocation=true` before supplying
   all of `expected_integration_worktree`, `expected_integration_head` and the new
   `integration_worktree` to owner recovery. The destination must be clean, in the
   registered repository and branch, at the recorded head with required history.
@@ -120,7 +120,7 @@ generation material is not recoverable from the redacted batch read.
 
 ## Prepared receipt recovery
 
-Prepared mode is unavailable when the `todo_db_batch` version 2 capability is
+Prepared mode is unavailable when the `tractable_batch` version 2 capability is
 absent or the store schema is outside the advertised `supported_schema_versions`:
 stop and use the serial claim/finish loop. A store below schema 4 is cut over by
 the first `register_batch` with `confirm_schema3_cutover=true`. Do not migrate a legacy per-item receipt into a

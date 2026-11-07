@@ -245,55 +245,19 @@ def test_ratchet_allows_same_path_wheel_version_bump_without_expanding_exclusion
         check_ratchet(policy(external=[diff_prov_entry]), policy(external=[base_entry]))
 
 
-def wheel_entry(distribution: str, version: str, owner: str, directory: str = "_project/scripts/vendor") -> dict:
-    return {
-        "path": f"{directory}/{distribution}-{version}-py3-none-any.whl",
-        "owner": owner,
+def test_ratchet_rejects_renaming_a_wheel_to_a_different_distribution_and_owner() -> None:
+    base_entry = {
+        "path": "_project/scripts/vendor/todo_db-0.15.0-py3-none-any.whl",
+        "owner": "todo-db",
         "provenance": "_project/scripts/pyproject.toml",
     }
-
-
-def test_ratchet_allows_the_declared_todo_db_to_tractable_rename() -> None:
-    old = wheel_entry("todo_db", "0.15.0", "todo-db")
-    new = wheel_entry("tractable", "1.0.0", "tractable")
-    check_ratchet(policy(external=[new]), policy(external=[old]))
+    renamed_entry = {
+        "path": "_project/scripts/vendor/tractable-1.0.0-py3-none-any.whl",
+        "owner": "tractable",
+        "provenance": "_project/scripts/pyproject.toml",
+    }
     with pytest.raises(ValueError, match="cannot add or expand external exclusions"):
-        check_ratchet(policy(external=[old, new]), policy(external=[old]))
-
-
-def test_ratchet_refuses_the_reverse_rename() -> None:
-    old = wheel_entry("todo_db", "0.15.0", "todo-db")
-    new = wheel_entry("tractable", "1.0.0", "tractable")
-    with pytest.raises(ValueError, match="cannot add or expand external exclusions"):
-        check_ratchet(policy(external=[old]), policy(external=[new]))
-
-
-def test_ratchet_refuses_an_undeclared_distribution_replacement() -> None:
-    old = wheel_entry("todo_db", "0.15.0", "todo-db")
-    for replacement in (
-        wheel_entry("other_pkg", "1.0.0", "other-pkg"),
-        wheel_entry("tractable", "1.0.0", "todo-db"),
-        wheel_entry("other_pkg", "1.0.0", "tractable"),
-    ):
-        with pytest.raises(ValueError, match="cannot add or expand external exclusions"):
-            check_ratchet(policy(external=[replacement]), policy(external=[old]))
-    other_old = wheel_entry("other_pkg", "0.1.0", "other-pkg")
-    with pytest.raises(ValueError, match="cannot add or expand external exclusions"):
-        check_ratchet(policy(external=[wheel_entry("tractable", "1.0.0", "tractable")]), policy(external=[other_old]))
-
-
-def test_ratchet_refuses_the_declared_rename_in_another_directory() -> None:
-    old = wheel_entry("todo_db", "0.15.0", "todo-db")
-    moved = wheel_entry("tractable", "1.0.0", "tractable", directory="_project/vendor")
-    with pytest.raises(ValueError, match="cannot add or expand external exclusions"):
-        check_ratchet(policy(external=[moved]), policy(external=[old]))
-
-
-def test_ratchet_refuses_the_declared_rename_with_changed_provenance() -> None:
-    old = wheel_entry("todo_db", "0.15.0", "todo-db")
-    new = wheel_entry("tractable", "1.0.0", "tractable") | {"provenance": "_project/scripts/other_pyproject.toml"}
-    with pytest.raises(ValueError, match="cannot add or expand external exclusions"):
-        check_ratchet(policy(external=[new]), policy(external=[old]))
+        check_ratchet(policy(external=[renamed_entry]), policy(external=[base_entry]))
 
 
 def git_repo(tmp_path: Path, source: str) -> str:
@@ -3591,39 +3555,20 @@ def dependency_artifact_inputs(tmp_path: Path, monkeypatch):
     return scope, wheel_path, project_path, lock_path, frozen, index, records, rules, external
 
 
-def test_verify_upstream_release_validates_real_github_asset(monkeypatch: pytest.MonkeyPatch) -> None:
-    import io
-    import urllib.request
-
+def test_verify_upstream_release_validates_real_github_asset(tmp_path: Path) -> None:
     from check_comment_cleanup_scope import _verify_upstream_release
 
-    checksums = b"3a878a3ac2e7c3b458ed3e71d53d036456ba017eb9ec1adfa030d823cf2c2ffd  todo_db-0.10.1-py3-none-any.whl\n"
+    digest = "3a878a3ac2e7c3b458ed3e71d53d036456ba017eb9ec1adfa030d823cf2c2ffd"
+    release = tmp_path / "releases/download/v0.10.1"
+    release.mkdir(parents=True)
+    (release / "SHA256SUMS").write_text(f"{digest}  todo_db-0.10.1-py3-none-any.whl\n", encoding="utf-8")
+    repo_url = tmp_path.as_uri()
 
-    class DummyResponse:
-        def __init__(self, data: bytes):
-            self.data = io.BytesIO(data)
-
-        def __enter__(self):
-            return self.data
-
-        def __exit__(self, *args):
-            pass
-
-    monkeypatch.setattr(urllib.request, "urlopen", lambda req, timeout=15: DummyResponse(checksums))
-
-    _verify_upstream_release(
-        "https://github.com/joeharris76/todo-db",
-        "0.10.1",
-        "todo_db-0.10.1-py3-none-any.whl",
-        "3a878a3ac2e7c3b458ed3e71d53d036456ba017eb9ec1adfa030d823cf2c2ffd",
-    )
+    _verify_upstream_release(repo_url, "0.10.1", "todo_db-0.10.1-py3-none-any.whl", digest)
     with pytest.raises(ValueError, match="wheel hash mismatch"):
-        _verify_upstream_release(
-            "https://github.com/joeharris76/todo-db",
-            "0.10.1",
-            "todo_db-0.10.1-py3-none-any.whl",
-            "0" * 64,
-        )
+        _verify_upstream_release(repo_url, "0.10.1", "todo_db-0.10.1-py3-none-any.whl", "0" * 64)
+    with pytest.raises(ValueError, match="does not contain"):
+        _verify_upstream_release(repo_url, "0.10.1", "other-0.10.1-py3-none-any.whl", digest)
 
 
 def test_pep440_version_ordering() -> None:
@@ -3793,77 +3738,6 @@ def test_dependency_removed_only_by_a_verified_policy_wheel_bump(
         evidence_file.write_text(json.dumps(evidence_data), encoding="utf-8")
 
     if case == "bumped":
-        assert scope.immutable_dependency_artifacts(tmp_path, "base", records, rules, external) == set()
-    else:
-        with pytest.raises(scope.PolicyError, match="immutable dependency artifact removed"):
-            scope.immutable_dependency_artifacts(tmp_path, "base", records, rules, external)
-
-
-@pytest.mark.parametrize(
-    "new_name,accepted",
-    [("tractable", True), ("other-pkg", False)],
-)
-def test_dependency_removal_accepts_only_the_declared_rename(
-    tmp_path: Path, dependency_artifact_inputs, monkeypatch: pytest.MonkeyPatch, new_name: str, accepted: bool
-) -> None:
-    import io
-    import zipfile
-
-    scope, path, project_path, lock_path, frozen, _, records, rules, external = dependency_artifact_inputs
-    monkeypatch.setattr(scope, "_verify_upstream_release", lambda *a, **k: None)
-    (tmp_path / path).unlink()
-    frozen["quality/comment-policy.json"] = json.dumps({"version": 1, "external": external, "exceptions": []}).encode()
-    frozen["_project/analysis/batch-rollout-evidence.json"] = json.dumps(
-        {"source": {"repository": "https://github.com/joeharris76/todo-db"}}
-    ).encode()
-
-    module = new_name.replace("-", "_")
-    filename = f"{module}-1.0.0-py3-none-any.whl"
-    replacement = {**external[0], "owner": new_name, "path": str(PurePosixPath(path).with_name(filename))}
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w") as arc:
-        arc.writestr(f"{module}-1.0.0.dist-info/METADATA", f"Name: {new_name}\nVersion: 1.0.0\n")
-        arc.writestr(f"{module}/__init__.py", "value = 2\n")
-    new_wheel = buf.getvalue()
-    (tmp_path / replacement["path"]).write_bytes(new_wheel)
-    (tmp_path / project_path).write_bytes(
-        (
-            f'[project]\ndependencies = ["{new_name}"]\n'
-            f'[tool.uv.sources]\n{new_name} = {{path = "vendor/{filename}"}}\n'
-        ).encode()
-    )
-    digest = "sha256:" + hashlib.sha256(new_wheel).hexdigest()
-    (tmp_path / lock_path).write_bytes(
-        (
-            f'[[package]]\nname = "{new_name}"\nversion = "1.0.0"\n'
-            f'source = {{path = "vendor/{filename}"}}\n'
-            f'wheels = [{{filename = "{filename}", hash = "{digest}"}}]\n'
-        ).encode()
-    )
-    policy_file = tmp_path / "quality/comment-policy.json"
-    policy_file.parent.mkdir(parents=True, exist_ok=True)
-    policy_file.write_text(json.dumps({"version": 1, "external": [replacement], "exceptions": []}), encoding="utf-8")
-    evidence_file = tmp_path / "_project/analysis/batch-rollout-evidence.json"
-    evidence_file.parent.mkdir(parents=True, exist_ok=True)
-    raw_hash = hashlib.sha256(new_wheel).hexdigest()
-    evidence_file.write_text(
-        json.dumps(
-            {
-                "artifact": {
-                    "filename": filename,
-                    "sha256": raw_hash,
-                    "origin": "GitHub release asset",
-                    "build": {
-                        "source_input": "git archive v1.0.0 (0123456789012345678901234567890123456789)",
-                        "reproducibility": {"matching_sha256": raw_hash},
-                    },
-                }
-            }
-        ),
-        encoding="utf-8",
-    )
-
-    if accepted:
         assert scope.immutable_dependency_artifacts(tmp_path, "base", records, rules, external) == set()
     else:
         with pytest.raises(scope.PolicyError, match="immutable dependency artifact removed"):

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import logging
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -68,7 +69,10 @@ def check_phase_boundary(throughput_result: Any | None) -> PhaseBoundaryDecision
 def await_quiescence(throughput_result: Any, timeout: float) -> bool:
     handles: dict[int, concurrent.futures.Future] = dict(getattr(throughput_result, "_outstanding_futures", None) or {})
     if not handles:
-        return not bool(getattr(throughput_result, "outstanding_stream_ids", None) or [])
+        unobservable = bool(getattr(throughput_result, "outstanding_stream_ids", None) or [])
+        if unobservable and timeout > 0:
+            time.sleep(timeout)
+        return not unobservable
 
     done, not_done = concurrent.futures.wait(handles.values(), timeout=timeout)
     done_ids = {stream_id for stream_id, future in handles.items() if future in done}

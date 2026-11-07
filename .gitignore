@@ -162,12 +162,12 @@ _sources/tpc-h/dbgen/qgen
 _project/TODO/_indexes/
 _project/DONE/_indexes/
 
-.todo-db/*.db
-.todo-db/*.sqlite
-.todo-db/*.sqlite-*
-.todo-db/replica*
-.todo-db/export/
-.todo-db/archive/
+.tractable/*.db
+.tractable/*.sqlite
+.tractable/*.sqlite-*
+.tractable/replica*
+.tractable/export/
+.tractable/archive/
 _project/blind-spots/_indexes/
 
 _project/audits/screenshots/

@@ -178,7 +178,7 @@ while the merge queue was still in use, is in
 It keeps `pull_request` and `merge_group` evidence separate and does not
 authorize changing required contexts or skipping jobs.
 
-The six-unit CI retired the strict-base refresh shadow
+The unit-based CI (2026-09-29) retired the strict-base refresh shadow
 (`develop-refresh-shadow.yml`) and the `pr-certification-identity` and
 `pr-certification-lanes` artifacts `pr.yml` uploaded for it. The shadow was
 observational and never a required context. `scripts/pr_refresh_certification.py`
@@ -736,8 +736,8 @@ TODO):
   credential-free-non-fast, and the release-canary-result aggregator) had run.
 - Same class, other instances: `phase3-promotion-review.yml` (quarterly) and
   `orphaned-commit-detector.yml` (weekly) were also on `develop` but absent from
-  `origin/main`, so their schedules never fired either. The six-unit CI retired
-  both, so this history needs no action.
+  `origin/main`, so their schedules never fired either. The unit-based CI (2026-09-29)
+  retired both, so this history needs no action.
 
 Activation options considered while the default branch was still `main`:
 
@@ -781,9 +781,9 @@ gets one window of grace before its first scheduled run, so a dead
 scheduled workflow cannot go unnoticed.
 
 The `RELEASE_READINESS_OVERRIDE_SHA` and `RELEASE_READINESS_OVERRIDE_REASON`
-repository variables were read only by the retired `validate-release-pr.yml`
-job. `release-v2.yml` runs the ruleset drift check without them, so an override
-cannot waive drift at release time. Remove the variables if they are still set.
+repository variables remain inputs to the ruleset check in `release-canary.yml`.
+`release-v2.yml` explicitly unsets them before its ruleset check, so an override
+cannot waive drift at release time.
 
 ## Repository labels
 
@@ -802,8 +802,8 @@ gh label list --search incident
 git ls-remote --heads origin 'gh-readonly-queue/*' 'auto-revert/*'
 ```
 
-The label search lists only `incident:release-canary-red` and
-`incident:todo-export-failed`; the branch listing is empty.
+The label search lists only `incident:release-canary-red`; the branch listing is
+empty. The obsolete `incident:todo-export-failed` label was deleted on 2026-11-07.
 
 ## Re-applying after a transfer or restore
 

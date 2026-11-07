@@ -27,7 +27,7 @@ BASE_BRANCH = "develop"
 STORE_SCHEMA = "remote_closeout_v1"
 STORE_ENV = "BENCHBOX_REVIEWS_DIR"
 ENV_PREFIX = "REMOTE_CLOSEOUT_"
-TRACKER_CONFIG = pr_landing.REPO_ROOT / ".todo-db" / "config.json"
+TRACKER_CONFIG = pr_landing.REPO_ROOT / ".tractable" / "config.json"
 FETCH = ["git", "-c", "gc.auto=0", "-c", "maintenance.auto=false", "fetch", "--no-tags", "origin"]
 VIEW_FIELDS = "number,state,isDraft,labels,reviewDecision,headRefOid,headRefName,baseRefName,id,isCrossRepository"
 OBSERVED_FIELDS = ("labels", "draft", "threads")
@@ -411,7 +411,7 @@ def _record_refusals(record: dict | None, view: dict, head: str) -> list[str]:
     if record.get("published") is False:
         reasons.append(
             "condition 3: the latest record's findings are not all published; finish with "
-            "make pr-landing-remote-review RESUME=1, or review again if a step was abandoned"
+            "make pr-landing-remote ACTION=review RESUME=1, or review again if a step was abandoned"
         )
     return reasons
 
@@ -545,15 +545,17 @@ def _transition_refusals(state: dict, *, ready: bool) -> list[str]:
     withdrawal = state.get("withdrawal")
     if not ready:
         if withdrawal:
-            return ["the PR is withdrawn; re-arm it with make pr-landing-remote-ready"]
+            return ["the PR is withdrawn; re-arm it with make pr-landing-remote ACTION=ready"]
         if state["arms"]:
             return [
-                "the PR was already armed; withdraw it with make pr-landing-remote-withdraw, "
-                "then use make pr-landing-remote-ready"
+                "the PR was already armed; withdraw it with make pr-landing-remote ACTION=withdraw, "
+                "then use make pr-landing-remote ACTION=ready"
             ]
         return []
     if not withdrawal:
-        return ["no withdrawal is recorded; ready re-arms only a PR that make pr-landing-remote-withdraw withdrew"]
+        return [
+            "no withdrawal is recorded; ready re-arms only a PR that make pr-landing-remote ACTION=withdraw withdrew"
+        ]
     if len(state["records"]) <= withdrawal["records_before"]:
         return ["no review record was stored after the withdrawal; the new head needs a new record"]
     return []
@@ -703,7 +705,7 @@ def _store_record(run: Runner, repo: str, number: int, state: dict, record: dict
     if record["disposition"] == "approve" and open_findings:
         raise Refused(
             f"an approve record cannot be stored while blocking findings {', '.join(open_findings)} are open; "
-            "run make pr-landing-remote-review"
+            "run make pr-landing-remote ACTION=review"
         )
     view = _view(run, repo, number)
     live_identity = _identity_refusals(binding, view, number)
@@ -759,17 +761,17 @@ def _guarded(name: str, action: Callable[[], int]) -> int:
 def bind(
     pr: str | None, branch: str | None, item: str | None = None, repo: str = REPOSITORY, run: Runner = live_run
 ) -> int:
-    return _guarded("pr-landing-remote-bind", lambda: _bind(pr, branch, item, repo, run))
+    return _guarded("pr-landing-remote ACTION=bind", lambda: _bind(pr, branch, item, repo, run))
 
 
 def record(
     pr: str | None, record_file: str | None, builder_head: str | None, repo: str = REPOSITORY, run: Runner = live_run
 ) -> int:
-    return _guarded("pr-landing-remote-record", lambda: _record(pr, record_file, builder_head, repo, run))
+    return _guarded("pr-landing-remote ACTION=record", lambda: _record(pr, record_file, builder_head, repo, run))
 
 
 def manifest(pr: str | None, head: str | None, repo: str = REPOSITORY, run: Runner = live_run) -> int:
-    return _guarded("pr-landing-remote-manifest", lambda: _manifest(pr, head, repo, run))
+    return _guarded("pr-landing-remote ACTION=manifest", lambda: _manifest(pr, head, repo, run))
 
 
 def arm(
@@ -784,7 +786,7 @@ def arm(
 
 
 def withdraw(pr: str | None, repo: str = REPOSITORY, run: Runner = live_run) -> int:
-    return _guarded("pr-landing-remote-withdraw", lambda: _withdraw(pr, repo, run))
+    return _guarded("pr-landing-remote ACTION=withdraw", lambda: _withdraw(pr, repo, run))
 
 
 def ready(
@@ -795,7 +797,9 @@ def ready(
     run: Runner = live_run,
     checkout: Path = Path("."),
 ) -> int:
-    return _guarded("pr-landing-remote-ready", lambda: _arm(pr, head, repo, owner_explained, run, checkout, ready=True))
+    return _guarded(
+        "pr-landing-remote ACTION=ready", lambda: _arm(pr, head, repo, owner_explained, run, checkout, ready=True)
+    )
 
 
 def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None) -> int:

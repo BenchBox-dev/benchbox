@@ -147,7 +147,7 @@ locations, and sweep workflows; it must not duplicate behavioral rules.
 
 For projects without their own binding:
 
-1. Save `~/.todo-db/finding-drafts/<project-id>/YYYY-MM-DD-HHMMSS-<slug>.md`.
+1. Save `~/.tractable/finding-drafts/<project-id>/YYYY-MM-DD-HHMMSS-<slug>.md`.
 2. Add frontmatter: `id`, `date`, `status`, `finding_kind`, `review_context`, `related_paths`, `suggested_sweep`, and `todo_id`.
 3. Report the path. Promote through the tracker's deferral or finding flow when available.
 

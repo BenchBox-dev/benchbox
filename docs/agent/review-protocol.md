@@ -10,8 +10,8 @@ It supersedes `docs/agent/review-protocol-legacy.md`.
   `[REVIEW-L2-001]` are governed verbatim by the canonical skill. Named here to
   satisfy `[REVIEW-PARITY-001]` without restating behavior, which
   `shared-review-protocol` section 5 forbids this file from doing.
-- `[REVIEW-CAPTURE-001]` Finding drafts live under `~/.todo-db/finding-drafts/<project>/`;
-  tracker operations use the `todo-db-mcp` server.
+- `[REVIEW-CAPTURE-001]` Finding drafts live under `~/.tractable/finding-drafts/<project>/`;
+  tracker operations use the `tractable-mcp` server.
 - `[REVIEW-PARITY-001]` The canonical skill governs behavior; this file contains
   only BenchBox-specific bindings.
 
@@ -40,7 +40,7 @@ binds the final head to the tracker's integration head and final-PR binding,
 every member receipt, current acceptance, the recomputed diff and member
 scopes, and a usable local member review. Serial mode covers standalone or
 approval-separated work. An explicitly assigned cohesive batch uses feature
-delivery mode by default, only after the active todo-db MCP server advertises the
+delivery mode by default, only after the tractable MCP server advertises the
 registered-batch v2 capability. It has one shared integration branch, one integrator, no
 feature-base PRs, no new CI skips, and no change to hosted/native review, merge,
 deployment, or authority boundaries (`docs/agent/batch-feature-delivery.md`).

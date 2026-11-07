@@ -518,3 +518,67 @@ def test_main_opens_a_draft_for_the_unavailable_flag_even_without_the_draft_flag
     (post,) = gh.api("POST")
     assert "draft=true" in post
     assert UNAVAILABLE in _fields(post)["body"]
+
+
+def _receipt_block(tree: str, line: str = "- `pytest` exit 0: passed (3 passed)") -> str:
+    return (
+        f"<!-- preflight-receipt: v1 begin tree={tree} -->\n### Preflight receipt\n\n{line}\n"
+        "<!-- preflight-receipt: v1 end -->"
+    )
+
+
+def test_a_created_pr_carries_the_receipt_block_before_the_record_marker(tmp_path: Path) -> None:
+    body = tmp_path / "body.md"
+    body.write_text("Summary\n")
+    gh = FakeGh([], _log(("feat: add widget", "")))
+    block = _receipt_block("a" * 40)
+
+    pr_open_rest.publish(
+        REPO, "BenchBox-dev", "feat/widget", "feat/widget", None, body, gh, record=MARKER, receipt=block
+    )
+
+    assert _fields(gh.api("POST")[0])["body"] == f"Summary\n\n{block}\n\n{MARKER}\n"
+
+
+def test_a_created_pr_without_a_record_still_carries_the_receipt() -> None:
+    gh = FakeGh([], _log(("feat: add widget", "Why widget.")))
+    block = _receipt_block("a" * 40)
+
+    pr_open_rest.publish(REPO, "BenchBox-dev", "feat/widget", "feat/widget", None, None, gh, receipt=block)
+
+    assert _fields(gh.api("POST")[0])["body"] == f"Why widget.\n\n{block}\n"
+
+
+def test_a_reused_pr_replaces_a_stale_receipt_and_keeps_the_rest_of_its_body() -> None:
+    old = _receipt_block("a" * 40, "- `pytest` exit 0: passed (1 passed)")
+    new = _receipt_block("b" * 40)
+    gh = FakeGh([_pull("BenchBox-dev", "feat/widget", body=f"Hand written.\n\n{old}\n\n{MARKER}\n")])
+
+    pr_open_rest.publish(REPO, "BenchBox-dev", "feat/widget", "feat/widget", None, None, gh, record=MARKER, receipt=new)
+
+    (patch,) = gh.api("PATCH")
+    assert _fields(patch) == {"body": f"Hand written.\n\n{new}\n\n{MARKER}\n"}
+
+
+def test_a_reused_pr_whose_body_already_holds_the_receipt_is_left_alone() -> None:
+    block = _receipt_block("a" * 40)
+    gh = FakeGh([_pull("BenchBox-dev", "feat/widget", body=f"Hand written.\n\n{block}\n")])
+
+    pr_open_rest.publish(REPO, "BenchBox-dev", "feat/widget", "feat/widget", None, None, gh, receipt=block)
+
+    assert gh.api("PATCH") == []
+
+
+def test_main_embeds_the_receipt_file_and_refuses_one_that_is_not_a_single_block(tmp_path: Path) -> None:
+    receipt = tmp_path / "receipt.md"
+    receipt.write_text(_receipt_block("a" * 40) + "\n")
+    gh = FakeGh([], _log(("feat: add widget", "Why.")))
+    args = ["--repo", REPO, "--head-owner", "BenchBox-dev", "--branch", "feat/w", "--head-spec", "feat/w"]
+
+    assert pr_open_rest.main([*args, "--receipt-file", str(receipt)], gh) == 0
+    assert "preflight-receipt: v1 begin" in _fields(gh.api("POST")[0])["body"]
+
+    for bad in ("not a block\n", _receipt_block("a" * 40) + "\n" + _receipt_block("b" * 40) + "\n"):
+        receipt.write_text(bad)
+        assert pr_open_rest.main([*args, "--receipt-file", str(receipt)], FakeGh([], "")) == 1
+    assert pr_open_rest.main([*args, "--receipt-file", str(tmp_path / "missing.md")], FakeGh([], "")) == 1

@@ -31,7 +31,7 @@ tests/
 ```
 
 Pytest uses the root `pytest.ini` by default (fast local runs). CI-oriented
-targets such as `make test-ci` and `make coverage-fast` explicitly select the
+targets such as `make test-ci` and `make coverage` explicitly select the
 root `pytest-ci.ini` profile with `pytest -c pytest-ci.ini`.
 
 ## Test Categories
@@ -222,9 +222,9 @@ for selection, escalation, shard evidence and Trunk-lane checks.
 
 ### Quick Development Testing
 Where a `make` target is followed by a `pytest` command, the two are equivalent. `make test-fast` runs the curated fast
-lane. The `tests/unit/benchmarks/test_tpch_core.py` command runs one benchmark's tests. For coverage, `make
-coverage-fast` covers fast tests only, for quick feedback. `make coverage-all` is routine coverage, which excludes
-stress, resource-heavy and live tests. `make coverage-opt-in-all` covers the full tree, including opt-in stress,
+lane. The `tests/unit/benchmarks/test_tpch_core.py` command runs one benchmark's tests. For coverage, `make coverage
+COVERAGE_SCOPE=fast` covers fast tests only, for quick feedback. `make coverage` is routine coverage, which excludes
+stress, resource-heavy and live tests. `make coverage COVERAGE_SCOPE=opt-in` covers the full tree, including opt-in stress,
 resource-heavy and live tests, and needs services and credentials. The final `pytest --cov` command is a direct
 equivalent that writes an HTML report.
 ```bash
@@ -233,9 +233,9 @@ uv run -- python -m pytest -m fast
 
 uv run -- python -m pytest tests/unit/benchmarks/test_tpch_core.py
 
-make coverage-fast
-make coverage-all
-make coverage-opt-in-all
+make coverage COVERAGE_SCOPE=fast
+make coverage
+make coverage COVERAGE_SCOPE=opt-in
 uv run -- python -m pytest --cov=benchbox --cov-report=html
 ```
 

@@ -187,7 +187,7 @@ happened to #3264 and #3319 (`oracle-review` runs from `synchronize` and
   lists only superseded suites that ended in a failure.
 - `make pr-arm` refuses a PR whose required check has a failed suite behind a
   newer success and prints the suite and run URL. `scripts/pr_landing.py`
-  live verification and `make pr-landing-remote-*` report the failed suite
+  live verification and `make pr-landing-remote` report the failed suite
   instead of the newest result for that name. The green-but-unmerged sweep
   lists these PRs in its digest and never counts them as green.
 - `make pr-arm` and `make pr-arm-remote` refuse until the `core` job has uploaded

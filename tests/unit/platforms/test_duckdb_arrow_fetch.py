@@ -133,8 +133,57 @@ class TestEnvironmentSwitch:
         args = ["rankings", "-b", "TPC-H", "-s", "1", "--db-path", str(tmp_path / "r.db")]
         refused = CliRunner().invoke(report, args)
         assert refused.exit_code != 0
-        assert "BENCHBOX_FETCH_MODE" in refused.output
+        assert "--fetch-mode" in refused.output
         chosen = CliRunner().invoke(report, args, env={"BENCHBOX_FETCH_MODE": "arrow"})
         assert chosen.exit_code == 0
         assert "DuckDB" in chosen.output
         assert "Snowflake" not in chosen.output
+
+    def test_rankings_fetch_mode_option_selects_the_mode(self, tmp_path):
+        from datetime import datetime, timezone
+
+        from click.testing import CliRunner
+
+        from benchbox.cli.commands.report import rankings
+        from benchbox.core.results.database import ResultDatabase
+        from tests.unit.core.results.test_fetch_mode import _stored
+
+        db = ResultDatabase(tmp_path / "r.db")
+        now = datetime.now(timezone.utc)
+        db.store_result(_stored("a", "DuckDB", "arrow", 100.0, now))
+        db.store_result(_stored("b", "Snowflake", "rows", 200.0, now))
+        args = ["-b", "TPC-H", "-s", "1", "--db-path", str(tmp_path / "r.db")]
+        arrow = CliRunner().invoke(rankings, [*args, "--fetch-mode", "arrow"])
+        rows = CliRunner().invoke(rankings, [*args, "--fetch-mode", "rows"])
+        assert arrow.exit_code == 0 and "DuckDB" in arrow.output and "Snowflake" not in arrow.output
+        assert rows.exit_code == 0 and "Snowflake" in rows.output and "DuckDB" not in rows.output
+        assert "--fetch-mode" in CliRunner().invoke(rankings, ["--help"]).output
+
+    def test_compare_help_names_fetch_mode_and_rejects_files(self, tmp_path):
+        from click.testing import CliRunner
+
+        from benchbox.cli.commands.compare import compare
+
+        assert "--fetch-mode" in CliRunner().invoke(compare, ["--help"]).output
+        result_file = tmp_path / "a.json"
+        result_file.write_text("{}")
+        refused = CliRunner().invoke(compare, [str(result_file), str(result_file), "--fetch-mode", "rows"])
+        assert refused.exit_code != 0
+        assert "platform runs" in refused.output
+
+    def test_compare_runner_forwards_fetch_mode_to_supported_platforms(self, monkeypatch):
+        from unittest.mock import MagicMock
+
+        from benchbox.cli import database as cli_database, orchestrator as cli_orchestrator
+        from benchbox.cli.commands.compare import _build_platform_runner
+
+        manager = MagicMock()
+        monkeypatch.setattr(cli_database, "DatabaseManager", lambda: manager)
+        monkeypatch.setattr(cli_orchestrator, "BenchmarkOrchestrator", MagicMock)
+        monkeypatch.setattr("benchbox.core.results.comparison_modes.results_mode_differences", lambda results: [])
+        runner = _build_platform_runner("arrow")
+        for platform in ("duckdb", "sqlite"):
+            runner(platform=platform, benchmark="tpch", scale_factor=0.01, query_ids=None, iterations=1, data_dir=None)
+        calls = {call.args[0]: call.args[1] for call in manager.create_config.call_args_list}
+        assert calls["duckdb"] == {"fetch_mode": "arrow"}
+        assert calls["sqlite"] is None

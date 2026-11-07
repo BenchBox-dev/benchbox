@@ -136,7 +136,7 @@ Repository policy selects prepared delivery; it is not inherently opt-in.
 Unrelated, cross-repository and approval-separated work remains serial. Changes
 that install or repair the batch mechanism cannot certify themselves through it.
 
-Before registration, require the installed runtime's `todo_db_batch` version 2
+Before registration, require the installed runtime's `tractable_batch` version 2
 capability, the expected receipt schema, the required tools, and a supported store
 schema. Inspect actual initialize/read responses, not a package-version string
 or a static rollout document. If unsupported, use serial mode. An older store's
@@ -157,7 +157,7 @@ concrete commands; this guide names only the tracker calls and the contract.
   for batch items; while the batch is active the tracker refuses a claim from
   anyone but the owner (`E_BATCH_OWNER`). The refusal holds only for a distinct
   identity: a member must not use the leader's server instance or actor
-  (`--actor`/`TODO_DB_ACTOR`). A member that needs a tracker fact asks
+  (`--actor`/`TRACTABLE_ACTOR`). A member that needs a tracker fact asks
   the leader or reads it (`show_item`, `show_batch`).
 - The leader claims a member (`take`) only around its own landing, prepare,
   or finish, and releases or prepares it immediately. A member with
@@ -337,7 +337,7 @@ recovery nor abort is possible; use existing authorized private recovery access
 or report that exact missing prerequisite, never invent a token.
 
 Checkout relocation additionally requires
-`todo_db_batch.features.integration_worktree_relocation=true` and the complete
+`tractable_batch.features.integration_worktree_relocation=true` and the complete
 tuple `expected_integration_worktree`, `expected_integration_head`,
 `integration_worktree`. CAS owner/generation/path/head together; prove a clean
 destination in the registered repository/branch at that head. Audit the change,

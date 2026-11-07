@@ -306,6 +306,110 @@ def test_member_steps_ignore_primary_clone_edits_outside_every_scope(world: Worl
     assert result["status"] == "merged"
 
 
+def test_member_create_refuses_while_the_primary_clone_has_tracked_changes(world: World) -> None:
+    world.start()
+    (world.primary / "docs" / "note.md").write_text("stray\n")
+    (world.primary / "owner-notes.txt").write_text("untracked is ignored\n")
+    with _raises(r"primary clone .* uncommitted tracked changes: docs/note.md;"):
+        world.member("zeta")
+    git(world.primary, "checkout", "--", "docs/note.md")
+    assert world.member("zeta").is_dir()
+
+
+def test_member_check_refuses_tracked_primary_changes_outside_every_scope(world: World) -> None:
+    world.start()
+    member = world.member("zeta")
+    world.commit(member, {"src/a.py": "member\n"})
+    (world.primary / ".gitignore").write_text(".todo-batch/\nstray\n")
+    (world.primary / "tests" / "test_mid.py").write_text("stray\n")
+    with _raises(r"uncommitted tracked changes: .gitignore, tests/test_mid.py;"):
+        world.check(member, ["tests/test_zeta.py"])
+    assert bi._read_check(member, git(member, "rev-parse", "HEAD"), world.head()) is None
+    git(world.primary, "checkout", "--", ".gitignore", "tests/test_mid.py")
+    assert world.check(member, ["tests/test_zeta.py"])["review_outcome"] == "clear"
+
+
+def test_a_long_review_finding_is_printed_in_full_and_saved(world: World) -> None:
+    world.start()
+    member = world.member("zeta")
+    head = world.commit(member, {"src/a.py": "member\n"})
+    finding = "High finding: " + "detail " * 200 + "END-OF-FINDING"
+    original = world.review
+
+    def long_review(argv, cwd):
+        result = original(argv, cwd)
+        result.stderr = finding
+        return result
+
+    world.review = long_review
+    world.review_rc = 1
+    with pytest.raises(bi.BatchError) as raised:
+        world.check(member, ["tests/test_zeta.py"])
+    assert finding in str(raised.value)
+    saved = Path(git(member, "rev-parse", "--absolute-git-dir")) / f"member-review-{head[:12]}.txt"
+    assert saved.read_text(encoding="utf-8").strip() == finding
+    assert str(saved) in str(raised.value)
+    assert git(member, "status", "--porcelain") == ""
+
+
+def test_recover_takes_over_the_batch_worktrees_and_records_the_handoff(
+    world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    integration = world.start()
+    member = world.member("zeta")
+    claims: list[tuple[Path, bool]] = []
+
+    def claim(path: Path, takeover: bool = False) -> str:
+        claims.append((path, takeover))
+        return "taken-over"
+
+    monkeypatch.setattr("scripts.worktree_lifecycle_metadata.claim_worktree", claim)
+    payload = bi.recover_owner(integration, **_recover_args())
+    assert claims == [(integration.resolve(), True), (member.resolve(), True)]
+    assert payload["worktree_takeover"] == [
+        {"worktree": str(integration.resolve()), "status": "taken-over"},
+        {"worktree": str(member.resolve()), "status": "taken-over"},
+    ]
+    handoffs = _ledger(integration)["handoffs"]
+    assert len(handoffs) == 1
+    assert handoffs[0]["expected_owner"] == "leader" and handoffs[0]["reason"] == "leader died"
+    assert handoffs[0]["new_owner_generation"] == payload["arguments"]["new_owner_generation"]
+    assert handoffs[0]["worktrees"] == payload["worktree_takeover"]
+
+
+def test_recover_reports_a_takeover_that_could_not_be_recorded(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    integration = world.start()
+    from scripts import worktree_lifecycle_metadata as lifecycle
+
+    def claim(path: Path, takeover: bool = False) -> str:
+        raise lifecycle.MetadataError("owner record unreadable")
+
+    monkeypatch.setattr(lifecycle, "claim_worktree", claim)
+    payload = bi.recover_owner(integration, **_recover_args())
+    assert payload["worktree_takeover"][0]["status"] == "failed: owner record unreadable"
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "owner/name",
+        "Owner/Name",
+        "owner/name.git",
+        "https://github.com/owner/name.git",
+        "git@github.com:Owner/Name.git",
+    ],
+)
+def test_repository_identity_ignores_form_case_and_git_suffix(value: str) -> None:
+    assert bi.canonical_repository(value) == "owner/name"
+    assert bi._same_repository(value, "https://github.com/OWNER/name")
+
+
+@pytest.mark.parametrize("value", ["", "owner"])
+def test_repository_identity_refuses_what_names_no_repository(value: str) -> None:
+    with pytest.raises(bi.BatchError):
+        bi.canonical_repository(value)
+
+
 def _session(op: str, op_id: str, at: str) -> dict:
     return {"op": op, "op_id": op_id, "at": at, "actor": "mcp:omp-coding-agent:joe@host:shared"}
 
@@ -1210,7 +1314,7 @@ def test_tracker_reads_page_every_section_with_the_revision_pin(world: World) ->
     world.calls.clear()
     tracker = bi.read_tracker(integration, BATCH)
     assert tracker["receipts"] == expected["receipts"] and tracker["integration_log"] == expected["integration_log"]
-    base = [*bi.TODO_DB_COMMAND, "batch", "show", BATCH]
+    base = [*bi.TRACTABLE_COMMAND, "batch", "show", BATCH]
     argvs = [call[0] for call in world.calls]
     assert argvs[0] == base
     assert [

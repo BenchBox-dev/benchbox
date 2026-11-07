@@ -48,10 +48,10 @@ leader's worktree carries `benchbox.batch.role=integration`, a member's
 `benchbox.batch.role=member`, set at creation by the batch targets (a
 worktree's `benchbox.*` keys are never inherited).
 
-The owner check works only when identities differ. todo-db derives a worker's
+The owner check works only when identities differ. tractable derives a worker's
 identity from its MCP server process, and subagents share their parent's
 server. So each leader runs as its own top-level session (or sets its own
-`TODO_DB_ACTOR`), and a member never runs as a subagent of its leader's session
+`TRACTABLE_ACTOR`), and a member never runs as a subagent of its leader's session
 or of another leader's. Parallel leaders that share one identity also share its
 single live-claim slot and block each other's `take`.
 
@@ -77,17 +77,17 @@ Rules that hold for the whole batch:
 | Target | Run by | Does |
 |---|---|---|
 | `make batch-start BATCH= MEMBERS= SCOPE_JSON= PROJECT_ID= [WORKTREE_PATH=] [DEPENDENCIES=member=dep1+dep2,...] [CONFIRM_CUTOVER=1]` | Leader, any worktree | Creates `feat/<batch>` and its worktree from `refs/remotes/origin/develop`, writes the ledger and owner generation, and prints the `register_batch` arguments and an `after_register` block of `update_item` steps |
-| `make batch-member-create MEMBER= [WORKTREE_PATH=]` | Leader, integration worktree | Creates `feat/<batch>--<member>` at the current integration head; refuses an existing branch |
-| `make batch-member-check [TESTS=a,b]` | Member | Requires a clean branch that contains the integration head and has changes, and no uncommitted change in the primary clone under the member's frozen scope; runs `make pr-preflight` against that head (or the command given as `PREFLIGHT_CMD`, which is recorded and warned about at landing) and the changelog check, then executes the union of the mapped and named tests and records success only if that command passes and the checkout stays clean at the same head; runs the member review as early feedback |
+| `make batch-member-create MEMBER= [WORKTREE_PATH=]` | Leader, integration worktree | Creates `feat/<batch>--<member>` at the current integration head; refuses an existing branch, and refuses while the primary clone has uncommitted tracked changes (the files are named) |
+| `make batch-member-check [TESTS=a,b]` | Member | Requires a clean branch that contains the integration head and has changes, no uncommitted tracked change anywhere in the primary clone, and no change there under the member's frozen scope (the files are named); runs `make pr-preflight` against that head (or the command given as `PREFLIGHT_CMD`, which is recorded and warned about at landing) and the changelog check, then executes the union of the mapped and named tests and records success only if that command passes and the checkout stays clean at the same head; runs the member review as early feedback and, when it does not clear the head, prints its full output and the path of the file holding it |
 | `make batch-land MEMBER= [ACCEPT_WRITES=op_id,...]` | Leader | Merges a checked member with `--no-ff` and prints the `take`/`prepare` payload (`prepare` only for a dependent member, which must already be taken); the member's implementation dependencies are read from its registered tracker metadata |
 | `make batch-advance REASON=fix\|develop-merge` | Leader | Records a leader commit or a develop merge and prints the `advance_batch_head` payload |
 | `make batch-status` | Leader | Reconciles the ledger with the tracker and Git (rebuilding a missing ledger) and names the next step |
 | `make batch-verify` | Leader | Checks first-parent history, recorded heads, and member ancestry |
-| `make batch-evidence` | Leader | Executes every member's receipt command afresh on the clean final head, writes `.todo-batch/<batch>/final-evidence.json` only after all pass, and prints the `finish` payloads with suite `member-reruns` |
+| `make batch-evidence` | Leader | Executes every member's receipt command afresh on the clean final head, writes `.todo-batch/<batch>/final-evidence.json` only after all pass, and prints the `finish` payloads with suite `member-reruns`; a test path a receipt names that a recorded `develop-merge` deleted is dropped from that rerun and listed under `dropped_receipt_paths` in the evidence (a path a member itself deleted still fails, and a receipt left with no verification path is refused) |
 | `make batch-finish [EXECUTE=1]` | Leader, integration worktree | After the batch is completed and final PR merged: dry run by default; execute removes qualifying member worktrees/branches, then finishes the integration worktree and local branch last |
 
 The scripts only read the tracker. Every tracker write is printed as a payload
-and submitted by the leader through the todo-db MCP tools.
+and submitted by the leader through the tractable MCP tools.
 
 ## Protocol
 
@@ -266,6 +266,9 @@ already gone, batch-finish invokes the normal section 7 worktree finish for the
 integration worktree and local branch. It reports the finish status in dry runs
 and freshly revalidates the completed batch, merged PR and finish evidence before
 applying. Refused members or a held integration worktree block this final step.
+The final PR's repository may be recorded as an `owner/name` slug or a GitHub URL,
+in any letter case and with or without `.git`; it is compared to `origin` in
+canonical form. The command exits 0 exactly when its report says `"ok": true`.
 
 ## Sizing: the Theseus preflight
 
@@ -292,7 +295,11 @@ once members exist); do not estimate.
   recorded integration head, run `make batch-recover EXPECTED_OWNER=<worker>
   EXPECTED_OWNER_GENERATION=<gen> REASON=<why>`. It writes a fresh generation to
   the local ledger first, then prints the `recover_batch_owner` payload. It needs
-  no live member claim and keeps valid receipts. `make batch-status` shows
+  no live member claim and keeps valid receipts. It also takes over the session
+  ownership of the integration worktree and every member worktree that still
+  exists, so the successor commits there without `BENCHBOX_WORKTREE_TAKEOVER`;
+  each takeover is recorded under `handoffs` in the ledger and printed as
+  `worktree_takeover`. `make batch-status` shows
   `owner_generation: missing` when the ledger lacks it, and rebuilds a missing
   ledger from the tracker and Git.
 - **Relocated leader.** If the original integration checkout is gone, add
@@ -304,6 +311,9 @@ once members exist); do not estimate.
   are unchanged, and evidence written at the old path is refused. Regenerate it
   with `make batch-evidence` at the new path. Work that was never pushed or
   recorded is not recoverable this way; report it rather than recreating it.
+- **Aborted batch.** After `abort_batch`, `make pr-arm` and the landing readiness check
+  follow the tracker: a worktree still carrying `benchbox.batch.role=integration`
+  for an `aborted` batch is armed as an ordinary PR.
 - **Abort fallback.** If recovery is impossible (the generation is lost and
   nobody has access to the state branch) or the batch should be redone, the owner
   releases every member claim and calls `abort_batch`. Abort invalidates

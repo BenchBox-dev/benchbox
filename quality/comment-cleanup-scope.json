@@ -2699,7 +2699,7 @@
           "prefix": "_project/"
         },
         {
-          "prefix": ".todo-db/"
+          "prefix": ".tractable/"
         }
       ],
       "owner": "comment-cleanup-final-enforcement",
