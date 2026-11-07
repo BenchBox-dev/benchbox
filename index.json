@@ -6235,6 +6235,13 @@
       "status": "done",
       "title": "Batch arrow-dataframe-roundtrips: umbrella notes"
     },
+    "batch-arrow-result-fetch-umbrella-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Batch arrow-result-fetch: umbrella notes (not a member)"
+    },
     "batch-distinct-tracker-identities-20261104": {
       "claim": null,
       "needs": [],

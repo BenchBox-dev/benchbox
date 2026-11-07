@@ -1,0 +1,14 @@
+{
+  "context": "2026-11-07: batch registered. Owner decision 2026-11-06 on fetch-timing-contract-decision-20261103: A + fetch_mode field (rows|arrow), compare within one fetch mode, mixed-mode comparisons refused. Guardrails: no live-cloud runs; an adapter without a passing digest-parity run keeps rows as its default fetch; fetch_mode is additive at the current 2.3 producer, no schema version bump; result-schema-2-4-producer-20261022 fields are not written here.",
+  "description": "Leader notes for feature batch arrow-result-fetch (integration branch feat/arrow-result-fetch). Members: perf-arrow-aware-result-capture-20261030, perf-arrow-fetch-native-drivers-20261030 (depends on the first), perf-spark-arrow-collect-20261030 (depends on the first). Not a batch member; close after the final PR merges and batch-finish runs.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T01:12:49Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "43ca8b4d9af74b7fa3b2bb44390a7bde",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}
