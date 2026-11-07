@@ -10,7 +10,7 @@ import sys
 import tempfile
 import time
 from concurrent.futures import ProcessPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from scripts.sql_execution_gate import augmentation
@@ -42,6 +42,7 @@ REFERENCE_ENGINE = "duckdb"
 class Outcome:
     rows: list[tuple] | None = None
     error: str | None = None
+    seconds: float = 0.0
 
 
 @dataclass
@@ -206,12 +207,16 @@ def expected_row_counts(scale: float) -> dict[str, dict[str, int]]:
 def _execute(engine, sql: str) -> Outcome:
     if sql.startswith("<") and sql.endswith(">"):
         return Outcome(error=f"translation failed {sql}")
+    started = time.monotonic()
     try:
-        return Outcome(rows=engine.execute(sql))
+        return Outcome(rows=engine.execute(sql), seconds=time.monotonic() - started)
     except QueryTimeout as error:
-        return Outcome(error=f"timeout: {error}")
+        return Outcome(error=f"timeout: {error}", seconds=time.monotonic() - started)
     except Exception as error:
-        return Outcome(error=f"{type(error).__name__}: {str(error).splitlines()[0][:200] if str(error) else ''}")
+        return Outcome(
+            error=f"{type(error).__name__}: {str(error).splitlines()[0][:200] if str(error) else ''}",
+            seconds=time.monotonic() - started,
+        )
 
 
 def _run_unit(
@@ -235,7 +240,9 @@ def _run_unit(
                     outcome = cache.get(sql)
                     if outcome is None:
                         outcome = cache[sql] = _execute(engine, sql)
-                    results[(engine.name, benchmark, query, side)] = outcome
+                        results[(engine.name, benchmark, query, side)] = outcome
+                    else:
+                        results[(engine.name, benchmark, query, side)] = replace(outcome, seconds=0.0)
     finally:
         engine.close()
     return results, version, time.monotonic() - started
@@ -434,13 +441,47 @@ def coverage(report: Report) -> dict[str, dict[str, int]]:
     return table
 
 
-def render(report: Report, versions: dict[str, str], seconds: dict[str, float], sides: dict[str, dict]) -> str:
+SLOWEST_SHOWN = 15
+
+
+def slowest(results: dict, limit: int = SLOWEST_SHOWN) -> dict[str, list[dict]]:
+    executed: dict[str, list[dict]] = {}
+    for (engine, benchmark, query, side), outcome in results.items():
+        if side == "candidate" and outcome.seconds > 0:
+            executed.setdefault(engine, []).append(
+                {
+                    "benchmark": benchmark,
+                    "query": query,
+                    "seconds": round(outcome.seconds, 3),
+                    "timed_out": bool(outcome.error and outcome.error.startswith("timeout")),
+                }
+            )
+    return {
+        engine: sorted(rows, key=lambda row: (-row["seconds"], row["benchmark"], row["query"]))[:limit]
+        for engine, rows in sorted(executed.items())
+    }
+
+
+def render(
+    report: Report,
+    versions: dict[str, str],
+    seconds: dict[str, float],
+    sides: dict[str, dict],
+    slowest_by_engine: dict[str, list[dict]],
+    timeout: float,
+) -> str:
     lines = ["SQL execution evidence gate"]
     for side, payload in sides.items():
         pin = payload.get("runtime_pin", {})
         lines.append(f"  {side}: {payload['ref']} sqlglot runtime {pin.get('version', 'unknown')}")
     for engine, version in versions.items():
         lines.append(f"  {engine} {version}: {report.compared.get(engine, 0)} cells in {seconds.get(engine, 0.0):.1f}s")
+    lines.append(f"slowest executions per engine (candidate side, per-query budget {timeout:g}s):")
+    for engine, rows in slowest_by_engine.items():
+        lines.extend(
+            f"  {engine} {row['benchmark']} q{row['query']} {row['seconds']:.2f}s{' TIMED OUT' if row['timed_out'] else ''}"
+            for row in rows
+        )
     lines.append("coverage per benchmark and engine:")
     lines.extend(
         f"  {name}: {row['compared']} compared, {row['errors']} errors, {row['vacuous_unproven']} vacuous (unproven), "
@@ -545,7 +586,8 @@ def run(args: argparse.Namespace) -> int:
             engine.name for engine in engine_classes if not args.engines or engine.name in args.engines.split(",")
         ]
         report = evaluate(results, sides, expected_row_counts(args.scale), load_expected(Path(args.expected)), selected)
-        print(render(report, versions, seconds, sides))
+        slowest_by_engine = slowest(results)
+        print(render(report, versions, seconds, sides, slowest_by_engine, args.timeout))
         if args.report:
             Path(args.report).write_text(
                 json.dumps(
@@ -553,6 +595,7 @@ def run(args: argparse.Namespace) -> int:
                         "passed": report.passed,
                         "versions": versions,
                         "seconds": seconds,
+                        "slowest": slowest_by_engine,
                         "coverage": coverage(report),
                         "unexplained": [vars(f) for f in report.unexplained],
                         "explained": [vars(f) for f in report.explained],

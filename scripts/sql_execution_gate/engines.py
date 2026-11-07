@@ -4,10 +4,13 @@ import csv
 import importlib.util
 import itertools
 import os
+import re
 import sqlite3
 import threading
 from dataclasses import dataclass
 from pathlib import Path
+
+KEY_COLUMN = re.compile(r"(key|_sk|_order_number|_ticket_number)$")
 
 _SCHEMA_IDS = itertools.count()
 
@@ -17,6 +20,12 @@ class Dataset:
     benchmark: str
     ddl: str
     tables: dict[str, Path]
+    index_keys: bool = True
+
+
+def index_columns(columns: list[str], index_keys: bool = True) -> list[str]:
+    leading, *rest = columns
+    return [leading, *(column for column in rest if index_keys and KEY_COLUMN.search(column))]
 
 
 class QueryTimeout(Exception):
@@ -62,7 +71,8 @@ class SqliteEngine:
             marks = ",".join("?" * columns)
             self.connection.executemany(f"INSERT INTO {table} VALUES ({marks})", _data_lines(path, columns))
             if info:
-                self.connection.execute(f'CREATE INDEX "{table}_leading_key" ON {table} ("{info[0][1]}")')
+                for column in index_columns([row[1] for row in info], dataset.index_keys):
+                    self.connection.execute(f'CREATE INDEX "{table}_{column}_ix" ON {table} ("{column}")')
         self.connection.commit()
 
     def execute(self, sql: str) -> list[tuple]:
