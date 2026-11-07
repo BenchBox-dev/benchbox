@@ -83,6 +83,13 @@ evidence, such as deleting a stand-in comment: leave the PR unarmed, withdraw
 the evidence, dispatch the gate, and observe the new result on the current head
 before treating the PR as ready.
 
+Provider loss does not call for a stand-in or any relaxation. While at least
+one provider is served, reviews continue on the substitutes in the trusted
+config and say `degraded: <provider>`; the gate is unchanged. A stand-in
+applies only when no reviewer can run at all (every provider lost), in which
+case the review stays pending and the owner names the PR and head. See
+[`oracle-gateway-host.md`](../internal/oracle-gateway-host.md#losing-or-removing-a-provider).
+
 ## Owner adjudication
 
 The owner resolves an escalated finding with a top-level PR comment that is

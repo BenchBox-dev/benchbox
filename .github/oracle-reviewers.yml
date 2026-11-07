@@ -107,6 +107,7 @@ buckets:
   huge: huge
   max: max
 classifier:
+  unavailable_bucket: max
   gate_paths:
     - .github/oracle-reviewers.yml
     - .github/oracle-omp-config.yml
@@ -134,6 +135,8 @@ classifier:
     - tests/unit/scripts/test_theseus_lock.py
     - tests/unit/scripts/test_theseus_release_check.py
     - tests/unit/scripts/test_oracle_gateway_host.py
+    - tests/unit/scripts/test_review_provider_diversity.py
+    - tests/fixtures/review_provider_diversity/omp_catalog_windows.json
     - tests/integration/oracle/test_curated_capture_fixtures.py
     - tests/fixtures/oracle_reviewers/provenance.json
     - tests/unit/scripts/test_oracle_policy_pin.py

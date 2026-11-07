@@ -129,6 +129,7 @@ help:
 	@echo "  make make-timings-report [MAKE_TIMINGS_DAYS=30] [MAKE_TIMINGS_SLOWEST=5]  Per-target run count, median, p90 and max from ~/.benchbox/make-timings.jsonl (BENCHBOX_MAKE_TIMINGS=0 disables recording)"
 	@echo "  make pr-open [TITLE=text] [PR_BODY_FILE=path] [READY=1]  Push branch + open PR vs develop over REST; update supplied title/body only when changed (READY=1 also arms it with pr-arm)"
 	@echo "    pr-open also takes [REBUTTALS_FILE=path] (JSON of finding id to a 'Dispute:' rebuttal for the local review to re-judge) and [ADJUDICATE='WITHDRAW|MAINTAIN D<n> - <owner instruction>'] (owner-instructed only)"
+	@echo "    When the local review is unavailable for an availability cause (gateway unreachable, token rejected, no usable provider), pr-open opens a draft marked 'Local review: unavailable (...); the hosted review decides' and does not arm it; every other cause still refuses"
 	@echo "  make pr-arm [PR=n] [HEAD=sha]  Enqueue the open PR for its exact head after a live hold check; the queue merges it"
 	@echo "  make pr-ready PR=n|URL=u HEAD=sha  Arm an open PR for an exact head (pr-arm; EVIDENCE selects the readiness evidence transaction; BATCH=1 only asserts the PR is a registered batch PR; both run authoritative batch discovery)"
 	@echo "  make pr-fanout       Run pr-open across worktrees with bounded parallelism (PR_FANOUT_JOBS=$(PR_FANOUT_JOBS))"

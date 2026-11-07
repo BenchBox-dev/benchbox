@@ -138,8 +138,12 @@ independently to each member.
    it (`ADJUDICATE='WITHDRAW|MAINTAIN D<n> - <instruction>'`, passed only when the owner names the head, the
    finding and the decision in the current request). `make pr-open` embeds the findings record in the PR body as
    a hidden marker; CI reads it as claims only. A review that cannot run (no key, `origin/develop` not
-   fetchable, an unreachable gateway, a quota or reviewer absence, a held PR, a secret value on disk, or an
-   `omp` that does not match the CI pin) refuses regardless.
+   fetchable, a quota or reviewer absence, a held PR, a secret value on disk, or an
+   `omp` that does not match the CI pin) refuses regardless. The one exception is an availability cause
+   (the gateway is unreachable, rejects the client token, or serves no provider that can review the change):
+   `make pr-open` then pushes and opens a draft whose body ends with `Local review: unavailable (<reason>); the
+   hosted review decides`, never arms it (an existing PR keeps its state and gets the marker), and `make pr-arm` refuses it until the hosted `review-gate` passes
+   for the head.
    It pushes and arms exactly the commit it reviewed. The review is advisory, may differ from the CI oracle,
    and posts nothing to GitHub. See `docs/internal/oracle-review-v2.md`, Local pre-PR review.
 

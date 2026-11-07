@@ -1207,13 +1207,22 @@ pr-open:
 	if [ "$$TRUNK_MODE" = "draft" ] || [ -n "$$PR_OPEN_PARENT" ]; then DRAFT_FLAG=--draft; fi; \
 	REVIEWED=$$(git rev-parse HEAD); \
 	RECORD_FILE=$$(mktemp); \
-	trap 'rm -f "$$RECORD_FILE"' EXIT; \
-	python3 scripts/oracle_local_review.py --policy .github/oracle-reviewers.yml --base-ref "$$STACK_BASE" --trusted-ref origin/develop --head "$$REVIEWED" --rebuttals "$$PR_OPEN_REBUTTALS" --adjudicate "$$PR_OPEN_ADJUDICATE" --record-out "$$RECORD_FILE" || { echo "Refusing to open PR: the local oracle review did not clear this head. Nothing was pushed." >&2; exit 1; }; \
+	UNAVAILABLE_FILE=$$(mktemp); \
+	trap 'rm -f "$$RECORD_FILE" "$$UNAVAILABLE_FILE"' EXIT; \
+	LOCAL_STATUS=0; \
+	python3 scripts/oracle_local_review.py --policy .github/oracle-reviewers.yml --base-ref "$$STACK_BASE" --trusted-ref origin/develop --head "$$REVIEWED" --rebuttals "$$PR_OPEN_REBUTTALS" --adjudicate "$$PR_OPEN_ADJUDICATE" --record-out "$$RECORD_FILE" --unavailable-out "$$UNAVAILABLE_FILE" || LOCAL_STATUS=$$?; \
+	UNAVAILABLE_CAUSE=; \
+	if [ "$$LOCAL_STATUS" != 0 ]; then \
+		if [ "$$LOCAL_STATUS" = 2 ]; then UNAVAILABLE_CAUSE=$$(sed -n 's/^availability: //p' "$$UNAVAILABLE_FILE" | sed -n 1p); fi; \
+		if [ -z "$$UNAVAILABLE_CAUSE" ]; then echo "Refusing to open PR: the local oracle review did not clear this head. Nothing was pushed." >&2; exit 1; fi; \
+		echo "The local oracle review is unavailable ($$UNAVAILABLE_CAUSE); opening as a draft. The hosted review decides." >&2; \
+		DRAFT_FLAG=--draft; \
+	fi; \
 	$(MAKE) -s pr-conflict-scan BRANCH="$$CURRENT" REPO="$$REPOSITORY" || true; \
 	git push origin "$$REVIEWED:refs/heads/$$CURRENT" || { echo "Push failed for $$CURRENT — aborting before opening a PR (remote branch may be stale)." >&2; exit 1; }; \
 	git branch --set-upstream-to="origin/$$CURRENT" "$$CURRENT" >/dev/null 2>&1 || true; \
 	PUBLISHED=$$(uv run -- python scripts/pr_open_rest.py --repo "$$REPOSITORY" --head-owner "$$ORIGIN_OWNER" \
-		--branch "$$CURRENT" --head-spec "$$HEAD_SPEC" --title "$$PR_OPEN_TITLE" --body-file "$$PR_OPEN_BODY_FILE" --record-file "$$RECORD_FILE" $$DRAFT_FLAG $$PARENT_ARGS); \
+		--branch "$$CURRENT" --head-spec "$$HEAD_SPEC" --title "$$PR_OPEN_TITLE" --body-file "$$PR_OPEN_BODY_FILE" --record-file "$$RECORD_FILE" $${UNAVAILABLE_CAUSE:+--local-review-unavailable "$$UNAVAILABLE_CAUSE"} $$DRAFT_FLAG $$PARENT_ARGS); \
 	PR_STATUS="$${PUBLISHED%% *}"; \
 	PR_NUMBER="$${PUBLISHED#* }"; \
 	URL="$${PR_NUMBER#* }"; \
@@ -1224,7 +1233,9 @@ pr-open:
 		echo "Reusing existing PR: $$URL"; \
 	fi; \
 	echo "$$URL" && \
-	if [ "$$TRUNK_MODE" = "draft" ] && [ "$$REUSED_PR" != "1" ]; then \
+	if [ -n "$$UNAVAILABLE_CAUSE" ]; then \
+		echo "The local review was unavailable ($$UNAVAILABLE_CAUSE), so this PR is not armed and the hosted review-verdict decides. Mark it ready and arm it only after review-gate passes for this head."; \
+	elif [ "$$TRUNK_MODE" = "draft" ] && [ "$$REUSED_PR" != "1" ]; then \
 		echo "Opened as a draft because develop is red: mark it ready and arm it only after the owner authorizes this head (see docs/agent/merge-authority.md), or after develop is green."; \
 	elif [ "$(READY)" != "1" ]; then \
 		echo "Next: make pr-arm once the review fixes are pushed; auto-merge merges it when the required checks pass."; \

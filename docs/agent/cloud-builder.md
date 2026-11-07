@@ -99,7 +99,11 @@ to capture the join.
 Without the three variables, or when Tailscale is missing or the join or check
 fails, bootstrap still succeeds, stops any daemon it started, and records the
 gateway as unavailable. When the diff needs a review, `make pr-open` then
-refuses before any push (exit 2), because its local review cannot run: fix the
+refuses before any push (exit 2) unless the local review reports an availability
+cause (the gateway is unreachable, rejects the token, or serves no usable
+provider). In that case it opens a draft (an existing PR is only marked) marked `Local review: unavailable
+(<reason>); the hosted review decides`, which `make pr-arm` refuses until the
+hosted `review-gate` passes for the head. For any other cause, fix the
 missing variable or Tailscale install and run `make cloud-gateway`, or report
 the blocker. A diff the policy classifies as needing no review proceeds without
 the gateway. A builder never skips a required review.
