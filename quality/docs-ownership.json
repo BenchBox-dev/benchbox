@@ -201,6 +201,7 @@
     "docs/internal/github-org-transfer.md": "core-only",
     "docs/internal/hosted-credentials.md": "core-only",
     "docs/internal/hosted-results-planning.md": "core-only",
+    "docs/internal/hudi-spark-support.md": "core-only",
     "docs/internal/implementation-decisions.md": "core-only",
     "docs/internal/independent-publication-contract.md": "core-only",
     "docs/internal/independent-publication-threat-model.md": "core-only",
