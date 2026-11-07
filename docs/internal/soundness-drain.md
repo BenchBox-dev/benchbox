@@ -9,14 +9,14 @@ the required `oracle-gate` check passes, which needs a success `oracle-verdict` 
 current head created by the `benchbox-oracle` App. CI cannot catch a change that
 redefines the oracle it validates against, so such a PR can sit green but
 unmergeable while it waits for that review. The oracle reviews each push on its own; to rerun it,
-post a top-level `/oracle-review` comment or run
-`gh workflow run oracle-verdict.yml --ref develop -f pr=<number>`.
+post a top-level `/review` comment or run
+`gh workflow run review-verdict.yml --ref develop -f pr=<number>`.
 
 When the oracle cannot review, or its verdict must be overruled, a
-listed attester in `STANDIN_ATTESTERS` (`_project/scripts/oracle_review_check.py`)
+listed attester in `consumer.attesters` (`.github/oracle-reviewers.yml`)
 can substitute an independent stand-in review. After that review of the
 current head, the attester posts a PR comment whose whole text is the line
-`Stand-in oracle review: APPROVE <full head SHA>`; the review itself goes in a
+`Stand-in review: APPROVE <full head SHA>`; the review itself goes in a
 separate comment. The check accepts it only for
 that exact head, only if posted after any retarget and after the oracle's
 latest verdict status on that head, and never while a review thread from the oracle
@@ -29,7 +29,7 @@ Resolving an oracle review thread starts no workflow run and needs no refresh;
 `make pr-arm` and `make pr-arm-remote` dispatch nothing. A stale gate is
 re-evaluated by an oracle review edit or dismissal, a `develop` push that
 changes the gate code or policy, the hourly sweep, or on demand with
-`gh workflow run oracle-gate.yml --ref develop -f pr=<number>`.
+`gh workflow run review-gate.yml --ref develop -f pr=<number>`.
 
 The develop ruleset requires `oracle-gate` bound to the `benchbox-oracle`
 App's integration ID, so only a status that App posts satisfies it, and the
@@ -69,7 +69,7 @@ hold:
   a missing run is fail-closed, not an absent requirement.
 - **(b) awaiting the owner** — auto-merge is currently OFF, **and** either
   the diff touches a soundness-critical path (reused via
-  `any_soundness_path` imported from `soundness_paths.py` —
+  `any_soundness_path` from `soundness_manifest.py` over the vendored `soundness_paths.py` —
   never re-derived or edited), or the owner (`joeharris76`) is a requested
   reviewer.
 - **(c) parked > 24h** — more than 24 hours of park time (see below).

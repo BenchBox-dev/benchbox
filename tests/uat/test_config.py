@@ -449,7 +449,7 @@ _SF1_TIMEOUT_PRUNED_CELLS = frozenset(
             "tsbs_devops",
         ),
         "pyspark-df": ("datavault", "tpchavoc", "tpcds", "joinorder", "flightdata"),
-        "spark": ("joinorder", "tpchavoc", "tpcds_obt"),
+        "spark": ("joinorder", "tpchavoc", "tpcds_obt", "datavault"),
         "pandas-df": ("joinorder", "flightdata", "datavault"),
         "sqlite": ("joinorder", "flightdata", "tsbs_devops", "tpch", "tpch_skew"),
     }.items()
@@ -469,7 +469,7 @@ def test_release_gate_stage1_prunes_sf1_timeouts_measured_in_dry_run_2():
         if cell.rule_id.endswith(".release_gate_runtime_envelope") and cell.scale == 1.0
     }
 
-    assert len(_SF1_TIMEOUT_PRUNED_CELLS) == 28
+    assert len(_SF1_TIMEOUT_PRUNED_CELLS) == 29
     assert pruned >= _SF1_TIMEOUT_PRUNED_CELLS
     assert _SF1_TIMEOUT_PRUNED_CELLS.isdisjoint(cells)
     for platform, benchmark, _ in _SF1_TIMEOUT_PRUNED_CELLS:
@@ -582,8 +582,8 @@ def test_release_gate_stage1_prunes_measured_runtime_envelopes():
     for cell in result.cells:
         by_pair.setdefault((cell.platform, cell.benchmark), set()).add(cell.scale)
     eligible = sum(1 for scales in by_pair.values() if set(stage1.scales.rungs).issubset(scales))
-    assert eligible == 110
-    assert stage1.report.cross_scale_coverage_min_pairs == int(0.8 * eligible) == 88
+    assert eligible == 109
+    assert stage1.report.cross_scale_coverage_min_pairs == int(0.8 * eligible) == 87
 
 
 def test_release_gate_cross_scale_floors_are_tuned_and_achievable():
@@ -846,6 +846,7 @@ def test_scale_specific_runtime_envelope_prunes_only_that_scale(monkeypatch):
     assert scale_pruned == {
         ("sqlite", "datavault", 1.0),
         ("sqlite", "tpchavoc", 1.0),
+        ("pyspark-df", "tpchavoc", 0.1),
         *(cell for cell in _SF1_TIMEOUT_PRUNED_CELLS if cell[1] not in ("joinorder", "tpcds_obt")),
     }
 
@@ -853,6 +854,7 @@ def test_scale_specific_runtime_envelope_prunes_only_that_scale(monkeypatch):
     assert scale_pruned.isdisjoint(cells)
     for benchmark in ("datavault", "tpchavoc"):
         assert {("sqlite", benchmark, 0.01), ("sqlite", benchmark, 0.1)} <= cells
+    assert ("pyspark-df", "tpchavoc", 0.01) in cells
 
     unscaled = {
         (cell.platform, cell.benchmark)

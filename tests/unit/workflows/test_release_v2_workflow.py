@@ -10,7 +10,6 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 WORKFLOWS = Path(__file__).resolve().parents[3] / ".github" / "workflows"
 WORKFLOW = WORKFLOWS / "release-v2.yml"
-LEGACY = WORKFLOWS / "release.yml"
 
 
 def _text() -> str:
@@ -41,13 +40,6 @@ def test_release_v2_starts_on_version_tag_push_or_dispatch_with_a_tag():
     triggers = _triggers(WORKFLOW)
     assert triggers["push"]["tags"] == ["v*"]
     assert triggers["workflow_dispatch"]["inputs"]["tag"]["required"] is True
-
-
-def test_legacy_release_is_dispatch_only_so_a_tag_push_starts_one_publisher():
-    triggers = _triggers(LEGACY)
-    assert set(triggers) == {"workflow_dispatch"}
-    assert "push" not in _triggers(LEGACY)
-    assert "push" in _triggers(WORKFLOW)
 
 
 @pytest.mark.parametrize(
@@ -166,13 +158,11 @@ def test_release_uat_environment_installs_the_admitted_wheel_and_records_its_dig
     assert "benchbox.checkout" in run
 
 
-def test_release_uat_stages_run_in_order_and_each_shards_one_stage_config():
+def test_release_uat_stages_start_together_and_each_shards_one_stage_config():
     jobs = _jobs()
-    assert jobs["uat-stage1"]["needs"] == "admit"
-    assert set(jobs["uat-stage2"]["needs"]) == {"admit", "uat-stage1"}
-    assert set(jobs["uat-stage3"]["needs"]) == {"admit", "uat-stage2"}
     for number, name in enumerate(UAT_STAGE_JOBS, start=1):
         job = jobs[name]
+        assert set(job["needs"]) == {"admit", "uat-reuse"}
         run = _step_commands(job)
         assert f"release-gate-0{number}-" in "\n".join(
             str(step.get("env", {}).get("UAT_CONFIG", "")) for step in job["steps"]
@@ -194,34 +184,116 @@ def test_release_uat_shards_always_upload_their_evidence():
         assert sweep["timeout-minutes"] < _jobs()[name]["timeout-minutes"]
 
 
-def test_later_stages_run_after_a_failed_earlier_stage_so_one_run_surfaces_every_failure():
-    for name in ("uat-stage2", "uat-stage3"):
-        assert "!cancelled()" in _jobs()[name]["if"]
-        assert "needs.admit.result == 'success'" in _jobs()[name]["if"]
+def test_stages_run_independently_of_each_other_and_skip_only_when_reuse_is_verified():
+    for name in UAT_STAGE_JOBS:
+        condition = _jobs()[name]["if"]
+        assert "!cancelled()" in condition
+        assert "needs.admit.result == 'success'" in condition
+        assert "needs.uat-reuse.outputs.reuse != 'true'" in condition
+        assert "needs.uat-stage" not in condition
 
 
 def test_release_uat_gate_checks_every_shard_against_the_admitted_digest():
     gate = _jobs()["release-uat"]
-    assert set(gate["needs"]) == {"admit", *UAT_STAGE_JOBS}
+    assert set(gate["needs"]) == {"admit", "uat-reuse", *UAT_STAGE_JOBS}
     assert "!cancelled()" in gate["if"]
-    run = _step_commands(gate)
-    assert "make uat-gate-check" in run
-    assert "DIST_DIGEST=" in run
+    normal = next(s for s in gate["steps"] if s.get("name") == "Check the combined release gate over every shard")
+    assert normal["if"] == "${{ needs.uat-reuse.outputs.reuse != 'true' }}"
+    assert "make uat-gate-check" in normal["run"]
+    assert 'DIST_DIGEST="$(sha256sum "$RELEASE_DIST_DIGEST_FILE" | cut -d\' \' -f1)"' in normal["run"]
     for number in (1, 2, 3):
-        assert f"-stage{number}-*/run" in run
-    download = next(s for s in gate["steps"] if "download-artifact" in s.get("uses", "") and "pattern" in s["with"])
-    assert download["with"]["pattern"].endswith("-stage*")
+        assert f"-stage{number}-*/run" in normal["run"]
+    download = next(s for s in gate["steps"] if s.get("name") == "Download every shard's evidence")
+    assert download["if"] == "${{ needs.uat-reuse.outputs.reuse != 'true' }}"
+    assert download["with"]["pattern"] == "release-uat-${{ inputs.tag || github.ref_name }}-stage*"
+    assert "run-id" not in download["with"]
     assert not any("uat-sweep" in step.get("run", "") for step in gate["steps"])
 
 
-def test_release_uat_gate_fails_unless_every_shard_job_succeeded():
+def test_release_uat_reuse_path_regates_the_release_candidates_shards_with_its_admitted_digest():
     gate = _jobs()["release-uat"]
-    step = next(s for s in gate["steps"] if s.get("name") == "Require every shard job to have succeeded")
+    download = next(s for s in gate["steps"] if s.get("name") == "Download the release candidate's shard evidence")
+    assert download["if"] == "${{ needs.uat-reuse.outputs.reuse == 'true' }}"
+    assert download["with"]["run-id"] == "${{ needs.uat-reuse.outputs.rc_run_id }}"
+    assert download["with"]["github-token"] == "${{ github.token }}"
+    assert download["with"]["pattern"] == "release-uat-${{ needs.uat-reuse.outputs.rc_tag }}-stage*"
+    verify = next(s for s in gate["steps"] if s.get("name", "").startswith("Re-verify the release candidate"))
+    assert verify["if"] == "${{ needs.uat-reuse.outputs.reuse == 'true' }}"
+    assert verify["env"]["RC_DIST_DIGEST"] == "${{ needs.uat-reuse.outputs.rc_dist_digest }}"
+    assert 'DIST_DIGEST="$RC_DIST_DIGEST"' in verify["run"]
+    assert "make uat-gate-check" in verify["run"]
+    assert "release_reuse_uat_evidence.py verify-gate" in verify["run"]
+    for number in (1, 2, 3):
+        assert f'release-uat-"$RC_TAG"-stage{number}-*/run' in verify["run"]
+
+
+def test_release_uat_gate_fails_unless_every_shard_job_succeeded_or_was_replaced_by_verified_reuse():
+    gate = _jobs()["release-uat"]
+    step = next(s for s in gate["steps"] if s.get("name", "").startswith("Require every shard job"))
     assert step["if"] == "always()"
     for number in (1, 2, 3):
         assert step["env"][f"STAGE{number}_RESULT"] == f"${{{{ needs.uat-stage{number}.result }}}}"
-    assert '!= "success"' in step["run"]
-    assert 'exit "$status"' in step["run"]
+    assert step["env"]["REUSE"] == "${{ needs.uat-reuse.outputs.reuse }}"
+    assert step["env"]["REUSE_RESULT"] == "${{ needs.uat-reuse.result }}"
+    run = step["run"]
+    assert 'if [ "$REUSE" = "true" ]; then\n  expected=skipped' in run
+    assert "expected=success" in run
+    assert '!= "$expected"' in run
+    assert '"$REUSE_RESULT" != "success"' in run
+    assert 'exit "$status"' in run
+
+
+def test_uat_reuse_runs_only_for_final_tags_and_only_after_admission():
+    job = _jobs()["uat-reuse"]
+    assert job["needs"] == "admit"
+    assert job["if"] == "${{ needs.admit.outputs.target == 'pypi' }}"
+    assert job["permissions"] == {"contents": "read", "actions": "read"}
+    assert set(job["outputs"]) == {"reuse", "rc_tag", "rc_sha", "rc_run_id", "rc_dist_digest"}
+    for value in job["outputs"].values():
+        assert value.startswith("${{ steps.decide.outputs.")
+
+
+def test_uat_reuse_decides_from_the_admitted_final_distribution_and_the_git_history():
+    job = _jobs()["uat-reuse"]
+    checkout = job["steps"][0]
+    assert checkout["with"]["ref"] == "${{ needs.admit.outputs.head_sha }}"
+    assert checkout["with"]["fetch-depth"] == 0
+    stage = next(s for s in job["steps"] if s.get("name") == "Stage the admitted distributions")
+    assert "release_admitted_dist.py" in stage["run"] and '--stage "$RUNNER_TEMP/final-dist"' in stage["run"]
+    decide = next(s for s in job["steps"] if s.get("id") == "decide")
+    assert decide["env"]["GH_TOKEN"] == "${{ github.token }}"
+    assert "release_reuse_uat_evidence.py decide" in decide["run"]
+    assert '--final-dist "$RUNNER_TEMP/final-dist"' in decide["run"]
+    names = [s.get("name") for s in job["steps"]]
+    assert names.index("Stage the admitted distributions") < names.index(decide["name"])
+
+
+def test_only_the_reuse_and_gate_jobs_read_other_runs():
+    for name, job in _jobs().items():
+        actions = job.get("permissions", {}).get("actions")
+        assert (actions == "read") == (name in {"admit", "uat-reuse", "release-uat"}), name
+    assert yaml.safe_load(_text())["permissions"] == {"contents": "read"}
+
+
+def test_publish_runs_on_gate_results_so_a_skipped_reuse_job_cannot_skip_it():
+    publish = _jobs()["publish"]
+    assert {"install-matrix", "release-uat"} <= set(publish["needs"])
+    assert "uat-reuse" not in publish["needs"]
+    condition = publish["if"]
+    assert condition.startswith("${{ !cancelled() &&")
+    for need in publish["needs"]:
+        assert f"needs.{need}.result == 'success'" in condition
+
+
+def test_github_release_runs_only_after_a_successful_pypi_publish():
+    condition = _jobs()["github-release"]["if"]
+    assert condition.startswith("${{ !cancelled() &&")
+    assert "needs.admit.outputs.target == 'pypi'" in condition
+    assert "needs.publish.result == 'success'" in condition
+
+
+def test_install_matrix_does_not_depend_on_reuse():
+    assert _jobs()["install-matrix"]["needs"] == "admit"
 
 
 def test_release_uat_jobs_use_the_local_environment_action_from_the_admitted_checkout():

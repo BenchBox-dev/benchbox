@@ -21,9 +21,6 @@
     "scripts/check_duplicate_code.py": {
       "WA007": 3
     },
-    "scripts/check_release_curation.py": {
-      "WA007": 1
-    },
     "scripts/check_sqlglot_repro_retirement.py": {
       "WA007": 3
     },
@@ -72,17 +69,8 @@
     "scripts/release_artifact_consumer.py": {
       "WA002": 1
     },
-    "scripts/release_curation_dry_run.py": {
-      "WA007": 1
-    },
-    "scripts/release_finalize.py": {
-      "WA007": 1
-    },
     "scripts/release_flow.py": {
       "WA003": 1
-    },
-    "scripts/release_readiness_check.py": {
-      "WA007": 2
     },
     "scripts/release_tag_recheck.py": {
       "WA007": 1
@@ -404,18 +392,6 @@
     "tests/unit/release/test_ruleset_drift_review_coverage.py": {
       "WA003": 2
     },
-    "tests/unit/scripts/oracle_reviewers/test_attempt_loop.py": {
-      "WA007": 1
-    },
-    "tests/unit/scripts/oracle_reviewers/test_carry_identity.py": {
-      "WA007": 1
-    },
-    "tests/unit/scripts/oracle_reviewers/test_local_review.py": {
-      "WA007": 1
-    },
-    "tests/unit/scripts/oracle_reviewers/test_runner.py": {
-      "WA007": 4
-    },
     "tests/unit/scripts/publication/test_ledger_seed.py": {
       "WA007": 4
     },
@@ -435,10 +411,6 @@
       "WA007": 1
     },
     "tests/unit/scripts/test_check_duplicate_code.py": {
-      "WA007": 1
-    },
-    "tests/unit/scripts/test_check_release_curation.py": {
-      "WA003": 1,
       "WA007": 1
     },
     "tests/unit/scripts/test_ci_units.py": {
@@ -523,15 +495,6 @@
       "WA003": 8,
       "WA007": 1
     },
-    "tests/unit/scripts/test_release_curation_dry_run.py": {
-      "WA007": 1
-    },
-    "tests/unit/scripts/test_release_cut_start.py": {
-      "WA007": 1
-    },
-    "tests/unit/scripts/test_release_finalize.py": {
-      "WA007": 1
-    },
     "tests/unit/scripts/test_release_flow.py": {
       "WA007": 6
     },
@@ -585,10 +548,10 @@
       "WA007": 2
     },
     "tests/unit/test_ruleset_drift.py": {
-      "WA003": 7
+      "WA003": 3
     },
     "tests/unit/test_standardized_test_commands.py": {
-      "WA003": 24
+      "WA003": 23
     },
     "tests/unit/test_tpcds_streams.py": {
       "WA003": 2

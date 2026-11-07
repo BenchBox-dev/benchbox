@@ -65,6 +65,7 @@ def _load_sibling(name: str) -> ModuleType:
 
 process_tree = _load_sibling("process_tree")
 vm_footprint = _load_sibling("vm_footprint")
+heavy_run_events = _load_sibling("heavy_run_events")
 
 
 def mode_from_env() -> str:
@@ -102,6 +103,8 @@ class WatchPolicy:
     lock_path: str | None = None
     lock_inode: int | None = None
     disks: tuple[tuple[str, str], ...] = ()
+    vm_machine: str = vm_footprint.DEFAULT_MACHINE
+    vm_cleanup_seconds: float | None = None
 
 
 @dataclass(frozen=True)
@@ -224,6 +227,7 @@ class Watchdog:
         self._exclude = frozenset({os.getpid()})
         self._in_breach = False
         self._inode_warned = False
+        self._cleanup_deadline: float | None = None
 
     def log(self, message: str) -> None:
         try:
@@ -325,19 +329,86 @@ class Watchdog:
         except (psutil.Error, OSError) as exc:
             self.log(f"could not terminate holder pid {self.policy.holder_pid}: {exc}")
 
+    def _runs_machine_wrapper(self, member: TreeMember) -> bool:
+        proc = process_tree.verified_descendant(member, self.policy.holder_pid, self.policy.holder_created)
+        if proc is None:
+            return False
+        try:
+            return bool(vm_footprint.argv_runs_wrapper(proc.cmdline(), self.policy.vm_machine))
+        except (psutil.Error, OSError):
+            return False
+
+    def _record_cleanup(self, event: str, member: TreeMember, **fields: object) -> None:
+        try:
+            heavy_run_events.record_event(
+                event,
+                duration_seconds=fields.pop("duration_seconds", None),
+                outcome=fields.pop("outcome", None),
+                details={"machine": self.policy.vm_machine, "pid": member.pid, "source": "watchdog", **fields},
+            )
+        except Exception:
+            pass
+
+    def _cleanup_budget(self) -> float:
+        configured = self.policy.vm_cleanup_seconds
+        return vm_footprint.machine_cleanup_bound_seconds({}) if configured is None else configured
+
+    def _finish_machine_cleanup(self, wrapper: TreeMember, started: float) -> None:
+        if self._cleanup_deadline is None:
+            self._cleanup_deadline = started + self._cleanup_budget()
+        if self._wait_gone([wrapper], self._cleanup_deadline):
+            self.log(
+                f"linux machine wrapper pid {wrapper.pid} did not finish its VM cleanup within the shared "
+                f"{self._cleanup_budget():g}s budget; sending SIGKILL (the sentinel reclaims a VM left running)"
+            )
+            self._signal_descendant(wrapper, SIG_KILL)
+            outcome = "killed"
+        else:
+            outcome = "exited"
+        self._record_cleanup(
+            "vm_cleanup_finished",
+            wrapper,
+            duration_seconds=max(0.0, self._clock() - started),
+            outcome=outcome,
+        )
+
     def _kill_tree(self, sample: TreeSample) -> None:
         levels: dict[int, list[TreeMember]] = {}
         for member in sample.members:
             if member.depth > 0:
                 levels.setdefault(member.depth, []).append(member)
         self._flag(FLAG_DESCENDANTS_KILLED)
+        self._cleanup_deadline = None
         deadline = self._clock() + self.policy.grace_seconds
         for depth in sorted(levels, reverse=True):
             level = levels[depth]
+            wrappers = {m.pid: m for m in level if self._runs_machine_wrapper(m)}
+            started = self._clock()
             for member in level:
                 self._signal_descendant(member, SIG_TERM)
-            for member in self._wait_gone(level, deadline):
-                self._signal_descendant(member, SIG_KILL)
+                if member.pid in wrappers:
+                    self._record_cleanup("vm_cleanup_started", member)
+            survivors = self._wait_gone(level, deadline)
+            wrapper_survivors = []
+            for member in survivors:
+                if member.pid in wrappers:
+                    wrapper_survivors.append(member)
+                else:
+                    self._signal_descendant(member, SIG_KILL)
+            for member in wrapper_survivors:
+                self.log(
+                    f"linux machine wrapper pid {member.pid} is stopping the VM; "
+                    f"allowing up to {self._cleanup_budget():g}s in total"
+                )
+                self._finish_machine_cleanup(member, started)
+            for pid, member in wrappers.items():
+                if all(s.pid != pid for s in survivors):
+                    self._record_cleanup(
+                        "vm_cleanup_finished",
+                        member,
+                        duration_seconds=max(0.0, self._clock() - started),
+                        outcome="exited",
+                    )
         after = self._sampler(self.policy.holder_pid, self._exclude)
         if after is not None and self.policy.budget_bytes > 0 and after.total_bytes > self.policy.budget_bytes:
             self._terminate_holder()
@@ -396,6 +467,8 @@ def policy_from_args(args: argparse.Namespace) -> WatchPolicy:
         kill_free_disk_gib=_float_env(KILL_FREE_DISK_GIB_ENV, default_kill_free_disk_gib()),
         interval_seconds=_float_env(INTERVAL_ENV, DEFAULT_INTERVAL_SECONDS, minimum=0.05),
         grace_seconds=_float_env(GRACE_ENV, DEFAULT_GRACE_SECONDS),
+        vm_machine=vm_footprint.machine_name_from_env(os.environ),
+        vm_cleanup_seconds=vm_footprint.machine_cleanup_bound_seconds(os.environ),
         lock_path=args.lock_path,
         lock_inode=args.lock_inode,
         disks=disks,

@@ -29,19 +29,19 @@ advisor, or guarantees independent review on its own.
 <!-- routing:begin -->
 | Role | Primary | Fallbacks, in order | Use for |
 | :--- | :--- | :--- | :--- |
-| `default` | `anthropic/claude-sonnet-5-5:high` | `openai-codex/gpt-6.1-sol:medium` → `muse-code/muse-spark-1.3-contributor:high` → `google-antigravity/gemini-3.8-flash:high` | Common implementation and management. |
-| `smol` | `openai-codex/gpt-6-luna:xhigh` | `anthropic/claude-sonnet-5-5:medium` → `muse-code/muse-spark-1.3-contributor:medium` → `google-antigravity/gemini-3.8-flash:medium` | Simple, mechanical, and scouting work. |
-| `slow` | `anthropic/claude-fable-5:medium` | `openai-codex/gpt-6-astra:high` → `muse-code/muse-wonder-1.0-contributor:xhigh` → `google-antigravity/gemini-4-argon:xhigh` | Maximum complexity and special cases. |
-| `plan` | `anthropic/claude-opus-5-5:xhigh` | `openai-codex/gpt-6.1-sol:high` → `muse-code/muse-wonder-1.0-contributor:medium` → `google-antigravity/gemini-4-argon:medium` | Planning and high-capability analysis. |
-| `review` | `anthropic/claude-opus-5-5:medium` | `openai-codex/gpt-6.1-sol:high` → `muse-code/muse-wonder-1.0-contributor:medium` → `google-antigravity/gemini-4-argon:medium` | Independent review; filter the author family. |
-| `research` | `anthropic/claude-opus-5-5:high` | `openai-codex/gpt-6.1-sol:high` → `muse-code/muse-wonder-1.0-contributor:medium` → `google-antigravity/gemini-4-argon:medium` | High-capability research and synthesis. |
-| `task` | `anthropic/claude-sonnet-5-5:medium` | `openai-codex/gpt-6.1-sol:medium` → `muse-code/muse-spark-1.3-contributor:high` → `google-antigravity/gemini-3.8-flash:high` | Common delegated implementation. |
-| `commit` | `openai-codex/gpt-6-luna:high` | `anthropic/claude-sonnet-5-5:medium` → `muse-code/muse-spark-1.3-contributor:medium` → `google-antigravity/gemini-3.8-flash:medium` | Commit-message and changelog generation. |
-| `vision` | `google-antigravity/gemini-3.8-flash:high` | `openai-codex/gpt-6.1-sol:medium` → `google-antigravity/gemini-3.8-flash:high` → `muse-code/muse-spark-1.3-contributor:medium` | Image-question helpers; not image generation. |
-| `advisor` | `anthropic/claude-fable-5:high` | `openai-codex/gpt-6-astra:high` → `muse-code/muse-wonder-1.0-contributor:xhigh` → `google-antigravity/gemini-4-argon:xhigh` | Advisory second opinions when enabled. |
+| `default` | `anthropic/claude-sonnet-5-5:high` | `openai-codex/gpt-6.1-sol:medium` → `google-antigravity/gemini-3.8-flash:high` | Common implementation and management. |
+| `smol` | `openai-codex/gpt-6-luna:xhigh` | `anthropic/claude-sonnet-5-5:medium` → `google-antigravity/gemini-3.8-flash:medium` | Simple, mechanical, and scouting work. |
+| `slow` | `anthropic/claude-fable-5-1:medium` | `openai-codex/gpt-6-astra:high` → `google-antigravity/gemini-4-argon:xhigh` | Maximum complexity and special cases. |
+| `plan` | `anthropic/claude-opus-5-5:xhigh` | `openai-codex/gpt-6.1-sol:max` → `google-antigravity/gemini-4-argon:xhigh` | Planning and high-capability analysis. |
+| `review` | `anthropic/claude-opus-5-5:medium` | `openai-codex/gpt-6.1-sol:high` → `google-antigravity/gemini-4-argon:medium` | Independent review; filter the author family. |
+| `research` | `anthropic/claude-opus-5-5:high` | `openai-codex/gpt-6.1-sol:xhigh` → `google-antigravity/gemini-4-argon:high` | High-capability research and synthesis. |
+| `task` | `anthropic/claude-sonnet-5-5:medium` | `openai-codex/gpt-6.1-sol:medium` → `google-antigravity/gemini-3.8-flash:high` | Common delegated implementation. |
+| `commit` | `openai-codex/gpt-6-luna:high` | `anthropic/claude-sonnet-5-5:medium` → `google-antigravity/gemini-3.8-flash:medium` | Commit-message and changelog generation. |
+| `vision` | `google-antigravity/gemini-3.8-flash:high` | `openai-codex/gpt-6.1-sol:medium` → `google-antigravity/gemini-3.8-flash:high` | Image-question helpers; not image generation. |
+| `advisor` | `anthropic/claude-fable-5-1:high` | `openai-codex/gpt-6-astra:high` → `google-antigravity/gemini-4-argon:xhigh` | Advisory second opinions when enabled. |
 <!-- routing:end -->
 
-Every Muse model MUST be the contributor variant. Never copy an OMP effort
+Never copy an OMP effort
 suffix into a non-OMP external CLI model ID; resolve each role or fallback
 name to the harness-specific identifier in
 [references/external-harnesses.md](references/external-harnesses.md).

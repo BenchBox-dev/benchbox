@@ -34,18 +34,19 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-
       - name: Compare the first reviews on the pin with the previous week
         id: evaluate
         env:
           GH_TOKEN: ${{ github.token }}
           OUT_DIR: ${{ runner.temp }}/omp-watch
-        run: >-
-          uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 --
-          python -m _project.scripts.oracle_reviewers.omp_watch evaluate
-          --repo "$GITHUB_REPOSITORY" --out-dir "$OUT_DIR"
+        run: |
+          set -euo pipefail
+          THESEUS="$(python3 scripts/theseus_cli.py --trusted-ref "$(git rev-parse HEAD)" path)"
+          "$THESEUS" omp-watch evaluate \
+            --repo "$GITHUB_REPOSITORY" \
+            --policy .github/oracle-reviewers.yml \
+            --watch-workflow .github/workflows/omp-pin-watch.yml \
+            --out-dir "$OUT_DIR"
 
       - name: Report the watch
         if: always() && steps.evaluate.outputs.state != ''
@@ -144,10 +145,10 @@ jobs:
               -f base=develop -f head="$BRANCH" --jq .number)"
           fi
           HEAD_SHA="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}" --jq .head.sha)"
-          verdicts="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/statuses?per_page=100" --jq '.[] | select(.context == "oracle-verdict") | .id')"
-          titles="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/oracle-verdict.yml/runs?per_page=100" --jq '.workflow_runs[].display_title')"
+          verdicts="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/statuses?per_page=100" --jq '.[] | select(.context == "review-verdict") | .id')"
+          titles="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/review-verdict.yml/runs?per_page=100" --jq '.workflow_runs[].display_title')"
           if [ -n "$verdicts" ] || grep -qF "pr=${PR} head=${HEAD_SHA}" <<<"$titles"; then
             echo "Pull request #${PR} already has a review for ${HEAD_SHA}."
             exit 0
           fi
-          gh workflow run oracle-verdict.yml --repo "$GITHUB_REPOSITORY" --ref develop -f pr="$PR" -f head="$HEAD_SHA"
+          gh workflow run review-verdict.yml --repo "$GITHUB_REPOSITORY" --ref develop -f pr="$PR" -f head="$HEAD_SHA"

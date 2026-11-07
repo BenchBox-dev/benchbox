@@ -193,10 +193,7 @@
       "file": "tests/unit/test_release_infrastructure.py",
       "tests": [
         "test_pyproject_has_beta_classifier",
-        "test_duckdb_is_optional_in_pyproject",
-        "test_release_docs_name_required_contexts",
-        "test_release_docs_name_canary_and_ruleset_drift",
-        "test_release_finalize_docs_separate_premerge_and_postmerge_signals"
+        "test_duckdb_is_optional_in_pyproject"
       ],
       "classification": "governance-stays",
       "contract_fields": [
@@ -228,17 +225,6 @@
       "site_reads": [],
       "reason": "Merge-gate local equivalents must be discoverable in the Makefiles; hosted-only guards that cannot run locally are recorded as documented exemptions in the test.",
       "cutover_action": "Done: the retired docs page fallback is removed; curated release-tree and other hosted-only steps are explicit exemptions."
-    },
-    {
-      "id": "soundness-public-record-negatives",
-      "file": "tests/unit/scripts/test_soundness_paths.py",
-      "tests": [
-        "test_soundness_predicate_matches_review_required_paths"
-      ],
-      "classification": "governance-stays",
-      "site_reads": [],
-      "reason": "Names public-record pages as sample paths asserted not to be soundness paths; no page content is read. The inert-path exceptions for those pages are wiring changed at cutover.",
-      "cutover_action": "None."
     },
     {
       "id": "tpcds-obt-lineage-page",

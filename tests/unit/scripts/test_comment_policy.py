@@ -2500,13 +2500,14 @@ def _verdict_review(
     commit: str | None = None,
     review_state: str = "COMMENTED",
     submitted: str = "2026-10-14T00:00:01Z",
+    heading: str = "review-verdict",
 ) -> dict:
     return {
         "user": {"login": login, "type": account_type},
         "commit_id": commit if commit is not None else head,
         "state": review_state,
         "submitted_at": submitted,
-        "body": f"### oracle-verdict: {state} for `{head}`\n",
+        "body": f"### {heading}: {state} for `{head}`\n",
     }
 
 
@@ -2570,6 +2571,23 @@ def test_oracle_review_covers_with_gate_status_and_verdict(tmp_path: Path, monke
     _fake_api(monkeypatch, seen=seen)
     assert scope.oracle_review_covers(tmp_path) is True
     assert any("/statuses?" in url and "a" * 40 in url for url in seen)
+
+
+@pytest.mark.parametrize("heading", ["review-verdict", "oracle-verdict"])
+def test_oracle_review_covers_reads_both_verdict_headings(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, heading: str
+) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_env(tmp_path, monkeypatch)
+    review = _verdict_review(heading=heading)
+    status = _gate_status()
+
+    def api(token: str, path: str):
+        return [review] if "/reviews?" in path else [status]
+
+    monkeypatch.setattr(scope, "_github_api", api)
+    assert scope.oracle_review_covers(tmp_path) is True
 
 
 def test_oracle_review_covers_rejects_review_check_run_without_gate_status(

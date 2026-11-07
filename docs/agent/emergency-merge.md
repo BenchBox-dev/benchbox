@@ -33,12 +33,24 @@ no PR can pass it. Agents never run, script, or propose any of these:
   preceding `Owner instruction` comment naming the PR, head SHA, and covered
   findings.
   A stand-in never covers open findings (`oracle-gate` rejects it on a SHIP
-  WITH FIXES head), and an `Oracle adjudication:` comment follows the same
+  WITH FIXES head), and an `Review adjudication:` comment follows the same
   owner-naming and `Owner instruction` rules; a broken gate is no reason to
   post either.
 
 `docs/agent/merge-authority.md` already requires `make pr-arm` for every merge
 and the owner naming each PR. A broken gate changes neither.
+
+## Provider loss is not base-pinned breakage
+
+Losing, cancelling or removing a model provider is not a reason to use this
+note, to relax the ruleset or to ask for a stand-in. A develop config that
+names a provider the gateway no longer serves is harmless: the gateway starts
+without it, reviews move to the next served model in the role's fallback chain,
+and the PR that removes the provider gets a normal hosted review. The owner
+removes a provider on purpose with the host denylist, with no pull request; see
+[`oracle-gateway-host.md`](../internal/oracle-gateway-host.md#losing-or-removing-a-provider).
+Only the loss of every provider, which leaves reviews pending, ends at the
+owner's per-PR stand-in in [`merge-authority.md`](merge-authority.md#stand-in-approvals).
 
 ## What an agent does
 

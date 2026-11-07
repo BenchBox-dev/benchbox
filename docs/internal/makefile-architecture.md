@@ -46,14 +46,13 @@ The split was designed around repository consumers, not only target size.
 
 | Implementation or consumer | Observed contract | Design consequence |
 |---|---|---|
-| `.github/workflows/ci.yml`, `nightly-v2.yml`, and `lint.yml` | Invoke public targets through GNU Make | Included targets are transparent to them |
+| `.github/workflows/ci.yml` and `nightly-v2.yml` | Invoke public targets through GNU Make | Included targets are transparent to them |
 | `tests/system/test_ci_lint_parity.py` and `tests/unit/scripts/test_ci_lint_environment_boundary.py` | Parse the literal root `ci-lint:` recipe | `ci-lint` stays root-owned with byte-identical command order |
 | `tests/unit/test_standardized_test_commands.py` and `tests/unit/test_linting_consolidation.py` | Search or parse root test, coverage, correctness, marker, lint, and format definitions | Root-owned; moving them requires first migrating these consumers in a separately scoped change |
-| `tests/unit/test_release_infrastructure.py`, `tests/unit/scripts/test_pr_arm.py`, and `tests/unit/scripts/test_soundness_paths.py` | Parse release, PR, auto-merge, worktree lifecycle, package, and UAT gate source text | These operational safety recipes stay root-owned |
+| `tests/unit/test_release_infrastructure.py`, and `tests/unit/scripts/test_pr_arm.py` | Parse release, PR, auto-merge, worktree lifecycle, package, and UAT gate source text | These operational safety recipes stay root-owned |
 | `tests/unit/test_agent_write_preflight.py` | Slices the root `skill-sync` recipe | `skill-sync` and its adjacent check stay root-owned |
 | `tests/uat/test_cli_dispatch.py` | Slices the root `uat-sweep` recipe | `uat-sweep` stays root-owned |
 | `tests/integration/worktree/test_worktree_*` | Run the real Makefile with `-f` or via a symlink from another repository | `BENCHBOX_MAKEFILE_ROOT` resolves the real root before mandatory includes load |
-| `scripts/check_release_curation.py` | Parses the release curation recipe from the root path | Root-owned until the parser supports include expansion |
 
 No repository consumer referenced `MAKEFILE_LIST` before the split. The
 bootstrap variable still freezes the root path before includes append to that

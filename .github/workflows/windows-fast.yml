@@ -40,6 +40,10 @@ jobs:
       - name: Install dependencies
         run: uv sync --group dev
 
+      - name: Warm the verified Theseus install
+        shell: bash
+        run: uv run -- python scripts/theseus_cli.py --trusted-ref "$(git rev-parse HEAD)" path
+
       - name: Verify the installed wheel loads the bundled SQLGlot runtime
         shell: bash
         run: |

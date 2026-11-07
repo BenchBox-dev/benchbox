@@ -76,6 +76,113 @@ def to_line_protocol(
         return f"{measurement} {field_set}{ts_str}"
 
 
+def _escape_tag_values(values: Any) -> Any:
+    import pyarrow.compute as pc
+
+    for char, escaped in (("\\", "\\\\"), (",", "\\,"), ("=", "\\="), (" ", "\\ ")):
+        values = pc.replace_substring(values, char, escaped)
+    return values
+
+
+_TS_AWARE = r"^[0-9]{4}-[0-9]{2}-[0-9]{2}[T ][0-9]{2}:[0-9]{2}(:[0-9]{2}(\.[0-9]+)?)?(Z|[+-][0-9]{2}(:?[0-9]{2})?)$"
+_TS_NAIVE = r"^[0-9]{4}-[0-9]{2}-[0-9]{2}([T ][0-9]{2}:[0-9]{2}(:[0-9]{2}(\.[0-9]+)?)?)?$"
+_TS_EPOCH_SECONDS = r"^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][+-]?[0-9]+)?$"
+
+
+def _timestamp_ns(values: Any) -> Any:
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    def convert(pattern: str, target: Any) -> Any:
+        matched = pc.match_substring_regex(values, pattern)
+        selected = pc.if_else(matched, values, None)
+        try:
+            return pc.cast(pc.cast(selected, target), pa.int64())
+        except pa.ArrowInvalid:
+            distinct = pc.unique(selected).drop_null()
+            parsed = []
+            for value in distinct.to_pylist():
+                try:
+                    parsed.append(pc.cast(pc.cast(pa.array([value]), target), pa.int64())[0].as_py())
+                except pa.ArrowInvalid:
+                    parsed.append(None)
+            return pc.take(pa.array(parsed, pa.int64()), pc.index_in(selected, value_set=distinct))
+
+    seconds = pc.if_else(pc.match_substring_regex(values, _TS_EPOCH_SECONDS), values, None)
+    epoch = pc.cast(pc.multiply(pc.cast(seconds, pa.float64()), 1_000_000_000), pa.int64())
+    return pc.coalesce(convert(_TS_AWARE, pa.timestamp("ns", tz="UTC")), convert(_TS_NAIVE, pa.timestamp("ns")), epoch)
+
+
+def _field_token(values: Any, float_only: bool) -> Any:
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    is_float = pc.match_substring_regex(
+        values, r"(?i)^[+-]?(([0-9]+\.?[0-9]*|\.[0-9]+)(e[+-]?[0-9]+)?|inf|infinity|nan)$"
+    )
+    as_float = pc.cast(pc.if_else(is_float, values, "0"), pa.float64())
+    float_token = pc.if_else(is_float, pc.cast(as_float, pa.string()), None)
+    if float_only:
+        return float_token
+    is_int = pc.and_(is_float, pc.and_(pc.is_finite(as_float), pc.less(pc.abs(as_float), 9.0e18)))
+    is_int = pc.and_(is_int, pc.equal(pc.floor(as_float), as_float))
+    as_int = pc.cast(pc.if_else(is_int, as_float, 0.0), pa.int64())
+    int_token = pc.if_else(is_int, pc.binary_join_element_wise(pc.cast(as_int, pa.string()), "i", ""), None)
+    return pc.coalesce(int_token, float_token)
+
+
+def table_to_line_protocol(
+    measurement: str,
+    table: Any,
+    tag_columns: list[str],
+    field_columns: list[str],
+    timestamp_column: str | None,
+    float_only_fields: frozenset[str] = frozenset(),
+    string_fields: frozenset[str] = frozenset(),
+) -> Any:
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    names = set(table.schema.names)
+    parts = []
+    for tag in sorted(tag for tag in tag_columns if tag in names):
+        values = table.column(tag)
+        valid = pc.and_(pc.is_valid(values), pc.not_equal(values, ""))
+        escaped = pc.binary_join_element_wise(
+            ",", pa.scalar(escape_tag_value(tag) + "="), _escape_tag_values(values), "", null_handling="emit_null"
+        )
+        parts.append(pc.if_else(valid, escaped, ""))
+
+    field_parts = []
+    for field in (field for field in field_columns if field in names):
+        values = pc.utf8_trim_whitespace(table.column(field))
+        values = pc.if_else(pc.equal(values, ""), None, values)
+        if field in string_fields:
+            escaped = pc.replace_substring(pc.replace_substring(values, "\\", "\\\\"), '"', '\\"')
+            token = pc.binary_join_element_wise('"', escaped, '"', "", null_handling="emit_null")
+        else:
+            token = _field_token(values, field in float_only_fields)
+        part = pc.binary_join_element_wise(",", pa.scalar(field + "="), token, "", null_handling="emit_null")
+        field_parts.append(pc.fill_null(part, ""))
+
+    rows = table.num_rows
+    if not field_parts:
+        return pa.array([], type=pa.string())
+    fields = pc.utf8_slice_codeunits(pc.binary_join_element_wise(*field_parts, ""), 1)
+    tags = pc.binary_join_element_wise(*parts, "") if parts else pa.array([""] * rows, type=pa.string())
+
+    if timestamp_column and timestamp_column in names:
+        stamp = _timestamp_ns(table.column(timestamp_column))
+        suffix = pc.fill_null(
+            pc.binary_join_element_wise(" ", pc.cast(stamp, pa.string()), "", null_handling="emit_null"), ""
+        )
+    else:
+        suffix = pa.array([""] * rows, type=pa.string())
+
+    lines = pc.binary_join_element_wise(pa.scalar(measurement), tags, " ", fields, suffix, "")
+    return pc.filter(lines, pc.not_equal(fields, ""))
+
+
 class InfluxDBConnection:
     def __init__(
         self,
@@ -266,48 +373,24 @@ class InfluxDBConnection:
         except Exception as e:
             raise RuntimeError(f"InfluxDB write failed: {e}") from e
 
-    def write_batch(
+    def write_table(
         self,
         measurement: str,
-        records: list[dict[str, Any]],
+        table: Any,
         tag_columns: list[str],
         field_columns: list[str],
         timestamp_column: str | None = "time",
         precision: str = "ns",
         batch_size: int = 10000,
+        float_only_fields: frozenset[str] = frozenset(),
+        string_fields: frozenset[str] = frozenset(),
     ) -> int:
-        total_written = 0
-        lines: list[str] = []
-
-        for record in records:
-            tags = {col: record.get(col) for col in tag_columns if record.get(col) is not None}
-
-            fields = {col: record.get(col) for col in field_columns if record.get(col) is not None}
-
-            if not fields:
-                continue
-
-            timestamp = None
-            if timestamp_column and timestamp_column in record:
-                ts_value = record[timestamp_column]
-                if isinstance(ts_value, datetime):
-                    timestamp = ts_value
-                elif isinstance(ts_value, (int, float)):
-                    timestamp = int(ts_value)
-
-            line = to_line_protocol(measurement, tags, fields, timestamp)
-            lines.append(line)
-
-            if len(lines) >= batch_size:
-                self.write_line_protocol(lines, precision)
-                total_written += len(lines)
-                lines = []
-
-        if lines:
-            self.write_line_protocol(lines, precision)
-            total_written += len(lines)
-
-        return total_written
+        lines = table_to_line_protocol(
+            measurement, table, tag_columns, field_columns, timestamp_column, float_only_fields, string_fields
+        )
+        for start in range(0, len(lines), batch_size):
+            self.write_line_protocol(lines.slice(start, batch_size).to_pylist(), precision)
+        return len(lines)
 
     def test_connection(self) -> bool:
         try:

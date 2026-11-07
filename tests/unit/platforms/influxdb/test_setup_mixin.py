@@ -44,6 +44,19 @@ def test_setup_connection_params_defaults_and_overrides():
     assert adapter.ssl is False
 
 
+def test_default_port_follows_mode():
+    core = _Adapter()
+    core._setup_connection_params({"mode": "core"})
+    cloud = _Adapter()
+    cloud._setup_connection_params({})
+    explicit = _Adapter()
+    explicit._setup_connection_params({"mode": "core", "port": 8086})
+
+    assert core.port == 8181
+    assert cloud.port == 443
+    assert explicit.port == 8086
+
+
 def test_create_connection_success_and_close(monkeypatch):
     adapter = _Adapter()
     adapter.token = "abc"

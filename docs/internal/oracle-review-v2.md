@@ -2,7 +2,7 @@
 
 # Self-hosted oracle review
 
-`.github/workflows/oracle-verdict.yml` reviews every pull request (PR) with
+`.github/workflows/review-verdict.yml` reviews every pull request (PR) with
 agent CLIs, except changes confined to inert paths (see Inert-path manifest),
 and posts a non-required `oracle-verdict` status and a review through the
 owner's GitHub App. The required `oracle-gate` check reads that App's PR reviews
@@ -12,10 +12,79 @@ from `develop` code (see Required gate from trusted code). Policy:
 evidence and review rounds,
 `_project/decisions/oracle-review-protocol-2026-10-08.md`.
 
-The soundness manifest lists `.github/workflows/oracle-verdict.yml` explicitly,
+The soundness manifest lists `.github/workflows/review-verdict.yml` explicitly,
 besides covering all workflows by directory prefix, so a PR changing only this
 workflow faces the same required `oracle-gate` as other soundness changes; an
 absent, pending or failed oracle decision does not pass on its own.
+
+## Theseus ownership
+
+The reviewer engine, the gate, the local driver, the OMP maintenance commands
+and the reusable review and gate workflows live in the Theseus package
+(`theseus-reviewer`, repository `joeharris76/theseus`). BenchBox no longer
+carries that code: module names in the sections below (`cli.py`, `local.py`,
+`omp_pin.py`, `oracle_review_check.py`, `oracle_gate.py` and the rest of the old
+`_project/scripts/oracle_reviewers/` package) now name modules under
+`src/theseus_reviewer/` in that repository, and their unit and scenario tests
+live there.
+
+BenchBox keeps the consumer side:
+
+- `.github/workflows/review-verdict.yml` and `review-gate.yml`: thin callers of
+  the SHA-pinned Theseus reusable workflows. Each caller job passes every
+  `oracle` environment secret the callee uses by name (`NAME: ${{ secrets.NAME }}`):
+  seven for the review workflow, `ORACLE_APP_ID` and `ORACLE_APP_PRIVATE_KEY` for
+  the gate. The callee declares them under `on.workflow_call.secrets` as
+  required, so a missing mapping fails at startup instead of resolving empty.
+  `secrets: inherit` is not used: it does not cross owners (this repository is
+  owned by an organization, Theseus by a user), and against these callees,
+  which declare the secrets as required, it fails at startup with "Secret … is
+  required, but not provided" (https://github.com/actions/runner/issues/4453).
+- `.github/theseus-lock.json`: the reviewed lock (package, version, source
+  commit, artifact sha256 and two distinct https URLs, dependency hashes and
+  the `matcher` entry; only the first promotion's lock carried a `bootstrap`
+  record, later locks have none). Only a promotion pull request changes it,
+  and the gate refuses any change that lacks the
+  authenticated promotion evidence.
+- `_project/scripts/theseus_bootstrap.py`: the verbatim first-stage installer.
+  `scripts/theseus_cli.py` runs the first stage read from a trusted commit
+  (`origin/develop` by default) with `python -I -S`, installs the locked wheel into
+  an isolated hash-verified tree and runs the printed `theseus` executable. A
+  refused install stops the caller; there is no fallback to an older install, an
+  export directory or an ambient `theseus`.
+- `_project/scripts/soundness_paths.py`: the single byte-identical vendored copy
+  of the Theseus soundness matcher, pinned by the lock's `matcher` entry
+  (`theseus matcher verify --copy _project/scripts/soundness_paths.py --sha256
+  <entry>`). It has no default manifest: callers pass `.github/soundness-paths.txt`
+  through `_project/scripts/soundness_manifest.py` or `--manifest`.
+- `scripts/theseus_release_check.py`: runs on every medium-tier CI job right after
+  the install warm-up. It reads the lock and asks the GitHub REST API (with
+  `GITHUB_TOKEN` when present) whether `source_commit` is reachable from the
+  lock repository's `main` (compare status `identical` or `behind`) and whether
+  `test (py3.11)`, `test (py3.13)` and `build and installed-wheel smoke` concluded
+  `success` on that commit or, when it has none, on the head of its merged pull
+  request, and only when that pull request head's git tree sha equals the locked commit's
+  tree sha (`GET /git/commits/{sha}` -> `tree.sha` for both); a head whose tree differs is
+  refused. This keeps Theseus's own deterministic suite gating every promotion,
+  since BenchBox no longer runs it. A byte-identity test compares the installed
+  `theseus_reviewer/soundness_paths.py` with the vendored matcher and the lock hash.
+- Policy and manifests (`.github/oracle-reviewers.yml` with its `consumer:` and
+  `promotion:` sections, `.github/oracle-omp-config.yml`, `.github/soundness-paths.txt`,
+  `.github/inert-paths.txt`), the thin caller workflows `review-verdict.yml`,
+  `review-gate.yml` and `review-request.yml` pinned to one Theseus commit, the
+  gateway host script, the PR lifecycle (`pr_arm.py`, `pr_landing.py`, remote
+  closeout and review), the soundness merge digest and drain report, and the
+  inert-path read-index scanner and symlink guard.
+
+Hosted review installs the lock at the gated base tip; the gate runs from a
+second, separately verified install of the current base tip in its own process.
+The caller workflows pass the Theseus commit twice (the `uses:` ref and
+`theseus_ref`); both must equal the lock's `workflow_sha`. State and caches keep
+their BenchBox locations: `scripts/theseus_cli.py` sets `THESEUS_LOCAL_STATE` to
+`~/.cache/benchbox/local-oracle` and `THESEUS_OMP_CACHE` to `~/.cache/benchbox/omp`
+(and `THESEUS_EPHEMERAL_CLONE=1` in a cloud session), so persisted findings,
+disputes and OMP builds stay readable. Old `export/` directories under the local
+state are inert and never read.
 
 ## Setup
 
@@ -23,7 +92,9 @@ absent, pending or failed oracle decision does not pass on its own.
    write** and **Pull requests: write**, installed on this repository only.
 2. Before the workflow first runs, create the `oracle` environment with
    deployment branches limited to `develop`; GitHub creates a missing
-   environment with no protection rules.
+   environment with no protection rules. The branch rule does not keep PR
+   runs from the secrets: for `pull_request_target` it is evaluated against
+   the default branch, so those runs reach them.
 3. Add these `oracle` environment secrets:
    - `ORACLE_APP_ID`, `ORACLE_APP_PRIVATE_KEY`: only the `review` job's `Mint
      the App token` step, after the attempt loop and the redaction check.
@@ -54,9 +125,11 @@ provider key reaches the runner. Per attempt, the loop writes the reviewer's OMP
 home into a fresh scratch `HOME` (`write_reviewer_home`, behind `cli.py
 reviewer-home --home <home> --gateway-url <url>`):
 `.github/oracle-omp-config.yml` as `config.yml`, and a `models.yml` pointing
-providers `anthropic`, `openai-codex`, `muse-code` and `google-antigravity` at
-the gateway with `transport: pi-native` and `apiKey: OMP_GATEWAY_TOKEN` (the
-variable name, not a value). An empty or non-`https://` URL is refused.
+every provider that config names at the gateway with `transport: pi-native`
+and `apiKey: OMP_GATEWAY_TOKEN` (the variable name, not a value); no provider
+list lives in code. An empty or non-`https://` URL is refused. Losing one
+provider does not stop reviews: see
+[Losing or removing a provider](oracle-gateway-host.md#losing-or-removing-a-provider).
 
 The gateway answers only while the Mac is awake and online; otherwise attempts
 are absent and the sweep retries (see Commands).
@@ -84,11 +157,11 @@ Without `ORACLE_APP_ID`, the job logs the result and succeeds.
 
 ## How a run works
 
-`oracle-verdict.yml` has two jobs: `sweep` dispatches due retries; `review` does
+`review-verdict.yml` has two jobs: `sweep` dispatches due retries; `review` does
 everything else for one PR in one runner-pool admission
 (`_project/decisions/oracle-single-review-job-2026-10-25.md`). Its `if:` admits
 a manual dispatch, a `pull_request_target` event other than a plain edit, and a
-`/oracle-review` comment from an owner, member or collaborator. Steps:
+`/review` comment from an owner, member or collaborator. Steps:
 
 1. Refuse a dispatch from a ref other than `develop`, and check out trusted
    `develop` into `trusted`.
@@ -101,8 +174,13 @@ a manual dispatch, a `pull_request_target` event other than a plain edit, and a
    will be reviewed it then classifies the change: it asks Jev, through
    TypeSafe's `/v1/systemone` API, for the size bucket, review capability,
    review template and per-file priority, and selects the attempt-1 reviewer. A
-   classification failure leaves the attempts pending and does not fail the
-   step. The bucket names the first reviewer in `.github/oracle-reviewers.yml`;
+   classification failure (an unreachable or failing classifier, not a missing
+   key) does not fail the step: when `classifier.unavailable_bucket` is set in
+   the policy, as it is here (`max`), the change is reviewed from that
+   bucket instead (the higher of it and the `large` gate floor, so never weaker than the classifier would have chosen), with the
+   `deep` capability, the `gate` template when gate paths are touched and
+   `deep` otherwise, and the summary says classification was unavailable;
+   without the policy key the attempts stay pending. The bucket names the first reviewer in `.github/oracle-reviewers.yml`;
    later slots reuse the classification and can move up the chain (see
    Rounds). Review-machinery changes always get the `gate` template and at
    least the `large` bucket. Selection skips disabled reviewers,
@@ -184,7 +262,7 @@ one-time inspection:
 | C6 fresh `HOME` | Each attempt gets a new `mkdtemp` directory; the previous one is deleted first and the checkout reset. |
 | C7 token scope | Job permissions are exactly `actions: write`, `contents: read`, `pull-requests: read`; no `id-token`, and the isolation step fails if `ACTIONS_ID_TOKEN_REQUEST_TOKEN` is present. `github.token` appears only in the `env:` of steps before or after the loop; both checkouts use `persist-credentials: false`. |
 | C8 timeout budget | The job's `timeout-minutes` is `max_attempts` times the longest reviewer `timeout_minutes` plus setup, under 360; the harness timeout fires first and becomes an absence. Every phase step also carries its own `timeout-minutes`: attempt-loop steps the `max_attempts` times longest reviewer budget, every other phase at most 30. A workflow test recomputes both from the policy. |
-| C9 cancellation | `cancel-in-progress` is true only for `pull_request_target`. Push and schedule runs share one `sweep` group; owner `/oracle-review` and adjudication comments and dispatches share the pull request's group with its `pull_request_target` runs; every other event gets a group of its own. A run that waits behind one in flight is held as the group's single pending run, and a newer pending run replaces the older one, which GitHub cancels. The publish and dispatch steps keep the default success condition, so a cancelled run posts nothing. |
+| C9 cancellation | `cancel-in-progress` is true only for `pull_request_target`. Push and schedule runs share one `sweep` group; owner `/review` and adjudication comments and dispatches share the pull request's group with its `pull_request_target` runs; every other event gets a group of its own. A run that waits behind one in flight is held as the group's single pending run, and a newer pending run replaces the older one, which GitHub cancels. The publish and dispatch steps keep the default success condition, so a cancelled run posts nothing. |
 | C10 App mint last | `ORACLE_APP_PRIVATE_KEY` is referenced by the review job's posting mint, after the loop, last disk scan and the finalize phase's redaction check, and by the sweep job's failure-status mint; the sweep job runs no reviewer, so its mint cannot leak to one. |
 
 Redaction is accident hygiene, not a control: it matches literal and
@@ -216,7 +294,7 @@ step per phase invocation; every phase step has its own `timeout-minutes`.
 | `attempts` | Runs attempts until the chain stops or an invalid attempt needs a recovery judgment. | gateway token and URL |
 | `recover` | Asks the judgment service how to recover the last invalid attempt. | TypeSafe key |
 | `finalize` | Counts the attempts, validates and decides, writes the status, comment, review and retry state, then redacts every secret value from the results. | every secret the job holds |
-| `publish` | Runs the guard, posts the comment and review, then the verdict status as the receipt of those posts, then evaluates and posts `oracle-gate` for the exact head from the trusted checkout with the same decision `oracle-gate.yml` uses, and reports `skip` and `state_recorded`: the attempt record is uploaded whenever the finalize phase wrote a state and the guard did not report a skip (so a failed mint or a crashed publish still counts the attempt), and the retry state only after the posts succeeded. A failed comment or review post leaves no decisive status for the head, so the sweep re-reviews it within the retry budget. A refused gate post is a warning, not a failure: the dispatch and the sweep post it again. With the App configured it fails before the guard when the App token or job token is empty; without the App it logs the result and still records the attempt. | App token, job token |
+| `publish` | Runs the guard, posts the comment and review, then the verdict status as the receipt of those posts, then evaluates and posts `oracle-gate` for the exact head from the trusted checkout with the same decision `review-gate.yml` uses, and reports `skip` and `state_recorded`: the attempt record is uploaded whenever the finalize phase wrote a state and the guard did not report a skip (so a failed mint or a crashed publish still counts the attempt), and the retry state only after the posts succeeded. A failed comment or review post leaves no decisive status for the head, so the sweep re-reviews it within the retry budget. A refused gate post is a warning, not a failure: the dispatch and the sweep post it again. With the App configured it fails before the guard when the App token or job token is empty; without the App it logs the result and still records the attempt. | App token, job token |
 | `dispatch` | Dispatches `oracle-gate` for the reviewed head when the pull request's base is `develop`; runs after the uploads so a failed upload withholds it. | App token, job token |
 | `sweep` | Dispatches due retries. | job token, App token |
 
@@ -255,7 +333,7 @@ consumers (`oracle_review_check.py`, the reviewer classifier,
 `.github/path-filters.yml` does not read it: its `code-ci` list hand-maintains
 the machine-read documents routed to code CI.
 
-The gate machinery, including `oracle-gate.yml` and `oracle_gate.py`, is listed
+The gate machinery, including `review-gate.yml` and `oracle_gate.py`, is listed
 in `classifier.gate_paths`, so changing it is always classed as a gate change.
 When the changed-file listing is shorter than the pull's changed-file count
 (GitHub caps it at 3000), the plan holds the head pending for owner review with
@@ -339,7 +417,7 @@ pending, and a status list that cannot be read fails the `prepare` step.
 | Patch digest unchanged (the merge-base diff is byte-identical) | the decision is carried to the new head |
 | Latest SHIP or SHIP WITH FIXES, patch changed | follow-up on the changed files |
 | Latest DO NOT SHIP, patch changed | new cycle with a full review that quotes the previous summary |
-| Author rebuttal (`/oracle-review` comment, or a push after a `Dispute:` thread reply), head unchanged | forced follow-up that rejudges the disputed defects, at most twice per patch |
+| Author rebuttal (`/review` comment, or a push after a `Dispute:` thread reply), head unchanged | forced follow-up that rejudges the disputed defects, at most twice per patch |
 
 A base-commit move alone does not restart a cycle. A decision carries only on a
 full-length digest match, so a rebase changing any touched file, a moved hunk,
@@ -419,7 +497,7 @@ marker. Other accounts' replies never reach the brief or force a re-review. A
 plain acknowledgement such as `done` is not a dispute.
 
 Forced re-reviews run only after SHIP or SHIP WITH FIXES, never after DO NOT
-SHIP. A `/oracle-review` comment on the same head with an open, keyed `Dispute:`
+SHIP. A `/review` comment on the same head with an open, keyed `Dispute:`
 reply takes this path through the verdict workflow, and the hourly sweep
 re-dispatches a head whose open `Dispute:` reply is newer than every verdict run
 on that head. No workflow runs on review-comment events themselves. Up to two
@@ -434,8 +512,8 @@ A finding that stays open in both dispute rounds of one patch digest is
 escalated: the verdict record lists it under `escalated` and the status
 description ends `; escalated D<n>`. The gate's waiting message then names the
 owner action. The owner (an attester account, as for stand-ins) resolves it with
-a top-level PR comment that is exactly `Oracle adjudication: WITHDRAW D<n> -
-<reason>` or `Oracle adjudication: MAINTAIN D<n> - <reason>`, unedited, posted
+a top-level PR comment that is exactly `Review adjudication: WITHDRAW D<n> -
+<reason>` or `Review adjudication: MAINTAIN D<n> - <reason>`, unedited, posted
 after the oracle review that escalated it and while that review's head is still
 the PR head. The verdict workflow admits the comment, runs `plan` with no
 reviewer attempt, and posts a carry-kind review and status with an
@@ -507,7 +585,7 @@ retry beyond that becomes `escalate`); `escalate` moves to the next reviewer;
 `stop` ends the run pending with "stopped: the process is blocked (<message>)"
 and posts nothing that passes. A stopped run is recorded with the `stopped` pending
 cause: the sweep never re-dispatches it on the same head, and only a manual
-`/oracle-review` (within the usual backoff and budget) or a new head runs it again.
+`/review` (within the usual backoff and budget) or a new head runs it again.
 When Jev is unavailable, no key is set (a local
 review without one), the connection drops mid-reply, the answer is not one of the three labels, or its
 confidence is below 0.60, the run retries the same reviewer once and then stops;
@@ -668,7 +746,7 @@ sound, and it does not apply to an inline brief or to a verdict that does not sh
   defect, or an earlier defect not fixed) needs neither. A multi-path or
   directory `grep` credits nothing, and `details.files` is ignored: it lists
   matches, not reads. The recorded transcript
-  (`tests/fixtures/oracle_reviewers/omp_multi_turn_review.jsonl`) keeps grep
+  (`tests/fixtures/oracle_reviewers/omp_candidate/omp_multi_turn_review.jsonl`) keeps grep
   match metadata (`files`, `fileMatches`, `matchCount`, `fileCount`) apart from
   the rendered `displayContent` with its own `truncated` flag, and its only grep
   is untruncated, so `files` is unproven under truncation.
@@ -760,7 +838,7 @@ nothing.
 
 ## Commands
 
-- `/oracle-review` at the start of a top-level PR comment from an owner, member
+- `/review` at the start of a top-level PR comment from an owner, member
   or collaborator reruns the review on the current head. Thread replies and line
   comments do not trigger it (they are review comments, not issue comments). On
   a head that already has a decisive verdict and no open `Dispute:` reply, the
@@ -776,11 +854,11 @@ nothing.
   unresolved thread replies as disputed findings keyed by finding id (see
   Rounds), and the reviewer checks any claimed grammar or documented behaviour.
 - A top-level PR comment from an owner, member or collaborator that starts with
-  `Oracle adjudication:` runs the same `review` job. `plan` accepts it only in
+  `Review adjudication:` runs the same `review` job. `plan` accepts it only in
   the exact grammar and only from an attester (see Rounds); any other comment
   with that prefix plans nothing. An accepted ruling runs no reviewer and does
   not touch the retry budget.
-- `gh workflow run oracle-verdict.yml --ref develop -f pr=<number>` does the
+- `gh workflow run review-verdict.yml --ref develop -f pr=<number>` does the
   same; other refs are refused. The optional `-f head=<sha>` names the head the
   dispatch targets: the run title records it, and a run whose pull request has
   since moved to another head reviews nothing. The sweep always sets it.
@@ -838,7 +916,7 @@ nothing.
 - `make oracle-backoff-reset PR=<number> HEAD=<sha> REASON='<why>'` lets the
   owner clear one PR head's backoff and retry window once. It needs a prior
   `Owner instruction` comment from an attester naming the head, as for a
-  stand-in. It posts `Oracle backoff reset: <sha>` and the reason, which `plan`
+  stand-in. It posts `Review backoff reset: <sha>` and the reason, which `plan`
   and the sweep honour only from an attester, unedited, after that instruction,
   until the next verdict run reviewing the head spends it. It applies only when
   the head's recorded result is a pending reviewer outage; it never re-rolls a
@@ -874,23 +952,18 @@ local adapter. `make trunk-revert` opens its PR through `gh pr create` without
 it. The review is advisory, labelled as possibly differing from the CI oracle,
 and posts nothing to GitHub.
 
-- **Trusted copy.** `scripts/oracle_local_review.py` runs `git fetch origin
-  develop`, then exports the reviewer package (`_project/scripts/oracle_reviewers`,
-  the soundness and inert path predicates, the policy, OMP config and both
-  manifests) from that commit with `git archive` into
-  `~/.cache/benchbox/local-oracle/export/<commit>`, and runs `cli.py
-  local-review` from the export under isolated `uv` with `pyyaml==6.0.3`, as the
-  hosted job does. The branch's working tree is never part of the export, so a
-  branch cannot change the machinery that clears it. The three newest exports are
-  kept. When `origin/develop` cannot be fetched or exported the review refuses
-  (exit 2) and nothing runs. A process of the same user can still alter the cache
-  files; CI remains the control. The script's `--reviewer-ref REF` option exports
-  another ref for a pre-merge smoke of the reviewer package itself; the script
-  only reviews, it cannot push or open a PR, and `make pr-open` never passes it.
-  Only the thin caller (the Makefile target and that script) comes from the
-  branch; the policy, manifests and omp pin are read from `origin/develop` as the
-  hosted job reads them from the base branch, so a branch cannot widen its own
-  exempt paths.
+- **Trusted copy.** `scripts/oracle_local_review.py` resolves the trusted ref
+  (`--trusted-ref`, `origin/develop` after `git fetch origin develop` by default),
+  installs the Theseus build locked at that commit through the first stage read
+  from the same commit, and runs `theseus local-review` from that install. The
+  branch's working tree is never part of what runs, so a branch cannot change the
+  machinery that clears it. When the lock, the artifact hashes or the install
+  cannot be verified the review refuses (exit 2) and nothing runs. The
+  `--record-out FILE` option sets `REVIEW_LOCAL_RECORD_OUT`; only the thin
+  caller (the Makefile target and that script) comes from the branch, and the
+  policy, manifests and omp pin are read from the trusted commit as the hosted
+  job reads them from the base branch, so a branch cannot widen its own exempt
+  paths.
 - **Same driver.** `local-review` is the orchestrator the workflow YAML is for CI:
   it runs `cli.py drive --environment local` phases as separate processes,
   `prepare`, `scan`, `harness`, `isolation`, `attempts` and `recover` (repeated as
@@ -910,7 +983,8 @@ and posts nothing to GitHub.
   macOS, keychain service `TYPESAFE_API_KEY`, added once with `security
   add-generic-password -s TYPESAFE_API_KEY -a "$USER" -w` (it prompts for the
   value). Without a key the review cannot classify, so it refuses (exit 2) and
-  names that step; there is no fixed default. A change that needs no review
+  names that step; a missing key is configuration, so the
+  `classifier.unavailable_bucket` fallback does not apply to it. A change that needs no review
   (only exempt paths) needs no key. The classifier key stays out of the
   processes that `make pr-open` starts for the review: the launcher script takes
   `TYPESAFE_API_KEY`, `TS_AUTHKEY`, the gateway values and the GitHub tokens out
@@ -924,14 +998,14 @@ and posts nothing to GitHub.
   the launcher, such as `make`, the recipe shell and the session that ran it, keep the environment the session gave them;
   the review cannot change that, so a same-user process can still read what the
   session itself holds.
-- **Credentials.** Local sessions use the `oracle-local` gateway client at
+- **Credentials.** Local sessions use the `review-local` gateway client at
   `http://127.0.0.1:4000` with the token in
-  `~/.omp/oracle-gateway/local-client.token`. Cloud sessions
-  (`ORACLE_CLOUD_GATEWAY_TOKEN` set or `BENCHBOX_EPHEMERAL_CLONE=1`) use the
-  `oracle-cloud` client from `ORACLE_GATEWAY_URL` and
-  `ORACLE_CLOUD_GATEWAY_TOKEN`, refusing if either is missing.
+  `~/.omp/review-gateway/local-client.token`. Cloud sessions
+  (`REVIEW_CLOUD_GATEWAY_TOKEN` set or `BENCHBOX_EPHEMERAL_CLONE=1`) use the
+  `review-cloud` client from `REVIEW_GATEWAY_URL` and
+  `REVIEW_CLOUD_GATEWAY_TOKEN`, refusing if either is missing.
   The tailnet is reachable only through the local proxy that `make cloud-gateway`
-  records as `gateway_proxy=` in `<git dir>/benchbox-cloud-gateway.status`: the
+  records as `gateway_proxy=` in `<git dir>/theseus-cloud-gateway.status`: the
   health check uses it (and never an ambient proxy variable), and the reviewer
   gets `HTTPS_PROXY`, `HTTP_PROXY`,
   `PI_PROXY` and a loopback-only `NO_PROXY` for the cloud
@@ -943,7 +1017,7 @@ and posts nothing to GitHub.
   the user's files, including that token.
 - **Disk scan and isolation.** The scan CI runs before and after the reviewer
   runs here too, over this machine's roots: the review's work directory, the
-  cache directory and `~/.omp/oracle-gateway` (the canonical token files there are
+  cache directory and `~/.omp/review-gateway` (the canonical token files there are
   skipped, so a stray copy of a token fails the run), plus the home directory in a
   cloud session. It looks for the classifier key, `TS_AUTHKEY` and the gateway
   token values; a hit refuses the review (exit 2). The Linux isolation check
@@ -953,8 +1027,8 @@ and posts nothing to GitHub.
   `darwin-arm64`), the download URL and SHA-256. One installer (`omp_pin.py`,
   `cli.py install-omp` and `drive harness`, run under isolated `uv` with `pyyaml==6.0.3`; YAML is
   imported only to parse the policy) downloads the platform build into
-  `~/.cache/benchbox/omp/<version>/<platform>/omp` (`BENCHBOX_OMP_CACHE`
-  overrides the root; `BENCHBOX_OMP_DOWNLOAD_MIRROR` swaps the pinned URL's origin for a loopback one so tests can serve a build locally, and is refused if it names any other host), checks the SHA-256 before the file is marked executable,
+  `~/.cache/benchbox/omp/<version>/<platform>/omp` (`THESEUS_OMP_CACHE`
+  overrides the root; `THESEUS_OMP_DOWNLOAD_MIRROR` swaps the pinned URL's origin for a loopback one so tests can serve a build locally, and is refused if it names any other host), checks the SHA-256 before the file is marked executable,
   then checks the binary reports the pinned version. The CI `Install omp` step (`drive harness`),
   `scripts/cloud_gateway.sh` and the local review all use it, and the reviewer
   runs the installed binary by its path (`ORACLE_OMP_BINARY`), never the `omp` on
@@ -969,7 +1043,7 @@ and posts nothing to GitHub.
   not run, and `drive finalize` (told the state through `OMP_INSTALL_STATE`) posts a `pending` status reading
   "the pinned omp build could not be installed; no reviewer ran" with the
   `omp-install` pending cause. The sweep never re-dispatches that state; a
-  manual `/oracle-review` retries it within the usual backoff and budget. Like the policy,
+  manual `/review` retries it within the usual backoff and budget. Like the policy,
   the pin is read from `origin/develop`, not from the branch or working tree. The
   build host publishes no checksum file, so each SHA-256 was computed from a TLS
   download of the published artifact, the method that established the original
@@ -1051,13 +1125,24 @@ and posts nothing to GitHub.
   decision for this head, or an unchanged patch, the recorded decision and its open
   defects are judged by the same rule, so a carried Critical blocks even when the
   new diff is clean. Nothing in the PR body overrides a block, and no commit message does.
-  A review that cannot run also refuses (exit 2): unreachable gateway, timeout,
+  A review that cannot run also refuses (exit 2): timeout,
   quota exhaustion, no verdict, no classifier key, a held PR (an edited oracle
   review, an unreadable history, the strike limit), a secret value found on disk,
   a classification that failed, an `omp` build that fails its checksum or has no
   pin for this platform, the reviewer that raised a finding being absent from the
   policy or unable to answer a rebuttal, or an `origin/develop` that cannot be
-  fetched.
+  fetched. The exception is a review that cannot run because the gateway is
+  unreachable, rejects the client token, or serves no provider that can review
+  the change (the local review writes `availability: <reason>` to the file named
+  by `REVIEW_LOCAL_UNAVAILABLE_OUT`): then `pr-open` pushes and opens the PR as
+  a draft whose body ends with `Local review: unavailable (<reason>); the hosted
+  review decides`, and does not arm it even with `READY=1`. An existing PR for
+  the branch is not converted to a draft (that needs GraphQL, which the REST
+  path avoids); it gets the marker and is not armed by that run. The hosted
+  review-verdict and `review-gate` still decide: `make pr-arm` refuses the
+  draft, and after you mark it ready it still refuses until a fresh gate
+  evaluation of the head passes. A later `make pr-open` that clears the review
+  removes the marker.
 - **Findings record and local disputes.** The driver keeps one findings record per
   patch digest under `~/.cache/benchbox/local-oracle/records/`. It holds the
   CI-shaped protocol records of every local round (so the same planner, round
@@ -1079,7 +1164,7 @@ and posts nothing to GitHub.
   withdrawn finding from the open set. Agents pass it only when the owner names
   the head, the finding and the decision in the current request.
 - **Findings record in the PR body.** `pr-open` writes the record of the reviewed
-  patch as one hidden `<!-- oracle-local-record: v1 ... -->` marker at the end of
+  patch as one hidden `<!-- review-local-record: v1 ... -->` marker at the end of
   the PR body (`scripts/pr_open_rest.py --record-file`), replacing any earlier
   marker and keeping the rest of the body. CI's first plan of a PR with no
   recorded oracle review reads that marker as claims only. A record is ignored
@@ -1097,7 +1182,7 @@ and posts nothing to GitHub.
   DO NOT SHIP alone, the record carries no strike data, and the
   CI id counter starts above the claimed ids, so a forged or edited record can only
   create work. A local adjudication does not clear a finding in CI; CI escalation
-  still needs the owner's `Oracle adjudication:` comment on the PR.
+  still needs the owner's `Review adjudication:` comment on the PR.
 - **Pinned head.** `pr-open` records `HEAD` before the review and passes it as
   `--head`. It pushes exactly that commit (`git push origin <reviewed>:refs/heads/<branch>`)
   and arms that commit, even when the branch ref moved while the review ran; the
@@ -1194,7 +1279,7 @@ The harness boundary is OMP's command line, JSON event stream and configuration,
 which unit tests cannot check alone. A change to `commands.py`, `verdict.py`,
 `evidence.py`, `runner.py`, the reviewer policy or the attempt loop must also:
 
-- keep `tests/fixtures/oracle_reviewers/omp_multi_turn_review.jsonl` a real
+- keep `tests/fixtures/oracle_reviewers/omp_candidate/omp_multi_turn_review.jsonl` a real
   recording of a review the harness already ran. When OMP output changes,
   replace it with the stream of a CI or local review run that already happened,
   with machine paths replaced and credentials checked for. Never run a model
@@ -1259,7 +1344,7 @@ pull request (or finds the `chore/omp-pin-<version>` pull request still open) it
 uses the locally published Git commit, not a potentially stale API head, and
 checks whether the head already carries an `oracle-verdict` commit status or a
 recent `oracle-verdict` run title names it and, when neither does, runs
-`gh workflow run oracle-verdict.yml --ref develop -f
+`gh workflow run review-verdict.yml --ref develop -f
 pr=<number> -f head=<sha>` with the same job token. A token-started
 `workflow_dispatch` is the one event GitHub does not suppress, so the job needs
 only `actions: write` beyond its existing grants and no App credential. A
@@ -1308,7 +1393,7 @@ after 7 days, so each run first restores the `omp-watch-ledger` artifact
 the first run backfills from the artifacts still live. An attempt belongs to the
 window or the baseline by when its run started, because a run reads the pin when
 it checks out `develop`, not when it uploads. Only artifacts of runs of
-`oracle-verdict.yml` in this repository count (on `develop`, or for a pull
+`review-verdict.yml` in this repository count (on `develop`, or for a pull
 request targeting `develop`), and the ledger is restored only from a scheduled
 or dispatched run of `omp-pin-watch.yml` on `develop`; an artifact with the same
 name from any other run is ignored. No review is run for this and no model is
@@ -1435,7 +1520,7 @@ status.
 `pull_request_review` runs the PR's own workflow file, so the PR controls the
 notification and can delete or alter it. The verdict path does not depend on it:
 after posting a head's comment, review and status, a final `review` step reads
-the PR base through the API and, if `develop`, dispatches `oracle-gate.yml` from
+the PR base through the API and, if `develop`, dispatches `review-gate.yml` from
 `develop` with `pr` and the reviewed `head_sha`. This covers comment, dispatch
 and scheduled verdict runs, whose completion carries `develop`'s head and cannot
 be mapped to the PR by the gate's bridge. The step runs only with the App
@@ -1450,7 +1535,7 @@ The verdict run also posts `oracle-gate` itself: after the review is posted,
 fresh `develop` checkout (the run's own checkout can be hours old) using the same
 `decide()`, and posts the App-bound status, so the gate does not wait for a second workflow. Every head
 change (opened, synchronize, reopened) first gets a pending `oracle-gate` from
-`oracle-gate.yml` before it is evaluated, so pushing back to an earlier green
+`review-gate.yml` before it is evaluated, so pushing back to an earlier green
 head cannot keep that head's stale green; between the push and the pending post
 the earlier status is still visible.
 
@@ -1513,13 +1598,13 @@ another branch, where the diff might be exempt-only, must not replace a
 A same-repo PR could still add a workflow with `statuses: write` posting a
 forged `oracle-gate` success to its own head, so the workflow alone does not
 make the context unforgeable. The unit test fails on any step outside
-`oracle-gate.yml` that could post the context, but a generated file or new
+`review-gate.yml` that could post the context, but a generated file or new
 workflow could still land one. The ruleset closes this: the required
 `oracle-gate` check is scoped to the `benchbox-oracle` App's integration ID
 (5201041), so only that App's statuses satisfy it. Without that binding a forged
 success would count and the gate property would not hold.
 
-`.github/workflows/oracle-gate.yml` runs `develop` code only. Triggers:
+`.github/workflows/review-gate.yml` runs `develop` code only. Triggers:
 
 - `pull_request_target` (opened, synchronize, reopened, ready_for_review,
   edited);
@@ -1617,8 +1702,8 @@ have been pinned through a separate trusted policy change. An author cannot
 authorize a new dependency by changing the policy in the promotion PR.
 `allowed_artifact_hosts` still limits download locations; an allowed host does
 not authorize arbitrary wheel bytes.
-Explicit empty `bootstrap_reviewers` or `allowed_artifact_hosts` lists are
-configuration errors, not requests to restore their defaults.
+An explicit empty `allowed_artifact_hosts` list is a configuration error, not
+a request to restore its default.
 
 The lock cannot contain two dependencies whose normalized distribution names
 match, even at different versions. Base-pinned dependency wheels may contain
@@ -1627,23 +1712,57 @@ metadata files, and RECORD hashes and sizes are verified without executing the
 contents. The promoted Theseus wheel retains its stricter source-match and
 pure-package rules, including rejection of native libraries and `.data` files.
 
-The first promotion additionally requires `bootstrap_baseline_commit`,
-`bootstrap_path_map`, and `bootstrap_reviewers` in the trusted base policy.
-The lock's bootstrap record must match that baseline, map, reviewer, and source
-commit. Its named reviewer must post an **unedited PR issue comment** using an
-authenticated GitHub `User` account in `bootstrap_reviewers`, containing this
-exact standalone line (substitute the complete digests):
+BenchBox's policy no longer carries `bootstrap_baseline_commit`,
+`bootstrap_path_map` or `bootstrap_reviewers`. The cutover to the Theseus
+package is complete, the base branch has a lock, and every promotion is a
+promotion from that lock. The block holds only `package`, `repository` and
+`dependencies`. Theseus parses the `bootstrap_*` keys as optional and reads them
+only to authorize a first promotion, when the base branch has no lock, which
+this repository no longer is. Adding them back changes nothing for a promotion
+from the existing lock.
 
-```text
-Theseus bootstrap approval: source=<40-character source_commit> lock=<64-character canonical lock SHA-256>
-```
+A promotion's required reads are the executed surface of the promoted source,
+not the whole delta: the files of the wheel's package under `src/`,
+`pyproject.toml`, and the review and gate workflows the callers reference.
+Renamed files are detected, and a byte-identical rename needs no read. The rest
+of the delta is staged and listed as not required. The decision and its reason
+are in `_project/decisions/review-depth-and-capacity-2026-11-05.md`.
 
-`promotion.bootstrap_approval_line(promotion.parse_lock(lock_text))` produces
-the line; the lock digest is `promotion.lock_digest`, not the raw JSON file
-hash. Bot comments, another author's comments, edited comments, and approvals
-for another lock or upstream source do not count. Repost a new comment after
-changing the lock. The hosted preparation and gate both enforce this approval;
-comment-read failures do not bypass it. Request a fresh oracle run after posting
-the approval; a gate sweep or manual dispatch can also re-evaluate the gate.
-Local advisory preparation explicitly skips PR-comment authorization because
-the PR may not yet exist. Local output never grants hosted gate authority.
+The review size and capacity limits belong to Theseus. `brief_max_bytes` is not
+a policy key, and a policy with an unknown top-level key is refused.
+
+## Review vocabulary of Theseus 0.2.0
+
+Theseus 0.2.0 renamed every `oracle` name to `review`. BenchBox follows it as
+follows:
+
+- The caller workflows are `review-verdict.yml`, `review-gate.yml` and
+  `review-request.yml` (workflow name `review-request`, which the gate's
+  `workflow_run` trigger names). Their `if:` and concurrency expressions are the
+  ones in Theseus's `examples/consumer`, and the Theseus CLI hard-codes the file
+  names.
+- The policy keeps its file names, `.github/oracle-reviewers.yml` and
+  `.github/oracle-omp-config.yml`, and both callers pass
+  `policy_path: .github/oracle-reviewers.yml`. Renaming the files would touch
+  every script, test and document that names them and gains nothing, because
+  Theseus reads the policy from the path it is given. `status_context` is
+  `review-verdict`; the legacy mirror is keyed on that name.
+- The callers keep `environment: oracle` and pass `tailscale_tag: tag:oracle-ci`,
+  the tag the tailnet policy and OAuth client already use. The secrets block maps
+  the callee names onto the secrets BenchBox holds, by name:
+  `REVIEW_APP_ID: ${{ secrets.ORACLE_APP_ID }}`, and the same for
+  `REVIEW_APP_PRIVATE_KEY`, `REVIEW_GATEWAY_TOKEN` and `REVIEW_GATEWAY_URL`. The
+  repository secrets and the gateway host's `secrets` command keep their
+  `ORACLE_*` names.
+- Environment variables read by Theseus or by BenchBox's scripts use the
+  `REVIEW_` prefix (`REVIEW_CLOUD_GATEWAY_TOKEN`, `REVIEW_GATEWAY_URL` in cloud
+  sessions, `REVIEW_LOCAL_RECORD_OUT`). Gateway clients are `review-ci`,
+  `review-local` and `review-cloud`, and the gateway directory is
+  `~/.omp/review-gateway`. The local review state is
+  `~/.cache/benchbox/local-oracle`.
+- Until a later Theseus release removes the legacy mirror, each status is posted
+  under both contexts and the old command and marker spellings are still read.
+  `oracle-gate` stays the required context; `review-gate` is added to the ruleset
+  separately, and `oracle-gate` is dropped before the release that removes the
+  mirror. The comment forms are `/review`, `Stand-in review: APPROVE <sha>`,
+  `Review adjudication:` and `Review backoff reset:`.

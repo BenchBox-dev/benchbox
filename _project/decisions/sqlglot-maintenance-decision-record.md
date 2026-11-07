@@ -1,7 +1,58 @@
 # SQLGlot downstream maintenance decision and delivery evidence
 
 This record closes `sql-transpiler-maintenance-decision`. It links the decision
-documents and reviews and records what was delivered. It makes no new decision.
+documents and reviews and records what was delivered. Except for the 2026-11-05
+supersession below, it makes no new decision.
+
+## Supersession, 2026-11-05: delivery boundary
+
+The owner moved fork refresh and wheel delivery to the fork. This section
+supersedes the refresh ownership and manual adoption statements under "Refresh
+and rollback ownership" and the source-review-at-core convention recorded for
+fork-diff governance (tracker item `sqlglot-fork-review-h1-governance`).
+
+Fork `BenchBox-dev/benchbox-sqlglot` owns:
+
+- upstream discovery, deterministic refresh, the fork pull request and its
+  protected merge (`.github/workflows/benchbox-upstream.yml`,
+  `downstream/controller.py`; off unless `BENCHBOX_UPSTREAM_ENABLED` is set);
+- source, runtime, engine and distribution verification;
+- verified wheel delivery (`.github/workflows/benchbox-delivery.yml`): one
+  version maps to one wheel hash, the receipt job reports
+  `delivered benchbox-sqlglot <version> sha256:<hash>`, and the artifact
+  `benchbox-sqlglot-delivery-a<attempt>` holds `delivery.json` (schema 1). An
+  expired artifact is recovered by rerunning the canonical distribution
+  workflow at the same source SHA.
+- the fork writer App, which exists only in the fork. Upstream, build and
+  producer exceptions are fork issues; the runbook is `downstream/MAINTAINING.md`
+  in the fork.
+
+BenchBox core only consumes the delivery:
+
+- `.github/workflows/sqlglot-delivery.yml` and `scripts/sqlglot_delivery.py`
+  verify the trusted producer origin fixed in `.github/sqlglot-delivery.json`
+  and run `scripts/adopt_sqlglot_wheel.py` with the required expected version,
+  fork SHA, upstream SHA and wheel hash.
+- The workflow opens one App-authored adoption PR at a time and arms it only
+  through the existing `scripts/pr_arm.py` rules: never after a human hold or
+  disarm; only `trunk-red-disarm` disarms may be re-armed.
+- A reverted pair goes in the reviewed `suppressed` list.
+- `SQLGLOT_DELIVERY_ENABLED` is the kill switch; the default is dry run.
+- Wrapper, install and adoption exceptions are core issues. The core App has
+  contents and pull-requests write only, and core holds no fork-write
+  credential once activation retires the legacy token.
+- Core no longer reviews fork source at adoption. The oracle reviews the actual
+  core PR as for any PR; Theseus is unchanged. Fork-side diagnostics are native
+  `git diff` in the fork and the delivery record.
+- Manual fallback: `make sqlglot-adopt-wheel WHEEL=<path> SHA256=<digest>
+  EXPECTED_VERSION=<version> FORK_SHA=<sha> UPSTREAM_SHA=<sha>`.
+
+Legacy and retiring until activation removes them: the core
+`.github/workflows/sqlglot-fork-refresh.yml`, `scripts/sqlglot_fork_refresh.py`,
+`SQLGLOT_FORK_REFRESH_TOKEN`, `make sqlglot-fork-diff` and the PR-template
+fork-diff checkbox. `scripts/check_sqlglot_upstream_freshness.py` and
+`scripts/check_sqlglot_advisories.py` stay release policy, not adoption
+orchestration.
 
 ## Decision documents
 

@@ -21,10 +21,10 @@ for _path in (REPO_ROOT, Path(__file__).resolve().parent):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
-import pr_arm_omp_bump
+import theseus_cli
 
 from _project.scripts import check_suites
-from _project.scripts.soundness_paths import any_soundness_path
+from _project.scripts.soundness_manifest import any_soundness_path
 
 CLI_DESCRIPTION = (
     "One cohesive revision/readiness/queue/follow-up helper behind the Make PR targets.\n"
@@ -693,7 +693,10 @@ def live_commit_statuses(run: Runner, repo_full: str, head: str) -> dict[str, st
             if login.removesuffix("[bot]") != ORACLE_APP_LOGIN or account_type != "Bot":
                 continue
             if state == "failure" and description.startswith(
-                f"oracle-review: waiting for the oracle's verdict on {head},"
+                (
+                    f"oracle-review: waiting for the oracle's verdict on {head},",
+                    f"review: waiting for the review's verdict on {head},",
+                )
             ):
                 state = "pending"
         statuses[name] = state
@@ -1255,14 +1258,12 @@ def _check_evidence_reviews(repo: Path, evidence: dict, members: list[str], rece
 
 
 def _review_binding_failures(repo: Path, member: str, review: dict, receipt: dict) -> list[str]:
-    from _project.scripts.oracle_reviewers import local as oracle_local
-
     base, head = _revision(receipt.get("source_base")), _revision(receipt.get("accepted_head"))
     if base is None or head is None:
         return [f"member {member} receipt range is not two full revisions"]
     try:
-        actual = oracle_local.member_binding(repo, base, head)
-    except (oracle_local.Unavailable, OSError):
+        actual = theseus_cli.member_binding(repo, base, head, DEVELOP_TRACKING_REF)
+    except (theseus_cli.TheseusError, OSError):
         return [f"member {member} review binding could not be recomputed from Git"]
     if any(review.get(key) != value for key, value in actual.items()):
         return [f"member {member} review does not match the patch and tree Git computes for its range"]
@@ -1403,9 +1404,9 @@ def enqueue_pr(
             raise LandingError("PR review disposition changed before enqueue; readiness is invalid")
         if unresolved_review_threads(run, repo_full, pr_number):
             raise LandingError("PR review threads changed before enqueue; unresolved, non-outdated threads remain")
-    bump_reasons = pr_arm_omp_bump.bump_refusals(run, repo_full, pr_number, expected_head)
-    if bump_reasons:
-        raise LandingError("; ".join(bump_reasons))
+    gate_reasons = theseus_cli.gate_refusals(run, repo_full, pr_number, expected_head, "pr-landing")
+    if gate_reasons:
+        raise LandingError("; ".join(gate_reasons))
     rc, out = run(
         [
             "gh",

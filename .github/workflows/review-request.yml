@@ -1,0 +1,18 @@
+name: review-request
+
+run-name: review-request (${{ github.event.action }})
+
+on:
+  pull_request_review:
+    types: [edited, dismissed]
+
+permissions: {}
+
+jobs:
+  review-event:
+    name: review-event
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Record the review event
+        run: "true"

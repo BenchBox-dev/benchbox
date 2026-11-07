@@ -530,7 +530,6 @@ def evaluate(
             [
                 *pr_landing.hidden_failed_suites(run, repo, BASE_BRANCH, head),
                 *pr_arm.duration_verdict_refusals(run, repo, number, head, "pr-arm-remote"),
-                *pr_arm.pr_arm_omp_bump.bump_refusals(run, repo, number, head),
                 *pr_arm.gate_refusals(run, repo, number, head, "pr-arm-remote"),
             ],
             pr_landing.ruleset_required_contexts(run, repo, BASE_BRANCH),

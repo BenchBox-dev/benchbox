@@ -9,11 +9,12 @@ from .client import InfluxDBConnection
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_PORT_BY_MODE = {"core": 8181, "cloud": 443}
+
 
 class InfluxDBSetupMixin:
     def _setup_connection_params(self, config: dict[str, Any]) -> None:
         self.host = config.get("host", "localhost")
-        self.port = config.get("port", 8086)
         self.token = config.get("token")
         self.org = config.get("org")
         self.database = config.get("database", "benchbox")
@@ -21,6 +22,8 @@ class InfluxDBSetupMixin:
         self.verify_ssl = config.get("verify_ssl") if config.get("verify_ssl") is not None else True
         self.ca_cert_path = config.get("ca_cert_path")
         self.mode = select_adapter_deployment("influxdb", config, config.get("mode") or "cloud")
+        port = config.get("port")
+        self.port = int(port) if port is not None else DEFAULT_PORT_BY_MODE.get(self.mode)
 
         if not self.token:
             logger.warning("No InfluxDB token provided. Set --token or INFLUXDB_TOKEN environment variable.")

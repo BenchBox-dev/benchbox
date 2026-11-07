@@ -429,6 +429,18 @@ def test_a_reused_pr_replaces_a_stale_marker_and_keeps_the_rest_of_its_body() ->
     assert _fields(patch) == {"body": f"Hand written.\n\n{MARKER}\n"}
 
 
+@pytest.mark.parametrize("word", ["review", "oracle"])
+def test_either_marker_spelling_is_embedded_and_replaces_the_other(word: str) -> None:
+    marker = f"<!-- {word}-local-record: v1 abc_DEF-123 -->"
+    stale = "<!-- oracle-local-record: v1 zzz -->" if word == "review" else "<!-- review-local-record: v1 zzz -->"
+    gh = FakeGh([_pull("BenchBox-dev", "feat/widget", body=f"Hand written.\n\n{stale}\n")])
+
+    pr_open_rest.publish(REPO, "BenchBox-dev", "feat/widget", "feat/widget", None, None, gh, record=marker)
+
+    (patch,) = gh.api("PATCH")
+    assert _fields(patch) == {"body": f"Hand written.\n\n{marker}\n"}
+
+
 def test_a_reused_pr_whose_body_already_ends_in_the_marker_is_left_alone() -> None:
     gh = FakeGh([_pull("BenchBox-dev", "feat/widget", body=f"Hand written.\n\n{MARKER}\n")])
 
@@ -452,4 +464,57 @@ def test_main_embeds_the_record_file_and_refuses_one_that_is_not_a_marker(tmp_pa
     record.write_text("")
     empty = FakeGh([], _log(("feat: add widget", "Why.")))
     assert pr_open_rest.main([*args, "--record-file", str(record)], empty) == 0
-    assert "oracle-local-record" not in _fields(empty.api("POST")[0])["body"]
+    assert "local-record" not in _fields(empty.api("POST")[0])["body"]
+
+
+UNAVAILABLE = "Local review: unavailable (gateway unreachable); the hosted review decides"
+
+
+def test_an_unavailable_local_review_creates_a_draft_with_the_marker_after_the_body(tmp_path: Path) -> None:
+    body = tmp_path / "body.md"
+    body.write_text("Summary\n")
+    gh = FakeGh([], _log(("feat: add widget", "")))
+
+    pr_open_rest.publish(
+        REPO,
+        "BenchBox-dev",
+        "feat/widget",
+        "feat/widget",
+        None,
+        body,
+        gh,
+        draft=True,
+        unavailable="gateway unreachable",
+    )
+
+    (post,) = gh.api("POST")
+    assert _fields(post)["body"] == f"Summary\n\n{UNAVAILABLE}\n"
+    assert "draft=true" in post
+
+
+def test_a_reused_pr_gains_one_marker_and_a_later_cleared_review_removes_it() -> None:
+    gh = FakeGh([_pull("BenchBox-dev", "feat/widget", body="Hand written.\n")])
+    pr_open_rest.publish(REPO, "BenchBox-dev", "feat/widget", "feat/widget", None, None, gh, unavailable="x\ny")
+    (patch,) = gh.api("PATCH")
+    assert _fields(patch) == {"body": "Hand written.\n\nLocal review: unavailable (x y); the hosted review decides\n"}
+
+    marked = FakeGh([_pull("BenchBox-dev", "feat/widget", body=f"Hand written.\n\n{UNAVAILABLE}\n")])
+    pr_open_rest.publish(REPO, "BenchBox-dev", "feat/widget", "feat/widget", None, None, marked, record=MARKER)
+    (cleared,) = marked.api("PATCH")
+    assert _fields(cleared) == {"body": f"Hand written.\n\n{MARKER}\n"}
+
+    bare = FakeGh([_pull("BenchBox-dev", "feat/widget", body=f"Hand written.\n\n{UNAVAILABLE}\n")])
+    pr_open_rest.publish(REPO, "BenchBox-dev", "feat/widget", "feat/widget", None, None, bare)
+    (stripped,) = bare.api("PATCH")
+    assert _fields(stripped) == {"body": "Hand written.\n"}
+
+
+def test_main_opens_a_draft_for_the_unavailable_flag_even_without_the_draft_flag() -> None:
+    gh = FakeGh([], _log(("feat: add widget", "Why.")))
+    args = ["--repo", REPO, "--head-owner", "BenchBox-dev", "--branch", "feat/widget", "--head-spec", "feat/widget"]
+
+    assert pr_open_rest.main([*args, "--local-review-unavailable", "gateway unreachable"], gh) == 0
+
+    (post,) = gh.api("POST")
+    assert "draft=true" in post
+    assert UNAVAILABLE in _fields(post)["body"]

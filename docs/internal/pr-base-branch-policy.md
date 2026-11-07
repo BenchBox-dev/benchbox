@@ -1,9 +1,12 @@
 # PR base branch policy
 
-Ready PRs target an integration branch. Stacking is allowed narrowly:
+Ready PRs target an integration branch. A stack is a chain of PRs where each
+upper PR is a draft on its parent's branch. Stacking is allowed narrowly:
 
-1. A stack belongs to one agent and one tracker item and is at most three PRs
-   deep. Agents must not build on another agent's unmerged branch.
+1. A stack is at most three PRs deep, for one agent and one tracker item. The
+   limit applies to each stack, not to how many PRs an agent opens. Never build
+   on another agent's unmerged branch. For deeper or multi-item work, use a
+   feature batch.
 2. Every PR above the bottom one is a **draft** that targets its parent
    branch, so it gets CI there. Open it with
    `make pr-open PARENT=<parent branch>`: the parent must be an open PR branch
@@ -21,7 +24,6 @@ Ready PRs target an integration branch. Stacking is allowed narrowly:
 | Base | When |
 | --- | --- |
 | `develop` | Normal development PRs |
-| `release` | Release-lane PRs only |
 | `published-results` | Published-results lane only |
 
 The only other allowed base is the parent branch of a draft PR in a stack. A
@@ -45,15 +47,14 @@ on:
     branches: [develop]
 ```
 
-Other workflows listed `release` or `published-results` instead.
+Other workflows listed `published-results` instead.
 
 A PR against `fix/parent` triggered **no** required checks. Its page looked
 calm (an empty check list), not broken. The change reached `develop` only
 when the parent merged, never validated on its own and attributed to the
 parent's PR.
 
-`.github/workflows/ci.yml` filters `pull_request` only with
-`branches-ignore: [release]`, so a PR against any other base now gets the six
+`.github/workflows/ci.yml` does not filter `pull_request` by base, so a PR against any other base now gets the six
 unit results. Units run against a parent branch validate the child on top of its
 parent, not the tree that lands on `develop`. So the rebase onto `develop` and
 the CI rerun after it are what gate the merge.
@@ -66,7 +67,7 @@ base branch, before any PR code is checked out. `ci-paths` runs on every
 to succeed, so a bad base turns all three required checks red. It always
 reports:
 
-- Base is `develop` / `release` / `published-results`: pass in seconds; the
+- Base is `develop` / `published-results`: pass in seconds; the
   normal CI lanes apply.
 - Any other base, draft PR: pass; the PR cannot be armed until it is
   retargeted at `develop`.
@@ -136,11 +137,10 @@ conflicts, or a filter bug, from an empty or partial check list alone.
 ## Agent checklist
 
 - `make pr-open` is the only way to create a PR. Without `PARENT` it targets
-  `develop`, unless the change is explicitly for `release` or
-  `published-results`. Parent-based drafts follow the exception below.
-- Set `PARENT` to another feature branch only for a draft in a stack (one
-  agent, one tracker item, depth 3 or less). Never arm it before it is
-  retargeted at `develop`.
+  `develop`, unless the change is explicitly for `published-results`.
+  Parent-based drafts follow the exception below.
+- Set `PARENT` only for a draft in your own stack (at most 3 deep). Never arm
+  it before it is retargeted at `develop`.
 - If the base check in `ci-paths` fails on a ready PR, fix the base. Do not try to "add CI" to
   the stacked base by editing branch filters.
 - Short agent-facing summary: `AGENTS.md` → section **Verification and

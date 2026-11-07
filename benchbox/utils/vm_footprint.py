@@ -19,6 +19,29 @@ MACHINE_PATH_PARENTS = ("machine-apiserver", "machines")
 EXTERNAL_TIMEOUT_SECONDS = 5.0
 GIB = 1024**3
 NEGATIVE_CACHE_SECONDS = 30.0
+STOP_TIMEOUT_ENV = "BENCHBOX_LINUX_STOP_TIMEOUT_SECONDS"
+DEFAULT_STOP_TIMEOUT_SECONDS = 60.0
+STOP_KILL_STEP_SECONDS = 3.0
+CLEANUP_STARTUP_SECONDS = 10.0
+CLEANUP_PROBES = 2
+
+
+def stop_timeout_seconds(environ: Mapping[str, str]) -> float:
+    try:
+        value = float(environ.get(STOP_TIMEOUT_ENV) or DEFAULT_STOP_TIMEOUT_SECONDS)
+    except ValueError:
+        return DEFAULT_STOP_TIMEOUT_SECONDS
+    return value if value == value and value >= 0 else DEFAULT_STOP_TIMEOUT_SECONDS
+
+
+def machine_cleanup_bound_seconds(environ: Mapping[str, str]) -> float:
+    return (
+        CLEANUP_STARTUP_SECONDS
+        + CLEANUP_PROBES * EXTERNAL_TIMEOUT_SECONDS
+        + stop_timeout_seconds(environ)
+        + 2 * STOP_KILL_STEP_SECONDS
+    )
+
 
 ProcessLister = Callable[[], Sequence["VmProcess"]]
 OpenPathsReader = Callable[[int], "list[str] | None"]

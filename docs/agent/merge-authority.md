@@ -41,13 +41,13 @@ branch is incomplete.
 
 ## Stand-in approvals
 
-A stand-in is the `Stand-in oracle review: APPROVE <head SHA>` comment that the
+A stand-in is the `Stand-in review: APPROVE <head SHA>` comment that the
 required `oracle-gate` check accepts from an attester account. Post one only
 when the owner names the PR and its head in the current request. Otherwise wait
 for the oracle verdict, re-run it when a reviewer errors, and report a stalled
 verdict to the owner.
 
-The comment body must be exactly `Stand-in oracle review: APPROVE <40-character
+The comment body must be exactly `Stand-in review: APPROVE <40-character
 head SHA>` and nothing else: no fences, quotes, prefixes, or extra findings
 text. The checker matches the whole comment, so any extra text voids the
 stand-in.
@@ -73,7 +73,7 @@ Resolving an oracle review thread starts no workflow run and needs no
 required thread resolution blocks the merge while one is open. `make pr-arm`
 and `make pr-arm-remote` dispatch nothing and refuse to arm a head whose fresh
 gate evaluation does not pass. For a PR that is already armed whose gate is
-stale, run `gh workflow run oracle-gate.yml --ref develop -f pr=<number>` (or
+stale, run `gh workflow run review-gate.yml --ref develop -f pr=<number>` (or
 wait for the hourly sweep) and merge only after `oracle-gate` passes on the
 current head.
 
@@ -83,10 +83,17 @@ evidence, such as deleting a stand-in comment: leave the PR unarmed, withdraw
 the evidence, dispatch the gate, and observe the new result on the current head
 before treating the PR as ready.
 
+Provider loss does not call for a stand-in or any relaxation. While at least
+one provider is served, reviews continue on the substitutes in the trusted
+config and say `degraded: <provider>`; the gate is unchanged. A stand-in
+applies only when no reviewer can run at all (every provider lost), in which
+case the review stays pending and the owner names the PR and head. See
+[`oracle-gateway-host.md`](../internal/oracle-gateway-host.md#losing-or-removing-a-provider).
+
 ## Owner adjudication
 
 The owner resolves an escalated finding with a top-level PR comment that is
-exactly `Oracle adjudication: WITHDRAW D<n> - <reason>` or `Oracle adjudication:
+exactly `Review adjudication: WITHDRAW D<n> - <reason>` or `Review adjudication:
 MAINTAIN D<n> - <reason>`, posted from an attester account after the escalating
 oracle review of the current head and never edited. The comment re-runs the
 verdict workflow without a reviewer: `WITHDRAW` stops the finding blocking,
@@ -102,13 +109,13 @@ record), and flags one with no preceding `Owner instruction` comment.
 ## Retry backoff reset
 
 A reviewer outage plus the doubling retry backoff can hold a verdict for hours,
-and a manual `/oracle-review` is refused inside it. The owner can clear it for
+and a manual `/review` is refused inside it. The owner can clear it for
 one pull request head with `make oracle-backoff-reset PR=<number>
 HEAD=<40-character head SHA> REASON='<why>'`. Run it only when the owner names
 the PR and its head in the current request. Post a separate `Owner instruction`
 comment that names the head first, as for a stand-in; the target refuses
 without it, refuses when the head is not the PR's current head, and refuses any
-account that is not an attester. It posts `Oracle backoff reset: <head SHA>`
+account that is not an attester. It posts `Review backoff reset: <head SHA>`
 and the reason on the PR. The next retry on that head, whether from the plan or
 the sweep, ignores the backoff and the daily retry budget once, and only when
 the head's recorded result is a pending reviewer-outage result; a decisive

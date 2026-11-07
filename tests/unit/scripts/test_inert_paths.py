@@ -11,7 +11,7 @@ from ci_units import classify_units, load_unit_rules
 from path_filter_decision import classify_paths, load_rules
 
 from _project.scripts import inert_paths as inert
-from _project.scripts.oracle_reviewers.classifier import ChangedFile as ReviewFile, ClassifierRules, soundness_scope
+from _project.scripts.soundness_paths import glob_matches, load_rules as load_manifest_rules
 from scripts import coverage_test_selection as sel
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
@@ -20,7 +20,6 @@ ROOT = Path(__file__).resolve().parents[3]
 MANIFEST = ROOT / ".github" / "inert-paths.txt"
 READERS_FILE = ROOT / "_project" / "inert-doc-readers.json"
 ROUTER_RULES = load_rules(ROOT / ".github" / "path-filters.yml")
-EMPTY_RULES = ClassifierRules(gate_paths=(), logic_paths=(), data_paths=(), exempt_paths=())
 MACHINE_READ_SAMPLE = [
     "AGENTS.md",
     "README.md",
@@ -30,7 +29,6 @@ MACHINE_READ_SAMPLE = [
     "docs/internal/dev-loop-worktrees.md",
     "docs/publish-allowlist.txt",
     "docs/publish-exclusions.txt",
-    "tests/uat/CHARTER.md",
     ".claude/settings.json",
     ".claude/commands/blind-spot.md",
     ".claude/skills/code/SKILL.md",
@@ -39,7 +37,7 @@ MACHINE_READ_SAMPLE = [
     ".github/PULL_REQUEST_TEMPLATE.md",
 ]
 INERT_SAMPLE = [
-    "docs/internal/branch-rename-runbook.md",
+    "docs/internal/corpus-refresh.md",
     "_project/todo-db-export/index.md",
 ]
 
@@ -55,10 +53,6 @@ def _tracked() -> set[str]:
     return {entry for entry in proc.stdout.split("\0") if entry}
 
 
-def _review_file(path: str) -> ReviewFile:
-    return ReviewFile(path, None, 5, 0)
-
-
 def _candidates(source: str, name: str = "probe.py") -> set[str]:
     return inert.file_candidates(source, str(ROOT / name), str(ROOT))
 
@@ -70,7 +64,7 @@ def test_seed_exceptions_are_machine_read_but_not_inert() -> None:
 
 
 def test_plain_prose_stays_inert() -> None:
-    assert inert.is_inert_path("docs/internal/branch-rename-runbook.md")
+    assert inert.is_inert_path("docs/internal/corpus-refresh.md")
     assert inert.is_inert_path("docs/some-guide.md")
     assert inert.is_inert_path("_project/todo-db-export/events.jsonl")
     assert not inert.is_inert_path("benchbox/core/engine.py")
@@ -78,11 +72,11 @@ def test_plain_prose_stays_inert() -> None:
 
 
 def test_inert_predicate_normalises_windows_separators() -> None:
-    assert inert.is_inert_path("docs\\internal\\branch-rename-runbook.md")
+    assert inert.is_inert_path("docs\\internal\\corpus-refresh.md")
 
 
 def test_soundness_paths_still_need_review() -> None:
-    from _project.scripts.soundness_paths import is_soundness_path
+    from _project.scripts.soundness_manifest import is_soundness_path
 
     assert is_soundness_path(".github/PULL_REQUEST_TEMPLATE.md")
 
@@ -93,7 +87,7 @@ def test_every_exception_matches_a_tracked_path() -> None:
     missing = [
         pattern
         for pattern in inert.EXCEPT_PATTERNS
-        if not any(inert._glob_matches(path, pattern) for path in tracked)
+        if not any(glob_matches(path, pattern) for path in tracked)
         and not basenames.get(pattern.rsplit("/", 1)[-1], ())
         and pattern not in tracked
     ]
@@ -170,9 +164,7 @@ def test_text_candidates_skip_comments_and_echo_lines() -> None:
 def test_guard_flags_reference_missing_its_exception(tmp_path: Path) -> None:
     manifest = tmp_path / "inert-paths.txt"
     manifest.write_text("glob\tdocs/**\n", encoding="utf-8")
-    rules = inert._load_rules(manifest, inert._VALID_KINDS)
-    assert inert.matches_exemption("docs/secret.md", rules)
-    assert not inert.matches_exception("docs/secret.md", ())
+    rules = load_manifest_rules(manifest, inert._VALID_KINDS, "inert path")
     assert inert.matches_exemption("docs/secret.md", rules) and not inert.matches_exception("docs/secret.md", ())
 
 
@@ -211,32 +203,6 @@ def test_checked_in_readers_match_the_rebuilt_index(inert_scan: dict[str, list[s
 
 def test_no_tracked_symlinks_point_into_inert_paths() -> None:
     assert inert.symlink_violations(inert.tracked_symlink_entries(ROOT)) == []
-
-
-def test_inert_only_change_is_out_of_scope() -> None:
-    scope = soundness_scope([_review_file("docs/internal/branch-rename-runbook.md")], EMPTY_RULES, lambda path: False)
-    assert scope.soundness is False
-
-
-def test_machine_read_change_is_in_scope_without_policy_exemptions() -> None:
-    scope = soundness_scope([_review_file("AGENTS.md")], EMPTY_RULES, lambda path: False)
-    assert scope.soundness is True
-    assert scope.paths == ("AGENTS.md",)
-
-
-def test_gate_template_still_wins_over_the_manifest_exception() -> None:
-    from _project.scripts.soundness_paths import is_soundness_path
-
-    gate = "_project/scripts/oracle_reviewers/templates/gate.md"
-    scope = soundness_scope(
-        [_review_file(gate)],
-        ClassifierRules(
-            gate_paths=("_project/scripts/oracle_reviewers/*",), logic_paths=(), data_paths=(), exempt_paths=()
-        ),
-        is_soundness_path,
-    )
-    assert scope.soundness is True
-    assert scope.gate_paths == (gate,)
 
 
 def test_machine_read_change_selects_its_readers() -> None:
@@ -354,3 +320,89 @@ def test_tracked_files_decode_names_as_strict_utf8(tmp_path: Path, monkeypatch: 
     assert inert.tracked_files(repo) == {"notes-ok.md"}
     assert seen.get("encoding") == "utf-8"
     assert "errors" not in seen
+
+
+def _git_repo(path: Path, files: dict[str, str]) -> Path:
+    path.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["git", "-C", str(path), "init", "-b", "main"], check=True, capture_output=True)
+    for name, text in files.items():
+        target = path / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+    subprocess.run(["git", "-C", str(path), "add", "."], check=True, capture_output=True)
+    return path
+
+
+READER_FILES = {
+    "AGENTS.md": "agents\n",
+    "docs/guide.md": "guide\n",
+    "tests/unit/test_reads.py": 'from pathlib import Path\nA = Path("AGENTS.md")\nG = Path("docs/guide.md")\n',
+    "scripts/tool.py": 'from pathlib import Path\nA = Path("AGENTS.md")\n',
+}
+
+
+def test_scan_tree_resolves_references_in_a_tracked_repo(tmp_path: Path) -> None:
+    repo = _git_repo(tmp_path / "repo", READER_FILES)
+    refs = inert.scan_tree(repo)
+    assert refs["tests/unit/test_reads.py"] == ["AGENTS.md", "docs/guide.md"]
+    assert refs["scripts/tool.py"] == ["AGENTS.md"]
+
+
+def test_reader_index_keeps_only_test_readers_of_machine_read_docs(tmp_path: Path) -> None:
+    repo = _git_repo(tmp_path / "repo", READER_FILES)
+    assert inert.doc_reader_index(repo) == {"AGENTS.md": ["tests/unit/test_reads.py"]}
+
+
+def test_regenerate_readers_writes_the_index_and_load_readers_reads_it(tmp_path: Path) -> None:
+    repo = _git_repo(tmp_path / "repo", {**READER_FILES, "_project/keep.txt": "x\n"})
+    assert inert.load_readers(repo) == {}
+    assert inert.main(["--repo-root", str(repo), "--regenerate-readers"]) == 0
+    written = json.loads((repo / "_project" / "inert-doc-readers.json").read_text(encoding="utf-8"))
+    assert written == {"AGENTS.md": ["tests/unit/test_reads.py"]}
+    assert inert.load_readers(repo) == written
+
+
+def test_main_without_a_flag_refuses_and_writes_nothing(tmp_path: Path) -> None:
+    repo = _git_repo(tmp_path / "repo", READER_FILES)
+    with pytest.raises(SystemExit):
+        inert.main(["--repo-root", str(repo)])
+    assert not (repo / "_project" / "inert-doc-readers.json").exists()
+
+
+def test_load_readers_ignores_a_malformed_file(tmp_path: Path) -> None:
+    (tmp_path / "_project").mkdir()
+    readers = tmp_path / "_project" / "inert-doc-readers.json"
+    readers.write_text("[1]", encoding="utf-8")
+    assert inert.load_readers(tmp_path) == {}
+    readers.write_text('{"AGENTS.md": ["b.py", "a.py"], "bad": 1}', encoding="utf-8")
+    assert inert.load_readers(tmp_path) == {"AGENTS.md": ["a.py", "b.py"]}
+
+
+def test_tracked_symlink_entries_report_name_and_target(tmp_path: Path) -> None:
+    repo = _git_repo(tmp_path / "repo", {"target.py": "x = 1\n", "docs/page.md": "page\n"})
+    (repo / "link.py").symlink_to("target.py")
+    (repo / "docs" / "alias.md").symlink_to("page.md")
+    subprocess.run(["git", "-C", str(repo), "add", "."], check=True, capture_output=True)
+    entries = sorted(inert.tracked_symlink_entries(repo))
+    assert entries == [("docs/alias.md", "page.md"), ("link.py", "target.py")]
+    assert inert.symlink_violations(entries) == [
+        "tracked symlink docs/alias.md points from an inert path",
+        "tracked symlink docs/alias.md points into inert path docs/page.md",
+    ]
+
+
+def test_inert_rule_kinds_compose_the_vendored_matcher(tmp_path: Path) -> None:
+    manifest = tmp_path / "inert-paths.txt"
+    manifest.write_text(
+        "file\tNOTES.txt\nprefix\tdocs/\nregex\t^data/[0-9]+\\.md$\nglob\t*.rst\nexcept\tdocs/agent/**\n",
+        encoding="utf-8",
+    )
+    rules = load_manifest_rules(manifest, inert._VALID_KINDS, "inert path")
+    exempt = tuple(rule for rule in rules if rule.kind != "except")
+    for path in ("NOTES.txt", "docs/x.md", "data/12.md", "intro.rst"):
+        assert inert.matches_exemption(path, exempt), path
+    for path in ("data/x.md", "benchbox/core/engine.py", ""):
+        assert not inert.matches_exemption(path, exempt), path
+    patterns = tuple(rule.pattern for rule in rules if rule.kind == "except")
+    assert inert.matches_exception("docs/agent/review.md", patterns)
+    assert not inert.matches_exception("docs/other.md", patterns)

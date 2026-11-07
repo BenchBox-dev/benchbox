@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed the TPC-H throughput refresh stream window to start after its connection is open, matching the query streams. Connection setup no longer counts toward the refresh stream or the Ts span, so Ts can be shorter and Throughput@Size higher when the refresh stream is the first or last stream."
+    }
+  ]
+}

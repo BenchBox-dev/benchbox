@@ -15,8 +15,8 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ci_text_edit_verdict
-import pr_arm_omp_bump
 import pr_landing
+import theseus_cli
 
 CLI_DESCRIPTION = "Arm a pull request for its exact head after a live check that nothing holds it."
 
@@ -215,32 +215,8 @@ def duration_verdict_refusals(run: Runner, repo: str, number: int, head: str, la
     ]
 
 
-GATE_SCRIPT = "_project/scripts/oracle_gate.py"
-GATE_WAITING_EXIT = 3
-GATE_TREE = "_project/scripts .github/oracle-reviewers.yml .github/soundness-paths.txt .github/inert-paths.txt"
-
-
 def gate_refusals(run: Runner, repo: str, number: int, head: str, label: str = "pr-arm") -> list[str]:
-    code, out = run(
-        [
-            "sh",
-            "-c",
-            'set -eu; DIR="$(mktemp -d)"; trap \'rm -rf "$DIR"\' EXIT; '
-            f"git fetch --quiet origin {BASE_BRANCH}; "
-            f'git archive origin/{BASE_BRANCH} {GATE_TREE} | tar -x -C "$DIR"; '
-            'cd "$DIR"; GITHUB_TOKEN="$(gh auth token)" uv run --isolated --no-project --python 3.12 '
-            f'--with pyyaml==6.0.3 -- python {GATE_SCRIPT} --repo "$0" --pr "$1" --head-sha "$2" --no-post',
-            repo,
-            str(number),
-            head,
-        ]
-    )
-    if code == 0:
-        return []
-    detail = out.strip().splitlines()[-1][:300] if out.strip() else "no output"
-    if code == GATE_WAITING_EXIT:
-        return [f"a fresh oracle-gate evaluation of {head[:9]} does not pass: {detail}"]
-    return [f"a fresh oracle-gate evaluation of {head[:9]} failed (exit {code}): {detail}"]
+    return theseus_cli.gate_refusals(run, repo, number, head, label)
 
 
 def refusals(
@@ -367,7 +343,6 @@ def arm(
     suites: Callable[[Runner, str, str, str], list[str]] = suite_refusals,
     duration: Callable[[Runner, str, int, str], list[str]] = duration_verdict_refusals,
     visible: Callable[[Runner, str, str, str], list[str]] = visible_refusals,
-    bump: Callable[[Runner, str, int, str], list[str]] = pr_arm_omp_bump.bump_refusals,
     gate: Callable[[Runner, str, int, str], list[str]] = gate_refusals,
     batch: Callable[..., list[str]] = batch_refusals,
     require_batch: bool = False,
@@ -399,7 +374,6 @@ def arm(
             hidden_failures=[
                 *suites(run, repo, BASE_BRANCH, local_head),
                 *(duration(run, repo, int(view["number"]), local_head) if view.get("headRefOid") == local_head else []),
-                *(bump(run, repo, int(view["number"]), local_head) if view.get("headRefOid") == local_head else []),
                 *visible(run, repo, BASE_BRANCH, local_head),
                 *(gate(run, repo, int(view["number"]), local_head) if view.get("headRefOid") == local_head else []),
                 *(

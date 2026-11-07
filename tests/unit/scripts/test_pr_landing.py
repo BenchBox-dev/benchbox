@@ -269,7 +269,7 @@ def test_enqueue_refuses_moved_head() -> None:
 
 
 def test_enqueue_arms_on_stable_head() -> None:
-    run = FakeRun([(0, "x.py\n"), (0, "")])
+    run = FakeRun([(0, ""), (0, "")])
     assert landing.enqueue_pr(run, "o/r", 3, HEAD, HEAD)["enqueued"] is True
     assert "--auto" in run.calls[1]
 
@@ -668,42 +668,24 @@ def test_followup_blocked_reason_remains_the_owned_next_action() -> None:
 
 
 def test_enqueue_arms_with_match_head_commit() -> None:
-    run = FakeRun([(0, "x.py\n"), (0, "")])
+    run = FakeRun([(0, ""), (0, "")])
     assert landing.enqueue_pr(run, "o/r", 3, HEAD, HEAD)["enqueued"] is True
     assert "--match-head-commit" in run.calls[1]
     assert HEAD in run.calls[1]
 
 
-def test_enqueue_refuses_an_unreadable_pin_bump_check_without_arming() -> None:
-    run = FakeRun([(1, "boom")])
-    with pytest.raises(landing.LandingError, match="omp pin bump evidence could not be verified"):
+def test_enqueue_refuses_a_gate_evaluation_that_cannot_run_without_arming() -> None:
+    run = FakeRun([(2, "theseus: the verified Theseus install was refused")])
+    with pytest.raises(landing.LandingError, match="failed \\(exit 2\\)"):
         landing.enqueue_pr(run, "o/r", 3, HEAD, HEAD)
     assert all("--auto" not in call for call in run.calls)
 
 
-def test_enqueue_refuses_a_pin_bump_without_owner_evidence_without_arming() -> None:
-    policy = "omp:\n  version: {v}\n  builds:\n    darwin-arm64:\n      url: https://b.example/d\n      sha256: {h}\n"
-    shown = {
-        "origin/develop:": policy.format(v="1.0.0", h="ab" * 32),
-        f"{HEAD}:": policy.format(v="1.0.1", h="cd" * 32),
-    }
-
-    def run(args: list[str]) -> tuple[int, str]:
-        calls.append(args)
-        if args[:2] == ["git", "show"]:
-            return 0, shown[f"{HEAD}:"]
-        if args[:2] == ["gh", "api"] and "/contents/" in args[-1]:
-            return 0, shown["origin/develop:"]
-        if "--jq" in args and args[-1].endswith("/files"):
-            return 0, ".github/oracle-reviewers.yml\n"
-        if args[-1].endswith("/comments"):
-            return 0, ""
-        return 0, ""
-
-    calls: list[list[str]] = []
-    with pytest.raises(landing.LandingError, match="has no owner evidence"):
+def test_enqueue_refuses_a_gate_evaluation_that_does_not_pass_without_arming() -> None:
+    run = FakeRun([(3, "oracle-gate: waiting for omp bump evidence")])
+    with pytest.raises(landing.LandingError, match="does not pass"):
         landing.enqueue_pr(run, "o/r", 3, HEAD, HEAD)
-    assert all("--auto" not in call for call in calls)
+    assert all("--auto" not in call for call in run.calls)
 
 
 def test_bound_withdraw_refuses_foreign_pr() -> None:
@@ -1312,6 +1294,9 @@ with open(os.environ["CALLS"], "a", encoding="utf-8") as handle:
 if "--verify-parent" in sys.argv:
     sys.exit(int(os.environ.get("VERIFY_EXIT", "0")))
 if "scripts/oracle_local_review.py" in sys.argv:
+    if os.environ.get("LOCAL_REVIEW_CAUSE"):
+        with open(sys.argv[sys.argv.index("--unavailable-out") + 1], "w", encoding="utf-8") as handle:
+            handle.write("availability: " + os.environ["LOCAL_REVIEW_CAUSE"] + "\\n")
     sys.exit(int(os.environ["LOCAL_REVIEW_EXIT"]))
 if "scripts/pr_open_rest.py" in sys.argv:
     print(os.environ["PUBLISH"], 7, "https://github.com/BenchBox-dev/BenchBox/pull/7")
@@ -1358,6 +1343,7 @@ def _run_pr_open_result(
         "LOCAL_REVIEW_EXIT": str(local_review_exit),
         "HEAD_MOVES": "1" if head_moves else "",
         "VERIFY_EXIT": os.environ.get("VERIFY_EXIT", "0"),
+        "LOCAL_REVIEW_CAUSE": os.environ.get("LOCAL_REVIEW_CAUSE", ""),
     }
     result = subprocess.run(
         ["make", "-s", "pr-open", f"MAKE={stubs / 'fake-make'}", *variables],
@@ -1496,6 +1482,36 @@ def test_pr_open_refuses_before_any_push_when_the_local_oracle_review_does_not_c
 
 
 @requires_posix_make
+def test_pr_open_opens_a_draft_with_the_cause_when_the_local_review_is_unavailable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("LOCAL_REVIEW_CAUSE", "gateway unreachable")
+    result, calls, pushes = _run_pr_open_result(tmp_path, "created", 2, "READY=1")
+
+    assert result.returncode == 0, result.stderr.decode()
+    (publisher,) = [args for name, args in calls if name == "uv" and "scripts/pr_open_rest.py" in args]
+    assert ("--local-review-unavailable", "gateway unreachable") in _adjacent(publisher)
+    assert "--draft" in publisher
+    assert len(pushes) == 1
+    assert not [m for m in _makes(calls) if "pr-arm" in m or "pr-ready" in m]
+    assert "hosted review-verdict decides" in result.stdout.decode()
+
+
+@requires_posix_make
+@pytest.mark.parametrize(("exit_code", "cause"), [(2, ""), (1, "gateway unreachable"), (3, "gateway unreachable")])
+def test_pr_open_still_refuses_unless_the_unavailable_exit_names_an_availability_cause(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, exit_code: int, cause: str
+) -> None:
+    monkeypatch.setenv("LOCAL_REVIEW_CAUSE", cause)
+    result, calls, pushes = _run_pr_open_result(tmp_path, "created", exit_code)
+
+    assert result.returncode != 0
+    assert "local oracle review did not clear this head" in result.stderr.decode()
+    assert pushes == []
+    assert not [args for _, args in calls if "scripts/pr_open_rest.py" in args]
+
+
+@requires_posix_make
 def test_pr_open_pushes_and_arms_the_reviewed_sha_when_the_branch_ref_moves_during_the_review(tmp_path: Path) -> None:
     reviewed = "1111111111111111111111111111111111111111"
     result, calls, pushes = _run_pr_open_result(tmp_path, "created", 0, "READY=1", head_moves=True)
@@ -1521,6 +1537,8 @@ def test_pr_open_never_selects_the_reviewer_copy() -> None:
     [
         (f"oracle-review: waiting for the oracle's verdict on {'a' * 40}, or a stand-in attestation", "pending"),
         (f"oracle-review: waiting for the oracle's verdict on {'b' * 40}, or a stand-in attestation", "failure"),
+        (f"review: waiting for the review's verdict on {'a' * 40}, or a stand-in attestation", "pending"),
+        (f"review: waiting for the review's verdict on {'b' * 40}, or a stand-in attestation", "failure"),
         ("oracle-review: the oracle's latest review reports SHIP WITH FIXES, not success", "failure"),
         ("oracle-review: error: could not fetch reviews", "failure"),
         ("", "failure"),

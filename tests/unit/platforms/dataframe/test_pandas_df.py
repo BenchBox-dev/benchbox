@@ -888,3 +888,91 @@ class TestTypeAwareDateColumnInference:
             column_types=["INTEGER", "INTEGER", "INTEGER"],
         )
         assert df["lo_orderdate"].tolist() == [19920101, 19980815]
+
+
+class TestDateColumnArrowCast:
+    def test_parse_date_column_matches_python_date_reference_without_object_dtype(self):
+        from benchbox.platforms.dataframe.pandas_df import _parse_date_column
+
+        raw = pd.Series(["1992-01-01", None, "1998-12-31", "1996-02-29 10:30:00", "1970-01-01"], dtype=object)
+
+        result = _parse_date_column(raw)
+
+        assert str(result.dtype) == "date32[day][pyarrow]"
+        expected = [date(1992, 1, 1), None, date(1998, 12, 31), date(1996, 2, 29), date(1970, 1, 1)]
+        assert [None if pd.isna(v) else v for v in result.tolist()] == expected
+        assert result.isna().tolist() == [False, True, False, False, False]
+        assert result.astype("int32[pyarrow]").dropna().tolist() == [8035, 10591, 9555, 0]
+
+    def test_parse_date_column_does_not_materialise_python_dates(self, monkeypatch):
+        from benchbox.platforms.dataframe import pandas_df
+
+        def fail(*args, **kwargs):
+            raise AssertionError("per-cell Python date conversion used")
+
+        monkeypatch.setattr(pandas_df, "_parse_date_value", fail)
+        result = pandas_df._parse_date_column(pd.Series(["1995-03-15", None, "1994-01-01"], dtype=object))
+
+        assert result.isna().tolist() == [False, True, False]
+
+    def test_parse_date_column_timezone_aware_keeps_wall_clock_date(self):
+        from benchbox.platforms.dataframe.pandas_df import _parse_date_column
+
+        result = _parse_date_column(pd.Series(["1995-03-15T23:30:00+05:00", "1995-03-16T00:10:00+05:00"], dtype=object))
+
+        assert result.tolist() == [date(1995, 3, 15), date(1995, 3, 16)]
+
+    def test_read_csv_tpch_lineitem_dtypes_and_values(self, tmp_path):
+        adapter = PandasDataFrameAdapter()
+        csv_path = tmp_path / "lineitem.tbl"
+        csv_path.write_text(
+            "1|15519|785|1|17|24386.67|0.04|0.02|N|O|1996-03-13|1996-02-12|1996-03-22|DELIVER IN PERSON|TRUCK|c1|\n"
+            "1|6731|732|2|36|58958.28|0.09|0.06|N|O||1996-02-28|1996-04-20|TAKE BACK RETURN|MAIL||\n"
+        )
+        names = [
+            "l_orderkey",
+            "l_partkey",
+            "l_suppkey",
+            "l_linenumber",
+            "l_quantity",
+            "l_extendedprice",
+            "l_discount",
+            "l_tax",
+            "l_returnflag",
+            "l_linestatus",
+            "l_shipdate",
+            "l_commitdate",
+            "l_receiptdate",
+            "l_shipinstruct",
+            "l_shipmode",
+            "l_comment",
+        ]
+        types = [
+            "INTEGER",
+            "INTEGER",
+            "INTEGER",
+            "INTEGER",
+            "DECIMAL(15,2)",
+            "DECIMAL(15,2)",
+            "DECIMAL(15,2)",
+            "DECIMAL(15,2)",
+            "CHAR(1)",
+            "CHAR(1)",
+            "DATE",
+            "DATE",
+            "DATE",
+            "CHAR(25)",
+            "CHAR(10)",
+            "VARCHAR(44)",
+        ]
+
+        df = adapter.read_csv(csv_path, delimiter="|", header=None, names=names, null_marker="", column_types=types)
+
+        assert len(df) == 2
+        for column in ("l_shipdate", "l_commitdate", "l_receiptdate"):
+            assert str(df[column].dtype) == "date32[day][pyarrow]"
+        assert df["l_shipdate"].isna().tolist() == [False, True]
+        assert df["l_commitdate"].tolist() == [date(1996, 2, 12), date(1996, 2, 28)]
+        assert df["l_receiptdate"].tolist() == [date(1996, 3, 22), date(1996, 4, 20)]
+        assert df["l_extendedprice"].tolist() == [24386.67, 58958.28]
+        assert df["l_comment"].isna().tolist() == [False, True]

@@ -58,8 +58,8 @@ Owner decisions of 2026-10-27:
   05:43 UTC and reports failures to a site-local issue labelled `t3:browser`; its dispatch run 40609640737 passed on
   both browsers. Core `nightly-v2.yml` has no browser job.
 - GizmoSQL stays in the release rehearsal candidate.
-- Deleting the `release` branch and its ruleset is an owner-run step after the dlv2-52 publication; no agent deletes
-  them.
+- The `release` branch and its ruleset were deleted by the owner on 2026-11-07, after the first publication on the new
+  release path; no agent deleted them.
 - The merge-queue and auto-revert branch namespaces were purged on 2026-10-27: 105 remote branches were deleted
   (6 `gh-readonly-queue`, 8 `auto-revert`, 46 closed-PR `auto/results-mirror`, 45 other closed or merged pull
   request branches), with their tips archived in the tracker. The `release`, `develop`, `published-results` and
@@ -87,9 +87,9 @@ Owner decisions of 2026-10-27:
 | Wheel installability | HIGH-RISK | `package-smoke` job, release workflow build | release workflow artifact verification | pass: `tests/unit/workflows/test_release_v2_workflow.py::test_install_matrix_installs_the_staged_wheel_not_the_checkout`, `test_workflow_covers_the_twelve_cell_install_matrix`; refuse: `test_publish_needs_every_gate_job`, `tests/unit/scripts/test_release_admitted_dist.py::test_refuses_altered_distribution_bytes`; blocker `release-v2-first-run`: `release-v2.yml` has no workflow run, so the install matrix has no run evidence until the TestPyPI rehearsal | blocked: release-v2-first-run |
 | Shipped bundled generator integrity | HIGH-RISK | `benchbox/_binaries/SHA256MANIFEST.json`, `tests/unit/utils/test_binary_manifest.py` | trunk.yml `dist-artifact` verifies source, wheel, and sdist membership and hashes on each push to develop; installed-package verifier for release checks | pass: `tests/unit/utils/test_binary_manifest.py::test_shipped_manifest_covers_the_real_package`, Trunk run 40599245390 job `dist-artifact` success at `db5cff9be`; refuse: `test_tree_rejects_membership_and_byte_changes`, `test_distribution_uses_trusted_source_manifest`, `test_archive_rejects_alias_overwrites_and_nonregular_members` | proven |
 | Dependency bounds | PROCESS-ONLY | `scripts/check_dependency_bounds.py`, `tests/unit/scripts/test_check_dependency_bounds.py` | ci.yml `tooling` | waiver: reports caps approaching their ceiling; a miss delays a dependency bump and cannot merge unsound code or publish a bad release | waived |
-| Release curation and readiness | HIGH-RISK | `scripts/check_release_curation.py`, `tests/unit/scripts/test_check_release_curation.py`, `.github/workflows/validate-release-pr.yml`, `.github/workflows/release-canary.yml`, `scripts/release_flow.py`, `tests/unit/scripts/test_release_flow.py` | ci.yml always-required `ci-paths` selects release identity changes and checks them against the immutable event base; release workflow | pass: `tests/unit/scripts/test_check_release_curation.py::test_real_makefile_curation_list_parses_to_paths_only`, `test_curated_release_make_runtime_executes_help_and_inventory`; refuse: `test_curated_release_development_targets_fail_with_explicit_policy`, `tests/unit/scripts/test_release_flow.py`, `tests/unit/workflows/test_release_v2_workflow.py::test_workflow_never_falls_back_to_an_older_run`; blocker `release-v2-first-run`: no release workflow run exercises admission end to end | blocked: release-v2-first-run |
-| Ruleset and settings drift | HIGH-RISK | `scripts/ruleset_drift_check.py`, `tests/unit/release/test_ruleset_drift_review_coverage.py`, `tests/unit/release/test_ruleset_review_enforcement.py` | Advisory nightly and manual verification; enforced release-canary and release-PR bootstrap; thread-resolution and tag-protection predicates retained | pass: `tests/unit/release/test_ruleset_drift_review_coverage.py::test_develop_drift_passes_when_the_app_bound_gate_is_required`, `tests/unit/release/test_ruleset_review_enforcement.py::test_enforced_ruleset_passes`; refuse: `test_oracle_review_alone_is_a_blocking_drift`, `test_missing_oracle_contexts_are_blocking_despite_stale_expected_contexts`, `test_unenforced_thread_resolution_fails`, `test_oracle_gate_without_the_oracle_app_binding_fails`, `test_missing_oracle_gate_fails` | proven |
-| Soundness-path review | HIGH-RISK | `.github/soundness-paths.txt`, `_project/scripts/soundness_paths.py`, `tests/unit/scripts/test_soundness_paths.py` | Required App-bound oracle-gate on the exact head, required thread resolution and post-merge soundness digest | pass: `tests/unit/scripts/test_oracle_gate.py::test_ship_with_a_receipt_passes`, `test_exact_standin_for_the_head_passes`, `tests/unit/scripts/test_oracle_review_check.py::test_the_apps_success_verdict_on_the_head_passes`; refuse: `test_oracle_gate.py::test_ship_without_a_same_pr_receipt_waits`, `test_absent_verdict_waits`, `test_standin_with_extra_text_waits`, `test_oracle_review_check.py::test_no_verdict_waits_and_names_the_standin_marker`, `tests/unit/workflows/test_oracle_gate_workflow.py::test_a_checkout_of_the_pull_request_head_is_rejected`; scope: `tests/unit/scripts/test_soundness_paths.py::test_soundness_predicate_matches_review_required_paths` | proven |
+| Release readiness | HIGH-RISK | `.github/workflows/release-canary.yml`, `scripts/release_flow.py`, `tests/unit/scripts/test_release_flow.py` | ci.yml always-required `ci-paths` selects release identity changes and checks them against the immutable event base; `release-v2.yml` admission, install matrix, release UAT gate and publish-time tag re-check. The legacy release path refused publication unless the latest `release-canary.yml` run was green, under 48 hours old and on an ancestor of the release head; `release-v2.yml` does not yet consult the canary, so that freshness check is manual (release-guide.md, "Release canary and ruleset drift") until the release evidence check requires it | pass: `release-v2.yml` run 42039780363 admitted, installed, gated and published `v0.5.0rc5` to TestPyPI, and run 42133357291 did the same for `v0.5.0` on PyPI, with hashes equal to the admitted `SHA256SUMS` and attestations verified; refuse: `tests/unit/scripts/test_release_flow.py`, `tests/unit/workflows/test_release_v2_workflow.py::test_workflow_never_falls_back_to_an_older_run`, invalid-tag dispatch run 41949365404 refused in admit; blocker `release-canary-freshness`: no automated check requires a fresh green canary before publication | blocked: release-canary-freshness |
+| Ruleset and settings drift | HIGH-RISK | `scripts/ruleset_drift_check.py`, `tests/unit/release/test_ruleset_drift_review_coverage.py`, `tests/unit/release/test_ruleset_review_enforcement.py` | Advisory nightly and manual verification; enforced release-canary and release-v2 admission; thread-resolution and tag-protection predicates retained | pass: `tests/unit/release/test_ruleset_drift_review_coverage.py::test_develop_drift_passes_when_the_app_bound_gate_is_required`, `tests/unit/release/test_ruleset_review_enforcement.py::test_enforced_ruleset_passes`; refuse: `test_oracle_review_alone_is_a_blocking_drift`, `test_missing_oracle_contexts_are_blocking_despite_stale_expected_contexts`, `test_unenforced_thread_resolution_fails`, `test_oracle_gate_without_the_oracle_app_binding_fails`, `test_missing_oracle_gate_fails` | proven |
+| Soundness-path review | HIGH-RISK | `.github/soundness-paths.txt`, `_project/scripts/soundness_paths.py` | Required App-bound oracle-gate on the exact head, required thread resolution and post-merge soundness digest | pass: `tests/unit/scripts/test_soundness_manifest.py::test_soundness_predicate_matches_review_required_paths` (the live `.github/soundness-paths.txt` through the vendored matcher), `test_soundness_predicate_ignores_fast_default_paths`, `tests/unit/scripts/test_theseus_lock.py::test_the_vendored_matcher_is_the_copy_the_lock_pins`, `tests/unit/scripts/test_soundness_merge_digest.py::test_a_commit_is_judged_by_the_manifest_of_its_first_parent`; refuse: `tests/unit/workflows/test_oracle_gate_workflow.py::test_only_the_theseus_caller_jobs_can_post_the_gate_context`, `test_soundness_merge_digest.py::test_a_commit_that_weakens_the_predicate_cannot_hide_an_earlier_match`, `test_a_commit_that_removes_a_rule_and_edits_the_path_it_covered_is_still_flagged`, `test_theseus_lock.py::test_each_caller_workflow_is_pinned_to_the_locked_commit_in_both_places`; engine evidence lives in Theseus (`joeharris76/theseus`): `tests/unit/test_soundness_paths.py::test_soundness_predicate_matches_review_required_paths`, `tests/unit/test_review_check.py`, `tests/unit/test_gate.py`, `tests/unit/test_matcher_isolated.py` | proven here for the vendored matcher, caller pins and digest; the gate and review decisions are proven in Theseus |
 | Corpus-to-artifact bijection | HIGH-RISK | `scripts/publication/check_corpus_bijection.py` with `publication/ledger-seed.json` | In-bundle `corpus_bijection` runs the former site deploy gate's form at the bundle commit, with the ledger seed; the bundle build refuses to run without the seed, so the seed stays until its dispositions move elsewhere. It proves snapshot-to-tree consistency only. Cross-commit trust chains through contiguous `validator_parity` ranges (parent = newest unexpired develop bundle that is an ancestor; the build fails without one unless a dispatch names the parent), the `certified_by` trunk run, and the bundle resolve in the `BenchBox-dev/benchbox-site` deploy; `explorer_compat` and `snapshot_invariants` run on every bundle, and `corpus_validation` runs `results-data/validate_corpus.py` over the whole corpus on every bundle, so a validator-only change is checked against existing bundles before the next deploy | pass: `tests/unit/scripts/publication/test_check_corpus_bijection.py::test_check_bijection_exact_pass`, site-inputs run 40602249886 success at `db5cff9be`; refuse: `test_check_bijection_reports_unaccounted_skip`, `test_main_expect_source_rejects_moved_ref`; blocker `site-deploy-gate-evidence`: the cross-commit chain resolved in the `benchbox-site` deploy has no bound evidence | blocked: site-deploy-gate-evidence |
 | Durable auto-merge hold | HIGH-RISK | `no-auto-merge` label and draft status, `.github/workflows/pr-hold.yml` | Exact-head arming refuses holds; the required `hold` check fails while the label is present, so an armed or raw-merged PR cannot land | pass: `tests/unit/workflows/test_pr_hold_workflow.py::test_hold_step_fails_only_while_the_label_is_present[false-0]`; refuse: `test_hold_step_fails_only_while_the_label_is_present[true-1]`, `tests/unit/scripts/test_pr_arm.py::test_a_hold_label_wins_even_when_everything_else_is_fine`; context: `test_pr_hold_workflow.py::test_hold_job_reports_under_the_required_context_name`, `test_runbook_requires_the_hold_context` | proven |
 | Workflow context validity | HIGH-RISK | `tests/unit/workflows/test_workflow_expression_contexts.py` | ci.yml `tooling` | pass: `tests/unit/workflows/test_workflow_expression_contexts.py::test_expressions_name_known_contexts`, `test_job_level_env_uses_only_available_contexts`; refuse: `test_detector_flags_the_known_failure_shapes` | proven |
@@ -129,27 +129,24 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `extension-smoke.yml` | product-safety | Extension smoke coverage |
 | `gitignore-lint.yml` | tooling | Hygiene; standalone, not part of the ci.yml units |
 | `green-unmerged-sweep.yml` | tooling | Daily sweep that upserts the green-but-unmerged PR digest issue; never enables auto-merge |
-| `lint.yml` | tooling | Lint gate |
 | `mirror-ci-images.yml` | product-safety | Seeds digest-pinned images in GHCR only when absent; scheduled CI checks mirrors by digest without routine Docker Hub reads |
 | `nightly-v2.yml` | product-safety | Nightly T3: platform matrix, docker engines, extension, install, DuckDB and CedarDB throughput UAT with the throughput commit status published through the `t3:throughput` domain, and drift with selection failures reported through `t3:drift`; `t3:sql-execution-gate-obt`, `t3:parity`, `t3:integration` and `t3:mirror-postgres17` are reported domains. It replaced the retired Nightly Validation and Cross-Platform Validation workflows. The browser check is owned by the site repository and has no domain here (`docs/internal/nightly-t3.md` lists every domain) |
 | `omp-pin-bump.yml` | tooling | Scheduled omp pin bump: a read-only job builds and proves the candidate, and a separate job holding the write token opens the bump pull request, which `oracle-gate` holds until the owner posts the Mac evidence line |
 | `omp-pin-watch.yml` | tooling | Scheduled comparison of the first reviews after an omp pin bump with the previous week, with a read-only job that keeps the attempt ledger and a separate job holding the write token that opens a revert pull request, which `oracle-gate` holds until the owner posts the Mac evidence line for the restored pin |
-| `oracle-gate.yml` | product-safety | Required gate from trusted code: result-affecting changes need a success review of the head from the `benchbox-oracle` App, whose Bot identity only the owner controls, or a stand-in approval comment from an attester account posted after the oracle's latest review; that account is also the one local automation uses, so the stand-in records who vouched, not that a human read it. Posted as `oracle-gate` for the head from develop code with the App token on stand-in comments, head and base changes and the scheduled sweep, and one of two in-tree writers (the other is the verdict publish step); every head change gets a pending `oracle-gate` before evaluation so a push back to an earlier green head cannot keep a stale green. Open review threads are enforced by the ruleset's required thread resolution, not by this gate; the required check is scoped to the oracle App in the ruleset |
-| `oracle-review.yml` | product-safety | Review-event notification, not a check: a no-op job on oracle review edited and dismissed events only, whose completion makes `oracle-gate` re-evaluate that head |
-| `oracle-verdict.yml` | product-safety | Self-hosted soundness review: reviewers chosen by tier and availability in one review job, each holding only the gateway client token, and a review and non-required `oracle-verdict` status posted by the owner's App, followed in the same publish step by the required `oracle-gate` status for the exact head, evaluated from the trusted develop checkout with the same decision the gate workflow uses and posted with the App token |
-| `perf-smoke.yml` | product-safety | Performance smoke |
+| `review-gate.yml` | product-safety | Required gate from trusted code: result-affecting changes need a success review of the head from the `benchbox-oracle` App, whose Bot identity only the owner controls, or a stand-in approval comment from an attester account posted after the oracle's latest review; that account is also the one local automation uses, so the stand-in records who vouched, not that a human read it. Posted as `oracle-gate` for the head from develop code with the App token on stand-in comments, head and base changes and the scheduled sweep, and one of two in-tree writers (the other is the verdict publish step); every head change gets a pending `oracle-gate` before evaluation so a push back to an earlier green head cannot keep a stale green. Open review threads are enforced by the ruleset's required thread resolution, not by this gate; the required check is scoped to the oracle App in the ruleset |
+| `review-request.yml` | product-safety | Review-event notification, not a check: a no-op job on oracle review edited and dismissed events only, whose completion makes `oracle-gate` re-evaluate that head |
+| `review-verdict.yml` | product-safety | Self-hosted soundness review: reviewers chosen by tier and availability in one review job, each holding only the gateway client token, and a review and non-required `oracle-verdict` status posted by the owner's App, followed in the same publish step by the required `oracle-gate` status for the exact head, evaluated from the trusted develop checkout with the same decision the gate workflow uses and posted with the App token |
 | `pr-hold.yml` | product-safety | Required `hold` check: fails while the `no-auto-merge` label is present, on every label change |
 | `pricing-data-drift-check.yml` | product-safety | Pricing data integrity |
-| `release.yml` | product-safety | Release publishing |
 | `release-v2.yml` | product-safety | Tag-triggered publication of the admitted trunk artifacts: annotated tag, latest-run admission, install matrix, artifact-bound UAT, publish-time tag re-check, attestation |
 | `release-canary.yml` | product-safety | Release canary protection |
 | `seed-corpus.yml` | product-safety | Corpus seeding |
 | `site-inputs.yml` | product-safety | Versioned site-inputs bundle build, attestation, artifact upload and site dispatch |
 | `soundness-merge-digest.yml` | product-safety | Post-merge soundness review digest |
 | `sqlglot-fork-refresh.yml` | tooling | Nightly SQLGlot fork refresh: an unprivileged job refreshes a fork checkout onto a new upstream tag, a job holding only the fork token pushes it and opens the fork pull request, and an issue-only job raises or closes the follow-up issue; it never merges or releases |
+| `sqlglot-delivery.yml` | product-safety | Daily SQLGlot delivery consumer: a read-only job plans and prepares the adoption from the fork's verified delivery, and a separate job holding the App token publishes one automation pull request and arms it through the normal arming checks; gated by a kill switch and a dry-run default |
 | `submission-validator-drift-check.yml` | product-safety | Submission validator sync |
 | `sync-results-data-to-published.yml` | product-safety | Corpus trust boundary sync |
-| `test.yml` | product-safety | Test tiers; replaced by ci.yml units |
 | `todo-state-validate.yml` | tooling | Tracker state validation |
 | `trunk-coverage.yml` | product-safety | Scheduled (six a day) and dispatched instrumented four-shard medium tier, v2 coverage map combine, published-map self-fetch, and a map-staleness issue on its own daily cron; never consulted by arming |
 | `trunk.yml` | product-safety | Develop-push fast lane, uninstrumented four-shard medium tier, correctness gate, required-local-cases, whole-tree comment-policy scan and verified release artifact; runs one develop push at a time, and only the newest waiting push follows |
@@ -157,7 +154,6 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `upload-answers.yml` | product-safety | Answer file publication |
 | `trunk-duration-trend.yml` | tooling | Daily comparison of Trunk job p50 durations with the prior week; opens or closes one issue assigned to the repository owner; read-only actions access plus issue writes |
 | `fast-duration-baseline-refresh.yml` | tooling | Weekly regeneration of the committed fast-tier duration baseline from successful merged-PR fast-junit artifacts; opens one pull request with contents and pull-requests write only, bounded logged API calls, and a medium-shard drift report |
-| `validate-release-pr.yml` | product-safety | Release PR base validation |
 | `validate-submission.yml` | product-safety | Submission validation |
 | `validate-submission-comment.yml` | product-safety | Submission validation comment |
 | `windows-fast.yml` | product-safety | Dispatch-only Windows fast unit suite, the same command as the nightly `t3:windows` domain, preceded by the installed-wheel bundled SQLGlot runtime smoke |
@@ -179,6 +175,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_oracle_review_workflow.py` | product-safety | The notification-only shape of the oracle-review workflow: edited and dismissed review triggers, empty permissions, one `review-event` job, no checkout, secrets or tools |
 | `test_oracle_verdict_workflow.py` | product-safety | Oracle review triggers, guards, the single review job's step order and secret scoping, and App-only posting |
 | `test_sqlglot_fork_refresh_workflow.py` | tooling | The refresh workflow checks out no credentials, scopes the fork token to the push step, grants issue write only to the follow-up job and pins every action |
+| `test_sqlglot_delivery_workflow.py` | product-safety | The delivery workflow's read-only credential-free preparation job, App token confined to the publish job, kill switch and dry-run gating, repository and branch guard, and pinned actions |
 | `test_t2_partition_workflow.py` | product-safety | Complete medium selection, correctness gate conservation, and binary framing placement |
 | `test_comment_policy_nightly_workflow.py` | tooling | Nightly comment-policy workflow triggers, develop checkout, read-only permissions, whole-tree launcher call and shared action pins |
 | `test_trunk_coverage_workflow.py` | product-safety | Coverage workflow triggers, instrumented shards, map combine with self-fetch, schedule-only staleness issue |
@@ -186,7 +183,6 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_trunk_red_disarm_workflow.py` | product-safety | Red-trunk disarm trigger, develop-push filter, exact permissions, workflow token and full-history checkout |
 | `test_published_results_base_ci.py` | product-safety | Published corpus CI |
 | `test_release_canary_shard_evidence.py` | product-safety | Release canary evidence |
-| `test_release_uat_charter_guard.py` | product-safety | Release charter guard |
 | `test_seed_corpus_pr_base.py` | product-safety | Corpus seeding |
 | `test_site_inputs_workflow.py` | product-safety | Site-inputs parent resolution by SHA |
 | `test_stacked_pr_base_guard.py` | pure-process | Stacked-PR base mechanics |
@@ -219,7 +215,6 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_check_duplicate_code.py` | tooling |
 | `test_check_makefile_inventory.py` | tooling |
 | `test_check_project_references.py` | product-safety |
-| `test_check_release_curation.py` | product-safety |
 | `test_check_rerun_shard_retention.py` | tooling |
 | `test_check_sqlglot_repro_retirement.py` | tooling |
 | `test_check_submission_validator_sync.py` | product-safety |
@@ -252,21 +247,6 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_host_lock.py` | pure-process |
 | `test_migrate_clickhouse_labels.py` | product-safety |
 | `test_mirror_partial_validation_policy.py` | pure-process |
-| `test_oracle_gate.py` | product-safety | Gate decision parity with the shared checker decision, status mapping and App posting |
-| `test_oracle_review_check.py` | product-safety | Oracle review or stand-in approval decision for soundness-path changes |
-| `test_oracle_review_check_omp_bump.py` | product-safety | The gate holds an omp pin bump until head-bound owner evidence matches the pin, including truncated file lists |
-| `oracle_reviewers/test_absence.py` | product-safety |
-| `oracle_reviewers/test_attempts.py` | product-safety |
-| `oracle_reviewers/test_brief.py` | product-safety |
-| `oracle_reviewers/test_classifier.py` | product-safety |
-| `oracle_reviewers/test_cli_plan.py` | product-safety |
-| `oracle_reviewers/test_commands.py` | product-safety |
-| `oracle_reviewers/test_github.py` | product-safety |
-| `oracle_reviewers/test_policy.py` | product-safety |
-| `oracle_reviewers/test_retry.py` | product-safety |
-| `oracle_reviewers/test_runner.py` | product-safety |
-| `oracle_reviewers/test_selection.py` | product-safety |
-| `oracle_reviewers/test_verdict.py` | product-safety |
 | `test_path_filter_decision.py` | tooling |
 | `test_preflight_targets.py` | pure-process |
 | `test_perf_smoke_baseline.py` | pure-process |
@@ -284,8 +264,6 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_release_admitted_dist.py` | product-safety | Admitted directory matches its admission receipt, the tag and the commit before publication; only the verified wheel and sdist are staged |
 | `test_release_artifact_consumer.py` | product-safety | Producer receipt, provenance selection and archive admission fail closed |
 | `test_release_artifact_execution.py` | product-safety | Real tag objects, isolated verifier boundary, credential and Git configuration isolation, bounded download and no-replace publication |
-| `test_release_cut_start.py` | product-safety |
-| `test_release_finalize.py` | product-safety |
 | `test_release_flow.py` | product-safety |
 | `test_results_explorer_corpus_migrate.py` | product-safety |
 | `test_results_explorer_cpu_attestation_backfill.py` | product-safety |
@@ -300,6 +278,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_sqlglot_generator.py` | product-safety |
 | `test_sqlglot_generator_known_failures.py` | product-safety |
 | `test_sqlglot_fork_refresh.py` | tooling |
+| `test_sqlglot_delivery.py` | product-safety | Delivery planning, trust-root refusals, suppression from the receipt alone, one-active-pull-request reconciliation, ownership proof by recorded commit and body-edit history, and live re-validation before arming |
 | `test_sqlite_extract_repro.py` | product-safety |
 | `test_submission_workflow_waiver.py` | product-safety |
 | `test_timing_policy_check.py` | product-safety |
@@ -355,7 +334,6 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_release_canary_incident.py` | product-safety | Release canary |
 | `test_release_canary_sharding.py` | product-safety | Release canary sharding |
 | `test_release_infrastructure.py` | product-safety | Release infrastructure |
-| `test_release_readiness.py` | product-safety | Release readiness |
 
 ### `scripts/`
 
@@ -364,11 +342,11 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `validate_submission.py` | product-safety | Submission validation (KEEP trap) |
 | `ruleset_drift_check.py` | product-safety | Ruleset drift (KEEP trap) |
 | `check_dependency_bounds.py` | product-safety | Dependency bounds |
-| `check_release_curation.py` | product-safety | Release curation |
 | `changelog_fragments.py` | tooling | Changelog fragment validation, rendering, required-entry decision and Unreleased guard |
 | `check_sqlglot_upstream_freshness.py` | product-safety | Bundled SQLGlot freshness release gate |
 | `check_sqlglot_advisories.py` | product-safety | Bundled SQLGlot published-advisory release gate |
 | `sqlglot_fork_refresh.py` | tooling | Decides whether a new upstream tag refreshes mechanically, pushes the refresh, and syncs the follow-up issue |
+| `sqlglot_delivery.py` | product-safety | Consumes the fork's verified runtime deliveries: plans against the reviewed trust root, prepares the adoption commit, publishes one automation-owned pull request and arms it only through the existing arming rules |
 | `generate_landing_quickstarts.py` | product-safety | Landing quickstart generation |
 | `site_inputs.py` | product-safety | Site-inputs bundle build and verify |
 | `site_inputs_parent.py` | product-safety | Site-inputs parent resolution by SHA |
@@ -398,8 +376,6 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `timing_policy_check.py` | product-safety | Monotonic-clock policy (KEEP trap) |
 | `fast_lane_ceiling_check.py` | pure-process | Fast-lane marker and path guards; retires with the fast lane |
 | `soundness_paths.py` | product-safety | Soundness path manifest |
-| `oracle_review_check.py` | product-safety | Oracle review or stand-in approval decision and GitHub readers shared by the gate and the verdict run, for soundness-path changes; the attester account is the one local automation also uses |
-| `oracle_reviewers/cli.py` | product-safety | Shadow review entry point; its package holds the classifier, reviewer selection, absence classification and verdict validation |
 | `ruleset_review_enforcement.py` | product-safety | Ruleset review enforcement |
 | `soundness_drain_report.py` | pure-process | Drain digest mechanics |
 | `soundness_merge_digest.py` | product-safety | Post-merge soundness review digest |

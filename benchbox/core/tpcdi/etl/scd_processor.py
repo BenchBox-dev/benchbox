@@ -457,22 +457,21 @@ class EnhancedSCDType2Processor:
         if sk_column not in records_to_insert.columns:
             records_to_insert[sk_column] = self._allocate_surrogate_keys(table_name, sk_column, len(records_to_insert))
 
-        audit_entries = []
-        for _idx, record in records_to_insert.iterrows():
-            business_key = {col: record[col] for col in business_keys}
-            audit_entries.append(
-                SCDChangeRecord(
-                    table_name=table_name,
-                    business_key=business_key,
-                    surrogate_key=record[sk_column],
-                    change_type="INSERT",
-                    effective_date=effective_date,
-                    batch_id=batch_id,
-                    source_record=record.to_dict(),
-                )
+        insert_rows = records_to_insert.to_dict("records")
+        audit_entries = [
+            SCDChangeRecord(
+                table_name=table_name,
+                business_key={col: record[col] for col in business_keys},
+                surrogate_key=record[sk_column],
+                change_type="INSERT",
+                effective_date=effective_date,
+                batch_id=batch_id,
+                source_record=dict(record),
             )
+            for record in insert_rows
+        ]
 
-        records_inserted = self._insert_rows(table_name, records_to_insert.to_dict("records"), table_columns)
+        records_inserted = self._insert_rows(table_name, insert_rows, table_columns)
         self.change_audit_trail.extend(audit_entries)
 
         logger.debug(f"Inserted {records_inserted} records into {table_name}")
@@ -504,24 +503,25 @@ class EnhancedSCDType2Processor:
         new_current_records = []
         audit_entries = []
 
-        for position, (_idx, row) in enumerate(scd_changes.iterrows()):
+        change_columns = list(scd_changes.columns)
+        for position, row in enumerate(scd_changes.to_dict("records")):
             new_record: dict[str, Any] = {}
             changed_columns = []
 
-            for col in row.index:
+            for col in change_columns:
                 if col.endswith("_current"):
                     new_record.setdefault(col[: -len("_current")], row[col])
                 elif not col.endswith("_new"):
                     new_record[col] = row[col]
 
-            for col in row.index:
+            for col in change_columns:
                 if col.endswith("_new"):
                     original_col = col[:-4]
                     current_col = f"{original_col}_current"
 
                     new_record[original_col] = row[col]
 
-                    if current_col in row.index and row[col] != row[current_col]:
+                    if current_col in row and row[col] != row[current_col]:
                         changed_columns.append(
                             {
                                 "column": original_col,
@@ -550,7 +550,7 @@ class EnhancedSCDType2Processor:
                     effective_date=effective_date,
                     batch_id=batch_id,
                     source_record=new_record.copy(),
-                    target_record=row.to_dict(),
+                    target_record=dict(row),
                 )
             )
 
@@ -718,17 +718,27 @@ class EnhancedSCDType2Processor:
             if source in non_scd_updates.columns:
                 value_sources.append((_validated_identifier(col), source))
 
-        assignments = ", ".join([f"{batch_column} = ?", *(f"{col} = ?" for col, _ in value_sources)])
-        sql = f"UPDATE {table} SET {assignments} WHERE {sk_name} = ?"
+        value_columns = [col for col, _ in value_sources]
+        join_columns = ["bid", "sk", *(f"v{position}" for position in range(len(value_columns)))]
+        assignments = ", ".join(
+            [f"{batch_column} = u.bid", *(f"{col} = u.{alias}" for col, alias in zip(value_columns, join_columns[2:]))]
+        )
+        source_columns = [current_sk_col, *(source for _, source in value_sources)]
+        updates = non_scd_updates[source_columns].drop_duplicates(subset=[current_sk_col], keep="last")
+        update_rows = [
+            [batch_id, *(_to_db_value(value) for value in row)] for row in updates.itertuples(index=False, name=None)
+        ]
+        first_select = "SELECT " + ", ".join(f"? AS {alias}" for alias in join_columns)
+        next_select = "SELECT " + ", ".join(["?"] * len(join_columns))
+        rows_per_statement = max(1, _PARAMETER_CHUNK // len(join_columns))
 
-        records_updated = 0
-        for _idx, row in non_scd_updates.iterrows():
-            params = [batch_id, *(_to_db_value(row[source]) for _, source in value_sources)]
-            params.append(_to_db_value(row[current_sk_col]))
-            updated = self._execute_dml(sql, params)
-            if updated != 1:
-                raise RuntimeError(f"Non-SCD update on {table_name} changed {updated} rows for one surrogate key")
-            records_updated += updated
+        for chunk in _chunks(update_rows, rows_per_statement):
+            source = " UNION ALL ".join([first_select, *([next_select] * (len(chunk) - 1))])
+            sql = f"UPDATE {table} SET {assignments} FROM ({source}) AS u WHERE {table}.{sk_name} = u.sk"
+            updated = self._execute_dml(sql, [value for row in chunk for value in row])
+            if updated != len(chunk):
+                raise RuntimeError(f"Non-SCD update on {table_name} changed {updated} rows for {len(chunk)} keys")
+        records_updated = len(non_scd_updates)
 
         logger.debug(f"Overwrote non-SCD columns and batch id on {records_updated} records in {table_name}")
 
@@ -745,13 +755,13 @@ class EnhancedSCDType2Processor:
         audit_entries = []
         datetime.now()
 
-        for _, record in change_analysis["unchanged_records"].iterrows():
+        for record in change_analysis["unchanged_records"].to_dict("records"):
             business_key = {}
-            for col in record.index:
+            for col in record:
                 if not col.endswith(("_new", "_current")) and not col.startswith("SK_"):
-                    if f"{col}_new" in record.index:
+                    if f"{col}_new" in record:
                         business_key[col] = record[f"{col}_new"]
-                    elif f"{col}_current" in record.index:
+                    elif f"{col}_current" in record:
                         business_key[col] = record[f"{col}_current"]
 
             change_record = SCDChangeRecord(
@@ -879,7 +889,7 @@ class EnhancedSCDType2Processor:
         changes = []
 
         if len(current_data) == 0:
-            for idx, _row in new_data.iterrows():
+            for idx in new_data.index:
                 change = SCDChangeRecord(
                     table_name="dimension",
                     business_key={"key": idx},
@@ -889,13 +899,14 @@ class EnhancedSCDType2Processor:
                 )
                 changes.append(change)
         else:
-            for idx, new_row in new_data.iterrows():
-                if idx < len(current_data):
-                    current_row = current_data.iloc[idx]
+            current_records = current_data.to_dict("records")
+            for idx, new_row in zip(new_data.index, new_data.to_dict("records")):
+                if idx < len(current_records):
+                    current_row = current_records[idx]
                     has_changes = False
 
                     for col in scd_columns:
-                        if col in new_row.index and col in current_row.index:
+                        if col in new_row and col in current_row:
                             if new_row[col] != current_row[col]:
                                 has_changes = True
                                 break

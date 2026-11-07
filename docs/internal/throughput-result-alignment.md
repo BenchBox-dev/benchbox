@@ -40,13 +40,19 @@ default matches.
 durations. `start_wall_time` and `end_wall_time` are ISO-8601 wall-clock
 event times and are the only stream timestamps exported to result bundles.
 
-**Timing window.** A stream's window starts after its connection is open and
+**Timing window** (clause-by-clause timer sites: [TPC measured intervals](tpc-measured-intervals.md)). A stream's window starts after its connection is open and
 ends before the connection is closed, so connection setup (connect, session
 settings, benchmark configuration) and teardown are not part of Total Test
 Time. The TPC specifications measure the interval from the first query of
 the first stream to the completion of the last query of the last stream.
 After `compute_metrics()` the throughput phase `start_time`, `end_time` and
 `duration_ms` all describe that same interval.
+
+The TPC-H refresh stream follows the same rule: its `start_monotonic` and
+`start_time` are taken after the refresh connection factory returns, and its
+`end_monotonic` and `end_time` are taken before the connection is closed.
+The refresh stream bounds are part of the Ts span, so refresh connection
+setup no longer counts toward Total Test Time.
 
 **Outcome:** `ThroughputStreamResult` in `core.throughput.result` replaces
 both. The existing names become aliases in their respective modules for

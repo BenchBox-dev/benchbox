@@ -56,8 +56,7 @@ stage-1 completion (nor stage 3 before stage-2 completion), enforces the
 mechanized campaign-report items below, and writes the combined evidence file
 to `_project/release-evidence/uat-gate-summary.json`. Exit 0 means the
 campaign report is complete. The report may be reviewed or committed as
-historical evidence; `scripts/release_readiness_check.py` does not require it
-for `validate-base` (see `docs/internal/release-guide.md`).
+historical evidence; no release gate reads it.
 
 `cross_scale_coverage_min_pairs` in each config is the report-phase teeth: a
 breach forces a non-zero report exit, so a partial or regressed sweep cannot
@@ -74,7 +73,7 @@ sidecar present (`unreachable_is_estimated=false`), explorer smoke actually
 ran for stages that configure it, one clean `source_commit_sha` across
 stages (`source_dirty=false`), and no ordering violations. Exit 0 = COMPLETE;
 any HOLD reason is printed and lands in the evidence file's `reasons`. It is a
-campaign report, not a release-cut precondition.
+campaign report, not a release input.
 
 Still useful before recording the report: DuckDB (the reference) is green or
 its cells are explicitly pruned, and no `NO_JSON` cell lacks captured error

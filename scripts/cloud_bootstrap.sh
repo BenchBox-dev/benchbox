@@ -55,7 +55,7 @@ sh scripts/cloud_gateway.sh up || gateway_rc=$?
   printf 'author=%s\n' "$(git var GIT_AUTHOR_IDENT | sed 's/ [0-9]* [-+][0-9]*$//')"
   printf 'uv_sync_seconds=%s\n' "$sync_seconds"
   printf 'total_seconds=%s\n' "$(($(date +%s) - started))"
-  cat "$git_dir/benchbox-cloud-gateway.status" 2>/dev/null || printf 'gateway=unavailable\n'
+  cat "$git_dir/theseus-cloud-gateway.status" 2>/dev/null || printf 'gateway=unavailable\n'
 } >"$marker"
 
 printf 'cloud-bootstrap: OK\n'

@@ -557,20 +557,6 @@ def test_changed_files_detects_rename_with_old_ranges(repo: Path) -> None:
     assert entries["benchbox/core/motor.py"].old_ranges == [(20, 1)]
 
 
-def test_an_oracle_fixture_only_change_selects_the_fixture_guard(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
-    guard = "tests/integration/oracle/test_curated_capture_fixtures.py"
-    _write(repo, guard, "x = 1\n")
-    _commit_all(repo)
-    map_sha = _head(repo)
-    _write(repo, "tests/fixtures/oracle_reviewers/captures/new_capture.json", "{}\n")
-    _commit_all(repo)
-    files = sel.changed_files(repo, map_sha)
-    result = sel.select_tests(repo, _mapping(repo, map_sha), files, map_sha)
-    assert guard in result["fallback_tests"]
-    assert guard in result["selected"]
-
-
 def test_selection_unites_coverage_changed_tests_and_fallback(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
     map_sha = _head(repo)
@@ -1926,18 +1912,11 @@ def test_windows_test_files_excludes_develop_changed_tests(repo: Path) -> None:
 
 
 def test_windows_test_files_excludes_posix_only_directories(repo: Path) -> None:
-    _write(repo, "tests/unit/scripts/oracle_reviewers/test_posix.py")
-    payload = {
-        "selected": [
-            "tests/unit/scripts/oracle_reviewers/test_posix.py",
-            "tests/unit/core/test_engine.py",
-        ]
-    }
+    posix = "_project/sql-translation-ml/tests/test_posix.py"
+    _write(repo, posix)
+    payload = {"selected": [posix, "tests/unit/core/test_engine.py"]}
     assert sel.windows_test_files(repo, payload, []) == ["tests/unit/core/test_engine.py"]
-    assert sel.windows_test_files(repo, payload, ["tests/unit/scripts/oracle_reviewers/test_posix.py"]) == [
-        "tests/unit/core/test_engine.py",
-        "tests/unit/scripts/oracle_reviewers/test_posix.py",
-    ]
+    assert sel.POSIX_ONLY_TEST_PREFIXES == ("_project/sql-translation-ml/",)
 
 
 def test_windows_targets_cli_excludes_develop_changed_tests(repo: Path, tmp_path: Path) -> None:

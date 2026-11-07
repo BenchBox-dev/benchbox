@@ -162,7 +162,7 @@ Each issue links to the failing run. Its artifacts are attached to that run.
   the failure affects what a release ships. An open issue with that label blocks
   the release until a passing nightly run or a merged fix closes it. The release
   manager checks for such issues (`gh issue list --label release-blocking
-  --state open`) before cutting a release; `scripts/release_readiness_check.py`
-  does not check them yet.
+  --state open`) before cutting a release; `release-v2.yml` enforces the same
+  check through `scripts/release_blocker_check.py` during admission.
 - Do not quarantine a test to clear a red domain unless the test has an owner,
   an expiry, and a tracking issue.

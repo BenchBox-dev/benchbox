@@ -19,7 +19,9 @@ from benchbox.core.contracts.platform_capabilities import (
     PlanCaptureRuntime,
     SQLBenchmarkExecutor,
     StatisticsPhaseRunner,
+    TPCHRefreshIngester,
     TuningLedgerWriter,
+    resolve_refresh_ingester,
 )
 from benchbox.core.contracts.platform_capability_views import (
     as_connection_factory,
@@ -54,6 +56,7 @@ __all__ = [
     "PlanCaptureRuntime",
     "SQLBenchmarkExecutor",
     "StatisticsPhaseRunner",
+    "TPCHRefreshIngester",
     "TuningLedgerWriter",
     "as_connection_factory",
     "as_connection_lifecycle",
@@ -65,5 +68,6 @@ __all__ = [
     "as_sql_benchmark_executor",
     "as_statistics_phase_runner",
     "as_tuning_ledger_writer",
+    "resolve_refresh_ingester",
     "run_categorized_query_benchmark",
 ]

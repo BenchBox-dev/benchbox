@@ -290,6 +290,12 @@ the Linux container step it adds when the change branches on platform: that step
 `make pr-preflight-fast-tests` to run the full fast lane locally under the
 lock; CI runs that lane on every PR and is the authoritative check.
 
+Run `make pr-preflight` directly, never wrap the whole pipeline in `make heavy-run` or `host_lock run`: only its Linux
+container step takes the lock, so an outer wrapper would hold the global lock through ruff and the serial tests and
+block other heavy runs. The wrapper refuses a command that invokes the `pr-preflight` goal (direct, `sh -c`, `bash -lc`,
+any `make` options or goal lists) with exit 2 before it requests the lock, and `make pr-preflight` exits 2 itself when
+it starts inside a process that holds the lock.
+
 ## Queue-aware publication and resumable follow-up
 
 - `make pr-status` is a short operator view. Use its separate bounded

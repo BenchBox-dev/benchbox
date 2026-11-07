@@ -215,35 +215,24 @@ def test_source_guard_tests_exist() -> None:
 @pytest.mark.parametrize(
     "path",
     [
-        "_project/scripts/oracle_reviewers/cli.py",
-        "_project/scripts/oracle_reviewers/runner.py",
-        "_project/scripts/oracle_review_check.py",
-        "_project/scripts/oracle_gate.py",
+        "scripts/theseus_cli.py",
+        "_project/scripts/theseus_bootstrap.py",
+        "_project/scripts/soundness_paths.py",
+        ".github/theseus-lock.json",
         "_project/scripts/soundness_merge_digest.py",
         "scripts/pr_arm.py",
         "scripts/pr_landing.py",
-        "tests/integration/oracle/harness.py",
-        "tests/integration/oracle/fake_github.py",
-        "tests/fixtures/oracle_reviewers/captures/ci_attempt.json",
-        "tests/fixtures/oracle_reviewers/omp_multi_turn_review.jsonl",
-        "tests/fixtures/oracle_reviewers/provenance.json",
-        ".github/workflows/oracle-verdict.yml",
-        ".github/workflows/oracle-gate.yml",
+        "tests/fixtures/oracle_reviewers/omp_candidate/manifest.json",
+        ".github/workflows/review-verdict.yml",
+        ".github/workflows/review-gate.yml",
         ".github/oracle-reviewers.yml",
         ".github/oracle-omp-config.yml",
     ],
 )
-def test_an_oracle_change_selects_every_scenario_harness_test(path: str) -> None:
+def test_an_oracle_change_selects_every_consumer_test(path: str) -> None:
     selected = pt.map_tests(SCRIPT.parents[2], [path])
 
-    assert set(pt.ORACLE_SCENARIO_TESTS) <= set(selected)
-
-
-def test_the_scenario_harness_list_names_every_harness_test_file() -> None:
-    root = SCRIPT.parents[2]
-    found = sorted(path.relative_to(root).as_posix() for path in (root / "tests/integration/oracle").glob("test_*.py"))
-
-    assert list(pt.ORACLE_SCENARIO_TESTS) == found
+    assert set(pt.ORACLE_CONSUMER_TESTS) <= set(selected)
 
 
 def test_platform_smoke_mapping_needs_the_whole_platform_name(repo: Path) -> None:
@@ -297,12 +286,12 @@ def test_python_file_in_a_composite_action_selects_workflow_tests(repo: Path) ->
     ]
 
 
-def test_oracle_workflow_change_still_selects_the_scenario_harness(repo: Path) -> None:
-    for test in pt.ORACLE_SCENARIO_TESTS:
+def test_oracle_workflow_change_still_selects_the_consumer_tests(repo: Path) -> None:
+    for test in pt.ORACLE_CONSUMER_TESTS:
         _write(repo, test)
     _write(repo, "tests/unit/workflows/test_every_workflow.py")
 
-    assert set(pt.ORACLE_SCENARIO_TESTS) <= set(pt.map_tests(repo, [".github/workflows/oracle-gate.yml"]))
+    assert set(pt.ORACLE_CONSUMER_TESTS) <= set(pt.map_tests(repo, [".github/workflows/review-gate.yml"]))
 
 
 def test_changed_test_package_init_selects_its_package_and_importers(

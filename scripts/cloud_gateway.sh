@@ -4,7 +4,7 @@ set -eu
 top=$(git rev-parse --show-toplevel)
 git_dir=$(git rev-parse --absolute-git-dir)
 state_dir="$git_dir/benchbox-cloud-gateway"
-status_file="$git_dir/benchbox-cloud-gateway.status"
+status_file="$git_dir/theseus-cloud-gateway.status"
 proxy_port=${BENCHBOX_GATEWAY_PROXY_PORT:-1055}
 pid_file="$state_dir/tailscaled.pid"
 
@@ -78,12 +78,12 @@ record() {
 
 http_status() {
   if [ "${2:-}" = auth ]; then
-    printf 'header = "Authorization: Bearer %s"\n' "$ORACLE_CLOUD_GATEWAY_TOKEN" |
+    printf 'header = "Authorization: Bearer %s"\n' "$REVIEW_CLOUD_GATEWAY_TOKEN" |
       curl -sS -K - --proxy "http://127.0.0.1:$proxy_port" --max-time 20 -o /dev/null -w '%{http_code}' \
-        "${ORACLE_GATEWAY_URL%/}$1" 2>/dev/null || printf '000'
+        "${REVIEW_GATEWAY_URL%/}$1" 2>/dev/null || printf '000'
   else
     curl -sS --proxy "http://127.0.0.1:$proxy_port" --max-time 20 -o /dev/null -w '%{http_code}' \
-      "${ORACLE_GATEWAY_URL%/}$1" 2>/dev/null || printf '000'
+      "${REVIEW_GATEWAY_URL%/}$1" 2>/dev/null || printf '000'
   fi
 }
 
@@ -100,13 +100,17 @@ install_omp() {
     return 1
   fi
   log="$state_dir/omp-install.log"
-  if printf '%s\n' "$policy" |
-    (cd "$top" && uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- \
-      python -m _project.scripts.oracle_reviewers.cli install-omp --policy -) >"$state_dir/omp-binary" 2>"$log"; then
+  trusted="$state_dir/trusted-policy"
+  rm -rf "$trusted"
+  mkdir -p "$trusted"
+  if git -C "$top" archive origin/develop .github | tar -x -C "$trusted" &&
+    python3 "$top/scripts/theseus_cli.py" run -- install-omp --policy "$trusted/.github/oracle-reviewers.yml" >"$state_dir/omp-binary" 2>"$log"; then
+    rm -rf "$trusted"
     omp_state=installed
     say "OMP installed and verified"
     return 0
   fi
+  rm -rf "$trusted"
   rm -f "$state_dir/omp-binary"
   sed 's/^/cloud-gateway: omp: /' "$log" | tail -n 5
   say "OMP not installed; the environment network allowlist needs the OMP download host named in the pin"
@@ -185,11 +189,11 @@ finish_failed() {
 
 up() {
   omp_state=not-installed
-  if [ -z "${TS_AUTHKEY:-}" ] || [ -z "${ORACLE_GATEWAY_URL:-}" ] || [ -z "${ORACLE_CLOUD_GATEWAY_TOKEN:-}" ]; then
+  if [ -z "${TS_AUTHKEY:-}" ] || [ -z "${REVIEW_GATEWAY_URL:-}" ] || [ -z "${REVIEW_CLOUD_GATEWAY_TOKEN:-}" ]; then
     stop_daemon
     rm -f "$state_dir/omp-binary" "$state_dir/omp-install.log"
-    record unavailable "TS_AUTHKEY, ORACLE_GATEWAY_URL and ORACLE_CLOUD_GATEWAY_TOKEN are not all set"
-    say "gateway unavailable: TS_AUTHKEY, ORACLE_GATEWAY_URL and ORACLE_CLOUD_GATEWAY_TOKEN are not all set"
+    record unavailable "TS_AUTHKEY, REVIEW_GATEWAY_URL and REVIEW_CLOUD_GATEWAY_TOKEN are not all set"
+    say "gateway unavailable: TS_AUTHKEY, REVIEW_GATEWAY_URL and REVIEW_CLOUD_GATEWAY_TOKEN are not all set"
     return 0
   fi
 

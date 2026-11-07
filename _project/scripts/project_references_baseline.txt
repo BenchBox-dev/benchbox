@@ -15,7 +15,10 @@ docs/internal/benchbox-results-platform-strategy.md::_project/_archive/specs/cli
 docs/internal/release-guide.md::_project/TODO/main/active/release-recovery-v0-3-1.yaml
 docs/internal/uat-release-campaign.md::_project/release-evidence/uat-gate-summary.json
 make/monolith-baseline.json::_project/cross-surface-baseline-autodetect/summary.json
-scripts/release_readiness_check.py::_project/release-evidence/uat-gate-summary.json
+quality/fast-duration-calibration.json::_project/scripts/oracle_reviewers/templates/README.md
+quality/fast-duration-calibration.json::_project/scripts/oracle_reviewers/templates/deep.md
+quality/fast-duration-calibration.json::_project/scripts/oracle_reviewers/templates/gate.md
+quality/fast-duration-calibration.json::_project/scripts/oracle_reviewers/templates/standard.md
 tests/uat/_cli.py::_project/release-evidence/uat-gate-summary.json
 tests/unit/scripts/test_pr_review_followups.py::_project/DONE/main/active/codex-pr-review-followups-week-2026-05-01.yaml
 tests/unit/scripts/test_shrink_rollup.py::_project/shrink-ledger/cli.md

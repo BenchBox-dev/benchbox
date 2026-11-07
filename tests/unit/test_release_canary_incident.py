@@ -114,7 +114,7 @@ def test_red_run_names_failures_changes_and_owner_action() -> None:
     assert update["title"] == INCIDENT_TITLE
     assert "`tests/integration/test_a.py::test_two`" in update["body"]
     assert f"https://github.com/o/r/compare/{'a' * 40}...{'b' * 40}" in update["body"]
-    assert "release_readiness_check.py" in update["body"]
+    assert "does not block a tag by itself" in update["body"]
     assert "Shards 3 stopped at `--maxfail`" in update["body"]
     assert "`tests/integration/test_a.py::test_two`" in update["comment"]
 

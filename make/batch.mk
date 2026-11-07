@@ -11,7 +11,7 @@ override CONFIRM_CUTOVER := $(value CONFIRM_CUTOVER)
 override TESTS := $(value TESTS)
 override PREFLIGHT_CMD := $(value PREFLIGHT_CMD)
 override REASON := $(value REASON)
-override SUITE := $(value SUITE)
+override ACCEPT_WRITES := $(value ACCEPT_WRITES)
 override EXPECTED_OWNER := $(value EXPECTED_OWNER)
 override EXPECTED_OWNER_GENERATION := $(value EXPECTED_OWNER_GENERATION)
 override RELOCATE := $(value RELOCATE)
@@ -48,9 +48,10 @@ batch-member-check:
 
 .PHONY: batch-land
 batch-land: export BATCH_ARG_MEMBER := $(MEMBER)
+batch-land: export BATCH_ARG_ACCEPT_WRITES := $(ACCEPT_WRITES)
 batch-land:
-	@test -n "$$BATCH_ARG_MEMBER" || { echo "Usage: make batch-land MEMBER=<id>" >&2; exit 2; }
-	@$(BATCH_SCRIPT) land --member "$$BATCH_ARG_MEMBER"
+	@test -n "$$BATCH_ARG_MEMBER" || { echo "Usage: make batch-land MEMBER=<id> [ACCEPT_WRITES=op_id,...]" >&2; exit 2; }
+	@$(BATCH_SCRIPT) land --member "$$BATCH_ARG_MEMBER" --accept-writes "$$BATCH_ARG_ACCEPT_WRITES"
 
 .PHONY: batch-advance
 batch-advance: export BATCH_ARG_REASON := $(REASON)

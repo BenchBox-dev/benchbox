@@ -202,6 +202,7 @@ class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
         self.disable_cache = config.get("disable_cache") if config.get("disable_cache") is not None else True
 
         self._spark_session = None
+        self._borrowed_session_count = 0
 
     @property
     def platform_name(self) -> str:
@@ -463,6 +464,7 @@ class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
         self.log_very_verbose(f"Spark config: master={self.master}, database={self.database}")
 
         try:
+            borrowed = bool(getattr(self, "_validating_database", False)) and self._spark_session is not None
             spark = builder.getOrCreate()
             self._spark_session = spark
             self.capture_effective_session_config(spark, "session_created")
@@ -486,6 +488,9 @@ class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
             self.logger.info(f"Connected to Spark with master {self.master}")
 
             self.log_operation_complete("Spark session", details=f"Connected to {self.master}")
+
+            if borrowed:
+                self._borrowed_session_count += 1
 
             return spark
 
@@ -566,6 +571,9 @@ class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
 
     def close_connection(self, connection: Any) -> None:
         try:
+            if self._borrowed_session_count > 0:
+                self._borrowed_session_count -= 1
+                return
             if connection and hasattr(connection, "stop"):
                 connection.stop()
                 self._spark_session = None

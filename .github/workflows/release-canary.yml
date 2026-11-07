@@ -532,7 +532,7 @@ jobs:
           label="incident:release-canary-red"
           gh label create "${label}" \
             --repo "${GITHUB_REPOSITORY}" \
-            --description "Release canary is red; release PRs are blocked" \
+            --description "Release canary is red" \
             --color B60205 >/dev/null 2>&1 || true
 
           state="$(jq -r '.state' release-canary-incident.json)"
