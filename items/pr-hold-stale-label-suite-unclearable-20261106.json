@@ -15,6 +15,121 @@
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3957"
   ],
+  "prepared": {
+    "accepted_head": "6b519db60d03737575397b93a01908cef6ec281c",
+    "batch_id": "hold-label-and-batch-e2e-v2-20261106",
+    "changed_files": [
+      ".github/workflows/pr-hold.yml",
+      "changelog.d/pr-hold-live-labels-20261106.json",
+      "docs/agent/merge-authority.md",
+      "docs/internal/dev-loop-property-ledger.md",
+      "docs/internal/repo-admin-settings.md",
+      "tests/unit/workflows/test_pr_hold_workflow.py"
+    ],
+    "integration_head": "dcfd013729cc473fcc2344f9477c7bddca892346",
+    "integration_seq": 2,
+    "member_id": "pr-hold-stale-label-suite-unclearable-20261106",
+    "overlaps": [
+      {
+        "kind": "member",
+        "member": "batch-loop-e2e-review-binding-failures-20261106",
+        "paths": [
+          "docs/internal/dev-loop-property-ledger.md"
+        ]
+      }
+    ],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "aaf6ea6cf9b03bbf146d8c376d963309ee0134b7b0bab8c6b6fc12cdd180d7dd",
+    "source_base": "66759d25ad5d9649fcedc39bdc10bc9b1a3288ed",
+    "source_revision": "6b519db60d03737575397b93a01908cef6ec281c",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-feat-hold-label-and-batch-e2e-v2--pr-hold",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/unit/scripts/test_dev_loop_pr_metrics.py",
+        "tests/unit/test_ledger_coverage.py",
+        "tests/unit/workflows/test_batch_loop_e2e_workflow.py",
+        "tests/unit/workflows/test_ci_aggregate_cancelled.py",
+        "tests/unit/workflows/test_ci_changelog_gate.py",
+        "tests/unit/workflows/test_ci_medium_collect_cache.py",
+        "tests/unit/workflows/test_ci_shadow_miss_step.py",
+        "tests/unit/workflows/test_ci_text_edit_refresh_workflow.py",
+        "tests/unit/workflows/test_ci_text_edit_skip.py",
+        "tests/unit/workflows/test_ci_verify_fast_duration_step.py",
+        "tests/unit/workflows/test_ci_windows_pr_leg.py",
+        "tests/unit/workflows/test_comment_policy_nightly_workflow.py",
+        "tests/unit/workflows/test_corpus_event_bridge.py",
+        "tests/unit/workflows/test_corpus_trust_boundary.py",
+        "tests/unit/workflows/test_docker_integration_workflow.py",
+        "tests/unit/workflows/test_evidence_artifact_reruns.py",
+        "tests/unit/workflows/test_fast_duration_baseline_refresh.py",
+        "tests/unit/workflows/test_fast_tier_junit_emit.py",
+        "tests/unit/workflows/test_medium_suite_setup_parity.py",
+        "tests/unit/workflows/test_nightly_t3_durations.py",
+        "tests/unit/workflows/test_nightly_t3_legacy_ports.py",
+        "tests/unit/workflows/test_nightly_t3_report_lifecycle.py",
+        "tests/unit/workflows/test_nightly_t3_workflow.py",
+        "tests/unit/workflows/test_nightly_throughput_uat_contract.py",
+        "tests/unit/workflows/test_omp_pin_bump_workflow.py",
+        "tests/unit/workflows/test_omp_pin_watch_workflow.py",
+        "tests/unit/workflows/test_oracle_gate_workflow.py",
+        "tests/unit/workflows/test_oracle_review_workflow.py",
+        "tests/unit/workflows/test_oracle_verdict_workflow.py",
+        "tests/unit/workflows/test_pr_hold_workflow.py",
+        "tests/unit/workflows/test_published_results_base_ci.py",
+        "tests/unit/workflows/test_release_canary_shard_evidence.py",
+        "tests/unit/workflows/test_release_v2_workflow.py",
+        "tests/unit/workflows/test_seed_corpus_pr_base.py",
+        "tests/unit/workflows/test_site_inputs_concurrency.py",
+        "tests/unit/workflows/test_site_inputs_reporter.py",
+        "tests/unit/workflows/test_site_inputs_workflow.py",
+        "tests/unit/workflows/test_sqlglot_delivery_workflow.py",
+        "tests/unit/workflows/test_sqlglot_fork_refresh_workflow.py",
+        "tests/unit/workflows/test_stacked_pr_base_guard.py",
+        "tests/unit/workflows/test_t2_partition_workflow.py",
+        "tests/unit/workflows/test_trunk_coverage_workflow.py",
+        "tests/unit/workflows/test_trunk_lane_pre_merge.py",
+        "tests/unit/workflows/test_trunk_red_disarm_workflow.py",
+        "tests/unit/workflows/test_trunk_workflow.py",
+        "tests/unit/workflows/test_validate_submission_changed_bundles.py",
+        "tests/unit/workflows/test_validate_submission_comment_security.py",
+        "tests/unit/workflows/test_validate_submission_corpus_allowlist.py",
+        "tests/unit/workflows/test_validate_submission_fail_open.py",
+        "tests/unit/workflows/test_validate_submission_override_approval.py",
+        "tests/unit/workflows/test_validate_submission_trusted_checkout.py",
+        "tests/unit/workflows/test_validate_submission_vendor_gate.py",
+        "tests/unit/workflows/test_validate_submission_workflow_guard_mirror.py",
+        "tests/unit/workflows/test_windows_fast_workflow.py",
+        "tests/unit/workflows/test_workflow_context_availability.py",
+        "tests/unit/workflows/test_workflow_dispatch_dedupe.py",
+        "tests/unit/workflows/test_workflow_expression_contexts.py",
+        "tests/unit/workflows/test_workflow_trigger_events.py"
+      ],
+      "review": {
+        "base_sha": "66759d25ad5d9649fcedc39bdc10bc9b1a3288ed",
+        "head_sha": "6b519db60d03737575397b93a01908cef6ec281c",
+        "head_tree": "63d5e9e88d998f1fdcbaae771d324b47e6bc08bb",
+        "outcome": "clear",
+        "patch_digest": "fb657858cf1e05ce2e02133d58c059b8",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67"
+      },
+      "revision": "6b519db60d03737575397b93a01908cef6ec281c",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae",
@@ -73,6 +188,15 @@
       "generation": "623ff01ae14d4496ae12e3f6e9d642b8",
       "op": "take",
       "op_id": "f40bd9d4896f44309bfdfd52c81576ab",
+      "session_id": "4e1f5de86962468394697835ee28c6b3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae",
+      "at": "2026-11-07T01:41:06Z",
+      "client": "omp-coding-agent",
+      "generation": "623ff01ae14d4496ae12e3f6e9d642b8",
+      "op": "prepare",
+      "op_id": "e9a273dee2c14e09abb9f2e5e818192b",
       "session_id": "4e1f5de86962468394697835ee28c6b3"
     }
   ]

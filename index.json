@@ -1443,7 +1443,8 @@
     },
     "hold-label-and-batch-e2e-v2-20261106": {
       "accepted_members": {
-        "batch-loop-e2e-review-binding-failures-20261106": "cf0d9fd1a85c6bcf0df20697077e6b3f50e6f330"
+        "batch-loop-e2e-review-binding-failures-20261106": "cf0d9fd1a85c6bcf0df20697077e6b3f50e6f330",
+        "pr-hold-stale-label-suite-unclearable-20261106": "6b519db60d03737575397b93a01908cef6ec281c"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -1460,10 +1461,23 @@
           ],
           "integration_head": "66759d25ad5d9649fcedc39bdc10bc9b1a3288ed",
           "integration_seq": 1
+        },
+        "pr-hold-stale-label-suite-unclearable-20261106": {
+          "accepted_head": "6b519db60d03737575397b93a01908cef6ec281c",
+          "changed_files": [
+            ".github/workflows/pr-hold.yml",
+            "changelog.d/pr-hold-live-labels-20261106.json",
+            "docs/agent/merge-authority.md",
+            "docs/internal/dev-loop-property-ledger.md",
+            "docs/internal/repo-admin-settings.md",
+            "tests/unit/workflows/test_pr_hold_workflow.py"
+          ],
+          "integration_head": "dcfd013729cc473fcc2344f9477c7bddca892346",
+          "integration_seq": 2
         }
       },
       "integration_branch": "feat/hold-label-and-batch-e2e-v2-20261106",
-      "integration_head": "66759d25ad5d9649fcedc39bdc10bc9b1a3288ed",
+      "integration_head": "dcfd013729cc473fcc2344f9477c7bddca892346",
       "integration_log": [
         {
           "at": "2026-11-07T00:31:48Z",
@@ -1479,6 +1493,15 @@
           "op_id": "12226807e6e44777b61f88274ffed034",
           "previous_head": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67",
           "seq": 1
+        },
+        {
+          "at": "2026-11-07T01:41:05Z",
+          "head": "dcfd013729cc473fcc2344f9477c7bddca892346",
+          "kind": "prepare",
+          "member": "pr-hold-stale-label-suite-unclearable-20261106",
+          "op_id": "e9a273dee2c14e09abb9f2e5e818192b",
+          "previous_head": "66759d25ad5d9649fcedc39bdc10bc9b1a3288ed",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-feat-hold-label-and-batch-e2e-v2",
@@ -24108,15 +24131,10 @@
       "title": "Close PR-gate gap: darwin/windows TPC-H binaries behaviorally validated only on nightly"
     },
     "pr-hold-stale-label-suite-unclearable-20261106": {
-      "claim": {
-        "expires_at": "2026-11-08T01:41:00Z",
-        "generation": "623ff01ae14d4496ae12e3f6e9d642b8",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Let a head recover from a hold-era pr-hold failure after the hold is lifted"
     },
     "pr-landing-arm-batch-evidence-20261101": {
