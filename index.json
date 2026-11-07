@@ -35265,13 +35265,18 @@
       "title": "TPC-DS maintenance DELETE ... LIMIT is a syntax error on DuckDB, is swallowed as a warning, and the operation still reports success"
     },
     "tpcds-maintenance-dsdgen-refresh-data-20261103": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T05:42:18Z",
+        "generation": "7b012a0bcd1f4d80811d0524fe95c9ff",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [
         "tpcds-maintenance-data-source-decision-20261103",
         "tpcds-maintenance-timer-hygiene-20261103"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "TPC-DS data maintenance: dsdgen refresh sets, timed staged load, spec-defined functions, monotonic timers"
     },
     "tpcds-maintenance-seed-through-callers-20261106": {
