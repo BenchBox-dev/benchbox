@@ -47,10 +47,10 @@ edited as part of transfer.
    (different hostname from the user challenge). Do not change apex
    A/AAAA (they already point at GitHub Pages IPs). Do not retarget
    `www.benchbox.dev` (today `CNAME joeharris76.github.io`) before G4.
-9. Org PAT / fine-grained token policy must allow
-   `RULESET_DRIFT_TOKEN` and `TODO_EXPORT_PR_TOKEN` against
-   `BenchBox-dev/BenchBox`, or replace those secrets with
-   org-approved tokens **before** G4.
+9. Org PAT / fine-grained token policy must allow `RULESET_DRIFT_TOKEN`
+   against `BenchBox-dev/BenchBox`, or replace it with an org-approved token
+   **before** G4. `TODO_EXPORT_PR_TOKEN` was deleted on 2026-11-07 with the
+   retired export workflow; do not recreate it.
 
 ## G2 — PyPI trusted publishers (operator)
 
@@ -104,8 +104,7 @@ Order:
    only; that policy was deleted on 2026-11-07), `pypi` (required reviewer `joeharris76` / 57046,
    `can_admins_bypass: true`, `prevent_self_review: false`),
    `test-pypi` (empty protection).
-5. Confirm secret **names** exist, then prove
-   `RULESET_DRIFT_TOKEN` and `TODO_EXPORT_PR_TOKEN` **authenticate**
+5. Confirm `RULESET_DRIFT_TOKEN` exists, then prove it **authenticates**
    against `BenchBox-dev/BenchBox` (name presence is not enough).
 6. Pages serving-only: `curl -fsSI https://benchbox.dev/` and
    `https://www.benchbox.dev/` HTTP 200.

@@ -559,17 +559,6 @@
   {
    "disposition": "historical-record",
    "kinds": {
-    "unresolved": 1
-   },
-   "occurrences": 2,
-   "path": "_project/analysis/phase-3-promotion-metrics.md",
-   "rule": "project-records",
-   "target_count": 1,
-   "targets_sha256": "c6cb1d80756c978e7a08ed40a31ce5c0b8451e1360be8ba2e3659f6cb51633a2"
-  },
-  {
-   "disposition": "historical-record",
-   "kinds": {
     "unresolved": 3
    },
    "occurrences": 4,
@@ -4149,13 +4138,13 @@
    "contract-tooling": 6,
    "fixture-data": 37,
    "governance-stays": 11,
-   "historical-record": 112,
+   "historical-record": 111,
    "lock-test": 4,
    "prose-link-pinned": 12,
    "site-pipeline-cutover": 4,
    "wiring-updated": 31
   },
-  "files": 218,
+  "files": 217,
   "kinds": {
    "built-url": 29037,
    "dir": 163,
@@ -4164,9 +4153,9 @@
    "generated": 3,
    "pattern": 332,
    "root": 200,
-   "unresolved": 2053
+   "unresolved": 2051
   },
-  "references": 33202,
+  "references": 33200,
   "unclassified": 0
  }
 }

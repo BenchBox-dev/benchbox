@@ -781,9 +781,9 @@ gets one window of grace before its first scheduled run, so a dead
 scheduled workflow cannot go unnoticed.
 
 The `RELEASE_READINESS_OVERRIDE_SHA` and `RELEASE_READINESS_OVERRIDE_REASON`
-repository variables were read only by the retired `validate-release-pr.yml`
-job. `release-v2.yml` runs the ruleset drift check without them, so an override
-cannot waive drift at release time. Remove the variables if they are still set.
+repository variables remain inputs to the ruleset check in `release-canary.yml`.
+`release-v2.yml` explicitly unsets them before its ruleset check, so an override
+cannot waive drift at release time.
 
 ## Repository labels
 
@@ -802,8 +802,8 @@ gh label list --search incident
 git ls-remote --heads origin 'gh-readonly-queue/*' 'auto-revert/*'
 ```
 
-The label search lists only `incident:release-canary-red` and
-`incident:todo-export-failed`; the branch listing is empty.
+The label search lists only `incident:release-canary-red`; the branch listing is
+empty. The obsolete `incident:todo-export-failed` label was deleted on 2026-11-07.
 
 ## Re-applying after a transfer or restore
 
