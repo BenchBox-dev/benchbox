@@ -32546,6 +32546,13 @@
       "status": "dropped",
       "title": "Prove the pinned BenchBox consumer and rehearse first-cutover recovery before activation"
     },
+    "theseus-body-only-finding-cannot-be-adjudicated-20261106": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Theseus: a hosted finding posted without a review thread can never be disputed or adjudicated"
+    },
     "theseus-decision-promotion-evidence-form-20261102": {
       "claim": null,
       "needs": [],
