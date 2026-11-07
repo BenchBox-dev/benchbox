@@ -1683,18 +1683,27 @@ RECEIPT_COMMAND = ["pytest", "a", "-q", "tests/gone.py", "tests/here.py::test_on
 RAN_COMMAND = ["pytest", "a", "-q", "tests/here.py::test_one"]
 
 
-def _dropped_batch(tmp_path: Path, develop_owned: bool = True) -> tuple[fx.BatchFixture, dict, str]:
+def _dropped_batch(tmp_path: Path, mode: str = "owned") -> tuple[fx.BatchFixture, dict, str]:
     repo = _repo(tmp_path / "r")
     base = ""
-    if develop_owned:
+    if mode == "owned":
         fx.write_commit(repo, {"tests/gone.py": "old\n"}, "develop adds test")
         fx.git(repo, "checkout", "-q", "-b", "dev")
         base = fx.write_commit(repo, {"tests/gone.py": None}, "develop deletes test")
         fx.git(repo, "checkout", "-q", "main")
+    elif mode == "reused":
+        fx.write_commit(repo, {"tests/gone.py": "old\n"}, "develop adds test")
+        fx.write_commit(repo, {"tests/gone.py": None}, "develop deletes test")
     batch = fx.BatchFixture(repo, {"a": ["a/**", "tests/here.py", "tests/gone.py"], "b": ["b/**"]})
-    batch.land("a", {"a/x.txt": "a", **({} if develop_owned else {"tests/gone.py": "member test\n"})})
+    member_files = {"tests/gone.py": "member test\n"} if mode in ("member", "reused") else {}
+    batch.land("a", {"a/x.txt": "a", **member_files})
     batch.land("b", {"b/y.txt": "b"})
-    batch.fix({"tests/here.py": "kept\n", "tests/gone.py": None})
+    if mode == "merged":
+        batch.develop_merge({"tests/gone.py": "develop adds\n"})
+        batch.develop_merge({"tests/gone.py": None})
+        base = fx.git(repo, "rev-parse", "refs/remotes/origin/develop")
+    else:
+        batch.fix({"tests/here.py": "kept\n", "tests/gone.py": None})
     batch.receipts["a"]["verification"]["command"] = list(RECEIPT_COMMAND)
     evidence = batch.evidence()
     row = evidence["current_acceptance"]["a"]
@@ -1713,14 +1722,24 @@ def test_batch_evidence_accepts_a_develop_deleted_path_with_the_matching_ran_com
     assert _dropped_verdict(batch, evidence, base) == []
 
 
-def test_batch_evidence_refuses_a_path_a_member_added_and_the_batch_later_deleted(tmp_path: Path) -> None:
-    batch, evidence, base = _dropped_batch(tmp_path, develop_owned=False)
-    assert batch.receipts["b"]["source_base"] != batch.start
+@pytest.mark.parametrize("mode", ["member", "reused"])
+def test_batch_evidence_refuses_a_path_develop_did_not_have_at_the_start_or_a_merged_parent(
+    tmp_path: Path, mode: str
+) -> None:
+    batch, evidence, base = _dropped_batch(tmp_path, mode)
     assert fx.git(batch.repo, "ls-tree", "--name-only", batch.receipts["b"]["source_base"], "tests/gone.py")
 
     failures = _dropped_verdict(batch, evidence, base)
 
-    assert any("never existed in develop history" in failure for failure in failures)
+    assert any("did not exist on develop at the batch start" in failure for failure in failures)
+
+
+def test_batch_evidence_accepts_a_path_develop_added_after_the_start_merged_in_and_later_deleted(
+    tmp_path: Path,
+) -> None:
+    batch, evidence, base = _dropped_batch(tmp_path, "merged")
+
+    assert _dropped_verdict(batch, evidence, base) == []
 
 
 def test_batch_evidence_refuses_a_dropped_path_that_still_exists_at_the_head(tmp_path: Path) -> None:
@@ -1735,12 +1754,26 @@ def test_batch_evidence_refuses_a_dropped_path_that_still_exists_at_the_head(tmp
 
 
 def test_dropped_path_check_refuses_when_git_cannot_read_the_head(tmp_path: Path) -> None:
-    repo = _repo(tmp_path / "r")
+    batch, _, base = _dropped_batch(tmp_path)
     row = {"ran_command": list(RAN_COMMAND), "dropped_paths": ["tests/gone.py"]}
 
-    failures = landing._check_dropped_paths(repo, "a", row, list(RECEIPT_COMMAND), "f" * 40, fx.head_of(repo))
+    failures = landing._check_dropped_paths(
+        batch.repo, "a", row, list(RECEIPT_COMMAND), "f" * 40, base, batch.tracker()
+    )
 
     assert any("could not be checked at the PR head" in failure for failure in failures)
+
+
+def test_dropped_path_check_refuses_when_the_batch_start_is_unknown(tmp_path: Path) -> None:
+    batch, _, base = _dropped_batch(tmp_path)
+    row = {"ran_command": list(RAN_COMMAND), "dropped_paths": ["tests/gone.py"]}
+    tracker = {key: value for key, value in batch.tracker().items() if key != "start_head"}
+
+    failures = landing._check_dropped_paths(
+        batch.repo, "a", row, list(RECEIPT_COMMAND), fx.head_of(batch.repo), base, tracker
+    )
+
+    assert any("start or merges are unreadable" in failure for failure in failures)
 
 
 def test_batch_evidence_refuses_a_row_that_dropped_every_test_path(tmp_path: Path) -> None:
@@ -1759,7 +1792,9 @@ def test_dropped_path_check_refuses_a_path_present_at_the_pr_base(tmp_path: Path
     head = fx.head_of(batch.repo)
     row = {"ran_command": ["pytest", "a", "-q", "tests/gone.py"], "dropped_paths": ["tests/here.py::test_one"]}
 
-    failures = landing._check_dropped_paths(batch.repo, "a", row, list(RECEIPT_COMMAND), batch.start, head)
+    failures = landing._check_dropped_paths(
+        batch.repo, "a", row, list(RECEIPT_COMMAND), batch.start, head, batch.tracker()
+    )
 
     assert any("exists at the PR base" in failure for failure in failures)
     assert not any("exists at the PR head" in failure for failure in failures)
@@ -1769,7 +1804,9 @@ def test_dropped_path_check_fails_closed_without_a_pr_base(tmp_path: Path) -> No
     batch, evidence, _ = _dropped_batch(tmp_path)
     row = evidence["current_acceptance"]["a"]
 
-    failures = landing._check_dropped_paths(batch.repo, "a", row, list(RECEIPT_COMMAND), fx.head_of(batch.repo), None)
+    failures = landing._check_dropped_paths(
+        batch.repo, "a", row, list(RECEIPT_COMMAND), fx.head_of(batch.repo), None, batch.tracker()
+    )
 
     assert any("PR base revision is unavailable" in failure for failure in failures)
 
@@ -1788,7 +1825,9 @@ def test_dropped_path_check_refuses_a_path_outside_the_trailing_positional_run(
     batch, _, base = _dropped_batch(tmp_path)
     row = {"ran_command": [arg for arg in recorded if arg != "tests/gone.py"], "dropped_paths": ["tests/gone.py"]}
 
-    failures = landing._check_dropped_paths(batch.repo, "a", row, recorded, fx.head_of(batch.repo), base)
+    failures = landing._check_dropped_paths(
+        batch.repo, "a", row, recorded, fx.head_of(batch.repo), base, batch.tracker()
+    )
 
     assert any("beyond dropped paths" in failure for failure in failures)
 

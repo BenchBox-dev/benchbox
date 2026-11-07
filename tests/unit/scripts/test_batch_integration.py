@@ -832,7 +832,7 @@ def test_a_rerun_drops_a_develop_deleted_test_path_runs_the_rest_and_records_bot
     integration, _ = _develop_deletes(world, "tests/test_alpha.py")
     recorded = [*PYTEST, "tests/test_zeta.py::test_one", "tests/test_alpha.py"]
     world.calls.clear()
-    entry = bi._rerun(integration, {}, "zeta", recorded, "member-tests", "overlap:alpha")
+    entry = bi._rerun(integration, _ledger(integration), "zeta", recorded, "member-tests", "overlap:alpha")
     assert entry["status"] == "passed"
     assert entry["command"] == recorded
     assert entry["ran_command"] == [*PYTEST, "tests/test_zeta.py::test_one"]
@@ -844,7 +844,7 @@ def test_a_rerun_whose_test_paths_are_all_deleted_fails_closed_without_running_p
     integration, _ = _develop_deletes(world, "tests/test_alpha.py", "tests/test_mid.py")
     recorded = [*PYTEST, "tests/test_alpha.py", "tests/test_mid.py"]
     world.calls.clear()
-    entry = bi._rerun(integration, {}, "zeta", recorded, "member-tests", "final-evidence")
+    entry = bi._rerun(integration, _ledger(integration), "zeta", recorded, "member-tests", "final-evidence")
     assert entry["status"] == "failed"
     assert entry["dropped_paths"] == ["tests/test_alpha.py", "tests/test_mid.py"]
     assert "absent from the tree" in entry["output"]
@@ -855,7 +855,7 @@ def test_a_rerun_never_drops_a_missing_argument_that_is_not_a_test_path(world: W
     integration = world.start()
     world.commit(integration, {"tests/test_keep.py": "kept\n"}, "add test")
     recorded = [*PYTEST, "--rootdir", "missing_dir", "tests/test_keep.py"]
-    entry = bi._rerun(integration, {}, "zeta", recorded, "member-tests", "fix:x")
+    entry = bi._rerun(integration, _ledger(integration), "zeta", recorded, "member-tests", "fix:x")
     assert entry["ran_command"] == recorded and entry["dropped_paths"] == []
 
 
@@ -1074,7 +1074,7 @@ def test_a_rerun_does_not_drop_a_test_the_batch_itself_deleted_while_develop_sti
     git(integration, "rm", "-q", "tests/test_alpha.py")
     git(integration, "commit", "-qm", "delete own test")
     recorded = [*PYTEST, "tests/test_alpha.py", "tests/test_zeta.py"]
-    entry = bi._rerun(integration, {}, "zeta", recorded, "member-tests", "fix:x")
+    entry = bi._rerun(integration, _ledger(integration), "zeta", recorded, "member-tests", "fix:x")
     assert entry["dropped_paths"] == [] and entry["ran_command"] == recorded
 
 
@@ -1084,7 +1084,7 @@ def test_a_rerun_does_not_drop_a_test_the_batch_added_and_later_deleted(world: W
     git(integration, "rm", "-q", "tests/test_new.py")
     git(integration, "commit", "-qm", "delete added test")
     recorded = [*PYTEST, "tests/test_new.py", "tests/test_zeta.py"]
-    entry = bi._rerun(integration, {}, "zeta", recorded, "member-tests", "fix:x")
+    entry = bi._rerun(integration, _ledger(integration), "zeta", recorded, "member-tests", "fix:x")
     assert entry["dropped_paths"] == [] and entry["ran_command"] == recorded
 
 
@@ -1099,7 +1099,45 @@ def test_a_rerun_does_not_drop_a_test_the_batch_added_and_later_deleted(world: W
 def test_a_rerun_never_drops_a_path_outside_the_trailing_positional_run(world: World, tail: list[str]) -> None:
     integration, _ = _develop_deletes(world, "tests/test_alpha.py")
     recorded = [*PYTEST, *tail]
-    entry = bi._rerun(integration, {}, "zeta", recorded, "member-tests", "fix:x")
+    entry = bi._rerun(integration, _ledger(integration), "zeta", recorded, "member-tests", "fix:x")
+    assert entry["dropped_paths"] == [] and entry["ran_command"] == recorded
+
+
+def test_a_rerun_drops_a_file_develop_added_after_the_start_merged_in_and_later_deleted(world: World) -> None:
+    integration = world.start()
+    git(world.seed, "checkout", "-q", "-b", "adds")
+    (world.seed / "tests" / "test_new.py").write_text("def test_n():\n    assert True\n")
+    git(world.seed, "add", "tests/test_new.py")
+    git(world.seed, "commit", "-qm", "develop adds a test")
+    git(world.seed, "push", "-q", "origin", "adds:develop")
+    git(integration, "fetch", "-q", "origin")
+    git(integration, "merge", "-q", "--no-ff", "--no-edit", bi.DEVELOP_REF)
+    ledger = _ledger(integration)
+    ledger["advances"].append({"kind": "develop-merge", "head": world.head()})
+    git(world.seed, "rm", "-q", "tests/test_new.py")
+    git(world.seed, "commit", "-qm", "develop deletes it")
+    git(world.seed, "push", "-q", "origin", "adds:develop")
+    git(integration, "fetch", "-q", "origin")
+    git(integration, "merge", "-q", "--no-ff", "--no-edit", bi.DEVELOP_REF)
+    recorded = [*PYTEST, "tests/test_new.py", "tests/test_zeta.py"]
+    entry = bi._rerun(integration, ledger, "zeta", recorded, "member-tests", "fix:x")
+    assert entry["dropped_paths"] == ["tests/test_new.py"]
+
+
+def test_a_rerun_does_not_drop_a_reused_filename_develop_deleted_before_the_start(world: World) -> None:
+    (world.seed / "tests" / "test_old.py").write_text("def test_o():\n    assert True\n")
+    git(world.seed, "add", "tests/test_old.py")
+    git(world.seed, "commit", "-qm", "develop adds a test")
+    git(world.seed, "rm", "-q", "tests/test_old.py")
+    git(world.seed, "commit", "-qm", "develop deletes it")
+    git(world.seed, "push", "-q", "origin", "develop")
+    git(world.primary, "fetch", "-q", "origin")
+    integration = world.start()
+    world.commit(integration, {"tests/test_old.py": "member re-adds\n"}, "member reuses the name")
+    git(integration, "rm", "-q", "tests/test_old.py")
+    git(integration, "commit", "-qm", "member deletes it")
+    recorded = [*PYTEST, "tests/test_old.py", "tests/test_zeta.py"]
+    entry = bi._rerun(integration, _ledger(integration), "zeta", recorded, "member-tests", "fix:x")
     assert entry["dropped_paths"] == [] and entry["ran_command"] == recorded
 
 

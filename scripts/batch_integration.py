@@ -742,26 +742,31 @@ def _tree_has(repo: Path, revision: str, path: str) -> bool | None:
     return bool(listed.stdout.strip())
 
 
-def _in_history(repo: Path, revision: str, path: str) -> bool | None:
-    logged = subprocess.run(
-        ["git", "log", "-1", "--format=%H", revision, "--", path],
-        cwd=repo,
-        check=False,
-        capture_output=True,
-        encoding="utf-8",
-        timeout=60,
-    )
-    if logged.returncode != 0:
+def _develop_anchors(repo: Path, ledger: dict) -> list[str] | None:
+    start_head = ledger.get("start_head")
+    if not isinstance(start_head, str) or not start_head:
         return None
-    return bool(logged.stdout.strip())
+    anchors = [start_head]
+    for advance in ledger.get("advances", []):
+        if not isinstance(advance, dict) or advance.get("kind") != "develop-merge":
+            continue
+        merge = advance.get("head")
+        if not isinstance(merge, str) or not merge:
+            return None
+        try:
+            parents = _git(repo, "rev-list", "--parents", "-n", "1", merge).split()[1:]
+        except BatchError:
+            return None
+        if len(parents) != 2:
+            return None
+        anchors.append(parents[1])
+    return anchors
 
 
-def _deleted_by_develop(repo: Path, path: str) -> bool:
-    return (
-        not (repo / path).exists()
-        and _in_history(repo, DEVELOP_REF, path) is True
-        and _tree_has(repo, DEVELOP_REF, path) is False
-    )
+def _deleted_by_develop(repo: Path, path: str, anchors: list[str]) -> bool:
+    if (repo / path).exists() or _tree_has(repo, DEVELOP_REF, path) is not False:
+        return False
+    return any(_tree_has(repo, anchor, path) is True for anchor in anchors)
 
 
 def _trailing_test_run_start(command: list[str]) -> int | None:
@@ -773,11 +778,12 @@ def _trailing_test_run_start(command: list[str]) -> int | None:
     return start
 
 
-def _without_deleted_test_paths(command: list[str], repo: Path) -> tuple[list[str], list[str]]:
+def _without_deleted_test_paths(command: list[str], repo: Path, ledger: dict) -> tuple[list[str], list[str]]:
     start = _trailing_test_run_start(command) if "pytest" in command else None
-    if start is None:
+    anchors = _develop_anchors(repo, ledger) if start is not None else None
+    if start is None or anchors is None:
         return list(command), []
-    dropped = [arg for arg in command[start:] if _deleted_by_develop(repo, arg.split("::", 1)[0])]
+    dropped = [arg for arg in command[start:] if _deleted_by_develop(repo, arg.split("::", 1)[0], anchors)]
     kept = [arg for arg in command[start:] if arg not in dropped]
     return [*command[:start], *kept], dropped
 
@@ -793,7 +799,7 @@ def _rerun(
     head = _rev(repo, "HEAD")
     clean_before = _is_clean(repo)
     recorded = _validate_verification_command(command)
-    ran_command, dropped_paths = _without_deleted_test_paths(recorded, repo)
+    ran_command, dropped_paths = _without_deleted_test_paths(recorded, repo, ledger)
     if dropped_paths and not any(_is_test_path_arg(arg) for arg in ran_command):
         proc = None
     else:

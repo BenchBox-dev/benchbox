@@ -1106,7 +1106,7 @@ def _check_evidence_acceptance(
         if row.get("suite") != verification.get("suite") or row.get("command") != verification.get("command"):
             failures.append(f"current acceptance for member {member} is not its own receipt verification")
             continue
-        failures.extend(_check_dropped_paths(repo, member, row, verification.get("command"), head, base))
+        failures.extend(_check_dropped_paths(repo, member, row, verification.get("command"), head, base, tracker))
     return failures
 
 
@@ -1127,18 +1127,26 @@ def _present_in_tree(repo: Path, revision: str, path: str) -> bool | None:
     return bool(listed.stdout.strip())
 
 
-def _in_history(repo: Path, revision: str, path: str) -> bool | None:
-    logged = subprocess.run(
-        ["git", "log", "-1", "--format=%H", revision, "--", path],
-        cwd=repo,
-        check=False,
-        capture_output=True,
-        encoding="utf-8",
-        timeout=60,
-    )
-    if logged.returncode != 0:
+def _develop_anchors(repo: Path, tracker: dict) -> list[str] | None:
+    start_head = _revision(tracker.get("start_head"))
+    log = tracker.get("integration_log")
+    if start_head is None or not isinstance(log, list):
         return None
-    return bool(logged.stdout.strip())
+    anchors = [start_head]
+    for entry in log:
+        if not isinstance(entry, dict) or entry.get("kind") != "develop-merge":
+            continue
+        merge = _revision(entry.get("head"))
+        if merge is None:
+            return None
+        try:
+            parents = _git(repo, "rev-list", "--parents", "-n", "1", merge).split()[1:]
+        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            return None
+        if len(parents) != 2:
+            return None
+        anchors.append(parents[1])
+    return anchors
 
 
 def _trailing_test_run_start(command: list) -> int | None:
@@ -1151,7 +1159,7 @@ def _trailing_test_run_start(command: list) -> int | None:
 
 
 def _check_dropped_paths(
-    repo: Path, member: str, row: dict, recorded: object, head: str, base: str | None
+    repo: Path, member: str, row: dict, recorded: object, head: str, base: str | None, tracker: dict
 ) -> list[str]:
     dropped = row.get("dropped_paths", [])
     ran = row.get("ran_command", recorded)
@@ -1173,17 +1181,21 @@ def _check_dropped_paths(
         return [f"current acceptance for member {member} dropped every test path; refusing a run without tests"]
     if not base:
         return [f"current acceptance for member {member} dropped paths but the PR base revision is unavailable"]
+    anchors = _develop_anchors(repo, tracker)
+    if anchors is None:
+        return [f"current acceptance for member {member} dropped paths but the develop start or merges are unreadable"]
     failures: list[str] = []
     for path in dropped:
         file_part = path.split("::", 1)[0]
-        owned = _in_history(repo, base, file_part)
-        if owned is None:
+        seen = [_present_in_tree(repo, anchor, file_part) for anchor in anchors]
+        if None in seen:
             failures.append(
-                f"current acceptance for member {member} dropped {path}, which could not be checked in develop history"
+                f"current acceptance for member {member} dropped {path}, which could not be checked at the batch start"
             )
-        elif not owned:
+        elif not any(seen):
             failures.append(
-                f"current acceptance for member {member} dropped {path}, which never existed in develop history"
+                f"current acceptance for member {member} dropped {path}, which did not exist on develop "
+                "at the batch start or any merged develop parent"
             )
         for label, revision in (("PR head", head), ("PR base", base)):
             present = _present_in_tree(repo, revision, file_part)
