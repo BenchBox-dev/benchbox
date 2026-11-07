@@ -3234,7 +3234,7 @@
         }
       },
       "integration_branch": "feat/load-value-integrity",
-      "integration_head": "accf058df76a6f32effaa402f5a8f1388b0eef3c",
+      "integration_head": "95b2aeff395c49223700b04d0a86a398e14d6647",
       "integration_log": [
         {
           "at": "2026-11-07T14:17:34Z",
@@ -3259,6 +3259,18 @@
           "op_id": "ea21a6c646174f90bf8792a5e100d441",
           "previous_head": "3ad5a260a056e93e9b079f5f66d16dd8baa4bdcc",
           "seq": 2
+        },
+        {
+          "at": "2026-11-07T15:19:48Z",
+          "changed_files": [
+            "tests/integration/test_manifest_driven_loading.py"
+          ],
+          "head": "95b2aeff395c49223700b04d0a86a398e14d6647",
+          "kind": "fix",
+          "op_id": "e5f72cb494a242cb81af151ceb0db081",
+          "previous_head": "accf058df76a6f32effaa402f5a8f1388b0eef3c",
+          "requires_acceptance": [],
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-load-value-integrity",
