@@ -57,7 +57,7 @@
         }
       },
       "integration_branch": "feat/arming-reliability",
-      "integration_head": "3f5863ebf27647b040beb69c2b4382014fa190fb",
+      "integration_head": "e7159ff55aa574e7116cedbd4a5888d2d0494266",
       "integration_log": [
         {
           "at": "2026-11-07T01:02:04Z",
@@ -113,6 +113,18 @@
             "pr-arm-stale-hold-suite-needs-new-head-20261106"
           ],
           "seq": 4
+        },
+        {
+          "at": "2026-11-07T04:20:13Z",
+          "changed_files": [
+            "scripts/sql_execution_gate/expected_differences.json"
+          ],
+          "head": "e7159ff55aa574e7116cedbd4a5888d2d0494266",
+          "kind": "fix",
+          "op_id": "8ef8c6d87f5e4052b3f2c609611d9992",
+          "previous_head": "3f5863ebf27647b040beb69c2b4382014fa190fb",
+          "requires_acceptance": [],
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-arming-reliability",
