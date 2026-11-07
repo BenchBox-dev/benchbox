@@ -157,6 +157,20 @@ unreadable state is an `ERROR`/`WARNING` and the machine is left for the
 sentinel. If the helper itself fails the machine is left running with a
 warning rather than stopped unverified.
 
+Both the wrapper and the sentinel stop the machine the same way. The guest runs
+systemd as PID 1, which does not shut down on the SIGTERM that
+`container machine stop` sends, so a plain stop ends in a forced kill (exit
+status 137). The stop step (`python -m benchbox.utils.linux_machine
+stop-sequence`) therefore reads the state from `container machine list --format
+json`. If the machine is `running` it asks the guest to shut down with
+`container machine run -n <machine> -- systemctl poweroff --no-block` (cut off
+after 8 s), waits up to `BENCHBOX_LINUX_POWEROFF_WAIT_SECONDS` (default 15) for
+it to reach `stopped`, and otherwise falls back to `container machine stop`. A
+`stopped` machine is left alone and is never booted to power it off; an
+unreadable state goes straight to `container machine stop`. The whole sequence
+runs inside the same stop timeout and process group, and the fallback starts by
+about 33 s, leaving at least 27 s of the default 60 s timeout.
+
 The sentinel takes the host lock with a non-blocking acquire before it stops
 an idle machine, so it never races a new run and never waits on one, and holds
 it until the stop group is reaped and the final state is read. It keeps the last
@@ -164,9 +178,9 @@ it until the stop group is reaped and the final state is read. It keeps the last
 actual state; anything other than `stopped` is a failure retried after the next
 idle window. Three consecutive failures also log `STUCK` with
 `container machine logs -n 50 <machine>` on every further attempt; retries are
-not disabled. The underlying provider hang seen on 2026-11-02 (stop timing out for
-9 hours) is unresolved: this code makes it diagnosable and bounded, not fixed, and
-only the owner can intervene when `STUCK` repeats.
+not disabled. The provider hang seen on 2026-11-02 (stop timing out for 9 hours)
+has no confirmed cause; the guest power-off removes the forced-kill path it most
+likely stalled in, and the bounds and `STUCK` report remain for anything else.
 
 `benchbox-agent` is currently a 6G machine (the owner resized it from 8G on
 2026-11-01), matching the documented `container machine create ... --memory 6G`.

@@ -632,7 +632,11 @@ def test_the_real_stop_process_is_group_killed_with_its_output_kept_and_no_leake
     stub = bin_dir / "container"
     stub.write_text(
         "#!/usr/bin/env bash\n"
-        'echo "Error: apiserver not responding"\n'
+        'case "$1 $2" in\n'
+        '  "machine list") echo \'[{"id":"m","status":"running"}]\'; exit 0 ;;\n'
+        '  "machine run") exit 0 ;;\n'
+        "esac\n"
+        'echo "Error: apiserver not responding" >&2\n'
         f"sleep 300 & echo $! > {tmp_path}/worker.pid\n"
         "trap '' TERM\n"
         "wait\n",
@@ -640,9 +644,10 @@ def test_the_real_stop_process_is_group_killed_with_its_output_kept_and_no_leake
     )
     stub.chmod(0o755)
     monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+    monkeypatch.setenv(lm.GUEST_POWEROFF_WAIT_ENV, "0")
     monkeypatch.setattr(lm, "STOP_KILL_STEP_SECONDS", 0.3)
     handle = hs.start_machine_stop("m")
-    deadline = time.monotonic() + 10
+    deadline = time.monotonic() + 20
     while not (tmp_path / "worker.pid").exists() and time.monotonic() < deadline:
         time.sleep(0.05)
     worker = int((tmp_path / "worker.pid").read_text(encoding="utf-8"))
