@@ -3192,7 +3192,8 @@
     },
     "load-value-integrity": {
       "accepted_members": {
-        "mocker-doris-singlestore-stacks-start-20261107": "bc85ff2e9c475cb55d4f9e6c06cae18c119f16c4"
+        "mocker-doris-singlestore-stacks-start-20261107": "bc85ff2e9c475cb55d4f9e6c06cae18c119f16c4",
+        "questdb-rest-accepts-invalid-int-20261107": "51710e6d21b4e84c3146b07b17415ffcd6e2cb91"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -3217,10 +3218,23 @@
           ],
           "integration_head": "3ad5a260a056e93e9b079f5f66d16dd8baa4bdcc",
           "integration_seq": 1
+        },
+        "questdb-rest-accepts-invalid-int-20261107": {
+          "accepted_head": "51710e6d21b4e84c3146b07b17415ffcd6e2cb91",
+          "changed_files": [
+            "benchbox/platforms/questdb.py",
+            "changelog.d/feat-load-value-integrity--questdb-rest-accepts-invalid-int-20261107.json",
+            "tests/integration/platforms/test_questdb_invalid_value_import.py",
+            "tests/unit/platforms/test_questdb_coverage.py",
+            "tests/unit/platforms/test_questdb_ilp_arrow.py",
+            "tests/unit/platforms/test_questdb_import_value_integrity.py"
+          ],
+          "integration_head": "accf058df76a6f32effaa402f5a8f1388b0eef3c",
+          "integration_seq": 2
         }
       },
       "integration_branch": "feat/load-value-integrity",
-      "integration_head": "3ad5a260a056e93e9b079f5f66d16dd8baa4bdcc",
+      "integration_head": "accf058df76a6f32effaa402f5a8f1388b0eef3c",
       "integration_log": [
         {
           "at": "2026-11-07T14:17:34Z",
@@ -3236,6 +3250,15 @@
           "op_id": "8a2881d2aa1249ae979d7d9bee89e318",
           "previous_head": "766364b8a32f55ac19a09feca8dead5008a2fd80",
           "seq": 1
+        },
+        {
+          "at": "2026-11-07T15:19:06Z",
+          "head": "accf058df76a6f32effaa402f5a8f1388b0eef3c",
+          "kind": "prepare",
+          "member": "questdb-rest-accepts-invalid-int-20261107",
+          "op_id": "ea21a6c646174f90bf8792a5e100d441",
+          "previous_head": "3ad5a260a056e93e9b079f5f66d16dd8baa4bdcc",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-load-value-integrity",
@@ -28501,15 +28524,10 @@
       "title": "Make QuestDB parquet chunk row count tunable via platform config"
     },
     "questdb-rest-accepts-invalid-int-20261107": {
-      "claim": {
-        "expires_at": "2026-11-08T15:18:52Z",
-        "generation": "c825ef5f51604969959d4afcbbc38732",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "QuestDB REST import accepts an invalid INT value instead of rejecting the row"
     },
     "questdb-rest-and-databend-partial-load-loud-20261106": {

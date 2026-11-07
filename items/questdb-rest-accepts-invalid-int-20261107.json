@@ -10,6 +10,71 @@
     "member_id": "questdb-rest-accepts-invalid-int-20261107"
   },
   "description": "Found during live verification of #3998 (QuestDB 10.0.1 under mocker): a forced bad INT value was accepted by the REST /imp import instead of rejected, so the new rejected-row failure path could only be unit-tested. If QuestDB coerces or nulls invalid values without reporting them, benchmark data can be altered silently.\n\nChange. Determine what QuestDB does with an invalid INT, and with other types (DATE, DOUBLE, SYMBOL), on REST import with BenchBox's import options: null, zero, or a skipped row. Check whether an import parameter (for example atomicity or strict schema) makes it reject. Make the loader fail on any value change, using the import response's error counts or a post-load checksum.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; heavy work only through make heavy-run; container checks under mocker one stack at a time (limits in tests/uat docs and the uat-mocker-compose-gaps-20261106 context); no live cloud without owner approval; no explanatory comments; changelog fragment if user-facing.",
+  "prepared": {
+    "accepted_head": "51710e6d21b4e84c3146b07b17415ffcd6e2cb91",
+    "batch_id": "load-value-integrity",
+    "changed_files": [
+      "benchbox/platforms/questdb.py",
+      "changelog.d/feat-load-value-integrity--questdb-rest-accepts-invalid-int-20261107.json",
+      "tests/integration/platforms/test_questdb_invalid_value_import.py",
+      "tests/unit/platforms/test_questdb_coverage.py",
+      "tests/unit/platforms/test_questdb_ilp_arrow.py",
+      "tests/unit/platforms/test_questdb_import_value_integrity.py"
+    ],
+    "integration_head": "accf058df76a6f32effaa402f5a8f1388b0eef3c",
+    "integration_seq": 2,
+    "member_id": "questdb-rest-accepts-invalid-int-20261107",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "e0d6ab2a29cc96153e2c959e9911cbcb8b990d8be2041b4a69da84103076f877",
+    "source_base": "3ad5a260a056e93e9b079f5f66d16dd8baa4bdcc",
+    "source_revision": "51710e6d21b4e84c3146b07b17415ffcd6e2cb91",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-load-value-integrity--questdb-rest-accepts-invalid-int-20261107",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/platforms/test_questdb_invalid_value_import.py",
+        "tests/integration/test_manifest_driven_loading.py",
+        "tests/integration/test_misc_plan_capture_live.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_connection_registry_drift.py",
+        "tests/unit/core/tuning/test_capability_registry_parity.py",
+        "tests/unit/platforms/test_misc_plan_capture.py",
+        "tests/unit/platforms/test_questdb_adapter.py",
+        "tests/unit/platforms/test_questdb_coverage.py",
+        "tests/unit/platforms/test_questdb_ilp_arrow.py",
+        "tests/unit/platforms/test_questdb_import_value_integrity.py",
+        "tests/unit/platforms/test_questdb_join_scope.py",
+        "tests/unit/platforms/test_questdb_rewrites.py",
+        "tests/unit/platforms/test_questdb_schema_enhancement.py",
+        "tests/unit/platforms/test_throughput_session_capability.py",
+        "tests/unit/utils/test_dialect_utils.py"
+      ],
+      "review": {
+        "base_sha": "3ad5a260a056e93e9b079f5f66d16dd8baa4bdcc",
+        "head_sha": "51710e6d21b4e84c3146b07b17415ffcd6e2cb91",
+        "head_tree": "3ddc8ad71bc7bd382157fc9e432dab4479ead04f",
+        "outcome": "clear",
+        "patch_digest": "c6a1287c6541021287505e2edaf940c1",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "766364b8a32f55ac19a09feca8dead5008a2fd80"
+      },
+      "revision": "51710e6d21b4e84c3146b07b17415ffcd6e2cb91",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
@@ -34,6 +99,15 @@
       "generation": "c825ef5f51604969959d4afcbbc38732",
       "op": "take",
       "op_id": "69f9f8f30ed545ac922fb592978dfdf1",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T15:19:06Z",
+      "client": "omp-coding-agent",
+      "generation": "c825ef5f51604969959d4afcbbc38732",
+      "op": "prepare",
+      "op_id": "ea21a6c646174f90bf8792a5e100d441",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
