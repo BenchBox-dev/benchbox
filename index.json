@@ -8376,10 +8376,15 @@
       "title": "Batch tpc-timer-boundaries: umbrella notes (not a member)"
     },
     "batch-tpcds-dsdgen-maintenance-umbrella-20261107": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T07:55:05Z",
+        "generation": "bb5e59311fe44a5e8d2c9fbdc027bc11",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Batch tpcds-dsdgen-maintenance: umbrella notes (not a member)"
     },
     "batch-tpch-refresh-path-umbrella-20261104": {
