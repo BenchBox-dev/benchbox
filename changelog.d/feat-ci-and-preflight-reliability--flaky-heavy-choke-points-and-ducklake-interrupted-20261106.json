@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "The heavy choke-point tests give every stub machine its own name so concurrent test workers no longer see each other's runs as foreign, and the DuckLake converter tests reuse the installed DuckDB extensions instead of downloading them inside every test's sandboxed home."
+}
