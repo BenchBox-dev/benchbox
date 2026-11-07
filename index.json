@@ -4689,6 +4689,108 @@
       "start_head": "20a0045113e6c8ba13c3e7c4f78351e3fe81f81e",
       "terminal_outcome": "deliver"
     },
+    "result-validity": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/result-validity",
+      "integration_head": "766364b8a32f55ac19a09feca8dead5008a2fd80",
+      "integration_log": [
+        {
+          "at": "2026-11-07T14:16:47Z",
+          "head": "766364b8a32f55ac19a09feca8dead5008a2fd80",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-result-validity",
+      "lifecycle": "active",
+      "members": [
+        "tpch-power-validation-after-rf1-q13-20261106",
+        "tpch-parity-test-skips-without-cached-extension-20261107",
+        "chdb-rows-nan-vs-arrow-null-q17-20261107",
+        "chdb-4x-engine-load-verification-20261006",
+        "qphds-full-sequence-unrun-20261107"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "owner_epoch": 0,
+      "owner_generation": "ebffe54c4e654cb618a444abba70a1a6",
+      "project_id": "benchbox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "chdb-4x-engine-load-verification-20261006": [
+          "benchbox/*",
+          "scripts/*",
+          "_project/*",
+          "changelog.d/*",
+          "docs/*",
+          "quality/*",
+          ".github/workflows/*",
+          "make/*",
+          "Makefile",
+          "tests/*",
+          "pyproject.toml",
+          "uv.lock"
+        ],
+        "chdb-rows-nan-vs-arrow-null-q17-20261107": [
+          "benchbox/*",
+          "scripts/*",
+          "_project/*",
+          "changelog.d/*",
+          "docs/*",
+          "quality/*",
+          ".github/workflows/*",
+          "make/*",
+          "Makefile",
+          "tests/*",
+          "pyproject.toml",
+          "uv.lock"
+        ],
+        "qphds-full-sequence-unrun-20261107": [
+          "benchbox/*",
+          "scripts/*",
+          "_project/*",
+          "changelog.d/*",
+          "docs/*",
+          "quality/*",
+          ".github/workflows/*",
+          "make/*",
+          "Makefile",
+          "tests/*"
+        ],
+        "tpch-parity-test-skips-without-cached-extension-20261107": [
+          "benchbox/*",
+          "scripts/*",
+          "_project/*",
+          "changelog.d/*",
+          "docs/*",
+          "quality/*",
+          ".github/workflows/*",
+          "make/*",
+          "Makefile",
+          "tests/*"
+        ],
+        "tpch-power-validation-after-rf1-q13-20261106": [
+          "benchbox/*",
+          "scripts/*",
+          "_project/*",
+          "changelog.d/*",
+          "docs/*",
+          "quality/*",
+          ".github/workflows/*",
+          "make/*",
+          "Makefile",
+          "tests/*"
+        ]
+      },
+      "scope_hash": "11e4796de2c971b9fc776447d58903977813cc305b8c6a00ba389fe4f35784b0",
+      "start_head": "766364b8a32f55ac19a09feca8dead5008a2fd80",
+      "terminal_outcome": "deliver"
+    },
     "spark-family-fixes": {
       "accepted_members": {
         "platform-options-forwarding-gaps-20261014": "00436ddc83fdb25c32c1b1abc670b31cde929768",
