@@ -2,8 +2,9 @@
   "schema": 1,
   "entries": [
     {
-      "category": "changed",
+      "category": "before-you-upgrade",
       "breaking": true,
+      "lead": "TPC-DS maintenance refuses to run against enforced primary keys",
       "text": "TPC-DS data maintenance now follows TPC-DS 4.0.0 clauses 5.2.3, 5.2.5, 5.2.7 and 5.3: refresh data sets come from `dsdgen -update`, are generated before any timer starts and are loaded into staging tables inside each function's timed interval through the platform's generic loader, and the 11 spec functions (LF_CR, LF_CS, LF_I, LF_SR, LF_SS, LF_WR, LF_WS, DF_CS, DF_SS, DF_WS, DF_I) run as set-based SQL.",
       "details": [
         "The synthetic Python row generator and the per-row UPDATE handlers are removed; a run seed is passed to `dsdgen` as `-RNGSEED` only when one is set; the spec defines no UPDATE functions. Maintenance runs on platforms that declare refresh support (DuckDB, PostgreSQL, SQLite, Snowflake, SingleStore); other platforms report the phase as skipped.",
@@ -11,7 +12,9 @@
         "The kit's refresh keys start at 1 in every refresh set and overlap the base keys (`getUpdateBase` indexes the wrong table), so maintenance refuses to run when primary keys are enforced on a maintenance target table (DuckDB, PostgreSQL, SQLite, SingleStore) and names the tables and the `--tuning notuning` way out; Snowflake does not enforce primary keys and runs. Returns deletes match in-range sales by order or ticket number plus item.",
         "Loading refresh data never truncates a warehouse table and stops the function on any rejected or missing row."
       ],
-      "benchmarks": ["tpcds"]
+      "benchmarks": [
+        "tpcds"
+      ]
     }
   ]
 }
