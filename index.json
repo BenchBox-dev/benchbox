@@ -5348,7 +5348,7 @@
         }
       },
       "integration_branch": "feat/tpcds-dsdgen-maintenance",
-      "integration_head": "ff23c439c67420c10afc6138414d44b1cad2625d",
+      "integration_head": "6ea85f183e78037bbaca5ae11026f95bd265accd",
       "integration_log": [
         {
           "at": "2026-11-07T04:13:50Z",
@@ -5386,6 +5386,20 @@
             "tpcds-maintenance-dsdgen-refresh-data-20261103"
           ],
           "seq": 2
+        },
+        {
+          "at": "2026-11-07T06:12:48Z",
+          "changed_files": [
+            "changelog.d/feat-tpcds-dsdgen-maintenance--tpcds-maintenance-dsdgen-refresh-data-20261103.json"
+          ],
+          "head": "6ea85f183e78037bbaca5ae11026f95bd265accd",
+          "kind": "fix",
+          "op_id": "4e7f28fd472a413c8c7b450a5bf0b96a",
+          "previous_head": "ff23c439c67420c10afc6138414d44b1cad2625d",
+          "requires_acceptance": [
+            "tpcds-maintenance-dsdgen-refresh-data-20261103"
+          ],
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcds-dsdgen-maintenance",
