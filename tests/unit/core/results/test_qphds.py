@@ -26,6 +26,7 @@ from benchbox.core.throughput.result import throughput_stream_numbering
 pytestmark = [pytest.mark.unit, pytest.mark.fast, pytest.mark.tpcds]
 
 STREAMS = 4
+STATEMENTS = 103
 EXPECTED_QPHDS = 11453.0
 
 
@@ -47,7 +48,7 @@ def _throughput(
             )
             for stream_id in range(first_stream_id, first_stream_id + STREAMS)
         ],
-        total_queries_executed=total_queries if total_queries is not None else 99 * STREAMS,
+        total_queries_executed=total_queries if total_queries is not None else STATEMENTS * STREAMS,
         throughput_at_size=1.0,
         success=success,
         stream_numbering=throughput_stream_numbering(first_stream_id),
@@ -98,7 +99,7 @@ def _phases() -> ExecutionPhases:
             query_executions=[],
             geometric_mean_time=1.0,
             power_at_size=100.0,
-            query_count=99,
+            query_count=STATEMENTS,
             success=True,
         ),
         throughput_test=_throughput(1, 200.0),
@@ -231,7 +232,7 @@ class TestQphDSEvaluation:
             ),
             (
                 "short streams",
-                {"throughput_test_2": _throughput(STREAMS + 1, 300.0, total_queries=99 * STREAMS - 1)},
+                {"throughput_test_2": _throughput(STREAMS + 1, 300.0, total_queries=STATEMENTS * STREAMS - 1)},
                 {},
                 "streams did not execute all 99 queries",
             ),
@@ -241,13 +242,25 @@ class TestQphDSEvaluation:
                 {},
                 "refresh sets that follow",
             ),
+            (
+                "legacy 99 statement power stream",
+                {"power_test": replace(_phases().power_test, query_count=99)},
+                {},
+                "Power Test ran 99 statements instead of 103",
+            ),
+            (
+                "legacy 99 statement throughput streams",
+                {"throughput_test": _throughput(1, 200.0, total_queries=99 * STREAMS)},
+                {},
+                "streams did not execute all 99 queries",
+            ),
             ("zero load time", {"setup": _loading(0.0)}, {}, "database load elapsed time"),
             ("no power test", {"power_test": None}, {}, "Power Test did not run"),
             (
                 "short power test",
-                {"power_test": replace(_phases().power_test, query_count=98)},
+                {"power_test": replace(_phases().power_test, query_count=STATEMENTS - 1)},
                 {},
-                "Power Test ran 98 queries",
+                "Power Test ran 102 statements",
             ),
         ],
     )
@@ -414,3 +427,10 @@ def test_reused_database_with_statistics_gathering_withholds_the_metric() -> Non
 
     assert evaluation.qphds_at_size is None
     assert any("database load was reused" in item for item in evaluation.unavailable)
+
+
+def test_statement_count_is_derived_from_the_stream_generator_constant() -> None:
+    from benchbox.core.tpcds.streams import MULTI_PART_QUERY_IDS
+
+    assert 99 + len(MULTI_PART_QUERY_IDS) == STATEMENTS
+    assert _evaluate(_phases()).qphds_at_size == EXPECTED_QPHDS

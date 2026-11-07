@@ -4,8 +4,10 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from benchbox.core.results.metrics import TPC_QUERIES_PER_STREAM, TPCMetricsCalculator
+from benchbox.core.tpcds.streams import MULTI_PART_QUERY_IDS
 
 OFFICIAL_COMPLIANCE_CLASS = "official"
+QUERY_STATEMENTS_PER_STREAM = TPC_QUERIES_PER_STREAM["tpcds"] + len(MULTI_PART_QUERY_IDS)
 
 
 @dataclass
@@ -29,8 +31,11 @@ def _throughput_problems(phase: Any, label: str, expected_first_stream: int, num
         problems.append(f"{label} did not complete successfully")
     if phase.num_streams != num_streams:
         problems.append(f"{label} ran {phase.num_streams} streams instead of {num_streams}")
-    if phase.total_queries_executed != TPC_QUERIES_PER_STREAM["tpcds"] * num_streams:
-        problems.append(f"{label} streams did not execute all {TPC_QUERIES_PER_STREAM['tpcds']} queries")
+    if phase.total_queries_executed != QUERY_STATEMENTS_PER_STREAM * num_streams:
+        problems.append(
+            f"{label} streams did not execute all {TPC_QUERIES_PER_STREAM['tpcds']} queries "
+            f"({QUERY_STATEMENTS_PER_STREAM} statements per stream)"
+        )
     if phase.outstanding_work:
         problems.append(f"{label} left outstanding stream work")
     expected_ids = list(range(expected_first_stream, expected_first_stream + num_streams))
@@ -138,8 +143,11 @@ def evaluate_qphds(
     else:
         if power.success is not True:
             problems.append("Power Test did not complete successfully")
-        if power.query_count != TPC_QUERIES_PER_STREAM["tpcds"]:
-            problems.append(f"Power Test ran {power.query_count} queries instead of {TPC_QUERIES_PER_STREAM['tpcds']}")
+        if power.query_count != QUERY_STATEMENTS_PER_STREAM:
+            problems.append(
+                f"Power Test ran {power.query_count} statements instead of {QUERY_STATEMENTS_PER_STREAM} "
+                f"(all {TPC_QUERIES_PER_STREAM['tpcds']} queries)"
+            )
 
     problems.extend(_throughput_problems(throughput_1, "Throughput Test 1", 1, stream_count))
     problems.extend(_throughput_problems(throughput_2, "Throughput Test 2", stream_count + 1, stream_count))

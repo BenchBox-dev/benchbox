@@ -39,7 +39,7 @@ class _RecordingAdapter(_LifecycleAdapter):
             power_at_size=1.0,
             total_time=999.0,
             query_results=self.power_query_results,
-            queries_executed=99,
+            queries_executed=103,
             success=True,
             start_time="2026-01-01T00:00:00",
             end_time="2026-01-01T00:01:40",
@@ -66,8 +66,8 @@ class _FakeThroughputTest:
                 start_time=0.0,
                 end_time=1.0,
                 duration=1.0,
-                queries_executed=99,
-                queries_successful=99,
+                queries_executed=103,
+                queries_successful=103,
                 queries_failed=0,
                 success=True,
             )
@@ -184,7 +184,7 @@ def test_power_time_is_the_sum_of_query_times_not_the_test_wall_time(recorded_ru
 
 
 def test_power_time_without_query_durations_withholds_qphds(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    result, _order, _adapter = _run(monkeypatch, tmp_path, power_query_results=[{}] * 99)
+    result, _order, _adapter = _run(monkeypatch, tmp_path, power_query_results=[{}] * 103)
 
     evaluation = evaluate_qphds(
         result.phases, scale_factor=1.0, compliance_class="official", failed_query_count=0, query_subset=None
