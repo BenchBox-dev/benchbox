@@ -17,8 +17,10 @@ from pathlib import Path
 from typing import Any
 
 from benchbox.core.cost.models import cost_status_of, published_total_cost
+from benchbox.core.results.comparison_modes import IncomparableModesError, results_fetch_mode, stored_fetch_mode
 from benchbox.core.results.environment import build_platform_metadata_payload
 from benchbox.core.results.execution_variant import ExecutionVariant, platform_info_bundle, read_execution_variant
+from benchbox.core.results.fetch_mode import MIXED_FETCH_MODE, parse_fetch_mode
 from benchbox.core.results.models import BenchmarkResults
 from benchbox.core.results.platform_options import sanitize_platform_options
 from benchbox.core.results.regression_policy import is_regression
@@ -35,6 +37,10 @@ _RANKING_METRIC_CONFIG = {
     "cost_efficiency": ("total_cost / NULLIF(successful_queries, 0)", "ASC"),
 }
 _BACKUP_TABLE_NAME_PATTERN = re.compile(r"^queries_orphan_backup_\d{20}$")
+_STORED_FETCH_MODE_SQL = (
+    "CASE WHEN json_extract(metadata_json, '$.fetch_mode') IN ('rows', 'arrow', 'mixed') "
+    "THEN json_extract(metadata_json, '$.fetch_mode') ELSE 'rows' END"
+)
 
 
 def _validate_backup_table_name(table_name: str) -> str:
@@ -347,6 +353,7 @@ class ResultDatabase:
             "tunings_applied": result.tunings_applied,
             "test_execution_type": result.test_execution_type,
             "execution_variant": asdict(_result_variant(result)),
+            "fetch_mode": results_fetch_mode(result),
         }
         has_explicit_platform_meta = any(
             getattr(result, name, None) is not None
@@ -647,6 +654,7 @@ class ResultDatabase:
         scale_factor: float,
         config: RankingConfig | None = None,
         include_unofficial: bool = False,
+        fetch_mode: str | None = None,
     ) -> list[PlatformRanking]:
         config = config or RankingConfig()
 
@@ -668,6 +676,27 @@ class ResultDatabase:
                 "" if include_unofficial else "AND (compliance_class = 'official' OR compliance_class IS NULL)"
             )
 
+            mode_scope = (
+                f"benchmark = ? AND scale_factor = ? AND timestamp >= ? AND {metric_col} IS NOT NULL "
+                f"{validation_filter} {unofficial_filter}"
+            )
+            if fetch_mode is None:
+                cursor.execute(
+                    f"SELECT DISTINCT {_STORED_FETCH_MODE_SQL} AS mode FROM results WHERE {mode_scope}",
+                    (benchmark, scale_factor, cutoff.isoformat()),
+                )
+                modes = sorted(row["mode"] for row in cursor.fetchall())
+                if len(modes) > 1 or MIXED_FETCH_MODE in modes:
+                    raise IncomparableModesError(
+                        [
+                            f"fetch mode differs across stored results ({', '.join(modes)}); rank one fetch mode at a time"
+                        ]
+                    )
+                resolved_mode = modes[0] if modes else None
+            else:
+                resolved_mode = parse_fetch_mode(fetch_mode)
+            mode_filter = f"AND {_STORED_FETCH_MODE_SQL} = '{resolved_mode}'" if resolved_mode else ""
+
             cursor.execute(
                 f"""
                 SELECT
@@ -683,6 +712,7 @@ class ResultDatabase:
                     AND {metric_col} IS NOT NULL
                     {validation_filter}
                     {unofficial_filter}
+                    {mode_filter}
                 GROUP BY platform, platform_version
                 HAVING COUNT(*) >= ?
                 ORDER BY avg_score {order}
@@ -706,6 +736,7 @@ class ResultDatabase:
                     AND {metric_col} IS NOT NULL
                     {validation_filter}
                     {unofficial_filter}
+                    {mode_filter}
                 GROUP BY platform
             """,
                 (
@@ -785,14 +816,16 @@ class ResultDatabase:
             """,
                 (platform, benchmark, scale_factor),
             )
-            return [
-                (
-                    row["timestamp"],
-                    row["geometric_mean_ms"],
-                    _stored_variant(platform, json.loads(row["metadata_json"]) if row["metadata_json"] else {}),
-                )
+            parsed = [
+                (row["timestamp"], row["geometric_mean_ms"], json.loads(row["metadata_json"] or "{}"))
                 for row in cursor.fetchall()
             ]
+        newest_mode = stored_fetch_mode(parsed[0][2]) if parsed else None
+        return [
+            (timestamp, value, _stored_variant(platform, metadata))
+            for timestamp, value, metadata in parsed
+            if stored_fetch_mode(metadata) == newest_mode
+        ]
 
     def _distinct_variants(self, platform: str, benchmark: str, scale_factor: float) -> list[ExecutionVariant]:
         variants: dict[tuple[str | None, str, str, str], ExecutionVariant] = {}

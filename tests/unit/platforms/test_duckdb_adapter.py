@@ -812,7 +812,7 @@ class TestDuckDBAdapter:
         mock_connection.execute.return_value = mock_result
         mock_duckdb.connect.return_value = mock_connection
 
-        adapter = DuckDBAdapter()
+        adapter = DuckDBAdapter(fetch_mode="rows")
 
         with patch.object(adapter, "display_query_plan_if_enabled"):
             result = adapter.execute_query(mock_connection, "SELECT * FROM test", "q1")
@@ -833,7 +833,7 @@ class TestDuckDBAdapter:
         mock_connection.execute.return_value = mock_result
         mock_duckdb.connect.return_value = mock_connection
 
-        adapter = DuckDBAdapter(show_query_plans=True)
+        adapter = DuckDBAdapter(show_query_plans=True, fetch_mode="rows")
 
         with patch.object(adapter, "display_query_plan_if_enabled"):
             result = adapter.execute_query(mock_connection, "SELECT 1", "q1")
@@ -875,7 +875,7 @@ class TestDuckDBAdapter:
         mock_connection.execute.return_value = mock_result
         mock_duckdb.connect.return_value = mock_connection
 
-        adapter = DuckDBAdapter(show_query_plans=True, capture_plans=False)
+        adapter = DuckDBAdapter(show_query_plans=True, capture_plans=False, fetch_mode="rows")
 
         with (
             patch.object(adapter, "display_query_plan_if_enabled") as mock_display,
@@ -895,7 +895,7 @@ class TestDuckDBAdapter:
         mock_connection.execute.return_value = mock_result
         mock_duckdb.connect.return_value = mock_connection
 
-        adapter = DuckDBAdapter(show_query_plans=False, capture_plans=True)
+        adapter = DuckDBAdapter(show_query_plans=False, capture_plans=True, fetch_mode="rows")
 
         with (
             patch.object(adapter, "display_query_plan_if_enabled") as mock_display,
