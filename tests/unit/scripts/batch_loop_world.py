@@ -307,7 +307,7 @@ class World:
                 capture_output=True,
             )
             return done()
-        command = bi.TODO_DB_COMMAND
+        command = bi.TRACTABLE_COMMAND
         if argv[: len(command)] == command:
             return self.tracker.show(argv[len(command) :])
         if argv[:2] == [str(THESEUS_STUB), "preflight"]:

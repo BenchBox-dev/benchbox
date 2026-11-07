@@ -5,6 +5,6 @@
     "sessionUrl": false
   },
   "enabledMcpjsonServers": [
-    "todo-db"
+    "tractable"
   ]
 }

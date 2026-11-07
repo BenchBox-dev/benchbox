@@ -40,7 +40,7 @@ requires a human audience that belongs on benchbox.dev. A new
 | `heavy-work.md` | Host lock, admission, `make heavy-status`/`heavy-run`, and the known limits behind `[HEAVY-LOCK-001]` |
 | `maintainer-bundles.md` | Automatic pseudonym salt, staging a local run with `make corpus-stage-local`, and the guard-refusal rule |
 | `batch-feature-delivery.md` | The default feature batch loop for explicitly assigned cohesive batches: leader and member roles, the `batch-start`, `batch-member-create`, `batch-member-check`, `batch-land`, `batch-advance`, `batch-status`, `batch-verify`, `batch-evidence`, and `batch-finish` targets, the brief-size limit, rollback, and recovery |
-| `batch-tracker-contract.md` | The todo-db v2 batch contract BenchBox consumes: `register_batch`, `take` then `prepare`, `advance_batch_head`, `bind_batch_pr`, `finish`, and recovery, with the leader as the only tracker writer |
+| `batch-tracker-contract.md` | The tractable v2 batch contract BenchBox consumes: `register_batch`, `take` then `prepare`, `advance_batch_head`, `bind_batch_pr`, `finish`, and recovery, with the leader as the only tracker writer |
 
 The eval runbook is `docs/internal/agent-instruction-evaluation.md`. The
 scenario corpus is `_project/evals/agent-instructions/`.

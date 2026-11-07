@@ -109,7 +109,7 @@ approval-separated, or otherwise unrelated work: follow the ordinary claim,
 implementation, verification, review, merge, and deployment boundaries.
 
 An explicitly assigned cohesive batch uses feature delivery mode by default
-once prerequisites are deployed and verified. It requires the active todo-db MCP server to
+once prerequisites are deployed and verified. It requires the tractable 1.0.0 or later MCP server to
 advertise the registered-batch v2 capability; a source PR, catalog pin, or local
 mirror is not an installation. A leader owns one integration branch and
 worktree, lands members, is the only tracker writer, and opens one final PR;
