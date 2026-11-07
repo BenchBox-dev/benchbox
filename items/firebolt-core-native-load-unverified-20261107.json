@@ -4,6 +4,7 @@
     "A malformed file is rejected with the column-count error.",
     "Where the check ran, and how to repeat it, is recorded (workflow or command)."
   ],
+  "context": "2026-11-07 owner decision (Joe, answering a choice dialog): \"Add both jobs\". Add a Firebolt Core job to .github/workflows/docker-integration.yml (Linux runner with memlock) that runs the native load verification.",
   "description": "#3949 replaced 500-row executemany with native file loading for Firebolt Core and local runs (perf-firebolt-core-bulk-load-20261030, done). Live verification on 2026-11-06 could not run it. Under mocker, Firebolt Core dies with `io_uring_register_buffers failed: Cannot allocate memory` because mocker ignores the memlock ulimit. Under Apple `container`, it ran out of memory at 4 GiB after loading customer and hung for more than 37 minutes at 7 GiB at TPC-H SF0.01. The Databend change in the same PR was broken on every table when verified live (fixed in #3981), so an unverified Firebolt path is a real risk.\n\nChange. Run TPC-H SF0.01 generate+load on Firebolt Core where it can run: a Linux host or CI runner with Docker and memlock, or the docker-integration workflow if it can host it. Check row-count parity with dbgen and the column-count rejection of a malformed file. Fix any defect at its cause.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; heavy work only through make heavy-run; container checks under mocker one stack at a time (limits in tests/uat docs and the uat-mocker-compose-gaps-20261106 context); no live cloud without owner approval; no explanatory comments; changelog fragment if user-facing.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "106d3ab26779407bb68d0b0bb725f6c3",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T14:13:47Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "24802b7db96246acb570d130c409a516",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
