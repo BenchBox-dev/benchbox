@@ -307,3 +307,31 @@ def test_user_refresh_runs_override_is_logged(caplog: pytest.LogCaptureFixture) 
 
     assert runs == 2
     assert "tpcds_refresh_runs=1 ignored" in caplog.text
+
+
+def _phases_for(benchmark_name: str, power_rows: list[dict[str, Any]]) -> Any:
+    from types import SimpleNamespace
+
+    from benchbox.platforms.base.result_capture import ResultCaptureMixin
+
+    class _Capture(ResultCaptureMixin):
+        capture_plans = False
+
+    capture = _Capture()
+    capture._last_power_test_result = SimpleNamespace(query_results=power_rows, power_at_size=1.0)
+    query_results = [{"status": "SUCCESS", "execution_time_seconds": 2.0}]
+    phases, _total, power_phase, _throughput = capture._build_execution_phases(
+        query_results,
+        [],
+        {"_effective_execution_type": "combined", "benchmark_name": benchmark_name},
+        None,
+    )
+    return power_phase
+
+
+def test_other_benchmarks_keep_the_measured_power_duration_in_combined_runs() -> None:
+    assert _phases_for("tpch", [{}]).duration_ms == 2000
+
+
+def test_tpcds_without_query_timestamps_records_a_zero_power_duration() -> None:
+    assert _phases_for("tpcds", [{}]).duration_ms == 0

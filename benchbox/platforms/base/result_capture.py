@@ -1536,11 +1536,12 @@ class ResultCaptureMixin:
                     and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in (*starts, *ends))
                     and max(ends) > min(starts)
                 )
-                power_timing = (
-                    self._format_timestamp(getattr(last_power_result, "start_time", None)),
-                    self._format_timestamp(getattr(last_power_result, "end_time", None)),
-                    int((max(ends) - min(starts)) * 1000) if valid else 0,
-                )
+                if valid or normalize_benchmark_id(str(run_config.get("benchmark_name") or "")) == "tpcds":
+                    power_timing = (
+                        self._format_timestamp(getattr(last_power_result, "start_time", None)),
+                        self._format_timestamp(getattr(last_power_result, "end_time", None)),
+                        int((max(ends) - min(starts)) * 1000) if valid else 0,
+                    )
             self._last_power_test_result = None
 
         power_test_phase = None
