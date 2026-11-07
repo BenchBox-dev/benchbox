@@ -1081,7 +1081,7 @@
         }
       },
       "integration_branch": "feat/arrow-result-fetch-2",
-      "integration_head": "0b726bd2304ca9c1b1b6db32a716d2cfd739c92e",
+      "integration_head": "9752e2c3e5d3710fe685bfce1a4813eacb7a878f",
       "integration_log": [
         {
           "at": "2026-11-07T01:19:32Z",
@@ -1122,6 +1122,20 @@
             "perf-arrow-aware-result-capture-20261030"
           ],
           "seq": 3
+        },
+        {
+          "at": "2026-11-07T04:41:43Z",
+          "changed_files": [
+            "benchbox/core/results/fetch_mode.py"
+          ],
+          "head": "9752e2c3e5d3710fe685bfce1a4813eacb7a878f",
+          "kind": "fix",
+          "op_id": "1fe5d19968ad46ada0eda93bf3551def",
+          "previous_head": "0b726bd2304ca9c1b1b6db32a716d2cfd739c92e",
+          "requires_acceptance": [
+            "perf-arrow-aware-result-capture-20261030"
+          ],
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-arrow-result-fetch-2",
