@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "QuestDB REST loads now fail when the import changes a source value instead of storing it silently. On QuestDB 10.0.1 /imp returns HTTP 200 and stores NULL for an unparseable INT, LONG, DOUBLE, DATE or TIMESTAMP (an INT above 2^31-1 included), stores a TIMESTAMP column without an import pattern as NULL even when the value is valid, imports a header-detection miss as an extra all-NULL row, and turns non-true BOOLEAN text into false; atomicity=abort aborts only INT, LONG, DOUBLE and the like (returning 200 with 'bad syntax') and still accepts bad DATE and TIMESTAMP values, and SYMBOL and STRING cannot be invalid. The loader reads the per-column error counts in the import response and a before/after non-null count for pattern-less TIMESTAMP columns, then raises an error naming the table, column, type, row and value. Headered CSV loads also send forceHeader=true."
+    }
+  ]
+}
