@@ -35,6 +35,7 @@ tests/unit/scripts/test_check_api_contract_symbols.py
 tests/unit/scripts/test_check_complexity.py
 tests/unit/scripts/test_check_dependency_bounds.py
 tests/unit/scripts/test_check_duplicate_code.py
+tests/unit/scripts/test_check_make_targets.py
 tests/unit/scripts/test_check_project_references.py
 tests/unit/scripts/test_check_rerun_shard_retention.py
 tests/unit/scripts/test_check_sqlglot_repro_retirement.py

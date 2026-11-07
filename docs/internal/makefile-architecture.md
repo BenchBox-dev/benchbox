@@ -59,22 +59,26 @@ repository-reserved, not a supported user customization point.
 
 ## Interface guard
 
-`tests/unit/test_make_targets.py` runs in the fast unit tier and reads the rule
-database GNU Make prints with `make -pRrq :`. Any error or warning Make reports
-while reading the files, such as a missing include, a parse error or a target
-whose recipe is defined twice, fails it. It checks two things:
+`scripts/check_make_targets.py` reads the rule database GNU Make prints with
+`make -pRrq :`. Any error or warning Make reports while reading the files, such
+as a missing include, a parse error or a target whose recipe is defined twice,
+fails it. It enforces two things:
 
 - Every target named in a `make` command inside a code span or code block of
   `AGENTS.md`, `CONTRIBUTING.md`, `docs/` (except the decision records under
   `docs/internal/adr/`) or `.claude/skills/` is a defined target.
-- The number of targets stays at or below `TARGET_CEILING`. Targets are counted
-  the way the original reduction plan measured them: every name in the rule
-  database that starts with a letter or digit. A new target replaces or
-  consolidates an existing one; raising the ceiling needs the owner's
-  agreement.
+  `make docs-validate` runs this check, so the `docs` unit catches a
+  documentation change that names a missing target, and
+  `tests/unit/scripts/test_check_make_targets.py` repeats it in the fast unit
+  tier for Make changes.
+- The number of targets stays at or below `TARGET_CEILING` in that test.
+  Targets are counted the way the original reduction plan measured them: every
+  name in the rule database that starts with a letter or digit. A new target
+  replaces or consolidates an existing one; raising the ceiling needs the
+  owner's agreement.
 
-`tests/utilities/make_database.py` parses that database for tests that need a
-target's header or recipe, such as the timed-target check below.
+Tests that need a target's prerequisites, recipe or target-specific variables,
+such as the timed-target check below, read them through the same script.
 
 `make/monolith-baseline.json` and `make/migration-proof.json` record the
 committed pre-split monolith and the reviewed delta of the first split. No
@@ -116,7 +120,7 @@ then the `MAKE_TIMINGS_SLOWEST` slowest runs (default 5). The tests set
 | Change | Required action | Rollback |
 |---|---|---|
 | Add a target inside an existing domain | Add it to the owning module, with help if public | Revert the target and help entry together |
-| Move a target from root to a module | First prove no root-literal consumer remains; move comments, variables, rule, and recipe as one block; `tests/unit/test_make_targets.py` must still pass | Move the exact block back to its original parse position; remove an empty module |
+| Move a target from root to a module | First prove no root-literal consumer remains; move comments, variables, rule, and recipe as one block; `tests/unit/scripts/test_check_make_targets.py` must still pass | Move the exact block back to its original parse position; remove an empty module |
 | Add a module | Add one mandatory rooted include at the intended parse position; update this ownership table | Move its blocks back, remove the include, then remove the module |
 
 ## Alternatives rejected

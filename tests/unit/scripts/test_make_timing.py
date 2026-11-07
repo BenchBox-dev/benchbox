@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.utilities import make_database
+import scripts.check_make_targets as make_targets
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
@@ -361,7 +361,7 @@ def _logical_recipe_lines(recipe: str) -> int:
 
 @pytest.mark.skipif(shutil.which("make") is None or sys.platform == "win32", reason="POSIX make is required")
 def test_timed_targets_run_one_recipe_line_and_no_prerequisite_through_the_timing_shell() -> None:
-    rules = make_database.rules(ROOT)
+    rules = make_targets.rules(ROOT)
     targets = _timed_targets()
 
     assert len(targets) == len(set(targets))

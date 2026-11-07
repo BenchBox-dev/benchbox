@@ -269,7 +269,7 @@ WORKTREE_TESTS = [
     "tests/unit/test_agent_write_preflight.py",
 ]
 MAKE_INTERFACE_TESTS = [
-    "tests/unit/test_make_targets.py",
+    "tests/unit/scripts/test_check_make_targets.py",
     "tests/unit/scripts/test_pr_preflight_base.py",
     "tests/unit/test_standardized_test_commands.py",
 ]
