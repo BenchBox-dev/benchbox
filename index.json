@@ -23427,10 +23427,15 @@
       "title": "`--platform-option force_recreate=true` is rejected; the only way to recreate a database also regenerates data"
     },
     "platform-options-forwarding-gaps-20261014": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T01:17:48Z",
+        "generation": "2f0ebf9ff3e547488d9a999bf33d4e6c",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Some adapters drop supplied platform options: plan-capture options on six Spark-family platforms, SQLite database_name, TimescaleDB service_url"
     },
     "platform-options-key-id-not-redacted": {
