@@ -6990,6 +6990,13 @@
       "status": "done",
       "title": "abfs:// classifies as local and spills to cwd; provider strings diverge across classify/validate/platform gates"
     },
+    "aborted-batch-worktrees-have-no-cleanup-path-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Aborted batch worktrees have no supported cleanup path"
+    },
     "accelerate-slow-and-resource-heavy-tests-4x": {
       "claim": null,
       "needs": [],
