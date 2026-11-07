@@ -25,8 +25,8 @@ class InfluxDBMetadataMixin:
         influx_group.add_argument(
             "--port",
             type=int,
-            default=8086,
-            help="InfluxDB server port",
+            default=None,
+            help="InfluxDB server port (default: 8181 for core mode, 443 for cloud mode; InfluxDB 2 uses 8086)",
         )
         influx_group.add_argument(
             "--token",
@@ -68,7 +68,7 @@ class InfluxDBMetadataMixin:
     def from_config(cls, config: dict[str, Any]):
         adapter_config = {
             "host": config.get("host", "localhost"),
-            "port": config.get("port", 8086),
+            "port": config.get("port"),
             "token": config.get("token"),
             "org": config.get("org"),
             "database": config.get("database", "benchbox"),
