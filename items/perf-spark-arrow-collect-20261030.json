@@ -4,6 +4,13 @@
     "Digests match the collect() path.",
     "Snowpark Connect outcome recorded."
   ],
+  "batch": {
+    "batch_id": "arrow-result-fetch-2",
+    "implementation_dependencies": [
+      "perf-arrow-aware-result-capture-20261030"
+    ],
+    "member_id": "perf-spark-arrow-collect-20261030"
+  },
   "context": "2026-11-03: the fetch-timing contract is decided in fetch-timing-contract-decision-20261103 and implemented by perf-arrow-aware-result-capture-20261030. Under the recommended option, full Arrow receipt (including draining streaming readers) stays inside the query timer and fetch_mode is recorded; Arrow-to-rows conversion for digests stays outside it. Re-read the recorded decision before starting; if the owner chose differently, update this item's acceptance. Origin: root-cause analysis of RF1 timing and its adversarial review.\n\nGuardrails (added 2026-11-03): no live-cloud runs (Databricks, Athena, BigQuery, Snowflake, ClickHouse Cloud, MotherDuck) without owner approval quoted in context; an adapter without a passing digest-parity run keeps rows as its default fetch; heavy runs only through make heavy-run or a lock-taking entry point; no explanatory comments in source (make comment-policy-check); changelog.d fragment required; re-read cited symbols before editing, since line numbers drift.",
   "description": "base/spark_execution_mixin.py:372 uses collect(), building Python Row objects. DataFrame.toArrow exists only in pyspark 4.0+; pyproject allows pyspark>=3.5.0 and databricks-connect 16.1.7 (locked for Python <3.12) is Spark 3.5-based. Use toArrow when available, else toPandas with spark.sql.execution.arrow.pyspark.enabled, else collect(). Covers spark, pyspark, lakesail, velox, EMR/Glue/Dataproc/Fabric/Synapse Spark. snowpark_connect.py:285 is a Snowpark DataFrame (not PySpark): Snowpark 1.48 has DataFrame.to_arrow, but check whether it hits the same pandas<3 gate as the Snowflake connector.",
   "sessions": [
@@ -53,6 +60,14 @@
       "client": "omp-coding-agent",
       "op": "abort",
       "op_id": "e3046b002d294079815212d9d795a781",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T01:19:47Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a5c71ae1ed3f44eca3638d133f009ad5",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
