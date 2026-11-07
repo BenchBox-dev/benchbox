@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+import scripts.check_make_targets as make_targets
 from tests.utilities.paths import REPO_ROOT
 from tests.utilities.posix_shell import run_posix_shell, skip_without_posix_shell
 
@@ -364,7 +365,7 @@ def test_snapshot_honors_declared_main_clone_write(tmp_path: Path) -> None:
 
 
 def test_pr_preflight_reports_primary_clone_changes() -> None:
-    makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    makefile = make_targets.makefile_sources(REPO_ROOT)
     target = makefile.split("\npr-preflight:", maxsplit=1)[1].split("\n.PHONY:", maxsplit=1)[0]
 
     assert "scripts/check_primary_clone_clean.sh report" in target
@@ -379,7 +380,7 @@ def test_claude_pr_command_runs_write_preflight_before_pr_workflow() -> None:
 
 
 def test_skill_sync_write_target_runs_preflight() -> None:
-    makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    makefile = make_targets.makefile_sources(REPO_ROOT)
     target = makefile.split("\nskill-sync:", maxsplit=1)[1].split("\nskill-sync-check:", maxsplit=1)[0]
 
     assert "$(MAKE) -s agent-write-preflight" in target

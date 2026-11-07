@@ -116,7 +116,8 @@ def test_the_current_tree_has_no_unguarded_vm_runs_or_compose_bring_ups() -> Non
 def test_the_wrapper_is_the_only_machine_run_call_and_is_referenced() -> None:
     shell = _shell_sources()
     callers = [name for name, text in shell.items() if name != WRAPPER and "linux_machine_run.sh" in text]
-    assert {"Makefile", "scripts/linux_preflight_pytest.sh"} <= set(callers)
+    assert "scripts/linux_preflight_pytest.sh" in callers
+    assert any(name == "Makefile" or name.startswith("make/") for name in callers), callers
 
 
 def test_the_compose_admission_variable_runs_host_admission() -> None:

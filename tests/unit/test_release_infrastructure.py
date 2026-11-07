@@ -11,6 +11,8 @@ from pathlib import Path
 import pytest
 import yaml
 
+import scripts.check_make_targets as make_targets
+
 pytestmark = [
     pytest.mark.unit,
     pytest.mark.medium,
@@ -22,7 +24,7 @@ RELEASE_CANARY_NON_FAST_EXPRESSION = "(slow or resource_heavy) and not (stress o
 
 
 def _makefile_text() -> str:
-    return (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    return make_targets.makefile_sources(REPO_ROOT)
 
 
 def _make_target_recipe(target: str) -> str:
@@ -134,7 +136,7 @@ class TestReleaseInfrastructure:
             assert workflow_path.exists(), f"{workflow} workflow must exist"
 
     def test_required_fast_marker_expression_is_consistent(self):
-        makefile_content = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+        makefile_content = make_targets.makefile_sources(REPO_ROOT)
         develop_pr_run_text = _workflow_job_run_text("ci.yml", "code-test")
 
         expected_marker_flag = f'-m "{CI_FAST_EXPRESSION}"'

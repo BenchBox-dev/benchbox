@@ -1,9 +1,9 @@
 # Makefile architecture
 
-BenchBox uses a few mandatory GNU Make includes but deliberately keeps a large
-root `Makefile` because several repository guards treat its source text as a
-compatibility API; command-line and CI consumers use GNU Make's evaluated
-target graph.
+BenchBox splits its Makefile into a short root and mandatory, domain-owned
+includes under `make/`. Command-line and CI consumers use GNU Make's evaluated
+target graph; tests that inspect recipe text read the include-expanded source,
+so they do not depend on which file defines a recipe.
 
 ## Supported behavior
 
@@ -24,7 +24,14 @@ target graph.
 
 | File | Responsibility | Extension rule |
 |---|---|---|
-| `Makefile` | Bootstrap, default goal, literal-text compatibility targets, quality/CI orchestration, and release, PR, worktree, and UAT contracts | Keep a target here if an existing consumer intentionally parses the root text or it coordinates several domains |
+| `Makefile` | Bootstrap variables, the development-tree-only target list and its guard, the default goal, the timed-target list, `branch-prune-merged`, and the ordered includes | Add a target to the module that owns its domain; keep only cross-domain wiring here |
+| `make/tests.mk` | Test tiers, the heavy-work lock wrappers, the correctness gate, required local cases, and test-fixture regeneration | Test entry points and their variables |
+| `make/reports.mk` | Cross-surface and TPC-Havoc equivalence reports, the Polars compatibility smoke, the TPC-DS draws report, baseline and applicability reports | Report-producing gates and their variables |
+| `make/oracle.mk` | Oracle coverage map, oracle back-off reset and omp candidate check | Oracle maintenance entry points |
+| `make/quality.mk` | Coverage, complexity, lint, audits, comment policy, agent checks, skill sync, duplicate and mutation checks, the CI-local aggregates (`ci-lint`, `ci-test`, `ci-docs`, `ci-local`, `ci-linux`), typecheck and format | Static and CI-parity checks |
+| `make/build.mk` | Install, develop, clean, distribution build, release prep and check, changelog fragments, local corpus staging | Packaging and release preparation |
+| `make/pr-landing.mk` | Write preflight, cloud builder, PR preflight, open, arm, rerun, ready and remote close-out, trunk revert and status, follow-ups, fan-out, refresh and loop metrics | Pull-request and landing workflow |
+| `make/uat.mk` | UAT cell, phases, bring-up, pre-pull, Docker cleanup, sweep, stress and gate check | UAT entry points |
 | `make/platform-tests.mk` | Credentialed live-platform and local compose/container test lifecycle | Add platform-specific test entry points and their directly coupled engine variables/macros here |
 | `make/documentation.mk` | Docs build/validation, generated compatibility docs, platform manifest, parity fixtures, and native TPC binary compilation | Add documentation or generated-contract targets here; no general lint targets |
 | `make/worktrees.mk` | Disposable worktree creation, exact-path removal, manual release, finish preview, merged-worktree reap, and listing | Native Git lifecycle wrappers belong here; no slot allocation or automatic branch cleanup. `worktree-reap` removes only what a fresh `worktree-finish` evaluation would remove, and only with `APPLY=1` |
@@ -38,18 +45,13 @@ another module's public target and must not reach into its file. Variables live
 with the recipes they configure, unless they are root bootstrap or cross-domain
 orchestration inputs.
 
-## Consumer evidence and root-owned boundaries
-
-The split was designed around repository consumers, not only target size.
+## Consumers of Makefile text
 
 | Implementation or consumer | Observed contract | Design consequence |
 |---|---|---|
 | `.github/workflows/ci.yml` and `nightly-v2.yml` | Invoke public targets through GNU Make | Included targets are transparent to them |
-| `tests/system/test_ci_lint_parity.py` and `tests/unit/scripts/test_ci_lint_environment_boundary.py` | Parse the literal root `ci-lint:` recipe | `ci-lint` stays root-owned with byte-identical command order |
-| `tests/unit/test_standardized_test_commands.py` and `tests/unit/test_linting_consolidation.py` | Search or parse root test, coverage, correctness, marker, lint, and format definitions | Root-owned; moving them requires first migrating these consumers in a separately scoped change |
-| `tests/unit/test_release_infrastructure.py`, and `tests/unit/scripts/test_pr_arm.py` | Parse release, PR, auto-merge, worktree lifecycle, package, and UAT gate source text | These operational safety recipes stay root-owned |
-| `tests/unit/test_agent_write_preflight.py` | Slices the root `skill-sync` recipe | `skill-sync` and its adjacent check stay root-owned |
-| `tests/uat/test_cli_dispatch.py` | Slices the root `uat-sweep` recipe | `uat-sweep` stays root-owned |
+| Tests that slice or search recipe and variable text, such as `tests/system/test_ci_lint_parity.py`, `tests/unit/test_standardized_test_commands.py`, `tests/unit/test_release_infrastructure.py`, `tests/unit/scripts/test_pr_arm.py`, `tests/unit/test_agent_write_preflight.py` and `tests/uat/test_cli_dispatch.py` | Read `make_targets.makefile_sources(root)` from `scripts/check_make_targets.py`: the root `Makefile` with every rooted `include` replaced by the module's text, which is what GNU Make parses | A recipe can move to any module without changing these tests |
+| `_project/scripts/agent_instruction_audit.py` | Scans `Makefile` and `make/*.mk` for hand-back wording | Every module is covered |
 | `tests/integration/worktree/test_worktree_*` | Run the real Makefile with `-f` or via a symlink from another repository | `BENCHBOX_MAKEFILE_ROOT` resolves the real root before mandatory includes load |
 
 No repository consumer referenced `MAKEFILE_LIST` before the split. The
@@ -120,16 +122,16 @@ then the `MAKE_TIMINGS_SLOWEST` slowest runs (default 5). The tests set
 | Change | Required action | Rollback |
 |---|---|---|
 | Add a target inside an existing domain | Add it to the owning module, with help if public | Revert the target and help entry together |
-| Move a target from root to a module | First prove no root-literal consumer remains; move comments, variables, rule, and recipe as one block; `tests/unit/scripts/test_check_make_targets.py` must still pass | Move the exact block back to its original parse position; remove an empty module |
+| Move a target between modules | Move comments, variables, rule, and recipe as one block; keep any variable that another file expands immediately (`:=`, `$(eval)`, target lists) defined before its first use; `tests/unit/scripts/test_check_make_targets.py` must still pass | Move the exact block back |
 | Add a module | Add one mandatory rooted include at the intended parse position; update this ownership table | Move its blocks back, remove the include, then remove the module |
 
 ## Alternatives rejected
 
 - **Split by line count.** It cuts coupled variables and macros from their
   recipes and ignores literal-root consumers.
-- **Move every target and update all parsers at once.** It would combine a
-  compatibility migration of the literal-parser tests with the structural
-  refactor.
+- **Keep a large root because tests parse its text.** Tests that inspect recipe
+  or variable text read the include-expanded source instead, so recipes can live
+  in the module that owns them.
 - **Optional or wildcard includes.** Missing or misspelled modules can
   silently remove public targets.
 - **A generated monolithic root mirror.** It creates two apparent sources of

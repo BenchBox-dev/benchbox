@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+import scripts.check_make_targets as make_targets
 from tests.integration.test_local_platform_benchmark_matrix import (
     LOCAL_SQL_STABLE_MATRIX,
     _validate_against_expected_results,
@@ -97,7 +98,7 @@ class TestStandardizedTestCommands:
         makefile_path = Path(__file__).resolve().parent.parent.parent / "Makefile"
         assert makefile_path.exists(), "Makefile should exist"
 
-        makefile_content = makefile_path.read_text()
+        makefile_content = make_targets.makefile_sources(makefile_path.parent)
         assert "test-fast:" in makefile_content
         assert "test-unit:" in makefile_content
         assert "test-integration:" in makefile_content
@@ -122,7 +123,7 @@ class TestStandardizedTestCommands:
 
     def test_coverage_commands_use_pytest(self):
         makefile_path = Path(__file__).resolve().parent.parent.parent / "Makefile"
-        makefile_content = makefile_path.read_text()
+        makefile_content = make_targets.makefile_sources(makefile_path.parent)
 
         coverage_section = False
         for line in makefile_content.split("\n"):
@@ -138,7 +139,7 @@ class TestStandardizedTestCommands:
 class TestMakefileCommands:
     def test_makefile_test_targets_defined(self):
         makefile_path = Path(__file__).resolve().parent.parent.parent / "Makefile"
-        makefile_content = makefile_path.read_text()
+        makefile_content = make_targets.makefile_sources(makefile_path.parent)
 
         expected_targets = [
             "test:",
@@ -186,20 +187,20 @@ class TestMakefileCommands:
         assert lock_path.read_text(encoding="utf-8") == ""
 
     def test_makefile_test_all_splits_parallel_and_serial_lanes_explicitly(self):
-        makefile_content = (Path(__file__).resolve().parent.parent.parent / "Makefile").read_text()
+        makefile_content = make_targets.makefile_sources(Path(__file__).resolve().parent.parent.parent)
 
         assert "test-all:" in makefile_content
         assert '-m "not (slow or stress or resource_heavy or live_integration)"' in makefile_content
         assert '-m "(slow or resource_heavy) and not (stress or live_integration)" -n 0' in makefile_content
 
     def test_makefile_test_fast_excludes_heavy_and_opt_in_lanes(self):
-        makefile_content = (Path(__file__).resolve().parent.parent.parent / "Makefile").read_text()
+        makefile_content = make_targets.makefile_sources(Path(__file__).resolve().parent.parent.parent)
 
         assert "test-fast:" in makefile_content
         assert '-m "fast and not (slow or stress or resource_heavy or live_integration)" --tb=short' in makefile_content
 
     def test_default_test_lanes_arm_explicit_timeouts(self):
-        makefile_content = (Path(__file__).resolve().parent.parent.parent / "Makefile").read_text()
+        makefile_content = make_targets.makefile_sources(Path(__file__).resolve().parent.parent.parent)
         expected = {
             "test-fast": "--timeout=120",
             "test-medium": "--timeout=60",
@@ -332,14 +333,14 @@ class TestMakefileCommands:
         assert "No code changes detected; skipping fast tests." in result.stdout
 
     def test_pr_preflight_fast_tests_consumes_one_classifier_artifact(self):
-        makefile_content = (Path(__file__).resolve().parent.parent.parent / "Makefile").read_text(encoding="utf-8")
+        makefile_content = make_targets.makefile_sources(Path(__file__).resolve().parent.parent.parent)
         fast_tests_body = _makefile_target_body(makefile_content, "pr-preflight-fast-tests")
 
         assert 'if [ -n "$(PATH_DECISION)" ] || [ -n "$(PATH_LISTS)" ]; then' in fast_tests_body
         assert "scripts/path_filter_decision.py --base-ref origin/develop" in fast_tests_body
 
     def test_pr_preflight_runs_only_changed_file_lint_and_serial_tests(self):
-        makefile_content = (Path(__file__).resolve().parent.parent.parent / "Makefile").read_text(encoding="utf-8")
+        makefile_content = make_targets.makefile_sources(Path(__file__).resolve().parent.parent.parent)
         preflight_body = _makefile_target_body(makefile_content, "pr-preflight")
 
         assert "_project/scripts/preflight_targets.py python" in preflight_body
@@ -357,7 +358,7 @@ class TestMakefileCommands:
 
     def test_pr_preflight_fast_tests_uses_required_ci_marker_expression(self):
         repo_root = Path(__file__).resolve().parent.parent.parent
-        makefile_content = (repo_root / "Makefile").read_text()
+        makefile_content = make_targets.makefile_sources(repo_root)
         preflight_body = _makefile_target_body(makefile_content, "pr-preflight-fast-tests")
         develop_pr_run_text = _workflow_job_run_text(repo_root / ".github" / "workflows" / "ci.yml", "code-test")
 
@@ -370,7 +371,7 @@ class TestMakefileCommands:
 
     def test_test_ci_is_maintained_broad_local_profile(self):
         repo_root = Path(__file__).resolve().parent.parent.parent
-        makefile_content = (repo_root / "Makefile").read_text()
+        makefile_content = make_targets.makefile_sources(repo_root)
         pytest_ci_config = ConfigParser()
         pytest_ci_config.read(repo_root / "pytest-ci.ini")
         pytest_ci_addopts = _load_ini_section(repo_root / "pytest-ci.ini", "pytest")["addopts"]
@@ -401,7 +402,7 @@ class TestMakefileCommands:
 
     def test_coverage_threshold_policy_distinguishes_blocking_and_advisory_thresholds(self):
         repo_root = Path(__file__).resolve().parent.parent.parent
-        makefile_content = (repo_root / "Makefile").read_text()
+        makefile_content = make_targets.makefile_sources(repo_root)
         pr_workflow = (repo_root / ".github" / "workflows" / "ci.yml").read_text()
         conftest_content = (repo_root / "tests" / "conftest.py").read_text()
         policy_content = (repo_root / "docs" / "internal" / "quality-gate-policy.md").read_text()
@@ -414,7 +415,7 @@ class TestMakefileCommands:
         assert "pytest.fail" not in conftest_content.split("def pytest_terminal_summary", maxsplit=1)[1]
 
     def test_makefile_test_medium_uses_five_workers(self):
-        makefile_content = (Path(__file__).resolve().parent.parent.parent / "Makefile").read_text()
+        makefile_content = make_targets.makefile_sources(Path(__file__).resolve().parent.parent.parent)
 
         assert "test-medium:" in makefile_content
         assert (
@@ -442,7 +443,7 @@ class TestMakefileCommands:
         )
 
     def test_makefile_correctness_gate_runs_expected_results_backed_matrix_slice(self):
-        makefile_content = (Path(__file__).resolve().parent.parent.parent / "Makefile").read_text()
+        makefile_content = make_targets.makefile_sources(Path(__file__).resolve().parent.parent.parent)
         gate_body = _makefile_target_body(makefile_content, "test-correctness-gate")
 
         assert "BENCHBOX_STRICT_EXPECTED_RESULTS=1" in gate_body
@@ -455,7 +456,7 @@ class TestMakefileCommands:
         assert "--timeout=1200" in gate_body
 
     def test_makefile_digest_regen_shares_gate_query_id_source(self):
-        makefile_content = (Path(__file__).resolve().parent.parent.parent / "Makefile").read_text()
+        makefile_content = make_targets.makefile_sources(Path(__file__).resolve().parent.parent.parent)
         regen_body = _makefile_target_body(makefile_content, "correctness-gate-digests-regen")
         assert "BENCHBOX_CORRECTNESS_GATE_QUERY_IDS=$(CORRECTNESS_GATE_QUERY_IDS)" in regen_body
         assert "regenerate_correctness_gate_digests.py" in regen_body
@@ -557,7 +558,7 @@ class TestMakefileCommands:
             )
 
     def test_makefile_test_slow_runs_serially(self):
-        makefile_content = (Path(__file__).resolve().parent.parent.parent / "Makefile").read_text()
+        makefile_content = make_targets.makefile_sources(Path(__file__).resolve().parent.parent.parent)
 
         assert "test-slow:" in makefile_content
         assert '-m "slow and not (stress or live_integration)" -n 0 --tb=short -v' in makefile_content
@@ -571,7 +572,7 @@ class TestMakefileCommands:
         ).exists()
 
     def test_makefile_uses_pytest_consistently(self):
-        makefile_content = (Path(__file__).resolve().parent.parent.parent / "Makefile").read_text()
+        makefile_content = make_targets.makefile_sources(Path(__file__).resolve().parent.parent.parent)
 
         test_lines = [line for line in makefile_content.split("\n") if line.startswith("\tuv run -- python -m pytest")]
 
@@ -620,7 +621,7 @@ class TestCorrectnessGateOracle:
 
     def test_gate_target_enforces_no_skip(self):
         gate_body = _makefile_target_body(
-            (Path(__file__).resolve().parent.parent.parent / "Makefile").read_text(), "test-correctness-gate"
+            make_targets.makefile_sources(Path(__file__).resolve().parent.parent.parent), "test-correctness-gate"
         )
         assert "--junitxml=" in gate_body, "gate must emit a JUnit report to verify the node actually ran"
         assert "tests == 1" in gate_body, "gate guard must require exactly one node to run"

@@ -8,6 +8,8 @@ from pathlib import Path
 import pytest
 import yaml
 
+import scripts.check_make_targets as make_targets
+
 pytestmark = pytest.mark.medium
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -303,7 +305,7 @@ def _guard_commands() -> dict[str, list[str]]:
 
 
 def _ci_lint_recipe_text() -> str:
-    lines = MAKEFILE.read_text(encoding="utf-8").splitlines()
+    lines = make_targets.makefile_sources(REPO_ROOT).splitlines()
     start = None
     for i, line in enumerate(lines):
         if line == "ci-lint:":

@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+import scripts.check_make_targets as make_targets
 from tests.utilities import batch_evidence as fx
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
@@ -337,7 +338,7 @@ def test_passes_through_a_failing_merge() -> None:
 
 
 def test_makefile_exposes_pr_arm_through_the_helper_and_declares_it_phony() -> None:
-    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+    makefile = make_targets.makefile_sources(ROOT)
     assert "\npr-arm:\n" in makefile
     assert "scripts/pr_arm.py" in makefile
     assert ".PHONY: pr-arm" in makefile.splitlines()

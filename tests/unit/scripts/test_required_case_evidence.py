@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+import scripts.check_make_targets as make_targets
 from scripts.release_canary_sharding import verify_required_cases
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
@@ -144,7 +145,7 @@ def test_the_command_line_exits_non_zero_for_a_skipped_required_case(tmp_path: P
 
 
 def test_the_make_target_runs_the_required_cases_under_the_evidence_plugin() -> None:
-    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+    makefile = make_targets.makefile_sources(ROOT)
     body = makefile.split("\ntest-required-local-cases:", 1)[1].split("\n\n", 1)[0]
     assert "REQUIRED_LOCAL_CASES" in body
     assert '-m ""' in body

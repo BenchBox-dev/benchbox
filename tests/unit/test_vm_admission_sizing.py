@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 
+import scripts.check_make_targets as make_targets
+
 pytestmark = [
     pytest.mark.unit,
     pytest.mark.fast,
@@ -114,7 +116,7 @@ def test_a_missing_container_cli_needs_the_fallback() -> None:
 
 
 def test_the_makefile_recipe_passes_the_helper_output_as_the_need() -> None:
-    text = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    text = make_targets.makefile_sources(REPO_ROOT)
 
     assert "machine-need --machine $(CI_LINUX_MACHINE) --fallback-gib $(CI_LINUX_NEED_GIB)" in text
     assert '--need-gib "$$NEED_GIB"' in text
@@ -122,8 +124,10 @@ def test_the_makefile_recipe_passes_the_helper_output_as_the_need() -> None:
 
 
 def test_the_setup_texts_name_the_machine_size_the_sizing_assumes() -> None:
-    for relative in ("Makefile", "scripts/linux_preflight_pytest.sh"):
-        text = (REPO_ROOT / relative).read_text(encoding="utf-8")
+    for text in (
+        make_targets.makefile_sources(REPO_ROOT),
+        (REPO_ROOT / "scripts" / "linux_preflight_pytest.sh").read_text(encoding="utf-8"),
+    ):
         assert "--memory 6G" in text
         assert "--memory 8G" not in text
 
