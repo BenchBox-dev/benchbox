@@ -1686,11 +1686,15 @@ RAN_COMMAND = ["pytest", "a", "-q", "tests/here.py::test_one"]
 def _dropped_batch(tmp_path: Path, mode: str = "owned") -> tuple[fx.BatchFixture, dict, str]:
     repo = _repo(tmp_path / "r")
     base = ""
-    if mode in ("owned", "renamed"):
+    if mode in ("owned", "renamed", "unrelated", "changelog"):
         fx.write_commit(repo, {"tests/gone.py": "old\n"}, "develop adds test")
         fx.git(repo, "checkout", "-q", "-b", "dev")
-        moved = {"tests/gone_new.py": "old\n"} if mode == "renamed" else {}
-        base = fx.write_commit(repo, {"tests/gone.py": None, **moved}, "develop deletes or renames test")
+        extra = {
+            "renamed": {"tests/gone_new.py": "entirely rewritten\n"},
+            "unrelated": {"tests/other.py": "other\n"},
+            "changelog": {"changelog.d/retire.json": "{}\n"},
+        }.get(mode, {})
+        base = fx.write_commit(repo, {"tests/gone.py": None, **extra}, "develop deletes or renames test")
         fx.git(repo, "checkout", "-q", "main")
     elif mode == "reused":
         fx.write_commit(repo, {"tests/gone.py": "old\n"}, "develop adds test")
@@ -1729,6 +1733,20 @@ def test_batch_evidence_refuses_a_path_develop_renamed(tmp_path: Path) -> None:
     failures = _dropped_verdict(batch, evidence, base)
 
     assert any("did not plainly delete" in failure for failure in failures)
+
+
+def test_batch_evidence_refuses_a_deletion_that_adds_an_unrelated_test_file(tmp_path: Path) -> None:
+    batch, evidence, base = _dropped_batch(tmp_path, "unrelated")
+
+    failures = _dropped_verdict(batch, evidence, base)
+
+    assert any("did not plainly delete" in failure for failure in failures)
+
+
+def test_batch_evidence_accepts_a_deletion_that_adds_only_a_changelog_file(tmp_path: Path) -> None:
+    batch, evidence, base = _dropped_batch(tmp_path, "changelog")
+
+    assert _dropped_verdict(batch, evidence, base) == []
 
 
 @pytest.mark.parametrize("mode", ["member", "reused"])

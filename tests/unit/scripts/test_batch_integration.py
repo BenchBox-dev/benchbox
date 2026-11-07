@@ -828,16 +828,50 @@ def _develop_deletes(world: World, *paths: str) -> tuple[Path, str]:
     return integration, base
 
 
-def test_a_rerun_does_not_drop_a_test_develop_renamed(world: World) -> None:
-    integration = world.start()
-    git(world.seed, "mv", "tests/test_alpha.py", "tests/test_alpha_new.py")
-    git(world.seed, "commit", "-qm", "develop renames the test")
+def _develop_commit_merged(world: World, integration: Path, *commands: list[str]) -> None:
+    for command in commands:
+        git(world.seed, *command)
+    git(world.seed, "commit", "-qm", "develop change")
     git(world.seed, "push", "-q", "origin", "develop")
     git(integration, "fetch", "-q", "origin")
     git(integration, "merge", "-q", "--no-edit", bi.DEVELOP_REF)
+
+
+def _rerun_alpha(integration: Path) -> dict:
     recorded = [*PYTEST, "tests/test_zeta.py", "tests/test_alpha.py"]
-    entry = bi._rerun(integration, _ledger(integration), "zeta", recorded, "member-tests", "fix:x")
-    assert entry["dropped_paths"] == [] and entry["ran_command"] == recorded
+    return bi._rerun(integration, _ledger(integration), "zeta", recorded, "member-tests", "fix:x")
+
+
+def test_a_rerun_does_not_drop_a_test_develop_renamed(world: World) -> None:
+    integration = world.start()
+    _develop_commit_merged(world, integration, ["mv", "tests/test_alpha.py", "tests/test_alpha_new.py"])
+    entry = _rerun_alpha(integration)
+    assert entry["dropped_paths"] == []
+
+
+def test_a_rerun_does_not_drop_a_test_develop_replaced_by_a_heavily_edited_move(world: World) -> None:
+    integration = world.start()
+    (world.seed / "tests" / "test_alpha_new.py").write_text("def test_other():\n    assert 1 + 1 == 2\n")
+    _develop_commit_merged(world, integration, ["rm", "-q", "tests/test_alpha.py"], ["add", "tests/test_alpha_new.py"])
+    entry = _rerun_alpha(integration)
+    assert entry["dropped_paths"] == []
+
+
+def test_a_rerun_does_not_drop_a_test_deleted_in_a_commit_adding_an_unrelated_test(world: World) -> None:
+    integration = world.start()
+    (world.seed / "tests" / "test_unrelated.py").write_text("def test_u():\n    assert True\n")
+    _develop_commit_merged(world, integration, ["rm", "-q", "tests/test_alpha.py"], ["add", "tests/test_unrelated.py"])
+    entry = _rerun_alpha(integration)
+    assert entry["dropped_paths"] == []
+
+
+def test_a_rerun_drops_a_test_deleted_in_a_commit_adding_only_a_changelog_file(world: World) -> None:
+    integration = world.start()
+    (world.seed / "changelog.d").mkdir()
+    (world.seed / "changelog.d" / "retire.json").write_text("{}\n")
+    _develop_commit_merged(world, integration, ["rm", "-q", "tests/test_alpha.py"], ["add", "changelog.d/retire.json"])
+    entry = _rerun_alpha(integration)
+    assert entry["dropped_paths"] == ["tests/test_alpha.py"]
 
 
 def test_a_rerun_drops_a_develop_deleted_test_path_runs_the_rest_and_records_both_commands(world: World) -> None:

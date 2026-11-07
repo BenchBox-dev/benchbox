@@ -1159,31 +1159,43 @@ def _trailing_test_run_start(command: list) -> int | None:
 
 
 def _plainly_deleted(repo: Path, anchor: str, tip: str, path: str) -> bool:
-    diff = subprocess.run(
-        ["git", "diff", "-M", "--name-status", "-z", anchor, tip],
+    logged = subprocess.run(
+        [
+            "git",
+            "log",
+            "--format=%H",
+            "--no-renames",
+            "--diff-filter=D",
+            f"{anchor}..{tip}",
+            "--",
+            f":(literal){path}",
+        ],
         cwd=repo,
         check=False,
         capture_output=True,
         encoding="utf-8",
         timeout=120,
     )
-    if diff.returncode != 0:
+    if logged.returncode != 0:
         return False
-    tokens = diff.stdout.split("\0")
-    deleted = False
-    index = 0
-    while index < len(tokens) and tokens[index]:
-        status = tokens[index]
-        width = 2 if status[0] in "RC" else 1
-        names = tokens[index + 1 : index + 1 + width]
-        if len(names) != width:
+    commits = logged.stdout.split()
+    if not commits:
+        return False
+    for commit in commits:
+        shown = subprocess.run(
+            ["git", "show", "--format=", "--no-renames", "--name-status", "-z", "--diff-filter=A", commit],
+            cwd=repo,
+            check=False,
+            capture_output=True,
+            encoding="utf-8",
+            timeout=120,
+        )
+        if shown.returncode != 0:
             return False
-        if status == "D" and names[0] == path:
-            deleted = True
-        if status[0] in "RC" and names[0] == path:
+        tokens = shown.stdout.split("\0")
+        if any(token.startswith("tests/") for token in tokens[1::2]):
             return False
-        index += 1 + width
-    return deleted
+    return True
 
 
 def _check_dropped_paths(
