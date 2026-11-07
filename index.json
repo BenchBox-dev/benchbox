@@ -19597,9 +19597,9 @@
     },
     "explorer-pipeline-has-plans-true-for-errors-only-20261107": {
       "claim": {
-        "expires_at": "2026-11-08T22:39:58Z",
-        "generation": "d5a3e5b247d24a7e98d69ef5ed673674",
-        "renewals": 0,
+        "expires_at": "2026-11-08T22:40:08Z",
+        "generation": "84d8932bcd744ceabc52ded5fd9d3031",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54"
       },
       "needs": [],
