@@ -4,6 +4,11 @@
     "A load with an invalid value fails with the row and column named, shown live.",
     "Valid TPC-H SF0.01 loads unchanged."
   ],
+  "batch": {
+    "batch_id": "load-value-integrity",
+    "implementation_dependencies": [],
+    "member_id": "questdb-rest-accepts-invalid-int-20261107"
+  },
   "description": "Found during live verification of #3998 (QuestDB 10.0.1 under mocker): a forced bad INT value was accepted by the REST /imp import instead of rejected, so the new rejected-row failure path could only be unit-tested. If QuestDB coerces or nulls invalid values without reporting them, benchmark data can be altered silently.\n\nChange. Determine what QuestDB does with an invalid INT, and with other types (DATE, DOUBLE, SYMBOL), on REST import with BenchBox's import options: null, zero, or a skipped row. Check whether an import parameter (for example atomicity or strict schema) makes it reject. Make the loader fail on any value change, using the import response's error counts or a post-load checksum.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; heavy work only through make heavy-run; container checks under mocker one stack at a time (limits in tests/uat docs and the uat-mocker-compose-gaps-20261106 context); no live cloud without owner approval; no explanatory comments; changelog fragment if user-facing.",
   "sessions": [
     {
@@ -12,6 +17,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "d5e95699afa24a40975d04adafc999f3",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T14:18:03Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b59d09252f154ca0a628da262283ec29",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
