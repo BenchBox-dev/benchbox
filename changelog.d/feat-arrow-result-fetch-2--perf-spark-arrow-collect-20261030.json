@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "The Spark adapter receives query results with DataFrame.toArrow when the installed PySpark provides it (4.0 and newer), with Arrow-enabled toPandas on older versions, and with collect() otherwise; the fetch_mode result field records which path was used. Spark defaults to Arrow only where toArrow exists; LakeSail, Velox and Snowpark Connect stay on rows, and the cloud Spark adapters are unchanged.",
+      "details": [
+        "Digests and row values match collect() for scalar, decimal, date, timestamp, binary, array, map and struct columns, verified on PySpark 4.2.0 with JDK 17.",
+        "Set the fetch_mode platform option to rows to use collect()."
+      ],
+      "platforms": ["spark", "lakesail", "velox"]
+    }
+  ]
+}

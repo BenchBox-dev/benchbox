@@ -7,14 +7,106 @@ from __future__ import annotations
 import logging
 import shutil
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 from benchbox.core.loaded_tables import is_data_loading_skipped
+from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW
+from benchbox.platforms.base.arrow_result import ArrowRows, ArrowSource, fetch_result
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.file_format import DATA_FORMAT_EXTENSIONS, detect_compression, strip_compression_suffix
 
 logger = logging.getLogger(__name__)
+
+SPARK_ARROW_PANDAS_CONF = "spark.sql.execution.arrow.pyspark.enabled"
+
+
+def _spark_local_naive_timestamp(value: Any) -> Any:
+    return value.astimezone().replace(tzinfo=None) if value.tzinfo is not None else value
+
+
+def _none_safe(convert: Callable[[Any], Any] | None, value: Any) -> Any:
+    return value if convert is None or value is None else convert(value)
+
+
+def _spark_value_converter(data_type: Any) -> Callable[[Any], Any] | None:
+    type_name = data_type.typeName()
+    if type_name == "timestamp":
+        return _spark_local_naive_timestamp
+    if type_name == "daytimeinterval":
+        return lambda value: value.to_pytimedelta() if hasattr(value, "to_pytimedelta") else value
+    if type_name == "binary" and not spark_dataframe_supports_arrow():
+        return bytearray
+    if type_name == "array":
+        element = _spark_value_converter(data_type.elementType)
+        return None if element is None else lambda value: [_none_safe(element, item) for item in value]
+    if type_name == "map":
+        item = _spark_value_converter(data_type.valueType)
+        return lambda value: {key: _none_safe(item, entry) for key, entry in dict(value).items()}
+    if type_name == "struct":
+        from pyspark.sql import Row
+
+        names = [field.name for field in data_type.fields]
+        members = [_spark_value_converter(field.dataType) for field in data_type.fields]
+        row_type = Row(*names)
+        return lambda value: row_type(
+            *[_none_safe(member, value[name]) for member, name in zip(members, names, strict=True)]
+        )
+    return None
+
+
+def spark_arrow_converters(schema: Any) -> dict[int, Callable[[Any], Any]]:
+    converters: dict[int, Callable[[Any], Any]] = {}
+    for index, field in enumerate(schema.fields):
+        converter = _spark_value_converter(field.dataType)
+        if converter is not None:
+            converters[index] = converter
+    return converters
+
+
+def spark_pandas_to_arrow(result_df: Any) -> Any:
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    exact_types = {
+        "byte": pa.int8(),
+        "short": pa.int16(),
+        "integer": pa.int32(),
+        "long": pa.int64(),
+        "timestamp": pa.timestamp("us"),
+        "timestamp_ntz": pa.timestamp("us"),
+    }
+    pandas_frame = result_df.toPandas()
+    pandas_frame.columns = [str(index) for index in range(len(pandas_frame.columns))]
+    table = pa.Table.from_pandas(pandas_frame, preserve_index=False)
+    session_time_zone = result_df.sparkSession.conf.get("spark.sql.session.timeZone")
+    columns = []
+    for column, field in zip(table.columns, result_df.schema.fields, strict=True):
+        type_name = field.dataType.typeName()
+        exact = exact_types.get(type_name)
+        if exact is not None and column.type != exact:
+            column = column.cast(exact)
+        if type_name == "timestamp":
+            column = pc.assume_timezone(column, session_time_zone, ambiguous="earliest", nonexistent="earliest")
+        columns.append(column)
+    return pa.Table.from_arrays(columns, names=[field.name for field in result_df.schema.fields])
+
+
+def spark_arrow_source(result_df: Any, pandas_enabled: bool) -> ArrowSource | None:
+    if hasattr(result_df, "toArrow"):
+        return result_df.toArrow
+    if pandas_enabled and hasattr(result_df, "toPandas"):
+        return lambda: spark_pandas_to_arrow(result_df)
+    return None
+
+
+def spark_dataframe_supports_arrow() -> bool:
+    try:
+        from pyspark.sql import DataFrame
+    except ImportError:
+        return False
+    return hasattr(DataFrame, "toArrow")
 
 
 class SparkDataLoadMixin:
@@ -310,6 +402,21 @@ class SparkDataLoadMixin:
 
 class SparkQueryExecutionMixin:
     _catalog_clear_cache_supported: bool = True
+    _spark_arrow_conf_session: int | None = None
+    _spark_arrow_pandas_enabled: bool = False
+
+    def _ensure_spark_arrow_pandas(self, spark: Any) -> bool:
+        if self.fetch_mode != FETCH_MODE_ARROW:
+            return False
+        if self._spark_arrow_conf_session != id(spark):
+            try:
+                spark.conf.set(SPARK_ARROW_PANDAS_CONF, "true")
+                self._spark_arrow_pandas_enabled = True
+            except Exception as exc:
+                self.log_verbose(f"Spark Arrow transfer for toPandas unavailable: {exc}")
+                self._spark_arrow_pandas_enabled = False
+            self._spark_arrow_conf_session = id(spark)
+        return self._spark_arrow_pandas_enabled
 
     def execute_query(
         self,
@@ -365,14 +472,22 @@ class SparkQueryExecutionMixin:
             except Exception as e:
                 return self._build_query_failure_result(query_id, clear_start, e)
 
+        pandas_enabled = self._ensure_spark_arrow_pandas(spark)
+
         start_time = mono_time()
 
         try:
             result_df = spark.sql(query)
-            result = result_df.collect()
+            fetched = fetch_result(
+                self.fetch_mode,
+                fetch_rows=result_df.collect,
+                fetch_arrow=spark_arrow_source(result_df, pandas_enabled),
+            )
 
             execution_time = elapsed_seconds(start_time)
-            actual_row_count = len(result) if result else 0
+            actual_row_count = fetched.row_count
+            if isinstance(fetched.rows, ArrowRows):
+                fetched.rows.convert_columns(spark_arrow_converters(result_df.schema))
 
             query_stats = {"execution_time_seconds": execution_time}
 
@@ -403,9 +518,10 @@ class SparkQueryExecutionMixin:
                 query_id=query_id,
                 execution_time=execution_time,
                 actual_row_count=actual_row_count,
-                first_row=tuple(result[0]) if result else None,
+                first_row=None if fetched.first_row is None else tuple(fetched.first_row),
                 validation_result=validation_result,
-                materialized_rows=result,
+                materialized_rows=fetched.rows,
+                fetch_mode=fetched.fetch_mode,
             )
 
             result_dict["query_statistics"] = query_stats
