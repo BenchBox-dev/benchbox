@@ -1268,7 +1268,7 @@
         }
       },
       "integration_branch": "feat/arrow-result-fetch-2",
-      "integration_head": "86fa60b130309ac3cb3e74c2f35f54429780341c",
+      "integration_head": "2f380b5d10da7572285847fe1d6577ad8277c477",
       "integration_log": [
         {
           "at": "2026-11-07T01:19:32Z",
@@ -1559,6 +1559,20 @@
             "perf-spark-arrow-collect-20261030"
           ],
           "seq": 10
+        },
+        {
+          "at": "2026-11-07T07:03:35Z",
+          "changed_files": [
+            "tests/unit/platforms/test_spark_arrow_fetch.py"
+          ],
+          "head": "2f380b5d10da7572285847fe1d6577ad8277c477",
+          "kind": "fix",
+          "op_id": "d942cc4122cd45988d303d1160ac0226",
+          "previous_head": "86fa60b130309ac3cb3e74c2f35f54429780341c",
+          "requires_acceptance": [
+            "perf-spark-arrow-collect-20261030"
+          ],
+          "seq": 11
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-arrow-result-fetch-2",
