@@ -34719,6 +34719,13 @@
       "status": "done",
       "title": "Decide and move the TPC-DS runner overrides and TPC-DI value-changing rewrites left in BenchBox after F10"
     },
+    "sqlglot-fork-readiness-prerequisites-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Verify fork controller App and Issues readiness before publishing"
+    },
     "sqlglot-fork-refresh-v30-24-0": {
       "claim": null,
       "needs": [],
