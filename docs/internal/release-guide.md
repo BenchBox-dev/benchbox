@@ -231,6 +231,64 @@ to the history that `scripts/trunk_uat.py history` reads. Dispatch it with
 rules, artifacts and the decision gate on runner cost are in
 [trunk-uat.md](trunk-uat.md).
 
+### Release probe
+
+A change to the release workflow can be wrong in ways unit tests do not show: a
+job skipped by an implicit `success()`, a condition that reads an output a
+skipped job never wrote. The probe runs the real `release-v2.yml` job graph
+and its real conditions without a tag and without publishing, so such a change
+is exercised before it merges.
+
+Start a probe from a branch (never from a tag):
+
+```bash
+gh workflow run release-v2.yml --ref <branch> -f tag=v0.0.0rc0 -f probe=reuse
+gh workflow run release-v2.yml --ref <branch> -f tag=v0.0.0rc0 -f probe=fallback
+```
+
+`v0.0.0rc0` is the synthetic probe tag and the only tag a probe accepts. In
+probe mode:
+
+- `admit` skips the tag, ruleset, readiness and blocker checks, which need a
+  real tag. It still runs the real canary freshness check; the probe supplies a
+  fresh green canary for the probed commit through `scripts/release_probe.py`,
+  so a regression in that check still turns the probe red. It then builds
+  candidate and probe-version distributions the way the trunk producer does and
+  admits the probe-version pair with a receipt the real verifier accepts.
+- `uat-reuse` runs the real decision (`release_reuse_uat_evidence.py decide`)
+  against synthetic GitHub data. `probe=reuse` offers a qualifying trunk UAT run
+  and must reuse it; `probe=fallback` offers none and must fall back to the full
+  UAT stages.
+- The UAT shard jobs are replaced by one stub job that writes shard evidence
+  the real `make uat-gate-check` and `release_uat_evidence_check.py` accept for
+  the admitted distribution digest (`scripts/release_probe_uat.py`). The
+  `release-uat` job, its combined gate and the shard-result detector run
+  unchanged, on the reuse path and on the fallback path.
+- `install-matrix` runs one `ubuntu-latest` Python 3.12 cell.
+- `publish` and `github-release` do not run. `publish-probe` stages the
+  admitted files, verifies `SHA256SUMS` and runs `twine check`. It has
+  `contents: read` only, no environment, no `id-token`, no attestation and no
+  upload step. `release-outcome` reads `publish-probe` in place of `publish`,
+  so a probe whose dry run was skipped is red.
+
+A probe aimed at a real tag, a probe from a tag ref, and a real release of
+`v0.0.0rc0` all fail in the first admission step.
+`scripts/release_probe_graph.py` evaluates the job conditions of the workflow
+under every combination of job outcomes and fails if `publish` is skipped after
+green gates, if `publish` runs after a red gate, or if any job that can publish
+runs in probe mode; `tests/unit/workflows/test_release_v2_probe.py` pins the
+probe's permissions and the issue-3947 graph shape.
+
+`release-v2-probe.yml` runs on every pull request. When the pull request
+touches `release-v2.yml`, `trunk-uat.yml`, `trunk.yml`, `release-uat-env`, the
+probe workflow, or `scripts/release_*.py`, it dispatches both probe variants
+from the pull request branch and fails unless both succeed; otherwise it passes
+at once. It runs on every pull request so that it can be made a required
+check without leaving unrelated pull requests pending. The probe builds its own
+distributions, so it does not execute the `dist-artifact` job of `trunk.yml`;
+a drift test keeps the build and verification commands aligned.
+Fork pull requests cannot dispatch and fail.
+
 ## Release notes from fragments
 
 Each pull request that changes user-visible behavior adds one

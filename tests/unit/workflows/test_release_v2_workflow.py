@@ -16,6 +16,8 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 WORKFLOWS = Path(__file__).resolve().parents[3] / ".github" / "workflows"
 WORKFLOW = WORKFLOWS / "release-v2.yml"
+REAL_MODE = "${{ github.event_name == 'push' || inputs.probe == 'none' }}"
+PROBE_MODE = "${{ github.event_name == 'workflow_dispatch' && inputs.probe != 'none' }}"
 
 
 def _text() -> str:
@@ -127,9 +129,13 @@ def test_publish_stages_then_attests_then_publishes_only_staged_files():
 
 
 def test_workflow_covers_the_twelve_cell_install_matrix():
-    matrix = _jobs()["install-matrix"]["strategy"]["matrix"]
-    assert matrix["os"] == ["ubuntu-latest", "macos-latest", "windows-latest"]
-    assert matrix["python-version"] == ["3.11", "3.12", "3.13", "3.14"]
+    from scripts import release_probe_graph as graph
+
+    expression = _jobs()["install-matrix"]["strategy"]["matrix"]
+    for event, inputs in (("push", {}), ("workflow_dispatch", {"probe": "none"})):
+        matrix = graph.evaluate(expression, {"github": {"event_name": event}, "inputs": inputs})
+        assert matrix["os"] == ["ubuntu-latest", "macos-latest", "windows-latest"]
+        assert matrix["python-version"] == ["3.11", "3.12", "3.13", "3.14"]
 
 
 def test_install_matrix_installs_the_staged_wheel_not_the_checkout():
@@ -206,7 +212,7 @@ def test_stages_run_independently_of_each_other_and_skip_only_when_reuse_is_veri
 
 def test_release_uat_gate_checks_every_shard_against_the_admitted_digest():
     gate = _jobs()["release-uat"]
-    assert set(gate["needs"]) == {"admit", "uat-reuse", *UAT_STAGE_JOBS}
+    assert set(gate["needs"]) == {"admit", "uat-reuse", *UAT_STAGE_JOBS, *PROBE_EVIDENCE_JOBS}
     assert "!cancelled()" in gate["if"]
     normal = next(s for s in gate["steps"] if s.get("name") == "Check the combined release gate over every shard")
     assert normal["if"] == "${{ needs.uat-reuse.outputs.reuse != 'true' }}"
@@ -244,7 +250,10 @@ def test_release_uat_gate_fails_unless_every_shard_job_succeeded_or_was_replaced
     step = next(s for s in gate["steps"] if s.get("name", "").startswith("Require every shard job"))
     assert step["if"] == "always()"
     for number in (1, 2, 3):
-        assert step["env"][f"STAGE{number}_RESULT"] == f"${{{{ needs.uat-stage{number}.result }}}}"
+        real = f"needs.uat-stage{number}.result"
+        assert step["env"][f"STAGE{number}_RESULT"] == (
+            f"${{{{ ({PROBE_MODE[4:-3]}) && needs.probe-uat-stub.result || {real} }}}}"
+        )
     assert step["env"]["REUSE"] == "${{ needs.uat-reuse.outputs.reuse }}"
     assert step["env"]["REUSE_RESULT"] == "${{ needs.uat-reuse.result }}"
     run = step["run"]
@@ -345,7 +354,9 @@ def test_only_admission_checks_out_the_mutable_tag_ref():
             if "actions/checkout" not in step.get("uses", ""):
                 continue
             ref = step.get("with", {}).get("ref")
-            if name == "admit":
+            if name == "admit" and step.get("if") == PROBE_MODE:
+                assert "ref" not in step.get("with", {})
+            elif name == "admit":
                 assert ref == "${{ inputs.tag || github.ref_name }}"
             else:
                 assert ref == "${{ needs.admit.outputs.head_sha }}", f"{name} must check out the admitted commit"
@@ -502,7 +513,7 @@ def _run_release_step(tmp_path: Path, branch: str, *, existing: bool):
 
 def test_admission_reports_the_release_line_to_the_github_release_job():
     admit = _jobs()["admit"]
-    assert admit["outputs"]["branch"] == "${{ steps.admit.outputs.branch }}"
+    assert admit["outputs"]["branch"] == "${{ steps.admit.outputs.branch || steps.probe-admit.outputs.branch }}"
     admit_step = next(s for s in admit["steps"] if s.get("id") == "admit")
     assert "release_artifact_consumer.py line" in admit_step["run"]
     assert 'echo "branch=$branch" >> "$GITHUB_OUTPUT"' in admit_step["run"]
@@ -536,6 +547,7 @@ def test_an_unreported_release_line_publishes_no_github_release(tmp_path, branch
 
 
 OUTCOME_JOBS = ("admit", "install-matrix", "release-uat", "publish", "github-release")
+PROBE_EVIDENCE_JOBS = ("probe-uat-stub", "probe-reused-evidence")
 PYPI_SUCCESS = dict.fromkeys(OUTCOME_JOBS, "success")
 TEST_PYPI_SUCCESS = {**PYPI_SUCCESS, "github-release": "skipped"}
 RUN_41949185392_ATTEMPT_2 = {**TEST_PYPI_SUCCESS, "publish": "skipped"}
@@ -563,7 +575,7 @@ def _run_outcome(target: str, results: dict[str, str]) -> subprocess.CompletedPr
 
 def test_release_outcome_job_waits_for_every_release_job_and_always_runs():
     job = _jobs()["release-outcome"]
-    assert set(job["needs"]) == set(OUTCOME_JOBS)
+    assert set(job["needs"]) == {*OUTCOME_JOBS, "publish-probe"}
     assert job["if"] == "${{ always() }}"
     assert job["permissions"] == {}
     assert len(job["steps"]) == 1
@@ -641,7 +653,7 @@ def test_admit_refuses_a_release_without_a_fresh_green_canary_before_admitting_a
     assert "release_canary_freshness.py check" in canary["run"]
     assert '--head-sha "$(git rev-parse HEAD)"' in canary["run"]
     assert "continue-on-error" not in canary
-    assert "if" not in canary
+    assert canary["if"] == REAL_MODE
 
 
 def test_every_downstream_job_waits_for_the_admission_that_checks_the_canary():
