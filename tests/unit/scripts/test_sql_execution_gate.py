@@ -608,6 +608,42 @@ def test_sqlite_engine_indexes_the_leading_key_so_an_or_join_stays_cheap(tmp_pat
     assert ticks[0] < 1000
 
 
+def test_index_columns_picks_the_leading_column_and_the_join_keys():
+    from scripts.sql_execution_gate.engines import index_columns
+
+    assert index_columns(["cs_sold_date_sk", "cs_order_number", "cs_warehouse_sk", "cs_quantity"]) == [
+        "cs_sold_date_sk",
+        "cs_order_number",
+        "cs_warehouse_sk",
+    ]
+    assert index_columns(["ss_sold_date_sk", "ss_ticket_number", "ca_street_number"]) == [
+        "ss_sold_date_sk",
+        "ss_ticket_number",
+    ]
+    assert index_columns(["l_orderkey", "l_partkey", "l_quantity", "l_returnflag"]) == ["l_orderkey", "l_partkey"]
+    assert index_columns(["ss_sold_date_sk", "ss_ticket_number"], index_keys=False) == ["ss_sold_date_sk"]
+
+
+def test_sqlite_engine_indexes_the_correlation_key_so_an_exists_subquery_is_never_a_scan(tmp_path):
+    rows, orders = 600, 50
+    (tmp_path / "cs.tbl").write_text(
+        "".join(f"{i}|{i % orders}|{i % 3}|{i % 11}|\n" for i in range(rows)),
+    )
+    ddl = "CREATE TABLE cs (cs_sold_date_sk INTEGER, cs_order_number INTEGER, cs_warehouse_sk INTEGER, cs_qty INTEGER)"
+    sql = (
+        "SELECT COUNT(*) FROM cs AS cs1 WHERE EXISTS (SELECT * FROM cs AS cs2 "
+        "WHERE cs1.cs_order_number = cs2.cs_order_number AND cs1.cs_warehouse_sk <> cs2.cs_warehouse_sk)"
+    )
+    expected = sum(1 for i in range(rows) if any(j % orders == i % orders and j % 3 != i % 3 for j in range(rows)))
+    engine = SqliteEngine(30.0)
+    engine.open(Dataset("t", ddl, {"cs": tmp_path / "cs.tbl"}), tmp_path)
+    plan = " ".join(row[3] for row in engine.connection.execute(f"EXPLAIN QUERY PLAN {sql}"))
+    assert engine.execute(sql) == [(expected,)]
+    engine.close()
+    assert "cs_cs_order_number_ix (cs_order_number=?)" in plan
+    assert "SCAN cs2" not in plan
+
+
 def test_run_engines_times_each_executed_query_and_not_cache_hits(tiny, tmp_path):
     side = _side("candidate", {"a": (SQLITE_RATIO_EXACT, DUCKDB_RATIO), "b": (SQLITE_RATIO_EXACT, DUCKDB_RATIO)})
     results, _, _ = gate.run_engines([DuckdbEngine, SqliteEngine], tiny, {"candidate": side}, 30.0, tmp_path)
