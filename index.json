@@ -9346,15 +9346,10 @@
       "title": "Deploy the branch-delivery batch skill with compatible tracker and BenchBox bindings"
     },
     "batch-tooling-review-truncation-and-worktree-takeover-20261107": {
-      "claim": {
-        "expires_at": "2026-11-08T17:44:33Z",
-        "generation": "92a2811000dc4319a714356d384da7a3",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Batch tooling: member-check truncates review findings to 400 characters; successor sessions need BENCHBOX_WORKTREE_TAKEOVER to continue a batch"
     },
     "batch-tpc-timer-boundaries-umbrella-20261105": {
