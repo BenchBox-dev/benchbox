@@ -6938,10 +6938,15 @@
       "title": "batch-land uses `theseus preflight` instead of copied review constants and gates leader fixes"
     },
     "batch-load-hardening-umbrella-20261106": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T03:33:03Z",
+        "generation": "9cb0fe1e0aac4fbcb30d228c21329b95",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Batch load-hardening: UAT compose bring-up setting-drop detection, QuestDB REST and Databend partial-load failures"
     },
     "batch-loop-default-mode-20261101": {
