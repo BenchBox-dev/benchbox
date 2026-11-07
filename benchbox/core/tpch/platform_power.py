@@ -44,6 +44,14 @@ def _power_query_result(
     return platform_result
 
 
+def _record_validation_run(
+    validation_runs: list[dict[str, Any]], power_test_result: Any, iteration: int, run_type: str
+) -> None:
+    validation = getattr(power_test_result, "validation", None)
+    if isinstance(validation, dict):
+        validation_runs.append({"iteration": iteration, "run_type": run_type, **validation})
+
+
 def _power_test_error_result(
     error: str,
     *,
@@ -137,8 +145,7 @@ def execute_tpch_power_test(
             )
             connection_adapter._validate_row_count = power_test.config.validation
             power_test_result = power_test.run()
-            if power_test_result.validation is not None:
-                validation_runs.append({"iteration": 0, "run_type": "warmup", **power_test_result.validation})
+            _record_validation_run(validation_runs, power_test_result, 0, "warmup")
             for query_result in power_test_result.query_results:
                 all_results.append(
                     _power_query_result(
@@ -169,8 +176,7 @@ def execute_tpch_power_test(
             )
             connection_adapter._validate_row_count = power_test.config.validation
             power_test_result = power_test.run()
-            if power_test_result.validation is not None:
-                validation_runs.append({"iteration": i + 1, "run_type": "measurement", **power_test_result.validation})
+            _record_validation_run(validation_runs, power_test_result, i + 1, "measurement")
             power_test_result.validation_runs = list(validation_runs)
             adapter._last_power_test_result = power_test_result
 
