@@ -5290,7 +5290,7 @@
         }
       },
       "integration_branch": "feat/tpcds-dsdgen-maintenance",
-      "integration_head": "16aee3cc1b7bf9466ce9f9b7e374d311aac32a73",
+      "integration_head": "ff23c439c67420c10afc6138414d44b1cad2625d",
       "integration_log": [
         {
           "at": "2026-11-07T04:13:50Z",
@@ -5306,6 +5306,28 @@
           "op_id": "870d6dd1ad514de59e956928d3c00c2b",
           "previous_head": "006703692cf0ab94d9709a45a6b62e6e991fe854",
           "seq": 1
+        },
+        {
+          "at": "2026-11-07T05:59:44Z",
+          "changed_files": [
+            "benchbox/core/results/analytics.py",
+            "benchbox/core/tpcds/maintenance_test.py",
+            "benchbox/platforms/base/execution.py",
+            "benchbox/platforms/duckdb.py",
+            "benchbox/platforms/singlestore.py",
+            "changelog.d/feat-tpcds-dsdgen-maintenance--tpcds-maintenance-dsdgen-refresh-data-20261103.json",
+            "tests/unit/core/tpcds/test_tpcds_maintenance_coverage.py",
+            "tests/unit/platforms/test_tpcds_maintenance_execution.py",
+            "tests/unit/platforms/test_tpcds_maintenance_primary_keys.py"
+          ],
+          "head": "ff23c439c67420c10afc6138414d44b1cad2625d",
+          "kind": "fix",
+          "op_id": "fc6402d4642a4513a15ecf35c494da59",
+          "previous_head": "16aee3cc1b7bf9466ce9f9b7e374d311aac32a73",
+          "requires_acceptance": [
+            "tpcds-maintenance-dsdgen-refresh-data-20261103"
+          ],
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcds-dsdgen-maintenance",
