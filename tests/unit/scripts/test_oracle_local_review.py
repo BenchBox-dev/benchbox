@@ -158,6 +158,16 @@ def test_the_record_path_and_cache_locations_reach_the_review_environment(
     assert env["THESEUS_EPHEMERAL_CLONE"] == "1"
 
 
+def test_the_unavailable_path_reaches_the_review_environment_only_when_given(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _, env = _launched(_args("--unavailable-out", "why.txt"), monkeypatch, tmp_path / "theseus")
+    assert env[wrapper.UNAVAILABLE_OUT_ENV] == "why.txt"
+    monkeypatch.delenv(wrapper.UNAVAILABLE_OUT_ENV, raising=False)
+    _, bare = _launched(_args(), monkeypatch, tmp_path / "theseus")
+    assert wrapper.UNAVAILABLE_OUT_ENV not in bare
+
+
 def test_an_explicit_state_directory_is_not_overridden(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("THESEUS_LOCAL_STATE", str(tmp_path / "elsewhere"))
     _, env = _launched(_args(), monkeypatch, tmp_path / "theseus")

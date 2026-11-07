@@ -23,15 +23,27 @@ from benchbox.utils.runtime_env import DriverResolution
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
-CROSS_CUTTING_OPTIONS = frozenset(
-    {"driver_version", "driver_auto_install", "plan_max_depth", "plan_capture_timeout_seconds", "force_recreate"}
-)
-KNOWN_UNAPPLIED_OPTIONS = {"sqlite": frozenset({"database_name"})}
+CROSS_CUTTING_OPTIONS = frozenset({"driver_version", "driver_auto_install", "force_recreate"})
+PLAN_OPTION_CASES: dict[str, tuple[str, str, Any]] = {
+    "plan_max_depth": ("7", "plan_max_depth", 7),
+    "plan_capture_timeout_seconds": ("9", "plan_capture_timeout_seconds", 9),
+}
 
 OPTION_CASES: dict[str, dict[str, tuple[str, str, Any]]] = {
     "emr-serverless": {"compute_resource": ("app-123", "application_id", "app-123")},
     "dataproc": {"compute_resource": ("cluster-1", "cluster_name", "cluster-1")},
-    "dataproc-serverless": {},
+    "dataproc-serverless": {
+        "project_id": ("proj-1", "project_id", "proj-1"),
+        "region": ("europe-west4", "region", "europe-west4"),
+        "gcs_staging_dir": ("gs://bucket/path", "gcs_staging_dir", "gs://bucket/path"),
+        "database": ("db_1", "database", "db_1"),
+        "runtime_version": ("2.2", "runtime_version", "2.2"),
+        "service_account": ("sa@proj.iam.gserviceaccount.com", "service_account", "sa@proj.iam.gserviceaccount.com"),
+        "network_uri": ("net-1", "network_uri", "net-1"),
+        "subnetwork_uri": ("subnet-1", "subnetwork_uri", "subnet-1"),
+        "timeout_minutes": ("15", "timeout_minutes", 15),
+        "table_format": ("orc", "table_format", "orc"),
+    },
     "synapse-spark": {
         "adaptive_enabled": ("false", "adaptive_enabled", False),
         "compute_resource": ("pool-1", "spark_pool_name", "pool-1"),
@@ -40,7 +52,17 @@ OPTION_CASES: dict[str, dict[str, tuple[str, str, Any]]] = {
         "adaptive_enabled": ("false", "adaptive_enabled", False),
         "compute_resource": ("pool-2", "spark_pool_name", "pool-2"),
     },
-    "glue": {},
+    "glue": {
+        "region": ("eu-west-1", "region", "eu-west-1"),
+        "aws_profile": ("prof-1", "aws_profile", "prof-1"),
+        "s3_staging_dir": ("s3://bucket/path", "s3_staging_dir", "s3://bucket/path"),
+        "job_role": ("arn:aws:iam::1:role/R", "job_role", "arn:aws:iam::1:role/R"),
+        "database": ("db_1", "database", "db_1"),
+        "worker_type": ("G.2X", "worker_type", "G.2X"),
+        "number_of_workers": ("5", "number_of_workers", 5),
+        "glue_version": ("3.0", "glue_version", "3.0"),
+        "job_timeout": ("30", "job_timeout", 30),
+    },
     "snowpark-connect": {
         "compute_resource": ("WH_CUSTOM", "warehouse", "WH_CUSTOM"),
         "compute_size": ("LARGE", "warehouse_size", "LARGE"),
@@ -69,18 +91,18 @@ OPTION_CASES: dict[str, dict[str, tuple[str, str, Any]]] = {
         "memory_limit": ("2GB", "memory_limit", "2GB"),
         "threads": ("3", "thread_limit", 3),
         "temp_directory": ("/var/tmp/duckdb-spill", "temp_directory", "/var/tmp/duckdb-spill"),
-        "plan_max_depth": ("7", "plan_max_depth", 7),
-        "plan_capture_timeout_seconds": ("9", "plan_capture_timeout_seconds", 9),
         "fetch_mode": ("rows", "fetch_mode", "rows"),
     },
     "sqlite": {
         "database_path": ("/var/tmp/options.db", "database_path", "/var/tmp/options.db"),
         "timeout": ("5.5", "timeout", 5.5),
         "check_same_thread": ("true", "check_same_thread", True),
-        "plan_max_depth": ("7", "plan_max_depth", 7),
-        "plan_capture_timeout_seconds": ("9", "plan_capture_timeout_seconds", 9),
+        "database_name": ("custom_name", "database_path", lambda value: Path(value).name == "custom_name.db"),
     },
 }
+
+for _cases in OPTION_CASES.values():
+    _cases.update(PLAN_OPTION_CASES)
 
 PARITY_CASES = [
     pytest.param(platform, option, *case, id=f"{platform}-{option}")
@@ -161,15 +183,25 @@ def test_platform_option_reaches_the_adapter_constructor(
 ) -> None:
     kwargs = _constructor_kwargs(monkeypatch, tmp_path, platform, f"{option}={raw}")
 
-    assert kwargs[kwarg] == expected
+    if callable(expected):
+        assert expected(kwargs[kwarg])
+    else:
+        assert kwargs[kwarg] == expected
+
+
+def test_timescaledb_service_url_reaches_the_adapter_constructor(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    url = "postgres://user:pw@host.tsdb.cloud.timescale.com:5432/db"
+    kwargs = _constructor_kwargs(monkeypatch, tmp_path, "timescaledb", f"service_url={url}")
+
+    assert kwargs["service_url"] == url
 
 
 @pytest.mark.parametrize("platform", sorted(OPTION_CASES))
 def test_every_registered_option_has_a_parity_case(platform: str) -> None:
     registered = set(PlatformHookRegistry.list_option_specs(platform))
-    expected = registered - CROSS_CUTTING_OPTIONS - KNOWN_UNAPPLIED_OPTIONS.get(platform, frozenset())
-    if platform in {"duckdb", "sqlite"}:
-        expected |= {"plan_max_depth", "plan_capture_timeout_seconds"}
+    expected = (registered - CROSS_CUTTING_OPTIONS) | set(PLAN_OPTION_CASES)
 
     assert set(OPTION_CASES[platform]) == expected
 

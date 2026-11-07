@@ -17,9 +17,8 @@ from benchbox.core.tpch.refresh import (
     TPCHRefreshUpdateSet,
     apply_rf1,
     apply_rf2,
-    check_rf1_preconditions,
+    check_rf1_applied,
     check_rf2_applied,
-    check_rf2_preconditions,
     generate_refresh_update_sets,
 )
 from benchbox.core.tpch.schema import LINEITEM, ORDERS
@@ -260,11 +259,11 @@ class TPCHMaintenanceTest:
             if self.verbose:
                 self.logger.info(f"Executing RF1 for pair {pair_id + 1} using update set {update_set.set_id}")
             connection = self.connection_factory()
-            check_rf1_preconditions(connection, update_set)
             operation.start_time = mono_time()
             operation.rows_affected = apply_rf1(connection, update_set)
             operation.end_time = mono_time()
             operation.duration = elapsed_seconds(operation.start_time)
+            check_rf1_applied(connection, update_set, operation.rows_affected)
             operation.success = True
         except Exception as exc:
             operation.error = str(exc)
@@ -295,12 +294,12 @@ class TPCHMaintenanceTest:
             if self.verbose:
                 self.logger.info(f"Executing RF2 for pair {pair_id + 1} using update set {update_set.set_id}")
             connection = self.connection_factory()
-            deleted_lineitems = check_rf2_preconditions(connection, update_set)
             operation.start_time = mono_time()
-            operation.rows_affected = apply_rf2(connection, update_set, deleted_lineitems)
+            deletes = apply_rf2(connection, update_set)
             operation.end_time = mono_time()
             operation.duration = elapsed_seconds(operation.start_time)
-            check_rf2_applied(connection, update_set)
+            operation.rows_affected = deletes.rows
+            check_rf2_applied(connection, update_set, deletes.orders)
             operation.success = True
         except Exception as exc:
             operation.error = str(exc)

@@ -1,0 +1,45 @@
+{
+  "models": {
+    "anthropic/claude-fable-5-1": {
+      "contextWindow": 1000000,
+      "maxTokens": 128000
+    },
+    "anthropic/claude-opus-5-5": {
+      "contextWindow": 1000000,
+      "maxTokens": 128000
+    },
+    "anthropic/claude-sonnet-5-5": {
+      "contextWindow": 1000000,
+      "maxTokens": 128000
+    },
+    "google-antigravity/claude-opus-5-5": {
+      "contextWindow": 1000000,
+      "maxTokens": 128000
+    },
+    "google-antigravity/claude-sonnet-5-5": {
+      "contextWindow": 1000000,
+      "maxTokens": 128000
+    },
+    "google-antigravity/gemini-3.8-flash": {
+      "contextWindow": 1048576,
+      "maxTokens": 65536
+    },
+    "google-antigravity/gemini-4-argon": {
+      "contextWindow": 1048576,
+      "maxTokens": 65536
+    },
+    "openai-codex/gpt-6-astra": {
+      "contextWindow": 272000,
+      "maxTokens": 128000
+    },
+    "openai-codex/gpt-6-luna": {
+      "contextWindow": 272000,
+      "maxTokens": 128000
+    },
+    "openai-codex/gpt-6.1-sol": {
+      "contextWindow": 500000,
+      "maxTokens": 128000
+    }
+  },
+  "omp": "18.13.3"
+}

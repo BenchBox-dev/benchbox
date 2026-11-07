@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from benchbox.utils.resource_limits import MemorySnapshot
-from tests.uat import docker_assets, matrix
+from tests.uat import docker_assets, managed_runtime, matrix
 
 HERMETIC_FREE_MEMORY_GIB = 64.0
 
@@ -74,3 +74,10 @@ def isolate_free_space_reading(monkeypatch):
         "tests.uat.orchestrator.free_space_gib",
         lambda _path: HERMETIC_FREE_SPACE_GIB,
     )
+
+
+@pytest.fixture(autouse=True)
+def isolate_declared_settings_probe(request, monkeypatch):
+    if request.module.__name__.endswith("test_declared_settings"):
+        return
+    monkeypatch.setattr(managed_runtime, "check_declared_settings", lambda *args, **kwargs: None)

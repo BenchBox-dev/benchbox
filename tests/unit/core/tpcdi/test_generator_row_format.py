@@ -1,5 +1,3 @@
-import io
-
 import pytest
 
 from benchbox.core.tpcdi.generator.rows import PipeRowWriter, format_cell
@@ -34,9 +32,9 @@ def test_format_cell_leaves_non_floats_untouched():
     assert format_cell(True) is True
 
 
-def test_pipe_row_writer_emits_plain_decimals():
-    handle = io.StringIO()
-    writer = PipeRowWriter(handle)
-    writer.writerow([1, "a", 7e-05, 0.15])
-    writer.writerows([[2, "b", 1e-05, 2.5]])
-    assert handle.getvalue() == "1|a|0.00007|0.15\r\n2|b|0.00001|2.5\r\n"
+def test_pipe_row_writer_emits_plain_decimals(tmp_path):
+    path = tmp_path / "out.tbl"
+    with PipeRowWriter(path) as writer:
+        writer.writerow([1, "a", 7e-05, 0.15])
+        writer.writerows([[2, "b", 1e-05, 2.5]])
+    assert path.read_bytes() == b"1|a|0.00007|0.15\r\n2|b|0.00001|2.5\r\n"

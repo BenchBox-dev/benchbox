@@ -520,6 +520,26 @@ timescaledb|max_parallel_workers_per_gather|TimescaleDB max_parallel_workers_per
 timescaledb|chunk_interval|Chunk time interval for hypertables (e.g., '1 day', '1 week')|{'default': '1 day'}
 timescaledb|compression_enabled|Enable compression on hypertables|{'default': 'false'}
 timescaledb|compression_after|Compress chunks older than this interval (e.g., '7 days')|{'default': '7 days'}
+timescaledb|service_url|TigerData service URL (postgres://user:password@host:port/database) used when the cloud deployment is selected|{}
+glue|region|AWS region for Glue|{'aliases': ('aws_region',)}
+glue|aws_profile|Named AWS CLI profile to authenticate with|{}
+glue|s3_staging_dir|S3 location for data staging (e.g., s3://bucket/path)|{}
+glue|job_role|IAM role ARN for Glue job execution|{'aliases': ('iam_role',)}
+glue|database|Glue Data Catalog database (default: benchbox)|{}
+glue|worker_type|Glue worker type (default: G.1X)|{'choices': ('G.025X', 'G.1X', 'G.2X', 'G.4X', 'G.8X', 'Z.2X')}
+glue|number_of_workers|Number of Glue workers (default: 2)|{'parser': 'int'}
+glue|glue_version|Glue version (default: 4.0)|{'choices': ('3.0', '4.0')}
+glue|job_timeout|Glue job timeout in minutes (default: 60)|{'parser': 'int'}
+dataproc-serverless|project_id|GCP project ID|{}
+dataproc-serverless|region|GCP region (default: us-central1)|{}
+dataproc-serverless|gcs_staging_dir|GCS location for data staging (e.g., gs://bucket/path)|{}
+dataproc-serverless|database|Hive database name (default: benchbox)|{}
+dataproc-serverless|runtime_version|Dataproc Serverless runtime version (default: 2.1)|{}
+dataproc-serverless|service_account|Service account the batch runs as|{}
+dataproc-serverless|network_uri|Network URI for the batch|{}
+dataproc-serverless|subnetwork_uri|Subnetwork URI for the batch|{}
+dataproc-serverless|timeout_minutes|Batch timeout in minutes (default: 60)|{'parser': 'int'}
+dataproc-serverless|table_format|Table format for created tables (default: parquet)|{}
 pg-duckdb|host|PostgreSQL server hostname (with pg_duckdb installed)|{'default': 'localhost'}
 pg-duckdb|port|PostgreSQL server port|{'parser': 'int', 'default': 5432}
 pg-duckdb|database|PostgreSQL database name (auto-generated if not specified)|{}
@@ -754,7 +774,7 @@ snowflake|staging_root|Cloud storage path for staging data|{}
 snowflake|iceberg_external_volume|Snowflake EXTERNAL VOLUME name for Iceberg tables|{}
 influxdb|deployment_mode|Deprecated alias of the platform selector: 'core' for self-hosted OSS, 'cloud' for the managed service|{'choices': ('core', 'cloud'), 'default': 'cloud', 'aliases': ('mode',)}
 influxdb|host|InfluxDB server hostname|{'default': 'localhost'}
-influxdb|port|InfluxDB server port|{'parser': 'int', 'default': 8086}
+influxdb|port|InfluxDB server port (default: 8181 for core mode, 443 for cloud mode; InfluxDB 2 uses 8086)|{'parser': 'int'}
 influxdb|token|InfluxDB authentication token (or set INFLUXDB_TOKEN env var)|{}
 influxdb|org|InfluxDB organization name|{}
 influxdb|database|InfluxDB database (bucket) name|{'default': 'benchbox'}

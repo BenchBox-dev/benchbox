@@ -2217,6 +2217,22 @@
    ]
   },
   {
+   "disposition": "governance-stays",
+   "kinds": {
+    "root": 1
+   },
+   "occurrences": 1,
+   "path": "scripts/check_make_targets.py",
+   "rule": "doc-link-and-example-checkers",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "root",
+     "target": "docs/"
+    }
+   ]
+  },
+  {
    "disposition": "fixture-data",
    "kinds": {
     "unresolved": 1
@@ -3243,6 +3259,26 @@
    ]
   },
   {
+   "disposition": "governance-stays",
+   "kinds": {
+    "unresolved": 2
+   },
+   "occurrences": 3,
+   "path": "tests/unit/scripts/test_check_make_targets.py",
+   "rule": "doc-link-and-example-checkers",
+   "target_count": 2,
+   "targets": [
+    {
+     "kind": "unresolved",
+     "target": "docs/guide.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/internal/adr/adr-old.md"
+    }
+   ]
+  },
+  {
    "disposition": "fixture-data",
    "kinds": {
     "unresolved": 1
@@ -4112,14 +4148,14 @@
    "contract-replaced": 1,
    "contract-tooling": 6,
    "fixture-data": 37,
-   "governance-stays": 9,
+   "governance-stays": 11,
    "historical-record": 112,
    "lock-test": 4,
    "prose-link-pinned": 12,
    "site-pipeline-cutover": 4,
    "wiring-updated": 31
   },
-  "files": 216,
+  "files": 218,
   "kinds": {
    "built-url": 29037,
    "dir": 163,
@@ -4127,10 +4163,10 @@
    "file": 1377,
    "generated": 3,
    "pattern": 332,
-   "root": 199,
-   "unresolved": 2047
+   "root": 200,
+   "unresolved": 2050
   },
-  "references": 33195,
+  "references": 33199,
   "unclassified": 0
  }
 }

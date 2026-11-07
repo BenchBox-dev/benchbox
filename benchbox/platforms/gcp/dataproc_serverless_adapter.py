@@ -418,6 +418,8 @@ class DataprocServerlessAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkEx
 
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> DataprocServerlessAdapter:
+        from benchbox.platforms.base.config_utils import forward_plan_options
+
         params = {
             "project_id": config.get("project_id"),
             "region": config.get("region", "us-central1"),
@@ -440,6 +442,8 @@ class DataprocServerlessAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkEx
         ]:
             if key in config:
                 params[key] = config[key]
+
+        forward_plan_options(config, params)
 
         return cls(**params)
 

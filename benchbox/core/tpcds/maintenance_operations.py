@@ -17,6 +17,10 @@ from benchbox.utils.clock import elapsed_seconds, mono_time
 DEFAULT_MAINTENANCE_SEED = 20260101
 
 
+def resolve_maintenance_seed(seed: Optional[int]) -> int:
+    return DEFAULT_MAINTENANCE_SEED if seed is None else int(seed)
+
+
 class MaintenanceOperationType(Enum):
     INSERT_STORE_SALES = "INSERT_STORE_SALES"
     INSERT_CATALOG_SALES = "INSERT_CATALOG_SALES"

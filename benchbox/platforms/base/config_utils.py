@@ -243,6 +243,14 @@ PLAN_FORWARD_KEYS: tuple[str, ...] = (
 
 FETCH_FORWARD_KEYS: tuple[str, ...] = ("fetch_mode",)
 
+PLAN_OPTION_KEYS: tuple[str, ...] = ("plan_capture_timeout_seconds", "plan_max_depth")
+
+
+def forward_plan_options(config: Mapping[str, Any], params: dict[str, Any]) -> None:
+    for key in PLAN_OPTION_KEYS:
+        if config.get(key) is not None:
+            params[key] = config[key]
+
 
 def build_adapter_config(
     config: dict[str, Any],
