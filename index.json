@@ -7135,6 +7135,13 @@
       "status": "done",
       "title": "Batch tpc-timer-boundaries: umbrella notes (not a member)"
     },
+    "batch-tpcds-dsdgen-maintenance-umbrella-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Batch tpcds-dsdgen-maintenance: umbrella notes (not a member)"
+    },
     "batch-tpch-refresh-path-umbrella-20261104": {
       "claim": null,
       "needs": [],
