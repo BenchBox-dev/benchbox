@@ -4,6 +4,7 @@
     "EXECUTE=1 removes them with expected-OID branch deletion and refuses dirty, locked or unrecorded-commit cases, with tests.",
     "docs/agent/batch-feature-delivery.md documents the aborted-batch cleanup step."
   ],
+  "context": "2026-11-07: the sqlglot-core-delivery worktrees (integration, --adoption, --consumer) were removed by hand with owner approval after verifying every touched file and feature is in develop via #3980; local branches deleted. Remote branch feat/sqlglot-core-delivery (9cc3b92f) still exists on origin (closed PR #3975). The defect stands for the next aborted batch.",
   "description": "Problem. After abort_batch, the integration and member worktrees remain and no repository tool removes them. make batch-finish refuses: 'the batch lifecycle is aborted, not completed; finish it first'. make worktree-finish holds the integration worktree: 'No merged PR found for branch feat/sqlglot-core-delivery (found 1 unmerged PRs)', because the aborted batch's final PR (#3975) was closed, and the member branches never had PRs. Observed for batch sqlglot-core-delivery (worktrees BenchBox.wt-sqlglot-core-delivery, --adoption, --consumer), whose content shipped through a re-registered batch in #3980. The only remaining route is a manual git worktree remove and branch delete, which agents may not run without owner approval.\n\nChange. Give batch-finish (or a batch-cleanup target) an aborted-lifecycle mode that previews and, with EXECUTE=1, removes the integration and member worktrees and deletes their local branches with expected-OID checks, refusing dirty or locked worktrees and branches with unpushed commits not reachable from a recorded head.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3975",
@@ -16,6 +17,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "4575a19307424ec2b1736c95a1133aa6",
+      "session_id": "2f41579dd2194a049659596cdd9a4f3d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f",
+      "at": "2026-11-07T14:57:17Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d714277f840b4a14b25fd49ecd96eb4a",
       "session_id": "2f41579dd2194a049659596cdd9a4f3d"
     }
   ]
