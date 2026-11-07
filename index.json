@@ -3042,20 +3042,50 @@
       "terminal_outcome": "deliver"
     },
     "spark-family-fixes": {
-      "accepted_members": {},
+      "accepted_members": {
+        "platform-options-forwarding-gaps-20261014": "00436ddc83fdb25c32c1b1abc670b31cde929768"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "platform-options-forwarding-gaps-20261014": {
+          "accepted_head": "00436ddc83fdb25c32c1b1abc670b31cde929768",
+          "changed_files": [
+            "benchbox/platforms/__init__.py",
+            "benchbox/platforms/aws/emr_serverless_adapter.py",
+            "benchbox/platforms/azure/fabric_spark_adapter.py",
+            "benchbox/platforms/azure/synapse_spark_adapter.py",
+            "benchbox/platforms/base/config_utils.py",
+            "benchbox/platforms/gcp/dataproc_adapter.py",
+            "benchbox/platforms/gcp/dataproc_serverless_adapter.py",
+            "benchbox/platforms/snowpark_connect.py",
+            "benchbox/platforms/timescaledb.py",
+            "changelog.d/feat-spark-family-fixes--platform-options-forwarding-gaps-20261014.json",
+            "tests/unit/cli/test_platform_options_reach_adapters.py"
+          ],
+          "integration_head": "7724626cb613f3a8a075c1b5b28a33beb0fa0af1",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/spark-family-fixes",
-      "integration_head": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67",
+      "integration_head": "7724626cb613f3a8a075c1b5b28a33beb0fa0af1",
       "integration_log": [
         {
           "at": "2026-11-07T00:56:51Z",
           "head": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-07T01:17:51Z",
+          "head": "7724626cb613f3a8a075c1b5b28a33beb0fa0af1",
+          "kind": "prepare",
+          "member": "platform-options-forwarding-gaps-20261014",
+          "op_id": "75ca7e6b302d4a3d9f59f2df42b5be31",
+          "previous_head": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-spark-family-fixes",
@@ -23427,15 +23457,10 @@
       "title": "`--platform-option force_recreate=true` is rejected; the only way to recreate a database also regenerates data"
     },
     "platform-options-forwarding-gaps-20261014": {
-      "claim": {
-        "expires_at": "2026-11-08T01:17:48Z",
-        "generation": "2f0ebf9ff3e547488d9a999bf33d4e6c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Some adapters drop supplied platform options: plan-capture options on six Spark-family platforms, SQLite database_name, TimescaleDB service_url"
     },
     "platform-options-key-id-not-redacted": {
