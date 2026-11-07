@@ -3927,6 +3927,38 @@
   {
    "disposition": "fixture-data",
    "kinds": {
+    "file": 1
+   },
+   "occurrences": 1,
+   "path": "tests/unit/scripts/test_release_probe.py",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "file",
+     "target": "docs/README.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "unresolved": 1
+   },
+   "occurrences": 1,
+   "path": "tests/unit/scripts/test_release_probe_launch.py",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "unresolved",
+     "target": "docs/release.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
     "unresolved": 4
    },
    "occurrences": 38,
@@ -4004,6 +4036,42 @@
   {
    "disposition": "fixture-data",
    "kinds": {
+    "unresolved": 6
+   },
+   "occurrences": 8,
+   "path": "tests/unit/scripts/test_trunk_uat.py",
+   "rule": "test-sample-data",
+   "target_count": 6,
+   "targets": [
+    {
+     "kind": "unresolved",
+     "target": "docs/guide.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/note.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/one.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/other.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/two.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/x.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
     "root": 1
    },
    "occurrences": 1,
@@ -4071,7 +4139,7 @@
    "kinds": {
     "unresolved": 1
    },
-   "occurrences": 2,
+   "occurrences": 3,
    "path": "tests/unit/test_ruleset_drift.py",
    "rule": "test-sample-data",
    "target_count": 1,
@@ -4136,7 +4204,7 @@
   "dispositions": {
    "contract-replaced": 1,
    "contract-tooling": 6,
-   "fixture-data": 37,
+   "fixture-data": 40,
    "governance-stays": 11,
    "historical-record": 111,
    "lock-test": 4,
@@ -4144,18 +4212,18 @@
    "site-pipeline-cutover": 4,
    "wiring-updated": 31
   },
-  "files": 217,
+  "files": 220,
   "kinds": {
    "built-url": 29037,
    "dir": 163,
    "extra": 37,
-   "file": 1377,
+   "file": 1378,
    "generated": 3,
    "pattern": 332,
    "root": 200,
-   "unresolved": 2051
+   "unresolved": 2061
   },
-  "references": 33200,
+  "references": 33211,
   "unclassified": 0
  }
 }
