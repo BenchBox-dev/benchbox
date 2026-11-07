@@ -8,7 +8,20 @@
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
-      "final_pr_history": [],
+      "final_pr": {
+        "head": "8962112c4c3ddd45d21158482208ea6242ae6b22",
+        "node_id": "PR_kwDOQ7J64c8AAAABNdaKnQ",
+        "number": 4007,
+        "repository": "BenchBox-dev/BenchBox"
+      },
+      "final_pr_history": [
+        {
+          "at": "2026-11-07T04:03:25Z",
+          "head": "8962112c4c3ddd45d21158482208ea6242ae6b22",
+          "op_id": "475b43e4de7c4ee78d2fcdf64b9be60f",
+          "previous_head": null
+        }
+      ],
       "integrated_members": {
         "pr-arm-stale-hold-suite-needs-new-head-20261106": {
           "accepted_head": "1f3279d9b899d733736dfafaa8d2aeb55c0dd16d",
