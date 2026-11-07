@@ -1106,33 +1106,44 @@ def _check_evidence_acceptance(repo: Path, evidence: dict, head: str, tracker: d
     return failures
 
 
+def _path_in_tree(repo: Path, head: str, path: str) -> bool:
+    return subprocess.run(["git", "cat-file", "-e", f"{head}:{path}"], cwd=repo, capture_output=True).returncode == 0
+
+
+def _receipt_verification_paths(receipt: object) -> set[str]:
+    verification = receipt.get("verification") if isinstance(receipt, dict) else None
+    command = verification.get("command") if isinstance(verification, dict) else None
+    if not isinstance(command, list):
+        return set()
+    paths = {arg.split("::", 1)[0] for arg in command if isinstance(arg, str) and not arg.startswith("-")}
+    return {path for path in paths if "/" in path or path.endswith(".py")}
+
+
 def _check_evidence_dropped_paths(repo: Path, evidence: dict, head: str, tracker: dict, receipts: dict) -> list[str]:
-    dropped = evidence.get("dropped_receipt_paths")
-    if dropped is None or dropped == {}:
-        return []
+    dropped = evidence.get("dropped_receipt_paths", {})
     if not isinstance(dropped, dict):
         return ["batch evidence dropped_receipt_paths is not an object"]
     excluded, _problems = develop_exclusions(repo, head, tracker, receipts)
-    members = set(_tracker_members(tracker))
-    failures: list[str] = []
-    for member, paths in sorted(dropped.items()):
-        receipt = receipts.get(member)
-        verification = receipt.get("verification") if isinstance(receipt, dict) else None
-        command = verification.get("command") if isinstance(verification, dict) else None
-        named = (
-            {arg.split("::", 1)[0] for arg in command if isinstance(arg, str)} if isinstance(command, list) else set()
-        )
-        if member not in members or not isinstance(paths, list) or not all(isinstance(p, str) for p in paths):
+    members = _tracker_members(tracker)
+    failures = [f"dropped receipt paths name unknown member {member}" for member in sorted(set(dropped) - set(members))]
+    for member in members:
+        claimed = dropped.get(member, [])
+        if not isinstance(claimed, list) or not all(isinstance(path, str) for path in claimed):
             failures.append(f"dropped receipt paths for {member} are malformed")
             continue
-        for path in paths:
-            present = subprocess.run(["git", "cat-file", "-e", f"{head}:{path}"], cwd=repo, capture_output=True)
-            if path not in named:
-                failures.append(f"dropped path {path} is not named by member {member}'s receipt command")
-            elif path not in excluded:
+        named = _receipt_verification_paths(receipts.get(member))
+        expected = {path for path in named if path in excluded and not _path_in_tree(repo, head, path)}
+        for path in sorted(set(claimed) - named):
+            failures.append(f"dropped path {path} is not named by member {member}'s receipt command")
+        for path in sorted(set(claimed) & named):
+            if path not in excluded:
                 failures.append(f"dropped path {path} was not removed by a recorded develop merge")
-            elif present.returncode == 0:
+            elif _path_in_tree(repo, head, path):
                 failures.append(f"dropped path {path} still exists at the PR head")
+        failures.extend(
+            f"member {member} receipt path {path} was removed by a recorded develop merge but is not listed as dropped"
+            for path in sorted(expected - set(claimed))
+        )
     return failures
 
 

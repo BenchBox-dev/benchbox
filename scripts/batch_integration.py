@@ -2070,14 +2070,15 @@ def _is_verification_target(arg: str) -> bool:
 
 
 def _drop_develop_deleted_targets(
-    repo: Path, member: str, command: list[str], excluded: set[str]
+    repo: Path, head: str, member: str, command: list[str], excluded: set[str]
 ) -> tuple[list[str], list[str]]:
     prefix = next(len(item) for item in ALLOWED_VERIFICATION_PREFIXES if tuple(command[: len(item)]) == item)
     kept = list(command[:prefix])
     removed: set[str] = set()
     for arg in command[prefix:]:
         path = arg.split("::", 1)[0]
-        if _is_verification_target(arg) and path in excluded and not (repo / path).exists():
+        in_tree = _git_ok(repo, "cat-file", "-e", f"{head}:{path}")
+        if _is_verification_target(arg) and path in excluded and not in_tree:
             removed.add(path)
         else:
             kept.append(arg)
@@ -2123,7 +2124,7 @@ def build_evidence(repo: Path) -> dict:
     for member in members:
         verification = receipts[member]["verification"]
         command = _validate_verification_command(verification.get("command"))
-        rerun_command, removed = _drop_develop_deleted_targets(repo, member, command, excluded)
+        rerun_command, removed = _drop_develop_deleted_targets(repo, final_head, member, command, excluded)
         if removed:
             dropped[member] = removed
         rerun_entry = _rerun(repo, ledger, member, rerun_command, str(verification.get("suite", "")), "final-evidence")

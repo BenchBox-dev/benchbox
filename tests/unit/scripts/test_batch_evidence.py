@@ -221,6 +221,38 @@ def test_landing_refuses_dropped_paths_that_no_develop_merge_removed(world: Worl
     assert any("not named by member zeta" in item for item in failures)
 
 
+def test_landing_refuses_evidence_that_omits_the_dropped_receipt_paths(world: World) -> None:
+    integration = _legacy_batch(world)
+    _develop_commit(world, "develop retires the legacy test", remove=[LEGACY_TEST])
+    _merge_develop(world, integration)
+    built = bi.build_evidence(integration)
+    tracker = _tracker_view(world)
+    for evidence in (
+        {key: value for key, value in built["evidence"].items() if key != "dropped_receipt_paths"},
+        dict(built["evidence"], dropped_receipt_paths={}),
+    ):
+        failures = pr_landing._check_evidence_dropped_paths(
+            integration, evidence, world.head(), tracker, tracker["receipts"]
+        )
+        assert any("not listed as dropped" in item and LEGACY_TEST in item for item in failures)
+
+
+def test_an_ignored_stale_copy_of_a_deleted_test_does_not_keep_it_in_the_rerun(world: World) -> None:
+    integration = _legacy_batch(world)
+    _develop_commit(world, "develop retires the legacy test", remove=[LEGACY_TEST])
+    _merge_develop(world, integration)
+    exclude = Path(git(integration, "rev-parse", "--path-format=absolute", "--git-path", "info/exclude"))
+    exclude.parent.mkdir(parents=True, exist_ok=True)
+    exclude.write_text(f"{LEGACY_TEST}\n", encoding="utf-8")
+    (integration / LEGACY_TEST).write_text("def test_l():\n    assert True\n")
+    assert git(integration, "status", "--porcelain") == ""
+
+    built = bi.build_evidence(integration)
+
+    assert built["evidence"]["dropped_receipt_paths"] == {"zeta": [LEGACY_TEST]}
+    assert all(LEGACY_TEST not in call[0] for call in world.calls if "pytest" in call[0] and call[1] == integration)
+
+
 def test_evidence_still_fails_for_a_test_path_a_member_owns(world: World) -> None:
     integration = _legacy_batch(world)
     _develop_commit(world, "develop retires the legacy test", remove=[LEGACY_TEST])
