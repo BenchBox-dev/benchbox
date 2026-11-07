@@ -272,7 +272,7 @@ probe mode:
   so a probe whose dry run was skipped is red.
 
 A probe aimed at a real tag, a probe from a tag ref, and a real release of
-`v0.0.0rc0` all fail in the first admission step.
+`v0.0.0rc0` all fail at the classification guard, before any gate or build step.
 `scripts/release_probe_graph.py` evaluates the job conditions of the workflow
 under every combination of job outcomes and fails if `publish` is skipped after
 green gates, if `publish` runs after a red gate, or if any job that can publish
@@ -281,7 +281,9 @@ probe's permissions and the issue-3947 graph shape.
 
 `release-v2-probe.yml` runs on every pull request. When the pull request
 touches `release-v2.yml`, `trunk-uat.yml`, `trunk.yml`, `release-uat-env`, the
-probe workflow, or `scripts/release_*.py`, it dispatches both probe variants
+probe workflow, `scripts/release_*.py`, `scripts/release_requirements.txt`,
+`scripts/update_version.py`, `tests/uat/gate_summary.py` or a release-gate UAT
+config, it dispatches both probe variants
 from the pull request branch and fails unless both succeed; otherwise it passes
 at once. It runs on every pull request so that it can be made a required
 check without leaving unrelated pull requests pending. The probe builds its own

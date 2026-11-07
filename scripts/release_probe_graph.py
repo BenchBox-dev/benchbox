@@ -489,7 +489,7 @@ def _gates_green(runs: dict[str, JobRun]) -> bool:
 
 
 def probe_violations(workflow: dict[str, Any]) -> list[str]:
-    capable = set(publishing_jobs(workflow)) - {PROBE_PUBLISH_JOB}
+    capable = set(publishing_jobs(workflow))
     offenders: set[str] = set()
     for variant in VARIANTS:
         for scenario in scenarios(workflow, "workflow_dispatch", {"probe": variant}):

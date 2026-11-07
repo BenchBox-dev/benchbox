@@ -115,6 +115,24 @@ def test_a_run_that_outlives_the_timeout_fails_and_is_cancelled():
     assert sorted(fake.cancelled) == sorted(fake.variant_of)
 
 
+def test_both_variants_are_bounded_by_one_overall_deadline(monkeypatch):
+    fake = FakeGh()
+    budgets: list[float] = []
+    clock_now = [0.0]
+
+    def waiting(repository, run_id, **kwargs):
+        budgets.append(kwargs["timeout"])
+        clock_now[0] += 400.0
+        return {"status": "completed", "conclusion": "success", "html_url": ""}
+
+    monkeypatch.setattr(launch, "wait_for", waiting)
+    status = launch.run_probes(
+        REPOSITORY, BRANCH, HEAD, runner=fake, sleep=lambda _: None, clock=lambda: clock_now[0], timeout=1000.0
+    )
+    assert status == 0
+    assert budgets == [1000.0, 600.0]
+
+
 def test_a_failed_cancel_is_reported_without_hiding_the_original_failure(capsys):
     fake = FakeGh(pending_polls=10**6, cancel_fails=True)
     ticks = iter(range(0, 10**6, 100))
@@ -136,6 +154,10 @@ def test_a_failed_cancel_is_reported_without_hiding_the_original_failure(capsys)
         "scripts/release_artifact_consumer.py",
         "scripts/release_reuse_uat_evidence.py",
         "scripts/release_probe_graph.py",
+        "scripts/release_requirements.txt",
+        "scripts/update_version.py",
+        "tests/uat/gate_summary.py",
+        "tests/uat/configs/release-gate-02-docker-nonoltp.yaml",
     ],
 )
 def test_every_release_input_named_by_the_probe_contract_triggers_the_probe(path):

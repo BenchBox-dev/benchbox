@@ -338,7 +338,8 @@ def test_the_concurrency_group_keeps_a_probe_apart_from_a_release_of_any_tag(liv
     releasing = {"github": {"event_name": "push", "ref_name": "v0.5.0"}, "inputs": {}}
     assert graph.evaluate(group, probing) == "release-v2-probe-feat/x-reuse"
     assert graph.evaluate(group, releasing) == "release-v2-v0.5.0"
-    assert live["concurrency"]["cancel-in-progress"] is False
+    assert graph.evaluate(live["concurrency"]["cancel-in-progress"], probing) is True
+    assert graph.evaluate(live["concurrency"]["cancel-in-progress"], releasing) is False
 
 
 def test_the_probe_distributions_are_built_with_the_commands_the_trunk_producer_uses():

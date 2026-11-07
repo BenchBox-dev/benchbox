@@ -21,6 +21,10 @@ PROBED_PATHS = (
     ".github/workflows/trunk.yml",
     ".github/actions/release-uat-env/*",
     "scripts/release_*.py",
+    "scripts/release_requirements.txt",
+    "scripts/update_version.py",
+    "tests/uat/gate_summary.py",
+    "tests/uat/configs/release-gate-*.yaml",
 )
 Gh = Callable[..., Any]
 
@@ -137,6 +141,7 @@ def run_probes(
     clock: Callable[[], float] = time.monotonic,
     timeout: float = 1500.0,
 ) -> int:
+    deadline = clock() + timeout
     known = {int(run["id"]) for run in list_runs(repository, branch, runner)}
     started: dict[str, int] = {}
     verdicts: dict[str, dict[str, Any]] = {}
@@ -147,7 +152,8 @@ def run_probes(
             started[variant] = run_id
             print(f"dispatched the {variant} probe as run {run_id}")
         for variant, run_id in started.items():
-            verdicts[variant] = wait_for(repository, run_id, runner=runner, sleep=sleep, clock=clock, timeout=timeout)
+            remaining = max(deadline - clock(), 0.0)
+            verdicts[variant] = wait_for(repository, run_id, runner=runner, sleep=sleep, clock=clock, timeout=remaining)
     except BaseException:
         for run_id in started.values():
             if run_id not in {int(run["id"]) for run in verdicts.values()}:

@@ -196,6 +196,7 @@ def test_the_dry_run_job_is_flagged_the_moment_it_gains_any_publishing_capabilit
     broken = copy.deepcopy(live)
     mutation(broken["jobs"]["publish-probe"])
     assert graph.job_can_publish(broken["jobs"]["publish-probe"])
+    assert "publish-probe can run in probe mode although it can publish" in graph.check(broken)
 
 
 def test_the_dry_run_job_as_written_has_no_publishing_capability(live):
