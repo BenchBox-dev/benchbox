@@ -8509,6 +8509,13 @@
       "status": "done",
       "title": "Release guarded batch-checkout recovery and revision-complete CLI reads in todo-db"
     },
+    "batch-result-validity-umbrella-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Umbrella: result-validity feature batch"
+    },
     "batch-skill-pinned-rollout": {
       "claim": null,
       "needs": [
