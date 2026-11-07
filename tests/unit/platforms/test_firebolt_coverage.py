@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from benchbox.platforms.base.data_loading import DataSource
+from benchbox.platforms.firebolt import FireboltColumnCountError
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -603,11 +604,10 @@ class TestLoadDataInsertBranches:
             mock_benchmark = Mock()
             mock_benchmark.tables = {"bad_table": str(tmp_path)}
 
-            table_stats, _, _ = adapter._load_data_via_insert(mock_benchmark, mock_conn, Path("/tmp"))
+            with pytest.raises(FireboltColumnCountError, match="Inconsistent column count"):
+                adapter._load_data_via_insert(mock_benchmark, mock_conn, Path("/tmp"))
         finally:
             tmp_path.unlink()
-
-        assert table_stats["bad_table"] == 0
 
     def test_null_values_converted(self):
         adapter = _make_core_adapter()
