@@ -317,7 +317,11 @@ def batch_refusals(
     final_pr = tracker.get("final_pr")
     if not isinstance(final_pr, dict) or final_pr.get("number") != number:
         reasons.append(f"batch {discovered_id} is not bound to PR #{number}")
-    reasons.extend(pr_landing.check_batch_evidence(checkout, evidence or {}, head, tracker))
+    try:
+        base = pr_landing._git(checkout, "rev-parse", "origin/develop")
+    except subprocess.CalledProcessError:
+        base = None
+    reasons.extend(pr_landing.check_batch_evidence(checkout, evidence or {}, head, tracker, base))
     return reasons
 
 
