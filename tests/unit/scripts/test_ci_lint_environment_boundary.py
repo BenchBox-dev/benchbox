@@ -9,10 +9,11 @@ from pathlib import Path
 import pytest
 import yaml
 
+import scripts.check_make_targets as make_targets
+
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-MAKEFILE = REPO_ROOT / "Makefile"
 GATE_SCRIPT = REPO_ROOT / "_project" / "scripts" / "ci_lint_environment_gate.py"
 GATE_INVOCATION = "_project/scripts/ci_lint_environment_gate.py"
 
@@ -40,7 +41,7 @@ def _load_gate():
 
 
 def _ci_lint_recipe_text() -> str:
-    text = MAKEFILE.read_text(encoding="utf-8")
+    text = make_targets.makefile_sources(REPO_ROOT)
     match = re.search(r"^ci-lint:.*?\n((?:\t.*\n|\n)*)", text, re.MULTILINE)
     assert match, "Makefile has no top-level 'ci-lint:' target"
     return match.group(1)

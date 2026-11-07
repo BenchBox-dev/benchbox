@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "DataFusion and GizmoSQL now receive query results as Arrow inside the query timer and record fetch_mode per query; set the fetch_mode platform option to rows to switch back.",
+      "details": [
+        "Rows and Arrow produced identical result digests for all 22 TPC-H queries at scale factor 0.01 on both platforms.",
+        "ClickHouse local mode (chDB) gains an Arrow path behind fetch_mode=arrow and stays on rows by default: its rows path returns NaN where the Arrow path returns NULL for an empty aggregate.",
+        "InfluxDB FlightSQL results are converted to Python rows column by column."
+      ],
+      "platforms": ["datafusion", "gizmosql", "clickhouse", "influxdb"]
+    }
+  ]
+}

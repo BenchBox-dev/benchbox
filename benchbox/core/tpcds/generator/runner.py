@@ -5,6 +5,8 @@ import os
 import platform
 import shutil
 import subprocess
+import tempfile
+from collections.abc import Sequence
 from pathlib import Path
 
 from benchbox.core.tpcds.c_tools import tpcds_option
@@ -82,6 +84,21 @@ class DsdgenRunnerMixin:
         else:
             self._run_single_threaded_dsdgen(output_dir)
 
+    def generate_refresh_set(self, set_id: int, output_dir: Path, rng_seed: int | None = None) -> None:
+        if isinstance(set_id, bool) or not isinstance(set_id, int) or set_id < 1:
+            raise ValueError(f"refresh set id must be a positive integer, got {set_id!r}")
+        if self.dsdgen_exe is None:
+            raise RuntimeError(f"dsdgen is not available: {self._dsdgen_error}")
+        output_dir.mkdir(parents=True, exist_ok=True)
+        update_args = [tpcds_option("update"), str(set_id)]
+        if rng_seed is not None:
+            update_args += [tpcds_option("rngseed"), str(int(rng_seed))]
+        with tempfile.TemporaryDirectory(prefix="dsdgen-") as scratch:
+            scratch_dir = Path(scratch)
+            self._run_file_based_dsdgen(scratch_dir, update_args)
+            for produced in scratch_dir.glob("*.dat"):
+                shutil.move(str(produced), str(output_dir / produced.name))
+
     def _run_single_threaded_dsdgen(self, output_dir: Path) -> None:
         if self.should_use_compression():
             self._run_streaming_dsdgen(output_dir)
@@ -120,7 +137,7 @@ class DsdgenRunnerMixin:
 
         self._generate_single_table_streaming(output_dir, "dbgen_version")
 
-    def _run_file_based_dsdgen(self, output_dir: Path) -> None:
+    def _run_file_based_dsdgen(self, output_dir: Path, extra_args: Sequence[str] = ()) -> None:
         cmd = [
             str(self.dsdgen_exe),
             tpcds_option("verbose"),
@@ -130,6 +147,7 @@ class DsdgenRunnerMixin:
             tpcds_option("scale"),
             str(self.scale_factor),
         ]
+        cmd.extend(extra_args)
 
         try:
             self._copy_distribution_files(output_dir)

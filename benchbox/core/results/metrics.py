@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import statistics
+from decimal import ROUND_FLOOR, Decimal
 from typing import TYPE_CHECKING
 
 from benchbox.core.results.subscale_policy import bundle_compliance_class
@@ -15,6 +16,11 @@ NON_POWER_TEST_TYPES = frozenset({"throughput", "maintenance"})
 UNOFFICIAL_COMPLIANCE_CLASSES = frozenset({"unofficial_subscale", "unofficial_nonstandard"})
 TPC_QUERIES_PER_STREAM = {"tpch": 22, "tpcds": 99}
 _TPC_BENCHMARK_LABELS = {"tpch": "TPC-H", "tpcds": "TPC-DS"}
+QPHDS_MIN_STREAMS = 4
+
+
+def _positive_finite(value: object) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and value > 0
 
 
 def percentile_ms(times_ms: Sequence[float], p: float) -> float:
@@ -97,6 +103,83 @@ class TPCMetricsCalculator:
         if power_at_size <= 0 or throughput_at_size <= 0:
             return 0.0
         return round(math.sqrt(power_at_size * throughput_at_size), 1)
+
+    @staticmethod
+    def qphds_input_problems(
+        scale_factor: float,
+        num_streams: int,
+        power_seconds: float | None,
+        throughput_seconds: Sequence[float | None],
+        maintenance_seconds: Sequence[float | None],
+        load_seconds: float | None,
+    ) -> list[str]:
+        problems: list[str] = []
+        if not _positive_finite(scale_factor):
+            problems.append("scale factor is not a positive number")
+        if (
+            isinstance(num_streams, bool)
+            or not isinstance(num_streams, int)
+            or num_streams < QPHDS_MIN_STREAMS
+            or num_streams % 2
+        ):
+            problems.append(f"stream count must be an even number of at least {QPHDS_MIN_STREAMS}; got {num_streams}")
+        for label, value in (("Power Test", power_seconds), ("database load", load_seconds)):
+            if not _positive_finite(value):
+                problems.append(f"{label} elapsed time is missing or not positive")
+        for label, values in (("Throughput Test", throughput_seconds), ("Data Maintenance Test", maintenance_seconds)):
+            if len(values) != 2:
+                problems.append(f"two {label} elapsed times are required; got {len(values)}")
+                continue
+            for index, value in enumerate(values, start=1):
+                if not _positive_finite(value):
+                    problems.append(f"{label} {index} elapsed time is missing or not positive")
+        return problems
+
+    @staticmethod
+    def calculate_qphds_terms(
+        scale_factor: float,
+        num_streams: int,
+        power_seconds: float,
+        throughput_seconds: Sequence[float],
+        maintenance_seconds: Sequence[float],
+        load_seconds: float,
+    ) -> dict[str, float]:
+        problems = TPCMetricsCalculator.qphds_input_problems(
+            scale_factor, num_streams, power_seconds, throughput_seconds, maintenance_seconds, load_seconds
+        )
+        if problems:
+            raise ValueError("; ".join(problems))
+        return {
+            "q": float(TPC_QUERIES_PER_STREAM["tpcds"] * num_streams),
+            "t_pt_hours": power_seconds * num_streams / 3600.0,
+            "t_tt_hours": sum(throughput_seconds) / 3600.0,
+            "t_dm_hours": sum(maintenance_seconds) / 3600.0,
+            "t_ld_hours": 0.01 * num_streams * load_seconds / 3600.0,
+        }
+
+    @staticmethod
+    def calculate_qphds_at_size(
+        scale_factor: float,
+        num_streams: int,
+        power_seconds: float,
+        throughput_seconds: Sequence[float],
+        maintenance_seconds: Sequence[float],
+        load_seconds: float,
+    ) -> float:
+        terms = TPCMetricsCalculator.calculate_qphds_terms(
+            scale_factor, num_streams, power_seconds, throughput_seconds, maintenance_seconds, load_seconds
+        )
+        product = terms["t_pt_hours"] * terms["t_tt_hours"] * terms["t_dm_hours"] * terms["t_ld_hours"]
+        return TPCMetricsCalculator.floor_qphds(scale_factor, terms["q"], product)
+
+    @staticmethod
+    def floor_qphds(scale_factor: float, q: float, hours_product: float) -> float:
+        value = (
+            Decimal(repr(float(scale_factor)))
+            * Decimal(repr(float(q)))
+            / Decimal(repr(float(hours_product))).sqrt().sqrt()
+        )
+        return float(value.to_integral_value(rounding=ROUND_FLOOR))
 
     @staticmethod
     def calculate_geometric_mean(times: Sequence[float]) -> float:

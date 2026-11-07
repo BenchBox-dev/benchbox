@@ -69,7 +69,18 @@ class TPCHRefreshIngester(Protocol):
         table_name: str,
         columns: Sequence[tuple[str, str]],
         path: Path,
+        null_marker: str | None = None,
     ) -> int: ...
+
+
+class EnforcedPrimaryKeyProbe(Protocol):
+    def enforced_primary_key_tables(self, connection: Any, tables: Sequence[str]) -> list[str]: ...
+
+
+def resolve_primary_key_probe(adapter: Any) -> EnforcedPrimaryKeyProbe | None:
+    if adapter is None or not callable(getattr(adapter, "enforced_primary_key_tables", None)):
+        return None
+    return adapter
 
 
 def resolve_refresh_ingester(adapter: Any) -> TPCHRefreshIngester | None:

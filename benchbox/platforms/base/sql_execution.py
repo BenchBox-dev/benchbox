@@ -5,8 +5,10 @@ import logging
 from collections.abc import Callable, Sequence
 from typing import Any
 
+from benchbox.core.results.fetch_mode import FETCH_MODE_ROWS
 from benchbox.core.results.models import QueryExecution
 from benchbox.core.results.query_execution import query_execution_to_legacy_dict
+from benchbox.platforms.base.arrow_result import fetch_result
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 logger = logging.getLogger(__name__)
@@ -73,6 +75,8 @@ def execute_sql_query(
     scale_factor: float | None = None,
     validate_row_count: bool = True,
     stream_id: int | None = None,
+    fetch_mode: str = FETCH_MODE_ROWS,
+    fetch_arrow: Callable[[Any], Any] | None = None,
 ) -> dict[str, Any]:
     start_time = mono_time()
     log_verbose(f"Executing query {query_id}")
@@ -81,10 +85,14 @@ def execute_sql_query(
     cursor = connection.cursor() if _owns_cursor else connection
     try:
         cursor.execute(query)
-        results = [] if getattr(cursor, "description", ()) is None else cursor.fetchall()
+        fetched = fetch_result(
+            fetch_mode,
+            fetch_rows=lambda: [] if getattr(cursor, "description", ()) is None else cursor.fetchall(),
+            fetch_arrow=None if fetch_arrow is None else lambda: fetch_arrow(cursor),
+        )
 
         execution_time = elapsed_seconds(start_time)
-        actual_row_count = len(results)
+        actual_row_count = fetched.row_count
 
         validation_result = None
         if validate_row_count and benchmark_type:
@@ -101,16 +109,19 @@ def execute_sql_query(
 
         from benchbox.core.results.result_digest import compute_result_digest, result_digest_enabled
 
-        result_digest = compute_result_digest(results) if result_digest_enabled() and stream_id in (None, 0) else None
+        result_digest = (
+            compute_result_digest(fetched.rows) if result_digest_enabled() and stream_id in (None, 0) else None
+        )
 
         return build_query_result_with_validation(
             query_id=query_id,
             execution_time=execution_time,
             actual_row_count=actual_row_count,
-            first_row=results[0] if results else None,
+            first_row=fetched.first_row,
             validation_result=validation_result,
             result_digest=result_digest,
-            materialized_rows=results,
+            materialized_rows=fetched.rows,
+            fetch_mode=fetched.fetch_mode,
         )
 
     except Exception as exc:

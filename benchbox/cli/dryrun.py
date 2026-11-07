@@ -766,7 +766,7 @@ class DryRunDisplay:
                 return "Throughput test execution (concurrent streams)"
         elif test_execution_type == "maintenance":
             if benchmark_name == "tpcds":
-                return "TPC-DS MaintenanceTest (data operations: INSERT/UPDATE/DELETE)"
+                return "TPC-DS MaintenanceTest (data operations: INSERT/DELETE)"
             else:
                 return "Maintenance test execution (data operations)"
         else:

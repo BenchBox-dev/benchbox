@@ -195,23 +195,21 @@ class TestDryRunTestModes:
 
             with patch.object(executor, "_extract_tpcds_maintenance_operations") as mock_extract:
                 mock_extract.return_value = {
-                    "DM1_INSERT": "-- TPC-DS Maintenance: Insert new store sales records\nINSERT INTO STORE_SALES (...);",
-                    "DM2_INSERT_RETURNS": "-- TPC-DS Maintenance: Insert store returns\nINSERT INTO STORE_RETURNS (...);",
-                    "DM3_UPDATE": "-- TPC-DS Maintenance: Update customer records\nUPDATE CUSTOMER SET ...;",
-                    "DM4_DELETE": "-- TPC-DS Maintenance: Delete old store sales\nDELETE FROM STORE_SALES WHERE ...;",
+                    "LF_SS": "-- LF_SS: method 1\nINSERT INTO store_sales (...) SELECT ... FROM s_purchase_lineitem;",
+                    "LF_SR": "-- LF_SR: method 1\nINSERT INTO store_returns (...) SELECT ... FROM s_store_returns;",
+                    "DF_SS": "-- DF_SS: method 2\nDELETE FROM store_sales WHERE ...;",
+                    "DF_I": "-- DF_I: method 3\nDELETE FROM inventory WHERE ...;",
                 }
 
                 result = executor.execute_dry_run(mock_benchmark_config, mock_system_profile, mock_database_config)
 
         assert result.benchmark_config["test_execution_type"] == "maintenance"
         assert result.query_preview["test_execution_type"] == "maintenance"
-        assert "MaintenanceTest (data operations: INSERT/UPDATE/DELETE)" in result.query_preview["execution_context"]
+        assert "MaintenanceTest (data operations: INSERT/DELETE)" in result.query_preview["execution_context"]
 
         query_keys = list(result.queries.keys())
-        assert any("DM1_INSERT" in key for key in query_keys), f"Expected DM1_INSERT in {query_keys}"
-        assert any("DM2_INSERT_RETURNS" in key for key in query_keys), f"Expected DM2_INSERT_RETURNS in {query_keys}"
-        assert any("DM3_UPDATE" in key for key in query_keys), f"Expected DM3_UPDATE in {query_keys}"
-        assert any("DM4_DELETE" in key for key in query_keys), f"Expected DM4_DELETE in {query_keys}"
+        for function in ("LF_SS", "LF_SR", "DF_SS", "DF_I"):
+            assert any(function in key for key in query_keys), f"Expected {function} in {query_keys}"
 
         for key, operation in result.queries.items():
             if key.startswith("DM"):

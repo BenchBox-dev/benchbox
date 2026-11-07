@@ -5,7 +5,6 @@
 .gitignore::_project/PROJECT_TODO.yaml
 .gitignore::_project/TODO_ENTRY_TEMPLATE.yaml
 .gitignore::_project/TODO_SCHEMA.yaml
-Makefile::_project/cross-surface-baseline-autodetect/summary.json
 _sources/tpcds-duckdb-diagnostic.md::_project/TODO/main/active/support-unofficial-tpcds-scales-with-methodology-guardrails.yaml
 _sources/tpcds-subscale-probe.md::_project/TODO/main/active/support-unofficial-tpcds-scales-with-methodology-guardrails.yaml
 _sources/tpcds-subscale-probe.md::_project/TODO/main/planning/patch-and-redistribute-tpcds-dsdgen-subscale-support.yaml
@@ -15,6 +14,7 @@ docs/internal/benchbox-results-platform-strategy.md::_project/_archive/specs/cli
 docs/internal/release-guide.md::_project/TODO/main/active/release-recovery-v0-3-1.yaml
 docs/internal/uat-release-campaign.md::_project/release-evidence/uat-gate-summary.json
 make/monolith-baseline.json::_project/cross-surface-baseline-autodetect/summary.json
+make/reports.mk::_project/cross-surface-baseline-autodetect/summary.json
 quality/fast-duration-calibration.json::_project/scripts/oracle_reviewers/templates/README.md
 quality/fast-duration-calibration.json::_project/scripts/oracle_reviewers/templates/deep.md
 quality/fast-duration-calibration.json::_project/scripts/oracle_reviewers/templates/gate.md

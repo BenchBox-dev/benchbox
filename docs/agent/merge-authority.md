@@ -32,11 +32,18 @@ branch is incomplete.
 
 - The required `hold` check (`.github/workflows/pr-hold.yml`) fails while the
   label is present, so a held PR cannot merge, even when armed or merged with a
-  raw `gh pr merge`. `make pr-arm` and `make pr-ready` also refuse it.
+  raw `gh pr merge`. It reads the PR's labels from the API on every run, a
+  re-run included, never from the triggering event's payload. `make pr-arm` and
+  `make pr-ready` also refuse it.
 - Release a hold only when the owner names that PR in the current request.
   A goal such as "merge all open PRs", a handoff, a tracker item, or an earlier
   message is not a release. Remove the label and draft status with the same
   commands in reverse, then arm with `make pr-arm`.
+- Releasing needs no new head. The `unlabeled` event starts a new `hold` run
+  that passes. If `make pr-arm` still refuses a failed `hold` suite left from
+  the labelled event, run `make pr-rerun PR=<n>`: that run re-checks the live
+  labels, finds none, and passes, so the stale failure clears. While the label
+  is present, a re-run fails again, which keeps the hold in force.
 - Never merge with raw `gh pr merge`; use `make pr-arm`.
 
 ## Stand-in approvals

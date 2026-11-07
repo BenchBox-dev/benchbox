@@ -849,9 +849,11 @@ force_recreate|Drop and recreate the benchmark database before loading, reusing 
 
     from benchbox.core.compute_resource import register_compute_specs
     from benchbox.core.gateway import register_gateway_connection_specs
+    from benchbox.core.results.fetch_mode import register_fetch_mode_specs
 
     register_compute_specs()
     register_gateway_connection_specs()
+    register_fetch_mode_specs()
 
     PlatformHookRegistry.register_config_builder(
         "motherduck", _make_lazy_config_builder(".motherduck", "_build_motherduck_config")

@@ -9,12 +9,15 @@ from benchbox.core.connection import DatabaseConnection
 from benchbox.core.plan_capture_phase import (
     propagate_query_execution_metadata,
 )
+from benchbox.core.result_receipt import cursor_result_count
+from benchbox.core.results.fetch_mode import ConversionClock
 from benchbox.core.results.metrics import TPC_QUERIES_PER_STREAM
 from benchbox.core.throughput.result import (
     THROUGHPUT_FIRST_STREAM_ID,
     ThroughputResult,
     ThroughputStreamResult,
     throughput_stream_ids,
+    throughput_stream_numbering,
 )
 from benchbox.core.throughput.runner import StreamRunner
 from benchbox.core.validation.query_validation import (
@@ -29,6 +32,7 @@ from benchbox.utils.clock import elapsed_seconds, mono_time
 class TPCDSThroughputTestConfig:
     scale_factor: float = 1.0
     num_streams: int = 4
+    first_stream_id: int = THROUGHPUT_FIRST_STREAM_ID
     base_seed: int = 42
     stream_timeout: int = 7200
     max_workers: Optional[int] = None
@@ -70,17 +74,6 @@ def _scored_queries_per_stream(config: TPCDSThroughputTestConfig) -> int:
     if config.queries_per_stream is None:
         return TPC_QUERIES_PER_STREAM["tpcds"]
     return min(config.queries_per_stream, TPC_QUERIES_PER_STREAM["tpcds"])
-
-
-def _count_cursor_rows(cursor: Any) -> int:
-    counter = getattr(cursor, "row_count", None)
-    if callable(counter):
-        return counter()
-
-    rowcount = getattr(cursor, "rowcount", None)
-    if isinstance(rowcount, int) and rowcount >= 0:
-        return rowcount
-    return len(cursor.fetchall())
 
 
 @dataclass
@@ -157,6 +150,7 @@ class TPCDSThroughputTest:
             query_throughput=0.0,
             success=True,
             errors=[],
+            stream_numbering=throughput_stream_numbering(config.first_stream_id),
         )
 
         try:
@@ -214,7 +208,7 @@ class TPCDSThroughputTest:
         try:
             available_query_ids = list(range(1, 100))
 
-            for stream_id in throughput_stream_ids(config.num_streams):
+            for stream_id in throughput_stream_ids(config.num_streams, config.first_stream_id):
                 for position, query_id in enumerate(available_query_ids):
                     stream_seed = config.base_seed + stream_id * 1000 + position
                     try:
@@ -238,7 +232,7 @@ class TPCDSThroughputTest:
 
         try:
             all_streams = generate_dsqgen_streams(
-                num_streams=config.num_streams + THROUGHPUT_FIRST_STREAM_ID,
+                num_streams=config.num_streams + config.first_stream_id,
                 scale_factor=config.scale_factor,
                 seed=config.base_seed,
             )
@@ -248,7 +242,7 @@ class TPCDSThroughputTest:
         stream_queries: dict[int, list[tuple[Any, str]]] = {}
         failures: list[str] = []
 
-        for stream_id in throughput_stream_ids(config.num_streams):
+        for stream_id in throughput_stream_ids(config.num_streams, config.first_stream_id):
             query_subset = _apply_query_subset(all_streams.get(stream_id, []), config.query_subset)
             if config.queries_per_stream is not None:
                 query_subset = query_subset[: min(config.queries_per_stream, len(query_subset))]
@@ -314,7 +308,7 @@ class TPCDSThroughputTest:
         query_range = (min(available_query_ids), max(available_query_ids)) if available_query_ids else (1, 99)
         stream_manager = create_standard_streams(
             query_manager=query_manager,
-            num_streams=config.num_streams + THROUGHPUT_FIRST_STREAM_ID,
+            num_streams=config.num_streams + config.first_stream_id,
             query_range=query_range,
             base_seed=config.base_seed,
         )
@@ -372,7 +366,7 @@ class TPCDSThroughputTest:
             raise RuntimeError(
                 platform_result.get("error", platform_result.get("row_count_validation_error", "Query failed"))
             )
-        row_count = _count_cursor_rows(cursor)
+        row_count = cursor_result_count(cursor)
         if hasattr(connection, "commit"):
             connection.commit()
         return platform_result, row_count
@@ -391,6 +385,7 @@ class TPCDSThroughputTest:
         variant = stream_query.variant
         query_display_id = f"{query_id}{variant}" if variant else str(query_id)
         query_start = mono_time()
+        conversion_clock = ConversionClock().start()
         query_result = {
             "query_id": query_display_id,
             "position": position + 1,
@@ -422,7 +417,7 @@ class TPCDSThroughputTest:
 
             query_result.update(
                 {
-                    "execution_time_seconds": elapsed_seconds(query_start),
+                    "execution_time_seconds": max(0.0, elapsed_seconds(query_start) - conversion_clock.finish()),
                     "success": True,
                     "result_count": row_count,
                 }

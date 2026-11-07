@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 
+import scripts.check_make_targets as make_targets
 from tests.utilities import batch_evidence as fx
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
@@ -1329,7 +1330,7 @@ def _run_pr_open_result(
     ):
         (stubs / name).write_text(body, encoding="utf-8")
         (stubs / name).chmod(0o755)
-    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+    makefile = make_targets.makefile_sources(ROOT)
     start = makefile.index(".PHONY: pr-open\n")
     (work / "Makefile").write_text(makefile[start : makefile.index("\n\n", start)] + "\n", encoding="utf-8")
     calls = tmp_path / "calls.jsonl"
@@ -1404,7 +1405,7 @@ def test_pr_open_with_evidence_arms_only_a_reused_pr(tmp_path: Path) -> None:
 
 
 def test_makefile_has_separate_bounded_all_open_status_view() -> None:
-    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+    makefile = make_targets.makefile_sources(ROOT)
     assert "PR_STATUS_ALL_OPEN_LIMIT ?= 1000" in makefile
     status = makefile.split("pr-status:", 1)[1].split("\n\n", 1)[0]
     assert "PR_STATUS_LIMIT" in status
@@ -1525,7 +1526,7 @@ def test_pr_open_pushes_and_arms_the_reviewed_sha_when_the_branch_ref_moves_duri
 
 
 def test_pr_open_never_selects_the_reviewer_copy() -> None:
-    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+    makefile = make_targets.makefile_sources(ROOT)
     start = makefile.index(".PHONY: pr-open\n")
     recipe = makefile[start : makefile.index("\n\n", start)]
     assert "scripts/oracle_local_review.py" in recipe

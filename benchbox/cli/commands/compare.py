@@ -901,7 +901,10 @@ def _build_platform_runner():
     from benchbox.cli.orchestrator import BenchmarkOrchestrator
     from benchbox.cli.system import SystemProfiler
     from benchbox.core.benchmark_registry import get_benchmark_metadata
+    from benchbox.core.results.comparison_modes import IncomparableModesError, results_mode_differences
     from benchbox.core.schemas import BenchmarkConfig
+
+    executed: list[Any] = []
 
     def run_one_platform(
         *,
@@ -933,12 +936,19 @@ def _build_platform_runner():
         if data_dir is not None:
             orchestrator.set_custom_output_dir(str(data_dir))
 
-        return orchestrator.execute_benchmark(
+        result = orchestrator.execute_benchmark(
             benchmark_config,
             SystemProfiler().get_system_profile(),
             DatabaseManager().create_config(platform),
             ["data", "schema", "load", "power"],
         )
+        mode_differences = results_mode_differences([*executed, result])
+        if mode_differences:
+            raise ValueError(
+                f"{IncomparableModesError(mode_differences)} Set BENCHBOX_FETCH_MODE=rows or arrow to measure every platform the same way."
+            )
+        executed.append(result)
+        return result
 
     return run_one_platform
 
@@ -1167,6 +1177,13 @@ def _run_file_comparison(
                 "Use --allow-heterogeneous-comparison to override.[/red]"
             )
             sys.exit(1)
+
+    from benchbox.core.results.comparison_modes import IncomparableModesError, bundle_mode_differences
+
+    mode_differences = bundle_mode_differences(baseline_raw, current_raw)
+    if mode_differences:
+        console.print(f"[red]Error: {escape(str(IncomparableModesError(mode_differences)))}[/red]")
+        sys.exit(1)
 
     comparison = _perform_comparison(
         baseline, current, baseline_path, current_path, include_plans, plan_threshold, output_format

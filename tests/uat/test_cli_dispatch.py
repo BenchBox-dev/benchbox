@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import pytest
 import yaml
 
+import scripts.check_make_targets as make_targets
 from tests.uat import _cli
 from tests.uat.config import validate_config
 from tests.utilities.paths import REPO_ROOT
@@ -259,7 +260,7 @@ def test_stress_main_forwards_platform_benchmark_scale_as_stress_overrides(monke
 
 
 def test_make_uat_sweep_forwards_dry_run_variable():
-    makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    makefile = make_targets.makefile_sources(REPO_ROOT)
     target = makefile.split("uat-sweep:", maxsplit=1)[1].split("# make uat-stress", maxsplit=1)[0]
 
     assert "[DRY_RUN=1]" in target

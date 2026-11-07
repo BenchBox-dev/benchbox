@@ -135,7 +135,7 @@ HANDBACK_TEXT = (
     "docs/internal/pr-triage.md",
     "docs/internal/repo-admin-settings.md",
     "Makefile",
-    "make/help.mk",
+    "make/*.mk",
 )
 HANDBACK_PATTERNS = {
     "auto-merge withheld": r"\bauto[- ]merge\s+(?:is\s+|stays\s+|remains\s+)?withheld\b",

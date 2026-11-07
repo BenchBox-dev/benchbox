@@ -13,6 +13,8 @@ from typing import Any, Callable, Optional
 from benchbox.core.plan_capture_phase import (
     propagate_query_execution_metadata,
 )
+from benchbox.core.result_receipt import cursor_result_count
+from benchbox.core.results.fetch_mode import ConversionClock
 from benchbox.core.tpch.benchmark import binds_answer_set_parameters, has_answer_set, power_stream_seed
 from benchbox.core.tpch.refresh import (
     TPCHRefreshUpdateSet,
@@ -350,6 +352,7 @@ class TPCHPowerTest:
 
                 label = f"Position_{position + 1}_Query_{query_id}"
                 query_start = mono_time()
+                conversion_clock = ConversionClock().start()
                 try:
                     if hasattr(self.connection, "set_query_context"):
                         self.connection.set_query_context(query_id, stream_id=self.config.stream_id)
@@ -367,7 +370,7 @@ class TPCHPowerTest:
                             raise RuntimeError(error_msg)
                         propagate_query_execution_metadata(result_dict, query_result)
 
-                    result_count = self._query_result_count(cursor)
+                    result_count = cursor_result_count(cursor)
 
                     if hasattr(self.connection, "commit"):
                         self.connection.commit()
@@ -375,7 +378,7 @@ class TPCHPowerTest:
                     clear_reference_seed_context()
                     self.captured_items.append((label, query_text))
 
-                execution_time = elapsed_seconds(query_start)
+                execution_time = max(0.0, elapsed_seconds(query_start) - conversion_clock.finish())
 
                 query_result.update(
                     {
@@ -470,17 +473,6 @@ class TPCHPowerTest:
             if digest is not None:
                 return str(digest)
         return None
-
-    @staticmethod
-    def _query_result_count(cursor: Any) -> int:
-        platform_result = getattr(cursor, "platform_result", None)
-        if isinstance(platform_result, dict):
-            reported = platform_result.get("rows_returned")
-            if isinstance(reported, int) and reported >= 0:
-                return reported
-        if hasattr(cursor, "fetchall"):
-            return len(cursor.fetchall())
-        return 0
 
     def get_all_queries(self) -> dict[str, str]:
         from benchbox.core.tpch.streams import TPCHStreams

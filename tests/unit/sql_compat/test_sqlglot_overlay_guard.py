@@ -21,6 +21,7 @@ SCAN_GLOBS = (
     ".github/actions/**/*.yaml",
     ".pre-commit-config.yaml",
     "Makefile",
+    "make/*.mk",
     "Dockerfile*",
     "scripts/**/*.py",
     "scripts/**/*.sh",
@@ -94,6 +95,7 @@ def test_scan_covers_workflows_makefile_and_scripts() -> None:
     assert "Makefile" in names
     assert any(name.startswith(".github/workflows/") for name in names)
     assert any(name.startswith("scripts/") for name in names)
+    assert any(name.startswith("make/") and name.endswith(".mk") for name in names)
 
 
 def test_scan_ignores_untracked_files(tmp_path: Path) -> None:
