@@ -33623,10 +33623,15 @@
       "title": "SQL Cross-Platform Benchmark Suite"
     },
     "sql-execution-evidence-gate-config-hygiene-20261107": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T16:48:27Z",
+        "generation": "9ed20a815a84415b8ee8aacefac1f899",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Clean up the SQL execution gate's optional timeout allowlist entries"
     },
     "sql-execution-evidence-sqlite-q16-timeouts-20261106": {
