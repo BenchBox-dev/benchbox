@@ -22858,7 +22858,7 @@
         "tpcds-maintenance-timer-hygiene-20261103"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "dropped",
       "title": "TPC-DS maintenance: replace per-row UPDATEs and Python-built inserts with set-based SQL"
     },
     "perf-tpch-rf1-bulk-load-20261031": {
