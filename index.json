@@ -1256,7 +1256,7 @@
         }
       },
       "integration_branch": "feat/arrow-result-fetch-2",
-      "integration_head": "bdd60110ee3a22a6aa875215cf64ad2cb329d399",
+      "integration_head": "5e3ccba6640dd8c0e02ca936693af3f97aa7bb1f",
       "integration_log": [
         {
           "at": "2026-11-07T01:19:32Z",
@@ -1508,6 +1508,27 @@
             "perf-arrow-fetch-native-drivers-20261030"
           ],
           "seq": 8
+        },
+        {
+          "at": "2026-11-07T06:10:06Z",
+          "changed_files": [
+            "benchbox/core/results/database.py",
+            "benchbox/core/results/fetch_mode.py",
+            "changelog.d/feat-arrow-result-fetch-2--perf-spark-arrow-collect-20261030.json",
+            "docs/internal/spark-arrow-collect.md",
+            "tests/unit/cli/test_platform_options_reach_adapters.py",
+            "tests/unit/core/results/test_fetch_mode.py"
+          ],
+          "head": "5e3ccba6640dd8c0e02ca936693af3f97aa7bb1f",
+          "kind": "fix",
+          "op_id": "8ee4b470f8944e5ab34012adca8f9d83",
+          "previous_head": "bdd60110ee3a22a6aa875215cf64ad2cb329d399",
+          "requires_acceptance": [
+            "perf-arrow-aware-result-capture-20261030",
+            "perf-arrow-fetch-native-drivers-20261030",
+            "perf-spark-arrow-collect-20261030"
+          ],
+          "seq": 9
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-arrow-result-fetch-2",
