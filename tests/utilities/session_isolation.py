@@ -36,7 +36,18 @@ _OWNER = host_lock.OWNER_ENV
 _OUTPUT_DIR = "BENCHBOX_OUTPUT_DIR"
 _OWNED_OUTPUT_DIR = "BENCHBOX_TEST_SESSION_OUTPUT_DIR"
 HOST_HOME_ENV = "BENCHBOX_TEST_HOST_HOME"
-_ENV_KEYS = ("HOME", "USERPROFILE", "BENCHBOX_TEST_LOCK_DIR", _OUTPUT_DIR, _OWNER, _OWNED_OUTPUT_DIR, HOST_HOME_ENV)
+_ENV_KEYS = (
+    "HOME",
+    "USERPROFILE",
+    "BENCHBOX_TEST_LOCK_DIR",
+    _OUTPUT_DIR,
+    _OWNER,
+    _OWNED_OUTPUT_DIR,
+    HOST_HOME_ENV,
+    host_lock.RUN_ID_ENV,
+    host_lock.ROOT_RUN_ID_ENV,
+    host_lock.RUNS_FILE_ENV,
+)
 _state: dict[str, Any] | None = None
 _SKIP_LOCK = "BENCHBOX_SKIP_TEST_LOCK"
 _LOCK_DIR = host_lock.LOCK_DIR_ENV
@@ -110,6 +121,7 @@ def start(acquire_lock: bool = True) -> bool:
         os.environ[_OWNED_OUTPUT_DIR] = owned_output
     if acquire_lock and not inherited:
         os.environ[_OWNER] = host_lock.process_identity()
+    os.environ.update(host_lock.trace_environment(handle))
     _state = {"previous": previous, "home": home, "lock": handle}
     return True
 

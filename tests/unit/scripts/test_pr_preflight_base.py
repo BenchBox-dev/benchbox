@@ -71,7 +71,9 @@ def test_selection_since_a_commit_excludes_paths_changed_before_it(repo: Path) -
     assert _select(repo, "python", integration) == ["scripts/beta.py"]
 
 
-def _run_preflight(tmp_path: Path, base: str | None) -> tuple[list[str], str]:
+def _run_preflight(
+    tmp_path: Path, base: str | None, extra_env: dict[str, str] | None = None, expect_code: int = 0
+) -> tuple[list[str], str]:
     work = tmp_path / "work"
     (work / "scripts").mkdir(parents=True)
     shutil.copy(ROOT / "Makefile", work / "Makefile")
@@ -98,10 +100,17 @@ def _run_preflight(tmp_path: Path, base: str | None) -> tuple[list[str], str]:
     args = ["make", "-s", "pr-preflight"]
     if base is not None:
         args.append(f"BASE={base}")
-    env = {key: value for key, value in os.environ.items() if key != "BASE" and not key.startswith("GIT_")}
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in ("BASE", "BENCHBOX_TEST_SESSION_OWNER") and not key.startswith("GIT_")
+    }
+    env.update(extra_env or {})
     env["PATH"] = f"{bin_dir}{os.pathsep}{env['PATH']}"
     done = subprocess.run(args, cwd=work, env=env, encoding="utf-8", capture_output=True, check=False)
-    assert done.returncode == 0, done.stdout + done.stderr
+    assert done.returncode == expect_code, done.stdout + done.stderr
+    if expect_code != 0:
+        return [], done.stderr
     selections = [line for line in log.read_text(encoding="utf-8").splitlines() if "preflight_targets.py" in line]
     fetches = git_log.read_text(encoding="utf-8") if git_log.exists() else ""
     return selections, fetches
@@ -119,3 +128,27 @@ def test_pr_preflight_defaults_to_a_fetched_origin_develop(tmp_path: Path) -> No
 
     assert [line.split()[-1] for line in selections] == ["origin/develop"] * 2
     assert fetches.split() == ["fetch", "origin", "develop", "--quiet"]
+
+
+def test_pr_preflight_refuses_to_run_inside_a_lock_holder(tmp_path: Path) -> None:
+    selections, stderr = _run_preflight(
+        tmp_path, "abc1234", {"BENCHBOX_TEST_SESSION_OWNER": "123:456.0"}, expect_code=2
+    )
+
+    assert selections == []
+    assert "never wrap the whole pipeline" in stderr
+    assert not (tmp_path / "uv.log").exists()
+
+
+def test_pr_preflight_light_steps_ignore_an_unrelated_lock_holder(tmp_path: Path) -> None:
+    from benchbox.utils import host_lock
+
+    lock_dir = tmp_path / "lock"
+    env = {host_lock.LOCK_DIR_ENV: str(lock_dir), host_lock.WAIT_ENV: "0"}
+    handle = host_lock.acquire(lock_dir / host_lock.LOCK_NAME, wait_seconds=0, phase="unrelated")
+    try:
+        selections, _ = _run_preflight(tmp_path, "abc1234", env)
+    finally:
+        handle.release()
+
+    assert [line.split()[-1] for line in selections] == ["abc1234"] * 2

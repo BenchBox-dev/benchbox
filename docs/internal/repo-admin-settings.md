@@ -241,7 +241,8 @@ History of the required contexts:
 
 `develop-squash-only` (ruleset id `15611785`) has had no `merge_queue` rule
 since 2026-10-03; see `_project/decisions/merge-queue-retirement-2026-10-03.md`.
-Agents arm a PR with `make pr-arm`, which enables auto-merge; the PR
+Agents arm a PR with `make pr-arm`, which enables auto-merge; the SQLGlot
+delivery workflow arms its own adoption PRs under the same rules. The PR
 squash-merges when the required checks pass and every review thread is
 resolved. The drift check reports a `merge_queue` rule that reappears.
 
@@ -369,7 +370,11 @@ The soundness gate, as operated:
   ancestor. It does not verify a merge queue or merge `develop` itself. Refresh
   a conflicting PR near its landing turn, then rerun CI and get review on the
   resulting head before arming.
-- No workflow arms auto-merge. One workflow disarms: when a `trunk.yml` run
+- One workflow arms auto-merge: `.github/workflows/sqlglot-delivery.yml` arms
+  the SQLGlot adoption PR it opens, as the delivery App, through the same
+  `scripts/pr_arm.py` rules as `make pr-arm`. It never arms after a human hold
+  or disarm; only a `trunk-red-disarm` disarm may be re-armed. No other
+  workflow arms auto-merge. One workflow disarms: when a `trunk.yml` run
   on `develop` completes red, `.github/workflows/trunk-red-disarm.yml` disables
   auto-merge on each open PR against `develop` that has it enabled and that
   `scripts/trunk_revert.py arm-gate` would refuse, through the GraphQL
@@ -386,7 +391,8 @@ The soundness gate, as operated:
   check, so the PR cannot merge even though auto-merge stays on. Disable
   auto-merge too (`gh pr merge <n> --disable-auto`) so the PR shows no false
   intent to land. See `docs/internal/pr-triage.md` "Durable auto-merge holds".
-- `make pr-arm` refuses drafts, non-develop bases, durable holds, requested
+- `make pr-arm` (and the delivery workflow, through `scripts/pr_arm.py`)
+  refuses drafts, non-develop bases, durable holds, requested
   changes, unresolved threads, unpublished work, and a remote head that differs
   from local HEAD. It enables squash auto-merge for the exact reviewed head.
   Required checks and thread resolution control the merge.
@@ -416,71 +422,13 @@ received current-head review, or merged.
 `tests/unit/release/test_ruleset_drift_review_coverage.py` cover the review
 predicate and its blocking default with explicit override.
 
-## Branch ruleset — `release`
+## Retired `release` branch
 
-Retired: the legacy `release` branch flow was replaced by the tag-triggered
-`release-v2.yml` publisher (see `release-guide.md`). The branch, its ruleset
-and the drift expectations below remain only until the owner deletes the branch
-and ruleset. `scripts/ruleset_drift_check.py` still parses this section, so
-do not remove it in the same change that deletes the live ruleset: first
-change the drift expectations (the `release-only` ruleset and the `release`
-branch policy of `test-pypi`), then remove this section.
-
-Ruleset name: `release-only`, targets `refs/heads/release`.
-
-Release-only branch. Direct pushes are not allowed.
-
-Required status checks:
-
-```text
-- validate-base
-- release-required-result
-```
-
-`validate-base` was the branch-shape guard in the retired
-`.github/workflows/validate-release-pr.yml`, and `release-required-result` was
-the umbrella job in the retired `.github/workflows/test.yml`. No workflow
-produces either context any more, so no PR can merge into `release`.
-
-Other ruleset properties to preserve:
-
-```text
-strict_required_status_checks_policy: false
-required_linear_history: true
-non_fast_forward: true
-require_extra_approval_for_unattributed_changes: true
-deletion: blocked
-bypass_actors: (none)
-```
-
-Verify (the ruleset id varies; list, then inspect):
-
-```bash
-gh api repos/BenchBox-dev/BenchBox/rulesets --jq '.[] | {id, name, target}'
-gh api repos/BenchBox-dev/BenchBox/rulesets/<release-ruleset-id> --jq '
-  {
-    target: .target,
-    enforcement: .enforcement,
-    bypass_actors: [.bypass_actors[]?.actor_type],
-    required_checks: [
-      .rules[]
-      | select(.type == "required_status_checks")
-      | .parameters.required_status_checks[]?.context
-    ],
-    strict_base: (
-      .rules[]
-      | select(.type == "required_status_checks")
-      | .parameters.strict_required_status_checks_policy
-    ),
-    linear_history: any(.rules[]; .type == "required_linear_history"),
-    non_fast_forward: any(.rules[]; .type == "non_fast_forward"),
-    deletion: any(.rules[]; .type == "deletion")
-  }'
-```
-
-If the live ruleset differs from this runbook, update the ruleset or this
-document before relying on release-required enforcement. The retirement note
-above lists what to do once the ruleset is deleted.
+The legacy `release` branch and its rulesets (`release-only`,
+`v-release-branches-minimal`) were deleted on 2026-11-07, together with the
+`release` deployment-branch policies on the `test-pypi` and `github-pages`
+environments. `scripts/ruleset_drift_check.py` fails if a `release` branch or a
+ruleset targeting `refs/heads/release` reappears.
 
 ## Branch rulesets — `release/X.Y.x` maintenance lines
 
@@ -745,7 +693,7 @@ CI wiring (added with the fnmatch and empty-bypass hardening above):
 `scripts/ruleset_drift_check.py`'s `tag_creation_findings()` calls
 `tag_protection_findings()` and `tag_bypass_advisory()` on every full ruleset
 that `release-canary.yml`'s `ruleset-drift` job already fetches with
-`RULESET_DRIFT_TOKEN` for the `develop-squash-only` and `release-only` checks,
+`RULESET_DRIFT_TOKEN` for the `develop-squash-only` check,
 so no second API call is needed. The daily canary run reports tag-ruleset drift
 as a blocking finding, so it depends only on the canary running at all.
 
@@ -808,9 +756,7 @@ diagnose.
 Deployment policies (applied 2026-10-23): both environments admit only
 selected refs, so a workflow run on an arbitrary branch cannot request them.
 `pypi` accepts deployments from tags matching `v*` only. `test-pypi` accepts
-tags matching `v*` and the `develop` and `release` branches; the `release`
-branch entry is left over from the retired legacy publisher and stays pinned
-by the drift check until the owner removes it together with the branch. A manual
+tags matching `v*` and the `develop` branch (verified live on 2026-11-07). A manual
 `release-v2.yml` dispatch deploys under the ref it was started from, so start
 it from the release tag
 (`gh workflow run release-v2.yml --ref vX.Y.Z -f tag=vX.Y.Z`); a dispatch from
@@ -864,8 +810,6 @@ gh api -X POST repos/BenchBox-dev/BenchBox/environments/test-pypi/deployment-bra
   -f name='v*' -f type=tag
 gh api -X POST repos/BenchBox-dev/BenchBox/environments/test-pypi/deployment-branch-policies \
   -f name=develop -f type=branch
-gh api -X POST repos/BenchBox-dev/BenchBox/environments/test-pypi/deployment-branch-policies \
-  -f name=release -f type=branch
 ```
 
 ## Release canary and ruleset drift
@@ -897,15 +841,15 @@ invocation, as a blocking release check in `release-canary.yml`, and during
 `tooling` result. Nightly and canary drift jobs check out `develop`. Only the
 drift step gets the admin-visible token.
 
-The script parses this runbook for `develop-squash-only`, `release-only` and
-`release-branches`, then compares the live rulesets for required status check
-contexts, strict-base settings, bypass actors, linear history, non-fast-forward
-protection, deletion protection, and target refs. For `develop-squash-only` and
-`release-branches` it also applies the `review_enforcement_findings` predicate,
-as described in "Soundness-path review enforcement" above. It pins
-`release-branch-lifecycle` (creation and deletion rules, owner bypass actor)
-from constants in the script, because that ruleset's one bypass actor is the
-point of it.
+The script parses this runbook for `develop-squash-only` and `release-branches`,
+then compares the live rulesets for required status check contexts, strict-base
+settings, bypass actors, linear history, non-fast-forward protection, deletion
+protection, and target refs. For `develop-squash-only` and `release-branches` it
+also applies the `review_enforcement_findings` predicate, as described in
+"Soundness-path review enforcement" above. It pins `release-branch-lifecycle`
+(creation and deletion rules, owner bypass actor) from constants in the script,
+because that ruleset's one bypass actor is the point of it. It also fails if a
+legacy `release` branch or a ruleset targeting `refs/heads/release` reappears.
 
 The hosted checks use the repository secret `RULESET_DRIFT_TOKEN`, which has
 enough ruleset write or admin visibility for the API to expose `bypass_actors`.

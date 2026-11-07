@@ -475,8 +475,8 @@ sqlglot-upstream-freshness-check:
 
 .PHONY: sqlglot-adopt-wheel
 sqlglot-adopt-wheel:
-	@test -n "$(WHEEL)" || { echo "usage: make sqlglot-adopt-wheel WHEEL=path/to/benchbox_sqlglot-X.whl [SHA256=<digest>] [DRY_RUN=1]"; exit 2; }
-	uv run -- python -m scripts.adopt_sqlglot_wheel --wheel "$(WHEEL)" $(if $(SHA256),--sha256 "$(SHA256)",) $(if $(DRY_RUN),--dry-run,)
+	@test -n "$(WHEEL)" -a -n "$(EXPECTED_VERSION)" -a -n "$(FORK_SHA)" -a -n "$(UPSTREAM_SHA)" || { echo "usage: make sqlglot-adopt-wheel WHEEL=path/to/benchbox_sqlglot-X.whl EXPECTED_VERSION=X.Y.Z.N FORK_SHA=<sha> UPSTREAM_SHA=<sha> [SHA256=<digest>] [DRY_RUN=1]"; exit 2; }
+	uv run -- python -m scripts.adopt_sqlglot_wheel --wheel "$(WHEEL)" --version "$(EXPECTED_VERSION)" --fork-sha "$(FORK_SHA)" --upstream-sha "$(UPSTREAM_SHA)" $(if $(SHA256),--sha256 "$(SHA256)",) $(if $(DRY_RUN),--dry-run,)
 
 .PHONY: sqlglot-advisory-check
 sqlglot-advisory-check:
@@ -998,6 +998,10 @@ cloud-verify:
 .PHONY: pr-preflight
 pr-preflight:
 	@set -eu; \
+	if [ -n "$${BENCHBOX_TEST_SESSION_OWNER:-}" ]; then \
+		echo "pr-preflight: refusing to run inside a process that holds the host lock; run 'make pr-preflight' directly, never wrap the whole pipeline" >&2; \
+		exit 2; \
+	fi; \
 	sh scripts/check_primary_clone_clean.sh report; \
 	$(MAKE) -s changelog-check; \
 	PREFLIGHT_BASE="$(or $(BASE),origin/develop)"; \

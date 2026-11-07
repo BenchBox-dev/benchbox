@@ -71,6 +71,14 @@ combined-tree build runs first. A branch behind `develop` merges without a
 refresh unless it conflicts. A changed head needs fresh CI and a fresh oracle
 review or stand-in approval before re-arming.
 
+The one automated arming path is the `sqlglot-delivery` workflow
+(`scripts/sqlglot_delivery.py arm`, see the release guide). It arms only its
+own unmodified SQLGlot adoption pull request, by running
+`scripts/trunk_revert.py arm-gate` and `scripts/pr_arm.py` on the exact head,
+so every arming check above applies. It never re-arms after a person disabled
+auto-merge or applied the `no-auto-merge` hold; the only disarm it recovers
+from is the one `trunk-red-disarm.yml` makes as `github-actions[bot]`.
+
 Slow-marked reproducer jobs stay required in PR CI through the `core` unit,
 because the post-merge run has no slow-signature lane.
 

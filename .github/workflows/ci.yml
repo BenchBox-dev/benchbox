@@ -1534,6 +1534,7 @@ jobs:
             exit 1
           fi
           wheel=$(find "$PWD/dist" -maxdepth 1 -name '*.whl' -print -quit)
+          uv run -- python -m scripts.smoke_sqlglot_runtime_install "$wheel"
           tmpdir=$(mktemp -d)
           cd "$tmpdir"
           uv run --isolated --no-project --with "$wheel" -- python -c "import importlib.util; import benchbox; assert importlib.util.find_spec('pandas') is None, 'core install must not pull pandas'; print('Package installation successful (minimal import surface)')"

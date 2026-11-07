@@ -391,3 +391,14 @@ def test_generation_consumes_months_in_order_with_prefetch(monkeypatch, tmp_path
     assert len(paths) == len(downloader.months)
     assert sorted(fetched) == sorted(BTS_BASE_URL.format(year=y, month=m) for y, m in downloader.months)
     assert downloader._prefetcher is None
+
+
+def test_prefetch_starts_only_when_a_month_is_downloaded(monkeypatch, tmp_path):
+    fetched: list[str] = []
+    monkeypatch.setattr(FlightDataDownloader, "_fetch_bts_zip", lambda self, url: fetched.append(url) or b"")
+    monkeypatch.setattr(FlightDataDownloader, "_process_month", lambda self, writer, year, month, start_id: 0)
+    downloader = FlightDataDownloader(1.0, tmp_path, allow_synthetic_fallback=True)
+    downloader._generate_flights_shards()
+
+    assert fetched == []
+    assert downloader._prefetcher is None
