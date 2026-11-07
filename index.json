@@ -20596,10 +20596,15 @@
       "title": "Harness re-applies ClickHouse server session settings beyond load time"
     },
     "heavy-choke-machine-name-xdist-race-20261107": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T18:07:20Z",
+        "generation": "6c239b1074e64cd48af80d7358bb11e6",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:95654933fcc78b44d934f92f"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Linux machine stop tests race under xdist because every test uses machine name m"
     },
     "heavy-guard-admission-20261030": {
