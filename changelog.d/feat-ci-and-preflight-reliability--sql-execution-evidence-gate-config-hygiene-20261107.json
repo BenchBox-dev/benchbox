@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "The SQL execution evidence gate indexes its PostgreSQL join keys, so TPC-H q20 and the Havoc 20_v, 8_v10 and 9_v1 variants no longer time out and their optional allowlist entries are removed; the remaining optional entries cite hosted evidence."
+}

@@ -171,9 +171,20 @@ indexes and ten after (rerunning the `sql-execution-evidence` job only):
 
 After the change the slowest SQLite query in any of the ten runs took 4.4 s,
 about a third of the budget, so the 15 s budget keeps a margin of 3.4 times over
-the worst hosted time. The only entries that still reach 15 s on a hosted run are
-PostgreSQL TPC-H Q20 and Havoc `8_v10` and `9_v1`, which are the recorded
-`optional` PostgreSQL timeout entries in `expected_differences.json`.
+the worst hosted time.
+
+Before PostgreSQL got the same indexes, TPC-H Q20, the ten Havoc `20_v` variants
+and Havoc `8_v10` and `9_v1` reached the 15 s statement timeout on hosted runs
+and were recorded as `optional` timeout entries. `PostgresEngine.open` now
+creates the same leading-column and key indexes as SQLite before `ANALYZE`
+(the OBT datasets keep only the leading-column index). Measured on one
+PostgreSQL 17 container, TPC-H Q20 went from 15.00 s (statement timeout) to
+under 0.01 s, and the slowest PostgreSQL query of the default scope became
+TPC-H Q1 at 1.1 s. Those entries were removed rather than kept optional, so a
+regression now fails the gate. The only `optional` timeout entries left are the
+PostgreSQL OBT Q56, Q58 and Q60 entries, which only the nightly OBT gate runs;
+their justifications quote the 2026-11-07 hosted nightly, where Q58 and Q60 timed
+out at 15.01 s and Q56 took 10.5 s.
 
 ## Adoption evidence
 
