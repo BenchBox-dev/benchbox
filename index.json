@@ -2274,10 +2274,7 @@
       "terminal_outcome": "deliver"
     },
     "hold-label-and-batch-e2e-v2-20261106": {
-      "accepted_members": {
-        "batch-loop-e2e-review-binding-failures-20261106": "cf0d9fd1a85c6bcf0df20697077e6b3f50e6f330",
-        "pr-hold-stale-label-suite-unclearable-20261106": "6b519db60d03737575397b93a01908cef6ec281c"
-      },
+      "accepted_members": {},
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
@@ -2301,32 +2298,7 @@
           "previous_head": "dcfd013729cc473fcc2344f9477c7bddca892346"
         }
       ],
-      "integrated_members": {
-        "batch-loop-e2e-review-binding-failures-20261106": {
-          "accepted_head": "cf0d9fd1a85c6bcf0df20697077e6b3f50e6f330",
-          "changed_files": [
-            ".github/workflows/batch-loop-e2e.yml",
-            "changelog.d/batch-loop-e2e-review-binding-failures-20261106.json",
-            "docs/internal/dev-loop-property-ledger.md",
-            "tests/unit/workflows/test_batch_loop_e2e_workflow.py"
-          ],
-          "integration_head": "66759d25ad5d9649fcedc39bdc10bc9b1a3288ed",
-          "integration_seq": 1
-        },
-        "pr-hold-stale-label-suite-unclearable-20261106": {
-          "accepted_head": "6b519db60d03737575397b93a01908cef6ec281c",
-          "changed_files": [
-            ".github/workflows/pr-hold.yml",
-            "changelog.d/pr-hold-live-labels-20261106.json",
-            "docs/agent/merge-authority.md",
-            "docs/internal/dev-loop-property-ledger.md",
-            "docs/internal/repo-admin-settings.md",
-            "tests/unit/workflows/test_pr_hold_workflow.py"
-          ],
-          "integration_head": "dcfd013729cc473fcc2344f9477c7bddca892346",
-          "integration_seq": 2
-        }
-      },
+      "integrated_members": {},
       "integration_branch": "feat/hold-label-and-batch-e2e-v2-20261106",
       "integration_head": "5aaf74da33c30a87d817ae6e43f3691c2dba057c",
       "integration_log": [
@@ -2527,7 +2499,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-feat-hold-label-and-batch-e2e-v2",
-      "lifecycle": "active",
+      "lifecycle": "aborted",
       "members": [
         "pr-hold-stale-label-suite-unclearable-20261106",
         "batch-loop-e2e-review-binding-failures-20261106"
