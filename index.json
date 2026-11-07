@@ -1032,6 +1032,7 @@
     "arrow-result-fetch-2": {
       "accepted_members": {
         "perf-arrow-aware-result-capture-20261030": "d41dbc6830f107e2815ffb6ff4f02efd86d7248d",
+        "perf-arrow-fetch-native-drivers-20261030": "a2896abb97000d1763c35adb633ea53506d5b37a",
         "perf-spark-arrow-collect-20261030": "17b2d495178cac7ce520b08695915a113a04e4ce"
       },
       "batch_schema": 2,
@@ -1080,6 +1081,29 @@
           "integration_head": "86bf7e5d191d451e5849d5ce636b23d48e14224d",
           "integration_seq": 2
         },
+        "perf-arrow-fetch-native-drivers-20261030": {
+          "accepted_head": "a2896abb97000d1763c35adb633ea53506d5b37a",
+          "changed_files": [
+            "benchbox/platforms/clickhouse/client.py",
+            "benchbox/platforms/clickhouse/metadata.py",
+            "benchbox/platforms/clickhouse/workload.py",
+            "benchbox/platforms/datafusion.py",
+            "benchbox/platforms/gizmosql.py",
+            "benchbox/platforms/influxdb/client.py",
+            "changelog.d/feat-arrow-result-fetch-2--perf-arrow-fetch-native-drivers-20261030.json",
+            "docs/internal/tpc-measured-intervals.md",
+            "tests/unit/cli/test_interactive_dry_run.py",
+            "tests/unit/cli/test_platform_options_reach_adapters.py",
+            "tests/unit/platforms/test_arrow_fetch_native_drivers.py",
+            "tests/unit/platforms/test_clickhouse_adapter.py",
+            "tests/unit/platforms/test_datafusion_adapter.py",
+            "tests/unit/platforms/test_datafusion_plan_capture.py",
+            "tests/unit/platforms/test_influxdb_adapter.py",
+            "tests/utilities/gizmosql_fakes.py"
+          ],
+          "integration_head": "c6f77885c8fb951899e4354ca3ffec8113979e1b",
+          "integration_seq": 6
+        },
         "perf-spark-arrow-collect-20261030": {
           "accepted_head": "17b2d495178cac7ce520b08695915a113a04e4ce",
           "changed_files": [
@@ -1097,7 +1121,7 @@
         }
       },
       "integration_branch": "feat/arrow-result-fetch-2",
-      "integration_head": "338739387c12f5eae670ed3a80550fffbd6fb31d",
+      "integration_head": "c6f77885c8fb951899e4354ca3ffec8113979e1b",
       "integration_log": [
         {
           "at": "2026-11-07T01:19:32Z",
@@ -1161,6 +1185,15 @@
           "op_id": "8916cb2ff04745f2a77739d9517d3f72",
           "previous_head": "9752e2c3e5d3710fe685bfce1a4813eacb7a878f",
           "seq": 5
+        },
+        {
+          "at": "2026-11-07T05:03:28Z",
+          "head": "c6f77885c8fb951899e4354ca3ffec8113979e1b",
+          "kind": "prepare",
+          "member": "perf-arrow-fetch-native-drivers-20261030",
+          "op_id": "e7138561263c4b4187b8d4a2aaa2ecfa",
+          "previous_head": "338739387c12f5eae670ed3a80550fffbd6fb31d",
+          "seq": 6
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-arrow-result-fetch-2",
@@ -23762,17 +23795,12 @@
       "title": "Arrow result fetch for cloud adapters (MotherDuck, Databricks, Athena, BigQuery, Snowflake, ClickHouse Cloud) once live-cloud parity runs are approved"
     },
     "perf-arrow-fetch-native-drivers-20261030": {
-      "claim": {
-        "expires_at": "2026-11-08T04:56:11Z",
-        "generation": "7837aa33ef9b4fcd8e8694422f5b95fd",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [
         "perf-arrow-aware-result-capture-20261030"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Fetch results as Arrow where the current driver supports it"
     },
     "perf-clickhouse-server-bulk-load-20261030": {
