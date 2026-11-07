@@ -5,17 +5,16 @@ import io
 from collections.abc import Iterable, Sequence
 from typing import Any, BinaryIO
 
-import pyarrow as pa
-import pyarrow.compute as pc
-import pyarrow.csv as pacsv
-
 DEFAULT_BATCH_ROWS = 65536
 _INT64_MIN = -(2**63)
 _INT64_MAX = 2**63 - 1
 _NONE_TYPE = type(None)
 
 
-def _column_to_arrow(values: Sequence[Any]) -> pa.Array:
+def _column_to_arrow(values: Sequence[Any]):
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
     kinds = set(map(type, values))
     if kinds <= {str, _NONE_TYPE}:
         array = pa.array(values, type=pa.string())
@@ -36,6 +35,8 @@ class ArrowRowWriter:
         delimiter: str = "|",
         batch_rows: int = DEFAULT_BATCH_ROWS,
     ) -> None:
+        import pyarrow.csv as pacsv
+
         self._handle = handle
         self._delimiter = delimiter
         self._batch_rows = batch_rows
@@ -59,6 +60,9 @@ class ArrowRowWriter:
         self._handle.write(self._encode(rows))
 
     def _encode(self, rows: list[Sequence[Any]]) -> bytes:
+        import pyarrow as pa
+        import pyarrow.csv as pacsv
+
         width = len(rows[0])
         if width > 1:
             try:
