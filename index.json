@@ -1243,7 +1243,7 @@
         }
       },
       "integration_branch": "feat/arrow-result-fetch-2",
-      "integration_head": "4d52b084d9622ccd3935c24024123f34084f6b20",
+      "integration_head": "bdd60110ee3a22a6aa875215cf64ad2cb329d399",
       "integration_log": [
         {
           "at": "2026-11-07T01:19:32Z",
@@ -1478,6 +1478,23 @@
           "op_id": "1390b14e444344e7b625cfc8685c7015",
           "previous_head": "c6f77885c8fb951899e4354ca3ffec8113979e1b",
           "seq": 7
+        },
+        {
+          "at": "2026-11-07T05:42:28Z",
+          "changed_files": [
+            "benchbox/core/result_receipt.py",
+            "benchbox/platforms/datafusion.py",
+            "tests/unit/platforms/test_arrow_result_capture.py"
+          ],
+          "head": "bdd60110ee3a22a6aa875215cf64ad2cb329d399",
+          "kind": "fix",
+          "op_id": "107353d47db94889bdd444bce4857677",
+          "previous_head": "4d52b084d9622ccd3935c24024123f34084f6b20",
+          "requires_acceptance": [
+            "perf-arrow-aware-result-capture-20261030",
+            "perf-arrow-fetch-native-drivers-20261030"
+          ],
+          "seq": 8
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-arrow-result-fetch-2",
