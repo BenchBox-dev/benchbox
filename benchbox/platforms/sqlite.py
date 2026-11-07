@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import math
 import re
+from collections.abc import Sequence
 from decimal import Decimal
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -366,6 +367,14 @@ class SQLiteAdapter(PlatformAdapter):
 
     def get_target_dialect(self) -> str:
         return "sqlite"
+
+    def enforced_primary_key_tables(self, connection: Any, tables: Sequence[str]) -> list[str]:
+        enforced = []
+        for table in tables:
+            row = connection.execute(f"SELECT COUNT(*) FROM pragma_table_info('{table}') WHERE pk > 0").fetchone()
+            if row is not None and row[0] > 0:
+                enforced.append(table)
+        return sorted(enforced)
 
     def __init__(self, **config):
         super().__init__(**config)

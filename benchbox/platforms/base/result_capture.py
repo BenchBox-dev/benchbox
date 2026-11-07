@@ -1329,13 +1329,16 @@ class ResultCaptureMixin:
     def _create_maintenance_phase(self, maintenance_result: Mapping[str, Any]) -> MaintenanceTestPhase:
         operations = [
             MaintenanceOperation(
-                operation=f"{operation.operation_type}_{operation.table_name}",
+                operation=operation.function,
                 operation_type=operation.operation_type,
                 table=operation.table_name,
                 execution_time_ms=int(operation.duration * 1000),
                 rows_affected=operation.rows_affected,
                 status="SUCCESS" if operation.success else "FAILED",
                 error_message=operation.error,
+                refresh_set=operation.refresh_set,
+                staged_rows=dict(operation.staged_rows),
+                rows_by_table=dict(operation.rows_by_table),
             )
             for operation in maintenance_result.get("operations", [])
         ]
@@ -1346,6 +1349,7 @@ class ResultCaptureMixin:
             maintenance_operations=operations,
             query_executions=[],
             seed=maintenance_result.get("seed"),
+            maintenance_method=maintenance_result.get("maintenance_method"),
             success=bool(maintenance_result.get("success", False)),
         )
 

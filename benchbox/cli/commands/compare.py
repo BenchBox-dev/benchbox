@@ -1168,6 +1168,13 @@ def _run_file_comparison(
             )
             sys.exit(1)
 
+    from benchbox.core.results.comparison_modes import IncomparableModesError, bundle_mode_differences
+
+    mode_differences = bundle_mode_differences(baseline_raw, current_raw)
+    if mode_differences:
+        console.print(f"[red]Error: {escape(str(IncomparableModesError(mode_differences)))}[/red]")
+        sys.exit(1)
+
     comparison = _perform_comparison(
         baseline, current, baseline_path, current_path, include_plans, plan_threshold, output_format
     )

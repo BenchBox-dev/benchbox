@@ -308,6 +308,9 @@ class MaintenanceOperation:
     rows_affected: int
     status: str
     error_message: str | None = None
+    refresh_set: int | None = None
+    staged_rows: dict[str, int] | None = None
+    rows_by_table: dict[str, int] | None = None
 
 
 @dataclass
@@ -318,6 +321,7 @@ class MaintenanceTestPhase:
     maintenance_operations: list[MaintenanceOperation]
     query_executions: list[QueryExecution]
     seed: int | None = None
+    maintenance_method: str | None = None
     success: bool = True
 
 

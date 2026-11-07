@@ -9393,54 +9393,6 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcds/maintenance_operations.py",
-      "symbol": "",
-      "text": "# Copyright 2026 Joe Harris / BenchBox Project",
-      "kind": "notice",
-      "consumer": "COPYRIGHT.md",
-      "necessity": "The repository contribution rule in COPYRIGHT.md requires appropriate copyright headers. Retain this existing authored notice payload unchanged in a source header.",
-      "alternative": "Removing or replacing this payload would lose existing notice wording. A runtime docstring is unnecessary; an exact source comment retains the notice without carrying explanatory prose.",
-      "owner": "comment-cleanup-tpcds-runtime",
-      "removal": "Remove or change only after the owner records the governing notice requirement and confirms that the exact existing notice may be changed.",
-      "count": 1
-    },
-    {
-      "path": "benchbox/core/tpcds/maintenance_operations.py",
-      "symbol": "",
-      "text": "# TPC Benchmark™ DS (TPC-DS) - Copyright © Transaction Processing Performance Council",
-      "kind": "notice",
-      "consumer": "_sources/tpc-ds/EULA.txt",
-      "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
-      "alternative": "An exact source comment retains this existing notice without a runtime docstring. Deletion or rewriting would lose unresolved attribution wording.",
-      "owner": "comment-cleanup-tpcds-runtime",
-      "removal": "Change only after the owner records the governing provenance and applicable notice obligations; this representation change is not legal clearance.",
-      "count": 1
-    },
-    {
-      "path": "benchbox/core/tpcds/maintenance_operations.py",
-      "symbol": "",
-      "text": "# This implementation is based on the TPC-DS specification.",
-      "kind": "notice",
-      "consumer": "_sources/tpc-ds/EULA.txt",
-      "necessity": "Preserve the existing TPC copyright/trademark attribution and adjacent derivation statement exactly. Applicable EULA notice-retention clauses support conservative retention; individual-file applicability remains unresolved.",
-      "alternative": "An exact source comment retains this existing notice without a runtime docstring. Deletion or rewriting would lose unresolved attribution wording.",
-      "owner": "comment-cleanup-tpcds-runtime",
-      "removal": "Change only after the owner records the governing provenance and applicable notice obligations; this representation change is not legal clearance.",
-      "count": 1
-    },
-    {
-      "path": "benchbox/core/tpcds/maintenance_operations.py",
-      "symbol": "",
-      "text": "# Licensed under the MIT License. See LICENSE file in the project root for details.",
-      "kind": "notice",
-      "consumer": "LICENSE",
-      "necessity": "Preserve the existing per-file MIT-license reference conservatively while individual-file notice obligations are adjudicated. LICENSE requires copyright and permission notices in distributed copies; no claim is made that this abbreviated reference is legally required.",
-      "alternative": "Removing or replacing this payload would lose existing notice wording. A runtime docstring is unnecessary; an exact source comment retains the notice without carrying explanatory prose.",
-      "owner": "comment-cleanup-tpcds-runtime",
-      "removal": "Remove or change only after the owner records the governing notice requirement and confirms that the exact existing notice may be changed.",
-      "count": 1
-    },
-    {
       "path": "benchbox/core/tpcds/parameter_extractor.py",
       "symbol": "",
       "text": "# Copyright 2026 Joe Harris / BenchBox Project",

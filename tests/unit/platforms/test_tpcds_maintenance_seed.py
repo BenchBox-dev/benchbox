@@ -12,7 +12,6 @@ from benchbox.core.results.models import ExecutionPhases, SetupPhase
 from benchbox.core.results.platform_info import PlatformInfoInput
 from benchbox.core.results.query_normalizer import normalize_query_result
 from benchbox.core.results.schema import build_result_payload
-from benchbox.core.tpcds.maintenance_operations import DEFAULT_MAINTENANCE_SEED
 from benchbox.platforms.base.connection_wrappers import StreamConnectionCapability
 from benchbox.platforms.base.execution import TestDriversMixin
 from benchbox.platforms.base.result_capture import ResultCaptureMixin
@@ -23,6 +22,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 class _Driver(TestDriversMixin, ResultCaptureMixin):
     stream_connection_capability = StreamConnectionCapability.SHARED_CURSOR
     platform_name = "stub"
+    supports_refresh_functions = True
 
     def __init__(self) -> None:
         self._last_maintenance_test_result = None
@@ -39,12 +39,16 @@ class _Driver(TestDriversMixin, ResultCaptureMixin):
 
 def _maintenance_result(seed):
     operation = SimpleNamespace(
+        function="LF_SS",
         operation_type="INSERT",
         table_name="STORE_SALES",
         duration=0.25,
         rows_affected=12,
         success=True,
         error=None,
+        refresh_set=1,
+        staged_rows={"s_purchase": 12},
+        rows_by_table={"store_sales": 12},
     )
     return {
         "success": True,
@@ -79,11 +83,11 @@ def test_run_seed_reaches_the_maintenance_generator():
     assert rows[0]["test_type"] == "maintenance"
 
 
-def test_run_without_a_seed_records_the_fixed_default():
+def test_run_without_a_seed_leaves_the_kit_default():
     driver, config, _ = _run_phase({})
 
-    assert config.seed == DEFAULT_MAINTENANCE_SEED
-    assert driver._last_maintenance_test_result["seed"] == DEFAULT_MAINTENANCE_SEED
+    assert config.seed is None
+    assert driver._last_maintenance_test_result["seed"] is None
 
 
 def test_exported_result_round_trips_the_maintenance_seed(tmp_path):

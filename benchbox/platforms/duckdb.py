@@ -1182,26 +1182,38 @@ class DuckDBAdapter(PlatformAdapter):
     def get_target_dialect(self) -> str:
         return "duckdb"
 
+    def enforced_primary_key_tables(self, connection: Any, tables: Sequence[str]) -> list[str]:
+        wanted = {table.lower() for table in tables}
+        rows = connection.execute(
+            "SELECT DISTINCT table_name FROM duckdb_constraints() WHERE constraint_type = 'PRIMARY KEY' "
+            "AND database_name = current_database() AND schema_name = current_schema()"
+        ).fetchall()
+        return sorted(name.lower() for (name,) in rows if name.lower() in wanted)
+
     def ingest_refresh_file(
         self,
         connection: Any,
         table_name: str,
         columns: Sequence[tuple[str, str]],
         path: Path,
+        null_marker: str | None = None,
     ) -> int:
         typed_columns = [
             f"'{name}': '{sql_type if sql_type in {'DECIMAL(15,2)', 'INTEGER', 'DATE'} else 'VARCHAR'}'"
             for name, sql_type in columns
         ]
-        with path.open(encoding="utf-8") as source:
-            has_trailing_delimiter = source.readline().rstrip("\r\n").endswith("|")
+        has_trailing_delimiter = False
+        if null_marker is None:
+            with path.open(encoding="utf-8") as source:
+                has_trailing_delimiter = source.readline().rstrip("\r\n").endswith("|")
         if has_trailing_delimiter:
             typed_columns.append("'_trailing_delimiter': 'VARCHAR'")
         column_names = ", ".join(name for name, _ in columns)
         literal_path = str(path).replace("'", "''")
+        literal_null = (null_marker if null_marker is not None else "__BENCHBOX_NO_NULL__").replace("'", "''")
         statement = (
             f"INSERT INTO {table_name} ({column_names}) SELECT {column_names} FROM read_csv('{literal_path}', "
-            f"delim='|', header=false, quote='\"', escape='\"', nullstr='__BENCHBOX_NO_NULL__', "
+            f"delim='|', header=false, quote='\"', escape='\"', nullstr='{literal_null}', "
             f"auto_detect=false, columns={{{', '.join(typed_columns)}}})"
         )
         row = connection.execute(statement).fetchone()

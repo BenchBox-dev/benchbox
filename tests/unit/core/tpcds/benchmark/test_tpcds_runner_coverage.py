@@ -492,7 +492,8 @@ def test_run_maintenance_test_maps_operations(tpcds_benchmark, monkeypatch):
 
         def run(self, config):
             op = SimpleNamespace(
-                operation_type="insert",
+                function="LF_SS",
+                operation_type="INSERT",
                 table_name="store_sales",
                 start_time=1.0,
                 end_time=2.0,
@@ -509,6 +510,7 @@ def test_run_maintenance_test_maps_operations(tpcds_benchmark, monkeypatch):
                 "overall_throughput": 1.0,
                 "operations": [op],
                 "errors": [],
+                "maintenance_method": "dsdgen_refresh_sets",
             }
 
     monkeypatch.setattr("benchbox.core.tpcds.maintenance_test.TPCDSMaintenanceTest", FakeMaintenanceTest)
@@ -516,7 +518,8 @@ def test_run_maintenance_test_maps_operations(tpcds_benchmark, monkeypatch):
     result = tpcds_benchmark.run_maintenance_test(connection=_Conn())
     assert result.total_operations == 1
     assert result.successful_operations == 1
-    assert result.maintenance_operations[0]["operation"] == "insert_store_sales"
+    assert result.maintenance_operations[0]["operation"] == "LF_SS"
+    assert result.maintenance_method == "dsdgen_refresh_sets"
 
 
 def test_validate_maintenance_data_integrity(tpcds_benchmark):
@@ -786,6 +789,7 @@ def _recording_maintenance_test(configs):
                 "operations": [],
                 "errors": [],
                 "seed": config.seed,
+                "maintenance_method": "dsdgen_refresh_sets",
             }
 
     return RecordingMaintenanceTest
@@ -805,9 +809,7 @@ def test_run_maintenance_test_passes_the_configured_seed(tpcds_benchmark, monkey
     assert result.seed == 4321
 
 
-def test_run_maintenance_test_without_a_seed_uses_the_default(tpcds_benchmark, monkeypatch):
-    from benchbox.core.tpcds.maintenance_operations import DEFAULT_MAINTENANCE_SEED
-
+def test_run_maintenance_test_without_a_seed_leaves_the_kit_default(tpcds_benchmark, monkeypatch):
     configs = []
     monkeypatch.setattr(
         "benchbox.core.tpcds.maintenance_test.TPCDSMaintenanceTest", _recording_maintenance_test(configs)
@@ -815,8 +817,8 @@ def test_run_maintenance_test_without_a_seed_uses_the_default(tpcds_benchmark, m
 
     result = tpcds_benchmark.run_maintenance_test(connection=_Conn())
 
-    assert configs[0].seed == DEFAULT_MAINTENANCE_SEED
-    assert result.seed == DEFAULT_MAINTENANCE_SEED
+    assert configs[0].seed is None
+    assert result.seed is None
 
 
 def test_official_run_threads_the_seed_into_the_maintenance_phase(tpcds_benchmark, monkeypatch):
