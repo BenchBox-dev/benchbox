@@ -34711,12 +34711,17 @@
       "title": "Prove and activate fork delivery plus minimal core consumption"
     },
     "sqlglot-e2e-automated-delivery": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T21:54:23Z",
+        "generation": "33924bf43a5745a5a7bb22582f13f2f8",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f"
+      },
       "needs": [
         "sqlglot-e2e-activation-proof"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Deliver fork-owned SQLGlot integration and narrow core wheel adoption"
     },
     "sqlglot-e2e-core-wheel-consumer": {
