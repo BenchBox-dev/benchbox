@@ -2065,7 +2065,8 @@
     },
     "batch-optin-remediation-20261107": {
       "accepted_members": {
-        "batch-mode-opt-in-policy-docs-20261107": "32c88aa7dbc8536308b73bf383501de317dcf966"
+        "batch-mode-opt-in-policy-docs-20261107": "32c88aa7dbc8536308b73bf383501de317dcf966",
+        "ledger-coverage-test-mapped-in-preflight-20261107": "25aff661cd5f1ff03e920d207e8f90ee04c646dd"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -2085,10 +2086,21 @@
           ],
           "integration_head": "2650c1b2fee915e237b0bb902bac00cd4a3a7b95",
           "integration_seq": 1
+        },
+        "ledger-coverage-test-mapped-in-preflight-20261107": {
+          "accepted_head": "25aff661cd5f1ff03e920d207e8f90ee04c646dd",
+          "changed_files": [
+            "_project/scripts/preflight_targets.py",
+            "changelog.d/ledger-coverage-test-mapped-in-preflight.json",
+            "docs/internal/dev-loop-property-ledger.md",
+            "tests/unit/scripts/test_preflight_targets.py"
+          ],
+          "integration_head": "8d30f14867cb46cdbef4c104fd34c173aed624c3",
+          "integration_seq": 3
         }
       },
       "integration_branch": "feat/batch-optin-remediation-20261107",
-      "integration_head": "7d2ca88d40152744989613f903994f74c8086918",
+      "integration_head": "8d30f14867cb46cdbef4c104fd34c173aed624c3",
       "integration_log": [
         {
           "at": "2026-11-07T21:52:46Z",
@@ -2118,6 +2130,15 @@
             "batch-mode-opt-in-policy-docs-20261107"
           ],
           "seq": 2
+        },
+        {
+          "at": "2026-11-07T22:13:47Z",
+          "head": "8d30f14867cb46cdbef4c104fd34c173aed624c3",
+          "kind": "prepare",
+          "member": "ledger-coverage-test-mapped-in-preflight-20261107",
+          "op_id": "982009f96f684186a5639fe4dbf3af8d",
+          "previous_head": "7d2ca88d40152744989613f903994f74c8086918",
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-feat-batch-optin-remediation",
@@ -22541,15 +22562,10 @@
       "title": "Launch results explorer: acceptance testing, seed corpus verification, and go-live"
     },
     "ledger-coverage-test-mapped-in-preflight-20261107": {
-      "claim": {
-        "expires_at": "2026-11-08T22:13:43Z",
-        "generation": "4a7db4627e5c4fe9895c94455018d0ab",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Select the dev-loop ledger coverage test when a governed path changes"
     },
     "ledger-tables-alter-targets-and-truncation-bound-20260801": {
