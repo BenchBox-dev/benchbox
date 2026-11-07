@@ -2068,7 +2068,8 @@
         "deployment-modes-test-host-dependent": "9803064a09f0c965855a4c57f885bf4650d62d69",
         "flaky-heavy-choke-points-and-ducklake-interrupted-20261106": "e3191771f539a6844184d9c5af54f1b2d28b8ca0",
         "pr-arm-rerun-contradictory-guidance-20261027": "53a69242276f99b4bb9fe9b532c3d0a2f95cd78a",
-        "pr-preflight-linux-vm-env-failures-20261102": "c735c7276ede0fa9ffeb1683a790f0075da70c9a"
+        "pr-preflight-linux-vm-env-failures-20261102": "c735c7276ede0fa9ffeb1683a790f0075da70c9a",
+        "sql-execution-evidence-gate-config-hygiene-20261107": "f069195a94e9012568f58d02b6564b83481dafba"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -2114,10 +2115,22 @@
           ],
           "integration_head": "f851fa6dcb1b13f3354d900e82596331bc62ec4c",
           "integration_seq": 2
+        },
+        "sql-execution-evidence-gate-config-hygiene-20261107": {
+          "accepted_head": "f069195a94e9012568f58d02b6564b83481dafba",
+          "changed_files": [
+            "changelog.d/feat-ci-and-preflight-reliability--sql-execution-evidence-gate-config-hygiene-20261107.json",
+            "docs/internal/sql-execution-evidence-gate.md",
+            "scripts/sql_execution_gate/engines.py",
+            "scripts/sql_execution_gate/expected_differences.json",
+            "tests/unit/scripts/test_sql_execution_gate.py"
+          ],
+          "integration_head": "1c440f896d113512466f27bad3b9d8d394a8d3a9",
+          "integration_seq": 5
         }
       },
       "integration_branch": "feat/ci-and-preflight-reliability",
-      "integration_head": "0b6f6c414e9456d2fac3243c1f21204f09e34cb3",
+      "integration_head": "1c440f896d113512466f27bad3b9d8d394a8d3a9",
       "integration_log": [
         {
           "at": "2026-11-07T14:24:40Z",
@@ -2160,6 +2173,15 @@
           "op_id": "e18f26154b06465b8d54fbe5f6af795c",
           "previous_head": "824f955a1f527c674ea811574c63c8888106b690",
           "seq": 4
+        },
+        {
+          "at": "2026-11-07T16:48:30Z",
+          "head": "1c440f896d113512466f27bad3b9d8d394a8d3a9",
+          "kind": "prepare",
+          "member": "sql-execution-evidence-gate-config-hygiene-20261107",
+          "op_id": "7ea6d5d081894a4f8e64259bf94b1b6a",
+          "previous_head": "0b6f6c414e9456d2fac3243c1f21204f09e34cb3",
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-ci-and-preflight-reliability",
@@ -33623,15 +33645,10 @@
       "title": "SQL Cross-Platform Benchmark Suite"
     },
     "sql-execution-evidence-gate-config-hygiene-20261107": {
-      "claim": {
-        "expires_at": "2026-11-08T16:48:27Z",
-        "generation": "9ed20a815a84415b8ee8aacefac1f899",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "open",
       "title": "Clean up the SQL execution gate's optional timeout allowlist entries"
     },
     "sql-execution-evidence-sqlite-q16-timeouts-20261106": {
