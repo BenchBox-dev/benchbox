@@ -39,6 +39,7 @@ from tests.uat.runner import CellResult, run_cell
 
 _DEFAULT_OUTPUT = OutputConfig()
 _CONTAINER_LOG_CAPTURE_TIMEOUT_S = 60.0
+_SETTINGS_CHECKED_AFTER_RECONCILE = frozenset({"starrocks"})
 
 BENCHBOX_OUTPUT_DIR_ENV_VAR = "BENCHBOX_OUTPUT_DIR"
 
@@ -550,6 +551,19 @@ def _check_docker_platform_readiness(
             "after `up --wait` reported success"
         )
 
+    if platform not in _SETTINGS_CHECKED_AFTER_RECONCILE:
+        settings_reason = managed_runtime.check_declared_settings(
+            config,
+            spec=spec,
+            project_name=project_name,
+            docker_runner=docker_runner,
+            docker_events=docker_events,
+            record_event=_record_docker_event,
+            log_dir=log_dir,
+            benchmark_runs_dir=benchmark_runs_dir,
+        )
+        if settings_reason is not None:
+            return settings_reason
     if not probe_platform_reachability(platform, timeout_s=config.execute.liveness_probe_timeout_s or 2.0):
         endpoint = docker_assets.host_reachability_endpoint(platform) or platform
         return (
@@ -583,6 +597,19 @@ def _check_docker_platform_readiness(
         )
         if resource_reason is not None:
             return resource_reason
+    if platform in _SETTINGS_CHECKED_AFTER_RECONCILE:
+        settings_reason = managed_runtime.check_declared_settings(
+            config,
+            spec=spec,
+            project_name=project_name,
+            docker_runner=docker_runner,
+            docker_events=docker_events,
+            record_event=_record_docker_event,
+            log_dir=log_dir,
+            benchmark_runs_dir=benchmark_runs_dir,
+        )
+        if settings_reason is not None:
+            return settings_reason
     return managed_runtime.check_memory_admission(
         config,
         spec=spec,

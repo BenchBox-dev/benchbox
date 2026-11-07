@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from benchbox.utils.resource_limits import MemorySnapshot
-from tests.uat import docker_assets
+from tests.uat import declared_settings, docker_assets
 from tests.uat.clickhouse_memory import runtime_limit_matches_rung
 from tests.uat.config import UATConfig
 
@@ -178,6 +178,40 @@ def check_application_readiness(
             break
     assert result is not None
     return f"UAT-managed Docker application readiness check failed for {spec.platform} project {project_name}: {_result_message(result)}"
+
+
+def check_declared_settings(
+    config: UATConfig,
+    *,
+    spec: docker_assets.DockerPlatformSpec,
+    project_name: str,
+    docker_runner: DockerRunner,
+    docker_events: list[Any],
+    record_event: RecordEvent,
+    log_dir: Path | None,
+    benchmark_runs_dir: Path,
+) -> str | None:
+    if config.dry_run:
+        return None
+    reason = declared_settings.verify_declared_settings(
+        spec,
+        project_name,
+        env=compose_environment(config, spec, benchmark_runs_dir),
+        runner=docker_runner,
+        timeout_s=int(min(config.cleanup.docker_start_timeout_s, 60)),
+    )
+    record_event(
+        docker_events,
+        log_dir=log_dir,
+        platform=spec.platform,
+        action="declared-settings",
+        status="ok" if reason is None else "failed",
+        project_name=project_name,
+        message="declared compose settings verified" if reason is None else reason,
+    )
+    if reason is None:
+        return None
+    return f"UAT-managed Docker declared-settings check failed for {spec.platform} project {project_name}: {reason}"
 
 
 def reconcile_starrocks_resources(
