@@ -558,9 +558,10 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
         roots: dict[Path, None] = {}
         if data_dir:
             roots[Path(data_dir)] = None
-        for file_path in data_paths.values():
+        for table_name, file_path in data_paths.items():
             for entry in file_path if isinstance(file_path, list) else [file_path]:
-                roots[Path(entry).parent] = None
+                parent = Path(entry).parent
+                roots[parent.parent if parent.name == table_name else parent] = None
         return list(roots)
 
     @staticmethod

@@ -4,16 +4,18 @@
     {
       "category": "fixed",
       "breaking": false,
-      "text": "Fixed DataFrame plan capture writing absolute local file paths (home directory, username, output root) into the .plans.json companion; plan text now shows <redacted> in place of each local path.",
+      "text": "Fixed DataFrame plan capture writing absolute local file paths (home directory, working directory, data directories) into the .plans.json companion; plan text now shows <redacted> in place of the local path prefix.",
       "details": [
         "Affected existing results: any .plans.json produced by --capture-plans on DataFrame platforms (notably polars-df, also datafusion-df and the Spark-family DataFrame platforms) before this release can contain local Parquet paths in plan.plan_text, plan.plan_data.logical_plan/optimized_plan and raw_explain_output.",
-        "Regenerate those results with --capture-plans (or strip the paths) before publishing; the result JSON itself is unchanged. Plan structure is unchanged by redaction, and Polars text plans carry no fingerprint; DataFrame DAG fingerprints are computed from table, filter and operator content and were unchanged on the tested plans."
+        "Regenerate those results with --capture-plans (or strip the paths) before publishing; the result JSON itself is unchanged apart from the test_type field noted below.",
+        "Only local path prefixes change: for known data and working directories the remainder of the path is kept, so scan table names and DAG fingerprints are preserved; paths under the home directory or any other unknown location are replaced whole. Polars text plans carry no fingerprint."
       ],
       "platforms": [
-        "polars"
-      ],
-      "benchmarks": [
-        "tpch"
+        "polars",
+        "datafusion",
+        "pyspark",
+        "lakesail",
+        "databricks"
       ]
     },
     {
@@ -21,13 +23,15 @@
       "breaking": false,
       "text": "Fixed DataFrame query rows missing a test type, so plan companion keys for DataFrame platforms were written as Q1#0: instead of Q1#0:power like SQL platforms.",
       "details": [
-        "Affected existing results: DataFrame .plans.json companions keyed Q#<stream>: keep loading and rendering unchanged; the explorer and loader accept both key shapes. Regenerate a result to get Q#<stream>:power keys; no republishing is required for key shape alone."
+        "Affected existing results: DataFrame .plans.json companions keyed Q#<stream>: keep loading and rendering unchanged; the explorer and loader accept both key shapes. Regenerate a result to get Q#<stream>:power keys; no republishing is required for key shape alone.",
+        "Regenerated DataFrame result JSON query rows now include test_type: \"power\"."
       ],
       "platforms": [
-        "polars"
-      ],
-      "benchmarks": [
-        "tpch"
+        "polars",
+        "datafusion",
+        "pyspark",
+        "lakesail",
+        "databricks"
       ]
     }
   ]

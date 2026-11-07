@@ -449,37 +449,66 @@ def plan_capture_support(platform: str) -> PlanCaptureSupport:
     return _PLAN_CAPTURE_SUPPORT.get(normalize_dataframe_platform(platform), PlanCaptureSupport.UNSUPPORTED)
 
 
+_PATH_BOUNDARY = r"(?=[/\\\s'\",;)\]}]|$)"
+
+
+def _root_variants(root: str | Path) -> set[str]:
+    text = str(root).rstrip("/\\")
+    if len(text) <= 1 or not (text.startswith("/") or text[1:3] == ":\\"):
+        return set()
+    variants = {text}
+    with contextlib.suppress(OSError, RuntimeError):
+        variants.add(str(Path(text).resolve()).rstrip("/\\"))
+    return {variant for variant in variants if len(variant) > 1}
+
+
+def _root_alternatives(variants: Iterable[str]) -> list[str]:
+    alternatives = []
+    for variant in sorted(variants, key=len, reverse=True):
+        alternatives.append(rf"(?<![A-Za-z0-9_]){re.escape(variant)}")
+        if variant.startswith("/") and len(variant.strip("/").split("/")) >= 2:
+            alternatives.append(rf"(?<![A-Za-z0-9_/.]){re.escape(variant[1:])}")
+    return alternatives
+
+
+def _is_home_or_ancestor(root: str, home: Path) -> bool:
+    with contextlib.suppress(ValueError):
+        return home.is_relative_to(Path(root))
+    return False
+
+
 def _local_path_redactor(roots: Iterable[str | Path]) -> Callable[[str], str]:
     from benchbox.core.results.anonymization import _PRIVATE_LOCAL_PATH_RE, PUBLIC_REDACTED_VALUE
 
-    variants: set[str] = set()
-    for root in (Path.home(), *roots):
-        text = str(root).rstrip("/\\")
-        if len(text) > 1 and (text.startswith("/") or text[1:3] == ":\\"):
-            variants.add(text)
-            with contextlib.suppress(OSError, RuntimeError):
-                variants.add(str(Path(text).resolve()).rstrip("/\\"))
-    alternatives = []
-    for variant in sorted(variants, key=len, reverse=True):
-        escaped = re.escape(variant)
-        alternatives.append(rf"(?<![A-Za-z0-9_]){escaped}")
-        if variant.startswith("/"):
-            alternatives.append(rf"(?<![A-Za-z0-9_/.]){re.escape(variant[1:])}")
-    root_re = (
-        re.compile("(?:" + "|".join(alternatives) + r")(?=[/\\\s'\",;)\]]|$)(?:[/\\][^\s'\",;)\]]*)?")
-        if variants
+    home = Path.home()
+    home_variants = _root_variants(home)
+    data_variants: set[str] = set()
+    for root in roots:
+        data_variants |= {v for v in _root_variants(root) if not _is_home_or_ancestor(v, home)}
+
+    data_re = (
+        re.compile("(?:" + "|".join(_root_alternatives(data_variants)) + ")" + _PATH_BOUNDARY)
+        if data_variants
+        else None
+    )
+    home_re = (
+        re.compile(
+            "(?:" + "|".join(_root_alternatives(home_variants)) + ")" + _PATH_BOUNDARY + r"(?:[/\\][^\s'\",;)]*)?"
+        )
+        if home_variants
         else None
     )
 
-    def _replace(match: re.Match[str]) -> str:
+    def _replace_whole_path(match: re.Match[str]) -> str:
         matched = match.group(0)
-        stripped = matched.rstrip("]")
-        return PUBLIC_REDACTED_VALUE + matched[len(stripped) :]
+        return PUBLIC_REDACTED_VALUE + matched[len(matched.rstrip("]}")) :]
 
     def _redact_text(text: str) -> str:
-        if root_re is not None:
-            text = root_re.sub(PUBLIC_REDACTED_VALUE, text)
-        return _PRIVATE_LOCAL_PATH_RE.sub(_replace, text)
+        if data_re is not None:
+            text = data_re.sub(PUBLIC_REDACTED_VALUE, text)
+        if home_re is not None:
+            text = home_re.sub(_replace_whole_path, text)
+        return _PRIVATE_LOCAL_PATH_RE.sub(_replace_whole_path, text)
 
     return _redact_text
 
@@ -516,9 +545,7 @@ def capture_query_plan(df: Any, platform: str) -> QueryPlan | None:
     elif platform_lower in _SPARK_FAMILY_PLATFORMS:
         plan = capture_pyspark_plan(df, platform=platform_lower)
 
-    if plan is None:
-        return None
-    return redact_plan_local_paths(plan)
+    return plan
 
 
 def _analyze_polars_plan(plan: str) -> list[str]:

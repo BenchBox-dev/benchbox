@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
 from benchbox.core.errors import PlanCaptureError
+from benchbox.core.results.anonymization import find_public_path_leaks
 from benchbox.core.results.query_plan_models import QueryPlanDAG
 from benchbox.platforms.databricks import dataframe_adapter as mod
-from tests.unit.platforms.dataframe.spark_plan_fixture import FakeSparkFrame
+from tests.unit.platforms.dataframe.spark_plan_fixture import SPARK_EXTENDED_EXPLAIN, FakeSparkFrame
 
 pytestmark = [
     pytest.mark.unit,
@@ -283,11 +285,6 @@ def test_recorded_frames_never_leak_into_the_next_run(monkeypatch, scenario):
 
 
 def test_captured_spark_plan_has_no_local_paths(monkeypatch):
-    from pathlib import Path
-
-    from benchbox.core.results.anonymization import find_public_path_leaks
-    from tests.unit.platforms.dataframe.spark_plan_fixture import SPARK_EXTENDED_EXPLAIN
-
     scan = f"FileScan parquet [id#0L] Location: InMemoryFileIndex(1 paths)[file:{Path.home()}/data/lineitem.parquet]"
     frame = FakeSparkFrame(SPARK_EXTENDED_EXPLAIN + scan)
     adapter = _adapter(monkeypatch, frame)

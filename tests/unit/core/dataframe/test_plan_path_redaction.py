@@ -7,8 +7,10 @@ from pathlib import Path
 import pytest
 
 from benchbox.core.dataframe.profiling import QueryPlan, capture_query_plan, redact_plan_local_paths
+from benchbox.core.query_plans.parsers.spark import SparkQueryPlanParser
 from benchbox.core.results.anonymization import find_public_path_leaks
 from benchbox.core.results.exporter import ResultExporter
+from benchbox.core.results.query_plan_models import LogicalOperatorType
 from benchbox.core.results.schema import build_plans_payload
 from benchbox.platforms.dataframe.benchmark_mixin import BenchmarkExecutionMixin
 from tests.fixtures.result_dict_fixtures import make_benchmark_results
@@ -57,7 +59,6 @@ def _captured(tmp_path: Path) -> tuple[QueryPlan, QueryPlan]:
         plan_text=frame.explain(optimized=True),
         plan_data={"optimized_plan": frame.explain(optimized=True), "logical_plan": frame.explain(optimized=False)},
     )
-    assert plan is not None
     return plan, raw
 
 
@@ -76,13 +77,11 @@ def test_redaction_preserves_plan_structure(tmp_path):
     plan, raw = _captured(tmp_path)
     data_dir, under_data, under_home = _scan_paths(tmp_path)
 
-    expected = raw.plan_text.replace(str(under_data), "<redacted>").replace(str(under_home), "<redacted>")
+    expected = raw.plan_text.replace(str(under_data), f"<redacted>/{under_data.name}").replace(
+        str(under_home), "<redacted>"
+    )
 
     assert plan.plan_text == expected
-    assert plan.plan_text.splitlines() == [
-        line.replace(f"[{under_data}]", "[<redacted>]").replace(f"[{under_home}]", "[<redacted>]")
-        for line in raw.plan_text.splitlines()
-    ]
     assert plan.plan_data is not None
     assert list(plan.plan_data) == ["optimized_plan", "logical_plan"]
     assert plan.plan_data["optimized_plan"] == plan.plan_text
@@ -175,7 +174,9 @@ def test_loaded_data_directories_are_redaction_roots_outside_the_detector():
     redacted = redact_plan_local_paths(plan, roots)
 
     assert "/srv/benchbox-data" not in redacted.plan_text
-    assert redacted.plan_text == "Parquet SCAN [<redacted>]\nParquet SCAN [<redacted>]"
+    assert (
+        redacted.plan_text == "Parquet SCAN [<redacted>/lineitem.1.parquet]\nParquet SCAN [<redacted>/orders.parquet]"
+    )
 
 
 def test_object_store_paths_without_a_leading_slash_are_redacted(tmp_path):
@@ -193,5 +194,103 @@ def test_object_store_paths_without_a_leading_slash_are_redacted(tmp_path):
 
     assert relative_home not in redacted.plan_text
     assert relative_data not in redacted.plan_text
-    assert redacted.plan_text.count("[[<redacted>]]") == 2
+    assert "[[<redacted>]]" in redacted.plan_text
+    assert "[[<redacted>/orders.parquet]]" in redacted.plan_text
     assert "projection=[a]" in redacted.plan_text
+
+
+_FIXTURES = Path(__file__).resolve().parents[3] / "fixtures" / "query_plans"
+
+
+def _scan_tables(dag) -> list[str | None]:
+    names: list[str | None] = []
+    stack = [dag.logical_root]
+    while stack:
+        node = stack.pop()
+        stack.extend(node.children)
+        if node.operator_type == LogicalOperatorType.SCAN:
+            names.append(node.table_name)
+    return sorted(names, key=str)
+
+
+@pytest.mark.parametrize(
+    ("fixture", "root"),
+    [
+        ("lakesail_captured_join.txt", "/tmp/pv/sail"),
+        ("lakesail_flat_captured_join.txt", "/tmp/pv/sailflat/tpch_sf1"),
+    ],
+)
+def test_data_root_redaction_keeps_spark_family_tables_and_fingerprint(fixture, root):
+    text = (_FIXTURES / fixture).read_text(encoding="utf-8")
+    parser = SparkQueryPlanParser()
+    original = parser.parse_explain_output("Q1", text)
+
+    redacted_plan = redact_plan_local_paths(QueryPlan("lakesail", "extended", text), [root])
+    redacted = parser.parse_explain_output("Q1", redacted_plan.plan_text)
+
+    assert root.lstrip("/") not in redacted_plan.plan_text
+    assert _scan_tables(redacted) == _scan_tables(original) == ["customers", "orders"]
+    assert redacted.plan_fingerprint == original.plan_fingerprint
+
+
+def test_data_root_redaction_keeps_spark_jvm_file_scan_names():
+    scan = (
+        "FileScan parquet [l_orderkey#1L] Batched: true, DataFilters: [], Format: Parquet, "
+        "Location: InMemoryFileIndex(1 paths)[file:/srv/d/tpch_sf1/lineitem.parquet], PartitionFilters: []"
+    )
+    text = f"== Physical Plan ==\n*(1) {scan}\n"
+    parser = SparkQueryPlanParser()
+    original = parser.parse_explain_output("Q1", text)
+
+    redacted_plan = redact_plan_local_paths(QueryPlan("pyspark", "extended", text), ["/srv/d/tpch_sf1"])
+    redacted = parser.parse_explain_output("Q1", redacted_plan.plan_text)
+
+    assert "/srv/d" not in redacted_plan.plan_text
+    assert "[file:<redacted>/lineitem.parquet]" in redacted_plan.plan_text
+    assert _scan_tables(redacted) == _scan_tables(original)
+    assert redacted.plan_fingerprint == original.plan_fingerprint
+
+
+def test_paths_outside_known_roots_are_redacted_whole():
+    plan = QueryPlan("pyspark", "extended", "Location: [file:/home/other/x/lineitem.parquet]")
+
+    redacted = redact_plan_local_paths(plan, ["/srv/d"])
+
+    assert redacted.plan_text == "Location: [file:<redacted>]"
+
+
+def test_roots_that_are_ancestors_of_home_do_not_leave_user_names():
+    plan = QueryPlan("polars", "optimized", f"Parquet SCAN [{Path.home()}/x/a.parquet]")
+
+    redacted = redact_plan_local_paths(plan, [Path.home().parent, Path.home()])
+
+    assert redacted.plan_text == "Parquet SCAN [<redacted>]"
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        (
+            "file_groups={1 group: [[/home/other/a.parquet]], projection=[a]",
+            "file_groups={1 group: [[<redacted>]], projection=[a]",
+        ),
+        (
+            "file_groups={1 group: [[/home/other/a.parquet]]}, projection=[a]",
+            "file_groups={1 group: [[<redacted>]]}, projection=[a]",
+        ),
+        ("x={/home/other/a.parquet}", "x={<redacted>}"),
+    ],
+)
+def test_structural_brackets_survive_detector_redaction(text, expected):
+    plan = QueryPlan("datafusion", "logical", text)
+
+    assert redact_plan_local_paths(plan).plan_text == expected
+
+
+@pytest.mark.parametrize("single_segment_root", ["/root", "/tmp", "/data"])
+def test_single_segment_roots_do_not_redact_ordinary_words(single_segment_root):
+    plan = QueryPlan("polars", "optimized", 'FILTER col("tag") == "root"\n  Filter: tag = root, tmp, data')
+
+    redacted = redact_plan_local_paths(plan, [single_segment_root])
+
+    assert redacted.plan_text == plan.plan_text

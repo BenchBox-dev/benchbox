@@ -714,7 +714,9 @@ class ResultCaptureMixin:
             )
             return None, (time.perf_counter() - start_time) * 1000
 
-        local_roots = [root for root in (getattr(self, "working_dir", None),) if root]
+        local_roots = [
+            root for root in (getattr(self, "working_dir", None), *getattr(self, "plan_local_roots", ())) if root
+        ]
         plan_text = redact_plan_local_paths(captured, local_roots).plan_text
         return self._parse_captured_plan(query_id, plan_text, start_time)
 
