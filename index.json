@@ -1540,6 +1540,7 @@
     },
     "load-hardening": {
       "accepted_members": {
+        "questdb-rest-and-databend-partial-load-loud-20261106": "4d79a477023592a91d90efe93c159e80084dd745",
         "uat-mocker-compose-gaps-20261106": "efcffc25f9ded5c3d4cdb3f2ad65ff22c1073d22"
       },
       "batch_schema": 2,
@@ -1547,6 +1548,19 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "questdb-rest-and-databend-partial-load-loud-20261106": {
+          "accepted_head": "4d79a477023592a91d90efe93c159e80084dd745",
+          "changed_files": [
+            "benchbox/platforms/databend/adapter.py",
+            "benchbox/platforms/questdb.py",
+            "changelog.d/feat-load-hardening--questdb-rest-and-databend-partial-load-loud-20261106.json",
+            "tests/unit/platforms/test_databend_bulk_load.py",
+            "tests/unit/platforms/test_questdb_adapter.py",
+            "tests/unit/platforms/test_questdb_coverage.py"
+          ],
+          "integration_head": "0270a0650f6bd3ede3b716b0791cc8c32199c2e0",
+          "integration_seq": 2
+        },
         "uat-mocker-compose-gaps-20261106": {
           "accepted_head": "efcffc25f9ded5c3d4cdb3f2ad65ff22c1073d22",
           "changed_files": [
@@ -1565,7 +1579,7 @@
         }
       },
       "integration_branch": "feat/load-hardening",
-      "integration_head": "4b8c4b45511e36563a0f2837afb0909754d4de9e",
+      "integration_head": "0270a0650f6bd3ede3b716b0791cc8c32199c2e0",
       "integration_log": [
         {
           "at": "2026-11-07T00:53:18Z",
@@ -1581,6 +1595,15 @@
           "op_id": "619f87fd9cc64e24b97dcea65e77abbd",
           "previous_head": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67",
           "seq": 1
+        },
+        {
+          "at": "2026-11-07T01:52:06Z",
+          "head": "0270a0650f6bd3ede3b716b0791cc8c32199c2e0",
+          "kind": "prepare",
+          "member": "questdb-rest-and-databend-partial-load-loud-20261106",
+          "op_id": "335fe3ef06f449279027e6a0337b3219",
+          "previous_head": "4b8c4b45511e36563a0f2837afb0909754d4de9e",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-load-hardening",
@@ -26109,15 +26132,10 @@
       "title": "Make QuestDB parquet chunk row count tunable via platform config"
     },
     "questdb-rest-and-databend-partial-load-loud-20261106": {
-      "claim": {
-        "expires_at": "2026-11-08T01:51:51Z",
-        "generation": "5aefeae0343b4e2cac9abc3b4f4419c7",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "QuestDB REST load swallows per-chunk failures, and a Databend row-count mismatch leaves a partial table"
     },
     "questdb-strip-pk-quoted-constraint-name": {
