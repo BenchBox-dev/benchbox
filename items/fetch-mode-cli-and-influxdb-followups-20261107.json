@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "`benchbox report rankings --fetch-mode arrow` and `benchbox compare --fetch-mode rows` work, and the help text names the option.",
+    "InfluxDB results carry fetch_mode, with a test."
+  ],
+  "description": "From #4012. (1) `report rankings` and `compare --run` choose a fetch mode only through the BENCHBOX_FETCH_MODE environment variable. Adding a CLI option was blocked because the UAT guard in tests/uat forbids CLI surface changes and that path was outside the batch scope. An environment variable is hard to discover and the refusal message has to name it. (2) InfluxDB's execute_query returns a tuple, so it cannot record fetch_mode, and its FlightSQL path only builds rows column-wise.\n\nChange. Add an explicit --fetch-mode option to the commands that rank or compare, updating the UAT CLI-surface guard deliberately, and keep the env var only if needed for compatibility. Make InfluxDB's execute path record fetch_mode like the other adapters.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; heavy work only through make heavy-run; container checks under mocker one stack at a time (limits in tests/uat docs and the uat-mocker-compose-gaps-20261106 context); no live cloud without owner approval; no explanatory comments; changelog fragment if user-facing.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T13:48:53Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "50af889df38f4db58e36ced3e0b3ba69",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}

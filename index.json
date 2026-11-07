@@ -18442,6 +18442,13 @@
       "status": "done",
       "title": "DECISION GATE: adopt a wall-clock fast-lane budget once 4 weeks of WS9 duration data exist"
     },
+    "fetch-mode-cli-and-influxdb-followups-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "fetch_mode follow-ups: a CLI option for rankings and compare instead of the BENCHBOX_FETCH_MODE env var, and InfluxDB cannot record fetch_mode"
+    },
     "fetch-timing-contract-decision-20261103": {
       "claim": null,
       "needs": [],
