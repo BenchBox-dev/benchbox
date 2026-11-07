@@ -33,6 +33,7 @@ class MaintenanceTestResult:
     maintenance_operations: list[dict[str, Any]] = field(default_factory=list)
     error_details: list[str] = field(default_factory=list)
     seed: Optional[int] = None
+    maintenance_method: str = ""
 
 
 @dataclass

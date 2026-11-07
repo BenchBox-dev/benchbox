@@ -127,6 +127,21 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
     def get_target_dialect(self) -> str:
         return SINGLESTORE_DIALECT
 
+    def enforced_primary_key_tables(self, connection: Any, tables: Sequence[str]) -> list[str]:
+        enforced = []
+        raw_connection = getattr(connection, "connection", connection)
+        for table in tables:
+            if not self._validate_identifier(table):
+                raise ValueError(f"Invalid table identifier: {table!r}")
+            cursor = raw_connection.cursor()
+            try:
+                cursor.execute(f"SHOW KEYS FROM `{table}` WHERE Key_name = 'PRIMARY'")
+                if cursor.fetchall():
+                    enforced.append(table)
+            finally:
+                cursor.close()
+        return sorted(enforced)
+
     @staticmethod
     def add_cli_arguments(parser) -> None:
         if not hasattr(parser, "add_argument"):
@@ -302,6 +317,7 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
         table_name: str,
         columns: Sequence[tuple[str, str]],
         path: Path,
+        null_marker: str | None = None,
     ) -> int:
         if not self._validate_identifier(table_name):
             raise ValueError(f"Invalid table identifier: {table_name!r}")
@@ -310,15 +326,20 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
         for name, data_type in columns:
             if data_type.upper().startswith("DECIMAL"):
                 targets.append(f"@{name}")
+                null_test = f"@{name} IS NULL OR " if null_marker is not None else ""
                 guards.append(
-                    f"`{name}` = IF(@{name} REGEXP {_DECIMAL_TEXT_PATTERN}, @{name}, {_OUT_OF_RANGE_DECIMAL})"
+                    f"`{name}` = IF({null_test}@{name} REGEXP {_DECIMAL_TEXT_PATTERN}, @{name}, {_OUT_OF_RANGE_DECIMAL})"
                 )
             else:
                 targets.append(f"`{name}`")
         escaped_path = str(path).replace("\\", "\\\\").replace("'", "\\'")
+        null_clause = ""
+        if null_marker is not None:
+            escaped_null = null_marker.replace("\\", "\\\\").replace("'", "\\'")
+            null_clause = f" NULL DEFINED BY '{escaped_null}'"
         sql = (
             f"LOAD DATA LOCAL INFILE '{escaped_path}' INTO TABLE `{table_name}` "
-            f"FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n' ({', '.join(targets)})"
+            f"FIELDS TERMINATED BY '|'{null_clause} LINES TERMINATED BY '\\n' ({', '.join(targets)})"
         )
         if guards:
             sql += f" SET {', '.join(guards)}"

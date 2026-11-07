@@ -479,13 +479,31 @@ class TestDriversMixin:
 
     def _execute_tpcds_maintenance_test(self, benchmark, connection: Any, run_config: dict) -> list[dict[str, Any]]:
 
-        from benchbox.core.tpcds.maintenance_operations import resolve_maintenance_seed
-        from benchbox.core.tpcds.maintenance_test import TPCDSMaintenanceTest, TPCDSMaintenanceTestConfig
+        from benchbox.core.results.maintenance_method import MAINTENANCE_METHOD
+        from benchbox.core.tpcds.maintenance_test import (
+            TPCDSMaintenanceTest,
+            TPCDSMaintenanceTestConfig,
+            maintenance_unsupported_reason,
+        )
+
+        console = quiet_console
+
+        unsupported_reason = maintenance_unsupported_reason(self)
+        if unsupported_reason is not None:
+            console.print(f"[yellow]TPC-DS Maintenance Test skipped: {unsupported_reason}[/yellow]")
+            return [
+                {
+                    "query_id": "maintenance_not_supported",
+                    "execution_time_seconds": 0.0,
+                    "status": "SKIPPED",
+                    "rows_returned": 0,
+                    "error": unsupported_reason,
+                    "test_type": "maintenance",
+                }
+            ]
 
         self._last_maintenance_test_result = None
         self._plan_capture_checkpoint(connection)
-
-        console = quiet_console
 
         try:
             scale_factor = run_config.get("scale_factor", 1.0)
@@ -498,7 +516,7 @@ class TestDriversMixin:
 
             def connection_factory():
                 stream_connection = open_stream_connection(self, connection, benchmark_type)
-                conn_wrapper = PlatformAdapterConnection(stream_connection, self)
+                conn_wrapper = PlatformAdapterConnection(stream_connection, self, maintenance_mode=True)
                 conn_wrapper.benchmark_type = "tpcds"
                 conn_wrapper.scale_factor = scale_factor
                 return conn_wrapper
@@ -516,20 +534,25 @@ class TestDriversMixin:
             maintenance_test_result = maintenance_test.run(
                 TPCDSMaintenanceTestConfig(
                     scale_factor=scale_factor,
+                    refresh_runs=run_config.get("tpcds_refresh_runs", 1),
+                    first_refresh_set=run_config.get(
+                        "tpcds_refresh_first_set", getattr(benchmark, "tpcds_refresh_first_set", 1)
+                    ),
+                    validate_integrity=run_config.get("validate_integrity", True),
                     verbose=verbose,
-                    output_dir=output_path,
-                    seed=resolve_maintenance_seed(run_config.get("seed")),
+                    output_dir=maintenance_test.output_dir,
+                    seed=run_config.get("seed"),
                 )
             )
-            self._last_maintenance_test_result = maintenance_test_result
 
+            self._last_maintenance_test_result = maintenance_test_result
             if maintenance_test_result["success"]:
                 console.print("[green]✅ TPC-DS Maintenance Test completed[/green]")
-                console.print(f"  Insert operations: {maintenance_test_result['insert_operations']}")
-                console.print(f"  Update operations: {maintenance_test_result['update_operations']}")
-                console.print(f"  Delete operations: {maintenance_test_result['delete_operations']}")
+                console.print(f"  Maintenance method: {MAINTENANCE_METHOD}")
+                console.print(f"  Insert functions: {maintenance_test_result['insert_operations']}")
+                console.print(f"  Delete functions: {maintenance_test_result['delete_operations']}")
                 console.print(
-                    f"  Total operations: {maintenance_test_result['total_operations']}, Successful: {maintenance_test_result['successful_operations']}"
+                    f"  Total functions: {maintenance_test_result['total_operations']}, Successful: {maintenance_test_result['successful_operations']}"
                 )
                 console.print(f"  Total execution time: {maintenance_test_result['total_time']:.2f}s")
                 console.print(f"  Throughput: {maintenance_test_result['overall_throughput']:.2f} ops/sec")
@@ -542,7 +565,7 @@ class TestDriversMixin:
             query_results = []
             for operation in maintenance_test_result["operations"]:
                 platform_result = {
-                    "query_id": f"{operation.operation_type.lower()}_{operation.table_name}",
+                    "query_id": operation.function,
                     "execution_time_seconds": operation.duration,
                     "status": "SUCCESS" if operation.success else "FAILED",
                     "rows_returned": operation.rows_affected,
