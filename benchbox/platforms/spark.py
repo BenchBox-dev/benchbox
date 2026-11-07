@@ -60,6 +60,7 @@ _MAX_COMPATIBLE_JAVA_VERSION = 22
 _logger = logging.getLogger(__name__)
 _SPARK_AUTO_BROADCAST_THRESHOLD = "spark.sql.autoBroadcastJoinThreshold"
 _SPARK_AQE_KEYS = SPARK_AQE_KEYS
+_JVM_AND_PYTHON_ALLOWANCE_GIB = 3
 
 
 def bounded_default_driver_memory(master: str) -> str:
@@ -68,7 +69,8 @@ def bounded_default_driver_memory(master: str) -> str:
     budget_gib = heavy_memory_budget_gib()
     if budget_gib is None:
         return default_spark_driver_memory(master)
-    return default_spark_driver_memory(master, int(budget_gib * 1024**3))
+    scaled_heap_gib = int(default_spark_driver_memory(master, int(budget_gib * 1024**3)).removesuffix("g"))
+    return f"{max(1, min(scaled_heap_gib, int(budget_gib - _JVM_AND_PYTHON_ALLOWANCE_GIB)))}g"
 
 
 def _get_java_version(java_home: str | None = None) -> int | None:

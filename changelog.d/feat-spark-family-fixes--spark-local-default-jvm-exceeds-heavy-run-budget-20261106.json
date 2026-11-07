@@ -4,7 +4,7 @@
     {
       "category": "fixed",
       "breaking": false,
-      "text": "Local Spark runs under the heavy-run memory watchdog now default the driver heap to a size that fits the watchdog budget, so a default run is no longer killed; pass driver_memory to override."
+      "text": "Local Spark runs under the heavy-run memory watchdog now size the default driver heap to leave room for the JVM and Python within the watchdog budget, instead of from total system memory; pass driver_memory to override."
     }
   ]
 }

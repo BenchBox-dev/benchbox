@@ -401,6 +401,17 @@ class TestSparkAdapter:
 
         assert bounded_default_driver_memory("local[*]") == "12g"
 
+    @pytest.mark.parametrize(
+        ("budget_gib", "expected"), [("8", "4g"), ("6", "3g"), ("4", "1g"), ("3.5", "1g"), ("1", "1g")]
+    )
+    def test_default_driver_memory_leaves_room_for_the_jvm_and_python_within_small_budgets(
+        self, monkeypatch, budget_gib, expected
+    ):
+        monkeypatch.setenv("BENCHBOX_HEAVY_RUN_ID", "run-1")
+        monkeypatch.setenv("BENCHBOX_HEAVY_MEMORY_BUDGET_GIB", budget_gib)
+
+        assert bounded_default_driver_memory("local[*]") == expected
+
     def test_default_driver_memory_is_unbounded_outside_heavy_run(self, monkeypatch):
         monkeypatch.delenv("BENCHBOX_HEAVY_RUN_ID", raising=False)
         monkeypatch.setenv("BENCHBOX_HEAVY_MEMORY_BUDGET_GIB", "8")
