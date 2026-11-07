@@ -3,7 +3,7 @@
     "Revisit when any run has sum_ratio above 1.25 at a speed factor within 0.1 of 1.0, or any block occurs; record ratio, delta, speed factor and whether the slowdown was real",
     "Thresholds stay as they are until then"
   ],
-  "context": "Report recorded when ci-fast-duration-gate-false-block-review-20261027 was closed on 2026-10-31 (59 verdicts from merged PRs 3760-3853). Recommendation then: keep both thresholds, do not roll back to report mode.",
+  "context": "Report recorded when ci-fast-duration-gate-false-block-review-20261027 was closed on 2026-10-31 (59 verdicts from merged PRs 3760-3853). Recommendation then: keep both thresholds, do not roll back to report mode.\n\n2026-11-07 observed block: PR https://github.com/BenchBox-dev/benchbox/pull/4002 (deletes tests only) got would-block, summed ratio 1.313 / delta +442.6 s, median per-test ratio 1.010. make pr-rerun re-runs only failed jobs, so the core aggregate re-judged the same fast-junit artifact and reproduced 1.313 exactly; fresh timings needed a full gh run rerun of the CI run.",
   "description": "Of 59 measured post-flip verdicts none blocked, but 15 ran on runners with a speed factor of 1.5 or more (up to 1.95), and 8 had a sum ratio above 1.20 (max 1.282 against the 1.30 limit). 7 of 59 exceeded the 360 s delta term alone, all slow-runner noise that the ratio term absorbed. A real slowdown on a slow runner could land just under the limit, and normal noise on a slow runner could land just over it.",
   "sessions": [
     {
@@ -13,6 +13,14 @@
       "op": "create",
       "op_id": "7e950bc2e4d64dea8fc96825bb4e876f",
       "session_id": "77bfd3a6737c4f8e9b68d27f796e8651"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f",
+      "at": "2026-11-07T04:33:21Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a13297c57a4047e18a5c698234c8c7e6",
+      "session_id": "2f41579dd2194a049659596cdd9a4f3d"
     }
   ]
 }
