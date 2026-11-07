@@ -9747,7 +9747,7 @@
     "chdb-rows-nan-vs-arrow-null-q17-20261107": {
       "claim": null,
       "needs": [],
-      "priority": "medium-high",
+      "priority": "high",
       "status": "open",
       "title": "chDB TPC-H Q17 returns NaN through the rows path but NULL through Arrow; find which is correct"
     },
