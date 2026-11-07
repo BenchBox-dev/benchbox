@@ -7,11 +7,6 @@
     "A streaming Arrow reader is fully drained before the timer stops: a test with a lazy reader whose batches raise if consumed after the stop passes.",
     "Existing digest, validation and execution tests pass; docs/internal/tpc-measured-intervals.md rows for per-query timing are updated; changelog fragment records the fetch_mode field and the contract."
   ],
-  "batch": {
-    "batch_id": "arrow-result-fetch",
-    "implementation_dependencies": [],
-    "member_id": "perf-arrow-aware-result-capture-20261030"
-  },
   "context": "2026-11-03: the owner decision that was this item's first acceptance criterion moved to fetch-timing-contract-decision-20261103, so readiness now reflects reality. Spec constraint 5.3.7.2 added. Origin: root-cause analysis of RF1 timing and its adversarial review.\n\n2026-11-03 correction round: hard need on power-test-times-query-generation-20261031 removed (the changes touch different functions; the second to land rebases); fetch_mode mechanism and comparison rule now follow the recorded decision and the ADR's within-one-method rule.",
   "description": "Implements the contract recorded in fetch-timing-contract-decision-20261103. Do not start until that item is done and its context quotes the owner's choice; this text assumes option A (full result receipt inside the timer, rows or Arrow, fetch_mode recorded). If the owner chose otherwise, rewrite this item first as part of closing the decision item.\n\nFacts. Query timing (benchbox/platforms/base/sql_execution.py and each adapter's execute_query) wraps execute plus fetchall(), so client-side row building counts as query time. compute_result_digest already accepts any iterable of rows, and apply_materialized_result_validation in base/result_capture.py already accepts a lazy callable (MaterializedRowsSource). So Arrow results need only a lazy Arrow-to-rows converter for digest and validation, built outside the timer. TPC-H 3.0.1 clause 5.3.7.2 keeps receipt of the full output inside the query interval, so an Arrow table or reader must be fully received (a streaming reader drained) inside the timer. Also cover the fallback row counts that call len(cursor.fetchall()) inside the per-query timer when an adapter does not report rows_returned: in tpch/power_test.py, tpcds/power_test.py, tpch/throughput_test.py and tpcds/throughput_test.py under benchbox/core. Those power-test files are also changed by power-test-times-query-generation-20261031 (different functions: _run_queries there, the row-count helpers here); whichever lands second rebases, and neither waits for the other.\n\nSchema and comparability: the mechanism (a separate fetch_mode field or a timing_method value) and the comparison rule are what the owner records in fetch-timing-contract-decision-20261103; implement exactly that. The locality ADR requires results to be compared and ranked within one method, and result-schema-2-4-producer-20261022 owns writing the 2.4 fields, so add the field through that item's process or, if it has not landed, to the current producer version as the decision records. Do not invent a second path.\n\nScope boundary: per-driver Arrow fetch (DuckDB, Databricks, GizmoSQL, Athena, ClickHouse, chDB, BigQuery, Snowflake, InfluxDB) is perf-arrow-fetch-native-drivers-20261030; Spark-family collect is perf-spark-arrow-collect-20261030. This item builds the shared capture and digest machinery and proves it on DuckDB.\n\nGuardrails for all code work: work only in a linked worktree (make worktree-create); never edit the primary clone. No explanatory comments or docstrings in source (make comment-policy-check). Durations use benchbox.utils.clock.mono_time()/elapsed_seconds(). Add a changelog.d/ fragment. Cited line numbers are orientation only: re-read the named symbols, docs and spec clauses before editing and treat a mismatch as a reason to stop and update this item. No live-cloud runs without owner approval; heavy runs only through make heavy-run or a lock-taking entry point. Green focused tests are not release certification. Never exclude result receipt from the timer. Never time the Arrow-to-rows conversion. Digests of Arrow and rows paths must match exactly.",
   "links": [
@@ -60,6 +55,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "175bb8a480ad4224974f27d2cc17d49d",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T01:18:05Z",
+      "client": "omp-coding-agent",
+      "op": "abort",
+      "op_id": "e3046b002d294079815212d9d795a781",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]

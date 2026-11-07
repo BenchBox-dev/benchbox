@@ -807,7 +807,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-arrow-result-fetch",
-      "lifecycle": "active",
+      "lifecycle": "aborted",
       "members": [
         "perf-arrow-aware-result-capture-20261030",
         "perf-arrow-fetch-native-drivers-20261030",
