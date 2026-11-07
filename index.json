@@ -7116,6 +7116,15 @@
       "status": "done",
       "title": "Measure required-gate duration versus develop merge interarrival"
     },
+    "benchbox-adopt-theseus-v025-review-guidance-20261107": {
+      "claim": null,
+      "needs": [
+        "theseus-v025-review-convergence-20261107"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "BenchBox: re-lock to Theseus v0.2.5 and add review guidance, round cap and pre-existing policy"
+    },
     "benchbox-cli-query-exclude-option": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The promotion gets a hosted SHIP with complete audit-coverage.",
+    "The guidance file is in gate_paths and the soundness manifest, and a test proves a PR can't change the guidance it is reviewed with.",
+    "The first PRs after adoption show the round cap and step-back working, linked as evidence."
+  ],
+  "description": "A lock-only promotion PR to Theseus v0.2.5, then one PR adding:\n- `.github/review-guidance.md` (D3: repository failure modes plus a do-not-flag list covering the no-docstring policy and changelog fragments), registered in gate_paths and the soundness manifest;\n- policy keys `protocol.max_finding_rounds: 4`, pre-existing advisory for Medium/Low, and the intent block enabled;\n- the weekly live eval schedule.\nD10: the human step stays an owner instruction recorded for audit. D11: no separate owner-attention list, because the soundness manifest covers those paths. Revisit both if a second human reviewer joins.",
+  "links": [
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-11-02T02-04-38-450Z_01a19a00-60b2-70a6-b56d-6f666415a725/local/review-practice-integration-plan.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-07T03:34:34Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "09afc6aa7a2e4e358892672a6edb5877",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    }
+  ]
+}
