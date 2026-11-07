@@ -5386,7 +5386,7 @@
         }
       },
       "integration_branch": "feat/result-validity",
-      "integration_head": "a0daf16a55d15ad38bf8976a5e0b57d1db8992a7",
+      "integration_head": "8cf9eb425549c34b051180f3d0e7374a173cf83f",
       "integration_log": [
         {
           "at": "2026-11-07T14:16:47Z",
@@ -5590,6 +5590,23 @@
           "op_id": "0b640f07b66c4a7b89ce549c44724327",
           "previous_head": "fc502449410e1e0fb8e04021c6aec35df4d03d02",
           "seq": 7
+        },
+        {
+          "at": "2026-11-07T18:46:18Z",
+          "changed_files": [
+            "benchbox/core/tpch/power_test.py",
+            "benchbox/platforms/clickhouse/client.py",
+            "tests/unit/core/tpch/test_power_validation_after_refresh.py"
+          ],
+          "head": "8cf9eb425549c34b051180f3d0e7374a173cf83f",
+          "kind": "fix",
+          "op_id": "fd356692bb9e4f4abdccc30229e57230",
+          "previous_head": "a0daf16a55d15ad38bf8976a5e0b57d1db8992a7",
+          "requires_acceptance": [
+            "chdb-rows-nan-vs-arrow-null-q17-20261107",
+            "tpch-power-validation-after-rf1-q13-20261106"
+          ],
+          "seq": 8
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-result-validity",
