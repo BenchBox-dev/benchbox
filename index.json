@@ -38,7 +38,7 @@
         }
       },
       "integration_branch": "feat/arming-reliability",
-      "integration_head": "b18d8a4336075320eee62e3c9688c0a15e1a09a7",
+      "integration_head": "8962112c4c3ddd45d21158482208ea6242ae6b22",
       "integration_log": [
         {
           "at": "2026-11-07T01:02:04Z",
@@ -63,6 +63,21 @@
           "op_id": "8112e2a064bb41829594bbd422ac8017",
           "previous_head": "3b3ce3f84f2186337eb118e888dfda35c909cb3c",
           "seq": 2
+        },
+        {
+          "at": "2026-11-07T04:03:12Z",
+          "changed_files": [
+            "scripts/sql_execution_gate/gate.py",
+            "tests/unit/scripts/test_sql_execution_gate.py"
+          ],
+          "head": "8962112c4c3ddd45d21158482208ea6242ae6b22",
+          "kind": "fix",
+          "op_id": "8a5151ac46b7415486881ff03572e85c",
+          "previous_head": "b18d8a4336075320eee62e3c9688c0a15e1a09a7",
+          "requires_acceptance": [
+            "sql-execution-evidence-sqlite-q16-timeouts-20261106"
+          ],
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-arming-reliability",
