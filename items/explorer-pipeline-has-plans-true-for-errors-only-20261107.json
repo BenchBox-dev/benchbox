@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "has_plans is true only when the companion contains at least one captured plan.",
+    "A pipeline test covers an errors-only companion.",
+    "The viewer's errors-only message remains reachable via a separate flag or the errors field if the product wants it."
+  ],
+  "context": "From benchbox-site PR #124. Decide in the PR whether errors-only runs should still expose a link; default: no 'View plans' for them.",
+  "description": "_project/scripts/explorer_pipeline/transformer.py (around line 1765) sets has_plans for any .plans.json, including one that holds only capture errors (for example Pandas). The Explorer then offers 'View plans' for a run with no plans; the viewer now says capture failed, but the flag is misleading.",
+  "links": [
+    "_project/scripts/explorer_pipeline/transformer.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-07T16:49:20Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f0a950f71ed14f029aa21230986648e5",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    }
+  ]
+}
