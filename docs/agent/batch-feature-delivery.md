@@ -311,7 +311,7 @@ once members exist); do not estimate.
   are unchanged, and evidence written at the old path is refused. Regenerate it
   with `make batch-evidence` at the new path. Work that was never pushed or
   recorded is not recoverable this way; report it rather than recreating it.
-- **Aborted batch.** After `abort_batch`, `make pr-arm` and `make pr-landing`
+- **Aborted batch.** After `abort_batch`, `make pr-arm` and the landing readiness check
   follow the tracker: a worktree still carrying `benchbox.batch.role=integration`
   for an `aborted` batch is armed as an ordinary PR.
 - **Abort fallback.** If recovery is impossible (the generation is lost and
