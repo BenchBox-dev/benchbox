@@ -3438,6 +3438,7 @@
     "load-value-integrity": {
       "accepted_members": {
         "doris-load-dead-paths-cleanup-20261107": "3a6bcd7a4ad249ccaaa9c603b8920b6046c741c6",
+        "firebolt-core-native-load-unverified-20261107": "6dd709525b0d50f915636329b03a62d24784b86b",
         "mocker-doris-singlestore-stacks-start-20261107": "bc85ff2e9c475cb55d4f9e6c06cae18c119f16c4",
         "questdb-rest-accepts-invalid-int-20261107": "51710e6d21b4e84c3146b07b17415ffcd6e2cb91",
         "singlestore-ci-and-tpcds-maintenance-20261107": "0a238c5ff719d38a792b13036e2b5e82c419c2eb",
@@ -3459,6 +3460,20 @@
           ],
           "integration_head": "63583af3ef63db815465cb7c2b31eefca2066a25",
           "integration_seq": 4
+        },
+        "firebolt-core-native-load-unverified-20261107": {
+          "accepted_head": "6dd709525b0d50f915636329b03a62d24784b86b",
+          "changed_files": [
+            ".github/workflows/docker-integration.yml",
+            "benchbox/platforms/firebolt.py",
+            "changelog.d/feat-load-value-integrity--firebolt-core-native-load-unverified-20261107.json",
+            "docker/firebolt/docker-compose.yml",
+            "tests/integration/platforms/test_firebolt_core_native_load_live.py",
+            "tests/unit/platforms/test_firebolt_core_native_load.py",
+            "tests/unit/platforms/test_firebolt_coverage.py"
+          ],
+          "integration_head": "7a36fbc9f01b0dcfbda0453dce7b423955aa6102",
+          "integration_seq": 8
         },
         "mocker-doris-singlestore-stacks-start-20261107": {
           "accepted_head": "bc85ff2e9c475cb55d4f9e6c06cae18c119f16c4",
@@ -3523,7 +3538,7 @@
         }
       },
       "integration_branch": "feat/load-value-integrity",
-      "integration_head": "66fbf7c38851ae991712d43db14d6358f008ece5",
+      "integration_head": "7a36fbc9f01b0dcfbda0453dce7b423955aa6102",
       "integration_log": [
         {
           "at": "2026-11-07T14:17:34Z",
@@ -3601,6 +3616,15 @@
             "singlestore-ci-and-tpcds-maintenance-20261107"
           ],
           "seq": 7
+        },
+        {
+          "at": "2026-11-07T21:08:12Z",
+          "head": "7a36fbc9f01b0dcfbda0453dce7b423955aa6102",
+          "kind": "prepare",
+          "member": "firebolt-core-native-load-unverified-20261107",
+          "op_id": "6fb4c2b527894257a376d92bd2cc079f",
+          "previous_head": "66fbf7c38851ae991712d43db14d6358f008ece5",
+          "seq": 8
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-load-value-integrity",
@@ -20147,17 +20171,12 @@
       "title": "Firebolt Cloud Deployment Mode"
     },
     "firebolt-core-native-load-unverified-20261107": {
-      "claim": {
-        "expires_at": "2026-11-08T20:14:58Z",
-        "generation": "d443602c57cb4e12a252dca57ad2371c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [
         "singlestore-ci-and-tpcds-maintenance-20261107"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Firebolt Core native file loading (#3949) has never been verified against a real Firebolt Core server"
     },
     "firebolt-mode-validation": {
