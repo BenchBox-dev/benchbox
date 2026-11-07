@@ -15234,10 +15234,15 @@
       "title": "Platform Deployment Factory Integration"
     },
     "deployment-modes-test-host-dependent": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T16:25:48Z",
+        "generation": "f7a2e428bed641b09434bae5919b147a",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "test_deployment_modes_recorded fails locally when the host is detected as a container"
     },
     "deployment-modes-unrecorded-20261014": {
