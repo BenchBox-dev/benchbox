@@ -30236,6 +30236,15 @@
       "status": "open",
       "title": "Generate the landing page benchmark cards from the core bundle instead of a hand-kept copy"
     },
+    "site-maintenance-phase-guide-dsdgen-refresh-20261107": {
+      "claim": null,
+      "needs": [
+        "tpcds-maintenance-dsdgen-refresh-data-20261103"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Rewrite the TPC-DS maintenance phase guide in benchbox-site for dsdgen refresh sets"
+    },
     "site-myst-converter-retirement-20261017": {
       "claim": null,
       "needs": [],

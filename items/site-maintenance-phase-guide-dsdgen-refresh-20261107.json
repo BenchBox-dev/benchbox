@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The guide describes dsdgen refresh sets, the timed staged load, the 11 set-based functions and the maintenance method identifier, and no longer mentions synthetic rows, seeds or per-row UPDATE operations.",
+    "The guide states the enforced-primary-key refusal, the per-platform behaviour and the --tuning notuning way out.",
+    "The change lands as a pull request in BenchBox-dev/benchbox-site."
+  ],
+  "description": "docs/guides/tpc/maintenance-phase-guide.md in BenchBox-dev/benchbox-site (a different repository; change it by PR there) still describes the removed synthetic-row maintenance: generated INSERT/UPDATE/DELETE rows, the seed, and per-row operations. TPC-DS maintenance now follows TPC-DS 4.0.0 5.2.3 to 5.3: refresh sets come from dsdgen -update outside the timer, are loaded into staging tables inside each function's interval through the platform's generic loader, and the 11 spec functions (LF_CR, LF_CS, LF_I, LF_SR, LF_SS, LF_WR, LF_WS, DF_CS, DF_SS, DF_WS, DF_I) run as set-based SQL. Results carry run.maintenance_method = dsdgen_refresh_sets and benchbox compare refuses to mix methods. Known kit deviation: the kit's refresh keys start at 1 in every set (getUpdateBase reads arRowcount[nTable - S_BRAND]), so maintenance refuses to run when primary keys are enforced on a maintenance target table (DuckDB, PostgreSQL, SQLite, SingleStore) and names the --tuning notuning way out; Snowflake does not enforce primary keys and runs. See docs/internal/tpc-measured-intervals.md (D6, D7, F5, K9) in the BenchBox repository.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-site/blob/main/docs/guides/tpc/maintenance-phase-guide.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T03:47:10Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "afabd7050fc04f67b4821214f5d0ff66",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}
