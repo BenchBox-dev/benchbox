@@ -225,15 +225,15 @@ pr-open:
 	git diff --name-only --diff-filter=A "$$STACK_BASE"...HEAD > "$$CL_DIR/added.txt"; \
 	uv run -- python scripts/changelog_fragments.py required --title "$$CL_TITLE" --changed-files-from "$$CL_DIR/changed.txt" --added-files-from "$$CL_DIR/added.txt" --release-base-sha "$$(git rev-parse origin/develop)" || { rm -rf "$$CL_DIR"; echo "Refusing to open PR: add a changelog fragment (make changelog-entry) or fix the title." >&2; exit 1; }; \
 	rm -rf "$$CL_DIR"; \
+	REVIEWED=$$(git rev-parse HEAD); \
 	RECEIPT_FILE=$$(mktemp); \
 	ALLOW_FILE=$$(mktemp); \
 	trap 'rm -f "$$RECEIPT_FILE" "$$ALLOW_FILE"' EXIT; \
-	git show HEAD:.github/preflight-known-failures.json > "$$ALLOW_FILE" 2>/dev/null || rm -f "$$ALLOW_FILE"; \
-	python3 scripts/preflight_receipt.py verify --tree "$$(git rev-parse HEAD^{tree})" --allowlist "$$ALLOW_FILE" --summary-out "$$RECEIPT_FILE" --base-ref "$$STACK_BASE" || { echo "Refusing to open PR: no passing preflight receipt matches the tree being pushed. Nothing was pushed." >&2; exit 1; }; \
+	git show "$$REVIEWED:.github/preflight-known-failures.json" > "$$ALLOW_FILE" 2>/dev/null || rm -f "$$ALLOW_FILE"; \
+	python3 scripts/preflight_receipt.py verify --head "$$REVIEWED" --allowlist "$$ALLOW_FILE" --summary-out "$$RECEIPT_FILE" --base-ref "$$STACK_BASE" || { echo "Refusing to open PR: no passing preflight receipt matches the tree being pushed. Nothing was pushed." >&2; exit 1; }; \
 	TRUNK_MODE=$$(uv run -- python scripts/trunk_revert.py gate --branch "$$CURRENT" --repo "$$REPOSITORY"); \
 	DRAFT_FLAG=; \
 	if [ "$$TRUNK_MODE" = "draft" ] || [ -n "$$PR_OPEN_PARENT" ]; then DRAFT_FLAG=--draft; fi; \
-	REVIEWED=$$(git rev-parse HEAD); \
 	RECORD_FILE=$$(mktemp); \
 	UNAVAILABLE_FILE=$$(mktemp); \
 	trap 'rm -f "$$RECORD_FILE" "$$UNAVAILABLE_FILE" "$$RECEIPT_FILE" "$$ALLOW_FILE"' EXIT; \

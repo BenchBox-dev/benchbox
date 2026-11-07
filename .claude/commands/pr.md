@@ -20,7 +20,7 @@ BenchBox PR workflow to `develop` (linear history, squash-only). Run in order; s
 2. Refuse on `develop` or `main`; use a feature-branch worktree.
 3. Stage authorized paths explicitly (never `git add -A`), run `make agent-identity-check`, make a
    conventional commit.
-4. `make pr-preflight` (path-aware; writes the receipt). Fix root causes; never use `--no-verify`.
+4. `make pr-preflight` (path-aware gate; receipt). Fix root causes; never use `--no-verify`.
 5. `make pr-open` pushes the branch and opens the PR.
 6. `make pr-arm` checks the live PR for a hold, then enqueues the exact head.
 7. Monitor until merged; re-enqueue, fix, and stop-for-owner rules are in `AGENTS.md` [WRITE-CLOSEOUT-001].

@@ -584,3 +584,23 @@ def test_a_receipt_selected_against_an_older_base_still_covers_the_branch(repo, 
     assert _finalize(root, env, stage, 0, None).returncode == 0
     _git(root, env, "update-ref", "refs/remotes/origin/develop", "HEAD")
     assert _verify(root, env, None, "--base-ref", "origin/develop").returncode == 0
+
+
+def test_verify_binds_to_the_named_head_not_to_the_current_head(repo, tmp_path: Path) -> None:
+    root, env = repo
+    stage, _ = _steps(root, env, tmp_path, [("pytest", "1 passed in 0.10s", 0)], None)
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    reviewed = _git(root, env, "rev-parse", "HEAD")
+    _commit(root, env, "later.txt", "later\n")
+    assert _verify(root, env, None, "--head", reviewed, "--base-ref", "origin/develop").returncode == 0
+    assert _verify(root, env, None, "--head", "HEAD").returncode == 1
+
+
+def test_pr_open_resolves_the_pushed_commit_once_before_the_receipt_check() -> None:
+    recipe = (ROOT / "make" / "pr-landing.mk").read_text(encoding="utf-8")
+    recipe = recipe[recipe.index("\npr-open:\n") :]
+    resolved = "REVIEWED=$$(git rev-parse HEAD)"
+    assert recipe.count(resolved) == 1
+    assert recipe.index(resolved) < recipe.index("preflight_receipt.py verify")
+    assert '--head "$$REVIEWED"' in recipe
+    assert recipe.index("preflight_receipt.py verify") < recipe.index('git push origin "$$REVIEWED:')

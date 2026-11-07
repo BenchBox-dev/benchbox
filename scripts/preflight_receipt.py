@@ -392,9 +392,9 @@ def verify_receipt(directory: Path, tree: str, allowlist: dict[tuple[str, str], 
     return receipt
 
 
-def check_coverage(receipt: dict[str, object], base_ref: str) -> None:
+def check_coverage(receipt: dict[str, object], base_ref: str, head: str = "HEAD") -> None:
     recorded = str(receipt.get("merge_base") or "")
-    current = _git("merge-base", base_ref, "HEAD")
+    current = _git("merge-base", base_ref, head)
     covered = (
         bool(recorded)
         and subprocess.run(
@@ -422,12 +422,12 @@ def _still_allowed(step: dict[str, object], allowlist: dict[tuple[str, str], dic
 
 def run_verify(args: argparse.Namespace) -> int:
     try:
-        tree = args.tree or _git("rev-parse", "HEAD^{tree}")
+        tree = args.tree or _git("rev-parse", f"{args.head}^{{tree}}")
         receipt = verify_receipt(
             receipt_dir(args.receipt_dir), tree, load_allowlist(Path(args.allowlist) if args.allowlist else None)
         )
         if args.base_ref:
-            check_coverage(receipt, args.base_ref)
+            check_coverage(receipt, args.base_ref, args.head)
         if args.summary_out:
             Path(args.summary_out).write_text(render(receipt), encoding="utf-8")
     except ReceiptError as exc:
@@ -458,6 +458,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     finalize.add_argument("--receipt-dir", default="")
     verify = sub.add_parser("verify")
     verify.add_argument("--tree", default="")
+    verify.add_argument("--head", default="HEAD")
     verify.add_argument("--allowlist", default="")
     verify.add_argument("--receipt-dir", default="")
     verify.add_argument("--summary-out", default="")
