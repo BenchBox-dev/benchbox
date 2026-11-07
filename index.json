@@ -51,7 +51,7 @@
         }
       },
       "integration_branch": "feat/arming-reliability",
-      "integration_head": "8962112c4c3ddd45d21158482208ea6242ae6b22",
+      "integration_head": "3f5863ebf27647b040beb69c2b4382014fa190fb",
       "integration_log": [
         {
           "at": "2026-11-07T01:02:04Z",
@@ -91,6 +91,22 @@
             "sql-execution-evidence-sqlite-q16-timeouts-20261106"
           ],
           "seq": 3
+        },
+        {
+          "at": "2026-11-07T04:15:35Z",
+          "changed_files": [
+            ".github/workflows/pr-hold.yml",
+            "scripts/sql_execution_gate/expected_differences.json",
+            "tests/unit/workflows/test_pr_hold_workflow.py"
+          ],
+          "head": "3f5863ebf27647b040beb69c2b4382014fa190fb",
+          "kind": "fix",
+          "op_id": "dd6e4a622a7548658f301e01d2184a01",
+          "previous_head": "8962112c4c3ddd45d21158482208ea6242ae6b22",
+          "requires_acceptance": [
+            "pr-arm-stale-hold-suite-needs-new-head-20261106"
+          ],
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-arming-reliability",
