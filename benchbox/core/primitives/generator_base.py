@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import bz2
+import contextlib
 import csv
 import gzip
 import hashlib
@@ -148,8 +149,7 @@ class PrimitivesDataGeneratorBase(CompressionMixin, CloudStorageGeneratorMixin, 
         orders_files = sorted(self.output_dir.glob("orders.tbl*"))
         if orders_files:
             self.log_verbose("Generating orders_stage.tbl from orders data...")
-            orders_rows = self._read_tbl_files("orders.tbl*")
-            orders_stage_path = self._write_tbl_file("orders_stage.tbl", orders_rows)
+            orders_stage_path = self._write_staging_file("orders_stage.tbl", "orders.tbl*")
             staging_files["orders_stage"] = orders_stage_path
         else:
             self.log_verbose("No orders data found, skipping orders_stage.tbl generation")
@@ -157,23 +157,74 @@ class PrimitivesDataGeneratorBase(CompressionMixin, CloudStorageGeneratorMixin, 
         lineitem_files = sorted(self.output_dir.glob("lineitem.tbl*"))
         if lineitem_files:
             self.log_verbose("Generating lineitem_stage.tbl from lineitem data...")
-            lineitem_rows = self._read_tbl_files("lineitem.tbl*")
-            lineitem_stage_path = self._write_tbl_file("lineitem_stage.tbl", lineitem_rows)
+            lineitem_stage_path = self._write_staging_file("lineitem_stage.tbl", "lineitem.tbl*")
             staging_files["lineitem_stage"] = lineitem_stage_path
         else:
             self.log_verbose("No lineitem data found, skipping lineitem_stage.tbl generation")
 
         return staging_files
 
-    def _write_tbl_file(self, filename: str, rows: list[tuple]) -> PathLike:
+    @contextlib.contextmanager
+    def _open_tbl_binary(self, file_path: Path):
+        compression = detect_compression(file_path)
+        if compression == "zstd":
+            import zstandard as zstd
+
+            with open(file_path, "rb") as raw, zstd.ZstdDecompressor().stream_reader(raw) as reader:
+                yield io.BufferedReader(reader)
+        elif compression == "gzip":
+            with gzip.open(file_path, "rb") as stream:
+                yield stream
+        elif compression == "bzip2":
+            with bz2.open(file_path, "rb") as stream:
+                yield stream
+        elif compression == "xz":
+            import lzma
+
+            with lzma.open(file_path, "rb") as stream:
+                yield stream
+        else:
+            with open(file_path, "rb") as stream:
+                yield stream
+
+    def _write_staging_file(self, filename: str, file_pattern: str, limit: int = 1_000_000) -> PathLike:
+        import pyarrow as pa
+        import pyarrow.csv as pacsv
+
         output_path = self.output_dir / filename
+        write_options = pacsv.WriteOptions(include_header=False, delimiter="|", quoting_style="none")
+        parse_options = pacsv.ParseOptions(delimiter="|", quote_char=False, ignore_empty_lines=False)
+        written = 0
 
-        with open(output_path, "w", newline="", encoding="utf-8") as f:
-            for row in rows:
-                line = "|".join(str(field) for field in row) + "\n"
-                f.write(line)
+        with open(output_path, "wb") as sink:
+            for file_path in sorted(self.output_dir.glob(file_pattern)):
+                if written >= limit:
+                    break
+                with self._open_tbl_binary(file_path) as stream:
+                    first_line = stream.readline().rstrip(b"\r\n")
+                if not first_line:
+                    continue
+                names = [f"c{index}" for index in range(first_line.count(b"|") + 1)]
+                keep = names[:-1] if first_line.endswith(b"|") else names
+                convert_options = pacsv.ConvertOptions(
+                    column_types=dict.fromkeys(names, pa.string()), include_columns=keep
+                )
+                with self._open_tbl_binary(file_path) as stream:
+                    reader = pacsv.open_csv(
+                        stream,
+                        read_options=pacsv.ReadOptions(column_names=names),
+                        parse_options=parse_options,
+                        convert_options=convert_options,
+                    )
+                    with pacsv.CSVWriter(sink, reader.schema, write_options=write_options) as writer:
+                        for batch in reader:
+                            batch = batch.slice(0, limit - written)
+                            writer.write_batch(batch)
+                            written += batch.num_rows
+                            if written >= limit:
+                                break
 
-        self.log_verbose(f"Generated {output_path} ({len(rows)} rows)")
+        self.log_verbose(f"Generated {output_path} ({written} rows)")
 
         if self.tpch_generator.should_use_compression():
             compressor = self.tpch_generator.get_compressor()
