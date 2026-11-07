@@ -2,12 +2,13 @@ import os
 import platform
 import sys
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
 from benchbox import TPCH
 from benchbox.platforms.base.data_loading import CsvDialect
-from benchbox.platforms.firebolt import FireboltAdapter
+from benchbox.platforms.firebolt import FireboltAdapter, FireboltColumnCountError
 
 pytestmark = [
     pytest.mark.integration,
@@ -139,27 +140,35 @@ class TestFireboltCoreNativeLoadLive:
             sql = adapter._build_core_upload_sql(f'"{table}"', column_types, "benchbox_load", dialect)
             _emit(f"native load SQL: {sql}")
 
-            with pytest.raises(RuntimeError) as server_error:
-                adapter._post_core_upload(sql, "benchbox_load", bad)
-            message = str(server_error.value)
-            _emit(f"server error for malformed file: {message}")
-            lowered = message.lower()
-            assert "column" in lowered or "field" in lowered, (
-                f"error does not describe a column-count problem: {message}"
-            )
-
-            cursor.execute(f'SELECT COUNT(*) FROM "{table}"')
-            assert int(cursor.fetchone()[0]) == 0, "malformed file left rows in the table"
-
-            with pytest.raises(Exception) as load_error:
+            with pytest.raises(FireboltColumnCountError) as load_error:
                 adapter._load_file_via_core_upload(cursor, table, f'"{table}"', bad, dialect)
-            _emit(f"adapter error for malformed file: {load_error.value}")
-            assert "column" in str(load_error.value).lower()
+            message = str(load_error.value)
+            _emit(f"adapter error for malformed file: {message}")
+            assert "column count" in message.lower()
 
             cursor.execute(f'SELECT COUNT(*) FROM "{table}"')
             assert int(cursor.fetchone()[0]) == 0, "malformed file was silently loaded"
+
+            with pytest.raises(FireboltColumnCountError):
+                adapter._load_data_via_insert(_single_table_benchmark(table, bad), connection, tmp_path)
+
+            cursor.execute(f'SELECT COUNT(*) FROM "{table}"')
+            assert int(cursor.fetchone()[0]) == 0, "malformed benchmark load left rows in the table"
+
+            try:
+                adapter._post_core_upload(sql, "benchbox_load", bad)
+                _emit("server accepted the malformed upload without error")
+            except RuntimeError as exc:
+                _emit(f"server error for malformed upload: {exc}")
+            cursor.execute(f'DELETE FROM "{table}"')
         finally:
             cursor.execute(f'DROP TABLE IF EXISTS "{table}"')
+
+
+def _single_table_benchmark(table, path):
+    benchmark = Mock()
+    benchmark.tables = {table: str(path)}
+    return benchmark
 
 
 def _tbl_dialect():
