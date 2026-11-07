@@ -34401,9 +34401,9 @@
     },
     "sqlglot-guard-tests-scan-ignored-venvs-20261102": {
       "claim": {
-        "expires_at": "2026-11-08T16:26:33Z",
-        "generation": "5d82d443072c45d8a2d1d8728e919d87",
-        "renewals": 0,
+        "expires_at": "2026-11-08T16:26:39Z",
+        "generation": "202f0dbe07994459b57939dd22037da8",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
       },
       "needs": [],
