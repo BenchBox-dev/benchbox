@@ -27529,6 +27529,13 @@
       "status": "done",
       "title": "Plan reviews must reconcile recorded decisions, not only code claims"
     },
+    "plans-export-anonymize-text-fields-20261108": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Anonymize text-plan fields when exporting existing plans companions"
+    },
     "platform-adapter-abstract-method-implementation-completed": {
       "claim": null,
       "needs": [],

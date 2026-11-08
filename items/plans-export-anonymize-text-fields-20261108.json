@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Reproduce using an existing text-plan companion containing synthetic absolute home and output-directory paths; export it with --anonymize and prove the leak before the fix.",
+    "Sanitize every supported companion text/raw-plan representation, including nested plan_data, without mutating the input or dropping plan structure, errors, or variation metadata.",
+    "Verify DAG and text companions, safe and legacy inputs, and explicit fingerprint-preservation or compatibility behavior through CLI export smoke and regression tests."
+  ],
+  "context": "Observed in publication hygiene investigation; helper omission re-read directly before filing. Preserve local private-export behavior where the user has not requested anonymization. No production republish or history rewriting authorized.",
+  "description": "anonymize_plans_payload strips plan.raw_explain_output and operator metadata but skips entry plan_text and nested plan_data.logical_plan/optimized_plan. Thus export --anonymize can retain local paths in legacy or externally supplied text-plan companions even after capture-time redaction was added. This is an export-boundary defect, distinct from the completed capture fix.",
+  "links": [
+    "benchbox/core/results/anonymization.py",
+    "benchbox/core/results/exporter.py",
+    "https://github.com/BenchBox-dev/BenchBox/pull/4041"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-08T03:37:15Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1dc51b264e6f4cb48e6fe90fde19f147",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    }
+  ]
+}
