@@ -59,6 +59,14 @@ def _run_started(run: dict[str, Any]) -> datetime | None:
     return _parse_time(run.get("run_started_at")) or _parse_time(run.get("created_at"))
 
 
+def _canary_run_problem(run: dict[str, Any]) -> str | None:
+    if run.get("event") not in _reuse.TRUNK_EVENTS:
+        return f"event {run.get('event')!r} is not schedule or workflow_dispatch"
+    if run.get("head_branch") != _reuse.TRUNK_BRANCH:
+        return f"ran on {run.get('head_branch')!r}, not {_reuse.TRUNK_BRANCH}"
+    return None
+
+
 def tested_commit(repository: str, run: dict[str, Any]) -> tuple[str, str | None]:
     listing = _reuse._artifact_listing(repository, int(run["id"]))
     summaries = [a for a in listing if a.get("name") == SUMMARY_ARTIFACT and not a.get("expired")]
@@ -81,8 +89,20 @@ def evaluate(
     runs = [run for run in payload.get("workflow_runs", []) if run.get("status") == "completed"]
     runs.sort(key=lambda run: (str(run.get("created_at")), int(run["id"])), reverse=True)
     rows: list[str] = []
+    eligible: list[dict[str, Any]] = []
+    for run in runs:
+        problem = _canary_run_problem(run)
+        if problem is None:
+            eligible.append(run)
+        else:
+            rows.append(f"run {run['id']}: {problem}, not a canary run")
+    runs = eligible
     if not runs:
-        return Verdict(False, f"missing: no completed {WORKFLOW_FILE} run was found", tuple(rows))
+        return Verdict(
+            False,
+            f"missing: no completed {WORKFLOW_FILE} run on {_reuse.TRUNK_BRANCH} from a scheduled or manual trigger was found",
+            tuple(rows),
+        )
     for run in runs[:RUN_LIMIT]:
         run_id = int(run["id"])
         if run.get("conclusion") in NO_VERDICT_CONCLUSIONS:

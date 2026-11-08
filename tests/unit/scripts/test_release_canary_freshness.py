@@ -66,6 +66,8 @@ class FakeGitHub:
         conclusion: str = "success",
         status: str = "completed",
         results: dict[str, str] | None = None,
+        event: str = "schedule",
+        branch: str = "develop",
     ) -> None:
         self.runs.append(
             {
@@ -75,6 +77,8 @@ class FakeGitHub:
                 "created_at": _stamp(hours_ago + 1),
                 "run_started_at": _stamp(hours_ago),
                 "head_sha": head_sha,
+                "event": event,
+                "head_branch": branch,
             }
         )
         if tested is not None:
@@ -176,6 +180,28 @@ def test_the_newest_run_on_an_ancestor_decides_after_skipping_runs_on_other_line
     verdict = history.evaluate()
     assert verdict.ok and "run 1" in verdict.reason
     assert len(verdict.rows) == 1 and "run 2" in verdict.rows[0]
+
+
+def test_a_newer_red_run_on_another_branch_is_not_a_canary_and_the_trunk_run_decides(history):
+    history.fake.add(1, 30, head_sha=history.middle, tested=history.middle)
+    history.fake.add(2, 2, head_sha=history.middle, tested=history.middle, conclusion="failure", branch="feat/x")
+    verdict = history.evaluate()
+    assert verdict.ok and "run 1" in verdict.reason
+    assert "feat/x" in verdict.rows[0]
+
+
+def test_a_green_run_on_another_branch_does_not_satisfy_the_canary(history):
+    history.fake.add(1, 2, head_sha=history.middle, tested=history.middle, branch="feat/x")
+    verdict = history.evaluate()
+    assert not verdict.ok and verdict.reason.startswith("missing:")
+
+
+@pytest.mark.parametrize("event", ["push", "pull_request", "workflow_run"])
+def test_a_green_run_from_a_foreign_event_does_not_satisfy_the_canary(history, event):
+    history.fake.add(1, 2, head_sha=history.middle, tested=history.middle, event=event)
+    verdict = history.evaluate()
+    assert not verdict.ok and verdict.reason.startswith("missing:")
+    assert event in verdict.rows[0]
 
 
 def test_a_cancelled_run_carries_no_verdict_and_the_next_run_decides(history):
