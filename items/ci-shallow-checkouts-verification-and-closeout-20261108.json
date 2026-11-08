@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Checkout step durations for converted jobs are measured across recent CI and Trunk runs and compared against the 20-26s baseline.",
+    "No required gate, path filter, or soundness check was relaxed or skipped.",
+    "docs/internal/dev-loop-property-ledger.md and any relevant runbooks are updated to describe the shallow checkout policy and the jobs exempted from it.",
+    "A complete CI run on develop and on PR heads shows all converted jobs green with reduced checkout time."
+  ],
+  "context": "Final task in the shallow-clone CI optimization plan. Consolidates measurements across all rollout waves, verifies that no gate was weakened, and updates documentation. Completes the shallow-clone initiative.",
+  "description": "Compare post-rollout checkout step durations against the pre-rollout baseline (20-26s per job) across CI, Trunk, and auxiliary runs. Verify that no required check, path filter, or comment policy gate was weakened or bypassed. Update docs/internal/dev-loop-property-ledger.md and related documentation to document the shallow checkout policy, the jobs that use depth 1, and the explicit exemptions (ci-paths, comment-policy, release admission, coverage-map-staleness). Record the measured savings.",
+  "links": [
+    "docs/internal/dev-loop-property-ledger.md",
+    ".github/workflows/ci.yml",
+    ".github/workflows/trunk.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:323735399750ab0454d72b9e",
+      "at": "2026-11-08T17:49:08Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "32c537b925864d2ab73674ef9a072818",
+      "session_id": "83fcfb8d4a5c4fe8a47e5ac53802ec97"
+    }
+  ]
+}
