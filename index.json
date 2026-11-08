@@ -40782,6 +40782,13 @@
       "status": "done",
       "title": "Make FAIL-and-advance vs abort semantics consistent: report-without-execute, explorer-smoke failures, startup-failed accounting, teardown abort policy"
     },
+    "uat-first-drop-list-owner-review": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Present the first UAT rubric drop list to the owner before any cell stops gating"
+    },
     "uat-framework-review-followups": {
       "claim": null,
       "needs": [],

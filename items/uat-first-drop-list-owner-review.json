@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "At least 10 nightly trunk UAT runs of per-cell history exist (run ids listed)",
+    "The rubric's first real drop list is shown to the owner with per-cell evidence before any cell is dropped",
+    "Only owner-approved drops land, by PR; the last gated scale is never dropped; no timeout, memory-limit or validation change"
+  ],
+  "context": "Successor of rv2r-04-uat-rubric-automation (DECISION GATE moved here by owner decision 2026-11-08).",
+  "description": "The UAT rubric (tests/uat/rubric.py, scripts/uat_rubric.py) proposes cells to stop gating once 10 trunk UAT runs of history exist. Owner decision 2026-11-08: rv2r-04 closes on the live counters, and the first real drop list moves here. Present it to the owner through the choice dialog with each cell's signal history; apply only what the owner approves.",
+  "not_before": "2026-11-18T03:00:00Z",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-08T17:02:38Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "caf14f7472d3460abc1b71a1f106190b",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    }
+  ]
+}
