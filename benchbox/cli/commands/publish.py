@@ -387,6 +387,7 @@ def _redacted_publish_source(source_bundle: Path) -> tuple[Path | None, Temporar
 
 
 def _redacted_bundle_is_complete_and_clean(source: Path, redacted_path: Path) -> bool:
+    roots = _local_roots(source)
     for suffix in COMPANION_SUFFIXES:
         source_companion = source.parent / (source.stem + suffix)
         if not source_companion.exists():
@@ -399,6 +400,8 @@ def _redacted_bundle_is_complete_and_clean(source: Path, redacted_path: Path) ->
                 shutil.copyfile(source_companion, output_companion)
             except OSError:
                 return False
+            if not _redacted_output_is_clean(output_companion, roots=roots):
+                return False
             continue
         if output_companion.is_file():
             continue
@@ -407,13 +410,13 @@ def _redacted_bundle_is_complete_and_clean(source: Path, redacted_path: Path) ->
                 return False
         else:
             return False
-    if not _redacted_output_is_clean(redacted_path, require_anonymized_marker=True):
+    if not _redacted_output_is_clean(redacted_path, roots=roots, require_anonymized_marker=True):
         return False
     for suffix in COMPANION_SUFFIXES:
         if suffix == OVERRIDE_SUFFIX:
             continue
         output_companion = redacted_path.parent / (redacted_path.stem + suffix)
-        if output_companion.exists() and not _redacted_output_is_clean(output_companion):
+        if output_companion.exists() and not _redacted_output_is_clean(output_companion, roots=roots):
             return False
     return True
 
@@ -448,7 +451,9 @@ def _copy_clean_companion(source: Path, destination: Path) -> bool | None:
     return True
 
 
-def _redacted_output_is_clean(path: Path, *, require_anonymized_marker: bool = False) -> bool:
+def _redacted_output_is_clean(
+    path: Path, *, roots: list[str] | None = None, require_anonymized_marker: bool = False
+) -> bool:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -459,7 +464,7 @@ def _redacted_output_is_clean(path: Path, *, require_anonymized_marker: bool = F
         export_data = payload.get("export")
         if not isinstance(export_data, dict) or export_data.get("anonymized") is not True:
             return False
-    leaks = find_public_path_leaks(payload)
+    leaks = find_public_path_leaks(payload, roots=roots or ())
     if leaks:
         _report_path_leaks(path, leaks)
         return False

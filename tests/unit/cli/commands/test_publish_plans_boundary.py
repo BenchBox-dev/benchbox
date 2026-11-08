@@ -153,3 +153,30 @@ def test_tuning_companion_with_path_leak_is_rejected(tmp_path: Path, monkeypatch
     assert not target.exists() or list(target.iterdir()) == []
     assert ".tuning.json" in "\n".join(printed)
     assert "synthetic" not in "\n".join(printed)
+
+
+def test_override_companion_with_path_leak_is_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    source = _source(tmp_path, {"queries": {}, "errors": {}})
+    (source.parent / (source.stem + ".override.json")).write_text(
+        json.dumps({"reason": "see /Users/synthetic-user/notes.md"}), encoding="utf-8"
+    )
+    printed: list[str] = []
+    monkeypatch.setattr(publish_mod.console, "print", lambda *a, **_k: printed.append(str(a[0])))
+    target = tmp_path / "published"
+
+    assert publish_bundle(source, target=str(target), label="local", quiet=True) is None
+
+    assert not target.exists() or list(target.iterdir()) == []
+    assert "synthetic" not in "\n".join(printed)
+
+
+def test_source_directory_path_in_redacted_output_is_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    source = _source(tmp_path, {"queries": {}, "errors": {}})
+    leaked = {"export": {"anonymized": True}, "note": f"{source.parent.resolve()}/run"}
+    redacted = tmp_path / "redacted.json"
+    redacted.write_text(json.dumps(leaked), encoding="utf-8")
+    monkeypatch.setattr(publish_mod.console, "print", lambda *a, **_k: None)
+
+    assert not publish_mod._redacted_output_is_clean(
+        redacted, roots=publish_mod._local_roots(source), require_anonymized_marker=True
+    )
