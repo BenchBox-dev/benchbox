@@ -1,17 +1,17 @@
 {
   "acceptance": [
-    "Pin-consistency test fails when the `uses:` sha and theseus_ref disagree, or differ between the two callers",
-    "docs/internal runbook for bump and rollback, linked from the ADR decision entry",
-    "A live canary bump (to the current Theseus main, or a no-op re-pin) follows the procedure end to end via workflow_dispatch --ref; posted verdict and gate statuses on the canary PRs are recorded with run links",
-    "The batch final PR itself, which edits both callers, is canaried by this procedure before merge",
-    "The rv2r-08 guard treats the oracle caller files as guarded paths (test)"
+    "The existing pin-consistency tests detect uses/ref/lock disagreement and a mismatched second caller; preserve coverage for all Theseus references.",
+    "The current review guide and ADR describe develop-only post-merge canaries and reverting the pin; no retired release-freeze guard is required.",
+    "On the current merged pin, use fresh-head trivial and known-defect canary PRs. Record verdict and gate run URLs, exact target heads, workflow/pin SHA and App-authenticated posted statuses. Trivial succeeds; known defect is reported and its gate cannot succeed. Cached reposts alone are not new-pin proof.",
+    "Any pin promotion made while completing this item repeats the post-merge canary check. A failure remains a blocker or follows the documented rollback, without bypass."
   ],
-  "context": "Member of batch release-v2-remediation. GUARDRAILS: no change to oracle policy, reviewer roles or required checks; never relax oracle-gate. DECISION GATE: removing or replacing a required check, or changing the `oracle` environment, is an owner action.\n\n2026-11-06: rv2r-08 (release-window freeze guard) was dropped after the owner retired the freeze; the 'nothing changes during a release window' rule no longer applies to pin bumps.\n\n2026-11-06 owner decision: a Theseus pin bump is verified AFTER merge (dispatch review-verdict/review-gate on develop against the canary PR set) and rolled back by reverting the one-line pin. The `oracle` environment keeps its develop-only deployment policy; no bump-branch policy is added. Leader follow-ups outside member scope: link docs/internal/theseus-pin-bump.md from _project/decisions/theseus-oracle-extraction-2026-11-02.md and add it to quality/docs-ownership.json.\n\n2026-11-08: code merged in PR #4040 (merge f6737e142c; the registered batch was aborted and shipped as one ordinary PR). Remaining before finish: post-merge canary per the owner decision: dispatch review-verdict/review-gate on develop against the canary PR set and record posted verdict and gate statuses with run links.",
-  "description": "Owner decision 2026-11-05: Theseus (joeharris76/theseus) is consumed at a pinned SHA like a dependency. Today the pin appears in oracle-verdict.yml and oracle-gate.yml (both `uses:` and `theseus_ref`), and #3942 showed a bump can take every merge down. Deliver: (1) pin consistency enforced by test (a `uses:` ref cannot be templated, so a test checks every reference matches); (2) a documented bump procedure: canary runs are workflow_dispatch from the bump branch (`gh workflow run oracle-verdict.yml --ref <bump-branch> -f pr=<canary>` and the same for oracle-gate.yml) on a canary PR set (a trivial PR and a PR with a known defect), whose verdict and gate must post and behave correctly on the new pin before merge, with the rv2r-06 posting detector green; (3) rollback = revert the pin commit, written as a runbook with exact steps; (4) bumps blocked during a release window by the rv2r-08 guard. Rollback for this item: revert its commits.",
+  "context": "Member of batch release-v2-remediation. GUARDRAILS: no change to oracle policy, reviewer roles or required checks; never relax oracle-gate. DECISION GATE: removing or replacing a required check, or changing the `oracle` environment, is an owner action.\n\n2026-11-06: rv2r-08 (release-window freeze guard) was dropped after the owner retired the freeze; the 'nothing changes during a release window' rule no longer applies to pin bumps.\n\n2026-11-06 owner decision: a Theseus pin bump is verified AFTER merge (dispatch review-verdict/review-gate on develop against the canary PR set) and rolled back by reverting the one-line pin. The `oracle` environment keeps its develop-only deployment policy; no bump-branch policy is added. Leader follow-ups outside member scope: link docs/internal/theseus-pin-bump.md from _project/decisions/theseus-oracle-extraction-2026-11-02.md and add it to quality/docs-ownership.json.\n\n2026-11-08: code merged in PR #4040 (merge f6737e142c; the registered batch was aborted and shipped as one ordinary PR). Remaining before finish: post-merge canary per the owner decision: dispatch review-verdict/review-gate on develop against the canary PR set and record posted verdict and gate statuses with run links.\n\nTODO review 2026-11-08: corrected obsolete branch-dispatch and release-freeze acceptance against the current ADR and folded runbook. Current worktree fix/review-gate-reliability at 13165df58a. Existing promotion #4047 is owned elsewhere and blocked by Theseus #49; no duplicate promotion started. Completion still requires fresh canaries, not merely successful workflow jobs.",
+  "description": "Theseus is consumed at a full-SHA pin in .github/theseus-lock.json and both review-verdict.yml and review-gate.yml callers. Pin-consistency tests and the bump/rollback runbook shipped in BenchBox #4040 (f6737e142c). Complete the outstanding post-merge canary verification; do not rebuild shipped code. The 2026-11-06 owner decision supersedes branch canaries and the retired release-window guard: oracle remains develop-only, bumps are exercised after merge, rollback reverts the pin commit. The runbook is now the Theseus pin bump and rollback section of docs/internal/oracle-review-v2.md; its former standalone page was folded into that guide. Never relax required gates or deploy policy.",
   "links": [
-    ".github/workflows/oracle-verdict.yml",
-    ".github/workflows/oracle-gate.yml",
-    "_project/decisions/oracle-gate-relaxation-2026-11-04.md"
+    "https://github.com/BenchBox-dev/benchbox/pull/4040",
+    "docs/internal/oracle-review-v2.md#theseus-pin-bump-and-rollback",
+    "docs/internal/adr/adr-dev-loop-v2.md",
+    "tests/unit/workflows/test_theseus_pin_consistency.py"
   ],
   "sessions": [
     {
@@ -87,6 +87,14 @@
       "op": "update",
       "op_id": "7e783d9de9e2494eae36df5faa404241",
       "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:323735399750ab0454d72b9e",
+      "at": "2026-11-08T17:12:21Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9f34921f5b1b4ada91b6ad75690a9197",
+      "session_id": "83fcfb8d4a5c4fe8a47e5ac53802ec97"
     }
   ]
 }
