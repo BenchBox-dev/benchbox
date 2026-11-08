@@ -3753,7 +3753,7 @@
         }
       },
       "integration_branch": "feat/load-value-integrity",
-      "integration_head": "5105f7109645c90d72f53f20d735f8df9ec51e3c",
+      "integration_head": "d8c80ecba5e38d1677d539e88f6d4c88504b3009",
       "integration_log": [
         {
           "at": "2026-11-07T14:17:34Z",
@@ -4038,6 +4038,40 @@
             "mocker-doris-singlestore-stacks-start-20261107"
           ],
           "seq": 13
+        },
+        {
+          "at": "2026-11-08T02:22:58Z",
+          "changed_files": [
+            ".github/workflows/docker-integration.yml",
+            "benchbox/platforms/doris.py",
+            "benchbox/platforms/firebolt.py",
+            "benchbox/platforms/singlestore.py",
+            "benchbox/utils/dialect_utils.py",
+            "tests/integration/platforms/test_singlestore_decimal_load_live.py",
+            "tests/integration/test_manifest_driven_loading.py",
+            "tests/uat/test_mocker_launch.py",
+            "tests/uat/test_singlestore_joinorder_prune.py",
+            "tests/unit/platforms/test_firebolt_core_native_load.py",
+            "tests/unit/platforms/test_questdb_import_value_integrity.py",
+            "tests/unit/platforms/test_singlestore_adapter.py",
+            "tests/unit/platforms/test_singlestore_decimal_load_guard.py",
+            "tests/unit/platforms/test_singlestore_parquet_chunks.py",
+            "tests/unit/workflows/test_docker_integration_workflow.py"
+          ],
+          "head": "d8c80ecba5e38d1677d539e88f6d4c88504b3009",
+          "kind": "fix",
+          "op_id": "1136afb8dde7439fa2c537c6e678021a",
+          "previous_head": "5105f7109645c90d72f53f20d735f8df9ec51e3c",
+          "requires_acceptance": [
+            "doris-load-dead-paths-cleanup-20261107",
+            "firebolt-core-native-load-unverified-20261107",
+            "mocker-doris-singlestore-stacks-start-20261107",
+            "questdb-rest-accepts-invalid-int-20261107",
+            "singlestore-ci-and-tpcds-maintenance-20261107",
+            "singlestore-decimal-text-loads-as-zero-20261107",
+            "singlestore-uat-failures-20261030"
+          ],
+          "seq": 14
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-load-value-integrity",
