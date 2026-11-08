@@ -1,11 +1,11 @@
 {
   "acceptance": [
-    "Establish the privacy contract for arbitrary local roots versus neutral public placeholders; demonstrate actual leaked paths rather than blindly rejecting every slash or /data example.",
-    "Handle configured data/output roots and supported Windows drive/UNC forms consistently in capture, anonymization and public validation, reusing shared policy.",
-    "Propagate the comparison suite known data directory where available so safe relative table tails remain useful.",
-    "Regression cases cover nested raw plan strings, Windows and POSIX roots, URLs and public placeholders; verify Spark/LakeSail table extraction and fingerprint semantics are preserved or explicitly migrated."
+    "Detector flags the roots listed in the decision, any Windows drive letter and UNC, and the run configured data/output dirs; it does not flag the allowlisted placeholders, URLs, or relative table tails (parametrized tests for each class).",
+    "The comparison suite passes its known data directory into plan redaction so scan-table tails survive; a test shows table identity preserved for a Spark and a LakeSail plan with unchanged fingerprint.",
+    "Capture, anonymization and public validation call one shared detector (git grep shows no second copy of the root regex).",
+    "Nested raw plan strings are covered; smoke: generate a real plan containing /tmp and D:\\\\ style paths and show before/after."
   ],
-  "context": "Reported limitations from batch leader, not a new exhaustive detector audit. Do not strip whole Spark scan paths if that removes table identities; the publication batch already caught that failure once.",
+  "context": "Reported limitations from batch leader, not a new exhaustive detector audit. Do not strip whole Spark scan paths if that removes table identities; the publication batch already caught that failure once.\n\nDECISIONS (owner, 2026-11-08): detector = known local roots (/Users, /home, /tmp, /var/folders, /private, /mnt, /opt, any Windows drive letter, UNC) PLUS the run's configured data and output directories, with an exact-rule placeholder allowlist (<redacted> and bare /data-style neutral placeholders); NOT every absolute path. Publish boundary = sanitize with the export anonymizer, re-scan, publish only if clean, otherwise reject with a redacted diagnostic and publish nothing (fail closed). ORDER: this item lands FIRST in the batch; plans-export-anonymize-text-fields and plans-publish-boundary-path-validation consume its detector. GUARDRAILS: stored fingerprints are never recomputed or altered by sanitizing text; plan structure, errors, fingerprint_varied/fingerprint_variants and keys are preserved; never mutate inputs in place; diagnostics must not print the leaked path values; no hosted data deletion, republish or history rewrite; private (non-anonymized) local exports keep their current behavior; false positives are bounded by an allowlist test that real plan text (catalog names, URLs, relative table tails, Spark/LakeSail scans) is not flagged. Verification rubric: (1) reproduce the defect with a failing test or script before editing; (2) focused suites pass via uv run -- python -m pytest -n 0; (3) make comment-policy-check and ruff on touched files; (4) the runtime smoke named in acceptance is recorded in the PR body; (5) one final batch PR merges with green CI and a passing oracle review.",
   "description": "Publication investigation found the local-path detector misses /tmp, /data, /mnt, /opt and Windows drive letters other than C. It also found the comparison suite redacts plan text without passing its known data directory. Such plans may leak local layout or lose useful scan-table names when sanitized using a whole-path fallback.",
   "links": [
     "benchbox/core/results/anonymization.py",
@@ -18,6 +18,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "13cd6dbfb7eb4197a9e374c88156be47",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-08T13:32:01Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "de75ed08e1cd4320b867e60e3f21ead3",
       "session_id": "dc59872de7f0484eafa9032416c81607"
     }
   ]
