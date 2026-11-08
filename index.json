@@ -27561,7 +27561,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Complete plan-companion privacy coverage for the hosted ingest"
     },
     "plans-publish-boundary-path-validation-20261108": {
