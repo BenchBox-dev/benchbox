@@ -158,3 +158,25 @@ def test_every_checkout_is_pinned_to_the_same_action_as_release_v2():
 
     assert pins(TRUNK_UAT) == pins(RELEASE)
     assert len(pins(TRUNK_UAT)) == 1
+
+
+def test_the_job_names_the_reuse_decision_requires_in_the_latest_attempt_match_the_workflow():
+    jobs = _jobs()
+    assert jobs["gate"]["name"] == reuse.TRUNK_GATE_JOB
+    assert jobs["record"]["name"] == reuse.TRUNK_RECORD_JOB
+    for number, stage in enumerate(STAGES, start=1):
+        sample = jobs[stage]["name"].replace("${{ matrix.shard }}", "shard")
+        match = reuse.TRUNK_STAGE_JOB.fullmatch(sample)
+        assert match is not None and match.group(1) == str(number)
+
+
+def test_evidence_artifact_names_are_recognised_as_executed_cells_by_the_reuse_decision():
+    sha = "a" * 40
+    jobs = _jobs()
+    names = [step["with"]["name"] for job in jobs.values() for step in _uploads(job)]
+    evidence = [name.replace("${{ needs.plan.outputs.source_sha }}", sha) for name in names]
+    evidence = [name.replace("${{ matrix.shard }}", "shard") for name in evidence if not name.startswith("admitted-")]
+    assert evidence
+    for name in evidence:
+        match = reuse.TRUNK_EXECUTED_ARTIFACT.match(name)
+        assert match is not None and match.group(1) == sha

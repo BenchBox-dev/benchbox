@@ -444,19 +444,29 @@ uv run -- python scripts/uat_rubric.py --history-dir ~/trunk-uat-history --outpu
 ### Interaction with `release-v2`
 
 A `release-v2.yml` run that is not completed defers trunk UAT (above). The
-full-UAT fallback of a release must cancel any in-progress trunk UAT run before
-its shards start, with:
+release workflow does not cancel a trunk UAT run that is already executing:
+its full-UAT fallback and a running trunk UAT run proceed side by side, and
+`release-v2.yml` holds no `actions: write` permission. An operator who wants to
+stop an in-progress trunk UAT run, for example to free runners before a
+release, runs the command by hand with a token that has `actions: write`:
 
 ```bash
-uv run -- python scripts/trunk_uat.py cancel --reason "release-v2 run $GITHUB_RUN_ID full UAT fallback" \
+uv run -- python scripts/trunk_uat.py cancel --reason "release-v2 run <id> full UAT fallback" \
   --summary "$GITHUB_STEP_SUMMARY"
 ```
 
-The caller needs `actions: write`. The command cancels every unfinished
-`trunk-uat.yml` run and records the run ids in the caller's summary. The
-cancelled run's `record` job still runs and records
+The command cancels every unfinished `trunk-uat.yml` run and records the run
+ids in the summary. The cancelled run's `record` job still runs and records
 `cancelled: release-v2 run <id> in progress (full UAT fallback)`; a cancelled run
 is never a skip baseline.
+
+A release reuses a trunk UAT run only when every shard, `gate` and `record` job
+of the run's latest attempt succeeded and ran in that attempt. Re-running only
+the failed jobs of a run mixes attempts, so the run stops qualifying and the
+release runs the full UAT; re-run all jobs to produce reusable evidence. The
+newest completed trunk UAT run that executed cells for an ancestor of the tagged
+commit decides: when it is red or does not qualify, no older run and no release
+candidate run is used.
 
 ### Operating it
 
