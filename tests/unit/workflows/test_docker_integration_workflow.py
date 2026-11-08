@@ -201,10 +201,30 @@ def test_pull_request_trigger_is_path_filtered_and_selects_only_new_jobs() -> No
         "docker/firebolt/**",
         "benchbox/platforms/firebolt.py",
         "tests/integration/platforms/test_firebolt_core_live.py",
+        "tests/integration/platforms/test_firebolt_core_native_load_live.py",
     } <= set(paths)
     assert workflow["permissions"] == {"contents": "read"}
     select = next(step for step in workflow["jobs"]["validate-input"]["steps"] if step.get("id") == "select")
-    assert "PULL_REQUEST_SERVICES=(singlestore" in select["run"]
+    assert "PULL_REQUEST_SERVICES=(singlestore firebolt)" in select["run"]
     assert "singlestore" in triggers["workflow_dispatch"]["inputs"]["services"]["description"]
     outputs = workflow["jobs"]["validate-input"]["outputs"]
     assert "run_singlestore" in outputs
+    assert "run_firebolt" in outputs
+
+
+def test_firebolt_job_runs_native_load_verification_against_pinned_image() -> None:
+    workflow = _load_workflow()
+    job = workflow["jobs"]["firebolt"]
+    assert "run_firebolt" in job["if"]
+    assert job["timeout-minutes"] >= 45
+    text = "\n".join(str(step.get("run", "")) + str(step.get("uses", "")) for step in job["steps"])
+    assert "docker/firebolt/docker-compose.yml" in text
+    assert "tests/integration/platforms/test_firebolt_core_native_load_live.py" in text
+    assert '-m "live_firebolt_core"' in text
+    assert "actions/upload-artifact@" in text
+    compose = yaml.safe_load((REPO_ROOT / "docker/firebolt/docker-compose.yml").read_text(encoding="utf-8"))
+    default_image = compose["services"]["firebolt"]["image"]
+    assert default_image.startswith("${FIREBOLT_IMAGE:-") and default_image.endswith("}")
+    assert re.fullmatch(r"ghcr\.io/firebolt-db/firebolt-core:[\w.-]+@sha256:[0-9a-f]{64}", job["env"]["FIREBOLT_IMAGE"])
+    select = next(step for step in workflow["jobs"]["validate-input"]["steps"] if step.get("id") == "select")
+    assert "firebolt" in select["run"]
