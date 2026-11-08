@@ -3176,7 +3176,7 @@
    "kinds": {
     "unresolved": 1
    },
-   "occurrences": 5,
+   "occurrences": 4,
    "path": "tests/unit/scripts/test_batch_integration.py",
    "rule": "test-sample-data",
    "target_count": 1,
@@ -4153,9 +4153,9 @@
    "generated": 3,
    "pattern": 332,
    "root": 200,
-   "unresolved": 2051
+   "unresolved": 2050
   },
-  "references": 33200,
+  "references": 33199,
   "unclassified": 0
  }
 }
