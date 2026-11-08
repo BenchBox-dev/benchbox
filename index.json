@@ -33522,10 +33522,15 @@
       "title": "SingleStore TPC-Havoc 10_v8 intermittently exhausts leaf memory at SF0.01"
     },
     "singlestore-uat-failures-20261030": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-09T00:21:50Z",
+        "generation": "21654f22b9654ed490358a21304b1dba",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "SingleStore: TPC-DS load errors and query failures in release UAT"
     },
     "siriusdb-adapter": {
