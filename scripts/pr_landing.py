@@ -1110,13 +1110,77 @@ def _path_in_tree(repo: Path, head: str, path: str) -> bool:
     return subprocess.run(["git", "cat-file", "-e", f"{head}:{path}"], cwd=repo, capture_output=True).returncode == 0
 
 
+TEST_RUN_ANCHORS = ("-q", "pytest")
+
+
+def trailing_test_run_start(command: list) -> int | None:
+    start = len(command)
+    while start > 0 and isinstance(command[start - 1], str) and command[start - 1].startswith("tests/"):
+        start -= 1
+    if start == len(command) or start == 0 or command[start - 1] not in TEST_RUN_ANCHORS:
+        return None
+    return start
+
+
 def _receipt_verification_paths(receipt: object) -> set[str]:
     verification = receipt.get("verification") if isinstance(receipt, dict) else None
     command = verification.get("command") if isinstance(verification, dict) else None
-    if not isinstance(command, list):
+    if not isinstance(command, list) or "pytest" not in command:
         return set()
-    paths = {arg.split("::", 1)[0] for arg in command if isinstance(arg, str) and not arg.startswith("-")}
-    return {path for path in paths if "/" in path or path.endswith(".py")}
+    start = trailing_test_run_start(command)
+    if start is None:
+        return set()
+    return {arg.split("::", 1)[0] for arg in command[start:]}
+
+
+def _git_stdout(repo: Path, *args: str) -> str | None:
+    proc = subprocess.run(["git", *args], cwd=repo, check=False, capture_output=True, encoding="utf-8", timeout=120)
+    return proc.stdout if proc.returncode == 0 else None
+
+
+def _develop_anchors(repo: Path, tracker: dict) -> list[str] | None:
+    start_head = _revision(tracker.get("start_head"))
+    log = tracker.get("integration_log")
+    if start_head is None or not isinstance(log, list):
+        return None
+    anchors = [start_head]
+    for entry in log:
+        if not isinstance(entry, dict) or entry.get("kind") != "develop-merge":
+            continue
+        merge = _revision(entry.get("head"))
+        parents = _git_stdout(repo, "rev-list", "--parents", "-n", "1", merge) if merge else None
+        if parents is None or len(parents.split()) != 3:
+            return None
+        anchors.append(parents.split()[2])
+    return anchors
+
+
+def _plainly_deleted(repo: Path, anchor: str, tip: str, path: str) -> bool:
+    logged = _git_stdout(
+        repo, "log", "--format=%H", "--no-renames", "--diff-filter=D", f"{anchor}..{tip}", "--", f":(literal){path}"
+    )
+    commits = logged.split() if logged else []
+    if not commits:
+        return False
+    for commit in commits:
+        shown = _git_stdout(repo, "show", "--format=", "--no-renames", "--name-status", "-z", "--diff-filter=A", commit)
+        if shown is None or any(token.startswith("tests/") for token in shown.split("\0")[1::2]):
+            return False
+    return True
+
+
+def develop_plainly_deleted(repo: Path, tracker: dict, path: str) -> bool:
+    anchors = _develop_anchors(repo, tracker)
+    if anchors is None:
+        return False
+    present = []
+    for anchor in anchors:
+        listed = _git_stdout(repo, "ls-tree", "--name-only", anchor, "--", path)
+        if listed is None:
+            return False
+        if listed.strip():
+            present.append(anchor)
+    return bool(present) and all(_plainly_deleted(repo, anchor, DEVELOP_TRACKING_REF, path) for anchor in present)
 
 
 def _check_evidence_dropped_paths(repo: Path, evidence: dict, head: str, tracker: dict, receipts: dict) -> list[str]:
@@ -1132,7 +1196,11 @@ def _check_evidence_dropped_paths(repo: Path, evidence: dict, head: str, tracker
             failures.append(f"dropped receipt paths for {member} are malformed")
             continue
         named = _receipt_verification_paths(receipts.get(member))
-        expected = {path for path in named if path in excluded and not _path_in_tree(repo, head, path)}
+        expected = {
+            path
+            for path in named
+            if path in excluded and not _path_in_tree(repo, head, path) and develop_plainly_deleted(repo, tracker, path)
+        }
         for path in sorted(set(claimed) - named):
             failures.append(f"dropped path {path} is not named by member {member}'s receipt command")
         for path in sorted(set(claimed) & named):
@@ -1140,6 +1208,10 @@ def _check_evidence_dropped_paths(repo: Path, evidence: dict, head: str, tracker
                 failures.append(f"dropped path {path} was not removed by a recorded develop merge")
             elif _path_in_tree(repo, head, path):
                 failures.append(f"dropped path {path} still exists at the PR head")
+            elif not develop_plainly_deleted(repo, tracker, path):
+                failures.append(
+                    f"dropped path {path} was not plainly deleted by develop (a rename, replacement or unreadable diff)"
+                )
         failures.extend(
             f"member {member} receipt path {path} was removed by a recorded develop merge but is not listed as dropped"
             for path in sorted(expected - set(claimed))
