@@ -37443,7 +37443,7 @@
       ],
       "priority": "high",
       "status": "open",
-      "title": "Theseus v0.2.6: round cap with step-back, repo review guidance, pre-existing findings, PR intent, reviewer evals and the Decisions fallback"
+      "title": "Theseus v0.2.5 (combined): stdin brief and legacy removal, threadless disputes, round cap with step-back, review guidance, pre-existing findings, PR intent, evals and the Decisions fallback"
     },
     "throughput-adapter-session-capability-contract": {
       "claim": null,
