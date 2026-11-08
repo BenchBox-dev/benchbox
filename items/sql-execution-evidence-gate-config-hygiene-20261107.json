@@ -4,6 +4,7 @@
     "PostgreSQL q20 and the Havoc 8_v10/9_v1 timeouts no longer need to be tolerated, or are recorded as required entries with a reason",
     "sql-execution-evidence passes on hosted CI at the changed head with no timeout"
   ],
+  "context": "Landed in PR #4031 (merge 30621604a58790260bfd18e2e7558a68c445393b on develop, 2026-11-08T00:27Z), CI green on head 64569962e with an oracle SHIP. At the merge commit tests/unit/scripts/test_sql_execution_gate.py passes; the sql-execution-evidence hosted job is part of the green CI on the merged head.",
   "description": "Leftover from PR #4007 (SQLite q16 gate fix). (1) PostgreSQL TPC-H q20 (and the tpchavoc 20_v1..20_v10 variants) plus tpchavoc 8_v10 and 9_v1 hit the 15 s statement timeout on every hosted run; they are `optional: true` entries in scripts/sql_execution_gate/expected_differences.json, which exempts them from the stale-entry check, so they would also hide a regression. Decide per entry: raise the budget, add PostgreSQL indexes like the SQLite fix, or make them required entries with a current justification. (2) The remaining optional SQLite entries still say 'without indexes' and are probably obsolete now the indexes landed (SQLite's slowest query was 4.4 s over ten hosted runs): tpcds_obt q35 timeout, the tpcds vacuous q13 entry (marked optional because of SQLite timeouts), and any other optional SQLite timeout wording. Remove them or make them non-optional, verified with hosted runs of sql-execution-evidence. (3) Also review the optional PostgreSQL tpcds_obt q56 entry. PR #4007 already pruned the SQLite timeout entries for tpcds 13/48, tpch 21, tpchavoc 5_v8/21_v*, and the tpcds_obt base-equivalence 13/48 entry.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/4007"
@@ -66,6 +67,14 @@
       "generation": "8e1e39166118423ebdd14e918791c7a1",
       "op": "take",
       "op_id": "61d6922565684b47ab598dea5cb33393",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-08T00:47:35Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "828cbb54a8bb49099813d314f6c8a16c",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
