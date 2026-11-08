@@ -2623,7 +2623,20 @@
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
-      "final_pr_history": [],
+      "final_pr": {
+        "head": "1a480fb188947d8001acfdb9adac10b89511af72",
+        "node_id": "PR_kwDOQ7J64c8AAAABNs_o7Q",
+        "number": 4058,
+        "repository": "BenchBox-dev/BenchBox"
+      },
+      "final_pr_history": [
+        {
+          "at": "2026-11-08T19:50:53Z",
+          "head": "1a480fb188947d8001acfdb9adac10b89511af72",
+          "op_id": "470382bb7530461284b36b997cb32982",
+          "previous_head": null
+        }
+      ],
       "integrated_members": {
         "obt-sql-gate-nightly-timeouts-20261108": {
           "accepted_head": "aff09a7b0a9fcd804d33715b7a6a0a18fc024ed9",
