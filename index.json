@@ -35485,7 +35485,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "dropped",
       "title": "Fork controller can merge after a hold is applied during its mergeability retry"
     },
     "sqlglot-delivery-arm-waits-for-daily-run-20261107": {
