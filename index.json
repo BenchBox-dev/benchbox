@@ -4920,7 +4920,7 @@
         }
       },
       "integration_branch": "feat/plan-companion-publication-hygiene",
-      "integration_head": "29f09b11c248e1b9d1073f3e637245f5369cab3d",
+      "integration_head": "4013332281abe5f8c3ad36be9460775059e5ea65",
       "integration_log": [
         {
           "at": "2026-11-07T22:11:18Z",
@@ -4976,6 +4976,20 @@
             "polars-plan-companion-leaks-local-paths-20261107"
           ],
           "seq": 4
+        },
+        {
+          "at": "2026-11-08T00:02:38Z",
+          "changed_files": [
+            "tests/unit/core/dataframe/test_plan_path_redaction.py"
+          ],
+          "head": "4013332281abe5f8c3ad36be9460775059e5ea65",
+          "kind": "fix",
+          "op_id": "696e1ac47efc442d926b98142b812a4d",
+          "previous_head": "29f09b11c248e1b9d1073f3e637245f5369cab3d",
+          "requires_acceptance": [
+            "polars-plan-companion-leaks-local-paths-20261107"
+          ],
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-companion-publication-hygiene",
