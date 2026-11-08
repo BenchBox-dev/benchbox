@@ -8,7 +8,7 @@ dir = skills
 skill = benchbox
 
 source = https://github.com/joeharris76/skill-sync-skills.git
-rev = 765db1fc4b4a9be02c3d3ddae91841aa94af723d
+rev = cc8adf58ed39893418cbfa9d209d367a784819de
 dir = skills
 skill = blog
 skill = code
