@@ -1,10 +1,13 @@
 {
   "acceptance": [
-    "A scenario in tests/integration/oracle (registered in ORACLE_SCENARIO_TESTS) delivers a push and a ready_for_review event for different heads in the same second and ends with a verdict for the new head, proven to fail with the defect reintroduced",
-    "The scenario runs only the fake omp executable and fake servers, never a real omp or model-provider call"
+    "A deterministic scenario schedules live-head and delayed stale-head PR events in both orders, including equal timestamps; stale events cannot cancel the only live-head review and the live head obtains a verdict. Prove the scenario fails under the old shared-head cancellation behavior.",
+    "Exercise the actual consumer workflow concurrency expression and current Theseus fake OMP/Jev/GitHub driver rather than asserting a copied scheduler rule; the regression never calls a real model provider. Use the actual pytest integration discovery, not the removed ORACLE_SCENARIO_TESTS registry.",
+    "Same-head duplicate events remain safe, and stale heads cannot publish a clearing verdict for a new head. Manual dispatch and sweep behavior retain their trusted-head/backoff semantics.",
+    "Assess review-gate event freshness separately: either cover its equivalent race in the same fix or record concrete evidence explaining why its live-head reread/final status path is safe. Do not silently change unrelated workflow cancellation behavior.",
+    "Merge the consumer workflow fix with required CI and exact-head hosted review; preserve develop-only environment policy."
   ],
-  "context": "Found 2026-10-31 by an adversarial review of oracle queue load. Evidence: oracle-verdict.yml concurrency group (lines 32-33, cancel-in-progress for pull_request_target) and the skip message at _project/scripts/oracle_reviewers/cli.py:382-383; log of run 41208598369. The cause of the same-second pair (tooling that marks a pull request ready right after pushing) is an inference, not confirmed. Oracle workflows are soundness paths: the owner authorized reviewer code and tests only for the earlier quota item, so ask before editing workflow files.",
-  "description": "When a push and a ready_for_review event land in the same second, the event that carries the older head wins the verdict concurrency group and cancels the run for the new head. That run then skips with 'a newer head exists; its own run reviews it', so no run reviews the new head until another trigger fires. Pull requests 3868, 3870 and 3875 showed oracle-gate failure 'waiting for the oracle's verdict' for about 70 minutes.",
+  "context": "Found 2026-10-31 by an adversarial review of oracle queue load. Evidence: oracle-verdict.yml concurrency group (lines 32-33, cancel-in-progress for pull_request_target) and the skip message at _project/scripts/oracle_reviewers/cli.py:382-383; log of run 41208598369. The cause of the same-second pair (tooling that marks a pull request ready right after pushing) is an inference, not confirmed. Oracle workflows are soundness paths: the owner authorized reviewer code and tests only for the earlier quota item, so ask before editing workflow files.\n\nReviewed 2026-11-08: active issue persists in review-verdict.yml:31-33 plus Theseus cli.py stale event guard. Original file paths and registry are stale after extraction. The current task authorizes this workflow repair; earlier task-local ask-before-workflow note is not a standing prohibition. Existing #4047 edits pin refs only; do not base this work on its unmerged branch.",
+  "description": "BenchBox owns workflow event concurrency; Theseus owns stale-head guards. review-verdict.yml still puts different-head synchronize/ready_for_review events in a shared per-PR cancellation group. A delayed stale event can cancel the live-head run, then skip because its head is stale, leaving no live review. Same-second event timing was a historical inference, not the correctness boundary: handle stale/new-head interleavings regardless of timestamp. Isolate different-head pull_request_target invocations while preserving trusted-base execution, duplicate handling and final exact-head publication guards. No evidence-policy or retry-budget relaxation.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:96cfd54c7d2180daa76d178f",
@@ -13,6 +16,14 @@
       "op": "create",
       "op_id": "834ca3fde5994a22994ea1508f739d85",
       "session_id": "77bfd3a6737c4f8e9b68d27f796e8651"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:323735399750ab0454d72b9e",
+      "at": "2026-11-08T17:26:30Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6001d771a38a466b824500d54b71da8d",
+      "session_id": "83fcfb8d4a5c4fe8a47e5ac53802ec97"
     }
   ]
 }
