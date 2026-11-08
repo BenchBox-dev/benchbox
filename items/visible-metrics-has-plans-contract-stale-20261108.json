@@ -14,6 +14,53 @@
     "_project/planning/visible_metrics.yaml",
     "https://github.com/BenchBox-dev/BenchBox/pull/4041"
   ],
+  "prepared": {
+    "accepted_head": "56f3f7bb840c9306aa7e5fb233ad11aabf26abcc",
+    "batch_id": "plan-privacy",
+    "changed_files": [
+      "_project/planning/visible_metrics.yaml",
+      "tests/unit/scripts/explorer_pipeline/test_visible_metrics_registry.py"
+    ],
+    "integration_head": "bfc3e8068c660d38ef27379f58df7335f4a10b4f",
+    "integration_seq": 2,
+    "member_id": "visible-metrics-has-plans-contract-stale-20261108",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "bab99413625257ec725e38799619b8688597216fabcb1085372505b027631442",
+    "source_base": "e168043f991b100bf7ad16236f63f17749a40643",
+    "source_revision": "56f3f7bb840c9306aa7e5fb233ad11aabf26abcc",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-plan-privacy--visible-metrics-has-plans-contract-stale-20261108",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/unit/scripts/explorer_pipeline/test_visible_metrics_registry.py",
+        "tests/unit/test_ledger_coverage.py"
+      ],
+      "review": {
+        "base_sha": "e168043f991b100bf7ad16236f63f17749a40643",
+        "head_sha": "56f3f7bb840c9306aa7e5fb233ad11aabf26abcc",
+        "head_tree": "1458cf501694b47fc48694f9dbdebd58ecfe4d6b",
+        "outcome": "clear",
+        "patch_digest": "55be5f351a1317f965ee6553ea069303",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "13165df58a8ab251e9f4f0948c14142b262cac59"
+      },
+      "revision": "56f3f7bb840c9306aa7e5fb233ad11aabf26abcc",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
@@ -46,6 +93,15 @@
       "generation": "59d8eed066a3437ebe4202acd56e1d8e",
       "op": "take",
       "op_id": "f26c7b3d22484720ae25a0b8415bb139",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-08T16:36:50Z",
+      "client": "omp-coding-agent",
+      "generation": "59d8eed066a3437ebe4202acd56e1d8e",
+      "op": "prepare",
+      "op_id": "dee48bc65017418c955be6ee203ae845",
       "session_id": "dc59872de7f0484eafa9032416c81607"
     }
   ]

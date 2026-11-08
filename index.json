@@ -5319,7 +5319,8 @@
     },
     "plan-privacy": {
       "accepted_members": {
-        "plan-path-detector-root-and-drive-coverage-20261108": "5b61b7af2125006d0e0584f8e1697ce13cdb565a"
+        "plan-path-detector-root-and-drive-coverage-20261108": "5b61b7af2125006d0e0584f8e1697ce13cdb565a",
+        "visible-metrics-has-plans-contract-stale-20261108": "56f3f7bb840c9306aa7e5fb233ad11aabf26abcc"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -5340,10 +5341,19 @@
           ],
           "integration_head": "e168043f991b100bf7ad16236f63f17749a40643",
           "integration_seq": 1
+        },
+        "visible-metrics-has-plans-contract-stale-20261108": {
+          "accepted_head": "56f3f7bb840c9306aa7e5fb233ad11aabf26abcc",
+          "changed_files": [
+            "_project/planning/visible_metrics.yaml",
+            "tests/unit/scripts/explorer_pipeline/test_visible_metrics_registry.py"
+          ],
+          "integration_head": "bfc3e8068c660d38ef27379f58df7335f4a10b4f",
+          "integration_seq": 2
         }
       },
       "integration_branch": "feat/plan-privacy",
-      "integration_head": "e168043f991b100bf7ad16236f63f17749a40643",
+      "integration_head": "bfc3e8068c660d38ef27379f58df7335f4a10b4f",
       "integration_log": [
         {
           "at": "2026-11-08T13:34:01Z",
@@ -5359,6 +5369,15 @@
           "op_id": "8d41f50fcb4c4ae28f1709cce1040172",
           "previous_head": "fb319236c37869f3268874e3d3f77e61c836f867",
           "seq": 1
+        },
+        {
+          "at": "2026-11-08T16:36:49Z",
+          "head": "bfc3e8068c660d38ef27379f58df7335f4a10b4f",
+          "kind": "prepare",
+          "member": "visible-metrics-has-plans-contract-stale-20261108",
+          "op_id": "dee48bc65017418c955be6ee203ae845",
+          "previous_head": "e168043f991b100bf7ad16236f63f17749a40643",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-privacy",
@@ -41523,15 +41542,10 @@
       "title": "\"Version Management & Consistency\""
     },
     "visible-metrics-has-plans-contract-stale-20261108": {
-      "claim": {
-        "expires_at": "2026-11-09T16:36:45Z",
-        "generation": "59d8eed066a3437ebe4202acd56e1d8e",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "open",
       "title": "Update the visible-metrics inventory to reflect captured-plan availability"
     },
     "visualization-chart-registry-and-exporter-contract": {
