@@ -6,7 +6,7 @@
     "A PR touching release-v2.yml shows the probe job; making it a required check is prepared as a settings change for the owner (DECISION GATE)",
     "Both evidence variants (reuse and fallback) execute in probe and reach the publish dry run"
   ],
-  "context": "Member of batch release-v2-remediation. GUARDRAILS: probe must be structurally incapable of publishing (no id-token: write, no upload step); never route probe through the pypi or test-pypi environments. DECISION GATE: making the probe job a required status check is a repository-settings change; prepare it and ask the owner.\n\n2026-11-06 leader: removed rv2r-06 (already landed on the integration branch) from needs. Ordinary needs are done-only, and batch members reach done only at batch finish, so a same-batch ordinary need would deadlock the batch; the ordering is guaranteed by the integration branch instead.",
+  "context": "Member of batch release-v2-remediation. GUARDRAILS: probe must be structurally incapable of publishing (no id-token: write, no upload step); never route probe through the pypi or test-pypi environments. DECISION GATE: making the probe job a required status check is a repository-settings change; prepare it and ask the owner.\n\n2026-11-06 leader: removed rv2r-06 (already landed on the integration branch) from needs. Ordinary needs are done-only, and batch members reach done only at batch finish, so a same-batch ordinary need would deadlock the batch; the ordering is guaranteed by the integration branch instead.\n\n2026-11-08 closed: delivered by PR #4040 (merge f6737e142c). Probe on final head 03b0711a4c: reuse variant run 42487650248 and fallback (stub evidence) variant run 42487662482, both success, both reached 'publish dry run', publish and github release skipped, under 10 min each, peak 2 concurrent jobs. The PR showed the release-v2 probe job (run 42487621539 success). Making it a required check is prepared in the PR body and awaits the owner.",
   "description": "The #3947 publish-skip bug passed unit tests (one asserted the broken shape) and local and hosted oracle review, and was found only by a 3-hour live run. Add a probe mode: release-v2 runs with its real job graph and conditions, but admit uses a synthetic probe target (no tag ruleset needed); install-matrix runs one Linux py3.12 cell; UAT shards are stubs that emit valid evidence for the stub digest; the evidence-check path (rv2r-03) is exercised in both reuse and fallback variants; and publish runs as a dry run (download admitted files, verify SHA256SUMS, twine check; no upload, no attestation). All other jobs keep their real needs and if. A PR-triggered job runs probe mode whenever .github/workflows/release-v2.yml, .github/workflows/trunk-uat.yml, .github/workflows/trunk.yml (dist-artifact job), scripts/release_*.py or the release-uat-env action change. Rollback: revert this member's commits.",
   "links": [
     ".github/workflows/release-v2.yml",
@@ -86,6 +86,14 @@
       "generation": "f4f1a063ae5344c79bc908561cd792f2",
       "op": "take",
       "op_id": "8af65666f4cc4086af819b28adb42307",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-08T14:17:41Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ba7b876e4cd543dbb7652232be933329",
       "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]
