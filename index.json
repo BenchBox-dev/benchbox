@@ -25906,10 +25906,15 @@
       "title": "Confirm nyctaxi DataFrame-SQL id mapping"
     },
     "obt-sql-gate-nightly-timeouts-20261108": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-09T18:45:44Z",
+        "generation": "69eced26fc104cbbbc3c37628789622c",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Nightly OBT SQL execution gate times out: SQLite tpcds_obt-augmented q95 and PostgreSQL OBT q58 and q60"
     },
     "off-scale-indicator-for-diverging-bar-values-clamped-at-300": {
