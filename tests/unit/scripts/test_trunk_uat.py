@@ -517,8 +517,8 @@ def test_record_reports_wall_time_runner_hours_and_per_shard_state(tmp_path):
     assert record["wall_hours"] == 4.0
     assert record["longest_shard_hours"] == 3.0
     assert record["shards"] == [
-        {"stage": 1, "shard": "sqlite", "state": "success", "hours": 3.0},
-        {"stage": 2, "shard": "starrocks", "state": "failure", "hours": 1.5},
+        {"stage": 1, "shard": "sqlite", "state": "success", "hours": 3.0, "step_timeout": False},
+        {"stage": 2, "shard": "starrocks", "state": "failure", "hours": 1.5, "step_timeout": False},
     ]
     assert record["over_gate"] is False
 
@@ -882,3 +882,60 @@ def test_a_shard_cancelled_early_is_still_a_cancelled_run_not_a_baseline(tmp_pat
     record, rows = _timed_out_record(tmp_path, "cancelled", "00:00", "01:00")
     assert record["outcome"] == "cancelled" and rows == []
     assert "timed_out_shards" not in record
+
+
+def _step(name: str, start: str, end: str, conclusion: str) -> dict:
+    return {
+        "name": name,
+        "conclusion": conclusion,
+        "started_at": f"2026-11-06T{start}:00Z",
+        "completed_at": f"2026-11-06T{end}:00Z",
+    }
+
+
+def _shard_with_run_step(tmp_path: Path, job_conclusion: str, step_end: str, step_conclusion: str):
+    github = Github()
+    shard = job("UAT stage 2 starrocks", "00:00", "05:52", job_conclusion)
+    shard["steps"] = [
+        _step("Set up job", "00:00", "00:05", "success"),
+        _step("Run the stage 2 shard against the trunk distribution", "00:06", step_end, step_conclusion),
+        _step("Upload the shard evidence", "05:50", "05:52", "success"),
+    ]
+    github.jobs[42] = [shard]
+    write_shard(tmp_path / "evidence", 2, "starrocks", [passed_row("starrocks", "a.log")])
+    return build(github, tmp_path, job_results={"admit": "success", "uat-stage2": job_conclusion, "gate": "failure"})
+
+
+def test_a_shard_whose_run_step_hit_the_step_timeout_is_an_executed_over_gate_run(tmp_path):
+    record, rows = _shard_with_run_step(tmp_path, "failure", "05:51", "failure")
+    assert record["outcome"] == "executed" and rows
+    assert record["over_gate"] is True
+    assert record["timed_out_shards"] == ["stage 2 starrocks"]
+    assert "DECISION GATE" in trunk_uat.render_summary(record)
+
+
+def test_a_failing_run_step_well_before_the_step_timeout_is_a_normal_failure(tmp_path):
+    record, rows = _shard_with_run_step(tmp_path, "failure", "01:30", "failure")
+    assert record["outcome"] == "executed" and rows
+    assert record["over_gate"] is False
+    assert record["timed_out_shards"] == []
+
+
+def test_a_run_step_that_succeeded_is_never_a_timeout_however_long_it_took(tmp_path):
+    record, _ = _shard_with_run_step(tmp_path, "success", "05:51", "success")
+    assert record["timed_out_shards"] == []
+
+
+def test_the_step_timeout_the_detector_uses_matches_every_run_step_in_the_workflow():
+    import yaml
+
+    workflow = yaml.safe_load(
+        (Path(__file__).resolve().parents[3] / ".github" / "workflows" / "trunk-uat.yml").read_text(encoding="utf-8")
+    )
+    found = 0
+    for job_definition in workflow["jobs"].values():
+        for step in job_definition.get("steps", []):
+            if trunk_uat.RUN_STEP.fullmatch(str(step.get("name"))):
+                found += 1
+                assert step["timeout-minutes"] == trunk_uat.STEP_TIMEOUT_MINUTES
+    assert found == 3

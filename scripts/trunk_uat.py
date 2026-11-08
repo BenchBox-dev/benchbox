@@ -35,6 +35,9 @@ BASELINE_RUN_LIMIT = 30
 RUNNER_HOUR_GATE = 30.0
 JOB_HOUR_LIMIT = 6.0
 SHARD_TIMEOUT_HOURS = 5.9
+STEP_TIMEOUT_MINUTES = 345
+STEP_TIMEOUT_SLACK_SECONDS = 60
+RUN_STEP = re.compile(r"Run the stage [0-9]+ shard against the trunk distribution")
 LOG_TAIL_BYTES = 64 * 1024
 HARNESS_FAILURE_FIELDS = (
     "failure_kind",
@@ -318,6 +321,18 @@ def run_jobs(api: Api, run_id: int, attempt: int) -> list[dict[str, Any]]:
     raise ValueError("job listing limit exceeded")
 
 
+def _hit_step_timeout(job: dict[str, Any]) -> bool:
+    for step in job.get("steps") or []:
+        if not isinstance(step, dict) or not RUN_STEP.fullmatch(str(step.get("name"))):
+            continue
+        started, completed = _parse_time(step.get("started_at")), _parse_time(step.get("completed_at"))
+        if started is None or completed is None or step.get("conclusion") not in ("failure", "cancelled"):
+            continue
+        if (completed - started).total_seconds() >= STEP_TIMEOUT_MINUTES * 60 - STEP_TIMEOUT_SLACK_SECONDS:
+            return True
+    return False
+
+
 def job_costs(jobs: list[dict[str, Any]]) -> dict[str, Any]:
     shards: list[dict[str, Any]] = []
     total = shard_total = 0.0
@@ -340,6 +355,7 @@ def job_costs(jobs: list[dict[str, Any]]) -> dict[str, Any]:
                     "shard": match.group(2),
                     "state": job.get("conclusion"),
                     "hours": round(hours, 3),
+                    "step_timeout": _hit_step_timeout(job),
                 }
             )
     wall = (max(ends) - min(starts)).total_seconds() / 3600 if starts else 0.0
@@ -432,7 +448,7 @@ def build_record(
     timed_out = [
         f"stage {item['stage']} {item['shard']}"
         for item in costs["shards"]
-        if item["state"] == "cancelled" and item["hours"] >= SHARD_TIMEOUT_HOURS
+        if item["step_timeout"] or (item["state"] == "cancelled" and item["hours"] >= SHARD_TIMEOUT_HOURS)
     ]
     if "cancelled" in job_results.values() and not timed_out:
         others = active_runs(api, RELEASE_WORKFLOW_FILE)
