@@ -12460,6 +12460,15 @@
       "status": "open",
       "title": "Establish the CI checkout depth baseline and document history dependencies"
     },
+    "ci-shallow-checkouts-history-dependent-tests-remediation-20261108": {
+      "claim": null,
+      "needs": [
+        "ci-shallow-checkouts-pilot-tree-only-trunk-20261108"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Isolate history-dependent tests so medium tiers can run on shallow checkouts"
+    },
     "ci-shallow-checkouts-pilot-tree-only-trunk-20261108": {
       "claim": null,
       "needs": [

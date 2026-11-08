@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "test_canary_impact_live passes in a shallow clone without requiring historical commit objects.",
+    "test_no_cli_surface_drift either receives its base ref cleanly or skips with an explicit message rather than silently dropping its gate or hard-failing on merge-base.",
+    "test_ledger_seed does not trigger an unbounded git fetch of published-results at import time during test collection.",
+    "Running the three test files in a shallow clone (git clone --depth 1 file://$PWD) passes with zero unexplained failures or new skips."
+  ],
+  "context": "Part of the shallow-clone CI optimization plan. Audit identified these three tests as the blockers preventing medium-test shards (which run 4 shards × 25m each) and medium-collect from using shallow checkouts. Once remediated, medium tiers can be converted to depth 1.",
+  "description": "Three tests currently fail or trigger unbounded network fetches in shallow checkouts: (1) tests/unit/test_canary_impact_live.py runs git diff against hard-coded commit SHAs; (2) tests/uat/test_no_cli_surface_drift.py needs origin/develop and runs merge-base against it; (3) tests/unit/scripts/publication/test_ledger_seed.py runs git cat-file on a recorded commit at import time and falls back to an unbounded git fetch of published-results. Fix or isolate these tests: replace hard-coded commit diffs with frozen fixtures, define a clear base-ref contract for the CLI surface drift test, and pre-fetch the specific recorded commit or guard the import-time fetch in test_ledger_seed. This unblocks shallow checkouts for medium-test shards and test collection.",
+  "links": [
+    "tests/unit/test_canary_impact_live.py",
+    "tests/uat/test_no_cli_surface_drift.py",
+    "tests/unit/scripts/publication/test_ledger_seed.py",
+    "tests/unit/scripts/publication/test_check_corpus_bijection.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:323735399750ab0454d72b9e",
+      "at": "2026-11-08T17:48:36Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f92392d9a5b047a58d29c514c625d2d1",
+      "session_id": "83fcfb8d4a5c4fe8a47e5ac53802ec97"
+    }
+  ]
+}
