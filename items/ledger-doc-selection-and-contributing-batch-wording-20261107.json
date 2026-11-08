@@ -6,6 +6,7 @@
     "make pr-preflight passes; the PR merges through the normal gates.",
     "Decision gate: if batch-start-and-member-check-tightening-20261107 has not merged, or merged without dropping the member-check review, state only what is on develop and record the gap here."
   ],
+  "context": "Delivered by #4044 (merged fb319236c3). LEDGER_DOCUMENT is a plain literal in LEDGER_GOVERNED, plus a parametrized test case. The resolved literal leaves quality/docs-reference-inventory.json unchanged; only the earlier regex-escaped form produced an unresolved reference, so no regeneration was needed. CONTRIBUTING.md now describes opt-in batches, the feature-branch default, and no member-check review. On develop, git grep 'explicitly assigned cohesive' returns 0 matches. Tests: test_preflight_targets, test_ledger_coverage, test_doc_reference_inventory and test_check_project_references (125 passed); make pr-preflight passed.",
   "description": "Problem. Two parts of the batch opt-in remediation could not ship inside batch batch-optin-remediation-20261107's frozen scopes.\n(1) preflight_targets.LEDGER_GOVERNED should also select tests/unit/test_ledger_coverage.py when docs/internal/dev-loop-property-ledger.md itself changes. Naming that path in the code adds a docs-reference occurrence, so quality/docs-reference-inventory.json must be regenerated, and that file was outside the scopes. The batch therefore left the ledger document out of the trigger set.\n(2) CONTRIBUTING.md (Development Workflow) still says 'An explicitly assigned cohesive batch defaults to feature delivery mode' and describes the member's local review as early feedback. Both are stale once batch-mode-opt-in-policy-docs-20261107 and batch-start-and-member-check-tightening-20261107 merge.\n\nChange. In one ordinary serial PR:\n(a) add the ledger document to LEDGER_GOVERNED, with a parametrized test case, and regenerate the inventory with make docs-reference-inventory;\n(b) restate the CONTRIBUTING.md passage to match docs/agent/batch-feature-delivery.md as merged: batch mode is opt-in, one feature branch and one PR per feature is the default, and batch-member-check runs no review;\n(c) add one changelog.d fragment (internal).\n\nGuardrails: work only in a linked worktree (make worktree-create, or the batch targets for members); never edit the primary clone; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or oracle gate; re-read each cited file on current origin/develop before editing, because line numbers drift.",
   "links": [
     "_project/scripts/preflight_targets.py",
@@ -29,6 +30,14 @@
       "generation": "ca821da96b4847ab9e364ca6921c2023",
       "op": "take",
       "op_id": "bbb6074e9c9b45478e703e75002b00ce",
+      "session_id": "4e1f5de86962468394697835ee28c6b3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae",
+      "at": "2026-11-08T08:29:22Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "871419ba066743a19550e18a49e3c6ad",
       "session_id": "4e1f5de86962468394697835ee28c6b3"
     }
   ]
