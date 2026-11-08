@@ -12751,13 +12751,18 @@
       "title": "Roll out depth-1 checkouts to test tiers (fast tier, medium collection, and shards)"
     },
     "ci-shallow-checkouts-verification-and-closeout-20261108": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-09T19:25:17Z",
+        "generation": "482706d1d7b649e89b614493ecb4c6e1",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:323735399750ab0454d72b9e"
+      },
       "needs": [
         "ci-shallow-checkouts-test-tier-rollout-20261108",
         "ci-shallow-checkouts-audit-and-auxiliary-jobs-20261108"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Measure checkout savings, document shallow checkout policy, and verify CI integrity"
     },
     "ci-soundness-flag-stale-base": {
