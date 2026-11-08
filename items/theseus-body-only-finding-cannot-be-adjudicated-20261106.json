@@ -1,12 +1,12 @@
 {
   "acceptance": [
-    "Find why the hosted review posted D1 without a thread although its line is in the diff, and make every finding with a diff-anchored line get a thread carrying the finding marker.",
-    "Findings that can't be anchored (outside the diff) can still be disputed and escalated, for example by a keyed `Dispute: <finding id>` PR comment from an attester, so owner adjudication is always reachable.",
-    "An integration scenario proves the full flow: a finding without a thread, two dispute rounds, escalation, an owner adjudication, and the gate passing.",
-    "BenchBox re-locks to the fixed release."
+    "Diff-anchored findings, fresh or carried, get a finding-marker thread; backfill creates no duplicate thread on a rerun and preserves stable finding identity.",
+    "Unanchored open findings accept keyed Dispute: <finding-id> comments only from configured attesters, with the same two-round escalation and owner-adjudication rules as thread replies; unknown/stale/unauthorized disputes cannot alter disposition.",
+    "A pytest-discovered Theseus integration scenario using fake OMP/Jev/GitHub proves body-only finding, two disputes, escalation, authorized owner adjudication and exact-head gate success. A unit-only synthetic flow does not satisfy this criterion.",
+    "Merge the fixed engine and integration scenario through Theseus review; record the exact source commit and release handoff. Consumer relock and hosted activation remain required under benchbox-adopt-theseus-v025-review-guidance-20261107 before the overall reliability group is complete."
   ],
-  "context": "Owner decision 2026-11-08: the hosted reviewer always threads diff-anchored findings, and any unanchored finding can be disputed by an attester PR comment `Dispute: <finding-id>`, with the same escalation rules as thread disputes. Ships in combined Theseus v0.2.5 (theseus-v025-review-convergence-20261107).",
-  "description": "On BenchBox PR #3987 (head 3027616), the hosted review (review id 5808632438) put finding D1 only in the review body. There is no inline thread, so reviewThreads is empty. Adjudication requires the finding to be escalated by two keyed `Dispute:` replies on a thread carrying the finding marker, and plain issue comments don't count. So the owner-authorized `Review adjudication: WITHDRAW D1` (issuecomment-6699627970, after the Owner instruction issuecomment-6699626573) changed nothing, and the gate still blocks. The finding points at `.github/oracle-reviewers.yml:110`, which is inside the diff, so it isn't clear why no thread was created. Local review escalates through REBUTTALS_FILE; the hosted path has no equivalent for findings without a thread. The owner's adjudication authority is therefore unreachable for any hosted finding without a thread.",
+  "context": "Owner decision 2026-11-08: the hosted reviewer always threads diff-anchored findings, and any unanchored finding can be disputed by an attester PR comment `Dispute: <finding-id>`, with the same escalation rules as thread disputes. Ships in combined Theseus v0.2.5 (theseus-v025-review-convergence-20261107).\n\nReviewed 2026-11-08: current report.py renders carried findings separately and places only fresh findings. #45 is open/blocked; its full-flow test is currently unit/fast, not a workflow integration scenario. #49 and BenchBox #4047 do not carry #45. No source edits or merge of another session branch performed. Relock acceptance transferred explicitly to the existing downstream adoption item, not dropped.",
+  "description": "The report path placed fresh findings inline but rendered carried findings only in the body, stranding even a carried diff-anchored finding without a dispute thread (#3987). Theseus owns this code. Existing open Theseus #45 implements carried-finding thread backfill and keyed attester PR-comment disputes for unanchored findings; reconcile that work rather than duplicating it. Finish the engine fix and a hermetic full workflow integration scenario. Consumer relock is explicitly re-homed to benchbox-adopt-theseus-v025-review-guidance-20261107, which already waits on the combined release; this breaks the former logical cycle without losing deployment acceptance. The planned v0.2.5 feature release label is obsolete: v0.2.5 was released for different fixes in #46.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3987"
   ],
@@ -26,6 +26,14 @@
       "op": "update",
       "op_id": "14d895d628274d8ab7fc488d26a66a7e",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:323735399750ab0454d72b9e",
+      "at": "2026-11-08T17:26:19Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d89206b29db8438aac1fd09e562984c3",
+      "session_id": "83fcfb8d4a5c4fe8a47e5ac53802ec97"
     }
   ]
 }
