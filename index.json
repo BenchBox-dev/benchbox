@@ -12460,6 +12460,13 @@
       "status": "open",
       "title": "Establish the CI checkout depth baseline and document history dependencies"
     },
+    "ci-shallow-checkouts-delivery-20261108": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Deliver shallow checkouts across CI workflows to reduce checkout overhead"
+    },
     "ci-shallow-checkouts-history-dependent-tests-remediation-20261108": {
       "claim": null,
       "needs": [
