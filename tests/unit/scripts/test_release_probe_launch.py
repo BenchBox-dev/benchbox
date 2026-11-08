@@ -158,6 +158,10 @@ def test_a_failed_cancel_is_reported_without_hiding_the_original_failure(capsys)
         "scripts/update_version.py",
         "tests/uat/gate_summary.py",
         "tests/uat/configs/release-gate-02-docker-nonoltp.yaml",
+        "tests/uat/_cli.py",
+        "tests/uat/config.py",
+        "Makefile",
+        "make/uat.mk",
     ],
 )
 def test_every_release_input_named_by_the_probe_contract_triggers_the_probe(path):
@@ -170,6 +174,16 @@ def test_every_release_input_named_by_the_probe_contract_triggers_the_probe(path
 )
 def test_unrelated_files_do_not_trigger_the_probe(path):
     assert launch.touches_probed_paths([path]) == []
+
+
+def test_a_renamed_file_counts_under_its_previous_path_too():
+    rows = [
+        {"filename": "tests/uat/configs/gate-02.yaml", "previous_filename": "tests/uat/configs/release-gate-02.yaml"},
+        {"filename": "README.md"},
+    ]
+    files = launch.changed_files(REPOSITORY, 5, lambda *args: rows)
+    assert files == ["tests/uat/configs/gate-02.yaml", "tests/uat/configs/release-gate-02.yaml", "README.md"]
+    assert launch.touches_probed_paths(files) == ["tests/uat/configs/release-gate-02.yaml"]
 
 
 def test_changed_files_pages_through_the_whole_pull_request():

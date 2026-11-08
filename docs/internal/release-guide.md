@@ -294,8 +294,9 @@ probe's permissions and the issue-3947 graph shape.
 `release-v2-probe.yml` runs on every pull request. When the pull request
 touches `release-v2.yml`, `trunk-uat.yml`, `trunk.yml`, `release-uat-env`, the
 probe workflow, `scripts/release_*.py`, `scripts/release_requirements.txt`,
-`scripts/update_version.py`, `tests/uat/gate_summary.py` or a release-gate UAT
-config, it dispatches both probe variants
+`scripts/update_version.py`, `tests/uat/gate_summary.py`, `tests/uat/_cli.py`,
+`tests/uat/config.py`, `Makefile`, `make/uat.mk` or a release-gate UAT
+config (a rename counts under both its old and new path), it dispatches both probe variants
 from the pull request branch and fails unless both succeed; otherwise it passes
 at once. It runs on every pull request so that it can be made a required
 check without leaving unrelated pull requests pending. The probe builds its own

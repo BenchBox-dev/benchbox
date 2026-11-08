@@ -25,6 +25,10 @@ PROBED_PATHS = (
     "scripts/update_version.py",
     "tests/uat/gate_summary.py",
     "tests/uat/configs/release-gate-*.yaml",
+    "tests/uat/_cli.py",
+    "tests/uat/config.py",
+    "Makefile",
+    "make/uat.mk",
 )
 Gh = Callable[..., Any]
 GH_EXECUTABLE = "gh"
@@ -47,7 +51,11 @@ def changed_files(repository: str, pull_request: int, runner: Gh = gh) -> list[s
     files: list[str] = []
     for page in range(1, 31):
         rows = runner("api", f"repos/{repository}/pulls/{pull_request}/files?per_page=100&page={page}")
-        files.extend(str(row["filename"]) for row in rows)
+        for row in rows:
+            files.append(str(row["filename"]))
+            previous = row.get("previous_filename")
+            if previous:
+                files.append(str(previous))
         if len(rows) < 100:
             return files
     raise RuntimeError(f"pull request {pull_request} lists more than 3000 changed files")
