@@ -27783,15 +27783,10 @@
       "title": "Polars maintenance and write-primitive operations call collect() directly and ignore the requested execution engine"
     },
     "polars-plan-companion-leaks-local-paths-20261107": {
-      "claim": {
-        "expires_at": "2026-11-09T00:43:53Z",
-        "generation": "5e1582de377b46fa870d2461e1a03927",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Stop Polars plans companion from embedding absolute local file paths and an empty test-type key"
     },
     "polars-platform-adapter": {
