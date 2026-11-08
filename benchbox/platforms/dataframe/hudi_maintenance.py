@@ -32,10 +32,11 @@ from benchbox.core.dataframe.maintenance_interface import (
 
 logger = logging.getLogger(__name__)
 
-HUDI_VERSION = "1.1.0"
+HUDI_VERSION = "1.2.1"
 HUDI_BUNDLES_BY_SPARK: dict[tuple[int, int], str] = {
     (3, 5): f"org.apache.hudi:hudi-spark3.5-bundle_2.12:{HUDI_VERSION}",
     (4, 0): f"org.apache.hudi:hudi-spark4.0-bundle_2.13:{HUDI_VERSION}",
+    (4, 1): f"org.apache.hudi:hudi-spark4.1-bundle_2.13:{HUDI_VERSION}",
 }
 
 
@@ -51,11 +52,13 @@ def validate_hudi_spark_version(spark_session: Any) -> None:
     version = getattr(spark_session, "version", None)
     if not isinstance(version, str) or hudi_bundle_for_spark(version) is not None:
         return
+    parts = version.split(".")
+    missing = f"hudi-spark{parts[0]}.{parts[1]}-bundle" if len(parts) > 1 else "a matching hudi-spark bundle"
     supported = ", ".join(
         f"Spark {major}.{minor} with {bundle}" for (major, minor), bundle in HUDI_BUNDLES_BY_SPARK.items()
     )
     raise RuntimeError(
-        f"Hudi {HUDI_VERSION} has no bundle that works on Spark {version}. Supported pairs: {supported}. "
+        f"Hudi {HUDI_VERSION} publishes no {missing} for Spark {version}, so it has no bundle that works on Spark {version}. Supported pairs: {supported}. "
         "Use one of these Spark versions for Hudi maintenance."
     )
 
