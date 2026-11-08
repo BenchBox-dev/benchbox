@@ -95,32 +95,24 @@ def _load_timing_field_helpers():
 ) = _load_timing_field_helpers()
 
 
-PRIVATE_LOCAL_PATH_RE = re.compile(
-    r"(?<![A-Za-z0-9_])(?:"
-    r"(?:~|/Users|/home|/root|/private/var|/var/folders|/var/run|/Volumes)/[^\s'\",;)]*"
-    r"|[A-Za-z]:\\Users\\[^\s'\",;)]*"
-    r")",
-    flags=re.IGNORECASE,
-)
+def _load_local_path_detector():
+    helper_path = Path(__file__).resolve().parents[1] / "core" / "dataframe" / "local_path_detector.py"
+    name = "_benchbox_local_path_detector"
+    cached = sys.modules.get(name)
+    if cached is not None:
+        return cached
+    spec = importlib.util.spec_from_file_location(name, helper_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load local path detector from {helper_path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
-def find_public_path_leaks(value: Any, key_path: tuple[str, ...] = ()) -> list[str]:
-    leaks: list[str] = []
-    pending: list[tuple[Any, tuple[str, ...]]] = [(value, key_path)]
-    while pending:
-        node, path = pending.pop()
-        if isinstance(node, dict):
-            for key, child in node.items():
-                label = str(key)
-                if isinstance(key, str) and PRIVATE_LOCAL_PATH_RE.search(key):
-                    label = "<key>"
-                    leaks.append(".".join((*path, label)))
-                pending.append((child, (*path, label)))
-        elif isinstance(node, (list, tuple, set, frozenset)):
-            pending.extend((child, (*path, str(index))) for index, child in enumerate(node))
-        elif isinstance(node, str) and PRIVATE_LOCAL_PATH_RE.search(node):
-            leaks.append(".".join(path) or "<root>")
-    return leaks
+_local_path_detector = _load_local_path_detector()
+PRIVATE_LOCAL_PATH_RE = _local_path_detector.PRIVATE_LOCAL_PATH_RE
+find_public_path_leaks = _local_path_detector.find_public_path_leaks
 
 
 SUBMISSION_NOTES_MAX_LEN = 500
