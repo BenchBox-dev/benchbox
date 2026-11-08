@@ -503,6 +503,7 @@ def _with_ledger_test(repo: Path, *files: str) -> None:
         "tests/unit/test_auto_merge_new.py",
         "tests/unit/test_release_new.py",
         ".pre-commit-config.yaml",
+        pt.LEDGER_DOCUMENT,
     ],
 )
 def test_a_ledger_governed_path_selects_the_ledger_coverage_test(repo: Path, path: str) -> None:

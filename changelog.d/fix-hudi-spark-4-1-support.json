@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Hudi maintenance now supports Spark 4.1 through Hudi 1.2.1 and its hudi-spark4.1 bundle; Spark 4.2 is refused with an error naming the missing hudi-spark4.2 bundle."
+    }
+  ]
+}

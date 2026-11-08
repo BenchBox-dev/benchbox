@@ -63,9 +63,9 @@ class TestHudiSparkVersionGuard:
     @pytest.mark.parametrize(
         ("version", "bundle"),
         [
-            ("3.5.7", "org.apache.hudi:hudi-spark3.5-bundle_2.12:1.1.0"),
-            ("4.0.1", "org.apache.hudi:hudi-spark4.0-bundle_2.13:1.1.0"),
-            ("4.1.1", None),
+            ("3.5.7", "org.apache.hudi:hudi-spark3.5-bundle_2.12:1.2.1"),
+            ("4.0.1", "org.apache.hudi:hudi-spark4.0-bundle_2.13:1.2.1"),
+            ("4.1.1", "org.apache.hudi:hudi-spark4.1-bundle_2.13:1.2.1"),
             ("4.2.0", None),
             ("3.4.1", None),
             ("garbage", None),
@@ -77,20 +77,22 @@ class TestHudiSparkVersionGuard:
         assert hudi_bundle_for_spark(version) == bundle
 
     @pytest.mark.skipif(not PYSPARK_AVAILABLE, reason="PySpark not installed")
-    @pytest.mark.parametrize("version", ["4.1.1", "4.2.0"])
-    def test_unsupported_spark_refused(self, version):
+    @pytest.mark.parametrize(
+        ("version", "missing"), [("4.2.0", "hudi-spark4.2-bundle"), ("3.4.1", "hudi-spark3.4-bundle")]
+    )
+    def test_unsupported_spark_refused(self, version, missing):
         from benchbox.platforms.dataframe.hudi_maintenance import HudiMaintenanceOperations
 
         mock_spark = MagicMock(spec=SparkSession)
         mock_spark.version = version
 
         with pytest.raises(
-            RuntimeError, match=rf"no bundle that works on Spark {version}.*hudi-spark4.0-bundle_2.13:1.1.0"
+            RuntimeError, match=rf"publishes no {missing} for Spark {version}.*hudi-spark4.1-bundle_2.13:1.2.1"
         ):
             HudiMaintenanceOperations(spark_session=mock_spark)
 
     @pytest.mark.skipif(not PYSPARK_AVAILABLE, reason="PySpark not installed")
-    @pytest.mark.parametrize("version", ["3.5.7", "4.0.1"])
+    @pytest.mark.parametrize("version", ["3.5.7", "4.0.1", "4.1.1"])
     def test_supported_spark_accepted(self, version):
         from benchbox.platforms.dataframe.hudi_maintenance import HudiMaintenanceOperations
 
