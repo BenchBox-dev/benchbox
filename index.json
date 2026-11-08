@@ -12482,6 +12482,13 @@
       "status": "done",
       "title": "Alarm daily when Trunk job durations rise more than 15% over the prior week"
     },
+    "ci-uat-stability-umbrella-20261108": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Umbrella: ci-uat-stability batch (OBT SQL gate nightly timeouts, SingleStore TPC-DS 24a OOM) and the 50-run choke-point acceptance"
+    },
     "ci-usage-metrics-report-20261024": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Both members finished with their acceptance evidence recorded.",
+    "The final batch PR merged and the batch finished.",
+    "heavy-choke-points-50-run-acceptance-20261108 finished with logs or reopened as a defect."
+  ],
+  "context": "Leader: CiUatStabilityBatch (2026-11-08). Plan: investigate both members first; a member with no code change is finished serially and removed before registration.",
+  "description": "Batch notes for feature batch ci-uat-stability. Members: obt-sql-gate-nightly-timeouts-20261108 and singlestore-tpcds-power-oom-24a-20261108. The leader also runs the verification of heavy-choke-points-50-run-acceptance-20261108 outside the batch. This item is never a batch member.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-08T17:30:35Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ecd619ca14754781b082c8d1efe1fc36",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}
