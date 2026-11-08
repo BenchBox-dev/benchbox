@@ -56,6 +56,10 @@ def test_start_creates_a_role_integration_worktree_and_a_registrable_payload(wor
     assert bi._is_clean(worktree)
 
 
+def test_scope_digest_matches_the_hash_the_tracker_computes() -> None:
+    assert bi.scope_digest(SCOPE) == TRACKER_SCOPE_HASH
+
+
 @pytest.mark.parametrize(
     ("members", "scope"),
     [
