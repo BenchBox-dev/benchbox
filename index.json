@@ -35866,6 +35866,13 @@
       "status": "done",
       "title": "Decide and move the TPC-DS runner overrides and TPC-DI value-changing rewrites left in BenchBox after F10"
     },
+    "sqlglot-fork-readiness-accepts-excess-app-permissions-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Fork App readiness reports ready even when the installation has excess write permissions"
+    },
     "sqlglot-fork-readiness-prerequisites-20261107": {
       "claim": null,
       "needs": [],
