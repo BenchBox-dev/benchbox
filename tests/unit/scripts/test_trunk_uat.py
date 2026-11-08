@@ -755,3 +755,130 @@ def test_shard_evidence_names_are_checked_by_the_release_evidence_detector(tmp_p
         f"release-uat-trunk-{sha('a')}-stage3-shard: the shard executed zero cells",
     ]
     assert trunk_uat.SHARD_DIRECTORY.fullmatch(f"release-uat-trunk-{sha('a')}-stage3-shard") is not None
+
+
+def _git(repo: Path, *args: str) -> str:
+    return subprocess.run(
+        ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@example.com", *args],
+        capture_output=True,
+        encoding="utf-8",
+        check=True,
+    ).stdout.strip()
+
+
+def _repo_with_version(tmp_path: Path, version: str) -> tuple[Path, str]:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    (repo / "pyproject.toml").write_bytes(f'[project]\nname = "benchbox"\nversion = "{version}"\n'.encode())
+    _git(repo, "add", "pyproject.toml")
+    _git(repo, "commit", "-q", "-m", "version")
+    return repo, _git(repo, "rev-parse", "HEAD")
+
+
+class AdmissionWorld:
+    def __init__(self, tmp_path: Path, monkeypatch, version: str, produced: str) -> None:
+        self.repo, self.sha = _repo_with_version(tmp_path, version)
+        self.output = tmp_path / "out" / "admitted"
+        self.selections = 0
+        self.changed_producer = False
+        self.verified_binaries: list[list[str]] = []
+        files = {f"benchbox-{produced}-py3-none-any.whl": b"wheel", f"benchbox-{produced}.tar.gz": b"sdist"}
+        self.producer = {"files": {name: {"size": len(data)} for name, data in files.items()}}
+        self.run = {"id": 11, "run_attempt": 1}
+        self.job = {"id": 12}
+        self.artifact = {"id": 5, "digest": "sha256:" + "0" * 64, "expires_at": "2026-12-01T00:00:00Z"}
+        consumer = trunk_uat._consumer
+        monkeypatch.setattr(consumer, "select_producer", self.select_producer)
+        monkeypatch.setattr(consumer, "_download", lambda artifact_id, archive: archive.write_bytes(b"zip"))
+        monkeypatch.setattr(consumer, "verify_archive", lambda archive, artifact: files)
+        monkeypatch.setattr(consumer, "verify_producer_receipt", lambda directory, run, job: self.producer)
+        monkeypatch.setattr(
+            consumer,
+            "_verify_committed_binaries",
+            lambda root, commit, distributions: self.verified_binaries.append(sorted(p.name for p in distributions)),
+        )
+        self.output.parent.mkdir()
+        self.output.parent.chmod(0o700)
+
+    def select_producer(self, sha: str, api):
+        self.selections += 1
+        run = {**self.run, "id": 99} if self.changed_producer and self.selections > 1 else self.run
+        return run, self.job, self.artifact
+
+    def admit(self) -> dict:
+        return trunk_uat.admit(self.repo, self.sha, self.output, api=lambda path: {})
+
+
+def test_admit_publishes_the_verified_distribution_and_a_receipt_for_the_commit_version(tmp_path, monkeypatch):
+    world = AdmissionWorld(tmp_path, monkeypatch, "0.5.1", "0.5.1")
+    receipt = world.admit()
+    assert (receipt["tag"], receipt["version"], receipt["head_sha"]) == ("v0.5.1", "0.5.1", world.sha)
+    assert world.selections == 2
+    assert world.verified_binaries == [["benchbox-0.5.1-py3-none-any.whl", "benchbox-0.5.1.tar.gz"]]
+    published = json.loads((world.output / trunk_uat.ADMISSION_RECEIPT).read_bytes())
+    assert published == receipt
+    assert (world.output / "benchbox-0.5.1.tar.gz").read_bytes() == b"sdist"
+    assert not list(world.output.parent.glob("trunk-uat-admission-*"))
+
+
+def test_admit_refuses_a_distribution_whose_version_differs_from_the_commit(tmp_path, monkeypatch):
+    world = AdmissionWorld(tmp_path, monkeypatch, "0.5.1", "0.5.2")
+    with pytest.raises(ValueError, match="distribution package/version mismatch"):
+        world.admit()
+    assert not world.output.exists()
+    assert world.verified_binaries == []
+
+
+def test_admit_refuses_when_the_producer_changes_during_admission(tmp_path, monkeypatch):
+    world = AdmissionWorld(tmp_path, monkeypatch, "0.5.1", "0.5.1")
+    world.changed_producer = True
+    with pytest.raises(ValueError, match="producer changed during admission"):
+        world.admit()
+    assert not world.output.exists()
+
+
+def test_admit_refuses_a_malformed_commit_and_an_existing_output(tmp_path, monkeypatch):
+    world = AdmissionWorld(tmp_path, monkeypatch, "0.5.1", "0.5.1")
+    with pytest.raises(ValueError, match="invalid commit SHA"):
+        trunk_uat.admit(world.repo, "not-a-sha", world.output, api=lambda path: {})
+    world.output.mkdir()
+    with pytest.raises(ValueError, match="output already exists"):
+        world.admit()
+
+
+def test_changed_paths_list_both_sides_of_a_move_out_of_a_guarded_tree(tmp_path):
+    repo, _ = _repo_with_version(tmp_path, "0.5.1")
+    (repo / "benchbox").mkdir()
+    (repo / "benchbox" / "x.py").write_bytes(b"value = 1\nother = 2\nthird = 3\n" * 20)
+    _git(repo, "add", "benchbox/x.py")
+    _git(repo, "commit", "-q", "-m", "add")
+    middle = _git(repo, "rev-parse", "HEAD")
+    (repo / "_project").mkdir()
+    _git(repo, "mv", "benchbox/x.py", "_project/x.py")
+    _git(repo, "commit", "-q", "-m", "move")
+    head = _git(repo, "rev-parse", "HEAD")
+    changed = trunk_uat.git_changed_paths(repo, middle, head)
+    assert changed is not None and {"benchbox/x.py", "_project/x.py"} <= set(changed)
+    assert trunk_uat.skip_path_changes(changed) == ["benchbox/x.py"]
+
+
+def _timed_out_record(tmp_path: Path, state: str, start: str, end: str):
+    github = Github()
+    github.jobs[42] = [job("UAT stage 1 sqlite", start, end, state)]
+    write_shard(tmp_path / "evidence", 1, "sqlite", [passed_row("sqlite", "a.log")])
+    return build(github, tmp_path, job_results={"admit": "success", "uat-stage1": state, "gate": "skipped"})
+
+
+def test_a_shard_cancelled_at_the_hosted_timeout_is_recorded_as_an_executed_run_past_the_gate(tmp_path):
+    record, rows = _timed_out_record(tmp_path, "cancelled", "00:00", "06:00")
+    assert record["outcome"] == "executed" and rows
+    assert record["over_gate"] is True
+    assert record["timed_out_shards"] == ["stage 1 sqlite"]
+    assert record["job_results"]["uat-stage1"] == "cancelled"
+
+
+def test_a_shard_cancelled_early_is_still_a_cancelled_run_not_a_baseline(tmp_path):
+    record, rows = _timed_out_record(tmp_path, "cancelled", "00:00", "01:00")
+    assert record["outcome"] == "cancelled" and rows == []
+    assert "timed_out_shards" not in record

@@ -34,6 +34,7 @@ HISTORY_SCHEMA = 1
 BASELINE_RUN_LIMIT = 30
 RUNNER_HOUR_GATE = 30.0
 JOB_HOUR_LIMIT = 6.0
+SHARD_TIMEOUT_HOURS = 5.9
 LOG_TAIL_BYTES = 64 * 1024
 HARNESS_FAILURE_FIELDS = (
     "failure_kind",
@@ -85,7 +86,9 @@ def skip_path_changes(changed: list[str]) -> list[str]:
 
 def git_changed_paths(root: Path, base: str, head: str) -> list[str] | None:
     result = subprocess.run(
-        ["git", "-C", str(root), "diff", "--name-only", "-z", base, head], capture_output=True, check=False
+        ["git", "-C", str(root), "diff", "--no-renames", "--name-only", "-z", base, head],
+        capture_output=True,
+        check=False,
     )
     if result.returncode != 0:
         return None
@@ -425,7 +428,13 @@ def build_record(
         "verdict": _gate_verdict(gate),
         "job_results": job_results,
     }
-    if "cancelled" in job_results.values():
+    costs = job_costs(run_jobs(api, run_id, attempt))
+    timed_out = [
+        f"stage {item['stage']} {item['shard']}"
+        for item in costs["shards"]
+        if item["state"] == "cancelled" and item["hours"] >= SHARD_TIMEOUT_HOURS
+    ]
+    if "cancelled" in job_results.values() and not timed_out:
         others = active_runs(api, RELEASE_WORKFLOW_FILE)
         record["outcome"] = "cancelled"
         record["reason"] = (
@@ -435,9 +444,11 @@ def build_record(
         )
         return record, []
     cells, shard_directories = read_shard_cells(evidence)
-    costs = job_costs(run_jobs(api, run_id, attempt))
     record.update(costs)
-    record["over_gate"] = costs["runner_hours"] > RUNNER_HOUR_GATE or costs["longest_shard_hours"] > JOB_HOUR_LIMIT
+    record["timed_out_shards"] = timed_out
+    record["over_gate"] = (
+        bool(timed_out) or costs["runner_hours"] > RUNNER_HOUR_GATE or costs["longest_shard_hours"] > JOB_HOUR_LIMIT
+    )
     passed = sum(1 for cell in cells if cell["status"] == "passed")
     record["cells"] = {"total": len(cells), "passed": passed, "failed": len(cells) - passed}
     if not cells:
