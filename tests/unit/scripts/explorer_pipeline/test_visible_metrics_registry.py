@@ -132,3 +132,12 @@ class TestRegistryCoverage:
         referenced = {m["table"] for m in registry["metrics"]}
         unknown = [t for t in referenced if t not in db_columns]
         assert not unknown, f"registry references tables absent from DB: {sorted(unknown)}"
+
+
+class TestHasPlansContract:
+    def test_has_plans_source_field_requires_captured_plan(self, registry: dict) -> None:
+        entry = next(m for m in registry["metrics"] if m["table"] == "results" and m["column"] == "has_plans")
+        source_field = entry["source_field"]
+        assert "sidecar exists" not in source_field
+        assert "captured" in source_field
+        assert "errors-only" in source_field
