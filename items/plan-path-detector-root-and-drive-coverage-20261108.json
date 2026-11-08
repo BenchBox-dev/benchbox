@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Establish the privacy contract for arbitrary local roots versus neutral public placeholders; demonstrate actual leaked paths rather than blindly rejecting every slash or /data example.",
+    "Handle configured data/output roots and supported Windows drive/UNC forms consistently in capture, anonymization and public validation, reusing shared policy.",
+    "Propagate the comparison suite known data directory where available so safe relative table tails remain useful.",
+    "Regression cases cover nested raw plan strings, Windows and POSIX roots, URLs and public placeholders; verify Spark/LakeSail table extraction and fingerprint semantics are preserved or explicitly migrated."
+  ],
+  "context": "Reported limitations from batch leader, not a new exhaustive detector audit. Do not strip whole Spark scan paths if that removes table identities; the publication batch already caught that failure once.",
+  "description": "Publication investigation found the local-path detector misses /tmp, /data, /mnt, /opt and Windows drive letters other than C. It also found the comparison suite redacts plan text without passing its known data directory. Such plans may leak local layout or lose useful scan-table names when sanitized using a whole-path fallback.",
+  "links": [
+    "benchbox/core/results/anonymization.py",
+    "https://github.com/BenchBox-dev/BenchBox/pull/4041"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-08T03:37:21Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "13cd6dbfb7eb4197a9e374c88156be47",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    }
+  ]
+}

@@ -27522,6 +27522,13 @@
       "status": "done",
       "title": "Plan-capture robustness: explicit phase-eligibility, bounded timeout-thread leak, per-result plan identity, comparable-subset honesty"
     },
+    "plan-path-detector-root-and-drive-coverage-20261108": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Cover non-home paths and Windows drives in plan redaction and leak detection"
+    },
     "plan-review-recorded-decision-reconciliation": {
       "claim": null,
       "needs": [],
