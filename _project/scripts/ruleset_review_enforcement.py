@@ -123,8 +123,8 @@ def tag_protection_findings(
     if not tag_rulesets:
         return [
             "no ruleset with target='tag' exists: any collaborator with push access can "
-            f"create a {TAG_REF_PATTERN} tag on a main-ancestor commit and reach release.yml's "
-            "publish path with no human gate"
+            f"create a {TAG_REF_PATTERN} tag and trigger release-v2.yml without the "
+            "human-controlled tag-creation gate"
         ]
     problems: list[str] = []
     for ruleset in tag_rulesets:
