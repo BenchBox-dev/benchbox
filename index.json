@@ -27536,6 +27536,13 @@
       "status": "open",
       "title": "Anonymize text-plan fields when exporting existing plans companions"
     },
+    "plans-publish-boundary-path-validation-20261108": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Check plans companions for local paths before publishing results"
+    },
     "platform-adapter-abstract-method-implementation-completed": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Reproduce with a legacy text companion and SQL raw_explain_output containing synthetic local paths through a dry-run or local publication destination.",
+    "Apply the existing public privacy contract before companion upload/copy; sanitize or reject unsafe files with redacted actionable diagnostics and no partial publication.",
+    "Preserve supported private raw exports and intentional identifiers; do not change private-export policy merely to mask a public-boundary defect.",
+    "Tests cover safe, unsafe, errors-only and missing companions; prove behavior with a real publication dry-run without uploading or deleting hosted data."
+  ],
+  "context": "Publisher bypass and SQL behavior reported by publication batch leader; reproduce at current head before implementing. New hosted data removal or production publication needs separate approval.",
+  "description": "Publication investigation reported benchbox publish run copies companion files byte-for-byte without a path check. Capture-time cleanup cannot protect older or externally produced companions. SQL plans also retain local paths in raw_explain_output when exported without anonymization; a test currently treats that private-export behavior as intentional. The public boundary must not mistake such files for publication-safe artifacts.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/4041",
+    "benchbox/core/results/anonymization.py",
+    "tests/unit/test_results_exporter.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-08T03:37:18Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9e7242c4c1cc4ad0b97c69ccec452ead",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    }
+  ]
+}
