@@ -5394,7 +5394,7 @@
         }
       },
       "integration_branch": "feat/plan-privacy",
-      "integration_head": "cccfaee59d2df2fc16fef2c72b7f5b3c5ed88c33",
+      "integration_head": "292bd2eb244413e72b97636f4f8b8b2de0aca275",
       "integration_log": [
         {
           "at": "2026-11-08T13:34:01Z",
@@ -5446,6 +5446,21 @@
           "op_id": "4d2e40d89d9c4e6dabad13a72e6a745e",
           "previous_head": "c4540c56034f48441855e642c6938d31eac5e149",
           "seq": 5
+        },
+        {
+          "at": "2026-11-08T18:31:22Z",
+          "changed_files": [
+            "tests/integration/worktree/test_batch_skill_delivery.py",
+            "tests/unit/test_constraint_configuration_centralization.py"
+          ],
+          "head": "292bd2eb244413e72b97636f4f8b8b2de0aca275",
+          "kind": "fix",
+          "op_id": "ded85cb0a8c64969959794516da091c1",
+          "previous_head": "cccfaee59d2df2fc16fef2c72b7f5b3c5ed88c33",
+          "requires_acceptance": [
+            "public-fixture-home-paths-audit-20261108"
+          ],
+          "seq": 6
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-privacy",
