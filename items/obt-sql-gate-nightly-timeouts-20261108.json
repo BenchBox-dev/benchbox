@@ -10,6 +10,156 @@
   },
   "context": "Fix and local evidence in batch ci-uat-stability PR #4058. Local SF0.01 timings: PostgreSQL q58 15.9s -> 0.01s; q60 13.7s -> 0.4s; q83 timeout -> 0.09s; SQLite q95 timeout -> <=0.17s. Hosted logs 2026-11-04..08 show PG q58/q60 timeouts in all five runs; older logs lack detailed SQLite timings. Per user instruction, finish with merged fix and local evidence; check 3 consecutive scheduled OBT nightlies after merge, not claimed as observed now.",
   "description": "Reported during the CI-reliability work (#4031). In the nightly t3:sql-execution-gate-obt job, SQLite tpcds_obt-augmented q95 hits the 15 s timeout, and PostgreSQL OBT q58 and q60 time out as well. An experiment indexing the OBT key columns did not help and was reverted. The job is red on scheduled nightlies (for example run 42241036225).\n\nChange. Measure the hosted timings, find why these queries are slow on the OBT schema (plan, missing statistics, a correlated subquery), and fix the cause, or record evidence-backed timeout entries as required (not optional) entries.\n\nGuardrails: work in a linked worktree; no explanatory comments; do not just raise the timeout without measurements.",
+  "final_evidence": {
+    "batch_id": "ci-uat-stability",
+    "changed_files": [
+      "benchbox/platforms/singlestore.py",
+      "changelog.d/feat-ci-uat-stability--obt-sql-gate-nightly-timeouts-20261108.json",
+      "changelog.d/feat-ci-uat-stability--singlestore-tpcds-power-oom-24a-20261108.json",
+      "docs/internal/sql-execution-evidence-gate.md",
+      "scripts/sql_execution_gate/engines.py",
+      "scripts/sql_execution_gate/expected_differences.json",
+      "scripts/sql_execution_gate/obt.py",
+      "tests/unit/platforms/test_singlestore_analyze_after_load.py",
+      "tests/unit/scripts/test_sql_execution_gate.py"
+    ],
+    "clean": true,
+    "current_acceptance": {
+      "obt-sql-gate-nightly-timeouts-20261108": {
+        "clean": true,
+        "command": [
+          "uv",
+          "run",
+          "--",
+          "python",
+          "-m",
+          "pytest",
+          "-n",
+          "0",
+          "-q",
+          "tests/unit/scripts/test_sql_execution_gate.py",
+          "tests/unit/test_ledger_coverage.py"
+        ],
+        "dropped_paths": [],
+        "ran_command": [
+          "uv",
+          "run",
+          "--",
+          "python",
+          "-m",
+          "pytest",
+          "-n",
+          "0",
+          "-q",
+          "tests/unit/scripts/test_sql_execution_gate.py",
+          "tests/unit/test_ledger_coverage.py"
+        ],
+        "revision": "1a480fb188947d8001acfdb9adac10b89511af72",
+        "status": "passed",
+        "suite": "member-tests",
+        "worktree": "/Users/joe/Developer/BenchBox.wt-ci-uat-stability"
+      },
+      "singlestore-tpcds-power-oom-24a-20261108": {
+        "clean": true,
+        "command": [
+          "uv",
+          "run",
+          "--",
+          "python",
+          "-m",
+          "pytest",
+          "-n",
+          "0",
+          "-q",
+          "tests/integration/platforms/test_singlestore_decimal_load_live.py",
+          "tests/integration/platforms/test_singlestore_live.py",
+          "tests/integration/platforms/test_singlestore_tpcds_maintenance_live.py",
+          "tests/integration/test_manifest_driven_loading.py",
+          "tests/integration/test_misc_plan_capture_live.py",
+          "tests/integration/test_throughput_session_isolation.py",
+          "tests/system/test_module_size_thresholds.py",
+          "tests/uat/test_connection_registry_drift.py",
+          "tests/uat/test_singlestore_joinorder_prune.py",
+          "tests/unit/core/tpcds/test_maintenance_singlestore_dialect.py",
+          "tests/unit/core/tpch/test_tpch_refresh_native_ingest.py",
+          "tests/unit/core/write_primitives/test_singlestore_decimal_guard_overrides.py",
+          "tests/unit/platforms/test_misc_plan_capture.py",
+          "tests/unit/platforms/test_singlestore_adapter.py",
+          "tests/unit/platforms/test_singlestore_analyze_after_load.py",
+          "tests/unit/platforms/test_singlestore_decimal_load_guard.py",
+          "tests/unit/platforms/test_singlestore_parquet_chunks.py",
+          "tests/unit/platforms/test_singlestore_refresh_ingest_nulls.py",
+          "tests/unit/platforms/test_tpcds_maintenance_primary_keys.py",
+          "tests/unit/sql_compat/test_singlestore_rules.py"
+        ],
+        "dropped_paths": [],
+        "ran_command": [
+          "uv",
+          "run",
+          "--",
+          "python",
+          "-m",
+          "pytest",
+          "-n",
+          "0",
+          "-q",
+          "tests/integration/platforms/test_singlestore_decimal_load_live.py",
+          "tests/integration/platforms/test_singlestore_live.py",
+          "tests/integration/platforms/test_singlestore_tpcds_maintenance_live.py",
+          "tests/integration/test_manifest_driven_loading.py",
+          "tests/integration/test_misc_plan_capture_live.py",
+          "tests/integration/test_throughput_session_isolation.py",
+          "tests/system/test_module_size_thresholds.py",
+          "tests/uat/test_connection_registry_drift.py",
+          "tests/uat/test_singlestore_joinorder_prune.py",
+          "tests/unit/core/tpcds/test_maintenance_singlestore_dialect.py",
+          "tests/unit/core/tpch/test_tpch_refresh_native_ingest.py",
+          "tests/unit/core/write_primitives/test_singlestore_decimal_guard_overrides.py",
+          "tests/unit/platforms/test_misc_plan_capture.py",
+          "tests/unit/platforms/test_singlestore_adapter.py",
+          "tests/unit/platforms/test_singlestore_analyze_after_load.py",
+          "tests/unit/platforms/test_singlestore_decimal_load_guard.py",
+          "tests/unit/platforms/test_singlestore_parquet_chunks.py",
+          "tests/unit/platforms/test_singlestore_refresh_ingest_nulls.py",
+          "tests/unit/platforms/test_tpcds_maintenance_primary_keys.py",
+          "tests/unit/sql_compat/test_singlestore_rules.py"
+        ],
+        "revision": "1a480fb188947d8001acfdb9adac10b89511af72",
+        "status": "passed",
+        "suite": "member-tests",
+        "worktree": "/Users/joe/Developer/BenchBox.wt-ci-uat-stability"
+      }
+    },
+    "final_pr": {
+      "head": "1a480fb188947d8001acfdb9adac10b89511af72",
+      "node_id": "PR_kwDOQ7J64c8AAAABNs_o7Q",
+      "number": 4058,
+      "repository": "BenchBox-dev/BenchBox"
+    },
+    "integration_branch": "feat/ci-uat-stability",
+    "integration_head": "1a480fb188947d8001acfdb9adac10b89511af72",
+    "member_heads": {
+      "obt-sql-gate-nightly-timeouts-20261108": "aff09a7b0a9fcd804d33715b7a6a0a18fc024ed9",
+      "singlestore-tpcds-power-oom-24a-20261108": "c9f9db626081259c84ff0249539170fb18a80959"
+    },
+    "member_ranges": {
+      "obt-sql-gate-nightly-timeouts-20261108": {
+        "base": "205cae77675c7cb7236fcaa1a5873fe23420795d",
+        "head": "aff09a7b0a9fcd804d33715b7a6a0a18fc024ed9"
+      },
+      "singlestore-tpcds-power-oom-24a-20261108": {
+        "base": "d671afc54d4f69c6e4c43de10358f5a3f9b8e817",
+        "head": "c9f9db626081259c84ff0249539170fb18a80959"
+      }
+    },
+    "project_id": "benchbox",
+    "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+    "scope_hash": "49341df7c33e79a69d83a1dd07cb2b383c137104772904edff9243ab1985cabf",
+    "status": "passed",
+    "suite": "member-reruns",
+    "tree_revision": "1a480fb188947d8001acfdb9adac10b89511af72",
+    "tree_worktree": "/Users/joe/Developer/BenchBox.wt-ci-uat-stability"
+  },
   "prepared": {
     "accepted_head": "aff09a7b0a9fcd804d33715b7a6a0a18fc024ed9",
     "batch_id": "ci-uat-stability",
@@ -111,6 +261,15 @@
       "generation": "b96369425d1c46d6a0d274b4b55e468f",
       "op": "take",
       "op_id": "5e9e565a033d4311b84747c8e4eae559",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-08T20:09:20Z",
+      "client": "omp-coding-agent",
+      "generation": "b96369425d1c46d6a0d274b4b55e468f",
+      "op": "finish",
+      "op_id": "b8bd3c66dbe04f268ab426d347e319f5",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
