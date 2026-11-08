@@ -90,10 +90,8 @@ convert the completed review, or an Independent Reviewer dispatched inside the
 authorized work, into a writer.
 
 In an integration-branch batch (the `todo` skill's prepared delivery), review
-happens at two points inside the authorized write: at each member's landing,
-and on the combined change before publication. Members run scoped checks; a
-member review, where the repository's protocol asks for one, is early feedback
-only. Before landing, the leader invokes the trusted reviewer against
+happens at two points inside the authorized write. Members run scoped checks and
+local review; before landing, the leader invokes the trusted reviewer against
 the exact captured base/head with executable and policy pinned to the same full
 trusted revision.
 Consume that invocation's accepted result and retain it in the prepared receipt;
