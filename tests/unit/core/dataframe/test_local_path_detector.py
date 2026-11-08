@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import re
 from pathlib import Path
 
 import pytest
@@ -39,6 +40,7 @@ _FIXTURES = Path(__file__).resolve().parents[3] / "fixtures" / "query_plans"
         "z:\\scratch\\x",
         "E:/bench/lineitem.parquet",
         "\\\\fileserver\\share\\tpch\\lineitem.parquet",
+        "//fileserver/share/tpch/lineitem.parquet",
         "Parquet SCAN [/tmp/bench/lineitem.parquet]",
         "Location: InMemoryFileIndex(1 paths)[file:/mnt/x/lineitem.parquet]",
         "Location: file:///opt/bench/x",
@@ -202,3 +204,27 @@ def _scan_tables(dag):
         if node.operator_type == LogicalOperatorType.SCAN:
             names.append(node.table_name)
     return sorted(names, key=str)
+
+
+_LEGACY_PATTERN = re.compile(
+    r"(?<![A-Za-z0-9_])(?:"
+    r"(?:~|/Users|/home|/root|/private/var|/var/folders|/var/run|/Volumes)/[^\s'\",;)]*"
+    r"|[A-Za-z]:\\Users\\[^\s'\",;)]*"
+    r")",
+    flags=re.IGNORECASE,
+)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Parquet SCAN [/tmp/bench/lineitem.parquet]",
+        "/mnt/disk1/tpch/lineitem.parquet",
+        "/opt/bench/lineitem.parquet",
+        "scan D:\\bench\\data\\orders.parquet",
+        "//fileserver/share/tpch/lineitem.parquet",
+    ],
+)
+def test_legacy_detector_missed_these_paths_and_the_shared_detector_flags_them(text):
+    assert _LEGACY_PATTERN.search(text) is None
+    assert find_public_path_leaks({"plan": text}) == ["plan"]

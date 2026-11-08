@@ -20,7 +20,8 @@ PRIVATE_LOCAL_PATH_RE = re.compile(
     rf"|[A-Za-z]:\\{_PATH_TAIL}"
     rf"|[A-Za-z]:/(?!/){_PATH_TAIL}"
     r")"
-    r"|(?<![A-Za-z0-9_\\])\\{2,}[A-Za-z0-9_.$-]+\\+" + _PATH_TAIL,
+    rf"|(?<![A-Za-z0-9_\\])\\{{2,}}[A-Za-z0-9_.$-]+\\+{_PATH_TAIL}"
+    rf"|(?<![A-Za-z0-9_:/\\])//[A-Za-z0-9_.$-]+/[A-Za-z0-9_.$-]+{_PATH_TAIL}",
     flags=re.IGNORECASE,
 )
 
