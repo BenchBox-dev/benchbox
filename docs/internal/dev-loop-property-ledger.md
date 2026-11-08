@@ -383,7 +383,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `todo_state_contract_check.py` | tooling | Tracker state contract |
 | `check_uv_lock_revision.py` | tooling | Lockfile hygiene |
 | `pr_review_followups.py` | pure-process | PR-loop mechanics |
-| `preflight_targets.py` | pure-process | Changed-file lint and test selection for the local preflight |
+| `preflight_targets.py` | pure-process | Changed-file lint and test selection for the local preflight, including the ledger coverage test for every ledger-governed path |
 | `dev_loop_pr_metrics.py` | pure-process | Program baseline metrics mechanics |
 | Remaining project scripts (ledger-catch-all: _project/scripts/) | product-safety | Sweep, corpus, and validation product code; reclassify individually before any deletion |
 | `_project/scripts/explorer_pipeline/browser_fixtures.py` | product-safety | Browser fixture queries for the site-inputs bundle |

@@ -10,10 +10,21 @@ and the protocol in
 and builds on todo-db's batch v2 design (todo-db ADR 0012).
 
 Status update (2026-11-02): the default changed after the pilot passed its rubric
-(PR #3921). An explicitly assigned cohesive batch now uses the loop by default;
-standalone, cross-repository, review-separated, and approval-separated work stays
+(PR #3921). A cohesive batch the owner assigned then used the loop by default;
+standalone, cross-repository, review-separated, and approval-separated work stayed
 serial. The capability requirement and the serial delivery of changes to the loop
-itself are unchanged.
+itself were unchanged.
+
+Status update (2026-11-07): the loop is opt-in again. Within five days of the
+default change, PR #4007 was aborted partway, the hold-label-and-batch-e2e batch
+was aborted twice and shipped as ordinary PR #3999, PR #4015 ran with one member,
+and parallel leaders stalled on one claim slot. Every failure fell back to serial,
+and the aborts came from batch-only machinery (frozen scopes, frozen receipt
+commands). The owner decided that feature delivery mode applies only when the
+owner names the batch, it has two or more members, and the registered-batch v2
+capability is present. One feature branch with one PR per feature, built by one
+session, is the default for related work. The capability requirement and the
+serial delivery of changes to the loop itself are unchanged.
 
 ## Context
 

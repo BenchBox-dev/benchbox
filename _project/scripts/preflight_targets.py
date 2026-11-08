@@ -59,6 +59,15 @@ SOURCE_GUARD_TESTS: dict[str, tuple[str, ...]] = {
     ".github/oracle-": ORACLE_CONSUMER_TESTS,
     ".github/theseus-lock.json": ORACLE_CONSUMER_TESTS,
 }
+LEDGER_COVERAGE_TEST = "tests/unit/test_ledger_coverage.py"
+LEDGER_GOVERNED = re.compile(
+    r"\.github/workflows/[^/]+\.yml"
+    r"|scripts/[^/]+\.py"
+    r"|_project/scripts/.+"
+    r"|tests/unit/(?:workflows|scripts|release)/.+"
+    r"|tests/unit/test_(?:auto_merge|release)_[^/]*"
+    r"|\.pre-commit-config\.yaml"
+)
 
 
 def _git_lines(repo: Path, *args: str) -> list[str]:
@@ -295,6 +304,8 @@ def map_tests(repo: Path, paths: list[str]) -> list[str]:
     for path in paths:
         selected.update(_workflow_tests(repo, path, test_files, texts))
         selected.update(EXTRA_TEST_MAP.get(path, ()))
+        if LEDGER_GOVERNED.fullmatch(path) and LEDGER_COVERAGE_TEST in test_files:
+            selected.add(LEDGER_COVERAGE_TEST)
         if not path.endswith(".py"):
             selected.update(_guard_tests(path, test_files))
             continue

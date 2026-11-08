@@ -474,3 +474,113 @@ def test_non_python_test_map_entries_name_existing_tests() -> None:
     missing = [test for tests in pt.EXTRA_TEST_MAP.values() for test in tests if not (root / test).is_file()]
 
     assert missing == []
+
+
+LEDGER_TEST = "tests/unit/test_ledger_coverage.py"
+
+
+def _with_ledger_test(repo: Path, *files: str) -> None:
+    _git(repo, "checkout", "main")
+    _write(repo, LEDGER_TEST)
+    for rel in files:
+        _write(repo, rel)
+    _commit_all(repo, "base")
+    _git(repo, "update-ref", "refs/remotes/origin/develop", "HEAD")
+    _git(repo, "checkout", "feature")
+    _git(repo, "reset", "--hard", "main")
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        ".github/workflows/batch-loop-e2e.yml",
+        "scripts/new_tool.py",
+        "_project/scripts/new_audit.py",
+        "_project/scripts/pyproject.toml",
+        "tests/unit/workflows/test_new_workflow.py",
+        "tests/unit/scripts/nested/test_new_script.py",
+        "tests/unit/release/test_new_release.py",
+        "tests/unit/test_auto_merge_new.py",
+        "tests/unit/test_release_new.py",
+        ".pre-commit-config.yaml",
+    ],
+)
+def test_a_ledger_governed_path_selects_the_ledger_coverage_test(repo: Path, path: str) -> None:
+    _with_ledger_test(repo)
+    _write(repo, path, "changed: 1\n")
+    _commit_all(repo)
+
+    selected = pt.map_tests(repo, pt.changed_paths(repo, "origin/develop"))
+
+    assert LEDGER_TEST in selected
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "tests/unit/workflows/test_gone.py",
+        "tests/unit/scripts/test_gone.py",
+        "tests/unit/release/test_gone.py",
+        "tests/unit/test_auto_merge_gone.py",
+        ".github/workflows/gone.yml",
+        "scripts/gone.py",
+    ],
+)
+def test_a_deleted_ledger_governed_file_selects_the_ledger_coverage_test(repo: Path, path: str) -> None:
+    _with_ledger_test(repo, path)
+    (repo / path).unlink()
+    _commit_all(repo)
+
+    paths = pt.changed_paths(repo, "origin/develop")
+
+    assert paths == [path]
+    assert pt.map_tests(repo, paths) == [LEDGER_TEST]
+
+
+@pytest.mark.parametrize("old", ["scripts/old_tool.py", "tests/unit/scripts/test_old.py"])
+def test_a_renamed_ledger_governed_file_selects_the_ledger_coverage_test(repo: Path, old: str) -> None:
+    _with_ledger_test(repo, old)
+    new = old.replace("old", "new")
+    _git(repo, "mv", old, new)
+    _commit_all(repo)
+
+    paths = pt.changed_paths(repo, "origin/develop")
+
+    assert paths == sorted([old, new])
+    assert LEDGER_TEST in pt.map_tests(repo, paths)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "benchbox/core/foo.py",
+        "tests/unit/core/test_foo.py",
+        "tests/unit/test_unrelated.py",
+        "tests/unit/test_auto.py",
+        "benchbox/data/sample.csv",
+        "scripts/sub/helper.py",
+        ".github/workflows/sub/ci.yml",
+        ".github/workflows/ci.yaml",
+    ],
+)
+def test_an_ungoverned_path_does_not_select_the_ledger_coverage_test(repo: Path, path: str) -> None:
+    _with_ledger_test(repo)
+    _write(repo, path, "changed: 1\n")
+    _commit_all(repo)
+
+    assert LEDGER_TEST not in pt.map_tests(repo, pt.changed_paths(repo, "origin/develop"))
+
+
+def test_the_cli_selects_the_ledger_coverage_test_for_a_new_workflow(
+    repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _with_ledger_test(repo)
+    _write(repo, ".github/workflows/batch-loop-e2e.yml", "name: e2e\n")
+    _commit_all(repo)
+
+    assert pt.main(["tests", "--repo-root", str(repo)]) == 0
+    assert LEDGER_TEST in capsys.readouterr().out.split()
+
+
+def test_the_ledger_coverage_test_exists() -> None:
+    assert (SCRIPT.parents[2] / pt.LEDGER_COVERAGE_TEST).is_file()

@@ -1,11 +1,12 @@
 # Batch delivery modes
 
-BenchBox has two delivery modes. An explicitly assigned cohesive batch uses
-feature delivery mode by default once its prerequisites are installed and
-verified. Serial mode covers standalone, cross-repository, review-separated,
-approval-separated, or unrelated items. A source PR, catalog revision, or local mirror
-does not by itself install the capability required for feature mode. The
-decision to use two layers is recorded in
+Feature delivery mode is opt-in: the owner names the batch, it has two or more
+members, and the capability below is present. Related work otherwise goes on one
+feature branch and one PR per feature, built by one session. Serial mode covers
+standalone, cross-repository, review-separated, approval-separated, or unrelated
+items. A source PR, catalog revision, or local mirror does not by itself install
+the capability required for feature mode. The decision to use two layers is
+recorded in
 [`batch-integration-loop-2026-11-01.md`](../../_project/decisions/batch-integration-loop-2026-11-01.md);
 the tracker side is in [`batch-tracker-contract.md`](batch-tracker-contract.md).
 
@@ -15,6 +16,21 @@ Use the ordinary claim, implementation, isolated-worktree, verification, review,
 merge, deployment, and authority boundaries. Tracker dependencies remain
 tracker-managed, and a shared branch must not be used to make independent work
 look related.
+
+### Feature branch
+
+Related items are delivered on one feature branch and one PR per feature, built
+by one session:
+
+1. Create an umbrella item and add it to each member's `needs`, so no one else
+   can take them.
+2. Take the umbrella, create `feat/<slug>` in one worktree, and implement the
+   members there.
+3. Open one PR. After it merges, finish the umbrella, then take and finish each
+   member.
+4. A late related item joins the branch.
+5. Re-check each item's diagnosis against current `origin/develop` before
+   implementing it.
 
 ## Feature delivery mode
 
@@ -90,6 +106,13 @@ The scripts only read the tracker. Every tracker write is printed as a payload
 and submitted by the leader through the tractable MCP tools.
 
 ## Protocol
+
+### Plan first
+
+Registration freezes members and scopes. Group the whole ready set, then ask the
+owner, in one message, every decision that changes membership or scope. Start
+only members no pending answer can regroup. Questions that surface later go in
+one message and block only the members they affect.
 
 ### 1. Register (leader)
 
@@ -283,9 +306,10 @@ Theseus install. Landing, advancing and evidence refuse on exit 3 or 2 and print
 Theseus's reasons verbatim; status prints the answer and refuses nothing.
 Refusals include a landing that carries a Theseus lock change (land that on its
 own pull request) and a change too large for any reviewer's capacity (split the
-batch). Advisories from a reviewable answer print as warnings. Run the preflight
-on the members' combined change before `register_batch` (or `make batch-status`
-once members exist); do not estimate.
+batch). Advisories from a reviewable answer print as warnings. Before
+registration only an existing branch can be measured; after members land,
+`make batch-status` reports the answer for the integration head, which covers
+landed members only.
 
 ## Rollback and recovery
 
