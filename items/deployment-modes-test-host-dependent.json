@@ -4,7 +4,7 @@
     "A test covers both container and non-container variant ids for at least one platform.",
     "make test-fast passes."
   ],
-  "context": "Evidence: SaltAutoCore report, 2026-11-01 (not reproduced by the parent).\n\n2026-11-06/07: recurred. make pr-preflight showed 14 failures in tests/unit/platforms/test_deployment_modes_recorded.py (mainly databend and timescaledb) during #3995; one passed when run alone. CI passed.",
+  "context": "Evidence: SaltAutoCore report, 2026-11-01 (not reproduced by the parent).\n\n2026-11-06/07: recurred. make pr-preflight showed 14 failures in tests/unit/platforms/test_deployment_modes_recorded.py (mainly databend and timescaledb) during #3995; one passed when run alone. CI passed.\n\nLanded in PR #4031 (merge 30621604a58790260bfd18e2e7558a68c445393b on develop, 2026-11-08T00:27Z), CI green on head 64569962e with an oracle SHIP. At the merge commit tests/unit/platforms/test_deployment_modes_recorded.py passes with container detection pinned explicitly.",
   "description": "During #3878, `make pr-preflight` on the agent's host failed 12 tests in tests/unit/platforms/test_deployment_modes_recorded.py because the computed published_variant_id gained the `^container` suffix (added by #3618 for runs inside a container). CI passed the same tests. The tests read real host container detection instead of fixing it, so their result depends on where they run.",
   "sessions": [
     {
@@ -72,6 +72,14 @@
       "generation": "8220447d6d504bd39b44b22028163d80",
       "op": "take",
       "op_id": "714f50116f4a471b9df8843f380158a4",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-08T00:47:53Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3e31f44a21b64f0b96e9f0297435a2c8",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
