@@ -7,7 +7,7 @@
     "Live (after rv2r-02 calibration): one trunk UAT run with pinned images completes and its gate summary shows the retry counters (0 is fine)",
     "No timeout, memory-limit, validator or floor value changes anywhere in the diff (asserted by a test that diffs those config keys)"
   ],
-  "context": "Member of batch release-v2-remediation; parts (1)-(2) do not depend on rv2r-02, and parts (3)-(4) are built on fixtures, with the live line proven after rv2r-02's calibration run. Related: singlestore-tpchavoc-10v8-memory. Error 1712 is retryable only until that item is done (it may be a plan defect, not infrastructure); report its retry count per run. GUARDRAILS: exactly the owner-approved rubric; never prune the last gated scale; never touch timeouts, memory limits or validation. DECISION GATE: anything outside the rubric (for example a platform-wide exclusion or any drop-list removal) goes to the owner via the choice dialog.",
+  "context": "Member of batch release-v2-remediation; parts (1)-(2) do not depend on rv2r-02, and parts (3)-(4) are built on fixtures, with the live line proven after rv2r-02's calibration run. Related: singlestore-tpchavoc-10v8-memory. Error 1712 is retryable only until that item is done (it may be a plan defect, not infrastructure); report its retry count per run. GUARDRAILS: exactly the owner-approved rubric; never prune the last gated scale; never touch timeouts, memory limits or validation. DECISION GATE: anything outside the rubric (for example a platform-wide exclusion or any drop-list removal) goes to the owner via the choice dialog.\n\n2026-11-08: code merged in PR #4040 (merge f6737e142c; the registered batch was aborted and shipped as one ordinary PR). Remaining before finish: one scheduled trunk UAT run with pinned images completes and its gate summary shows the retry counters; the first real drop list goes to the owner before any cell is dropped.",
   "description": "Owner decision 2026-11-05 approved a standing rubric so envelope tuning no longer needs owner interrupts. Implement it: (1) pin every Docker image used by UAT to a digest (docker/**/docker-compose*.y*ml and any image referenced by tests/uat), with a check that rejects floating tags such as singlestoredb-dev:latest; (2) a cell failing only with an infrastructure signature (timeout at the cell limit, OOM or per-cell memory cap, download error, SingleStore error 1712) gets exactly one automatic retry inside the same shard, recorded in the evidence and gate summary; the gate passes only if the retry passes; no retry starts when the shard's remaining job time is below the cell limit (the skipped retry is recorded); (3) a script that reads trunk UAT history and reports cells whose infrastructure-failure rate exceeds 20% over their last 10 runs, with a ready-to-apply envelope entry when another scale of the same platform x benchmark stays gated; (4) b2, gate by signal: a per-cell signal record (cell -> defect classes ever caught, product vs infrastructure) generated from history, and a proposed drop list for cells whose only failures were infrastructure, which goes to the owner. Filed rubric items use the title prefix `UAT envelope:` and include `uat-rubric` in links, so rv2r-11 can count them. Product-signature failures (wrong results, validation failures, crashes) are never retried or pruned. Rollback: revert this member's commits; pins can be reverted per image.",
   "links": [
     "tests/uat/compatibility.py",
@@ -63,6 +63,14 @@
       "client": "omp-coding-agent",
       "op": "abort",
       "op_id": "2ff20a3a4eea46bb8d73390d64b57e33",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-08T14:18:12Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c59a4661664f4b6baa0954ba7e195a45",
       "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]
