@@ -8,6 +8,7 @@
     "implementation_dependencies": [],
     "member_id": "tpch-parity-test-skips-without-cached-extension-20261107"
   },
+  "context": "2026-11-07 delivered in PR #4036 (merge commit 1c1651e7a66131d768ac1c8c9de10b2920bd6f0d). CI evidence of the defect: develop Trunk run 42360364257 job 'fast (ubuntu-latest, 3.12)' (128367257274) skipped test_duckdb_arrow_fetch.py::test_all_22_tpch_queries_digest_identically and test_materialized_validation_sees_the_same_rows and test_arrow_fetch_native_drivers.py DataFusion parity with 'DuckDB tpch extension unavailable'. Fix: tpch_sf001_duckdb session fixture in tests/conftest.py builds SF0.01 with BenchBox's own generator and loads it into DuckDB; no INSTALL/LOAD tpch, no HOME cache, no network; the skip paths are removed so a missing generator fails. After the change: local run 33 passed, 0 skipped (/tmp/rv/parity-run.log); PR CI run https://github.com/BenchBox-dev/benchbox/actions/runs/42427904963 job 'test (ubuntu-latest, 3.14)' (128578644084) passed 37193 with no 'tpch extension unavailable' skips and lists test_duckdb_arrow_fetch.py::TestDigestParity::test_all_22_tpch_queries_digest_identically in its durations; the Windows leg also ran it (the fixture's path assertion was made separator-neutral).",
   "description": "During #4012, the DuckDB 22-query TPC-H parity test skipped under the test-isolation HOME because the DuckDB `tpch` extension was not cached there. The parity evidence came from a manual script instead. If CI also lacks the cached extension, the test never runs and gives false assurance.\n\nChange. Check whether the test runs in CI (job logs show passed or skipped). Make it run deterministically: vendor or pre-install the extension in the fixture, or generate data with BenchBox's own dbgen path. A skip in CI must fail the required job, or be removed.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; heavy work only through make heavy-run; container checks under mocker one stack at a time (limits in tests/uat docs and the uat-mocker-compose-gaps-20261106 context); no live cloud without owner approval; no explanatory comments; changelog fragment if user-facing.",
   "prepared": {
     "accepted_head": "e0f3677671a09f3f2022bb3e994e3c82e07bcb06",
@@ -98,6 +99,14 @@
       "generation": "9c63470741494e37ba2bbe063760dda1",
       "op": "prepare",
       "op_id": "93548253ab9444a5a79a966ef438ab76",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-08T00:57:59Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "892b61fa42094370a1786bcce72fc0d5",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
