@@ -218,10 +218,21 @@ def fake_gh(tmp_path, monkeypatch):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     argv_log = tmp_path / "argv.txt"
-    script = bin_dir / "gh"
-    script.write_text('#!/bin/sh\nprintf \'%s\\n\' "$@" > "$FAKE_GH_ARGV"\nprintf \'%s\' "$FAKE_GH_STDOUT"\n')
-    script.chmod(0o755)
-    monkeypatch.setenv("PATH", str(bin_dir))
+    body = (
+        "import os, sys\n"
+        "with open(os.environ['FAKE_GH_ARGV'], 'w', encoding='utf-8') as stream:\n"
+        "    stream.write('\\n'.join(sys.argv[1:]) + '\\n')\n"
+        "sys.stdout.write(os.environ['FAKE_GH_STDOUT'])\n"
+    )
+    if sys.platform == "win32":
+        (bin_dir / "gh_fake.py").write_text(body, encoding="utf-8")
+        executable = bin_dir / "gh.cmd"
+        executable.write_bytes(f'@"{sys.executable}" "{bin_dir / "gh_fake.py"}" %*\r\n'.encode())
+    else:
+        executable = bin_dir / "gh"
+        executable.write_text(f"#!{sys.executable}\n{body}", encoding="utf-8")
+        executable.chmod(0o755)
+    monkeypatch.setattr(launch, "GH_EXECUTABLE", str(executable))
     monkeypatch.setenv("FAKE_GH_ARGV", str(argv_log))
     return argv_log
 

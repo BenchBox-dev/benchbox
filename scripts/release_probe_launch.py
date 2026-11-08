@@ -27,10 +27,11 @@ PROBED_PATHS = (
     "tests/uat/configs/release-gate-*.yaml",
 )
 Gh = Callable[..., Any]
+GH_EXECUTABLE = "gh"
 
 
 def gh(*args: str) -> Any:
-    result = subprocess.run(["gh", *args], capture_output=True, text=True, check=False)
+    result = subprocess.run([GH_EXECUTABLE, *args], capture_output=True, text=True, encoding="utf-8", check=False)
     if result.returncode != 0:
         raise RuntimeError(f"gh {' '.join(args[:3])} failed: {result.stderr.strip()}")
     if args[0] != "api" or not result.stdout.strip():
