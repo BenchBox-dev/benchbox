@@ -10763,6 +10763,15 @@
       "status": "done",
       "title": "BenchBox MCP Server for AI Agent Integration"
     },
+    "benchbox-oracle-infra-names-20261108": {
+      "claim": null,
+      "needs": [
+        "benchbox-residual-oracle-names-20261106"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Retire BenchBox's remaining oracle infrastructure names: the `oracle` environment, ORACLE_* secrets and tag:oracle-ci"
+    },
     "benchbox-pr-open-preflight-receipt-20261107": {
       "claim": null,
       "needs": [],

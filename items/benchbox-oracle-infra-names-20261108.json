@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The owner creates the `review` environment with REVIEW_* secrets and a tailnet tag such as tag:review-ci with the ACL; a PR switches the callers and the drift checks in one cutover, then the old environment, secrets and tag are removed.",
+    "A repository grep for `oracle`, excluding history and archives, finds only historical references."
+  ],
+  "description": "The in-repo rename (benchbox-residual-oracle-names-20261106) deliberately keeps these infrastructure names as documented legacy names:\n- the GitHub environment `oracle`;\n- its ORACLE_* secrets, which the callers map to REVIEW_*;\n- the tailnet tag `tag:oracle-ci` with its ACL;\n- the `benchbox-oracle` App name.\nRenaming them needs owner work: a new `review` environment with the secrets re-entered, a new tag plus ACL and OAuth client, and possibly an App rename. The caller and tag changes must land in the same PR as the cutover.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-08T14:49:58Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ef5b5a9267ab40f59b9818ac71c267c2",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    }
+  ]
+}
