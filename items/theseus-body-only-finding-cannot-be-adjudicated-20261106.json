@@ -5,6 +5,7 @@
     "An integration scenario proves the full flow: a finding without a thread, two dispute rounds, escalation, an owner adjudication, and the gate passing.",
     "BenchBox re-locks to the fixed release."
   ],
+  "context": "Owner decision 2026-11-08: the hosted reviewer always threads diff-anchored findings, and any unanchored finding can be disputed by an attester PR comment `Dispute: <finding-id>`, with the same escalation rules as thread disputes. Ships in combined Theseus v0.2.5 (theseus-v025-review-convergence-20261107).",
   "description": "On BenchBox PR #3987 (head 3027616), the hosted review (review id 5808632438) put finding D1 only in the review body. There is no inline thread, so reviewThreads is empty. Adjudication requires the finding to be escalated by two keyed `Dispute:` replies on a thread carrying the finding marker, and plain issue comments don't count. So the owner-authorized `Review adjudication: WITHDRAW D1` (issuecomment-6699627970, after the Owner instruction issuecomment-6699626573) changed nothing, and the gate still blocks. The finding points at `.github/oracle-reviewers.yml:110`, which is inside the diff, so it isn't clear why no thread was created. Local review escalates through REBUTTALS_FILE; the hosted path has no equivalent for findings without a thread. The owner's adjudication authority is therefore unreachable for any hosted finding without a thread.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3987"
@@ -16,6 +17,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "360e32d264bf4a5b96625cd726d3668f",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-08T14:49:37Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "14d895d628274d8ab7fc488d26a66a7e",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
     }
   ]
