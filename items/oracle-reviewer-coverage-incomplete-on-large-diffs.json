@@ -7,6 +7,7 @@
   ],
   "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\n\n\noracle-response-evidence-secrets-20261021 disables read summarization and preserves bounded useful read traces without reducing required-file evidence. Broad large-diff coverage/capacity acceptance remains here. No closure implied.\n\n2026-11-06 evidence from the BenchBox migration to Theseus v0.2.x, PR #3962, judged by the v0.1.8 hunk-coverage rule:\n- First head bcfd69759b: all five hosted attempts ended \"absent (incomplete)\", each missing 1–7 hunks.\n- Head b26cbc12dd: attempt 1 was again incomplete (5 hunks unseen).\n- Final head 777b323c: capture-1 covered 316/319 (three hunks in review-request.yml and review-verdict.yml unseen) before capture-2 reached 319/319 and SHIP.\n- The /oracle-review comment on bcfd697 (run 42166283710) was skipped by design: \"backoff: the next retry is allowed after 06:03:53Z\".\nSo under the coverage rule, incompleteness by small margins (≤2% of hunks) is the dominant failure mode on promotion-size diffs, and backoff turns each miss into roughly an hour of delay. Calibration belongs with theseus-v021-stdin-rendered-mode-20261105 (Theseus v0.2.2): a stronger retry hint naming the unseen hunks, or a targeted follow-up read for them.",
   "description": "On PR #3139 the muse reviewer finished 'incomplete' because it did not examine eight workflow files, and the other reviewers were unavailable (OpenAI quota exhausted, same-family skip, diff over the agy brief cap). The verdict stayed pending and the PR could only merge through a stand-in. A /oracle-review comment started no new run. Large soundness-path diffs will hit this again.",
+  "drop_reason": "Duplicate of oracle-coverage-gate-large-prs-20261017; consolidated there.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3139",
     ".github/workflows/oracle-verdict.yml",
@@ -68,6 +69,14 @@
       "op": "update",
       "op_id": "503e667a0ef44cafb5bde40321337701",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:76bfe83b21f0c666e957f760",
+      "at": "2026-11-08T15:55:00Z",
+      "client": "omp-coding-agent",
+      "op": "drop",
+      "op_id": "1b2e0a4826184b08b3aa7dbed9a3477f",
+      "session_id": "02c14526fd7648f49c893339d8cfcf9e"
     }
   ]
 }

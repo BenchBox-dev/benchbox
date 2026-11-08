@@ -26888,7 +26888,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Oracle verdict stays pending when its only available reviewer cannot read every changed file"
     },
     "oracle-reviewer-exit-1-stalls-landing-20261106": {
