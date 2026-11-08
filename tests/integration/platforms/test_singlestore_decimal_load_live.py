@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import uuid
 from pathlib import Path
 
 import pytest
@@ -29,19 +30,26 @@ _PATHS = ["tbl", "csv_header", "dat_null_marker", "parquet", "refresh"]
 @pytest.fixture
 def decimal_table():
     skip_unless_docker_service("localhost", _HOST_PORT, platform="SingleStore")
+    import singlestoredb as s2
+
+    database = f"lvi_decimal_{uuid.uuid4().hex[:8]}"
+    admin = s2.connect(host="localhost", port=_HOST_PORT, user="root", password=_PASSWORD)
+    admin_cursor = admin.cursor()
+    admin_cursor.execute(f"CREATE DATABASE `{database}`")
     adapter = SingleStoreAdapter(
-        host="localhost", port=_HOST_PORT, username="root", password=_PASSWORD, database="benchbox_test"
+        host="localhost", port=_HOST_PORT, username="root", password=_PASSWORD, database=database
     )
     adapter.skip_database_management = True
     connection = adapter.create_connection()
     cursor = connection.cursor()
-    cursor.execute(f"DROP TABLE IF EXISTS `{_TABLE}`")
     cursor.execute(f"CREATE TABLE `{_TABLE}` (id INT NOT NULL, price DECIMAL(15,2), note VARCHAR(10), SHARD KEY (id))")
     try:
         yield adapter, connection, cursor
     finally:
-        cursor.execute(f"DROP TABLE IF EXISTS `{_TABLE}`")
         adapter.close_connection(connection)
+        admin_cursor.execute(f"DROP DATABASE IF EXISTS `{database}`")
+        admin_cursor.close()
+        admin.close()
 
 
 def _load(adapter, connection, tmp_path: Path, path_kind: str, value: str | None) -> int:

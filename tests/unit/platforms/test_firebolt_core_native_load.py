@@ -80,7 +80,7 @@ class TestGeneratedSql:
             "CAST(CASE WHEN LOWER(f0) = 'null' THEN NULL ELSE f0 END AS integer), "
             "CAST(CASE WHEN LOWER(f1) = 'null' THEN NULL ELSE f1 END AS text) "
             "FROM READ_CSV(URL => 'upload://benchbox_load', DELIMITER => '|', HEADER => FALSE, "
-            "EMPTY_FIELD_AS_NULL => TRUE)"
+            "INFER_SCHEMA => FALSE, EMPTY_FIELD_AS_NULL => TRUE)"
         )
 
     def test_no_null_marker_keeps_empty_strings(self):

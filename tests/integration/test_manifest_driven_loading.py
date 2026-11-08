@@ -70,6 +70,9 @@ class _S2Cursor:
     def fetchone(self) -> tuple | None:
         return self._result
 
+    def fetchall(self) -> list[tuple]:
+        return []
+
     def close(self) -> None:
         pass
 

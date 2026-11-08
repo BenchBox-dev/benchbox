@@ -40,32 +40,23 @@ def _install_select_transforms(generator: type, steps: tuple[str, ...]) -> None:
     setattr(generator, _SELECT_TRANSFORMS_MARKER, steps)
 
 
-def _keep_doris_full_outer_join() -> None:
-    from benchbox._vendor.sqlglot.generators.doris import DorisGenerator
-
-    _install_select_transforms(
-        DorisGenerator,
-        (
-            "eliminate_distinct_on",
-            "eliminate_semi_and_anti_joins",
-            "eliminate_qualify",
-            "unnest_generate_date_array_using_recursive_cte",
-        ),
-    )
+_KEEP_FULL_OUTER_JOIN_STEPS = (
+    "eliminate_distinct_on",
+    "eliminate_semi_and_anti_joins",
+    "eliminate_qualify",
+    "unnest_generate_date_array_using_recursive_cte",
+)
 
 
-def _keep_singlestore_full_outer_join() -> None:
-    from benchbox._vendor.sqlglot.generators.singlestore import SingleStoreGenerator
+def _keep_full_outer_join(dialect: str) -> None:
+    if dialect == "doris":
+        from benchbox._vendor.sqlglot.generators.doris import DorisGenerator
 
-    _install_select_transforms(
-        SingleStoreGenerator,
-        (
-            "eliminate_distinct_on",
-            "eliminate_semi_and_anti_joins",
-            "eliminate_qualify",
-            "unnest_generate_date_array_using_recursive_cte",
-        ),
-    )
+        _install_select_transforms(DorisGenerator, _KEEP_FULL_OUTER_JOIN_STEPS)
+    else:
+        from benchbox._vendor.sqlglot.generators.singlestore import SingleStoreGenerator
+
+        _install_select_transforms(SingleStoreGenerator, _KEEP_FULL_OUTER_JOIN_STEPS)
 
 
 def _eliminate_starrocks_qualify() -> None:
@@ -429,7 +420,7 @@ def translate_sql_query(
                 expression = rewrite_subqueries(expression.copy())
 
             if tgt == "doris":
-                _keep_doris_full_outer_join()
+                _keep_full_outer_join("doris")
                 for doris_rewrite in (
                     "alias_derived_tables",
                     "date_column_integer_arithmetic",
@@ -437,7 +428,7 @@ def translate_sql_query(
                 ):
                     expression = apply_rewrite(doris_rewrite, expression, tgt)
             if tgt == "singlestore":
-                _keep_singlestore_full_outer_join()
+                _keep_full_outer_join("singlestore")
                 expression = apply_rewrite("rollup_empty_input_row", expression, tgt)
             if tgt == "sqlite":
                 expression = apply_rewrite("fold_between_literal_arithmetic", expression, tgt)

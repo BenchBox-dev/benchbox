@@ -49,7 +49,10 @@ try:
 except ImportError:
     pymysql = None
 
-import requests as _requests
+try:
+    import requests as _requests
+except ImportError:
+    _requests = None
 
 _DEFAULT_STREAM_LOAD_CHUNK_SIZE = 10 * 1024 * 1024
 _DEFAULT_STREAM_LOAD_MAX_FILTER_RATIO = "0"
@@ -523,6 +526,8 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
             yield iter(lambda: f.read(1 << 20), b"")
 
     def _stream_load_put(self, url: str, data: bytes | Callable[[], Any], headers: dict):
+        if _requests is None:
+            raise ImportError("Doris Stream Load requires the 'requests' package")
         kwargs = {
             "auth": (self.username, self.password),
             "timeout": 1800,

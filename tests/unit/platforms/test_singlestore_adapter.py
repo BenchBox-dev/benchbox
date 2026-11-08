@@ -398,7 +398,8 @@ class TestSingleStoreDataLoading:
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [(0,), None, (1000,)]
+        mock_cursor.fetchone.side_effect = [(0,), (1000,)]
+        mock_cursor.fetchall.return_value = []
 
         dialect = CsvDialect(delimiter=",", has_header=False, null_marker=None, normalize_booleans=False, quote=None)
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, encoding="utf-8") as f:
@@ -423,7 +424,8 @@ class TestSingleStoreDataLoading:
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [(0,), None, (5,)]
+        mock_cursor.fetchone.side_effect = [(0,), (5,)]
+        mock_cursor.fetchall.return_value = []
 
         dialect = CsvDialect(delimiter="|", has_header=False, null_marker="", normalize_booleans=False, quote=None)
         with tempfile.NamedTemporaryFile(mode="w", suffix=".tbl", delete=False, encoding="utf-8") as f:
@@ -447,7 +449,8 @@ class TestSingleStoreDataLoading:
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [(500,), None, (700,)]
+        mock_cursor.fetchone.side_effect = [(500,), (700,)]
+        mock_cursor.fetchall.return_value = []
 
         dialect = CsvDialect(delimiter=",", has_header=False, null_marker=None, normalize_booleans=False, quote=None)
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, encoding="utf-8") as f:
@@ -566,7 +569,8 @@ class TestSingleStoreDataLoading:
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [(0,), None, (2,)]
+        mock_cursor.fetchone.side_effect = [(0,), (2,)]
+        mock_cursor.fetchall.return_value = []
         captured: dict[str, str] = {}
 
         def capture(sql):
@@ -880,7 +884,8 @@ class TestSingleStoreConfigureBenchmark:
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [(0,), None, (2,)]
+        mock_cursor.fetchone.side_effect = [(0,), (2,)]
+        mock_cursor.fetchall.return_value = []
 
         tpcdi_data = "1|SK001|Active|LastName|True|1|2010-01-01|9999-12-31\n2|SK002|Inactive|OtherName|False|2|2010-01-01|9999-12-31\n"
 
@@ -920,7 +925,8 @@ class TestSingleStoreConfigureBenchmark:
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [(0,), None, (1,)]
+        mock_cursor.fetchone.side_effect = [(0,), (1,)]
+        mock_cursor.fetchall.return_value = []
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, encoding="utf-8") as f:
             f.write("time,host,value\n2026-01-01,h1,42\n")
@@ -948,7 +954,8 @@ class TestSingleStoreConfigureBenchmark:
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [(0,), None, (1,)]
+        mock_cursor.fetchone.side_effect = [(0,), (1,)]
+        mock_cursor.fetchall.return_value = []
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, encoding="utf-8") as f:
             f.write("1,foo,bar\n")
@@ -976,7 +983,8 @@ class TestSingleStoreConfigureBenchmark:
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [(0,), None, (1,)]
+        mock_cursor.fetchone.side_effect = [(0,), (1,)]
+        mock_cursor.fetchall.return_value = []
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".tbl", delete=False, encoding="utf-8") as f:
             f.write("1|foo|\n")
@@ -1004,7 +1012,8 @@ class TestSingleStoreConfigureBenchmark:
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [(0,), None, (1,)]
+        mock_cursor.fetchone.side_effect = [(0,), (1,)]
+        mock_cursor.fetchall.return_value = []
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, encoding="utf-8") as f:
             f.write("1,,bar\n")
@@ -1032,7 +1041,8 @@ class TestSingleStoreConfigureBenchmark:
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [(0,), None, (1,)]
+        mock_cursor.fetchone.side_effect = [(0,), (1,)]
+        mock_cursor.fetchall.return_value = []
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, encoding="utf-8") as f:
             f.write("1,foo\n")
@@ -1060,7 +1070,8 @@ class TestSingleStoreConfigureBenchmark:
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [(0,), None, (2,)]
+        mock_cursor.fetchone.side_effect = [(0,), (2,)]
+        mock_cursor.fetchall.return_value = []
 
         captured_temp_content: list[str] = []
 
@@ -1103,7 +1114,8 @@ class TestSingleStoreConfigureBenchmark:
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [(0,), None, (2,)]
+        mock_cursor.fetchone.side_effect = [(0,), (2,)]
+        mock_cursor.fetchall.return_value = []
 
         captured_temp_content: list[str] = []
 

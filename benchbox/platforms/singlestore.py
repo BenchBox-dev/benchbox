@@ -358,9 +358,7 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
                 "SELECT COLUMN_NAME, COLUMN_TYPE FROM information_schema.COLUMNS "
                 f"WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{escaped_table}' ORDER BY ORDINAL_POSITION"
             )
-            table_columns = []
-            while (column_row := cursor.fetchone()) is not None:
-                table_columns.append((str(column_row[0]), str(column_row[1])))
+            table_columns = [(str(column_row[0]), str(column_row[1])) for column_row in cursor.fetchall()]
             column_list, set_clause = _decimal_guarded_load_tail(table_columns, pass_null=True)
 
             escaped_path = str(load_path).replace("\\", "\\\\").replace("'", "\\'")

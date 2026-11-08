@@ -2,7 +2,7 @@ import pytest
 
 from tests.uat import compatibility, matrix
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.medium
 
 
 def _rule(benchmark, scale=None):

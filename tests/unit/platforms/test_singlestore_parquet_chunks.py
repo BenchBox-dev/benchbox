@@ -34,7 +34,8 @@ def test_each_chunk_is_its_own_load_data_statement_and_rows_are_summed(parquet_p
     monkeypatch.setattr(singlestore, "_PARQUET_LOAD_CHUNK_ROWS", 2)
     connection = Mock()
     cursor = connection.cursor.return_value
-    cursor.fetchone.side_effect = [(0,), None, (2,), (2,), None, (4,), (4,), None, (5,)]
+    cursor.fetchone.side_effect = [(0,), (2,), (2,), (4,), (4,), (5,)]
+    cursor.fetchall.return_value = []
     loaded_files: list[Path] = []
 
     def capture(sql):

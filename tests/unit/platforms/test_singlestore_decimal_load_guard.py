@@ -32,6 +32,10 @@ class _Cursor:
     def fetchone(self) -> tuple | None:
         return self._pending.pop(0) if self._pending else None
 
+    def fetchall(self) -> list[tuple]:
+        rows, self._pending = self._pending, []
+        return rows
+
     def close(self) -> None:
         pass
 

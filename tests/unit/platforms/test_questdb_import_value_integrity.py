@@ -12,7 +12,7 @@ from benchbox.platforms.questdb import (
     _value_parses,
 )
 
-pytestmark = pytest.mark.fast
+pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 
 def _response(errors: dict[str, int], rows: int = 3, types: dict[str, str] | None = None) -> str:

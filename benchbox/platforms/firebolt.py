@@ -874,7 +874,12 @@ class FireboltAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
     def _build_core_upload_sql(table_name_quoted: str, column_types: list[str], part_name: str, dialect: Any) -> str:
         delimiter = dialect.delimiter.replace("'", "''")
         null_marker = dialect.null_marker
-        options = [f"URL => 'upload://{part_name}'", f"DELIMITER => '{delimiter}'", "HEADER => FALSE"]
+        options = [
+            f"URL => 'upload://{part_name}'",
+            f"DELIMITER => '{delimiter}'",
+            "HEADER => FALSE",
+            "INFER_SCHEMA => FALSE",
+        ]
         if null_marker is None:
             options.append("EMPTY_FIELD_AS_NULL => FALSE")
         elif null_marker == "":

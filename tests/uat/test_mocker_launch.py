@@ -251,7 +251,10 @@ def _bring_up(monkeypatch, probe_stdout: str):
     monkeypatch.setattr(module.docker_assets, "run_docker_command", fake_run)
     monkeypatch.setattr(matrix, "platform_is_reachable", lambda platform: True)
     monkeypatch.setattr(module, "_admit_bring_up", lambda *args, **kwargs: 0)
-    monkeypatch.setattr(mocker_launch.time, "sleep", lambda s: None)
+    real_launch_stack = mocker_launch.launch_stack
+    monkeypatch.setattr(
+        mocker_launch, "launch_stack", lambda *args, **kwargs: real_launch_stack(*args, sleep=lambda s: None, **kwargs)
+    )
     return module, calls
 
 
