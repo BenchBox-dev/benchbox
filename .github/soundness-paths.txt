@@ -19,7 +19,7 @@ file	scripts/path_filter_decision.py
 file	.github/path-filters.yml
 file	scripts/pr_arm.py
 file	scripts/pr_landing.py
-file	scripts/oracle_local_review.py
+file	scripts/local_review.py
 file	scripts/remote_closeout.py
 file	scripts/build_fast_duration_baseline.py
 file	scripts/fast_tier_calibration.py
@@ -100,8 +100,8 @@ file	.github/workflows/review-request.yml
 file	.github/workflows/review-verdict.yml
 file	.github/workflows/review-gate.yml
 file	_project/scripts/check_soundness_review.py
-file	.github/oracle-reviewers.yml
-file	.github/oracle-omp-config.yml
+file	.github/review.yml
+file	.github/review-omp-config.yml
 file	.github/theseus-lock.json
 file	.github/preflight-known-failures.json
 file	_project/scripts/theseus_bootstrap.py
@@ -109,12 +109,12 @@ file	scripts/theseus_cli.py
 file	scripts/theseus_release_check.py
 file	tests/unit/scripts/test_theseus_lock.py
 file	tests/unit/scripts/test_theseus_release_check.py
-file	tests/unit/scripts/test_oracle_gateway_host.py
-file	tests/integration/oracle/test_curated_capture_fixtures.py
-file	tests/fixtures/oracle_reviewers/provenance.json
-file	tests/unit/scripts/test_oracle_policy_pin.py
+file	tests/unit/scripts/test_review_gateway_host.py
+file	tests/integration/review/test_curated_capture_fixtures.py
+file	tests/fixtures/review_candidates/provenance.json
+file	tests/unit/scripts/test_review_policy_pin.py
 file	_project/scripts/soundness_manifest.py
-file	_project/scripts/oracle_gateway_host.sh
+file	_project/scripts/review_gateway_host.sh
 file	_project/scripts/ruleset_review_enforcement.py
 file	scripts/ruleset_drift_check.py
 file	.github/soundness-paths.txt

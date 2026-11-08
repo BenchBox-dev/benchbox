@@ -294,7 +294,7 @@ Use one canonical sequence:
    advancing continuations. Never relabel cached data as live.
 5. For a batch, require the successful final run, every receipt/review binding,
    scope/ancestry and the current final-PR identity/head, plus unchanged hosted
-   review, CI, oracle and authority gates.
+   review, CI, review and authority gates.
 
 Review fixes are leader commits, never member re-landings. Withdraw auto-merge
 through the existing PR lifecycle before publishing any advance. Commit and

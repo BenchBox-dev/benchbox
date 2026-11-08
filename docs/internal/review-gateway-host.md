@@ -1,28 +1,28 @@
 <!-- Copyright 2026 Joe Harris / BenchBox Project. Licensed under the MIT License. -->
 
-# Oracle gateway host
+# Review gateway host
 
-The oracle's CI reviewers hold one credential: a client token for an
+The CI reviewers hold one credential: a client token for an
 `omp auth-gateway` on the owner's Mac. This page rebuilds that Mac from
 scratch. The design and its accepted risks are in
-[`oracle-review-v2.md`](oracle-review-v2.md#credential-gateway) and
+[`review-v2.md`](review-v2.md#credential-gateway) and
 `_project/decisions/oracle-reviewer-gateway-2026-10-22.md`.
 
 ## What runs on the host
 
 | Piece | Detail |
 | --- | --- |
-| omp build | The pinned `darwin-arm64` build from the `omp:` section of `.github/oracle-reviewers.yml` on `origin/develop`, installed by `theseus install-omp` (the verified Theseus install of `origin/develop`) into `~/.cache/benchbox/omp/<version>/darwin-arm64/omp` after its SHA-256 and version check, the same cache local reviews use. The script runs both agents from that path. It never looks up `omp` on `PATH` and ignores an `OMP` environment variable, so the omp you run day to day is untouched. |
+| omp build | The pinned `darwin-arm64` build from the `omp:` section of `.github/review.yml` on `origin/develop`, installed by `theseus install-omp` (the verified Theseus install of `origin/develop`) into `~/.cache/benchbox/omp/<version>/darwin-arm64/omp` after its SHA-256 and version check, the same cache local reviews use. The script runs both agents from that path. It never looks up `omp` on `PATH` and ignores an `OMP` environment variable, so the omp you run day to day is untouched. |
 | Credential broker | launchd agent `dev.omp.auth-broker`: `<pinned omp> auth-broker serve --bind=127.0.0.1:8765 --trust-proxy-headers`. Provider logins live in `~/.omp/agent/agent.db`; its bearer token is `~/.omp/auth-broker.token`. Log: `~/.omp/logs/auth-broker.log`. |
 | Gateway | launchd agent `dev.omp.auth-gateway`, which runs `~/.omp/review-gateway/run.sh`: `<pinned omp> auth-gateway serve --bind=127.0.0.1:4000 --clients=~/.omp/review-gateway/clients.json`, with `HOME=~/.omp/review-gateway/home` and the broker's URL and token. Log: `~/.omp/logs/auth-gateway.log`. |
-| Client scope | `~/.omp/review-gateway/clients.json` (0600) admits `review-ci` and one client per [named client](#named-clients) token file. Each entry holds the SHA-256 of that client's token, every model `.github/oracle-omp-config.yml` on `origin/develop` lets a reviewer request from a granted provider, and every broker account logged in for those providers; `review-ci`'s token is `client.token`. A provider is granted when `.github/oracle-omp-config.yml` on `origin/develop` names it, it has at least one broker login, and it is not on the [owner denylist](#losing-or-removing-a-provider). Nothing in the script names a provider. `accounts` is also an allow-list: stored or environment API keys are never used for those providers. The gateway re-reads the file every 10 seconds. |
+| Client scope | `~/.omp/review-gateway/clients.json` (0600) admits `review-ci` and one client per [named client](#named-clients) token file. Each entry holds the SHA-256 of that client's token, every model `.github/review-omp-config.yml` on `origin/develop` lets a reviewer request from a granted provider, and every broker account logged in for those providers; `review-ci`'s token is `client.token`. A provider is granted when `.github/review-omp-config.yml` on `origin/develop` names it, it has at least one broker login, and it is not on the [owner denylist](#losing-or-removing-a-provider). Nothing in the script names a provider. `accounts` is also an allow-list: stored or environment API keys are never used for those providers. The gateway re-reads the file every 10 seconds. |
 | Gateway admin token | The gateway creates `~/.omp/review-gateway/home/.omp/auth-gateway.token` (0600) on first start. It is not scoped by `clients.json`. Never copy it off the host. |
 | Owner denylist | `~/.omp/review-gateway/disabled-providers` (0600, owned by you, host-only, never in the repository): one provider id per line, `#` starts a comment. `gateway` excludes each listed provider from `clients.json` and writes the list as `disabledProviders:` into `~/.omp/review-gateway/home/.omp/agent/config.yml`, which the script owns. |
-| Health monitor | launchd agent `dev.omp.review-gateway-monitor`, installed by `monitor-install`: runs `oracle_gateway_host.sh monitor` every 15 minutes. State is `~/.omp/review-gateway/monitor.state`. Log: `~/.omp/logs/review-gateway-monitor.log`. |
+| Health monitor | launchd agent `dev.omp.review-gateway-monitor`, installed by `monitor-install`: runs `review_gateway_host.sh monitor` every 15 minutes. State is `~/.omp/review-gateway/monitor.state`. Log: `~/.omp/logs/review-gateway-monitor.log`. |
 | Tailnet | `tailscale serve --bg --https=4000 http://127.0.0.1:4000`, reachable only inside the tailnet. |
 | GitHub | `oracle` environment secrets `ORACLE_GATEWAY_TOKEN` (the contents of `client.token`) and `ORACLE_GATEWAY_URL` (`https://<host>.<tailnet>.ts.net:4000`). |
 
-`_project/scripts/oracle_gateway_host.sh` builds and checks all of this. A
+`_project/scripts/review_gateway_host.sh` builds and checks all of this. A
 rerun restarts an agent only when its plist or `run.sh` changed or its
 process started before the pinned binary file was last written; a new
 `clients.json` needs no restart. `gateway` fetches `origin/develop` and
@@ -36,7 +36,7 @@ granted.
 These settings outlive any one machine. Redo them only if they are lost.
 
 - **GitHub App and `oracle` environment:** see Setup in
-  [`oracle-review-v2.md`](oracle-review-v2.md#setup).
+  [`review-v2.md`](review-v2.md#setup).
 - **Tailscale DNS settings:** MagicDNS and HTTPS Certificates are on, which
   `tailscale serve --https` needs. The first `tailscale serve` on a tailnet may
   print a link to enable Serve; open it.
@@ -101,16 +101,16 @@ Then:
      current pin, has it; the gateway scopes every reviewer client with it).
 2. Clone this repository. The host checkout may be on any branch: `gateway`
    fetches `origin/develop` and scopes every client to that branch's
-   `.github/oracle-omp-config.yml`.
-3. Start the broker: `_project/scripts/oracle_gateway_host.sh broker`.
-4. Log in to the reviewer providers with the accounts the oracle should spend.
-   The providers are the ones `.github/oracle-omp-config.yml` on `origin/develop`
+   `.github/review-omp-config.yml`.
+3. Start the broker: `_project/scripts/review_gateway_host.sh broker`.
+4. Log in to the reviewer providers with the accounts the reviewer should spend.
+   The providers are the ones `.github/review-omp-config.yml` on `origin/develop`
    names; the broker step prints a `<pinned omp> auth-broker login <provider>`
    line for each that has no login, and the gateway starts without any it
    lacks. Every account logged in for a provider is pinned, so log out of any
-   the oracle must not use (`<pinned omp> auth-broker logout <provider>`). The
+   the reviewer must not use (`<pinned omp> auth-broker logout <provider>`). The
    broker step prints the pinned binary's path.
-5. Start the gateway: `_project/scripts/oracle_gateway_host.sh gateway`.
+5. Start the gateway: `_project/scripts/review_gateway_host.sh gateway`.
    - It creates `client.token` if there is none.
    - It generates `clients.json` through `theseus gateway-clients`, which
      lists each excluded provider (`excluded: <provider> (<reason>): <models>`)
@@ -122,8 +122,8 @@ Then:
      with `tailscale serve` and prints the tailnet URL.
 6. In the Tailscale admin console, disable key expiry for this Mac and point
    the policy's gateway host at its tailnet IPv4 (`tailscale ip -4`).
-7. Store the secrets: `_project/scripts/oracle_gateway_host.sh secrets`.
-8. Check everything: `_project/scripts/oracle_gateway_host.sh check`
+7. Store the secrets: `_project/scripts/review_gateway_host.sh secrets`.
+8. Check everything: `_project/scripts/review_gateway_host.sh check`
    (`check --json` prints the same result as JSON). A healthy host prints:
 
    ```text
@@ -164,13 +164,13 @@ Then:
    list the same models as `review-ci`.
 9. Run one review through it:
    `gh workflow run review-verdict.yml --ref develop -f pr=<open soundness PR>`.
-   It works when the pull request's `oracle-verdict` status becomes a
+   It works when the pull request's `review-verdict` status becomes a
    decision (success or failure) instead of `pending: … absent`. The gateway
    log records only start-ups, not requests.
 
 ## Routine changes
 
-- **Reviewer models changed** in `.github/oracle-omp-config.yml`: after the
+- **Reviewer models changed** in `.github/review-omp-config.yml`: after the
   change merges, run `gateway` again so every client is allowed the new
   models.
 - **Rotate the client token:** `rm ~/.omp/review-gateway/client.token`, then
@@ -180,7 +180,7 @@ Then:
   starts:
   `launchctl kickstart -k gui/$(id -u)/dev.omp.auth-broker` and
   `launchctl kickstart -k gui/$(id -u)/dev.omp.auth-gateway`.
-- **omp pin bumped** in `.github/oracle-reviewers.yml`: after the change
+- **omp pin bumped** in `.github/review.yml`: after the change
   merges, run `broker` and `gateway` at a quiet moment. Each installs the new
   pinned build and restarts its agent because the plist and `run.sh` name the
   new path; a restart interrupts reviews in flight. Then run `check`.
@@ -194,7 +194,7 @@ Restarting the gateway fails any review attempt in flight; the next retry sweep
 ## Losing or removing a provider
 
 No single provider is required. `gateway` derives the providers from
-`.github/oracle-omp-config.yml` on `origin/develop`, starts with the ones that
+`.github/review-omp-config.yml` on `origin/develop`, starts with the ones that
 have a broker login, and says which it left out. Reviews keep running on the
 providers still served: Theseus gives each reviewer the first served model of
 its `fallbackChains` entry in that config, and the review status says
@@ -214,7 +214,7 @@ and [`emergency-merge.md`](../agent/emergency-merge.md).
   `gateway`. The provider leaves `clients.json` and the gateway's
   `disabledProviders`; `develop` may keep naming it. `check` and the monitor
   then print a notice, not an alert, until a pull request removes the provider
-  from `.github/oracle-omp-config.yml`. Delete the line and run `gateway` to
+  from `.github/review-omp-config.yml`. Delete the line and run `gateway` to
   bring it back. The file is read only on the host and can only remove a
   provider: it can never add a model, and nothing in a pull request reads it.
 - **Diversity:** `tests/unit/scripts/test_review_provider_diversity.py` keeps
@@ -228,7 +228,7 @@ and [`emergency-merge.md`](../agent/emergency-merge.md).
 
 ### Monitor
 
-`_project/scripts/oracle_gateway_host.sh monitor-install` installs the launchd
+`_project/scripts/review_gateway_host.sh monitor-install` installs the launchd
 agent `dev.omp.review-gateway-monitor` (`StartInterval` 900, `RunAtLoad`). It
 runs a 0700 snapshot of the script as it is on `origin/develop`
 (`~/.omp/review-gateway/monitor-host.sh`), never the working tree, so a branch
@@ -255,7 +255,7 @@ no token permission beyond the ones the caller already grants.
 Theseus 0.2.0 renamed the gateway directory and the client names. Every step
 below is owner-run on the live host; nothing in the repository does it. The
 running gateway keeps serving from `~/.omp/oracle-gateway` until step 1 is done,
-and `oracle_gateway_host.sh` now defaults to `~/.omp/review-gateway`, so run the
+and `review_gateway_host.sh` now defaults to `~/.omp/review-gateway`, so run the
 steps in order and do not run the script between the update and step 1. Until the
 host is migrated, CI reviews end absent and local reviews refuse, both failing
 closed.
@@ -277,6 +277,28 @@ closed.
 6. Local review now reads only `~/.omp/review-gateway/local-client.token`, and
    host-token redaction scans only the new directory, so no copy of a token may
    stay in `~/.omp/oracle-gateway`. Remove it once `check` passes.
+
+## After the script rename
+
+The script was `_project/scripts/oracle_gateway_host.sh` before 2026-11-08; the
+policy and omp config it reads from `origin/develop` moved to
+`.github/review.yml` and `.github/review-omp-config.yml` in the same change.
+The generated `~/.omp/review-gateway/run.sh` and the launchd labels
+(`dev.omp.auth-broker`, `dev.omp.auth-gateway`, `dev.omp.review-gateway-monitor`)
+did not change, so the running gateway keeps serving. The monitor agent runs the
+old snapshot `~/.omp/review-gateway/monitor-host.sh`, which still looks for the
+old file names on `origin/develop` and reports an error until it is refreshed.
+After the rename merges, the owner-authorized agent runs from a checkout at the
+merged `origin/develop`:
+
+1. `_project/scripts/review_gateway_host.sh monitor-install` (replaces the
+   snapshot with the renamed script from `origin/develop` and reloads the agent);
+2. `_project/scripts/review_gateway_host.sh gateway` (regenerates `clients.json`
+   and `run.sh` from the renamed policy files; it restarts the agent only if they
+   changed), then `check`.
+
+The `oracle` GitHub environment, the `ORACLE_*` secret names and `tag:oracle-ci`
+stay as legacy infrastructure names (`benchbox-oracle-infra-names-20261108`).
 
 ## Named clients
 
@@ -305,7 +327,7 @@ in front of the gateway to add limits.
 
   ```sh
   (umask 077; openssl rand -base64 36 | tr -d '\n' > ~/.omp/review-gateway/local-client.token)
-  _project/scripts/oracle_gateway_host.sh gateway
+  _project/scripts/review_gateway_host.sh gateway
   ```
 
   The script writes one `clients.json` entry per token file, and the gateway
@@ -314,7 +336,7 @@ in front of the gateway to add limits.
 - **Rotate a client:** replace its token file with a new one as above, run
   `gateway`, then update the caller's copy. The old token stops working within
   10 seconds. Other clients are unaffected.
-- **Revoke a client:** `_project/scripts/oracle_gateway_host.sh revoke
+- **Revoke a client:** `_project/scripts/review_gateway_host.sh revoke
   review-local`. It removes that client's entry from `clients.json` with one
   atomic file replacement and then deletes its token file. It does not call the
   broker, restart the gateway or rewrite any other entry, so it works with the
@@ -339,7 +361,7 @@ in front of the gateway to add limits.
 ## Cloud builder client
 
 Cloud builder sessions (see
-[`cloud-builder.md`](../agent/cloud-builder.md#oracle-gateway-access)) use the
+[`cloud-builder.md`](../agent/cloud-builder.md#review-gateway-access)) use the
 named client `review-cloud`, whose token file is
 `~/.omp/review-gateway/cloud-client.token`. It already exists on the host; it
 is created, rotated and revoked as any [named client](#named-clients), so
@@ -351,7 +373,7 @@ three values by name only: `REVIEW_CLOUD_GATEWAY_TOKEN` (the contents of
   [named clients](#named-clients), run `gateway`, then set the new value as
   `REVIEW_CLOUD_GATEWAY_TOKEN` in each cloud environment. The old token stops
   working within 10 seconds; `review-ci` and `review-local` keep working.
-- **Revoke cloud access:** `_project/scripts/oracle_gateway_host.sh revoke
+- **Revoke cloud access:** `_project/scripts/review_gateway_host.sh revoke
   review-cloud`. To stop sessions from joining the tailnet at all, also
   revoke the `tag:oracle-cloud` auth key (below).
 - **Rotate or revoke the Tailscale credential:** in the Tailscale admin

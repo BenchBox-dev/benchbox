@@ -169,7 +169,7 @@ def test_an_external_review_counts_only_from_a_listed_attester(comment):
 
 
 def standin(sha, login="joeharris76", at=AFTER, prefix="", user_type="User", updated_at=None):
-    return digest.Comment(login, f"{prefix}Stand-in oracle review: APPROVE {sha}", at, user_type, updated_at)
+    return digest.Comment(login, f"{prefix}Stand-in review: APPROVE {sha}", at, user_type, updated_at)
 
 
 def test_a_standin_approval_of_the_merged_head_from_a_listed_attester_is_a_signal():
@@ -204,7 +204,7 @@ def test_a_standin_approval_posted_after_the_merge_is_not_a_signal():
     [
         standin(OLD),
         standin(HEAD, login="dev"),
-        digest.Comment("joeharris76", f"```\nStand-in oracle review: APPROVE {HEAD}\n```", AFTER, "User"),
+        digest.Comment("joeharris76", f"```\nStand-in review: APPROVE {HEAD}\n```", AFTER, "User"),
         standin(HEAD, prefix="Looks fine. "),
         standin(HEAD, user_type="Bot"),
         standin(HEAD, user_type=""),
@@ -1029,12 +1029,12 @@ def test_collect_pull_carries_the_comment_author_type_and_update_time(monkeypatc
     assert pull.base_changed_at == AFTER
 
 
-ORACLE_PATH = ".github/workflows/review-request.yml@refs/pull/7/merge"
+REVIEW_RUN_PATH = ".github/workflows/review-request.yml@refs/pull/7/merge"
 
 
-def oracle_run(at, event="synchronize"):
+def review_run(at, event="synchronize"):
     return {
-        "path": ORACLE_PATH,
+        "path": REVIEW_RUN_PATH,
         "created_at": at,
         "display_title": f"feat: change ({event})",
         "event": "pull_request",
@@ -1074,7 +1074,7 @@ def collected_pull(monkeypatch, commits, head, head_runs, comments, *, runs_erro
 def rest_comment(sha, at):
     return {
         "user": {"login": "joeharris76", "type": "User"},
-        "body": f"Stand-in oracle review: APPROVE {sha}",
+        "body": f"Stand-in review: APPROVE {sha}",
         "created_at": at,
         "updated_at": at,
     }
@@ -1087,7 +1087,7 @@ def test_a_standin_for_a_refresh_head_is_not_timed_against_its_run(monkeypatch, 
         monkeypatch,
         commits,
         REFRESH,
-        [oracle_run("2026-10-02T10:10:00Z", "opened")],
+        [review_run("2026-10-02T10:10:00Z", "opened")],
         [rest_comment(REFRESH, approved_at)],
     )
     assert pull.commits[-1].is_refresh
@@ -1097,7 +1097,7 @@ def test_a_standin_for_a_refresh_head_is_not_timed_against_its_run(monkeypatch, 
 @pytest.mark.parametrize("approved_at", ["2026-10-02T10:30:00Z", "2026-10-02T11:30:00Z"])
 def test_a_standin_survives_the_head_moving_away_and_back(monkeypatch, approved_at):
     commits = [api_commit(OLD, BEFORE), api_commit(HEAD, "2026-10-02T09:30:00Z")]
-    runs = [oracle_run("2026-10-02T10:00:00Z", "opened"), oracle_run("2026-10-02T11:00:00Z")]
+    runs = [review_run("2026-10-02T10:00:00Z", "opened"), review_run("2026-10-02T11:00:00Z")]
     pull = collected_pull(monkeypatch, commits, HEAD, runs, [rest_comment(HEAD, approved_at)])
     assert digest.review_signals(pull) == ("stand-in",)
 
@@ -1110,50 +1110,50 @@ def test_the_digest_no_longer_reads_head_workflow_runs(monkeypatch):
     assert digest.review_signals(pull) == ("stand-in",)
 
 
-ORACLE_BOT = "benchbox-oracle[bot]"
+APP_BOT = "benchbox-oracle[bot]"
 
 
-def oracle_verdict(sha, state="success", context="review-verdict"):
+def verdict_text(sha, state="success", context="review-verdict"):
     return f"### {context}: {state} for `{sha}`\n\nDetails."
 
 
-def test_an_oracle_success_review_of_the_merged_content_is_a_signal():
-    pull = evidence(reviews=(review(ORACLE_BOT, HEAD, user_type="Bot", body=oracle_verdict(HEAD)),))
-    assert digest.review_signals(pull) == ("oracle-review",)
+def test_an_review_success_review_of_the_merged_content_is_a_signal():
+    pull = evidence(reviews=(review(APP_BOT, HEAD, user_type="Bot", body=verdict_text(HEAD)),))
+    assert digest.review_signals(pull) == ("review",)
 
 
 @pytest.mark.parametrize(
-    "oracle_review",
+    "app_verdict_review",
     [
-        review(ORACLE_BOT, HEAD, user_type="Bot", body=oracle_verdict(HEAD, "failure")),
-        review(ORACLE_BOT, HEAD, user_type="Bot", body=oracle_verdict(OLD)),
-        review(ORACLE_BOT, OLD, user_type="Bot", body=oracle_verdict(OLD)),
-        review("benchbox-oracle", HEAD, user_type="User", body=oracle_verdict(HEAD)),
-        review(ORACLE_BOT, HEAD, LATER, user_type="Bot", body=oracle_verdict(HEAD)),
+        review(APP_BOT, HEAD, user_type="Bot", body=verdict_text(HEAD, "failure")),
+        review(APP_BOT, HEAD, user_type="Bot", body=verdict_text(OLD)),
+        review(APP_BOT, OLD, user_type="Bot", body=verdict_text(OLD)),
+        review("benchbox-oracle", HEAD, user_type="User", body=verdict_text(HEAD)),
+        review(APP_BOT, HEAD, LATER, user_type="Bot", body=verdict_text(HEAD)),
     ],
     ids=["failure", "other-sha", "older-commit", "user-account", "after-merge"],
 )
-def test_an_oracle_review_that_does_not_qualify_is_not_a_signal(oracle_review):
-    assert digest.review_signals(evidence(reviews=(oracle_review,))) == ()
+def test_an_app_verdict_review_that_does_not_qualify_is_not_a_signal(app_verdict_review):
+    assert digest.review_signals(evidence(reviews=(app_verdict_review,))) == ()
 
 
-def test_only_the_latest_oracle_verdict_after_a_retarget_counts():
-    success = review(ORACLE_BOT, HEAD, PUSHED, user_type="Bot", body=oracle_verdict(HEAD))
-    failure = review(ORACLE_BOT, HEAD, AFTER, user_type="Bot", body=oracle_verdict(HEAD, "failure"))
+def test_only_the_latest_verdict_text_after_a_retarget_counts():
+    success = review(APP_BOT, HEAD, PUSHED, user_type="Bot", body=verdict_text(HEAD))
+    failure = review(APP_BOT, HEAD, AFTER, user_type="Bot", body=verdict_text(HEAD, "failure"))
     assert digest.review_signals(evidence(reviews=(success, failure))) == ()
     assert digest.review_signals(evidence(reviews=(failure, success), base_changed_at=AFTER)) == ()
-    later_success = review(ORACLE_BOT, HEAD, AFTER, user_type="Bot", body=oracle_verdict(HEAD))
-    assert digest.review_signals(evidence(reviews=(later_success,), base_changed_at=PUSHED)) == ("oracle-review",)
+    later_success = review(APP_BOT, HEAD, AFTER, user_type="Bot", body=verdict_text(HEAD))
+    assert digest.review_signals(evidence(reviews=(later_success,), base_changed_at=PUSHED)) == ("review",)
 
 
-def test_a_dismissed_or_pending_oracle_review_does_not_count():
+def test_a_dismissed_or_pending_app_verdict_review_does_not_count():
     for state in ("DISMISSED", "PENDING"):
-        dismissed = review(ORACLE_BOT, HEAD, state=state, user_type="Bot", body=oracle_verdict(HEAD))
+        dismissed = review(APP_BOT, HEAD, state=state, user_type="Bot", body=verdict_text(HEAD))
         assert digest.review_signals(evidence(reviews=(dismissed,))) == ()
 
 
-def test_a_standin_must_follow_the_latest_oracle_verdict_on_the_merged_head():
-    failure = review(ORACLE_BOT, HEAD, AFTER, user_type="Bot", body=oracle_verdict(HEAD, "failure"))
+def test_a_standin_must_follow_the_latest_verdict_text_on_the_merged_head():
+    failure = review(APP_BOT, HEAD, AFTER, user_type="Bot", body=verdict_text(HEAD, "failure"))
     early = standin(HEAD, at=PUSHED)
     assert digest.review_signals(evidence(reviews=(failure,), comments=(early,))) == ()
     late = standin(HEAD, at=AFTER_REFRESH)
@@ -1170,19 +1170,17 @@ def test_connector_signals_count_only_for_merges_before_the_cut_over():
     "context", ["review-verdict", "oracle-verdict", "oracle-review-shadow"], ids=["current", "previous", "legacy"]
 )
 def test_the_digest_reads_both_first_lines(context):
-    success = evidence(reviews=(review(ORACLE_BOT, HEAD, user_type="Bot", body=oracle_verdict(HEAD, context=context)),))
-    failure = evidence(
-        reviews=(review(ORACLE_BOT, HEAD, user_type="Bot", body=oracle_verdict(HEAD, "failure", context)),)
-    )
-    assert digest.review_signals(success) == ("oracle-review",)
+    success = evidence(reviews=(review(APP_BOT, HEAD, user_type="Bot", body=verdict_text(HEAD, context=context)),))
+    failure = evidence(reviews=(review(APP_BOT, HEAD, user_type="Bot", body=verdict_text(HEAD, "failure", context)),))
+    assert digest.review_signals(success) == ("review",)
     assert digest.review_signals(failure) == ()
 
 
 def test_the_digest_keeps_reading_the_legacy_first_line_for_merged_history():
-    legacy = oracle_verdict(HEAD, context="oracle-review-shadow")
-    assert digest.ORACLE_VERDICT_LINE.match(legacy) is not None
-    pull = evidence(reviews=(review(ORACLE_BOT, HEAD, user_type="Bot", body=legacy),))
-    assert digest.review_signals(pull) == ("oracle-review",)
+    legacy = verdict_text(HEAD, context="oracle-review-shadow")
+    assert digest.REVIEW_VERDICT_LINE.match(legacy) is not None
+    pull = evidence(reviews=(review(APP_BOT, HEAD, user_type="Bot", body=legacy),))
+    assert digest.review_signals(pull) == ("review",)
 
 
 STANDIN_AT = "2026-10-15T00:09:40Z"
@@ -1195,8 +1193,8 @@ def merged_pull(**overrides):
     return evidence(merged_at=MERGED_THE_NEXT_MORNING, commits=(commit(HEAD, PUSHED_THE_NIGHT_BEFORE),), **overrides)
 
 
-def test_a_standin_survives_a_later_oracle_review_that_carries_no_verdict():
-    pending = review(ORACLE_BOT, HEAD, PENDING_AT, user_type="Bot", body=oracle_verdict(HEAD, "pending"))
+def test_a_standin_survives_a_later_app_verdict_review_that_carries_no_verdict():
+    pending = review(APP_BOT, HEAD, PENDING_AT, user_type="Bot", body=verdict_text(HEAD, "pending"))
     pull = merged_pull(reviews=(pending,), comments=(standin(HEAD, at=STANDIN_AT),))
     entry = digest.classify("f" * 40, "change", ["AGENTS.md"], pull)
     assert entry.signals == ("stand-in",)
@@ -1204,7 +1202,7 @@ def test_a_standin_survives_a_later_oracle_review_that_carries_no_verdict():
 
 
 def test_a_decisive_failure_after_the_standin_voids_it():
-    failure = review(ORACLE_BOT, HEAD, PENDING_AT, user_type="Bot", body=oracle_verdict(HEAD, "failure"))
+    failure = review(APP_BOT, HEAD, PENDING_AT, user_type="Bot", body=verdict_text(HEAD, "failure"))
     pull = merged_pull(reviews=(failure,), comments=(standin(HEAD, at=STANDIN_AT),))
     entry = digest.classify("f" * 40, "change", ["AGENTS.md"], pull)
     assert entry.signals == ()
@@ -1259,7 +1257,7 @@ def gate_accepts(verdicts, standin_at, base_change):
             "context": "review-verdict",
             "state": state,
             "description": f"large: {state} [run {run_uuid}]" if state == "success" else "",
-            "login": ORACLE_BOT,
+            "login": APP_BOT,
             "user_type": "Bot",
             "created_at": at,
         }
@@ -1271,18 +1269,18 @@ def gate_accepts(verdicts, standin_at, base_change):
             {
                 "login": "joeharris76",
                 "user_type": "User",
-                "body": f"Stand-in oracle review: APPROVE {HEAD}",
+                "body": f"Stand-in review: APPROVE {HEAD}",
                 "created_at": standin_at,
                 "updated_at": standin_at,
             }
         )
     receipt = {
-        "login": ORACLE_BOT,
+        "login": APP_BOT,
         "user_type": "Bot",
         "commit_id": HEAD,
         "state": "COMMENTED",
         "submitted_at": T_A,
-        "body": f"{oracle_verdict(HEAD, 'success')}\n\n{protocol.encode_marker(record)}",
+        "body": f"{verdict_text(HEAD, 'success')}\n\n{protocol.encode_marker(record)}",
         "last_edited_at": None,
         "includes_created_edit": False,
     }
@@ -1295,11 +1293,11 @@ def gate_accepts(verdicts, standin_at, base_change):
 
 def digest_accepts(verdicts, standin_at, base_change):
     reviews = tuple(
-        review(ORACLE_BOT, HEAD, at, user_type="Bot", body=oracle_verdict(HEAD, state)) for state, at in verdicts
+        review(APP_BOT, HEAD, at, user_type="Bot", body=verdict_text(HEAD, state)) for state, at in verdicts
     )
     comments = (standin(HEAD, at=standin_at),) if standin_at else ()
     pull = evidence(reviews=reviews, comments=comments, base_changed_at=base_change or "")
-    return bool({"oracle-review", "stand-in"} & set(digest.review_signals(pull)))
+    return bool({"review", "stand-in"} & set(digest.review_signals(pull)))
 
 
 @pytest.mark.parametrize("timeline", TIMELINES.values(), ids=TIMELINES.keys())
@@ -1309,7 +1307,7 @@ def test_the_digest_and_the_gate_agree_on_the_standin_window(timeline):
     assert digest_accepts(verdicts, standin_at, base_change) is expected
 
 
-def oracle_thread(severity, started_by="benchbox-oracle"):
+def app_thread(severity, started_by="benchbox-oracle"):
     return digest.Thread(resolved=True, started_by=started_by, first_comment_sha=HEAD, severity=severity)
 
 
@@ -1322,29 +1320,29 @@ def gap_body_for(**overrides):
     ("overrides", "expected"),
     [
         (
-            {"reviews": (review(CONNECTOR, HEAD),), "threads": (oracle_thread("High"),)},
-            "Reason class: override of an oracle High finding.",
+            {"reviews": (review(CONNECTOR, HEAD),), "threads": (app_thread("High"),)},
+            "Reason class: override of a review High finding.",
         ),
         (
-            {"reviews": (review(CONNECTOR, HEAD),), "threads": (oracle_thread("Critical"),)},
-            "Reason class: override of an oracle High finding.",
+            {"reviews": (review(CONNECTOR, HEAD),), "threads": (app_thread("Critical"),)},
+            "Reason class: override of a review High finding.",
         ),
         (
-            {"reviews": (review(CONNECTOR, HEAD),), "threads": (oracle_thread("Medium"), oracle_thread("Low"))},
+            {"reviews": (review(CONNECTOR, HEAD),), "threads": (app_thread("Medium"), app_thread("Low"))},
             "Reason class: deferred finding.",
         ),
         (
-            {"reviews": (review(CONNECTOR, HEAD),), "threads": (oracle_thread("", started_by=CONNECTOR),)},
+            {"reviews": (review(CONNECTOR, HEAD),), "threads": (app_thread("", started_by=CONNECTOR),)},
             "Reason class: deferred finding.",
         ),
         (
-            {"reviews": (review(CONNECTOR, HEAD),), "threads": (oracle_thread("High", started_by="someone"),)},
+            {"reviews": (review(CONNECTOR, HEAD),), "threads": (app_thread("High", started_by="someone"),)},
             "Reason class: deferred finding.",
         ),
         ({}, "Reason class: no review signal."),
         (
-            {"threads": (oracle_thread("High"), oracle_thread("Medium"))},
-            "Reason class: override of an oracle High finding; deferred finding; no review signal.",
+            {"threads": (app_thread("High"), app_thread("Medium"))},
+            "Reason class: override of a review High finding; deferred finding; no review signal.",
         ),
     ],
     ids=["high", "critical", "medium-low", "human-thread", "high-from-a-human", "no-signal", "all-three"],
@@ -1358,7 +1356,7 @@ def test_a_gap_issue_for_a_commit_with_no_pull_request_states_no_review_signal()
     assert "Reason class: no review signal." in digest.gap_issue_body(entry)
 
 
-def test_a_thread_records_the_severity_the_oracle_titled_its_finding_with(monkeypatch):
+def test_a_thread_records_the_severity_the_review_titled_its_finding_with(monkeypatch):
     node = thread_node(True, "benchbox-oracle", HEAD)
     node["comments"]["nodes"][0]["body"] = "**High**: the title\n\ndetail"
     plain = thread_node(True, "reviewer", HEAD)
@@ -1417,7 +1415,7 @@ def unreviewed_entry(**overrides):
 
 
 def thread_body(severity="Medium", reviewed=True):
-    threads = (oracle_thread(severity),)
+    threads = (app_thread(severity),)
     if reviewed:
         entry = reviewed_entry(threads=threads)
     else:
@@ -1458,7 +1456,7 @@ def test_a_no_signal_issue_stays_open_while_the_entry_has_no_signal(gap_env):
 
 def test_a_no_signal_issue_closes_on_the_signal_whatever_the_threads_now_say(gap_env):
     gap_env["issues"] = [gap_issue(30)]
-    gap_env["entries"][SHA_3030] = reviewed_entry(threads=(oracle_thread("High"),))
+    gap_env["entries"][SHA_3030] = reviewed_entry(threads=(app_thread("High"),))
     assert [closure.number for closure in digest.gap_closures("o/r", [])] == [30]
 
 
@@ -1621,7 +1619,7 @@ STANDIN_AT = "2026-10-02T11:49:23Z"
 
 def verdict_with_open(sha, severities=("Medium",)):
     lines = [
-        f"### oracle-verdict: failure for `{sha}`",
+        f"### review-verdict: failure for `{sha}`",
         "",
         "Decision: **SHIP WITH FIXES**.",
         "",
@@ -1632,7 +1630,7 @@ def verdict_with_open(sha, severities=("Medium",)):
 
 
 def failure_review(sha=HEAD, body=None):
-    return review(ORACLE_BOT, sha, user_type="Bot", body=body if body is not None else verdict_with_open(sha))
+    return review(APP_BOT, sha, user_type="Bot", body=body if body is not None else verdict_with_open(sha))
 
 
 def instruction(at=INSTRUCTION_AT, body='Owner instruction: "Post the stand in".'):
@@ -1666,7 +1664,7 @@ def test_a_standin_override_lists_findings_of_any_severity(listed, expected):
     assert digest.standin_overrides([overridden(severities=listed)])[0].severities == expected
 
 
-def test_an_unresolved_oracle_thread_counts_as_an_open_finding():
+def test_an_unresolved_app_thread_counts_as_an_open_finding():
     pull = evidence(
         comments=(standin(HEAD),),
         threads=(digest.Thread(False, "benchbox-oracle", HEAD, "Low"),),
@@ -1677,7 +1675,7 @@ def test_an_unresolved_oracle_thread_counts_as_an_open_finding():
 @pytest.mark.parametrize(
     "pull",
     [
-        evidence(reviews=(review(ORACLE_BOT, HEAD, user_type="Bot", body=oracle_verdict(HEAD)),)),
+        evidence(reviews=(review(APP_BOT, HEAD, user_type="Bot", body=verdict_text(HEAD)),)),
         evidence(comments=(standin(HEAD),)),
         evidence(
             reviews=(failure_review(),),
@@ -1692,21 +1690,21 @@ def test_an_unresolved_oracle_thread_counts_as_an_open_finding():
             threads=(digest.Thread(True, "benchbox-oracle", OLD, "Medium"),),
         ),
     ],
-    ids=["oracle-success", "no-finding", "non-attester", "wrong-sha", "resolved-unlisted-thread"],
+    ids=["review-success", "no-finding", "non-attester", "wrong-sha", "resolved-unlisted-thread"],
 )
 def test_a_pass_without_an_open_finding_is_not_an_override(pull):
     assert digest.standin_overrides([pull]) == []
 
 
 def test_a_standin_overriding_a_do_not_ship_without_severities_is_listed():
-    body = f"### oracle-verdict: failure for `{HEAD}`\n\nDecision: **DO NOT SHIP**.\n"
+    body = f"### review-verdict: failure for `{HEAD}`\n\nDecision: **DO NOT SHIP**.\n"
     pull = evidence(reviews=(failure_review(body=body),), comments=(standin(HEAD, at=STANDIN_AT),))
     assert digest.standin_overrides([pull])[0].severities == ("DO NOT SHIP",)
 
 
 def test_a_standin_overriding_a_decisionless_failure_is_listed():
     pull = evidence(
-        reviews=(failure_review(body=oracle_verdict(HEAD, "failure")),), comments=(standin(HEAD, at=STANDIN_AT),)
+        reviews=(failure_review(body=verdict_text(HEAD, "failure")),), comments=(standin(HEAD, at=STANDIN_AT),)
     )
     assert digest.standin_overrides([pull])[0].severities == ("failure",)
 
@@ -1987,7 +1985,7 @@ def test_collect_window_pulls_records_an_unreadable_pull_request(monkeypatch):
 
 WITHDRAWN_BODY = "\n".join(
     [
-        "### oracle-verdict: failure for `HEAD`",
+        "### review-verdict: failure for `HEAD`",
         "",
         "Decision: **SHIP WITH FIXES**.",
         "",
@@ -2059,7 +2057,7 @@ def test_a_failed_window_listing_marks_every_section_unavailable(stubbed, monkey
     assert "The window's pull requests were unreadable: window gone" in out
     assert "Stand-in overrides are unavailable for this window" in out
     assert "Red-trunk armings are unavailable for this window" in out
-    assert "Oracle withdrawals are unavailable for this window" in out
+    assert "Review withdrawals are unavailable for this window" in out
     assert stubbed["checkpoint"] == [HEAD]
 
 
@@ -2143,7 +2141,7 @@ APP_LOGIN = "benchbox-oracle[bot]"
 APP_CREATOR = {"login": APP_LOGIN, "type": "Bot"}
 
 
-def oracle_record(decision, **over):
+def verdict_record(decision, **over):
     record = {
         "v": 1,
         "cycle": 1,
@@ -2165,11 +2163,11 @@ def oracle_record(decision, **over):
     return record
 
 
-def oracle_review_body(decision="SHIP", state="success", marker=True, **over):
+def verdict_review_body(decision="SHIP", state="success", marker=True, **over):
     from theseus_reviewer import protocol
 
-    body = f"### oracle-verdict: {state} for `{HEAD}`\n\nDecision text.\n"
-    return body + ("\n" + protocol.encode_marker(oracle_record(decision, **over)) if marker else "")
+    body = f"### review-verdict: {state} for `{HEAD}`\n\nDecision text.\n"
+    return body + ("\n" + protocol.encode_marker(verdict_record(decision, **over)) if marker else "")
 
 
 def app_review(body, node_id="PRR_1", submitted_at=AFTER):
@@ -2203,33 +2201,33 @@ def serve_verification(monkeypatch, *, edited=None, statuses=(), graphql_error=N
     monkeypatch.setattr(digest, "gh_pages", pages)
 
 
-def test_an_unedited_review_agreeing_with_the_app_status_counts_as_oracle_evidence(monkeypatch):
+def test_an_unedited_review_agreeing_with_the_app_status_counts_as_review_evidence(monkeypatch):
     serve_verification(monkeypatch, statuses=[app_status("success")])
-    (checked,) = digest.verify_oracle_reviews("o/r", [app_review(oracle_review_body())])
+    (checked,) = digest.verify_reviews("o/r", [app_review(verdict_review_body())])
     assert checked.unverifiable == ""
-    assert "oracle-review" in digest.review_signals(evidence(reviews=(checked,)))
+    assert "review" in digest.review_signals(evidence(reviews=(checked,)))
 
 
 def test_a_ship_with_fixes_review_agreeing_with_the_app_failure_status_counts(monkeypatch):
     serve_verification(monkeypatch, statuses=[app_status("failure")])
-    body = oracle_review_body("SHIP_WITH_FIXES", "failure")
-    (checked,) = digest.verify_oracle_reviews("o/r", [app_review(body)])
+    body = verdict_review_body("SHIP_WITH_FIXES", "failure")
+    (checked,) = digest.verify_reviews("o/r", [app_review(body)])
     assert checked.unverifiable == ""
     assert digest.blocking_verdict_decision(evidence(reviews=(checked,))) == "failure"
 
 
-def test_an_edited_review_is_unverifiable_and_never_oracle_evidence(monkeypatch):
+def test_an_edited_review_is_unverifiable_and_never_review_evidence(monkeypatch):
     serve_verification(monkeypatch, edited={"PRR_1": ("2026-10-03T00:00:00Z", False)}, statuses=[app_status("success")])
-    (checked,) = digest.verify_oracle_reviews("o/r", [app_review(oracle_review_body())])
+    (checked,) = digest.verify_reviews("o/r", [app_review(verdict_review_body())])
     assert "edited" in checked.unverifiable
     pull = evidence(reviews=(checked,))
-    assert "oracle-review" not in digest.review_signals(pull)
+    assert "review" not in digest.review_signals(pull)
     assert pull.unverifiable == (f"review on `{HEAD[:9]}`: {checked.unverifiable}",)
 
 
 def test_a_created_edit_is_unverifiable_too(monkeypatch):
     serve_verification(monkeypatch, edited={"PRR_1": (None, True)}, statuses=[app_status("success")])
-    (checked,) = digest.verify_oracle_reviews("o/r", [app_review(oracle_review_body())])
+    (checked,) = digest.verify_reviews("o/r", [app_review(verdict_review_body())])
     assert "edited" in checked.unverifiable
 
 
@@ -2239,20 +2237,20 @@ def test_a_created_edit_is_unverifiable_too(monkeypatch):
 )
 def test_a_review_disagreeing_with_the_app_status_is_unverifiable(monkeypatch, decision, state, status):
     serve_verification(monkeypatch, statuses=[app_status(status)])
-    (checked,) = digest.verify_oracle_reviews("o/r", [app_review(oracle_review_body(decision, state))])
+    (checked,) = digest.verify_reviews("o/r", [app_review(verdict_review_body(decision, state))])
     assert "disagrees" in checked.unverifiable
-    assert "oracle-review" not in digest.review_signals(evidence(reviews=(checked,)))
+    assert "review" not in digest.review_signals(evidence(reviews=(checked,)))
 
 
 def test_a_marker_decision_contradicting_the_review_header_is_unverifiable(monkeypatch):
     serve_verification(monkeypatch, statuses=[app_status("success")])
-    (checked,) = digest.verify_oracle_reviews("o/r", [app_review(oracle_review_body("DO_NOT_SHIP", "success"))])
+    (checked,) = digest.verify_reviews("o/r", [app_review(verdict_review_body("DO_NOT_SHIP", "success"))])
     assert checked.unverifiable
 
 
 def test_a_non_app_success_status_never_verifies_a_review(monkeypatch):
     serve_verification(monkeypatch, statuses=[app_status("success", creator={"login": "joe", "type": "User"})])
-    (checked,) = digest.verify_oracle_reviews("o/r", [app_review(oracle_review_body())])
+    (checked,) = digest.verify_reviews("o/r", [app_review(verdict_review_body())])
     assert "no review-verdict status" in checked.unverifiable
 
 
@@ -2262,47 +2260,47 @@ def test_the_review_is_matched_to_the_status_by_its_run_id(monkeypatch):
         app_status("failure", "later", "2026-10-02T12:00:00Z", id_=2),
     ]
     serve_verification(monkeypatch, statuses=statuses)
-    (verified,) = digest.verify_oracle_reviews("o/r", [app_review(oracle_review_body(run_uuid="111"))])
+    (verified,) = digest.verify_reviews("o/r", [app_review(verdict_review_body(run_uuid="111"))])
     assert verified.unverifiable == ""
-    (other,) = digest.verify_oracle_reviews("o/r", [app_review(oracle_review_body(run_uuid="222"))])
+    (other,) = digest.verify_reviews("o/r", [app_review(verdict_review_body(run_uuid="222"))])
     assert other.unverifiable
 
 
 def test_a_review_with_no_readable_decision_is_unverifiable(monkeypatch):
     serve_verification(monkeypatch, statuses=[app_status("success")])
-    (checked,) = digest.verify_oracle_reviews("o/r", [app_review("Free text, no verdict header.")])
+    (checked,) = digest.verify_reviews("o/r", [app_review("Free text, no verdict header.")])
     assert checked.unverifiable
 
 
-def test_unreadable_edit_state_makes_every_oracle_review_unverifiable(monkeypatch):
+def test_unreadable_edit_state_makes_every_app_verdict_review_unverifiable(monkeypatch):
     from theseus_reviewer import edits
 
     serve_verification(monkeypatch, graphql_error=edits.EditStateError("GraphQL returned errors"))
-    reviews = [app_review(oracle_review_body()), review("joe", HEAD, user_type="User")]
-    checked = digest.verify_oracle_reviews("o/r", reviews)
+    reviews = [app_review(verdict_review_body()), review("joe", HEAD, user_type="User")]
+    checked = digest.verify_reviews("o/r", reviews)
     assert "could not be read" in checked[0].unverifiable and checked[1].unverifiable == ""
 
 
 def test_a_review_without_a_node_id_is_unverifiable(monkeypatch):
     serve_verification(monkeypatch, statuses=[app_status("success")])
-    (checked,) = digest.verify_oracle_reviews("o/r", [app_review(oracle_review_body(), node_id="")])
+    (checked,) = digest.verify_reviews("o/r", [app_review(verdict_review_body(), node_id="")])
     assert checked.unverifiable
 
 
 def test_unreadable_head_statuses_make_the_review_unverifiable(monkeypatch):
     serve_verification(monkeypatch, status_error=digest.ReadError("boom"))
-    (checked,) = digest.verify_oracle_reviews("o/r", [app_review(oracle_review_body())])
+    (checked,) = digest.verify_reviews("o/r", [app_review(verdict_review_body())])
     assert "statuses could not be read" in checked.unverifiable
 
 
-def test_collect_pull_verifies_the_oracle_reviews_it_reads(monkeypatch):
+def test_collect_pull_verifies_the_gate_reviews_it_reads(monkeypatch):
     serve_verification(monkeypatch, edited={"PRR_1": (None, True)}, statuses=[app_status("success")])
     raw = {
         "user": {"login": APP_LOGIN, "type": "Bot"},
         "commit_id": HEAD,
         "submitted_at": AFTER,
         "state": "COMMENTED",
-        "body": oracle_review_body(),
+        "body": verdict_review_body(),
         "node_id": "PRR_1",
     }
     rest = {"reviews": [raw], "reactions": [], "timeline": [], "comments": []}
@@ -2358,7 +2356,7 @@ def test_an_app_first_comment_without_edit_state_is_unverifiable(monkeypatch):
     assert thread.severity == "" and "could not be read" in thread.unverifiable
 
 
-def test_the_digest_lists_unverifiable_oracle_evidence():
+def test_the_digest_lists_unverifiable_review_evidence():
     checked = digest.Review(APP_LOGIN, HEAD, AFTER, "COMMENTED", "Bot", "x", "PRR_1", "it was edited after posting")
     assert digest.render_unverifiable([evidence(reviews=(checked,))]).splitlines()[2:] == [
         f"- #7: review on `{HEAD[:9]}`: it was edited after posting."
@@ -2368,7 +2366,7 @@ def test_the_digest_lists_unverifiable_oracle_evidence():
 
 def unverifiable_failure_review(sha=HEAD):
     return digest.Review(
-        ORACLE_BOT, sha, AFTER, "COMMENTED", "Bot", verdict_with_open(sha), "PRR_1", "it was edited after posting"
+        APP_BOT, sha, AFTER, "COMMENTED", "Bot", verdict_with_open(sha), "PRR_1", "it was edited after posting"
     )
 
 
@@ -2380,7 +2378,7 @@ def test_a_standin_over_an_edited_blocking_review_is_still_an_override():
 
 
 def test_a_standin_over_an_edited_finding_thread_is_still_an_override():
-    thread = digest.Thread(False, "benchbox-oracle", HEAD, "", "an oracle finding was edited after posting")
+    thread = digest.Thread(False, "benchbox-oracle", HEAD, "", "a review finding was edited after posting")
     pull = evidence(threads=(thread,), comments=(standin(HEAD, at=STANDIN_AT),))
     assert [override.severities for override in digest.standin_overrides([pull])] == [(digest.UNVERIFIABLE_FINDING,)]
 
@@ -2391,7 +2389,7 @@ def test_unverifiable_evidence_adds_to_the_verified_open_findings():
     assert digest.standin_overrides([pull])[0].severities == ("High", digest.UNVERIFIABLE_FINDING)
 
 
-def test_a_standin_with_no_oracle_evidence_at_all_is_still_not_an_override():
+def test_a_standin_with_no_review_evidence_at_all_is_still_not_an_override():
     assert digest.standin_overrides([evidence(comments=(standin(HEAD, at=STANDIN_AT),))]) == []
 
 
@@ -2401,43 +2399,43 @@ def test_each_same_head_review_is_matched_to_the_status_nearest_its_submission(m
         app_status("success", "round two", "2026-10-02T11:00:00Z", id_=2),
     ]
     serve_verification(monkeypatch, statuses=statuses)
-    first = app_review(oracle_review_body("DO_NOT_SHIP", "failure"), "PRR_1", "2026-10-02T10:00:02Z")
-    second = app_review(oracle_review_body("SHIP", "success"), "PRR_2", "2026-10-02T11:00:02Z")
-    checked = digest.verify_oracle_reviews("o/r", [first, second])
+    first = app_review(verdict_review_body("DO_NOT_SHIP", "failure"), "PRR_1", "2026-10-02T10:00:02Z")
+    second = app_review(verdict_review_body("SHIP", "success"), "PRR_2", "2026-10-02T11:00:02Z")
+    checked = digest.verify_reviews("o/r", [first, second])
     assert [item.unverifiable for item in checked] == ["", ""]
 
 
 def test_an_edited_newer_review_voids_an_older_verified_success_signal():
-    older = review(ORACLE_BOT, HEAD, submitted_at=PUSHED, user_type="Bot", body=oracle_verdict(HEAD, "success"))
+    older = review(APP_BOT, HEAD, submitted_at=PUSHED, user_type="Bot", body=verdict_text(HEAD, "success"))
     newer = digest.Review(
-        ORACLE_BOT, HEAD, AFTER, "COMMENTED", "Bot", verdict_with_open(HEAD), "PRR_2", "it was edited after posting"
+        APP_BOT, HEAD, AFTER, "COMMENTED", "Bot", verdict_with_open(HEAD), "PRR_2", "it was edited after posting"
     )
     pull = evidence(reviews=(older, newer), comments=(standin(HEAD, at=STANDIN_AT),))
-    assert "oracle-review" not in digest.review_signals(pull)
+    assert "review" not in digest.review_signals(pull)
     assert [override.severities for override in digest.standin_overrides([pull])] == [(digest.UNVERIFIABLE_FINDING,)]
 
 
 def test_an_unverifiable_review_sets_the_standin_cutoff_whatever_its_header_says():
-    headerless = digest.Review(ORACLE_BOT, HEAD, AFTER, "COMMENTED", "Bot", "edited", "PRR_1", "it was edited")
+    headerless = digest.Review(APP_BOT, HEAD, AFTER, "COMMENTED", "Bot", "edited", "PRR_1", "it was edited")
     early = standin(HEAD, at=PUSHED)
     assert digest.standin_comment(evidence(reviews=(headerless,), comments=(early,))) is None
 
 
 def test_an_edited_finding_thread_on_a_non_content_commit_is_flagged():
-    thread = digest.Thread(False, "benchbox-oracle", OLD, "", "an oracle finding was edited after posting")
+    thread = digest.Thread(False, "benchbox-oracle", OLD, "", "a review finding was edited after posting")
     pull = refreshed(threads=(thread,), comments=(standin(HEAD, at=STANDIN_AT),))
-    assert digest.unverifiable_oracle_evidence(pull)
+    assert digest.unverifiable_review_evidence(pull)
 
 
-def test_a_resolved_edited_oracle_thread_stays_an_override_in_the_gap_class():
-    thread = digest.Thread(True, "benchbox-oracle", HEAD, "", "an oracle finding was edited after posting")
+def test_a_resolved_edited_app_thread_stays_an_override_in_the_gap_class():
+    thread = digest.Thread(True, "benchbox-oracle", HEAD, "", "a review finding was edited after posting")
     assert (
         digest.CLASS_OVERRIDE
         in digest.classify("f" * 40, "change", ["AGENTS.md"], evidence(threads=(thread,))).reason_classes
     )
 
 
-def adjudication_comment(body="Oracle adjudication: WITHDRAW D2 - the helper keeps the row", at=AFTER, **overrides):
+def adjudication_comment(body="Review adjudication: WITHDRAW D2 - the helper keeps the row", at=AFTER, **overrides):
     fields = {"login": "joeharris76", "user_type": "User", "updated_at": None, **overrides}
     return digest.Comment(fields["login"], body, at, fields["user_type"], fields["updated_at"])
 
@@ -2463,7 +2461,7 @@ def test_the_digest_flags_an_adjudication_without_a_prior_owner_instruction():
         adjudication_comment(login="someone"),
         adjudication_comment(user_type="Bot"),
         adjudication_comment(at=LATER),
-        adjudication_comment("Oracle adjudication: WITHDRAW D2"),
+        adjudication_comment("Review adjudication: WITHDRAW D2"),
     ],
     ids=["not an attester", "bot", "after the merge", "malformed"],
 )
@@ -2478,7 +2476,7 @@ def test_an_edited_adjudication_comment_is_still_listed_and_noted():
     assert "comment edited after posting" in digest.render_adjudications(found)
 
 
-def test_a_ruling_recorded_by_the_oracle_is_listed_when_its_comment_is_gone():
+def test_a_ruling_recorded_by_the_review_is_listed_when_its_comment_is_gone():
     from theseus_reviewer import protocol
 
     record = {
@@ -2499,8 +2497,8 @@ def test_a_ruling_recorded_by_the_oracle_is_listed_when_its_comment_is_gone():
         "summary": "",
         "adjudicated": [{"id": "D2", "action": "WITHDRAW"}],
     }
-    body = f"{oracle_verdict(HEAD, 'success')}\n\n{protocol.encode_marker(record)}"
-    pull = evidence(reviews=(review(ORACLE_BOT, HEAD, AFTER, user_type="Bot", body=body),))
+    body = f"{verdict_text(HEAD, 'success')}\n\n{protocol.encode_marker(record)}"
+    pull = evidence(reviews=(review(APP_BOT, HEAD, AFTER, user_type="Bot", body=body),))
     found = digest.adjudication_records([pull])
     assert [(r.action, r.defect_id) for r in found] == [("WITHDRAW", "D2")]
     assert "NO OWNER INSTRUCTION" in digest.render_adjudications(found)
@@ -2531,8 +2529,8 @@ def test_a_recovered_ruling_needs_an_instruction_before_the_review_that_preceded
     ruled["adjudicated"] = [{"id": "D2", "action": "WITHDRAW"}]
 
     def posted(record, at):
-        body = f"{oracle_verdict(HEAD, 'success')}\n\n{protocol.encode_marker(record)}"
-        return review(ORACLE_BOT, HEAD, at, user_type="Bot", body=body)
+        body = f"{verdict_text(HEAD, 'success')}\n\n{protocol.encode_marker(record)}"
+        return review(APP_BOT, HEAD, at, user_type="Bot", body=body)
 
     reviews = (posted(base, "2026-10-02T10:30:00Z"), posted(ruled, AFTER))
     late = digest.adjudication_records([evidence(reviews=reviews, comments=(instruction("2026-10-02T10:45:00Z"),))])

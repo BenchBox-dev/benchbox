@@ -10,7 +10,7 @@ all open PRs" or "take over and complete all work" merged two PRs the owner had
 rejected or held. Later the same kind of session marked held drafts ready and
 re-armed them. The holds existed only as prose in handoffs. The tooling refused
 to arm a held PR, but the sessions used raw `gh` commands. Separately, agents
-posted stand-in approvals under the owner's account before the oracle had
+posted stand-in approvals under the owner's account before the reviewer had
 reviewed the head.
 
 All agents act through the owner's GitHub account, so GitHub cannot tell an
@@ -49,9 +49,9 @@ branch is incomplete.
 ## Stand-in approvals
 
 A stand-in is the `Stand-in review: APPROVE <head SHA>` comment that the
-required `oracle-gate` check accepts from an attester account. Post one only
+required `review-gate` check accepts from an attester account. Post one only
 when the owner names the PR and its head in the current request. Otherwise wait
-for the oracle verdict, re-run it when a reviewer errors, and report a stalled
+for the review verdict, re-run it when a reviewer errors, and report a stalled
 verdict to the owner.
 
 The comment body must be exactly `Stand-in review: APPROVE <40-character
@@ -60,32 +60,32 @@ text. The checker matches the whole comment, so any extra text voids the
 stand-in.
 
 Quote the owner's instruction in a separate comment posted before the stand-in,
-naming the PR, the head, and the oracle findings the stand-in covers. The merge
+naming the PR, the head, and the review findings the stand-in covers. The merge
 digest links each stand-in to the nearest preceding `Owner instruction` comment.
 
 A stand-in covers absence, an oversize brief, a refusal, or a head held because
-an oracle review was edited. It does not cover open findings: `oracle-gate`
-rejects a stand-in on a head whose latest decisive `oracle-verdict` status is
+a review was edited. It does not cover open findings: `review-gate`
+rejects a stand-in on a head whose latest decisive `review-verdict` status is
 SHIP WITH FIXES. Fix the findings, or dispute them with a `Dispute:` thread
 reply carrying file:line counter-evidence. Two dispute rounds per patch are
-re-judged without using the rerun budget. A finding the oracle maintains in
+re-judged without using the rerun budget. A finding the reviewer maintains in
 both rounds is escalated, and the gate's waiting message names the owner action.
 
-A stand-in comment makes `oracle-gate` re-evaluate the head at once. To
+A stand-in comment makes `review-gate` re-evaluate the head at once. To
 withdraw a stand-in, edit or delete it: the checker accepts only a comment
-that was never edited, and both actions re-run `oracle-gate`, which then fails
+that was never edited, and both actions re-run `review-gate`, which then fails
 the head again. Other comment edits and deletions do not run the gate.
-Resolving an oracle review thread starts no workflow run and needs no
-`oracle-gate` refresh: `oracle-gate` does not read threads, and the ruleset's
+Resolving a review thread starts no workflow run and needs no
+`review-gate` refresh: `review-gate` does not read threads, and the ruleset's
 required thread resolution blocks the merge while one is open. `make pr-arm`
 and `make pr-arm-remote` dispatch nothing and refuse to arm a head whose fresh
 gate evaluation does not pass. For a PR that is already armed whose gate is
 stale, run `gh workflow run review-gate.yml --ref develop -f pr=<number>` (or
-wait for the hourly sweep) and merge only after `oracle-gate` passes on the
+wait for the hourly sweep) and merge only after `review-gate` passes on the
 current head.
 
 To refresh the gate, dispatch it; `make pr-rerun` re-runs CI and does not
-refresh `oracle-gate`. Withhold readiness before withdrawing accepted review
+refresh `review-gate`. Withhold readiness before withdrawing accepted review
 evidence, such as deleting a stand-in comment: leave the PR unarmed, withdraw
 the evidence, dispatch the gate, and observe the new result on the current head
 before treating the PR as ready.
@@ -95,14 +95,14 @@ one provider is served, reviews continue on the substitutes in the trusted
 config and say `degraded: <provider>`; the gate is unchanged. A stand-in
 applies only when no reviewer can run at all (every provider lost), in which
 case the review stays pending and the owner names the PR and head. See
-[`oracle-gateway-host.md`](../internal/oracle-gateway-host.md#losing-or-removing-a-provider).
+[`review-gateway-host.md`](../internal/review-gateway-host.md#losing-or-removing-a-provider).
 
 ## Owner adjudication
 
 The owner resolves an escalated finding with a top-level PR comment that is
 exactly `Review adjudication: WITHDRAW D<n> - <reason>` or `Review adjudication:
 MAINTAIN D<n> - <reason>`, posted from an attester account after the escalating
-oracle review of the current head and never edited. The comment re-runs the
+review of the current head and never edited. The comment re-runs the
 verdict workflow without a reviewer: `WITHDRAW` stops the finding blocking,
 `MAINTAIN` closes the dispute and keeps the finding open until a fix lands.
 
@@ -110,14 +110,14 @@ Post an adjudication only when the owner names the PR, the head, the finding and
 the decision in the current request. Quote that instruction first in a separate
 `Owner instruction` comment. Agents share the owner's account, so the check is
 audit-only, as for a stand-in: the merge digest lists every adjudication,
-including one whose comment was edited or deleted (read from the oracle's own
+including one whose comment was edited or deleted (read from the review's own
 record), and flags one with no preceding `Owner instruction` comment.
 
 ## Retry backoff reset
 
 A reviewer outage plus the doubling retry backoff can hold a verdict for hours,
 and a manual `/review` is refused inside it. The owner can clear it for
-one pull request head with `make oracle-backoff-reset PR=<number>
+one pull request head with `make review-backoff-reset PR=<number>
 HEAD=<40-character head SHA> REASON='<why>'`. Run it only when the owner names
 the PR and its head in the current request. Post a separate `Owner instruction`
 comment that names the head first, as for a stand-in; the target refuses
@@ -160,7 +160,7 @@ path rule narrows which PRs qualify but does not bound what a PR changes: a shar
 file such as the `Makefile` satisfies it. The owner's instruction in the current
 request is the control.
 
-The authorization lifts only the red-trunk refusal. Required checks, `oracle-gate`,
+The authorization lifts only the red-trunk refusal. Required checks, `review-gate`,
 review-thread resolution and owner holds still apply. While `develop` has been red
 for more than 30 minutes, `make pr-open` opens the PR as a draft and prints that
 arming needs this authorization; mark it ready (`gh pr ready <n>`) after the
@@ -171,7 +171,7 @@ authorization lands, then arm with `make pr-arm`.
 `gh pr checks --required` shows one result per check name, so a superseded
 failed run hides behind a newer success. GitHub's merge rollup still counts the
 failed suite, and the PR stays `BLOCKED` with every listed check green. This
-happened to #3264 and #3319 (`oracle-review` runs from `synchronize` and
+happened to #3264 and #3319 (`review` runs from `synchronize` and
 `pull_request_review` events), and to eight PRs on 2026-10-12.
 
 - Read per-suite state, never the deduplicated list: for each required check
@@ -218,6 +218,6 @@ happened to #3264 and #3319 (`oracle-review` runs from `synchronize` and
 Agents never bypass a required check, relax a ruleset, or merge around the gate.
 Ruleset relaxation is owner-only everywhere (`docs/internal/repo-admin-settings.md`).
 `docs/agent/emergency-merge.md` is the owner-only runbook for a gate that is
-broken by the contents of `develop` (including when `oracle-gate` itself is
+broken by the contents of `develop` (including when `review-gate` itself is
 broken); it gives agents evidence-and-stop steps only. Do not skip a check for a
 problem another open PR already fixes; rebase onto the fix instead.

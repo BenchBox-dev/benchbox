@@ -97,7 +97,7 @@ def test_the_caller_passes_the_environment_base_policy_path_and_tailscale_tag_an
         "environment": "oracle",
         "theseus_ref": _job()["with"]["theseus_ref"],
         "gated_base": "develop",
-        "policy_path": ".github/oracle-reviewers.yml",
+        "policy_path": ".github/review.yml",
         "tailscale_tag": "tag:oracle-ci",
     }
 

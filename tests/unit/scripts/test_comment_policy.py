@@ -2454,7 +2454,7 @@ def test_transition_self_registered_exception_fails_without_review(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     base = _review_gated_repo(tmp_path)
-    monkeypatch.setattr(check_comment_policy, "oracle_review_covers", lambda root: False)
+    monkeypatch.setattr(check_comment_policy, "review_covers", lambda root: False)
     assert check_comment_policy.main(["--root", str(tmp_path), "--mode", "strict", "--base", base]) == 1
 
 
@@ -2462,7 +2462,7 @@ def test_transition_self_registered_exception_counts_with_review(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     base = _review_gated_repo(tmp_path)
-    monkeypatch.setattr(check_comment_policy, "oracle_review_covers", lambda root: True)
+    monkeypatch.setattr(check_comment_policy, "review_covers", lambda root: True)
     assert check_comment_policy.main(["--root", str(tmp_path), "--mode", "strict", "--base", base]) == 0
 
 
@@ -2488,13 +2488,13 @@ def _review_event(tmp_path: Path, head: str = "a" * 40) -> None:
     )
 
 
-def test_oracle_review_covers_needs_event_token_and_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_review_covers_needs_event_token_and_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import check_comment_cleanup_scope as scope
 
     monkeypatch.delenv("GITHUB_EVENT_PATH", raising=False)
     monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
     monkeypatch.setenv("GITHUB_TOKEN", "t")
-    assert scope.oracle_review_covers(tmp_path) is False
+    assert scope.review_covers(tmp_path) is False
 
 
 def _review_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, head: str = "a" * 40) -> None:
@@ -2530,14 +2530,14 @@ def _gate_status(
     state: str = "success",
     login: str = "benchbox-oracle[bot]",
     account_type: str = "Bot",
-    context: str = "oracle-gate",
+    context: str = "review-gate",
 ) -> dict:
     return {"context": context, "state": state, "creator": {"login": login, "type": account_type}}
 
 
 def _review_run() -> dict:
     return {
-        "name": "oracle-review",
+        "name": "review",
         "status": "completed",
         "conclusion": "success",
         "completed_at": "2026-10-14T00:00:00Z",
@@ -2558,7 +2558,7 @@ def _fake_api(
     status_payload = json_module.dumps(statuses if statuses is not None else [_gate_status()]).encode()
     run_payload = json_module.dumps({"total_count": 1, "check_runs": [_review_run()]}).encode()
     workflow_payload = json_module.dumps(
-        {"path": ".github/workflows/oracle-review.yml", "head_sha": "a" * 40, "conclusion": "success"}
+        {"path": ".github/workflows/review.yml", "head_sha": "a" * 40, "conclusion": "success"}
     ).encode()
 
     def fake(request: urllib.request.Request, timeout: int = 30) -> _FakeResponse:
@@ -2578,20 +2578,18 @@ def _fake_api(
     monkeypatch.setattr("urllib.request.urlopen", fake)
 
 
-def test_oracle_review_covers_with_gate_status_and_verdict(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_review_covers_with_gate_status_and_verdict(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import check_comment_cleanup_scope as scope
 
     _review_env(tmp_path, monkeypatch)
     seen: list[str] = []
     _fake_api(monkeypatch, seen=seen)
-    assert scope.oracle_review_covers(tmp_path) is True
+    assert scope.review_covers(tmp_path) is True
     assert any("/statuses?" in url and "a" * 40 in url for url in seen)
 
 
-@pytest.mark.parametrize("heading", ["review-verdict", "oracle-verdict"])
-def test_oracle_review_covers_reads_both_verdict_headings(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, heading: str
-) -> None:
+@pytest.mark.parametrize("heading", ["review-verdict"])
+def test_review_covers_reads_the_verdict_heading(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, heading: str) -> None:
     import check_comment_cleanup_scope as scope
 
     _review_env(tmp_path, monkeypatch)
@@ -2602,10 +2600,10 @@ def test_oracle_review_covers_reads_both_verdict_headings(
         return [review] if "/reviews?" in path else [status]
 
     monkeypatch.setattr(scope, "_github_api", api)
-    assert scope.oracle_review_covers(tmp_path) is True
+    assert scope.review_covers(tmp_path) is True
 
 
-def test_oracle_review_covers_rejects_review_check_run_without_gate_status(
+def test_review_covers_rejects_review_check_run_without_gate_status(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import check_comment_cleanup_scope as scope
@@ -2613,7 +2611,7 @@ def test_oracle_review_covers_rejects_review_check_run_without_gate_status(
     _review_env(tmp_path, monkeypatch)
     seen: list[str] = []
     _fake_api(monkeypatch, statuses=[], seen=seen)
-    assert scope.oracle_review_covers(tmp_path) is False
+    assert scope.review_covers(tmp_path) is False
     assert not any("/check-runs" in url or "/actions/runs/" in url for url in seen)
 
 
@@ -2626,26 +2624,26 @@ def test_oracle_review_covers_rejects_review_check_run_without_gate_status(
         [_gate_status(login="someone-else")],
         [_gate_status(login="github-actions[bot]")],
         [_gate_status(account_type="User")],
-        [_gate_status(context="oracle-review")],
+        [_gate_status(context="review")],
         [_gate_status(state="failure"), _gate_status()],
     ],
 )
-def test_oracle_review_covers_rejects_unsound_gate_status(
+def test_review_covers_rejects_unsound_gate_status(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, statuses: list[dict]
 ) -> None:
     import check_comment_cleanup_scope as scope
 
     _review_env(tmp_path, monkeypatch)
     _fake_api(monkeypatch, statuses=statuses)
-    assert scope.oracle_review_covers(tmp_path) is False
+    assert scope.review_covers(tmp_path) is False
 
 
-def test_oracle_review_covers_uses_newest_gate_status(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_review_covers_uses_newest_gate_status(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import check_comment_cleanup_scope as scope
 
     _review_env(tmp_path, monkeypatch)
     _fake_api(monkeypatch, statuses=[_gate_status(), _gate_status(state="failure")])
-    assert scope.oracle_review_covers(tmp_path) is True
+    assert scope.review_covers(tmp_path) is True
 
 
 @pytest.mark.parametrize(
@@ -2656,7 +2654,7 @@ def test_oracle_review_covers_uses_newest_gate_status(tmp_path: Path, monkeypatc
         ([_gate_status(account_type="User"), _gate_status(state="failure")], False),
     ],
 )
-def test_oracle_review_covers_ignores_a_gate_status_the_app_did_not_create(
+def test_review_covers_ignores_a_gate_status_the_app_did_not_create(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, statuses: list[dict], expected: bool
 ) -> None:
     import check_comment_cleanup_scope as scope
@@ -2668,10 +2666,10 @@ def test_oracle_review_covers_ignores_a_gate_status_the_app_did_not_create(
         return pages["statuses" if "/statuses?" in path else "reviews"]
 
     monkeypatch.setattr(scope, "_github_api", api)
-    assert scope.oracle_review_covers(tmp_path) is expected
+    assert scope.review_covers(tmp_path) is expected
 
 
-def test_oracle_review_covers_fails_closed_on_api_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_review_covers_fails_closed_on_api_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import check_comment_cleanup_scope as scope
 
     _review_event(tmp_path)
@@ -2683,44 +2681,42 @@ def test_oracle_review_covers_fails_closed_on_api_error(tmp_path: Path, monkeypa
         raise OSError("network down")
 
     monkeypatch.setattr("urllib.request.urlopen", fail)
-    assert scope.oracle_review_covers(tmp_path) is False
+    assert scope.review_covers(tmp_path) is False
 
 
-def test_oracle_review_covers_rejects_gate_status_without_verdict(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_review_covers_rejects_gate_status_without_verdict(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import check_comment_cleanup_scope as scope
 
     _review_env(tmp_path, monkeypatch)
     _fake_api(monkeypatch, reviews=[])
-    assert scope.oracle_review_covers(tmp_path) is False
+    assert scope.review_covers(tmp_path) is False
 
 
-def test_oracle_review_covers_rejects_failure_verdict(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_review_covers_rejects_failure_verdict(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import check_comment_cleanup_scope as scope
 
     _review_env(tmp_path, monkeypatch)
     _fake_api(monkeypatch, reviews=[_verdict_review(state="failure")])
-    assert scope.oracle_review_covers(tmp_path) is False
+    assert scope.review_covers(tmp_path) is False
 
 
-def test_oracle_review_covers_rejects_verdict_for_other_head(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_review_covers_rejects_verdict_for_other_head(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import check_comment_cleanup_scope as scope
 
     _review_env(tmp_path, monkeypatch)
     _fake_api(monkeypatch, reviews=[_verdict_review(commit="b" * 40, head="b" * 40)])
-    assert scope.oracle_review_covers(tmp_path) is False
+    assert scope.review_covers(tmp_path) is False
 
 
-def test_oracle_review_covers_rejects_non_oracle_verdict(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_review_covers_rejects_non_oracle_verdict(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import check_comment_cleanup_scope as scope
 
     _review_env(tmp_path, monkeypatch)
     _fake_api(monkeypatch, reviews=[_verdict_review(login="attacker")])
-    assert scope.oracle_review_covers(tmp_path) is False
+    assert scope.review_covers(tmp_path) is False
 
 
-def test_oracle_review_covers_prefers_latest_verdict(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_review_covers_prefers_latest_verdict(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import check_comment_cleanup_scope as scope
 
     _review_env(tmp_path, monkeypatch)
@@ -2731,7 +2727,7 @@ def test_oracle_review_covers_prefers_latest_verdict(tmp_path: Path, monkeypatch
             _verdict_review(state="failure", submitted="2026-10-14T00:00:02Z"),
         ],
     )
-    assert scope.oracle_review_covers(tmp_path) is False
+    assert scope.review_covers(tmp_path) is False
 
 
 def _bound_checkout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, event_head: str | None = None) -> tuple[Path, str]:
@@ -2751,35 +2747,31 @@ def _bound_checkout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, event_head:
     return repo, head
 
 
-def test_oracle_review_covers_when_checkout_is_reviewed_head(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_review_covers_when_checkout_is_reviewed_head(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import check_comment_cleanup_scope as scope
 
     repo, _ = _bound_checkout(tmp_path, monkeypatch)
-    assert scope.oracle_review_covers(repo) is True
+    assert scope.review_covers(repo) is True
 
 
-def test_oracle_review_covers_rejects_stale_event_head(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_review_covers_rejects_stale_event_head(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import check_comment_cleanup_scope as scope
 
     repo, _ = _bound_checkout(tmp_path, monkeypatch, event_head="b" * 40)
-    assert scope.oracle_review_covers(repo) is False
+    assert scope.review_covers(repo) is False
 
 
-def test_oracle_review_covers_rejects_new_commit_after_reviewed_head(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_review_covers_rejects_new_commit_after_reviewed_head(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import check_comment_cleanup_scope as scope
 
     repo, _ = _bound_checkout(tmp_path, monkeypatch)
     (repo / "f.txt").write_text("two\n", encoding="utf-8")
     git_run(repo, "commit", "-qam", "unreviewed")
-    assert scope.oracle_review_covers(repo) is False
+    assert scope.review_covers(repo) is False
 
 
 @pytest.mark.parametrize("area", ["worktree", "index"])
-def test_oracle_review_covers_rejects_modified_checkout(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, area: str
-) -> None:
+def test_review_covers_rejects_modified_checkout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, area: str) -> None:
     import check_comment_cleanup_scope as scope
 
     repo, _ = _bound_checkout(tmp_path, monkeypatch)
@@ -2787,7 +2779,7 @@ def test_oracle_review_covers_rejects_modified_checkout(
     if area == "index":
         git_run(repo, "add", "f.txt")
         (repo / "f.txt").write_text("one\n", encoding="utf-8")
-    assert scope.oracle_review_covers(repo) is False
+    assert scope.review_covers(repo) is False
 
 
 def _merge_checkout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, tamper: bool, event_head: str | None) -> Path:
@@ -2820,36 +2812,34 @@ def _merge_checkout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, tamper: boo
     return repo
 
 
-def test_oracle_review_covers_merge_checkout_of_reviewed_head(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_review_covers_merge_checkout_of_reviewed_head(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import check_comment_cleanup_scope as scope
 
     repo = _merge_checkout(tmp_path, monkeypatch, tamper=False, event_head=None)
-    assert scope.oracle_review_covers(repo) is True
+    assert scope.review_covers(repo) is True
 
 
-def test_oracle_review_covers_rejects_merge_checkout_of_other_head(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_review_covers_rejects_merge_checkout_of_other_head(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import check_comment_cleanup_scope as scope
 
     repo = _merge_checkout(tmp_path, monkeypatch, tamper=False, event_head="c" * 40)
-    assert scope.oracle_review_covers(repo) is False
+    assert scope.review_covers(repo) is False
 
 
-def test_oracle_review_covers_rejects_merge_with_content_outside_parents(
+def test_review_covers_rejects_merge_with_content_outside_parents(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import check_comment_cleanup_scope as scope
 
     repo = _merge_checkout(tmp_path, monkeypatch, tamper=True, event_head=None)
-    assert scope.oracle_review_covers(repo) is False
+    assert scope.review_covers(repo) is False
 
 
-def test_oracle_review_covers_rejects_non_repository_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_review_covers_rejects_non_repository_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import check_comment_cleanup_scope as scope
 
     _bound_checkout(tmp_path, monkeypatch)
-    assert scope.oracle_review_covers(tmp_path / "missing") is False
+    assert scope.review_covers(tmp_path / "missing") is False
 
 
 @pytest.mark.parametrize("prefix", [["python3"], ["env", "python3"], ["uv", "run", "python3"]])
@@ -4911,9 +4901,9 @@ def test_ci_invocation_still_rejects_a_new_fixture_without_oracle_cover(
         ["git", "-C", str(tmp_path), "-c", "user.name=F", "-c", "user.email=f@example.invalid", "commit", "-qm", "c"],
         check=True,
     )
-    monkeypatch.setattr(check_comment_policy, "oracle_review_covers", lambda root: False)
+    monkeypatch.setattr(check_comment_policy, "review_covers", lambda root: False)
     assert main(["--root", str(tmp_path), "--mode", "strict", "--base", base]) == 1
-    monkeypatch.setattr(check_comment_policy, "oracle_review_covers", lambda root: True)
+    monkeypatch.setattr(check_comment_policy, "review_covers", lambda root: True)
     assert main(["--root", str(tmp_path), "--mode", "strict", "--base", base]) == 0
 
 

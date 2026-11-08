@@ -45,7 +45,7 @@ def test_each_caller_workflow_is_pinned_to_the_locked_commit_in_both_places(name
 
 
 def test_the_policy_promotion_rules_name_the_locked_repository() -> None:
-    policy = (ROOT / ".github" / "oracle-reviewers.yml").read_text(encoding="utf-8")
+    policy = (ROOT / ".github" / "review.yml").read_text(encoding="utf-8")
 
     assert f"repository: {LOCK['repository']}" in policy
 

@@ -72,8 +72,8 @@ push run on that branch with its `dist-artifact`. It refuses:
 
 Prerequisite: three capabilities are not yet available for maintenance lines.
 `trunk.yml` does not run on pushes to `release/**`, so no trunk run exists on
-the branch. `oracle-gate` and the review gate name `develop` as the only gated
-base, so a pull request into a maintenance line cannot report `oracle-gate`.
+the branch. `review-gate` and the review gate name `develop` as the only gated
+base, so a pull request into a maintenance line cannot report `review-gate`.
 `release-canary.yml` tests `develop` only, so no canary run tests an ancestor
 of a maintenance commit. Until each is extended to release lines, admission
 refuses every maintenance tag (no trunk run) and the canary check refuses it

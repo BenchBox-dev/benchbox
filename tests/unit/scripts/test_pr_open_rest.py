@@ -398,8 +398,8 @@ def test_a_fork_branch_opening_a_stack_cannot_use_its_own_fork_pr_as_the_parent(
         pr_open_rest.verify_parent(gh, REPO, "feat/upper", "feat/parent")
 
 
-MARKER = "<!-- oracle-local-record: v1 abc_DEF-123 -->"
-OTHER_MARKER = "<!-- oracle-local-record: v1 zzz -->"
+MARKER = "<!-- review-local-record: v1 abc_DEF-123 -->"
+OTHER_MARKER = "<!-- review-local-record: v1 zzz -->"
 
 
 def test_a_created_pr_carries_the_record_marker_after_its_body(tmp_path: Path) -> None:
@@ -427,18 +427,6 @@ def test_a_reused_pr_replaces_a_stale_marker_and_keeps_the_rest_of_its_body() ->
 
     (patch,) = gh.api("PATCH")
     assert _fields(patch) == {"body": f"Hand written.\n\n{MARKER}\n"}
-
-
-@pytest.mark.parametrize("word", ["review", "oracle"])
-def test_either_marker_spelling_is_embedded_and_replaces_the_other(word: str) -> None:
-    marker = f"<!-- {word}-local-record: v1 abc_DEF-123 -->"
-    stale = "<!-- oracle-local-record: v1 zzz -->" if word == "review" else "<!-- review-local-record: v1 zzz -->"
-    gh = FakeGh([_pull("BenchBox-dev", "feat/widget", body=f"Hand written.\n\n{stale}\n")])
-
-    pr_open_rest.publish(REPO, "BenchBox-dev", "feat/widget", "feat/widget", None, None, gh, record=marker)
-
-    (patch,) = gh.api("PATCH")
-    assert _fields(patch) == {"body": f"Hand written.\n\n{marker}\n"}
 
 
 def test_a_reused_pr_whose_body_already_ends_in_the_marker_is_left_alone() -> None:

@@ -7,8 +7,8 @@ import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
-CONFIG_PATH = ROOT / ".github" / "oracle-omp-config.yml"
-POLICY_PATH = ROOT / ".github" / "oracle-reviewers.yml"
+CONFIG_PATH = ROOT / ".github" / "review-omp-config.yml"
+POLICY_PATH = ROOT / ".github" / "review.yml"
 WINDOWS_PATH = ROOT / "tests" / "fixtures" / "review_provider_diversity" / "omp_catalog_windows.json"
 
 pytestmark = [

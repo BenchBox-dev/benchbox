@@ -32,7 +32,7 @@ no PR can pass it. Agents never run, script, or propose any of these:
   head SHA in the current request, and the agent quotes that instruction in a
   preceding `Owner instruction` comment naming the PR, head SHA, and covered
   findings.
-  A stand-in never covers open findings (`oracle-gate` rejects it on a SHIP
+  A stand-in never covers open findings (`review-gate` rejects it on a SHIP
   WITH FIXES head), and an `Review adjudication:` comment follows the same
   owner-naming and `Owner instruction` rules; a broken gate is no reason to
   post either.
@@ -48,7 +48,7 @@ names a provider the gateway no longer serves is harmless: the gateway starts
 without it, reviews move to the next served model in the role's fallback chain,
 and the PR that removes the provider gets a normal hosted review. The owner
 removes a provider on purpose with the host denylist, with no pull request; see
-[`oracle-gateway-host.md`](../internal/oracle-gateway-host.md#losing-or-removing-a-provider).
+[`review-gateway-host.md`](../internal/review-gateway-host.md#losing-or-removing-a-provider).
 Only the loss of every provider, which leaves reviews pending, ends at the
 owner's per-PR stand-in in [`merge-authority.md`](merge-authority.md#stand-in-approvals).
 
@@ -70,7 +70,7 @@ owner's per-PR stand-in in [`merge-authority.md`](merge-authority.md#stand-in-ap
 4. Announce it: comment the evidence summary on the affected PR and report it to
    the owner in the session.
 5. Stop acting on the blockage. Prepare the repair PR: it changes the gate or
-   the data it reads, and it goes through oracle review where one is required.
+   the data it reads, and it goes through review where one is required.
    Report to the owner the exact failing command, the failing run, and the
    `develop` SHA the failure was reproduced on. The repair PR cannot pass the
    broken gate, so it will not become mergeable by waiting or by re-running.
@@ -94,11 +94,11 @@ below:
 
 When `develop`'s own content breaks a required check so that no pull request can
 pass it, the owner alone may perform the single-merge relaxation procedure
-documented in `docs/internal/repo-admin-settings.md`. If `oracle-gate` itself is
-the broken context, the owner may remove `oracle-gate` for exactly that one merge,
+documented in `docs/internal/repo-admin-settings.md`. If `review-gate` itself is
+the broken context, the owner may remove `review-gate` for exactly that one merge,
 but only after the owner has personally read the full diff of the named head and
 posted a pull request comment naming that head SHA and stating the diff was
-reviewed. `oracle-gate` is the only required review, so without that comment it
+reviewed. `review-gate` is the only required review, so without that comment it
 stays bound. An agent never substitutes for this review.
 The owner records the action in a decision record at the time it is taken. That
 record cites the accepted zero-relaxation records above and says which it
@@ -112,15 +112,15 @@ command are in `docs/internal/repo-admin-settings.md`.
 1. Name one pull request and its head SHA, and hold every other armed pull
    request so only that head can merge during the window.
 2. Capture the full ruleset JSON before any change.
-3. Remove exactly one required context, the failing one (if `oracle-gate` itself
+3. Remove exactly one required context, the failing one (if `review-gate` itself
    is broken, only after the owner's recorded full-diff review of the named head
    described above), and merge the named head.
 4. Restore the ruleset immediately after the merge attempt, whether it
    succeeded or failed. This step is unconditional and comes before any other
    action, including retrying the merge, starting other work, or recording
-   notes. If `oracle-gate` was removed, restore it bound to integration 5201041.
+   notes. If `review-gate` was removed, restore it bound to integration 5201041.
 5. Read the ruleset back and compare it with the capture using the command
-   under Follow-up, confirming `oracle-gate` is bound to integration 5201041 again.
+   under Follow-up, confirming `review-gate` is bound to integration 5201041 again.
 6. Record the action in the decision record described above.
 
 ## Follow-up

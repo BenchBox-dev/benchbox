@@ -205,12 +205,12 @@ mutation-test:
 	@echo "--- Mutation test results ---"
 	uv run -- mutmut results
 
-.PHONY: oracle-mutation-test
-oracle-mutation-test:
-	@echo "Running mutation tests on the oracle decision modules against the oracle tests..."
-	uv run -- python _project/scripts/oracle_mutation.py run
-	@echo "--- Oracle mutation test results ---"
-	uv run -- python _project/scripts/oracle_mutation.py report
+.PHONY: review-mutation-test
+review-mutation-test:
+	@echo "Running mutation tests on the review decision modules against the review tests..."
+	uv run -- python _project/scripts/review_mutation.py run
+	@echo "--- Review mutation test results ---"
+	uv run -- python _project/scripts/review_mutation.py report
 
 .PHONY: guards-fix
 guards-fix:

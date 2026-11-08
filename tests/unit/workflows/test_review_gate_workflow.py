@@ -91,7 +91,7 @@ def test_the_caller_passes_the_environment_the_develop_base_and_the_policy_path_
         "environment": "oracle",
         "theseus_ref": _job()["with"]["theseus_ref"],
         "gated_base": "develop",
-        "policy_path": ".github/oracle-reviewers.yml",
+        "policy_path": ".github/review.yml",
     }
 
 

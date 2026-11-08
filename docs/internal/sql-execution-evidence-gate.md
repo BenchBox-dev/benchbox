@@ -242,7 +242,7 @@ data and the corpus, wrapper and bypass assertion tests), the
 `make sql-execution-gate`), the pin and retirement scripts, and their tests
 (`test_sql_execution_gate.py`, which holds the regression proofs below,
 `test_sync_sqlglot_runtime.py`, `test_check_sqlglot_repro_retirement.py` and the
-wrapper tests under `tests/unit/utils/`). A change to any of them needs an oracle
+wrapper tests under `tests/unit/utils/`). A change to any of them needs a review
 success review on the current head.
 
 ## Regression proofs

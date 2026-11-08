@@ -8,7 +8,7 @@ import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
-POLICY_PATH = ROOT / ".github" / "oracle-reviewers.yml"
+POLICY_PATH = ROOT / ".github" / "review.yml"
 LOCK_PATH = ROOT / ".github" / "theseus-lock.json"
 
 pytestmark = [
@@ -16,7 +16,7 @@ pytestmark = [
     pytest.mark.fast,
     pytest.mark.skipif(
         not (POLICY_PATH.exists() and LOCK_PATH.exists()),
-        reason="the oracle policy and Theseus lock are not in this checkout (release tree)",
+        reason="the review policy and Theseus lock are not in this checkout (release tree)",
     ),
 ]
 
@@ -101,12 +101,12 @@ def test_the_gate_paths_cover_the_theseus_wiring() -> None:
         "scripts/theseus_cli.py",
         "scripts/theseus_release_check.py",
         "tests/unit/scripts/test_theseus_release_check.py",
-        "tests/unit/scripts/test_oracle_gateway_host.py",
+        "tests/unit/scripts/test_review_gateway_host.py",
         "tests/unit/scripts/test_review_provider_diversity.py",
         "tests/fixtures/review_provider_diversity/omp_catalog_windows.json",
-        "tests/integration/oracle/test_curated_capture_fixtures.py",
-        "tests/fixtures/oracle_reviewers/provenance.json",
-        "_project/scripts/oracle_gateway_host.sh",
-        "tests/unit/scripts/test_oracle_policy_pin.py",
+        "tests/integration/review/test_curated_capture_fixtures.py",
+        "tests/fixtures/review_candidates/provenance.json",
+        "_project/scripts/review_gateway_host.sh",
+        "tests/unit/scripts/test_review_policy_pin.py",
     ):
         assert path in gate_paths

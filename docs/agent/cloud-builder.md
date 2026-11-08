@@ -22,7 +22,7 @@ Configure each cloud environment once:
 | `BENCHBOX_GIT_NAME` | The human commit author's name |
 | `BENCHBOX_GIT_EMAIL` | The human commit author's email |
 | Setup script | Install `uv` if the image lacks it, put a `node` that satisfies `^22.22.2`, `^24.15.0`, or `>=26` first on `PATH`, then run `make cloud-bootstrap` |
-| Network | GitHub and the Python package index; add Docker registries for container checks. For the [oracle gateway](#oracle-gateway-access), also the OMP download host named in the `omp:` section of `.github/oracle-reviewers.yml`, and the Tailscale control plane |
+| Network | GitHub and the Python package index; add Docker registries for container checks. For the [review gateway](#review-gateway-access), also the OMP download host named in the `omp:` section of `.github/review.yml`, and the Tailscale control plane |
 | `TS_AUTHKEY` | Optional. A Tailscale auth key for `tag:oracle-cloud` nodes (reusable, ephemeral, pre-approved, tagged) |
 | `REVIEW_GATEWAY_URL` | Optional. The gateway's tailnet URL |
 | `REVIEW_CLOUD_GATEWAY_TOKEN` | Optional. The token of the `review-cloud` gateway client |
@@ -49,7 +49,7 @@ for the repository. A session uploaded from a local checkout may have no
 `403 ... not in this session's authorized repository set` on push. Both cases
 cost the whole session, so the builder checks them first.
 
-## Oracle gateway access
+## Review gateway access
 
 When `TS_AUTHKEY`, `REVIEW_GATEWAY_URL` and `REVIEW_CLOUD_GATEWAY_TOKEN` are
 all set, `make cloud-bootstrap` runs `scripts/cloud_gateway.sh`, which:
@@ -57,7 +57,7 @@ all set, `make cloud-bootstrap` runs `scripts/cloud_gateway.sh`, which:
 1. downloads the OMP build that CI reviewers use, checks its SHA-256 and
    installs it into the versioned cache `~/.cache/benchbox/omp/<version>/<platform>/omp`.
    The version, URL and checksum per platform are read from the `omp:` section
-   of `.github/oracle-reviewers.yml` on `origin/develop` (fetched first, and the
+   of `.github/review.yml` on `origin/develop` (fetched first, and the
    install stops if that fetch fails), not from the branch. The installed path
    is recorded in `omp-binary` inside the gateway state directory
    (`<git dir>/benchbox-cloud-gateway/`) and survives daemon cleanup, including a
@@ -214,7 +214,7 @@ landed are not dispatched to a cloud session.
 
    `make pr-open` first runs the same review driver as CI on the committed
    `HEAD`, from a trusted export of `origin/develop` (see
-   `docs/internal/oracle-review-v2.md`, Local pre-PR review), and refuses before
+   `docs/internal/review-v2.md`, Local pre-PR review), and refuses before
    any push on a DO NOT SHIP or a Critical or High defect, including one carried
    from an earlier review of the PR, a missing `TYPESAFE_API_KEY` in the cloud
    environment, an unreachable gateway, a missing `review-cloud` client

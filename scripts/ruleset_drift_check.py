@@ -19,7 +19,9 @@ DEFAULT_RUNBOOK = REPO_ROOT / "docs" / "internal" / "repo-admin-settings.md"
 sys.path.insert(0, str(REPO_ROOT / "_project" / "scripts"))
 
 from ruleset_review_enforcement import (
-    ORACLE_GATE_INTEGRATION_ID,
+    LEGACY_GATE_CONTEXT,
+    REVIEW_GATE_CONTEXT,
+    REVIEW_GATE_INTEGRATION_ID,
     TAG_RULESET_ENFORCED,
     extract_rules,
     review_enforcement_findings,
@@ -45,11 +47,11 @@ PYPI_REQUIRED_REVIEWERS = (("User", 57046, "joeharris76"),)
 PYPI_CAN_ADMINS_BYPASS = True
 PYPI_PREVENT_SELF_REVIEW = False
 TEST_PYPI_ENVIRONMENT = "test-pypi"
-ORACLE_ENVIRONMENT = "oracle"
+LEGACY_REVIEW_ENVIRONMENT = "oracle"
 ENVIRONMENT_DEPLOYMENT_POLICIES = {
     PYPI_ENVIRONMENT: (("tag", "v*"),),
     TEST_PYPI_ENVIRONMENT: (("branch", "develop"), ("tag", "v*")),
-    ORACLE_ENVIRONMENT: (("branch", "develop"),),
+    LEGACY_REVIEW_ENVIRONMENT: (("branch", "develop"),),
 }
 RETIRED_RELEASE_BRANCH = "release"
 
@@ -284,7 +286,7 @@ def compare_ruleset(
     if expected.ref not in _ref_includes(live):
         findings.append(f"{expected.name}: target refs {_ref_includes(live)!r}, expected {expected.ref!r}")
 
-    live_checks = _required_status_contexts(live)
+    live_checks = tuple(context for context in _required_status_contexts(live) if context != LEGACY_GATE_CONTEXT)
     if set(live_checks) != set(expected.required_checks):
         findings.append(
             f"{expected.name}: required checks {sorted(live_checks)!r}, expected {sorted(expected.required_checks)!r}"
@@ -378,17 +380,20 @@ def capture_comparison_findings(capture: dict[str, Any], live: dict[str, Any]) -
     if live.get("enforcement") != "active":
         findings.append(f"live enforcement is {live.get('enforcement')!r}, expected 'active'")
     findings.extend(_differing_fields("", _normalized_for_capture(capture), _normalized_for_capture(live)))
-    oracle_bindings = [
-        check.get("integration_id")
-        for rule in live.get("rules", [])
-        if rule.get("type") == "required_status_checks"
-        for check in rule["parameters"]["required_status_checks"]
-        if check.get("context") == "oracle-gate"
-    ]
-    if not oracle_bindings or any(binding != ORACLE_GATE_INTEGRATION_ID for binding in oracle_bindings):
-        findings.append(
-            f"oracle-gate integration_id: live has {oracle_bindings!r}, expected {ORACLE_GATE_INTEGRATION_ID}"
-        )
+    gate_bindings = {
+        context: [
+            check.get("integration_id")
+            for rule in live.get("rules", [])
+            if rule.get("type") == "required_status_checks"
+            for check in rule["parameters"]["required_status_checks"]
+            if check.get("context") == context
+        ]
+        for context in (REVIEW_GATE_CONTEXT, LEGACY_GATE_CONTEXT)
+    }
+    for context, bindings in gate_bindings.items():
+        missing = context == REVIEW_GATE_CONTEXT and not bindings
+        if missing or any(binding != REVIEW_GATE_INTEGRATION_ID for binding in bindings):
+            findings.append(f"{context} integration_id: live has {bindings!r}, expected {REVIEW_GATE_INTEGRATION_ID}")
     return findings
 
 
@@ -517,7 +522,9 @@ def render_summary(findings: list[str], expected: dict[str, ExpectedRuleset]) ->
         lines.append("- test-pypi environment: deployments only from tag v* and branch develop")
         lines.append(f"- {RELEASE_LIFECYCLE_RULESET}: creation and deletion of {RELEASE_BRANCHES_REF} owner-only")
         lines.append("- no `release` branch or ruleset")
-        lines.append("- oracle environment: deployments only from branch develop")
+        lines.append(
+            "- oracle environment (legacy name of the review environment): deployments only from branch develop"
+        )
     if warnings:
         lines += ["", "## Non-blocking warnings", "", *[f"- {finding}" for finding in warnings]]
     return "\n".join(lines) + "\n"

@@ -22,7 +22,7 @@ def _load(name: str):
     return module
 
 
-wrapper = _load("oracle_local_review")
+wrapper = _load("local_review")
 
 FAKE_BOOTSTRAP = """\
 import os
@@ -97,7 +97,7 @@ def test_the_review_runs_the_verified_install_with_the_trusted_inputs(
         "theseus",
         "local-review",
         "--policy",
-        ".github/oracle-reviewers.yml",
+        ".github/review.yml",
         "--base-ref",
         "origin/develop",
         "--trusted-ref",
@@ -153,7 +153,7 @@ def test_the_record_path_and_cache_locations_reach_the_review_environment(
 
     assert env[wrapper.RECORD_OUT_ENV] == "record.txt"
     assert env["PATH"].split(os.pathsep)[0] == str(tmp_path)
-    assert env["THESEUS_LOCAL_STATE"] == str(Path.home() / ".cache" / "benchbox" / "local-oracle")
+    assert env["THESEUS_LOCAL_STATE"] == str(Path.home() / ".cache" / "benchbox" / "local-review")
     assert env["THESEUS_OMP_CACHE"] == str(Path.home() / ".cache" / "benchbox" / "omp")
     assert env["THESEUS_EPHEMERAL_CLONE"] == "1"
 

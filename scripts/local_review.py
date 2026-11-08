@@ -57,7 +57,7 @@ def run(args: argparse.Namespace, launcher: Launcher = launch) -> int:
     except theseus_cli.TheseusError as exc:
         print(
             f"Refusing to open the PR: the verified Theseus install at {trusted} could not be prepared "
-            f"({exc}); the local oracle review cannot run.",
+            f"({exc}); the local review cannot run.",
             file=sys.stderr,
         )
         return EXIT_UNAVAILABLE
@@ -70,7 +70,7 @@ def run(args: argparse.Namespace, launcher: Launcher = launch) -> int:
 
 
 def parser() -> argparse.ArgumentParser:
-    built = argparse.ArgumentParser(description="Run the local oracle review from the verified Theseus install.")
+    built = argparse.ArgumentParser(description="Run the local review from the verified Theseus install.")
     built.add_argument("--policy", default=theseus_cli.POLICY_PATH)
     built.add_argument("--base-ref", default=DEVELOP_REF)
     built.add_argument("--trusted-ref", default="")
