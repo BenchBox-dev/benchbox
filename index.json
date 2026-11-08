@@ -19996,15 +19996,10 @@
       "title": "Project funding into read-model views + render the funding chip/legend + e2e"
     },
     "explorer-pipeline-has-plans-true-for-errors-only-20261107": {
-      "claim": {
-        "expires_at": "2026-11-09T00:44:01Z",
-        "generation": "e9909238cac949029260d11d644efd99",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Make has_plans true only when a plans companion holds at least one captured plan"
     },
     "explorer-pipeline-meta-leaderboard-widening": {
