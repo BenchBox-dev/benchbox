@@ -12710,15 +12710,10 @@
       "title": "Apply shallow checkouts to tree-only auxiliary, audit, and documentation workflows"
     },
     "ci-shallow-checkouts-baseline-and-inventory-20261108": {
-      "claim": {
-        "expires_at": "2026-11-09T19:23:16Z",
-        "generation": "f8f2f19bacb0463fa3cbe20932381e28",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:323735399750ab0454d72b9e"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Establish the CI checkout depth baseline and document history dependencies"
     },
     "ci-shallow-checkouts-delivery-20261108": {
