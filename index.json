@@ -5320,6 +5320,7 @@
     "plan-privacy": {
       "accepted_members": {
         "plan-path-detector-root-and-drive-coverage-20261108": "5b61b7af2125006d0e0584f8e1697ce13cdb565a",
+        "plans-export-anonymize-text-fields-20261108": "d3ff4dac480752a0e5c5fc0547ce3d9de33e4563",
         "public-fixture-home-paths-audit-20261108": "f8dde46eef928127be031dd0947a669f9ffc6981",
         "visible-metrics-has-plans-contract-stale-20261108": "56f3f7bb840c9306aa7e5fb233ad11aabf26abcc"
       },
@@ -5342,6 +5343,17 @@
           ],
           "integration_head": "e168043f991b100bf7ad16236f63f17749a40643",
           "integration_seq": 1
+        },
+        "plans-export-anonymize-text-fields-20261108": {
+          "accepted_head": "d3ff4dac480752a0e5c5fc0547ce3d9de33e4563",
+          "changed_files": [
+            "benchbox/core/results/anonymization.py",
+            "benchbox/core/results/exporter.py",
+            "changelog.d/feat-plan-privacy--plans-export-anonymize-text-fields-20261108.json",
+            "tests/unit/core/results/test_plans_export_text_fields.py"
+          ],
+          "integration_head": "c4540c56034f48441855e642c6938d31eac5e149",
+          "integration_seq": 4
         },
         "public-fixture-home-paths-audit-20261108": {
           "accepted_head": "f8dde46eef928127be031dd0947a669f9ffc6981",
@@ -5371,7 +5383,7 @@
         }
       },
       "integration_branch": "feat/plan-privacy",
-      "integration_head": "3a73fe5936637eb9a5fae1c1afcdebd8ca651918",
+      "integration_head": "c4540c56034f48441855e642c6938d31eac5e149",
       "integration_log": [
         {
           "at": "2026-11-08T13:34:01Z",
@@ -5405,6 +5417,15 @@
           "op_id": "833e46a5ea6e4810adebb8a0268c6a98",
           "previous_head": "bfc3e8068c660d38ef27379f58df7335f4a10b4f",
           "seq": 3
+        },
+        {
+          "at": "2026-11-08T17:19:00Z",
+          "head": "c4540c56034f48441855e642c6938d31eac5e149",
+          "kind": "prepare",
+          "member": "plans-export-anonymize-text-fields-20261108",
+          "op_id": "9c56c9027c7c4cfd944ee31ea71f69d2",
+          "previous_head": "3a73fe5936637eb9a5fae1c1afcdebd8ca651918",
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-privacy",
@@ -27738,17 +27759,12 @@
       "title": "Plan reviews must reconcile recorded decisions, not only code claims"
     },
     "plans-export-anonymize-text-fields-20261108": {
-      "claim": {
-        "expires_at": "2026-11-09T17:10:15Z",
-        "generation": "ce7ba808d15844b7a3e591f4510035b4",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54"
-      },
+      "claim": null,
       "needs": [
         "plan-path-detector-root-and-drive-coverage-20261108"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Anonymize text-plan fields when exporting existing plans companions"
     },
     "plans-hosted-ingest-privacy-audit-gap-20261108": {
