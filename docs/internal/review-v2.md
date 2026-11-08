@@ -82,11 +82,14 @@ The caller workflows pass the Theseus commit twice (the `uses:` ref and
 `theseus_ref`); both must equal the lock's `workflow_sha`, and
 `tests/unit/workflows/test_theseus_pin_consistency.py` enforces it for every
 workflow that references Theseus. The "Theseus pin bump and rollback" section of
-`docs/internal/review-v2.md` covers bumping and rolling back the pin. State and caches keep
-their BenchBox locations: `scripts/theseus_cli.py` sets `THESEUS_LOCAL_STATE` to
-`~/.cache/benchbox/local-review` and `THESEUS_OMP_CACHE` to `~/.cache/benchbox/omp`
-(and `THESEUS_EPHEMERAL_CLONE=1` in a cloud session), so persisted findings,
-disputes and OMP builds stay readable. Old `export/` directories under the local
+`docs/internal/review-v2.md` covers bumping and rolling back the pin.
+Before using the renamed local-review wrapper after this merge, stop local
+reviews and move `~/.cache/benchbox/local-oracle` to
+`~/.cache/benchbox/local-review` if it exists. Do not overwrite an existing
+destination: reconcile both directories before running another review.
+This preserves findings, disputes and cached decisions. `THESEUS_LOCAL_STATE`
+can explicitly select an existing state directory; OMP builds remain under
+`~/.cache/benchbox/omp`. Old `export/` directories under the local
 state are inert and never read.
 
 ## Theseus pin bump and rollback
@@ -161,16 +164,17 @@ gh workflow run review-gate.yml --ref develop -f pr=<number> -f head_sha=<head s
 gh run list --workflow review-verdict.yml --limit 5
 gh run list --workflow review-gate.yml --limit 5
 gh api repos/BenchBox-dev/BenchBox/commits/<head sha>/statuses \
-  --jq '.[] | select(.context | test("review-(verdict|gate)")) | [.context, .state, .created_at] | @tsv'
+  --jq '.[] | select(.context | test("(review|oracle)-(verdict|gate)")) | [.context, .state, .created_at] | @tsv'
 ```
 
 The pin is healthy when, on each pull request:
 
 - the run logs `HAS_APP: true` (an empty secret still ends the job green, so a green run
   alone proves nothing);
-- `review-verdict` and `review-verdict` are posted for the head, then `review-gate` and
-  `review-gate`, all by `benchbox-oracle[bot]`;
-- the trivial pull request reaches `success` on both gate contexts;
+- `review-verdict` and `review-gate` are posted for the head by
+  `benchbox-oracle[bot]`; with v0.2.4, the legacy `oracle-verdict` and
+  `oracle-gate` mirrors are posted too;
+- the trivial pull request reaches `success` on every required gate context;
 - the defect pull request gets a verdict that lists the defect, and its gate does not report
   `success`.
 

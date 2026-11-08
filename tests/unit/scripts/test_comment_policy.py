@@ -2552,30 +2552,22 @@ def _fake_api(
     statuses: list[dict] | None = None,
     seen: list[str] | None = None,
 ) -> None:
-    import json as json_module
+    import check_comment_cleanup_scope as scope
 
-    review_payload = json_module.dumps(reviews if reviews is not None else [_verdict_review()]).encode()
-    status_payload = json_module.dumps(statuses if statuses is not None else [_gate_status()]).encode()
-    run_payload = json_module.dumps({"total_count": 1, "check_runs": [_review_run()]}).encode()
-    workflow_payload = json_module.dumps(
-        {"path": ".github/workflows/review.yml", "head_sha": "a" * 40, "conclusion": "success"}
-    ).encode()
-
-    def fake(request: urllib.request.Request, timeout: int = 30) -> _FakeResponse:
-        url = request.full_url
+    def fake(token: str, path: str):
         if seen is not None:
-            seen.append(url)
-        if "/pulls/" in url and url.endswith("/reviews?per_page=100&page=1"):
-            return _FakeResponse(review_payload)
-        if "/statuses?" in url:
-            return _FakeResponse(status_payload)
-        if "/check-runs" in url:
-            return _FakeResponse(run_payload)
-        if "/actions/runs/" in url:
-            return _FakeResponse(workflow_payload)
-        raise AssertionError(url)
+            seen.append(path)
+        if "/pulls/" in path and path.endswith("/reviews?per_page=100&page=1"):
+            return reviews if reviews is not None else [_verdict_review()]
+        if "/statuses?" in path:
+            return statuses if statuses is not None else [_gate_status()]
+        if "/check-runs" in path:
+            return {"total_count": 1, "check_runs": [_review_run()]}
+        if "/actions/runs/" in path:
+            return {"path": ".github/workflows/review.yml", "head_sha": "a" * 40, "conclusion": "success"}
+        raise AssertionError(path)
 
-    monkeypatch.setattr("urllib.request.urlopen", fake)
+    monkeypatch.setattr(scope, "_github_api", fake)
 
 
 def test_review_covers_with_gate_status_and_verdict(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -2677,10 +2669,10 @@ def test_review_covers_fails_closed_on_api_error(tmp_path: Path, monkeypatch: py
     monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
     monkeypatch.setenv("GITHUB_TOKEN", "t")
 
-    def fail(request: object, timeout: int = 30) -> _FakeResponse:
+    def fail(token: str, path: str):
         raise OSError("network down")
 
-    monkeypatch.setattr("urllib.request.urlopen", fail)
+    monkeypatch.setattr(scope, "_github_api", fail)
     assert scope.review_covers(tmp_path) is False
 
 

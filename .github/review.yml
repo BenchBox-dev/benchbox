@@ -111,6 +111,10 @@ classifier:
   gate_paths:
     - .github/review.yml
     - .github/review-omp-config.yml
+    - .github/oracle-reviewers.yml
+    - .github/oracle-omp-config.yml
+    - scripts/oracle_local_review.py
+    - _project/scripts/oracle_gateway_host.sh
     - .github/theseus-lock.json
     - _project/scripts/theseus_bootstrap.py
     - _project/scripts/review_gateway_host.sh

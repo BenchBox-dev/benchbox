@@ -96,6 +96,10 @@ def test_the_gate_paths_cover_the_theseus_wiring() -> None:
     gate_paths = POLICY["classifier"]["gate_paths"]
 
     for path in (
+        ".github/oracle-reviewers.yml",
+        ".github/oracle-omp-config.yml",
+        "scripts/oracle_local_review.py",
+        "_project/scripts/oracle_gateway_host.sh",
         ".github/theseus-lock.json",
         "_project/scripts/theseus_bootstrap.py",
         "scripts/theseus_cli.py",

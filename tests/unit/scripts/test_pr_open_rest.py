@@ -429,6 +429,17 @@ def test_a_reused_pr_replaces_a_stale_marker_and_keeps_the_rest_of_its_body() ->
     assert _fields(patch) == {"body": f"Hand written.\n\n{MARKER}\n"}
 
 
+@pytest.mark.parametrize("word", ["review", "oracle"])
+def test_either_marker_spelling_is_replaced_by_the_current_record(word: str) -> None:
+    stale = f"<!-- {word}-local-record: v1 zzz -->"
+    gh = FakeGh([_pull("BenchBox-dev", "feat/widget", body=f"Hand written.\n\n{stale}\n")])
+
+    pr_open_rest.publish(REPO, "BenchBox-dev", "feat/widget", "feat/widget", None, None, gh, record=MARKER)
+
+    (patch,) = gh.api("PATCH")
+    assert _fields(patch) == {"body": f"Hand written.\n\n{MARKER}\n"}
+
+
 def test_a_reused_pr_whose_body_already_ends_in_the_marker_is_left_alone() -> None:
     gh = FakeGh([_pull("BenchBox-dev", "feat/widget", body=f"Hand written.\n\n{MARKER}\n")])
 

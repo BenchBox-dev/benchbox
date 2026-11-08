@@ -17,7 +17,7 @@ RECORD_SEPARATOR = "\x1e"
 FIELD_SEPARATOR = "\x1f"
 INTEGRATION_BRANCHES = frozenset({"develop", "published-results"})
 MAX_STACK_DEPTH = 3
-RECORD_MARKER = re.compile(r"<!-- review-local-record: v1 [A-Za-z0-9_-]+ -->")
+RECORD_MARKER = re.compile(r"<!-- (?:review|oracle)-local-record: v1 [A-Za-z0-9_-]+ -->")
 UNAVAILABLE_MARKER = re.compile(r"Local review: unavailable \(.*\); the hosted review decides")
 RECEIPT_BEGIN = re.compile(r"<!-- preflight-receipt: v1 begin tree=[0-9a-f]+ -->")
 RECEIPT_END = "<!-- preflight-receipt: v1 end -->"
