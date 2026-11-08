@@ -39,6 +39,10 @@ TRUNK_EVENTS = ("schedule", "workflow_dispatch")
 TRUNK_RUN_LIMIT = 15
 TRUNK_RUN_PAGE = 50
 TRUNK_GATE_ARTIFACT = re.compile(r"trunk-uat-gate-([0-9a-f]{40})")
+TRUNK_EXECUTED_ARTIFACT = re.compile(r"(?:release-uat-trunk|trunk-uat-gate|trunk-uat-record)-([0-9a-f]{40})(?:-|$)")
+TRUNK_STAGE_JOB = re.compile(r"UAT stage ([123]) .+")
+TRUNK_GATE_JOB = "trunk UAT gate"
+TRUNK_RECORD_JOB = "trunk UAT record"
 STAGE_JOBS = ("uat-stage1", "uat-stage2", "uat-stage3")
 SCHEDULING_KEYS = ("needs", "if")
 VERDICT_GREEN = "green"
@@ -576,19 +580,63 @@ def _trunk_run_problem(run: dict[str, Any]) -> str | None:
         return f"event {run.get('event')!r} is not schedule or workflow_dispatch"
     if run.get("head_branch") != TRUNK_BRANCH:
         return f"ran on {run.get('head_branch')!r}, not {TRUNK_BRANCH}"
-    if run.get("conclusion") != "success":
-        return f"concluded {run.get('conclusion')!r}, not 'success'"
     return None
 
 
-def _evaluate_trunk_run(ctx: Context, run: dict[str, Any], report: Report) -> Source | None:
+def _trunk_attempt_problem(run: dict[str, Any], jobs: list[dict[str, Any]]) -> str | None:
+    attempt = int(run.get("run_attempt") or 1)
+    stages: set[str] = set()
+    seen: set[str] = set()
+    for job in jobs:
+        name = str(job.get("name"))
+        stage = TRUNK_STAGE_JOB.fullmatch(name)
+        if stage is None and name not in (TRUNK_GATE_JOB, TRUNK_RECORD_JOB):
+            continue
+        if job.get("conclusion") != "success":
+            return f"job {name!r} concluded {job.get('conclusion')!r} in the latest attempt, not 'success'"
+        job_attempt = int(job.get("run_attempt") or attempt)
+        if job_attempt != attempt:
+            return f"job {name!r} ran in attempt {job_attempt}, not the run's latest attempt {attempt}"
+        if stage is not None:
+            stages.add(stage.group(1))
+        else:
+            seen.add(name)
+    for name in (TRUNK_GATE_JOB, TRUNK_RECORD_JOB):
+        if name not in seen:
+            return f"no {name!r} job in the latest attempt"
+    missing = sorted({"1", "2", "3"} - stages)
+    if missing:
+        return f"no UAT stage {', '.join(missing)} shard job in the latest attempt"
+    return None
+
+
+def _executed_source(artifacts: list[dict[str, Any]]) -> str | None:
+    for artifact in artifacts:
+        match = TRUNK_EXECUTED_ARTIFACT.match(str(artifact.get("name")))
+        if match is not None:
+            return match.group(1)
+    return None
+
+
+class TrunkOutcome(NamedTuple):
+    source: Source | None
+    decisive: bool
+    red: bool
+
+
+def _evaluate_trunk_run(ctx: Context, run: dict[str, Any], report: Report) -> TrunkOutcome:
     run_id = int(run["id"])
     label = f"trunk run {run_id}"
     problem = _trunk_run_problem(run)
     if problem is not None:
         report.add(f"{label}: run", False, problem)
-        return None
+        return TrunkOutcome(None, False, False)
     artifacts = _artifact_listing(ctx.repository, run_id)
+    executed = _executed_source(artifacts)
+    decisive = executed is not None and _is_ancestor(ctx.repo_dir, executed, ctx.head_sha)
+    if run.get("conclusion") != "success":
+        report.add(f"{label}: run", False, f"concluded {run.get('conclusion')!r}, not 'success'")
+        return TrunkOutcome(None, decisive, decisive)
     gates = [a["name"] for a in artifacts if TRUNK_GATE_ARTIFACT.fullmatch(str(a.get("name")))]
     if len(gates) != 1:
         detail = (
@@ -597,13 +645,18 @@ def _evaluate_trunk_run(ctx: Context, run: dict[str, Any], report: Report) -> So
             else f"{len(gates)} trunk UAT gate artifacts"
         )
         report.add(f"{label}: gate evidence", False, detail)
-        return None
+        return TrunkOutcome(None, decisive, False)
     sha = gates[0].removeprefix("trunk-uat-gate-")
+    jobs = _gh_json(f"repos/{ctx.repository}/actions/runs/{run_id}/jobs?filter=latest&per_page=100").get("jobs", [])
+    attempt_problem = _trunk_attempt_problem(run, jobs)
+    if attempt_problem is not None:
+        report.add(f"{label}: attempt", False, attempt_problem)
+        return TrunkOutcome(None, decisive, True)
     report.add(f"{label}: run", True, f"{run['event']} run on {TRUNK_BRANCH} concluded success, source {sha[:10]}")
     run_head = run.get("head_sha")
     if not isinstance(run_head, str) or not run_head:
         report.add(f"{label}: {TRUNK_WORKFLOW_FILE}", False, "the run records no head commit")
-        return None
+        return TrunkOutcome(None, decisive, False)
     workflow_diff = _git("diff", "--quiet", run_head, ctx.head_sha, "--", TRUNK_WORKFLOW_PATH, cwd=ctx.repo_dir)
     if workflow_diff.returncode not in (0, 1):
         raise ValueError(f"git diff failed: {workflow_diff.stderr.strip()}")
@@ -613,8 +666,8 @@ def _evaluate_trunk_run(ctx: Context, run: dict[str, Any], report: Report) -> So
         f"the workflow file the run executed, at {run_head[:10]}, "
         f"{'equals' if workflow_diff.returncode == 0 else 'differs from'} the one at the tagged commit",
     ):
-        return None
-    return _verify_source(
+        return TrunkOutcome(None, decisive, False)
+    source = _verify_source(
         ctx,
         report,
         kind=KIND_TRUNK,
@@ -627,9 +680,10 @@ def _evaluate_trunk_run(ctx: Context, run: dict[str, Any], report: Report) -> So
         admitted_names=sorted(a["name"] for a in artifacts if str(a.get("name")).startswith("admitted-")),
         trees=TRUNK_GUARDED_TREES,
     )
+    return TrunkOutcome(source, decisive, False)
 
 
-def find_trunk_candidate(ctx: Context, report: Report) -> Source | None:
+def find_trunk_candidate(ctx: Context, report: Report) -> tuple[Source | None, bool]:
     payload = _gh_json(
         f"repos/{ctx.repository}/actions/workflows/{TRUNK_WORKFLOW_FILE}/runs?status=completed&per_page={TRUNK_RUN_PAGE}"
     )
@@ -637,17 +691,26 @@ def find_trunk_candidate(ctx: Context, report: Report) -> Source | None:
     runs.sort(key=lambda run: (str(run.get("created_at")), int(run["id"])), reverse=True)
     if not runs:
         report.add("trunk UAT runs", False, f"no completed {TRUNK_WORKFLOW_FILE} run found")
-        return None
+        return None, False
     for run in runs[:TRUNK_RUN_LIMIT]:
         try:
-            source = _evaluate_trunk_run(ctx, run, report)
+            outcome = _evaluate_trunk_run(ctx, run, report)
         except Exception as exc:
             report.add(f"trunk run {run.get('id')}: evaluation", False, f"{type(exc).__name__}: {exc}")
-            continue
-        if source is not None:
-            return source
+            report.add("trunk UAT runs", False, "the newest run could not be evaluated, so no older run is used")
+            return None, False
+        if outcome.source is not None:
+            return outcome.source, False
+        if outcome.decisive:
+            report.add(
+                "trunk UAT runs",
+                False,
+                f"run {run.get('id')} is the newest run that executed cells for an ancestor of the tagged commit "
+                "and it does not qualify, so no older run is used",
+            )
+            return None, outcome.red
     report.add("trunk UAT runs", False, f"none of the newest {min(len(runs), TRUNK_RUN_LIMIT)} runs qualified")
-    return None
+    return None, False
 
 
 def find_release_run(repo: str, rc_tag: str, rc_sha: str, report: Report) -> int | None:
@@ -733,10 +796,11 @@ def decide(args: argparse.Namespace, report: Report, outputs: dict[str, str]) ->
     )
     ctx.work.mkdir(parents=True, exist_ok=True)
     source: Source | None = None
+    red_trunk_run = False
     on_trunk, detail = _on_trunk(ctx)
     if report.add("trunk line", on_trunk, detail):
-        source = find_trunk_candidate(ctx, report)
-    if source is None and FINAL_TAG.fullmatch(args.tag):
+        source, red_trunk_run = find_trunk_candidate(ctx, report)
+    if source is None and not red_trunk_run and FINAL_TAG.fullmatch(args.tag):
         source = find_release_candidate(ctx, report)
     if source is None:
         return False

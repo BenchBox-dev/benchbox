@@ -575,6 +575,22 @@ def test_verify_gate_rejects_an_unreadable_cell_row(tmp_path):
     assert _verify_gate(tmp_path, evidence) == 1
 
 
+def trunk_jobs(attempt: int = 1, **conclusions: str) -> list[dict]:
+    names = {
+        "plan": "plan",
+        "admit": "admit",
+        "stage1": "UAT stage 1 sqlite",
+        "stage2": "UAT stage 2 starrocks",
+        "stage3": "UAT stage 3 olap",
+        "gate": "trunk UAT gate",
+        "record": "trunk UAT record",
+    }
+    return [
+        {"name": name, "conclusion": conclusions.get(key, "success"), "run_attempt": attempt}
+        for key, name in names.items()
+    ]
+
+
 TRUNK_VERSION = "0.5.1.dev3"
 TRUNK_RUNS = "trunk-uat.yml"
 RELEASE_RUNS = "release-v2.yml"
@@ -634,6 +650,8 @@ class FakeGitHub:
         branch: str = "develop",
         conclusion: str = "success",
         head_sha: str | None = None,
+        attempt: int = 1,
+        jobs: list[dict] | None = None,
         **evidence,
     ) -> str:
         self.runs.setdefault(TRUNK_RUNS, []).append(
@@ -645,8 +663,10 @@ class FakeGitHub:
                 "conclusion": conclusion,
                 "created_at": created,
                 "head_sha": head_sha or sha,
+                "run_attempt": attempt,
             }
         )
+        self.jobs[run_id] = jobs if jobs is not None else trunk_jobs(attempt)
         return self.evidence(
             run_id,
             tag=f"trunk-{sha}",
@@ -764,13 +784,39 @@ def _commit_between(world: World) -> str:
     return between
 
 
-def test_decide_falls_back_to_an_older_run_when_the_newest_run_does_not_qualify(world):
+def test_a_newer_red_run_on_the_same_distribution_decides_over_an_older_green_run(world):
     world.fake.trunk_run(201, world.candidate, world.trunk_dist, created="2026-11-04T02:00:00Z")
     newer = _commit_between(world)
     world.fake.trunk_run(202, newer, world.trunk_dist, created="2026-11-05T02:00:00Z", conclusion="failure")
     reused, outputs, report = world.decide()
-    assert reused and outputs["source_run_id"] == "201"
+    assert not reused and outputs == {}
     assert "trunk run 202: run: concluded 'failure'" in _failures(report)
+    assert "no older run is used" in _failures(report)
+    assert not any("trunk run 201" in condition for condition, _, _ in report.rows)
+
+
+def test_a_newer_run_that_executed_no_cells_does_not_hide_an_older_green_run(world):
+    world.fake.trunk_run(201, world.candidate, world.trunk_dist, created="2026-11-04T02:00:00Z")
+    world.fake.runs[TRUNK_RUNS].append(
+        {
+            "id": 202,
+            "event": "schedule",
+            "head_branch": "develop",
+            "status": "completed",
+            "conclusion": "success",
+            "created_at": "2026-11-05T02:00:00Z",
+        }
+    )
+    reused, outputs, _ = world.decide()
+    assert reused and outputs["source_run_id"] == "201"
+
+
+def test_a_newer_red_run_on_a_commit_that_is_not_an_ancestor_does_not_decide(world):
+    world.fake.trunk_run(201, world.candidate, world.trunk_dist, created="2026-11-04T02:00:00Z")
+    unrelated = _git(world.repo, "commit-tree", "-m", "unrelated", "4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    world.fake.trunk_run(202, unrelated, world.trunk_dist, created="2026-11-05T02:00:00Z", conclusion="failure")
+    reused, outputs, _ = world.decide()
+    assert reused and outputs["source_run_id"] == "201"
 
 
 def _only_run(world: World) -> int:
@@ -875,10 +921,11 @@ def test_decide_names_the_reason_each_trunk_run_is_disqualified_and_runs_the_ful
 
 
 def test_decide_checks_only_a_bounded_number_of_runs_and_says_so(world):
+    unrelated = _git(world.repo, "commit-tree", "-m", "unrelated", "4b825dc642cb6eb9a060e54bf8d69288fbee4904")
     for run_id in range(300, 300 + reuse.TRUNK_RUN_LIMIT + 3):
         world.fake.trunk_run(
             run_id,
-            world.candidate,
+            unrelated,
             world.trunk_dist,
             created=f"2026-11-05T02:{run_id - 300:02d}:00Z",
             conclusion="failure",
@@ -887,6 +934,55 @@ def test_decide_checks_only_a_bounded_number_of_runs_and_says_so(world):
     assert not reused
     assert f"none of the newest {reuse.TRUNK_RUN_LIMIT} runs qualified" in _failures(report)
     assert sum("concluded 'failure'" in detail for _, _, detail in report.rows) == reuse.TRUNK_RUN_LIMIT
+
+
+def test_the_latest_attempt_of_a_trunk_run_must_have_every_gate_shard_and_record_job_green(world):
+    world.fake.trunk_run(
+        201, world.candidate, world.trunk_dist, created="2026-11-05T02:00:00Z", jobs=trunk_jobs(stage2="failure")
+    )
+    reused, outputs, report = world.decide()
+    assert not reused and outputs == {}
+    assert "trunk run 201: attempt: job 'UAT stage 2 starrocks' concluded 'failure' in the latest attempt" in (
+        _failures(report)
+    )
+
+
+@pytest.mark.parametrize("skipped", ["gate", "record", "stage1"])
+def test_a_rerun_that_skipped_the_gate_shard_or_record_job_does_not_reuse_the_earlier_attempts_evidence(world, skipped):
+    world.fake.trunk_run(
+        201,
+        world.candidate,
+        world.trunk_dist,
+        created="2026-11-05T02:00:00Z",
+        attempt=2,
+        jobs=trunk_jobs(2, **{skipped: "skipped"}),
+    )
+    reused, outputs, report = world.decide()
+    assert not reused and outputs == {}
+    assert "trunk run 201: attempt:" in _failures(report)
+
+
+def test_a_trunk_run_whose_gate_job_is_missing_from_the_latest_attempt_is_not_reused(world):
+    jobs = [job for job in trunk_jobs() if job["name"] != "trunk UAT gate"]
+    world.fake.trunk_run(201, world.candidate, world.trunk_dist, created="2026-11-05T02:00:00Z", jobs=jobs)
+    reused, _, report = world.decide()
+    assert not reused
+    assert "no 'trunk UAT gate' job in the latest attempt" in _failures(report)
+
+
+def test_evidence_kept_from_an_earlier_attempt_cannot_qualify_a_later_attempt(world):
+    jobs = trunk_jobs(2)
+    jobs[2]["run_attempt"] = 1
+    world.fake.trunk_run(201, world.candidate, world.trunk_dist, created="2026-11-05T02:00:00Z", attempt=2, jobs=jobs)
+    reused, _, report = world.decide()
+    assert not reused
+    assert "ran in attempt 1, not the run's latest attempt 2" in _failures(report)
+
+
+def test_a_trunk_run_whose_every_job_ran_in_the_latest_attempt_is_reused(world):
+    world.fake.trunk_run(201, world.candidate, world.trunk_dist, created="2026-11-05T02:00:00Z", attempt=2)
+    reused, outputs, _ = world.decide()
+    assert reused and outputs["source_run_id"] == "201"
 
 
 def test_decide_reports_a_trunk_workflow_with_no_completed_run(world):
@@ -911,7 +1007,7 @@ def test_decide_skips_a_run_that_kept_no_gate_evidence(world):
     assert "no trunk UAT gate artifact; the run skipped, was deferred or kept no evidence" in _failures(report)
 
 
-def test_a_candidate_that_errors_is_disqualified_without_stopping_the_search(world, monkeypatch):
+def test_a_candidate_that_errors_stops_the_trunk_search_instead_of_using_an_older_run(world, monkeypatch):
     world.fake.trunk_run(201, world.candidate, world.trunk_dist, created="2026-11-04T02:00:00Z")
     newer = _commit_between(world)
     world.fake.trunk_run(202, newer, world.trunk_dist, created="2026-11-05T02:00:00Z")
@@ -924,8 +1020,9 @@ def test_a_candidate_that_errors_is_disqualified_without_stopping_the_search(wor
 
     monkeypatch.setattr(reuse, "_gh_json", flaky)
     reused, outputs, report = world.decide()
-    assert reused and outputs["source_run_id"] == "201"
+    assert not reused and outputs == {}
     assert "trunk run 202: evaluation: ValueError: gh api failed" in _failures(report)
+    assert "no older run is used" in _failures(report)
 
 
 def test_trunk_evidence_is_never_used_for_a_commit_that_is_not_on_develop(world):
@@ -1044,11 +1141,29 @@ def test_a_final_tag_off_develop_reuses_its_release_candidate_run(rc_world):
     assert report.rows[-1][2] == f"reused release candidate run of {RC_TAG} 99 for {rc_world.rc_sha}"
 
 
-def test_the_release_candidate_run_is_the_second_candidate_after_every_trunk_run(rc_world):
+def test_a_red_trunk_run_that_executed_cells_also_refuses_the_release_candidate_fallback(rc_world):
     _git(rc_world.repo, "update-ref", "refs/remotes/origin/develop", rc_world.head)
     rc_world.fake.trunk_run(
         201, rc_world.rc_sha, rc_world.rc_dist, created="2026-11-05T02:00:00Z", conclusion="failure"
     )
+    reused, outputs, report = rc_world.decide()
+    assert not reused and outputs == {}
+    assert "trunk run 201: run: concluded 'failure'" in _failures(report)
+    assert "release candidate" not in _failures(report)
+
+
+def test_the_release_candidate_run_is_still_used_after_a_trunk_run_that_executed_no_cells(rc_world):
+    _git(rc_world.repo, "update-ref", "refs/remotes/origin/develop", rc_world.head)
+    rc_world.fake.runs[TRUNK_RUNS] = [
+        {
+            "id": 201,
+            "event": "schedule",
+            "head_branch": "develop",
+            "status": "completed",
+            "conclusion": "failure",
+            "created_at": "2026-11-05T02:00:00Z",
+        }
+    ]
     reused, outputs, report = rc_world.decide()
     assert reused and outputs["source_kind"] == "release-candidate"
     assert "trunk run 201: run: concluded 'failure'" in _failures(report)
