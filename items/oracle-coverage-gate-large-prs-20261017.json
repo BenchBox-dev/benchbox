@@ -1,13 +1,13 @@
 {
   "acceptance": [
-    "A PR with over 1,000 changed files, mostly deletions, can get a gate-accepted SHIP without a stand-in",
-    "Code and workflow files that are added or modified still need a traced read; tests show the gate rejects a verdict that skipped one",
-    "A regression test replays the #3096 shape: many deletions plus a few modified soundness paths",
-    "The oracle docs describe the coverage rule and how large PRs are handled",
-    "Adds or updates the matching scenario in tests/integration/oracle (registered in ORACLE_SCENARIO_TESTS), proven to fail with this item's defect reintroduced; the scenario runs only the fake omp executable and fake servers, never a real omp or model-provider call."
+    "A hermetic Theseus workflow integration scenario with more than1000 mostly deleted paths plus modified soundness/code/workflow files gets an accepted SHIP without stand-in when all required evidence is read; use sufficiently long paths to exercise deletion-list byte pressure.",
+    "The same large-change scenario with one added or modified required file/hunk unread remains incomplete and its gate cannot succeed. Deletion summaries cannot silently exempt live code, workflow or promotion evidence.",
+    "Replay the relevant #3096 change shape or an explicitly equivalent deterministic fixture. Demonstrate failure on the actual old planner path and success with the fix, without merely raising the global brief budget.",
+    "Document current required-read/deletion presentation and size-overflow rules in Theseus and affected consumer guidance. Tests use fake OMP/Jev/GitHub only, through existing pytest integration discovery; the removed ORACLE_SCENARIO_TESTS registry is not a prerequisite.",
+    "The fix is merged upstream and consumed through a normal BenchBox promotion; source/pin and proving scenario/run evidence are recorded before group closure."
   ],
-  "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\nFound 2026-10-17 on core #3096, the site removal: about 1,230 changed files and 19,537 code lines, mostly deletions. The first opus review on f1b9d26be gave SHIP WITH FIXES (one real defect, release-cut still staging landing/index.html). On e41f96b97 the reviewer reached SHIP twice, in the original run and in recovery run 39055089707, but the gate marked both incomplete. sol (the OpenAI reviewer) was disabled for lack of quota, and no other reviewer was selected. The owner cleared the gate with a stand-in on e41f96b97, and the PR merged as 364a6e9cd.\n\noracle-response-evidence-secrets-20261021 improves source presentation and diagnostics without weakening the file-list evidence policy. Large-PR scope/evidence design remains this item; no closure implied.\n\nConsolidated duplicate item oracle-reviewer-coverage-incomplete-on-large-diffs (verdict stays pending when the reviewer cannot read every changed file on a large diff).",
-  "description": "The oracle's coverage gate (_project/scripts/oracle_reviewers/evidence.py:215) turns a SHIP into \"pending: incomplete\" when the reviewer's trace doesn't show a read of every changed file: \"the verdict would ship but its trace shows no read of …\". On a PR with many changed paths, the reviewer can't meet that, so the gate can never pass. Retries and `make oracle-review-recover` give the same result, and the only way through is the owner's stand-in. The gate should scale with the PR: count files that are deleted outright or are generated or data files as covered by a summary, or let the reviewer cover a large diff in bounded chunks with a merged verdict. Make sure any such rule can't let unreviewed code through.",
+  "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\nFound 2026-10-17 on core #3096, the site removal: about 1,230 changed files and 19,537 code lines, mostly deletions. The first opus review on f1b9d26be gave SHIP WITH FIXES (one real defect, release-cut still staging landing/index.html). On e41f96b97 the reviewer reached SHIP twice, in the original run and in recovery run 39055089707, but the gate marked both incomplete. sol (the OpenAI reviewer) was disabled for lack of quota, and no other reviewer was selected. The owner cleared the gate with a stand-in on e41f96b97, and the PR merged as 364a6e9cd.\n\noracle-response-evidence-secrets-20261021 improves source presentation and diagnostics without weakening the file-list evidence policy. Large-PR scope/evidence design remains this item; no closure implied.\n\nConsolidated duplicate item oracle-reviewer-coverage-incomplete-on-large-diffs (verdict stays pending when the reviewer cannot read every changed file on a large diff).\n\nReviewed 2026-11-08 against Theseus cli.py:1175-1218 and policy.py BRIEF_MAX_BYTES. Existing small evidence tests do not prove the >1000-file case. No inspected open PR supplies the deletion-list fix. Scope is actual remaining planner overflow, not an evidence-policy relaxation.",
+  "description": "Historical #3096 (about1230 changed paths, mostly deletions) could not obtain accepted review coverage. The current Theseus planner already excludes ordinary deleted files from required reads, so the original read-every-changed-file diagnosis is obsolete. A remaining constraint is that the reviewer listing still includes every changed path; a listing above BRIEF_MAX_BYTES=100000 sets oversize and skips all reviewers. Reproduce the deletion-heavy shape through the current fake-service integration harness; compact deletion-only presentation only if needed, without weakening the exact added/modified required-read and hunk checks. Keep full plan identity/provenance and do not blanket-exempt generated/data files. Engine and scenario live in joeharris76/theseus, not the removed BenchBox oracle_reviewers package.",
   "sessions": [
     {
       "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
@@ -64,6 +64,14 @@
       "op": "update",
       "op_id": "7f3493586fbd49a3821ed13dd5f78d10",
       "session_id": "02c14526fd7648f49c893339d8cfcf9e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:323735399750ab0454d72b9e",
+      "at": "2026-11-08T17:26:23Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "57a9a66245494686a880ea1310f223c9",
+      "session_id": "83fcfb8d4a5c4fe8a47e5ac53802ec97"
     }
   ]
 }
