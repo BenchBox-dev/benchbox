@@ -12478,6 +12478,15 @@
       "status": "open",
       "title": "Pilot depth-1 checkouts on tree-only jobs in trunk.yml"
     },
+    "ci-shallow-checkouts-test-tier-rollout-20261108": {
+      "claim": null,
+      "needs": [
+        "ci-shallow-checkouts-history-dependent-tests-remediation-20261108"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Roll out depth-1 checkouts to test tiers (fast tier, medium collection, and shards)"
+    },
     "ci-soundness-flag-stale-base": {
       "claim": null,
       "needs": [],
