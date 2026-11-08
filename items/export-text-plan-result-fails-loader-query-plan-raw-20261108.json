@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Reproduce: run a DataFrame (for example Polars) power run with --capture-plans at SF0.01, then benchbox export (with and without --anonymize); show the loader error before the fix.",
+    "Fix the loader/query_execution handling so the row field is accepted or correctly mapped, with a regression test that fails before and passes after.",
+    "CLI smoke: export --anonymize on a real text-plan result succeeds and find_public_path_leaks is empty on the output; older results still load."
+  ],
+  "context": "Found by the plan-privacy batch (PR #4054). Verification rubric: reproduce first; focused suites with -n 0; comment-policy and ruff; smoke recorded in the PR body; PR merged with green CI and passing oracle review. Guardrail: do not loosen the unknown-field check globally.",
+  "description": "benchbox export on a DataFrame text-plan result fails in the result loader with: Unknown legacy query-result fields: ['query_plan_raw']. The plan-privacy batch had to smoke the export sanitizer through anonymize_plans_payload directly because the CLI export path never reached it for text-plan results. Users cannot export or anonymize such results from the CLI.",
+  "links": [
+    "benchbox/core/results/loader.py",
+    "benchbox/core/results/query_execution",
+    "benchbox/core/results/exporter.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-08T19:15:34Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c7ded56614b74d2886919c40d4170237",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    }
+  ]
+}

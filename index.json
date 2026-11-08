@@ -20854,6 +20854,13 @@
       "status": "done",
       "title": "Root-cause the WebKit benchmark-index data-binding failure on /results/tpch/"
     },
+    "export-text-plan-result-fails-loader-query-plan-raw-20261108": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Fix benchbox export on results with text-plan rows failing on query_plan_raw"
+    },
     "expose-query-comparability-metadata-in-cli-output-and-persis": {
       "claim": null,
       "needs": [],
