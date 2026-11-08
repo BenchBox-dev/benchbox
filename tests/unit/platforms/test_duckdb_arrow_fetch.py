@@ -33,18 +33,6 @@ def _adapter(mode: str | None = None) -> DuckDBAdapter:
     return DuckDBAdapter(**config)
 
 
-@pytest.fixture(scope="module")
-def tpch_connection():
-    connection = duckdb.connect()
-    try:
-        connection.execute("LOAD tpch")
-        connection.execute("CALL dbgen(sf=0.01)")
-    except duckdb.Error as exc:
-        pytest.skip(f"DuckDB tpch extension unavailable: {exc}")
-    yield connection
-    connection.close()
-
-
 class TestFetchModeConfiguration:
     def test_arrow_is_the_default(self):
         assert _adapter().fetch_mode == FETCH_MODE_ARROW
@@ -86,8 +74,9 @@ class TestDigestParity:
         assert arrow["first_row"] == rows["first_row"]
         assert arrow["result_digest"] == rows["result_digest"]
 
-    def test_all_22_tpch_queries_digest_identically(self, tpch_connection, digest_env):
-        queries = tpch_connection.execute("SELECT query_nr, query FROM tpch_queries() ORDER BY query_nr").fetchall()
+    def test_all_22_tpch_queries_digest_identically(self, tpch_sf001_duckdb, digest_env):
+        tpch_connection, query_map = tpch_sf001_duckdb
+        queries = sorted(query_map.items())
         assert len(queries) == 22
         rows_adapter, arrow_adapter = _adapter(FETCH_MODE_ROWS), _adapter(FETCH_MODE_ARROW)
         for number, sql in queries:
@@ -99,7 +88,8 @@ class TestDigestParity:
             assert arrow["rows_returned"] == rows["rows_returned"], number
             assert arrow["result_digest"] == rows["result_digest"], number
 
-    def test_materialized_validation_sees_the_same_rows(self, tpch_connection):
+    def test_materialized_validation_sees_the_same_rows(self, tpch_sf001_duckdb):
+        tpch_connection, _ = tpch_sf001_duckdb
         from benchbox.platforms.base.result_capture import materialized_result_validation
 
         seen: dict[str, list] = {}

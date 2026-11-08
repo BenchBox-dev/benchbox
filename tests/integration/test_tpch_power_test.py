@@ -281,3 +281,82 @@ class TestPowerTestReferenceSeedContext:
         assert result.success is False
         assert result.queries_successful == 0
         assert not result.query_results[0]["success"]
+
+
+class TestPowerTestValidationAfterRefresh:
+    @staticmethod
+    def _connection(rows_for_query):
+        connection = Mock()
+        state = {"query_id": None}
+
+        def set_query_context(query_id, stream_id=None):
+            state["query_id"] = query_id
+
+        def execute(_query):
+            from benchbox.core.validation.query_validation import QueryValidator
+
+            rows = rows_for_query()
+            validation = QueryValidator().validate_query_result("tpch", state["query_id"], rows, scale_factor=0.01)
+            status = "PASSED" if validation.is_valid and validation.expected_row_count is not None else "SKIPPED"
+            if not validation.is_valid:
+                return Mock(
+                    platform_result={"status": "FAILED", "error": validation.error_message},
+                )
+            evidence = {"status": status, "expected": validation.expected_row_count, "actual": rows}
+            return Mock(platform_result={"status": "SUCCESS", "rows_returned": rows, "row_count_validation": evidence})
+
+        connection.set_query_context = set_query_context
+        connection.execute = execute
+        return connection
+
+    def test_refresh_enabled_run_skips_validation_for_refreshed_data(self) -> None:
+        state = {"refreshed": False}
+        connection = self._connection(lambda: 34 if state["refreshed"] else 33)
+        bench = Mock()
+        bench.get_query = Mock(return_value="SELECT 1")
+        power_test = TPCHPowerTest(
+            benchmark=bench,
+            connection=connection,
+            scale_factor=0.01,
+            validation=True,
+            warm_up=False,
+            query_subset=["Q13"],
+            refresh_update_set=Mock(set_id=1),
+            refresh_connection_factory=lambda: object(),
+        )
+
+        def refresh(function, _connection):
+            state["refreshed"] = state["refreshed"] or function == "RF1"
+            return {"function": function, "status": "SUCCESS", "error": None, "duration_ms": 1, "update_set": 1}
+
+        power_test._execute_refresh_function = refresh
+        power_test._preflight_validate_generation = lambda _permutation: None
+
+        result = power_test.run()
+
+        assert result.success is True
+        assert result.validation["data_state"] == "refreshed"
+        assert result.validation["skipped_queries"] == [13]
+        assert result.validation["skip_reason"] == "data refreshed"
+        assert json.dumps(result.to_dict())
+
+    def test_run_without_refresh_validates_against_base_data(self) -> None:
+        connection = self._connection(lambda: 33)
+        bench = Mock()
+        bench.get_query = Mock(return_value="SELECT 1")
+        power_test = TPCHPowerTest(
+            benchmark=bench,
+            connection=connection,
+            scale_factor=0.01,
+            validation=True,
+            warm_up=False,
+            query_subset=["Q13"],
+        )
+        power_test._preflight_validate_generation = lambda _permutation: None
+
+        result = power_test.run()
+
+        assert result.success is True
+        assert result.validation["data_state"] == "base"
+        assert result.validation["validated_queries"] == [13]
+        assert result.validation["skipped_queries"] == []

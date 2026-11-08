@@ -38,8 +38,18 @@ def _power_query_result(
         platform_result["result_digest"] = query_result["result_digest"]
     if not query_result["success"]:
         platform_result["error"] = query_result.get("error", "Unknown error")
+    if query_result.get("row_count_validation") is not None:
+        platform_result["row_count_validation"] = query_result["row_count_validation"]
     propagate_query_execution_metadata(query_result, platform_result)
     return platform_result
+
+
+def _record_validation_run(
+    validation_runs: list[dict[str, Any]], power_test_result: Any, iteration: int, run_type: str
+) -> None:
+    validation = getattr(power_test_result, "validation", None)
+    if isinstance(validation, dict):
+        validation_runs.append({"iteration": iteration, "run_type": run_type, **validation})
 
 
 def _power_test_error_result(
@@ -116,6 +126,7 @@ def execute_tpch_power_test(
 
         connection_adapter = make_connection_adapter(connection, TPCH_BENCHMARK_ID, scale_factor)
         all_results = []
+        validation_runs: list[dict[str, Any]] = []
 
         for i in range(warm_up_iterations):
             current_stream_id = stream_id
@@ -134,6 +145,7 @@ def execute_tpch_power_test(
             )
             connection_adapter._validate_row_count = power_test.config.validation
             power_test_result = power_test.run()
+            _record_validation_run(validation_runs, power_test_result, 0, "warmup")
             for query_result in power_test_result.query_results:
                 all_results.append(
                     _power_query_result(
@@ -164,6 +176,8 @@ def execute_tpch_power_test(
             )
             connection_adapter._validate_row_count = power_test.config.validation
             power_test_result = power_test.run()
+            _record_validation_run(validation_runs, power_test_result, i + 1, "measurement")
+            power_test_result.validation_runs = list(validation_runs)
             adapter._last_power_test_result = power_test_result
 
             if power_test_result.success:
