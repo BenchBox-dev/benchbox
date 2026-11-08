@@ -41341,6 +41341,13 @@
       "status": "done",
       "title": "\"Version Management & Consistency\""
     },
+    "visible-metrics-has-plans-contract-stale-20261108": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Update the visible-metrics inventory to reflect captured-plan availability"
+    },
     "visualization-chart-registry-and-exporter-contract": {
       "claim": null,
       "needs": [
