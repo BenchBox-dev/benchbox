@@ -12461,10 +12461,15 @@
       "title": "Establish the CI checkout depth baseline and document history dependencies"
     },
     "ci-shallow-checkouts-delivery-20261108": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-09T17:50:27Z",
+        "generation": "10b2e7b795f14666ad4f23e7b4bd1f47",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:323735399750ab0454d72b9e"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Deliver shallow checkouts across CI workflows to reduce checkout overhead"
     },
     "ci-shallow-checkouts-history-dependent-tests-remediation-20261108": {
