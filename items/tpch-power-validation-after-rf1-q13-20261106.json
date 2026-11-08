@@ -9,7 +9,7 @@
     "implementation_dependencies": [],
     "member_id": "tpch-power-validation-after-rf1-q13-20261106"
   },
-  "context": "2026-11-07 owner decision (Joe, answering a choice dialog): \"Skip post-RF1 queries, record why\". Validate only power queries that run against base data. Queries that run after RF1 are marked not validated with the reason data refreshed, and the result records which queries were validated against which data.",
+  "context": "2026-11-07 owner decision (Joe, answering a choice dialog): \"Skip post-RF1 queries, record why\". Validate only power queries that run against base data. Queries that run after RF1 are marked not validated with the reason data refreshed, and the result records which queries were validated against which data.\n\n2026-11-07 delivered in PR #4036 (merge commit 1c1651e7a66131d768ac1c8c9de10b2920bd6f0d). Reproduced on e67dec48e1 (parent of #3994): benchbox run --platform duckdb --benchmark tpch --scale 0.01 --phases generate,load,power --benchmark-option tpch_refresh_functions=true; measurement run 3 (RF1 applied) failed 'Query 13 failed: Query validation FAILED ... Expected: 33 rows / Actual: 34 rows' (log /tmp/rv/RvTpchRf1-pre3994.log); same on the branch base. Decision (owner: skip post-RF1, record why): queries run after RF1 are SKIPPED with reason 'data refreshed'; phases.power_test.validation.runs[] records data_state (base|refreshed), validated_against, validated/failed/skipped/errored queries and skip_reason; additive field, no schema bump; throughput streams use the same rule. After the fix the same DuckDB SF0.01 refresh run exits 0: 66 passed, 0 failed; iteration 3 Q13 SKIPPED (actual 34, warning 'data refreshed'), earlier iterations PASSED 33 (log /tmp/rv/RvTpchRf1-fixed.log). Tests: tests/unit/core/tpch/test_power_validation_after_refresh.py and TestPowerTestValidationAfterRefresh in tests/integration/test_tpch_power_test.py cover refresh-enabled, no-refresh, wrong row count failed, raised query errored, validation disabled, throughput streams. Review fixes: failed queries recorded as failed; raised queries reported as errored rather than skipped.",
   "description": "Seen in a DuckDB TPC-H SF0.01 run with refresh functions on 2026-11-06, during PR #3994. The final power run failed Q13 row-count validation (expected 33, got 34) because RF1 inserts rows before the power queries run. The answer set used for validation is for the base data, so any run with refresh enabled can fail validation on queries whose answers RF1 changes. Not yet confirmed on the commit before #3994; RF1 ran before the queries there as well, so this is believed to be pre-existing.\n\nChange. Confirm on the base commit first. Then decide from the spec how validation applies when refresh functions run: TPC-H 3.0.1 validates answers in the qualification database run, not in a performance run after RF1. Make validation either skip post-RF1 power queries with a recorded reason or compare against answers for the refreshed data. Do not silence it per query.\n\nGuardrails: work in a linked worktree; heavy runs through make heavy-run; no explanatory comments; changelog fragment.",
   "prepared": {
     "accepted_head": "e33f138eca01054bce2c54e7c7773dfb9a0b9a80",
@@ -366,6 +366,14 @@
       "generation": "a590f9854021472da127a0514a599a06",
       "op": "prepare",
       "op_id": "ba206ce7452c424aa818c2955bf82734",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-08T00:57:56Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7e57db5d4e674d8c940a0b1b303ee596",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
