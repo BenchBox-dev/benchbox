@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -20,7 +21,10 @@ HEAD = "a" * 40
 OLD_HEAD = "b" * 40
 REPO = "owner/repo"
 
-requires_tools = pytest.mark.skipif(shutil.which("jq") is None or shutil.which("bash") is None, reason="needs jq")
+requires_tools = pytest.mark.skipif(
+    sys.platform == "win32" or shutil.which("jq") is None or shutil.which("bash") is None,
+    reason="needs POSIX bash and jq",
+)
 
 FAKE_GH = """#!/usr/bin/env bash
 set -euo pipefail
