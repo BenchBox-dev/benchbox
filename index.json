@@ -33150,18 +33150,13 @@
       "title": "Run the release-gate UAT matrix nightly on trunk and keep per-cell history"
     },
     "rv2r-03-release-evidence-check": {
-      "claim": {
-        "expires_at": "2026-11-09T17:49:13Z",
-        "generation": "c086ff9b689d411d8768c8146371b068",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec"
-      },
+      "claim": null,
       "needs": [
         "rv2r-02-trunk-uat-nightly",
         "release-canary-green-after-0-5-0"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Make release-v2 check trunk UAT evidence instead of running UAT, with full UAT as fallback"
     },
     "rv2r-04-uat-rubric-automation": {
