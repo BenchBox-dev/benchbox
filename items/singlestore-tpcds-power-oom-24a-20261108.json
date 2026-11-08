@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The cause is recorded (memory limit or plan), with evidence.",
+    "TPC-DS SF0.01 power on SingleStore completes in release UAT, or 24a is pruned with a documented reason."
+  ],
+  "description": "From the load-value-integrity batch (#4043). TPC-DS now loads on SingleStore, but the power phase at SF0.01 fails at query 24a with an out-of-memory error on the 4 GiB local stack. joinorder SF1 was pruned with a documented reason: memsqld is OOM-killed on query 7c.\n\nChange. Determine whether this is the stack's memory limit (compare against the release UAT runner's memory) or a query-plan problem on SingleStore. Then either size the UAT stack, or fix or prune the query with a recorded reason.\n\nGuardrails: work in a linked worktree; local stacks via make uat-bring-up under mocker, one at a time; no live cloud.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-08T02:54:27Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ee1cd80ed53945dca487b7f7548ed925",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}

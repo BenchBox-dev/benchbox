@@ -33792,6 +33792,13 @@
       "status": "done",
       "title": "SingleStore setup saves the plaintext password to credentials.yaml even when validation fails"
     },
+    "singlestore-tpcds-power-oom-24a-20261108": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "SingleStore TPC-DS SF0.01 power phase fails at query 24a with OOM on the 4 GiB stack; joinorder SF1 pruned for OOM on 7c"
+    },
     "singlestore-tpchavoc-10v8-memory": {
       "claim": null,
       "needs": [],
