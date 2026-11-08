@@ -28600,7 +28600,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "dropped",
       "title": "Two individually green PRs broke develop because no check tests them combined before merge"
     },
     "prepare-project-for-publication": {
