@@ -35994,7 +35994,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Fork App readiness reports ready even when the installation has excess write permissions"
     },
     "sqlglot-fork-readiness-prerequisites-20261107": {
