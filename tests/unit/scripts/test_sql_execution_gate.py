@@ -654,7 +654,7 @@ def _open_postgres(monkeypatch, tmp_path, columns, index_keys):
     return recorder.statements
 
 
-def test_postgres_engine_indexes_the_leading_key_and_join_keys_before_analyze(monkeypatch, tmp_path):
+def test_postgres_engine_indexes_the_leading_key_and_join_keys_before_vacuum_analyze(monkeypatch, tmp_path):
     statements = _open_postgres(
         monkeypatch, tmp_path, ["cs_sold_date_sk", "cs_order_number", "cs_quantity"], index_keys=True
     )
@@ -664,7 +664,7 @@ def test_postgres_engine_indexes_the_leading_key_and_join_keys_before_analyze(mo
         'CREATE INDEX "cs_cs_sold_date_sk_ix" ON cs ("cs_sold_date_sk")',
         'CREATE INDEX "cs_cs_order_number_ix" ON cs ("cs_order_number")',
     ]
-    assert statements.index(created[-1]) < statements.index("ANALYZE")
+    assert statements.index(created[-1]) < statements.index("VACUUM (ANALYZE) cs")
 
 
 def test_postgres_engine_keeps_only_the_leading_index_when_keys_are_not_indexed(monkeypatch, tmp_path):
@@ -675,6 +675,49 @@ def test_postgres_engine_keeps_only_the_leading_index_when_keys_are_not_indexed(
     assert [statement for statement in statements if statement.startswith("CREATE INDEX")] == [
         'CREATE INDEX "cs_cs_sold_date_sk_ix" ON cs ("cs_sold_date_sk")'
     ]
+
+
+def test_postgres_engine_creates_the_dataset_indexes_whose_columns_exist(monkeypatch, tmp_path):
+    recorder = _RecordingPostgres(["channel", "sale_id", "sold_date_d_date", "net_paid"])
+    monkeypatch.setattr(PostgresEngine, "_connect", staticmethod(lambda: recorder))
+    data = tmp_path / "obt.tbl"
+    data.write_text("1|2|3|4|\n")
+    indexes = (("sale_id",), ("sold_date_d_date", "channel"), ("absent_column",))
+    PostgresEngine(15.0).open(Dataset("t", "CREATE TABLE obt (x INT)", {"obt": data}, False, indexes), tmp_path)
+
+    assert [statement for statement in recorder.statements if statement.startswith("CREATE INDEX")] == [
+        'CREATE INDEX "obt_channel_ix" ON obt ("channel")',
+        'CREATE INDEX "obt_x0_ix" ON obt ("sale_id")',
+        'CREATE INDEX "obt_x1_ix" ON obt ("sold_date_d_date", "channel")',
+    ]
+    assert recorder.statements.index("VACUUM (ANALYZE) obt") > recorder.statements.index(
+        'CREATE INDEX "obt_x1_ix" ON obt ("sold_date_d_date", "channel")'
+    )
+
+
+def test_obt_dataset_indexes_cover_the_self_join_and_subquery_columns():
+    from scripts.sql_execution_gate.obt import OBT_INDEXES
+
+    assert ("sale_id",) in OBT_INDEXES
+    assert ("item_i_item_id",) in OBT_INDEXES
+    assert ("sold_date_d_date", "sold_date_d_week_seq", "channel") in OBT_INDEXES
+
+
+def test_sqlite_engine_indexes_the_obt_self_join_column_so_q95_is_not_a_quadratic_scan(tmp_path):
+    from scripts.sql_execution_gate.obt import OBT_INDEXES
+
+    (tmp_path / "obt.tbl").write_text("".join(f"web|{i % 40}|{i % 3}|\n" for i in range(300)))
+    ddl = "CREATE TABLE obt (channel TEXT, sale_id INTEGER, warehouse_sk INTEGER)"
+    sql = (
+        "SELECT COUNT(*) FROM obt a JOIN obt b ON a.sale_id = b.sale_id AND a.warehouse_sk <> b.warehouse_sk "
+        "WHERE a.channel = 'web' AND b.channel = 'web'"
+    )
+    engine = SqliteEngine(30.0)
+    engine.open(Dataset("t", ddl, {"obt": tmp_path / "obt.tbl"}, False, OBT_INDEXES), tmp_path)
+    plan = " ".join(row[3] for row in engine.connection.execute(f"EXPLAIN QUERY PLAN {sql}"))
+    engine.close()
+    assert "obt_x0_ix (sale_id=?)" in plan
+    assert "SCAN b" not in plan
 
 
 def test_sqlite_engine_indexes_the_correlation_key_so_an_exists_subquery_is_never_a_scan(tmp_path):
