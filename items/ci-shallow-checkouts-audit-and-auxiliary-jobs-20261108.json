@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "The candidate auxiliary and documentation jobs use fetch-depth: 1 (or default depth).",
+    "Tests that pin checkout properties in those workflows are updated and pass.",
+    "Each converted job passes in CI with no failures or skipped checks caused by missing history.",
+    "Workflows requiring ancestry or commit ranges (soundness-merge-digest, site-inputs, validate-submission) remain at full depth."
+  ],
+  "context": "Part of the shallow-clone CI optimization plan. Audit confirms these jobs need only the HEAD tree or compare against an explicitly fetched shallow ref. comment-policy-nightly runs --full which sets base=HEAD. example-validation runs make docs-validate which uses ls-files only.",
+  "description": "Convert checkouts in standalone, audit, and documentation jobs that need only the checked-out tree from fetch-depth: 0 to depth 1. Candidate jobs include corpus-drift-check, submission-validator-drift-check, nightly-v2 (drift job), comment-policy-nightly, and ci.yml example-validation. Update tests that pin checkout properties (such as test_trunk_workflow.py for comment-policy-scan if converted). Do not change jobs that compute commit diffs or ancestry (such as soundness-merge-digest, site-inputs, or validate-submission).",
+  "links": [
+    ".github/workflows/corpus-drift-check.yml",
+    ".github/workflows/submission-validator-drift-check.yml",
+    ".github/workflows/comment-policy-nightly.yml",
+    ".github/workflows/ci.yml",
+    "tests/unit/workflows/test_comment_policy_nightly_workflow.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:323735399750ab0454d72b9e",
+      "at": "2026-11-08T17:48:21Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c4b0f5a04e0e47acacdce7546ffda2e1",
+      "session_id": "83fcfb8d4a5c4fe8a47e5ac53802ec97"
+    }
+  ]
+}
