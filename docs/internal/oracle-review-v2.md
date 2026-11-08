@@ -179,11 +179,14 @@ Each caller also ends with a `posting-check` job (`review-verdict.yml`, `review-
 that reads `needs.<caller job>.result` explicitly and fails when the head the run handled has
 no status from `benchbox-oracle[bot]` in `review-verdict`/`oracle-verdict` (verdict) or
 `review-gate`/`oracle-gate` (gate), so an empty secret mapping can no longer end green while
-posting nothing. It asserts only for `pull_request_target` and `workflow_dispatch` runs, and
-skips the runs the callee skips by design: sweeps and comment events, closed or draft pull
-requests, a base other than `develop`, a head that has since moved, and a title edit for the
-verdict. A green `posting-check` for the dispatched heads is part of the same check; record
-the run links in the tracker item that carried the bump.
+posting nothing on a head that has no status yet. It asserts only for `pull_request_target`
+and `workflow_dispatch` runs, and skips the runs the callee skips by design: sweeps and
+comment events, closed or draft pull requests, a base other than `develop`, a head that has
+since moved, and a title edit for the verdict. It cannot tell a run that posted nothing from
+a run the callee skipped because the head already had a decision, so a status left by an
+earlier run satisfies it: a green `posting-check` proves the pin only for a head that had no
+status before the run. Dispatch the checks above on such heads and record the run links in
+the tracker item that carried the bump.
 
 ### Rollback
 
