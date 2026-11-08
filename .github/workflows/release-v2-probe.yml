@@ -38,7 +38,7 @@ jobs:
           set -euo pipefail
           uv run --locked --no-dev -- python scripts/release_probe_graph.py
 
-      - name: Run both probe variants when a release input changed
+      - name: Run every probe variant when a release input changed
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}

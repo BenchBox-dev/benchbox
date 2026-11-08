@@ -60,10 +60,10 @@ def _step_text(step: dict) -> str:
     return " ".join(str(step.get(key, "")) for key in ("uses", "run", "env", "with"))
 
 
-def test_the_workflow_dispatch_input_defaults_to_a_real_release_and_offers_only_the_two_variants(live):
+def test_the_workflow_dispatch_input_defaults_to_a_real_release_and_offers_only_the_three_variants(live):
     probe = live["on" if "on" in live else True]["workflow_dispatch"]["inputs"]["probe"]
     assert probe["default"] == "none"
-    assert probe["options"] == ["none", "reuse", "fallback"]
+    assert probe["options"] == ["none", "reuse", "fallback", "guarded-change"]
     assert probe["required"] is False
 
 
