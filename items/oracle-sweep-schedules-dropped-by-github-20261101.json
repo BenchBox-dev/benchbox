@@ -3,7 +3,7 @@
     "A measurement of scheduled versus expected sweep runs over at least 7 days is recorded",
     "If the gap is real, the docs state the worst-case delay for a lost dispatch, or the sweep gains another trigger, decided with the oracle workstream"
   ],
-  "context": "Found 2026-10-31 in an adversarial review of oracle queue load; counts came from gh run list. The cause (platform scheduling under load) is an inference. Oracle workflows are soundness paths; any change needs the oracle owner.",
+  "context": "Found 2026-10-31 in an adversarial review of oracle queue load; counts came from gh run list. The cause (platform scheduling under load) is an inference. Oracle workflows are soundness paths; any change needs the oracle owner.\n\nConsolidated duplicate item oracle-sweep-schedule-drops-most-runs-20261022 (hourly retry sweep cron drops runs and executes every 2-6 hours).",
   "description": "The oracle-gate sweep is the fallback when a dispatch is lost, and it is scheduled hourly (cron '41 * * * *'). On 2026-10-31 only 1 gate schedule run appeared in about 4 hours, and oracle-verdict had 3 schedule runs since 18:44 the previous day. GitHub drops or delays scheduled runs under load, so the fallback cannot be relied on for timing.",
   "sessions": [
     {
@@ -13,6 +13,14 @@
       "op": "create",
       "op_id": "0c94d6259a304672a71ba964e2e86ca9",
       "session_id": "77bfd3a6737c4f8e9b68d27f796e8651"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:76bfe83b21f0c666e957f760",
+      "at": "2026-11-08T15:54:49Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "98eefd9938fd48b09f9c263ee0a1386c",
+      "session_id": "02c14526fd7648f49c893339d8cfcf9e"
     }
   ]
 }
