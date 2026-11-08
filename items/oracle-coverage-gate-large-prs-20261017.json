@@ -6,7 +6,7 @@
     "The oracle docs describe the coverage rule and how large PRs are handled",
     "Adds or updates the matching scenario in tests/integration/oracle (registered in ORACLE_SCENARIO_TESTS), proven to fail with this item's defect reintroduced; the scenario runs only the fake omp executable and fake servers, never a real omp or model-provider call."
   ],
-  "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\nFound 2026-10-17 on core #3096, the site removal: about 1,230 changed files and 19,537 code lines, mostly deletions. The first opus review on f1b9d26be gave SHIP WITH FIXES (one real defect, release-cut still staging landing/index.html). On e41f96b97 the reviewer reached SHIP twice, in the original run and in recovery run 39055089707, but the gate marked both incomplete. sol (the OpenAI reviewer) was disabled for lack of quota, and no other reviewer was selected. The owner cleared the gate with a stand-in on e41f96b97, and the PR merged as 364a6e9cd.\n\noracle-response-evidence-secrets-20261021 improves source presentation and diagnostics without weakening the file-list evidence policy. Large-PR scope/evidence design remains this item; no closure implied.",
+  "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\nFound 2026-10-17 on core #3096, the site removal: about 1,230 changed files and 19,537 code lines, mostly deletions. The first opus review on f1b9d26be gave SHIP WITH FIXES (one real defect, release-cut still staging landing/index.html). On e41f96b97 the reviewer reached SHIP twice, in the original run and in recovery run 39055089707, but the gate marked both incomplete. sol (the OpenAI reviewer) was disabled for lack of quota, and no other reviewer was selected. The owner cleared the gate with a stand-in on e41f96b97, and the PR merged as 364a6e9cd.\n\noracle-response-evidence-secrets-20261021 improves source presentation and diagnostics without weakening the file-list evidence policy. Large-PR scope/evidence design remains this item; no closure implied.\n\nConsolidated duplicate item oracle-reviewer-coverage-incomplete-on-large-diffs (verdict stays pending when the reviewer cannot read every changed file on a large diff).",
   "description": "The oracle's coverage gate (_project/scripts/oracle_reviewers/evidence.py:215) turns a SHIP into \"pending: incomplete\" when the reviewer's trace doesn't show a read of every changed file: \"the verdict would ship but its trace shows no read of …\". On a PR with many changed paths, the reviewer can't meet that, so the gate can never pass. Retries and `make oracle-review-recover` give the same result, and the only way through is the owner's stand-in. The gate should scale with the PR: count files that are deleted outright or are generated or data files as covered by a summary, or let the reviewer cover a large diff in bounded chunks with a merged verdict. Make sure any such rule can't let unreviewed code through.",
   "sessions": [
     {
@@ -56,6 +56,14 @@
       "op": "update",
       "op_id": "7985b5b8f62a4d4cacaab6963d668b70",
       "session_id": "f2ea81a526d74429861bc01fff72f167"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:76bfe83b21f0c666e957f760",
+      "at": "2026-11-08T15:54:56Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7f3493586fbd49a3821ed13dd5f78d10",
+      "session_id": "02c14526fd7648f49c893339d8cfcf9e"
     }
   ]
 }
