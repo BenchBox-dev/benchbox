@@ -12724,17 +12724,12 @@
       "title": "Deliver shallow checkouts across CI workflows to reduce checkout overhead"
     },
     "ci-shallow-checkouts-history-dependent-tests-remediation-20261108": {
-      "claim": {
-        "expires_at": "2026-11-09T19:23:56Z",
-        "generation": "de3248fd26994d27b1847d842cc87e0d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:323735399750ab0454d72b9e"
-      },
+      "claim": null,
       "needs": [
         "ci-shallow-checkouts-pilot-tree-only-trunk-20261108"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Isolate history-dependent tests so medium tiers can run on shallow checkouts"
     },
     "ci-shallow-checkouts-pilot-tree-only-trunk-20261108": {
