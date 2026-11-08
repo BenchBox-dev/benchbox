@@ -13,6 +13,7 @@ import re
 import secrets
 import subprocess
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
@@ -874,17 +875,29 @@ def _strip_operator_platform_metadata(node: Any) -> None:
         _strip_operator_platform_metadata(child)
 
 
-def anonymize_plans_payload(plans_payload: dict[str, Any]) -> dict[str, Any]:
+def _redact_plan_text_fields(container: dict[str, Any], detector: LocalPathDetector) -> None:
+    for key in ("plan_text", "plan_data", "optimization_hints"):
+        if key in container:
+            container[key] = detector.redact_value(container[key])
+
+
+def anonymize_plans_payload(plans_payload: dict[str, Any], roots: Iterable[str | Path] = ()) -> dict[str, Any]:
     sanitized = copy.deepcopy(plans_payload)
     queries = sanitized.get("queries")
     if not isinstance(queries, dict):
         return sanitized
+    detector = local_path_detector(roots)
     for entry in queries.values():
         if not isinstance(entry, dict):
             continue
+        _redact_plan_text_fields(entry, detector)
         plan = entry.get("plan")
+        if isinstance(plan, str):
+            entry["plan"] = detector.redact_text(plan)
+            continue
         if not isinstance(plan, dict):
             continue
+        _redact_plan_text_fields(plan, detector)
         if plan.get("raw_explain_output") is not None:
             plan["raw_explain_output"] = None
         _strip_operator_platform_metadata(plan.get("logical_root"))
