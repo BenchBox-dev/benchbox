@@ -1,5 +1,5 @@
 {
-  "context": "2026-11-07: owner decisions: Q13 skip post-RF1 queries and record why; no live-cloud runs; no manual nightly dispatches.",
+  "context": "2026-11-07: owner decisions: Q13 skip post-RF1 queries and record why; no live-cloud runs; no manual nightly dispatches.\n\n2026-11-08: final PR #4036 merged (1c1651e7a66131d768ac1c8c9de10b2920bd6f0d); all five members finished with evidence; batch result-validity finished and worktrees removed. Follow-up notes: shared DuckDB file benchmark_runs/databases/tpch_sf001/tpch_sf001_notuning_noconstraints.duckdb was deleted because an RF1 run had refreshed it; chDB 3.6.0 original error text not found so the 4.1.6 verification covers the behavior class.",
   "description": "Leader notes for feature batch result-validity (integration branch feat/result-validity). Members: tpch-power-validation-after-rf1-q13-20261106, tpch-parity-test-skips-without-cached-extension-20261107, chdb-rows-nan-vs-arrow-null-q17-20261107, chdb-4x-engine-load-verification-20261006, qphds-full-sequence-unrun-20261107. Not a batch member; close after the final PR merges and batch-finish runs.",
   "sessions": [
     {
@@ -8,6 +8,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "6e10d0facbe04c21ace8e496be0f469e",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-08T01:02:44Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1b6343c60b614b43bab9b3a51c13337e",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
