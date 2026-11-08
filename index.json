@@ -29512,10 +29512,15 @@
       "title": "sslrootcert local path exports unhashed on the public layer"
     },
     "public-fixture-home-paths-audit-20261108": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-09T19:12:55Z",
+        "generation": "7fe2a8e2a630424cb0138e2274806e68",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Remove real home-directory paths from maintained public fixtures"
     },
     "public-identifier-drop-alias-path-keys": {
