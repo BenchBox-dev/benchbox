@@ -681,8 +681,9 @@ applied.
 `make uat-bring-up PLATFORM=<name> DOWN=1 [REMOVE_VOLUMES=1]` removes the container (and
 named volumes with `REMOVE_VOLUMES=1`); the execute phase teardown does the same.
 
-The Docker CI job set has no SingleStore job, so the `live_singlestore` tests
-do not run in CI.
+The `singlestore` job in `.github/workflows/docker-integration.yml` runs the
+`live_singlestore` tests nightly and on pull requests that touch the SingleStore
+paths.
 
 ## 5. Stress Workflow Retirement
 
