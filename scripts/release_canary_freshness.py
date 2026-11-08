@@ -24,6 +24,7 @@ MAX_AGE_HOURS = 48
 RUN_LIMIT = 30
 NO_VERDICT_CONCLUSIONS = ("cancelled", "skipped")
 _SHA = re.compile(r"[0-9a-f]{40}")
+_VERSION_TAG = re.compile(r"v(?P<major>[0-9]+)\.(?P<minor>[0-9]+)\.[0-9]+(?:[A-Za-z0-9.+-]*)")
 
 
 def _sibling(name: str):
@@ -59,12 +60,23 @@ def _run_started(run: dict[str, Any]) -> datetime | None:
     return _parse_time(run.get("run_started_at")) or _parse_time(run.get("created_at"))
 
 
-def _canary_run_problem(run: dict[str, Any]) -> str | None:
+def _canary_run_problem(run: dict[str, Any], line: str) -> str | None:
     if run.get("event") not in _reuse.TRUNK_EVENTS:
         return f"event {run.get('event')!r} is not schedule or workflow_dispatch"
-    if run.get("head_branch") != _reuse.TRUNK_BRANCH:
-        return f"ran on {run.get('head_branch')!r}, not {_reuse.TRUNK_BRANCH}"
+    if run.get("head_branch") != line:
+        return f"ran on {run.get('head_branch')!r}, not {line}"
     return None
+
+
+def release_line(repo_dir: Path, tag: str, tag_sha: str) -> str:
+    match = _VERSION_TAG.fullmatch(tag)
+    if match is None:
+        return _reuse.TRUNK_BRANCH
+    line = f"release/{match['major']}.{match['minor']}.x"
+    ref = f"refs/remotes/origin/{line}"
+    if _reuse._git("rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}", cwd=repo_dir).returncode != 0:
+        return _reuse.TRUNK_BRANCH
+    return line if _reuse._is_ancestor(repo_dir, tag_sha, ref) else _reuse.TRUNK_BRANCH
 
 
 def tested_commit(repository: str, run: dict[str, Any]) -> tuple[str, str | None]:
@@ -81,7 +93,13 @@ def tested_commit(repository: str, run: dict[str, Any]) -> tuple[str, str | None
 
 
 def evaluate(
-    repository: str, tag_sha: str, repo_dir: Path, now: datetime, *, max_age_hours: int = MAX_AGE_HOURS
+    repository: str,
+    tag_sha: str,
+    repo_dir: Path,
+    now: datetime,
+    *,
+    max_age_hours: int = MAX_AGE_HOURS,
+    line: str = _reuse.TRUNK_BRANCH,
 ) -> Verdict:
     payload = _reuse._gh_json(
         f"repos/{repository}/actions/workflows/{WORKFLOW_FILE}/runs?status=completed&per_page={RUN_LIMIT}"
@@ -91,7 +109,7 @@ def evaluate(
     rows: list[str] = []
     eligible: list[dict[str, Any]] = []
     for run in runs:
-        problem = _canary_run_problem(run)
+        problem = _canary_run_problem(run, line)
         if problem is None:
             eligible.append(run)
         else:
@@ -100,7 +118,7 @@ def evaluate(
     if not runs:
         return Verdict(
             False,
-            f"missing: no completed {WORKFLOW_FILE} run on {_reuse.TRUNK_BRANCH} from a scheduled or manual trigger was found",
+            f"missing: no completed {WORKFLOW_FILE} run on {line} from a scheduled or manual trigger was found",
             tuple(rows),
         )
     for run in runs[:RUN_LIMIT]:
@@ -152,7 +170,9 @@ def _markdown(verdict: Verdict) -> str:
 
 def _handle_check(args: argparse.Namespace) -> int:
     try:
-        verdict = evaluate(args.github_repository, args.head_sha, Path(args.repo_dir), datetime.now(UTC))
+        repo_dir = Path(args.repo_dir)
+        line = release_line(repo_dir, args.tag, args.head_sha) if args.tag else _reuse.TRUNK_BRANCH
+        verdict = evaluate(args.github_repository, args.head_sha, repo_dir, datetime.now(UTC), line=line)
     except Exception as exc:
         traceback.print_exc()
         verdict = Verdict(False, f"error: {type(exc).__name__}: {exc}", ())
@@ -179,6 +199,7 @@ def main(argv: list[str] | None = None) -> int:
     check.add_argument("--head-sha", required=True)
     check.add_argument("--github-repository", required=True)
     check.add_argument("--repo-dir", default=".")
+    check.add_argument("--tag", default="")
     check.set_defaults(handler=_handle_check)
     args = parser.parse_args(argv)
     return args.handler(args)

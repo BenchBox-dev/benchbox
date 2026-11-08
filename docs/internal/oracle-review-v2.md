@@ -142,10 +142,11 @@ checks are not part of a bump.
 ### What cannot be exercised before the merge
 
 A bump branch cannot run the new pin. The `oracle` environment deploys only from
-`develop` (`repo-admin-settings.md`; `scripts/ruleset_drift_check.py` fails if the policy
-widens), `gh workflow run review-verdict.yml` accepts `--ref develop` only, and a pull
-request run uses the callers on `develop`. Until the callers on `develop` carry the new
-pin, the reviewer and gate that judge the bump are the old ones. The first run of the new
+`develop` and `release/*` (`repo-admin-settings.md`; `scripts/ruleset_drift_check.py` fails
+if the policy widens or narrows), the callee guard refuses a `workflow_dispatch` that is not
+on the gated base, so `gh workflow run review-verdict.yml` accepts `--ref develop` only, and
+a pull request run uses the callers on `develop`. Until the callers on `develop` carry the
+new pin, the reviewer and gate that judge the bump are the old ones. The first run of the new
 pin is therefore a run on `develop`.
 
 ### Checks after the merge
@@ -174,8 +175,17 @@ The pin is healthy when, on each pull request:
 - the defect pull request gets a verdict that lists the defect, and its gate does not report
   `success`.
 
-Once the posting detector is available, a green detector for the dispatched heads is part
-of the same check. Until then the statuses above are the evidence; record the run links in
+Each caller also ends with a `posting-check` job (`review-verdict.yml`, `review-gate.yml`)
+that reads `needs.<caller job>.result` explicitly and fails when the head the run handled has
+no status from `benchbox-oracle[bot]` in `review-verdict`/`oracle-verdict` (verdict) or
+`review-gate`/`oracle-gate` (gate), so an empty secret mapping can no longer end green while
+posting nothing on a head that has no status yet. It asserts only for `pull_request_target`
+and `workflow_dispatch` runs, and skips the runs the callee skips by design: sweeps and
+comment events, closed or draft pull requests, a base other than `develop`, a head that has
+since moved, and a title edit for the verdict. It cannot tell a run that posted nothing from
+a run the callee skipped because the head already had a decision, so a status left by an
+earlier run satisfies it: a green `posting-check` proves the pin only for a head that had no
+status before the run. Dispatch the checks above on such heads and record the run links in
 the tracker item that carried the bump.
 
 ### Rollback

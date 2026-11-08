@@ -7,7 +7,7 @@ env:
 
 on:
   push:
-    branches: [develop]
+    branches: [develop, "release/**"]
   workflow_dispatch:
   workflow_call:
     inputs:

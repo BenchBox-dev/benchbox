@@ -49,7 +49,7 @@ ORACLE_ENVIRONMENT = "oracle"
 ENVIRONMENT_DEPLOYMENT_POLICIES = {
     PYPI_ENVIRONMENT: (("tag", "v*"),),
     TEST_PYPI_ENVIRONMENT: (("branch", "develop"), ("tag", "v*")),
-    ORACLE_ENVIRONMENT: (("branch", "develop"),),
+    ORACLE_ENVIRONMENT: (("branch", "develop"), ("branch", "release/*")),
 }
 RETIRED_RELEASE_BRANCH = "release"
 
@@ -517,7 +517,7 @@ def render_summary(findings: list[str], expected: dict[str, ExpectedRuleset]) ->
         lines.append("- test-pypi environment: deployments only from tag v* and branch develop")
         lines.append(f"- {RELEASE_LIFECYCLE_RULESET}: creation and deletion of {RELEASE_BRANCHES_REF} owner-only")
         lines.append("- no `release` branch or ruleset")
-        lines.append("- oracle environment: deployments only from branch develop")
+        lines.append("- oracle environment: deployments only from branches develop and release/*")
     if warnings:
         lines += ["", "## Non-blocking warnings", "", *[f"- {finding}" for finding in warnings]]
     return "\n".join(lines) + "\n"

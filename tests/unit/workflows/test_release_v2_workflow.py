@@ -649,7 +649,8 @@ def test_admit_refuses_a_release_without_a_fresh_green_canary_before_admitting_a
     names = [step.get("name") for step in steps]
     canary = steps[names.index("Require a fresh green release canary on an ancestor of the tagged commit")]
     assert names.index(canary["name"]) < names.index("Admit the trunk-tested artifacts")
-    assert canary["env"] == {"GH_TOKEN": "${{ github.token }}"}
+    assert canary["env"] == {"GH_TOKEN": "${{ github.token }}", "RELEASE_TAG": "${{ inputs.tag || github.ref_name }}"}
+    assert '--tag "$RELEASE_TAG"' in canary["run"]
     assert "release_canary_freshness.py check" in canary["run"]
     assert '--head-sha "$(git rev-parse HEAD)"' in canary["run"]
     assert "continue-on-error" not in canary

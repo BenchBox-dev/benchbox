@@ -338,7 +338,7 @@ def test_release_canary_aggregation_fails_closed_and_preserves_summary_contract(
     }
     result_text = _run_text("release-canary-result")
     for field in (
-        '"checked_ref": "develop"',
+        '"checked_ref": "${RELEASE_CANARY_REF}"',
         '"commit_sha": "${CHECKED_SHA}"',
         '"non_fast_result": "${NON_FAST_RESULT}"',
         '"ruleset_drift_result": "${RULESET_DRIFT_RESULT}"',

@@ -77,6 +77,8 @@ def test_parse_expected_rulesets_from_admin_runbook() -> None:
         "tooling",
         "hold",
         "oracle-gate",
+        "review-gate",
+        "release-v2 probe",
     )
     assert expected["develop-squash-only"].strict_required_status_checks_policy is False
 
@@ -228,6 +230,24 @@ def test_matching_deployment_policies_have_no_findings(name: str) -> None:
             "oracle",
             lambda env: None,
             lambda p: p["branch_policies"].append({"type": "branch", "name": "feature/*"}),
+            "oracle environment: deployment policies",
+        ),
+        (
+            "oracle",
+            lambda env: None,
+            lambda p: p["branch_policies"].remove({"type": "branch", "name": "release/*"}),
+            "oracle environment: deployment policies",
+        ),
+        (
+            "oracle",
+            lambda env: None,
+            lambda p: p["branch_policies"].remove({"type": "branch", "name": "develop"}),
+            "oracle environment: deployment policies",
+        ),
+        (
+            "oracle",
+            lambda env: None,
+            lambda p: p["branch_policies"].append({"type": "tag", "name": "release/*"}),
             "oracle environment: deployment policies",
         ),
         (
@@ -441,13 +461,24 @@ def test_merge_queue_present_is_blocking() -> None:
 def _verified_develop_ruleset() -> dict:
     live = _live_ruleset(
         "refs/heads/develop",
-        ["core", "explorer", "results-data", "docs", "tooling", "hold", "oracle-gate"],
+        [
+            "core",
+            "explorer",
+            "results-data",
+            "docs",
+            "tooling",
+            "hold",
+            "oracle-gate",
+            "review-gate",
+            "release-v2 probe",
+        ],
         strict=False,
     )
     live["name"] = "develop-squash-only"
+    bound = {"oracle-gate": 5201041, "review-gate": 5201041, "release-v2 probe": 15368}
     for check in live["rules"][0]["parameters"]["required_status_checks"]:
-        if check["context"] == "oracle-gate":
-            check["integration_id"] = 5201041
+        if check["context"] in bound:
+            check["integration_id"] = bound[check["context"]]
     live["rules"].append(
         {
             "type": "pull_request",
@@ -487,6 +518,18 @@ def test_develop_ruleset_drift_is_blocking(mutate, expected_text: str) -> None:
     findings = _develop_findings(live)
 
     assert any(expected_text in finding for finding in findings)
+    assert ruleset_drift_check.blocking_findings(findings)
+
+
+@pytest.mark.parametrize("context", ["review-gate", "release-v2 probe"])
+def test_missing_develop_required_check_is_blocking(context: str) -> None:
+    live = _verified_develop_ruleset()
+    checks = _required_checks(live)
+    checks[:] = [check for check in checks if check["context"] != context]
+
+    findings = _develop_findings(live)
+
+    assert any("required checks" in finding and context in finding for finding in findings)
     assert ruleset_drift_check.blocking_findings(findings)
 
 
@@ -664,7 +707,17 @@ def test_capture_comparison_allows_reordered_duplicate_contexts() -> None:
     assert ruleset_drift_check.capture_comparison_findings(capture, live) == []
 
 
-RELEASE_BRANCHES_CHECKS = ("core", "explorer", "results-data", "docs", "tooling", "hold", "oracle-gate")
+RELEASE_BRANCHES_CHECKS = (
+    "core",
+    "explorer",
+    "results-data",
+    "docs",
+    "tooling",
+    "hold",
+    "oracle-gate",
+    "review-gate",
+    "release-v2 probe",
+)
 OWNER_BYPASS = {"actor_id": 57046, "actor_type": "User", "bypass_mode": "always"}
 
 

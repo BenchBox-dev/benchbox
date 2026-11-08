@@ -281,3 +281,96 @@ def test_the_check_command_fails_closed_when_github_cannot_be_read(history, tmp_
     code, output, _ = _check(history, tmp_path, monkeypatch, capsys)
     assert code == 1
     assert "error: ValueError: gh api failed" in output.err
+
+
+def _publish_line(history, line: str, commit: str) -> None:
+    _git(history.repo, "update-ref", f"refs/remotes/origin/{line}", commit)
+
+
+def _evaluate_tag(history, tag: str):
+    line = canary.release_line(history.repo, tag, history.tagged)
+    return canary.evaluate("owner/repo", history.tagged, history.repo, NOW, line=line)
+
+
+def test_a_release_line_canary_is_accepted_for_a_tag_on_that_line(history):
+    _publish_line(history, "release/0.5.x", history.tagged)
+    history.fake.add(
+        1, 6, head_sha=history.middle, tested=history.middle, event="workflow_dispatch", branch="release/0.5.x"
+    )
+    verdict = _evaluate_tag(history, "v0.5.1")
+    assert verdict.ok and "run 1" in verdict.reason
+
+
+def test_a_release_line_canary_is_refused_for_a_develop_tag(history):
+    _publish_line(history, "release/0.5.x", history.tagged)
+    history.fake.add(
+        1, 6, head_sha=history.middle, tested=history.middle, event="workflow_dispatch", branch="release/0.5.x"
+    )
+    verdict = _evaluate_tag(history, "v0.6.0")
+    assert not verdict.ok and verdict.reason.startswith("missing:")
+    assert "release/0.5.x" in verdict.rows[0]
+
+
+def test_a_release_line_canary_is_refused_for_a_tag_on_a_different_line(history):
+    _publish_line(history, "release/0.6.x", history.tagged)
+    history.fake.add(
+        1, 6, head_sha=history.middle, tested=history.middle, event="workflow_dispatch", branch="release/0.5.x"
+    )
+    verdict = _evaluate_tag(history, "v0.6.1")
+    assert not verdict.ok and verdict.reason.startswith("missing:")
+    assert "on release/0.6.x" in verdict.reason
+
+
+def test_a_develop_canary_does_not_satisfy_a_tag_on_a_release_line(history):
+    _publish_line(history, "release/0.5.x", history.tagged)
+    history.fake.add(1, 6, head_sha=history.middle, tested=history.middle)
+    verdict = _evaluate_tag(history, "v0.5.1")
+    assert not verdict.ok and verdict.reason.startswith("missing:")
+    assert "release/0.5.x" in verdict.reason
+
+
+def test_a_stale_release_line_canary_is_refused_like_any_other(history):
+    _publish_line(history, "release/0.5.x", history.tagged)
+    history.fake.add(
+        1, 49, head_sha=history.middle, tested=history.middle, event="workflow_dispatch", branch="release/0.5.x"
+    )
+    assert _evaluate_tag(history, "v0.5.1").reason.startswith("stale:")
+
+
+@pytest.mark.parametrize(
+    ("tag", "published", "expected"),
+    [
+        ("v0.5.1", {"release/0.5.x": "tagged"}, "release/0.5.x"),
+        ("v0.5.1", {}, "develop"),
+        ("v0.5.1", {"release/0.5.x": "side"}, "develop"),
+        ("v0.6.0", {"release/0.5.x": "tagged"}, "develop"),
+        ("v0.5.1rc1", {"release/0.5.x": "tagged"}, "release/0.5.x"),
+        ("not-a-version", {"release/0.5.x": "tagged"}, "develop"),
+    ],
+)
+def test_the_release_line_follows_the_tag_minor_and_the_commits_branch(history, tag, published, expected):
+    for line, commit in published.items():
+        _publish_line(history, line, getattr(history, commit))
+    assert canary.release_line(history.repo, tag, history.tagged) == expected
+
+
+def test_the_check_command_takes_the_release_line_from_the_tag(history, tmp_path, monkeypatch, capsys):
+    _publish_line(history, "release/0.5.x", history.tagged)
+    history.fake.add(
+        1, 1, head_sha=history.middle, tested=history.middle, event="workflow_dispatch", branch="release/0.5.x"
+    )
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(tmp_path / "summary.md"))
+    monkeypatch.setattr(canary, "datetime", _FrozenDatetime)
+    arguments = [
+        "check",
+        "--head-sha",
+        history.tagged,
+        "--github-repository",
+        "owner/repo",
+        "--repo-dir",
+        str(history.repo),
+    ]
+    assert canary.main([*arguments, "--tag", "v0.5.1"]) == 0
+    assert canary.main([*arguments, "--tag", "v0.6.0"]) == 1
+    assert canary.main(arguments) == 1
+    capsys.readouterr()
