@@ -4146,7 +4146,7 @@
    "targets": [
     {
      "kind": "unresolved",
-     "target": "docs/tooling/hold/oracle-gate"
+     "target": "docs/tooling/hold/oracle-gate/review-gate/release-v2 probe"
     }
    ]
   },
