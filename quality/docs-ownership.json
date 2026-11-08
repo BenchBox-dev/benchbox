@@ -193,6 +193,7 @@
     "docs/internal/dependency-audit-raw.md": "core-only",
     "docs/internal/dependency-inventory.md": "core-only",
     "docs/internal/dev-loop-property-ledger.md": "core-only",
+    "docs/internal/dev-loop-retirement-audit.md": "core-only",
     "docs/internal/dev-loop-worktrees.md": "core-only",
     "docs/internal/develop-post-merge-gaps.md": "core-only",
     "docs/internal/doc-contracts.md": "core-only",

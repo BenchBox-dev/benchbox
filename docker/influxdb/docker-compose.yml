@@ -1,6 +1,6 @@
 services:
   influxdb:
-    image: influxdb:3-core
+    image: influxdb:3-core@sha256:26875ba5ae6e843fdbd208b1ac4a55fa1d2ec3aa7faf2d0d1b5035cb1f998990
     ports:
       - "8181:8181"
     command: >

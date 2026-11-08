@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import io
 import json
 import urllib.error
@@ -66,7 +67,7 @@ def _live_ruleset(ref: str, checks: list[str], *, strict: bool = False, bypass: 
 def test_parse_expected_rulesets_from_admin_runbook() -> None:
     expected = parse_expected_rulesets((REPO_ROOT / "docs" / "internal" / "repo-admin-settings.md").read_text())
 
-    assert set(expected) == {"develop-squash-only"}
+    assert set(expected) == {"develop-squash-only", "release-branches"}
     assert expected["develop-squash-only"].ref == "refs/heads/develop"
     assert expected["develop-squash-only"].required_checks == (
         "core",
@@ -661,3 +662,191 @@ def test_capture_comparison_allows_reordered_duplicate_contexts() -> None:
     _required_checks(live).reverse()
 
     assert ruleset_drift_check.capture_comparison_findings(capture, live) == []
+
+
+RELEASE_BRANCHES_CHECKS = ("core", "explorer", "results-data", "docs", "tooling", "hold", "oracle-gate")
+OWNER_BYPASS = {"actor_id": 57046, "actor_type": "User", "bypass_mode": "always"}
+
+
+def _runbook_rulesets() -> dict:
+    runbook = REPO_ROOT / "docs" / "internal" / "repo-admin-settings.md"
+    return parse_expected_rulesets(runbook.read_text(encoding="utf-8"))
+
+
+def _verified_release_branches_ruleset() -> dict:
+    live = _verified_develop_ruleset()
+    live["name"] = "release-branches"
+    live["target"] = "branch"
+    live["conditions"]["ref_name"]["include"] = ["refs/heads/release/**"]
+    live["rules"] = [rule for rule in live["rules"] if rule["type"] != "deletion"]
+    return live
+
+
+def _rule(ruleset: dict, rule_type: str) -> dict:
+    return next(rule for rule in ruleset["rules"] if rule["type"] == rule_type)
+
+
+def _release_lifecycle_ruleset() -> dict:
+    return {
+        "name": "release-branch-lifecycle",
+        "target": "branch",
+        "enforcement": "active",
+        "conditions": {"ref_name": {"include": ["refs/heads/release/**"], "exclude": []}},
+        "bypass_actors": [dict(OWNER_BYPASS)],
+        "rules": [{"type": "creation"}, {"type": "deletion"}],
+    }
+
+
+def _release_branches_findings(live: dict) -> list[str]:
+    return compare_ruleset(_runbook_rulesets()["release-branches"], live, require_bypass_actor_visibility=True)
+
+
+def test_runbook_expects_the_release_branches_ruleset_with_the_develop_gate() -> None:
+    rulesets = _runbook_rulesets()
+    release = rulesets["release-branches"]
+
+    assert release.ref == "refs/heads/release/**"
+    assert release.required_checks == rulesets["develop-squash-only"].required_checks == RELEASE_BRANCHES_CHECKS
+    assert release.strict_required_status_checks_policy is False
+    assert release.required_linear_history is True
+    assert release.non_fast_forward is True
+    assert release.deletion is False
+    assert release.bypass_actors_none is True
+
+
+def test_matching_release_branches_ruleset_has_no_findings() -> None:
+    assert _release_branches_findings(_verified_release_branches_ruleset()) == []
+
+
+@pytest.mark.parametrize(
+    ("mutate", "expected_text"),
+    [
+        (lambda live: live.update(enforcement="disabled"), "enforcement"),
+        (lambda live: live["conditions"]["ref_name"].update(include=["refs/heads/release"]), "target refs"),
+        (lambda live: live["rules"].insert(0, {"type": "required_status_checks", "parameters": {}}), "required checks"),
+        (lambda live: live["rules"].append({"type": "deletion"}), "deletion"),
+        (lambda live: live["rules"].remove({"type": "non_fast_forward"}), "non_fast_forward"),
+        (lambda live: live["rules"].remove({"type": "required_linear_history"}), "required_linear_history"),
+        (lambda live: live.update(bypass_actors=[dict(OWNER_BYPASS)]), "bypass actors"),
+        (lambda live: live.pop("bypass_actors"), "bypass actors are not visible"),
+        (lambda live: _check(live, "oracle-gate").pop("integration_id"), "oracle-gate"),
+        (
+            lambda live: _rule(live, "pull_request")["parameters"].update(required_review_thread_resolution=False),
+            "thread",
+        ),
+    ],
+)
+def test_weakened_release_branches_ruleset_is_blocking(mutate, expected_text: str) -> None:
+    live = _verified_release_branches_ruleset()
+    mutate(live)
+
+    findings = _release_branches_findings(live)
+
+    assert any(expected_text in finding for finding in findings), findings
+    assert ruleset_drift_check.blocking_findings(findings)
+
+
+@pytest.mark.parametrize("dropped", RELEASE_BRANCHES_CHECKS)
+def test_every_release_branches_required_context_is_pinned(dropped: str) -> None:
+    live = _verified_release_branches_ruleset()
+    checks = _required_checks(live)
+    checks[:] = [check for check in checks if check["context"] != dropped]
+
+    findings = _release_branches_findings(live)
+
+    assert any("required checks" in finding and dropped in finding for finding in findings)
+
+
+def test_matching_release_lifecycle_ruleset_has_no_findings() -> None:
+    assert ruleset_drift_check.release_lifecycle_findings(_release_lifecycle_ruleset()) == []
+
+
+def test_a_missing_release_lifecycle_ruleset_is_a_finding() -> None:
+    assert ruleset_drift_check.release_lifecycle_findings(None) == ["release-branch-lifecycle: live ruleset is missing"]
+
+
+@pytest.mark.parametrize(
+    ("mutate", "expected_text"),
+    [
+        (lambda live: live.update(enforcement="evaluate"), "enforcement"),
+        (lambda live: live["conditions"]["ref_name"].update(include=["refs/heads/release"]), "target refs"),
+        (lambda live: live["rules"].remove({"type": "creation"}), "creation rule is missing"),
+        (lambda live: live["rules"].remove({"type": "deletion"}), "deletion rule is missing"),
+        (lambda live: live.update(bypass_actors=[]), "bypass actors are ()"),
+        (
+            lambda live: live["bypass_actors"].append(
+                {"actor_id": 5, "actor_type": "RepositoryRole", "bypass_mode": "always"}
+            ),
+            "bypass actors are",
+        ),
+        (lambda live: live["bypass_actors"][0].update(bypass_mode="pull_request"), "bypass actors are"),
+        (lambda live: live.pop("bypass_actors"), "bypass actors are not visible"),
+    ],
+)
+def test_weakened_release_lifecycle_ruleset_is_blocking(mutate, expected_text: str) -> None:
+    live = _release_lifecycle_ruleset()
+    mutate(live)
+
+    findings = ruleset_drift_check.release_lifecycle_findings(live, require_bypass_actor_visibility=True)
+
+    assert any(expected_text in finding for finding in findings), findings
+    assert ruleset_drift_check.blocking_findings(findings)
+
+
+def _all_live_rulesets() -> dict[str, dict]:
+    develop = _verified_develop_ruleset()
+    develop["target"] = "branch"
+    tag = {
+        "name": "v-tag-restricted",
+        "target": "tag",
+        "enforcement": "active",
+        "conditions": {"ref_name": {"include": ["refs/tags/v*"], "exclude": []}},
+        "bypass_actors": [dict(OWNER_BYPASS)],
+        "rules": [{"type": "creation"}, {"type": "update"}, {"type": "deletion"}],
+    }
+    return {
+        "develop-squash-only": develop,
+        "release-branches": _verified_release_branches_ruleset(),
+        "release-branch-lifecycle": _release_lifecycle_ruleset(),
+        "v-tag-restricted": tag,
+    }
+
+
+def _run_main(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, rulesets: dict[str, dict]) -> tuple[int, dict]:
+    output = tmp_path / "ruleset-drift.json"
+    monkeypatch.setattr(ruleset_drift_check, "_fetch_live_rulesets", lambda _repo, _token: copy.deepcopy(rulesets))
+    monkeypatch.setattr(ruleset_drift_check, "_fetch_branch_exists", lambda _repo, _token, _branch: False)
+    monkeypatch.setattr(
+        ruleset_drift_check,
+        "_fetch_environment",
+        lambda _repo, _token, name: {**_pypi_environment(), **_deployment_environment(), "name": name},
+    )
+    monkeypatch.setattr(
+        ruleset_drift_check, "_fetch_environment_policies", lambda _repo, _token, name: _deployment_policies(name)
+    )
+    monkeypatch.delenv("RELEASE_READINESS_OVERRIDE_SHA", raising=False)
+    monkeypatch.delenv("RELEASE_READINESS_OVERRIDE_REASON", raising=False)
+    code = ruleset_drift_check.main(["--token", "token", "--require-bypass-actor-visibility", "--output", str(output)])
+    return code, json.loads(output.read_text(encoding="utf-8"))
+
+
+def test_main_passes_when_every_ruleset_matches_including_the_maintenance_rulesets(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    code, report = _run_main(monkeypatch, tmp_path, _all_live_rulesets())
+
+    assert report["blocking_findings"] == []
+    assert code == 0
+
+
+@pytest.mark.parametrize("missing", ["release-branches", "release-branch-lifecycle"])
+def test_main_fails_when_a_maintenance_ruleset_is_missing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, missing: str
+) -> None:
+    rulesets = _all_live_rulesets()
+    del rulesets[missing]
+
+    code, report = _run_main(monkeypatch, tmp_path, rulesets)
+
+    assert code == 1
+    assert report["blocking_findings"] == [f"{missing}: live ruleset is missing"]
