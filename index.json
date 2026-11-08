@@ -2615,6 +2615,59 @@
       "start_head": "766364b8a32f55ac19a09feca8dead5008a2fd80",
       "terminal_outcome": "deliver"
     },
+    "ci-uat-stability": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/ci-uat-stability",
+      "integration_head": "205cae77675c7cb7236fcaa1a5873fe23420795d",
+      "integration_log": [
+        {
+          "at": "2026-11-08T18:40:38Z",
+          "head": "205cae77675c7cb7236fcaa1a5873fe23420795d",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-ci-uat-stability",
+      "lifecycle": "active",
+      "members": [
+        "obt-sql-gate-nightly-timeouts-20261108",
+        "singlestore-tpcds-power-oom-24a-20261108"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "owner_epoch": 0,
+      "owner_generation": "91aa3454e1f9ecfa7a7da4d0544c4ec9",
+      "project_id": "benchbox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "obt-sql-gate-nightly-timeouts-20261108": [
+          "scripts/sql_execution_gate/*",
+          "scripts/sql_execution_gate/expected_differences.json",
+          "docs/internal/sql-execution-evidence-gate.md",
+          "tests/unit/scripts/test_sql_execution_gate.py",
+          "quality/*.json",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "singlestore-tpcds-power-oom-24a-20261108": [
+          "benchbox/platforms/singlestore.py",
+          "tests/uat/compatibility.py",
+          "tests/uat/test_singlestore_joinorder_prune.py",
+          "tests/unit/platforms/test_singlestore_analyze_after_load.py",
+          "quality/*.json",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ]
+      },
+      "scope_hash": "49341df7c33e79a69d83a1dd07cb2b383c137104772904edff9243ab1985cabf",
+      "start_head": "205cae77675c7cb7236fcaa1a5873fe23420795d",
+      "terminal_outcome": "deliver"
+    },
     "hold-label-and-batch-e2e-20261106": {
       "accepted_members": {},
       "batch_schema": 2,
