@@ -10733,10 +10733,15 @@
       "title": "Release guarded batch-checkout recovery and revision-complete CLI reads in todo-db"
     },
     "batch-rerun-drop-absent-paths-reapply-20261107": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-09T17:35:13Z",
+        "generation": "678bb820d93146a280e3ba40dfc86a28",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Re-apply the useful parts of reverted #4020 (ran_command, fail closed when all test paths are gone) on top of #4027's stricter rule"
     },
     "batch-result-validity-umbrella-20261107": {
