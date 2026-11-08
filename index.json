@@ -37527,6 +37527,13 @@
       "status": "open",
       "title": "Theseus v0.2.5 (combined): stdin brief and legacy removal, threadless disputes, round cap with step-back, review guidance, pre-existing findings, PR intent, evals and the Decisions fallback"
     },
+    "theseus-wheel-download-asset-api-fallback": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Let the Theseus installer fall back to the authenticated release-asset API when download links fail"
+    },
     "throughput-adapter-session-capability-contract": {
       "claim": null,
       "needs": [

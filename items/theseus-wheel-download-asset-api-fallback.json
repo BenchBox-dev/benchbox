@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Theseus bootstrap tries the locked URLs, then the authenticated asset API, and verifies the locked SHA-256 on every route",
+    "A test simulates 5xx on both URLs and installs from the API route; a hash mismatch on the API route still refuses",
+    "BenchBox pin promoted to the release containing it"
+  ],
+  "context": "Owner decision 2026-11-08: tracker item only; not fixed in the release-remediation run.",
+  "description": "On 2026-11-08 GitHub's release download links (github.com/joeharris76/theseus/releases/download/v0.2.4/...) returned HTTP 504 for about an hour, so every hosted review and CI Theseus install failed before review started. The release-asset API (GET /repos/joeharris76/theseus/releases/assets/<id> with Accept: application/octet-stream) returned the exact locked bytes (sha256 c0c4c201...ce49e8c) throughout. Add that route as a fallback in the Theseus bootstrap installer, keeping the SHA-256 check and the allowed-host policy; ship via a Theseus release and a normal pin promotion.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-08T17:02:41Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f17cb065ad0e47b097c468c8b6fe2094",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    }
+  ]
+}
