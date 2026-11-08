@@ -28412,15 +28412,10 @@
       "title": "Open a stacked draft through make pr-open PARENT= live"
     },
     "pr-open-stacked-draft-support-20261015": {
-      "claim": {
-        "expires_at": "2026-11-09T15:53:48Z",
-        "generation": "7aa2e2d17805404d8256213188de1acf",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:76bfe83b21f0c666e957f760"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "`make pr-open` cannot open the stacked draft that the PR base-branch policy requires"
     },
     "pr-postgres-sample-antiskip-guard": {
