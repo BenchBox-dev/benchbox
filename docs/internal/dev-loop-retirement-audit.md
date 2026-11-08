@@ -1,8 +1,10 @@
 # Development-loop retirement audit
 
-Evidence date: 2026-11-07. Source tree: `b65307b83eada4e6f2b76d9e1e393a48970bf578`.
-The safety-property ledger remains authoritative. This audit does not waive its
-`release-canary-freshness` blocker or certify release readiness.
+Retirement and metrics capture: 2026-11-07, source
+`b65307b83eada4e6f2b76d9e1e393a48970bf578`. Safety and inventory refreshed
+2026-11-08 against `43cb9728a19523c1aeae18c9cfbc695522682cab`.
+The safety-property ledger remains authoritative; this audit does not certify
+production release readiness or waive a release gate.
 
 ## Retirement provenance
 
@@ -73,22 +75,48 @@ The live incident-label search returned only `incident:release-canary-red`.
 ## Workflow and safety-property coverage
 
 The retained workflow inventory is the `.github/workflows/` table in
-[the property ledger](dev-loop-property-ledger.md). It covers all 42 workflow
+[the property ledger](dev-loop-property-ledger.md). It covers all 44 workflow
 files, including the previously missing `ci.yml` row, and names the accountable
 operational roles. Purpose and safety classification stay beside each file
 rather than in a second inventory.
 
-Every existing HIGH-RISK row other than release readiness is recorded as proven;
-PROCESS-ONLY rows have explicit waiver reasons. Those proofs retain their named
-source revisions and do not become fresh live ruleset evidence merely because
-this audit references them.
+Every existing HIGH-RISK row is recorded as proven; PROCESS-ONLY rows have
+explicit waiver reasons. Those proofs retain their named source revisions and
+do not become fresh live ruleset evidence merely because this audit references
+them.
 
-Release readiness is still blocked: the retired path required the newest canary
-to be green, under 48 hours old and on an ancestor of the release head, while the
-current tag-release workflow does not enforce that freshness condition. A manual
-check is not equivalent evidence. Close this blocker only after the automated
-release-evidence check is merged and exercised, or after an explicit owner waiver
-is recorded in the ledger.
+The `release-canary-freshness` gap is closed by
+[the merged release implementation](https://github.com/BenchBox-dev/benchbox/pull/4040).
+Its tag-release admission invokes `scripts/release_canary_freshness.py` before
+artifact admission, independently of whether UAT evidence is reused or the full
+UAT fallback runs. Missing, red, stale and non-ancestor canaries refuse admission.
+
+The retained [reuse probe run 42487650248](https://github.com/BenchBox-dev/benchbox/actions/runs/42487650248)
+at `03b0711a4c8ac2ac61afad5c7311ba84ab10b7e9` succeeded, including its synthetic
+canary-check step and publish dry run; real tag admission and publication were
+skipped. It proves the probe job graph, not a production release.
+Separately, the real freshness CLI against `43cb9728a19523c1aeae18c9cfbc695522682cab`
+passed using the authenticated API and retained canary artifact:
+run `42491171323` tested that commit, started `2026-11-08T14:43:05Z`, was green
+and was 0.9 hours old at the check.
+
+Reproduce the real, read-only check from a checkout containing that commit:
+
+```bash
+uv run -- python scripts/release_canary_freshness.py check \
+  --head-sha 43cb9728a19523c1aeae18c9cfbc695522682cab \
+  --github-repository BenchBox-dev/benchbox
+```
+
+The same real command with `--head-sha` set to the historical baseline
+`64f2f1f603083fc3f6b9c3b13d12ce73f97e6fd3` exited 1 with the named
+`non-ancestor` refusal: none of the newest 30 completed canary runs tested an
+ancestor of that older target. No API or artifact response was substituted.
+
+This decision is time-dependent: a later run can turn red or become stale.
+The gate must pass again for each actual release. The release-remediation
+tracker still has separate UAT scheduling and guarded-path fallback acceptance
+work; closing this freshness gap does not mark those items done.
 
 ## Measurement snapshot
 
@@ -102,7 +130,7 @@ The later capability-preserving consolidation decision supersedes the original
 | Metric | Historical baseline | Audit observation |
 | --- | --- | --- |
 | Public Make targets, same database method | 211 | 190 |
-| Retained workflow files | 46 | 42 |
+| Retained workflow files | 46 | 44 after the 2026-11-08 inventory refresh |
 | T1 CI job p95, including job setup | 1,458 s | 943 s; n=43 successful, unretried CI runs in the bounded cohort below |
 | T2 CI job p95, collector through last shard | 1,761 s | 1,165 s; n=43, the same bounded cohort |
 | Merges per day | 401 merged PRs / 30 days | 45 merged `develop` PRs / 1 day |
@@ -162,12 +190,12 @@ The selected run IDs are:
 ```
 
 Retrieve each selected run's jobs with
-`gh api --paginate --slurp repos/BenchBox-dev/benchbox/actions/runs/<id>/attempts/1/jobs?per_page=100`.
+`gh api --paginate --slurp 'repos/BenchBox-dev/benchbox/actions/runs/<id>/attempts/1/jobs?per_page=100'`.
 
 Trunk uses each run's latest metadata plus every earlier attempt's metadata
 from `actions/runs/<id>/attempts/<number>`. The existing `run_facts`,
 `_trunk_outcomes` and `_trunk_incidents` helpers at the same revision group the
-33 conclusive attempt results whose completion timestamps fall inside the
+33 conclusive attempt results whose `updated_at` timestamps fall inside the
 window. No job-duration data is needed for this incident calculation.
 
 | First red run | Opened, UTC | Recovered, UTC |
