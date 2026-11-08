@@ -4,7 +4,7 @@
     "Detector (2) would have failed run 41949185392 attempt 2 (show the evaluated condition against that run's job results)",
     "No detector can be bypassed by a skipped upstream job (explicit result checks, not implicit success())"
   ],
-  "context": "Member of batch release-v2-remediation. oracle-verdict and oracle-gate run on pull_request_target, so edits to their callers only run after merge unless dispatched with --ref; use dispatch for all pre-merge evidence. If a detector belongs in Theseus (joeharris76/theseus), change it there via its own PR, then bump the pin per rv2r-07. GUARDRAILS: detectors only add failure conditions; they never relax or skip an existing check; a false red blocks every merge, so canary first. DECISION GATE: any change needing repository or environment settings (secrets, rulesets, required checks) goes to the owner.",
+  "context": "Member of batch release-v2-remediation. oracle-verdict and oracle-gate run on pull_request_target, so edits to their callers only run after merge unless dispatched with --ref; use dispatch for all pre-merge evidence. If a detector belongs in Theseus (joeharris76/theseus), change it there via its own PR, then bump the pin per rv2r-07. GUARDRAILS: detectors only add failure conditions; they never relax or skip an existing check; a false red blocks every merge, so canary first. DECISION GATE: any change needing repository or environment settings (secrets, rulesets, required checks) goes to the owner.\n\n2026-11-08 closed: delivered by PR #4040 (merge f6737e142c). Detector (2) evaluated against run 41949185392 attempt 2 (admit/install/release-uat success, publish and github-release skipped, target test-pypi) exits 1 with 'publish finished as skipped, not success'; tests cover the silent no-op, zero cells and the green normal case, with explicit result checks.",
   "description": "After #3947 the release run concluded success with publish skipped. Add fail-closed detector (2): release-v2 fails the run when publish did not run after a green gate on a tag target, and fails release-uat when zero shard directories or zero executed cells were found. Detector (1), the review-verdict/review-gate posting check, moved to rv2r-15 on 2026-11-06 because the Theseus v0.2 migration (#3962) renamed those callers to files outside this member's frozen scope. (Detector 3, trunk UAT with zero cells, is owned by rv2r-02.) Each detector has a negative test proving it turns red. Rollback: revert this member's commits.",
   "links": [
     ".github/workflows/release-v2.yml"
@@ -75,6 +75,14 @@
       "generation": "1e392fb524eb49f780ad0688b3e51ded",
       "op": "take",
       "op_id": "8b008c2fb12f441e90959584bf14a9c6",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-08T14:17:50Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b5c4ca91aab24cf495e1e3be6077dfbf",
       "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]
