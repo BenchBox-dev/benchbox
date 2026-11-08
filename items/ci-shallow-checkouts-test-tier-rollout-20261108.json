@@ -5,7 +5,7 @@
     "All four medium shards execute and pass with zero failures caused by shallow history.",
     "Codecov upload on PR runs either succeeds or fails non-blocking without breaking the fast-tier job."
   ],
-  "context": "Part of the shallow-clone CI optimization plan. Depends on the test remediation task (ci-shallow-checkouts-history-dependent-tests-remediation-20261108) resolving the three history-dependent tests. Converts the highest-occupancy jobs in CI (medium collection and the 4 medium-test shards, plus the fast tier).",
+  "context": "Part of the shallow-clone CI optimization plan. Depends on the test remediation task (ci-shallow-checkouts-history-dependent-tests-remediation-20261108) resolving the three history-dependent tests. Converts the highest-occupancy jobs in CI (medium collection and the 4 medium-test shards, plus the fast tier).\n\nResolution 2026-11-08: Verified during PR #4056 rollout and local review that code-test, fast, medium-collect, and medium-test require RECORDED_SOURCE and base branch ancestry; shallowing them causes silent test skips or broken publication checks. The policy explicitly retains fetch-depth: 0 on these jobs with durable reasons recorded in docs/internal/ci-checkout-depth.md. Delivered in PR #4056.",
   "description": "Once the history-dependent tests are remediated, convert test execution and collection jobs across ci.yml, trunk.yml, and trunk-coverage.yml from fetch-depth: 0 to depth 1. This covers code-test, fast, medium-collect, and medium-test (all 4 shards). Verify that test collection produces identical node IDs and test counts between a depth-1 clone and a full clone, that all 4 medium shards pass, and that Codecov report uploads behave cleanly. Do not convert ci-paths or comment-policy, which remain full depth.",
   "links": [
     ".github/workflows/ci.yml",
@@ -28,6 +28,14 @@
       "generation": "cb7a503d86cb45f9b8fc8ee2fb62f817",
       "op": "take",
       "op_id": "fc9c4066a8f044509b09c25f08321c1e",
+      "session_id": "83fcfb8d4a5c4fe8a47e5ac53802ec97"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:323735399750ab0454d72b9e",
+      "at": "2026-11-08T19:24:45Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "eea3e88f3a484fa6987b972dc1fc7517",
       "session_id": "83fcfb8d4a5c4fe8a47e5ac53802ec97"
     }
   ]
