@@ -28936,6 +28936,13 @@
       "status": "done",
       "title": "sslrootcert local path exports unhashed on the public layer"
     },
+    "public-fixture-home-paths-audit-20261108": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Remove real home-directory paths from maintained public fixtures"
+    },
     "public-identifier-drop-alias-path-keys": {
       "claim": null,
       "needs": [

@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Identify exact maintained fixture locations and distinguish sensitive real paths from intentional neutral path-detector test cases.",
+    "Replace real user names and directories with neutral synthetic values while preserving tested behavior, then run the owning suites.",
+    "Document the existing historical-retention exemption; do not rewrite retained history or delete published artifacts under this item."
+  ],
+  "context": "Reported fixture findings, not independently enumerated here. Historical blob count is the audit observation, not evidence of a new policy violation.",
+  "description": "The publication audit reported a few repository fixtures containing real maintainer home paths. It separately found 1,007 pre-policy published-results JSON blobs with home-class paths; the existing retention ADR accepts those historical blobs. Those two categories must not be conflated. Determine which maintained fixtures remain non-neutral and fix only those unless the owner approves a historical-policy change.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/4041"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-08T03:37:30Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "7ff3f91dbc004342b6c586d7b75a0623",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    }
+  ]
+}
