@@ -5317,6 +5317,104 @@
       "start_head": "4fe6b3aac7b884bd170cdd3ef61697af5bffbeec",
       "terminal_outcome": "deliver"
     },
+    "plan-privacy": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/plan-privacy",
+      "integration_head": "fb319236c37869f3268874e3d3f77e61c836f867",
+      "integration_log": [
+        {
+          "at": "2026-11-08T13:34:01Z",
+          "head": "fb319236c37869f3268874e3d3f77e61c836f867",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-privacy",
+      "lifecycle": "active",
+      "members": [
+        "plan-path-detector-root-and-drive-coverage-20261108",
+        "plans-export-anonymize-text-fields-20261108",
+        "plans-publish-boundary-path-validation-20261108",
+        "visible-metrics-has-plans-contract-stale-20261108",
+        "public-fixture-home-paths-audit-20261108"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "owner_epoch": 0,
+      "owner_generation": "ab4fb552068c401857ec5257387e4862",
+      "project_id": "benchbox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "plan-path-detector-root-and-drive-coverage-20261108": [
+          "benchbox/core/results/anonymization.py",
+          "benchbox/validation/bundle.py",
+          "benchbox/core/dataframe/*",
+          "benchbox/platforms/base/result_capture.py",
+          "benchbox/platforms/dataframe/*",
+          "scripts/stage_seed_corpus_bundle.py",
+          "scripts/validate_submission.py",
+          "benchbox/cli/commands/submit.py",
+          "tests/unit/core/dataframe/*",
+          "tests/unit/core/results/*",
+          "tests/unit/validation/*",
+          "tests/unit/scripts/*",
+          "tests/unit/platforms/*",
+          "tests/unit/cli/*",
+          "tests/unit/test_results_exporter.py",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "plans-export-anonymize-text-fields-20261108": [
+          "benchbox/core/results/anonymization.py",
+          "benchbox/core/results/exporter.py",
+          "benchbox/validation/bundle.py",
+          "tests/unit/core/results/*",
+          "tests/unit/test_results_exporter.py",
+          "tests/unit/validation/*",
+          "tests/unit/cli/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "plans-publish-boundary-path-validation-20261108": [
+          "benchbox/cli/commands/publish.py",
+          "benchbox/core/results/anonymization.py",
+          "benchbox/core/results/exporter.py",
+          "benchbox/validation/bundle.py",
+          "tests/unit/core/results/*",
+          "tests/unit/test_results_exporter.py",
+          "tests/unit/validation/*",
+          "tests/unit/cli/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "public-fixture-home-paths-audit-20261108": [
+          "tests/fixtures/*",
+          "tests/unit/*",
+          "tests/integration/*",
+          "tests/uat/*",
+          "scripts/run_duckdb_version_matrix.py",
+          "docs/internal/dev-loop-worktrees.md",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "visible-metrics-has-plans-contract-stale-20261108": [
+          "_project/planning/visible_metrics.yaml",
+          "_project/scripts/explorer_pipeline/*",
+          "tests/unit/scripts/explorer_pipeline/*",
+          "docs/internal/benchbox-results-platform-strategy.md",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ]
+      },
+      "scope_hash": "bab99413625257ec725e38799619b8688597216fabcb1085372505b027631442",
+      "start_head": "fb319236c37869f3268874e3d3f77e61c836f867",
+      "terminal_outcome": "deliver"
+    },
     "release-v2-remediation": {
       "accepted_members": {},
       "batch_schema": 2,
