@@ -41959,15 +41959,10 @@
       "title": "\"Version Management & Consistency\""
     },
     "visible-metrics-has-plans-contract-stale-20261108": {
-      "claim": {
-        "expires_at": "2026-11-09T19:12:49Z",
-        "generation": "bb0f9491025f4d3b8d93583cc19ef46c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Update the visible-metrics inventory to reflect captured-plan availability"
     },
     "visualization-chart-registry-and-exporter-contract": {
