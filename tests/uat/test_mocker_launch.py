@@ -71,7 +71,9 @@ def test_doris_translation_carries_memory_entrypoint_ports_and_labels(mocker_cli
     assert "com.docker.compose.service=doris" in _flag_values(argv, "--label")
     assert f"{PROJECT}-doris-fe-meta:/opt/apache-doris/fe/doris-meta" in _flag_values(argv, "-v")
     assert "--privileged" not in argv
-    image_index = argv.index("apache/doris:4.0.3-all-slim")
+    image_index = argv.index(
+        "apache/doris:4.0.3-all-slim@sha256:3237bfb73471da7482c6575cecc1632c96dec09509cd2e60bcb798e2c5342823"
+    )
     assert argv[image_index + 1] == "-c"
     script = argv[image_index + 2]
     assert managed_runtime.ENTRYPOINT_MARKER_PATH in script
@@ -87,7 +89,10 @@ def test_singlestore_translation_carries_platform_memory_cpus_port_and_env(mocke
     assert _flag_values(argv, "--cpus") == ["4"]
     assert _flag_values(argv, "-p") == ["13306:3306"]
     assert _flag_values(argv, "-e") == ["ROOT_PASSWORD=benchbox"]
-    assert argv[-1] == "ghcr.io/singlestore-labs/singlestoredb-dev:latest"
+    assert argv[-1] == (
+        "ghcr.io/singlestore-labs/singlestoredb-dev:0.2.90"
+        "@sha256:2f181587a74b63a83e7dbd46b02e9dce031b8cacf1f5651bff297b2d8c87df37"
+    )
     assert "--entrypoint" not in argv
 
 
