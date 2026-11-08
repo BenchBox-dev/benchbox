@@ -3625,7 +3625,20 @@
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
-      "final_pr_history": [],
+      "final_pr": {
+        "head": "f22ef0e3a565efd95b06ffcd1cab57b40a8489c0",
+        "node_id": "PR_kwDOQ7J64c8AAAABNmULHw",
+        "number": 4043,
+        "repository": "BenchBox-dev/BenchBox"
+      },
+      "final_pr_history": [
+        {
+          "at": "2026-11-08T01:25:00Z",
+          "head": "f22ef0e3a565efd95b06ffcd1cab57b40a8489c0",
+          "op_id": "ea88d594e8a94d92a9fc0b2581bd8751",
+          "previous_head": null
+        }
+      ],
       "integrated_members": {
         "doris-load-dead-paths-cleanup-20261107": {
           "accepted_head": "3a6bcd7a4ad249ccaaa9c603b8920b6046c741c6",
