@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "Every checkout in .github/workflows is classified into one of the four classes, with the concrete command or test cited.",
+    "Baseline checkout step durations from recent runs are recorded for the pilot and candidate wave jobs.",
+    "Tests that fail, skip, or trigger unbounded fetches under shallow clones are cataloged with file and line references.",
+    "The inventory explains why jobs requiring ancestry or historical objects keep full depth."
+  ],
+  "context": "Part of the shallow-clone CI optimization plan. Audit results: checkout step durations run 20-26s on Ubuntu jobs with fetch-depth: 0. Pinned action is actions/checkout@fbc6f399 everywhere. Three tests need real repo history: test_canary_impact_live, test_no_cli_surface_drift, and test_ledger_seed (import-time published-results fetch). test_trunk_workflow pins fetch-depth: 0 for comment-policy-scan.",
+  "description": "Audit checkout depth across .github/workflows and measure checkout step durations from recent runs. Classify each checkout as tree-only, exact-object/ref, ancestry-dependent, or tag/release-dependent. Identify hidden history dependencies in tests and scripts, including tests that assert depth 0, tests that inspect commit history, and tests that fetch other refs at import time. Document why jobs that need ancestry or historical objects keep full history, so depth changes are not applied indiscriminately.",
+  "links": [
+    "tests/unit/workflows/test_trunk_workflow.py",
+    "tests/unit/test_canary_impact_live.py",
+    "tests/uat/test_no_cli_surface_drift.py",
+    "tests/unit/scripts/publication/test_ledger_seed.py",
+    "tests/unit/scripts/publication/test_check_corpus_bijection.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:323735399750ab0454d72b9e",
+      "at": "2026-11-08T17:47:52Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a40fc53df44e44b092fa9f0e8710b8a0",
+      "session_id": "83fcfb8d4a5c4fe8a47e5ac53802ec97"
+    }
+  ]
+}
