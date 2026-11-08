@@ -14788,10 +14788,15 @@
       "title": "Warn on core PRs that change the documented contract the site checks"
     },
     "core-docs-plan-fingerprint-variation-fields-20261107": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-09T00:44:08Z",
+        "generation": "94797a3761a645d58ffbe00c6c613e47",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Document fingerprint_varied and fingerprint_variants in the core plans-companion reference"
     },
     "core-exec-compute-resource-unification": {
