@@ -10,6 +10,7 @@ from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import Any, ClassVar
 
+from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dialect_utils import translate_ddl
 
 from ..utils.dependencies import (
@@ -269,6 +270,15 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
 
     def _handle_invalid_load_table(self, table_name: str, table_stats: dict[str, int]) -> bool:
         raise ValueError(f"Invalid table identifier: {table_name!r}")
+
+    def load_data(
+        self, benchmark: Any, connection: Any, data_dir: Any
+    ) -> tuple[dict[str, int], float, dict[str, Any] | None]:
+        table_stats, loading_time, details = super().load_data(benchmark, connection, data_dir)
+        analyze_start = mono_time()
+        for table_name in table_stats:
+            self.analyze_table(connection, table_name)
+        return table_stats, loading_time + elapsed_seconds(analyze_start), details
 
     def _load_resolved_data_file(
         self,
