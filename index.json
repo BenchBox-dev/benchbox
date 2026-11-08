@@ -32830,6 +32830,13 @@
       "status": "done",
       "title": "`gate / gate` job fails whenever a review is pending, because the Theseus gate job treats exit 3 (waiting) as an error"
     },
+    "review-gate-reliability-closeout-20261108": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Verify and complete the review and gate reliability TODO group"
+    },
     "review-gateway-muse-login-lost-20261106": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Every named item has a current-code/evidence review and corrected description, acceptance and dependencies without silently dropping its required behavior.",
+    "Remaining engine changes are independently reviewed and merged in Theseus, then consumed through the promotion gate; no release, service deployment, secrets or environment-policy bypass is implied.",
+    "The BenchBox feature implementation is reviewed, checked and merged; each item closes only on its complete applicable acceptance evidence, not a prepared receipt or narrative claim.",
+    "Owner-only blockers are recorded with exact recovery actions and are not disguised as completed work."
+  ],
+  "context": "Worktree /Users/joe/Developer/BenchBox.wt-review-gate-reliability, branch fix/review-gate-reliability, base13165df58a. agent-write-preflight passed. No source edits or publication yet. Live capability show_batch reports registered-batch v2/store4, so capability is available; membership not registered because cross-repository/active work and deployment decisions remain unresolved. TODO contract corrections applied to rv2r-07, rv2r-15, backend-capacity and Jev. Provider context records shipped #3978/#3987 and open deferral1. Live host check --json failed with broker18.13.3 vs pinned18.16.0; restart is an owner deployment step. heavy-status refused tests for memory pressure2; no heavy bypass attempted. Existing detector worktree has unrelated-session uncommitted edits; preserved.",
+  "description": "Owner request 2026-11-08: review nine named TODOs for current validity, necessity and completeness; fix their contracts and complete the remaining implementation in dependency order. Scope: review-provider-loss-resilience-20261106; theseus-body-only-finding-cannot-be-adjudicated-20261106; oracle-reviewer-exit-1-stalls-landing-20261106; oracle-verdict-same-second-push-and-ready-cancels-new-head-20261101; oracle-reviewer-backend-capacity; oracle-jev-gateway-gap; rv2r-07-oracle-pinned-dependency; oracle-coverage-gate-large-prs-20261017; rv2r-15-review-posting-detector. Reconcile existing Theseus #45/#47/#48/#49 and BenchBox #4047, never duplicate or adopt another session's uncommitted work. Cross-repository and approval-separated prerequisites remain serial; register only a coherent single-repository implementation set after prerequisites, ownership and frozen scope are known.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:323735399750ab0454d72b9e",
+      "at": "2026-11-08T17:14:58Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "fd04c203d70140749e002b9e5ba3eec7",
+      "session_id": "83fcfb8d4a5c4fe8a47e5ac53802ec97"
+    }
+  ]
+}
