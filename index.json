@@ -27775,13 +27775,18 @@
       "title": "Complete plan-companion privacy coverage for the hosted ingest"
     },
     "plans-publish-boundary-path-validation-20261108": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-09T17:27:26Z",
+        "generation": "87a374a397fb4756af19ea8df9a1184d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54"
+      },
       "needs": [
         "plan-path-detector-root-and-drive-coverage-20261108",
         "plans-export-anonymize-text-fields-20261108"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Check plans companions for local paths before publishing results"
     },
     "platform-adapter-abstract-method-implementation-completed": {
