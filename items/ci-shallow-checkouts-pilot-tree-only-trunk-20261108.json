@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "trunk.yml jobs required-local-cases, tpcds-parity-draws, and correctness-gate use depth 1 checkouts.",
+    "A local shallow clone (git clone --depth 1 file://$PWD) reproduces make test-required-local-cases and the correctness-gate targets with zero skipped tests.",
+    "Unit tests for workflow structure pass without error.",
+    "Checkout step durations for the pilot jobs drop from the 20-26s baseline without causing failures."
+  ],
+  "context": "Part of the shallow-clone CI optimization plan. Audit confirms required-local-cases, tpcds-parity-draws, and correctness-gate in trunk.yml need only the HEAD tree; the only git command run is git rev-parse HEAD. Soundness path: .github/workflows/trunk.yml.",
+  "description": "Change checkouts in trunk.yml that need only the checked-out tree from fetch-depth: 0 to depth 1 (remove fetch-depth: 0 or set fetch-depth: 1, with persist-credentials: false where appropriate). Pilot on required-local-cases and tpcds-parity-draws, then correctness-gate. None of these jobs inspect git history. Verify that make test-required-local-cases and make test-correctness-gate pass in a local shallow clone, that the workflow structure tests pass, and that post-merge runs complete successfully. Do not touch jobs that require ancestry or historical objects.",
+  "links": [
+    ".github/workflows/trunk.yml",
+    "tests/unit/workflows/test_trunk_workflow.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:323735399750ab0454d72b9e",
+      "at": "2026-11-08T17:48:06Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "442c657476f544e6b04f6fad86f13ac0",
+      "session_id": "83fcfb8d4a5c4fe8a47e5ac53802ec97"
+    }
+  ]
+}

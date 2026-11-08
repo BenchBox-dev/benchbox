@@ -12451,6 +12451,15 @@
       "status": "open",
       "title": "Establish the CI checkout depth baseline and document history dependencies"
     },
+    "ci-shallow-checkouts-pilot-tree-only-trunk-20261108": {
+      "claim": null,
+      "needs": [
+        "ci-shallow-checkouts-baseline-and-inventory-20261108"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Pilot depth-1 checkouts on tree-only jobs in trunk.yml"
+    },
     "ci-soundness-flag-stale-base": {
       "claim": null,
       "needs": [],
