@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Identify the precise command/tool or payload logging operation that exposed the value; record only redacted evidence.",
+    "Routine progress, command diagnostics and tool summaries omit or redact owner generations, while the authorized private ledger and recovery flow continue working.",
+    "If a reusable output surface is responsible, add a regression case that asserts a synthetic generation never appears in routine output; if caller-only, amend the applicable procedure instead of inventing a tool defect."
+  ],
+  "context": "Disclosure reported by the batch leader. No finding of public disclosure or unauthorized use. Do not copy the historical generation into the tracker or attempt to reuse completed-batch credentials.",
+  "description": "The publication batch leader reported that its private batch owner generation appeared once in session output. It did not appear in a public note, and the batch is complete; no active credential value is included here. Inspect the actual output path to establish whether a tool prints the generation or a caller logged a credential-bearing payload, then prevent recurrence without removing private recovery material.",
+  "links": [
+    "docs/agent/batch-feature-delivery.md",
+    "https://github.com/BenchBox-dev/BenchBox/pull/4041"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-08T03:37:33Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f1c55f6b716747799c8d19a51d4ceed4",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    }
+  ]
+}
