@@ -1,9 +1,9 @@
 {
   "acceptance": [
-    "Update the maintained metric definition to match actual captured-plan availability, including the distinction between errors-only sidecars and captured plans.",
-    "Run the existing inventory/documentation checks and confirm no generated consumer continues publishing the obsolete definition."
+    "visible_metrics.yaml defines has_plans as true only when the companion holds at least one captured DAG or text plan, and false for errors-only and empty companions, matching the producer in _project/scripts/explorer_pipeline/transformer.py.",
+    "The repo inventory/doc checks that read this file pass (name the command in the PR body); git grep shows no other copy of the old wording."
   ],
-  "context": "Confirmed directly at the inventory definition before filing. Reuse current generated-source conventions; no new metric or flag requested.",
+  "context": "Confirmed directly at the inventory definition before filing. Reuse current generated-source conventions; no new metric or flag requested.\n\nIndependent of the other items; may run in parallel with them. Check whether visible_metrics.yaml is a hand-kept or generated source and update the true source; confirm any generated consumer or doc rebuilds from it. GUARDRAILS: stored fingerprints are never recomputed or altered by sanitizing text; plan structure, errors, fingerprint_varied/fingerprint_variants and keys are preserved; never mutate inputs in place; diagnostics must not print the leaked path values; no hosted data deletion, republish or history rewrite; private (non-anonymized) local exports keep their current behavior; false positives are bounded by an allowlist test that real plan text (catalog names, URLs, relative table tails, Spark/LakeSail scans) is not flagged. Verification rubric: (1) reproduce the defect with a failing test or script before editing; (2) focused suites pass via uv run -- python -m pytest -n 0; (3) make comment-policy-check and ruff on touched files; (4) the runtime smoke named in acceptance is recorded in the PR body; (5) one final batch PR merges with green CI and a passing oracle review.",
   "description": "_project/planning/visible_metrics.yaml still describes results.has_plans as true whenever a .plans.json sidecar exists. The merged producer now requires at least one captured DAG or text plan and returns false for errors-only and empty companions. The maintained metric inventory describes the old contract.",
   "links": [
     "_project/planning/visible_metrics.yaml",
@@ -16,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "70e37b56e50a431db37d4361c54a817b",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-08T13:32:10Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "eb5b58ea39ec4e99b4711a3be0f2448d",
       "session_id": "dc59872de7f0484eafa9032416c81607"
     }
   ]
