@@ -28107,17 +28107,12 @@
       "title": "Plan reviews must reconcile recorded decisions, not only code claims"
     },
     "plans-export-anonymize-text-fields-20261108": {
-      "claim": {
-        "expires_at": "2026-11-09T19:12:35Z",
-        "generation": "17f35f5f24dc4a879e2632db802cac61",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54"
-      },
+      "claim": null,
       "needs": [
         "plan-path-detector-root-and-drive-coverage-20261108"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Anonymize text-plan fields when exporting existing plans companions"
     },
     "plans-hosted-ingest-privacy-audit-gap-20261108": {
