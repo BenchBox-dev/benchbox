@@ -1,10 +1,10 @@
 {
   "acceptance": [
-    "Identify exact maintained fixture locations and distinguish sensitive real paths from intentional neutral path-detector test cases.",
-    "Replace real user names and directories with neutral synthetic values while preserving tested behavior, then run the owning suites.",
-    "Document the existing historical-retention exemption; do not rewrite retained history or delete published artifacts under this item."
+    "A listing (in the PR body) of each maintained fixture with a real maintainer home path, with the fix for each; intentional synthetic test paths are listed as kept, with the reason.",
+    "Real user names and directories are replaced by neutral synthetic values; the owning test suites pass unchanged in meaning.",
+    "The retention exemption for historical published blobs is stated in the PR body with a link to the ADR; no published artifact is modified."
   ],
-  "context": "Reported fixture findings, not independently enumerated here. Historical blob count is the audit observation, not evidence of a new policy violation.",
+  "context": "Reported fixture findings, not independently enumerated here. Historical blob count is the audit observation, not evidence of a new policy violation.\n\nIndependent of the other items; may run in parallel. Do NOT touch the 1,007 pre-policy published-results blobs (retention ADR accepts them) and do NOT rewrite history. Fix maintained fixtures only, and only real user names or home directories; keep neutral placeholders and the synthetic paths that detector tests rely on. Do not run before the detector item changes what counts as a leak without re-checking against the new detector. Verification rubric: (1) reproduce the defect with a failing test or script before editing; (2) focused suites pass via uv run -- python -m pytest -n 0; (3) make comment-policy-check and ruff on touched files; (4) the runtime smoke named in acceptance is recorded in the PR body; (5) one final batch PR merges with green CI and a passing oracle review.",
   "description": "The publication audit reported a few repository fixtures containing real maintainer home paths. It separately found 1,007 pre-policy published-results JSON blobs with home-class paths; the existing retention ADR accepts those historical blobs. Those two categories must not be conflated. Determine which maintained fixtures remain non-neutral and fix only those unless the owner approves a historical-policy change.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/4041"
@@ -16,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "7ff3f91dbc004342b6c586d7b75a0623",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-08T13:32:14Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "862fed946f4d4653851c13f37b55e9a6",
       "session_id": "dc59872de7f0484eafa9032416c81607"
     }
   ]
