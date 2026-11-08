@@ -33,7 +33,9 @@ def gh(*args: str) -> Any:
     result = subprocess.run(["gh", *args], capture_output=True, text=True, check=False)
     if result.returncode != 0:
         raise RuntimeError(f"gh {' '.join(args[:3])} failed: {result.stderr.strip()}")
-    return json.loads(result.stdout) if result.stdout.strip() else None
+    if args[0] != "api" or not result.stdout.strip():
+        return None
+    return json.loads(result.stdout)
 
 
 def touches_probed_paths(files: list[str]) -> list[str]:
