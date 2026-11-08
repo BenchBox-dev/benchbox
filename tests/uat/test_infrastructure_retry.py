@@ -375,3 +375,35 @@ def test_sweep_does_not_retry_without_a_configured_budget(tmp_path):
 def test_retry_budget_must_be_a_positive_integer(tmp_path):
     with pytest.raises(ConfigError):
         _sweep_config(tmp_path, budget_s=0)
+
+
+@pytest.mark.parametrize("terminal_state", ["timeout", "killed"])
+@pytest.mark.parametrize(
+    "evidence",
+    [
+        {"failed_query_errors": ("Result mismatch: expected 4 rows, got 5",)},
+        {"failed_query_errors": ("ERROR 1712 (HY000)", "Result mismatch: expected 4 rows, got 5")},
+        {"submit_terminal_state": "schema_violation"},
+    ],
+    ids=["wrong-results", "1712-mixed-with-wrong-results", "validation-failure"],
+)
+def test_product_evidence_wins_over_a_timeout_or_kill(terminal_state, evidence):
+    from tests.uat import failure_signature
+
+    result = failure_signature.classify_failure(
+        failure_signature.FailureEvidence(
+            status="failed", terminal_state=terminal_state, **{"submit_terminal_state": "", **evidence}
+        )
+    )
+    assert result is not None and result.kind == failure_signature.KIND_PRODUCT
+
+
+@pytest.mark.parametrize(("terminal_state", "signature"), [("timeout", "timeout"), ("killed", "memory")])
+def test_a_timeout_or_kill_without_product_evidence_stays_infrastructure(terminal_state, signature):
+    from tests.uat import failure_signature
+
+    result = failure_signature.classify_failure(
+        failure_signature.FailureEvidence(status="failed", terminal_state=terminal_state, submit_terminal_state="")
+    )
+    assert result is not None
+    assert (result.kind, result.signature) == (failure_signature.KIND_INFRASTRUCTURE, signature)

@@ -70,16 +70,16 @@ def evidence_from_row(row: Mapping[str, object]) -> FailureEvidence:
 def classify_failure(evidence: FailureEvidence) -> FailureClass | None:
     if evidence.status == "passed" or evidence.terminal_state in _NOT_A_FAILURE_TERMINAL_STATES:
         return None
-    if evidence.terminal_state == "timeout":
-        return FailureClass(KIND_INFRASTRUCTURE, SIGNATURE_TIMEOUT)
-    if evidence.terminal_state == "killed":
-        return FailureClass(KIND_INFRASTRUCTURE, SIGNATURE_MEMORY)
     if evidence.failed_query_errors:
         if all(_SINGLESTORE_1712_RE.search(error) for error in evidence.failed_query_errors):
             return FailureClass(KIND_INFRASTRUCTURE, SIGNATURE_SINGLESTORE_1712)
         return FailureClass(KIND_PRODUCT, SIGNATURE_QUERY_FAILURE)
     if evidence.submit_terminal_state in _VALIDATION_SUBMIT_STATES:
         return FailureClass(KIND_PRODUCT, SIGNATURE_VALIDATION_FAILURE)
+    if evidence.terminal_state == "timeout":
+        return FailureClass(KIND_INFRASTRUCTURE, SIGNATURE_TIMEOUT)
+    if evidence.terminal_state == "killed":
+        return FailureClass(KIND_INFRASTRUCTURE, SIGNATURE_MEMORY)
     if _SINGLESTORE_1712_RE.search(evidence.failure_text):
         return FailureClass(KIND_INFRASTRUCTURE, SIGNATURE_SINGLESTORE_1712)
     if _DOWNLOAD_ERROR_RE.search(evidence.failure_text):
