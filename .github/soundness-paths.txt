@@ -133,6 +133,17 @@ file	scripts/release_blocker_check.py
 file	scripts/release_requirements.txt
 file	scripts/update_version.py
 file	scripts/generate_changelog_entry.py
+file	scripts/release_canary_freshness.py
+file	scripts/release_uat_evidence_check.py
+file	scripts/release_reuse_uat_evidence.py
+file	scripts/release_releasable.py
+file	scripts/release_probe.py
+file	scripts/release_probe_graph.py
+file	scripts/release_probe_launch.py
+file	scripts/release_probe_uat.py
+file	scripts/trunk_uat.py
+file	tests/uat/failure_signature.py
+file	tests/uat/infrastructure_retry.py
 file	.github/changelog-paths.txt
 file	scripts/changelog_fragments.py
 file	scripts/check_dependency_bounds.py
