@@ -8,6 +8,7 @@
     "implementation_dependencies": [],
     "member_id": "singlestore-tpcds-power-oom-24a-20261108"
   },
+  "context": "Implemented post-load per-table ANALYZE in PR #4058. Real 4GiB SingleStore stack: SF0.01 TPC-DS load,power completed all 103 queries in all three iterations (79.32s/98.27s/70.07s), including 24a; /tmp/obt/s5/run.log. No 24a pruning needed. JoinOrder SF1 ANALYZE retry /tmp/obt/s6/run.log hit 3000s bound while still Loading benchmark data, before power; cannot conclude ANALYZE fixes q7c, existing documented prune retained. Both stacks cleaned: container ls -a and mocker ps -a contain no SingleStore containers.",
   "description": "From the load-value-integrity batch (#4043). TPC-DS now loads on SingleStore, but the power phase at SF0.01 fails at query 24a with an out-of-memory error on the 4 GiB local stack. joinorder SF1 was pruned with a documented reason: memsqld is OOM-killed on query 7c.\n\nChange. Determine whether this is the stack's memory limit (compare against the release UAT runner's memory) or a query-plan problem on SingleStore. Then either size the UAT stack, or fix or prune the query with a recorded reason.\n\nGuardrails: work in a linked worktree; local stacks via make uat-bring-up under mocker, one at a time; no live cloud.",
   "prepared": {
     "accepted_head": "c9f9db626081259c84ff0249539170fb18a80959",
@@ -108,6 +109,14 @@
       "generation": "a8c6c1b1ea0346daa346c247a26a9858",
       "op": "prepare",
       "op_id": "c0cf9bf68a7d469b9bb92cda4d3132dc",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-08T19:52:02Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b1592756df1f4e80bd1ab0a6975c5024",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
