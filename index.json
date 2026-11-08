@@ -33587,7 +33587,6 @@
     "rv2r-16-release-branch-review-gating": {
       "claim": null,
       "needs": [
-        "rv2r-14-maintenance-release-branches",
         "rv2r-07-oracle-pinned-dependency"
       ],
       "priority": "high",
