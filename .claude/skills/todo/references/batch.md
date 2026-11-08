@@ -228,8 +228,11 @@ legitimate later evolution or substitute for behavioral acceptance.
 
 A member commits its implementation and merges the latest recorded integration
 head, resolves conflicts and commits before checking the clean captured range.
-It runs scoped checks and local review against that exact post-merge base/head,
-then reports branch, base, accepted head, changed files and actual verification.
+It runs scoped checks against that exact post-merge base/head, then reports
+branch, base, accepted head, changed files and actual verification. A member
+review is not required: the leader's trusted review at landing is the one that
+counts. Run one only where the repository's protocol asks for it, as early
+feedback the leader does not trust.
 It neither publishes a PR nor writes the tracker.
 
 ### Landing (leader)
