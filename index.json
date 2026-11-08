@@ -12701,17 +12701,12 @@
       "title": "Rerun evidence artifacts collide by name and the canary core aggregator reads stale failure"
     },
     "ci-shallow-checkouts-audit-and-auxiliary-jobs-20261108": {
-      "claim": {
-        "expires_at": "2026-11-09T19:24:14Z",
-        "generation": "c39709717fa44458ba29ee53d280f0b6",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:323735399750ab0454d72b9e"
-      },
+      "claim": null,
       "needs": [
         "ci-shallow-checkouts-pilot-tree-only-trunk-20261108"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Apply shallow checkouts to tree-only auxiliary, audit, and documentation workflows"
     },
     "ci-shallow-checkouts-baseline-and-inventory-20261108": {
