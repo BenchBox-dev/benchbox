@@ -3,8 +3,9 @@
     "Metrics reported with collector version and cohort definition; unavailable measurements are named, not zero",
     "Comparison to thresholds and baseline recorded with exceptions explained"
   ],
-  "context": "2026-11-07 reconciliation: dlv2-82 records the owner decision superseding <=90, and its merged closeout #4022 sets TARGET_CEILING=190 with capabilities preserved. The current audit PR #4034 is not yet merged; no observation start or not_before is asserted before the final cleanup merge. T1/T2 bounded cleanup-run observations (n=2; 669s/980s) do not satisfy this item’s 30-day cohort.",
+  "context": "2026-11-07 reconciliation: dlv2-82 records the owner decision superseding <=90, and its merged closeout #4022 sets TARGET_CEILING=190 with capabilities preserved. The current audit PR #4034 is not yet merged; no observation start or not_before is asserted before the final cleanup merge. T1/T2 bounded cleanup-run observations (n=2; 669s/980s) do not satisfy this item’s 30-day cohort.\n\n2026-11-08 observation start fixed by the actual final cleanup merge: #4034 merged2026-11-08T16:16:11Z as13165df58a8ab251e9f4f0948c14142b262cac59, reviewed head0bb2af86289ca3d6b01465d023d7eb1c6e0e041f; dlv2-84 is now done. Set not_before exactly30days later,2026-12-08T16:16:11Z. Do not certify before this time, backdate the cohort to the baseline capture, or treat the Nov7 one-day snapshot as the post-cleanup comparison. If additional in-scope cleanup lands, record its merge and restart the window. Preserve owner-approved target ceiling190 (supersedes90), same-method baseline211 versus historical generated-inventory216. The audit snapshot and collector limitations are committed in docs/internal/dev-loop-retirement-audit.md. At comparison time report all required metrics with collector revision/cohort, thresholds and baseline, named unavailable measurements and explicit exceptions; retry proxy is not flake attribution. No claim taken and no completion asserted for this held observation item.",
   "description": "Observation item split from dlv2-84. Starts at the final cleanup merge recorded in dlv2-84; set not_before to 30 days after that date. Metrics: T1 p95 <=7 min, T2 p95 <=15 min, red-trunk incidents 0 (a failing trunk.yml run on develop until fixed/reverted), public Make target count against the owner-approved capability-preserving ceiling of 190, flaky retry rate <2%, merges/day informational. The <=90 target threshold is superseded by the owner decision recorded in dlv2-82 on 2026-11-07. Runner wait is dropped by owner decision 2026-10-27. Baseline: _project/archive/dev-loop-v2/baseline.md (2026-09-28); same-method baseline target count is 211, not its generated-inventory count of 216.",
+  "not_before": "2026-12-08T16:16:11Z",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
@@ -20,6 +21,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "fcf93d242e964f64b90ec51a8e68e933",
+      "session_id": "c925cef22c8f4d6fa75a3c3995e6df7d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:95654933fcc78b44d934f92f",
+      "at": "2026-11-08T16:17:41Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1e11bb0f048f4c108683557bae1eaf24",
       "session_id": "c925cef22c8f4d6fa75a3c3995e6df7d"
     }
   ]
