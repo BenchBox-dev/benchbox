@@ -12733,17 +12733,12 @@
       "title": "Isolate history-dependent tests so medium tiers can run on shallow checkouts"
     },
     "ci-shallow-checkouts-pilot-tree-only-trunk-20261108": {
-      "claim": {
-        "expires_at": "2026-11-09T19:23:37Z",
-        "generation": "b8a328b4b99f4178937e536745cd5704",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:323735399750ab0454d72b9e"
-      },
+      "claim": null,
       "needs": [
         "ci-shallow-checkouts-baseline-and-inventory-20261108"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Pilot depth-1 checkouts on tree-only jobs in trunk.yml"
     },
     "ci-shallow-checkouts-test-tier-rollout-20261108": {
