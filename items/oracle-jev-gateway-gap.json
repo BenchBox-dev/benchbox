@@ -1,12 +1,15 @@
 {
   "acceptance": [
-    "Slot-1 select classifies a real PR through a live Jev call in CI (or the Jev dependency is replaced), on the pinned omp build.",
-    "Adds or updates the matching scenario in tests/integration/oracle (registered in ORACLE_SCENARIO_TESTS), proven to fail with this item's defect reintroduced; the scenario runs only the fake omp executable and fake servers, never a real omp or model-provider call."
+    "Record a fresh hosted classification on the pinned consumer build plus exact PR/head/run and source pin. Confirm the selection is an actual classifier result, not a conservative unavailable fallback or cached verdict repost.",
+    "An existing or corrected hermetic integration scenario uses fake Jev/omp/GitHub boundaries to classify and select the expected tier through the direct HTTP transport; it fails when the transport is sent to the unsupported chat gateway or the judge response is unusable. No paid model call belongs in this regression.",
+    "Missing key/configuration remains fail-closed; provider outages follow the recorded fallback policy, never an implicit lower review tier. Document any upstream gateway feature as outside the delivered consumer fix."
   ],
-  "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\n",
-  "description": "Root cause: `omp auth-gateway stdio` builds its served catalog from chat models only, so `/v1/systemone` and `/alpha/decisions` answer 404 for every judge model. Reproduced on omp 18.9.1 and 18.12.3; no env var, config key or model id changes it. The 594 judgments in the host judgment cache came from omp's in-process judge role, which still works. Fix in the oracle cutover: `jev.py` now POSTs directly to `https://api.typesafe.ai/v1/systemone` with `TYPESAFE_API_KEY`, which the select-1 job already holds. Verified with a live call returning answers. Remaining upstream issue: the omp gateway should serve judge-kind models.",
+  "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\n\n\nTODO review 2026-11-08: current direct transport inspected in Theseus jev.py:28-75; mapped key in BenchBox review-verdict.yml:55. Run 42500764749 logs slot 1: large and a real reviewer attempt; source inspection alone is not sufficient to certify live Jev vs a cached classifier result. Preserve this distinction before finish.",
+  "description": "Historical omp auth-gateway chat-only routing returned 404 for Jev judge endpoints. The consumer fix is already extracted and shipped: Theseus JevSession POSTs directly to TYPESAFE_BASE_URL (default https://api.typesafe.ai)/v1/systemone using TYPESAFE_API_KEY; review-verdict explicitly maps that secret. Verify this deployed consumer path and its fake-server scenario, rather than adding a second gateway transport or requiring upstream omp feature work. Upstream judge-kind gateway support is separate scope, not a hidden requirement for consumer closure.",
   "links": [
-    "https://github.com/BenchBox-dev/benchbox/pull/3170"
+    "src/theseus_reviewer/jev.py (joeharris76/theseus)",
+    "tests/integration/fake_jev.py (joeharris76/theseus)",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/42500764749"
   ],
   "sessions": [
     {
@@ -56,6 +59,14 @@
       "op": "update",
       "op_id": "06494b76f53a4f7b84455f32cc42d1f4",
       "session_id": "f2ea81a526d74429861bc01fff72f167"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:323735399750ab0454d72b9e",
+      "at": "2026-11-08T17:12:35Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b6cf9908b23b44499c68b538584e2f56",
+      "session_id": "83fcfb8d4a5c4fe8a47e5ac53802ec97"
     }
   ]
 }
