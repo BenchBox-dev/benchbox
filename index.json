@@ -32986,10 +32986,15 @@
       "title": "Add a release-v2 probe mode that executes the real job graph before any workflow change merges"
     },
     "rv2r-06-fail-closed-detectors": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-09T14:17:47Z",
+        "generation": "1e392fb524eb49f780ad0688b3e51ded",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Make process checks fail when they ran but did nothing"
     },
     "rv2r-07-oracle-pinned-dependency": {
