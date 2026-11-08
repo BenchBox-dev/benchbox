@@ -20701,17 +20701,12 @@
       "title": "Firebolt Cloud Deployment Mode"
     },
     "firebolt-core-native-load-unverified-20261107": {
-      "claim": {
-        "expires_at": "2026-11-09T02:51:22Z",
-        "generation": "bde4c22cb6544354a82764cc7ac23b8f",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [
         "singlestore-ci-and-tpcds-maintenance-20261107"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Firebolt Core native file loading (#3949) has never been verified against a real Firebolt Core server"
     },
     "firebolt-mode-validation": {
