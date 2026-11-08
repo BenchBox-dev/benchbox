@@ -28227,7 +28227,7 @@
     "pr-arm-refuses-already-clean-pr-20261101": {
       "claim": null,
       "needs": [],
-      "priority": "medium",
+      "priority": "high",
       "status": "open",
       "title": "Let make pr-arm land a PR that is already mergeable instead of refusing"
     },
