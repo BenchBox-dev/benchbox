@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -77,7 +78,7 @@ def test_redaction_preserves_plan_structure(tmp_path):
     plan, raw = _captured(tmp_path)
     data_dir, under_data, under_home = _scan_paths(tmp_path)
 
-    expected = raw.plan_text.replace(str(under_data), f"<redacted>/{under_data.name}").replace(
+    expected = raw.plan_text.replace(str(under_data), f"<redacted>{os.sep}{under_data.name}").replace(
         str(under_home), "<redacted>"
     )
 
@@ -165,17 +166,17 @@ def test_exported_plans_companion_has_no_local_paths(tmp_path, anonymize):
     assert build_plans_payload(result)["queries"]["Q1"]["plan"]["plan_text"] == plan.plan_text
 
 
-def test_loaded_data_directories_are_redaction_roots_outside_the_detector():
-    data_dir = Path("/srv/benchbox-data/tpch_sf001")
+def test_loaded_data_directories_are_redaction_roots_outside_the_detector(tmp_path):
+    data_dir = tmp_path / "benchbox-data" / "tpch_sf001"
     files = {"lineitem": [data_dir / "v8" / "lineitem.1.parquet"], "orders": data_dir / "v8" / "orders.parquet"}
     roots = BenchmarkExecutionMixin._collect_plan_local_roots(files, data_dir)
     plan = QueryPlan("polars", "optimized", f"Parquet SCAN [{files['lineitem'][0]}]\nParquet SCAN [{files['orders']}]")
 
     redacted = redact_plan_local_paths(plan, roots)
 
-    assert "/srv/benchbox-data" not in redacted.plan_text
-    assert (
-        redacted.plan_text == "Parquet SCAN [<redacted>/lineitem.1.parquet]\nParquet SCAN [<redacted>/orders.parquet]"
+    assert str(tmp_path) not in redacted.plan_text
+    assert redacted.plan_text == (
+        f"Parquet SCAN [<redacted>{os.sep}lineitem.1.parquet]\nParquet SCAN [<redacted>{os.sep}orders.parquet]"
     )
 
 
@@ -195,7 +196,7 @@ def test_object_store_paths_without_a_leading_slash_are_redacted(tmp_path):
     assert relative_home not in redacted.plan_text
     assert relative_data not in redacted.plan_text
     assert "[[<redacted>]]" in redacted.plan_text
-    assert "[[<redacted>/orders.parquet]]" in redacted.plan_text
+    assert f"[[<redacted>{os.sep}orders.parquet]]" in redacted.plan_text
     assert "projection=[a]" in redacted.plan_text
 
 
