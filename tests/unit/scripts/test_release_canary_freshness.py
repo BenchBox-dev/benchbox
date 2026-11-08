@@ -235,9 +235,16 @@ def test_an_unreadable_start_time_fails_closed(history):
     assert not verdict.ok and verdict.reason.startswith("error:")
 
 
+class _FrozenDatetime(datetime):
+    @classmethod
+    def now(cls, tz=None):
+        return NOW if tz is None else NOW.astimezone(tz)
+
+
 def _check(history, tmp_path, monkeypatch, capsys):
     summary = tmp_path / "summary.md"
     monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    monkeypatch.setattr(canary, "datetime", _FrozenDatetime)
     code = canary.main(
         [
             "check",
