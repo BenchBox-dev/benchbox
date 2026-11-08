@@ -33758,10 +33758,15 @@
       "title": "Add SingleStore Platform Adapter"
     },
     "singlestore-ci-and-tpcds-maintenance-20261107": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-09T02:51:15Z",
+        "generation": "1716854012964ae69ffb4ccd3ba22dac",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "SingleStore: live tests are not run in CI, and TPC-DS maintenance is reported skipped because its refresh SQL is unvalidated"
     },
     "singlestore-decimal-text-loads-as-zero-20261107": {
