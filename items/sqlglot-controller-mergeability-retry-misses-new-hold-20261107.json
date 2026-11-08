@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "A no-auto-merge or hold label applied during a mergeability retry blocks merge and no merge API call occurs.",
+    "Drafting, closing, changing the target repository/base, moving main/head, or newly failing required checks during the retry refuse or defer the merge as appropriate.",
+    "An initially unknown PR that becomes clean with all live preconditions unchanged still merges; behavioral regression tests cover both outcomes."
+  ],
+  "context": "Read-only reproducer run against /Users/joe/Developer/sqlglot.wt-controller-event/downstream/controller.py:419-447. Implementation and PR belong in the fork; core tracker holds the task. Existing controller event-delay item is complete; this is a new defect introduced by its polling change.",
+  "description": "New defect in BenchBox-dev/benchbox-sqlglot PR #86, merged 4e518548051506fa0fb793c605eb7effbf82464f. downstream/controller.py merge_gate checks open/draft/hold/base/required checks before waiting for GitHub mergeability. Its MERGEABLE_POLLS loop sleeps 2/4/8 seconds and re-reads the PR but validates only that head SHA is unchanged. If a person applies no-auto-merge during the wait and GitHub then reports clean, merge_gate returns ready and merge_pr can issue the merge mutation despite the hold. The same stale validation applies to draft/open/base state and required checks changing while waiting. Reproduced directly against the merged implementation: first PR read unknown with no labels, second read clean with no-auto-merge, same head; required checks successful; merge_gate returned (ready, []). No real PR was mutated.\n\nChange in the fork: after every mergeability refresh, revalidate all live authority and merge preconditions, and recheck main and required checks after the wait before returning ready. Preserve exact-head merge and existing hold semantics; do not bypass protection or change polling budgets.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-sqlglot/pull/86"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f",
+      "at": "2026-11-08T04:03:13Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b56b5a45495f438e9d3db6ef7ae457de",
+      "session_id": "2f41579dd2194a049659596cdd9a4f3d"
+    }
+  ]
+}

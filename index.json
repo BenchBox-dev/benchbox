@@ -35357,6 +35357,13 @@
       "status": "done",
       "title": "Verify the zip-loaded SQLGlot runtime on Windows"
     },
+    "sqlglot-controller-mergeability-retry-misses-new-hold-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Fork controller can merge after a hold is applied during its mergeability retry"
+    },
     "sqlglot-delivery-arm-waits-for-daily-run-20261107": {
       "claim": null,
       "needs": [],
