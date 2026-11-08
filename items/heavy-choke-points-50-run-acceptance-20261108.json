@@ -2,7 +2,7 @@
   "acceptance": [
     "50 consecutive runs pass on Linux and on macOS, with logs recorded, or the failing case is reopened as a defect."
   ],
-  "context": "50-run acceptance FAILED on macOS at iteration 8 (first seven: 44 passed each). make heavy-run CMD='bash /tmp/obt/loop50.sh' log /tmp/obt/mac50.log. Failing case tests/unit/test_heavy_choke_points.py::test_a_signal_during_the_run_exits_with_its_conventional_code_and_still_stops_the_machine[TERM-143], line 517: expected final fake-container call 'machine stop m-95612-test_a_signal_during_the_run_e2', got 'machine run -n m-95612-test_a_signal_during_the_run_e2 -- true'. 43 passed/1 failed in failing iteration. Linux 50-run attempt launched via make ci-linux; result pending. Keep item open as the failing acceptance/defect; do not claim 50 green runs.",
+  "context": "50-run acceptance FAILED on macOS at iteration 8 (first seven: 44 passed each). make heavy-run CMD='bash /tmp/obt/loop50.sh' log /tmp/obt/mac50.log. Failing case tests/unit/test_heavy_choke_points.py::test_a_signal_during_the_run_exits_with_its_conventional_code_and_still_stops_the_machine[TERM-143], line 517: expected final fake-container call 'machine stop m-95612-test_a_signal_during_the_run_e2', got 'machine run -n m-95612-test_a_signal_during_the_run_e2 -- true'. 43 passed/1 failed in failing iteration. Linux 50-run attempt launched via make ci-linux; result pending. Keep item open as the failing acceptance/defect; do not claim 50 green runs.\n\nLinux verification completed: make ci-linux CI_LINUX_CMD='bash /Users/joe/.cache/benchbox-ci-uat-loop50.sh' passed all 50/50 iterations, exit 0; /tmp/obt/linux50.log. VM stopped by wrapper. Overall acceptance still fails because macOS iteration 8 failed TERM cleanup (detailed preceding note). This item remains OPEN as failing-case evidence per assignment; no 50/50 macOS claim.",
   "description": "flaky-heavy-choke-points-and-ducklake-interrupted-20261106 was finished after #4031 merged. Its acceptance asked for 50 repeated runs without failure; only 20 of 20 were run, and the pr-preflight Linux VM leg was not rerun. Complete the check on Linux (CI or the benchbox-agent machine) and on macOS.\n\nGuardrails: heavy runs through make heavy-run.",
   "sessions": [
     {
@@ -19,6 +19,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "a31d14b64a2c49ecada6d3c0aa16639a",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-08T20:35:36Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e8884d046f4e4d32b849032f3c2b7fe7",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
