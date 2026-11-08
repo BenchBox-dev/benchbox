@@ -3,8 +3,8 @@
     "Pin check test fails on a floating tag and passes on digests (pattern covers .yml and .yaml); all current images are pinned and the digests are listed in the PR",
     "Retry tests: an infrastructure-signature failure retries once and records attempt=2; a validation or result failure does not retry; a second infrastructure failure fails the cell; no retry when remaining job time < cell limit (recorded); the gate summary counts retries",
     "Rubric script tests on fixture history: >20% over 10 runs with another scale gated -> proposal; the last gated scale -> no proposal and a tracker-item suggestion instead; <=20% -> none",
-    "Signal record and drop-list tests on fixture history; DECISION GATE: the first real drop list is presented to the owner via the choice dialog before any cell is dropped; the dashboard (rv2r-11) reports the share of red shards with product signatures",
-    "Live (after rv2r-02 calibration): one trunk UAT run with pinned images completes and its gate summary shows the retry counters (0 is fine)",
+    "Signal record and drop-list tests on fixture history pass. Owner decision 2026-11-08 re-homes the first real drop-list approval to uat-first-drop-list-owner-review; no cell is dropped here. The dashboard remains owned by rv2r-11.",
+    "Live: one trunk UAT run with pinned images completes and its gate summary shows the retry counters (0 is fine)",
     "No timeout, memory-limit, validator or floor value changes anywhere in the diff (asserted by a test that diffs those config keys)"
   ],
   "context": "Member of batch release-v2-remediation; parts (1)-(2) do not depend on rv2r-02, and parts (3)-(4) are built on fixtures, with the live line proven after rv2r-02's calibration run. Related: singlestore-tpchavoc-10v8-memory. Error 1712 is retryable only until that item is done (it may be a plan defect, not infrastructure); report its retry count per run. GUARDRAILS: exactly the owner-approved rubric; never prune the last gated scale; never touch timeouts, memory limits or validation. DECISION GATE: anything outside the rubric (for example a platform-wide exclusion or any drop-list removal) goes to the owner via the choice dialog.\n\n2026-11-08: code merged in PR #4040 (merge f6737e142c; the registered batch was aborted and shipped as one ordinary PR). Remaining before finish: one scheduled trunk UAT run with pinned images completes and its gate summary shows the retry counters; the first real drop list goes to the owner before any cell is dropped.\n\n2026-11-08 owner decision: close this item once a real trunk UAT run with pinned images shows retry counters; first real drop-list approval is re-homed to uat-first-drop-list-owner-review. No cell may be dropped without the owner there. Live acceptance run dispatched: 42536258036.",
@@ -79,6 +79,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "eb9d9d8d427740b192dd364400813ea4",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-08T23:45:07Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8ce7a069f3e048acbad81eda9a0b491a",
       "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]
