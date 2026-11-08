@@ -3747,7 +3747,7 @@
         }
       },
       "integration_branch": "feat/load-value-integrity",
-      "integration_head": "f22ef0e3a565efd95b06ffcd1cab57b40a8489c0",
+      "integration_head": "5105f7109645c90d72f53f20d735f8df9ec51e3c",
       "integration_log": [
         {
           "at": "2026-11-07T14:17:34Z",
@@ -4018,6 +4018,20 @@
           "previous_head": "df71e54dfafbcd95f8a75a2efe332d27f0da392d",
           "requires_acceptance": [],
           "seq": 12
+        },
+        {
+          "at": "2026-11-08T01:26:46Z",
+          "changed_files": [
+            "_project/specs/uat-framework.md"
+          ],
+          "head": "5105f7109645c90d72f53f20d735f8df9ec51e3c",
+          "kind": "fix",
+          "op_id": "e89a7c7bd054479e9779c35224ab0f63",
+          "previous_head": "f22ef0e3a565efd95b06ffcd1cab57b40a8489c0",
+          "requires_acceptance": [
+            "mocker-doris-singlestore-stacks-start-20261107"
+          ],
+          "seq": 13
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-load-value-integrity",
