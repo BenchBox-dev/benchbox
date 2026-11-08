@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "Add a guarded-change variant to the release-v2 probe that proves a change to a guarded input after the trunk UAT evidence forces the full UAT stages."}

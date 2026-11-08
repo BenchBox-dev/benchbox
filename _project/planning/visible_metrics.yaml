@@ -271,7 +271,7 @@ metrics:
   - table: results
     column: has_plans
     kind: raw_copy
-    source_field: "derived from bundle - True when a .plans.json sidecar exists"
+    source_field: "derived from bundle - True only when the .plans.json companion holds at least one captured DAG or text plan; False for errors-only, empty, malformed, or missing companions"
     display_surfaces: [result_detail]
 
   - table: results

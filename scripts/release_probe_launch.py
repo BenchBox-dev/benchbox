@@ -10,7 +10,7 @@ from collections.abc import Callable
 from typing import Any
 
 PROBE_TAG = "v0.0.0rc0"
-VARIANTS = ("reuse", "fallback")
+VARIANTS = ("reuse", "fallback", "guarded-change")
 WORKFLOW_FILE = "release-v2.yml"
 RUNS_PAGE = 30
 FINISHED = "completed"
@@ -179,7 +179,7 @@ def run_probes(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Run both release-v2 probe variants for a pull request head.")
+    parser = argparse.ArgumentParser(description="Run every release-v2 probe variant for a pull request head.")
     parser.add_argument("--repository", required=True)
     parser.add_argument("--branch", required=True)
     parser.add_argument("--head-sha", required=True)

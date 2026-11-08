@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Anonymized exports of plan companions now redact local paths in text-plan fields (plan_text, plan_data logical/optimized plans, optimization hints) while leaving fingerprints and plan structure unchanged."
+    }
+  ]
+}

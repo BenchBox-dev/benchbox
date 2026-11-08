@@ -36,7 +36,7 @@ The primary clone owns hook installation. Run it there once for the shared Git
 directory:
 
 ```bash
-cd /Users/joe/Developer/BenchBox
+cd ~/Developer/BenchBox
 uv run -- pre-commit install
 ```
 
@@ -166,7 +166,7 @@ with the single-worktree cleanup commands below.
 Before removing a worktree, you can preview single-target finish eligibility and view the exact proposed commands:
 
 ```bash
-cd /Users/joe/Developer/BenchBox
+cd ~/Developer/BenchBox
 make worktree-finish WORKTREE_PATH="$WORKTREE_PATH" EXPECTED_HEAD_OID="$OID"
 make worktree-finish WORKTREE_PATH="$WORKTREE_PATH" EXPECTED_HEAD_OID="$OID" FORMAT=json
 ```
@@ -193,7 +193,7 @@ The dry run prints one line per worktree (`remove`, `keep`, or `ambiguous`, then
 After the PR merges and the worktree is clean, remove the exact registration:
 
 ```bash
-cd /Users/joe/Developer/BenchBox
+cd ~/Developer/BenchBox
 make worktree-remove WORKTREE_PATH="$WORKTREE_PATH"
 ```
 

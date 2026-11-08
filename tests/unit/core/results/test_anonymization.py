@@ -550,20 +550,20 @@ class TestPublicPayloadSslRootCert:
     def test_sslrootcert_path_is_hashed(self):
         out = json.dumps(
             AnonymizationManager().anonymize_result_payload(
-                {"platform_metadata": {"platform_raw_config": {"sslrootcert": "/Users/joe/certs/root.pem"}}}
+                {"platform_metadata": {"platform_raw_config": {"sslrootcert": "/Users/example/certs/root.pem"}}}
             ),
             default=str,
         )
-        assert "/Users/joe" not in out
+        assert "/Users/example" not in out
 
     def test_underscore_cert_paths_still_hashed(self):
         out = json.dumps(
             AnonymizationManager().anonymize_result_payload(
-                {"platform_metadata": {"platform_raw_config": {"ca_cert_path": "/Users/joe/certs/ca.pem"}}}
+                {"platform_metadata": {"platform_raw_config": {"ca_cert_path": "/Users/example/certs/ca.pem"}}}
             ),
             default=str,
         )
-        assert "/Users/joe" not in out
+        assert "/Users/example" not in out
 
 
 class TestPublicPayloadTupleRecursion:

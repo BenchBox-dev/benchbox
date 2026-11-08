@@ -23,7 +23,7 @@ def slim_leak_detector():
         del sys.modules[spec.name]
 
     detector = module.find_public_path_leaks
-    assert detector.__module__ == "_validation_bundle_slim", "fixture did not exercise the stdlib detector"
+    assert detector.__module__ == "_validation_bundle_slim", "fixture did not exercise the standalone detector"
     return detector
 
 

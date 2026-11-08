@@ -607,19 +607,6 @@
    "justification": "DataFusion 54.0.0 cannot decorrelate the scalar subquery of TPC-H Havoc variant 8_v1 and fails with `Optimizer rule 'scalar_subquery_to_join' failed`. Engine limit on correlated subqueries, not a translation difference; a DataFusion upgrade that supports it makes the entry stale and fails the gate until it is removed."
   },
   {
-   "engine": "postgres",
-   "benchmark": "tpcds_obt",
-   "check": "error",
-   "queries": [
-    58,
-    60
-   ],
-   "match": "statement timeout",
-   "tracker": "https://github.com/BenchBox-dev/benchbox/issues/3515",
-   "optional": true,
-   "justification": "PostgreSQL with only the leading column of the 715-column OBT indexed does not finish OBT Q58 inside the per-query budget at SF0.01, and Q60 runs 13 to 15 seconds against the 15 second budget (the 2026-11-07 hosted nightly timed out on both at 15.01 s); both run the OBT through correlated aggregates over the whole table. The outcome depends on wall-clock speed, so the entry is optional. Q58 is part of the PostgreSQL OBT translation defects tracked in postgres-obt-alias-and-round-double-20261025."
-  },
-  {
    "engine": [
     "sqlite",
     "duckdb",
@@ -938,7 +925,8 @@
    "engine": [
     "sqlite",
     "duckdb",
-    "datafusion"
+    "datafusion",
+    "postgres"
    ],
    "benchmark": "tpcds_obt",
    "check": "vacuous",
@@ -1260,17 +1248,6 @@
    ],
    "match": "every cell NULL or 0",
    "justification": "Executed on DuckDB with the gate data (SF0.01): part has 0 rows with p_brand 'Brand#23' and p_container 'MED BOX', which every Q17 variant keeps, so the SUM is NULL."
-  },
-  {
-   "engine": "postgres",
-   "benchmark": "tpcds_obt",
-   "check": "error",
-   "queries": [
-    56
-   ],
-   "match": "statement timeout",
-   "optional": true,
-   "justification": "PostgreSQL runs OBT Q56 in 10.5 seconds on the hosted runner (the 2026-11-07 nightly) and 4.6 to 5.1 seconds on the maintainer host, so it can exceed the 15 second per-query budget on a busier runner. Indexing the OBT key columns does not shorten it. The outcome depends on wall-clock speed, so the entry is optional. Performance limit of the engine on the 715-column OBT, not a translation difference."
   }
  ]
 }

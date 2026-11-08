@@ -37,11 +37,11 @@ PS_TABLE = "\n".join(
 LSOF_CWD = "\n".join(
     [
         "p61182",
-        "n/Users/joe/Developer/BenchBox.wt-feature",
+        "n/Users/example/Developer/BenchBox.wt-feature",
         "p78738",
-        "n/Users/joe/qdb-data",
+        "n/Users/example/qdb-data",
         "p500",
-        "n/Users/joe/Developer/BenchBox",
+        "n/Users/example/Developer/BenchBox",
     ]
 )
 
@@ -79,8 +79,8 @@ def test_orphans_are_ppid_one_servers_with_a_benchbox_worktree_cwd(monkeypatch: 
     found = hs.find_orphans(fake_runner, footprint=lambda pid: 2 * GIB if pid == 61182 else None)
     assert found is not None
     assert [(o.pid, o.cwd, o.footprint_bytes) for o in found] == [
-        (61182, "/Users/joe/Developer/BenchBox.wt-feature", 2 * GIB),
-        (500, "/Users/joe/Developer/BenchBox", None),
+        (61182, "/Users/example/Developer/BenchBox.wt-feature", 2 * GIB),
+        (500, "/Users/example/Developer/BenchBox", None),
     ]
 
 
@@ -105,7 +105,7 @@ def test_an_unreadable_pid_does_not_hide_the_other_orphans(monkeypatch: pytest.M
             return PS_TABLE
         if argv[0] == "lsof":
             pid = argv[-1]
-            return None if pid == "61182" else f"p{pid}\nn/Users/joe/Developer/BenchBox\n"
+            return None if pid == "61182" else f"p{pid}\nn/Users/example/Developer/BenchBox\n"
         return None
 
     found = hs.find_orphans(runner)

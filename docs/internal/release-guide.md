@@ -277,6 +277,7 @@ Start a probe from a branch (never from a tag):
 ```bash
 gh workflow run release-v2.yml --ref <branch> -f tag=v0.0.0rc0 -f probe=reuse
 gh workflow run release-v2.yml --ref <branch> -f tag=v0.0.0rc0 -f probe=fallback
+gh workflow run release-v2.yml --ref <branch> -f tag=v0.0.0rc0 -f probe=guarded-change
 ```
 
 `v0.0.0rc0` is the synthetic probe tag and the only tag a probe accepts. In
@@ -291,12 +292,15 @@ probe mode:
 - `uat-reuse` runs the real decision (`release_reuse_uat_evidence.py decide`)
   against synthetic GitHub data. `probe=reuse` offers a qualifying trunk UAT run
   and must reuse it; `probe=fallback` offers none and must fall back to the full
-  UAT stages.
+  UAT stages; `probe=guarded-change` offers a green, otherwise qualifying trunk
+  run whose evidence commit predates a synthetic commit that changes a guarded
+  input (`tests/uat/probe_guarded_change.txt`) and must refuse reuse, with the
+  job summary naming that path, so the full UAT stages run.
 - The UAT shard jobs are replaced by one stub job that writes shard evidence
   the real `make uat-gate-check` and `release_uat_evidence_check.py` accept for
   the admitted distribution digest (`scripts/release_probe_uat.py`). The
   `release-uat` job, its combined gate and the shard-result detector run
-  unchanged, on the reuse path and on the fallback path.
+  unchanged, on the reuse path and on both full-UAT paths.
 - `install-matrix` runs one `ubuntu-latest` Python 3.12 cell.
 - `publish` and `github-release` do not run. `publish-probe` stages the
   admitted files, verifies `SHA256SUMS` and runs `twine check`. It has
@@ -317,8 +321,8 @@ touches `release-v2.yml`, `trunk-uat.yml`, `trunk.yml`, `release-uat-env`, the
 probe workflow, `scripts/release_*.py`, `scripts/release_requirements.txt`,
 `scripts/update_version.py`, `tests/uat/gate_summary.py`, `tests/uat/_cli.py`,
 `tests/uat/config.py`, `Makefile`, `make/uat.mk` or a release-gate UAT
-config (a rename counts under both its old and new path), it dispatches both probe variants
-from the pull request branch and fails unless both succeed; otherwise it passes
+config (a rename counts under both its old and new path), it dispatches every probe variant
+from the pull request branch and fails unless every one succeeds; otherwise it passes
 at once. It runs on every pull request so that it can be made a required
 check without leaving unrelated pull requests pending. The probe builds its own
 distributions, so it does not execute the `dist-artifact` job of `trunk.yml`;

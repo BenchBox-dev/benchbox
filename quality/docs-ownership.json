@@ -186,6 +186,7 @@
     "docs/internal/adr/adr-site-repo-split.md": "core-only",
     "docs/internal/agent-instruction-evaluation.md": "core-only",
     "docs/internal/benchbox-results-platform-strategy.md": "core-only",
+    "docs/internal/ci-checkout-depth.md": "core-only",
     "docs/internal/comment-cleanup-scope.md": "core-only",
     "docs/internal/comment-policy.md": "core-only",
     "docs/internal/corpus-refresh.md": "core-only",

@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Index the TPC-DS OBT self-join and subquery columns and VACUUM ANALYZE PostgreSQL in the SQL execution gate so the nightly OBT queries no longer time out"
+}
