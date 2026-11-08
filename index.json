@@ -10473,12 +10473,7 @@
       "title": "Batch native-bulk-load-sql: leader notes (umbrella, not a member)"
     },
     "batch-optin-remediation-20261107-umbrella": {
-      "claim": {
-        "expires_at": "2026-11-09T08:29:28Z",
-        "generation": "a2b2e647eadc424ba79a57c5309631ab",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae"
-      },
+      "claim": null,
       "needs": [
         "batch-mode-opt-in-policy-docs-20261107",
         "ledger-coverage-test-mapped-in-preflight-20261107",
@@ -10487,7 +10482,7 @@
         "ledger-doc-selection-and-contributing-batch-wording-20261107"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Deliver the batch opt-in remediation: docs and ledger batch plus serial tooling PR"
     },
     "batch-owner-generation-output-redaction-20261108": {
