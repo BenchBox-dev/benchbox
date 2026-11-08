@@ -29513,9 +29513,9 @@
     },
     "public-fixture-home-paths-audit-20261108": {
       "claim": {
-        "expires_at": "2026-11-09T19:12:55Z",
-        "generation": "7fe2a8e2a630424cb0138e2274806e68",
-        "renewals": 0,
+        "expires_at": "2026-11-09T19:13:02Z",
+        "generation": "b0399ad5a62f481887d1a6012e7381ed",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54"
       },
       "needs": [],
