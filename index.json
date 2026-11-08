@@ -18084,7 +18084,12 @@
       "title": "Rewrite dev-loop documentation and delete obsolete runbooks"
     },
     "dlv2-84-final-audit-and-metrics": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-09T15:37:00Z",
+        "generation": "3678c06a16bc4eeaa4eba426ac8af645",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:95654933fcc78b44d934f92f"
+      },
       "needs": [
         "dlv2-80-github-cleanup",
         "dlv2-81-config-cleanup",
@@ -18093,7 +18098,7 @@
         "site-split-99-closeout"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Final audit: zero references to retired items, complete ledger, and 30-day success metrics"
     },
     "dlv2-90-stacked-prs-pilot": {
