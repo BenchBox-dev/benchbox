@@ -1,11 +1,11 @@
 {
   "acceptance": [
-    "Pull the reviewer attempt logs for the affected heads and state the actual exit-1 cause (quota, sandbox, config, input size or other).",
-    "Fix the cause, or make the gate retry automatically with a bounded count so a rerun by hand is not needed.",
-    "Document in docs/agent what an agent may do when all attempts error, without needing an owner comment for a plain rerun.",
-    "Show the fix with a before/after on a PR head that previously failed, or a test of the retry path."
+    "Identify exact failing run/attempt/head IDs for each incident and inspect its retained stderr/terminal-error/diagnostic. A generic absence detail exit code1 is not the cause; a successful first-head run or later rerun is not failing-before evidence. If the diagnostic is irretrievably absent, record exactly what is missing and capture an equivalent contemporary failure before choosing a code fix.",
+    "Fix only the identified failing layer. Reuse current bounded retry/backoff and provider substitution; do not mask unknown errors, weaken review, reset owner-only backoff, or add generic retries in place of diagnosis.",
+    "Document permitted exact-head manual workflow dispatch/rerun and existing backoff/budget guards in the current agent review protocol, clearly separating a plain supported rerun from an owner-only backoff reset.",
+    "Prove the identified cause fails before and passes after through a retained affected head or deterministic fake-service regression, and record a real exact-head verdict after repair. Keep runner queueing and host pin drift classified separately from reviewer process exit."
   ],
-  "context": "Evidence: PR #3887, #3888, #3891, #3896 on 2026-11-01..06. Also seen: the gate job failing after 35m-1h32m and a trunk.yml run queued over 69 minutes; check whether runner queueing is a separate cause. Verification rubric: reproduce or inspect logs first; fix; confirm a head that failed now gets a verdict; CI green.",
+  "context": "Evidence: PR #3887, #3888, #3891, #3896 on 2026-11-01..06. Also seen: the gate job failing after 35m-1h32m and a trunk.yml run queued over 69 minutes; check whether runner queueing is a separate cause. Verification rubric: reproduce or inspect logs first; fix; confirm a head that failed now gets a verdict; CI green.\n\nReviewed 2026-11-08: current runner retains diagnostics and retry.py already bounds retries. Parent authenticated gh downloads succeeded for capture archives of runs41238738881/41235152289/41217587322/41253327640; each retained capture reports exit_code0 and no absence. Run41238738881 attempt1 logs also show SHIP. These are not the cited failing attempts, so no exit1 cause can be inferred from them. Scout API401/403 was a tool credential-path issue, not an owner access blocker; parent gh could read logs. Need locate the actual failing runs before fixing.",
   "description": "During one batch, several PR heads (#3887 first head, #3888 first head, #3891, #3896) got no oracle verdict: every reviewer attempt ended 'absent (error): exit code 1', so oracle-gate stayed failing and make pr-arm refused. Recovery was by hand: gh run rerun of the verdict workflow, or amending the commit to force a new head. make oracle-backoff-reset needs an owner instruction comment, so workers could not use it. This added hours to landing. Root cause is unknown.",
   "links": [
     "docs/agent/review-protocol.md",
@@ -19,6 +19,14 @@
       "op": "create",
       "op_id": "7985fd1dcb944cc8a986af250faaae4d",
       "session_id": "dc59872de7f0484eafa9032416c81607"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:323735399750ab0454d72b9e",
+      "at": "2026-11-08T17:26:27Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5c1b7dee05e949a7b5e7f728b0d8bea8",
+      "session_id": "83fcfb8d4a5c4fe8a47e5ac53802ec97"
     }
   ]
 }
