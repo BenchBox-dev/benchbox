@@ -54,6 +54,20 @@ def _keep_doris_full_outer_join() -> None:
     )
 
 
+def _keep_singlestore_full_outer_join() -> None:
+    from benchbox._vendor.sqlglot.generators.singlestore import SingleStoreGenerator
+
+    _install_select_transforms(
+        SingleStoreGenerator,
+        (
+            "eliminate_distinct_on",
+            "eliminate_semi_and_anti_joins",
+            "eliminate_qualify",
+            "unnest_generate_date_array_using_recursive_cte",
+        ),
+    )
+
+
 def _eliminate_starrocks_qualify() -> None:
     from benchbox._vendor.sqlglot.generators.starrocks import StarRocksGenerator
 
@@ -422,6 +436,9 @@ def translate_sql_query(
                     "rollup_empty_input_row",
                 ):
                     expression = apply_rewrite(doris_rewrite, expression, tgt)
+            if tgt == "singlestore":
+                _keep_singlestore_full_outer_join()
+                expression = apply_rewrite("rollup_empty_input_row", expression, tgt)
             if tgt == "sqlite":
                 expression = apply_rewrite("fold_between_literal_arithmetic", expression, tgt)
                 if date_columns:

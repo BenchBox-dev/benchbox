@@ -165,14 +165,14 @@ class _PGConn:
 
 
 def _stub_psycopg(monkeypatch: Any) -> None:
-    fake = types.ModuleType("psycopg")
-    monkeypatch.setitem(sys.modules, "psycopg", fake)
     try:
         import benchbox.platforms.postgresql as m
-
-        m.psycopg = fake
     except ImportError:
-        pass
+        m = None
+    fake = types.ModuleType("psycopg")
+    monkeypatch.setitem(sys.modules, "psycopg", fake)
+    if m is not None:
+        monkeypatch.setattr(m, "psycopg", fake, raising=False)
 
 
 @pytest.mark.platform_smoke
@@ -254,14 +254,14 @@ class _FakeRequests:
 
 
 def _stub_psycopg_for_questdb(monkeypatch: Any) -> None:
-    fake = types.ModuleType("psycopg")
-    monkeypatch.setitem(sys.modules, "psycopg", fake)
     try:
         import benchbox.platforms.questdb as m
-
-        m.psycopg = fake
     except ImportError:
-        pass
+        m = None
+    fake = types.ModuleType("psycopg")
+    monkeypatch.setitem(sys.modules, "psycopg", fake)
+    if m is not None:
+        monkeypatch.setattr(m, "psycopg", fake, raising=False)
 
 
 @pytest.mark.platform_smoke

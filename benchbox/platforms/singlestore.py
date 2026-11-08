@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import os
 import tempfile
 from collections.abc import Iterator, Sequence
@@ -63,6 +62,8 @@ _PARQUET_EXTENSIONS = {".parquet"}
 
 _LOAD_NULL_TOKEN = "\\N"
 
+_PARQUET_LOAD_CHUNK_ROWS = 1_000_000
+
 
 def _parquet_batch_to_load_bytes(batch: Any) -> bytes:
     import pyarrow as pa
@@ -86,21 +87,22 @@ def _parquet_batch_to_load_bytes(batch: Any) -> bytes:
     return joined[0].as_py().encode("utf-8")
 
 
-@contextlib.contextmanager
-def _parquet_as_load_file(data_file: Path) -> Iterator[Path]:
+def _parquet_load_chunks(data_file: Path) -> Iterator[Path]:
     import pyarrow.parquet as pq
 
-    tmp_fd, tmp_name = tempfile.mkstemp(suffix=".tsv", dir=data_file.parent)
-    os.close(tmp_fd)
-    tmp_path = Path(tmp_name)
-    try:
-        parquet_file = pq.ParquetFile(data_file)
-        with tmp_path.open("wb") as dst:
-            for batch in parquet_file.iter_batches():
-                dst.write(_parquet_batch_to_load_bytes(batch))
-        yield tmp_path
-    finally:
-        tmp_path.unlink(missing_ok=True)
+    parquet_file = pq.ParquetFile(data_file)
+    for batch in parquet_file.iter_batches(batch_size=_PARQUET_LOAD_CHUNK_ROWS):
+        payload = _parquet_batch_to_load_bytes(batch)
+        if not payload:
+            continue
+        tmp_fd, tmp_name = tempfile.mkstemp(suffix=".tsv", dir=data_file.parent)
+        tmp_path = Path(tmp_name)
+        try:
+            with os.fdopen(tmp_fd, "wb") as dst:
+                dst.write(payload)
+            yield tmp_path
+        finally:
+            tmp_path.unlink(missing_ok=True)
 
 
 _DECIMAL_TEXT_PATTERN = r"'^-?[0-9]+(\\.[0-9]+)?$'"
@@ -284,13 +286,11 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
         return self._load_data_infile(connection, table_name, data_file, dialect, strip_trailing_delim)
 
     def _load_parquet_infile(self, connection: Any, table_name: str, data_file: Path) -> int:
-        with _parquet_as_load_file(data_file) as load_path:
-            return self._execute_load_data(
-                connection,
-                table_name,
-                load_path,
-                ["FIELDS TERMINATED BY '\\t' ESCAPED BY '\\\\'", "LINES TERMINATED BY '\\n'"],
-            )
+        clauses = ["FIELDS TERMINATED BY '\\t' ESCAPED BY '\\\\'", "LINES TERMINATED BY '\\n'"]
+        return sum(
+            self._execute_load_data(connection, table_name, load_path, clauses)
+            for load_path in _parquet_load_chunks(data_file)
+        )
 
     def _load_data_infile(
         self,
