@@ -467,7 +467,8 @@ release runs the full UAT; re-run all jobs to produce reusable evidence. The
 newest completed trunk UAT run that executed cells for an ancestor of the tagged
 commit decides, and no older trunk run is used after it. When that run is red (a
 non-success conclusion, a job that did not succeed in its latest attempt, or
-evidence for more than one source commit), a final tag also skips the release
+evidence for more than one source commit) or cannot be evaluated because a
+GitHub read failed, a final tag also skips the release
 candidate fallback and runs the full UAT. When that run is green but does not
 match the tag (changed guarded inputs, `uv.lock`, `trunk-uat.yml` or
 distribution, or expired artifacts), a final tag may still reuse its release

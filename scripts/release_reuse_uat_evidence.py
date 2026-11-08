@@ -705,8 +705,12 @@ def find_trunk_candidate(ctx: Context, report: Report) -> tuple[Source | None, b
             outcome = _evaluate_trunk_run(ctx, run, report)
         except Exception as exc:
             report.add(f"trunk run {run.get('id')}: evaluation", False, f"{type(exc).__name__}: {exc}")
-            report.add("trunk UAT runs", False, "the newest run could not be evaluated, so no older run is used")
-            return None, False
+            report.add(
+                "trunk UAT runs",
+                False,
+                "the newest run could not be evaluated, so no older run and no release candidate run is used",
+            )
+            return None, True
         if outcome.source is not None:
             return outcome.source, False
         if outcome.decisive:

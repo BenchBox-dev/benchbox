@@ -1022,7 +1022,23 @@ def test_a_candidate_that_errors_stops_the_trunk_search_instead_of_using_an_olde
     reused, outputs, report = world.decide()
     assert not reused and outputs == {}
     assert "trunk run 202: evaluation: ValueError: gh api failed" in _failures(report)
-    assert "no older run is used" in _failures(report)
+    assert "no older run and no release candidate run is used" in _failures(report)
+
+
+def test_a_candidate_that_errors_also_refuses_the_release_candidate_fallback(rc_world, monkeypatch):
+    _git(rc_world.repo, "update-ref", "refs/remotes/origin/develop", rc_world.head)
+    rc_world.fake.trunk_run(201, rc_world.rc_sha, rc_world.rc_dist, created="2026-11-05T02:00:00Z")
+    original = rc_world.fake.json
+
+    def flaky(*args: str):
+        if "/runs/201/artifacts" in args[0]:
+            raise ValueError("gh api failed")
+        return original(*args)
+
+    monkeypatch.setattr(reuse, "_gh_json", flaky)
+    reused, outputs, report = rc_world.decide()
+    assert not reused and outputs == {}
+    assert not any(condition.startswith("release candidate") for condition, _, _ in report.rows)
 
 
 def test_trunk_evidence_is_never_used_for_a_commit_that_is_not_on_develop(world):
