@@ -4081,7 +4081,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-load-value-integrity",
-      "lifecycle": "active",
+      "lifecycle": "completed",
       "members": [
         "mocker-doris-singlestore-stacks-start-20261107",
         "singlestore-decimal-text-loads-as-zero-20261107",
@@ -18614,15 +18614,10 @@
       "title": "Audit metric/scope truthfulness across all historical DONE items and add a recurrence guard"
     },
     "doris-load-dead-paths-cleanup-20261107": {
-      "claim": {
-        "expires_at": "2026-11-09T02:51:42Z",
-        "generation": "a779116668a94448ad705f01bbda8ae0",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Remove Doris load leftovers kept only because out-of-scope tests import them"
     },
     "doris-uat-failures-20261030": {
