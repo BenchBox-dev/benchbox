@@ -114,3 +114,20 @@ def test_the_gate_paths_cover_the_theseus_wiring() -> None:
         "tests/unit/scripts/test_review_policy_pin.py",
     ):
         assert path in gate_paths
+
+
+def test_the_pinned_engine_recognises_the_review_named_revert_subject(theseus_engine) -> None:
+    import importlib
+    from datetime import UTC, datetime
+
+    watch = importlib.import_module("theseus_reviewer.omp_watch")
+    change = watch.PinChange(
+        "a" * 40,
+        datetime(2026, 11, 8, tzinfo=UTC),
+        "revert(review): restore omp 18.13.3",
+        watch.BOT_AUTHOR_EMAIL,
+        "18.13.3",
+        "18.16.0",
+        "",
+    )
+    assert change.is_revert

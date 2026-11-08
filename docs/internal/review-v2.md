@@ -1906,3 +1906,24 @@ dependence on the old names. In BenchBox:
   documented; do not use them.
 - `review-gate` is the required context. The legacy `oracle-gate` context may
   stay on the ruleset until the owner removes it just before the v0.2.5 relock.
+
+### Pin-watch continuity at the policy rename
+
+The v0.2.4 watch reads Git history of its policy path without following renames.
+The new path therefore starts a new history; it does not inherit the previous
+pin's observation window. This cutover loses no active window: the last omp
+bump was `18.13.3` → `18.16.0`, commit
+`c3b677c0ae97ae7afcc08fe0e59cc549b1d013b9`, merged
+2026-11-07 at 03:08:48 UTC. The
+[2026-11-08 watch run](https://github.com/BenchBox-dev/benchbox/actions/runs/42507381303)
+reported `state=clear`: all 10 of the configured 10 reviews were observed,
+with zero absent or invalid attempts. The window settles after 10 reviews or
+48 hours (the latter deadline was 2026-11-09 at 03:08:48 UTC); it had already
+settled before this rename. No omp version changes in this PR.
+
+The pinned engine already accepts `revert(review): restore omp `:
+`omp_watch.py` at `8635dc71ec169886082c1afbc1a9080920237db2` defines it as
+`REVERT_SUBJECT_PREFIX` and includes it in `REVERT_SUBJECT_PREFIXES`, which
+`PinChange.is_revert` checks along with the automation author.
+`test_the_pinned_engine_recognises_the_review_named_revert_subject` exercises
+that actual verified engine, rather than merely checking workflow text.
