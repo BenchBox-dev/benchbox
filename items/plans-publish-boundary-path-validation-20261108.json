@@ -5,6 +5,14 @@
     "Fail closed and atomic: no partial publication when one companion fails; safe, errors-only and missing companions pass through unchanged.",
     "Private raw export tests stay green unchanged; a real local-destination publish dry-run is recorded in the PR body, with no upload or deletion of hosted data."
   ],
+  "batch": {
+    "batch_id": "plan-privacy",
+    "implementation_dependencies": [
+      "plan-path-detector-root-and-drive-coverage-20261108",
+      "plans-export-anonymize-text-fields-20261108"
+    ],
+    "member_id": "plans-publish-boundary-path-validation-20261108"
+  },
   "context": "Publisher bypass and SQL behavior reported by publication batch leader; reproduce at current head before implementing. New hosted data removal or production publication needs separate approval.\n\nDECISIONS (owner, 2026-11-08): detector = known local roots (/Users, /home, /tmp, /var/folders, /private, /mnt, /opt, any Windows drive letter, UNC) PLUS the run's configured data and output directories, with an exact-rule placeholder allowlist (<redacted> and bare /data-style neutral placeholders); NOT every absolute path. Publish boundary = sanitize with the export anonymizer, re-scan, publish only if clean, otherwise reject with a redacted diagnostic and publish nothing (fail closed). ORDER: after the detector item; reuse the export sanitizer from the export item rather than a second sanitizer. GUARDRAILS: stored fingerprints are never recomputed or altered by sanitizing text; plan structure, errors, fingerprint_varied/fingerprint_variants and keys are preserved; never mutate inputs in place; diagnostics must not print the leaked path values; no hosted data deletion, republish or history rewrite; private (non-anonymized) local exports keep their current behavior; false positives are bounded by an allowlist test that real plan text (catalog names, URLs, relative table tails, Spark/LakeSail scans) is not flagged. Verification rubric: (1) reproduce the defect with a failing test or script before editing; (2) focused suites pass via uv run -- python -m pytest -n 0; (3) make comment-policy-check and ruff on touched files; (4) the runtime smoke named in acceptance is recorded in the PR body; (5) one final batch PR merges with green CI and a passing oracle review.",
   "description": "Publication investigation reported benchbox publish run copies companion files byte-for-byte without a path check. Capture-time cleanup cannot protect older or externally produced companions. SQL plans also retain local paths in raw_explain_output when exported without anonymization; a test currently treats that private-export behavior as intentional. The public boundary must not mistake such files for publication-safe artifacts.",
   "links": [
@@ -27,6 +35,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "f5e544ae1516440899cad0e96b60d715",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-08T13:34:12Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0e86cc7780f44266b39392d9b1a2a0fd",
       "session_id": "dc59872de7f0484eafa9032416c81607"
     }
   ]
