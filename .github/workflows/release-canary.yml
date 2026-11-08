@@ -17,7 +17,7 @@ env:
   BENCHBOX_TEST_LOCK_WAIT_SECONDS: "0"
   BENCHBOX_HEAVY_ADMIT_MIN_GIB: "1.5"
   BENCHBOX_HEAVY_MIN_FREE_DISK_GIB: "5"
-  RELEASE_CANARY_REF: develop
+  RELEASE_CANARY_REF: ${{ startsWith(github.ref, 'refs/heads/release/') && github.ref_name || 'develop' }}
   RELEASE_CANARY_SHARD_COUNT: 6
 
 jobs:
@@ -81,7 +81,7 @@ jobs:
             --summary-output release-canary-artifacts/non-fast-collection-summary.json \
             --expected-count "$count" \
             --shard-count "$RELEASE_CANARY_SHARD_COUNT" \
-            --checked-ref develop \
+            --checked-ref "${RELEASE_CANARY_REF}" \
             --checked-sha "${CHECKED_SHA}" \
             --github-output "$GITHUB_OUTPUT"
         env:
@@ -271,7 +271,7 @@ jobs:
           {
             "workflow": "release-canary.yml",
             "job": "credential-free-non-fast",
-            "checked_ref": "develop",
+            "checked_ref": "${RELEASE_CANARY_REF}",
             "commit_sha": "${CHECKED_SHA}",
             "run_id": "${GITHUB_RUN_ID}",
             "shard_index": ${SHARD_INDEX},
@@ -405,7 +405,7 @@ jobs:
           cat > release-canary-artifacts/release-canary-summary.json <<EOF
           {
             "workflow": "release-canary.yml",
-            "checked_ref": "develop",
+            "checked_ref": "${RELEASE_CANARY_REF}",
             "commit_sha": "${CHECKED_SHA}",
             "run_id": "${GITHUB_RUN_ID}",
             "suite_families": ["slow", "resource_heavy"],
@@ -468,7 +468,7 @@ jobs:
         pypi-latest-installability,
         release-canary-result,
       ]
-    if: ${{ always() && !cancelled() }}
+    if: ${{ always() && !cancelled() && !startsWith(github.ref, 'refs/heads/release/') }}
     permissions:
       actions: read
       contents: read

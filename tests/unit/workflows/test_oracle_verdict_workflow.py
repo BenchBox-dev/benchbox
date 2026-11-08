@@ -52,10 +52,10 @@ def _context(
     return {"github": {"event_name": event_name, "event": event or {}, "run_id": "55"}, "inputs": inputs or {}}
 
 
-def test_the_workflow_keeps_the_protocol_name_and_a_single_caller_job() -> None:
+def test_the_workflow_keeps_the_protocol_name_one_caller_job_and_the_posting_check() -> None:
     workflow = _load()
     assert workflow["name"] == "review-verdict"
-    assert list(workflow["jobs"]) == ["verdict"]
+    assert list(workflow["jobs"]) == ["verdict", "posting-check"]
     assert workflow["permissions"] == {}
 
 

@@ -70,16 +70,27 @@ push run on that branch with its `dist-artifact`. It refuses:
 - a commit on both lines, or on neither;
 - a commit whose trunk run is missing, failed, or ran on another branch.
 
-Prerequisite: three capabilities are not yet available for maintenance lines.
-`trunk.yml` does not run on pushes to `release/**`, so no trunk run exists on
-the branch. `oracle-gate` and the review gate name `develop` as the only gated
-base, so a pull request into a maintenance line cannot report `oracle-gate`.
-`release-canary.yml` tests `develop` only, so no canary run tests an ancestor
-of a maintenance commit. Until each is extended to release lines, admission
-refuses every maintenance tag (no trunk run) and the canary check refuses it
-too, and no pull request can merge into the line. A maintenance release
-therefore needs those changes first; do not create a line before then.
-See the gate coverage note in [repo-admin-settings.md](repo-admin-settings.md).
+`trunk.yml` runs on pushes to `release/**` as well as `develop`, so each
+commit merged to a maintenance line gets its own trunk run and `dist-artifact`
+on that branch. Only `develop` runs drive the develop-only consumers
+(`trunk-red-disarm.yml`, `site-inputs.yml`); a red trunk run on a maintenance
+line does not disarm other pull requests.
+
+`release-canary.yml` tests the branch it runs on when that branch is a
+`release/X.Y.x` line and `develop` otherwise. The schedule only fires on
+`develop`, so a maintenance line needs a manual run:
+`gh workflow run release-canary.yml --ref release/X.Y.x`. The run is judged on
+the line like any other canary, and it opens no incident issue (those belong to
+`develop`). `scripts/release_canary_freshness.py` takes the tag, finds the
+protected line the tagged commit is on, and accepts only a canary run on that
+same line: a `release/X.Y.x` canary never satisfies a `develop` tag or a tag on
+another line, and a `develop` canary never satisfies a maintenance tag.
+
+Prerequisite still open: `oracle-gate` and the review gate name `develop` as
+the only gated base until the pinned Theseus callers accept release lines, so a
+pull request into a maintenance line cannot report `oracle-gate` before that
+pin lands. See the gate coverage note in
+[repo-admin-settings.md](repo-admin-settings.md).
 
 The procedure:
 
@@ -91,8 +102,9 @@ The procedure:
    `git push origin "vX.Y.0^{commit}:refs/heads/release/X.Y.x"`.
 3. The branch starts with the workflows and release scripts of that tag. If the
    tag predates maintenance-line support, the first pull request into the branch
-   brings `.github/workflows/trunk.yml`, `ci.yml`, `release-v2.yml` and
-   `scripts/release_artifact_consumer.py` (and whatever they need) from
+   brings `.github/workflows/trunk.yml`, `release-canary.yml`, `ci.yml`,
+   `release-v2.yml`, `scripts/release_artifact_consumer.py`,
+   `scripts/release_canary_freshness.py` (and whatever they need) from
    `develop`; `ci.yml` accepts a `release/X.Y.x` base.
 4. Land the fix by pull request into `release/X.Y.x`; the pull request
    squash-merges like any other. Land the same fix on `develop` through its own
@@ -108,7 +120,10 @@ The procedure:
    `gh run list --workflow trunk.yml --branch release/X.Y.x --event push`.
    `release_flow.py check --releasable-commit` and
    `scripts/release_releasable.py` look at `develop` only; admission is the
-   check for a maintenance commit.
+   check for a maintenance commit. Dispatch the line's canary on the merged
+   commit (`gh workflow run release-canary.yml --ref release/X.Y.x`) and wait
+   for it to go green; the release workflow requires a green canary at most 48
+   hours old on an ancestor of the tagged commit.
 7. Tag the commit with an annotated tag and push it. Rehearse with
    `vX.Y.ZrcN` first: it publishes to TestPyPI from the same checks. For the
    final tag, release UAT reuses the newest `vX.Y.ZrcN` evidence of the same

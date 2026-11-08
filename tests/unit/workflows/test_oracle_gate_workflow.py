@@ -38,10 +38,10 @@ def _text() -> str:
     return WORKFLOW.read_text(encoding="utf-8")
 
 
-def test_the_workflow_keeps_the_protocol_name_and_a_single_caller_job() -> None:
+def test_the_workflow_keeps_the_protocol_name_one_caller_job_and_the_posting_check() -> None:
     workflow = _load()
     assert workflow["name"] == "review-gate"
-    assert list(workflow["jobs"]) == ["gate"]
+    assert list(workflow["jobs"]) == ["gate", "posting-check"]
     assert workflow["permissions"] == {}
 
 

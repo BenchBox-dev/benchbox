@@ -58,7 +58,14 @@ Required status checks:
 - tooling
 - hold
 - oracle-gate
+- review-gate
+- release-v2 probe
 ```
+
+`oracle-gate` and `review-gate` are bound to the `benchbox-oracle` App
+(`integration_id` 5201041). `release-v2 probe` is the job of
+`.github/workflows/release-v2-probe.yml`, bound to the GitHub Actions App
+(`integration_id` 15368); it runs on every pull request regardless of base.
 
 Five of these contexts are always-reporting result jobs in
 `.github/workflows/ci.yml`. `oracle-gate` is a commit status that
@@ -123,6 +130,58 @@ required_pull_request_reviews:    squash-only PRs
 require_extra_approval_for_unattributed_changes: true
 deletion: blocked
 bypass_actors: (none)
+```
+
+Re-apply the required checks (owner only; save the block as
+`develop-squash-only.json`, then
+`gh api -X PUT repos/BenchBox-dev/benchbox/rulesets/15611785 --input develop-squash-only.json`).
+The PUT replaces the whole rule list, so the payload carries every rule:
+
+```json
+{
+  "name": "develop-squash-only",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {"ref_name": {"include": ["refs/heads/develop"], "exclude": []}},
+  "bypass_actors": [],
+  "rules": [
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 0,
+        "dismiss_stale_reviews_on_push": false,
+        "required_reviewers": [],
+        "require_code_owner_review": false,
+        "dismissal_restriction": {"enabled": false, "allowed_actors": []},
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": true,
+        "require_extra_approval_for_unattributed_changes": true,
+        "allowed_merge_methods": ["squash"]
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": false,
+        "do_not_enforce_on_create": false,
+        "required_status_checks": [
+          {"context": "core"},
+          {"context": "explorer"},
+          {"context": "results-data"},
+          {"context": "docs"},
+          {"context": "tooling"},
+          {"context": "hold"},
+          {"context": "oracle-gate", "integration_id": 5201041},
+          {"context": "review-gate", "integration_id": 5201041},
+          {"context": "release-v2 probe", "integration_id": 15368}
+        ]
+      }
+    },
+    {"type": "required_linear_history"},
+    {"type": "non_fast_forward"},
+    {"type": "deletion"}
+  ]
+}
 ```
 
 Current-base checks are not required. With no merge queue and about thirty
@@ -301,16 +360,16 @@ names exist with
 `gh api repos/BenchBox-dev/benchbox/environments/oracle/secrets --jq '.secrets[].name'`
 (names only; never read values).
 
-The `oracle` environment deploys only from the `develop` branch (custom branch
-policies with one `develop` entry). `scripts/ruleset_drift_check.py` fails when
-that policy widens, because any branch allowed to deploy there can mint the App
-token.
+The `oracle` environment deploys only from the `develop` branch and from
+`release/*` branches (custom branch policies with exactly those two entries).
+`scripts/ruleset_drift_check.py` fails when that policy widens or loses an
+entry, because any branch allowed to deploy there can mint the App token.
 
 Read it with
 `gh api repos/BenchBox-dev/benchbox/environments/oracle --jq .deployment_branch_policy`
 (expect `{"custom_branch_policies":true,"protected_branches":false}`) and
 `gh api repos/BenchBox-dev/benchbox/environments/oracle/deployment-branch-policies --jq '.branch_policies[]|[.type,.name]'`
-(expect only `["branch","develop"]`). Verified on 2026-10-26. To restore it:
+(expect exactly `["branch","develop"]` and `["branch","release/*"]`). Verified on 2026-11-08. To restore it:
 
 ```bash
 gh api -X PUT repos/BenchBox-dev/benchbox/environments/oracle \
@@ -318,6 +377,8 @@ gh api -X PUT repos/BenchBox-dev/benchbox/environments/oracle \
   -F 'deployment_branch_policy[custom_branch_policies]=true'
 gh api -X POST repos/BenchBox-dev/benchbox/environments/oracle/deployment-branch-policies \
   -f name=develop -f type=branch
+gh api -X POST repos/BenchBox-dev/benchbox/environments/oracle/deployment-branch-policies \
+  -f name='release/*' -f type=branch
 ```
 
 ### Soundness-path review enforcement
@@ -459,19 +520,19 @@ Required status checks:
 - tooling
 - hold
 - oracle-gate
+- review-gate
+- release-v2 probe
 ```
 
-`oracle-gate` is bound to the `benchbox-oracle` App (`integration_id` 5201041),
-as on `develop`. The gate workflow, the review workflow, the reviewer policy
-(`.github/oracle-reviewers.yml`) and the `oracle` environment name `develop` as
-the only gated base, so a pull request into `release/X.Y.x` cannot report
-`oracle-gate` and cannot merge until a later change (multi-base support in the
-review gate) covers release bases. The same later change makes `trunk.yml` run
-on pushes to `release/**`; until then admission refuses a maintenance tag for
-lack of a trunk run on the branch. A maintenance release needs that change
-first. The ruleset can be applied before it: admission only needs the rulesets
-to exist, and it blocks merges into any `release/**` branch until the gate
-covers them.
+`oracle-gate` and `review-gate` are bound to the `benchbox-oracle` App
+(`integration_id` 5201041) and `release-v2 probe` to the GitHub Actions App
+(`integration_id` 15368), as on `develop`; the drift check requires the two
+required-check lists to be identical. The `oracle` environment already admits
+`release/*`, and `trunk.yml` runs on pushes to `release/**`. The gate workflow,
+the review workflow and the reviewer policy (`.github/oracle-reviewers.yml`)
+still name `develop` as the only gated base until the pinned Theseus callers
+accept release lines, so a pull request into `release/X.Y.x` cannot report
+`oracle-gate` and cannot merge before that pin lands.
 
 Other ruleset properties to preserve:
 
@@ -526,7 +587,9 @@ Apply (owner only; save the block as `release-branches.json`, then
           {"context": "docs"},
           {"context": "tooling"},
           {"context": "hold"},
-          {"context": "oracle-gate", "integration_id": 5201041}
+          {"context": "oracle-gate", "integration_id": 5201041},
+          {"context": "review-gate", "integration_id": 5201041},
+          {"context": "release-v2 probe", "integration_id": 15368}
         ]
       }
     },
