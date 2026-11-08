@@ -37852,17 +37852,12 @@
       "title": "Record a disposition for every pending oracle observation before production-connected extraction steps"
     },
     "theseus-owner-app-tailnet-setup-20261102": {
-      "claim": {
-        "expires_at": "2026-11-09T21:46:13Z",
-        "generation": "1221933452d24c84b3b36f2f99a5ff8c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f"
-      },
+      "claim": null,
       "needs": [
         "theseus-atomic-benchbox-cutover-20261102"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Provision Theseus-owned App, protected secrets and tailnet identity without exposing candidate builds"
     },
     "theseus-package-identity-install-20261102": {
