@@ -30,11 +30,18 @@ from tests.fixtures.result_dict_fixtures import make_benchmark_results
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 
+EXECUTION_CLASS_DETECTORS = ("benchbox.core.results.environment", "benchbox.core.system", "benchbox.utils.system_info")
+
+
+def _pin_execution_class(monkeypatch: pytest.MonkeyPatch, execution_class: str) -> None:
+    detected = {"execution_class": execution_class, "execution_class_source": "observed"}
+    for module in EXECUTION_CLASS_DETECTORS:
+        monkeypatch.setattr(f"{module}.detect_execution_class", lambda: dict(detected))
+
+
 @pytest.fixture(autouse=True)
-def _native_execution_class(monkeypatch):
-    native = {"execution_class": "native", "execution_class_source": "observed"}
-    for module in ("benchbox.core.results.environment", "benchbox.core.system", "benchbox.utils.system_info"):
-        monkeypatch.setattr(f"{module}.detect_execution_class", lambda: dict(native))
+def _native_execution_class(monkeypatch: pytest.MonkeyPatch) -> None:
+    _pin_execution_class(monkeypatch, "native")
 
 
 CONNECTION = {"host": "db.example.com", "password": "secret", "benchmark": "tpch", "scale_factor": 0.01}
@@ -121,6 +128,23 @@ def test_every_declared_mode_gets_its_own_variant_id(platform: str) -> None:
 
     assert len(set(variant_ids.values())) == len(_declared_modes(platform))
     assert variant_ids[_default_mode(platform)] == platform
+
+
+@pytest.mark.parametrize(("execution_class", "suffix"), [("native", ""), ("container", "^container")])
+@pytest.mark.parametrize("platform", sorted(RECORDED_PLATFORMS))
+def test_the_variant_id_carries_the_container_suffix_only_for_a_container_host(
+    monkeypatch: pytest.MonkeyPatch, platform: str, execution_class: str, suffix: str
+) -> None:
+    _pin_execution_class(monkeypatch, execution_class)
+    display_name, config = RECORDED_PLATFORMS[platform]
+    default = _default_mode(platform)
+    other = next(mode for mode in _declared_modes(platform) if mode != default)
+
+    default_payload = _bundle(get_adapter(f"{platform}:{default}", **config), display_name)
+    other_payload = _bundle(get_adapter(f"{platform}:{other}", **config), display_name)
+
+    assert published_variant_id(default_payload, platform) == f"{platform}{suffix}"
+    assert published_variant_id(other_payload, platform) == f"{platform}~{other}{suffix}"
 
 
 @pytest.mark.parametrize("platform", sorted(RECORDED_PLATFORMS))

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import subprocess
 import zipfile
@@ -85,7 +86,33 @@ def test_project_local_wheel_and_lock_are_exact_and_sibling_free() -> None:
     assert "tractable/database.py" not in names
 
 
+def _skip_unless_scripts_project_resolves_offline() -> None:
+    probe = subprocess.run(
+        [
+            "uv",
+            "run",
+            "--project",
+            str(SCRIPTS_PROJECT),
+            "--locked",
+            "--offline",
+            "--",
+            "python",
+            "-c",
+            "import todo_db",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    if probe.returncode != 0 and os.environ.get("GITHUB_ACTIONS") != "true":
+        pytest.skip(
+            "the _project/scripts environment is not installed and cannot resolve offline; "
+            "run `uv sync --project _project/scripts --locked` first (hosted CI always does)"
+        )
+
+
 def test_installed_runtime_handshake_exposes_registered_batch_tools(tmp_path: Path) -> None:
+    _skip_unless_scripts_project_resolves_offline()
     remote = tmp_path / "state.git"
     subprocess.run(["git", "init", "--bare", "--quiet", str(remote)], check=True, capture_output=True)
     subprocess.run(

@@ -798,6 +798,40 @@ def test_a_real_core_failure_is_not_mistaken_for_a_placeholder_while_another_run
     assert "required check 'core' completed with conclusion 'failure'" in err
 
 
+@pytest.mark.parametrize("verdict", [None, {"verdict": "pass"}])
+def test_a_real_core_failure_inside_the_full_run_still_in_progress_waits_for_that_run(
+    verdict: dict | None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gh = FakeGh(
+        verdict=verdict,
+        core=("completed", "failure"),
+        core_url=FULL_URL,
+        ci_runs=[(91, "CI", "in_progress")],
+    )
+    assert _arm_live(gh) == 2
+    assert gh.merged() == []
+    err = capsys.readouterr().err
+    assert "waiting for full CI run 91 to complete" in err
+    assert "no verdict will arrive" not in err
+    assert "completed with conclusion" not in err
+    assert "make pr-rerun" in err
+
+
+def test_a_real_core_failure_inside_a_completed_run_advises_the_rerun_now(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    gh = FakeGh(
+        verdict=None,
+        core=("completed", "failure"),
+        core_url=FULL_URL,
+        ci_runs=[(91, "CI", "completed")],
+    )
+    assert _arm_live(gh) == 2
+    err = capsys.readouterr().err
+    assert "waiting for full CI run" not in err
+    assert "make pr-rerun PR=7" in err
+
+
 def _final_line(capsys: pytest.CaptureFixture[str]) -> str:
     captured = capsys.readouterr()
     lines = [line for line in captured.out.splitlines() if line.strip()]

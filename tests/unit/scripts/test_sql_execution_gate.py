@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import datetime
 import json
+import types
+from contextlib import contextmanager
 from decimal import Decimal
 from pathlib import Path
 
 import pytest
 
 from scripts.sql_execution_gate import augmentation, gate
-from scripts.sql_execution_gate.engines import Dataset, DuckdbEngine, SqliteEngine
+from scripts.sql_execution_gate.engines import Dataset, DuckdbEngine, PostgresEngine, SqliteEngine
 from scripts.sql_execution_gate.rows import first_difference, is_vacuous, vacuity_detail
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
@@ -622,6 +624,57 @@ def test_index_columns_picks_the_leading_column_and_the_join_keys():
     ]
     assert index_columns(["l_orderkey", "l_partkey", "l_quantity", "l_returnflag"]) == ["l_orderkey", "l_partkey"]
     assert index_columns(["ss_sold_date_sk", "ss_ticket_number"], index_keys=False) == ["ss_sold_date_sk"]
+
+
+class _RecordingPostgres:
+    def __init__(self, columns: list[str]) -> None:
+        self.columns = columns
+        self.statements: list[str] = []
+
+    def execute(self, sql, params=None):
+        self.statements.append(sql)
+        rows = [(name,) for name in self.columns] if "information_schema.columns" in sql else []
+        return types.SimpleNamespace(fetchall=lambda: rows, fetchone=lambda: rows[0] if rows else None)
+
+    def cursor(self):
+        return self
+
+    @contextmanager
+    def copy(self, statement):
+        yield types.SimpleNamespace(write=lambda text: None)
+
+
+def _open_postgres(monkeypatch, tmp_path, columns, index_keys):
+    recorder = _RecordingPostgres(columns)
+    monkeypatch.setattr(PostgresEngine, "_connect", staticmethod(lambda: recorder))
+    data = tmp_path / "cs.tbl"
+    data.write_text("1|2|3|\n")
+    engine = PostgresEngine(15.0)
+    engine.open(Dataset("t", "CREATE TABLE cs (x INT)", {"cs": data}, index_keys=index_keys), tmp_path)
+    return recorder.statements
+
+
+def test_postgres_engine_indexes_the_leading_key_and_join_keys_before_analyze(monkeypatch, tmp_path):
+    statements = _open_postgres(
+        monkeypatch, tmp_path, ["cs_sold_date_sk", "cs_order_number", "cs_quantity"], index_keys=True
+    )
+
+    created = [statement for statement in statements if statement.startswith("CREATE INDEX")]
+    assert created == [
+        'CREATE INDEX "cs_cs_sold_date_sk_ix" ON cs ("cs_sold_date_sk")',
+        'CREATE INDEX "cs_cs_order_number_ix" ON cs ("cs_order_number")',
+    ]
+    assert statements.index(created[-1]) < statements.index("ANALYZE")
+
+
+def test_postgres_engine_keeps_only_the_leading_index_when_keys_are_not_indexed(monkeypatch, tmp_path):
+    statements = _open_postgres(
+        monkeypatch, tmp_path, ["cs_sold_date_sk", "cs_order_number", "cs_quantity"], index_keys=False
+    )
+
+    assert [statement for statement in statements if statement.startswith("CREATE INDEX")] == [
+        'CREATE INDEX "cs_cs_sold_date_sk_ix" ON cs ("cs_sold_date_sk")'
+    ]
 
 
 def test_sqlite_engine_indexes_the_correlation_key_so_an_exists_subquery_is_never_a_scan(tmp_path):
