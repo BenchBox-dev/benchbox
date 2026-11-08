@@ -3,7 +3,6 @@ from __future__ import annotations
 import importlib.util
 import sys
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -214,22 +213,25 @@ def test_the_main_command_reports_an_api_failure_as_an_error(monkeypatch, capsys
     assert "HTTP 403" in capsys.readouterr().err
 
 
-def _completed(stdout: str, returncode: int = 0, stderr: str = ""):
-    return SimpleNamespace(stdout=stdout, returncode=returncode, stderr=stderr)
+@pytest.fixture
+def fake_gh(tmp_path, monkeypatch):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    argv_log = tmp_path / "argv.txt"
+    script = bin_dir / "gh"
+    script.write_text('#!/bin/sh\nprintf \'%s\\n\' "$@" > "$FAKE_GH_ARGV"\nprintf \'%s\' "$FAKE_GH_STDOUT"\n')
+    script.chmod(0o755)
+    monkeypatch.setenv("PATH", str(bin_dir))
+    monkeypatch.setenv("FAKE_GH_ARGV", str(argv_log))
+    return argv_log
 
 
-def test_dispatch_through_the_real_gh_wrapper_accepts_plain_text_output(monkeypatch):
-    calls = []
-
-    def fake_run(command, **kwargs):
-        calls.append(command)
-        return _completed("Created workflow_dispatch event for release-v2.yml at feat/x\n")
-
-    monkeypatch.setattr(launch.subprocess, "run", fake_run)
+def test_dispatch_through_the_real_gh_wrapper_accepts_plain_text_output(fake_gh, monkeypatch):
+    monkeypatch.setenv("FAKE_GH_STDOUT", "Created workflow_dispatch event for release-v2.yml at feat/x\n")
     launch.dispatch(REPOSITORY, BRANCH, "reuse")
-    assert calls[0][:3] == ["gh", "workflow", "run"]
+    assert fake_gh.read_text(encoding="utf-8").split()[:3] == ["workflow", "run", "release-v2.yml"]
 
 
-def test_api_calls_through_the_real_gh_wrapper_still_parse_json(monkeypatch):
-    monkeypatch.setattr(launch.subprocess, "run", lambda command, **kwargs: _completed('{"workflow_runs": []}'))
+def test_api_calls_through_the_real_gh_wrapper_still_parse_json(fake_gh, monkeypatch):
+    monkeypatch.setenv("FAKE_GH_STDOUT", '{"workflow_runs": []}')
     assert launch.gh("api", "repos/x/y") == {"workflow_runs": []}
