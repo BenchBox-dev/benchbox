@@ -43,9 +43,9 @@ class TestTuningConfigurationValidation:
 class TestExampleScriptConstraintRemoval:
     def test_constraint_parameters_removed_from_examples(self):
         example_files = [
-            "/Users/joe/Developer/BenchBox/examples/duckdb_tpch.py",
-            "/Users/joe/Developer/BenchBox/examples/duckdb_tpcds.py",
-            "/Users/joe/Developer/BenchBox/examples/databricks_tpch.py",
+            "/Users/example/Developer/BenchBox/examples/duckdb_tpch.py",
+            "/Users/example/Developer/BenchBox/examples/duckdb_tpcds.py",
+            "/Users/example/Developer/BenchBox/examples/databricks_tpch.py",
         ]
 
         for example_file in example_files:
@@ -65,9 +65,9 @@ class TestExampleScriptConstraintRemoval:
 class TestTuningFileConstraintConfiguration:
     def test_tuning_files_have_explicit_constraints(self):
         tuning_files = [
-            "/Users/joe/Developer/BenchBox/examples/duckdb_tpch_tuned.yaml",
-            "/Users/joe/Developer/BenchBox/examples/duckdb_tpch_notuning.yaml",
-            "/Users/joe/Developer/BenchBox/examples/duckdb_tpcds_tuned.yaml",
+            "/Users/example/Developer/BenchBox/examples/duckdb_tpch_tuned.yaml",
+            "/Users/example/Developer/BenchBox/examples/duckdb_tpch_notuning.yaml",
+            "/Users/example/Developer/BenchBox/examples/duckdb_tpcds_tuned.yaml",
         ]
 
         for tuning_file in tuning_files:

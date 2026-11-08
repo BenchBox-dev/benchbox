@@ -72,9 +72,9 @@ def test_project_local_wheel_and_lock_are_exact_and_sibling_free() -> None:
     assert f'path = "{expected_path}"' in pyproject
     assert f'path = "{expected_path}"' in lock
     assert f'name = "tractable"\nversion = "{TRACTABLE_VERSION}"' in lock
-    assert "/Users/joe/Developer/tractable" not in pyproject
-    assert "/Users/joe/Developer/tractable" not in lock
-    assert "/Users/joe/Developer" not in lock
+    assert "/Users/example/Developer/tractable" not in pyproject
+    assert "/Users/example/Developer/tractable" not in lock
+    assert "/Users/example/Developer" not in lock
     with zipfile.ZipFile(WHEEL) as archive:
         names = set(archive.namelist())
         metadata_name = next(name for name in names if name.endswith(".dist-info/METADATA"))

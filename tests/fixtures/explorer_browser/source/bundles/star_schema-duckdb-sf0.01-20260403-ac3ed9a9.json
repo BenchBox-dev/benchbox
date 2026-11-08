@@ -21,7 +21,7 @@
     "config": {
       "execution_mode": "sql",
       "connection_mode": "file",
-      "database_path": "/Users/joe/Developer/BenchBox/.claude/worktrees/agent-acabb4a7/benchmark_runs/databases/ssb_sf001/ssb_sf001_notuning_uniq_check.duckdb",
+      "database_path": "/Users/example/Developer/BenchBox/.claude/worktrees/agent-acabb4a7/benchmark_runs/databases/ssb_sf001/ssb_sf001_notuning_uniq_check.duckdb",
       "memory_limit": "12GB",
       "enable_progress_bar": false,
       "result_cache_enabled": false,
@@ -29,7 +29,7 @@
       "driver_runtime_strategy": "current-process",
       "driver_version_resolved": "1.4.3",
       "driver_package": "duckdb",
-      "driver_runtime_python_executable": "/Users/joe/Developer/BenchBox/.claude/worktrees/agent-acabb4a7/.venv/bin/python"
+      "driver_runtime_python_executable": "/Users/example/Developer/BenchBox/.claude/worktrees/agent-acabb4a7/.venv/bin/python"
     },
     "driver_actual_version": "1.4.3",
     "driver_package": "duckdb",
@@ -550,7 +550,7 @@
     "driver_version_resolved": "1.4.3",
     "driver_version_actual": "1.4.3",
     "driver_runtime_strategy": "current-process",
-    "driver_runtime_python_executable": "/Users/joe/Developer/BenchBox/.claude/worktrees/agent-acabb4a7/.venv/bin/python"
+    "driver_runtime_python_executable": "/Users/example/Developer/BenchBox/.claude/worktrees/agent-acabb4a7/.venv/bin/python"
   },
   "environment": {
     "os": "Darwin 25.3.0",
