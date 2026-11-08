@@ -1275,3 +1275,35 @@ def test_decide_command_fails_closed_on_unexpected_errors(tmp_path, monkeypatch)
     assert code == 0
     assert output.read_text(encoding="utf-8") == "reuse=false\n"
     assert "run the full UAT stages" in summary.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("foreign_first", [False, True])
+def test_a_run_holding_evidence_for_an_ancestor_and_a_newer_commit_is_decisive_and_red(world, foreign_first):
+    world.fake.trunk_run(201, world.candidate, world.trunk_dist, created="2026-11-04T02:00:00Z")
+    world.fake.trunk_run(202, world.candidate, world.trunk_dist, created="2026-11-05T02:00:00Z")
+    unrelated = _git(world.repo, "commit-tree", "-m", "unrelated", "4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    world.fake.artifact(202, f"release-uat-trunk-{unrelated}-stage1-shard", {})
+    if foreign_first:
+        world.fake.artifacts[202].insert(0, world.fake.artifacts[202].pop())
+    reused, outputs, report = world.decide()
+    assert not reused and outputs == {}
+    assert "holds evidence for 2 source commits" in _failures(report)
+    assert not any("trunk run 201" in condition for condition, _, _ in report.rows)
+
+
+def test_a_mixed_source_run_also_refuses_the_release_candidate_fallback(rc_world):
+    _git(rc_world.repo, "update-ref", "refs/remotes/origin/develop", rc_world.head)
+    rc_world.fake.trunk_run(201, rc_world.rc_sha, rc_world.rc_dist, created="2026-11-05T02:00:00Z")
+    unrelated = _git(rc_world.repo, "commit-tree", "-m", "unrelated", "4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    rc_world.fake.artifact(201, f"release-uat-trunk-{unrelated}-stage1-shard", {})
+    reused, outputs, _ = rc_world.decide()
+    assert not reused and outputs == {}
+
+
+def test_a_green_trunk_run_that_fails_a_guarded_input_check_still_allows_the_release_candidate_fallback(rc_world):
+    _git(rc_world.repo, "update-ref", "refs/remotes/origin/develop", rc_world.head)
+    rc_world.fake.trunk_run(201, rc_world.rc_sha, rc_world.rc_dist, created="2026-11-05T02:00:00Z")
+    rc_world.advance(**{"tests/uat/file.txt": "changed\n"})
+    reused, outputs, report = rc_world.decide()
+    assert "guarded trees changed since the evidence commit" in _failures(report)
+    assert any(condition.startswith("release candidate") for condition, _, _ in report.rows)

@@ -610,12 +610,13 @@ def _trunk_attempt_problem(run: dict[str, Any], jobs: list[dict[str, Any]]) -> s
     return None
 
 
-def _executed_source(artifacts: list[dict[str, Any]]) -> str | None:
+def _executed_sources(artifacts: list[dict[str, Any]]) -> list[str]:
+    found: list[str] = []
     for artifact in artifacts:
         match = TRUNK_EXECUTED_ARTIFACT.match(str(artifact.get("name")))
-        if match is not None:
-            return match.group(1)
-    return None
+        if match is not None and match.group(1) not in found:
+            found.append(match.group(1))
+    return found
 
 
 class TrunkOutcome(NamedTuple):
@@ -632,11 +633,18 @@ def _evaluate_trunk_run(ctx: Context, run: dict[str, Any], report: Report) -> Tr
         report.add(f"{label}: run", False, problem)
         return TrunkOutcome(None, False, False)
     artifacts = _artifact_listing(ctx.repository, run_id)
-    executed = _executed_source(artifacts)
-    decisive = executed is not None and _is_ancestor(ctx.repo_dir, executed, ctx.head_sha)
+    executed = _executed_sources(artifacts)
+    decisive = any(_is_ancestor(ctx.repo_dir, sha, ctx.head_sha) for sha in executed)
     if run.get("conclusion") != "success":
         report.add(f"{label}: run", False, f"concluded {run.get('conclusion')!r}, not 'success'")
         return TrunkOutcome(None, decisive, decisive)
+    if decisive and len(executed) > 1:
+        report.add(
+            f"{label}: gate evidence",
+            False,
+            f"the run holds evidence for {len(executed)} source commits, one of them an ancestor of the tagged commit",
+        )
+        return TrunkOutcome(None, True, True)
     gates = [a["name"] for a in artifacts if TRUNK_GATE_ARTIFACT.fullmatch(str(a.get("name")))]
     if len(gates) != 1:
         detail = (

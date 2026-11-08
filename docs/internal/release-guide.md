@@ -465,8 +465,13 @@ of the run's latest attempt succeeded and ran in that attempt. Re-running only
 the failed jobs of a run mixes attempts, so the run stops qualifying and the
 release runs the full UAT; re-run all jobs to produce reusable evidence. The
 newest completed trunk UAT run that executed cells for an ancestor of the tagged
-commit decides: when it is red or does not qualify, no older run and no release
-candidate run is used.
+commit decides, and no older trunk run is used after it. When that run is red (a
+non-success conclusion, a job that did not succeed in its latest attempt, or
+evidence for more than one source commit), a final tag also skips the release
+candidate fallback and runs the full UAT. When that run is green but does not
+match the tag (changed guarded inputs, `uv.lock`, `trunk-uat.yml` or
+distribution, or expired artifacts), a final tag may still reuse its release
+candidate run.
 
 ### Operating it
 
