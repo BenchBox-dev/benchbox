@@ -5318,20 +5318,47 @@
       "terminal_outcome": "deliver"
     },
     "plan-privacy": {
-      "accepted_members": {},
+      "accepted_members": {
+        "plan-path-detector-root-and-drive-coverage-20261108": "5b61b7af2125006d0e0584f8e1697ce13cdb565a"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "plan-path-detector-root-and-drive-coverage-20261108": {
+          "accepted_head": "5b61b7af2125006d0e0584f8e1697ce13cdb565a",
+          "changed_files": [
+            "benchbox/core/dataframe/benchmark_suite.py",
+            "benchbox/core/dataframe/profiling.py",
+            "benchbox/core/results/anonymization.py",
+            "benchbox/validation/bundle.py",
+            "changelog.d/feat-plan-privacy--plan-path-detector-root-and-drive-coverage-20261108.json",
+            "tests/unit/core/dataframe/test_local_path_detector.py",
+            "tests/unit/scripts/test_corpus_privacy_invariant.py",
+            "tests/unit/scripts/test_validate_submission_slim_fallback.py"
+          ],
+          "integration_head": "e168043f991b100bf7ad16236f63f17749a40643",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/plan-privacy",
-      "integration_head": "fb319236c37869f3268874e3d3f77e61c836f867",
+      "integration_head": "e168043f991b100bf7ad16236f63f17749a40643",
       "integration_log": [
         {
           "at": "2026-11-08T13:34:01Z",
           "head": "fb319236c37869f3268874e3d3f77e61c836f867",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-08T16:33:20Z",
+          "head": "e168043f991b100bf7ad16236f63f17749a40643",
+          "kind": "prepare",
+          "member": "plan-path-detector-root-and-drive-coverage-20261108",
+          "op_id": "8d41f50fcb4c4ae28f1709cce1040172",
+          "previous_head": "fb319236c37869f3268874e3d3f77e61c836f867",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-privacy",
@@ -27651,15 +27678,10 @@
       "title": "Plan-capture robustness: explicit phase-eligibility, bounded timeout-thread leak, per-result plan identity, comparable-subset honesty"
     },
     "plan-path-detector-root-and-drive-coverage-20261108": {
-      "claim": {
-        "expires_at": "2026-11-09T16:33:17Z",
-        "generation": "9baee7a0234e457aa855d88a7d9ec7e5",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Cover non-home paths and Windows drives in plan redaction and leak detection"
     },
     "plan-review-recorded-decision-reconciliation": {
