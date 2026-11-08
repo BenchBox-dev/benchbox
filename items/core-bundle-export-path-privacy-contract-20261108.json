@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Core exports the detector contract (roots, drive/UNC rules, placeholder allowlist, accepted and rejected example cases) in the site-inputs bundle, generated from the shared detector in benchbox/validation/bundle.py.",
+    "The site gate test consumes that contract (bundle:fetch) and fails on drift; the hand-copied case tables are removed.",
+    "A core test fails when the contract changes without the bundle regenerating."
+  ],
+  "context": "Cross-repo: the core change must publish before the site change can consume it (see benchbox-site bundle:fetch flow). Verification rubric: reproduce drift (change an allowlist entry, show nothing fails today); fix; tests in both repos; comment-policy and ruff; PRs merged with green CI.",
+  "description": "The site deploy gate (benchbox-site PR #128) uses a hand-ported TypeScript copy of core's local-path detector (known roots, drive letters, UNC, placeholder allowlist). The core site-inputs bundle publishes no path-privacy contract, so nothing mechanically detects drift between the two; the site README only asks maintainers to keep them in step. A core change to the roots or allowlist could silently desynchronize the site gate.",
+  "links": [
+    "benchbox/validation/bundle.py",
+    "https://github.com/BenchBox-dev/benchbox-site/pull/128",
+    "https://github.com/BenchBox-dev/BenchBox/pull/4054"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-08T19:34:07Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ebb75f37a0b948b1b2bbb14a055caf9c",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    }
+  ]
+}

@@ -15411,6 +15411,13 @@
       "status": "done",
       "title": "Copyright and License Declaration Updates ✅ COMPLETED"
     },
+    "core-bundle-export-path-privacy-contract-20261108": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Export the local-path privacy contract in the core bundle so the site gate can check drift"
+    },
     "core-docs-advisory-site-build-20261017": {
       "claim": null,
       "needs": [],
