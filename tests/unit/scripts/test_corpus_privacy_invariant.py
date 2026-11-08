@@ -443,7 +443,7 @@ def test_bundle_leak_scan_shares_the_single_detector_source() -> None:
         for path in (repo / root).rglob("*.py")
         if "/var/folders|/var/run" in path.read_text(encoding="utf-8")
     )
-    assert owners == ["benchbox/core/dataframe/local_path_detector.py"]
+    assert owners == ["benchbox/validation/bundle.py"]
     sample = {
         "/Users/someone/key": "ok",
         "a": ["~/work/file", ("C:\\Users\\me\\x",), {"/home/u/y"}],

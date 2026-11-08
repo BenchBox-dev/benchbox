@@ -6,14 +6,12 @@ import contextlib
 import copy
 import functools
 import hashlib
-import importlib.util
 import logging
 import os
 import platform
 import re
 import secrets
 import subprocess
-import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -23,6 +21,13 @@ from urllib.parse import urlparse
 import yaml
 
 from benchbox.core.results import platform_options as _platform_options
+from benchbox.validation.bundle import (
+    PRIVATE_LOCAL_PATH_RE,
+    REDACTED_PLACEHOLDER,
+    LocalPathDetector,
+    find_public_path_leaks,
+    local_path_detector,
+)
 
 is_secret_option_key = _platform_options.is_secret_option_key
 _SECRET_KEY_PARTS = _platform_options._SECRET_KEY_PARTS
@@ -30,27 +35,7 @@ _SECRET_KEY_PARTS = _platform_options._SECRET_KEY_PARTS
 logger = logging.getLogger(__name__)
 
 
-def _load_local_path_detector():
-    name = "_benchbox_local_path_detector"
-    cached = sys.modules.get(name)
-    if cached is not None:
-        return cached
-    helper_path = Path(__file__).resolve().parents[1] / "dataframe" / "local_path_detector.py"
-    spec = importlib.util.spec_from_file_location(name, helper_path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"Cannot load local path detector from {helper_path}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-_local_path_detector = _load_local_path_detector()
-PRIVATE_LOCAL_PATH_RE = _local_path_detector.PRIVATE_LOCAL_PATH_RE
-PUBLIC_REDACTED_VALUE = _local_path_detector.REDACTED_PLACEHOLDER
-LocalPathDetector = _local_path_detector.LocalPathDetector
-find_public_path_leaks = _local_path_detector.find_public_path_leaks
-local_path_detector = _local_path_detector.local_path_detector
+PUBLIC_REDACTED_VALUE = REDACTED_PLACEHOLDER
 
 
 def _load_anonymization_specs() -> dict[str, Any]:

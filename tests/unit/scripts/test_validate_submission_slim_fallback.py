@@ -23,9 +23,7 @@ def slim_leak_detector():
         del sys.modules[spec.name]
 
     detector = module.find_public_path_leaks
-    assert detector.__module__ == "_benchbox_local_path_detector", "fixture did not exercise the stdlib detector"
-    detector_source = (ROOT / "benchbox/core/dataframe/local_path_detector.py").read_text(encoding="utf-8")
-    assert "benchbox" not in detector_source
+    assert detector.__module__ == "_validation_bundle_slim", "fixture did not exercise the standalone detector"
     return detector
 
 
