@@ -26860,7 +26860,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "Distinguish oracle-review waiting state from verdict failure"
     },
     "oracle-reviewer-availability": {

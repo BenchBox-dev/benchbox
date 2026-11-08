@@ -5,6 +5,7 @@
   ],
   "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\n2026-10-26: the gate's waiting messages change in oracle-gate-from-verdict-job-20261026 (thread check removed) and retire-oracle-review-workflow-20261021 (no manual dispatch instruction); re-check this item against the result.\n\nUnblocked 2026-10-18: the blocking pair (ci-stale + cancel-race) merged in PR #3111. Ready to implement: show waiting-for-review as pending instead of failed, following the pending reporting decided by that fix. Not started; work stopped 2026-10-18.",
   "description": "The oracle-review CI check exits failure while merely awaiting a verdict for the head, which reads identically to a refusal. Consider reporting pending/neutral until a verdict exists for the head, failing only on refusal, expiry, or SHIP-with-unresolved-threads; or document the reading so the next session does not chase a non-defect.",
+  "drop_reason": "Superseded and resolved by the gate waiting-exit and status handling landed in BenchBox #3913 and Theseus #40.",
   "sessions": [
     {
       "actor": "mcp:tbh:joe@joe-mac-mini.local:dd4e0e92aef34af3608f45c5",
@@ -61,6 +62,14 @@
       "op": "update",
       "op_id": "0972afac002a42a5a263858ba99ddf1a",
       "session_id": "d1d7d5ebbf3a460fbb9cc738a2c9afb3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:76bfe83b21f0c666e957f760",
+      "at": "2026-11-08T15:54:39Z",
+      "client": "omp-coding-agent",
+      "op": "drop",
+      "op_id": "7e7dc5a46b9d4539b5f71e728d1c2cb0",
+      "session_id": "02c14526fd7648f49c893339d8cfcf9e"
     }
   ]
 }
