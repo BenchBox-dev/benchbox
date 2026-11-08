@@ -2691,7 +2691,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-ci-uat-stability",
-      "lifecycle": "active",
+      "lifecycle": "completed",
       "members": [
         "obt-sql-gate-nightly-timeouts-20261108",
         "singlestore-tpcds-power-oom-24a-20261108"
@@ -34466,15 +34466,10 @@
       "title": "SingleStore setup saves the plaintext password to credentials.yaml even when validation fails"
     },
     "singlestore-tpcds-power-oom-24a-20261108": {
-      "claim": {
-        "expires_at": "2026-11-09T20:09:25Z",
-        "generation": "79b1e38e4d9e4667b4d500c71bb2201e",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "SingleStore TPC-DS SF0.01 power phase fails at query 24a with OOM on the 4 GiB stack; joinorder SF1 pruned for OOM on 7c"
     },
     "singlestore-tpchavoc-10v8-memory": {
