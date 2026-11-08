@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "50 consecutive runs pass on Linux and on macOS, with logs recorded, or the failing case is reopened as a defect."
+  ],
+  "description": "flaky-heavy-choke-points-and-ducklake-interrupted-20261106 was finished after #4031 merged. Its acceptance asked for 50 repeated runs without failure; only 20 of 20 were run, and the pr-preflight Linux VM leg was not rerun. Complete the check on Linux (CI or the benchbox-agent machine) and on macOS.\n\nGuardrails: heavy runs through make heavy-run.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-08T02:54:30Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "dfb377d18c6b469296f120112c96c6c4",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}
