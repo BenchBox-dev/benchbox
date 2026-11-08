@@ -5,6 +5,11 @@
     "Capture, anonymization and public validation call one shared detector (git grep shows no second copy of the root regex).",
     "Nested raw plan strings are covered; smoke: generate a real plan containing /tmp and D:\\\\ style paths and show before/after."
   ],
+  "batch": {
+    "batch_id": "plan-privacy",
+    "implementation_dependencies": [],
+    "member_id": "plan-path-detector-root-and-drive-coverage-20261108"
+  },
   "context": "Reported limitations from batch leader, not a new exhaustive detector audit. Do not strip whole Spark scan paths if that removes table identities; the publication batch already caught that failure once.\n\nDECISIONS (owner, 2026-11-08): detector = known local roots (/Users, /home, /tmp, /var/folders, /private, /mnt, /opt, any Windows drive letter, UNC) PLUS the run's configured data and output directories, with an exact-rule placeholder allowlist (<redacted> and bare /data-style neutral placeholders); NOT every absolute path. Publish boundary = sanitize with the export anonymizer, re-scan, publish only if clean, otherwise reject with a redacted diagnostic and publish nothing (fail closed). ORDER: this item lands FIRST in the batch; plans-export-anonymize-text-fields and plans-publish-boundary-path-validation consume its detector. GUARDRAILS: stored fingerprints are never recomputed or altered by sanitizing text; plan structure, errors, fingerprint_varied/fingerprint_variants and keys are preserved; never mutate inputs in place; diagnostics must not print the leaked path values; no hosted data deletion, republish or history rewrite; private (non-anonymized) local exports keep their current behavior; false positives are bounded by an allowlist test that real plan text (catalog names, URLs, relative table tails, Spark/LakeSail scans) is not flagged. Verification rubric: (1) reproduce the defect with a failing test or script before editing; (2) focused suites pass via uv run -- python -m pytest -n 0; (3) make comment-policy-check and ruff on touched files; (4) the runtime smoke named in acceptance is recorded in the PR body; (5) one final batch PR merges with green CI and a passing oracle review.",
   "description": "Publication investigation found the local-path detector misses /tmp, /data, /mnt, /opt and Windows drive letters other than C. It also found the comparison suite redacts plan text without passing its known data directory. Such plans may leak local layout or lose useful scan-table names when sanitized using a whole-path fallback.",
   "links": [
@@ -26,6 +31,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "de75ed08e1cd4320b867e60e3f21ead3",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-08T13:34:06Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9eb226fed7af41e1b0f8d4c3b1d1ea53",
       "session_id": "dc59872de7f0484eafa9032416c81607"
     }
   ]
