@@ -13,6 +13,95 @@
   },
   "context": "Replacement text for AGENTS.md (both paragraphs after the serial-mode paragraph, which this text repeats verbatim as its first paragraph):\n\nSerial mode covers standalone, cross-repository, review-separated,\napproval-separated, or otherwise unrelated work: follow the ordinary claim,\nimplementation, verification, review, merge, and deployment boundaries.\n\nGiven several ready items, plan the whole set before starting any: settle the\nowner decisions that change grouping, then put related items on one feature\nbranch and one PR per feature (`docs/agent/batch-feature-delivery.md`).\nFeature delivery mode (a registered batch: leader, member sessions, one final\nPR) is opt-in: only when the owner names it, with two or more members, and the\ntractable 1.0.0 or later MCP server advertises the registered-batch v2\ncapability; a source PR, catalog pin, or mirror is not an installation. The\nleader is the only tracker writer; members stop at a landing report. It never\nskips CI or bypasses hosted/native review, merge, deployment, or authority\ncontrols, and cannot certify or unlock the changes that make it possible.\n\nThe sentences dropped from AGENTS.md ('owns one integration branch and worktree', 'never a PR base', 'if the capability is absent, record the owned blocker') are already stated in batch-feature-delivery.md (Two layers table, rules list, Feature delivery mode intro). Source: adversarial process review, 2026-11-07.",
   "description": "Problem. Batch mode became the default for cohesive work on 2026-11-02, one day after the ADR accepted it as opt-in. Since then: #4007 was aborted partway; batch hold-label-and-batch-e2e was aborted twice and shipped as ordinary PR #3999; #4015 ran with one member; and parallel leaders stalled on one claim slot. Every failure fell back to serial, and the aborts came from batch-only machinery (frozen scopes, frozen receipt commands). Agents also chose serial item by item without planning the whole ready set (TPC-DS maintenance went out as three conflicting PRs). The owner decided on 2026-11-07: batch mode becomes opt-in, and one feature branch with one PR per feature is the default for related work.\n\nChange.\n(1) AGENTS.md 'Delivery modes': replace the two paragraphs after the serial-mode paragraph with the text in context.\n(2) docs/agent/batch-feature-delivery.md:\n- replace the opening sentences with: 'Feature delivery mode is opt-in: the owner names the batch, it has two or more members, and the capability below is present. Related work otherwise goes on one feature branch and one PR per feature, built by one session.';\n- add a 'Feature branch' subsection under Serial mode: create an umbrella item, add it to each member's needs so no one else can take them, take the umbrella, work on feat/<slug> in one worktree, open one PR; after it merges, finish the umbrella, then take and finish each member; a late related item joins the branch; re-check each item's diagnosis against current origin/develop before implementing it;\n- add a 'Plan first' paragraph before '### 1. Register': registration freezes members and scopes; group the whole ready set, then ask the owner, in one message, every decision that changes membership or scope; start only members no pending answer can regroup; questions that surface later go in one message and block only the members they affect;\n- replace the Sizing paragraph's 'Run the preflight ... before register_batch ...; do not estimate.' with: 'Before registration only an existing branch can be measured; once members exist, make batch-status reports the combined answer.'\n(3) Restate the same policy (opt-in, feature-branch default) where the old 'explicitly assigned cohesive batch ... by default' wording appears: docs/agent/README.md, docs/agent/review-protocol.md, docs/internal/dev-loop-worktrees.md.\n(4) _project/decisions/batch-integration-loop-2026-11-01.md: add a dated status update recording the return to opt-in, with the abort record above.\n(5) One changelog.d fragment (internal).\n\nOut of scope: the batch-start/batch-member-check behaviour and its command-table rows, which belong to batch-start-and-member-check-tightening-20261107.\n\nGuardrails: work only in a linked worktree (make worktree-create, or the batch targets for members); never edit the primary clone; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or oracle gate; re-read each cited file on current origin/develop before editing, because line numbers drift. This member edits only documentation, never scripts/batch_integration.py.",
+  "final_evidence": {
+    "batch_id": "batch-optin-remediation-20261107",
+    "changed_files": [
+      "AGENTS.md",
+      "_project/decisions/batch-integration-loop-2026-11-01.md",
+      "_project/scripts/preflight_targets.py",
+      "changelog.d/batch-mode-opt-in-policy-docs-20261107.json",
+      "changelog.d/ledger-coverage-test-mapped-in-preflight.json",
+      "docs/agent/README.md",
+      "docs/agent/batch-feature-delivery.md",
+      "docs/agent/review-protocol.md",
+      "docs/internal/dev-loop-property-ledger.md",
+      "docs/internal/dev-loop-worktrees.md",
+      "tests/unit/scripts/test_preflight_targets.py"
+    ],
+    "clean": true,
+    "current_acceptance": {
+      "batch-mode-opt-in-policy-docs-20261107": {
+        "clean": true,
+        "command": [
+          "uv",
+          "run",
+          "--",
+          "python",
+          "-m",
+          "pytest",
+          "-n",
+          "0",
+          "-q",
+          "tests/unit/scripts/test_agent_instruction_audit.py",
+          "tests/unit/scripts/test_doc_reference_inventory.py",
+          "tests/unit/test_ledger_coverage.py"
+        ],
+        "revision": "fa4cffe48b37f7e4f6f9f4377606c693049c0d23",
+        "status": "passed",
+        "suite": "member-tests",
+        "worktree": "/Users/joe/Developer/BenchBox.wt-feat-batch-optin-remediation"
+      },
+      "ledger-coverage-test-mapped-in-preflight-20261107": {
+        "clean": true,
+        "command": [
+          "uv",
+          "run",
+          "--",
+          "python",
+          "-m",
+          "pytest",
+          "-n",
+          "0",
+          "-q",
+          "tests/unit/scripts/test_preflight_targets.py",
+          "tests/unit/test_ledger_coverage.py"
+        ],
+        "revision": "fa4cffe48b37f7e4f6f9f4377606c693049c0d23",
+        "status": "passed",
+        "suite": "member-tests",
+        "worktree": "/Users/joe/Developer/BenchBox.wt-feat-batch-optin-remediation"
+      }
+    },
+    "final_pr": {
+      "head": "fa4cffe48b37f7e4f6f9f4377606c693049c0d23",
+      "node_id": "PR_kwDOQ7J64c8AAAABNlaPCA",
+      "number": 4039,
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git"
+    },
+    "integration_branch": "feat/batch-optin-remediation-20261107",
+    "integration_head": "fa4cffe48b37f7e4f6f9f4377606c693049c0d23",
+    "member_heads": {
+      "batch-mode-opt-in-policy-docs-20261107": "32c88aa7dbc8536308b73bf383501de317dcf966",
+      "ledger-coverage-test-mapped-in-preflight-20261107": "25aff661cd5f1ff03e920d207e8f90ee04c646dd"
+    },
+    "member_ranges": {
+      "batch-mode-opt-in-policy-docs-20261107": {
+        "base": "4fe6b3aac7b884bd170cdd3ef61697af5bffbeec",
+        "head": "32c88aa7dbc8536308b73bf383501de317dcf966"
+      },
+      "ledger-coverage-test-mapped-in-preflight-20261107": {
+        "base": "7d2ca88d40152744989613f903994f74c8086918",
+        "head": "25aff661cd5f1ff03e920d207e8f90ee04c646dd"
+      }
+    },
+    "project_id": "benchbox",
+    "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+    "scope_hash": "ef1a84e69173fa75ee61042b62fb8aa7b960fb0e6b8d5991ebad445334e60d4f",
+    "status": "passed",
+    "suite": "member-reruns",
+    "tree_revision": "fa4cffe48b37f7e4f6f9f4377606c693049c0d23",
+    "tree_worktree": "/Users/joe/Developer/BenchBox.wt-feat-batch-optin-remediation"
+  },
   "links": [
     "AGENTS.md",
     "docs/agent/batch-feature-delivery.md",
@@ -122,6 +211,15 @@
       "generation": "a65b6e53d59841929b6d37e4d9dd116c",
       "op": "take",
       "op_id": "f47164048ce14711ade111a4323d5ba5",
+      "session_id": "4e1f5de86962468394697835ee28c6b3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae",
+      "at": "2026-11-08T07:55:21Z",
+      "client": "omp-coding-agent",
+      "generation": "a65b6e53d59841929b6d37e4d9dd116c",
+      "op": "finish",
+      "op_id": "fa6bba083a9b44e1b38724656cef315e",
       "session_id": "4e1f5de86962468394697835ee28c6b3"
     }
   ]
