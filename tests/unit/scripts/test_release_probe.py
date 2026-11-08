@@ -306,6 +306,34 @@ def test_the_fallback_variant_finds_no_trunk_evidence_and_runs_the_full_uat_stag
     assert outputs == {"reuse": "false"}
 
 
+def test_the_guarded_change_variant_refuses_reuse_because_a_guarded_input_changed_after_the_evidence(
+    tmp_path, repo, decision, monkeypatch
+):
+    summary = tmp_path / "summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    evidence_commit = _head(repo)
+    status, outputs, _ = decision("guarded-change")
+    release_commit = _head(repo)
+    assert status == 0
+    assert outputs == {"reuse": "false"}
+    text = _read(summary)
+    assert "run the full UAT stages" in text
+    assert f"guarded trees changed since the evidence commit: {probe.GUARDED_CHANGE_PATH}" in text
+    assert "no completed" not in text
+    assert _git(repo, "rev-parse", f"{release_commit}~2") == evidence_commit
+    assert _git(repo, "diff", "--name-only", f"{evidence_commit}..{release_commit}", "--", "tests/uat") == (
+        probe.GUARDED_CHANGE_PATH
+    )
+
+
+def test_the_guarded_change_variant_fails_when_the_guarded_input_check_is_blind_to_the_change(decision, monkeypatch):
+    reuse = probe.load_sibling("release_reuse_uat_evidence")
+    reuse.guarded_differences = lambda *args, **kwargs: []
+    monkeypatch.setattr(probe, "load_sibling", lambda name: reuse)
+    status, _, _ = decision("guarded-change")
+    assert status == 1
+
+
 def test_the_reuse_variant_fails_when_the_final_distribution_differs_from_the_candidate(tmp_path, decision):
     (tmp_path / "final" / f"benchbox-{probe.PROBE_VERSION}.tar.gz").write_bytes(b"not an sdist")
     status, outputs, _ = decision("reuse")
@@ -314,7 +342,13 @@ def test_the_reuse_variant_fails_when_the_final_distribution_differs_from_the_ca
 
 
 @pytest.mark.parametrize(
-    ("tag", "variant"), [("v0.5.0", "reuse"), ("v0.5.0", "fallback"), (probe.PROBE_TAG, "publish")]
+    ("tag", "variant"),
+    [
+        ("v0.5.0", "reuse"),
+        ("v0.5.0", "fallback"),
+        ("v0.5.0", "guarded-change"),
+        (probe.PROBE_TAG, "publish"),
+    ],
 )
 def test_decision_refuses_a_real_tag_and_an_unknown_variant(tmp_path, repo, capsys, tag, variant):
     status = probe.run_decide(
@@ -345,6 +379,34 @@ def test_the_expected_decision_flags_a_reuse_variant_that_did_not_reuse():
     assert probe.expected_decision_problems("reuse", {"reuse": "false"}, RUN_ID, head)
     assert probe.expected_decision_problems("fallback", {"reuse": "true", "source_kind": "trunk"}, RUN_ID, head)
     assert not probe.expected_decision_problems("fallback", {"reuse": "false"}, RUN_ID, head)
+
+
+GUARDED_ROWS = [
+    ("trunk run 1: ancestry", True, "evidence commit is an ancestor"),
+    (
+        "trunk run 1: UAT inputs",
+        False,
+        f"guarded trees changed since the evidence commit: {probe.GUARDED_CHANGE_PATH}",
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("outputs", "rows"),
+    [
+        ({"reuse": "true", "source_kind": "trunk"}, GUARDED_ROWS),
+        ({"reuse": "false"}, [("trunk UAT runs", False, "no completed trunk-uat.yml run found")]),
+        ({"reuse": "false"}, [("trunk run 1: UAT inputs", False, "guarded trees changed: tests/uat/other.txt")]),
+        ({"reuse": "false"}, [("trunk run 1: UAT inputs", True, probe.GUARDED_CHANGE_PATH)]),
+        ({"reuse": "false"}, []),
+    ],
+)
+def test_the_expected_decision_flags_a_guarded_change_variant_with_the_wrong_outcome(outputs, rows):
+    assert probe.expected_decision_problems("guarded-change", outputs, RUN_ID, "a" * 40, rows)
+
+
+def test_the_expected_decision_accepts_a_guarded_change_refused_for_the_guarded_path():
+    assert not probe.expected_decision_problems("guarded-change", {"reuse": "false"}, RUN_ID, "a" * 40, GUARDED_ROWS)
 
 
 def test_probe_clock_helpers_use_utc():

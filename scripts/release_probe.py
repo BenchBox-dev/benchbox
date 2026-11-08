@@ -16,7 +16,8 @@ from typing import Any
 
 PROBE_TAG = "v0.0.0rc0"
 PROBE_VERSION = PROBE_TAG.removeprefix("v")
-VARIANTS = ("reuse", "fallback")
+VARIANTS = ("reuse", "fallback", "guarded-change")
+GUARDED_CHANGE_PATH = "tests/uat/probe_guarded_change.txt"
 PROBE_TREE_REF = "refs/probe/trunk"
 GATE_ARTIFACT_ID = 9001
 DIST_ARTIFACT_ID = 9002
@@ -74,6 +75,20 @@ def commit_probe_release(root: Path, version: str = PROBE_VERSION) -> str:
     bump_version(root, version)
     identity = ["-c", "user.name=release-probe", "-c", "user.email=release-probe@localhost"]
     subprocess.run(["git", *identity, "commit", "-q", "-a", "-m", f"probe release {version}"], cwd=root, check=True)
+    return checked_out_commit(root)
+
+
+def commit_guarded_change(root: Path) -> str:
+    target = root / GUARDED_CHANGE_PATH
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("changed after the trunk evidence commit\n", encoding="utf-8")
+    identity = ["-c", "user.name=release-probe", "-c", "user.email=release-probe@localhost"]
+    subprocess.run(["git", "add", "--", GUARDED_CHANGE_PATH], cwd=root, check=True)
+    subprocess.run(
+        ["git", *identity, "commit", "-q", "-m", "probe guarded input change", "--", GUARDED_CHANGE_PATH],
+        cwd=root,
+        check=True,
+    )
     return checked_out_commit(root)
 
 
@@ -251,7 +266,37 @@ def _read_outputs(path: Path) -> dict[str, str]:
     return outputs
 
 
-def expected_decision_problems(variant: str, outputs: dict[str, str], run_id: int, head_sha: str) -> list[str]:
+def _recording_add(report_class: type, rows: list[tuple[str, bool, str]]) -> Any:
+    def add(self: Any, condition: str, ok: bool, detail: str) -> bool:
+        rows.append((condition, ok, detail))
+        return report_class.add(self, condition, ok, detail)
+
+    return add
+
+
+def guarded_change_problems(outputs: dict[str, str], rows: list[tuple[str, bool, str]]) -> list[str]:
+    problems: list[str] = []
+    if outputs.get("reuse") != "false" or any(key.startswith("source_") for key in outputs):
+        problems.append(f"the guarded-change variant expected reuse=false and no source, got {outputs}")
+    refused_for_guarded_path = any(
+        not ok and condition.endswith(": UAT inputs") and GUARDED_CHANGE_PATH in detail
+        for condition, ok, detail in rows
+    )
+    if not refused_for_guarded_path:
+        problems.append(
+            f"the guarded-change variant expected the guarded-input check to refuse on {GUARDED_CHANGE_PATH}, "
+            f"got {[row for row in rows if not row[1]]}"
+        )
+    return problems
+
+
+def expected_decision_problems(
+    variant: str,
+    outputs: dict[str, str],
+    run_id: int,
+    head_sha: str,
+    rows: list[tuple[str, bool, str]] | None = None,
+) -> list[str]:
     problems: list[str] = []
     if variant == "reuse":
         expected = {
@@ -266,6 +311,8 @@ def expected_decision_problems(variant: str, outputs: dict[str, str], run_id: in
             for key, value in expected.items()
             if outputs.get(key) != value
         ]
+    elif variant == "guarded-change":
+        problems = guarded_change_problems(outputs, rows or [])
     elif outputs.get("reuse") != "false" or any(key.startswith("source_") for key in outputs):
         problems.append(f"the fallback variant expected reuse=false and no source, got {outputs}")
     return problems
@@ -284,16 +331,23 @@ def run_decide(
     run_id: int,
 ) -> int:
     if tag != PROBE_TAG or variant not in VARIANTS:
-        print(f"::error::A probe decides only for {PROBE_TAG} with a reuse or fallback variant.", file=sys.stderr)
+        print(
+            f"::error::A probe decides only for {PROBE_TAG} with a reuse, fallback or guarded-change variant.",
+            file=sys.stderr,
+        )
         return 1
     checked_out = checked_out_commit(repo_dir)
     if checked_out != head_sha:
         print(f"::error::The checkout is at {checked_out}, not the probed commit {head_sha}.", file=sys.stderr)
         return 1
+    if variant == "guarded-change":
+        commit_guarded_change(repo_dir)
     release_commit = commit_probe_release(repo_dir)
     subprocess.run(["git", "update-ref", PROBE_TREE_REF, release_commit], cwd=repo_dir, check=True)
     reuse = load_sibling("release_reuse_uat_evidence")
-    FakeGitHub(repository, head_sha, run_id, candidate_dist if variant == "reuse" else None).install(reuse)
+    rows: list[tuple[str, bool, str]] = []
+    reuse.Report = type("RecordingReport", (reuse.Report,), {"add": _recording_add(reuse.Report, rows)})
+    FakeGitHub(repository, head_sha, run_id, None if variant == "fallback" else candidate_dist).install(reuse)
     reuse.TRUNK_REF = PROBE_TREE_REF
     status = reuse.main(
         [
@@ -314,7 +368,7 @@ def run_decide(
             str(github_output),
         ]
     )
-    problems = expected_decision_problems(variant, _read_outputs(github_output), run_id, head_sha)
+    problems = expected_decision_problems(variant, _read_outputs(github_output), run_id, head_sha, rows)
     for problem in problems:
         print(f"::error::{problem}", file=sys.stderr)
     return 1 if status or problems else 0
