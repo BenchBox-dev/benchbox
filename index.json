@@ -32944,15 +32944,10 @@
       "title": "Runtime Module Refactor - Batch Two"
     },
     "rv2r-01-adr-guardrails": {
-      "claim": {
-        "expires_at": "2026-11-09T14:17:29Z",
-        "generation": "6e0cea1227ac4a0584b5ee9dbc7db953",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Record the release-v2 remediation decisions and new guardrails in the dev-loop v2 ADR"
     },
     "rv2r-02-trunk-uat-nightly": {
