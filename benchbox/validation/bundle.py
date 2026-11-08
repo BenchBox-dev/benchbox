@@ -123,13 +123,19 @@ def is_neutral_placeholder(text: str) -> bool:
 
 def _root_variants(root: str | Path) -> set[str]:
     text = str(root).rstrip("/\\")
-    if len(text) <= 1 or not (text.startswith("/") or text[1:3] in (":\\", ":/")):
+    if not text:
+        return set()
+    if not (text.startswith(("/", "\\")) or text[1:3] in (":\\", ":/")):
+        with contextlib.suppress(OSError, RuntimeError):
+            text = str(Path(text).resolve()).rstrip("/\\")
+    if len(text) <= 1 or not (text.startswith(("/", "\\")) or text[1:3] in (":\\", ":/")):
         return set()
     if is_neutral_placeholder(text):
         return set()
-    variants = {text}
+    variants = {text, text.replace("\\", "/")}
     with contextlib.suppress(OSError, RuntimeError):
-        variants.add(str(Path(text).resolve()).rstrip("/\\"))
+        resolved = str(Path(text).resolve()).rstrip("/\\")
+        variants |= {resolved, resolved.replace("\\", "/")}
     return {variant for variant in variants if len(variant) > 1 and not is_neutral_placeholder(variant)}
 
 

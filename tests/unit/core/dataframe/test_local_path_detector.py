@@ -228,3 +228,18 @@ _LEGACY_PATTERN = re.compile(
 def test_legacy_detector_missed_these_paths_and_the_shared_detector_flags_them(text):
     assert _LEGACY_PATTERN.search(text) is None
     assert find_public_path_leaks({"plan": text}) == ["plan"]
+
+
+def test_relative_configured_root_is_resolved_and_keeps_the_table_tail(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    detector = local_path_detector(["benchmark_runs/tpch/sf1/data"], redact_home=False)
+    absolute = (tmp_path / "benchmark_runs/tpch/sf1/data").resolve()
+
+    assert detector.redact_text(f"Scan [{absolute}/lineitem.parquet]") == "Scan [<redacted>/lineitem.parquet]"
+    assert detector.contains(f"Scan [{absolute}/lineitem.parquet]")
+
+
+def test_backslash_rooted_configured_root_matches_forward_slash_plan_text():
+    detector = local_path_detector(["\\srv\\data\\tpch"], redact_home=False)
+
+    assert detector.redact_text("Scan [/srv/data/tpch/lineitem.parquet]") == "Scan [<redacted>/lineitem.parquet]"
