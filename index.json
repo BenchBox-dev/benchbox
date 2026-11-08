@@ -21490,6 +21490,13 @@
       "status": "dropped",
       "title": "Re-evaluate can_approve_pull_request_reviews once review enforcement is live"
     },
+    "glue-credential-options-registration-contract-20261108": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Clarify Glue credential configuration accepted by from_config but absent from platform options"
+    },
     "gpu-acceleration-benchmarking-rapids-cudf-integration": {
       "claim": null,
       "needs": [],
