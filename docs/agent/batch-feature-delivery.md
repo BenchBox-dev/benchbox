@@ -37,7 +37,7 @@ worker, and an older client has been shown to refuse with `E_SCHEMA`.
 | Layer | Who | Owns |
 |---|---|---|
 | Leader | One agent session | The batch registration, the one integration branch `feat/<batch>` and its worktree, landing each member, the tracker, the ledger, and the one final PR to `develop` |
-| Member | One agent session per member | One worktree and branch `feat/<batch>--<member>` started at the integration head; implementation, scoped checks, local review, and a landing report |
+| Member | One agent session per member | One worktree and branch `feat/<batch>--<member>` started at the integration head; implementation, scoped checks, and a landing report |
 
 The leader is the only tracker writer. A member never calls `take`, `prepare`,
 `finish`, `release`, or any other tracker write; while the batch is active the
