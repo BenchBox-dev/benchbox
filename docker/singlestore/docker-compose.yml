@@ -1,7 +1,9 @@
 services:
   singlestore:
-    image: ghcr.io/singlestore-labs/singlestoredb-dev:latest
+    image: ${SINGLESTORE_IMAGE:-ghcr.io/singlestore-labs/singlestoredb-dev:latest}
     platform: linux/amd64
+    mem_limit: ${SINGLESTORE_MEMORY_LIMIT:-4g}
+    cpus: ${SINGLESTORE_CPUS:-4}
     ports:
       - "${SINGLESTORE_HOST_PORT:-13306}:3306"
     environment:

@@ -22,6 +22,7 @@ UNBUCKETED_LEGACY_MODULES = frozenset(
         "clickhouse_memory.py",
         "docker_path_helpers.py",
         "managed_runtime.py",
+        "mocker_launch.py",
     }
 )
 

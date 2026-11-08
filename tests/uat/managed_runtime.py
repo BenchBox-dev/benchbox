@@ -11,7 +11,7 @@ from typing import Any
 import yaml
 
 from benchbox.utils.resource_limits import MemorySnapshot
-from tests.uat import docker_assets
+from tests.uat import docker_assets, mocker_launch
 from tests.uat.clickhouse_memory import runtime_limit_matches_rung
 from tests.uat.config import UATConfig
 
@@ -377,6 +377,7 @@ echo "ulimit_n_hard=$(ulimit -H -n 2>/dev/null)"
 echo "ulimit_u_soft=$(ulimit -S -u 2>/dev/null)"
 echo "ulimit_u_hard=$(ulimit -H -u 2>/dev/null)"
 echo "arch=$(uname -m)"
+echo "cpus=$(nproc 2>/dev/null)"
 if [ -e {ENTRYPOINT_MARKER_PATH} ]; then echo "entrypoint_marker=present"; else echo "entrypoint_marker=absent"; fi
 """
 
@@ -395,10 +396,11 @@ class DeclaredServiceSettings:
     ulimits: tuple[DeclaredUlimit, ...] = ()
     platform: str | None = None
     entrypoint: bool = False
+    cpus: float | None = None
 
     @property
     def declares_anything(self) -> bool:
-        return bool(self.memory_bytes or self.ulimits or self.platform or self.entrypoint)
+        return bool(self.memory_bytes or self.ulimits or self.platform or self.entrypoint or self.cpus)
 
 
 def _interpolate(raw: object, env: Mapping[str, str]) -> str:
@@ -452,6 +454,18 @@ def _declared_memory(service: dict, env: Mapping[str, str]) -> int | None:
     return docker_assets.parse_memory_bytes(_interpolate(raw, env))
 
 
+def _declared_cpus(service: dict, env: Mapping[str, str]) -> float | None:
+    raw = service.get("cpus")
+    if not raw:
+        deploy = service.get("deploy")
+        resources = deploy.get("resources") if isinstance(deploy, dict) else None
+        limits = resources.get("limits") if isinstance(resources, dict) else None
+        raw = limits.get("cpus") if isinstance(limits, dict) else None
+    if not raw:
+        return None
+    return float(_interpolate(raw, env))
+
+
 def _entrypoint_text(raw: object) -> str:
     if isinstance(raw, list):
         return "\n".join(str(part) for part in raw)
@@ -489,6 +503,7 @@ def compose_declared_settings(
                 ulimits=_declared_ulimits(service.get("ulimits"), environment),
                 platform=_interpolate(platform, environment) if platform else None,
                 entrypoint=bool(entrypoint),
+                cpus=_declared_cpus(service, environment),
             )
             if settings.declares_anything:
                 declared[str(name)] = settings
@@ -568,6 +583,12 @@ def declared_settings_violations(declared: DeclaredServiceSettings, observed: Ma
         violation = _ulimit_violation(ulimit, observed)
         if violation:
             violations.append(violation)
+    if declared.cpus:
+        raw_cpus = observed.get("cpus", "")
+        if not raw_cpus.isdigit():
+            violations.append("cpus: the container did not report its CPU count")
+        elif int(raw_cpus) < declared.cpus:
+            violations.append(f"cpus: declared {declared.cpus:g}, container sees {raw_cpus}")
     if declared.platform:
         accepted = _ARCHITECTURES.get(declared.platform)
         arch = observed.get("arch", "")
@@ -579,6 +600,8 @@ def declared_settings_violations(declared: DeclaredServiceSettings, observed: Ma
 
 
 def probe_command(spec: docker_assets.DockerPlatformSpec, project_name: str, service: str) -> list[str]:
+    if mocker_launch.applies(spec):
+        return mocker_launch.exec_command(project_name, service, ["sh", "-c", PROBE_SCRIPT])
     argv = docker_assets.compose_ps_command(spec, project_name)
     argv[-2:] = ["exec", "-T", service, "sh", "-c", PROBE_SCRIPT]
     return argv
@@ -633,6 +656,8 @@ def _declared_names(settings: DeclaredServiceSettings) -> str:
         names.append("memory")
     if settings.ulimits:
         names.extend(f"ulimit {limit.name}" for limit in settings.ulimits)
+    if settings.cpus:
+        names.append("cpus")
     if settings.platform:
         names.append("platform")
     return ", ".join(names)

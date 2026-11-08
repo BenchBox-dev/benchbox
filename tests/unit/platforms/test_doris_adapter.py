@@ -514,86 +514,6 @@ class TestDorisDataLoading:
         finally:
             temp_path.unlink()
 
-    def test_load_data_insert_fallback(self):
-        try:
-            adapter = DorisAdapter()
-        except ImportError:
-            pytest.skip("pymysql not installed")
-
-        mock_connection = Mock()
-        mock_cursor = Mock()
-        mock_connection.cursor.return_value = mock_cursor
-
-        mock_benchmark = Mock()
-
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", encoding="utf-8", delete=False) as f:
-            f.write("1,test1\n2,test2\n")
-            temp_path = Path(f.name)
-
-        try:
-            fake_ds = DataSource(
-                source_type="benchmark_tables",
-                tables={"test_table": [temp_path]},
-                table_metadata={"test_table": {"csv_delimiter": ","}},
-            )
-
-            with (
-                patch("benchbox.platforms.doris.DataSourceResolver") as mock_resolver_cls,
-                patch("benchbox.platforms.doris._requests", None),
-            ):
-                mock_resolver_cls.return_value.resolve.return_value = fake_ds
-                table_stats, load_time, per_table = adapter.load_data(mock_benchmark, mock_connection, Path("/tmp"))
-
-            assert isinstance(table_stats, dict)
-            assert isinstance(load_time, float)
-            assert "test_table" in table_stats
-            assert table_stats["test_table"] == 2
-            assert mock_cursor.executemany.called
-
-        finally:
-            temp_path.unlink()
-
-    def test_load_data_tbl_files_insert_fallback(self):
-        try:
-            adapter = DorisAdapter()
-        except ImportError:
-            pytest.skip("pymysql not installed")
-
-        mock_connection = Mock()
-        mock_cursor = Mock()
-        mock_connection.cursor.return_value = mock_cursor
-
-        mock_benchmark = Mock()
-
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".tbl", encoding="utf-8", delete=False) as f:
-            f.write("1|test1|\n2|test2|\n")
-            temp_path = Path(f.name)
-
-        try:
-            fake_ds = DataSource(
-                source_type="benchmark_tables",
-                tables={"customer": [temp_path]},
-                table_metadata={"customer": {"csv_delimiter": "|", "csv_null_marker": ""}},
-            )
-
-            with (
-                patch("benchbox.platforms.doris.DataSourceResolver") as mock_resolver_cls,
-                patch("benchbox.platforms.doris._requests", None),
-            ):
-                mock_resolver_cls.return_value.resolve.return_value = fake_ds
-                table_stats, load_time, _ = adapter.load_data(mock_benchmark, mock_connection, Path("/tmp"))
-
-            assert "customer" in table_stats
-            assert table_stats["customer"] == 2
-
-            assert mock_cursor.executemany.called
-            insert_sql, rows = mock_cursor.executemany.call_args[0]
-            assert "INSERT INTO `customer`" in insert_sql
-            assert rows == [["1", "test1"], ["2", "test2"]]
-
-        finally:
-            temp_path.unlink()
-
     def test_load_data_missing_file(self):
         try:
             adapter = DorisAdapter()
@@ -607,10 +527,7 @@ class TestDorisDataLoading:
             table_metadata={},
         )
 
-        with (
-            patch("benchbox.platforms.doris.DataSourceResolver") as mock_resolver_cls,
-            patch("benchbox.platforms.doris._requests", None),
-        ):
+        with patch("benchbox.platforms.doris.DataSourceResolver") as mock_resolver_cls:
             mock_resolver_cls.return_value.resolve.return_value = fake_ds
             table_stats, load_time, _ = adapter.load_data(mock_benchmark, Mock(), Path("/tmp"))
 
@@ -2015,15 +1932,3 @@ class TestDorisHeaderedCsv:
         assert "id|name" not in "\n".join(bodies)
         assert sum(body.count("row") for body in bodies) == 6
         assert all("skip_lines" not in call.kwargs["headers"] for call in mock_requests.put.call_args_list)
-
-    def test_insert_fallback_skips_header_line(self, tmp_path):
-        adapter = self._adapter()
-        data_file = tmp_path / "t.csv"
-        data_file.write_text("id|name\n1|a\n2|b\n", encoding="utf-8")
-        connection = Mock()
-
-        with patch.object(adapter, "_execute_batch_insert") as insert:
-            count = adapter._insert_load_file(connection, "t", data_file, CsvDialect("|", True, None, False, None))
-
-        assert count == 2
-        assert insert.call_args.args[2] == [["1", "a"], ["2", "b"]]

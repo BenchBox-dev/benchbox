@@ -227,7 +227,7 @@ class TPCDSMaintenanceTest:
         for function in MAINTENANCE_FUNCTIONS:
             statements = [f"-- {function.name}: method {function.method}"]
             statements.extend(SOURCE_TABLES_BY_NAME[name].create_sql() for name in function.staging_tables)
-            statements.extend(function.statements)
+            statements.extend(function.statements_for(self.target_dialect))
             operations[function.name] = statements
         return operations
 
@@ -267,7 +267,7 @@ class TPCDSMaintenanceTest:
                         load_refresh_file(
                             connection, table, refresh_set.path_for(table.name), refresh_set.row_counts[table.name]
                         )
-                    for statement in function.statements:
+                    for statement in function.statements_for(self.target_dialect):
                         connection.execute(statement)
                         operation.statements_executed += 1
                     self._commit(connection)

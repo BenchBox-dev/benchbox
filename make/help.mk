@@ -52,6 +52,8 @@ help:
 	@echo "  make test-docker-up-<name>   Start and track <name>'s compose stack; make test-docker-down-<name> removes it"
 	@echo ""
 	@echo "UAT Operations:"
+	@echo "  make uat-bring-up PLATFORM=<name>   Start a UAT platform stack (mocker launch on macOS for doris, singlestore)"
+	@echo "  make uat-bring-up PLATFORM=<name> DOWN=1 Remove the stack uat-bring-up started [REMOVE_VOLUMES=1]"
 	@echo "  make uat-docker-cleanup        Report abandoned UAT Docker resources and non-UAT cleanup commands"
 	@echo "  make uat-docker-cleanup APPLY=1 Remove only UAT-owned Docker leftovers"
 	@echo "  make uat-docker-cleanup ENGINE=container [MODE=owned|images|max] Reclaim the Apple container store"

@@ -620,7 +620,7 @@ un-reviewed changes, not a hard freeze on the whole CLI surface.
 ### 4.1 Container engine limits and declared-settings verification
 
 A compose file declares settings the engine is expected to apply: `entrypoint`,
-`mem_limit` or `deploy.resources.limits.memory`, `ulimits` and `platform`. Some
+`mem_limit` or `deploy.resources.limits.memory`, `cpus`, `ulimits` and `platform`. Some
 engines accept the compose file and silently ignore them. A stack that comes up
 without them can report healthy while the server inside is dead or starved.
 
@@ -633,6 +633,7 @@ sees with the declaration (`tests/uat/managed_runtime.py`):
 |---|---|---|
 | memory | cgroup `memory.max` (or v1 `memory.limit_in_bytes`) and `/proc/meminfo` `MemTotal`; the smaller is the effective limit. Not probed for `clickhouse-server` and `starrocks`, whose runtime `stats` limit is already checked after the mocker memory reconcile | effective limit is below 85% of the declared size |
 | `ulimits` (`memlock`, `nofile`, `nproc`) | `ulimit -S` and `ulimit -H` for the matching resource | soft or hard limit is below the declaration, or not unlimited when `-1` is declared |
+| `cpus` | `nproc` | CPU count is below the declared value |
 | `platform` | `uname -m` | machine does not match `linux/amd64` or `linux/arm64` |
 | `entrypoint` | the marker file `/tmp/.benchbox-entrypoint-applied` | marker absent |
 
@@ -653,14 +654,36 @@ verified 2026-11-06):
 
 | Platform | Engine | Behavior | What to do |
 |---|---|---|---|
-| `doris` | mocker | `mocker compose` ignores the stack `entrypoint` and memory; the container gets about 1112 MB, the FE JVM dies and `up --wait` still reports success. Bring-up now fails with `entrypoint: declared entrypoint did not run` | Start with `mocker run -m 4g --entrypoint bash` and the entrypoint script from `docker/doris/docker-compose.yml`, or use Docker |
+| `doris` | mocker | `mocker compose` ignores the stack `entrypoint` and memory; the container gets about 1112 MB, the FE JVM dies and `up --wait` still reports success | Handled: `make uat-bring-up PLATFORM=doris` launches it with `mocker run` (see below) |
 | `firebolt` (`docker/firebolt`, not a registered `make uat-bring-up` platform) | mocker | ignores the `memlock` ulimit; the server exits with `io_uring_register_buffers failed: Cannot allocate memory` | Use an engine that honors `ulimits` |
 | `firebolt` (`docker/firebolt`, not a registered `make uat-bring-up` platform) | Apple `container` | TPC-H SF0.01 needs more than 7 GiB; the load hung at 7 GiB | Give the container more than 7 GiB |
-| `singlestore` | mocker | ignores `platform: linux/amd64` and fails with `platform linux/arm64`; the default 1 GiB VM aborts SingleStore at start | `mocker run --platform linux/amd64 -m 4g -c 4 -p 13306:3306 -e ROOT_PASSWORD=benchbox ghcr.io/singlestore-labs/singlestoredb-dev:latest` |
+| `singlestore` | mocker | ignores `platform: linux/amd64` and fails with `platform linux/arm64`; the default 1 GiB VM aborts SingleStore at start | Handled: `make uat-bring-up PLATFORM=singlestore` launches it with `mocker run` (see below) |
 | `questdb` | any | the stack publishes ILP port 9009 beside 19000, 8812 and 9003, so the ILP load path reaches the server | none |
 
-The Docker CI job set has no SingleStore job, so the `live_singlestore` tests
-do not run in CI.
+#### Mocker launch
+
+When the container CLI is `mocker`, `make uat-bring-up` and the managed execute
+phase start `doris` and `singlestore` (`MOCKER_LAUNCH_PLATFORMS` in
+`tests/uat/mocker_launch.py`) with `mocker run -d` instead of `mocker compose up`.
+The compose service is the source of truth: image, `platform`, `mem_limit`
+(`-m`), `cpus`, `entrypoint` plus its arguments, `command`, `ports`,
+`environment`, `volumes`, `privileged` and `restart` are translated to flags.
+Memory and cpu come from the compose file (`DORIS_MEMORY_LIMIT`,
+`SINGLESTORE_MEMORY_LIMIT`, `SINGLESTORE_CPUS`, default 4g and 4). The container is named
+`<project>-<service>-1`, carries the `com.docker.compose.project` and
+`com.docker.compose.service` labels, and named volumes become
+`<project>-<volume>`, so container and volume cleanup helpers find them. Health is
+polled by running the compose healthcheck with `mocker exec`. A compose key with no
+`mocker run` flag fails the launch instead of being dropped. The declared-settings
+probe then runs through `mocker exec` and still fails loudly when a setting was not
+applied.
+
+`make uat-bring-up PLATFORM=<name> DOWN=1 [REMOVE_VOLUMES=1]` removes the container (and
+named volumes with `REMOVE_VOLUMES=1`); the execute phase teardown does the same.
+
+The `singlestore` job in `.github/workflows/docker-integration.yml` runs the
+`live_singlestore` tests nightly and on pull requests that touch the SingleStore
+paths.
 
 ## 5. Stress Workflow Retirement
 
