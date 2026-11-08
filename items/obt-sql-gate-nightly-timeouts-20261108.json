@@ -8,6 +8,7 @@
     "implementation_dependencies": [],
     "member_id": "obt-sql-gate-nightly-timeouts-20261108"
   },
+  "context": "Fix and local evidence in batch ci-uat-stability PR #4058. Local SF0.01 timings: PostgreSQL q58 15.9s -> 0.01s; q60 13.7s -> 0.4s; q83 timeout -> 0.09s; SQLite q95 timeout -> <=0.17s. Hosted logs 2026-11-04..08 show PG q58/q60 timeouts in all five runs; older logs lack detailed SQLite timings. Per user instruction, finish with merged fix and local evidence; check 3 consecutive scheduled OBT nightlies after merge, not claimed as observed now.",
   "description": "Reported during the CI-reliability work (#4031). In the nightly t3:sql-execution-gate-obt job, SQLite tpcds_obt-augmented q95 hits the 15 s timeout, and PostgreSQL OBT q58 and q60 time out as well. An experiment indexing the OBT key columns did not help and was reverted. The job is red on scheduled nightlies (for example run 42241036225).\n\nChange. Measure the hosted timings, find why these queries are slow on the OBT schema (plan, missing statistics, a correlated subquery), and fix the cause, or record evidence-backed timeout entries as required (not optional) entries.\n\nGuardrails: work in a linked worktree; no explanatory comments; do not just raise the timeout without measurements.",
   "prepared": {
     "accepted_head": "aff09a7b0a9fcd804d33715b7a6a0a18fc024ed9",
@@ -93,6 +94,14 @@
       "generation": "69eced26fc104cbbbc3c37628789622c",
       "op": "prepare",
       "op_id": "714f3764ed2c4944a2819f96c13b5c6f",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-08T19:51:53Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d1eda49af69b4dd2a72f876fe1220488",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
