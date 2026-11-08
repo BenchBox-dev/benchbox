@@ -60,6 +60,7 @@ SOURCE_GUARD_TESTS: dict[str, tuple[str, ...]] = {
     ".github/theseus-lock.json": ORACLE_CONSUMER_TESTS,
 }
 LEDGER_COVERAGE_TEST = "tests/unit/test_ledger_coverage.py"
+LEDGER_DOCUMENT = "docs/internal/dev-loop-property-ledger.md"
 LEDGER_GOVERNED = re.compile(
     r"\.github/workflows/[^/]+\.yml"
     r"|scripts/[^/]+\.py"
@@ -67,6 +68,7 @@ LEDGER_GOVERNED = re.compile(
     r"|tests/unit/(?:workflows|scripts|release)/.+"
     r"|tests/unit/test_(?:auto_merge|release)_[^/]*"
     r"|\.pre-commit-config\.yaml"
+    rf"|{re.escape(LEDGER_DOCUMENT)}"
 )
 
 

@@ -84,20 +84,20 @@ actual routing of a head rather than assuming every PR runs every job.
 The canonical loop is **branch → edit → preflight → `make pr-open` → arm → monitor to merge**. Once the branch is finished, arm it with `make pr-arm`, which checks the live PR for a hold and arms auto-merge on the exact head; GitHub merges it when its required checks are green. After the merge, `trunk.yml` tests `develop`; if it fails because of your change, revert first with `make trunk-revert PR=<n>`. You are done when the PR is merged, not when it is open or green: after a spurious failure, re-run the failed jobs with `make pr-rerun` and re-arm (`make pr-arm` again); after a real failure, fix and push. Stop and hand back only for the exceptions listed in `AGENTS.md` `[WRITE-CLOSEOUT-001]`.
 
 The steps below are the ordinary serial flow for standalone, unrelated, cross-repository,
-review-separated, or approval-separated work. An explicitly assigned cohesive batch defaults
-to feature delivery mode only after the installed, compatible registered-batch capability and
-its prerequisites are verified. Changes that install the capability or enable the loop must
-use serial delivery; they cannot certify themselves.
+review-separated, or approval-separated work. Related items go on one feature branch with
+one PR per feature. Feature delivery mode is opt-in: the owner names the batch, it has two
+or more members, and the installed registered-batch capability and its prerequisites are
+verified. Changes that install the capability or enable the loop must use serial delivery;
+they cannot certify themselves.
 
 For a feature batch, one leader owns the integration branch/worktree, tracker, ledger, and
 one final PR to `develop`. Each member owns its worktree, implementation, scoped checks,
-local review, and landing report; members neither open PRs nor write to the tracker.
-A member's checks and review are early feedback only: before landing, the leader reviews
-the member's exact patch again, and before the final PR is armed, every member's recorded
-checks run again on the final tree. Arming discovers batch membership from the tracker, so
-an outage refuses every arm, including an ordinary PR's. If the leader's session dies, a new
-leader recovers ownership with `make batch-recover`, which can also move the integration
-checkout to another clean clone.
+and landing report; members neither open PRs nor write to the tracker. Before landing, the
+leader reviews the member's exact patch, and before the final PR is armed, every member's
+recorded checks run again on the final tree. Arming discovers batch membership from the
+tracker, so an outage refuses every arm, including an ordinary PR's. If the leader's session
+dies, a new leader recovers ownership with `make batch-recover`, which can also move the
+integration checkout to another clean clone.
 Follow [Batch delivery modes](docs/agent/batch-feature-delivery.md) for capability checks,
 member handoff, integration, and final-PR delivery rather than applying the serial steps
 independently to each member.
