@@ -27973,9 +27973,9 @@
     },
     "pr-arm-rerun-contradictory-guidance-20261027": {
       "claim": {
-        "expires_at": "2026-11-09T00:46:57Z",
-        "generation": "048f66973ab344919d6292c67558ae55",
-        "renewals": 0,
+        "expires_at": "2026-11-09T00:47:05Z",
+        "generation": "63991fbe28534ceb8b7a834b11ec5cae",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
       },
       "needs": [],
