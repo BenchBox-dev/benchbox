@@ -42,7 +42,7 @@ This document provides guidelines and instructions for contributing.
    - **pre-commit**: ruff format/check, codespell, YAML / markdown lint, comment policy, Windows antipattern ratchet, timing-policy check, and the agent write-location, handoff, and identity guards.
    - **commit-msg**: rejects agent `Co-Authored-By` and session trailers.
 
-   Run `make pr-preflight` before pushing; it lints the changed Python files and runs the tests mapped from them. Nothing runs automatically on push.
+   Run `make pr-preflight` on the committed tree before pushing; it lints the changed Python files, runs the tests mapped from them and writes a receipt that `make pr-open` requires. Nothing runs automatically on push.
 
    If `pre-commit install` errors with `Cowardly refusing to install hooks with core.hooksPath set` and points at the default `.git/hooks` location, run `git config --unset-all core.hooksPath` and try again — that's a redundant override left over from earlier tooling.
 
@@ -144,7 +144,9 @@ independently to each member.
 
    `make pr-preflight` checks changelog fragments, runs Ruff on changed Python files and runs
    mapped tests, with a conditional Linux run for platform-sensitive mapped tests. It does not
-   run the CI content guard or the full fast lane. `make pr-open` pushes and
+   run the CI content guard or the full fast lane. It also writes a receipt for the tree it ran on
+   (see [Preflight receipt](#preflight-receipt)); `make pr-open` refuses to push without a passing receipt
+   for the tree being pushed, so commit first, run preflight, then open the PR. `make pr-open` pushes and
    uses the GitHub REST API; it refuses to run from `develop` or `release`. Without `TITLE`, a new PR uses the
    oldest branch commit's subject. On an existing PR, `make pr-open` pushes and then updates only supplied title
    and body fields that differ from the current text, together in one request. Omitting a field preserves it;
@@ -241,6 +243,32 @@ CI is path-aware and authoritative. Elapsed time depends on runner queues and on
 conditional lanes a head selects; the merge gate is check results, not elapsed time.
 To run the full fast lane before pushing, use `make pr-preflight-fast-tests`; to run the CI
 lint guards use `make ci-lint`.
+
+### Preflight receipt
+
+`make pr-preflight` writes `~/.cache/benchbox/preflight/<tree>.json` (override the directory with
+`BENCHBOX_PREFLIGHT_RECEIPT_DIR`), where `<tree>` is `git rev-parse HEAD^{tree}`. It records each step's
+command, exit code, outcome, test counts, duration and the last 40 lines of output. A run on a dirty working
+tree, or one that changes the tree while it runs, writes no receipt.
+
+`make pr-open` refuses, before it runs the review or pushes anything, when there is no receipt for the tree of
+`HEAD`, when the receipt records a failed step, or when the tree changed since the run (any new commit that
+changes content; a rebase, merge or reworded commit that leaves the tree identical keeps the receipt valid).
+The receipt must also cover the branch: it records the merge base it selected against and which steps the
+selection required (`ruff-check` and `ruff-format` when Python files changed, `pytest` when tests mapped, `linux-pytest`
+when the Linux run was selected), and `make pr-open` refuses a receipt that lacks a required step or was
+selected against a base that does not cover the PR's changes (for example `make pr-preflight BASE=HEAD`).
+It then adds a short "Preflight receipt" section to the PR body, replacing the one from the previous push.
+The section is a claim from the author's machine: the hosted review gate never reads it and CI remains the
+proof.
+
+A Linux-leg failure that is environment-only is accepted only when it is listed in
+`.github/preflight-known-failures.json` (a soundness path, so an edit gets the full review). Only the
+`linux-pytest` step can be allowlisted, and only for a pytest exit code of 1 (failed tests; an interrupted,
+crashed or killed run never qualifies). Each entry names the step, the exact pytest node id, the reason and the
+tracking item; the file is read from the committed tree being preflighted and pushed, so adding or removing an entry is a
+diff that reviews like any code change. Every failed test in the step must be listed, and the receipt and PR body name
+each accepted failure. An unlisted failure, or output that does not account for every failure, fails the step.
 
 When the PR fast suite runs, `core` also enforces the aggregate
 [fast-test duration policy](docs/internal/nightly-t3.md#fast-test-duration-policy).

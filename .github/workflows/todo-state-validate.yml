@@ -38,6 +38,6 @@ jobs:
       - name: Validate authoritative state branch
         run: >-
           uv run --project _project/scripts --locked --
-          todo-db validate
-          --config .todo-db/config.json
+          tractable validate
+          --config .tractable/config.json
           --repo-root "$GITHUB_WORKSPACE"

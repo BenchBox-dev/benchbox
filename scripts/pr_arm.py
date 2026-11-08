@@ -58,14 +58,16 @@ def _ci_runs(run: Runner, repo: str, head: str) -> list[tuple[int, str, str]]:
     return runs
 
 
-def _waiting_full_run(runs: Sequence[tuple[int, str, str]], url: str) -> int | None:
+def _waiting_full_run(runs: Sequence[tuple[int, str, str]], url: str) -> tuple[int, bool] | None:
     match = pr_landing.check_suites.ACTIONS_RUN_RE.search(url)
     if match is None:
         return None
+    failed_run = int(match.group(1))
     placeholder = {run_id for run_id, title, _ in runs if title == ci_text_edit_verdict.TEXT_EDIT_RUN_NAME}
-    if int(match.group(1)) not in placeholder:
-        return None
-    return next(
+    if failed_run not in placeholder:
+        in_progress = any(run_id == failed_run and status != "completed" for run_id, _, status in runs)
+        return (failed_run, False) if in_progress else None
+    full_run = next(
         (
             run_id
             for run_id, title, status in runs
@@ -73,12 +75,19 @@ def _waiting_full_run(runs: Sequence[tuple[int, str, str]], url: str) -> int | N
         ),
         None,
     )
+    return None if full_run is None else (full_run, True)
 
 
-def _waiting_reason(name: str, full_run: int) -> str:
+def _waiting_reason(name: str, full_run: int, placeholder: bool) -> str:
+    if placeholder:
+        return (
+            f"waiting for full CI run {full_run}: the required {name!r} check is a placeholder failure that re-runs "
+            f"on its own when that run completes; arm again after it completes"
+        )
     return (
-        f"waiting for full CI run {full_run}: the required {name!r} check is a placeholder failure that re-runs "
-        f"on its own when that run completes; arm again after it completes"
+        f"waiting for full CI run {full_run} to complete: the required {name!r} check already failed inside it, "
+        f"and GitHub re-runs failed jobs only after the whole run completes; once it completes, run make pr-rerun "
+        f"if the check is still failed, then arm again"
     )
 
 
@@ -91,9 +100,9 @@ def _core_state(run: Runner, repo: str, number: int, head: str) -> str:
         )
     conclusion = core.get("conclusion")
     if conclusion not in pr_landing.check_suites.NON_BLOCKING:
-        full_run = _waiting_full_run(_ci_runs(run, repo, head), str(core.get("url") or ""))
-        if full_run is not None:
-            return _waiting_reason(PRODUCER_CHECK, full_run)
+        waiting = _waiting_full_run(_ci_runs(run, repo, head), str(core.get("url") or ""))
+        if waiting is not None:
+            return _waiting_reason(PRODUCER_CHECK, *waiting)
     remedy = f"rerun it with make pr-rerun PR={number}"
     if conclusion not in pr_landing.check_suites.RERUN_FAILED | pr_landing.check_suites.RERUN_ALL:
         remedy += " (or push a new head if it refuses)"
@@ -103,30 +112,30 @@ def _core_state(run: Runner, repo: str, number: int, head: str) -> str:
     )
 
 
-def _placeholder_waits(run: Runner, repo: str, branch: str, head: str) -> tuple[dict, dict[str, dict]]:
+def _in_flight_waits(run: Runner, repo: str, branch: str, head: str) -> tuple[dict, dict[str, dict]]:
     required = pr_landing.ruleset_required_contexts(run, repo, branch)
     evaluations = pr_landing.check_suites.evaluate(
         pr_landing.live_check_runs(run, repo, head), required, pr_landing.check_suites.NON_BLOCKING
     )
     runs = _ci_runs(run, repo, head) if any(item.failed for item in evaluations.values()) else []
-    placeholders: dict[str, dict] = {}
+    waits_by_name: dict[str, dict] = {}
     for name, item in evaluations.items():
         waits = {}
         for suite in item.failed:
-            full_run = _waiting_full_run(runs, suite.url)
-            if full_run is not None:
-                waits[suite] = full_run
-        placeholders[name] = waits
-    return evaluations, placeholders
+            waiting = _waiting_full_run(runs, suite.url)
+            if waiting is not None:
+                waits[suite] = waiting
+        waits_by_name[name] = waits
+    return evaluations, waits_by_name
 
 
 def suite_refusals(run: Runner, repo: str, branch: str, head: str) -> list[str]:
-    evaluations, placeholders = _placeholder_waits(run, repo, branch, head)
+    evaluations, waits_by_name = _in_flight_waits(run, repo, branch, head)
     waiting: list[str] = []
     remaining = {}
     for name, item in evaluations.items():
-        waits = placeholders[name]
-        waiting.extend(_waiting_reason(name, full_run) for full_run in dict.fromkeys(waits.values()))
+        waits = waits_by_name[name]
+        waiting.extend(_waiting_reason(name, *wait) for wait in dict.fromkeys(waits.values()))
         remaining[name] = pr_landing.check_suites.NameEvaluation(
             name, tuple(suite for suite in item.suites if suite not in waits), item.passing
         )
@@ -134,8 +143,8 @@ def suite_refusals(run: Runner, repo: str, branch: str, head: str) -> list[str]:
 
 
 def visible_refusals(run: Runner, repo: str, branch: str, head: str) -> list[str]:
-    _, placeholders = _placeholder_waits(run, repo, branch, head)
-    waiting = frozenset(name for name, waits in placeholders.items() if waits)
+    _, waits_by_name = _in_flight_waits(run, repo, branch, head)
+    waiting = frozenset(name for name, waits in waits_by_name.items() if waits)
     return pr_landing.visible_required_failure_reasons(run, repo, branch, head, waiting)
 
 
@@ -290,10 +299,12 @@ def batch_refusals(
 ) -> list[str]:
     batch_role = _worktree_config(run, "benchbox.batch.role")
     batch_id = _worktree_config(run, "benchbox.batch.id")
+    tracker: dict | None = None
     if batch_role == "integration":
         if batch_id is None:
             return ["the integration worktree names no batch (benchbox.batch.id is unset)"]
-        discovered_id: str | None = batch_id
+        tracker = pr_landing.read_batch_tracker(batch_id)
+        discovered_id: str | None = None if tracker.get("lifecycle") == "aborted" else batch_id
     else:
         v = view or {}
         discovery_fn = discover or pr_landing.discover_batch
@@ -309,7 +320,8 @@ def batch_refusals(
     )
     if evidence is None:
         return [f"batch {discovered_id} has no final evidence file at .todo-batch/{discovered_id}/final-evidence.json"]
-    tracker = pr_landing.read_batch_tracker(discovered_id)
+    if tracker is None:
+        tracker = pr_landing.read_batch_tracker(discovered_id)
 
     reasons: list[str] = []
     if tracker.get("lifecycle") != "active":

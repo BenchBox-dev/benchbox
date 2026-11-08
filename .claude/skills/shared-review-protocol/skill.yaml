@@ -10,4 +10,4 @@ targets:
   gemini: true
 # Documentary fallback, not a runtime dependency.
 portability_allow:
-  - "~/.todo-db/finding-drafts/<project-id>/"
+  - "~/.tractable/finding-drafts/<project-id>/"

@@ -1,11 +1,11 @@
 # Phase 3 Promotion Metrics
 
 Tracks the indicators from
-[`docs/development/benchbox-results-platform-strategy.md`][strategy] §
+[`docs/internal/benchbox-results-platform-strategy.md`][strategy] §
 "Phase 3: Hosted Platform (Deferred)" so the Phase 2 → Phase 3 decision
 is made on data, not frustration.
 
-[strategy]: ../../docs/development/benchbox-results-platform-strategy.md
+[strategy]: ../../docs/internal/benchbox-results-platform-strategy.md
 
 This document defines:
 
@@ -85,11 +85,8 @@ wastes the largest engineering investment in the project.
   of January; Q2: April; Q3: July; Q4: October).
 - **Owner**: BenchBox maintainer rotation — currently the single
   maintainer; revisit when a rotation exists.
-- **Scheduler**: `.github/workflows/phase3-promotion-review.yml` fires the
-  review automatically on the first Monday of each quarter (cron on days
-  1-7 of Jan/Apr/Jul/Oct plus a Monday guard) and opens a PR with the
-  generated report. The maintainer no longer has to remember the date.
-  `workflow_dispatch` is the manual fallback if the cron is ever missed.
+- **Scheduler**: Manual. `phase3-promotion-review.yml` was retired with the
+  unit-based CI on 2026-09-29; no workflow opens the quarterly review.
 
 ### Procedure (run each quarter)
 
@@ -97,13 +94,10 @@ wastes the largest engineering investment in the project.
    `_project/notes/phase-2-requests.md` with anything captured from
    issues, Discord, email, or in-PR conversations since the last
    review.
-2. Review the auto-generated PR titled `chore(phase-3): quarterly
-   promotion review <date>` opened by
-   `.github/workflows/phase3-promotion-review.yml`. If the cron was
-   missed, regenerate it manually with `gh workflow run
-   phase3-promotion-review.yml`. The `phase2_metrics.py` script that once
-   generated the metrics report was retired; gather each metric by hand
-   from its source.
+2. Gather each metric by hand from its source and record the quarterly
+   review. The former `phase2_metrics.py` report generator and
+   `phase3-promotion-review.yml` workflow are retired; neither can be
+   dispatched to regenerate a report.
 
 3. In the PR (or the handoff file), for each breached threshold write a
    one-paragraph interpretation: is this a sustained signal or an

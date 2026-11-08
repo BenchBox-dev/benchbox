@@ -1,5 +1,10 @@
+import sys
+import tempfile
+from pathlib import Path
+
 import pyarrow as pa
 import pytest
+from filelock import FileLock
 
 from benchbox.utils.format_converters.base import (
     ConversionError,
@@ -8,18 +13,22 @@ from benchbox.utils.format_converters.base import (
 )
 from benchbox.utils.format_converters.ducklake_converter import DuckLakeConverter
 
+REAL_DUCKDB_HOME = Path.home() / ".duckdb"
+INSTALL_LOCK = Path(tempfile.gettempdir()) / "benchbox-ducklake-extension-install.lock"
+
 try:
     import duckdb
 
-    conn = duckdb.connect(":memory:")
-    try:
-        conn.execute("INSTALL ducklake")
-        conn.execute("LOAD ducklake")
-        DUCKLAKE_AVAILABLE = True
-    except Exception:
-        DUCKLAKE_AVAILABLE = False
-    finally:
-        conn.close()
+    with FileLock(str(INSTALL_LOCK)):
+        conn = duckdb.connect(":memory:")
+        try:
+            conn.execute("INSTALL ducklake")
+            conn.execute("LOAD ducklake")
+            DUCKLAKE_AVAILABLE = True
+        except Exception:
+            DUCKLAKE_AVAILABLE = False
+        finally:
+            conn.close()
 except ImportError:
     DUCKLAKE_AVAILABLE = False
 
@@ -29,6 +38,12 @@ pytestmark = [
     pytest.mark.medium,
     pytest.mark.skipif(not DUCKLAKE_AVAILABLE, reason="DuckLake extension not available"),
 ]
+
+
+@pytest.fixture(autouse=True)
+def _installed_duckdb_extensions(_unit_home: Path) -> None:
+    if sys.platform != "win32" and REAL_DUCKDB_HOME.is_dir():
+        (_unit_home / ".duckdb").symlink_to(REAL_DUCKDB_HOME, target_is_directory=True)
 
 
 class TestDuckLakeConverterBasics:

@@ -798,6 +798,40 @@ def test_a_real_core_failure_is_not_mistaken_for_a_placeholder_while_another_run
     assert "required check 'core' completed with conclusion 'failure'" in err
 
 
+@pytest.mark.parametrize("verdict", [None, {"verdict": "pass"}])
+def test_a_real_core_failure_inside_the_full_run_still_in_progress_waits_for_that_run(
+    verdict: dict | None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gh = FakeGh(
+        verdict=verdict,
+        core=("completed", "failure"),
+        core_url=FULL_URL,
+        ci_runs=[(91, "CI", "in_progress")],
+    )
+    assert _arm_live(gh) == 2
+    assert gh.merged() == []
+    err = capsys.readouterr().err
+    assert "waiting for full CI run 91 to complete" in err
+    assert "no verdict will arrive" not in err
+    assert "completed with conclusion" not in err
+    assert "make pr-rerun" in err
+
+
+def test_a_real_core_failure_inside_a_completed_run_advises_the_rerun_now(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    gh = FakeGh(
+        verdict=None,
+        core=("completed", "failure"),
+        core_url=FULL_URL,
+        ci_runs=[(91, "CI", "completed")],
+    )
+    assert _arm_live(gh) == 2
+    err = capsys.readouterr().err
+    assert "waiting for full CI run" not in err
+    assert "make pr-rerun PR=7" in err
+
+
 def _final_line(capsys: pytest.CaptureFixture[str]) -> str:
     captured = capsys.readouterr()
     lines = [line for line in captured.out.splitlines() if line.strip()]
@@ -1049,8 +1083,12 @@ def _other_pr(tracker: dict, evidence: dict) -> None:
     evidence["tracker"]["final_pr"]["number"] = 8
 
 
-def _finished_batch(tracker: dict, evidence: dict) -> None:
+def _aborted_batch(tracker: dict, evidence: dict) -> None:
     tracker["lifecycle"] = "aborted"
+
+
+def _completed_batch(tracker: dict, evidence: dict) -> None:
+    tracker["lifecycle"] = "completed"
 
 
 def _reviewed_with_findings(tracker: dict, evidence: dict) -> None:
@@ -1059,7 +1097,7 @@ def _reviewed_with_findings(tracker: dict, evidence: dict) -> None:
 
 @pytest.mark.parametrize(
     "mutate",
-    [_drop_acceptance, _move_tracker_head, _other_pr, _finished_batch, _reviewed_with_findings],
+    [_drop_acceptance, _move_tracker_head, _other_pr, _completed_batch, _reviewed_with_findings],
 )
 def test_an_integration_worktree_refuses_a_pr_whose_batch_evidence_does_not_hold(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mutate
@@ -1068,6 +1106,16 @@ def test_an_integration_worktree_refuses_a_pr_whose_batch_evidence_does_not_hold
 
     assert code == 2
     assert gh.merged() == []
+
+
+def test_an_aborted_batch_is_armed_as_an_ordinary_pr_despite_the_worktree_markers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    code, gh, reads = _batch_arm(tmp_path, monkeypatch, overlap=True, mutate=_aborted_batch, write_evidence=False)
+
+    assert code == 0
+    assert reads == ["b"]
+    assert len(gh.merged()) == 1
 
 
 def test_an_integration_worktree_without_a_batch_id_refuses(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

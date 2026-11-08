@@ -187,7 +187,7 @@ happened to #3264 and #3319 (`oracle-review` runs from `synchronize` and
   lists only superseded suites that ended in a failure.
 - `make pr-arm` refuses a PR whose required check has a failed suite behind a
   newer success and prints the suite and run URL. `scripts/pr_landing.py`
-  live verification and `make pr-landing-remote-*` report the failed suite
+  live verification and `make pr-landing-remote` report the failed suite
   instead of the newest result for that name. The green-but-unmerged sweep
   lists these PRs in its digest and never counts them as green.
 - `make pr-arm` and `make pr-arm-remote` refuse until the `core` job has uploaded
@@ -201,7 +201,12 @@ happened to #3264 and #3319 (`oracle-review` runs from `synchronize` and
 - `make pr-rerun` re-runs the failed jobs of the newest CI run and of every
   Actions run behind a failed required suite (a cancelled suite re-runs the
   whole run). Pending suites are left alone. It refuses a conclusion it cannot
-  re-run, such as `startup_failure`.
+  re-run, such as `startup_failure`. GitHub re-runs failed jobs only after the
+  whole run completes, so while the newest CI run is still in progress
+  `make pr-rerun` refuses and names that run; `make pr-arm` agrees: a required
+  check that failed inside a run still in progress is reported as waiting for
+  that run (as is a placeholder `core` or `results-data` failure), and the
+  `make pr-rerun` advice appears only once the run has completed.
 - Phantom rollup: if the rollup shows FAILURE with no failed suite in the
   `filter=latest` listing (as on #2829), re-running changes nothing. Close and
   reopen the PR to make GitHub recompute the rollup, then check the listing

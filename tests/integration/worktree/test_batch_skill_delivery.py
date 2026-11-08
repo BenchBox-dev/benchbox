@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import subprocess
 import zipfile
@@ -14,12 +15,12 @@ pytestmark = [pytest.mark.integration, pytest.mark.medium]
 ROOT = Path(__file__).resolve().parents[3]
 
 
-DELIVERY_CATALOG_REV = "6b47649eaff3ee66bca25c62c954134daf405f34"
-SOURCE_REV = "743f0173b71154b3c24e8c9b0b5ec0c712f9c32b"
-TODO_DB_VERSION = "0.15.0"
+DELIVERY_CATALOG_REV = "cc8adf58ed39893418cbfa9d209d367a784819de"
+SOURCE_REV = "ccfefb409d4c071d9c97a2e2dae5a17363ec6cab"
+TRACTABLE_VERSION = "1.0.0"
 SCRIPTS_PROJECT = ROOT / "_project/scripts"
-WHEEL = SCRIPTS_PROJECT / f"vendor/todo_db-{TODO_DB_VERSION}-py3-none-any.whl"
-WHEEL_SHA256 = "9f1985ff0ff8c4d96b0b14d4f6383b1d366236f798940e73e541de5345592468"
+WHEEL = SCRIPTS_PROJECT / f"vendor/tractable-{TRACTABLE_VERSION}-py3-none-any.whl"
+WHEEL_SHA256 = "b90c68cde0ed6d0c10bc6f040837385b20b6661cf404295f8331c28f6160b8b8"
 REQUIRED_BATCH_TOOLS = {"register_batch", "prepare", "bind_batch_pr", "abort_batch"}
 
 
@@ -67,24 +68,51 @@ def test_project_local_wheel_and_lock_are_exact_and_sibling_free() -> None:
     assert _sha256(WHEEL) == WHEEL_SHA256
     pyproject = (SCRIPTS_PROJECT / "pyproject.toml").read_text(encoding="utf-8")
     lock = (SCRIPTS_PROJECT / "uv.lock").read_text(encoding="utf-8")
-    expected_path = f"vendor/todo_db-{TODO_DB_VERSION}-py3-none-any.whl"
+    expected_path = f"vendor/tractable-{TRACTABLE_VERSION}-py3-none-any.whl"
     assert f'path = "{expected_path}"' in pyproject
     assert f'path = "{expected_path}"' in lock
-    assert f'name = "todo-db"\nversion = "{TODO_DB_VERSION}"' in lock
-    assert "/Users/joe/Developer/todo-db" not in pyproject
-    assert "/Users/joe/Developer/todo-db" not in lock
+    assert f'name = "tractable"\nversion = "{TRACTABLE_VERSION}"' in lock
+    assert "/Users/joe/Developer/tractable" not in pyproject
+    assert "/Users/joe/Developer/tractable" not in lock
+    assert "/Users/joe/Developer" not in lock
     with zipfile.ZipFile(WHEEL) as archive:
         names = set(archive.namelist())
         metadata_name = next(name for name in names if name.endswith(".dist-info/METADATA"))
         metadata = archive.read(metadata_name).decode("utf-8")
-    assert "Name: todo-db\n" in metadata
-    assert f"Version: {TODO_DB_VERSION}\n" in metadata
-    assert "todo_db/mcp/server.py" in names
-    assert "todo_db/mcp/tools.py" in names
-    assert "todo_db/database.py" not in names
+    assert "Name: tractable\n" in metadata
+    assert f"Version: {TRACTABLE_VERSION}\n" in metadata
+    assert "tractable/mcp/server.py" in names
+    assert "tractable/mcp/tools.py" in names
+    assert "tractable/database.py" not in names
+
+
+def _skip_unless_scripts_project_resolves_offline() -> None:
+    probe = subprocess.run(
+        [
+            "uv",
+            "run",
+            "--project",
+            str(SCRIPTS_PROJECT),
+            "--locked",
+            "--offline",
+            "--",
+            "python",
+            "-c",
+            "import todo_db",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    if probe.returncode != 0 and os.environ.get("GITHUB_ACTIONS") != "true":
+        pytest.skip(
+            "the _project/scripts environment is not installed and cannot resolve offline; "
+            "run `uv sync --project _project/scripts --locked` first (hosted CI always does)"
+        )
 
 
 def test_installed_runtime_handshake_exposes_registered_batch_tools(tmp_path: Path) -> None:
+    _skip_unless_scripts_project_resolves_offline()
     remote = tmp_path / "state.git"
     subprocess.run(["git", "init", "--bare", "--quiet", str(remote)], check=True, capture_output=True)
     subprocess.run(
@@ -96,7 +124,7 @@ def test_installed_runtime_handshake_exposes_registered_batch_tools(tmp_path: Pa
             "--locked",
             "--offline",
             "--",
-            "todo-db",
+            "tractable",
             "bootstrap",
             "--state-remote",
             str(remote),
@@ -117,7 +145,7 @@ def test_installed_runtime_handshake_exposes_registered_batch_tools(tmp_path: Pa
             "--locked",
             "--offline",
             "--",
-            "todo-db-mcp",
+            "tractable-mcp",
             "--state-remote",
             str(remote),
             "--state-branch",
@@ -144,7 +172,7 @@ def test_installed_runtime_handshake_exposes_registered_batch_tools(tmp_path: Pa
                 "clientInfo": {"name": "batch-runtime-test", "version": "1"},
             },
         )
-        assert initialized["result"]["serverInfo"] == {"name": "todo-db", "version": TODO_DB_VERSION}
+        assert initialized["result"]["serverInfo"] == {"name": "tractable", "version": TRACTABLE_VERSION}
         assert proc.stdin is not None
         proc.stdin.write(json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}) + "\n")
         proc.stdin.flush()
@@ -179,7 +207,7 @@ def test_installed_runtime_handshake_exposes_registered_batch_tools(tmp_path: Pa
 def test_rollout_evidence_records_active_runtime_capability() -> None:
     evidence = _evidence()
     runtime = evidence["runtime"]
-    assert runtime["dependency_metadata_version"] == TODO_DB_VERSION
+    assert runtime["dependency_metadata_version"] == TRACTABLE_VERSION
     assert runtime["schema_version"] == 4
     assert runtime["tool_count"] == 22
     assert set(runtime["registered_batch_tools"]) == REQUIRED_BATCH_TOOLS

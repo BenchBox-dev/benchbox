@@ -85,7 +85,7 @@ BATCH_EVIDENCE_SCHEMA = "benchbox_batch_evidence_v2"
 MEMBER_REVIEW_SCHEMA = "benchbox_member_review_v1"
 DEVELOP_TRACKING_REF = "refs/remotes/origin/develop"
 MEMBER_REVIEW_OUTCOMES = frozenset({"clear", "not-reviewed", "override"})
-TRACKER_SHOW_COMMAND = ("uv", "run", "--project", "_project/scripts", "--locked", "--", "todo-db", "batch", "show")
+TRACKER_SHOW_COMMAND = ("uv", "run", "--project", "_project/scripts", "--locked", "--", "tractable", "batch", "show")
 TRACKER_WINDOW_BUDGET = 6000
 MAX_TRACKER_WINDOWS = 4096
 FOLLOWUP_SCHEMA = "pr_followup_v2"
@@ -206,7 +206,7 @@ def batch_runtime_capability_available(repo: Path) -> bool:
     runtime = evidence.get("runtime") if isinstance(evidence, dict) else None
     if not isinstance(runtime, dict):
         return False
-    capability = runtime.get("todo_db_batch")
+    capability = runtime.get("tractable_batch")
     handshake = runtime.get("mcp_handshake")
     if not isinstance(capability, dict) or not isinstance(handshake, dict):
         return False
@@ -260,7 +260,7 @@ def batch_mode_failures(
         return failures
     if not batch_runtime_capability_available(repo):
         failures.append(
-            "batch delivery requires the active todo-db runtime to advertise capability todo_db_batch version 2, "
+            "batch delivery requires the active tractable runtime to advertise capability tractable_batch version 2, "
             f"receipt schema {PREPARED_RECEIPT_SCHEMA} and store schema {BATCH_STORE_SCHEMA_VERSION}"
         )
     batch = evidence.batch_evidence
@@ -1106,6 +1106,119 @@ def _check_evidence_acceptance(repo: Path, evidence: dict, head: str, tracker: d
     return failures
 
 
+def _path_in_tree(repo: Path, head: str, path: str) -> bool:
+    return subprocess.run(["git", "cat-file", "-e", f"{head}:{path}"], cwd=repo, capture_output=True).returncode == 0
+
+
+TEST_RUN_ANCHORS = ("-q", "pytest")
+
+
+def trailing_test_run_start(command: list) -> int | None:
+    start = len(command)
+    while start > 0 and isinstance(command[start - 1], str) and command[start - 1].startswith("tests/"):
+        start -= 1
+    if start == len(command) or start == 0 or command[start - 1] not in TEST_RUN_ANCHORS:
+        return None
+    return start
+
+
+def _receipt_verification_paths(receipt: object) -> set[str]:
+    verification = receipt.get("verification") if isinstance(receipt, dict) else None
+    command = verification.get("command") if isinstance(verification, dict) else None
+    if not isinstance(command, list) or "pytest" not in command:
+        return set()
+    start = trailing_test_run_start(command)
+    if start is None:
+        return set()
+    return {arg.split("::", 1)[0] for arg in command[start:]}
+
+
+def _git_stdout(repo: Path, *args: str) -> str | None:
+    proc = subprocess.run(["git", *args], cwd=repo, check=False, capture_output=True, encoding="utf-8", timeout=120)
+    return proc.stdout if proc.returncode == 0 else None
+
+
+def _develop_anchors(repo: Path, tracker: dict) -> list[str] | None:
+    start_head = _revision(tracker.get("start_head"))
+    log = tracker.get("integration_log")
+    if start_head is None or not isinstance(log, list):
+        return None
+    anchors = [start_head]
+    for entry in log:
+        if not isinstance(entry, dict) or entry.get("kind") != "develop-merge":
+            continue
+        merge = _revision(entry.get("head"))
+        parents = _git_stdout(repo, "rev-list", "--parents", "-n", "1", merge) if merge else None
+        if parents is None or len(parents.split()) != 3:
+            return None
+        anchors.append(parents.split()[2])
+    return anchors
+
+
+def _plainly_deleted(repo: Path, anchor: str, tip: str, path: str) -> bool:
+    logged = _git_stdout(
+        repo, "log", "--format=%H", "--no-renames", "--diff-filter=D", f"{anchor}..{tip}", "--", f":(literal){path}"
+    )
+    commits = logged.split() if logged else []
+    if not commits:
+        return False
+    for commit in commits:
+        shown = _git_stdout(repo, "show", "--format=", "--no-renames", "--name-status", "-z", "--diff-filter=A", commit)
+        if shown is None or any(token.startswith("tests/") for token in shown.split("\0")[1::2]):
+            return False
+    return True
+
+
+def develop_plainly_deleted(repo: Path, tracker: dict, path: str) -> bool:
+    anchors = _develop_anchors(repo, tracker)
+    if anchors is None:
+        return False
+    present = []
+    for anchor in anchors:
+        listed = _git_stdout(repo, "ls-tree", "--name-only", anchor, "--", path)
+        if listed is None:
+            return False
+        if listed.strip():
+            present.append(anchor)
+    return bool(present) and all(_plainly_deleted(repo, anchor, DEVELOP_TRACKING_REF, path) for anchor in present)
+
+
+def _check_evidence_dropped_paths(repo: Path, evidence: dict, head: str, tracker: dict, receipts: dict) -> list[str]:
+    dropped = evidence.get("dropped_receipt_paths", {})
+    if not isinstance(dropped, dict):
+        return ["batch evidence dropped_receipt_paths is not an object"]
+    excluded, _problems = develop_exclusions(repo, head, tracker, receipts)
+    members = _tracker_members(tracker)
+    failures = [f"dropped receipt paths name unknown member {member}" for member in sorted(set(dropped) - set(members))]
+    for member in members:
+        claimed = dropped.get(member, [])
+        if not isinstance(claimed, list) or not all(isinstance(path, str) for path in claimed):
+            failures.append(f"dropped receipt paths for {member} are malformed")
+            continue
+        named = _receipt_verification_paths(receipts.get(member))
+        expected = {
+            path
+            for path in named
+            if path in excluded and not _path_in_tree(repo, head, path) and develop_plainly_deleted(repo, tracker, path)
+        }
+        for path in sorted(set(claimed) - named):
+            failures.append(f"dropped path {path} is not named by member {member}'s receipt command")
+        for path in sorted(set(claimed) & named):
+            if path not in excluded:
+                failures.append(f"dropped path {path} was not removed by a recorded develop merge")
+            elif _path_in_tree(repo, head, path):
+                failures.append(f"dropped path {path} still exists at the PR head")
+            elif not develop_plainly_deleted(repo, tracker, path):
+                failures.append(
+                    f"dropped path {path} was not plainly deleted by develop (a rename, replacement or unreadable diff)"
+                )
+        failures.extend(
+            f"member {member} receipt path {path} was removed by a recorded develop merge but is not listed as dropped"
+            for path in sorted(expected - set(claimed))
+        )
+    return failures
+
+
 def _check_evidence_changed_files(repo: Path, evidence: dict, head: str, tracker: dict, receipts: dict) -> list[str]:
     start_head = _revision(tracker.get("start_head"))
     if start_head is None:
@@ -1127,7 +1240,7 @@ def _check_evidence_changed_files(repo: Path, evidence: dict, head: str, tracker
     return failures
 
 
-TRACKER_CONFIG = REPO_ROOT / ".todo-db" / "config.json"
+TRACKER_CONFIG = REPO_ROOT / ".tractable" / "config.json"
 
 
 def _same_repository(value: object, repo: str) -> bool:
@@ -1282,6 +1395,7 @@ def check_batch_evidence(repo: Path, evidence: dict, head: str, tracker: dict) -
     failures.extend(_check_evidence_receipts(repo, members, receipts, head))
     failures.extend(_check_evidence_acceptance(repo, evidence, head, tracker, receipts))
     failures.extend(_check_evidence_changed_files(repo, evidence, head, tracker, receipts))
+    failures.extend(_check_evidence_dropped_paths(repo, evidence, head, tracker, receipts))
     failures.extend(_check_evidence_reviews(repo, evidence, members, receipts))
     return failures
 
@@ -1667,7 +1781,7 @@ def _validate_followup_batch(state: FollowupState) -> list[str]:
         or len(state.batch_id) > MAX_TODO_ID_LEN
         or not TODO_ID_RE.fullmatch(state.batch_id or "")
     ):
-        failures.append("followup batch_id must be a canonical todo-db ID")
+        failures.append("followup batch_id must be a canonical tracker ID")
     if not isinstance(state.owner_generation, str) or not re.fullmatch(r"[0-9a-f]{32}", state.owner_generation):
         failures.append("followup owner_generation must be a 32-hex value")
     failures.extend(_valid_text(state.integrator, "integrator", required=True))

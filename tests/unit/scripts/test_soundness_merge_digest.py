@@ -707,11 +707,62 @@ def test_an_empty_short_or_mismatched_commit_list_is_refused(monkeypatch, commit
         digest.collect_commits("o/r", 7, pull, "base")
 
 
-def test_a_commit_list_at_the_api_limit_is_refused(monkeypatch):
-    commits = [api_commit(f"{i:040x}", BEFORE) for i in range(digest.MAX_PULL_COMMITS)]
-    commit_list(monkeypatch, commits)
+def git_log_line(sha, committed_at, *parents):
+    return " ".join([sha, committed_at, *parents])
+
+
+def at_the_api_limit(monkeypatch, listing, *, fetch_head=None):
+    api = [api_commit(f"{i:040x}", BEFORE) for i in range(digest.MAX_PULL_COMMITS)]
+    commands = []
+
+    def fake_run(args, **_):
+        commands.append(list(args))
+        if args[:3] == ["git", "rev-parse", "FETCH_HEAD"]:
+            return (fetch_head or listing[-1].split()[0]) + "\n"
+        if args[:2] == ["git", "log"]:
+            return "\n".join(listing) + "\n"
+        return ""
+
+    monkeypatch.setattr(digest, "gh_pages", lambda endpoint: api)
+    monkeypatch.setattr(digest, "gh_json", lambda *args: runs_response())
+    monkeypatch.setattr(digest, "run", fake_run)
+    monkeypatch.setattr(digest, "merge_adds_content", lambda sha, base, cwd=None: True)
+    return commands
+
+
+def test_a_commit_list_at_the_api_limit_is_read_whole_from_git(monkeypatch):
+    count = digest.MAX_PULL_COMMITS + 7
+    shas = [f"{i + 1:040x}" for i in range(count)]
+    listing = [git_log_line(sha, BEFORE, "p") for sha in shas]
+    commands = at_the_api_limit(monkeypatch, listing)
+    result = digest.collect_commits("o/r", 7, pull_of(shas[-1], count), "base")
+    assert [c.sha for c in result] == shas
+    assert ["git", "fetch", "--no-tags", "origin", "refs/pull/7/head"] in commands
+    assert ["git", "log", "--reverse", "--topo-order", "--format=%H %cI %P", f"base..{shas[-1]}"] in commands
+
+
+def test_a_git_listing_short_of_the_pull_request_count_is_refused_not_truncated(monkeypatch):
+    shas = [f"{i + 1:040x}" for i in range(digest.MAX_PULL_COMMITS)]
+    at_the_api_limit(monkeypatch, [git_log_line(sha, BEFORE, "p") for sha in shas])
     with pytest.raises(digest.ReadError):
-        digest.collect_commits("o/r", 7, pull_of(commits[-1]["sha"], len(commits)), "base")
+        digest.collect_commits("o/r", 7, pull_of(shas[-1], digest.MAX_PULL_COMMITS + 3), "base")
+
+
+def test_a_pull_head_that_moved_while_the_limit_listing_was_read_is_refused(monkeypatch):
+    shas = [f"{i + 1:040x}" for i in range(digest.MAX_PULL_COMMITS)]
+    at_the_api_limit(monkeypatch, [git_log_line(sha, BEFORE, "p") for sha in shas], fetch_head="f" * 40)
+    with pytest.raises(digest.ReadError):
+        digest.collect_commits("o/r", 7, pull_of(shas[-1], len(shas)), "base")
+
+
+def test_a_merge_in_a_limit_listing_is_still_judged_for_refresh(monkeypatch):
+    shas = [f"{i + 1:040x}" for i in range(digest.MAX_PULL_COMMITS)]
+    listing = [git_log_line(sha, BEFORE, "p") for sha in shas]
+    listing[10] = git_log_line(shas[10], BEFORE, "p", "q")
+    at_the_api_limit(monkeypatch, listing)
+    monkeypatch.setattr(digest, "merge_adds_content", lambda sha, base, cwd=None: False)
+    result = digest.collect_commits("o/r", 7, pull_of(shas[-1], len(shas)), "base")
+    assert [c.sha for c in result if c.is_refresh] == [shas[10]]
 
 
 def test_pages_of_a_paginated_read_are_flattened(monkeypatch):

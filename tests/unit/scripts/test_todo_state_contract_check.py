@@ -25,21 +25,21 @@ def test_contract_rejects_database_runtime(tmp_path: Path) -> None:
     vendor = tmp_path / "_project/scripts/vendor"
     vendor.mkdir(parents=True)
     with zipfile.ZipFile(vendor / check.EXPECTED_WHEEL, "w") as archive:
-        archive.writestr("todo_db/database.py", "SCHEMA_VERSION = 7\n")
-        archive.writestr("todo_db/git_backend.py", "")
-        archive.writestr("todo_db/cli.py", "")
-        archive.writestr("todo_db/mcp/server.py", "")
-        archive.writestr("todo_db/mcp/tools.py", "")
+        archive.writestr("tractable/database.py", "SCHEMA_VERSION = 7\n")
+        archive.writestr("tractable/git_backend.py", "")
+        archive.writestr("tractable/cli.py", "")
+        archive.writestr("tractable/mcp/server.py", "")
+        archive.writestr("tractable/mcp/tools.py", "")
         archive.writestr(
-            f"todo_db-{check.EXPECTED_VERSION}.dist-info/METADATA",
-            f"Name: todo-db\nVersion: {check.EXPECTED_VERSION}\n",
+            f"tractable-{check.EXPECTED_VERSION}.dist-info/METADATA",
+            f"Name: tractable\nVersion: {check.EXPECTED_VERSION}\n",
         )
     scripts = tmp_path / "_project/scripts"
     scripts.mkdir(parents=True, exist_ok=True)
     (scripts / "pyproject.toml").write_text(
-        f'[tool.uv.sources]\ntodo-db = {{ path = "vendor/{check.EXPECTED_WHEEL}" }}\n', encoding="utf-8"
+        f'[tool.uv.sources]\ntractable = {{ path = "vendor/{check.EXPECTED_WHEEL}" }}\n', encoding="utf-8"
     )
-    config_dir = tmp_path / ".todo-db"
+    config_dir = tmp_path / ".tractable"
     config_dir.mkdir()
     (config_dir / "config.json").write_text(
         json.dumps({"state_branch": check.EXPECTED_BRANCH, "state_remote": check.EXPECTED_REMOTE}), encoding="utf-8"

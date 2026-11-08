@@ -54,6 +54,7 @@ FETCH_MODE_PLATFORMS = (
     "pyspark",
     "lakesail",
     "velox",
+    "influxdb",
 )
 FETCH_MODE_OPTION_HELP = (
     "Result fetch mode, rows or arrow. Arrow receives the full result as Arrow inside the query timer "

@@ -84,16 +84,51 @@ class TestInfluxAdapterCoverage:
         assert "cpu" in meta["tables_loaded"]
 
     def test_execute_query_success_and_failure(self, adapter):
-        conn = MagicMock()
-        conn.execute.return_value = [(1,), (2,)]
-        duration, row_count, plan = adapter.execute_query(conn, "SELECT 1", query_id="q1")
-        assert duration >= 0
-        assert row_count == 2
-        assert plan is None
+        import pyarrow as pa
 
-        conn.execute.side_effect = RuntimeError("query failed")
-        with pytest.raises(RuntimeError, match="query failed"):
-            adapter.execute_query(conn, "SELECT bad", query_id="q2")
+        from benchbox.platforms.influxdb.client import InfluxResultCursor
+
+        conn = MagicMock()
+        conn.cursor.return_value = InfluxResultCursor(conn)
+        conn.execute_arrow.return_value = pa.table({"a": [1, 2]})
+        result = adapter.execute_query(conn, "SELECT 1", query_id="q1", validate_row_count=False)
+        assert result["status"] == "SUCCESS"
+        assert result["rows_returned"] == 2
+
+        conn.execute_arrow.side_effect = RuntimeError("query failed")
+        failed = adapter.execute_query(conn, "SELECT bad", query_id="q2", validate_row_count=False)
+        assert failed["status"] == "FAILED"
+        assert "query failed" in failed["error"]
+
+    @pytest.mark.parametrize("mode", ["rows", "arrow"])
+    def test_execute_query_records_fetch_mode(self, mode):
+        import pyarrow as pa
+
+        from benchbox.platforms.influxdb.adapter import InfluxDBAdapter
+        from benchbox.platforms.influxdb.client import InfluxResultCursor
+
+        with patch("benchbox.platforms.influxdb.adapter.INFLUXDB_AVAILABLE", True):
+            influx = InfluxDBAdapter(host="localhost", token="t", fetch_mode=mode)
+        conn = MagicMock()
+        conn.cursor.return_value = InfluxResultCursor(conn)
+        conn.execute_arrow.return_value = pa.table({"a": [1, 2], "b": ["x", "y"]})
+        result = influx.execute_query(conn, "SELECT a, b FROM t", query_id="q1", validate_row_count=False)
+        assert influx.fetch_mode == mode
+        assert result["fetch_mode"] == mode
+        assert result["rows_returned"] == 2
+        assert result["first_row"] == (1, "x")
+
+    def test_client_rows_and_arrow_agree(self):
+        import pyarrow as pa
+
+        from benchbox.platforms.influxdb.client import InfluxDBConnection as Client
+
+        client = Client(host="localhost", token="t", database="d")
+        client._client_type = "influxdb3"
+        client._client = MagicMock()
+        client._client.query.return_value = pa.table({"a": [1, 2], "b": ["x", "y"]})
+        assert client.execute("SELECT 1") == [(1, "x"), (2, "y")]
+        assert client.execute_arrow("SELECT 1").num_rows == 2
 
     def test_schema_and_noop_config_methods(self, adapter):
         conn = MagicMock()
