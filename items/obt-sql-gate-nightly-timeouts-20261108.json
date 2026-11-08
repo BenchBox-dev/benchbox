@@ -9,6 +9,57 @@
     "member_id": "obt-sql-gate-nightly-timeouts-20261108"
   },
   "description": "Reported during the CI-reliability work (#4031). In the nightly t3:sql-execution-gate-obt job, SQLite tpcds_obt-augmented q95 hits the 15 s timeout, and PostgreSQL OBT q58 and q60 time out as well. An experiment indexing the OBT key columns did not help and was reverted. The job is red on scheduled nightlies (for example run 42241036225).\n\nChange. Measure the hosted timings, find why these queries are slow on the OBT schema (plan, missing statistics, a correlated subquery), and fix the cause, or record evidence-backed timeout entries as required (not optional) entries.\n\nGuardrails: work in a linked worktree; no explanatory comments; do not just raise the timeout without measurements.",
+  "prepared": {
+    "accepted_head": "aff09a7b0a9fcd804d33715b7a6a0a18fc024ed9",
+    "batch_id": "ci-uat-stability",
+    "changed_files": [
+      "changelog.d/feat-ci-uat-stability--obt-sql-gate-nightly-timeouts-20261108.json",
+      "docs/internal/sql-execution-evidence-gate.md",
+      "scripts/sql_execution_gate/engines.py",
+      "scripts/sql_execution_gate/expected_differences.json",
+      "scripts/sql_execution_gate/obt.py",
+      "tests/unit/scripts/test_sql_execution_gate.py"
+    ],
+    "integration_head": "d671afc54d4f69c6e4c43de10358f5a3f9b8e817",
+    "integration_seq": 1,
+    "member_id": "obt-sql-gate-nightly-timeouts-20261108",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "49341df7c33e79a69d83a1dd07cb2b383c137104772904edff9243ab1985cabf",
+    "source_base": "205cae77675c7cb7236fcaa1a5873fe23420795d",
+    "source_revision": "aff09a7b0a9fcd804d33715b7a6a0a18fc024ed9",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-ci-uat-stability--obt-sql-gate-nightly-timeouts-20261108",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/unit/scripts/test_sql_execution_gate.py",
+        "tests/unit/test_ledger_coverage.py"
+      ],
+      "review": {
+        "base_sha": "205cae77675c7cb7236fcaa1a5873fe23420795d",
+        "head_sha": "aff09a7b0a9fcd804d33715b7a6a0a18fc024ed9",
+        "head_tree": "78af23ed551ff98d533adb855d1a3224079764c7",
+        "outcome": "clear",
+        "patch_digest": "1a937a12b8cf16a95e864aa4cd3002aa",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "205cae77675c7cb7236fcaa1a5873fe23420795d"
+      },
+      "revision": "aff09a7b0a9fcd804d33715b7a6a0a18fc024ed9",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
@@ -33,6 +84,15 @@
       "generation": "69eced26fc104cbbbc3c37628789622c",
       "op": "take",
       "op_id": "2e63d54c6058472889d60f3ad5400400",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-08T18:45:56Z",
+      "client": "omp-coding-agent",
+      "generation": "69eced26fc104cbbbc3c37628789622c",
+      "op": "prepare",
+      "op_id": "714f3764ed2c4944a2819f96c13b5c6f",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]

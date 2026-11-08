@@ -2616,20 +2616,45 @@
       "terminal_outcome": "deliver"
     },
     "ci-uat-stability": {
-      "accepted_members": {},
+      "accepted_members": {
+        "obt-sql-gate-nightly-timeouts-20261108": "aff09a7b0a9fcd804d33715b7a6a0a18fc024ed9"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "obt-sql-gate-nightly-timeouts-20261108": {
+          "accepted_head": "aff09a7b0a9fcd804d33715b7a6a0a18fc024ed9",
+          "changed_files": [
+            "changelog.d/feat-ci-uat-stability--obt-sql-gate-nightly-timeouts-20261108.json",
+            "docs/internal/sql-execution-evidence-gate.md",
+            "scripts/sql_execution_gate/engines.py",
+            "scripts/sql_execution_gate/expected_differences.json",
+            "scripts/sql_execution_gate/obt.py",
+            "tests/unit/scripts/test_sql_execution_gate.py"
+          ],
+          "integration_head": "d671afc54d4f69c6e4c43de10358f5a3f9b8e817",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/ci-uat-stability",
-      "integration_head": "205cae77675c7cb7236fcaa1a5873fe23420795d",
+      "integration_head": "d671afc54d4f69c6e4c43de10358f5a3f9b8e817",
       "integration_log": [
         {
           "at": "2026-11-08T18:40:38Z",
           "head": "205cae77675c7cb7236fcaa1a5873fe23420795d",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-08T18:45:56Z",
+          "head": "d671afc54d4f69c6e4c43de10358f5a3f9b8e817",
+          "kind": "prepare",
+          "member": "obt-sql-gate-nightly-timeouts-20261108",
+          "op_id": "714f3764ed2c4944a2819f96c13b5c6f",
+          "previous_head": "205cae77675c7cb7236fcaa1a5873fe23420795d",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-ci-uat-stability",
@@ -25906,15 +25931,10 @@
       "title": "Confirm nyctaxi DataFrame-SQL id mapping"
     },
     "obt-sql-gate-nightly-timeouts-20261108": {
-      "claim": {
-        "expires_at": "2026-11-09T18:45:44Z",
-        "generation": "69eced26fc104cbbbc3c37628789622c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Nightly OBT SQL execution gate times out: SQLite tpcds_obt-augmented q95 and PostgreSQL OBT q58 and q60"
     },
     "off-scale-indicator-for-diverging-bar-values-clamped-at-300": {
