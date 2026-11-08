@@ -767,154 +767,24 @@ def _read_check(member_worktree: Path, member_head: str, integration_head: str) 
     return record if isinstance(record, dict) and record.get("schema") == CHECK_SCHEMA else None
 
 
-def _is_test_path_arg(arg: str) -> bool:
-    return arg.startswith("tests/")
-
-
-TEST_RUN_ANCHORS = ("-q", "pytest")
-
-
-def _tree_has(repo: Path, revision: str, path: str) -> bool | None:
-    listed = subprocess.run(
-        ["git", "ls-tree", "--name-only", revision, "--", path],
-        cwd=repo,
-        check=False,
-        capture_output=True,
-        encoding="utf-8",
-        timeout=60,
-    )
-    if listed.returncode != 0:
-        return None
-    return bool(listed.stdout.strip())
-
-
-def _develop_anchors(repo: Path, ledger: dict) -> list[str] | None:
-    start_head = ledger.get("start_head")
-    if not isinstance(start_head, str) or not start_head:
-        return None
-    anchors = [start_head]
-    for advance in ledger.get("advances", []):
-        if not isinstance(advance, dict) or advance.get("kind") != "develop-merge":
-            continue
-        merge = advance.get("head")
-        if not isinstance(merge, str) or not merge:
-            return None
-        try:
-            parents = _git(repo, "rev-list", "--parents", "-n", "1", merge).split()[1:]
-        except BatchError:
-            return None
-        if len(parents) != 2:
-            return None
-        anchors.append(parents[1])
-    return anchors
-
-
-def _plainly_deleted(repo: Path, anchor: str, tip: str, path: str) -> bool:
-    logged = subprocess.run(
-        [
-            "git",
-            "log",
-            "--format=%H",
-            "--no-renames",
-            "--diff-filter=D",
-            f"{anchor}..{tip}",
-            "--",
-            f":(literal){path}",
-        ],
-        cwd=repo,
-        check=False,
-        capture_output=True,
-        encoding="utf-8",
-        timeout=120,
-    )
-    if logged.returncode != 0:
-        return False
-    commits = logged.stdout.split()
-    if not commits:
-        return False
-    for commit in commits:
-        shown = subprocess.run(
-            ["git", "show", "--format=", "--no-renames", "--name-status", "-z", "--diff-filter=A", commit],
-            cwd=repo,
-            check=False,
-            capture_output=True,
-            encoding="utf-8",
-            timeout=120,
-        )
-        if shown.returncode != 0:
-            return False
-        tokens = shown.stdout.split("\0")
-        if any(token.startswith("tests/") for token in tokens[1::2]):
-            return False
-    return True
-
-
-def _deleted_by_develop(repo: Path, path: str, anchors: list[str]) -> bool:
-    if (repo / path).exists() or _tree_has(repo, DEVELOP_REF, path) is not False:
-        return False
-    states = [_tree_has(repo, anchor, path) for anchor in anchors]
-    if None in states:
-        return False
-    existing = [anchor for anchor, present in zip(anchors, states, strict=True) if present]
-    return bool(existing) and all(_plainly_deleted(repo, anchor, DEVELOP_REF, path) for anchor in existing)
-
-
-def _trailing_test_run_start(command: list[str]) -> int | None:
-    start = len(command)
-    while start > 0 and _is_test_path_arg(command[start - 1]):
-        start -= 1
-    if start == len(command) or start == 0 or command[start - 1] not in TEST_RUN_ANCHORS:
-        return None
-    return start
-
-
-def _without_deleted_test_paths(command: list[str], repo: Path, ledger: dict) -> tuple[list[str], list[str]]:
-    start = _trailing_test_run_start(command) if "pytest" in command else None
-    anchors = _develop_anchors(repo, ledger) if start is not None else None
-    if start is None or anchors is None:
-        return list(command), []
-    dropped = [arg for arg in command[start:] if _deleted_by_develop(repo, arg.split("::", 1)[0], anchors)]
-    kept = [arg for arg in command[start:] if arg not in dropped]
-    return [*command[:start], *kept], dropped
-
-
-def _rerun(
-    repo: Path,
-    ledger: dict,
-    member: str,
-    command: list[str],
-    suite: str,
-    reason: str,
-) -> dict:
+def _rerun(repo: Path, ledger: dict, member: str, command: list[str], suite: str, reason: str) -> dict:
     head = _rev(repo, "HEAD")
     clean_before = _is_clean(repo)
-    recorded = _validate_verification_command(command)
-    ran_command, dropped_paths = _without_deleted_test_paths(recorded, repo, ledger)
-    if dropped_paths and _trailing_test_run_start(ran_command) is None:
-        proc = None
-    else:
-        proc = _run(ran_command, repo)
+    proc = _run(_validate_verification_command(command), repo)
     head_after = _rev(repo, "HEAD")
     clean_after = _is_clean(repo)
-    passed = proc is not None and proc.returncode == 0 and clean_before and clean_after and head_after == head
+    passed = proc.returncode == 0 and clean_before and clean_after and head_after == head
     entry = {
         "status": "passed" if passed else "failed",
         "revision": head,
         "clean": clean_before and clean_after,
         "suite": suite,
         "command": list(command),
-        "ran_command": ran_command,
-        "dropped_paths": dropped_paths,
         "worktree": str(repo.resolve()),
         "reason": reason,
         "at": _now(),
     }
-    if proc is None:
-        entry["output"] = (
-            f"every recorded test path is absent from the tree ({', '.join(dropped_paths)}); "
-            "refusing to run pytest without them"
-        )
-    elif proc.returncode != 0:
+    if proc.returncode != 0:
         entry["output"] = (proc.stderr or proc.stdout).strip()[-400:]
     elif not passed:
         entry["output"] = (
@@ -2181,12 +2051,18 @@ def _unprepared_state(repo: Path, ledger: dict, tracker: dict, member: str) -> t
         return "merged-unprepared", None, str(exc)
 
 
-def _excluded_paths(repo: Path, final_head: str, tracker: dict) -> set[str]:
+def _pr_landing_module():
     scripts = str(Path(__file__).resolve().parent)
     if scripts not in sys.path:
         sys.path.insert(0, scripts)
     _checkout_root_modules()
     import pr_landing
+
+    return pr_landing
+
+
+def _excluded_paths(repo: Path, final_head: str, tracker: dict) -> set[str]:
+    pr_landing = _pr_landing_module()
 
     excluded, problems = pr_landing.develop_exclusions(repo, final_head, tracker, _receipts(tracker))
     if problems:
@@ -2194,25 +2070,26 @@ def _excluded_paths(repo: Path, final_head: str, tracker: dict) -> set[str]:
     return excluded
 
 
-def _is_verification_target(arg: str) -> bool:
-    path = arg.split("::", 1)[0]
-    return not arg.startswith("-") and ("/" in path or path.endswith(".py"))
-
-
 def _drop_develop_deleted_targets(
-    repo: Path, head: str, member: str, command: list[str], excluded: set[str]
+    repo: Path, head: str, member: str, command: list[str], excluded: set[str], tracker: dict
 ) -> tuple[list[str], list[str]]:
-    prefix = next(len(item) for item in ALLOWED_VERIFICATION_PREFIXES if tuple(command[: len(item)]) == item)
-    kept = list(command[:prefix])
+    pr_landing = _pr_landing_module()
+    start = pr_landing.trailing_test_run_start(command) if "pytest" in command else None
+    if start is None:
+        return list(command), []
+    kept = list(command[:start])
     removed: set[str] = set()
-    for arg in command[prefix:]:
+    for arg in command[start:]:
         path = arg.split("::", 1)[0]
-        in_tree = _git_ok(repo, "cat-file", "-e", f"{head}:{path}")
-        if _is_verification_target(arg) and path in excluded and not in_tree:
+        if (
+            path in excluded
+            and not _git_ok(repo, "cat-file", "-e", f"{head}:{path}")
+            and pr_landing.develop_plainly_deleted(repo, tracker, path)
+        ):
             removed.add(path)
         else:
             kept.append(arg)
-    if removed and not any(_is_verification_target(arg) for arg in kept[prefix:]):
+    if removed and len(kept) == start:
         raise BatchError(
             f"every verification path in member {member!r}'s receipt was removed by a recorded develop merge "
             f"({', '.join(sorted(removed))}); re-prepare the member with current verification"
@@ -2254,7 +2131,7 @@ def build_evidence(repo: Path) -> dict:
     for member in members:
         verification = receipts[member]["verification"]
         command = _validate_verification_command(verification.get("command"))
-        rerun_command, removed = _drop_develop_deleted_targets(repo, final_head, member, command, excluded)
+        rerun_command, removed = _drop_develop_deleted_targets(repo, final_head, member, command, excluded, tracker)
         if removed:
             dropped[member] = removed
         rerun_entry = _rerun(repo, ledger, member, rerun_command, str(verification.get("suite", "")), "final-evidence")
@@ -2271,8 +2148,6 @@ def build_evidence(repo: Path) -> dict:
             "clean": True,
             "suite": receipts[member]["verification"]["suite"],
             "command": receipts[member]["verification"]["command"],
-            "ran_command": rerun_entry["ran_command"],
-            "dropped_paths": rerun_entry["dropped_paths"],
             "worktree": str(repo.resolve()),
         }
 
