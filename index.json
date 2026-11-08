@@ -5491,7 +5491,7 @@
         }
       },
       "integration_branch": "feat/plan-privacy",
-      "integration_head": "7b6365c2c46f3a4266df22ca625122963984b5f8",
+      "integration_head": "0f65f206d711b4bba28e3e5e5439c7640ee631f4",
       "integration_log": [
         {
           "at": "2026-11-08T13:34:01Z",
@@ -5680,6 +5680,22 @@
           "op_id": "da3a7401c7c14530a19f8656d2c3283b",
           "previous_head": "292bd2eb244413e72b97636f4f8b8b2de0aca275",
           "seq": 7
+        },
+        {
+          "at": "2026-11-08T18:57:05Z",
+          "changed_files": [
+            "benchbox/validation/bundle.py",
+            "tests/unit/core/dataframe/test_local_path_detector.py",
+            "tests/unit/scripts/test_browser_fixtures_port.py"
+          ],
+          "head": "0f65f206d711b4bba28e3e5e5439c7640ee631f4",
+          "kind": "fix",
+          "op_id": "34338d99a1c14e0a8752436cfff29e04",
+          "previous_head": "7b6365c2c46f3a4266df22ca625122963984b5f8",
+          "requires_acceptance": [
+            "plan-path-detector-root-and-drive-coverage-20261108"
+          ],
+          "seq": 8
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-privacy",
