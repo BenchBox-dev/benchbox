@@ -23070,19 +23070,14 @@
       "title": "Select the dev-loop ledger coverage test when a governed path changes"
     },
     "ledger-doc-selection-and-contributing-batch-wording-20261107": {
-      "claim": {
-        "expires_at": "2026-11-09T07:56:25Z",
-        "generation": "ca821da96b4847ab9e364ca6921c2023",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae"
-      },
+      "claim": null,
       "needs": [
         "batch-mode-opt-in-policy-docs-20261107",
         "ledger-coverage-test-mapped-in-preflight-20261107",
         "batch-start-and-member-check-tightening-20261107"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Select the ledger test for ledger edits and align CONTRIBUTING with opt-in batches"
     },
     "ledger-tables-alter-targets-and-truncation-bound-20260801": {
