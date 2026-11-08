@@ -27543,6 +27543,13 @@
       "status": "open",
       "title": "Anonymize text-plan fields when exporting existing plans companions"
     },
+    "plans-hosted-ingest-privacy-audit-gap-20261108": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Complete plan-companion privacy coverage for the hosted ingest"
+    },
     "plans-publish-boundary-path-validation-20261108": {
       "claim": null,
       "needs": [],

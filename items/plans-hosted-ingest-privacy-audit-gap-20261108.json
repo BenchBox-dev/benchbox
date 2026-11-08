@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "With an authorized operator, obtain a bounded read-only inventory or snapshot of hosted ingest plan companions; record coverage and access limits without exposing private path values.",
+    "Scan all inventoried companion text/raw-plan fields using the agreed privacy contract and report affected artifact references and counts.",
+    "If affected artifacts exist, record the owner-approved remediation and verification separately; do not silently delete data or rewrite public history."
+  ],
+  "context": "Blocked pending service availability and an owner-provided authorized read-only inventory/access path. No need to repeat the already completed public-store audit or request broad secrets.",
+  "description": "The publication audit found no affected plan companions in the checked published-results history, develop results-data history, live results URLs and site fixtures. It could not inspect the api.benchbox.dev hosted ingest: the service was unreachable and exposes no public read API. Therefore there is no evidence establishing whether that ingest holds legacy companions containing local paths. This is an audit gap, not a confirmed exposure.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/4041",
+    "https://api.benchbox.dev"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-08T03:37:24Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "932d7a140ecb4e42870c159446035aaf",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    }
+  ]
+}
