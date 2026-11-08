@@ -5320,6 +5320,7 @@
     "plan-privacy": {
       "accepted_members": {
         "plan-path-detector-root-and-drive-coverage-20261108": "5b61b7af2125006d0e0584f8e1697ce13cdb565a",
+        "public-fixture-home-paths-audit-20261108": "f8dde46eef928127be031dd0947a669f9ffc6981",
         "visible-metrics-has-plans-contract-stale-20261108": "56f3f7bb840c9306aa7e5fb233ad11aabf26abcc"
       },
       "batch_schema": 2,
@@ -5342,6 +5343,23 @@
           "integration_head": "e168043f991b100bf7ad16236f63f17749a40643",
           "integration_seq": 1
         },
+        "public-fixture-home-paths-audit-20261108": {
+          "accepted_head": "f8dde46eef928127be031dd0947a669f9ffc6981",
+          "changed_files": [
+            "changelog.d/feat-plan-privacy--public-fixture-home-paths-audit-20261108.json",
+            "docs/internal/dev-loop-worktrees.md",
+            "scripts/run_duckdb_version_matrix.py",
+            "tests/fixtures/explorer_browser/source/bundles/star_schema-duckdb-sf0.01-20260403-ac3ed9a9.json",
+            "tests/integration/worktree/test_batch_skill_delivery.py",
+            "tests/uat/test_runner.py",
+            "tests/unit/core/results/test_anonymization.py",
+            "tests/unit/test_constraint_configuration_centralization.py",
+            "tests/unit/utils/test_heavy_status.py",
+            "tests/unit/utils/test_vm_footprint.py"
+          ],
+          "integration_head": "3a73fe5936637eb9a5fae1c1afcdebd8ca651918",
+          "integration_seq": 3
+        },
         "visible-metrics-has-plans-contract-stale-20261108": {
           "accepted_head": "56f3f7bb840c9306aa7e5fb233ad11aabf26abcc",
           "changed_files": [
@@ -5353,7 +5371,7 @@
         }
       },
       "integration_branch": "feat/plan-privacy",
-      "integration_head": "bfc3e8068c660d38ef27379f58df7335f4a10b4f",
+      "integration_head": "3a73fe5936637eb9a5fae1c1afcdebd8ca651918",
       "integration_log": [
         {
           "at": "2026-11-08T13:34:01Z",
@@ -5378,6 +5396,15 @@
           "op_id": "dee48bc65017418c955be6ee203ae845",
           "previous_head": "e168043f991b100bf7ad16236f63f17749a40643",
           "seq": 2
+        },
+        {
+          "at": "2026-11-08T16:54:18Z",
+          "head": "3a73fe5936637eb9a5fae1c1afcdebd8ca651918",
+          "kind": "prepare",
+          "member": "public-fixture-home-paths-audit-20261108",
+          "op_id": "833e46a5ea6e4810adebb8a0268c6a98",
+          "previous_head": "bfc3e8068c660d38ef27379f58df7335f4a10b4f",
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-privacy",
@@ -29116,15 +29143,10 @@
       "title": "sslrootcert local path exports unhashed on the public layer"
     },
     "public-fixture-home-paths-audit-20261108": {
-      "claim": {
-        "expires_at": "2026-11-09T16:54:13Z",
-        "generation": "01345af5609447abbc45e857fce8a966",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "open",
       "title": "Remove real home-directory paths from maintained public fixtures"
     },
     "public-identifier-drop-alias-path-keys": {

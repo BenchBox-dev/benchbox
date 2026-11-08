@@ -14,6 +14,68 @@
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/4041"
   ],
+  "prepared": {
+    "accepted_head": "f8dde46eef928127be031dd0947a669f9ffc6981",
+    "batch_id": "plan-privacy",
+    "changed_files": [
+      "changelog.d/feat-plan-privacy--public-fixture-home-paths-audit-20261108.json",
+      "docs/internal/dev-loop-worktrees.md",
+      "scripts/run_duckdb_version_matrix.py",
+      "tests/fixtures/explorer_browser/source/bundles/star_schema-duckdb-sf0.01-20260403-ac3ed9a9.json",
+      "tests/integration/worktree/test_batch_skill_delivery.py",
+      "tests/uat/test_runner.py",
+      "tests/unit/core/results/test_anonymization.py",
+      "tests/unit/test_constraint_configuration_centralization.py",
+      "tests/unit/utils/test_heavy_status.py",
+      "tests/unit/utils/test_vm_footprint.py"
+    ],
+    "integration_head": "3a73fe5936637eb9a5fae1c1afcdebd8ca651918",
+    "integration_seq": 3,
+    "member_id": "public-fixture-home-paths-audit-20261108",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "bab99413625257ec725e38799619b8688597216fabcb1085372505b027631442",
+    "source_base": "bfc3e8068c660d38ef27379f58df7335f4a10b4f",
+    "source_revision": "f8dde46eef928127be031dd0947a669f9ffc6981",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-plan-privacy--public-fixture-home-paths-audit-20261108",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/worktree/test_batch_skill_delivery.py",
+        "tests/uat/test_runner.py",
+        "tests/unit/core/results/test_anonymization.py",
+        "tests/unit/scripts/explorer_pipeline",
+        "tests/unit/scripts/test_duckdb_version_matrix.py",
+        "tests/unit/test_constraint_configuration_centralization.py",
+        "tests/unit/test_ledger_coverage.py",
+        "tests/unit/utils/test_heavy_status.py",
+        "tests/unit/utils/test_vm_footprint.py"
+      ],
+      "review": {
+        "base_sha": "bfc3e8068c660d38ef27379f58df7335f4a10b4f",
+        "head_sha": "f8dde46eef928127be031dd0947a669f9ffc6981",
+        "head_tree": "20deabafa71b5cddf180cd4c45c21cdc043a6d6d",
+        "outcome": "clear",
+        "patch_digest": "649de26cedd996cdeee689afea67b087",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "13165df58a8ab251e9f4f0948c14142b262cac59"
+      },
+      "revision": "f8dde46eef928127be031dd0947a669f9ffc6981",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
@@ -46,6 +108,15 @@
       "generation": "01345af5609447abbc45e857fce8a966",
       "op": "take",
       "op_id": "2f35f324653c4d479b4f6d49bdca544b",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-08T16:54:18Z",
+      "client": "omp-coding-agent",
+      "generation": "01345af5609447abbc45e857fce8a966",
+      "op": "prepare",
+      "op_id": "833e46a5ea6e4810adebb8a0268c6a98",
       "session_id": "dc59872de7f0484eafa9032416c81607"
     }
   ]
