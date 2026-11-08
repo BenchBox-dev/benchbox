@@ -10780,19 +10780,14 @@
       "title": "make pr-open requires a preflight receipt bound to the pushed tree and shows it in the PR body"
     },
     "benchbox-relock-theseus-v017-20261105": {
-      "claim": {
-        "expires_at": "2026-11-09T14:54:51Z",
-        "generation": "69fe0020a43a4c5c8c5cff3aadbfb5d0",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f"
-      },
+      "claim": null,
       "needs": [
         "theseus-review-depth-and-capacity-20261105",
         "review-depth-owner-decisions-20261105",
         "batch-land-review-capacity-gaps-20261105"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Re-lock BenchBox to Theseus v0.1.8 with config trimming, batch-land preflight and the review-depth decision record"
     },
     "benchbox-residual-oracle-names-20261106": {
