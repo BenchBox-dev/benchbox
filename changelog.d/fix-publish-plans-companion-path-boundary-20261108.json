@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "`benchbox publish` now sanitizes plans companions with the export anonymizer and re-scans every companion and bundle for local paths before publishing; any residual leak refuses the whole publish with a diagnostic naming only the file and field."
+    }
+  ]
+}

@@ -13,6 +13,7 @@ import re
 import secrets
 import subprocess
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
@@ -21,13 +22,21 @@ from urllib.parse import urlparse
 import yaml
 
 from benchbox.core.results import platform_options as _platform_options
+from benchbox.validation.bundle import (
+    PRIVATE_LOCAL_PATH_RE,
+    REDACTED_PLACEHOLDER,
+    LocalPathDetector,
+    find_public_path_leaks,
+    local_path_detector,
+)
 
 is_secret_option_key = _platform_options.is_secret_option_key
 _SECRET_KEY_PARTS = _platform_options._SECRET_KEY_PARTS
 
 logger = logging.getLogger(__name__)
 
-PUBLIC_REDACTED_VALUE = "<redacted>"
+
+PUBLIC_REDACTED_VALUE = REDACTED_PLACEHOLDER
 
 
 def _load_anonymization_specs() -> dict[str, Any]:
@@ -90,12 +99,6 @@ _TUNING_COLUMN_BEARING_KEYS = frozenset(
     {"clustering", "partitioning", "sorting", "distribution", "columns", "indexes", "order_by", "bucketing"}
 )
 
-_MESSAGE_PATH_RE = re.compile(
-    r"(?<![A-Za-z0-9_])("
-    r"(?:~|/Users|/home|/root|/private/var|/var/folders|/var/run|/Volumes)/[^\s'\",;)]*"
-    r"|[A-Za-z]:\\Users\\[^\s'\",;)]*"
-    r")"
-)
 _TUNING_SOURCE_REFERENCE_RE = re.compile(
     r"[a-z0-9_.-]+(?:/[a-z0-9_.-]+)*(?::[0-9a-f]{16,64})?",
     re.IGNORECASE,
@@ -105,14 +108,6 @@ _MESSAGE_SECRET_ASSIGNMENT_RE = re.compile(
     r"\b([a-z0-9][a-z0-9_.-]*)=[^&\s,;)]*",
     flags=re.IGNORECASE,
 )
-_PRIVATE_LOCAL_PATH_RE = re.compile(
-    r"(?<![A-Za-z0-9_])(?:"
-    r"(?:~|/Users|/home|/root|/private/var|/var/folders|/var/run|/Volumes)/[^\s'\",;)]*"
-    r"|[A-Za-z]:\\Users\\[^\s'\",;)]*"
-    r")",
-    flags=re.IGNORECASE,
-)
-
 
 _COMPACT_KEY_STRIP_RE = re.compile(r"[^a-z0-9]+")
 
@@ -703,7 +698,7 @@ class AnonymizationManager:
             return self._sanitize_public_message(value)
 
         if isinstance(value, str):
-            value = _PRIVATE_LOCAL_PATH_RE.sub(
+            value = PRIVATE_LOCAL_PATH_RE.sub(
                 lambda match: self._hash_public_identifier(match.group(0), "path"),
                 value,
             )
@@ -775,7 +770,7 @@ class AnonymizationManager:
             cleaned,
         )
         cleaned = _MESSAGE_URL_RE.sub(lambda match: self._hash_public_identifier(match.group(0), "endpoint"), cleaned)
-        cleaned = _MESSAGE_PATH_RE.sub(lambda match: self._hash_public_identifier(match.group(0), "path"), cleaned)
+        cleaned = PRIVATE_LOCAL_PATH_RE.sub(lambda match: self._hash_public_identifier(match.group(0), "path"), cleaned)
         return cleaned
 
     def remove_pii(self, text: str) -> str:
@@ -791,29 +786,6 @@ class AnonymizationManager:
             cleaned_text = re.sub(pattern, replacement, cleaned_text, flags=re.IGNORECASE)
 
         return cleaned_text
-
-
-def find_public_path_leaks(value: Any, key_path: tuple[str, ...] = ()) -> list[str]:
-
-    leaks: list[str] = []
-
-    if isinstance(value, dict):
-        for key, child in value.items():
-            label = str(key)
-            if isinstance(key, str) and _PRIVATE_LOCAL_PATH_RE.search(key):
-                label = "<key>"
-                leaks.append(".".join((*key_path, label)))
-            leaks.extend(find_public_path_leaks(child, (*key_path, label)))
-        return leaks
-
-    if isinstance(value, (list, tuple, set, frozenset)):
-        for index, child in enumerate(value):
-            leaks.extend(find_public_path_leaks(child, (*key_path, str(index))))
-        return leaks
-
-    if isinstance(value, str) and _PRIVATE_LOCAL_PATH_RE.search(value):
-        leaks.append(".".join(key_path) or "<root>")
-    return leaks
 
 
 _APPLIED_STATEMENT_DROP_KEYS = ("statement", "error", "table")
@@ -903,17 +875,29 @@ def _strip_operator_platform_metadata(node: Any) -> None:
         _strip_operator_platform_metadata(child)
 
 
-def anonymize_plans_payload(plans_payload: dict[str, Any]) -> dict[str, Any]:
+def _redact_plan_text_fields(container: dict[str, Any], detector: LocalPathDetector) -> None:
+    for key in ("plan_text", "plan_data", "optimization_hints"):
+        if key in container:
+            container[key] = detector.redact_value(container[key])
+
+
+def anonymize_plans_payload(plans_payload: dict[str, Any], roots: Iterable[str | Path] = ()) -> dict[str, Any]:
     sanitized = copy.deepcopy(plans_payload)
     queries = sanitized.get("queries")
     if not isinstance(queries, dict):
         return sanitized
+    detector = local_path_detector(roots)
     for entry in queries.values():
         if not isinstance(entry, dict):
             continue
+        _redact_plan_text_fields(entry, detector)
         plan = entry.get("plan")
+        if isinstance(plan, str):
+            entry["plan"] = detector.redact_text(plan)
+            continue
         if not isinstance(plan, dict):
             continue
+        _redact_plan_text_fields(plan, detector)
         if plan.get("raw_explain_output") is not None:
             plan["raw_explain_output"] = None
         _strip_operator_platform_metadata(plan.get("logical_root"))
@@ -921,15 +905,18 @@ def anonymize_plans_payload(plans_payload: dict[str, Any]) -> dict[str, Any]:
 
 
 __all__ = [
+    "PRIVATE_LOCAL_PATH_RE",
     "PUBLIC_PSEUDONYM_SALT_ENV",
     "PUBLIC_REDACTED_VALUE",
     "AnonymizationConfig",
     "AnonymizationManager",
+    "LocalPathDetector",
     "MissingPublicPseudonymSaltError",
     "anonymize_applied_tuning_payload",
     "anonymize_plans_payload",
     "ensure_public_pseudonym_salt",
     "find_public_path_leaks",
+    "local_path_detector",
     "public_pseudonym_salt_path",
     "require_public_pseudonym_salt",
     "resolve_public_pseudonym_salt",

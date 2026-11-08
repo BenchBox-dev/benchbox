@@ -9,6 +9,8 @@ import pytest
 
 from benchbox.cli.config import ConfigManager
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
 pytestmark = [
     pytest.mark.unit,
     pytest.mark.fast,
@@ -43,9 +45,9 @@ class TestTuningConfigurationValidation:
 class TestExampleScriptConstraintRemoval:
     def test_constraint_parameters_removed_from_examples(self):
         example_files = [
-            "/Users/joe/Developer/BenchBox/examples/duckdb_tpch.py",
-            "/Users/joe/Developer/BenchBox/examples/duckdb_tpcds.py",
-            "/Users/joe/Developer/BenchBox/examples/databricks_tpch.py",
+            REPO_ROOT / "examples" / "duckdb_tpch.py",
+            REPO_ROOT / "examples" / "duckdb_tpcds.py",
+            REPO_ROOT / "examples" / "databricks_tpch.py",
         ]
 
         for example_file in example_files:
@@ -65,9 +67,9 @@ class TestExampleScriptConstraintRemoval:
 class TestTuningFileConstraintConfiguration:
     def test_tuning_files_have_explicit_constraints(self):
         tuning_files = [
-            "/Users/joe/Developer/BenchBox/examples/duckdb_tpch_tuned.yaml",
-            "/Users/joe/Developer/BenchBox/examples/duckdb_tpch_notuning.yaml",
-            "/Users/joe/Developer/BenchBox/examples/duckdb_tpcds_tuned.yaml",
+            REPO_ROOT / "examples" / "duckdb_tpch_tuned.yaml",
+            REPO_ROOT / "examples" / "duckdb_tpch_notuning.yaml",
+            REPO_ROOT / "examples" / "duckdb_tpcds_tuned.yaml",
         ]
 
         for tuning_file in tuning_files:
