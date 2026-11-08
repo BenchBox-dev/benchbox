@@ -5,6 +5,7 @@
     "Owner-run renames are listed with exact steps, and done before the code that relies on them merges: environment `oracle` → `review`, secrets, tailnet tag, Actions policy 11201 old paths removed, gateway host dir and clients.",
     "BenchBox re-locks to Theseus v0.2.2 with a hosted SHIP and a complete audit-coverage."
   ],
+  "context": "Owner decision 2026-11-08: rename in-repo names only for now: policy and config files, scripts, Makefile targets, docs, contexts and command forms; switch every consumer of `oracle-gate` to `review-gate`. Keep the `oracle` environment, ORACLE_* secrets and tag:oracle-ci as documented legacy infrastructure names; a follow-up item tracks removing them later. Raise the AGENTS.md byte budget as needed (owner decision). oracle-gate is dropped from the ruleset just before the Theseus v0.2.5 relock merges.",
   "description": "The migration to Theseus v0.2.x (PR #3962) renamed the caller workflows and contexts, but kept several oracle names to limit the diff and avoid breaking live infrastructure:\n- the policy file `.github/oracle-reviewers.yml`, passed via `policy_path`;\n- the GitHub environment `oracle` and its `ORACLE_*` secrets, mapped to `REVIEW_*` by name;\n- the tailnet tag `tag:oracle-ci`;\n- the local-review state directory `local-oracle`;\n- scripts such as `scripts/oracle_local_review.py` and `_project/scripts/oracle_gateway_host.sh`;\n- docs `docs/internal/oracle-review-v2.md` and `docs/internal/oracle-gateway-host.md`;\n- the still-required legacy context `oracle-gate`.\n\nTheseus v0.2.2 removes its `legacy.py` mirror and its legacy-name reading, so BenchBox must stop depending on `oracle-gate` and the `/oracle-review` and `Stand-in oracle` command forms before it re-locks to v0.2.2.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3962",
@@ -17,6 +18,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "639585965ff84b9191dda3af779940f9",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-08T14:49:40Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7f49fc5886c3415fb4ff5a1893109816",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
     }
   ]
