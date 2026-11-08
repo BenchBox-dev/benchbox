@@ -100,9 +100,15 @@ The procedure:
 2. The owner creates the branch from the `vX.Y.0` tag commit, or from the newest
    `vX.Y.Z` tag of that minor:
    `git push origin "vX.Y.0^{commit}:refs/heads/release/X.Y.x"`.
-3. The branch starts with the workflows and release scripts of that tag. If the
-   tag predates maintenance-line support, the first pull request into the branch
-   brings `.github/workflows/trunk.yml`, `release-canary.yml`, `ci.yml`,
+3. The branch starts with the workflows and release scripts of that tag. Because
+   the `oracle` environment admits `release/*`, the owner makes the branch carry
+   `develop`'s current `.github/workflows/review-verdict.yml`,
+   `review-gate.yml`, `.github/theseus-lock.json` and
+   `.github/oracle-reviewers.yml` before anyone dispatches workflows on it: a
+   tag that predates the pinned callers must not leave older reviewer code
+   able to run with the App secrets. If the tag predates maintenance-line
+   support, the first pull request into the branch brings
+   `.github/workflows/trunk.yml`, `release-canary.yml`, `ci.yml`,
    `release-v2.yml`, `scripts/release_artifact_consumer.py`,
    `scripts/release_canary_freshness.py` (and whatever they need) from
    `develop`; `ci.yml` accepts a `release/X.Y.x` base.
