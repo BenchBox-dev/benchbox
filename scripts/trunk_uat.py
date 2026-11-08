@@ -239,7 +239,7 @@ def admit(root: Path, sha: str, output: Path, api: Api | None = None) -> dict[st
             _consumer.select_producer(sha, api) == (run, job, artifact), "producer changed during admission"
         )
         receipt = admission_receipt(sha, version, producer, artifact)
-        (stage / ADMISSION_RECEIPT).write_text(json.dumps(receipt, indent=2) + "\n")
+        (stage / ADMISSION_RECEIPT).write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8", newline="\n")
         _consumer._require(not output.exists(), "output appeared during admission")
         _consumer._publish_output(stage, output)
     return receipt
@@ -466,9 +466,11 @@ def build_record(
 
 def write_record(output: Path, record: dict[str, Any], rows: list[dict[str, Any]]) -> None:
     output.mkdir(parents=True, exist_ok=True)
-    (output / RECORD_FILE).write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (output / RECORD_FILE).write_text(
+        json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n"
+    )
     (output / HISTORY_FILE).write_text(
-        "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows), encoding="utf-8"
+        "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows), encoding="utf-8", newline="\n"
     )
 
 

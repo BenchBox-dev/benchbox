@@ -480,7 +480,7 @@ def test_record_lists_every_executed_cell_with_state_elapsed_memory_signature_an
     )
     (tmp_path / "gate").mkdir()
     (tmp_path / "gate" / "uat-gate-summary.json").write_text('{"verdict": "red"}')
-    (tmp_path / "gate" / "dist-digest.txt").write_text("deadbeef  benchbox.whl\n")
+    (tmp_path / "gate" / "dist-digest.txt").write_bytes(b"deadbeef  benchbox.whl\n")
     record, rows = build(github, tmp_path)
     assert record["outcome"] == "executed"
     assert record["verdict"] == "red"
@@ -684,7 +684,7 @@ def test_fetched_shard_run_directories_load_in_the_uat_rubric_history_reader(tmp
         ),
     )
     directories = trunk_uat.fetch_run_directories(tmp_path / "history", github, payloads.__getitem__)
-    names = sorted(str(path.relative_to(tmp_path / "history")) for path in directories)
+    names = sorted(path.relative_to(tmp_path / "history").as_posix() for path in directories)
     assert names == sorted([f"{newer}-{sha('b')[:12]}/stage1-sqlite", f"{older}-{sha('a')[:12]}/stage1-sqlite"])
     assert (directories[0] / "sqlite.log").read_bytes() == b"log"
     assert not (directories[0] / "dist-digest.txt").exists()
@@ -729,7 +729,7 @@ def test_admission_receipt_is_accepted_by_the_release_admitted_dist_verifier(tmp
     admitted.mkdir()
     for name, data in files.items():
         (admitted / name).write_bytes(data)
-    (admitted / "SHA256SUMS").write_text(sums)
+    (admitted / "SHA256SUMS").write_bytes(sums.encode())
     (admitted / "producer-receipt.json").write_text(json.dumps(producer))
     receipt = trunk_uat.admission_receipt(sha("a"), version, producer, artifact)
     (admitted / trunk_uat.ADMISSION_RECEIPT).write_text(json.dumps(receipt))
