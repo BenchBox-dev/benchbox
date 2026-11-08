@@ -5321,6 +5321,7 @@
       "accepted_members": {
         "plan-path-detector-root-and-drive-coverage-20261108": "5b61b7af2125006d0e0584f8e1697ce13cdb565a",
         "plans-export-anonymize-text-fields-20261108": "d3ff4dac480752a0e5c5fc0547ce3d9de33e4563",
+        "plans-publish-boundary-path-validation-20261108": "d65709bdf19234b2bd4f5389131feb65a7bb0467",
         "public-fixture-home-paths-audit-20261108": "f8dde46eef928127be031dd0947a669f9ffc6981",
         "visible-metrics-has-plans-contract-stale-20261108": "56f3f7bb840c9306aa7e5fb233ad11aabf26abcc"
       },
@@ -5355,6 +5356,16 @@
           "integration_head": "c4540c56034f48441855e642c6938d31eac5e149",
           "integration_seq": 4
         },
+        "plans-publish-boundary-path-validation-20261108": {
+          "accepted_head": "d65709bdf19234b2bd4f5389131feb65a7bb0467",
+          "changed_files": [
+            "benchbox/cli/commands/publish.py",
+            "changelog.d/fix-publish-plans-companion-path-boundary-20261108.json",
+            "tests/unit/cli/commands/test_publish_plans_boundary.py"
+          ],
+          "integration_head": "cccfaee59d2df2fc16fef2c72b7f5b3c5ed88c33",
+          "integration_seq": 5
+        },
         "public-fixture-home-paths-audit-20261108": {
           "accepted_head": "f8dde46eef928127be031dd0947a669f9ffc6981",
           "changed_files": [
@@ -5383,7 +5394,7 @@
         }
       },
       "integration_branch": "feat/plan-privacy",
-      "integration_head": "c4540c56034f48441855e642c6938d31eac5e149",
+      "integration_head": "cccfaee59d2df2fc16fef2c72b7f5b3c5ed88c33",
       "integration_log": [
         {
           "at": "2026-11-08T13:34:01Z",
@@ -5426,6 +5437,15 @@
           "op_id": "9c56c9027c7c4cfd944ee31ea71f69d2",
           "previous_head": "3a73fe5936637eb9a5fae1c1afcdebd8ca651918",
           "seq": 4
+        },
+        {
+          "at": "2026-11-08T17:36:17Z",
+          "head": "cccfaee59d2df2fc16fef2c72b7f5b3c5ed88c33",
+          "kind": "prepare",
+          "member": "plans-publish-boundary-path-validation-20261108",
+          "op_id": "4d2e40d89d9c4e6dabad13a72e6a745e",
+          "previous_head": "c4540c56034f48441855e642c6938d31eac5e149",
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-privacy",
@@ -27782,18 +27802,13 @@
       "title": "Complete plan-companion privacy coverage for the hosted ingest"
     },
     "plans-publish-boundary-path-validation-20261108": {
-      "claim": {
-        "expires_at": "2026-11-09T17:27:26Z",
-        "generation": "87a374a397fb4756af19ea8df9a1184d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54"
-      },
+      "claim": null,
       "needs": [
         "plan-path-detector-root-and-drive-coverage-20261108",
         "plans-export-anonymize-text-fields-20261108"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Check plans companions for local paths before publishing results"
     },
     "platform-adapter-abstract-method-implementation-completed": {

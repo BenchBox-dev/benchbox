@@ -20,6 +20,61 @@
     "benchbox/core/results/anonymization.py",
     "tests/unit/test_results_exporter.py"
   ],
+  "prepared": {
+    "accepted_head": "d65709bdf19234b2bd4f5389131feb65a7bb0467",
+    "batch_id": "plan-privacy",
+    "changed_files": [
+      "benchbox/cli/commands/publish.py",
+      "changelog.d/fix-publish-plans-companion-path-boundary-20261108.json",
+      "tests/unit/cli/commands/test_publish_plans_boundary.py"
+    ],
+    "integration_head": "cccfaee59d2df2fc16fef2c72b7f5b3c5ed88c33",
+    "integration_seq": 5,
+    "member_id": "plans-publish-boundary-path-validation-20261108",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "bab99413625257ec725e38799619b8688597216fabcb1085372505b027631442",
+    "source_base": "c4540c56034f48441855e642c6938d31eac5e149",
+    "source_revision": "d65709bdf19234b2bd4f5389131feb65a7bb0467",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-plan-privacy--plans-publish-boundary-path-validation-20261108",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/test_publish_cli.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_e2e_integration.py",
+        "tests/uat/test_no_cli_surface_drift.py",
+        "tests/unit/cli/commands/test_publish.py",
+        "tests/unit/cli/commands/test_publish_plans_boundary.py",
+        "tests/unit/cli/test_run_command_branches.py",
+        "tests/unit/core/publishing/test_bundle_publisher_label.py",
+        "tests/unit/core/results/test_local_result_diagnosability.py"
+      ],
+      "review": {
+        "base_sha": "c4540c56034f48441855e642c6938d31eac5e149",
+        "head_sha": "d65709bdf19234b2bd4f5389131feb65a7bb0467",
+        "head_tree": "c38ba41143e919e39a222bd37a849ddb7d46b3bb",
+        "outcome": "clear",
+        "patch_digest": "ea87e7599c4d7160a94be26a9912203e",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "13165df58a8ab251e9f4f0948c14142b262cac59"
+      },
+      "revision": "d65709bdf19234b2bd4f5389131feb65a7bb0467",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
@@ -52,6 +107,15 @@
       "generation": "87a374a397fb4756af19ea8df9a1184d",
       "op": "take",
       "op_id": "8e25a7416c234aa8acd9e703884262ba",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-08T17:36:17Z",
+      "client": "omp-coding-agent",
+      "generation": "87a374a397fb4756af19ea8df9a1184d",
+      "op": "prepare",
+      "op_id": "4d2e40d89d9c4e6dabad13a72e6a745e",
       "session_id": "dc59872de7f0484eafa9032416c81607"
     }
   ]
