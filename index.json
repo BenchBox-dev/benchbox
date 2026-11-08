@@ -27657,7 +27657,9 @@
     },
     "plans-export-anonymize-text-fields-20261108": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "plan-path-detector-root-and-drive-coverage-20261108"
+      ],
       "priority": "high",
       "status": "open",
       "title": "Anonymize text-plan fields when exporting existing plans companions"

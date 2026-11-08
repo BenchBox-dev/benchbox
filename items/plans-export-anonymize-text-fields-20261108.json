@@ -5,6 +5,13 @@
     "find_public_path_leaks is empty on the exported companion; fingerprints, keys, errors and variation fields are byte-identical to the input apart from the sanitized text.",
     "CLI smoke: benchbox export --anonymize on a real Polars text companion and a real DuckDB DAG companion; outputs recorded in the PR body."
   ],
+  "batch": {
+    "batch_id": "plan-privacy",
+    "implementation_dependencies": [
+      "plan-path-detector-root-and-drive-coverage-20261108"
+    ],
+    "member_id": "plans-export-anonymize-text-fields-20261108"
+  },
   "context": "Observed in publication hygiene investigation; helper omission re-read directly before filing. Preserve local private-export behavior where the user has not requested anonymization. No production republish or history rewriting authorized.\n\nDECISIONS (owner, 2026-11-08): detector = known local roots (/Users, /home, /tmp, /var/folders, /private, /mnt, /opt, any Windows drive letter, UNC) PLUS the run's configured data and output directories, with an exact-rule placeholder allowlist (<redacted> and bare /data-style neutral placeholders); NOT every absolute path. Publish boundary = sanitize with the export anonymizer, re-scan, publish only if clean, otherwise reject with a redacted diagnostic and publish nothing (fail closed). ORDER: after the detector item. GUARDRAILS: stored fingerprints are never recomputed or altered by sanitizing text; plan structure, errors, fingerprint_varied/fingerprint_variants and keys are preserved; never mutate inputs in place; diagnostics must not print the leaked path values; no hosted data deletion, republish or history rewrite; private (non-anonymized) local exports keep their current behavior; false positives are bounded by an allowlist test that real plan text (catalog names, URLs, relative table tails, Spark/LakeSail scans) is not flagged. Verification rubric: (1) reproduce the defect with a failing test or script before editing; (2) focused suites pass via uv run -- python -m pytest -n 0; (3) make comment-policy-check and ruff on touched files; (4) the runtime smoke named in acceptance is recorded in the PR body; (5) one final batch PR merges with green CI and a passing oracle review.",
   "description": "anonymize_plans_payload strips plan.raw_explain_output and operator metadata but skips entry plan_text and nested plan_data.logical_plan/optimized_plan. Thus export --anonymize can retain local paths in legacy or externally supplied text-plan companions even after capture-time redaction was added. This is an export-boundary defect, distinct from the completed capture fix.",
   "links": [
@@ -27,6 +34,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "48c66d5aaa294eb283e9c48b2901f6ad",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-08T13:34:09Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9c615fa42291460c9ad089a742f5d460",
       "session_id": "dc59872de7f0484eafa9032416c81607"
     }
   ]
