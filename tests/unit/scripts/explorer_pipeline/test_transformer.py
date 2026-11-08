@@ -208,15 +208,68 @@ class TestToDetailResult:
         assert detail.has_plans is False
         assert detail.has_tuning is False
 
-    def test_has_plans_detected(self, bundle_file: Path) -> None:
-        plans_path = bundle_file.with_name(bundle_file.stem + ".plans.json")
-        plans_path.write_text("{}", encoding="utf-8")
+    @pytest.mark.parametrize(
+        ("payload", "expected"),
+        [
+            pytest.param(
+                {
+                    "queries": {"Q1": {"plan": {"logical_root": {"operator_type": "Scan"}}, "plan_format": "dag"}},
+                    "errors": None,
+                },
+                True,
+                id="dag",
+            ),
+            pytest.param(
+                {"queries": {"Q1": {"plan": "DF.scan(lineitem)", "plan_format": "text"}}, "errors": None},
+                True,
+                id="text",
+            ),
+            pytest.param(
+                {"queries": {}, "errors": [{"query_id": "Q1", "error": "Query plan not captured"}]},
+                False,
+                id="errors-only",
+            ),
+            pytest.param(
+                {
+                    "queries": {"Q1": {"plan": "  ", "plan_format": "text"}},
+                    "errors": [{"query_id": "Q1", "error": "x"}],
+                },
+                False,
+                id="blank-plan",
+            ),
+            pytest.param({}, False, id="empty-object"),
+            pytest.param({"queries": {}}, False, id="empty-queries"),
+            pytest.param({"queries": None}, False, id="null-queries"),
+            pytest.param({"queries": [{"query_id": "Q1", "plan": "SCAN"}]}, False, id="list-queries"),
+            pytest.param([], False, id="non-object"),
+        ],
+    )
+    def test_has_plans_requires_a_captured_plan(self, bundle_file: Path, payload: object, expected: bool) -> None:
+        bundle_file.with_name(bundle_file.stem + ".plans.json").write_text(json.dumps(payload), encoding="utf-8")
 
         transformer = BundleTransformer()
         rid = transformer.result_id_from_bundle(bundle_file)
         detail = transformer.to_detail_result(bundle_file, rid)
 
-        assert detail.has_plans is True
+        assert detail.has_plans is expected
+
+    def test_has_plans_false_for_malformed_companion(self, bundle_file: Path) -> None:
+        bundle_file.with_name(bundle_file.stem + ".plans.json").write_text("{not json", encoding="utf-8")
+
+        transformer = BundleTransformer()
+        rid = transformer.result_id_from_bundle(bundle_file)
+
+        assert transformer.to_detail_result(bundle_file, rid).has_plans is False
+
+    def test_has_plans_false_for_symlinked_companion(self, bundle_file: Path, tmp_path: Path) -> None:
+        target = tmp_path / "elsewhere.json"
+        target.write_text(json.dumps({"queries": {"Q1": {"plan": "SCAN"}}}), encoding="utf-8")
+        bundle_file.with_name(bundle_file.stem + ".plans.json").symlink_to(target)
+
+        transformer = BundleTransformer()
+        rid = transformer.result_id_from_bundle(bundle_file)
+
+        assert transformer.to_detail_result(bundle_file, rid).has_plans is False
 
     def test_bundle_download_url_set(self, bundle_file: Path) -> None:
         transformer = BundleTransformer()

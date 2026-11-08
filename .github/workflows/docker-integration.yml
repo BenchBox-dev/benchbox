@@ -8,15 +8,30 @@ on:
   workflow_dispatch:
     inputs:
       services:
-        description: 'Comma-separated subset to run (default: all). Choices: postgres,clickhouse,trino'
+        description: 'Comma-separated subset to run (default: all). Choices: postgres,clickhouse,trino,singlestore,firebolt'
         required: false
         default: 'all'
+  pull_request:
+    paths:
+      - 'benchbox/platforms/singlestore.py'
+      - 'docker/singlestore/**'
+      - 'tests/integration/platforms/test_singlestore_live.py'
+      - 'tests/integration/platforms/test_singlestore_tpcds_maintenance_live.py'
+      - 'tests/integration/platforms/test_singlestore_decimal_load_live.py'
+      - 'benchbox/core/tpcds/maintenance_functions.py'
+      - 'benchbox/core/tpcds/maintenance_test.py'
+      - 'benchbox/core/write_primitives/catalog/operations.yaml'
+      - 'benchbox/platforms/firebolt.py'
+      - 'docker/firebolt/**'
+      - 'tests/integration/platforms/test_firebolt_core_live.py'
+      - 'tests/integration/platforms/test_firebolt_core_native_load_live.py'
+      - '.github/workflows/docker-integration.yml'
   schedule:
     - cron: '0 7 * * *'
 
 concurrency:
-  group: docker-integration-${{ github.ref }}
-  cancel-in-progress: false
+  group: docker-integration-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -28,6 +43,8 @@ jobs:
       run_postgres: ${{ steps.select.outputs.run_postgres }}
       run_clickhouse: ${{ steps.select.outputs.run_clickhouse }}
       run_trino: ${{ steps.select.outputs.run_trino }}
+      run_singlestore: ${{ steps.select.outputs.run_singlestore }}
+      run_firebolt: ${{ steps.select.outputs.run_firebolt }}
     steps:
       - name: Validate services input and select jobs
         id: select
@@ -36,40 +53,53 @@ jobs:
           SERVICES: ${{ inputs.services }}
         run: |
           set -euo pipefail
-          if [ "$EVENT_NAME" != workflow_dispatch ]; then
-            echo "run_postgres=true" >> "$GITHUB_OUTPUT"
-            echo "run_clickhouse=true" >> "$GITHUB_OUTPUT"
-            echo "run_trino=true" >> "$GITHUB_OUTPUT"
-            echo "Scheduled run: all services selected."
+          SERVICE_NAMES=(postgres clickhouse trino singlestore firebolt)
+          PULL_REQUEST_SERVICES=(singlestore firebolt)
+          declare -A selected
+          for name in "${SERVICE_NAMES[@]}"; do selected[$name]=false; done
+          emit() {
+            local summary=""
+            for name in "${SERVICE_NAMES[@]}"; do
+              echo "run_$name=${selected[$name]}" >> "$GITHUB_OUTPUT"
+              summary="$summary $name=${selected[$name]}"
+            done
+            echo "Selected:$summary"
+          }
+          if [ "$EVENT_NAME" = pull_request ]; then
+            for name in "${PULL_REQUEST_SERVICES[@]}"; do selected[$name]=true; done
+            emit
             exit 0
           fi
-          run_postgres=false; run_clickhouse=false; run_trino=false
+          if [ "$EVENT_NAME" != workflow_dispatch ]; then
+            for name in "${SERVICE_NAMES[@]}"; do selected[$name]=true; done
+            emit
+            exit 0
+          fi
           IFS=',' read -ra TOKENS <<< "$SERVICES"
           for tok in "${TOKENS[@]}"; do
             t="$(echo "$tok" | tr -d '[:space:]')"
             case "$t" in
-              all) run_postgres=true; run_clickhouse=true; run_trino=true ;;
-              postgres) run_postgres=true ;;
-              clickhouse) run_clickhouse=true ;;
-              trino) run_trino=true ;;
+              all) for name in "${SERVICE_NAMES[@]}"; do selected[$name]=true; done ;;
+              postgres|clickhouse|trino|singlestore|firebolt) selected[$t]=true ;;
               '')
                 echo "::error::Empty service token in services input '$SERVICES'."
                 exit 1
                 ;;
               *)
-                echo "::error::Unknown service '$t'. Choices: postgres,clickhouse,trino (or all)."
+                echo "::error::Unknown service '$t'. Choices: postgres,clickhouse,trino,singlestore,firebolt (or all)."
                 exit 1
                 ;;
             esac
           done
-          if [ "$run_postgres" = false ] && [ "$run_clickhouse" = false ] && [ "$run_trino" = false ]; then
+          any=false
+          for name in "${SERVICE_NAMES[@]}"; do
+            if [ "${selected[$name]}" = true ]; then any=true; fi
+          done
+          if [ "$any" = false ]; then
             echo "::error::No services selected."
             exit 1
           fi
-          echo "run_postgres=$run_postgres" >> "$GITHUB_OUTPUT"
-          echo "run_clickhouse=$run_clickhouse" >> "$GITHUB_OUTPUT"
-          echo "run_trino=$run_trino" >> "$GITHUB_OUTPUT"
-          echo "Selected: postgres=$run_postgres clickhouse=$run_clickhouse trino=$run_trino"
+          emit
 
   mirror-clickhouse:
     needs: validate-input
@@ -247,3 +277,114 @@ jobs:
       - name: Tear down compose stack
         if: always()
         run: docker compose -f docker/trino/docker-compose.yml down -v
+
+  singlestore:
+    needs: validate-input
+    if: ${{ needs.validate-input.outputs.run_singlestore == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    env:
+      SINGLESTORE_IMAGE: ghcr.io/singlestore-labs/singlestoredb-dev:latest@sha256:2f181587a74b63a83e7dbd46b02e9dce031b8cacf1f5651bff297b2d8c87df37
+      SINGLESTORE_MEMORY_LIMIT: 4g
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Install dependencies
+        run: uv sync --group dev --extra singlestore
+
+      - name: Bring up SingleStore compose stack
+        run: docker compose -f docker/singlestore/docker-compose.yml up -d --wait --wait-timeout 600
+
+      - name: Run SingleStore live integration tests
+        run: |
+          set -o pipefail
+          uv run --extra singlestore -- python -m pytest tests/integration/platforms/test_singlestore_live.py \
+            tests/integration/platforms/test_singlestore_tpcds_maintenance_live.py \
+            tests/integration/platforms/test_singlestore_decimal_load_live.py \
+            -m "live_singlestore" --tb=short -v -p no:cacheprovider \
+            | tee /tmp/singlestore_docker_output.txt
+          if ! grep -Eq '[0-9]+ passed' /tmp/singlestore_docker_output.txt; then
+            echo "::error::SingleStore Docker integration produced no passing tests."
+            exit 1
+          fi
+
+      - name: Tear down compose stack
+        if: always()
+        run: docker compose -f docker/singlestore/docker-compose.yml down -v
+
+  firebolt:
+    needs: validate-input
+    if: ${{ needs.validate-input.outputs.run_firebolt == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      FIREBOLT_IMAGE: ghcr.io/firebolt-db/firebolt-core:preview-rc@sha256:c8a7fa4630105cb4f5328fd62c504a62c445ff66574e58a8e211b3d7bf0b65b5
+      FIREBOLT_CORE_IMAGE_REF: ghcr.io/firebolt-db/firebolt-core:preview-rc@sha256:c8a7fa4630105cb4f5328fd62c504a62c445ff66574e58a8e211b3d7bf0b65b5
+      FIREBOLT_CORE_HOST: localhost
+      FIREBOLT_CORE_PORT: "3473"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Install dependencies
+        run: uv sync --group dev --extra firebolt
+
+      - name: Bring up Firebolt Core compose stack
+        run: docker compose -f docker/firebolt/docker-compose.yml up -d --wait --wait-timeout 600
+
+      - name: Show runner and container limits
+        run: |
+          uname -a
+          free -m
+          nproc
+          docker compose -f docker/firebolt/docker-compose.yml exec -T firebolt bash -c 'ulimit -l' || true
+
+      - name: Run Firebolt Core native load verification
+        run: |
+          set -o pipefail
+          uv run --extra firebolt -- python -m pytest tests/integration/platforms/test_firebolt_core_native_load_live.py \
+            -m "live_firebolt_core" --tb=short -v -s -p no:cacheprovider \
+            | tee /tmp/firebolt_docker_output.txt
+          if ! grep -Eq '[0-9]+ passed' /tmp/firebolt_docker_output.txt; then
+            echo "::error::Firebolt Core native load verification produced no passing tests."
+            exit 1
+          fi
+
+      - name: Collect Firebolt Core container logs
+        if: always()
+        run: docker compose -f docker/firebolt/docker-compose.yml logs --no-color --tail 500 firebolt > /tmp/firebolt_core_container.log 2>&1 || true
+
+      - name: Upload Firebolt logs
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: firebolt-core-native-load-logs
+          path: |
+            /tmp/firebolt_docker_output.txt
+            /tmp/firebolt_core_container.log
+          if-no-files-found: warn
+
+      - name: Tear down compose stack
+        if: always()
+        run: docker compose -f docker/firebolt/docker-compose.yml down -v

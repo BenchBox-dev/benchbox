@@ -70,6 +70,9 @@ class _S2Cursor:
     def fetchone(self) -> tuple | None:
         return self._result
 
+    def fetchall(self) -> list[tuple]:
+        return []
+
     def close(self) -> None:
         pass
 
@@ -165,14 +168,14 @@ class _PGConn:
 
 
 def _stub_psycopg(monkeypatch: Any) -> None:
-    fake = types.ModuleType("psycopg")
-    monkeypatch.setitem(sys.modules, "psycopg", fake)
     try:
         import benchbox.platforms.postgresql as m
-
-        m.psycopg = fake
     except ImportError:
-        pass
+        m = None
+    fake = types.ModuleType("psycopg")
+    monkeypatch.setitem(sys.modules, "psycopg", fake)
+    if m is not None:
+        monkeypatch.setattr(m, "psycopg", fake, raising=False)
 
 
 @pytest.mark.platform_smoke
@@ -197,15 +200,29 @@ def test_postgresql_uses_manifest_delimiter(monkeypatch: Any, manifest_data_dir:
 def test_doris_uses_manifest_delimiter(monkeypatch: Any, manifest_data_dir: Path) -> None:
     from tests.integration.platforms.common import install_doris_stub
 
-    state = install_doris_stub(monkeypatch)
+    install_doris_stub(monkeypatch)
 
     import benchbox.platforms.doris as doris_mod
 
-    doris_mod._requests = None
+    put_calls: list[dict[str, Any]] = []
+
+    class _StreamLoadResponse:
+        status_code = 200
+
+        @staticmethod
+        def json() -> dict[str, Any]:
+            return {"Status": "Success", "NumberLoadedRows": 2}
+
+    def _put(url: str, *, data: Any, headers: dict[str, str], **_: Any) -> _StreamLoadResponse:
+        put_calls.append({"url": url, "data": data.read() if hasattr(data, "read") else data, "headers": headers})
+        return _StreamLoadResponse()
+
+    monkeypatch.setattr(doris_mod, "_requests", types.SimpleNamespace(put=_put))
 
     from benchbox.platforms.doris import DorisAdapter
 
     adapter = DorisAdapter(host="localhost")
+    monkeypatch.setattr(DorisAdapter, "_table_column_names", staticmethod(lambda *_: ["id", "value"]))
     benchmark = _Benchmark(tables={_TABLE: manifest_data_dir / f"{_TABLE}.csv"})
 
     import pymysql
@@ -214,10 +231,9 @@ def test_doris_uses_manifest_delimiter(monkeypatch: Any, manifest_data_dir: Path
 
     adapter.load_data(benchmark, conn, manifest_data_dir)
 
-    assert state.inserts, "No INSERT statements executed"
-    insert_sql, rows = state.inserts[0]
-    assert "VALUES (%s, %s)" in insert_sql, f"Expected 2-column INSERT from pipe split; got: {insert_sql!r}"
-    assert rows[0] == ["1", "alpha"], f"Unexpected row values: {rows[0]!r}"
+    assert put_calls, "No Stream Load request sent"
+    assert put_calls[0]["headers"]["column_separator"] == "|", put_calls[0]["headers"]
+    assert put_calls[0]["data"].startswith(b"1|alpha"), put_calls[0]["data"]
 
 
 class _FakeResponse:
@@ -241,14 +257,14 @@ class _FakeRequests:
 
 
 def _stub_psycopg_for_questdb(monkeypatch: Any) -> None:
-    fake = types.ModuleType("psycopg")
-    monkeypatch.setitem(sys.modules, "psycopg", fake)
     try:
         import benchbox.platforms.questdb as m
-
-        m.psycopg = fake
     except ImportError:
-        pass
+        m = None
+    fake = types.ModuleType("psycopg")
+    monkeypatch.setitem(sys.modules, "psycopg", fake)
+    if m is not None:
+        monkeypatch.setattr(m, "psycopg", fake, raising=False)
 
 
 @pytest.mark.platform_smoke

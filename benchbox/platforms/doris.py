@@ -62,15 +62,6 @@ _BACKEND_READY_TIMEOUT_S = 120.0
 _BACKEND_READY_POLL_S = 2.0
 
 
-def _empty_fields_to_null(line: str, delimiter: str) -> str:
-    trailing = line.endswith(delimiter)
-    fields = line.split(delimiter)
-    if trailing:
-        fields.pop()
-    joined = delimiter.join(r"\N" if field == "" else field for field in fields)
-    return joined + delimiter if trailing else joined
-
-
 def _stream_load_text_body(data: bytes) -> bytes:
     return normalize_line_breaks(data if data.isascii() else data.decode("latin-1").encode("utf-8"))
 
@@ -451,10 +442,8 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         data_source: Any,
     ) -> int:
         dialect = resolve_csv_dialect(data_source, source_table_name, data_file, benchmark)
-        if _requests is not None:
-            columns = self._table_column_names(connection, table_name) if dialect.null_marker is not None else None
-            return self._stream_load_file(table_name, data_file, dialect, columns)
-        return self._insert_load_file(connection, table_name, data_file, dialect)
+        columns = self._table_column_names(connection, table_name) if dialect.null_marker is not None else None
+        return self._stream_load_file(table_name, data_file, dialect, columns)
 
     @staticmethod
     def _table_column_names(connection: Any, table_name: str) -> list[str]:
@@ -537,6 +526,8 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
             yield iter(lambda: f.read(1 << 20), b"")
 
     def _stream_load_put(self, url: str, data: bytes | Callable[[], Any], headers: dict):
+        if _requests is None:
+            raise ImportError("Doris Stream Load requires the 'requests' package")
         kwargs = {
             "auth": (self.username, self.password),
             "timeout": 1800,
@@ -709,53 +700,6 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         )
         return total_rows
 
-    def _insert_load_file(self, connection: Any, table_name: str, data_file: Path, dialect: CsvDialect) -> int:
-        delimiter = dialect.delimiter
-        is_tpc = dialect.null_marker is not None
-        row_count = 0
-        batch_size = 1000
-
-        cursor = connection.cursor()
-
-        with open(data_file, encoding="utf-8") as f:
-            if dialect.has_header:
-                next(f, None)
-            batch = []
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-
-                if is_tpc and line.endswith(delimiter):
-                    line = line[: -len(delimiter)]
-
-                values = line.split(delimiter)
-                batch.append(values)
-
-                if len(batch) >= batch_size:
-                    self._execute_batch_insert(cursor, table_name, batch)
-                    row_count += len(batch)
-                    batch = []
-
-            if batch:
-                self._execute_batch_insert(cursor, table_name, batch)
-                row_count += len(batch)
-
-        connection.commit()
-        cursor.close()
-
-        return row_count
-
-    def _execute_batch_insert(self, cursor: Any, table_name: str, rows: list[list[str]]) -> None:
-        if not rows:
-            return
-
-        num_cols = len(rows[0])
-        placeholders = ", ".join(["%s"] * num_cols)
-        sql = f"INSERT INTO `{table_name}` VALUES ({placeholders})"
-
-        cursor.executemany(sql, rows)
-
     def configure_for_benchmark(self, connection: Any, benchmark_type: str) -> None:
         cursor = connection.cursor()
 
@@ -833,7 +777,6 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
             "configuration": {
                 "database": self.database,
                 "http_port": self.http_port,
-                "stream_load_available": _requests is not None,
                 "table_model": self.table_model,
                 "default_buckets": self.default_buckets,
                 "stream_load_chunk_size": self.stream_load_chunk_size,
@@ -997,18 +940,11 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
             except (AttributeError, ValueError, IndexError):
                 warnings.append("Could not determine pymysql version")
 
-        if _requests is None:
-            warnings.append(
-                "requests library not available - Stream Load disabled, falling back to INSERT loading. "
-                "Install with 'pip install requests' for better performance."
-            )
-
         platform_info = {
             "platform": self.platform_name,
             "benchmark_type": benchmark_type,
             "dry_run_mode": self.dry_run_mode,
             "pymysql_available": pymysql is not None,
-            "requests_available": _requests is not None,
             "host": self.host,
             "port": self.port,
             "http_port": self.http_port,

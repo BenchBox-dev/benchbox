@@ -1338,10 +1338,10 @@ and posts nothing to GitHub.
   result path. It uses the same trusted copy, driver, and outcome cache as the
   review above but opens no PR, posts nothing, and writes no findings record to
   a PR body. It refuses when the base is not an ancestor of the head, and when
-  `findings` (Critical or High) remain it exits 1. A member runs it through
-  `make batch-member-check` as early feedback; `batch-land` runs it again as the
-  leader, with `--reviewer-ref` and `--trusted-ref` pinned to the same trusted
-  commit, and retains that invocation's result in the receipt. Both runs launch
+  `findings` (Critical or High) remain it exits 1. `make batch-member-check`
+  does not run it; `batch-land` runs it as the leader, with `--reviewer-ref`
+  and `--trusted-ref` pinned to the trusted commit the check recorded, and
+  retains that invocation's result in the receipt. The run launches
   `scripts/oracle_local_review.py` as read from the trusted commit, never the
   copy in the checkout. There is no separate member-result store. Readiness
   recomputes `head_tree` and `patch_digest` from Git for each receipt's range

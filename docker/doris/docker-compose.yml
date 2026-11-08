@@ -1,6 +1,7 @@
 services:
   doris:
     image: apache/doris:4.0.3-all-slim@sha256:3237bfb73471da7482c6575cecc1632c96dec09509cd2e60bcb798e2c5342823
+    mem_limit: ${DORIS_MEMORY_LIMIT:-4g}
     entrypoint:
       - bash
       - -c

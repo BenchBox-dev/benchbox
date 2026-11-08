@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Batch start refuses fewer than two members and freezes the changelog fragment and property ledger into every member scope; member check enforces that scope and no longer runs a review, leaving the trusted review to batch landing."
+}

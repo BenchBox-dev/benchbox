@@ -283,6 +283,7 @@ class TestParquetCsvParity:
 
         with (
             patch.object(adapter, "_import_schema", return_value=None),
+            patch.object(adapter, "_unpatterned_timestamp_columns", return_value=[]),
             patch.object(questdb_module, "_http_post", side_effect=_post),
         ):
             rows = adapter._load_parquet_via_chunked_csv("t", path)

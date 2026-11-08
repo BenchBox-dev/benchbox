@@ -12,7 +12,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from benchbox.utils import host_lock
-from tests.uat import docker_assets, managed_runtime, matrix
+from tests.uat import docker_assets, managed_runtime, matrix, mocker_launch
 
 DOCUMENT_ONLY_PLATFORMS = frozenset()
 
@@ -59,6 +59,47 @@ def _admit_bring_up(platform: str, spec: docker_assets.DockerPlatformSpec, env: 
     return 0
 
 
+def _bring_down(
+    spec: docker_assets.DockerPlatformSpec,
+    project_name: str,
+    compose_env: dict[str, str],
+    *,
+    remove_volumes: bool,
+    dry_run: bool,
+) -> int:
+    mode = "volumes" if remove_volumes else "containers"
+    try:
+        if mocker_launch.applies(spec):
+            result = mocker_launch.teardown_stack(
+                spec,
+                project_name,
+                mode,
+                env=compose_env,
+                runner=docker_assets.run_docker_command,
+                dry_run=dry_run,
+            )
+        else:
+            result = docker_assets.run_docker_command(
+                docker_assets.compose_down_command(spec, project_name, mode),
+                dry_run=dry_run,
+                timeout_s=300,
+                cwd=docker_assets.REPO_ROOT,
+                env=compose_env,
+            )
+    except docker_assets.DockerAssetError as exc:
+        print(f"UAT bring-down failed for {spec.platform}: {exc}", file=sys.stderr)
+        return 2
+    print(result.stdout if mocker_launch.applies(spec) and result.succeeded else result.command)
+    if not result.succeeded:
+        details = result.error or result.stderr or result.stdout or f"exit {result.returncode}"
+        print(f"UAT bring-down failed for {spec.platform}: {details}", file=sys.stderr)
+        return result.returncode or 1
+    if not dry_run:
+        matrix.invalidate_reachability_cache_after_lifecycle_change()
+    print(f"UAT bring-down OK for {spec.platform} (project={project_name})")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="uat-bring-up")
     parser.add_argument("--platform", required=True, help="Local UAT platform to start")
@@ -74,6 +115,16 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--dry-run", action="store_true", help="Print/run command construction without Docker execution"
+    )
+    parser.add_argument(
+        "--down",
+        action="store_true",
+        help="Tear down the stack started by bring-up instead of starting it (make uat-bring-up DOWN=1)",
+    )
+    parser.add_argument(
+        "--remove-volumes",
+        action="store_true",
+        help="With --down: also remove the stack's named volumes",
     )
     parser.add_argument(
         "--prepull-only",
@@ -129,6 +180,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"platform {platform!r} project name {project_name!r} is invalid: {exc}", file=sys.stderr)
         return 2
 
+    if args.down:
+        return _bring_down(spec, project_name, compose_env, remove_volumes=args.remove_volumes, dry_run=args.dry_run)
+
     if args.prepull_only:
         prepull_steps = (
             ("pull", docker_assets.compose_pull_command(spec, project_name)),
@@ -155,15 +209,30 @@ def main(argv: list[str] | None = None) -> int:
         if admission:
             return admission
 
-    argv_up = docker_assets.compose_up_command(spec, project_name, start_timeout_s=args.timeout_s)
-    result = docker_assets.run_docker_command(
-        argv_up,
-        dry_run=args.dry_run,
-        timeout_s=args.timeout_s,
-        cwd=docker_assets.REPO_ROOT,
-        env=compose_env,
-    )
-    print(result.command)
+    if mocker_launch.applies(spec):
+        try:
+            result = mocker_launch.launch_stack(
+                spec,
+                project_name,
+                env=compose_env,
+                runner=docker_assets.run_docker_command,
+                timeout_s=args.timeout_s,
+                dry_run=args.dry_run,
+            )
+        except docker_assets.DockerAssetError as exc:
+            print(f"UAT bring-up failed for {platform}: {exc}", file=sys.stderr)
+            return 2
+        print(result.stdout if result.succeeded else result.command)
+    else:
+        argv_up = docker_assets.compose_up_command(spec, project_name, start_timeout_s=args.timeout_s)
+        result = docker_assets.run_docker_command(
+            argv_up,
+            dry_run=args.dry_run,
+            timeout_s=args.timeout_s,
+            cwd=docker_assets.REPO_ROOT,
+            env=compose_env,
+        )
+        print(result.command)
     if not result.succeeded:
         details = result.error or result.stderr or result.stdout or f"exit {result.returncode}"
         print(f"UAT bring-up failed for {platform}: {details}", file=sys.stderr)

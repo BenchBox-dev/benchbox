@@ -37,7 +37,7 @@ worker, and an older client has been shown to refuse with `E_SCHEMA`.
 | Layer | Who | Owns |
 |---|---|---|
 | Leader | One agent session | The batch registration, the one integration branch `feat/<batch>` and its worktree, landing each member, the tracker, the ledger, and the one final PR to `develop` |
-| Member | One agent session per member | One worktree and branch `feat/<batch>--<member>` started at the integration head; implementation, scoped checks, local review, and a landing report |
+| Member | One agent session per member | One worktree and branch `feat/<batch>--<member>` started at the integration head; implementation, scoped checks, and a landing report |
 
 The leader is the only tracker writer. A member never calls `take`, `prepare`,
 `finish`, `release`, or any other tracker write; while the batch is active the
@@ -76,9 +76,9 @@ Rules that hold for the whole batch:
 
 | Target | Run by | Does |
 |---|---|---|
-| `make batch-start BATCH= MEMBERS= SCOPE_JSON= PROJECT_ID= [WORKTREE_PATH=] [DEPENDENCIES=member=dep1+dep2,...] [CONFIRM_CUTOVER=1]` | Leader, any worktree | Creates `feat/<batch>` and its worktree from `refs/remotes/origin/develop`, writes the ledger and owner generation, and prints the `register_batch` arguments and an `after_register` block of `update_item` steps |
+| `make batch-start BATCH= MEMBERS= SCOPE_JSON= PROJECT_ID= [WORKTREE_PATH=] [DEPENDENCIES=member=dep1+dep2,...] [CONFIRM_CUTOVER=1]` | Leader, any worktree | Refuses fewer than two members (one member is serial work). Appends `changelog.d/*` and `docs/internal/dev-loop-property-ledger.md` to every member's scope before hashing it. Creates `feat/<batch>` and its worktree from `refs/remotes/origin/develop`, writes the ledger and owner generation, and prints the `register_batch` arguments and an `after_register` block of `update_item` steps |
 | `make batch-member-create MEMBER= [WORKTREE_PATH=]` | Leader, integration worktree | Creates `feat/<batch>--<member>` at the current integration head; refuses an existing branch, and refuses while the primary clone has uncommitted tracked changes (the files are named) |
-| `make batch-member-check [TESTS=a,b]` | Member | Requires a clean branch that contains the integration head and has changes, no uncommitted tracked change anywhere in the primary clone, and no change there under the member's frozen scope (the files are named); runs `make pr-preflight` against that head (or the command given as `PREFLIGHT_CMD`, which is recorded and warned about at landing) and the changelog check, then executes the union of the mapped and named tests and records success only if that command passes and the checkout stays clean at the same head; runs the member review as early feedback and, when it does not clear the head, prints its full output and the path of the file holding it |
+| `make batch-member-check [TESTS=a,b]` | Member | Requires a clean branch that contains the integration head and has changes, no uncommitted tracked change anywhere in the primary clone, and no change there under the member's frozen scope (the files are named); refuses a changed path outside the member's frozen scope (the paths are named), with the message `batch-land` uses; runs `make pr-preflight` against that head (or the command given as `PREFLIGHT_CMD`, which is recorded and warned about at landing) and the changelog check, then executes the union of the mapped and named tests and records success only if that command passes and the checkout stays clean at the same head; runs no review: the leader reviews the exact patch at landing |
 | `make batch-land MEMBER= [ACCEPT_WRITES=op_id,...]` | Leader | Merges a checked member with `--no-ff` and prints the `take`/`prepare` payload (`prepare` only for a dependent member, which must already be taken); the member's implementation dependencies are read from its registered tracker metadata |
 | `make batch-advance REASON=fix\|develop-merge` | Leader | Records a leader commit or a develop merge and prints the `advance_batch_head` payload |
 | `make batch-status` | Leader | Reconciles the ledger with the tracker and Git (rebuilding a missing ledger) and names the next step |
@@ -96,7 +96,9 @@ and submitted by the leader through the tractable MCP tools.
 1. Create or keep the member items. Put batch notes on an umbrella item that is
    not a member.
 2. Write the scope file: a JSON object mapping every member, and only members,
-   to a non-empty list of path patterns.
+   to a non-empty list of path patterns. A batch has at least two members;
+   one member is serial work. `batch-start` adds the member's changelog fragment
+   and the property ledger to every scope.
 3. Run `make batch-start`. It refuses unless `origin/develop` is fetched.
 4. Submit `register_batch` with the printed arguments (the first one on an older
    store also carries the cutover confirmation). Registration records one
@@ -131,12 +133,11 @@ A member:
 - runs the union of mapped tests and any it names, through `make batch-member-check
   TESTS=...` (non-Python changes must name tests); a named test that fails or
   collects nothing blocks the check; it does not run the fast tier;
-- runs the member review as early feedback. The leader does not trust that
-  result: it reviews the exact patch again before landing. A change that
-  touches only exempt paths is recorded `not-reviewed`, the same bar as a
+- runs no review. The leader reviews the exact patch at landing, where a change
+  that touches only exempt paths is recorded `not-reviewed`, the same bar as a
   standalone PR (`docs/internal/oracle-review-v2.md`);
 - stops with a landing report: branch, accepted head, base, changed files,
-  tests, and review outcome. It does not push for publication, open a PR, or
+  and tests. It does not push for publication, open a PR, or
   touch the tracker.
 
 ### 3. Land (leader), one member at a time
