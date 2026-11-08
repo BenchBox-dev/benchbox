@@ -5958,7 +5958,7 @@
         }
       },
       "integration_branch": "feat/result-validity",
-      "integration_head": "c161b1aca23ade94739badc6028a311bc81eee05",
+      "integration_head": "bb31fc71b9addd13965a136c7f53c03890c81208",
       "integration_log": [
         {
           "at": "2026-11-07T14:16:47Z",
@@ -6210,6 +6210,21 @@
             "tpch-power-validation-after-rf1-q13-20261106"
           ],
           "seq": 10
+        },
+        {
+          "at": "2026-11-08T00:01:56Z",
+          "changed_files": [
+            "docs/internal/site-deploy.md",
+            "scripts/batch_integration.py",
+            "scripts/pr_landing.py",
+            "tests/unit/scripts/test_batch_evidence.py"
+          ],
+          "head": "bb31fc71b9addd13965a136c7f53c03890c81208",
+          "kind": "develop-merge",
+          "merged_parent": "dfff6769c9c8c064fcb324c33af5938bf67b3647",
+          "op_id": "882351545dbf4c9ca7cffa3b6858f12b",
+          "previous_head": "c161b1aca23ade94739badc6028a311bc81eee05",
+          "seq": 11
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-result-validity",
