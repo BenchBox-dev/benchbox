@@ -9,6 +9,72 @@
     "member_id": "singlestore-tpcds-power-oom-24a-20261108"
   },
   "description": "From the load-value-integrity batch (#4043). TPC-DS now loads on SingleStore, but the power phase at SF0.01 fails at query 24a with an out-of-memory error on the 4 GiB local stack. joinorder SF1 was pruned with a documented reason: memsqld is OOM-killed on query 7c.\n\nChange. Determine whether this is the stack's memory limit (compare against the release UAT runner's memory) or a query-plan problem on SingleStore. Then either size the UAT stack, or fix or prune the query with a recorded reason.\n\nGuardrails: work in a linked worktree; local stacks via make uat-bring-up under mocker, one at a time; no live cloud.",
+  "prepared": {
+    "accepted_head": "c9f9db626081259c84ff0249539170fb18a80959",
+    "batch_id": "ci-uat-stability",
+    "changed_files": [
+      "benchbox/platforms/singlestore.py",
+      "changelog.d/feat-ci-uat-stability--singlestore-tpcds-power-oom-24a-20261108.json",
+      "tests/unit/platforms/test_singlestore_analyze_after_load.py"
+    ],
+    "integration_head": "1a480fb188947d8001acfdb9adac10b89511af72",
+    "integration_seq": 2,
+    "member_id": "singlestore-tpcds-power-oom-24a-20261108",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "49341df7c33e79a69d83a1dd07cb2b383c137104772904edff9243ab1985cabf",
+    "source_base": "d671afc54d4f69c6e4c43de10358f5a3f9b8e817",
+    "source_revision": "c9f9db626081259c84ff0249539170fb18a80959",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-ci-uat-stability--singlestore-tpcds-power-oom-24a-20261108",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/platforms/test_singlestore_decimal_load_live.py",
+        "tests/integration/platforms/test_singlestore_live.py",
+        "tests/integration/platforms/test_singlestore_tpcds_maintenance_live.py",
+        "tests/integration/test_manifest_driven_loading.py",
+        "tests/integration/test_misc_plan_capture_live.py",
+        "tests/integration/test_throughput_session_isolation.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_connection_registry_drift.py",
+        "tests/uat/test_singlestore_joinorder_prune.py",
+        "tests/unit/core/tpcds/test_maintenance_singlestore_dialect.py",
+        "tests/unit/core/tpch/test_tpch_refresh_native_ingest.py",
+        "tests/unit/core/write_primitives/test_singlestore_decimal_guard_overrides.py",
+        "tests/unit/platforms/test_misc_plan_capture.py",
+        "tests/unit/platforms/test_singlestore_adapter.py",
+        "tests/unit/platforms/test_singlestore_analyze_after_load.py",
+        "tests/unit/platforms/test_singlestore_decimal_load_guard.py",
+        "tests/unit/platforms/test_singlestore_parquet_chunks.py",
+        "tests/unit/platforms/test_singlestore_refresh_ingest_nulls.py",
+        "tests/unit/platforms/test_tpcds_maintenance_primary_keys.py",
+        "tests/unit/sql_compat/test_singlestore_rules.py"
+      ],
+      "review": {
+        "base_sha": "d671afc54d4f69c6e4c43de10358f5a3f9b8e817",
+        "head_sha": "c9f9db626081259c84ff0249539170fb18a80959",
+        "head_tree": "e3d89e33e15ebe2eef07af6ee6f730d511239275",
+        "outcome": "clear",
+        "patch_digest": "b3ad88b3da1d8f399ae97f99746d92e8",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "23f0c09e94e46fce2ee53de960faa097bbe5f21d"
+      },
+      "revision": "c9f9db626081259c84ff0249539170fb18a80959",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
@@ -33,6 +99,15 @@
       "generation": "a8c6c1b1ea0346daa346c247a26a9858",
       "op": "take",
       "op_id": "f07be6c1ac5a44f58908ac22f24ec4c1",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-08T19:37:59Z",
+      "client": "omp-coding-agent",
+      "generation": "a8c6c1b1ea0346daa346c247a26a9858",
+      "op": "prepare",
+      "op_id": "c0cf9bf68a7d469b9bb92cda4d3132dc",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]

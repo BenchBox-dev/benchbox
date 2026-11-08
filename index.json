@@ -2617,7 +2617,8 @@
     },
     "ci-uat-stability": {
       "accepted_members": {
-        "obt-sql-gate-nightly-timeouts-20261108": "aff09a7b0a9fcd804d33715b7a6a0a18fc024ed9"
+        "obt-sql-gate-nightly-timeouts-20261108": "aff09a7b0a9fcd804d33715b7a6a0a18fc024ed9",
+        "singlestore-tpcds-power-oom-24a-20261108": "c9f9db626081259c84ff0249539170fb18a80959"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -2636,10 +2637,20 @@
           ],
           "integration_head": "d671afc54d4f69c6e4c43de10358f5a3f9b8e817",
           "integration_seq": 1
+        },
+        "singlestore-tpcds-power-oom-24a-20261108": {
+          "accepted_head": "c9f9db626081259c84ff0249539170fb18a80959",
+          "changed_files": [
+            "benchbox/platforms/singlestore.py",
+            "changelog.d/feat-ci-uat-stability--singlestore-tpcds-power-oom-24a-20261108.json",
+            "tests/unit/platforms/test_singlestore_analyze_after_load.py"
+          ],
+          "integration_head": "1a480fb188947d8001acfdb9adac10b89511af72",
+          "integration_seq": 2
         }
       },
       "integration_branch": "feat/ci-uat-stability",
-      "integration_head": "d671afc54d4f69c6e4c43de10358f5a3f9b8e817",
+      "integration_head": "1a480fb188947d8001acfdb9adac10b89511af72",
       "integration_log": [
         {
           "at": "2026-11-08T18:40:38Z",
@@ -2655,6 +2666,15 @@
           "op_id": "714f3764ed2c4944a2819f96c13b5c6f",
           "previous_head": "205cae77675c7cb7236fcaa1a5873fe23420795d",
           "seq": 1
+        },
+        {
+          "at": "2026-11-08T19:37:58Z",
+          "head": "1a480fb188947d8001acfdb9adac10b89511af72",
+          "kind": "prepare",
+          "member": "singlestore-tpcds-power-oom-24a-20261108",
+          "op_id": "c0cf9bf68a7d469b9bb92cda4d3132dc",
+          "previous_head": "d671afc54d4f69c6e4c43de10358f5a3f9b8e817",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-ci-uat-stability",
@@ -34433,15 +34453,10 @@
       "title": "SingleStore setup saves the plaintext password to credentials.yaml even when validation fails"
     },
     "singlestore-tpcds-power-oom-24a-20261108": {
-      "claim": {
-        "expires_at": "2026-11-09T19:37:53Z",
-        "generation": "a8c6c1b1ea0346daa346c247a26a9858",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "SingleStore TPC-DS SF0.01 power phase fails at query 24a with OOM on the 4 GiB stack; joinorder SF1 pruned for OOM on 7c"
     },
     "singlestore-tpchavoc-10v8-memory": {
