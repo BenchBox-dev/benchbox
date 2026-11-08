@@ -7,6 +7,13 @@ from scripts.sql_execution_gate.engines import Dataset
 
 OBT_BENCHMARK = "tpcds_obt"
 OBT_AUGMENTED = "tpcds_obt-augmented"
+OBT_INDEXES = (
+    ("sale_id",),
+    ("item_i_item_id",),
+    ("item_i_manufact_id",),
+    ("sold_date_d_week_seq",),
+    ("sold_date_d_date", "sold_date_d_week_seq", "channel"),
+)
 
 
 def build_obt_dataset(name: str, source: Dataset, scale: float, scratch: Path) -> Dataset:
@@ -34,4 +41,5 @@ def build_obt_dataset(name: str, source: Dataset, scale: float, scratch: Path) -
         re.sub(r",\n\s*PRIMARY KEY \([^)]*\)", "", get_obt_table().get_create_table_sql()),
         {OBT_TABLE_NAME: flat},
         index_keys=False,
+        indexes=OBT_INDEXES,
     )
