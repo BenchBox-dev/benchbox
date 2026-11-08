@@ -1098,7 +1098,32 @@ def _check_evidence_acceptance(repo: Path, evidence: dict, head: str, tracker: d
             failures.append(f"current acceptance for member {member} ran outside the integration worktree")
         if row.get("suite") != verification.get("suite") or row.get("command") != verification.get("command"):
             failures.append(f"current acceptance for member {member} is not its own receipt verification")
+        failures.extend(_check_ran_command(member, row, verification.get("command"), evidence))
     return failures
+
+
+def _command_without_paths(command: object, dropped: set[str]) -> list | None:
+    if not isinstance(command, list):
+        return None
+    if not dropped:
+        return list(command)
+    start = trailing_test_run_start(command)
+    if start is None:
+        return None
+    return [*command[:start], *(arg for arg in command[start:] if str(arg).split("::", 1)[0] not in dropped)]
+
+
+def _check_ran_command(member: str, row: dict, recorded: object, evidence: dict) -> list[str]:
+    claimed = evidence.get("dropped_receipt_paths", {})
+    listed = claimed.get(member, []) if isinstance(claimed, dict) else []
+    dropped = row.get("dropped_paths", [])
+    if not isinstance(dropped, list) or not all(isinstance(path, str) for path in dropped):
+        return [f"current acceptance for member {member} has malformed dropped_paths"]
+    if not isinstance(listed, list) or sorted(dropped) != sorted(listed):
+        return [f"current acceptance for member {member} dropped paths differ from the evidence dropped_receipt_paths"]
+    if row.get("ran_command", recorded) != _command_without_paths(recorded, set(dropped)):
+        return [f"current acceptance for member {member} ran a command other than its receipt minus the dropped paths"]
+    return []
 
 
 def _path_in_tree(repo: Path, head: str, path: str) -> bool:

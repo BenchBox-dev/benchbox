@@ -780,24 +780,36 @@ def _read_check(member_worktree: Path, member_head: str, integration_head: str) 
     return record if isinstance(record, dict) and record.get("schema") == CHECK_SCHEMA else None
 
 
-def _rerun(repo: Path, ledger: dict, member: str, command: list[str], suite: str, reason: str) -> dict:
+def _rerun(
+    repo: Path, ledger: dict, member: str, command: list[str], suite: str, reason: str, tracker: dict | None = None
+) -> dict:
     head = _rev(repo, "HEAD")
     clean_before = _is_clean(repo)
-    proc = _run(_validate_verification_command(command), repo)
+    recorded = _validate_verification_command(command)
+    ran_command, dropped_paths, exhausted = _develop_deleted_rerun(repo, head, recorded, tracker)
+    proc = None if exhausted else _run(ran_command, repo)
     head_after = _rev(repo, "HEAD")
     clean_after = _is_clean(repo)
-    passed = proc.returncode == 0 and clean_before and clean_after and head_after == head
+    passed = proc is not None and proc.returncode == 0 and clean_before and clean_after and head_after == head
     entry = {
         "status": "passed" if passed else "failed",
         "revision": head,
         "clean": clean_before and clean_after,
         "suite": suite,
         "command": list(command),
+        "ran_command": ran_command,
+        "dropped_paths": dropped_paths,
         "worktree": str(repo.resolve()),
         "reason": reason,
         "at": _now(),
     }
-    if proc.returncode != 0:
+    if proc is None:
+        entry["output"] = (
+            f"every verification path in member {member!r}'s receipt was removed by a recorded develop merge "
+            f"({', '.join(dropped_paths)}); refusing to run pytest without them; re-prepare the member with "
+            "current verification"
+        )
+    elif proc.returncode != 0:
         entry["output"] = (proc.stderr or proc.stdout).strip()[-400:]
     elif not passed:
         entry["output"] = (
@@ -922,7 +934,9 @@ def _already_merged(
     save_ledger(repo, ledger)
     receipts = _receipts(tracker)
     earlier = {key: value for key, value in ledger["landings"].items() if key != member}
-    reruns, failures = _overlap_reruns(repo, ledger, receipts, earlier, member, landing.get("changed_files", []))
+    reruns, failures = _overlap_reruns(
+        repo, ledger, receipts, tracker, earlier, member, landing.get("changed_files", [])
+    )
     save_ledger(repo, ledger)
     if failures:
         raise BatchError(
@@ -1057,7 +1071,7 @@ def _preflight_gate(repo: Path, head: str) -> list[str]:
 
 
 def _overlap_reruns(
-    repo: Path, ledger: dict, receipts: dict, earlier: dict, member: str, changed: list[str]
+    repo: Path, ledger: dict, receipts: dict, tracker: dict, earlier: dict, member: str, changed: list[str]
 ) -> tuple[list[dict], list[str]]:
     reruns: list[dict] = []
     failures: list[str] = []
@@ -1066,7 +1080,7 @@ def _overlap_reruns(
         if not shared:
             continue
         suite, command = _landing_verification(ledger, other, receipts)
-        entry = _rerun(repo, ledger, other, command, suite, f"overlap:{member}")
+        entry = _rerun(repo, ledger, other, command, suite, f"overlap:{member}", tracker)
         reruns.append({"member": other, "paths": shared, "status": entry["status"]})
         if entry["status"] != "passed":
             failures.append(other)
@@ -1250,7 +1264,7 @@ def land_member(repo: Path, member: str, *, push: bool = True, accepted_writes: 
     ledger["landings"][member] = landing
     save_ledger(repo, ledger)
     warnings.extend(hunk_warnings(repo, {**ledger, "landings": earlier}, member))
-    reruns, failures = _overlap_reruns(repo, ledger, receipts, earlier, member, gate["changed"])
+    reruns, failures = _overlap_reruns(repo, ledger, receipts, tracker, earlier, member, gate["changed"])
     save_ledger(repo, ledger)
     if failures:
         raise BatchError(
@@ -1411,8 +1425,9 @@ def _resolve_advance(repo: Path, ledger: dict, tracker: dict, reason: str) -> tu
 
 
 def _fix_acceptance(
-    repo: Path, ledger: dict, receipts: dict, head: str, changed: list[str]
+    repo: Path, ledger: dict, tracker: dict, head: str, changed: list[str]
 ) -> tuple[list[str], list[str]]:
+    receipts = _receipts(tracker)
     union = [pattern for patterns in ledger["scope"].values() for pattern in patterns]
     outside = [path for path in changed if not _matches_scope(path, union)]
     if outside:
@@ -1421,7 +1436,7 @@ def _fix_acceptance(
     failures: list[str] = []
     for member in touched:
         suite, command = _landing_verification(ledger, member, receipts)
-        if _rerun(repo, ledger, member, command, suite, f"fix:{head}")["status"] != "passed":
+        if _rerun(repo, ledger, member, command, suite, f"fix:{head}", tracker)["status"] != "passed":
             failures.append(member)
     return touched, failures
 
@@ -1457,7 +1472,7 @@ def advance_head(repo: Path, reason: str, *, push: bool = True) -> dict:
     }
     failures: list[str] = []
     if reason == "fix":
-        touched, failures = _fix_acceptance(repo, ledger, _receipts(tracker), head, changed)
+        touched, failures = _fix_acceptance(repo, ledger, tracker, head, changed)
         result["requires_acceptance"] = touched
         result["reruns"] = {m: ledger["acceptance"][m][-1]["status"] for m in touched}
     else:
@@ -2082,7 +2097,7 @@ def _excluded_paths(repo: Path, final_head: str, tracker: dict) -> set[str]:
 
 
 def _drop_develop_deleted_targets(
-    repo: Path, head: str, member: str, command: list[str], excluded: set[str], tracker: dict
+    repo: Path, head: str, command: list[str], excluded: set[str], tracker: dict
 ) -> tuple[list[str], list[str]]:
     pr_landing = _pr_landing_module()
     start = pr_landing.trailing_test_run_start(command) if "pytest" in command else None
@@ -2100,12 +2115,21 @@ def _drop_develop_deleted_targets(
             removed.add(path)
         else:
             kept.append(arg)
-    if removed and len(kept) == start:
-        raise BatchError(
-            f"every verification path in member {member!r}'s receipt was removed by a recorded develop merge "
-            f"({', '.join(sorted(removed))}); re-prepare the member with current verification"
-        )
     return kept, sorted(removed)
+
+
+def _develop_deleted_rerun(
+    repo: Path, head: str, command: list[str], tracker: dict | None
+) -> tuple[list[str], list[str], bool]:
+    if tracker is None or "pytest" not in command:
+        return list(command), [], False
+    pr_landing = _pr_landing_module()
+    excluded, problems = pr_landing.develop_exclusions(repo, head, tracker, _receipts(tracker))
+    if problems or not excluded:
+        return list(command), [], False
+    kept, removed = _drop_develop_deleted_targets(repo, head, command, excluded, tracker)
+    exhausted = bool(removed) and pr_landing.trailing_test_run_start(kept) is None
+    return kept, removed, exhausted
 
 
 def build_evidence(repo: Path) -> dict:
@@ -2142,12 +2166,11 @@ def build_evidence(repo: Path) -> dict:
     for member in members:
         verification = receipts[member]["verification"]
         command = _validate_verification_command(verification.get("command"))
-        rerun_command, removed = _drop_develop_deleted_targets(repo, final_head, member, command, excluded, tracker)
-        if removed:
-            dropped[member] = removed
-        rerun_entry = _rerun(repo, ledger, member, rerun_command, str(verification.get("suite", "")), "final-evidence")
-        if removed:
-            rerun_entry["dropped_paths"] = removed
+        rerun_entry = _rerun(
+            repo, ledger, member, command, str(verification.get("suite", "")), "final-evidence", tracker
+        )
+        if rerun_entry["dropped_paths"]:
+            dropped[member] = rerun_entry["dropped_paths"]
         save_ledger(repo, ledger)
         if rerun_entry["status"] != "passed":
             raise BatchError(f"rerun of {member!r} failed at the final head: {rerun_entry.get('output', '')}")
@@ -2159,6 +2182,8 @@ def build_evidence(repo: Path) -> dict:
             "clean": True,
             "suite": receipts[member]["verification"]["suite"],
             "command": receipts[member]["verification"]["command"],
+            "ran_command": rerun_entry["ran_command"],
+            "dropped_paths": rerun_entry["dropped_paths"],
             "worktree": str(repo.resolve()),
         }
 

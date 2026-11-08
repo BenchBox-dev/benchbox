@@ -23,7 +23,12 @@ HEAD = "a" * 40
 
 class FakeGh:
     def __init__(self, conclusions: dict[str, str] | None = None, *, pending_polls: int = 1, cancel_fails=False):
-        self.conclusions = {"reuse": "success", "fallback": "success", **(conclusions or {})}
+        self.conclusions = {
+            "reuse": "success",
+            "fallback": "success",
+            "guarded-change": "success",
+            **(conclusions or {}),
+        }
         self.pending_polls = pending_polls
         self.cancel_fails = cancel_fails
         self.runs: dict[int, dict] = {}
@@ -63,12 +68,13 @@ def _run(fake: FakeGh, **kwargs) -> int:
     return launch.run_probes(REPOSITORY, BRANCH, HEAD, runner=fake, sleep=lambda _: None, **kwargs)
 
 
-def test_both_variants_are_dispatched_with_the_synthetic_tag_from_the_pull_request_branch(capsys):
+def test_every_variant_is_dispatched_with_the_synthetic_tag_from_the_pull_request_branch(capsys):
     fake = FakeGh()
     assert _run(fake) == 0
     assert [next(a for a in call if a.startswith("probe=")) for call in fake.dispatched] == [
         "probe=reuse",
         "probe=fallback",
+        "probe=guarded-change",
     ]
     for call in fake.dispatched:
         assert "tag=v0.0.0rc0" in call
@@ -78,7 +84,7 @@ def test_both_variants_are_dispatched_with_the_synthetic_tag_from_the_pull_reque
     assert "reuse probe: success" in capsys.readouterr().out
 
 
-@pytest.mark.parametrize("failing", ["reuse", "fallback"])
+@pytest.mark.parametrize("failing", ["reuse", "fallback", "guarded-change"])
 @pytest.mark.parametrize("conclusion", ["failure", "cancelled", "timed_out", None])
 def test_either_variant_failing_fails_the_job(failing, conclusion):
     assert _run(FakeGh({failing: conclusion})) == 1
@@ -98,10 +104,10 @@ def test_runs_that_existed_before_the_dispatch_are_never_adopted():
     assert run_id != 7
 
 
-def test_the_two_variants_never_share_a_run():
+def test_the_variants_never_share_a_run():
     fake = FakeGh()
     assert _run(fake) == 0
-    assert len({*fake.variant_of}) == 2
+    assert len({*fake.variant_of}) == 3
     assert sorted(fake.polls) == sorted(fake.variant_of)
 
 
@@ -115,7 +121,7 @@ def test_a_run_that_outlives_the_timeout_fails_and_is_cancelled():
     assert sorted(fake.cancelled) == sorted(fake.variant_of)
 
 
-def test_both_variants_are_bounded_by_one_overall_deadline(monkeypatch):
+def test_every_variant_is_bounded_by_one_overall_deadline(monkeypatch):
     fake = FakeGh()
     budgets: list[float] = []
     clock_now = [0.0]
@@ -130,7 +136,7 @@ def test_both_variants_are_bounded_by_one_overall_deadline(monkeypatch):
         REPOSITORY, BRANCH, HEAD, runner=fake, sleep=lambda _: None, clock=lambda: clock_now[0], timeout=1000.0
     )
     assert status == 0
-    assert budgets == [1000.0, 600.0]
+    assert budgets == [1000.0, 600.0, 200.0]
 
 
 def test_a_failed_cancel_is_reported_without_hiding_the_original_failure(capsys):

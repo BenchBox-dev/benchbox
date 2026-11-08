@@ -69,10 +69,10 @@ def test_last_nonempty_output_line_picks_last_subprocess_line():
 # BENCHBOX_OUTPUT_DIR=/tmp/shared-runs
 [info] running...
 [trace] retry...
-/Users/joe/Developer/benchmark_runs/results/duckdb_tpch_20260502_FINAL.json
+/Users/example/Developer/benchmark_runs/results/duckdb_tpch_20260502_FINAL.json
 """
     out = runner.last_nonempty_output_line(log)
-    assert out == "/Users/joe/Developer/benchmark_runs/results/duckdb_tpch_20260502_FINAL.json"
+    assert out == "/Users/example/Developer/benchmark_runs/results/duckdb_tpch_20260502_FINAL.json"
 
 
 def test_last_nonempty_output_line_accepts_custom_runs_root():

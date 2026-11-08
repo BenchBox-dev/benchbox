@@ -20,7 +20,7 @@ PUBLISHING_ACTIONS = ("pypa/gh-action-pypi-publish", "actions/attest-build-prove
 GATE_JOBS = ("admit", "install-matrix", "release-uat")
 REAL_PUBLISH_JOB = "publish"
 PROBE_PUBLISH_JOB = "publish-probe"
-VARIANTS = ("reuse", "fallback")
+VARIANTS = ("reuse", "fallback", "guarded-change")
 TARGETS = ("pypi", "test-pypi")
 RESULTS = ("success", "failure", "skipped")
 

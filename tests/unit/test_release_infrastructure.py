@@ -160,7 +160,7 @@ class TestReleaseInfrastructure:
         assert pr_fast["env"]["COVERAGE_CORE"] == "sysmon"
         assert expected_marker_flag in pr_fast["run"]
 
-        assert _workflow("trunk.yml")[True]["push"] == {"branches": ["develop"]}
+        assert _workflow("trunk.yml")[True]["push"] == {"branches": ["develop", "release/**"]}
         assert python_version("trunk.yml", "fast") == "3.12"
         assert expected_marker_flag in _workflow_job_run_text("trunk.yml", "fast")
 
@@ -171,7 +171,9 @@ class TestReleaseInfrastructure:
         assert on_events["schedule"] == [{"cron": "0 8 * * *"}]
         assert workflow["permissions"]["actions"] == "read"
         assert workflow["permissions"]["contents"] == "read"
-        assert workflow["env"]["RELEASE_CANARY_REF"] == "develop"
+        assert workflow["env"]["RELEASE_CANARY_REF"] == (
+            "${{ startsWith(github.ref, 'refs/heads/release/') && github.ref_name || 'develop' }}"
+        )
 
         jobs = workflow["jobs"]
         assert set(jobs) == {
@@ -203,7 +205,7 @@ class TestReleaseInfrastructure:
         assert RELEASE_CANARY_NON_FAST_EXPRESSION in collection_text
         assert "--collect-only" in collection_text
         assert "release-canary-artifacts/non-fast-collection-summary.json" in collection_text
-        assert "--checked-ref develop" in collection_text
+        assert '--checked-ref "${RELEASE_CANARY_REF}"' in collection_text
         assert "--checked-sha" in collection_text
         assert "raw" not in collection_text.lower()
         assert "set +e" not in collection_text
@@ -244,7 +246,7 @@ class TestReleaseInfrastructure:
             "pypi-latest-installability",
         }
         result_text = _workflow_job_run_text("release-canary.yml", "release-canary-result")
-        assert '"checked_ref": "develop"' in result_text
+        assert '"checked_ref": "${RELEASE_CANARY_REF}"' in result_text
         assert '"commit_sha": "${CHECKED_SHA}"' in result_text
         assert '"collection_result": "${COLLECTION_RESULT}"' in result_text
         assert '"ruleset_drift_sha": "${RULESET_DRIFT_SHA}"' in result_text
@@ -253,7 +255,7 @@ class TestReleaseInfrastructure:
 
         assert "issues" not in workflow["permissions"]
         incident_job = jobs["release-canary-incident"]
-        assert incident_job["if"] == "${{ always() && !cancelled() }}"
+        assert incident_job["if"] == "${{ always() && !cancelled() && !startsWith(github.ref, 'refs/heads/release/') }}"
         assert incident_job["permissions"]["issues"] == "write"
         assert incident_job["continue-on-error"] is True
         assert {

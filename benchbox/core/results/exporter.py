@@ -290,12 +290,20 @@ class ResultExporter:
             return anonymize_applied_tuning_payload(applied_payload)
         return _redact_usernames(applied_payload)
 
+    def _plan_redaction_roots(self, result: ResultLike) -> list[str]:
+        roots = [str(self.output_dir)] if isinstance(self.output_dir, Path) else []
+        platform_info = getattr(result, "platform_info", None)
+        working_dir = platform_info.get("working_dir") if isinstance(platform_info, dict) else None
+        if isinstance(working_dir, str) and working_dir:
+            roots.append(working_dir)
+        return roots
+
     def _write_companion_files(self, result: ResultLike, filename_base: str) -> None:
         plans_payload = build_plans_payload(result)
         if not plans_payload:
             return
         if self.anonymize and self.anonymization_manager:
-            plans_payload = anonymize_plans_payload(plans_payload)
+            plans_payload = anonymize_plans_payload(plans_payload, self._plan_redaction_roots(result))
         plans_path = self._create_file_path(f"{filename_base}.plans.json")
         self._write_file(plans_path, canonical_json_text(plans_payload))
         self.console.print(f"[dim]Exported plans: {plans_path}[/dim]")

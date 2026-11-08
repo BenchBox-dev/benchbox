@@ -430,12 +430,20 @@ def test_corpus_validator_runs_as_a_script_without_the_benchbox_package(tmp_path
     assert "must be anonymized before they merge" in completed.stdout
 
 
-def test_bundle_leak_scan_matches_the_anonymizer_detector() -> None:
+def test_bundle_leak_scan_shares_the_single_detector_source() -> None:
     from benchbox.core.results import anonymization
     from benchbox.validation import bundle
 
-    assert bundle.PRIVATE_LOCAL_PATH_RE.pattern == anonymization._PRIVATE_LOCAL_PATH_RE.pattern
-    assert bundle.PRIVATE_LOCAL_PATH_RE.flags == anonymization._PRIVATE_LOCAL_PATH_RE.flags
+    assert bundle.PRIVATE_LOCAL_PATH_RE is anonymization.PRIVATE_LOCAL_PATH_RE
+    assert bundle.find_public_path_leaks is anonymization.find_public_path_leaks
+    repo = Path(__file__).resolve().parents[3]
+    owners = sorted(
+        path.relative_to(repo).as_posix()
+        for root in ("benchbox", "scripts")
+        for path in (repo / root).rglob("*.py")
+        if "/var/folders|/var/run" in path.read_text(encoding="utf-8")
+    )
+    assert owners == ["benchbox/validation/bundle.py"]
     sample = {
         "/Users/someone/key": "ok",
         "a": ["~/work/file", ("C:\\Users\\me\\x",), {"/home/u/y"}],

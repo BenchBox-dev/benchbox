@@ -4239,7 +4239,7 @@
    "targets": [
     {
      "kind": "unresolved",
-     "target": "docs/tooling/hold/review-gate"
+     "target": "docs/tooling/hold/review-gate/release-v2 probe"
     }
    ]
   },

@@ -18,9 +18,9 @@ def _triggers() -> dict:
     return _workflow()[True]
 
 
-def test_runs_after_each_push_to_develop_and_on_demand() -> None:
+def test_runs_after_each_push_to_develop_or_a_release_line_and_on_demand() -> None:
     triggers = _triggers()
-    assert triggers["push"] == {"branches": ["develop"]}
+    assert triggers["push"] == {"branches": ["develop", "release/**"]}
     assert "workflow_dispatch" in triggers
     assert "pull_request" not in triggers and "merge_group" not in triggers
 

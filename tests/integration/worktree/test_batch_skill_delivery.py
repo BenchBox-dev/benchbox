@@ -63,6 +63,9 @@ def test_pin_receipt_and_tracked_mirror_bind_catalog_tip() -> None:
         assert _sha256(ROOT / ".claude/skills/todo" / relative) == expected
 
 
+_DEVELOPER_PATH = re.compile(r"/(?:Users|home)/[^/\s\"']+/Developer")
+
+
 def test_project_local_wheel_and_lock_are_exact_and_sibling_free() -> None:
     assert WHEEL.is_file()
     assert _sha256(WHEEL) == WHEEL_SHA256
@@ -72,9 +75,8 @@ def test_project_local_wheel_and_lock_are_exact_and_sibling_free() -> None:
     assert f'path = "{expected_path}"' in pyproject
     assert f'path = "{expected_path}"' in lock
     assert f'name = "tractable"\nversion = "{TRACTABLE_VERSION}"' in lock
-    assert "/Users/joe/Developer/tractable" not in pyproject
-    assert "/Users/joe/Developer/tractable" not in lock
-    assert "/Users/joe/Developer" not in lock
+    assert not _DEVELOPER_PATH.search(pyproject)
+    assert not _DEVELOPER_PATH.search(lock)
     with zipfile.ZipFile(WHEEL) as archive:
         names = set(archive.namelist())
         metadata_name = next(name for name in names if name.endswith(".dist-info/METADATA"))

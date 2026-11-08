@@ -14,7 +14,7 @@ on:
         required: true
         type: string
       probe:
-        description: 'Run the job graph as a publish-free probe (reuse or fallback evidence) instead of a release; only with tag v0.0.0rc0 from a branch'
+        description: 'Run the job graph as a publish-free probe (reuse, fallback or guarded-change evidence) instead of a release; only with tag v0.0.0rc0 from a branch'
         required: false
         type: choice
         default: none
@@ -22,6 +22,7 @@ on:
           - none
           - reuse
           - fallback
+          - guarded-change
 
 permissions:
   contents: read
@@ -135,11 +136,13 @@ jobs:
         if: ${{ github.event_name == 'push' || inputs.probe == 'none' }}
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
           python3 scripts/release_canary_freshness.py check \
             --head-sha "$(git rev-parse HEAD)" \
-            --github-repository "$GITHUB_REPOSITORY"
+            --github-repository "$GITHUB_REPOSITORY" \
+            --tag "$RELEASE_TAG"
 
       - name: Require a fresh green release canary for the probe's synthetic target
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.probe != 'none' }}

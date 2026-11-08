@@ -95,6 +95,8 @@ def _live_develop_ruleset(
                         {"context": "tooling"},
                         *(_status_check(context) for context in gate_contexts),
                         {"context": "hold"},
+                        {"context": "review-gate", "integration_id": 5201041},
+                        {"context": "release-v2 probe", "integration_id": 15368},
                     ],
                 },
             },
