@@ -29,13 +29,104 @@ KNOWN_REGRESSIONS = [
 REGRESSION_TARGETS = sorted({test_file for _, test_file in KNOWN_REGRESSIONS})
 
 
+FROZEN_CHANGED_PATHS: dict[str, list[str]] = {
+    "68fb5a071": [
+        "benchbox/core/expected_results/tpcds_results.py",
+        "benchbox/core/platform_manifest.py",
+        "benchbox/core/results/loader.py",
+        "benchbox/core/results/models.py",
+        "benchbox/core/results/schema.py",
+        "benchbox/core/tpcdi/benchmark.py",
+        "benchbox/core/tpcdi/generator/data.py",
+        "benchbox/core/tpcds/official_benchmark.py",
+        "benchbox/core/validation/query_validation.py",
+        "benchbox/mcp/jobs.py",
+        "benchbox/mcp/security.py",
+        "benchbox/platforms/base/connection_wrappers.py",
+        "benchbox/platforms/base/execution.py",
+        "benchbox/platforms/base/result_capture.py",
+        "benchbox/platforms/cloud_shared.py",
+        "tests/integration/mcp/_security.py",
+        "tests/integration/mcp/test_durable_jobs.py",
+        "tests/integration/test_tpcdi_phase3_benchmark.py",
+        "tests/unit/core/expected_results/test_singleflight_run_policy.py",
+        "tests/unit/core/results/test_schema_timing_contract.py",
+        "tests/unit/core/test_tpc_reporting_execution.py",
+        "tests/unit/mcp/test_durable_jobs.py",
+        "tests/unit/mcp/test_run_surface_contract.py",
+        "tests/unit/platforms/test_base_adapter.py",
+        "tests/unit/platforms/test_bigquery_adapter.py",
+        "tests/unit/platforms/test_throughput_session_capability_sweep.py",
+        "tests/unit/platforms/throughput_session_capability_snapshot.json",
+        "tests/unit/test_tpcdi_phase1.py",
+    ],
+    "5e9284a2c": [
+        ".github/workflows/pr.yml",
+        "benchbox/cli/commands/run.py",
+        "benchbox/core/equivalence/cross_surface.py",
+        "benchbox/core/flightdata/downloader.py",
+        "benchbox/core/flightdata/downloader_specs.yaml",
+        "benchbox/core/nyctaxi/benchmark.py",
+        "benchbox/core/nyctaxi/downloader.py",
+        "benchbox/core/nyctaxi/downloader_specs.yaml",
+        "benchbox/core/tpchavoc/equivalence.py",
+        "tests/integration/test_datavault_cross_surface_staged.py",
+        "tests/integration/test_ducklake_integration.py",
+        "tests/integration/test_read_primitives_cross_surface_equivalence.py",
+        "tests/integration/test_tpchavoc_equivalence_engine_agnostic.py",
+        "tests/unit/cli/test_run_command_interactive_paths.py",
+        "tests/unit/core/equivalence/test_cross_surface.py",
+        "tests/unit/core/flightdata/test_source_contract.py",
+        "tests/unit/core/nyctaxi/test_multi_type.py",
+        "tests/unit/core/nyctaxi/test_source_contract.py",
+        "tests/unit/core/test_benchmark_api_contract.py",
+        "tests/unit/core/tpchavoc/test_equivalence_execute_transform.py",
+        "tests/unit/test_cross_surface_dtype_cell.py",
+    ],
+    "ed3e39a9c": [
+        "_project/scripts/explorer_pipeline/transformer.py",
+        "benchbox/cli/commands/compare.py",
+        "benchbox/core/analysis/comparison.py",
+        "benchbox/core/results/exporter.py",
+        "benchbox/core/results/loader.py",
+        "benchbox/core/results/schema.py",
+        "benchbox/core/results/schema_policy.py",
+        "benchbox/core/results/schema_specs.yaml",
+        "benchbox/validation/bundle.py",
+        "results-explorer/src/lib/localResult.ts",
+        "tests/unit/cli/test_cli_output.py",
+        "tests/unit/core/results/test_loader.py",
+        "tests/unit/core/results/test_query_plan_serialization.py",
+        "tests/unit/core/results/test_result_extension_contract.py",
+        "tests/unit/core/results/test_result_parity.py",
+        "tests/unit/scripts/test_validate_submission.py",
+        "tests/unit/test_results_exporter.py",
+    ],
+    "2384c3ee7": [
+        "CHANGELOG.md",
+        "_project/audits/result-bundle-downstream-compat-2026-09-18.md",
+        "benchbox/validation/bundle.py",
+        "scripts/publication/verify_lane_isolation.py",
+        "scripts/validate_corpus.py",
+        "tests/unit/scripts/test_validate_submission.py",
+    ],
+}
+
+
 def _changed_paths(commit: str) -> list[str]:
-    changed = subprocess.check_output(
-        ["git", "-C", str(REPO_ROOT), "diff", "--name-only", f"{commit}^", commit],
-        text=True,
-    ).split()
-    assert changed, f"expected changed paths for {commit}"
-    return changed
+    try:
+        changed = subprocess.check_output(
+            ["git", "-C", str(REPO_ROOT), "diff", "--name-only", f"{commit}^", commit],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).split()
+        if changed:
+            return changed
+    except subprocess.CalledProcessError:
+        pass
+    if commit in FROZEN_CHANGED_PATHS:
+        return list(FROZEN_CHANGED_PATHS[commit])
+    raise AssertionError(f"expected changed paths for {commit}")
 
 
 @pytest.fixture(scope="module")

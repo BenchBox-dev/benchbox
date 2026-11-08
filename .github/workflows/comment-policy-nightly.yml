@@ -33,7 +33,7 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           ref: develop
-          fetch-depth: 0
+          fetch-depth: 1
           persist-credentials: false
       - name: Scan the whole tree against the checked-out develop commit
         id: scan
