@@ -172,9 +172,14 @@ class FakeGitHub:
                         "head_branch": "develop",
                         "head_sha": self.head_sha,
                         "created_at": started,
+                        "run_attempt": 1,
                     }
                 ]
             }
+        if path == f"{prefix}runs/{self.run_id}/jobs?filter=latest&per_page=100":
+            names = ["plan", "admit", "UAT stage 1 probe", "UAT stage 2 probe", "UAT stage 3 probe"]
+            names += ["trunk UAT gate", "trunk UAT record"]
+            return {"jobs": [{"name": name, "conclusion": "success", "run_attempt": 1} for name in names]}
         match = re.fullmatch(
             rf"{re.escape(prefix)}artifacts\?name=(dist-[0-9a-f]{{40}}-attempt-(\d+))&per_page=\d+", path
         )
@@ -191,6 +196,8 @@ class FakeGitHub:
                         "status": "completed",
                         "conclusion": self.canary_conclusion,
                         "head_sha": self.canary_commit or self.head_sha,
+                        "event": "schedule",
+                        "head_branch": "develop",
                         "created_at": _utc_stamp(started),
                         "run_started_at": _utc_stamp(started),
                     }
