@@ -1,6 +1,6 @@
 services:
   firebolt:
-    image: ${FIREBOLT_IMAGE:-ghcr.io/firebolt-db/firebolt-core:preview-rc}
+    image: ${FIREBOLT_IMAGE:-ghcr.io/firebolt-db/firebolt-core:preview-rc@sha256:c8a7fa4630105cb4f5328fd62c504a62c445ff66574e58a8e211b3d7bf0b65b5}
     user: root
     ulimits:
       memlock:

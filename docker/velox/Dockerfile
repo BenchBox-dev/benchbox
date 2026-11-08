@@ -1,4 +1,4 @@
-FROM apache/spark:4.0.2-scala2.13-java17-python3-ubuntu
+FROM apache/spark:4.0.2-scala2.13-java17-python3-ubuntu@sha256:87e5d6062e955a045b68376bbf97487d5057ecd8f4f896fb0590339981645de3
 
 ARG GLUTEN_VERSION=1.6.0
 ARG TARGETARCH

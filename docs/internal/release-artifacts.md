@@ -6,9 +6,17 @@ push-triggered trunk run on `develop`. It never rebuilds or publishes packages.
 ## Producer
 
 The `dist-artifact` job of `.github/workflows/trunk.yml` runs on each push to
-`develop` that is not replaced while waiting; a replaced push gets no run and no
-artifact, so that commit cannot be released. Its artifact name is
+`develop`. The workflow's concurrency group is per commit, so a later push never
+cancels or replaces an earlier push's run: every pushed commit gets a completed
+run with its tests and artifact, and runs for different commits may queue for
+runners. Its artifact name is
 `dist-<full head SHA>-attempt-<positive run attempt>`.
+
+A commit whose run failed is still unreleasable, because admission is unchanged.
+`scripts/release_releasable.py newest` prints the newest `develop` commit whose
+trunk push run succeeded and whose attempt-bound artifact passes the same
+selection admission uses; it examines at most the 40 newest distinct commits
+with a successful run. Candidate selection for trunk UAT uses that rule.
 
 The artifact contains exactly four regular files at its root:
 
@@ -155,14 +163,36 @@ read, but it does not defend against a hostile writer on the same filesystem.
 
 ## Release requirements
 
-The publishing workflow still requires the live `v-tag-restricted` rule,
-verifiable provenance attestation, all twelve Python 3.11–3.14 installation and
-smoke cells across Linux/macOS/Windows, artifact-bound release UAT (a final tag
-may satisfy it by verified reuse of its release candidate's evidence, described
-under "Gates"), the binary
-manifest, `make release-check`, ruleset drift checks, and no open
-release-blocking `t3:*` issue. Linux correctness evidence remains separate from
-the deferred Darwin digest certification.
+A release is four checks on the tagged commit: admit, the install matrix, a check
+of UAT evidence, and a fresh release canary. The full UAT run is a fallback, not
+part of the normal path.
+
+- **Admit.** The publishing workflow requires the live `v-tag-restricted` rule,
+  verifiable provenance attestation, the binary manifest, `make release-check`,
+  ruleset drift checks, and no open release-blocking `t3:*` issue (see "Gates").
+- **Install matrix.** All twelve Python 3.11–3.14 installation and smoke cells
+  across Linux/macOS/Windows pass against the admitted wheel.
+- **UAT evidence check.** Continuous UAT on `develop`, run by
+  `.github/workflows/trunk-uat.yml` nightly at 02:00 UTC and skipped when nothing
+  relevant changed, produces the evidence. A release reuses the newest
+  qualifying trunk UAT run or, for a final tag, the UAT run of its newest release
+  candidate, and re-verifies that evidence against the admitted distribution
+  instead of trusting it (see "Gates", step 3).
+- **Fresh canary.** The newest `release-canary.yml` run on an ancestor of the
+  release commit is green and started at most 48 hours before the admit check.
+  This applies to every tag, whichever UAT path it takes.
+- **Fallback.** When no source qualifies, the release runs the full UAT described
+  under "Gates", step 3.
+
+Linux correctness evidence remains separate from the deferred Darwin digest
+certification.
+
+The artifact-bound release UAT that `release-v2.yml` gained in #2490, which tied
+UAT to the digest of the wheel being released and ran it on every tag, is
+superseded: reused evidence is checked against the admitted distribution, and
+the full stages run only when no evidence qualifies. A tag on a `release/X.Y.x`
+maintenance branch passes the same checks, with no trunk evidence to reuse (see
+"Gates", step 3).
 
 TestPyPI rehearsals must exercise refusal paths and verify installed hashes.
 Production PyPI retains owner approval.
@@ -185,9 +215,24 @@ Gates, in order:
 1. `admit` runs `make release-check`, the ruleset drift check without the
    readiness override variables, the `release-blocking` issue check
    (`scripts/release_blocker_check.py`; it passes when no maintainer has applied
-   that label), then `scripts/release_artifact_consumer.py admit`. Admission
-   also checks the `benchbox/_binaries` tree committed at the tag against the
-   distributions.
+   that label), the release canary check, then
+   `scripts/release_artifact_consumer.py admit`. Admission also checks the
+   `benchbox/_binaries` tree committed at the tag against the distributions.
+
+   The canary check (`scripts/release_canary_freshness.py check`) applies to
+   every tag and to both the reuse and the full-UAT paths, because it runs
+   before either. It reads the newest 30 completed `release-canary.yml` runs,
+   takes the commit each run tested from its `release-canary-summary`
+   artifact (the run's head commit when the run kept none), and skips runs that
+   were cancelled or skipped and runs that tested a commit which is not an
+   ancestor of the tag commit. The first remaining run decides: the release is
+   refused with a named reason when it concluded anything but `success` (or its
+   summary records a non-success component), when it started more than 48 hours
+   ago, or when there is no completed run (`missing`) or none on an ancestor
+   (`non-ancestor`). An older green run never overrides a newer red one. A
+   tag on a maintenance branch cannot pass yet: the canary workflow tests
+   `develop` only, so no canary run tests an ancestor of that line's commit
+   until the canary can test a release line.
 2. The install matrix installs the staged wheel on Python 3.11 to 3.14 across
    Linux, macOS, and Windows.
 3. Release UAT runs each `release-gate-*.yaml` config against the staged wheel
@@ -206,58 +251,105 @@ Gates, in order:
    recorded as `[host] id=` in `uat_lifecycle.log`); a missing id counts as the
    same host.
 
-   A final tag (`vX.Y.Z`, target `pypi`) may reuse the evidence of its newest
-   release candidate `vX.Y.ZrcN` instead of re-running the stages. The
-   `uat-reuse` job decides, and every condition below must hold or the final
-   tag runs the three stages unchanged. Each result is recorded in the job
-   summary and an unexpected error counts as a failed condition:
+   Every tag may reuse earlier UAT evidence instead of re-running the stages.
+   The `uat-reuse` job decides, in this order, and the first source whose
+   conditions all hold wins. When none does, the three stages run unchanged
+   and the release is no weaker. Each result is a row in the job summary, with
+   the run id and the reason a run was disqualified, and an unexpected error
+   counts as a failed condition. The job runs `uv sync --locked --no-dev
+   --no-install-project` then `uv run --no-sync`; if that cannot run at all, the
+   step reports `reuse=false` with a warning and the stages run, so a broken
+   decision costs time but never fails the release run.
 
-   - The release candidate's `release-v2.yml` push run (newest run for that tag
-     and commit, found through the Actions API) has a `release-uat` job that
-     concluded `success`; its `release-uat-<rc tag>` artifact holds a green gate
-     summary whose source commit is the candidate commit and whose digest is
-     the candidate's admitted digest; unexpired shard artifacts exist for all
-     three stages.
-   - The candidate commit is an ancestor of the final tag commit.
-   - `git diff` of `tests/uat`, `tests/utilities`, `tests/__init__.py`,
-     `docker`, `.github/actions/release-uat-env`, `scripts/uat-bring-up`, and the `Makefile` between
-     the two commits is empty. In `release-v2.yml`, the workflow-level `env` and
-     the `uat-stage1`, `uat-stage2`, and `uat-stage3` jobs are equal at both
-     commits once only their `needs` and `if` keys are ignored, so the shard
-     matrix, environment, steps, runner and timeouts are the ones the
-     candidate ran. `uv.lock` differs only in the `benchbox` package version
-     line.
-   - The candidate's wheel and sdist are obtained from the candidate run's
-     `admitted-<rc tag>` artifact or, when that has expired, from the trunk
-     `dist-<sha>-attempt-<n>` artifact. Either must reproduce the admitted
-     digest. They match the final's admitted wheel and sdist member by member
-     (`scripts/release_reuse_uat_evidence.py`): same file set and identical
-     bytes, except the `RECORD` content, and lines that carry only the version:
-     `Version:` in `METADATA` and `PKG-INFO`, the `__version__` assignment in
-     `benchbox/__init__.py`, the `Current release:` line in `README.md`,
-     `VERSION_MANAGEMENT.md` and the long description, and the `version`
-     line of the sdist `pyproject.toml`. The `dist-info` directory name and the
-     sdist root directory are compared with the version normalized. The sdist
-     `CHANGELOG.md` is not compared; it is documentation outside the wheel.
+   1. A trunk UAT run (`.github/workflows/trunk-uat.yml`). Only when the tag
+      commit is an ancestor of `origin/develop`; a tag on a `release/X.Y.x`
+      maintenance branch has no trunk evidence and goes to source 2 (finals) or
+      the full stages. The newest 15 completed runs are examined newest first
+      (by creation time) and the first qualifying one wins. A run qualifies
+      when all of these hold:
+      - its event is `schedule` or `workflow_dispatch`, its branch is
+        `develop`, and it concluded `success`;
+      - it kept exactly one `trunk-uat-gate-<sha>` artifact, which names its
+        source commit; a run that skipped or deferred kept none and is passed
+        over;
+      - the source commit is an ancestor of the tag commit;
+      - `git diff` of `tests/uat`, `tests/utilities`, `tests/__init__.py`,
+        `docker`, `.github/actions/release-uat-env`, `scripts/uat-bring-up`, the
+        `Makefile` and `.github/workflows/trunk-uat.yml` between the source
+        commit and the tag commit is empty, and in `release-v2.yml` the
+        workflow-level `env` and the `uat-stage1`, `uat-stage2` and
+        `uat-stage3` jobs are equal at both commits once only their `needs` and
+        `if` keys are ignored;
+      - `.github/workflows/trunk-uat.yml` at the run's own head commit (the
+        `develop` tip when the run started, which may be newer than the source
+        commit) is identical to the file at the tag commit, because a
+        scheduled run executes the workflow from that head commit;
+      - the gate artifact holds a green summary for the source commit whose
+        digest is the digest recorded in `dist-digest.txt`, and unexpired shard
+        artifacts (`release-uat-trunk-<sha>-stage<N>-*`) exist for all three
+        stages;
+      - the run's wheel and sdist come from its `admitted-v<version>` artifact
+        or, when that has expired (7 days), from the trunk
+        `dist-<sha>-attempt-<n>` artifact, and reproduce that digest. The
+        candidate version is read from those file names, not from a tag;
+      - `uv.lock` differs between the two commits only in the `benchbox`
+        package version line, with each side's version taken from its own
+        release;
+      - the wheel and sdist match the tag's admitted wheel and sdist member by
+        member (`scripts/release_reuse_uat_evidence.py`): same file set and
+        identical bytes, except the `RECORD` content, and lines that carry only
+        the version: `Version:` in `METADATA` and `PKG-INFO`, the `__version__`
+        assignment in `benchbox/__init__.py`, the `Current release:` line in
+        `README.md`, `VERSION_MANAGEMENT.md` and the long description, and the
+        `version` line of the sdist `pyproject.toml`. The `dist-info` directory
+        name and the sdist root directory are compared with the version
+        normalized. The sdist `CHANGELOG.md` is not compared; it is
+        documentation outside the wheel.
 
-   When all hold, the stage jobs are skipped. `release-uat` downloads the
-   candidate run's shard artifacts (`actions: read`, run id and token) and runs
-   `make uat-gate-check` over them with the candidate's admitted digest, so the
-   evidence is re-verified and not trusted, then checks that the resulting
-   summary is green for the candidate commit and digest. It is red unless the
-   stage jobs were skipped and the reuse job succeeded. `install-matrix` and
-   `publish` are unchanged: `publish` still needs `release-uat` and
-   `install-matrix`. Reuse needs the candidate's shard artifacts (30-day
-   retention from the candidate run), and its `admitted-` artifact (7 days) or
-   the trunk dist artifact (90 days); past that, the final runs full UAT.
+      A disqualified run is named in the summary with one of: not a trunk-uat
+      event, not on `develop`, not `success`, no gate artifact, not an
+      ancestor, guarded paths changed (with the file names), the
+      `trunk-uat.yml` the run executed differs from the tag's, a stage job or
+      workflow env changed, `uv.lock` changed beyond the version line, an
+      expired artifact (named), a gate verdict that is not green or names
+      another commit or digest, a distribution that differs (with the member
+      names), or an error (with its type and message).
+   2. For a final tag `vX.Y.Z`, the `release-v2.yml` push run of its newest
+      release candidate `vX.Y.ZrcN` (newest run for that tag and commit): its
+      `release-uat` job concluded `success`, its `release-uat-<rc tag>`
+      artifact holds a green gate summary for the candidate commit and its
+      admitted digest, unexpired shard artifacts exist for all three stages,
+      and the same ancestry, guarded-path (without `trunk-uat.yml`), lock,
+      distribution and equivalence conditions as above hold, with the
+      distribution taken from the candidate run's `admitted-<rc tag>` artifact
+      or the trunk `dist-<sha>-attempt-<n>` artifact.
+
+   When a source wins, the stage jobs are skipped and the summary reads
+   `reused trunk UAT run <id> for <sha>` (or `reused release candidate run of
+   <tag> <id> for <sha>`). `release-uat` downloads that run's shard artifacts
+   (`actions: read`, run id and token), runs `scripts/release_uat_evidence_check.py`
+   and `make uat-gate-check` over them with the source's admitted digest, so
+   the evidence is re-verified and not trusted, then runs
+   `release_reuse_uat_evidence.py verify-gate`. That step checks that the
+   resulting summary is green for the source commit and digest, and reads every
+   shard's `cells.jsonl`: a cell that failed attempt 1 on an infrastructure
+   signature and passed attempt 2 (`retry_outcome` `retry_passed`) is accepted;
+   a failed attempt 2, a retry that never started, a missing signature or a
+   second attempt without a retry record rejects the evidence. The job is red
+   unless the stage jobs were skipped and the reuse job succeeded.
+   `install-matrix` and `publish` are unchanged: `publish` still needs
+   `release-uat` and `install-matrix`. Trunk evidence is kept 90 days (shards,
+   gate); a release-candidate run's shard artifacts are kept 30 days.
 4. The publish job waits for environment approval, re-checks the hosted tag
    object and peeled commit against the admission receipt
    (`scripts/release_tag_recheck.py`), stages only the verified files, attests
    their hashes, and publishes them to `test-pypi` or `pypi`.
 
 Verify a published release with `gh attestation verify <file> --repo
-BenchBox-dev/BenchBox --signer-workflow
-BenchBox-dev/BenchBox/.github/workflows/release-v2.yml`.
+BenchBox-dev/benchbox --signer-workflow
+BenchBox-dev/benchbox/.github/workflows/release-v2.yml`. The repository name is
+lowercase and `--signer-workflow` matches case-sensitively, so the mixed-case
+`BenchBox-dev/BenchBox` form exits 1.
 
 PyPI and TestPyPI trusted publishers are bound to the workflow file name, so
 the owner must register `release-v2.yml` publishers before the first

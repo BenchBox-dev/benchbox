@@ -144,6 +144,12 @@ tests/uat/
 | `throughput_baseline.py` | Per-run Throughput@Size baseline records keyed by runner class, and their rolling median; shares the `throughput` bucket ceiling with `throughput.py` | — |
 | `ladder.py` | Per-(platform, benchmark) rung order; wall-clock and exit-code early-stop; pruning bookkeeping | 100 |
 | `preflight_budget.py` | Disk free-space floor budgeting and cell-key accounting | — |
+| `config_guard.py` | Guards gate-relevant keys (timeouts, memory limits, floors, validator, reserve, retries) in UAT configs and Docker compose files: diffs their values between two revisions so a change to them is reported | — |
+| `infrastructure_retry.py` | One bounded retry for cells that failed with an infrastructure signature, plus retry accounting against the job budget | — |
+| `image_pins.py` | Finds floating (undigested) container image references in Docker compose files and Dockerfiles | — |
+| `failure_signature.py` | Shared failure-signature vocabulary: infrastructure versus product kinds and the timeout, memory, download, query, validation and crash signatures | — |
+| `rubric.py` | UAT envelope rubric: classifies each run's cells as passed, infrastructure or product over a rolling window and renders the verdict report | — |
+| `rubric_fixtures.py` | Synthetic cell rows for the rubric's outcome kinds, shared by the rubric tests | — |
 | `phases/__init__.py` | UAT phase package marker and phase contract documentation string | — |
 | `phases/preflight.py` | Disk space (configurable cutoff), docker reachability, host load reading | 80 |
 | `phases/enumerate.py` | Resolve final cell list for execute given config filters and registry truth; honour min/max scale | 100 |

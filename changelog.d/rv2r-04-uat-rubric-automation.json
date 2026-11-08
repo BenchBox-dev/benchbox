@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "UAT-only change: Docker images used by UAT are pinned to digests, release-gate cells that fail only with an infrastructure signature are retried once, and history reports propose gate envelopes; no shipped behavior changes"}
