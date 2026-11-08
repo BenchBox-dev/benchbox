@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Hudi write/read rows equal on PySpark 3.5, 4.0 and 4.1 with the pinned Hudi release, recorded in docs/internal/hudi-spark-support.md.",
+    "Spark 4.2 still refuses with a message naming the missing bundle; a unit test covers 4.1 accepted and 4.2 refused.",
+    "The changelog fragment states the new supported range."
+  ],
+  "description": "#4024 pinned HUDI_VERSION = \"1.1.0\" in benchbox/platforms/dataframe/hudi_maintenance.py and refuses every Spark line except 3.5 and 4.0. Its matrix in docs/internal/hudi-spark-support.md tested Spark 4.1.1 only with the 4.0 bundle (hudi-spark4.0-bundle_2.13:1.1.0), which fails with ClassNotFoundException. That was the wrong bundle for 4.1.\n\nFacts checked 2026-11-08:\n- The Hudi 1.2 release notes say 'Support for Spark 4.1 bundles are added in Hudi 1.2.0' (https://hudi.apache.org/releases/release-1.2).\n- The Hudi 1.2.1 quick-start support matrix lists Spark 4.1.x, 4.0.x, 3.5.x, 3.4.x and 3.3.x, with Scala 2.13 and Java 17+ for Spark 4.x (https://hudi.apache.org/docs/quick-start-guide/).\n- Maven Central publishes hudi-spark4.1-bundle_2.13 at 1.2.0 and 1.2.1, and hudi-spark4.0-bundle_2.13 at 1.1.0 to 1.2.1. No hudi-spark4.2 bundle is published, so no released Hudi supports Spark 4.2.\n\nNot yet verified locally: a heavy-run attempt on 2026-11-08 was refused by memory admission. The check script is at /tmp/hudi41/check.py (ephemeral): a 10-row insert, then a read with collect() equality.\n\nChange. Move HUDI_VERSION to 1.2.1, or the newest release that keeps 3.5 and 4.0 working. Add (4, 1) -> hudi-spark4.1-bundle_2.13. Re-run the 10-row write/read on PySpark 3.5, 4.0 and 4.1 with JDK 17. Keep Spark 4.2 refused, with a message saying no Hudi release ships a 4.2 bundle yet. Update docs/internal/hudi-spark-support.md and the RuntimeError text.\n\nGuardrails: work in a linked worktree; heavy runs through make heavy-run (do not bypass admission); no explanatory comments; changelog fragment.",
+  "links": [
+    "https://hudi.apache.org/releases/release-1.2",
+    "https://hudi.apache.org/docs/quick-start-guide/",
+    "https://github.com/BenchBox-dev/BenchBox/pull/4024"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-08T13:15:12Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c50cf5af767c42a780669c4a1db62f87",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}

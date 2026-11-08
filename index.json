@@ -22002,6 +22002,13 @@
       "status": "done",
       "title": "Hudi maintenance cannot run on Spark 4.2: hudi-spark4.0-bundle 1.1.0 fails with HoodieException: Unable to load class"
     },
+    "hudi-spark-4-1-support-via-hudi-1-2-20261108": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Support Hudi maintenance on Spark 4.1 with Hudi 1.2.x; the 3.5/4.0-only guard from #4024 is stale"
+    },
     "hudi-support-parity": {
       "claim": null,
       "needs": [],
