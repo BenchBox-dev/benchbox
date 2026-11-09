@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "The owner records keep, revert or hold with a reason on this item.",
+    "If revert: a pin PR restores the previous validated build and passes review.",
+    "If keep: the reason and the date by which evidence must exist are recorded."
+  ],
+  "context": "Not blocked by the canary item: it is a policy call that can be made now.",
+  "description": "The 18.16.0 pin merged with an owner-attestation line that reused values from a passing run on an earlier head; the check on the merged head had crashed. A correction is posted. A real check on develop is now red on live-quota-fallback-walk, so no releasable evidence exists for the pin that production reviews run on. Options: keep 18.16.0 while the canary failure is diagnosed (reviews keep running on an unvalidated build); revert the pin to the previous validated version; or hold until the diagnosis shows whether the failure is a canary defect. The owner decides.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3931",
+    "https://github.com/BenchBox-dev/benchbox/pull/3931#issuecomment-6723416090",
+    "https://github.com/BenchBox-dev/benchbox/pull/3931#issuecomment-6726853963",
+    "omp-candidate-quota-fallback-walk-red-20261109"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:76bfe83b21f0c666e957f760",
+      "at": "2026-11-09T20:18:46Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "7be94556532d413698d98b4380f6e510",
+      "session_id": "02c14526fd7648f49c893339d8cfcf9e"
+    }
+  ]
+}

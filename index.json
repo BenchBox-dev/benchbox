@@ -26024,6 +26024,13 @@
       "status": "open",
       "title": "OMP candidate check is red on live-quota-fallback-walk; no OMP version can be validated or bumped"
     },
+    "omp-production-pin-18-16-0-validation-decision-20261109": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Owner decision: keep or revert the production OMP 18.16.0 pin, which has no valid validation evidence"
+    },
     "omp-role-keyed-fallback-chains-ignored-20261022": {
       "claim": null,
       "needs": [],
