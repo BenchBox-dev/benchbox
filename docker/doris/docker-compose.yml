@@ -50,23 +50,25 @@ services:
         # be.conf vars before checking JAVA_HOME, so we detect the bundled JDK
         # path dynamically instead of hard-coding an architecture-specific path.
         set_conf /opt/apache-doris/be/conf/be.conf JAVA_HOME "$$(detect_java_home)"
-        case "$${DORIS_MEMORY_LIMIT:-4g}" in
-          4g|4G|4gb|4GB|4gi|4Gi|4gib|4GiB|4096m|4096M|4096mb|4096MB)
-            fe_xmx="384m"
-            fe_xms="128m"
-            be_mem="3000m"
-            ;;
-          8g|8G|8gb|8GB|8gi|8Gi|8gib|8GiB|8192m|8192M|8192mb|8192MB)
-            fe_xmx="1536m"
-            fe_xms="512m"
-            be_mem="6400m"
-            ;;
-          *)
-            fe_xmx="1024m"
-            fe_xms="512m"
-            be_mem="80%"
-            ;;
+        limit_bytes="$$(cat /sys/fs/cgroup/memory.max 2>/dev/null || cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null || echo max)"
+        case "$$limit_bytes" in
+          ''|*[!0-9]*) limit_bytes=0 ;;
         esac
+        gib=1073741824
+        if [ "$$limit_bytes" -gt 0 ] && [ "$$limit_bytes" -lt $$((8 * gib)) ]; then
+          fe_xmx="384m"
+          fe_xms="128m"
+          be_mem="3000m"
+        elif [ "$$limit_bytes" -gt 0 ] && [ "$$limit_bytes" -lt $$((16 * gib)) ]; then
+          fe_xmx="1536m"
+          fe_xms="512m"
+          be_mem="6400m"
+        else
+          fe_xmx="1024m"
+          fe_xms="512m"
+          be_mem="80%"
+        fi
+        echo "Doris memory profile: cgroup limit $$limit_bytes bytes, FE heap $$fe_xmx, BE mem_limit $$be_mem"
         set_conf /opt/apache-doris/be/conf/be.conf mem_limit "$$be_mem"
         set_conf /opt/apache-doris/be/conf/be.conf load_process_max_memory_limit_percent 90
         set_conf /opt/apache-doris/be/conf/be.conf load_process_soft_mem_limit_percent 80
@@ -83,7 +85,6 @@ services:
       - "${DORIS_BE_HTTP_PORT:-18040}:8040"
     environment:
       SKIP_CHECK_ULIMIT: "${DORIS_SKIP_CHECK_ULIMIT:-true}"
-      DORIS_MEMORY_LIMIT: "${DORIS_MEMORY_LIMIT:-4g}"
     privileged: ${DORIS_PRIVILEGED:-false}
     volumes:
       - doris-fe-meta:/opt/apache-doris/fe/doris-meta
