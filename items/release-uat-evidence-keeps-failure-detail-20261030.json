@@ -3,7 +3,7 @@
     "Each non-passed cell in a release UAT artifact names its failed queries and their errors.",
     "Artifact size stays bounded."
   ],
-  "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), for example artifact release-uat-v0.5.0rc2-stage1-sqlite, per-cell log sqlite_nyctaxi_0.01_*.log, whose failure tail holds only the result path.",
+  "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), for example artifact release-uat-v0.5.0rc2-stage1-sqlite, per-cell log sqlite_nyctaxi_0.01_*.log, whose failure tail holds only the result path.\n\nHosted trunk UAT run https://github.com/BenchBox-dev/BenchBox/actions/runs/42536258036 completed with failure at source 2d796acd59be06ab4b4a1742dda84cff419202b9. The retained stage1-duckdb and stage3-olap artifacts include cells.jsonl with failed_query_details and per-cell diagnostic logs. Those retained details exposed DuckDB’s duplicate struct-field conversion error and SingleStore/Doris memory errors. Evidence is now sufficient to diagnose these current failures without a rerun. Counts cover the selected current matrix only; no historical issue is closed by this note. The full run is still red (702/710 passed), so this is not release certification.",
   "description": "For query_failure cells the shard artifact's failure tail is just the result JSON path on the runner; the result JSON is not uploaded. In run 40971306663 more than 100 failed cells cannot be diagnosed without a rerun. Upload result JSON, or at least the failed query IDs and error messages, for every non-passed cell.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/actions/runs/40971306663"
@@ -16,6 +16,14 @@
       "op": "create",
       "op_id": "30365be7357a491d912a17eb06f3d74e",
       "session_id": "dfb93797c41c440a9261d3ab38ceb76e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-09T14:25:46Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b6c15c90b4374aa0807a64ecccef692a",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]
 }
