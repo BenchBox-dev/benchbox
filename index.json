@@ -37942,6 +37942,13 @@
       "status": "done",
       "title": "Bootstrap Theseus repository governance and preserve the BenchBox source provenance"
     },
+    "theseus-review-cannot-withdraw-finding-on-staged-upstream-path-20261109": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Theseus: a promotion review cannot close its own finding on upstream code because the staged path is not a head-commit file"
+    },
     "theseus-review-depth-and-capacity-20261105": {
       "claim": null,
       "needs": [

@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "A promotion review can clear a prior finding on staged upstream code with a valid citation, or the review prompt requires the full staged path and a test covers it.",
+    "Resolving the finding needs no fresh PR.",
+    "A test reproduces the demotion on the staged path and passes after the fix."
+  ],
+  "context": "Possibly addressed by threadless-dispute work in theseus-v025-review-convergence-20261107; check before implementing.",
+  "description": "In a promotion review the upstream source is staged under `.review-promotion/new/`. A prior finding on that code can only be cleared by a withdrawal or fixed disposition that cites an examined head-commit file and line. On the v0.2.6 promotion the reviewer wrote that the finding was fixed, citing a bare `protocol.py:959-961`; Theseus demoted the withdrawal to not_fixed (evidence.py UNVERIFIED_WITHDRAWAL), the finding had no thread to dispute, and adjudication needs an escalated finding. The verdict stayed SHIP WITH FIXES with the finding open. The only exit was to close the PR and open a fresh one with the same commit, which the owner approved for that case. The next promotion whose review raises a finding on upstream code will hit the same dead end.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4047",
+    "https://github.com/BenchBox-dev/benchbox/pull/4059",
+    "https://github.com/joeharris76/theseus/pull/49",
+    "oracle-withdrawal-cited-read-set-all-callers-20261101",
+    "theseus-v025-review-convergence-20261107"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:76bfe83b21f0c666e957f760",
+      "at": "2026-11-09T20:18:53Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "fc32db96ee2d468ca5615a724aa4183b",
+      "session_id": "02c14526fd7648f49c893339d8cfcf9e"
+    }
+  ]
+}
