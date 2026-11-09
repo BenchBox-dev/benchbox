@@ -37861,10 +37861,15 @@
       "title": "Provision Theseus-owned App, protected secrets and tailnet identity without exposing candidate builds"
     },
     "theseus-owner-reset-spent-by-skipped-run-20261109": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-10T19:58:30Z",
+        "generation": "4e95104052494a2e97274d6fe589ac91",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Do not consume an owner retry reset when the workflow never admits a review"
     },
     "theseus-package-identity-install-20261102": {
