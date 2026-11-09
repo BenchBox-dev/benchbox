@@ -28946,6 +28946,13 @@
       "status": "done",
       "title": "`make pr-preflight` selects no tests when a PR changes a CI workflow file"
     },
+    "pr-preflight-skips-verified-theseus-tests-20261109": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "make pr-preflight skips the verified-Theseus tests because the test sandbox cannot download the release wheels"
+    },
     "pr-preflight-workflow-selection-cost-20261101": {
       "claim": null,
       "needs": [],
