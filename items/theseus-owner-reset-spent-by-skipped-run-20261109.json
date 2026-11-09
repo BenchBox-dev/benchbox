@@ -5,7 +5,7 @@
     "Deterministic failing-before/passing-after regression and real fake-workflow/CLI smoke exercise admission and consumption without live model probes.",
     "Fix passes normal hosted SHIP and CI and is included in combined Theseus release, with consumer adoption tracked by existing BenchBox adoption item."
   ],
-  "context": "Owner approved Reset now on both exact heads; no further reset comments, synthetic head pushes, lower reviewer tier or bypass authorized. Source investigation BackoffResetScout identified sweep.py:117-124 broad run-status predicate. TheseusBackoffResetFix owns isolated source implementation. Original PRs may resume at their natural backoff expiration rather than adding an intermediate release solely for recovery.",
+  "context": "Owner approved Reset now on both exact heads; no further reset comments, synthetic head pushes, lower reviewer tier or bypass authorized. Source investigation BackoffResetScout identified sweep.py:117-124 broad run-status predicate. TheseusBackoffResetFix owns isolated source implementation. Original PRs may resume at their natural backoff expiration rather than adding an intermediate release solely for recovery.\n\n2026-11-09: fixed in Theseus #55, squash 62a68d763651e93f9d7fc24461351f8c09be62fe (final head 781e9418, hosted SHIP run 42691602512, required checks green). Consumption is now positive: a trusted run's review-verdict attempt/state artifact means consumed; otherwise the trusted review job's Jobs API state decides (job skipped or all five attempt-loop steps skipped = unused; any attempt step ran, failed, timed out or was cancelled = consumed). Missing/renamed/paginated jobs, unsettled jobs or untrusted evidence fail closed; in-flight runs count as spent; the sweep's stateless-failure hold is kept. Step-name coupling and its maintenance trigger are documented in docs/hosted-workflows.md. Tests: 29 targeted tests failed against the old source and pass now; full suite 4262 passed, 9 skipped. Remaining acceptance: ship in the combined Theseus release. The claim on this item belongs to the coordinating session's previous tracker identity (server restarted); take it over at closeout.",
   "description": "User-authorized one-time retry resets for Theseus#48 head39bbd758 and BenchBox#4067 head40a8b14d were posted and validated, but subsequent manual dispatches still skipped backoff. sweep.reset_spent counts post-reset workflow success with matching or absent head as consuming a reset. Guard-only issue_comment runs conclude success although review job skipped, and prepare-refused dispatches may likewise falsely spend it. Preserve exact-head attester authorization, one genuine reviewing attempt, normal failure handling and trust boundaries; use existing admission/attempt evidence rather than a new retry ledger.",
   "links": [
     "https://github.com/joeharris76/theseus/actions/runs/42685595811",
@@ -29,6 +29,14 @@
       "op": "take",
       "op_id": "a26908fc15ca419e94796af3a089bf7a",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:82b9fe75d2d6312f25803cd5",
+      "at": "2026-11-09T20:52:07Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a9024c77723f4faaa83513d841d9ffc8",
+      "session_id": "ff599f834923406da7e6bd54d0a05e94"
     }
   ]
 }
