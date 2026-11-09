@@ -6,7 +6,7 @@
     "Tests prove a disguised new defect (unchanged span, changed behaviour) still blocks, a genuine base defect is logged and not blocking, and a Critical base defect blocks.",
     "Shipped in a Theseus release and adopted by BenchBox."
   ],
-  "context": "Sequencing: #54's fail-closed D4 ships in the current combined release (safe: every finding blocks). BenchBox adoption omits pre_existing: advisory until this lands.",
+  "context": "Sequencing: #54's fail-closed D4 ships in the current combined release (safe: every finding blocks). BenchBox adoption omits pre_existing: advisory until this lands.\n\n2026-11-09 owner decisions on the plan (local://known-defects-plan.md in the coordinating session):\n1. Proof: the reviewer judges whether a pre-existing finding is Critical; if not, it is assigned to the known-defects list automatically. No attester KNOWN adjudication is required. (The plan's risk, recorded for the record: 'not created or worsened by the change' cannot be proven mechanically; a new caller or input can activate unchanged code. Owner accepted reviewer judgement plus Theseus's mechanical eligibility checks.)\n2. Logging: add a known-issues concept to the tracker, possibly JSONL fragments appended to a file on the tracker state branch (todo-state).\n3. Pre-existing High findings are logged as known and do not block; only Critical blocks.\n4. Defaults accepted: the reviewer must flag the finding pre-existing; each cited location is checked unchanged (instead of #45's blanket rejection); pre_existing becomes `block | known` and `advisory` is a policy error; a push that changes the defect's file re-opens it; the author resolves the thread; independent review applies.\nNext: revise the plan for reviewer-judged assignment and the tracker known-issues store (which component writes it, trust and dedupe), then implement in the release after the combined one.",
   "description": "Owner rule 2026-11-09: the reviewer must be able to identify that a defect was pre-existing and not created by the current change. Such findings are logged as known defects for later follow-up and do not block the PR, UNLESS the defect is Critical, which still blocks. Theseus #45 added advisory demotion, but the #4062 review (D4) found it accepted unchanged line spans without proving the behaviour existed at the base, and #54 removes demotion entirely (every finding blocks). This item designs and ships a provable mechanism.",
   "links": [
     "https://github.com/joeharris76/theseus/pull/54",
@@ -20,6 +20,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "2cfc1650f9f44ac794026741bb1230c5",
+      "session_id": "ff599f834923406da7e6bd54d0a05e94"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:82b9fe75d2d6312f25803cd5",
+      "at": "2026-11-09T20:51:49Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e48650e4cf0a464d8e70b9f1ddff6552",
       "session_id": "ff599f834923406da7e6bd54d0a05e94"
     }
   ]
