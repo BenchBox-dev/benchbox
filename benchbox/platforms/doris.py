@@ -7,6 +7,7 @@ from __future__ import annotations
 import contextlib
 import functools
 import gzip
+import io
 import math
 import os
 import re
@@ -289,6 +290,8 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
             "enable_bitmap_index",
             "verify_ssl",
             "ca_cert_path",
+            "parallel_pipeline_task_num",
+            "exec_mem_limit",
         ]:
             if key in config:
                 adapter_config[key] = config[key]
@@ -347,6 +350,8 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         self.enable_bloom_filter: bool = config.get("enable_bloom_filter", False)
         self.enable_bitmap_index: bool = config.get("enable_bitmap_index", False)
 
+        self.parallel_pipeline_task_num: int | None = config.get("parallel_pipeline_task_num")
+        self.exec_mem_limit: int | None = config.get("exec_mem_limit")
         if not self._validate_identifier(self.database):
             raise ValueError(f"Invalid database identifier: {self.database}")
 
@@ -460,6 +465,9 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         data_file = Path(data_file)
 
         if get_data_extension(data_file) == ".parquet":
+            file_size = data_file.stat().st_size
+            if file_size > self.stream_load_chunk_size:
+                return self._stream_load_parquet_chunked(table_name, data_file)
             return self._stream_load_parquet(table_name, data_file)
 
         if dialect.null_marker is not None and not columns:
@@ -669,6 +677,50 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         result = self._handle_stream_load_response(resp, context="Stream Load (Parquet)")
         return int(result.get("NumberLoadedRows", 0))
 
+    def _stream_load_parquet_chunked(self, table_name: str, data_file: Path) -> int:
+        scheme = "https" if self.use_tls else "http"
+        url = f"{scheme}://{self.host}:{self.http_port}/api/{self.database}/{table_name}/_stream_load"
+        headers = self._stream_load_headers(format_name="parquet")
+
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
+        with self._open_data_file_binary(data_file) as source:
+            seekable_source: Any = source
+            if not isinstance(FileFormatRegistry.get_compression_handler(data_file), NoCompressionHandler):
+                seekable_source = io.BytesIO(source.read())
+            parquet_file = pq.ParquetFile(seekable_source)
+            num_row_groups = parquet_file.num_row_groups
+            total_rows = parquet_file.metadata.num_rows
+
+            if total_rows == 0:
+                return 0
+
+            total_bytes = sum(parquet_file.metadata.row_group(i).total_byte_size for i in range(num_row_groups))
+            avg_row_bytes = max(1, total_bytes // total_rows)
+            target_batch_rows = max(1, min(200_000, self.stream_load_chunk_size // avg_row_bytes))
+
+            total_loaded = 0
+            chunk_num = 0
+
+            for batch in parquet_file.iter_batches(batch_size=target_batch_rows):
+                chunk_num += 1
+                chunk_table = pa.Table.from_batches([batch])
+                buffer = io.BytesIO()
+                pq.write_table(chunk_table, buffer, compression="snappy")
+                chunk_bytes = buffer.getvalue()
+                self.log_verbose(
+                    f"Stream Load Parquet chunk {chunk_num} for {table_name}: {len(chunk_bytes):,} bytes ({len(chunk_table):,} rows)"
+                )
+                resp = self._stream_load_put(url, chunk_bytes, headers)
+                result = self._handle_stream_load_response(resp, context=f"Stream Load (Parquet) chunk {chunk_num}")
+                total_loaded += int(result.get("NumberLoadedRows", 0))
+
+            self.log_verbose(
+                f"Chunked Parquet Stream Load complete for {table_name}: {chunk_num} chunks, {total_loaded:,} total rows"
+            )
+            return total_loaded
+
     def _stream_load_file_chunked(
         self, table_name: str, data_file: Path, dialect: CsvDialect, columns: list[str] | None = None
     ) -> int:
@@ -721,12 +773,23 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         except Exception as e:
             self.logger.debug(f"Could not validate cache setting: {e}")
 
+        if self.parallel_pipeline_task_num is not None:
+            try:
+                cursor.execute(f"SET parallel_pipeline_task_num = {self.parallel_pipeline_task_num}")
+            except Exception as e:
+                self.logger.debug(f"Could not set parallel_pipeline_task_num: {e}")
         try:
             cursor.execute("SET parallel_fragment_exec_instance_num = 8")
         except Exception as e:
             self.logger.debug(f"Could not set parallel execution: {e}")
 
-        if benchmark_type == "olap":
+        if self.exec_mem_limit is not None:
+            try:
+                cursor.execute(f"SET exec_mem_limit = {self.exec_mem_limit}")
+            except Exception as e:
+                self.logger.debug(f"Could not set exec_mem_limit: {e}")
+
+        elif benchmark_type == "olap":
             try:
                 cursor.execute("SET exec_mem_limit = 5368709120")
             except Exception as e:
@@ -781,6 +844,8 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
                 "default_buckets": self.default_buckets,
                 "stream_load_chunk_size": self.stream_load_chunk_size,
                 "stream_load_max_filter_ratio": self.stream_load_max_filter_ratio,
+                "parallel_pipeline_task_num": self.parallel_pipeline_task_num,
+                "exec_mem_limit": self.exec_mem_limit,
                 "enable_partitioning": self.enable_partitioning,
                 "enable_bloom_filter": self.enable_bloom_filter,
                 "enable_bitmap_index": self.enable_bitmap_index,
@@ -804,6 +869,13 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
                 if db_row:
                     platform_info["configuration"]["current_database"] = db_row[0]
 
+                cursor.execute("SHOW VARIABLES LIKE 'parallel_pipeline_task_num'")
+                task_row = cursor.fetchone()
+                if task_row:
+                    try:
+                        platform_info["configuration"]["parallel_pipeline_task_num"] = int(task_row[1])
+                    except (ValueError, TypeError):
+                        platform_info["configuration"]["parallel_pipeline_task_num"] = task_row[1]
                 cursor.close()
 
             except Exception as e:
