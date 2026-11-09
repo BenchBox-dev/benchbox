@@ -5,7 +5,7 @@
     "A pytest-discovered Theseus integration scenario using fake OMP/Jev/GitHub proves body-only finding, two disputes, escalation, authorized owner adjudication and exact-head gate success. A unit-only synthetic flow does not satisfy this criterion.",
     "Merge the fixed engine and integration scenario through Theseus review; record the exact source commit and release handoff. Consumer relock and hosted activation remain required under benchbox-adopt-theseus-v025-review-guidance-20261107 before the overall reliability group is complete."
   ],
-  "context": "Owner decision 2026-11-08: the hosted reviewer always threads diff-anchored findings, and any unanchored finding can be disputed by an attester PR comment `Dispute: <finding-id>`, with the same escalation rules as thread disputes. Ships in combined Theseus v0.2.5 (theseus-v025-review-convergence-20261107).\n\nReviewed 2026-11-08: current report.py renders carried findings separately and places only fresh findings. #45 is open/blocked; its full-flow test is currently unit/fast, not a workflow integration scenario. #49 and BenchBox #4047 do not carry #45. No source edits or merge of another session branch performed. Relock acceptance transferred explicitly to the existing downstream adoption item, not dropped.",
+  "context": "Owner decision 2026-11-08: the hosted reviewer always threads diff-anchored findings, and any unanchored finding can be disputed by an attester PR comment `Dispute: <finding-id>`, with the same escalation rules as thread disputes. Ships in combined Theseus v0.2.5 (theseus-v025-review-convergence-20261107).\n\nReviewed 2026-11-08: current report.py renders carried findings separately and places only fresh findings. #45 is open/blocked; its full-flow test is currently unit/fast, not a workflow integration scenario. #49 and BenchBox #4047 do not carry #45. No source edits or merge of another session branch performed. Relock acceptance transferred explicitly to the existing downstream adoption item, not dropped.\n\n2026-11-09 closeout: Engine implementation merged in #45 (cc5abf1); carried-finding thread backfill and keyed attester PR-comment disputes (Dispute: D<n> - <reason>) proven. Full workflow integration test implemented and merged in PR #52 (1ec73a5fe5a793d823ee2853e6e47d3b7999e562) as tests/integration/test_threadless_dispute_scenario.py using Harness (fake OMP, fake Jev, fake GitHub). The scenario executes the exact end-to-end chain: unanchored body-only finding D1 on line 99 outside diff -> two keyed attester disputes on issue comments with monotonic timestamps -> escalation to owner after round 3 -> third review skipped -> authorized owner adjudication (Review adjudication: WITHDRAW D1) -> exact-head gate exit 0 PASS with review: pass. PR #52 obtained hosted self-gate SHIP (run 42537904885 / carried 42540065314) and green CI across py3.11/py3.13/windows/smoke/evals. Consumer relock and adoption remain explicitly tracked under benchbox-adopt-theseus-v025-review-guidance-20261107.",
   "description": "The report path placed fresh findings inline but rendered carried findings only in the body, stranding even a carried diff-anchored finding without a dispute thread (#3987). Theseus owns this code. Existing open Theseus #45 implements carried-finding thread backfill and keyed attester PR-comment disputes for unanchored findings; reconcile that work rather than duplicating it. Finish the engine fix and a hermetic full workflow integration scenario. Consumer relock is explicitly re-homed to benchbox-adopt-theseus-v025-review-guidance-20261107, which already waits on the combined release; this breaks the former logical cycle without losing deployment acceptance. The planned v0.2.5 feature release label is obsolete: v0.2.5 was released for different fixes in #46.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3987"
@@ -42,6 +42,14 @@
       "generation": "f6a75377e87a41c4a02de8147b30d339",
       "op": "take",
       "op_id": "e1da27071fd64385b999ea9836ee1d77",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-09T00:50:14Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f7fc08c026da4610a0a040b4ea3b9b23",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
     }
   ]
