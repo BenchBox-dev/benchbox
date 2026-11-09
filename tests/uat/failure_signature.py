@@ -28,7 +28,7 @@ _NOT_A_FAILURE_TERMINAL_STATES = frozenset({"passed", "skipped", "unreachable"})
 _VALIDATION_SUBMIT_STATES = frozenset({"schema_violation", "unvalidated", "bundle_load_error", "unofficial"})
 
 _SINGLESTORE_1712_RE = re.compile(
-    r"\bERROR\s+1712\b|\(\s*1712\s*,|\b(?:errno|error[ _]code)\s*[=:]?\s*1712\b",
+    r"\A\s*1712\s*:|\bERROR\s+1712\b|\(\s*1712\s*,|\b(?:errno|error[ _]code)\s*[=:]?\s*1712\b",
     re.IGNORECASE,
 )
 _DOWNLOAD_ERROR_RE = re.compile(r"\bDownloadError\b|download failed after|failed to download", re.IGNORECASE)
