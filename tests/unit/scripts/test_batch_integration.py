@@ -253,7 +253,7 @@ def test_the_wrapper_runs_from_a_bare_copy_and_reaches_the_install_step(
     repo_scripts = str(ROOT / "scripts")
     monkeypatch.setattr(sys, "path", [entry for entry in sys.path if entry != repo_scripts])
     monkeypatch.delitem(sys.modules, "theseus_cli", raising=False)
-    monkeypatch.setattr(sys, "argv", ["oracle_local_review.py", "--trusted-ref", "HEAD"])
+    monkeypatch.setattr(sys, "argv", ["local_review.py", "--trusted-ref", "HEAD"])
     monkeypatch.chdir(repo)
 
     with pytest.raises(SystemExit) as exit_info:

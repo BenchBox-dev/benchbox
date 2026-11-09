@@ -57,8 +57,8 @@ require_omp() {
   ACCOUNTS_FILE=$SCRATCH/accounts.json
   mkdir "$DEVELOP_DIR"
   export_develop "$DEVELOP_DIR" || exit 1
-  binary=$("$THESEUS" install-omp --policy "$DEVELOP_DIR/.github/oracle-reviewers.yml") \
-    || fail "cannot install the omp build pinned in origin/develop:.github/oracle-reviewers.yml"
+  binary=$("$THESEUS" install-omp --policy "$DEVELOP_DIR/.github/review.yml") \
+    || fail "cannot install the omp build pinned in origin/develop:.github/review.yml"
   [ -n "$binary" ] && [ -x "$binary" ] || fail "the pinned omp install gave no executable"
   OMP=$binary
   PINNED_SHA=$(file_sha256 "$OMP")
@@ -286,7 +286,7 @@ fetch_accounts() {
 }
 
 provider_report() {
-  "$THESEUS" gateway-providers --omp-config "$DEVELOP_DIR/.github/oracle-omp-config.yml" \
+  "$THESEUS" gateway-providers --omp-config "$DEVELOP_DIR/.github/review-omp-config.yml" \
     --accounts "$ACCOUNTS_FILE" ${EXCLUDE_ARGS[@]+"${EXCLUDE_ARGS[@]}"} --json "$@"
 }
 
@@ -453,7 +453,7 @@ cmd_gateway() {
   done < <(client_token_files)
   "$THESEUS" gateway-clients \
     --token-file "$CLIENT_TOKEN_FILE" ${named_clients[@]+"${named_clients[@]}"} \
-    --accounts "$ACCOUNTS_FILE" --omp-config "$DEVELOP_DIR/.github/oracle-omp-config.yml" --out "$CLIENTS_FILE" \
+    --accounts "$ACCOUNTS_FILE" --omp-config "$DEVELOP_DIR/.github/review-omp-config.yml" --out "$CLIENTS_FILE" \
     ${EXCLUDE_ARGS[@]+"${EXCLUDE_ARGS[@]}"} --report "$SCRATCH/clients-report.json"
   echo "gateway: granted $(jq -r '.granted | join(" ")' "$SCRATCH/clients-report.json")"
   local staged changed=no config
@@ -666,7 +666,7 @@ cmd_monitor_install() {
   git -C "$REPO_ROOT" fetch --quiet origin +refs/heads/develop:refs/remotes/origin/develop \
     || fail "cannot fetch origin/develop in $REPO_ROOT"
   staged=$(mktemp "$GATEWAY_DIR/.monitor-host.XXXXXX")
-  git -C "$REPO_ROOT" show "origin/develop:_project/scripts/oracle_gateway_host.sh" > "$staged" \
+  git -C "$REPO_ROOT" show "origin/develop:_project/scripts/review_gateway_host.sh" > "$staged" \
     || { rm -f "$staged"; fail "origin/develop has no gateway host script"; }
   chmod 700 "$staged"
   mv "$staged" "$snapshot"

@@ -15104,51 +15104,51 @@
     "p50_seconds": 0.050917
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_a_deliberate_removal_is_a_notice_and_does_not_alert",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_a_deliberate_removal_is_a_notice_and_does_not_alert",
     "p50_seconds": 1.215372
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_a_develop_provider_without_a_login_that_the_script_never_heard_of_is_excluded_not_refused",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_a_develop_provider_without_a_login_that_the_script_never_heard_of_is_excluded_not_refused",
     "p50_seconds": 1.255107
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_a_refused_theseus_install_stops_the_script_before_any_agent_or_clients_file_is_touched[check-tampered]",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_a_refused_theseus_install_stops_the_script_before_any_agent_or_clients_file_is_touched[check-tampered]",
     "p50_seconds": 0.800787
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_a_refused_theseus_install_stops_the_script_before_any_agent_or_clients_file_is_touched[gateway-tampered]",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_a_refused_theseus_install_stops_the_script_before_any_agent_or_clients_file_is_touched[gateway-tampered]",
     "p50_seconds": 0.793629
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_export_fails_without_origin_develop",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_export_fails_without_origin_develop",
     "p50_seconds": 0.534606
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_the_clients_check_refuses_a_client_that_is_missing_or_unlisted",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_the_clients_check_refuses_a_client_that_is_missing_or_unlisted",
     "p50_seconds": 0.532363
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_the_existing_token_file_names_are_accepted",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_the_existing_token_file_names_are_accepted",
     "p50_seconds": 0.533362
   },
   {
-    "id": "tests/unit/scripts/test_oracle_local_review.py::test_the_first_stage_comes_from_the_trusted_commit_not_the_working_tree",
+    "id": "tests/unit/scripts/test_local_review.py::test_the_first_stage_comes_from_the_trusted_commit_not_the_working_tree",
     "p50_seconds": 0.074944
   },
   {
-    "id": "tests/unit/scripts/test_oracle_policy_pin.py::test_every_enabled_chain_is_one_reviewer_and_the_attempt_budget_covers_it",
+    "id": "tests/unit/scripts/test_review_policy_pin.py::test_every_enabled_chain_is_one_reviewer_and_the_attempt_budget_covers_it",
     "p50_seconds": 0.021103
   },
   {
-    "id": "tests/unit/scripts/test_oracle_policy_pin.py::test_live_reviewers_inherit_the_role_effort_level",
+    "id": "tests/unit/scripts/test_review_policy_pin.py::test_live_reviewers_inherit_the_role_effort_level",
     "p50_seconds": 0.020236
   },
   {
-    "id": "tests/unit/scripts/test_oracle_policy_pin.py::test_the_gated_base_and_attesters_are_pinned",
+    "id": "tests/unit/scripts/test_review_policy_pin.py::test_the_gated_base_and_attesters_are_pinned",
     "p50_seconds": 0.020362
   },
   {
-    "id": "tests/unit/scripts/test_oracle_policy_pin.py::test_the_promotion_block_names_only_the_locked_package_repository_and_dependencies",
+    "id": "tests/unit/scripts/test_review_policy_pin.py::test_the_promotion_block_names_only_the_locked_package_repository_and_dependencies",
     "p50_seconds": 0.020362
   },
   {
@@ -18128,19 +18128,19 @@
     "p50_seconds": 0.034338
   },
   {
-    "id": "tests/unit/workflows/test_oracle_verdict_workflow.py::test_only_a_pull_request_event_cancels_a_run_in_flight[schedule-False]",
+    "id": "tests/unit/workflows/test_review_verdict_workflow.py::test_only_a_pull_request_event_cancels_a_run_in_flight[schedule-False]",
     "p50_seconds": 0.027276
   },
   {
-    "id": "tests/unit/workflows/test_oracle_verdict_workflow.py::test_the_caller_passes_the_environment_base_policy_path_and_tailscale_tag_and_nothing_else",
+    "id": "tests/unit/workflows/test_review_verdict_workflow.py::test_the_caller_passes_the_environment_base_policy_path_and_tailscale_tag_and_nothing_else",
     "p50_seconds": 0.035465
   },
   {
-    "id": "tests/unit/workflows/test_oracle_verdict_workflow.py::test_the_calling_job_grants_the_documented_permission_ceiling",
+    "id": "tests/unit/workflows/test_review_verdict_workflow.py::test_the_calling_job_grants_the_documented_permission_ceiling",
     "p50_seconds": 0.02919
   },
   {
-    "id": "tests/unit/workflows/test_oracle_verdict_workflow.py::test_the_workflow_keeps_the_protocol_name_and_a_single_caller_job",
+    "id": "tests/unit/workflows/test_review_verdict_workflow.py::test_the_workflow_keeps_the_protocol_name_and_a_single_caller_job",
     "p50_seconds": 0.030206
   },
   {

@@ -123,7 +123,7 @@ local check, the PR check and the nightly scan print a non-blocking warning
 (a `::warning::` annotation in CI) for each date within 30 days of today.
 The CI maintainer role renews or removes the entries a warning names: delete
 an entry whose suppression is gone, or move its `expires` date forward in a
-pull request that gets the same successful oracle verdict as a new exception.
+pull request that gets the same successful review verdict as a new exception.
 The `owner` field in an entry is a routing hint for who fixes the code, not who
 renews it. A date-only change is a new policy entry, so it does not count until
 that verdict covers the registry head.
@@ -133,7 +133,7 @@ an entry that differs from the base entry only in `expires` when the candidate
 removes `expires` from a directive that suppresses nothing, or sets a valid
 date later than the base date. Any other field difference, an entry absent from
 the base, or a date that is not later does not count locally. CI never applies
-this acceptance, so the PR check still needs the oracle verdict on the exact
+this acceptance, so the PR check still needs the review verdict on the exact
 head before the entry counts.
 
 The same local check also counts a `notice` entry that differs from exactly one
@@ -145,7 +145,7 @@ staged tree, which the consumer validation already enforces for every entry.
 Directives and fixtures do not qualify: a directive's consumer ties a
 suppression to what justifies it, and a fixture's digest binds it to a
 changed file. CI never applies this acceptance either, so the repointed entry
-still counts only after the oracle verdict covers the registry head. Keep the renewed dates spread across at
+still counts only after the review verdict covers the registry head. Keep the renewed dates spread across at
 least ten dates, or at most one date per entry when fewer than ten dated
 directives remain.
 
@@ -167,8 +167,8 @@ the first two lines of a Python file, and only for a non-UTF-8 encoding.
 To add an exception, first confirm the text has a real reader and need; the
 checker cannot judge that. You may register the exception and the code that
 uses it in the same pull request: the entries count only once the head carries
-an oracle-gate success status posted by the benchbox-oracle App and a success
-oracle verdict review. Neither alone is enough: a gate status also passes for
+a review-gate success status posted by the benchbox-oracle App and a success
+review verdict review. Neither alone is enough: a gate status also passes for
 changes that need no review. Without both, the base policy still applies and
 the new entries do not count, so a change never authorizes its own exception
 without that review. CI and `make comment-policy-check` fail on the new entries until the

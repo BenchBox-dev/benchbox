@@ -23,14 +23,14 @@ JOINORDER_REFERENCE ?= _project/joinorder/reference_cardinalities.json
 DEVELOPMENT_TREE_ONLY_TARGETS := \
 	correctness-gate-digests-regen ledger-seed-gates ledger-seed-recut tpch-subscale-row-counts-regen \
 	cross-surface-baseline-autodetect \
-	oracle-coverage-map oracle-coverage-map-check oracle-backoff-reset omp-candidate-check cross-surface-applicability-report \
+	oracle-coverage-map oracle-coverage-map-check review-backoff-reset omp-candidate-check cross-surface-applicability-report \
 	joinorder-verify-reference-results complexity-check complexity-report \
 	quality-governance-typecheck uv-lock-revision-check sqlglot-repro-retirement-check audit-deps audit-raw audit-raw-check \
 	audit-sha-check artifact-hygiene agent-instructions-check agent-identity-check security-audit \
 	agent-commit-range-check skill-integrity-check ci-lint pr-preflight pr-arm-auto-merge shrink-rollup \
 	pr-review-followups-list pr-review-followups dev-loop-metrics ci-usage-report platform-manifest \
 	platform-manifest-check test-docker-parity blind-spots-list blind-spots-report \
-	soundness-drain-report soundness-drain-self-test worktree-audit worktree-finish worktree-reap oracle-mutation-test corpus-stage-local
+	soundness-drain-report soundness-drain-self-test worktree-audit worktree-finish worktree-reap review-mutation-test corpus-stage-local
 
 .PHONY: test
 test: test-fast
@@ -49,6 +49,7 @@ $(DEVELOPMENT_TREE_ONLY_TARGETS): .development-tree-required
 include $(BENCHBOX_MAKEFILE_ROOT)make/tests.mk
 include $(BENCHBOX_MAKEFILE_ROOT)make/reports.mk
 include $(BENCHBOX_MAKEFILE_ROOT)make/oracle.mk
+include $(BENCHBOX_MAKEFILE_ROOT)make/review.mk
 
 include $(BENCHBOX_MAKEFILE_ROOT)make/platform-tests.mk
 

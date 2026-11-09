@@ -15360,35 +15360,35 @@
     "p50_seconds": 0.021809
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_a_provider_without_a_login_is_excluded_and_the_gateway_still_starts[google-antigravity]",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_a_provider_without_a_login_is_excluded_and_the_gateway_still_starts[google-antigravity]",
     "p50_seconds": 2.327303
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_a_refused_theseus_install_stops_the_script_before_any_agent_or_clients_file_is_touched[broker-tampered]",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_a_refused_theseus_install_stops_the_script_before_any_agent_or_clients_file_is_touched[broker-tampered]",
     "p50_seconds": 0.79245
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_a_refused_theseus_install_stops_the_script_before_any_agent_or_clients_file_is_touched[gateway-unreachable]",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_a_refused_theseus_install_stops_the_script_before_any_agent_or_clients_file_is_touched[gateway-unreachable]",
     "p50_seconds": 0.809812
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_a_token_file_with_a_non_matching_name_is_refused_by_name[Ops]",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_a_token_file_with_a_non_matching_name_is_refused_by_name[Ops]",
     "p50_seconds": 0.533972
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_gateway_clients_follow_a_develop_config_that_changed_after_the_checkout",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_gateway_clients_follow_a_develop_config_that_changed_after_the_checkout",
     "p50_seconds": 1.304635
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_revoke_and_the_token_file_check_accept_the_same_names[local]",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_revoke_and_the_token_file_check_accept_the_same_names[local]",
     "p50_seconds": 0.531367
   },
   {
-    "id": "tests/unit/scripts/test_oracle_local_review.py::test_the_review_runs_the_verified_install_with_the_trusted_inputs",
+    "id": "tests/unit/scripts/test_local_review.py::test_the_review_runs_the_verified_install_with_the_trusted_inputs",
     "p50_seconds": 0.032923
   },
   {
-    "id": "tests/unit/scripts/test_oracle_local_review.py::test_the_trusted_ref_defaults_to_develop_and_never_follows_the_base_ref",
+    "id": "tests/unit/scripts/test_local_review.py::test_the_trusted_ref_defaults_to_develop_and_never_follows_the_base_ref",
     "p50_seconds": 0.033194
   },
   {
@@ -18112,11 +18112,11 @@
     "p50_seconds": 0.044327
   },
   {
-    "id": "tests/unit/workflows/test_oracle_review_workflow.py::test_workflow_name_is_kept_for_the_gate_bridge",
+    "id": "tests/unit/workflows/test_review_workflow.py::test_workflow_name_is_kept_for_the_gate_bridge",
     "p50_seconds": 0.025725
   },
   {
-    "id": "tests/unit/workflows/test_oracle_verdict_workflow.py::test_triggers_are_trusted_only",
+    "id": "tests/unit/workflows/test_review_verdict_workflow.py::test_triggers_are_trusted_only",
     "p50_seconds": 0.029265
   },
   {

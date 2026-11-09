@@ -5,37 +5,37 @@
 ## The signal, and what it is not
 
 Soundness-path PRs (paths in `.github/soundness-paths.txt`) merge only after
-the required `oracle-gate` check passes, which needs a success `oracle-verdict` status on the
+the required `review-gate` check passes, which needs a success `review-verdict` status on the
 current head created by the `benchbox-oracle` App. CI cannot catch a change that
-redefines the oracle it validates against, so such a PR can sit green but
-unmergeable while it waits for that review. The oracle reviews each push on its own; to rerun it,
+redefines the reviewer it validates against, so such a PR can sit green but
+unmergeable while it waits for that review. The reviewer reviews each push on its own; to rerun it,
 post a top-level `/review` comment or run
 `gh workflow run review-verdict.yml --ref develop -f pr=<number>`.
 
-When the oracle cannot review, or its verdict must be overruled, a
-listed attester in `consumer.attesters` (`.github/oracle-reviewers.yml`)
+When the reviewer cannot review, or its verdict must be overruled, a
+listed attester in `consumer.attesters` (`.github/review.yml`)
 can substitute an independent stand-in review. After that review of the
 current head, the attester posts a PR comment whose whole text is the line
 `Stand-in review: APPROVE <full head SHA>`; the review itself goes in a
 separate comment. The check accepts it only for
-that exact head, only if posted after any retarget and after the oracle's
-latest verdict status on that head, and never while a review thread from the oracle
-is unresolved. It is not compared with the push time, but a later oracle
+that exact head, only if posted after any retarget and after the review's
+latest verdict status on that head, and never while a review thread from the reviewer
+is unresolved. It is not compared with the push time, but a later review
 review of the head supersedes it. An edited comment
 does not count, and neither does one with any other text, because Markdown
 around the line can hide or quote it.
-Posting the stand-in comment makes `oracle-gate` re-evaluate the head at once.
-Resolving an oracle review thread starts no workflow run and needs no refresh;
+Posting the stand-in comment makes `review-gate` re-evaluate the head at once.
+Resolving a review thread starts no workflow run and needs no refresh;
 `make pr-arm` and `make pr-arm-remote` dispatch nothing. A stale gate is
-re-evaluated by an oracle review edit or dismissal, a `develop` push that
+re-evaluated by a review edit or dismissal, a `develop` push that
 changes the gate code or policy, the hourly sweep, or on demand with
 `gh workflow run review-gate.yml --ref develop -f pr=<number>`.
 
-The develop ruleset requires `oracle-gate` bound to the `benchbox-oracle`
+The develop ruleset requires `review-gate` bound to the `benchbox-oracle`
 App's integration ID, so only a status that App posts satisfies it, and the
-`oracle-gate` workflow runs only `develop` code. The `review-request` workflow
+`review-gate` workflow runs only `develop` code. The `review-request` workflow
 is a no-op notification on `pull_request_review` edited and
-dismissed events only; a completed `review-request` run is how `oracle-gate`
+dismissed events only; a completed `review-request` run is how `review-gate`
 learns that a review was edited or dismissed. The verdict run posts the gate
 for the head it reviewed. It produces no check.
 

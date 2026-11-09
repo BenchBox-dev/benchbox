@@ -44,7 +44,7 @@ jobs:
           THESEUS="$(python3 scripts/theseus_cli.py --trusted-ref "$(git rev-parse HEAD)" path)"
           "$THESEUS" omp-watch evaluate \
             --repo "$GITHUB_REPOSITORY" \
-            --policy .github/oracle-reviewers.yml \
+            --policy .github/review.yml \
             --watch-workflow .github/workflows/omp-pin-watch.yml \
             --out-dir "$OUT_DIR"
 
@@ -135,13 +135,13 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git checkout -b "$BRANCH"
-            cp "$OUT_DIR/policy.yml" .github/oracle-reviewers.yml
-            git add .github/oracle-reviewers.yml
-            git commit -m "revert(oracle): restore omp ${PREVIOUS}"
+            cp "$OUT_DIR/policy.yml" .github/review.yml
+            git add .github/review.yml
+            git commit -m "revert(review): restore omp ${PREVIOUS}"
             AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')"
             git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${AUTH}" push origin "$BRANCH"
             PR="$(gh api --method POST "repos/${GITHUB_REPOSITORY}/pulls" \
-              -f title="revert(oracle): restore omp ${PREVIOUS}" -F body=@"$OUT_DIR/pr-body.md" \
+              -f title="revert(review): restore omp ${PREVIOUS}" -F body=@"$OUT_DIR/pr-body.md" \
               -f base=develop -f head="$BRANCH" --jq .number)"
           fi
           HEAD_SHA="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}" --jq .head.sha)"

@@ -76,24 +76,24 @@ def test_the_newest_run_of_one_suite_wins() -> None:
 
 def test_suites_sharing_a_name_stay_separate_newest_first() -> None:
     records = [
-        check("oracle-review", 1, "2026-10-24T09:00:00Z", "failure"),
-        check("oracle-review", 3, "2026-10-24T11:00:00Z", "success"),
-        check("oracle-review", 2, "2026-10-24T10:00:00Z", "failure"),
+        check("review", 1, "2026-10-24T09:00:00Z", "failure"),
+        check("review", 3, "2026-10-24T11:00:00Z", "success"),
+        check("review", 2, "2026-10-24T10:00:00Z", "failure"),
     ]
-    suites = check_suites.suites_by_name(records)["oracle-review"]
+    suites = check_suites.suites_by_name(records)["review"]
     assert [suite.suite_id for suite in suites] == [3, 2, 1]
 
 
 def test_a_stale_failure_hidden_by_a_newer_success_is_reported_with_its_run() -> None:
     records = [
-        check("oracle-review", 1, "2026-10-24T09:00:00Z", "failure", run=501),
-        check("oracle-review", 2, "2026-10-24T09:30:00Z", "failure", run=502),
-        check("oracle-review", 3, "2026-10-24T10:30:00Z", "success", run=503),
+        check("review", 1, "2026-10-24T09:00:00Z", "failure", run=501),
+        check("review", 2, "2026-10-24T09:30:00Z", "failure", run=502),
+        check("review", 3, "2026-10-24T10:30:00Z", "success", run=503),
     ]
-    evaluation = check_suites.evaluate(records, ["oracle-review"])["oracle-review"]
+    evaluation = check_suites.evaluate(records, ["review"])["review"]
     assert not evaluation.green
     assert [suite.actions_run_id for suite in evaluation.hidden_failures] == [502, 501]
-    reasons = check_suites.hidden_failure_reasons({"oracle-review": evaluation})
+    reasons = check_suites.hidden_failure_reasons({"review": evaluation})
     assert len(reasons) == 2
     assert all("make pr-rerun" in reason for reason in reasons)
     assert "actions/runs/501" in reasons[1]
@@ -127,11 +127,11 @@ def test_a_missing_required_name_is_not_green() -> None:
 
 def test_plan_reruns_groups_suites_by_actions_run() -> None:
     records = [
-        check("oracle-review", 1, "2026-10-24T09:00:00Z", "failure", run=501),
+        check("review", 1, "2026-10-24T09:00:00Z", "failure", run=501),
         check("hold", 1, "2026-10-24T09:00:01Z", "failure", run=501),
-        check("oracle-review", 2, "2026-10-24T09:30:00Z", "cancelled", run=502),
+        check("review", 2, "2026-10-24T09:30:00Z", "cancelled", run=502),
     ]
-    plan = check_suites.plan_reruns(check_suites.evaluate(records, ["oracle-review", "hold"]))
+    plan = check_suites.plan_reruns(check_suites.evaluate(records, ["review", "hold"]))
     assert [(item.run_id, item.scope) for item in plan] == [(501, "failed"), (502, "all")]
     assert plan[0].arguments(REPO) == ["run", "rerun", "501", "--repo", REPO, "--failed"]
     assert plan[1].arguments(REPO) == ["run", "rerun", "502", "--repo", REPO]
@@ -225,7 +225,7 @@ class _Client:
                 {"type": "deletion"},
                 {
                     "type": "required_status_checks",
-                    "parameters": {"required_status_checks": [{"context": name} for name in (*GREEN, "oracle-review")]},
+                    "parameters": {"required_status_checks": [{"context": name} for name in (*GREEN, "review")]},
                 },
             ]
         return {}
@@ -242,21 +242,21 @@ def test_the_sweep_fetch_requests_latest_runs_and_keeps_suite_identity() -> None
 
 def test_the_sweep_fetch_carries_the_ruleset_required_names() -> None:
     (pr,) = sweep.fetch_open_prs(_Client(), "o", "r")
-    assert pr["required_contexts"] == [*GREEN, "oracle-review"]
+    assert pr["required_contexts"] == [*GREEN, "review"]
 
 
 def test_the_sweep_does_not_call_a_pr_green_when_only_a_ruleset_check_has_a_hidden_failure() -> None:
     records = [
         *lane(GREEN),
-        check("oracle-review", 20, "2026-10-24T10:30:00Z", "success"),
-        check("oracle-review", 21, "2026-10-24T09:00:00Z", "failure", run=88),
+        check("review", 20, "2026-10-24T10:30:00Z", "success"),
+        check("review", 21, "2026-10-24T09:00:00Z", "failure", run=88),
     ]
-    pr = {**_pr(records), "required_contexts": [*GREEN, "oracle-review"]}
+    pr = {**_pr(records), "required_contexts": [*GREEN, "review"]}
     classified = sweep.classify_pr(pr, NOW)
     assert not classified.required_green
     assert not classified.stranded
     (reason,) = classified.hidden_failures
-    assert "oracle-review" in reason and "actions/runs/88" in reason
+    assert "review" in reason and "actions/runs/88" in reason
 
 
 def test_rules_without_required_status_checks_are_rejected() -> None:

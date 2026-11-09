@@ -238,12 +238,12 @@ pr-open:
 	UNAVAILABLE_FILE=$$(mktemp); \
 	trap 'rm -f "$$RECORD_FILE" "$$UNAVAILABLE_FILE" "$$RECEIPT_FILE" "$$ALLOW_FILE"' EXIT; \
 	LOCAL_STATUS=0; \
-	python3 scripts/oracle_local_review.py --policy .github/oracle-reviewers.yml --base-ref "$$STACK_BASE" --trusted-ref origin/develop --head "$$REVIEWED" --rebuttals "$$PR_OPEN_REBUTTALS" --adjudicate "$$PR_OPEN_ADJUDICATE" --record-out "$$RECORD_FILE" --unavailable-out "$$UNAVAILABLE_FILE" || LOCAL_STATUS=$$?; \
+	python3 scripts/local_review.py --policy .github/review.yml --base-ref "$$STACK_BASE" --trusted-ref origin/develop --head "$$REVIEWED" --rebuttals "$$PR_OPEN_REBUTTALS" --adjudicate "$$PR_OPEN_ADJUDICATE" --record-out "$$RECORD_FILE" --unavailable-out "$$UNAVAILABLE_FILE" || LOCAL_STATUS=$$?; \
 	UNAVAILABLE_CAUSE=; \
 	if [ "$$LOCAL_STATUS" != 0 ]; then \
 		if [ "$$LOCAL_STATUS" = 2 ]; then UNAVAILABLE_CAUSE=$$(sed -n 's/^availability: //p' "$$UNAVAILABLE_FILE" | sed -n 1p); fi; \
-		if [ -z "$$UNAVAILABLE_CAUSE" ]; then echo "Refusing to open PR: the local oracle review did not clear this head. Nothing was pushed." >&2; exit 1; fi; \
-		echo "The local oracle review is unavailable ($$UNAVAILABLE_CAUSE); opening as a draft. The hosted review decides." >&2; \
+		if [ -z "$$UNAVAILABLE_CAUSE" ]; then echo "Refusing to open PR: the local review did not clear this head. Nothing was pushed." >&2; exit 1; fi; \
+		echo "The local review is unavailable ($$UNAVAILABLE_CAUSE); opening as a draft. The hosted review decides." >&2; \
 		DRAFT_FLAG=--draft; \
 	fi; \
 	$(MAKE) -s pr-conflict-scan BRANCH="$$CURRENT" REPO="$$REPOSITORY" || true; \
