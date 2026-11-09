@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "A run with --capture-dir shows why the walk stops at the Google fallback, recorded here.",
+    "The cause is fixed in Theseus, in the consumer config, or reported as an OMP regression with evidence; the canary is not weakened to pass.",
+    "make omp-candidate-check on a clean develop checkout for the pinned version ends with a result=releasable evidence line, and the daily omp-pin-bump completes without a red state."
+  ],
+  "context": "Handoff prompt for the Theseus session covers diagnosis steps. Spans two repos: canary and broker in joeharris76/theseus, fallback order and policy in BenchBox. A Theseus change needs a release and a re-lock promotion PR.",
+  "description": "`omp-candidate-check` now runs its live checks (the Namespace crash is fixed in Theseus v0.2.6, locked on develop), and fails one of 27: `live-quota-fallback-walk`. It was observed for 18.16.0 on a clean develop checkout on the owner's Mac (26 pass, 1 fail, no releasable evidence line) and for 18.18.2 in the daily `omp-pin-bump` run 42521407943 (state=red, no candidate PR opened). The check expects the Anthropic Sonnet quota walk to reach `openai-codex/gpt-6.1-sol` (Theseus `candidate_checks.py` QUOTA_CHAIN_TARGET). BenchBox `.github/oracle-omp-config.yml` lists `google-antigravity/claude-sonnet-5-5` first and GPT second. Both streams reached Google and stopped. The reason is unverified: the run kept no stream capture, and the loopback broker is seeded only with an Anthropic key, so a Google attempt may fail for a reason other than usage-limit. This is not shown to be an OMP regression; it may be a canary expectation, a config mismatch or a broker limitation. Until fixed, the scheduled bump fails red every day and cannot propose a candidate.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3931#issuecomment-6726853963",
+    "https://github.com/BenchBox-dev/benchbox/pull/3931#issuecomment-6726922353",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/42521407943",
+    "https://github.com/joeharris76/theseus/releases/tag/v0.2.6",
+    "omp-role-keyed-fallback-chains-ignored-20261022"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:76bfe83b21f0c666e957f760",
+      "at": "2026-11-09T20:18:36Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "861de0461f654ff5a72541b1f74eddc7",
+      "session_id": "02c14526fd7648f49c893339d8cfcf9e"
+    }
+  ]
+}

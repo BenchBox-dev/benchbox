@@ -26017,6 +26017,13 @@
       "status": "dropped",
       "title": "Degraded read mode: serve ready/show/list from the committed snapshot when hosted DB is unreachable"
     },
+    "omp-candidate-quota-fallback-walk-red-20261109": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "OMP candidate check is red on live-quota-fallback-walk; no OMP version can be validated or bumped"
+    },
     "omp-role-keyed-fallback-chains-ignored-20261022": {
       "claim": null,
       "needs": [],
