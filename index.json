@@ -33577,17 +33577,12 @@
       "title": "Allow patch releases from owner-created release/X.Y.x branches with the same release-v2 checks"
     },
     "rv2r-15-review-posting-detector": {
-      "claim": {
-        "expires_at": "2026-11-10T00:34:04Z",
-        "generation": "5167a38c0d314c3fb60fe4746f09321e",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec"
-      },
+      "claim": null,
       "needs": [
         "rv2r-07-oracle-pinned-dependency"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Fail the review callers when no verdict or gate status was posted for the head"
     },
     "rv2r-16-release-branch-review-gating": {
