@@ -2,6 +2,7 @@
   "acceptance": [
     "A complete release-v2 rehearsal (dlv2-52a) runs on the real runner and each listed fix is confirmed or reopened with shard evidence. The SingleStore wrapper gets a live bulk-load check and the loosened test gets a meaningful assertion."
   ],
+  "context": "Hosted trunk UAT run https://github.com/BenchBox-dev/BenchBox/actions/runs/42536258036 completed with failure at source 2d796acd59be06ab4b4a1742dda84cff419202b9. The real hosted gate executed 710 selected cells: 702 passed and 8 failed. Passing slices now give real-runner evidence for current Spark, LakeSail, Velox, QuestDB, DataFrame and PostgreSQL-family cells. This is not certification of historical cells excluded from the current matrix; CedarDB, InfluxDB, Presto and Trino have no rows in this run. Counts cover the selected current matrix only; no historical issue is closed by this note. The full run is still red (702/710 passed), so this is not release certification.",
   "description": "No release-v2 run has passed UAT, and these fixes could not be run locally (no Docker, 26 GiB free disk): CedarDB/Presto/Trino query-level readiness assumes psql and curl exist in those images (falls back to the old healthcheck if missing); the Velox container exit cause and tmpfs exec fix; SF1 timings measured only on a developer machine; Spark failures from the rc2 shard ran on Java 25 and may not reproduce; SingleStore bulk load now goes through a new SingleStoreConnectionWrapper (layering fix for core importing platforms.singlestore) covered by two wrapper unit tests only, the earlier live bulk-load sweep having run through the old path; test_write_primitives_overrides_name_singlestore_not_mysql was loosened from an exact count to non-empty in one branch.",
   "links": [
     "dlv2-52a-testpypi-rehearsal",
@@ -16,6 +17,14 @@
       "op": "create",
       "op_id": "ce13d274d28942a7bc1a49fb91a68300",
       "session_id": "b38147de5e3b4952857534e2b3c9221c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-09T14:25:50Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4dbe1e9362bd4f8d9d4ec8c694509085",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]
 }
