@@ -5,7 +5,7 @@
     "The first PRs after adoption show the round cap and step-back working, linked as evidence.",
     "Consumer activation also owns the relock acceptance transferred from theseus-body-only-finding-cannot-be-adjudicated-20261106: BenchBox must pin a released Theseus artifact containing the merged threadless-dispute fix and its end-to-end scenario, then record exact-head hosted dispute/escalation/adjudication and gate evidence. v0.2.5 from Theseus #46 does not contain #45; select the actual released fixed version, not the obsolete planned version number."
   ],
-  "context": "TODO review 2026-11-08: re-homed consumer activation from the body-only finding item here to break the producer/release/consumer logical cycle. Existing needs on theseus-v025-review-convergence-20261107 is preserved. The existing v0.2.5 lock PR #4047 contains #46, not the open #45 fix. Use the actual future fixed release version; do not reuse a published tag. Original guidance/policy/eval scope remains unchanged.",
+  "context": "TODO review 2026-11-08: re-homed consumer activation from the body-only finding item here to break the producer/release/consumer logical cycle. Existing needs on theseus-v025-review-convergence-20261107 is preserved. The existing v0.2.5 lock PR #4047 contains #46, not the open #45 fix. Use the actual future fixed release version; do not reuse a published tag. Original guidance/policy/eval scope remains unchanged.\n\nState as of 2026-11-09: BenchBox is locked to Theseus v0.2.6 (develop de48b788cc, promotion merged), not v0.2.5. The title and acceptance may need updating to the version the owner wants; check against the later Theseus releases before working this item.",
   "description": "A lock-only promotion PR to Theseus v0.2.5, then one PR adding:\n- `.github/review-guidance.md` (D3: repository failure modes plus a do-not-flag list covering the no-docstring policy and changelog fragments), registered in gate_paths and the soundness manifest;\n- policy keys `protocol.max_finding_rounds: 4`, pre-existing advisory for Medium/Low, and the intent block enabled;\n- the weekly live eval schedule.\nD10: the human step stays an owner instruction recorded for audit. D11: no separate owner-attention list, because the soundness manifest covers those paths. Revisit both if a second human reviewer joins.",
   "links": [
     "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-11-02T02-04-38-450Z_01a19a00-60b2-70a6-b56d-6f666415a725/local/review-practice-integration-plan.md"
@@ -26,6 +26,14 @@
       "op": "update",
       "op_id": "3c884df7ea104e9da603b8e3818d1bab",
       "session_id": "83fcfb8d4a5c4fe8a47e5ac53802ec97"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:76bfe83b21f0c666e957f760",
+      "at": "2026-11-09T20:19:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a85fcc8b58a346c4939d3cbd9420e0ad",
+      "session_id": "02c14526fd7648f49c893339d8cfcf9e"
     }
   ]
 }
