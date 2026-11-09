@@ -271,12 +271,26 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
     def _handle_invalid_load_table(self, table_name: str, table_stats: dict[str, int]) -> bool:
         raise ValueError(f"Invalid table identifier: {table_name!r}")
 
+    def optimize_table(self, connection: Any, table_name: str, *, flush: bool = True) -> None:
+        if not self._validate_identifier(table_name):
+            self.logger.warning(f"Invalid table identifier: {table_name}")
+            return
+        cursor = connection.cursor()
+        try:
+            suffix = " FLUSH" if flush else ""
+            cursor.execute(f"OPTIMIZE TABLE `{table_name}`{suffix}")
+        except Exception as exc:
+            self.logger.warning(f"OPTIMIZE TABLE failed for {table_name}: {exc}")
+        finally:
+            cursor.close()
+
     def load_data(
         self, benchmark: Any, connection: Any, data_dir: Any
     ) -> tuple[dict[str, int], float, dict[str, Any] | None]:
         table_stats, loading_time, details = super().load_data(benchmark, connection, data_dir)
         analyze_start = mono_time()
         for table_name in table_stats:
+            self.optimize_table(connection, table_name, flush=True)
             self.analyze_table(connection, table_name)
         return table_stats, loading_time + elapsed_seconds(analyze_start), details
 
