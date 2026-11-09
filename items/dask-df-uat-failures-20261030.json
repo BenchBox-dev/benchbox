@@ -3,7 +3,7 @@
     "Each listed cell passes, or is pruned with a documented reason in the UAT registry.",
     "Fixed query failures have regression tests."
   ],
-  "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), artifact release-uat-v0.5.0rc2-stage1-dask-df. The artifact does not keep result JSON, so query-level causes need a local rerun of the named cells.",
+  "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), artifact release-uat-v0.5.0rc2-stage1-dask-df. The artifact does not keep result JSON, so query-level causes need a local rerun of the named cells.\n\nHosted trunk UAT run https://github.com/BenchBox-dev/BenchBox/actions/runs/42536258036 completed with failure at source 2d796acd59be06ab4b4a1742dda84cff419202b9. Dask DataFrame: all 31 selected cells passed. Counts cover the selected current matrix only; no historical issue is closed by this note. The full run is still red (702/710 passed), so this is not release certification.",
   "description": "Stage 1 dask-df shard, run 40971306663. Known errors: read_primitives 0.01 and 0.1 'ValueError: cannot reindex on an axis with duplicate labels' in dask_expr assign; flightdata 0.01 and 0.1 'TypeError: int() argument must be ... not NAType'; metadata_primitives SF1 'Metadata Primitives DataFrame fixtures are not implemented for platform Dask' (benchbox/core/metadata_primitives/benchmark.py:1221; should be compatibility-pruned, not failed); tpch 0.1 exited 1 with no result. Query failures without retained detail: tpcds_obt SF1, clickbench SF1, h2odb, amplab and tsbs_devops at all scales; coffeeshop, tpchavoc, nyctaxi and datavault at 0.01 and 0.1; tpcds 0.01 and 0.1 exited 1 (UAT state failed:unofficial, a sub-scale TPC result with failures). Timeouts at SF1: tpch, tpcds, joinorder, coffeeshop, tpchavoc, nyctaxi, flightdata, datavault, with leaked-semaphore warnings.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/actions/runs/40971306663"
@@ -16,6 +16,14 @@
       "op": "create",
       "op_id": "2e1dbfe102cd4a4e82d8b2abb3720c7b",
       "session_id": "dfb93797c41c440a9261d3ab38ceb76e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-09T14:25:24Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "93ff76c4e3c0428f8a5425420abca040",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]
 }
