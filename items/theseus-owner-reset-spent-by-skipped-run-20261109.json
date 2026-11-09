@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Valid reset survives guard-only successful issue_comment and prepare-refused workflow_dispatch runs without admitting extra attempts.",
+    "A genuine reviewing attempt consumes its authorized reset exactly once, including relevant failure/timeout cases; unknown/unreadable admission evidence cannot grant duplicate attempts.",
+    "Deterministic failing-before/passing-after regression and real fake-workflow/CLI smoke exercise admission and consumption without live model probes.",
+    "Fix passes normal hosted SHIP and CI and is included in combined Theseus release, with consumer adoption tracked by existing BenchBox adoption item."
+  ],
+  "context": "Owner approved Reset now on both exact heads; no further reset comments, synthetic head pushes, lower reviewer tier or bypass authorized. Source investigation BackoffResetScout identified sweep.py:117-124 broad run-status predicate. TheseusBackoffResetFix owns isolated source implementation. Original PRs may resume at their natural backoff expiration rather than adding an intermediate release solely for recovery.",
+  "description": "User-authorized one-time retry resets for Theseus#48 head39bbd758 and BenchBox#4067 head40a8b14d were posted and validated, but subsequent manual dispatches still skipped backoff. sweep.reset_spent counts post-reset workflow success with matching or absent head as consuming a reset. Guard-only issue_comment runs conclude success although review job skipped, and prepare-refused dispatches may likewise falsely spend it. Preserve exact-head attester authorization, one genuine reviewing attempt, normal failure handling and trust boundaries; use existing admission/attempt evidence rather than a new retry ledger.",
+  "links": [
+    "https://github.com/joeharris76/theseus/actions/runs/42685595811",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/42685603039",
+    "theseus-v025-review-convergence-20261107"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-09T19:58:18Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "04b1e036164f44e4834d18df533465d5",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    }
+  ]
+}
