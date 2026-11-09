@@ -37768,15 +37768,10 @@
       "title": "Prove the pinned BenchBox consumer and rehearse first-cutover recovery before activation"
     },
     "theseus-body-only-finding-cannot-be-adjudicated-20261106": {
-      "claim": {
-        "expires_at": "2026-11-10T00:50:05Z",
-        "generation": "f6a75377e87a41c4a02de8147b30d339",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Theseus: a hosted finding posted without a review thread can never be disputed or adjudicated"
     },
     "theseus-decision-promotion-evidence-form-20261102": {
