@@ -3,7 +3,7 @@ modelRoles:
   default: anthropic/claude-sonnet-5-5:high
   review: anthropic/claude-opus-5-5:medium
   plan: anthropic/claude-opus-5-5:xhigh
-  slow: anthropic/claude-fable-5-1:medium
+  slow: anthropic/claude-fable-5-2:medium
 retry:
   fallbackOn: usage-limit
   fallbackChains:
@@ -18,6 +18,6 @@ retry:
       - google-antigravity/claude-opus-5-5:high
       - openai-codex/gpt-6.1-sol:high
       - google-antigravity/gemini-4-argon:medium
-    anthropic/claude-fable-5-1:
+    anthropic/claude-fable-5-2:
       - openai-codex/gpt-6-astra:high
       - google-antigravity/gemini-4-argon:xhigh
