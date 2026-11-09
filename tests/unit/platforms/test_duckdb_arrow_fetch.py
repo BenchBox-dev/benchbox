@@ -100,6 +100,39 @@ class TestDigestParity:
         assert seen["rows"] == seen["arrow"]
         assert len(seen["arrow"]) == 3
 
+    @pytest.mark.parametrize("mode", [FETCH_MODE_ROWS, FETCH_MODE_ARROW])
+    def test_read_primitives_struct_preserves_every_contact_field(self, mode, digest_env):
+        from benchbox.core.read_primitives.benchmark import ReadPrimitivesBenchmark
+        from benchbox.platforms.base.result_capture import materialized_result_validation
+
+        contacts = [
+            (2, "Second Customer", "Second Address", "22-222-2222", 250.5, 1),
+            (1, "First Customer", "First Address", "11-111-1111", 125.25, 1),
+            (3, "Excluded Customer", "Excluded Address", "33-333-3333", 500.0, 2),
+        ]
+        expected = [
+            (key, {"c_name": name, "c_address": address, "c_phone": phone}, balance)
+            for key, name, address, phone, balance, nation in sorted(contacts)
+            if nation == 1
+        ]
+        sql = ReadPrimitivesBenchmark().get_queries(dialect="duckdb")["struct_construction"]
+        seen = {}
+        with duckdb.connect() as connection:
+            connection.execute(
+                "CREATE TABLE customer (c_custkey INTEGER, c_name VARCHAR, c_address VARCHAR, "
+                "c_phone VARCHAR, c_acctbal DOUBLE, c_nationkey INTEGER)"
+            )
+            connection.executemany("INSERT INTO customer VALUES (?, ?, ?, ?, ?, ?)", contacts)
+            with materialized_result_validation(lambda query_id, rows: seen.setdefault(query_id, list(rows))):
+                result = _adapter(mode).execute_query(connection, sql, "struct_construction", validate_row_count=False)
+
+        assert result["status"] == "SUCCESS", result.get("error")
+        assert result["fetch_mode"] == mode
+        assert result["rows_returned"] == len(expected)
+        assert result["first_row"] == expected[0]
+        assert result["result_digest"]
+        assert seen["struct_construction"] == expected
+
     def test_arrow_failure_is_reported_as_failed_query(self):
         connection = duckdb.connect()
         result = _adapter(FETCH_MODE_ARROW).execute_query(
