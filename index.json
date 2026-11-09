@@ -33243,6 +33243,13 @@
       "status": "done",
       "title": "Update remaining statements that present the retired compat generator and site-owned rollback facts as current"
     },
+    "review-anthropic-api-fallback-provider-20261109": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Let reviews fall back to Anthropic API credits when the Claude subscription hits its limit"
+    },
     "review-dependency-upper-bounds-quarterly": {
       "claim": null,
       "needs": [],

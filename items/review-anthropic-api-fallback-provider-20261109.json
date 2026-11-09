@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "The gateway can serve an operator-allow-listed API-key provider for named clients without letting host models.yml redirect other traffic.",
+    "Theseus gateway-clients accepts that provider and the reviewer HOME carries its model metadata.",
+    "Every Claude chain orders subscription first, then anthropic-api for the same model, then existing fallbacks; anthropic-api is never primary, and reviews keep working when its credit is gone.",
+    "Each new selector is shown to resolve and answer through the reviewer path."
+  ],
+  "context": "Options recorded by the investigating agent: (1) upstream OMP change so auth-gateway serves allow-listed API-key providers from the gateway HOME, then pin bump, Theseus gateway-clients and reviewer-HOME changes, host script models.yml placement; (2) store the key in the broker as `anthropic` and drop the subscription pin (not recommended: may spend the key first, key usable by any client token); (3) local-only use via ~/.omp/agent/models.yml (does not cover hosted or gateway-routed reviews). The current promotional credits expire 2026-11-19. Owner chose to log this for follow-up. Never print, log or commit the API key; never read ~/.omp/agent/models.yml directly.",
+  "description": "Owner request 2026-11-09: add `anthropic-api` as a fallback after the subscription `anthropic/...` model in every Claude chain (never primary). Verified on a throwaway pinned-18.16.0 broker and gateway: the gateway serves only broker-backed built-in providers; it ignores custom providers from the gateway HOME's models.yml, and client account pins never use stored API keys. Theseus-generated reviewer HOMEs also carry no metadata for a non-built-in provider. So it cannot work with the current gateway.",
+  "links": [
+    "theseus-v025-review-convergence-20261107"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:82b9fe75d2d6312f25803cd5",
+      "at": "2026-11-09T20:25:03Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ca8f49358de94c0089fb6c4192af8506",
+      "session_id": "ff599f834923406da7e6bd54d0a05e94"
+    }
+  ]
+}
