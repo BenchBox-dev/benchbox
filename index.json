@@ -37861,6 +37861,13 @@
       "status": "done",
       "title": "Prove trusted hosted review and separate gate resolution without live gateway access"
     },
+    "theseus-known-defects-pre-existing-20261109": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Log proven pre-existing review findings as known defects instead of blocking, except Critical"
+    },
     "theseus-local-gateway-tooling-20261102": {
       "claim": null,
       "needs": [

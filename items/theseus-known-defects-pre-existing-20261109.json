@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "A finding is treated as pre-existing only with verified evidence that the defective behaviour exists at the base commit and the change does not create or worsen it; unverifiable claims block.",
+    "Proven pre-existing non-Critical findings are recorded as known defects in a durable, queryable place for follow-up, and are visible on the PR; they do not block the gate.",
+    "Critical findings always block, pre-existing or not.",
+    "Tests prove a disguised new defect (unchanged span, changed behaviour) still blocks, a genuine base defect is logged and not blocking, and a Critical base defect blocks.",
+    "Shipped in a Theseus release and adopted by BenchBox."
+  ],
+  "context": "Sequencing: #54's fail-closed D4 ships in the current combined release (safe: every finding blocks). BenchBox adoption omits pre_existing: advisory until this lands.",
+  "description": "Owner rule 2026-11-09: the reviewer must be able to identify that a defect was pre-existing and not created by the current change. Such findings are logged as known defects for later follow-up and do not block the PR, UNLESS the defect is Critical, which still blocks. Theseus #45 added advisory demotion, but the #4062 review (D4) found it accepted unchanged line spans without proving the behaviour existed at the base, and #54 removes demotion entirely (every finding blocks). This item designs and ships a provable mechanism.",
+  "links": [
+    "https://github.com/joeharris76/theseus/pull/54",
+    "https://github.com/BenchBox-dev/benchbox/pull/4062",
+    "theseus-v025-review-convergence-20261107"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:82b9fe75d2d6312f25803cd5",
+      "at": "2026-11-09T20:23:09Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "2cfc1650f9f44ac794026741bb1230c5",
+      "session_id": "ff599f834923406da7e6bd54d0a05e94"
+    }
+  ]
+}
