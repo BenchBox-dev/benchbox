@@ -4,6 +4,7 @@
     "A regression test shows a failed-jobs-only rerun is not selected for that case, and that other failure kinds keep failed-jobs-only reruns.",
     "pr-arm's would-block refusal names the rerun remedy alongside the baseline remedy."
   ],
+  "context": "New occurrence on a Theseus re-lock PR (BenchBox #4059, head 3533b3c2ae49): core failed verify-fast-duration with sum ratio 1.395 (delta +669.9 s) on a runner whose calibration best was 0.900 s (speed factor 1.618). make pr-rerun re-ran only after the run completed, and the failed job re-failed on its first re-run. Re-running the single `test (ubuntu-latest, 3.14)` job with `gh run rerun --job` produced a passing verdict with no code change. The change touched only the lock and two workflow pin lines, so the slowdown was runner variance.",
   "description": "Problem. The fast-tier duration gate in the core job can report would-block from slow-runner noise alone (tracked in ci-fast-duration-gate-slow-runner-margin-20261101). The remedy is fresh timings, but make pr-rerun (scripts/pr_rerun.py rerun_arguments) re-runs only failed jobs of a failed run. The fast-tier shards passed, so only the core aggregate re-runs, and it re-reads the saved fast-junit artifact and reproduces the identical verdict. Observed on #4002 (a PR that only deletes tests): summed ratio 1.313, delta +442.6 s, median per-test ratio 1.010 on attempt 1, and exactly 1.313 again on the failed-jobs rerun (attempt 2). A full `gh run rerun` of the same run (attempt 3) measured 1.155 and passed. pr-arm's refusal text offers only 'remove the slowdown, or regenerate the baseline', neither of which applies to runner noise.\n\nChange. When the only failure is a would-block duration verdict, make pr-rerun re-run the whole CI run (or the fast-tier shards plus core) so new timings are measured, and pr-arm's refusal names that remedy. A real slowdown must still block after the fresh measurement.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4002",
@@ -17,6 +18,14 @@
       "op": "create",
       "op_id": "70082235ff084728b310f68b52099cdc",
       "session_id": "2f41579dd2194a049659596cdd9a4f3d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:76bfe83b21f0c666e957f760",
+      "at": "2026-11-09T20:19:39Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "abc96d9f54854dbfa168705e5d58f896",
+      "session_id": "02c14526fd7648f49c893339d8cfcf9e"
     }
   ]
 }
