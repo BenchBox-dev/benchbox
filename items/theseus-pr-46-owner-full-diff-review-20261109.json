@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "The owner reviews the full diff of #46 and records approval or requested changes on this item.",
+    "If changes are requested, they land through a reviewed Theseus PR."
+  ],
+  "context": "Owner action only; an agent must not self-approve.",
+  "description": "Theseus CONTRIBUTING.md requires the owner to review the whole diff of any change to release tooling, lock or installer logic before merge. PR #46 (merge 5282a510aca654ecd521db5f6b153a07576a9744, released as v0.2.5) changed the OMP download and bump code (omp_pin.download, omp_bump.get_json retries) and candidate_chain.py, and was merged by an agent through the API without that review. Its content shipped in v0.2.6, which is locked on develop and was independently reviewed (hosted SHIP review of the promotion), but the required owner review did not happen.",
+  "links": [
+    "https://github.com/joeharris76/theseus/pull/46",
+    "https://github.com/joeharris76/theseus/blob/main/CONTRIBUTING.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:76bfe83b21f0c666e957f760",
+      "at": "2026-11-09T20:19:01Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c06a292939444bd593b37c51b7ca20e4",
+      "session_id": "02c14526fd7648f49c893339d8cfcf9e"
+    }
+  ]
+}

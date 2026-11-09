@@ -37905,6 +37905,13 @@
       "status": "dropped",
       "title": "Complete unpooled Theseus observations and verify end-to-end extraction closeout"
     },
+    "theseus-pr-46-owner-full-diff-review-20261109": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Theseus: owner full-diff review of PR #46, which was merged without it"
+    },
     "theseus-promotion-review-path-benchbox-20261102": {
       "claim": null,
       "needs": [
