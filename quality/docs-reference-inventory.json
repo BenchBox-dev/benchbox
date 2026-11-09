@@ -238,22 +238,6 @@
    ]
   },
   {
-   "disposition": "governance-stays",
-   "kinds": {
-    "pattern": 1
-   },
-   "occurrences": 1,
-   "path": ".github/oracle-reviewers.yml",
-   "rule": "oracle-exposure-exemptions",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "pattern",
-     "target": "docs/*.md"
-    }
-   ]
-  },
-  {
    "disposition": "wiring-updated",
    "kinds": {
     "extra": 1,
@@ -4298,25 +4282,25 @@
    "contract-replaced": 1,
    "contract-tooling": 6,
    "fixture-data": 40,
-   "governance-stays": 12,
+   "governance-stays": 11,
    "historical-record": 118,
    "lock-test": 4,
    "prose-link-pinned": 12,
    "site-pipeline-cutover": 4,
    "wiring-updated": 31
   },
-  "files": 228,
+  "files": 227,
   "kinds": {
    "built-url": 29037,
    "dir": 163,
    "extra": 37,
    "file": 1378,
    "generated": 3,
-   "pattern": 333,
+   "pattern": 332,
    "root": 200,
    "unresolved": 2072
   },
-  "references": 33223,
+  "references": 33222,
   "unclassified": 0
  }
 }
