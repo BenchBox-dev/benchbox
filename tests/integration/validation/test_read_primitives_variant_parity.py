@@ -392,8 +392,12 @@ def test_clickhouse_struct_construction_matches_duckdb_reference(
     )
     contract = read_primitives_contracts["struct_construction"]
 
-    flattened = [(brand, _flatten_named_struct(contact), acctbal) for brand, contact, acctbal in comparison_rows]
-    assert _canonical_rows(flattened, contract) == _canonical_rows(reference_rows, contract)
+    reference = [
+        (key, tuple(contact[field] for field in ("c_name", "c_address", "c_phone")), acctbal)
+        for key, contact, acctbal in reference_rows
+    ]
+    flattened = [(key, _flatten_named_struct(contact), acctbal) for key, contact, acctbal in comparison_rows]
+    assert _canonical_rows(flattened, contract) == _canonical_rows(reference, contract)
 
 
 def test_clickhouse_list_transform_matches_duckdb_reference(
