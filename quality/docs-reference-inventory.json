@@ -2660,13 +2660,13 @@
    "disposition": "fixture-data",
    "kinds": {
     "file": 1,
-    "pattern": 7,
+    "pattern": 8,
     "unresolved": 1
    },
-   "occurrences": 12,
+   "occurrences": 13,
    "path": "tests/fixtures/fast_tier_baseline/tests-03.json",
    "rule": "test-sample-data",
-   "target_count": 9,
+   "target_count": 10,
    "targets": [
     {
      "kind": "unresolved",
@@ -2695,6 +2695,10 @@
     {
      "kind": "pattern",
      "target": "docs/publish-exclusions.txt]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/release.md]"
     },
     {
      "kind": "file",
@@ -4219,11 +4223,11 @@
    "extra": 37,
    "file": 1378,
    "generated": 3,
-   "pattern": 332,
+   "pattern": 333,
    "root": 200,
    "unresolved": 2060
   },
-  "references": 33210,
+  "references": 33211,
   "unclassified": 0
  }
 }
