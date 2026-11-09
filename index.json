@@ -37868,6 +37868,15 @@
       "status": "done",
       "title": "Prove trusted hosted review and separate gate resolution without live gateway access"
     },
+    "theseus-known-defect-base-reproduction-proof-20261109": {
+      "claim": null,
+      "needs": [
+        "theseus-trusted-candidate-evaluator-20261109"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Prove a known defect exists at the base by reproducing it in a trusted isolated runner"
+    },
     "theseus-known-defects-pre-existing-20261109": {
       "claim": null,
       "needs": [],

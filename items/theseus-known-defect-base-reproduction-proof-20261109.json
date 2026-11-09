@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "A known-defect candidate can be reproduced against the base commit in an isolated runner without secrets.",
+    "A disguised new defect whose trigger is outside the cited lines is detected and blocks.",
+    "Activation is a reviewed owner decision."
+  ],
+  "description": "Owner chose reviewer judgement plus mechanical checks as the proof that a finding is pre-existing (theseus-known-defects-pre-existing-20261109). That accepts that uncited triggers (a new caller, input or config change, a guard removed elsewhere, a doc change) can pass as known. A stronger proof is to reproduce the defect against the base commit, which needs the same trusted isolated, secret-free runner as theseus-trusted-candidate-evaluator-20261109.",
+  "links": [
+    "theseus-known-defects-pre-existing-20261109"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:82b9fe75d2d6312f25803cd5",
+      "at": "2026-11-09T22:21:29Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "96d48942fca34f0387a10f894a9c4503",
+      "session_id": "ff599f834923406da7e6bd54d0a05e94"
+    }
+  ]
+}
