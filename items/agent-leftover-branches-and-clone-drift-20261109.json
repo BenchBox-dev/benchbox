@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Each listed branch is confirmed merged or abandoned, then deleted locally and remotely with approval.",
+    "The primary clone's develop equals origin/develop.",
+    "Saved patches are reviewed and removed or kept on purpose."
+  ],
+  "context": "Housekeeping only.",
+  "description": "Local branches left after merged work: `chore/smoke-seeded-credential` in BenchBox and `fix/omp-candidate-and-bump-retry` and `fix/forced-fixed-blocking-verdict` in the Theseus clone; their remote branches may also remain. The primary BenchBox clone's `develop` was behind `origin/develop`. Stray edits in the primary clone have recurred and were saved as patches under ~/Developer/benchbox-main-clone-*.patch. Deleting branches or resetting the clone needs owner approval.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:76bfe83b21f0c666e957f760",
+      "at": "2026-11-09T20:19:22Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "483b8665cdf64b4ebf6a4ee3f05548ae",
+      "session_id": "02c14526fd7648f49c893339d8cfcf9e"
+    }
+  ]
+}

@@ -9546,6 +9546,13 @@
       "status": "done",
       "title": "The instruction-budget guard did not stop a PR that landed develop 88 bytes over, blocking every commit repo-wide"
     },
+    "agent-leftover-branches-and-clone-drift-20261109": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Clean up leftover local branches and the stale primary-clone develop"
+    },
     "agent-relative-path-primary-clone-writes": {
       "claim": null,
       "needs": [],
