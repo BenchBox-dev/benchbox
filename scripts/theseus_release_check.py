@@ -116,7 +116,7 @@ def verify(lock: Mapping[str, Any], fetch: Fetch) -> list[str]:
 
 
 def _release_tree(root: Path) -> bool:
-    if (root / ".github" / "theseus-lock.json").exists() or (root / ".github" / "oracle-reviewers.yml").exists():
+    if (root / ".github" / "theseus-lock.json").exists() or (root / ".github" / "review.yml").exists():
         return False
     print("release tree: no Theseus lock; skipping", file=sys.stderr)
     return True

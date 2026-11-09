@@ -1431,7 +1431,7 @@ class _UsageApi:
                     "required_status_checks": [
                         {"context": "core"},
                         {"context": "hold"},
-                        {"context": "oracle-gate", "integration_id": 5},
+                        {"context": "review-gate", "integration_id": 5},
                     ]
                 },
             }
@@ -1694,31 +1694,31 @@ def _two_pr_api() -> _UsageApi:
         "A": [_green_check("core", _at(10, 2), _at(10, 20)), _green_check("hold", _at(10, 3), _at(10, 5))],
         "B": [_green_check("core", _at(12, 2), _at(12, 20)), _green_check("hold", _at(12, 3), _at(12, 5))],
     }
-    api.statuses = {"B": [{"context": "oracle-gate", "state": "success", "created_at": _at(12, 40)}]}
+    api.statuses = {"B": [{"context": "review-gate", "state": "success", "created_at": _at(12, 40)}]}
     return api
 
 
 def test_required_contexts_come_from_the_ruleset_and_historical_heads_use_the_stated_rule() -> None:
     api = _two_pr_api()
     collection = _collect(api, USAGE_DAY, USAGE_DAY + timedelta(hours=14))
-    assert collection.required["contexts"] == ["core", "hold", "oracle-gate"]
+    assert collection.required["contexts"] == ["core", "hold", "review-gate"]
     assert collection.required["contexts"] != list(metrics.REQUIRED_CONTEXT_NAMES)
     assert collection.required["source"] == "live_ruleset"
     assert collection.required["endpoint"] == "/repos/o/r/rules/branches/develop"
     assert collection.required["ruleset_ids"] == [9]
-    assert collection.required["integration_ids"]["oracle-gate"] == 5
+    assert collection.required["integration_ids"]["review-gate"] == 5
 
     section = metrics.build_usage_report(collection)["pull_requests"]
     policy = section["context_policy"]
     assert policy["effective_from_basis"] == {
         "core": "first_observation",
         "hold": "first_observation",
-        "oracle-gate": "first_observation",
+        "review-gate": "first_observation",
     }
-    assert policy["effective_from"]["oracle-gate"] == _at(12, 1)
+    assert policy["effective_from"]["review-gate"] == _at(12, 1)
     assert "proxy" in section["timestamp_source"]
     heads = {row["sha"]: row for row in section["head_rows"]}
-    assert heads["A"]["excluded_contexts"] == ["oracle-gate"]
+    assert heads["A"]["excluded_contexts"] == ["review-gate"]
     assert heads["A"]["status"] == "green"
     assert heads["A"]["seconds_to_all_required_ready"] == 19 * 60
     assert heads["B"]["seconds_to_ci_compute_ready"] == 19 * 60
@@ -1726,9 +1726,9 @@ def test_required_contexts_come_from_the_ruleset_and_historical_heads_use_the_st
     assert heads["B"]["ci_compute_contexts"] == ["core", "hold"]
     assert section["per_pr"]["seconds_to_all_required_ready"]["n"] == 2
 
-    collection.effective_from_override = {"oracle-gate": USAGE_DAY}
+    collection.effective_from_override = {"review-gate": USAGE_DAY}
     overridden = metrics.build_usage_report(collection)["pull_requests"]
-    assert overridden["context_policy"]["effective_from_basis"]["oracle-gate"] == "override"
+    assert overridden["context_policy"]["effective_from_basis"]["review-gate"] == "override"
     assert {row["sha"]: row["status"] for row in overridden["head_rows"]} == {"A": "unresolved", "B": "green"}
     assert overridden["pr_status_counts"] == {"green": 1, "unresolved": 1}
 

@@ -53,13 +53,13 @@ def _develop_expected():
     expected = parse_expected_rulesets((REPO_ROOT / "docs" / "internal" / "repo-admin-settings.md").read_text())[
         "develop-squash-only"
     ]
-    base = tuple(check for check in expected.required_checks if not check.startswith("oracle-"))
-    return replace(expected, required_checks=(*base, "oracle-gate"))
+    base = tuple(check for check in expected.required_checks if not check.startswith("review-"))
+    return replace(expected, required_checks=(*base, "review-gate"))
 
 
 def _status_check(context: str) -> dict:
     check: dict = {"context": context}
-    if context == "oracle-gate":
+    if context == "review-gate":
         check["integration_id"] = 5201041
     return check
 
@@ -68,7 +68,7 @@ def _live_develop_ruleset(
     *,
     review_count: int = 0,
     thread_resolution: bool = True,
-    oracle_contexts: tuple[str, ...] = ("oracle-gate",),
+    gate_contexts: tuple[str, ...] = ("review-gate",),
 ) -> dict:
     return {
         "name": "develop-squash-only",
@@ -93,9 +93,8 @@ def _live_develop_ruleset(
                         {"context": "results-data"},
                         {"context": "docs"},
                         {"context": "tooling"},
-                        *(_status_check(context) for context in oracle_contexts),
+                        *(_status_check(context) for context in gate_contexts),
                         {"context": "hold"},
-                        {"context": "review-gate", "integration_id": 5201041},
                         {"context": "release-v2 probe", "integration_id": 15368},
                     ],
                 },
@@ -121,37 +120,37 @@ def test_develop_review_rule_passes_when_live_rule_is_present():
     assert compare_ruleset(_develop_expected(), _live_develop_ruleset()) == []
 
 
-def _expected_with_oracle_contexts(*contexts: str):
+def _expected_with_gate_contexts(*contexts: str):
     expected = _develop_expected()
-    base = tuple(check for check in expected.required_checks if not check.startswith("oracle-"))
+    base = tuple(check for check in expected.required_checks if not check.startswith("review-"))
     return replace(expected, required_checks=(*base, *contexts))
 
 
-@pytest.mark.parametrize("contexts", [("oracle-gate",), ("oracle-review", "oracle-gate")])
-def test_develop_drift_passes_when_the_app_bound_gate_is_required(contexts):
-    expected = _expected_with_oracle_contexts(*contexts)
-    live = _live_develop_ruleset(oracle_contexts=contexts)
+@pytest.mark.parametrize("contexts", [("review-gate",), ("oracle-gate", "review-gate")])
+def test_develop_drift_passes_when_the_app_bound_gate_is_required_with_or_without_the_legacy_gate(contexts):
+    expected = _develop_expected()
+    live = _live_develop_ruleset(gate_contexts=contexts)
 
     assert compare_ruleset(expected, live) == []
 
 
-def test_oracle_review_alone_is_a_blocking_drift():
-    expected = _expected_with_oracle_contexts("oracle-review")
-    live = _live_develop_ruleset(oracle_contexts=("oracle-review",))
+def test_the_legacy_gate_alone_is_a_blocking_drift():
+    expected = _develop_expected()
+    live = _live_develop_ruleset(gate_contexts=("oracle-gate",))
 
     findings = compare_ruleset(expected, live)
 
-    message = "required_status_checks must include oracle-gate scoped to the oracle App"
+    message = "required_status_checks must include review-gate scoped to the review App"
     assert message in blocking_findings(findings)
 
 
-def test_missing_oracle_contexts_are_blocking_despite_stale_expected_contexts():
-    expected = _expected_with_oracle_contexts()
-    live = _live_develop_ruleset(oracle_contexts=())
+def test_missing_gate_contexts_are_blocking_despite_stale_expected_contexts():
+    expected = _expected_with_gate_contexts()
+    live = _live_develop_ruleset(gate_contexts=())
 
     findings = compare_ruleset(expected, live)
 
-    message = "required_status_checks must include oracle-gate scoped to the oracle App"
+    message = "required_status_checks must include review-gate scoped to the review App"
     assert message in findings
     assert message in blocking_findings(findings)
 
@@ -396,12 +395,12 @@ def test_tag_creation_findings_can_be_switched_to_blocking_explicitly():
     assert blocking_findings(findings) == findings
 
 
-def test_oracle_gate_without_the_oracle_app_binding_is_blocking():
-    expected = _expected_with_oracle_contexts("oracle-gate")
-    live = _live_develop_ruleset(oracle_contexts=("oracle-gate",))
+def test_review_gate_without_the_review_app_binding_is_blocking():
+    expected = _expected_with_gate_contexts("review-gate")
+    live = _live_develop_ruleset(gate_contexts=("review-gate",))
     for check in live["rules"][1]["parameters"]["required_status_checks"]:
         check.pop("integration_id", None)
 
     findings = compare_ruleset(expected, live)
 
-    assert "required_status_checks must include oracle-gate scoped to the oracle App" in blocking_findings(findings)
+    assert "required_status_checks must include review-gate scoped to the review App" in blocking_findings(findings)

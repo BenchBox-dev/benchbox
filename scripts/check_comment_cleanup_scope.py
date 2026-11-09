@@ -1587,11 +1587,9 @@ def immutable_dependency_artifacts(
     return excluded
 
 
-ORACLE_GATE_CONTEXT = "oracle-gate"
-ORACLE_LOGIN = "benchbox-oracle"
-_ORACLE_VERDICT = re.compile(
-    r"### (?:review-verdict|oracle-verdict|oracle-review-shadow): ([a-z]+) for `([0-9a-f]{40})`"
-)
+REVIEW_GATE_CONTEXT = "review-gate"
+REVIEW_APP_LOGIN = "benchbox-oracle"
+_REVIEW_VERDICT = re.compile(r"### review-verdict: ([a-z]+) for `([0-9a-f]{40})`")
 
 
 def _github_api(token: str, path: str) -> Any:
@@ -1607,7 +1605,7 @@ def _github_api(token: str, path: str) -> Any:
         return json.load(response)
 
 
-def _oracle_verdict_covers(token: str, repo: str, number: Any, head: str) -> bool:
+def _review_verdict_covers(token: str, repo: str, number: Any, head: str) -> bool:
     page = 1
     verdicts: list[tuple[str, str]] = []
     while True:
@@ -1620,11 +1618,11 @@ def _oracle_verdict_covers(token: str, repo: str, number: Any, head: str) -> boo
             user = review.get("user") or {}
             login = user.get("login") or ""
             login = login[:-5] if login.endswith("[bot]") else login
-            if login != ORACLE_LOGIN or user.get("type") != "Bot":
+            if login != REVIEW_APP_LOGIN or user.get("type") != "Bot":
                 continue
             if review.get("commit_id") != head or review.get("state") in {"PENDING", "DISMISSED"}:
                 continue
-            match = _ORACLE_VERDICT.match(review.get("body") or "")
+            match = _REVIEW_VERDICT.match(review.get("body") or "")
             if match and match.group(2) == head:
                 verdicts.append((review.get("submitted_at") or "", match.group(1)))
         if len(reviews) < 100 or page >= 10:
@@ -1658,19 +1656,19 @@ def scanned_tree_is_reviewed_head(root: Path, head: str) -> bool:
         return False
 
 
-def _oracle_gate_covers(token: str, repo: str, head: str) -> bool:
+def _review_gate_covers(token: str, repo: str, head: str) -> bool:
     page = 1
     while True:
         statuses = _github_api(token, f"/repos/{repo}/commits/{head}/statuses?per_page=100&page={page}")
         if not isinstance(statuses, list):
             return False
         for status in statuses:
-            if not isinstance(status, dict) or status.get("context") != ORACLE_GATE_CONTEXT:
+            if not isinstance(status, dict) or status.get("context") != REVIEW_GATE_CONTEXT:
                 continue
             creator = status.get("creator") or {}
             login = creator.get("login") or ""
             login = login[:-5] if login.endswith("[bot]") else login
-            if login != ORACLE_LOGIN or creator.get("type") != "Bot":
+            if login != REVIEW_APP_LOGIN or creator.get("type") != "Bot":
                 continue
             return status.get("state") == "success"
         if len(statuses) < 100 or page >= 10:
@@ -1678,7 +1676,7 @@ def _oracle_gate_covers(token: str, repo: str, head: str) -> bool:
         page += 1
 
 
-def oracle_review_covers(root: Path) -> bool:
+def review_covers(root: Path) -> bool:
     try:
         event_path = os.environ.get("GITHUB_EVENT_PATH")
         repo = os.environ.get("GITHUB_REPOSITORY")
@@ -1693,7 +1691,7 @@ def oracle_review_covers(root: Path) -> bool:
             return False
         if not scanned_tree_is_reviewed_head(root, head):
             return False
-        return _oracle_gate_covers(token, repo, head) and _oracle_verdict_covers(token, repo, number, head)
+        return _review_gate_covers(token, repo, head) and _review_verdict_covers(token, repo, number, head)
     except (OSError, ValueError, KeyError, TypeError, AttributeError):
         return False
 
@@ -2036,7 +2034,7 @@ def main(argv: list[str] | None = None) -> int:
                 ]
             except (ValueError, TypeError, KeyError, AttributeError) as error:
                 raise PolicyError(f"invalid trusted comment-policy: {error}") from error
-            reviewed = oracle_review_covers(root)
+            reviewed = review_covers(root)
             snapshot = immutable_external_ownership(
                 root,
                 args.base,

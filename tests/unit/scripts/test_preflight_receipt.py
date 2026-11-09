@@ -407,7 +407,7 @@ def open_world(tmp_path: Path) -> dict[str, object]:
         "uv": STUB_UV,
         "git": _stub_git(real_git),
         "gh": "#!/bin/sh\nexit 1\n",
-        "python3": f'#!/bin/sh\ncase "$1" in *oracle_local_review.py) exit 0 ;; esac\nexec {sys.executable} "$@"\n',
+        "python3": f'#!/bin/sh\ncase "$1" in *local_review.py) exit 0 ;; esac\nexec {sys.executable} "$@"\n',
     }
     for name, text in stubs.items():
         (bin_dir / name).write_text(text, encoding="utf-8")

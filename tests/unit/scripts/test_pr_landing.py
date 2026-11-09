@@ -181,35 +181,35 @@ def _soundness_head(tmp_path: Path) -> tuple[Path, str, str]:
 
 
 @pytest.mark.parametrize("decision", ["", "APPROVED"])
-def test_ready_accepts_a_soundness_pr_when_the_oracle_gate_passed(tmp_path: Path, decision: str) -> None:
+def test_ready_accepts_a_soundness_pr_when_the_review_gate_passed(tmp_path: Path, decision: str) -> None:
     repo, base, head = _soundness_head(tmp_path)
-    evidence = _evidence(head, review_decision=decision, oracle_gate_state="success")
+    evidence = _evidence(head, review_decision=decision, review_gate_state="success")
 
     assert landing.ready_failures(_identity(repo, head, base), head, evidence, repo) == []
 
 
 @pytest.mark.parametrize("state", [None, "pending", "failure", "error"])
-def test_ready_refuses_a_soundness_pr_without_a_passing_oracle_gate(tmp_path: Path, state: str | None) -> None:
+def test_ready_refuses_a_soundness_pr_without_a_passing_review_gate(tmp_path: Path, state: str | None) -> None:
     repo, base, head = _soundness_head(tmp_path)
-    evidence = _evidence(head, review_decision="", oracle_gate_state=state)
+    evidence = _evidence(head, review_decision="", review_gate_state=state)
 
     failures = landing.ready_failures(_identity(repo, head, base), head, evidence, repo)
 
-    assert any("oracle-gate" in failure for failure in failures)
+    assert any("review-gate" in failure for failure in failures)
 
 
-def test_ready_ignores_the_oracle_gate_for_a_non_soundness_pr(tmp_path: Path) -> None:
+def test_ready_ignores_the_review_gate_for_a_non_soundness_pr(tmp_path: Path) -> None:
     repo = _repo(tmp_path / "r")
     head = subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
     ).stdout.strip()
 
-    assert landing.ready_failures(_identity(repo, head), head, _evidence(head, oracle_gate_state=None), repo) == []
+    assert landing.ready_failures(_identity(repo, head), head, _evidence(head, review_gate_state=None), repo) == []
 
 
 def test_ready_still_refuses_a_soundness_pr_with_requested_changes_despite_a_passing_gate(tmp_path: Path) -> None:
     repo, base, head = _soundness_head(tmp_path)
-    evidence = _evidence(head, review_decision="CHANGES_REQUESTED", oracle_gate_state="success")
+    evidence = _evidence(head, review_decision="CHANGES_REQUESTED", review_gate_state="success")
 
     failures = landing.ready_failures(_identity(repo, head, base), head, evidence, repo)
 
@@ -251,12 +251,12 @@ def test_ready_rejects_late_review_unpublished_and_stale_checks(tmp_path: Path) 
     assert any("not expected head" in f for f in failures)
 
 
-def test_ready_keeps_the_hold_label_on_a_soundness_pr_whose_oracle_gate_passed(tmp_path: Path) -> None:
+def test_ready_keeps_the_hold_label_on_a_soundness_pr_whose_review_gate_passed(tmp_path: Path) -> None:
     repo, base, head = _soundness_head(tmp_path)
     failures = landing.ready_failures(
         _identity(repo, head, base),
         head,
-        _evidence(head, hold_labels=["no-auto-merge"], oracle_gate_state="success"),
+        _evidence(head, hold_labels=["no-auto-merge"], review_gate_state="success"),
         repo,
     )
     assert any("no-auto-merge" in f for f in failures)
@@ -683,7 +683,7 @@ def test_enqueue_refuses_a_gate_evaluation_that_cannot_run_without_arming() -> N
 
 
 def test_enqueue_refuses_a_gate_evaluation_that_does_not_pass_without_arming() -> None:
-    run = FakeRun([(3, "oracle-gate: waiting for omp bump evidence")])
+    run = FakeRun([(3, "review-gate: waiting for omp bump evidence")])
     with pytest.raises(landing.LandingError, match="does not pass"):
         landing.enqueue_pr(run, "o/r", 3, HEAD, HEAD)
     assert all("--auto" not in call for call in run.calls)
@@ -746,7 +746,7 @@ def _lines(records: list[dict]) -> str:
 
 
 def _ruleset_contexts() -> str:
-    return "\n".join([*landing.REQUIRED_CONTEXTS, "oracle-review"])
+    return "\n".join([*landing.REQUIRED_CONTEXTS, "review"])
 
 
 def _live_checks_payload(head: str, conclusion: str = "success") -> str:
@@ -960,11 +960,11 @@ def test_verify_evidence_live_refuses_a_hidden_failure_on_a_ruleset_check_outsid
     records = _live_check_records(HEAD)
     template = records[0]
     records += [
-        {**template, "id": 5, "name": "oracle-review", "check_suite": {"id": 51}, "started_at": "2026-09-08T20:00:00Z"},
+        {**template, "id": 5, "name": "review", "check_suite": {"id": 51}, "started_at": "2026-09-08T20:00:00Z"},
         {
             **template,
             "id": 6,
-            "name": "oracle-review",
+            "name": "review",
             "conclusion": "failure",
             "check_suite": {"id": 52},
             "started_at": "2026-09-08T19:00:00Z",
@@ -972,7 +972,7 @@ def test_verify_evidence_live_refuses_a_hidden_failure_on_a_ruleset_check_outsid
         },
     ]
     run = FakeRun([(0, _lines(records)), (0, _ruleset_contexts())])
-    with pytest.raises(landing.LandingError, match=r"oracle-review.*actions/runs/88.*make pr-rerun"):
+    with pytest.raises(landing.LandingError, match=r"review.*actions/runs/88.*make pr-rerun"):
         landing.verify_evidence_live(run, "o/r", _live_pr(HEAD), _evidence(HEAD))
 
 
@@ -1294,7 +1294,7 @@ with open(os.environ["CALLS"], "a", encoding="utf-8") as handle:
     handle.write(json.dumps([os.path.basename(sys.argv[0]), sys.argv[1:]]) + "\\n")
 if "--verify-parent" in sys.argv:
     sys.exit(int(os.environ.get("VERIFY_EXIT", "0")))
-if "scripts/oracle_local_review.py" in sys.argv:
+if "scripts/local_review.py" in sys.argv:
     if os.environ.get("LOCAL_REVIEW_CAUSE"):
         with open(sys.argv[sys.argv.index("--unavailable-out") + 1], "w", encoding="utf-8") as handle:
             handle.write("availability: " + os.environ["LOCAL_REVIEW_CAUSE"] + "\\n")
@@ -1422,15 +1422,13 @@ def test_pr_open_runs_the_local_oracle_review_before_any_push(tmp_path: Path) ->
 
     assert result.returncode == 0
     review_index = next(
-        index
-        for index, (name, args) in enumerate(calls)
-        if name == "python3" and "scripts/oracle_local_review.py" in args
+        index for index, (name, args) in enumerate(calls) if name == "python3" and "scripts/local_review.py" in args
     )
     publish_index = next(index for index, (_, args) in enumerate(calls) if "scripts/pr_open_rest.py" in args)
     assert review_index < publish_index
     review = calls[review_index][1]
     assert {
-        ("--policy", ".github/oracle-reviewers.yml"),
+        ("--policy", ".github/review.yml"),
         ("--base-ref", "origin/develop"),
     } <= set(zip(review, review[1:], strict=False))
     assert ("--head", "1111111111111111111111111111111111111111") in set(zip(review, review[1:], strict=False))
@@ -1444,7 +1442,7 @@ def test_pr_open_with_a_parent_reviews_against_it_and_opens_a_draft_on_it(tmp_pa
     assert result.returncode == 0
     names = [(name, args) for name, args in calls if name in ("uv", "python3")]
     verify = next(i for i, (_, args) in enumerate(names) if "--verify-parent" in args)
-    review = next(i for i, (_, args) in enumerate(names) if "scripts/oracle_local_review.py" in args)
+    review = next(i for i, (_, args) in enumerate(names) if "scripts/local_review.py" in args)
     publish = next(
         i for i, (_, args) in enumerate(names) if "scripts/pr_open_rest.py" in args and "--verify-parent" not in args
     )
@@ -1464,7 +1462,7 @@ def test_pr_open_with_a_refused_parent_stops_before_the_review_and_any_push(
     result, calls, pushes = _run_pr_open_result(tmp_path, "created", 0, "PARENT=feat/parent")
 
     assert result.returncode != 0
-    assert not [args for name, args in calls if name == "python3" and "scripts/oracle_local_review.py" in args]
+    assert not [args for name, args in calls if name == "python3" and "scripts/local_review.py" in args]
     assert not [args for _, args in calls if "scripts/pr_open_rest.py" in args and "--verify-parent" not in args]
     assert pushes == []
 
@@ -1477,7 +1475,7 @@ def test_pr_open_refuses_before_any_push_when_the_local_oracle_review_does_not_c
     result, calls, pushes = _run_pr_open_result(tmp_path, "created", exit_code)
 
     assert result.returncode != 0
-    assert "local oracle review did not clear this head" in result.stderr.decode()
+    assert "local review did not clear this head" in result.stderr.decode()
     assert pushes == []
     assert not [args for _, args in calls if "scripts/pr_open_rest.py" in args]
 
@@ -1507,7 +1505,7 @@ def test_pr_open_still_refuses_unless_the_unavailable_exit_names_an_availability
     result, calls, pushes = _run_pr_open_result(tmp_path, "created", exit_code)
 
     assert result.returncode != 0
-    assert "local oracle review did not clear this head" in result.stderr.decode()
+    assert "local review did not clear this head" in result.stderr.decode()
     assert pushes == []
     assert not [args for _, args in calls if "scripts/pr_open_rest.py" in args]
 
@@ -1519,7 +1517,7 @@ def test_pr_open_pushes_and_arms_the_reviewed_sha_when_the_branch_ref_moves_duri
 
     assert result.returncode == 0
     assert pushes == [f"push origin {reviewed}:refs/heads/feat/x"]
-    review = next(args for name, args in calls if name == "python3" and "scripts/oracle_local_review.py" in args)
+    review = next(args for name, args in calls if name == "python3" and "scripts/local_review.py" in args)
     assert ("--head", reviewed) in set(zip(review, review[1:], strict=False))
     (arm,) = [m for m in _makes(calls) if "pr-arm" in m]
     assert f"HEAD={reviewed}" in arm
@@ -1529,19 +1527,19 @@ def test_pr_open_never_selects_the_reviewer_copy() -> None:
     makefile = make_targets.makefile_sources(ROOT)
     start = makefile.index(".PHONY: pr-open\n")
     recipe = makefile[start : makefile.index("\n\n", start)]
-    assert "scripts/oracle_local_review.py" in recipe
+    assert "scripts/local_review.py" in recipe
     assert "--reviewer-ref" not in recipe
 
 
 @pytest.mark.parametrize(
     ("description", "expected"),
     [
-        (f"oracle-review: waiting for the oracle's verdict on {'a' * 40}, or a stand-in attestation", "pending"),
-        (f"oracle-review: waiting for the oracle's verdict on {'b' * 40}, or a stand-in attestation", "failure"),
         (f"review: waiting for the review's verdict on {'a' * 40}, or a stand-in attestation", "pending"),
         (f"review: waiting for the review's verdict on {'b' * 40}, or a stand-in attestation", "failure"),
-        ("oracle-review: the oracle's latest review reports SHIP WITH FIXES, not success", "failure"),
-        ("oracle-review: error: could not fetch reviews", "failure"),
+        (f"review: waiting for the review's verdict on {'a' * 40}, or a stand-in attestation", "pending"),
+        (f"review: waiting for the review's verdict on {'b' * 40}, or a stand-in attestation", "failure"),
+        ("review: the oracle's latest review reports SHIP WITH FIXES, not success", "failure"),
+        ("review: error: could not fetch reviews", "failure"),
         ("", "failure"),
     ],
 )
@@ -1549,25 +1547,25 @@ def test_live_statuses_distinguish_waiting_from_failed_oracle(description: str, 
     def run(cmd: list[str]) -> tuple[int, str]:
         assert "--paginate" in cmd
         assert cmd[-1] == f"repos/o/r/commits/{'a' * 40}/statuses?per_page=100"
-        return 0, f"oracle-gate\tfailure\tbenchbox-oracle[bot]\tBot\t{description}\n"
+        return 0, f"review-gate\tfailure\tbenchbox-oracle[bot]\tBot\t{description}\n"
 
-    assert landing.live_commit_statuses(run, "o/r", "a" * 40) == {"oracle-gate": expected}
+    assert landing.live_commit_statuses(run, "o/r", "a" * 40) == {"review-gate": expected}
 
 
 @pytest.mark.parametrize(("login", "account_type"), [("joeharris76", "User"), ("benchbox-oracle", "User"), ("", "")])
-def test_live_statuses_ignore_an_oracle_gate_status_the_app_did_not_create(login: str, account_type: str) -> None:
+def test_live_statuses_ignore_an_review_gate_status_the_app_did_not_create(login: str, account_type: str) -> None:
     def run(cmd: list[str]) -> tuple[int, str]:
         return 0, (
-            f"oracle-gate\tsuccess\t{login}\t{account_type}\tforged\n"
-            "oracle-gate\tfailure\tbenchbox-oracle[bot]\tBot\toracle-review: waiting\n"
+            f"review-gate\tsuccess\t{login}\t{account_type}\tforged\n"
+            "review-gate\tfailure\tbenchbox-oracle[bot]\tBot\treview: waiting\n"
         )
 
-    assert landing.live_commit_statuses(run, "o/r", "a" * 40) == {"oracle-gate": "failure"}
+    assert landing.live_commit_statuses(run, "o/r", "a" * 40) == {"review-gate": "failure"}
 
 
-def test_live_statuses_without_an_app_oracle_gate_status_omit_the_context() -> None:
+def test_live_statuses_without_an_app_review_gate_status_omit_the_context() -> None:
     def run(cmd: list[str]) -> tuple[int, str]:
-        return 0, "oracle-gate\tsuccess\tjoeharris76\tUser\tforged\n"
+        return 0, "review-gate\tsuccess\tjoeharris76\tUser\tforged\n"
 
     assert landing.live_commit_statuses(run, "o/r", "a" * 40) == {}
 

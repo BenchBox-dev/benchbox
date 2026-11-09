@@ -43,7 +43,7 @@ jobs:
       environment: oracle
       theseus_ref: 2900aa67639f792bce5a9abbe58f1c84ab3dd597
       gated_base: develop
-      policy_path: .github/oracle-reviewers.yml
+      policy_path: .github/review.yml
       tailscale_tag: tag:oracle-ci
     secrets:
       REVIEW_APP_ID: ${{ secrets.ORACLE_APP_ID }}

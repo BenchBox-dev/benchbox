@@ -9,7 +9,7 @@
   "rules": [
     {
       "id": "oracle-exposure-exemptions",
-      "match": [".github/oracle-reviewers.yml"],
+      "match": [".github/review.yml", ".github/oracle-reviewers.yml"],
       "disposition": "governance-stays",
       "reason": "Trusted oracle exposure policy matches documentation paths without reading site-owned page content or changing review scope."
     },

@@ -99,9 +99,9 @@ rebased before it can land:
    `git rebase --onto origin/develop <old parent tip>` and force-push with
    `--force-with-lease` on the feature branch only.
 3. Mark it ready for review (`gh pr ready`). `make pr-arm` rejects drafts, and
-   the transition re-runs the base guard and starts an oracle review.
+   the transition re-runs the base guard and starts a review.
 4. Wait for CI on the new head. For a soundness-path change, also wait for an
-   oracle success review on the rebased head. The oracle does not review
+   success review on the rebased head. The reviewer does not review
    drafts or PRs based on a parent branch, so this is the change's first
    review.
 5. Arm it with `make pr-arm`.
