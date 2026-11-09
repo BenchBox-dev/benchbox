@@ -47,7 +47,7 @@ make agent-write-preflight
 gateway_rc=0
 sh scripts/cloud_gateway.sh up || gateway_rc=$?
 [ "$gateway_rc" -eq 0 ] ||
-  printf 'cloud-bootstrap: warning: the oracle gateway setup reported a problem; bootstrap continues without it\n' >&2
+  printf 'cloud-bootstrap: warning: the review gateway setup reported a problem; bootstrap continues without it\n' >&2
 
 {
   printf 'head=%s\n' "$(git rev-parse HEAD)"

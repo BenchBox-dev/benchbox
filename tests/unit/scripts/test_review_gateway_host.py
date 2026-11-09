@@ -22,7 +22,7 @@ from tests.utilities.posix_shell import run_posix_shell
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPTS = REPO_ROOT / "_project" / "scripts"
-HOST_RELATIVE = "_project/scripts/oracle_gateway_host.sh"
+HOST_RELATIVE = "_project/scripts/review_gateway_host.sh"
 
 pytestmark = [
     pytest.mark.unit,
@@ -407,18 +407,18 @@ def host(tmp_path: Path, mirror: dict[str, bytes]) -> dict:
     origin = tmp_path / "origin"
     origin.mkdir()
     _git(origin, "init", "-q", "-b", "develop")
-    shutil.copy2(SCRIPTS / "oracle_gateway_host.sh", _prepare(origin, HOST_RELATIVE))
+    shutil.copy2(SCRIPTS / "review_gateway_host.sh", _prepare(origin, HOST_RELATIVE))
     shutil.copy2(SCRIPTS / "theseus_bootstrap.py", _prepare(origin, BOOTSTRAP_RELATIVE))
     _write(origin, ".github/theseus-lock.json", _lock())
-    _write(origin, ".github/oracle-reviewers.yml", _policy(good_omp))
-    _write(origin, ".github/oracle-omp-config.yml", _config("anthropic/from-develop"))
+    _write(origin, ".github/review.yml", _policy(good_omp))
+    _write(origin, ".github/review-omp-config.yml", _config("anthropic/from-develop"))
     _git(origin, "add", ".")
     _git(origin, "commit", "-q", "-m", "develop")
     checkout = tmp_path / "checkout"
     _git(tmp_path, "clone", "-q", str(origin), str(checkout))
     _git(checkout, "switch", "-q", "-c", "feature")
-    _write(checkout, ".github/oracle-reviewers.yml", _policy(decoy_omp))
-    _write(checkout, ".github/oracle-omp-config.yml", _config("anthropic/from-feature"))
+    _write(checkout, ".github/review.yml", _policy(decoy_omp))
+    _write(checkout, ".github/review-omp-config.yml", _config("anthropic/from-feature"))
     _write(checkout, ".github/theseus-lock.json", "not a lock")
     _git(checkout, "add", ".")
     _git(checkout, "commit", "-q", "-m", "feature")
@@ -536,7 +536,7 @@ def test_revoking_a_client_whose_token_file_is_already_gone_still_removes_its_en
     assert list(json.loads((host["dir"] / "clients.json").read_text(encoding="utf-8"))) == ["review-ci", "review-local"]
 
 
-def test_revoking_refuses_oracle_ci_and_unknown_names_and_changes_nothing(host: dict) -> None:
+def test_revoking_refuses_review_ci_and_unknown_names_and_changes_nothing(host: dict) -> None:
     before = (host["dir"] / "clients.json").read_bytes()
     outside = host["dir"].parent / "x-client.token"
     outside.write_text("keep", encoding="utf-8")
@@ -570,7 +570,7 @@ def test_a_token_file_with_a_non_matching_name_is_refused_by_name(host: dict, su
     assert "t" * 48 not in result.stdout + result.stderr
 
 
-def test_a_token_file_that_derives_a_second_oracle_ci_is_refused(host: dict) -> None:
+def test_a_token_file_that_derives_a_second_review_ci_is_refused(host: dict) -> None:
     (host["dir"] / "ci-client.token").write_text("t" * 48, encoding="utf-8")
     result = _require_valid_token_files(host)
     assert result.returncode != 0
@@ -618,7 +618,7 @@ def test_the_clients_check_refuses_a_client_that_is_missing_or_unlisted(host: di
     assert "token files are for" in result.stderr
 
 
-def test_the_clients_check_refuses_models_that_differ_from_oracle_ci(host: dict) -> None:
+def test_the_clients_check_refuses_models_that_differ_from_review_ci(host: dict) -> None:
     host["clients"]["review-local"]["models"] = ["anthropic/model-a"]
     (host["dir"] / "clients.json").write_text(json.dumps(host["clients"]), encoding="utf-8")
     result = _source(host, "check_clients_file")
@@ -656,14 +656,14 @@ def test_the_host_runs_omp_from_the_develop_pin_never_from_path_or_the_working_t
 
 def test_the_pin_follows_a_develop_that_moved_since_the_last_fetch(host: dict) -> None:
     other = _executable(host["tmp"] / "bin" / "omp-newer", FAKE_OMP)
-    _develop(host, {".github/oracle-reviewers.yml": _policy(other)})
+    _develop(host, {".github/review.yml": _policy(other)})
     result = _resolved(host)
     assert result.returncode == 0, result.stderr
     assert f"resolved={other}" in result.stdout.splitlines()
 
 
 def test_the_host_refuses_when_develop_pins_no_omp_and_does_not_fall_back_to_a_path_omp(host: dict) -> None:
-    _develop(host, {".github/oracle-reviewers.yml": _policy(None)})
+    _develop(host, {".github/review.yml": _policy(None)})
     result = _resolved(host)
     assert result.returncode != 0
     assert "resolved=" not in result.stdout
@@ -749,7 +749,7 @@ def test_export_gives_develops_github_tree_not_the_checked_out_branchs(host: dic
     destination.mkdir()
     result = _source(host, f'export_develop {shlex.quote(str(destination))}; echo "theseus=$THESEUS"')
     assert result.returncode == 0, result.stderr
-    assert "from-develop" in (destination / ".github" / "oracle-omp-config.yml").read_text(encoding="utf-8")
+    assert "from-develop" in (destination / ".github" / "review-omp-config.yml").read_text(encoding="utf-8")
     assert (destination / ".github" / "theseus-lock.json").read_text(encoding="utf-8") == _lock()
     theseus = next(line for line in result.stdout.splitlines() if line.startswith("theseus=")).removeprefix("theseus=")
     assert Path(theseus).is_file() and Path(theseus).stat().st_mode & 0o111
@@ -757,11 +757,11 @@ def test_export_gives_develops_github_tree_not_the_checked_out_branchs(host: dic
 
 
 def test_export_follows_a_develop_that_moved_since_the_last_fetch(host: dict) -> None:
-    _develop(host, {".github/oracle-omp-config.yml": _config("anthropic/newer-develop")})
+    _develop(host, {".github/review-omp-config.yml": _config("anthropic/newer-develop")})
     destination = host["tmp"] / "exported"
     destination.mkdir()
     assert _source(host, f"export_develop {shlex.quote(str(destination))}").returncode == 0
-    assert "newer-develop" in (destination / ".github" / "oracle-omp-config.yml").read_text(encoding="utf-8")
+    assert "newer-develop" in (destination / ".github" / "review-omp-config.yml").read_text(encoding="utf-8")
 
 
 def test_gateway_clients_are_generated_from_origin_develop_not_the_checked_out_branch(host: dict) -> None:
@@ -777,9 +777,9 @@ def test_gateway_clients_are_generated_from_origin_develop_not_the_checked_out_b
     generated = next(args for args in invocations if args[0] == "gateway-clients")
     config = Path(generated[generated.index("--omp-config") + 1])
     assert not config.is_relative_to(host["checkout"])
-    assert config.name == "oracle-omp-config.yml"
+    assert config.name == "review-omp-config.yml"
     assert generated[generated.index("--out") + 1] == str(host["dir"] / "clients.json")
-    assert (host["checkout"] / ".github" / "oracle-omp-config.yml").read_text(encoding="utf-8") == _config(
+    assert (host["checkout"] / ".github" / "review-omp-config.yml").read_text(encoding="utf-8") == _config(
         "anthropic/from-feature"
     )
     run_file = (host["dir"] / "run.sh").read_text(encoding="utf-8")
@@ -790,7 +790,7 @@ def test_gateway_clients_are_generated_from_origin_develop_not_the_checked_out_b
 
 
 def test_gateway_clients_follow_a_develop_config_that_changed_after_the_checkout(host: dict) -> None:
-    _develop(host, {".github/oracle-omp-config.yml": _config("anthropic/newer-develop")})
+    _develop(host, {".github/review-omp-config.yml": _config("anthropic/newer-develop")})
     assert _script(host, "gateway").returncode == 0
     clients = json.loads((host["dir"] / "clients.json").read_text(encoding="utf-8"))
     assert clients["review-ci"]["models"][0] == "anthropic/newer-develop"
@@ -886,7 +886,7 @@ def test_the_gateway_refuses_and_touches_nothing_when_no_provider_has_a_login(ho
 
 def test_a_develop_provider_without_a_login_that_the_script_never_heard_of_is_excluded_not_refused(host: dict) -> None:
     extra = "      - unknown-co/model-x:medium\n"
-    _develop(host, {".github/oracle-omp-config.yml": _config("anthropic/from-develop", extra)})
+    _develop(host, {".github/review-omp-config.yml": _config("anthropic/from-develop", extra)})
     result = _script(host, "gateway")
     assert result.returncode == 0, result.stderr
     assert "excluded: unknown-co (no logged-in broker account): unknown-co/model-x" in result.stdout
@@ -1102,8 +1102,8 @@ def test_monitor_install_renders_a_fifteen_minute_agent_that_runs_the_monitor(ho
 
 
 def test_the_host_script_names_no_provider_and_holds_no_provider_list() -> None:
-    script = (SCRIPTS / "oracle_gateway_host.sh").read_text(encoding="utf-8")
-    config = yaml.safe_load((REPO_ROOT / ".github" / "oracle-omp-config.yml").read_text(encoding="utf-8"))
+    script = (SCRIPTS / "review_gateway_host.sh").read_text(encoding="utf-8")
+    config = yaml.safe_load((REPO_ROOT / ".github" / "review-omp-config.yml").read_text(encoding="utf-8"))
     targets = [*config["modelRoles"].values(), *config["retry"]["fallbackChains"]]
     targets += [entry for chain in config["retry"]["fallbackChains"].values() for entry in chain]
     for provider in {target.split("/", 1)[0] for target in targets}:

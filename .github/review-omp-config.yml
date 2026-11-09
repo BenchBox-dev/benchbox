@@ -1,0 +1,23 @@
+modelRoles:
+  smol: openai-codex/gpt-6-luna:xhigh
+  default: anthropic/claude-sonnet-5-5:high
+  review: anthropic/claude-opus-5-5:medium
+  plan: anthropic/claude-opus-5-5:xhigh
+  slow: anthropic/claude-fable-5-1:medium
+retry:
+  fallbackOn: usage-limit
+  fallbackChains:
+    openai-codex/gpt-6-luna:
+      - anthropic/claude-sonnet-5-5:medium
+      - google-antigravity/gemini-3.8-flash:medium
+    anthropic/claude-sonnet-5-5:
+      - google-antigravity/claude-sonnet-5-5:high
+      - openai-codex/gpt-6.1-sol:medium
+      - google-antigravity/gemini-3.8-flash:high
+    anthropic/claude-opus-5-5:
+      - google-antigravity/claude-opus-5-5:high
+      - openai-codex/gpt-6.1-sol:high
+      - google-antigravity/gemini-4-argon:medium
+    anthropic/claude-fable-5-1:
+      - openai-codex/gpt-6-astra:high
+      - google-antigravity/gemini-4-argon:xhigh

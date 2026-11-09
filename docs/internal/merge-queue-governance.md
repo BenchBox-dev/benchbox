@@ -20,8 +20,8 @@ Decision and evidence:
    review is disabled.
 3. **Soundness Review Boundary:** A result-affecting pull request (one that
    changes a path in `.github/soundness-paths.txt`) needs a completed external
-   adversarial review of its current head. The required `oracle-gate` check
-   passes only on a successful latest `oracle-verdict` commit status that the
+   adversarial review of its current head. The required `review-gate` check
+   passes only on a successful latest `review-verdict` commit status that the
    `benchbox-oracle` app created for that head, or on a listed attester's stand-in approval for that head after an
    independent review. The reviewer posts Critical and High findings as PR
    review threads, and required thread resolution makes them binding. A
@@ -37,7 +37,7 @@ Decision and evidence:
 ## 2. Required Status Checks Contract
 
 `develop` requires five always-reporting unit jobs in
-`.github/workflows/ci.yml`, plus `hold` and `oracle-gate`. `.github/ci-units.yml` maps
+`.github/workflows/ci.yml`, plus `hold` and `review-gate`. `.github/ci-units.yml` maps
 changed paths to units. An untouched unit reports success; a touched unit
 succeeds only if every job it requires succeeded, so a skipped required job
 fails it. Checks run on the pull request head, which need not be current with
@@ -50,7 +50,7 @@ fails it. Checks run on the pull request head, which need not be current with
 | `results-data` | `.github/workflows/ci.yml` | Corpus inventory and validation, submission validator sync, and corpus contract tests on results-data changes. |
 | `docs` | `.github/workflows/ci.yml` | Example validation, generated docs inputs (`make docs-generate`), and spell check on docs changes. The site build runs in `BenchBox-dev/benchbox-site`. |
 | `tooling` | `.github/workflows/ci.yml` | Every event. Base-branch guard, comment policy, content guard, skill integrity, and audit checks by path. |
-| `oracle-gate` | `.github/workflows/review-gate.yml` and the publish step of `.github/workflows/review-verdict.yml` (commit status posted by the `benchbox-oracle` app from `develop` code; the ruleset binds the context to that app) | Passes when only paths listed as inert by `.github/inert-paths.txt` (see Inert-path manifest in `docs/internal/oracle-review-v2.md`) change, or when the latest `oracle-verdict` commit status on the current head, created by the `benchbox-oracle` app after any retarget, is success. Open review threads are not read here: the ruleset's required thread resolution blocks the merge while one is unresolved. Each new head gets its own oracle result (`.github/workflows/review-verdict.yml`, which posts `oracle-gate` for that head right after its review; rerun with a `/review` comment): a full review, a follow-up on files whose patch changed, or the earlier decision carried over when a rebase or prose-only push leaves the patch unchanged (Rounds in `docs/internal/oracle-review-v2.md`). Every head change gets a pending `oracle-gate` before it is evaluated. If the oracle cannot review or its verdict is overruled, the check also passes on an independent stand-in review of the exact head followed by a `Stand-in review: APPROVE <full head SHA>` comment from an account in `STANDIN_ATTESTERS`, posted after the oracle's latest review of that head (dev-loop ADR, D4; `docs/internal/soundness-drain.md`). A plain owner comment does not. The `oracle-review` workflow (`.github/workflows/review-request.yml`) reports no check; it only notifies `oracle-gate` of review events. |
+| `review-gate` | `.github/workflows/review-gate.yml` and the publish step of `.github/workflows/review-verdict.yml` (commit status posted by the `benchbox-oracle` app from `develop` code; the ruleset binds the context to that app) | Passes when only paths listed as inert by `.github/inert-paths.txt` (see Inert-path manifest in `docs/internal/review-v2.md`) change, or when the latest `review-verdict` commit status on the current head, created by the `benchbox-oracle` app after any retarget, is success. Open review threads are not read here: the ruleset's required thread resolution blocks the merge while one is unresolved. Each new head gets its own oracle result (`.github/workflows/review-verdict.yml`, which posts `review-gate` for that head right after its review; rerun with a `/review` comment): a full review, a follow-up on files whose patch changed, or the earlier decision carried over when a rebase or prose-only push leaves the patch unchanged (Rounds in `docs/internal/review-v2.md`). Every head change gets a pending `review-gate` before it is evaluated. If the reviewer cannot review or its verdict is overruled, the check also passes on an independent stand-in review of the exact head followed by a `Stand-in review: APPROVE <full head SHA>` comment from an account in `STANDIN_ATTESTERS`, posted after the reviewer's latest review of that head (dev-loop ADR, D4; `docs/internal/soundness-drain.md`). A plain owner comment does not. The `review` workflow (`.github/workflows/review-request.yml`) reports no check; it only notifies `review-gate` of review events. |
 
 ### Shadow selection miss report
 
@@ -68,7 +68,7 @@ A pull request is armed with `make pr-arm`, which enables auto-merge for the
 exact head. GitHub squash-merges the pull request once every required check is
 green on that head and all review threads are resolved. No queue or
 combined-tree build runs first. A branch behind `develop` merges without a
-refresh unless it conflicts. A changed head needs fresh CI and a fresh oracle
+refresh unless it conflicts. A changed head needs fresh CI and a fresh review
 review or stand-in approval before re-arming.
 
 The one automated arming path is the `sqlglot-delivery` workflow
@@ -112,12 +112,12 @@ If a PR changes any soundness path (for example `benchbox/core/equivalence/`,
 
 1. Withdraw readiness before editing an armed PR
    (`make pr-landing-withdraw PR=<n> HEAD=<sha>`). After the last push, get
-   CI and the oracle's success review (or the stand-in approval) on that exact
+   CI and the reviewer's success review (or the stand-in approval) on that exact
    head, then arm with `make pr-arm`. The `no-auto-merge` label blocks arming
    only; to hold an armed PR, disable auto-merge
    (`gh pr merge <n> --disable-auto`) or withdraw it as above, then add the
    label.
-2. The required `oracle-gate` check must pass on the current head before the
+2. The required `review-gate` check must pass on the current head before the
    PR can merge.
 3. A soundness-path PR that sits green and unarmed is reported by the
    soundness-drain digest (`make soundness-drain-report`, see
@@ -344,7 +344,7 @@ The gate widens its run fetch (30, 100, 300, then
 1000 runs) until it finds a green run or the run history ends, and refuses
 when the streak outruns that bound. An owner-authorized fix-forward comment
 (see [merge authority](../agent/merge-authority.md)) also admits one PR at its
-current head; required checks, `oracle-gate`, threads and holds still apply. PRs
+current head; required checks, `review-gate`, threads and holds still apply. PRs
 armed before the run failed still merge, and arming outside these targets
 bypasses the gate; see [develop push gaps](develop-post-merge-gaps.md).
 
@@ -391,9 +391,9 @@ its final content:
   of the last content commit or of a later merge that only refreshed the
   base, when that review reports success;
 - a stand-in approval of the merged head, posted after any retarget and after
-  the oracle's latest decisive verdict (`success` or `failure`) on that head.
-  A later oracle review with no decisive verdict, such as `pending`, does not
-  void it. The `oracle-gate` check uses the same rule through the same
+  the reviewer's latest decisive verdict (`success` or `failure`) on that head.
+  A later review with no decisive verdict, such as `pending`, does not
+  void it. The `review-gate` check uses the same rule through the same
   helper;
 - for merges before the cut-over (2026-10-09 00:16 UTC), the Codex
   connector's submitted review of the last content commit (or of a later
@@ -405,14 +405,14 @@ The reaction and comment must come after the last content commit and before
 the merge. A review submitted after the merge, or still pending, does not
 count. An "eyes" reaction is not a signal.
 
-An oracle review counts as a signal only if it was never edited (read through
+An review counts as a signal only if it was never edited (read through
 GraphQL `lastEditedAt` and `includesCreatedEdit`) and its decision agrees with the
-App's own `oracle-verdict` status for that head: the status created by the App's Bot account
+App's own `review-verdict` status for that head: the status created by the App's Bot account
 whose description carries the review marker's `[run <uuid>]` (every App success or
 failure when the marker has no run uuid), the one created nearest the review's submission, which must be `success` exactly when the
 decision is `SHIP`. A review that fails either check, or whose edit state or statuses cannot be read,
-is not counted and is listed under "Unverifiable oracle evidence". The severity of an
-oracle finding thread whose first comment was edited, or whose edit state cannot be read, is
+is not counted and is listed under "Unverifiable review evidence". The severity of an
+review finding thread whose first comment was edited, or whose edit state cannot be read, is
 likewise not reported and the thread is listed there.
 
 Because authors set commit dates, the digest dates the last content commit by
@@ -430,7 +430,7 @@ than two parents.
 A commit gets an issue labelled `soundness-review-gap` when it has no signal,
 no merged pull request, or a reviewer thread resolved with no later commit.
 The issue body carries a `Reason class` line naming why: `override of an
-oracle High finding` (an oracle thread rated Critical or High resolved with no
+review High finding` (a review thread rated Critical or High resolved with no
 later commit), `deferred finding` (any other thread resolved with no later
 commit) or `no review signal` (no signal, or no merged pull request). An agent
 runs the external review and either records a clean result on the issue or
@@ -451,7 +451,7 @@ Two things close an issue, and nothing else does:
   `no completed review after the last content commit`, when the digest now
   finds a review signal for the commit (the signals above, all bounded by the
   merge window). Thread state is never an input: an issue opened for a
-  reviewer thread (override of an oracle High finding or deferred finding), for
+  reviewer thread (override of a review High finding or deferred finding), for
   a merge with no pull request, or for several reasons at once, and an issue
   whose body cannot be parsed, never closes by re-evaluation, so unresolving or
   deleting a thread changes nothing.
@@ -471,7 +471,7 @@ checkpoint with `--since <sha> --apply`. Run it locally without changing
 anything:
 `uv run -- python _project/scripts/soundness_merge_digest.py --since <sha>`.
 
-An oracle or connector review names a commit, so it cannot be backdated.
+A review or connector review names a commit, so it cannot be backdated.
 Known limits: a posted review is text the author can write, so it shows a
 review was recorded, not what it examined. A run that lists no pull request is
 matched to one by repository and branch name, so an author who reuses a branch

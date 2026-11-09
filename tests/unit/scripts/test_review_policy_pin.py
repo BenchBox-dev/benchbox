@@ -8,7 +8,7 @@ import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
-POLICY_PATH = ROOT / ".github" / "oracle-reviewers.yml"
+POLICY_PATH = ROOT / ".github" / "review.yml"
 LOCK_PATH = ROOT / ".github" / "theseus-lock.json"
 
 pytestmark = [
@@ -16,7 +16,7 @@ pytestmark = [
     pytest.mark.fast,
     pytest.mark.skipif(
         not (POLICY_PATH.exists() and LOCK_PATH.exists()),
-        reason="the oracle policy and Theseus lock are not in this checkout (release tree)",
+        reason="the review policy and Theseus lock are not in this checkout (release tree)",
     ),
 ]
 
@@ -96,17 +96,38 @@ def test_the_gate_paths_cover_the_theseus_wiring() -> None:
     gate_paths = POLICY["classifier"]["gate_paths"]
 
     for path in (
+        ".github/oracle-reviewers.yml",
+        ".github/oracle-omp-config.yml",
+        "scripts/oracle_local_review.py",
+        "_project/scripts/oracle_gateway_host.sh",
         ".github/theseus-lock.json",
         "_project/scripts/theseus_bootstrap.py",
         "scripts/theseus_cli.py",
         "scripts/theseus_release_check.py",
         "tests/unit/scripts/test_theseus_release_check.py",
-        "tests/unit/scripts/test_oracle_gateway_host.py",
+        "tests/unit/scripts/test_review_gateway_host.py",
         "tests/unit/scripts/test_review_provider_diversity.py",
         "tests/fixtures/review_provider_diversity/omp_catalog_windows.json",
-        "tests/integration/oracle/test_curated_capture_fixtures.py",
-        "tests/fixtures/oracle_reviewers/provenance.json",
-        "_project/scripts/oracle_gateway_host.sh",
-        "tests/unit/scripts/test_oracle_policy_pin.py",
+        "tests/integration/review/test_curated_capture_fixtures.py",
+        "tests/fixtures/review_candidates/provenance.json",
+        "_project/scripts/review_gateway_host.sh",
+        "tests/unit/scripts/test_review_policy_pin.py",
     ):
         assert path in gate_paths
+
+
+def test_the_pinned_engine_recognises_the_review_named_revert_subject(theseus_engine) -> None:
+    import importlib
+    from datetime import UTC, datetime
+
+    watch = importlib.import_module("theseus_reviewer.omp_watch")
+    change = watch.PinChange(
+        "a" * 40,
+        datetime(2026, 11, 8, tzinfo=UTC),
+        "revert(review): restore omp 18.13.3",
+        watch.BOT_AUTHOR_EMAIL,
+        "18.13.3",
+        "18.16.0",
+        "",
+    )
+    assert change.is_revert

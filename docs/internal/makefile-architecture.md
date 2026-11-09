@@ -27,7 +27,8 @@ so they do not depend on which file defines a recipe.
 | `Makefile` | Bootstrap variables, the development-tree-only target list and its guard, the default goal, the timed-target list, `branch-prune-merged`, and the ordered includes | Add a target to the module that owns its domain; keep only cross-domain wiring here |
 | `make/tests.mk` | Test tiers, the heavy-work lock wrappers, the correctness gate, required local cases, and test-fixture regeneration | Test entry points and their variables |
 | `make/reports.mk` | Cross-surface and TPC-Havoc equivalence reports, the Polars compatibility smoke, the TPC-DS draws report, baseline and applicability reports | Report-producing gates and their variables |
-| `make/oracle.mk` | Oracle coverage map, oracle back-off reset and omp candidate check | Oracle maintenance entry points |
+| `make/oracle.mk` | Benchmark correctness-oracle coverage map | Correctness-oracle map entry points |
+| `make/review.mk` | Review back-off reset and omp candidate check | Review-system maintenance entry points |
 | `make/quality.mk` | Coverage, complexity, lint, audits, comment policy, agent checks, skill sync, duplicate and mutation checks, the CI-local aggregates (`ci-lint`, `ci-test`, `ci-docs`, `ci-local`, `ci-linux`), typecheck and format | Static and CI-parity checks |
 | `make/build.mk` | Install, develop, clean, distribution build, release prep and check, changelog fragments, local corpus staging | Packaging and release preparation |
 | `make/pr-landing.mk` | Write preflight, cloud builder, PR preflight, open, arm, rerun, ready and remote close-out, trunk revert and status, follow-ups, fan-out, refresh and loop metrics | Pull-request and landing workflow |

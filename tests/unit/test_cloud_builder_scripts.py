@@ -217,7 +217,7 @@ def test_verify_refuses_a_base_ref_that_is_not_a_commit(tmp_path: Path) -> None:
 
 
 GATEWAY = REPO_ROOT / "scripts" / "cloud_gateway.sh"
-POLICY_FILE = ".github/oracle-reviewers.yml"
+POLICY_FILE = ".github/review.yml"
 
 FAKE_KEY = "tskey-auth-FAKEKEY0000"
 FAKE_TOKEN = "fake-cloud-token-0000"
@@ -639,7 +639,7 @@ def test_gateway_does_not_install_omp_when_origin_develop_has_no_policy(tmp_path
         result = _run(GATEWAY, cwd=repo, env=env)
 
         assert result.returncode == 1
-        assert "origin/develop:.github/oracle-reviewers.yml is unreadable" in result.stdout
+        assert "origin/develop:.github/review.yml is unreadable" in result.stdout
         assert "omp=not-installed" in _status(repo)
         assert _stub_lines(tmp_path, "downloads.log") == []
     finally:
@@ -900,5 +900,5 @@ def test_bootstrap_survives_a_failed_gateway_setup(tmp_path: Path) -> None:
     result = _run(BOOTSTRAP, cwd=repo, env=env)
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "the oracle gateway setup reported a problem" in result.stderr
+    assert "the review gateway setup reported a problem" in result.stderr
     assert "gateway=unavailable" in result.stdout

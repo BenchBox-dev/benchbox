@@ -158,7 +158,7 @@ success review of the current head, or the stand-in approval, with no unresolved
 review thread. The connector is no longer accepted and its App is uninstalled; the digest
 still counts connector reviews for merges before the cut-over (2026-10-09 00:16 UTC), so
 its history stays accurate. Wherever this section says "connector review", read "oracle
-review". See [`docs/internal/oracle-review-v2.md`](../oracle-review-v2.md).
+review". See [`docs/internal/review-v2.md`](../review-v2.md).
 
 Amended 2026-10-24: the required review check is `oracle-gate`, a commit status the
 `benchbox-oracle` App posts from `develop` code and the ruleset binds to that App's
@@ -258,7 +258,7 @@ the release workflow) shipped without live execution. The owner decided:
    disagrees with it. A bump branch cannot exercise the new pin, because the `oracle`
    environment deploys only from `develop`. A bump is therefore verified after it merges
    on `develop`, and rollback is a revert of the pin commit; no separate oracle policy
-   applies to bump branches (the "Theseus pin bump and rollback" section of `docs/internal/oracle-review-v2.md`). A detector that fails
+   applies to bump branches (the "Theseus pin bump and rollback" section of `docs/internal/review-v2.md`). A detector that fails
    closed when `review-verdict` or `review-gate` post no result for a head is not yet
    available; until it exists, the post-merge check reads the posted statuses.
 5. **Release-v2 probe mode and fail-closed detectors are required.** `release-v2.yml`

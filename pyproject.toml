@@ -392,7 +392,7 @@ paths_to_mutate = [
 ]
 tests_dir = ["tests/unit/"]
 
-[tool.oracle-mutation]
+[tool.review-mutation]
 paths_to_mutate = [
     "_project/scripts/soundness_merge_digest.py",
     "scripts/theseus_cli.py",
@@ -400,7 +400,7 @@ paths_to_mutate = [
 tests_dir = [
     "tests/unit/scripts/test_soundness_merge_digest.py",
     "tests/unit/scripts/test_soundness_merge_digest_dispatch.py",
-    "tests/unit/scripts/test_oracle_local_review.py",
+    "tests/unit/scripts/test_local_review.py",
 ]
 also_copy = ["_project/scripts/", ".github/", "scripts/"]
 pytest_add_cli_args = ["-n", "0", "-p", "no:cacheprovider"]

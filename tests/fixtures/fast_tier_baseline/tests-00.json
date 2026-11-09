@@ -15736,43 +15736,43 @@
     "p50_seconds": 0.054041
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_a_degraded_exit_with_no_provider_reason_is_still_degraded",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_a_degraded_exit_with_no_provider_reason_is_still_degraded",
     "p50_seconds": 1.198067
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_a_refused_theseus_install_stops_the_script_before_any_agent_or_clients_file_is_touched[broker-unreachable]",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_a_refused_theseus_install_stops_the_script_before_any_agent_or_clients_file_is_touched[broker-unreachable]",
     "p50_seconds": 0.806926
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_a_stale_account_pin_is_reported_by_check_and_repinned_by_gateway",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_a_stale_account_pin_is_reported_by_check_and_repinned_by_gateway",
     "p50_seconds": 2.986965
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_a_token_file_with_a_non_matching_name_is_refused_by_name[x-]",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_a_token_file_with_a_non_matching_name_is_refused_by_name[x-]",
     "p50_seconds": 0.532866
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_one_logged_in_provider_is_enough_to_serve[anthropic]",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_one_logged_in_provider_is_enough_to_serve[anthropic]",
     "p50_seconds": 2.25796
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_revoking_refuses_oracle_ci_and_unknown_names_and_changes_nothing",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_revoking_refuses_oracle_ci_and_unknown_names_and_changes_nothing",
     "p50_seconds": 0.533477
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_the_gateway_refuses_and_touches_nothing_when_no_provider_has_a_login",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_the_gateway_refuses_and_touches_nothing_when_no_provider_has_a_login",
     "p50_seconds": 0.97238
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_the_live_scope_check_refuses_a_client_that_sees_different_models",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_the_live_scope_check_refuses_a_client_that_sees_different_models",
     "p50_seconds": 0.533362
   },
   {
-    "id": "tests/unit/scripts/test_oracle_local_review.py::test_member_mode_passes_the_result_file_and_the_given_trusted_ref",
+    "id": "tests/unit/scripts/test_local_review.py::test_member_mode_passes_the_result_file_and_the_given_trusted_ref",
     "p50_seconds": 0.031884
   },
   {
-    "id": "tests/unit/scripts/test_oracle_policy_pin.py::test_the_live_policy_enforces_and_posts_where_the_gate_reads",
+    "id": "tests/unit/scripts/test_review_policy_pin.py::test_the_live_policy_enforces_and_posts_where_the_gate_reads",
     "p50_seconds": 0.020992
   },
   {
@@ -18396,23 +18396,23 @@
     "p50_seconds": 0.056616
   },
   {
-    "id": "tests/unit/workflows/test_oracle_gate_workflow.py::test_a_workflow_run_bridge_is_keyed_by_the_head_sha",
+    "id": "tests/unit/workflows/test_review_gate_workflow.py::test_a_workflow_run_bridge_is_keyed_by_the_head_sha",
     "p50_seconds": 0.030309
   },
   {
-    "id": "tests/unit/workflows/test_oracle_verdict_workflow.py::test_only_a_pull_request_event_cancels_a_run_in_flight[issue_comment-False]",
+    "id": "tests/unit/workflows/test_review_verdict_workflow.py::test_only_a_pull_request_event_cancels_a_run_in_flight[issue_comment-False]",
     "p50_seconds": 0.027802
   },
   {
-    "id": "tests/unit/workflows/test_oracle_verdict_workflow.py::test_the_caller_calls_the_pinned_theseus_review_workflow_with_the_same_commit_as_the_lock",
+    "id": "tests/unit/workflows/test_review_verdict_workflow.py::test_the_caller_calls_the_pinned_theseus_review_workflow_with_the_same_commit_as_the_lock",
     "p50_seconds": 0.028822
   },
   {
-    "id": "tests/unit/workflows/test_oracle_verdict_workflow.py::test_the_run_title_records_the_head_the_run_targets[issue_comment-event3-None-review-verdict (issue_comment pr=10)]",
+    "id": "tests/unit/workflows/test_review_verdict_workflow.py::test_the_run_title_records_the_head_the_run_targets[issue_comment-event3-None-review-verdict (issue_comment pr=10)]",
     "p50_seconds": 0.028726
   },
   {
-    "id": "tests/unit/workflows/test_oracle_verdict_workflow.py::test_the_run_title_records_the_head_the_run_targets[workflow_dispatch-event0-inputs0-review-verdict (workflow_dispatch pr=7 head=cccccccccccccccccccccccccccccccccccccccc)]",
+    "id": "tests/unit/workflows/test_review_verdict_workflow.py::test_the_run_title_records_the_head_the_run_targets[workflow_dispatch-event0-inputs0-review-verdict (workflow_dispatch pr=7 head=cccccccccccccccccccccccccccccccccccccccc)]",
     "p50_seconds": 0.028499
   },
   {

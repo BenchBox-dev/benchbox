@@ -76,7 +76,6 @@ def test_parse_expected_rulesets_from_admin_runbook() -> None:
         "docs",
         "tooling",
         "hold",
-        "oracle-gate",
         "review-gate",
         "release-v2 probe",
     )
@@ -468,7 +467,6 @@ def _verified_develop_ruleset() -> dict:
             "docs",
             "tooling",
             "hold",
-            "oracle-gate",
             "review-gate",
             "release-v2 probe",
         ],
@@ -564,9 +562,9 @@ def _drop_tooling(live: dict) -> None:
     checks[:] = [check for check in checks if check["context"] != "tooling"]
 
 
-def _drop_oracle_gate(live: dict) -> None:
+def _drop_review_gate(live: dict) -> None:
     checks = _required_checks(live)
-    checks[:] = [check for check in checks if check["context"] != "oracle-gate"]
+    checks[:] = [check for check in checks if check["context"] != "review-gate"]
 
 
 def _set_integration(context: str, value: int | None):
@@ -580,11 +578,11 @@ def _set_integration(context: str, value: int | None):
     "mutate, expected_text",
     [
         (_drop_tooling, "tooling"),
-        (_drop_oracle_gate, "oracle-gate"),
+        (_drop_review_gate, "review-gate"),
         (_set_integration("core", 15368), "core"),
         (_set_integration("core", 1), "integration_id"),
-        (_set_integration("oracle-gate", None), "oracle-gate"),
-        (_set_integration("oracle-gate", 15368), "oracle-gate"),
+        (_set_integration("review-gate", None), "review-gate"),
+        (_set_integration("review-gate", 15368), "review-gate"),
         (
             lambda live: live["bypass_actors"].append({"actor_id": 5, "actor_type": "RepositoryRole"}),
             "bypass_actors",
@@ -652,20 +650,20 @@ def test_capture_comparison_treats_absent_integration_id_as_null() -> None:
     assert ruleset_drift_check.capture_comparison_findings(_capture(), live) == []
 
 
-def test_capture_comparison_oracle_gate_removed_fails_and_rebound_passes() -> None:
+def test_capture_comparison_review_gate_removed_fails_and_rebound_passes() -> None:
     live = _capture()
-    _drop_oracle_gate(live)
+    _drop_review_gate(live)
     findings = ruleset_drift_check.capture_comparison_findings(_capture(), live)
-    assert any("oracle-gate" in finding for finding in findings)
+    assert any("review-gate" in finding for finding in findings)
 
     live_unbound = _capture()
-    _drop_oracle_gate(live_unbound)
-    _required_checks(live_unbound).append({"context": "oracle-gate"})
+    _drop_review_gate(live_unbound)
+    _required_checks(live_unbound).append({"context": "review-gate"})
     assert ruleset_drift_check.capture_comparison_findings(_capture(), live_unbound)
 
     live_rebound = _capture()
-    _drop_oracle_gate(live_rebound)
-    _required_checks(live_rebound).append({"context": "oracle-gate", "integration_id": 5201041})
+    _drop_review_gate(live_rebound)
+    _required_checks(live_rebound).append({"context": "review-gate", "integration_id": 5201041})
     assert ruleset_drift_check.capture_comparison_findings(_capture(), live_rebound) == []
 
 
@@ -681,10 +679,10 @@ def test_compare_capture_command_exit_codes(monkeypatch, capsys, tmp_path: Path)
     assert "tooling" in capsys.readouterr().out
 
     live_without_gate = _capture()
-    _drop_oracle_gate(live_without_gate)
+    _drop_review_gate(live_without_gate)
     monkeypatch.setattr(ruleset_drift_check, "_api_json", lambda url, token: live_without_gate)
     assert ruleset_drift_check.main(arguments) == 1
-    assert "oracle-gate" in capsys.readouterr().out
+    assert "review-gate" in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("duplicate_in", ["capture", "live"])
@@ -714,7 +712,6 @@ RELEASE_BRANCHES_CHECKS = (
     "docs",
     "tooling",
     "hold",
-    "oracle-gate",
     "review-gate",
     "release-v2 probe",
 )
@@ -782,7 +779,7 @@ def test_matching_release_branches_ruleset_has_no_findings() -> None:
         (lambda live: live["rules"].remove({"type": "required_linear_history"}), "required_linear_history"),
         (lambda live: live.update(bypass_actors=[dict(OWNER_BYPASS)]), "bypass actors"),
         (lambda live: live.pop("bypass_actors"), "bypass actors are not visible"),
-        (lambda live: _check(live, "oracle-gate").pop("integration_id"), "oracle-gate"),
+        (lambda live: _check(live, "review-gate").pop("integration_id"), "review-gate"),
         (
             lambda live: _rule(live, "pull_request")["parameters"].update(required_review_thread_resolution=False),
             "thread",

@@ -11,14 +11,14 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
-STAGE = Path(os.environ.get("ORACLE_MUTATION_STAGE") or ROOT / "build" / "oracle-mutation")
+STAGE = Path(os.environ.get("REVIEW_MUTATION_STAGE") or ROOT / "build" / "review-mutation")
 ALWAYS_COPIED = ("tests", "pytest.ini", "pyproject.toml", "_benchbox_pytest_xdist_safety.py")
 COUNTED = ("killed", "timeout", "survived", "no tests", "not checked")
 
 
 def load_settings(root: Path) -> dict[str, Any]:
     data = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
-    return data["tool"]["oracle-mutation"]
+    return data["tool"]["review-mutation"]
 
 
 def stage(root: Path, target: Path, settings: dict[str, Any]) -> None:
@@ -79,7 +79,7 @@ def report(target: Path, paths: Sequence[str]) -> str:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Mutation-test the oracle decision modules against the oracle tests.")
+    parser = argparse.ArgumentParser(description="Mutation-test the review decision modules against the review tests.")
     parser.add_argument("command", choices=("run", "results", "show", "report"))
     parser.add_argument("names", nargs="*")
     args = parser.parse_args(argv)
