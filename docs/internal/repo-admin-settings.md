@@ -170,7 +170,6 @@ The PUT replaces the whole rule list, so the payload carries every rule:
           {"context": "docs"},
           {"context": "tooling"},
           {"context": "hold"},
-          {"context": "oracle-gate", "integration_id": 5201041},
           {"context": "review-gate", "integration_id": 5201041},
           {"context": "release-v2 probe", "integration_id": 15368}
         ]
