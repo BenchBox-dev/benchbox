@@ -4,7 +4,7 @@
     "The cause is fixed in Theseus, in the consumer config, or reported as an OMP regression with evidence; the canary is not weakened to pass.",
     "make omp-candidate-check on a clean develop checkout for the pinned version ends with a result=releasable evidence line, and the daily omp-pin-bump completes without a red state."
   ],
-  "context": "Handoff prompt for the Theseus session covers diagnosis steps. Spans two repos: canary and broker in joeharris76/theseus, fallback order and policy in BenchBox. A Theseus change needs a release and a re-lock promotion PR.",
+  "context": "Handoff prompt for the Theseus session covers diagnosis steps. Spans two repos: canary and broker in joeharris76/theseus, fallback order and policy in BenchBox. A Theseus change needs a release and a re-lock promotion PR.\n\n2026-11-09 diagnosis (observed, loopback only, no real provider calls). Heads: BenchBox develop 31f6d755b5cd1f08dbf288a4507f4eb5f60b2e9c; Theseus #53 85326b2590cdaf4fe8158de511d6a556b21dd59d; OMP 18.16.0 darwin-arm64 sha256 d4a10d97...cb99e; pin .github/review.yml, config .github/review-omp-config.yml, fixtures tests/fixtures/review_candidates/omp_candidate.\n- v0.2.6 via scripts/theseus_cli.py with --capture-dir: red, 26/27; live-quota-fallback-walk visited anthropic/claude-sonnet-5-5 then google-antigravity/claude-sonnet-5-5. quota-walk.jsonl: Anthropic 429 rate_limit_error -> retry_fallback_applied to google-antigravity/claude-sonnet-5-5:high -> stopReason error 'Unknown model: google-antigravity/claude-sonnet-5-5' (no HTTP status; api google-gemini-cli) -> auto_retry_end success:false.\n- Root cause: canary bug. candidate_checks.py:39 hard-codes QUOTA_CHAIN_TARGET openai-codex/gpt-6.1-sol, but the owner's D2 order puts Google before GPT; the canary broker is seeded only with ANTHROPIC_API_KEY (candidate_chain.py ~341), so the Google hop is an unknown model and the walk ends there. Not an OMP regression.\n- Theseus #53 code, same head and files: 30/30 checks pass, result=releasable (overall partial only for hash-only linux targets and unobservable plugin canaries). Residual gap: the walk is proven only through the first fallback hop.\n- Owner decisions: fix the canary (#53), keep the D2 order; keep the 18.16.0 pin with a 2026-11-13 deadline for a real releasable line on a clean develop head.",
   "description": "`omp-candidate-check` now runs its live checks (the Namespace crash is fixed in Theseus v0.2.6, locked on develop), and fails one of 27: `live-quota-fallback-walk`. It was observed for 18.16.0 on a clean develop checkout on the owner's Mac (26 pass, 1 fail, no releasable evidence line) and for 18.18.2 in the daily `omp-pin-bump` run 42521407943 (state=red, no candidate PR opened). The check expects the Anthropic Sonnet quota walk to reach `openai-codex/gpt-6.1-sol` (Theseus `candidate_checks.py` QUOTA_CHAIN_TARGET). BenchBox `.github/oracle-omp-config.yml` lists `google-antigravity/claude-sonnet-5-5` first and GPT second. Both streams reached Google and stopped. The reason is unverified: the run kept no stream capture, and the loopback broker is seeded only with an Anthropic key, so a Google attempt may fail for a reason other than usage-limit. This is not shown to be an OMP regression; it may be a canary expectation, a config mismatch or a broker limitation. Until fixed, the scheduled bump fails red every day and cannot propose a candidate.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3931#issuecomment-6726853963",
@@ -21,6 +21,14 @@
       "op": "create",
       "op_id": "861de0461f654ff5a72541b1f74eddc7",
       "session_id": "02c14526fd7648f49c893339d8cfcf9e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:82b9fe75d2d6312f25803cd5",
+      "at": "2026-11-09T20:31:37Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ef7d8f9f675d4ce0bc534e2004f1a0a1",
+      "session_id": "ff599f834923406da7e6bd54d0a05e94"
     }
   ]
 }
