@@ -50,17 +50,30 @@ services:
         # be.conf vars before checking JAVA_HOME, so we detect the bundled JDK
         # path dynamically instead of hard-coding an architecture-specific path.
         set_conf /opt/apache-doris/be/conf/be.conf JAVA_HOME "$$(detect_java_home)"
-        set_conf /opt/apache-doris/be/conf/be.conf mem_limit 8g
-        # Raise load memory limits so MemTableMemoryLimiter does not throttle
-        # stream loads before process RSS approaches the actual mem_limit.
-        # Default 50% soft limit fires at 4 GB on an 8 GB BE; raising to 90%
-        # gives 7.2 GB headroom, well above normal resident usage (~2 GB).
+        case "$${DORIS_MEMORY_LIMIT:-4g}" in
+          4g|4G|4gb|4GB|4gi|4Gi|4gib|4GiB|4096m|4096M|4096mb|4096MB)
+            fe_xmx="384m"
+            fe_xms="128m"
+            be_mem="3000m"
+            ;;
+          8g|8G|8gb|8GB|8gi|8Gi|8gib|8GiB|8192m|8192M|8192mb|8192MB)
+            fe_xmx="1536m"
+            fe_xms="512m"
+            be_mem="6400m"
+            ;;
+          *)
+            fe_xmx="1024m"
+            fe_xms="512m"
+            be_mem="80%"
+            ;;
+        esac
+        set_conf /opt/apache-doris/be/conf/be.conf mem_limit "$$be_mem"
         set_conf /opt/apache-doris/be/conf/be.conf load_process_max_memory_limit_percent 90
         set_conf /opt/apache-doris/be/conf/be.conf load_process_soft_mem_limit_percent 80
-        sed -i -E 's/-Xmx[0-9]+[mMgG]/-Xmx1536m/g; s/-Xms[0-9]+[mMgG]/-Xms1536m/g' /opt/apache-doris/fe/conf/fe.conf
-        grep -q 'Xmx1536m' /opt/apache-doris/fe/conf/fe.conf ||
+        sed -i -E "s/-Xmx[0-9]+[mMgG]/-Xmx$${fe_xmx}/g; s/-Xms[0-9]+[mMgG]/-Xms$${fe_xms}/g" /opt/apache-doris/fe/conf/fe.conf
+        grep -Eq 'Xmx[0-9]+[mMgG]' /opt/apache-doris/fe/conf/fe.conf ||
           echo "WARNING: FE heap max cap not applied - fe.conf uses a non-standard JVM option string" >&2
-        grep -q 'Xms1536m' /opt/apache-doris/fe/conf/fe.conf ||
+        grep -Eq 'Xms[0-9]+[mMgG]' /opt/apache-doris/fe/conf/fe.conf ||
           echo "WARNING: FE heap min cap not applied - fe.conf uses a non-standard JVM option string" >&2
         touch /tmp/.benchbox-entrypoint-applied
         exec bash /usr/local/bin/entry_point.sh
@@ -70,6 +83,7 @@ services:
       - "${DORIS_BE_HTTP_PORT:-18040}:8040"
     environment:
       SKIP_CHECK_ULIMIT: "${DORIS_SKIP_CHECK_ULIMIT:-true}"
+      DORIS_MEMORY_LIMIT: "${DORIS_MEMORY_LIMIT:-4g}"
     privileged: ${DORIS_PRIVILEGED:-false}
     volumes:
       - doris-fe-meta:/opt/apache-doris/fe/doris-meta

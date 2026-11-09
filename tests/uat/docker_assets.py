@@ -379,6 +379,7 @@ _PLATFORM_INJECT_SPARK_CONNECT_ENDPOINT_OPT: frozenset[str] = frozenset({"lakesa
 
 _PLATFORM_LOCAL_MANAGED_STATIC_OPTS: dict[str, list[str]] = {
     "cedardb": ["--platform-option", "username=benchbox", "--platform-option", "admin_database=benchbox_test"],
+    "doris": ["--platform-option", "parallel_pipeline_task_num=1"],
     "postgresql": ["--platform-option", "username=benchbox"],
 }
 

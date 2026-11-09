@@ -703,6 +703,9 @@ doris|be_http_port|Doris BE HTTP port for stream load redirects|{'parser': 'int'
 doris|database|Doris database name (auto-generated if not specified)|{}
 doris|username|Doris username|{'default': 'root'}
 doris|password|Doris password|{}
+doris|parallel_pipeline_task_num|Pipeline task parallelism for query fragments|{'parser': 'int'}
+doris|exec_mem_limit|Execution memory limit per query in bytes|{'parser': 'int'}
+doris|stream_load_chunk_size|Chunk size in bytes for Stream Load|{'parser': 'int'}
 singlestore|host|SingleStore server hostname or Helios endpoint|{'default': 'localhost'}
 singlestore|port|SingleStore MySQL protocol port|{'default': '3306'}
 singlestore|database|SingleStore database name (auto-generated if not specified)|{}
