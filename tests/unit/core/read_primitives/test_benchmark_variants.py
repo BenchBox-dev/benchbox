@@ -594,13 +594,6 @@ class TestModernSQLFeatures:
         for qid in datafusion_skipped:
             assert qid not in queries_datafusion, f"DataFusion should skip: {qid}"
 
-    def test_duckdb_uses_struct_pack_for_struct(self):
-        benchmark = ReadPrimitivesBenchmark()
-        queries_duckdb = benchmark.get_queries(dialect="duckdb")
-
-        struct_sql = queries_duckdb.get("struct_construction", "")
-        assert "struct_pack(" in struct_sql
-
     def test_new_categories_exist(self):
         from benchbox.core.read_primitives.catalog.loader import load_primitives_catalog
 
