@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "A candidate engine/config change can be scored against the corpus without exposing gateway, App or classifier secrets to candidate code.",
+    "Results are authenticated end to end; no unauthenticated result file can satisfy the rule.",
+    "The rule is activated only with an authenticated baseline and a reviewed change; until then it reports inactive, never pass."
+  ],
+  "context": "Origin: BenchBox-session handoff for #4062 (findings D5-D7) and owner decision 2 recorded on theseus-v025-review-convergence-20261107.",
+  "description": "Theseus #54 makes the weekly eval score rule authenticate only scheduled main artifacts, so it cannot score a PR that changes engine or config: candidates must never receive gateway or classifier secrets, and candidate_env.py and isolation.py provide no credential broker or kernel sandbox. Owner decision 2026-11-09: keep the score rule explicitly inactive until an authenticated baseline exists, and design the trusted evaluator here.",
+  "links": [
+    "https://github.com/joeharris76/theseus/pull/54",
+    "theseus-v025-review-convergence-20261107"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:82b9fe75d2d6312f25803cd5",
+      "at": "2026-11-09T20:16:43Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8fe3c50317fa4b869a2aae29005c20c2",
+      "session_id": "ff599f834923406da7e6bd54d0a05e94"
+    }
+  ]
+}

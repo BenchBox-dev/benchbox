@@ -37944,6 +37944,13 @@
       "status": "open",
       "title": "Theseus: close the test and fd-handling gaps left after the v0.2.1 test-seam fix"
     },
+    "theseus-trusted-candidate-evaluator-20261109": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Give Theseus a trusted way to score a candidate reviewer before activating the eval rule"
+    },
     "theseus-v021-stdin-rendered-mode-20261105": {
       "claim": null,
       "needs": [
