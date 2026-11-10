@@ -108,6 +108,7 @@ CUSTOM_HOME = "/srv/synthetic-home-xyz"
 
 def test_anonymize_plans_payload_redacts_top_level_errors(monkeypatch):
     monkeypatch.setenv("HOME", CUSTOM_HOME)
+    monkeypatch.setenv("USERPROFILE", CUSTOM_HOME)
     payload = {
         "queries": {},
         "errors": [
@@ -130,6 +131,7 @@ def test_anonymize_plans_payload_redacts_top_level_errors(monkeypatch):
 
 def test_anonymize_plans_payload_redacts_errors_mapping_and_string(monkeypatch):
     monkeypatch.setenv("HOME", CUSTOM_HOME)
+    monkeypatch.setenv("USERPROFILE", CUSTOM_HOME)
     mapping = anonymize_plans_payload({"queries": {}, "errors": {"Q3": f"open {CUSTOM_HOME}/a"}})
     text = anonymize_plans_payload({"queries": {}, "errors": f"open {CUSTOM_HOME}/a"})
 
