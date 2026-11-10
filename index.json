@@ -12577,6 +12577,13 @@
       "status": "done",
       "title": "Refuse one-member batches, freeze companion files into scopes, enforce scope at member check, and drop the member-check review"
     },
+    "batch-tooling-blocked-by-foreign-primary-edits-20261110": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Stop other sessions' primary-clone edits from blocking unrelated batch landings"
+    },
     "batch-tooling-review-truncation-and-worktree-takeover-20261107": {
       "claim": null,
       "needs": [],

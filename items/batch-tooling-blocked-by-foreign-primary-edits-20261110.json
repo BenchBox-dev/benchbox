@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Reproduce: with an unrelated tracked edit in the primary that overlaps member scope, show which batch commands refuse and why the member's own worktree state does not matter.",
+    "Decide by evidence whether the refusal should use the primary-clone snapshot model from PR #3888 (only changes made since the batch started, or only by this batch's members), warn instead of refuse for foreign changes, or keep refusing with a precise owner diagnostic.",
+    "Whatever the choice, a batch is never blocked silently: the message names the paths and that they are not the batch's, and guidance says what to do.",
+    "Tests cover own-member stray edits (still refused) versus foreign pre-existing edits."
+  ],
+  "context": "Related done item batch-primary-clone-dirty-guard-20261104 introduced the refusal. Guardrail: do not weaken detection of the batch's own stray writes (see relative-path-primary-writes-recur-after-guard-20261110). Verification rubric: reproduce; fix; tests; comment-policy and ruff; PR merged with green CI.",
+  "description": "batch-member-create, batch-member-check and batch-land refuse while the primary clone has uncommitted tracked changes in member scope. During this session other sessions' edits (.github/workflows/review-gate.yml and review-verdict.yml, scripts/batch_integration.py, benchbox/platforms/base/mysql_wire.py, psycopg2_mixin.py, pg_mooncake.py) blocked two unrelated batches for up to hours, and the leader could only wait. The guard protects the primary but turns any concurrent session's slip into a stall for everyone.",
+  "links": [
+    "scripts/batch_integration.py",
+    "docs/agent/batch-feature-delivery.md",
+    "batch-primary-clone-dirty-guard-20261104"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:db7d69917905292075fe62aa",
+      "at": "2026-11-10T15:42:28Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d3ce8b106b484938a8d49d8aa6216a3e",
+      "session_id": "039807d800674f11b2d8d71dccd4e6ed"
+    }
+  ]
+}
