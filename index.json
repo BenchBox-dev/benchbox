@@ -5429,20 +5429,43 @@
       "terminal_outcome": "deliver"
     },
     "plan-export-contract": {
-      "accepted_members": {},
+      "accepted_members": {
+        "export-text-plan-result-fails-loader-query-plan-raw-20261108": "01203d43c6acb1cc416c8dcb609427b80613784f"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "export-text-plan-result-fails-loader-query-plan-raw-20261108": {
+          "accepted_head": "01203d43c6acb1cc416c8dcb609427b80613784f",
+          "changed_files": [
+            "benchbox/core/results/query_execution.py",
+            "benchbox/core/results/schema.py",
+            "changelog.d/feat-plan-export-contract--export-text-plan-result-fails-loader-query-plan-raw-20261108.json",
+            "tests/unit/core/results/test_loader.py"
+          ],
+          "integration_head": "fc08ce21726b2a5cd082643dd3bdbb4df7782352",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/plan-export-contract",
-      "integration_head": "a727c47272dff457e73ecc03ab8a00a47a637592",
+      "integration_head": "fc08ce21726b2a5cd082643dd3bdbb4df7782352",
       "integration_log": [
         {
           "at": "2026-11-10T00:39:48Z",
           "head": "a727c47272dff457e73ecc03ab8a00a47a637592",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-10T01:40:21Z",
+          "head": "fc08ce21726b2a5cd082643dd3bdbb4df7782352",
+          "kind": "prepare",
+          "member": "export-text-plan-result-fails-loader-query-plan-raw-20261108",
+          "op_id": "c2dcb49b90a94cf2aa49a06bda83ed39",
+          "previous_head": "a727c47272dff457e73ecc03ab8a00a47a637592",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-export-contract",
@@ -21722,15 +21745,10 @@
       "title": "Root-cause the WebKit benchmark-index data-binding failure on /results/tpch/"
     },
     "export-text-plan-result-fails-loader-query-plan-raw-20261108": {
-      "claim": {
-        "expires_at": "2026-11-11T01:40:18Z",
-        "generation": "bda27882d6f34c0d806b8be666395e09",
-        "renewals": 2,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:db7d69917905292075fe62aa"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Fix benchbox export on results with text-plan rows failing on query_plan_raw"
     },
     "expose-query-comparability-metadata-in-cli-output-and-persis": {
