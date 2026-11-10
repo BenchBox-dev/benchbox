@@ -39606,6 +39606,15 @@
       "status": "open",
       "title": "Theseus: replace raw provider errors in not-reviewed output with human reasons, posted once per head and cause"
     },
+    "theseus-review-output-format-20261110": {
+      "claim": null,
+      "needs": [
+        "benchbox-lock-theseus-review-format-release-b-20261110"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Make Theseus review output verdict-first, concise and easy to scan"
+    },
     "theseus-review-status-descriptions-20261110": {
       "claim": null,
       "needs": [],
