@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
+from typing import Any
 
 _INSERT_TIMEOUT_S = 7200
 
@@ -17,6 +18,14 @@ class HttpEndpoint:
     secure: bool = False
 
 
+def _post_request(
+    url: str, *, params: Mapping[str, str], data: Iterable[bytes], auth: tuple[str, str], timeout: int
+) -> Any:
+    import requests
+
+    return requests.post(url, params=params, data=data, auth=auth, timeout=timeout)
+
+
 def http_insert(
     endpoint: HttpEndpoint,
     table: str,
@@ -24,15 +33,13 @@ def http_insert(
     chunks: Iterable[bytes],
     settings: Mapping[str, object],
 ) -> int:
-    import requests
-
     scheme = "https" if endpoint.secure else "http"
     params = {
         "query": f"INSERT INTO {table} FORMAT {insert_format}",
         "database": endpoint.database,
         **{key: str(value) for key, value in settings.items()},
     }
-    response = requests.post(
+    response = _post_request(
         f"{scheme}://{endpoint.host}:{endpoint.port}/",
         params=params,
         data=chunks,

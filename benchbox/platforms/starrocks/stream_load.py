@@ -47,19 +47,18 @@ def file_chunks(file_path: Path) -> Iterator[bytes]:
 
 def parquet_csv_chunks(file_path: Path, batch_rows: int = 65_536) -> Iterator[bytes]:
     import pyarrow as pa
-    import pyarrow.compute as pc
     import pyarrow.csv as pacsv
     import pyarrow.parquet as pq
 
     options = pacsv.WriteOptions(include_header=False, quoting_style="needed")
     for batch in pq.ParquetFile(file_path).iter_batches(batch_size=batch_rows):
-        arrays = []
-        for column in batch.columns:
-            text = column if pa.types.is_string(column.type) else pc.cast(column, pa.string())
-            arrays.append(pc.fill_null(text, _NULL_MARKER))
         sink = pa.BufferOutputStream()
-        pacsv.write_csv(pa.Table.from_arrays(arrays, names=batch.schema.names), sink, options)
+        pacsv.write_csv(pa.Table.from_batches([batch]), sink, options)
         yield sink.getvalue().to_pybytes()
+
+
+def _sleep(seconds: float) -> None:
+    time.sleep(seconds)
 
 
 def _authorization(username: str, password: str) -> str:
@@ -108,7 +107,7 @@ def stream_load(
                     _MAX_ATTEMPTS,
                     exc,
                 )
-                time.sleep(5 * attempt)
+                _sleep(5 * attempt)
                 continue
             raise RuntimeError(f"STREAM LOAD connection error for {table_name}: {exc}") from exc
         if response.status_code in (200, 307):
@@ -116,7 +115,7 @@ def stream_load(
                 logger.warning(
                     "STREAM LOAD BE unavailable for %s (attempt %d/%d); retrying", table_name, attempt, _MAX_ATTEMPTS
                 )
-                time.sleep(10 * attempt)
+                _sleep(10 * attempt)
                 continue
             break
         if 500 <= response.status_code < 600 and attempt < _MAX_ATTEMPTS:
@@ -127,7 +126,7 @@ def stream_load(
                 attempt,
                 _MAX_ATTEMPTS,
             )
-            time.sleep(5 * attempt)
+            _sleep(5 * attempt)
             continue
         raise RuntimeError(f"STREAM LOAD HTTP {response.status_code} for {table_name}: {response.text[:500]}")
 
@@ -204,6 +203,6 @@ class StarRocksParquetHandler(FileFormatHandler):
             "column_separator": ",",
             "format": "CSV",
             "enclose": '"',
-            "columns": ",".join(f"`{name}`" for name in names),
+            "columns": null_mapped_columns_header(names, text_tokens=True),
         }
         return stream_load(self.target, table_name, headers, lambda: parquet_csv_chunks(file_path), logger)

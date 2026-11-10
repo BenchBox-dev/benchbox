@@ -20,7 +20,7 @@ def _response(status: int = 200, summary: str | None = '{"written_rows":"7"}', t
 
 def test_http_insert_posts_the_chunk_iterator_and_returns_written_rows():
     chunks = iter([b"1|a\n", b"2|b\n"])
-    with patch("requests.post", return_value=_response()) as post:
+    with patch("benchbox.platforms.clickhouse.http_insert._post_request", return_value=_response()) as post:
         written = http_insert(_ENDPOINT, "t", "CSV", chunks, {"max_insert_block_size": 5, "format_csv_delimiter": "|"})
 
     assert written == 7
@@ -38,20 +38,23 @@ def test_http_insert_posts_the_chunk_iterator_and_returns_written_rows():
 
 def test_http_insert_uses_https_when_secure():
     secure = HttpEndpoint("ch.example", 8443, "bench", "u", "p", secure=True)
-    with patch("requests.post", return_value=_response()) as post:
+    with patch("benchbox.platforms.clickhouse.http_insert._post_request", return_value=_response()) as post:
         http_insert(secure, "t", "Parquet", iter([b"x"]), {})
 
     assert post.call_args.args == ("https://ch.example:8443/",)
 
 
 def test_http_insert_raises_on_server_error():
-    with patch("requests.post", return_value=_response(status=500, text="Code: 60. Table missing")):
+    with patch(
+        "benchbox.platforms.clickhouse.http_insert._post_request",
+        return_value=_response(status=500, text="Code: 60. Table missing"),
+    ):
         with pytest.raises(RuntimeError, match="failed with 500: Code: 60"):
             http_insert(_ENDPOINT, "t", "CSV", iter([b"x"]), {})
 
 
 def test_http_insert_requires_the_summary_header():
-    with patch("requests.post", return_value=_response(summary=None)):
+    with patch("benchbox.platforms.clickhouse.http_insert._post_request", return_value=_response(summary=None)):
         with pytest.raises(RuntimeError, match="X-ClickHouse-Summary"):
             http_insert(_ENDPOINT, "t", "CSV", iter([b"x"]), {})
 

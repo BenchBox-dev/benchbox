@@ -58,7 +58,7 @@ def fake_requests(monkeypatch):
     def install(*responses):
         fake = _FakeRequests(responses)
         monkeypatch.setattr(_dependencies, "requests", fake)
-        monkeypatch.setattr("benchbox.platforms.starrocks.stream_load.time.sleep", lambda _s: None)
+        monkeypatch.setattr("benchbox.platforms.starrocks.stream_load._sleep", lambda _s: None)
         return fake
 
     return install
@@ -88,14 +88,14 @@ class TestFileChunks:
 
 
 class TestParquetCsvChunks:
-    def test_nulls_become_the_stream_load_marker_and_text_is_quoted_when_needed(self, tmp_path):
+    def test_nulls_are_empty_and_text_is_quoted_when_needed(self, tmp_path):
         path = tmp_path / "t.parquet"
         pq.write_table(
             pa.table({"id": pa.array([1, 2, None], pa.int32()), "name": ["a,b", None, 'say "hi"']}),
             path,
         )
         text = b"".join(parquet_csv_chunks(path)).decode()
-        assert text.splitlines() == ['"1","a,b"', '"2","\\N"', '"\\N","say ""hi"""']
+        assert text.splitlines() == ['1,"a,b"', "2,", ',"say ""hi"""']
 
     def test_batches_split_rows(self, tmp_path):
         path = tmp_path / "t.parquet"
@@ -184,7 +184,7 @@ class TestHandlers:
         fake = fake_requests(_ok(2))
         assert StarRocksParquetHandler(TARGET).load_table("t", path, _Connection([]), None, LOGGER) == 2
         headers = fake.calls[0]["headers"]
-        assert headers["columns"] == "`id`,`name`"
+        assert headers["columns"] == null_mapped_columns_header(["id", "name"], text_tokens=True)
         assert headers["format"] == "CSV"
         assert io.BytesIO(fake.calls[0]["body"]).read().count(b"\n") == 2
 
