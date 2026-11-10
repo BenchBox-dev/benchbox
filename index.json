@@ -5526,7 +5526,8 @@
     },
     "plan-export-contract2": {
       "accepted_members": {
-        "export-text-plan-result-fails-loader-query-plan-raw-20261108": "b146a2cd177572c4143fe19ee1779cc657e82a0d"
+        "export-text-plan-result-fails-loader-query-plan-raw-20261108": "b146a2cd177572c4143fe19ee1779cc657e82a0d",
+        "plan-privacy-detector-residual-limits-20261108": "017524ed9f5f96a8bd356f71da183ec7c4ad0e9a"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -5544,10 +5545,24 @@
           ],
           "integration_head": "42dea5b8d5934acb675df9b2b295ee11608b0b20",
           "integration_seq": 1
+        },
+        "plan-privacy-detector-residual-limits-20261108": {
+          "accepted_head": "017524ed9f5f96a8bd356f71da183ec7c4ad0e9a",
+          "changed_files": [
+            "benchbox/core/results/anonymization.py",
+            "benchbox/validation/bundle.py",
+            "changelog.d/feat-plan-export-contract2--plan-privacy-detector-residual-limits-20261108.json",
+            "docs/internal/dataframe-plan-capture.md",
+            "tests/unit/cli/commands/test_publish_plans_boundary.py",
+            "tests/unit/core/dataframe/test_local_path_detector.py",
+            "tests/unit/core/results/test_plans_export_text_fields.py"
+          ],
+          "integration_head": "0644fb55f7cdd09bdfcb250963ca4824d7d02823",
+          "integration_seq": 2
         }
       },
       "integration_branch": "feat/plan-export-contract2",
-      "integration_head": "42dea5b8d5934acb675df9b2b295ee11608b0b20",
+      "integration_head": "0644fb55f7cdd09bdfcb250963ca4824d7d02823",
       "integration_log": [
         {
           "at": "2026-11-10T01:45:55Z",
@@ -5563,6 +5578,15 @@
           "op_id": "ebc25806c31240f8a3e1349f1f63068f",
           "previous_head": "a727c47272dff457e73ecc03ab8a00a47a637592",
           "seq": 1
+        },
+        {
+          "at": "2026-11-10T02:05:46Z",
+          "head": "0644fb55f7cdd09bdfcb250963ca4824d7d02823",
+          "kind": "prepare",
+          "member": "plan-privacy-detector-residual-limits-20261108",
+          "op_id": "43bf2fe09acd4e29b730225460dec4d5",
+          "previous_head": "42dea5b8d5934acb675df9b2b295ee11608b0b20",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-export-contract2",
@@ -29299,15 +29323,10 @@
       "title": "Cover non-home paths and Windows drives in plan redaction and leak detection"
     },
     "plan-privacy-detector-residual-limits-20261108": {
-      "claim": {
-        "expires_at": "2026-11-11T02:05:43Z",
-        "generation": "def1050118bc419ab6d65614930ff8a3",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:db7d69917905292075fe62aa"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "open",
       "title": "Close residual gaps in the shared local-path detector and plan anonymizer"
     },
     "plan-review-recorded-decision-reconciliation": {
