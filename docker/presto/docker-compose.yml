@@ -1,6 +1,6 @@
 services:
   presto:
-    image: prestodb/presto:0.297@sha256:7da6d257a4c879f61b5010feca9d73ff70b069935505edb2ecff435cbe486bf9
+    image: ${PRESTO_IMAGE:-prestodb/presto:0.297@sha256:7da6d257a4c879f61b5010feca9d73ff70b069935505edb2ecff435cbe486bf9}
     mem_limit: 6g
     ports:
       - "${PRESTO_HOST_PORT:-18081}:8080"
@@ -10,9 +10,23 @@ services:
       - ./catalog:/opt/presto-server/etc/catalog:ro
       - ./jvm.properties:/opt/presto-server/etc/jvm.config:ro
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/info"]
+      test:
+        - CMD-SHELL
+        - |
+          r=$$(curl -fsS -X POST -H "X-Presto-User: benchbox" --data "SELECT 1" http://localhost:8080/v1/statement) || exit 1
+          i=0
+          while [ "$$i" -lt 15 ]; do
+            case "$$r" in *'"error"'*) exit 1;; esac
+            case "$$r" in *'"data":[[1]]'*) exit 0;; esac
+            n=$$(echo "$$r" | grep -o '"nextUri":"[^"]*"' | cut -d'"' -f4)
+            [ -n "$$n" ] || exit 1
+            sleep 1
+            r=$$(curl -fsS "http://localhost:8080/$${n#*://*/}") || exit 1
+            i=$$((i+1))
+          done
+          exit 1
       interval: 5s
-      timeout: 10s
+      timeout: 25s
       retries: 20
       start_period: 20s
     restart: unless-stopped
