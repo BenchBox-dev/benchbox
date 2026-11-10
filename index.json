@@ -7606,20 +7606,42 @@
       "terminal_outcome": "deliver"
     },
     "server-engine-bulk-load-3": {
-      "accepted_members": {},
+      "accepted_members": {
+        "uat-docker-memory-admission-decimal-units-20261030": "9ea0af9b4f2692b86e23f9e4c83f9800a839ae29"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "uat-docker-memory-admission-decimal-units-20261030": {
+          "accepted_head": "9ea0af9b4f2692b86e23f9e4c83f9800a839ae29",
+          "changed_files": [
+            "changelog.d/uat-compose-memory-defaults-20261030.json",
+            "tests/uat/docker_assets.py",
+            "tests/uat/test_docker_assets.py"
+          ],
+          "integration_head": "f9e39e12fac8dbc847d78807b8f85e0a232157f9",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/server-engine-bulk-load-3",
-      "integration_head": "a727c47272dff457e73ecc03ab8a00a47a637592",
+      "integration_head": "f9e39e12fac8dbc847d78807b8f85e0a232157f9",
       "integration_log": [
         {
           "at": "2026-11-10T01:41:43Z",
           "head": "a727c47272dff457e73ecc03ab8a00a47a637592",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-10T02:00:57Z",
+          "head": "f9e39e12fac8dbc847d78807b8f85e0a232157f9",
+          "kind": "prepare",
+          "member": "uat-docker-memory-admission-decimal-units-20261030",
+          "op_id": "e1e1a6eea50a4f4eae5e2a81a1fa1fb0",
+          "previous_head": "a727c47272dff457e73ecc03ab8a00a47a637592",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-server-engine-bulk-load-3",
@@ -42326,15 +42348,10 @@
       "title": "Make the UAT disk-headroom gate always-on (decouple from phase list) and stop the budget gate degrading silently"
     },
     "uat-docker-memory-admission-decimal-units-20261030": {
-      "claim": {
-        "expires_at": "2026-11-11T02:00:44Z",
-        "generation": "7d2da453eef247988b532457959e13fd",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a"
-      },
+      "claim": null,
       "needs": [],
       "priority": "critical",
-      "status": "active",
+      "status": "open",
       "title": "UAT memory admission parses Docker \"g\" as 10^9 bytes, so StarRocks and ClickHouse server never start"
     },
     "uat-docker-platform-switch-cleanup": {

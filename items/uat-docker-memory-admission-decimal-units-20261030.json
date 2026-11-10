@@ -14,6 +14,63 @@
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/actions/runs/40971306663"
   ],
+  "prepared": {
+    "accepted_head": "9ea0af9b4f2692b86e23f9e4c83f9800a839ae29",
+    "batch_id": "server-engine-bulk-load-3",
+    "changed_files": [
+      "changelog.d/uat-compose-memory-defaults-20261030.json",
+      "tests/uat/docker_assets.py",
+      "tests/uat/test_docker_assets.py"
+    ],
+    "integration_head": "f9e39e12fac8dbc847d78807b8f85e0a232157f9",
+    "integration_seq": 1,
+    "member_id": "uat-docker-memory-admission-decimal-units-20261030",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "75421f5c53d6e5eb7bef57785ca36771402aedebc954175a1903f54ee1a3b9ed",
+    "source_base": "a727c47272dff457e73ecc03ab8a00a47a637592",
+    "source_revision": "9ea0af9b4f2692b86e23f9e4c83f9800a839ae29",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-server-engine-bulk-load-3--uat-docker-memory-admission-decimal-units-20261030",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/uat/test_connection_registry_drift.py",
+        "tests/uat/test_container_cleanup.py",
+        "tests/uat/test_declared_settings.py",
+        "tests/uat/test_docker_assets.py",
+        "tests/uat/test_docker_cleanup.py",
+        "tests/uat/test_mocker_launch.py",
+        "tests/uat/test_orchestrator.py",
+        "tests/uat/test_phases.py",
+        "tests/uat/test_sweep_durability.py",
+        "tests/unit/test_heavy_choke_points.py",
+        "tests/unit/workflows/test_release_v2_workflow.py"
+      ],
+      "review": {
+        "base_sha": "a727c47272dff457e73ecc03ab8a00a47a637592",
+        "head_sha": "9ea0af9b4f2692b86e23f9e4c83f9800a839ae29",
+        "head_tree": "d2cf7bb8ce972730aa942226208e24a2eeba4728",
+        "outcome": "clear",
+        "patch_digest": "c0041e13895e9d1b03eebbd752d48a33",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "a727c47272dff457e73ecc03ab8a00a47a637592"
+      },
+      "revision": "9ea0af9b4f2692b86e23f9e4c83f9800a839ae29",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cbd63a5667398431c51c92e1",
@@ -104,6 +161,15 @@
       "generation": "7d2da453eef247988b532457959e13fd",
       "op": "take",
       "op_id": "d3222a2b7a204d5a999144bcdbc84aa1",
+      "session_id": "248466dc3ce04a7c8f4c76cdbd04176f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a",
+      "at": "2026-11-10T02:00:57Z",
+      "client": "omp-coding-agent",
+      "generation": "7d2da453eef247988b532457959e13fd",
+      "op": "prepare",
+      "op_id": "e1e1a6eea50a4f4eae5e2a81a1fa1fb0",
       "session_id": "248466dc3ce04a7c8f4c76cdbd04176f"
     }
   ]
