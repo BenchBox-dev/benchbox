@@ -12645,7 +12645,8 @@
     "benchbox-lock-theseus-review-format-release-a-20261110": {
       "claim": null,
       "needs": [
-        "theseus-review-format-release-a-20261110"
+        "theseus-review-format-release-a-20261110",
+        "benchbox-review-format-dual-read-20261110"
       ],
       "priority": "high",
       "status": "open",
