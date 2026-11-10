@@ -2,8 +2,9 @@
   "acceptance": [
     "theseus-review-minimize-superseded-20261110 is done or dropped (state recorded here).",
     "Release PR merged with hosted SHIP and green checks; tag and GitHub release exist; two clean builds byte-identical; assets pass shasum -c SHA256SUMS.",
-    "Theseus's own next PR after the release shows the new verdict body and thread format on GitHub (link recorded), and its review-gate passes on SHIP (proves release-A readers accept the new body end to end).",
-    "Recorded here: release commit, tag, hashes and the exact BenchBox lock values."
+    "An integration test on the release commit runs release-B posting output through the release-B gate (review_check) and dedup and gets PASS for SHIP and the same fingerprints as before the format change; end-to-end GitHub evidence comes from the first BenchBox PR under benchbox-lock-theseus-review-format-release-b-20261110 and the first Theseus PR under theseus-lock-self-review-format-release-b-20261110.",
+    "If main contains merged changes outside the release-B items that alter goldens or body output, the owner's include/defer decision is recorded here.",
+    "Recorded here: release commit, tag, hashes and the exact BenchBox and Theseus lock values."
   ],
   "context": "Part of theseus-review-output-format-20261110.",
   "description": "Cut the next unused Theseus patch release after release A, once the verdict-body and thread-id items have merged AND theseus-review-minimize-superseded-20261110 is either done or dropped (on probe NO-GO). Same release procedure as release A.\nDecision gate: release B changes the body and thread writer. It may be published only after (1) release A is published and BenchBox is locked to it (one release of reader overlap), and (2) benchbox-review-format-dual-read-20261110 has merged, because BenchBox's merge digest otherwise fails open on overridden High findings.\nGuardrails: release PR via hosted SHIP + green checks (independent review if it touches workflows, policy or lock); no owner-only actions; no live model calls.",
@@ -17,6 +18,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "eac98335f87b44f7a34f34a12e568def",
+      "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a",
+      "at": "2026-11-10T17:59:09Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7beb1ffadc464b7bb276ab68eb01a2a5",
       "session_id": "977a65f4969143f4981bb9d49ff293b0"
     }
   ]
