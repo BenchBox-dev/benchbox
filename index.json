@@ -39551,6 +39551,15 @@
       "status": "done",
       "title": "Theseus v0.1.7: hunk coverage, git-built diffs, rename-aware executed-surface promotions, capacity sizing, compaction fail-closed, preflight"
     },
+    "theseus-review-format-optional-surfaces-20261110": {
+      "claim": null,
+      "needs": [
+        "benchbox-lock-theseus-review-format-release-b-20261110"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Decide on the lower-ranked review output surfaces: dashboard comment, suggestion blocks, check-run mirror"
+    },
     "theseus-review-format-release-a-20261110": {
       "claim": null,
       "needs": [

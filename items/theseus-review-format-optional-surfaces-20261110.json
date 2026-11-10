@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Owner decision for each of the three options recorded with reason.",
+    "Each approved option has its own tracker item with acceptance and guardrails; then this item is finished."
+  ],
+  "context": "Follow-up from theseus-review-output-format-20261110; proposal ranks 8-10. Not part of the delivery batch.",
+  "description": "The format proposal ranked three further ideas below the delivered work (sections 8.4 step 3, 8.6 option 3, 8.8):\n- Sticky dashboard comment edited in place (links each finding to its thread). Costs: every edit triggers BenchBox's issue_comment-driven gate workflow; must never start with a command prefix; a second, non-authoritative source of truth; changes the documented 'a run with no verdict still posts a review' contract.\n- Suggestion blocks for mechanical fixes. Trust risk: one-click commit of model-written code co-authored by the App; must be opt-in, never on gate/soundness paths, fence-safe, exact line span.\n- Check-run mirror of threadless findings as annotations. Needs a new `checks: write` App permission every consumer must approve; annotations cannot be replied to.\nDecision gate: after release B has been live on BenchBox for at least a week, the owner decides for each whether the timeline still feels heavy enough to justify it. Each 'yes' becomes its own implementation item with fail-closed acceptance; each 'no' is recorded with the reason.",
+  "links": [
+    "~/.omp/agent/sessions/-Developer-BenchBox/2026-11-02T02-04-38-450Z_01a19a00-60b2-70a6-b56d-6f666415a725/local/review-comment-format-proposal.md (sections 8.4, 8.6, 8.8, 9)"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a",
+      "at": "2026-11-10T15:39:17Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "852531853e13460685f66c518e46452a",
+      "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    }
+  ]
+}
