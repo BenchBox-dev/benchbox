@@ -3,6 +3,13 @@
     "Parquet and CSV loads send file bytes without per-row Python parsing.",
     "Row counts match."
   ],
+  "batch": {
+    "batch_id": "server-engine-bulk-load-2",
+    "implementation_dependencies": [
+      "uat-docker-memory-admission-decimal-units-20261030"
+    ],
+    "member_id": "perf-starrocks-parquet-load-20261030"
+  },
   "context": "Review 2026-10-31: StarRocksCSVHandler (starrocks/workload.py:382-437) is referenced nowhere, tests included. Live verification needs the UAT memory-admission fix so the StarRocks shard starts.\n\n2026-11-09 live (mocker starrocks 3.5.16, STARROCKS_MEMORY_LIMIT=4g, TPC-H dbgen shards): sha256 row parity vs dbgen MATCH all tables. SF0.01 CSV (8 tables) load before 6.35s / after 6.42s (stream load + tablet creation dominates). SF0.1 CSV before 10.90s after 6.55s, lineitem 600,572 rows parity MATCH. SF0.01 Parquet (customer, lineitem, nation, orders) before (executemany) 35.54s after 0.74s, parity MATCH, rows 76,700. StarRocks 3.5.16 Stream Load rejects format=parquet (unknown data format), so Parquet is converted to CSV by pyarrow batches (enclose=\") and null mapped via \\N; CSV null/NaN mapping moved server-side (columns header if/lower) and verified live with quoted fields, doubled quotes, embedded newline, header skip. StarRocksCSVHandler removed (unreferenced).",
   "description": "starrocks/workload.py:441-484 converts Parquet with to_pylist and inserts via pymysql executemany. Route through Stream Load (pyarrow.csv conversion) or the FILES() table function. Also :310-318 re-parses every CSV row with csv.reader just for null mapping; stream raw bytes and use Stream Load null/trim headers. Remove StarRocksCSVHandler (:382-438) if it is dead code.",
   "sessions": [
@@ -62,6 +69,14 @@
       "client": "omp-coding-agent",
       "op": "abort",
       "op_id": "7e17548c50554309b68c75df1fb0aff0",
+      "session_id": "248466dc3ce04a7c8f4c76cdbd04176f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a",
+      "at": "2026-11-10T01:36:34Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e81c42065c814ff687b7cc147488fd32",
       "session_id": "248466dc3ce04a7c8f4c76cdbd04176f"
     }
   ]
