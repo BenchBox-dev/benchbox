@@ -40753,6 +40753,13 @@
       "status": "done",
       "title": "Add TPC-DS-OBT (One Big Table) Benchmark Implementation"
     },
+    "tpcds-obt-cli-scale-factors-20261110": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "TPC-DS OBT accepts only scale factor 1 from the CLI"
+    },
     "tpcds-obt-cloud-staging-output-dir": {
       "claim": null,
       "needs": [],

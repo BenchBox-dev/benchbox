@@ -1,0 +1,29 @@
+{
+  "acceptance": [
+    "The CLI and the Python API apply one scale rule for `tpcds_obt`, recorded with its reason on this item.",
+    "`num_queries` for `tpcds_obt` is 90, after every consumer of the field was checked (CLI listing, MCP, doc-contracts and docs-data exports, test matrices, UAT).",
+    "TPC-DS OBT runs end to end on DuckDB at SF 0.01, 0.1 and 1, and at SF 10 if claimed.",
+    "A regression test shows the CLI accepts each enabled scale and rejects one outside the rule.",
+    "A changelog fragment records the change.",
+    "The report gives the accepted rule, per-scale row count, Parquet size and generation time with hardware, the PR number, and the core commit whose site-inputs bundle carries the change."
+  ],
+  "description": "`benchbox run --benchmark tpcds_obt` rejects every scale factor except 1.0 (\"tpcds_obt accepts scale_factor in [1.0]; got 10.0\"), and the Python API rejects every scale below 1.0. The restriction looks accidental: the `tpcds_obt` registry block (`default_scale: 1.0`, `scale_options: [1.0]`, `min_scale: 1.0`, `num_queries: 17`) came in with 9f51cc65ee (#590, a bulk metadata shrink with no recorded OBT decision). `validate_scale_factor` special-cases only `tpcds`; `tpcds_obt` is checked against `scale_options`. The project already runs OBT at SF 0.01 through paths that skip the check (`make tpcds-obt-equivalence`, nightly `sql-execution-gate-obt`). `num_queries: 17` is the DataFrame count; the SQL catalog has 90 queries (93 statements, Q14/Q23/Q24 lettered).\n\nThe fix lands in core. The site page `BenchBox-dev/benchbox-site: docs/benchmarks/tpc-ds-obt.md` (\"Scale Factors\" table) is corrected separately once the site-inputs bundle carries the change.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-site/blob/main/docs/benchmarks/tpc-ds-obt.md",
+    "benchbox/core/benchmark_registry.yaml",
+    "benchbox/core/benchmark_registry.py",
+    "benchbox/core/tpcds/compliance.py",
+    "benchbox/core/tpcds_obt/benchmark.py",
+    "benchbox/tpcds_obt.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ba761f2f14887ae32a130a28",
+      "at": "2026-11-10T23:49:39Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1339742484e841c199b4df071020a8c6",
+      "session_id": "9eb11c0f066f488ca0d8daee4f0834d0"
+    }
+  ]
+}
