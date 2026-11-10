@@ -1,13 +1,15 @@
 {
   "acceptance": [
+    "Start check and #4062 state recorded.",
     "Lock values independently recomputed and matching the release record; both wheel URLs hash to the recorded sha256.",
     "Status-text consumer inventory recorded in the PR body (none, or migrated with tests).",
+    "docs/internal/review-v2.md :364-368 (a no-verdict review is posted once per head and cause) and :744-749 (absent-attempt line format) updated to release-A behaviour.",
     "Promotion and workflow contract tests pass via make heavy-run; comment-policy 0; make pr-preflight passes.",
     "Merged to develop with hosted SHIP and green required checks; merge SHA recorded here.",
     "After merge, the first BenchBox PR reviewed under release A shows the new status descriptions (link recorded)."
   ],
   "context": "Part of theseus-review-output-format-20261110.",
-  "description": "Lock-only promotion of BenchBox to Theseus release A, following the existing promotion procedure (as for v0.2.8: .github/theseus-lock.json version, source_commit, workflow_sha, source_sha256, delta_sha256 from the then-current lock, artifact sha256 and both URLs; the same SHA in `uses:` and `with.theseus_ref` of .github/workflows/review-gate.yml and review-verdict.yml; changelog fragment).\nStart only after the v0.2.8 lock (#4062) and the adoption PR (benchbox-adopt-theseus-v025-review-guidance-20261107) have merged, so promotions do not conflict.\nBefore promoting, confirm BenchBox does not parse any review-verdict or review-gate status description text that release A changed (rg for the old strings across scripts/, _project/scripts/, tools/, .github/); if one does, migrate it in this PR with tests.\nGuardrails: BenchBox AGENTS.md write workflow; recompute and verify every lock value independently (download both wheels and hash them); never weaken a required check; hosted SHIP on the final head; arm via make pr-arm; no live model calls.",
+  "description": "Lock-only promotion of BenchBox to Theseus release A, following the existing promotion procedure (as for v0.2.8: .github/theseus-lock.json version, source_commit, workflow_sha, source_sha256, delta_sha256 from the then-current lock, artifact sha256 and both URLs; the same SHA in `uses:` and `with.theseus_ref` of .github/workflows/review-gate.yml and review-verdict.yml; changelog fragment).\nStart check (recorded here before work): no other open BenchBox PR changes .github/theseus-lock.json or the review callers (the adoption PR for benchbox-adopt-theseus-v025-review-guidance-20261107 changes review-verdict.yml); PR #4062 is merged or closed (state recorded). If #4062 has not merged, this promotion must carry its oracle-gate cutover (ruleset, ruleset_review_enforcement.py, caller CONTEXTS, repo-admin-settings.md), and oracle-gate is removed from the live ruleset first with before/after captures (settings authority granted to the coordinator).\nBefore promoting, confirm BenchBox does not parse any review-verdict or review-gate status description text that release A changed (rg across scripts/, _project/scripts/, tools/, make/, .github/); if one does, migrate it in this PR with tests.\nGuardrails: BenchBox AGENTS.md write workflow; recompute and verify every lock value independently (download both wheels and hash them); never weaken a required check; hosted SHIP on the final head; arm via make pr-arm; no live model calls.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4062",
     ".github/theseus-lock.json"
@@ -19,6 +21,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "48f8bfe7d79341de944e75e63598c368",
+      "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a",
+      "at": "2026-11-10T17:59:05Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0e274ddd7434481f8a1bc473d823544b",
       "session_id": "977a65f4969143f4981bb9d49ff293b0"
     }
   ]
