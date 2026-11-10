@@ -65,6 +65,15 @@
       "op_id": "2f9c36b2ae574b09aa44b80e8ce60b1b",
       "reason": "Leader identity changed when the MCP server was replaced during the tractable 1.0.0 rename restart; the previous server stopped and no member claim is held",
       "session_id": "09141f2a709843138145fbb1bb9cc6a4"
+    },
+    {
+      "actor": "omp:sqlglot-delivery-hardening-leader",
+      "at": "2026-11-10T01:03:36Z",
+      "client": "mcp",
+      "generation": "81ebb9fad64a4e8dae00f5eaa103a5e1",
+      "op": "take",
+      "op_id": "2a763eafbb0a434bb41628f769b60162",
+      "session_id": "9be2432729584895a150051b681f6540"
     }
   ]
 }

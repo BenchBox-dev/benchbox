@@ -36699,10 +36699,15 @@
       "title": "SQLGlot delivery consumer arms its adoption PR only on its next daily run"
     },
     "sqlglot-delivery-dry-runs-miss-write-prerequisites-20261107": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-11T01:03:35Z",
+        "generation": "81ebb9fad64a4e8dae00f5eaa103a5e1",
+        "renewals": 0,
+        "worker": "omp:sqlglot-delivery-hardening-leader"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Verify core SQLGlot delivery App readiness before publishing"
     },
     "sqlglot-delivery-hardening": {
