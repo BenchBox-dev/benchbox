@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "expect_store='BenchBox-dev/BenchBox' is refused by a server bound to BenchBox-dev/benchbox-sqlglot (and the reverse), with a gate E_STATE naming both.",
+    "Accepted forms still work: owner/repo, owner/repo.git, a bare repo name when unambiguous, and the full clone URL, case-insensitively.",
+    "The todo skill's critical rule states the exact matching rule and the safe form until the product change ships."
+  ],
+  "context": "Found while resuming after the tractable 1.0.0 rename restart; the restarted session was bound to the fork tracker only, and the core-named check passed. The workaround used here: expect_store with the .git suffix, plus verifying the Remote line of get_instructions.",
+  "description": "Problem. get_instructions(expect_store=...) matches a case-insensitive SUBSTRING of the bound remote (documented in the todo skill). With two projects whose names share a prefix, the gate cannot tell them apart: observed 2026-11-09 on tractable 1.0.0 with a server bound to https://github.com/BenchBox-dev/benchbox-sqlglot.git#todo-state, expect_store='BenchBox-dev/BenchBox' was ACCEPTED (it is a prefix of 'benchbox-dev/benchbox-sqlglot'), so the 'wrong tracker' refusal that protects every first write silently passes. expect_store='BenchBox-dev/BenchBox.git' was refused correctly. Impact: an agent that follows the skill literally (pass the full owner/repo) can write core work into the fork tracker, or fork work into core, with no gate. Both repos exist and both have trackers, so this is a live hazard here, not a hypothetical.\n\nChange (product: tractable, plus the todo skill). Make the match segment-aware: compare normalized owner/repo path segments (strip scheme, host, trailing .git) for equality, or require the expected value to match a whole path component. Keep accepting a bare repo name or full URL. Until then the skill should tell agents to pass the repository with a '.git' suffix or the full URL.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/tree/todo-state"
+  ],
+  "sessions": [
+    {
+      "actor": "omp:sqlglot-delivery-hardening-leader",
+      "at": "2026-11-10T00:48:07Z",
+      "client": "mcp",
+      "op": "create",
+      "op_id": "de045f19f8864c1987337d72459700bc",
+      "session_id": "b302c66496e945fa9c7879036f7a361a"
+    }
+  ]
+}
