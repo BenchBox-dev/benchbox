@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "#4037 is closed with a comment naming the superseding change, or rebased onto origin/develop with green CI and an item tracking its remaining purpose.",
+    "Any behaviour #4037 had that develop lacks is either delivered or recorded as a tracker item; none is silently dropped.",
+    "Decision gate: if the owner or the session that opened #4037 is still working on it, leave it open and record that here."
+  ],
+  "description": "Problem. Draft PR #4037 (fix/batch-evidence-develop-ci, 'keep one implementation of develop-deleted receipt path dropping') has not changed since 2026-11-07. Its review is still pending, and no tracker item references it. Since then, #4020 was reverted (#4038), and #4048 landed 'record ran_command on every rerun, drop develop-deleted test paths in overlap and fix reruns, fail closed when none remain'. #4037 may now be redundant or conflicting. A stalled draft that changes scripts/batch_integration.py also blocked another item's decision gate for about an hour on 2026-11-07.\n\nChange. Compare #4037's diff with develop after #4048. If everything it does is already on develop, close it with a comment naming #4048. If something remains (for example a single shared implementation), rebase it onto develop, or file that remainder as its own item and close the draft.\n\nGuardrails: never push to or edit another session's branch without the owner's go-ahead; a close needs a comment that states what superseded it; never bypass review.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4037",
+    "https://github.com/BenchBox-dev/benchbox/pull/4048",
+    "scripts/batch_integration.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af45b75c1ad8820899a19497",
+      "at": "2026-11-10T22:41:15Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "944e4a8f99d546de9967d6853b3f785b",
+      "session_id": "32045bbba1554b198973ff9701611e85"
+    }
+  ]
+}
