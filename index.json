@@ -7854,7 +7854,8 @@
     },
     "sqlglot-delivery-hardening": {
       "accepted_members": {
-        "sqlglot-delivery-arm-waits-for-daily-run-20261107": "f344efee83d6094956a609f761f96da4f8430ff0"
+        "sqlglot-delivery-arm-waits-for-daily-run-20261107": "f344efee83d6094956a609f761f96da4f8430ff0",
+        "sqlglot-delivery-dry-runs-miss-write-prerequisites-20261107": "e7cc8976ca34a918202a2d3515105f68e75cffad"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -7871,10 +7872,21 @@
           ],
           "integration_head": "42e58c9bcaf374d30ff6b0b2959fc6b7c4782dd0",
           "integration_seq": 2
+        },
+        "sqlglot-delivery-dry-runs-miss-write-prerequisites-20261107": {
+          "accepted_head": "e7cc8976ca34a918202a2d3515105f68e75cffad",
+          "changed_files": [
+            ".github/workflows/sqlglot-delivery.yml",
+            "changelog.d/sqlglot-app-readiness.json",
+            "docs/internal/repo-admin-settings.md",
+            "tests/unit/workflows/test_sqlglot_delivery_workflow.py"
+          ],
+          "integration_head": "2b12f2eb9397e05c37d37df4aa9726613aded4c9",
+          "integration_seq": 3
         }
       },
       "integration_branch": "feat/sqlglot-delivery-hardening",
-      "integration_head": "42e58c9bcaf374d30ff6b0b2959fc6b7c4782dd0",
+      "integration_head": "2b12f2eb9397e05c37d37df4aa9726613aded4c9",
       "integration_log": [
         {
           "at": "2026-11-07T18:38:46Z",
@@ -8291,6 +8303,15 @@
           "op_id": "d54f933c11844667b405899e9091bc9b",
           "previous_head": "0194854760e504faffa0ca6fe403c29fc7bae6f0",
           "seq": 2
+        },
+        {
+          "at": "2026-11-10T01:03:41Z",
+          "head": "2b12f2eb9397e05c37d37df4aa9726613aded4c9",
+          "kind": "prepare",
+          "member": "sqlglot-delivery-dry-runs-miss-write-prerequisites-20261107",
+          "op_id": "28504550c6c742a889d06c92178593a0",
+          "previous_head": "42e58c9bcaf374d30ff6b0b2959fc6b7c4782dd0",
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-sqlglot-delivery-hardening",
@@ -36699,15 +36720,10 @@
       "title": "SQLGlot delivery consumer arms its adoption PR only on its next daily run"
     },
     "sqlglot-delivery-dry-runs-miss-write-prerequisites-20261107": {
-      "claim": {
-        "expires_at": "2026-11-11T01:03:35Z",
-        "generation": "81ebb9fad64a4e8dae00f5eaa103a5e1",
-        "renewals": 0,
-        "worker": "omp:sqlglot-delivery-hardening-leader"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Verify core SQLGlot delivery App readiness before publishing"
     },
     "sqlglot-delivery-hardening": {
