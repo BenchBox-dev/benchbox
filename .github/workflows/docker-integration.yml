@@ -214,6 +214,7 @@ jobs:
       packages: read
     env:
       CLICKHOUSE_IMAGE: ghcr.io/benchbox-dev/clickhouse:25.8@sha256:0152dd511befe6a2c2ef53e930726179669b08116da78500b37c51c96ff5ee77
+      CLICKHOUSE_MEMORY_LIMIT: 4g
     steps:
       - name: Checkout code
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
@@ -235,8 +236,6 @@ jobs:
         run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
 
       - name: Bring up ClickHouse compose stack
-        env:
-          CLICKHOUSE_MEMORY_LIMIT: 4g
         run: docker compose -f docker/clickhouse/docker-compose.yml up -d --wait
 
       - name: Run ClickHouse live integration tests

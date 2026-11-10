@@ -88,6 +88,7 @@ INSERT_TARGET = re.compile(r"\s*INSERT\s+(?:OVERWRITE\s+)?(?:INTO\s+)?(" + QUALI
 CONNECTION_PROBE = re.compile(r"^\s*SELECT\s+1(?:\s+AS\s+\w+)?\s*;?\s*$", re.IGNORECASE)
 FAKE_VERSION = "9.9.9"
 STREAM_LOAD_RESPONSE = '{"Status": "Success", "Message": "OK", "NumberLoadedRows": 1}'
+CLICKHOUSE_SUMMARY = '{"read_rows": "1", "written_rows": "1"}'
 FAKE_VERSIONS = {"duckdb": "1.4.0"}
 CATALOG_NAME = "benchdb"
 
@@ -469,6 +470,8 @@ class Fake:
                 for _ in value:
                     pass
         self._ledger.record_call(self._name, args, kwargs)
+        if self._name.endswith(".headers.get") and args and args[0] == "X-ClickHouse-Summary":
+            return CLICKHOUSE_SUMMARY
         leaf = self._name.rsplit(".", 1)[-1]
         rows = self._ledger.rows_now()
         if leaf in FETCH_ALL:

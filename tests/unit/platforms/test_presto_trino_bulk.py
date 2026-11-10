@@ -329,15 +329,14 @@ class TestAdapterBulkLoadWiring:
         cursor.fetchall.return_value = [("id", "integer"), ("val", "varchar")]
 
         with patch("benchbox.platforms.presto_trino_adapter_base.bulk_load_table", return_value=1) as mock_bulk:
-            rows, count = adapter._load_table_data(
+            loaded = adapter._load_table_data(
                 cursor,
                 "test_table",
                 [csv_file],
                 "memory",
                 "default",
             )
-            assert rows == 1
-            assert count == 1
+            assert loaded == (1, 1)
             mock_bulk.assert_called_once()
             settings = mock_bulk.call_args.kwargs["settings"]
             assert settings.source_catalog == "hive"

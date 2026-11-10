@@ -907,7 +907,7 @@ class TestClickHouseNativeHandlerBulk:
 
     def test_server_mode_streams_host_files_over_the_client_insert(self, tmp_path):
         shard = tmp_path / "region.tbl"
-        shard.write_text("1|AFRICA\n2|AMERICA\n", encoding="utf-8")
+        shard.write_bytes(b"1|AFRICA\n2|AMERICA\n")
 
         handler = self._make_handler(server_mode=True)
         connection = Mock()
@@ -933,8 +933,8 @@ class TestClickHouseNativeHandlerBulk:
 
     def test_server_mode_inserts_each_shard_as_its_own_stream(self, tmp_path):
         shards = [tmp_path / "region.tbl.1", tmp_path / "region.tbl.2"]
-        shards[0].write_text("1|AFRICA\n", encoding="utf-8")
-        shards[1].write_text("2|AMERICA\n", encoding="utf-8")
+        shards[0].write_bytes(b"1|AFRICA\n")
+        shards[1].write_bytes(b"2|AMERICA\n")
 
         handler = self._make_handler(server_mode=True)
         connection = Mock()
@@ -966,8 +966,8 @@ class TestClickHouseNativeHandlerBulk:
 
     def test_server_mode_header_files_use_csv_with_names(self, tmp_path):
         shard = tmp_path / "events.csv.gz"
-        with gzip.open(shard, "wt", encoding="utf-8") as file_handle:
-            file_handle.write("id,name\n1,alpha\n")
+        with gzip.open(shard, "wb") as file_handle:
+            file_handle.write(b"id,name\n1,alpha\n")
 
         handler = self._make_handler(server_mode=True)
         handler.delimiter_char = ","

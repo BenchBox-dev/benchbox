@@ -127,8 +127,8 @@ class _ServerAdapter:
 def test_clickhouse_delimited_loader_skips_empty_first_shard(tmp_path: Path) -> None:
     empty = tmp_path / "part-0.tbl"
     populated = tmp_path / "part-1.tbl"
-    empty.write_text("", encoding="utf-8")
-    populated.write_text("1|alpha\n", encoding="utf-8")
+    empty.write_bytes(b"")
+    populated.write_bytes(b"1|alpha\n")
     connection = _ServerConnection()
     handler = ClickHouseNativeHandler("|", _ServerAdapter(), object())
 
