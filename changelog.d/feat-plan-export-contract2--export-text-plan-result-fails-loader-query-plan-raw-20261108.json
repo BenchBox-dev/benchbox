@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed 'benchbox export' failing with 'Unknown legacy query-result fields' on DataFrame results captured with --capture-plans; text plans now export, anonymized, to the plans companion."
+    }
+  ]
+}
