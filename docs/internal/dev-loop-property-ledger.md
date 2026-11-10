@@ -144,7 +144,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `seed-corpus.yml` | product-safety | Corpus seeding |
 | `site-inputs.yml` | product-safety | Versioned site-inputs bundle build, attestation, artifact upload and site dispatch |
 | `soundness-merge-digest.yml` | product-safety | Post-merge soundness review digest |
-| `sqlglot-delivery.yml` | product-safety | Daily SQLGlot delivery consumer: a read-only job plans and prepares the adoption from the fork's verified delivery, and a separate job holding the App token publishes one automation pull request and arms it through the normal arming checks; gated by a kill switch and a dry-run default |
+| `sqlglot-delivery.yml` | product-safety | Daily SQLGlot delivery consumer: a read-only job plans and prepares adoption; trusted App jobs publish and arm it through normal arming checks, with arming retried after CI and review completion; gated by the kill switch and dry-run default |
 | `submission-validator-drift-check.yml` | product-safety | Submission validator sync |
 | `sync-results-data-to-published.yml` | product-safety | Corpus trust boundary sync |
 | `todo-state-validate.yml` | tooling | Tracker state validation |
@@ -174,7 +174,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_oracle_gate_workflow.py` | product-safety | Trusted triggers, develop-only checkout, single per-PR concurrency group, App-only posting and no other workflow posting the gate context |
 | `test_oracle_review_workflow.py` | product-safety | The notification-only shape of the oracle-review workflow: edited and dismissed review triggers, empty permissions, one `review-event` job, no checkout, secrets or tools |
 | `test_oracle_verdict_workflow.py` | product-safety | Oracle review triggers, guards, the single review job's step order and secret scoping, and App-only posting |
-| `test_sqlglot_delivery_workflow.py` | product-safety | The delivery workflow's read-only credential-free preparation job, App token confined to the publish job, kill switch and dry-run gating, repository and branch guard, and pinned actions |
+| `test_sqlglot_delivery_workflow.py` | product-safety | Credential-free preparation, scoped App tokens in trusted mutation jobs, completion-event and kill-switch gating, trusted checkouts and pinned actions |
 | `test_t2_partition_workflow.py` | product-safety | Complete medium selection, correctness gate conservation, and binary framing placement |
 | `test_comment_policy_nightly_workflow.py` | tooling | Nightly comment-policy workflow triggers, develop checkout, read-only permissions, whole-tree launcher call and shared action pins |
 | `test_trunk_coverage_workflow.py` | product-safety | Coverage workflow triggers, instrumented shards, map combine with self-fetch, schedule-only staleness issue |
