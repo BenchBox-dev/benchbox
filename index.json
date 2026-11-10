@@ -38894,15 +38894,10 @@
       "title": "Test Suite Reliability ✅ COMPLETED"
     },
     "test-translation-source-dialects-timeout-20261028": {
-      "claim": {
-        "expires_at": "2026-11-11T02:08:19Z",
-        "generation": "5c8b74b9e6c8452b83288c198513b8ec",
-        "renewals": 0,
-        "worker": "omp:sqlglot-delivery-hardening-leader"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Stop test_no_benchmark_bypasses_translation_without_an_allowlisted_reason hitting the 60s timeout in CI"
     },
     "testing-approach-correctness-gates": {
