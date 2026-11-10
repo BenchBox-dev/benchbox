@@ -7204,6 +7204,7 @@
     },
     "server-engine-bulk-load": {
       "accepted_members": {
+        "perf-starrocks-parquet-load-20261030": "7c48c78ce997a7ae1259dd7fdc57789bb1dff9d7",
         "uat-docker-memory-admission-decimal-units-20261030": "c844c605f83129193950605d96b449d1ac455b61"
       },
       "batch_schema": 2,
@@ -7211,6 +7212,18 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "perf-starrocks-parquet-load-20261030": {
+          "accepted_head": "7c48c78ce997a7ae1259dd7fdc57789bb1dff9d7",
+          "changed_files": [
+            "benchbox/platforms/starrocks/stream_load.py",
+            "benchbox/platforms/starrocks/workload.py",
+            "changelog.d/starrocks-stream-load-bytes-20261109.json",
+            "tests/unit/platforms/test_starrocks_stream_load.py",
+            "tests/unit/platforms/test_starrocks_workload.py"
+          ],
+          "integration_head": "fe2fb01541665408dbac754ec7c8e08d6c078ebc",
+          "integration_seq": 2
+        },
         "uat-docker-memory-admission-decimal-units-20261030": {
           "accepted_head": "c844c605f83129193950605d96b449d1ac455b61",
           "changed_files": [
@@ -7223,7 +7236,7 @@
         }
       },
       "integration_branch": "feat/server-engine-bulk-load",
-      "integration_head": "f044b8cc952f1e557620348640c6ccc71c750a89",
+      "integration_head": "fe2fb01541665408dbac754ec7c8e08d6c078ebc",
       "integration_log": [
         {
           "at": "2026-11-10T00:32:37Z",
@@ -7239,6 +7252,15 @@
           "op_id": "da414c256cfa49c2868cf58eb19a22ae",
           "previous_head": "a727c47272dff457e73ecc03ab8a00a47a637592",
           "seq": 1
+        },
+        {
+          "at": "2026-11-10T01:18:22Z",
+          "head": "fe2fb01541665408dbac754ec7c8e08d6c078ebc",
+          "kind": "prepare",
+          "member": "perf-starrocks-parquet-load-20261030",
+          "op_id": "beb4ab17c1294533bf7448990a046590",
+          "previous_head": "f044b8cc952f1e557620348640c6ccc71c750a89",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-server-engine-bulk-load",
@@ -28587,17 +28609,12 @@
       "title": "Use Arrow collect for Spark-family adapters"
     },
     "perf-starrocks-parquet-load-20261030": {
-      "claim": {
-        "expires_at": "2026-11-11T01:16:28Z",
-        "generation": "8b7119b4878f49e4890d30e0cf291a94",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a"
-      },
+      "claim": null,
       "needs": [
         "uat-docker-memory-admission-decimal-units-20261030"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Load StarRocks Parquet via Stream Load, not executemany"
     },
     "perf-tpcdi-etl-bulk-paths-20261031": {

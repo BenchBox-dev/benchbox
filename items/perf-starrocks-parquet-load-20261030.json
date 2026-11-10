@@ -12,6 +12,62 @@
   },
   "context": "Review 2026-10-31: StarRocksCSVHandler (starrocks/workload.py:382-437) is referenced nowhere, tests included. Live verification needs the UAT memory-admission fix so the StarRocks shard starts.",
   "description": "starrocks/workload.py:441-484 converts Parquet with to_pylist and inserts via pymysql executemany. Route through Stream Load (pyarrow.csv conversion) or the FILES() table function. Also :310-318 re-parses every CSV row with csv.reader just for null mapping; stream raw bytes and use Stream Load null/trim headers. Remove StarRocksCSVHandler (:382-438) if it is dead code.",
+  "prepared": {
+    "accepted_head": "7c48c78ce997a7ae1259dd7fdc57789bb1dff9d7",
+    "batch_id": "server-engine-bulk-load",
+    "changed_files": [
+      "benchbox/platforms/starrocks/stream_load.py",
+      "benchbox/platforms/starrocks/workload.py",
+      "changelog.d/starrocks-stream-load-bytes-20261109.json",
+      "tests/unit/platforms/test_starrocks_stream_load.py",
+      "tests/unit/platforms/test_starrocks_workload.py"
+    ],
+    "integration_head": "fe2fb01541665408dbac754ec7c8e08d6c078ebc",
+    "integration_seq": 2,
+    "member_id": "perf-starrocks-parquet-load-20261030",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "880fb413c360645ca9c92541f68f0cee98ef498611d61930d9e40b63fa9ddbde",
+    "source_base": "f044b8cc952f1e557620348640c6ccc71c750a89",
+    "source_revision": "7c48c78ce997a7ae1259dd7fdc57789bb1dff9d7",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-server-engine-bulk-load--perf-starrocks-parquet-load-20261030",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/platforms/test_starrocks_smoke.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_connection_registry_drift.py",
+        "tests/unit/core/tuning/test_renderer_snapshot_starrocks.py",
+        "tests/unit/platforms/test_starrocks_adapter.py",
+        "tests/unit/platforms/test_starrocks_stream_load.py",
+        "tests/unit/platforms/test_starrocks_type_conversion.py",
+        "tests/unit/platforms/test_starrocks_workload.py"
+      ],
+      "review": {
+        "base_sha": "f044b8cc952f1e557620348640c6ccc71c750a89",
+        "head_sha": "7c48c78ce997a7ae1259dd7fdc57789bb1dff9d7",
+        "head_tree": "60a4153bfb34ce735d2d7facfe3e2f53f42f53c6",
+        "outcome": "clear",
+        "patch_digest": "bf473eab8745d0e798fd4511d6e3df97",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "a727c47272dff457e73ecc03ab8a00a47a637592"
+      },
+      "revision": "7c48c78ce997a7ae1259dd7fdc57789bb1dff9d7",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:claude-code:root@vm:2d53e6a98f44f4f4a8a4dedd",
@@ -44,6 +100,15 @@
       "generation": "8b7119b4878f49e4890d30e0cf291a94",
       "op": "take",
       "op_id": "c8e0c69932ff4431aa536e2763fa1e94",
+      "session_id": "248466dc3ce04a7c8f4c76cdbd04176f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a",
+      "at": "2026-11-10T01:18:22Z",
+      "client": "omp-coding-agent",
+      "generation": "8b7119b4878f49e4890d30e0cf291a94",
+      "op": "prepare",
+      "op_id": "beb4ab17c1294533bf7448990a046590",
       "session_id": "248466dc3ce04a7c8f4c76cdbd04176f"
     }
   ]
