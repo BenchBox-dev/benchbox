@@ -7639,11 +7639,22 @@
         "sqlglot-delivery-arm-waits-for-daily-run-20261107",
         "sqlglot-delivery-dry-runs-miss-write-prerequisites-20261107"
       ],
-      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f",
-      "owner_epoch": 0,
-      "owner_generation": "eb5908c4b75af82653113ca365246ada",
+      "owner": "omp:sqlglot-delivery-hardening-leader",
+      "owner_epoch": 1,
+      "owner_generation": "50967af4d6f8703f9d91d4a61a6f3147",
       "project_id": "benchbox",
-      "recoveries": [],
+      "recoveries": [
+        {
+          "at": "2026-11-10T00:25:47Z",
+          "client": "mcp",
+          "epoch": 1,
+          "new_owner": "omp:sqlglot-delivery-hardening-leader",
+          "op_id": "2f9c36b2ae574b09aa44b80e8ce60b1b",
+          "previous_owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f",
+          "reason": "Leader identity changed when the MCP server was replaced during the tractable 1.0.0 rename restart; the previous server stopped and no member claim is held",
+          "session_id": "09141f2a709843138145fbb1bb9cc6a4"
+        }
+      ],
       "repository": "https://github.com/BenchBox-dev/BenchBox.git",
       "scope": {
         "sqlglot-delivery-arm-waits-for-daily-run-20261107": [

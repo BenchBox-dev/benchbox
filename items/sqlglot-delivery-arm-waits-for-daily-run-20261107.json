@@ -40,6 +40,16 @@
       "op": "update",
       "op_id": "3f0c90baa68c408d815777665086adf4",
       "session_id": "2f41579dd2194a049659596cdd9a4f3d"
+    },
+    {
+      "actor": "omp:sqlglot-delivery-hardening-leader",
+      "at": "2026-11-10T00:25:47Z",
+      "client": "mcp",
+      "displaced": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f",
+      "op": "recover",
+      "op_id": "2f9c36b2ae574b09aa44b80e8ce60b1b",
+      "reason": "Leader identity changed when the MCP server was replaced during the tractable 1.0.0 rename restart; the previous server stopped and no member claim is held",
+      "session_id": "09141f2a709843138145fbb1bb9cc6a4"
     }
   ]
 }
