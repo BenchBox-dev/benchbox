@@ -28,6 +28,14 @@
       "op": "update",
       "op_id": "627afa469f3b49ba85edd79bec89c2e8",
       "session_id": "2f41579dd2194a049659596cdd9a4f3d"
+    },
+    {
+      "actor": "omp:sqlglot-delivery-hardening-leader",
+      "at": "2026-11-10T02:04:59Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "8f0755142cfc4a33b45edba03014f18f",
+      "session_id": "a8a6d64d910f4ed397b0d76fb1d51205"
     }
   ]
 }
