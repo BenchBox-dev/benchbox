@@ -35006,7 +35006,7 @@
         "rv2r-16-release-branch-review-gating"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "Allow patch releases from owner-created release/X.Y.x branches with the same release-v2 checks"
     },
     "rv2r-15-review-posting-detector": {
