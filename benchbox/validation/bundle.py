@@ -10,10 +10,11 @@ import math
 import re
 import statistics
 import sys
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
+from unittest import mock
 
 FETCH_MODES = ("rows", "arrow")
 
@@ -105,9 +106,23 @@ NEUTRAL_PLACEHOLDERS = frozenset({"/data", "/output"})
 _PATH_TAIL = r"[^\s'\",;)]*"
 _PATH_BOUNDARY = r"(?=[/\\\s'\",;)\]}]|$)"
 
+PRIVATE_LOCAL_ROOTS = (
+    "~",
+    "/Users",
+    "/home",
+    "/root",
+    "/private",
+    "/var/folders",
+    "/var/run",
+    "/Volumes",
+    "/tmp",
+    "/mnt",
+    "/opt",
+)
+
 PRIVATE_LOCAL_PATH_RE = re.compile(
     r"(?<![A-Za-z0-9_])(?:"
-    rf"(?:~|/Users|/home|/root|/private|/var/folders|/var/run|/Volumes|/tmp|/mnt|/opt)/{_PATH_TAIL}"
+    rf"(?:{'|'.join(PRIVATE_LOCAL_ROOTS)})/{_PATH_TAIL}"
     rf"|[A-Za-z]:\\{_PATH_TAIL}"
     rf"|[A-Za-z]:/(?!/){_PATH_TAIL}"
     r")"
@@ -248,6 +263,92 @@ def find_public_path_leaks(value: Any, key_path: tuple[str, ...] = (), roots: It
     with contextlib.suppress(OSError, RuntimeError):
         scan_roots.append(str(Path.home()))
     return local_path_detector(scan_roots, redact_home=False).find_leaks(value, key_path)
+
+
+PATH_PRIVACY_CONTRACT_VERSION = 1
+_CONTRACT_SYNTHETIC_HOME = "/srv/example-home"
+
+_PATH_PRIVACY_CASES: tuple[dict[str, Any], ...] = (
+    {"id": "known-root-users", "text": "/Users/example-user/run/results.json", "leak": True},
+    {"id": "known-root-tmp-in-sentence", "text": "wrote plan to /tmp/example-run/plan.txt", "leak": True},
+    {"id": "known-root-tilde", "text": "~/example/plan.json", "leak": True},
+    {"id": "known-root-opt", "text": "/opt/example/bin", "leak": True},
+    {"id": "drive-letter-backslash", "text": "C:\\Example\\run\\plan.json", "leak": True},
+    {"id": "drive-letter-forward-slash", "text": "D:/example/run/plan.json", "leak": True},
+    {"id": "unc-backslash", "text": "\\\\example-host\\share\\run", "leak": True},
+    {"id": "unc-forward-slash", "text": "//example-host/share/run", "leak": True},
+    {"id": "placeholder-data", "text": "/data", "leak": False},
+    {"id": "placeholder-output-slash", "text": "/output/", "leak": False},
+    {"id": "placeholder-redacted", "text": REDACTED_PLACEHOLDER, "leak": False},
+    {"id": "relative-path", "text": "results/example/plan.json", "leak": False},
+    {"id": "url-with-known-root-segment", "text": "https://example.com/Users/profile", "leak": False},
+    {"id": "unknown-absolute-root", "text": "/srv/example-service/data", "leak": False},
+    {"id": "no-path", "text": "scan on lineitem uses index", "leak": False},
+    {"id": "data-root-match", "text": "/srv/example-data/run/plan.json", "roots": ["/srv/example-data"], "leak": True},
+    {
+        "id": "data-root-boundary",
+        "text": "/srv/example-database/plan.json",
+        "roots": ["/srv/example-data"],
+        "leak": False,
+    },
+    {
+        "id": "neutral-placeholder-never-a-root",
+        "text": "/data/run/plan.json",
+        "roots": ["/data"],
+        "leak": False,
+    },
+    {"id": "home-root-match", "text": f"{_CONTRACT_SYNTHETIC_HOME}/run/plan.json", "home": True, "leak": True},
+    {"id": "home-root-exact", "text": _CONTRACT_SYNTHETIC_HOME, "home": True, "leak": True},
+    {
+        "id": "home-ancestor-root-not-widened",
+        "text": "/srv/other-service/run",
+        "roots": ["/srv"],
+        "home": True,
+        "leak": False,
+    },
+)
+
+
+def _contract_case_verdict(case: Mapping[str, Any]) -> bool:
+    roots = list(case.get("roots", ()))
+    if case.get("home"):
+        with mock.patch.object(Path, "home", return_value=Path(_CONTRACT_SYNTHETIC_HOME)):
+            return LocalPathDetector(roots, redact_home=True).contains(case["text"])
+    return LocalPathDetector(roots, redact_home=False).contains(case["text"])
+
+
+def build_path_privacy_contract() -> dict[str, Any]:
+    cases = []
+    for case in _PATH_PRIVACY_CASES:
+        verdict = _contract_case_verdict(case)
+        if verdict != case["leak"]:
+            raise ValueError(
+                f"path privacy contract case {case['id']!r} expects leak={case['leak']} but the detector says {verdict}"
+            )
+        cases.append(
+            {
+                "id": case["id"],
+                "text": case["text"],
+                "roots": list(case.get("roots", ())),
+                "home": bool(case.get("home", False)),
+                "leak": case["leak"],
+            }
+        )
+    return {
+        "schema_version": PATH_PRIVACY_CONTRACT_VERSION,
+        "known_roots": sorted(PRIVATE_LOCAL_ROOTS),
+        "drive_letter": {"separators": ["\\", "/"], "double_slash_excluded_for_forward": True},
+        "unc": {"prefixes": ["\\\\", "//"]},
+        "placeholder_allowlist": sorted(NEUTRAL_PLACEHOLDERS),
+        "redacted_placeholder": REDACTED_PLACEHOLDER,
+        "home_root": {
+            "scanned_as_root": True,
+            "ancestors_of_home_are_not_data_roots": True,
+            "synthetic_home": _CONTRACT_SYNTHETIC_HOME,
+        },
+        "pattern": {"source": PRIVATE_LOCAL_PATH_RE.pattern, "flags": PRIVATE_LOCAL_PATH_RE.flags},
+        "cases": cases,
+    }
 
 
 SUBMISSION_NOTES_MAX_LEN = 500

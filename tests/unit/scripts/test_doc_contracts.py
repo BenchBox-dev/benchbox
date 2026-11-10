@@ -321,3 +321,82 @@ def test_the_contract_guard_runs_in_the_lint_job_and_the_local_mirror() -> None:
     makefile = make_targets.makefile_sources(ROOT)
     assert "run: make doc-contracts-guard" in workflow
     assert "$(MAKE) doc-contracts-guard" in makefile
+
+
+def test_path_privacy_section_equals_the_detector_contract(contracts: dict[str, Any]) -> None:
+    from benchbox.validation.bundle import (
+        NEUTRAL_PLACEHOLDERS,
+        PRIVATE_LOCAL_PATH_RE,
+        PRIVATE_LOCAL_ROOTS,
+        REDACTED_PLACEHOLDER,
+        build_path_privacy_contract,
+    )
+
+    section = contracts["path_privacy"]
+    assert section == build_path_privacy_contract()
+    assert section["known_roots"] == sorted(PRIVATE_LOCAL_ROOTS)
+    assert section["placeholder_allowlist"] == sorted(NEUTRAL_PLACEHOLDERS)
+    assert section["redacted_placeholder"] == REDACTED_PLACEHOLDER
+    assert section["pattern"] == {"source": PRIVATE_LOCAL_PATH_RE.pattern, "flags": PRIVATE_LOCAL_PATH_RE.flags}
+
+
+def test_path_privacy_cases_are_synthetic_and_cover_both_verdicts(contracts: dict[str, Any]) -> None:
+    cases = contracts["path_privacy"]["cases"]
+    assert {case["leak"] for case in cases} == {True, False}
+    assert any(case["home"] for case in cases)
+    assert any(case["roots"] for case in cases)
+    home = str(Path.home())
+    assert not any(home in case["text"] or home in "".join(case["roots"]) for case in cases)
+    assert len({case["id"] for case in cases}) == len(cases)
+
+
+def test_committed_path_privacy_snapshot_matches_the_detector() -> None:
+    assert doc_contracts.path_privacy_snapshot_drift() is None
+    snapshot = json.loads(doc_contracts.PATH_PRIVACY_SNAPSHOT.read_text(encoding="utf-8"))
+    assert snapshot == doc_contracts.build_contracts()["path_privacy"]
+
+
+def test_snapshot_drift_is_reported_when_the_allowlist_changes(monkeypatch: pytest.MonkeyPatch) -> None:
+    import benchbox.validation.bundle as bundle
+
+    monkeypatch.setattr(bundle, "NEUTRAL_PLACEHOLDERS", frozenset({"/data", "/outputs"}))
+    drift = doc_contracts.path_privacy_snapshot_drift()
+    assert drift is not None and "path-privacy-contract.json" in drift
+
+
+def test_snapshot_drift_is_reported_when_a_known_root_changes(monkeypatch: pytest.MonkeyPatch) -> None:
+    import benchbox.validation.bundle as bundle
+
+    monkeypatch.setattr(bundle, "PRIVATE_LOCAL_ROOTS", (*bundle.PRIVATE_LOCAL_ROOTS, "/srv"))
+    assert doc_contracts.path_privacy_snapshot_drift() is not None
+
+
+def test_check_flag_fails_on_snapshot_drift(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import benchbox.validation.bundle as bundle
+
+    monkeypatch.setattr(bundle, "NEUTRAL_PLACEHOLDERS", frozenset({"/data", "/outputs"}))
+    assert doc_contracts.main(["--check"]) == 1
+    assert "path-privacy-contract.json" in capsys.readouterr().err
+
+
+def test_contract_generation_fails_when_the_detector_disagrees_with_an_example(monkeypatch: pytest.MonkeyPatch) -> None:
+    import benchbox.validation.bundle as bundle
+
+    monkeypatch.setattr(bundle, "PRIVATE_LOCAL_PATH_RE", re.compile("(?!x)x"))
+    with pytest.raises(ValueError, match="expects leak=True"):
+        bundle.build_path_privacy_contract()
+
+
+def test_schema_rejects_a_malformed_path_privacy_section(contracts: dict[str, Any]) -> None:
+    for mutate in (
+        lambda value: value.pop("path_privacy"),
+        lambda value: value["path_privacy"].pop("cases"),
+        lambda value: value["path_privacy"].update(extra=1),
+        lambda value: value["path_privacy"]["cases"][0].update(leak="yes"),
+        lambda value: value["path_privacy"]["placeholder_allowlist"].append("relative"),
+    ):
+        broken = copy.deepcopy(contracts)
+        mutate(broken)
+        assert doc_contracts.validate_contracts(broken) != []
