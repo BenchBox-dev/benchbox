@@ -39346,6 +39346,13 @@
       "status": "done",
       "title": "Record the Theseus extraction ADR, full consumer inventory and cost baseline"
     },
+    "theseus-api-key-providers-local-cloud-github-20261110": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Theseus: support API-key-backed OMP providers in local, cloud and GitHub-hosted reviews"
+    },
     "theseus-atomic-benchbox-cutover-20261102": {
       "claim": null,
       "needs": [
