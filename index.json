@@ -39604,6 +39604,15 @@
       "status": "open",
       "title": "Theseus: rewrite review-verdict and review-gate status descriptions to lead with the decision and fit 140 characters"
     },
+    "theseus-review-structured-findings-20261110": {
+      "claim": null,
+      "needs": [
+        "theseus-review-format-release-b-20261110"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Theseus: ask reviewers for Problem, Impact and Fix so finding threads are shorter"
+    },
     "theseus-review-thread-ids-footer-20261110": {
       "claim": null,
       "needs": [

@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Owner decisions on option and eval spend recorded.",
+    "Eval run on the corpus shows no lower score than the baseline (or the owner accepts the measured change), results committed per docs/review-evals.md.",
+    "Thread fixtures show the labelled layout and the fallback.",
+    "Merged with hosted SHIP + independent review (brief/template change)."
+  ],
+  "context": "Follow-up from theseus-review-output-format-20261110; ranked 7 of 10 in the proposal.",
+  "description": "Rendering alone cannot turn a 750-character finding paragraph into problem, impact and fix. Proposal section 8.7: start with the brief-only option (ask the reviewer to write `detail` as short `Problem:`, `Impact:`, `Fix:` paragraphs and titles ≤80 chars; the renderer bolds the labels when present and falls back otherwise; gate reviews get a one-sentence lead before the mandatory bypass analysis, which stays). A schema change (optional impact/fix/evidence keys) is the alternative.\nDecision gates: (1) owner chooses brief-only or schema; (2) because this changes reviewer behaviour, it ships only through the review-eval gate, which needs live model runs: owner approval of the eval spend is required before any run, and the eval score rule is currently inactive (no authenticated baseline; see theseus-trusted-candidate-evaluator-20261109).\nNot part of the format delivery batch; deferred until both gates are decided.",
+  "links": [
+    "~/.omp/agent/sessions/-Developer-BenchBox/2026-11-02T02-04-38-450Z_01a19a00-60b2-70a6-b56d-6f666415a725/local/review-comment-format-proposal.md (section 8.7)"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a",
+      "at": "2026-11-10T15:39:14Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "bf5a97ab6ee249329a60fc1701fb142d",
+      "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    }
+  ]
+}
