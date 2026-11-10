@@ -121,9 +121,9 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
 
     @property
     def platform_timing_source(self) -> str:
-        if getattr(self, "deployment_type", None) == "provisioned":
-            return "redshift.stl_query"
-        return "redshift.sys_query_history"
+        if getattr(self, "deployment_type", None) == "serverless":
+            return "redshift.sys_query_history"
+        return "redshift.stl_query"
 
     platform_timing_definition = "includes_fetch"
 
@@ -1933,7 +1933,7 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
             for attempt in range(REDSHIFT_HISTORY_ATTEMPTS):
                 pending = [sid for sid in wanted if sid not in found]
                 placeholders = ", ".join(["%s"] * len(pending))
-                if self.deployment_type == "provisioned":
+                if self.deployment_type != "serverless":
                     columns = REDSHIFT_STL_TIMING_COLUMNS
                     sql = REDSHIFT_STL_TIMING_SQL.format(placeholders=placeholders)
                 else:

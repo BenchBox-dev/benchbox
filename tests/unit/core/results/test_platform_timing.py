@@ -18,7 +18,7 @@ from benchbox.core.results.platform_timing import (
     unavailable_platform_timing,
 )
 from benchbox.core.results.timer_scope import RequestLedger, outside_query_timer
-from benchbox.core.results.timing_fields import platform_timing_problems
+from benchbox.core.results.timing_fields import platform_timing_problems, required_timing_problems
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -91,6 +91,17 @@ def test_run_summary_reports_valid_coverage():
     summary = summarize_run_platform_timing(queries, source="src", definition="server_complete")
     assert summary == {"source": "src", "definition": "server_complete", "coverage": 0.5}
     assert summarize_run_platform_timing([{"status": "SUCCESS"}], source="src", definition="server_complete") is None
+
+
+def test_run_summary_exists_whenever_any_query_carries_platform_timing():
+    queries = [
+        {"status": "FAILED", "platform_timing": {"status": "valid"}},
+        {"status": "SUCCESS", "run_type": "warmup", "platform_timing": {"status": "valid"}},
+    ]
+    summary = summarize_run_platform_timing(queries, source="src", definition="server_complete")
+    assert summary == {"source": "src", "definition": "server_complete", "coverage": 0.0}
+    payload = {"run": {"timing_method": 1, "net_estimate_status": "x", "platform_timing": summary}, "queries": queries}
+    assert required_timing_problems(payload) == []
 
 
 def test_rows_result_bytes_counts_client_values():

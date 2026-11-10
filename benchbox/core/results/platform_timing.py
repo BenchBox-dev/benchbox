@@ -238,17 +238,19 @@ def summarize_run_platform_timing(
 ) -> dict[str, Any] | None:
     if definition not in PLATFORM_TIMING_DEFINITIONS:
         raise ValueError(f"platform timing definition must be one of {sorted(PLATFORM_TIMING_DEFINITIONS)}")
+    rows = list(queries)
+    if not any(query.get("platform_timing") is not None for query in rows):
+        return None
     measured = [
         query
-        for query in queries
+        for query in rows
         if query.get("status") == "SUCCESS"
         and query.get("run_type", "measurement") == "measurement"
         and query.get("test_type") != "maintenance"
     ]
-    if not any(query.get("platform_timing") is not None for query in measured):
-        return None
     valid = sum(1 for query in measured if (query.get("platform_timing") or {}).get("status") == "valid")
-    return {"source": source, "definition": definition, "coverage": round(valid / len(measured), 4)}
+    coverage = round(valid / len(measured), 4) if measured else 0.0
+    return {"source": source, "definition": definition, "coverage": coverage}
 
 
 def _probe_floor_ms(client_link: Mapping[str, Any] | None) -> tuple[int, float | None]:

@@ -244,7 +244,9 @@ def redshift_adapter(monkeypatch):
     monkeypatch.setattr("benchbox.platforms.redshift.redshift_connector", MagicMock(), raising=False)
     from benchbox.platforms.redshift import RedshiftAdapter
 
-    return RedshiftAdapter(host="localhost", username="test", password="test")
+    adapter = RedshiftAdapter(host="localhost", username="test", password="test")
+    adapter.deployment_type = "serverless"
+    return adapter
 
 
 class _RedshiftCursor:
@@ -273,8 +275,9 @@ class TestRedshiftTimingContract:
         assert redshift_adapter.platform_timing_source == "redshift.sys_query_history"
         assert redshift_adapter.platform_timing_definition == "includes_fetch"
 
-    def test_provisioned_cluster_reads_stl_query_by_stl_query_id(self, redshift_adapter):
-        redshift_adapter.deployment_type = "provisioned"
+    @pytest.mark.parametrize("deployment_type", ["provisioned", "unknown"])
+    def test_non_serverless_cluster_reads_stl_query_by_stl_query_id(self, redshift_adapter, deployment_type):
+        redshift_adapter.deployment_type = deployment_type
         cursor = Mock()
         cursor.fetchall.return_value = [(42, 250000, 10000, 200000)]
         connection = Mock()
