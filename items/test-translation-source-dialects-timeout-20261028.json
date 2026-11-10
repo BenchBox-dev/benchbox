@@ -11,6 +11,15 @@
       "op": "create",
       "op_id": "8dcf70d661394ac0b510df3d271c6cf3",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "omp:sqlglot-delivery-hardening-leader",
+      "at": "2026-11-10T02:08:19Z",
+      "client": "mcp",
+      "generation": "5c8b74b9e6c8452b83288c198513b8ec",
+      "op": "take",
+      "op_id": "7de5ac797dd24a9c98578df0300b0754",
+      "session_id": "f9e1544c3afa431292a5006f856ac27d"
     }
   ]
 }
