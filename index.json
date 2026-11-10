@@ -29444,17 +29444,12 @@
       "title": "TPC-H RF1: ingest the update-set files with each engine's native reader inside the RF1 timer; keep VALUES as fallback"
     },
     "perf-trino-presto-bulk-load-20261030": {
-      "claim": {
-        "expires_at": "2026-11-11T19:50:10Z",
-        "generation": "d0c43fbdb7e7424e9c28cd0cd6821ccb",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a"
-      },
+      "claim": null,
       "needs": [
         "release-uat-presto-trino-unreachable-20261030"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Replace VALUES-literal loading for Trino, Presto, Starburst"
     },
     "perf-trino-presto-hive-target-sf1-20261110": {
