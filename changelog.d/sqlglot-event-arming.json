@@ -1,0 +1,1 @@
+{"schema":1,"internal":"Retry SQLGlot adoption arming when CI and review workflows finish, using trusted develop code and the existing live ownership, hold and merge checks instead of waiting for the next daily consumer run."}
