@@ -77,7 +77,7 @@ jobs:
       JOB_RESULT: ${{ needs.verdict.result }}
       GATED_BASE: develop
       POSTER: benchbox-oracle[bot]
-      CONTEXTS: review-verdict oracle-verdict
+      CONTEXTS: review-verdict
     steps:
       - name: Fail when no verdict status was posted for the handled head
         run: |

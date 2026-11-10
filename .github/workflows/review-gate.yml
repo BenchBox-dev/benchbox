@@ -67,7 +67,7 @@ jobs:
       JOB_RESULT: ${{ needs.gate.result }}
       GATED_BASE: develop
       POSTER: benchbox-oracle[bot]
-      CONTEXTS: review-gate oracle-gate
+      CONTEXTS: review-gate
     steps:
       - name: Fail when no gate status was posted for the handled head
         run: |

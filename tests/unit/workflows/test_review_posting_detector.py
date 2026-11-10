@@ -46,12 +46,12 @@ class Detector:
     workflow: str
     job: str
     callee: str
-    contexts: tuple[str, str]
+    contexts: tuple[str, ...]
     handled_inputs: tuple[str, ...]
 
 
-VERDICT = Detector("review-verdict.yml", "verdict", "verdict", ("review-verdict", "oracle-verdict"), ("head",))
-GATE = Detector("review-gate.yml", "gate", "gate", ("review-gate", "oracle-gate"), ())
+VERDICT = Detector("review-verdict.yml", "verdict", "verdict", ("review-verdict",), ("head",))
+GATE = Detector("review-gate.yml", "gate", "gate", ("review-gate",), ())
 DETECTORS = pytest.mark.parametrize("detector", [VERDICT, GATE], ids=["verdict", "gate"])
 
 
@@ -168,11 +168,8 @@ def test_a_skipped_callee_cannot_bypass_the_detector(detector: Detector, tmp_pat
 @requires_tools
 @DETECTORS
 @pytest.mark.parametrize("event", ["pull_request_target", "workflow_dispatch"])
-@pytest.mark.parametrize("context_index", [0, 1])
-def test_a_status_posted_for_the_head_keeps_the_detector_green(
-    detector: Detector, event: str, context_index: int, tmp_path: Path
-) -> None:
-    statuses = {HEAD: [_status(detector.contexts[context_index], state="pending")]}
+def test_a_status_posted_for_the_head_keeps_the_detector_green(detector: Detector, event: str, tmp_path: Path) -> None:
+    statuses = {HEAD: [_status(detector.contexts[0], state="pending")]}
     done = _run(detector, tmp_path, event=event, statuses=statuses)
     assert done.returncode == 0, done.stdout + done.stderr
 
@@ -180,7 +177,13 @@ def test_a_status_posted_for_the_head_keeps_the_detector_green(
 @requires_tools
 @DETECTORS
 def test_a_status_from_another_account_or_context_does_not_count(detector: Detector, tmp_path: Path) -> None:
-    statuses = {HEAD: [_status(detector.contexts[0], creator="someone"), _status("ci/unit")]}
+    statuses = {
+        HEAD: [
+            _status(detector.contexts[0], creator="someone"),
+            _status("ci/unit"),
+            _status(detector.contexts[0].replace("review", "oracle")),
+        ]
+    }
     assert _run(detector, tmp_path, statuses=statuses).returncode == 1
 
 
@@ -259,7 +262,7 @@ def test_a_dispatch_without_a_head_judges_the_current_head(tmp_path: Path) -> No
 def test_the_gate_dispatch_judges_the_current_head(tmp_path: Path) -> None:
     done = _run(GATE, tmp_path, event="workflow_dispatch")
     assert done.returncode == 1, done.stdout + done.stderr
-    done = _run(GATE, tmp_path / "again", event="workflow_dispatch", statuses={HEAD: [_status("oracle-gate")]})
+    done = _run(GATE, tmp_path / "again", event="workflow_dispatch", statuses={HEAD: [_status("review-gate")]})
     assert done.returncode == 0, done.stdout + done.stderr
 
 
