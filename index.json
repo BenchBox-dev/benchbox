@@ -25711,15 +25711,10 @@
       "title": "Cloud output-location default is applied by platform category, ignoring the deployment mode"
     },
     "make-guard-data-dir-trino-presto-20261111": {
-      "claim": {
-        "expires_at": "2026-11-11T19:50:18Z",
-        "generation": "6e31586104dc4356ba38c95c86409b90",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Extend the test-docker-up BENCHBOX_DATA_DIR guard to the Trino and Presto stacks"
     },
     "make-parquet-default-for-tpcds-obt": {
