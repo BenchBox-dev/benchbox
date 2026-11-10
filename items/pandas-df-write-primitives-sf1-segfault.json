@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Reproduce the crash or bound its rate over repeated SF1 runs on the Linux runner image",
+    "Name the native component and operation that faults (faulthandler or core dump)",
+    "Fix or pin around the cause so the cell passes repeatedly without retry; no cell pruning or gate loosening"
+  ],
+  "description": "Trunk UAT run https://github.com/BenchBox-dev/BenchBox/actions/runs/42718296767 attempt 1 (develop 52615914002012e24405b77b830dc98d35ba50e9) failed pandas-df write_primitives SF1 with exit 139 (SIGSEGV) about 35 s in, after loading the TPC-H tables twice and before any Python traceback; the in-harness diagnostic rerun timed out (exit 124). Attempt 2 of the same job passed. The same cell passed in run 42536258036, and the commits between those sources do not touch pandas, write_primitives or uv.lock, so the crash is native and intermittent.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/actions/runs/42718296767"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7bc97e5b905b990114418f4a",
+      "at": "2026-11-10T13:48:49Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5bfb35908895493aa9fb19d1bc4fa20b",
+      "session_id": "9c850cdf96994544b99810e1605fa398"
+    }
+  ]
+}

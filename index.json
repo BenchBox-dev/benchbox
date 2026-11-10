@@ -29080,6 +29080,13 @@
       "status": "done",
       "title": "Packaging hygiene: delete stale setup.py, prune dead setup.cfg sections, pick one pytest config home"
     },
+    "pandas-df-write-primitives-sf1-segfault": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "pandas-df write_primitives SF1 intermittently segfaults in trunk UAT"
+    },
     "parallel-test-run-lock": {
       "claim": null,
       "needs": [],
