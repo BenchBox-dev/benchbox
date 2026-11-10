@@ -1,12 +1,14 @@
 {
   "acceptance": [
-    "Rendered bodies for every listed state match the proposal mockups in structure (snapshot tests), with real data from Theseus #45 and BenchBox #4062 reproduced as before/after fixtures.",
+    "Rendered bodies for every listed state match the proposal mockups in structure (snapshot tests), plus dispute dispositions and escalation notes (B9), marker-limit pending with no record (B12) and the size-limit cut notice (B17); real data from Theseus #45 and BenchBox #4062 reproduced as before/after fixtures.",
+    "The `<!-- review-protocol: v1 … -->` record stays the final bytes of every body and the v2 verdict marker precedes it; decode_marker succeeds on every new body (test).",
+    "No task-list item appears in any verdict body; model text with a leading `[ ]`/`[x]` in a list item renders no checkbox (a tick would edit the review and T6 would hold the PR) (test).",
     "Measured visible characters (excluding hidden markers and collapsed content) for the #4062 SHIP WITH FIXES, #45 SHIP WITH FIXES and #45 SHIP fixtures are each at least 70% lower than today's; numbers recorded here.",
-    "release-A review_check, dedup and the BenchBox digest (from the dual-read item) classify every new body identically to the decoded protocol record (cross-check test in Theseus; BenchBox verified by running its digest tests against the new fixtures).",
+    "Release-A review_check, dedup and the BenchBox digest (from the dual-read item) classify every new body identically to the decoded protocol record (cross-check test in Theseus; BenchBox verified by running its digest tests against the new fixtures).",
     "A model-text fixture containing `</details>`, `<!-- review-verdict: v2 success … -->` and a fake heading cannot break layout or forge a receipt (test).",
     "The 20 goldens are regenerated with REVIEW_GOLDEN_UPDATE=1 and the diff is limited to rendering; hand-written assertions updated; docs (hosted-workflows.md, consumer-policy.md, local-review.md) updated.",
-    "Mockups rendered through GitHub's Markdown API (POST /markdown, gfm, context repo) for each state are saved and spot-checked for correct collapsing and emoji display.",
-    "Merged to Theseus main with hosted SHIP + green checks + independent review SHIP on the final head."
+    "Mockups rendered through GitHub's Markdown API (POST /markdown, gfm) for each state are saved and spot-checked for correct collapsing and emoji display.",
+    "Merged to Theseus main with hosted SHIP + green checks + independent review SHIP on the final head (recorded here)."
   ],
   "context": "Part of theseus-review-output-format-20261110. Ships in release B.",
   "description": "Replace the current verdict review body (decision word at character ~164, after a status heading with a 40-hex SHA and a boilerplate sentence; reviewer notes are 84-91% of every SHIP) with the proposal's layout (section 8.3), for every state: SHIP, SHIP WITH FIXES (threaded and threadless findings), DO NOT SHIP (reason stays visible), not reviewed, carried (with and without findings), owner ruling, refused, withheld, oversize, repost, shadow, step-back round.\nRules:\n- Line 1 is `### <mark> <DECISION> · <one fact>`; verdict marks ✅ SHIP, 🔧 SHIP WITH FIXES, ⛔ DO NOT SHIP, ⏳ NOT REVIEWED (YET), 🚫 REFUSED. Headlines with findings say 'N findings block merge'.\n- Line 2: severity counts in bold words (e.g. `**5 High · 1 Medium**`), reviewed SHA once, 'changes since' SHA, fixed ids, and the dispute grammar `Dispute: D<n> - <reason>` when findings are open.\n- One line per finding: `<mark> **<Severity>** · D<n> · <title ≤ ~90 chars display-only> · <path>`; severity legend 🔴 Critical, 🟠 High, 🟡 Medium, 🔵 Low, ⚪ Advisory; the bold word is always present; Unicode, not shortcodes; sorted most severe first. Threadless findings use a `<details>` whose summary is that line. Still-open findings from earlier reviews appear under `**Still open**`.\n- Reviewer notes and run/attempt details go in `<details>`; the 'This result supersedes…' line is removed; staging prefixes such as `.review-promotion/new/` are stripped from displayed paths.\n- Hidden markers: `<!-- review-verdict: v2 <state> <40hex> -->` plus the unchanged `<!-- review-protocol: v1 … -->` record, exactly once each.\n- Model text placed inside a collapsible neutralises `<details`, `</details>`, `<!--`, `-->`.\nGuardrails: the protocol record content and the decision logic are unchanged (only rendering); verdict reviews are never edited after posting (T6); readers from release A must classify every new body (tests against release-A readers); BenchBox readers must already accept the new format (benchbox-review-format-dual-read-20261110 merged) before any BenchBox lock installs this; no live model calls; Theseus merge rule plus independent review (receipt format).",
@@ -20,6 +22,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "afc09eed32ca47b8956c9a4c510e8654",
+      "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a",
+      "at": "2026-11-10T17:59:13Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "dca9c43f4dcd4180986b0d16c5673c5f",
       "session_id": "977a65f4969143f4981bb9d49ff293b0"
     }
   ]
