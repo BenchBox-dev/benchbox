@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "UAT bring-up and the runtime memory admission now resolve compose memory limits declared with a default, such as the StarRocks limit of 8g, so the StarRocks stack starts."
+}

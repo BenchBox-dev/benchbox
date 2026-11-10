@@ -732,6 +732,39 @@ def test_compose_declared_memory_limits_resolves_required_environment_value(tmp_
     assert docker_assets.compose_declared_memory_limits(spec, env={"CLICKHOUSE_MEMORY_LIMIT": "4g"}) == {"db": "4g"}
 
 
+@pytest.mark.parametrize(
+    ("declared", "env", "expected"),
+    [
+        ("${LIMIT:-8g}", {}, "8g"),
+        ("${LIMIT:-8g}", {"LIMIT": ""}, "8g"),
+        ("${LIMIT:-8g}", {"LIMIT": "4g"}, "4g"),
+        ("${LIMIT-8g}", {}, "8g"),
+        ("${LIMIT-8g}", {"LIMIT": "4g"}, "4g"),
+        ("${LIMIT}", {"LIMIT": "4g"}, "4g"),
+    ],
+)
+def test_compose_declared_memory_limits_resolves_compose_defaults(tmp_path: Path, declared, env, expected):
+    spec = _spec_for_compose(tmp_path, f"services:\n  db:\n    mem_limit: {declared}\n")
+    assert docker_assets.compose_declared_memory_limits(spec, env=env) == {"db": expected}
+
+
+@pytest.mark.parametrize("declared", ["${LIMIT}", "${LIMIT:-}", "${LIMIT-}"])
+def test_compose_declared_memory_limits_rejects_unset_variable_without_default(tmp_path: Path, declared):
+    spec = _spec_for_compose(tmp_path, f"services:\n  db:\n    mem_limit: {declared}\n")
+    with pytest.raises(docker_assets.DockerAssetError, match="LIMIT"):
+        docker_assets.compose_declared_memory_limits(spec, env={})
+
+
+def test_every_shipped_compose_memory_declaration_parses_to_bytes():
+    env = {docker_assets.CLICKHOUSE_MEMORY_LIMIT_ENV_VAR: "4g"}
+    checked = 0
+    for spec in docker_assets.docker_platform_specs().values():
+        for limit in docker_assets.compose_declared_memory_limits(spec, env=env).values():
+            assert docker_assets.parse_memory_bytes(limit) > 0
+            checked += 1
+    assert checked
+
+
 def test_compose_declared_memory_limits_reads_deploy_resources_limits(tmp_path: Path):
     spec = _spec_for_compose(
         tmp_path,
