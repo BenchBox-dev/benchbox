@@ -28587,12 +28587,17 @@
       "title": "Use Arrow collect for Spark-family adapters"
     },
     "perf-starrocks-parquet-load-20261030": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-11T01:16:28Z",
+        "generation": "8b7119b4878f49e4890d30e0cf291a94",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a"
+      },
       "needs": [
         "uat-docker-memory-admission-decimal-units-20261030"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Load StarRocks Parquet via Stream Load, not executemany"
     },
     "perf-tpcdi-etl-bulk-paths-20261031": {
