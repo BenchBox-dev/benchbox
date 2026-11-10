@@ -356,6 +356,7 @@ _PLATFORM_SECONDARY_PORTS: dict[str, dict[str, int]] = {
     "questdb": {"http_port": 9000},
     "starrocks": {"http_port": 8040},
     "doris": {"http_port": 8030, "be_http_port": 8040},
+    "clickhouse-server": {"http_port": 8123},
 }
 
 _PLATFORM_PASSWORD_ENV_KEYS: dict[str, str] = {
