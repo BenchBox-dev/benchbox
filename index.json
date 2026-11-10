@@ -34840,10 +34840,15 @@
       "title": "NEEDS OWNER: review gateway down, Muse broker login lost; emergency-merge repair branch ready"
     },
     "review-minimize-superseded-probe-20261110": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-11T15:41:15Z",
+        "generation": "54539fb33d424399a79a2b048e58409d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Prove in a scratch repository that minimising a superseded bot review is not an edit"
     },
     "review-protocol-authority-single-source-cutover": {
