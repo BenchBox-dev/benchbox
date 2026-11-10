@@ -5526,6 +5526,7 @@
     },
     "plan-export-contract2": {
       "accepted_members": {
+        "core-bundle-export-path-privacy-contract-20261108": "fc644361308efe86a69de4fdc4d73c1556bd4396",
         "export-text-plan-result-fails-loader-query-plan-raw-20261108": "b146a2cd177572c4143fe19ee1779cc657e82a0d",
         "plan-privacy-detector-residual-limits-20261108": "017524ed9f5f96a8bd356f71da183ec7c4ad0e9a"
       },
@@ -5534,6 +5535,23 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "core-bundle-export-path-privacy-contract-20261108": {
+          "accepted_head": "fc644361308efe86a69de4fdc4d73c1556bd4396",
+          "changed_files": [
+            "benchbox/validation/bundle.py",
+            "changelog.d/feat-plan-export-contract2--core-bundle-export-path-privacy-contract-20261108.json",
+            "docs/internal/doc-contracts.md",
+            "docs/internal/site-deploy.md",
+            "quality/doc-contracts.schema.json",
+            "quality/path-privacy-contract.json",
+            "scripts/doc_contracts.py",
+            "tests/unit/scripts/test_corpus_privacy_invariant.py",
+            "tests/unit/scripts/test_doc_contracts.py",
+            "tests/unit/scripts/test_site_inputs.py"
+          ],
+          "integration_head": "e2d6911f30363a611b7817572a4891d0cd21924d",
+          "integration_seq": 3
+        },
         "export-text-plan-result-fails-loader-query-plan-raw-20261108": {
           "accepted_head": "b146a2cd177572c4143fe19ee1779cc657e82a0d",
           "changed_files": [
@@ -5562,7 +5580,7 @@
         }
       },
       "integration_branch": "feat/plan-export-contract2",
-      "integration_head": "0644fb55f7cdd09bdfcb250963ca4824d7d02823",
+      "integration_head": "e2d6911f30363a611b7817572a4891d0cd21924d",
       "integration_log": [
         {
           "at": "2026-11-10T01:45:55Z",
@@ -5587,6 +5605,15 @@
           "op_id": "43bf2fe09acd4e29b730225460dec4d5",
           "previous_head": "42dea5b8d5934acb675df9b2b295ee11608b0b20",
           "seq": 2
+        },
+        {
+          "at": "2026-11-10T02:16:23Z",
+          "head": "e2d6911f30363a611b7817572a4891d0cd21924d",
+          "kind": "prepare",
+          "member": "core-bundle-export-path-privacy-contract-20261108",
+          "op_id": "b446b7715c5948969bc2c55092756aae",
+          "previous_head": "0644fb55f7cdd09bdfcb250963ca4824d7d02823",
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-export-contract2",
@@ -16656,17 +16683,12 @@
       "title": "Copyright and License Declaration Updates ✅ COMPLETED"
     },
     "core-bundle-export-path-privacy-contract-20261108": {
-      "claim": {
-        "expires_at": "2026-11-11T02:13:17Z",
-        "generation": "88d9810c58554a9caaffb28c96af232e",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:db7d69917905292075fe62aa"
-      },
+      "claim": null,
       "needs": [
         "plan-privacy-detector-residual-limits-20261108"
       ],
       "priority": "low",
-      "status": "active",
+      "status": "open",
       "title": "Export the local-path privacy contract in the core bundle so the site gate can check drift"
     },
     "core-docs-advisory-site-build-20261017": {

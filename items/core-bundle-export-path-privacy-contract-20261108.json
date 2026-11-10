@@ -18,6 +18,103 @@
     "https://github.com/BenchBox-dev/benchbox-site/pull/128",
     "https://github.com/BenchBox-dev/BenchBox/pull/4054"
   ],
+  "prepared": {
+    "accepted_head": "fc644361308efe86a69de4fdc4d73c1556bd4396",
+    "batch_id": "plan-export-contract2",
+    "changed_files": [
+      "benchbox/validation/bundle.py",
+      "changelog.d/feat-plan-export-contract2--core-bundle-export-path-privacy-contract-20261108.json",
+      "docs/internal/doc-contracts.md",
+      "docs/internal/site-deploy.md",
+      "quality/doc-contracts.schema.json",
+      "quality/path-privacy-contract.json",
+      "scripts/doc_contracts.py",
+      "tests/unit/scripts/test_corpus_privacy_invariant.py",
+      "tests/unit/scripts/test_doc_contracts.py",
+      "tests/unit/scripts/test_site_inputs.py"
+    ],
+    "integration_head": "e2d6911f30363a611b7817572a4891d0cd21924d",
+    "integration_seq": 3,
+    "member_id": "core-bundle-export-path-privacy-contract-20261108",
+    "overlaps": [
+      {
+        "kind": "member",
+        "member": "plan-privacy-detector-residual-limits-20261108",
+        "paths": [
+          "benchbox/validation/bundle.py"
+        ]
+      }
+    ],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "d497b0cefeedf3979ca4e30869ad93f04b695378f6b0f184737f401895a53827",
+    "source_base": "0644fb55f7cdd09bdfcb250963ca4824d7d02823",
+    "source_revision": "fc644361308efe86a69de4fdc4d73c1556bd4396",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-plan-export-contract2--core-bundle-export-path-privacy-contract-20261108",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/test_cross_branch_validator_contract.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_e2e_integration.py",
+        "tests/uat/test_validate.py",
+        "tests/unit/cli/commands/test_publish_plans_boundary.py",
+        "tests/unit/cli/test_run_command_branches.py",
+        "tests/unit/core/results/test_anonymization.py",
+        "tests/unit/core/results/test_builder.py",
+        "tests/unit/core/results/test_fetch_mode.py",
+        "tests/unit/core/results/test_local_result_diagnosability.py",
+        "tests/unit/core/results/test_qphds.py",
+        "tests/unit/core/results/test_round_trip_timing_schema.py",
+        "tests/unit/core/tpcds/test_compliance.py",
+        "tests/unit/core/tpch/test_tpch_compliance.py",
+        "tests/unit/mcp/test_surface_defect_regressions.py",
+        "tests/unit/platforms/test_cedardb.py",
+        "tests/unit/platforms/test_databricks_cache_control.py",
+        "tests/unit/platforms/test_enhanced_benchmark_results.py",
+        "tests/unit/publication/test_bundle_coverage_query_ids.py",
+        "tests/unit/publication/test_bundle_platform_allowlist.py",
+        "tests/unit/publication/test_bundle_required_tables.py",
+        "tests/unit/scripts/explorer_pipeline/test_estimated_cost.py",
+        "tests/unit/scripts/explorer_pipeline/test_pipeline.py",
+        "tests/unit/scripts/explorer_pipeline/test_throughput_ranking.py",
+        "tests/unit/scripts/explorer_pipeline/test_transformer.py",
+        "tests/unit/scripts/explorer_pipeline/test_translator_read_model.py",
+        "tests/unit/scripts/test_annotate_sql_translator_version.py",
+        "tests/unit/scripts/test_corpus_cohort_depth.py",
+        "tests/unit/scripts/test_corpus_privacy_invariant.py",
+        "tests/unit/scripts/test_corpus_translator_version.py",
+        "tests/unit/scripts/test_doc_contracts.py",
+        "tests/unit/scripts/test_inline_applied_ledger_bounds.py",
+        "tests/unit/scripts/test_site_inputs.py",
+        "tests/unit/scripts/test_validate_submission.py",
+        "tests/unit/test_ledger_coverage.py",
+        "tests/unit/test_results_exporter.py"
+      ],
+      "review": {
+        "base_sha": "0644fb55f7cdd09bdfcb250963ca4824d7d02823",
+        "head_sha": "fc644361308efe86a69de4fdc4d73c1556bd4396",
+        "head_tree": "34f06177e0cb08be6dda134fe5ba4069bf333c5c",
+        "outcome": "clear",
+        "patch_digest": "55e9b9ce23dddbe2ce63fcfa07760bea",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "4c39e824a5925ddccb45edd72607321ba423f6a8"
+      },
+      "revision": "fc644361308efe86a69de4fdc4d73c1556bd4396",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
@@ -66,6 +163,15 @@
       "generation": "88d9810c58554a9caaffb28c96af232e",
       "op": "take",
       "op_id": "743f33df6b71459993fa31c597fbe9b6",
+      "session_id": "039807d800674f11b2d8d71dccd4e6ed"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:db7d69917905292075fe62aa",
+      "at": "2026-11-10T02:16:23Z",
+      "client": "omp-coding-agent",
+      "generation": "88d9810c58554a9caaffb28c96af232e",
+      "op": "prepare",
+      "op_id": "b446b7715c5948969bc2c55092756aae",
       "session_id": "039807d800674f11b2d8d71dccd4e6ed"
     }
   ]
