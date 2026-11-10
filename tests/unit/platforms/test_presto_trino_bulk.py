@@ -85,6 +85,22 @@ class TestIneligibilityReason:
         assert reason is not None
         assert "not UTF-8" in reason
 
+    def test_ineligible_custom_null_format_without_property(self, tmp_path):
+        csv_file = tmp_path / "test.csv"
+        csv_file.write_text("1,alpha\n", encoding="utf-8")
+        columns = [("id", "integer"), ("name", "varchar")]
+        dialect = CsvDialect(
+            delimiter=",", has_header=False, null_marker="", normalize_booleans=False, quote=None, encoding="utf-8"
+        )
+        settings = BulkLoadSettings(
+            source_catalog="hive",
+            native_compression=frozenset({".gz"}),
+            null_format_property=None,
+        )
+        reason = ineligibility_reason(columns, [csv_file], dialect, settings=settings)
+        assert reason is not None
+        assert "custom null format" in reason
+
 
 class TestTableProperties:
     def test_textfile_trino_properties(self, tmp_path):
@@ -144,8 +160,25 @@ class TestStageFiles:
         staged = stage_files([src], stage_dir, frozenset({".gz"}))
         assert len(staged) == 1
         assert staged[0].exists()
-        assert staged[0].name == "data.csv"
+        assert staged[0].name == "0_data.csv"
         assert staged[0].read_text(encoding="utf-8") == "1,foo\n2,bar\n"
+
+    def test_stage_files_unique_names_across_dirs(self, tmp_path):
+        dir_a = tmp_path / "dir_a"
+        dir_b = tmp_path / "dir_b"
+        dir_a.mkdir()
+        dir_b.mkdir()
+        f1 = dir_a / "part-0.csv"
+        f2 = dir_b / "part-0.csv"
+        f1.write_text("1,a\n", encoding="utf-8")
+        f2.write_text("2,b\n", encoding="utf-8")
+        stage_dir = tmp_path / "stage"
+        staged = stage_files([f1, f2], stage_dir, frozenset({".gz"}))
+        assert len(staged) == 2
+        assert staged[0].name == "0_part-0.csv"
+        assert staged[1].name == "1_part-0.csv"
+        assert staged[0].read_text(encoding="utf-8") == "1,a\n"
+        assert staged[1].read_text(encoding="utf-8") == "2,b\n"
 
     def test_remove_stage_root(self, tmp_path):
         stage_root = tmp_path / STAGE_DIR_NAME

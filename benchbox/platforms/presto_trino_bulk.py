@@ -51,7 +51,10 @@ def _quote(identifier: str) -> str:
 
 
 def ineligibility_reason(
-    columns: Sequence[tuple[str, str]], files: Sequence[Path], dialect: CsvDialect | None
+    columns: Sequence[tuple[str, str]],
+    files: Sequence[Path],
+    dialect: CsvDialect | None,
+    settings: BulkLoadSettings | None = None,
 ) -> str | None:
     is_parquet = get_data_extension(files[0]) == ".parquet"
     for _, type_name in columns:
@@ -70,6 +73,13 @@ def ineligibility_reason(
         return f"delimiter {resolved.delimiter!r} is not a single character"
     if resolved.encoding.lower().replace("_", "-") not in {"utf-8", "utf8"}:
         return f"encoding {resolved.encoding} is not UTF-8"
+    if (
+        settings is not None
+        and resolved.null_marker is not None
+        and resolved.null_marker != "\\N"
+        and not settings.null_format_property
+    ):
+        return "source catalog cannot configure a custom null format for delimited text"
     return None
 
 
@@ -98,13 +108,13 @@ def stage_files(files: Sequence[Path], stage_dir: Path, native_compression: froz
         shutil.rmtree(stage_dir)
     stage_dir.mkdir(parents=True)
     staged: list[Path] = []
-    for source in files:
+    for idx, source in enumerate(files):
         handler = FileFormatRegistry.get_compression_handler(source)
         if isinstance(handler, NoCompressionHandler) or source.suffix.lower() in native_compression:
-            destination = stage_dir / source.name
+            destination = stage_dir / f"{idx}_{source.name}"
             _link_or_copy(source, destination)
         else:
-            destination = stage_dir / source.with_suffix("").name
+            destination = stage_dir / f"{idx}_{source.with_suffix('').name}"
             with destination.open("wb") as sink:
                 for chunk in _file_byte_chunks(source):
                     sink.write(chunk)
@@ -151,7 +161,7 @@ def bulk_load_table(
     dialect: CsvDialect | None,
     logger: Logger,
 ) -> int | None:
-    reason = ineligibility_reason(columns, files, dialect)
+    reason = ineligibility_reason(columns, files, dialect, settings=settings)
     if reason is not None:
         logger.warning(f"External-table bulk load skipped for {target_table}: {reason}")
         return None
