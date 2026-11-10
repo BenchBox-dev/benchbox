@@ -34,15 +34,21 @@ def job_text(name: str) -> str:
     return yaml.safe_dump(job(name))
 
 
-def test_the_workflow_runs_daily_and_on_demand_with_dry_run_on_by_default() -> None:
+def test_the_workflow_runs_daily_on_demand_and_after_ci_and_review_with_dry_run_on_by_default() -> None:
     triggers = load()[True]
-    assert set(triggers) == {"schedule", "workflow_dispatch"}
+    assert set(triggers) == {"schedule", "workflow_dispatch", "workflow_run"}
     inputs = triggers["workflow_dispatch"]["inputs"]
     assert inputs["dry_run"]["default"] is True
     assert inputs["retry"]["default"] is False
+    assert triggers["workflow_run"]["types"] == ["completed"]
 
 
-@pytest.mark.parametrize("name", ["readiness", "prepare", "publish"])
+def test_every_workflow_that_triggers_arming_exists_by_that_name() -> None:
+    names = {yaml.safe_load(path.read_text(encoding="utf-8")).get("name") for path in WORKFLOWS.glob("*.yml")}
+    assert set(load()[True]["workflow_run"]["workflows"]) <= names
+
+
+@pytest.mark.parametrize("name", ["readiness", "prepare", "publish", "arm"])
 def test_every_job_runs_only_in_the_main_repository_on_develop(name: str) -> None:
     condition = job(name)["if"]
     assert "github.repository == 'BenchBox-dev/BenchBox'" in condition
@@ -70,10 +76,11 @@ def test_the_prepare_job_holds_no_secret_and_no_write_permission() -> None:
     assert "app-token" not in job_text("prepare")
 
 
-def test_the_app_credentials_and_token_exist_only_in_the_publish_job() -> None:
+@pytest.mark.parametrize("name", ["publish", "arm"])
+def test_only_trusted_mutation_jobs_hold_the_scoped_app_token(name: str) -> None:
     assert set(re.findall(r"secrets\.(\w+)", WORKFLOW.read_text(encoding="utf-8"))) == APP_SECRETS
-    assert set(re.findall(r"secrets\.(\w+)", job_text("publish"))) == APP_SECRETS
-    minters = [step for step in job("publish")["steps"] if "create-github-app-token" in step.get("uses", "")]
+    assert set(re.findall(r"secrets\.(\w+)", job_text(name))) == APP_SECRETS
+    minters = [step for step in job(name)["steps"] if "create-github-app-token" in step.get("uses", "")]
     assert len(minters) == 1
     assert minters[0]["with"]["permission-contents"] == "write"
     assert minters[0]["with"]["permission-pull-requests"] == "write"
@@ -81,7 +88,7 @@ def test_the_app_credentials_and_token_exist_only_in_the_publish_job() -> None:
         "permission-contents",
         "permission-pull-requests",
     }
-    assert job("publish")["permissions"] == {"contents": "read"}
+    assert job(name)["permissions"] == {"contents": "read"}
 
 
 def test_a_missing_app_credential_fails_the_job_before_a_token_is_minted() -> None:
@@ -101,7 +108,7 @@ def test_publication_needs_the_kill_switch_a_real_run_and_an_adoption() -> None:
 
 def test_every_action_is_pinned_to_a_commit_already_used_elsewhere_in_the_repository() -> None:
     others = "\n".join(path.read_text(encoding="utf-8") for path in WORKFLOWS.glob("*.yml") if path != WORKFLOW)
-    for name in ("prepare", "publish"):
+    for name in ("prepare", "publish", "arm"):
         for reference in used(job(name)):
             action, _, sha = reference.partition("@")
             assert re.fullmatch(r"[0-9a-f]{40}", sha), reference
@@ -109,7 +116,7 @@ def test_every_action_is_pinned_to_a_commit_already_used_elsewhere_in_the_reposi
 
 
 def test_checkouts_are_of_develop_without_persisted_credentials() -> None:
-    for name in ("prepare", "publish"):
+    for name in ("prepare", "publish", "arm"):
         checkouts = [step for step in job(name)["steps"] if step.get("uses", "").startswith("actions/checkout@")]
         assert checkouts
         for step in checkouts:
@@ -222,3 +229,52 @@ globalThis.fetch = async (url, options) => {
     )
     if case in {"ready", "wrong-repository", "extra-repository", "unreadable-repositories"}:
         assert calls[-1] == ["DELETE", "/installation/token"]
+
+
+ADOPTION = "chore/sqlglot-30.30.0.1"
+
+
+@pytest.mark.parametrize(
+    ("event", "conclusion", "source_repo", "enabled", "ref", "branch", "expected"),
+    [
+        ("workflow_run", "success", "BenchBox-dev/BenchBox", "true", "refs/heads/develop", ADOPTION, True),
+        ("workflow_run", "failure", "BenchBox-dev/BenchBox", "true", "refs/heads/develop", ADOPTION, False),
+        ("workflow_run", "success", "outsider/BenchBox", "true", "refs/heads/develop", ADOPTION, False),
+        ("workflow_run", "success", "BenchBox-dev/BenchBox", "false", "refs/heads/develop", ADOPTION, False),
+        ("workflow_run", "success", "BenchBox-dev/BenchBox", "", "refs/heads/develop", ADOPTION, False),
+        ("workflow_dispatch", "success", "BenchBox-dev/BenchBox", "true", "refs/heads/develop", ADOPTION, False),
+        ("workflow_run", "success", "BenchBox-dev/BenchBox", "true", "refs/heads/untrusted", ADOPTION, False),
+        ("workflow_run", "success", "BenchBox-dev/BenchBox", "true", "refs/heads/develop", "feat/unrelated", False),
+        ("workflow_run", "success", "BenchBox-dev/BenchBox", "true", "refs/heads/develop", "develop", False),
+    ],
+)
+def test_completion_arming_refuses_untrusted_events_and_disabled_runs(
+    event: str, conclusion: str, source_repo: str, enabled: str, ref: str, branch: str, expected: bool
+) -> None:
+    from tests.unit.workflows.workflow_expressions import evaluate
+
+    workflow_run = {"conclusion": conclusion, "head_repository": {"full_name": source_repo}, "head_branch": branch}
+    context = {
+        "github": {
+            "repository": "BenchBox-dev/BenchBox",
+            "ref": ref,
+            "event_name": event,
+            "event": {"workflow_run": workflow_run},
+        },
+        "vars": {"SQLGLOT_DELIVERY_ENABLED": enabled},
+    }
+    assert bool(evaluate(job("arm")["if"], context)) is expected
+
+
+def test_the_arm_branch_filter_matches_the_trust_root_branch_prefix() -> None:
+    trust_root = json.loads((WORKFLOWS.parent / "sqlglot-delivery.json").read_text(encoding="utf-8"))
+    prefix = trust_root["consumer"]["branchPrefix"]
+    assert f"startsWith(github.event.workflow_run.head_branch, '{prefix}')" in job("arm")["if"]
+
+
+def test_the_readiness_job_is_isolated_from_the_repository_and_prepared_artifacts() -> None:
+    readiness = job("readiness")
+    assert readiness["permissions"] == {}
+    assert "needs" not in readiness
+    assert not used(readiness)
+    assert "app-token" not in job_text("readiness")
