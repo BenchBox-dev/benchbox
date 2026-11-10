@@ -7,11 +7,10 @@ from __future__ import annotations
 import pytest
 
 from benchbox._vendor.sqlglot.errors import ParseError
+from benchbox.platforms.starrocks.stream_load import treats_empty_as_null
 from benchbox.platforms.starrocks.workload import (
     StarRocksWorkloadMixin,
     _alias_derived_tables,
-    _stream_load_row,
-    _stream_load_treats_empty_as_null,
 )
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -104,31 +103,16 @@ class TestOptimizeTableDefinition:
 
 class TestStreamLoadEmptyAsNull:
     def test_pipe_delimited_tpc_keeps_empty_literal(self):
-        assert _stream_load_treats_empty_as_null("|") is False
+        assert treats_empty_as_null("|") is False
 
     def test_unannotated_comma_csv_still_treats_empty_as_null(self):
-
-        assert _stream_load_treats_empty_as_null(",") is True
+        assert treats_empty_as_null(",") is True
 
     def test_tab_delimited_keeps_empty_literal(self):
-        assert _stream_load_treats_empty_as_null("\t") is False
+        assert treats_empty_as_null("\t") is False
 
-
-class TestStreamLoadTpcNulls:
     def test_tpc_null_marker_treats_empty_as_null(self):
-        assert _stream_load_treats_empty_as_null("|", "") is True
+        assert treats_empty_as_null("|", "") is True
 
     def test_pipe_without_null_marker_keeps_empty_literal(self):
-        assert _stream_load_treats_empty_as_null("|", None) is False
-
-    def test_pipe_row_maps_every_empty_field_to_null_including_the_last(self):
-        assert _stream_load_row(["1", "", "x", ""], null_empty=True, delimiter="|") == "1|\\N|x|\\N"
-
-    def test_row_is_unchanged_without_null_mapping(self):
-        assert _stream_load_row(["1", "a", ""], null_empty=False, delimiter="|") == "1|a|"
-
-    def test_comma_csv_maps_nan_tokens_to_null(self):
-        assert _stream_load_row(["1", "NaN", "", "ok"], null_empty=True, delimiter=",") == "1,\\N,\\N,ok"
-
-    def test_pipe_keeps_nan_text(self):
-        assert _stream_load_row(["nan", ""], null_empty=True, delimiter="|") == "nan|\\N"
+        assert treats_empty_as_null("|", None) is False

@@ -190,6 +190,20 @@ def test_singlestore_job_runs_live_marker_against_pinned_compose_image() -> None
     assert re.fullmatch(r"ghcr\.io/singlestore-labs/singlestoredb-dev:[\w.-]+@sha256:[0-9a-f]{64}", pinned)
 
 
+def test_presto_job_pulls_the_ghcr_mirror_at_the_compose_digest() -> None:
+    compose = yaml.safe_load((REPO_ROOT / "docker/presto/docker-compose.yml").read_text(encoding="utf-8"))
+    image = compose["services"]["presto"]["image"]
+    assert image.startswith("${PRESTO_IMAGE:-") and image.endswith("}")
+    tag_and_digest = image[len("${PRESTO_IMAGE:-") : -1].rsplit("/", 1)[-1].partition(":")[2]
+    assert "@sha256:" in tag_and_digest
+    workflow = _load_workflow()
+    assert workflow["jobs"]["presto"]["env"]["PRESTO_IMAGE"] == f"ghcr.io/benchbox-dev/presto:{tag_and_digest}"
+    assert workflow["jobs"]["mirror-presto"]["with"] == {"images": '["presto"]'}
+    assert "run_presto" in workflow["jobs"]["presto"]["if"]
+    steps = "\n".join(str(s.get("run", "")) for s in workflow["jobs"]["presto"]["steps"])
+    assert "docker/presto/docker-compose.yml up -d --wait" in steps and "live_presto" in steps
+
+
 def test_pull_request_trigger_is_path_filtered_and_selects_only_new_jobs() -> None:
     workflow = _load_workflow()
     triggers = _triggers(workflow)
@@ -210,7 +224,15 @@ def test_pull_request_trigger_is_path_filtered_and_selects_only_new_jobs() -> No
     } <= set(paths)
     assert workflow["permissions"] == {"contents": "read"}
     select = next(step for step in workflow["jobs"]["validate-input"]["steps"] if step.get("id") == "select")
-    assert "PULL_REQUEST_SERVICES=(singlestore firebolt)" in select["run"]
+    assert "PULL_REQUEST_SERVICES=(clickhouse trino presto singlestore firebolt)" in select["run"]
+    assert {
+        "docker/trino/**",
+        "docker/presto/**",
+        "docker/clickhouse/**",
+        "benchbox/platforms/presto_trino_adapter_base.py",
+        "benchbox/platforms/clickhouse/**",
+        "benchbox/platforms/base/data_loading.py",
+    } <= set(paths)
     assert "singlestore" in triggers["workflow_dispatch"]["inputs"]["services"]["description"]
     outputs = workflow["jobs"]["validate-input"]["outputs"]
     assert "run_singlestore" in outputs
