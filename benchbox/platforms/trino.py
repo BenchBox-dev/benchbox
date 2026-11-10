@@ -36,6 +36,7 @@ class TrinoAdapter(PrestoTrinoAdapterBase):
     table_format_choices = ("memory", "hive", "iceberg", "delta")
     ddl_format_property_formats = ("hive", "iceberg")
     target_dialect = "trino"
+    bulk_native_compression = frozenset({".gz", ".zst"})
     from_config_optional_fields = (*PrestoTrinoAdapterBase.from_config_optional_fields, "timezone", "encoding")
     extra_config_defaults = {"timezone": None, "encoding": None}
     info_platform_name = "Trino"
