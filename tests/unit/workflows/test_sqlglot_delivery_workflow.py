@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 from typing import Any
@@ -114,30 +115,42 @@ def test_arming_goes_through_the_delivery_script_with_the_app_token() -> None:
     assert "pr_arm" not in arm["run"] and "gh pr merge" not in arm["run"]
 
 
+ADOPTION = "chore/sqlglot-30.30.0.1"
+
+
 @pytest.mark.parametrize(
-    ("event", "conclusion", "source_repo", "enabled", "ref", "expected"),
+    ("event", "conclusion", "source_repo", "enabled", "ref", "branch", "expected"),
     [
-        ("workflow_run", "success", "BenchBox-dev/BenchBox", "true", "refs/heads/develop", True),
-        ("workflow_run", "failure", "BenchBox-dev/BenchBox", "true", "refs/heads/develop", False),
-        ("workflow_run", "success", "outsider/BenchBox", "true", "refs/heads/develop", False),
-        ("workflow_run", "success", "BenchBox-dev/BenchBox", "false", "refs/heads/develop", False),
-        ("workflow_run", "success", "BenchBox-dev/BenchBox", "", "refs/heads/develop", False),
-        ("workflow_dispatch", "success", "BenchBox-dev/BenchBox", "true", "refs/heads/develop", False),
-        ("workflow_run", "success", "BenchBox-dev/BenchBox", "true", "refs/heads/untrusted", False),
+        ("workflow_run", "success", "BenchBox-dev/BenchBox", "true", "refs/heads/develop", ADOPTION, True),
+        ("workflow_run", "failure", "BenchBox-dev/BenchBox", "true", "refs/heads/develop", ADOPTION, False),
+        ("workflow_run", "success", "outsider/BenchBox", "true", "refs/heads/develop", ADOPTION, False),
+        ("workflow_run", "success", "BenchBox-dev/BenchBox", "false", "refs/heads/develop", ADOPTION, False),
+        ("workflow_run", "success", "BenchBox-dev/BenchBox", "", "refs/heads/develop", ADOPTION, False),
+        ("workflow_dispatch", "success", "BenchBox-dev/BenchBox", "true", "refs/heads/develop", ADOPTION, False),
+        ("workflow_run", "success", "BenchBox-dev/BenchBox", "true", "refs/heads/untrusted", ADOPTION, False),
+        ("workflow_run", "success", "BenchBox-dev/BenchBox", "true", "refs/heads/develop", "feat/unrelated", False),
+        ("workflow_run", "success", "BenchBox-dev/BenchBox", "true", "refs/heads/develop", "develop", False),
     ],
 )
 def test_completion_arming_refuses_untrusted_events_and_disabled_runs(
-    event: str, conclusion: str, source_repo: str, enabled: str, ref: str, expected: bool
+    event: str, conclusion: str, source_repo: str, enabled: str, ref: str, branch: str, expected: bool
 ) -> None:
     from tests.unit.workflows.workflow_expressions import evaluate
 
+    workflow_run = {"conclusion": conclusion, "head_repository": {"full_name": source_repo}, "head_branch": branch}
     context = {
         "github": {
             "repository": "BenchBox-dev/BenchBox",
             "ref": ref,
             "event_name": event,
-            "event": {"workflow_run": {"conclusion": conclusion, "head_repository": {"full_name": source_repo}}},
+            "event": {"workflow_run": workflow_run},
         },
         "vars": {"SQLGLOT_DELIVERY_ENABLED": enabled},
     }
     assert bool(evaluate(job("arm")["if"], context)) is expected
+
+
+def test_the_arm_branch_filter_matches_the_trust_root_branch_prefix() -> None:
+    trust_root = json.loads((WORKFLOWS.parent / "sqlglot-delivery.json").read_text(encoding="utf-8"))
+    prefix = trust_root["consumer"]["branchPrefix"]
+    assert f"startsWith(github.event.workflow_run.head_branch, '{prefix}')" in job("arm")["if"]

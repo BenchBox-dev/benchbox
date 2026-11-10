@@ -200,6 +200,7 @@ jobs:
       github.repository == 'BenchBox-dev/BenchBox' && github.ref == 'refs/heads/develop' &&
       github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_repository.full_name == 'BenchBox-dev/BenchBox' &&
+      startsWith(github.event.workflow_run.head_branch, 'chore/sqlglot-') &&
       vars.SQLGLOT_DELIVERY_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
