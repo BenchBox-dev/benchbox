@@ -1327,8 +1327,13 @@ def _resolve_companion_max_depth(result: Any) -> int:
         return DEFAULT_PLAN_MAX_DEPTH
 
 
-def _build_plan_entry(qr: dict[str, Any], *, max_depth: int = DEFAULT_PLAN_MAX_DEPTH) -> dict[str, Any]:
+def _row_query_plan(qr: dict[str, Any]) -> Any:
     query_plan = qr.get("query_plan")
+    return query_plan if query_plan is not None else qr.get("query_plan_raw")
+
+
+def _build_plan_entry(qr: dict[str, Any], *, max_depth: int = DEFAULT_PLAN_MAX_DEPTH) -> dict[str, Any]:
+    query_plan = _row_query_plan(qr)
     plan_fingerprint = qr.get("plan_fingerprint")
     plan_fingerprint_normalized = qr.get("plan_fingerprint_normalized")
     capture_time = qr.get("plan_capture_time_ms")
@@ -1390,7 +1395,7 @@ def build_plans_payload(result: BenchmarkResults) -> dict[str, Any] | None:
 
     rows_by_query_id: dict[str, list[dict[str, Any]]] = {}
     for qr in result.query_results or []:
-        if qr.get("query_plan") is None:
+        if _row_query_plan(qr) is None:
             continue
         query_id = str(qr.get("query_id", qr.get("id", "")))
         rows_by_query_id.setdefault(query_id, []).append(qr)

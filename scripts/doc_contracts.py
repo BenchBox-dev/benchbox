@@ -28,6 +28,7 @@ API_SYMBOLS = ROOT / "_project/design/api-public-symbols.json"
 SF1_BASELINE = ROOT / "tests/unit/generators/sf1_size_baseline.json"
 RUN_SURFACE = ROOT / "quality/mcp-run-surface.json"
 OWNERSHIP = ROOT / "quality/docs-ownership.json"
+PATH_PRIVACY_SNAPSHOT = ROOT / "quality/path-privacy-contract.json"
 PUBLISH_ALLOWLIST = ROOT / "docs/publish-allowlist.txt"
 PUBLISH_EXCLUSIONS = ROOT / "docs/publish-exclusions.txt"
 PUBLISH_LIST_ROOTS = ("development", "operations")
@@ -536,6 +537,27 @@ def _ownership() -> dict[str, Any]:
     }
 
 
+def _path_privacy() -> dict[str, Any]:
+    from benchbox.validation.bundle import build_path_privacy_contract
+
+    return build_path_privacy_contract()
+
+
+def render_path_privacy_snapshot() -> str:
+    return json.dumps(_json_value(_path_privacy()), indent=2, sort_keys=True) + "\n"
+
+
+def path_privacy_snapshot_drift() -> str | None:
+    if not PATH_PRIVACY_SNAPSHOT.exists():
+        return f"{PATH_PRIVACY_SNAPSHOT.name} is missing"
+    if PATH_PRIVACY_SNAPSHOT.read_text(encoding="utf-8") != render_path_privacy_snapshot():
+        return (
+            f"{PATH_PRIVACY_SNAPSHOT.name} differs from the detector in benchbox/validation/bundle.py; "
+            "run `uv run -- python scripts/doc_contracts.py --write-path-privacy-snapshot` after reviewing the change"
+        )
+    return None
+
+
 def build_contracts() -> dict[str, Any]:
     return _json_value(
         {
@@ -555,6 +577,7 @@ def build_contracts() -> dict[str, Any]:
             "write_primitives": _write_primitives(),
             "publication": _publication(),
             "ownership": _ownership(),
+            "path_privacy": _path_privacy(),
         }
     )
 
@@ -595,8 +618,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--check", action="store_true", help="Build twice, validate the schema and require identical output."
     )
+    parser.add_argument(
+        "--write-path-privacy-snapshot",
+        action="store_true",
+        help="Rewrite quality/path-privacy-contract.json from the detector.",
+    )
     args = parser.parse_args(argv)
+    if args.write_path_privacy_snapshot:
+        PATH_PRIVACY_SNAPSHOT.write_text(render_path_privacy_snapshot(), encoding="utf-8")
+        print(PATH_PRIVACY_SNAPSHOT)
+        return 0
     if args.check:
+        drift = path_privacy_snapshot_drift()
+        if drift:
+            print(drift, file=sys.stderr)
+            return 1
         first = render_contracts()
         second = render_contracts()
         errors = validate_contracts(json.loads(first))

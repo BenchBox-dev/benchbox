@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Publish and plan export now treat a custom OME as a local-path leak root and redact top-level `errors` text in plan companions instead of rejecting the bundle."
+    }
+  ]
+}
