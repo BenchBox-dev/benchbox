@@ -4,6 +4,13 @@
     "VALUES path remains only as an explicit, warned fallback.",
     "Row counts match."
   ],
+  "batch": {
+    "batch_id": "server-engine-bulk-load-3",
+    "implementation_dependencies": [
+      "release-uat-presto-trino-unreachable-20261030"
+    ],
+    "member_id": "perf-trino-presto-bulk-load-20261030"
+  },
   "context": "Review 2026-10-31: this is new work, not rewiring — staging_root is parsed (presto_trino_adapter_base.py:93, starburst.py:179/205) but never used for loading, and no external-table path exists. Live verification needs the UAT Presto/Trino reachability fix first.",
   "description": "presto_trino_utils.py:30-62 (called from presto_trino_adapter_base.py:523) splits lines in Python and sends 500-row INSERT ... VALUES statements. It is the only load path and is very slow at SF>=1. Use object storage plus a Hive/Iceberg external table (external_location), then CTAS or INSERT ... SELECT.",
   "sessions": [
@@ -53,6 +60,14 @@
       "client": "omp-coding-agent",
       "op": "abort",
       "op_id": "104c7d0abeac487e98ac5ec5977a0246",
+      "session_id": "248466dc3ce04a7c8f4c76cdbd04176f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a",
+      "at": "2026-11-10T01:42:16Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0a582bd6cda34af1b63b85a049586818",
       "session_id": "248466dc3ce04a7c8f4c76cdbd04176f"
     }
   ]
