@@ -34797,6 +34797,13 @@
       "status": "done",
       "title": "`gate / gate` job fails whenever a review is pending, because the Theseus gate job treats exit 3 (waiting) as an error"
     },
+    "review-gate-pending-while-waiting-decision-20261110": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Decide whether review-gate should report pending instead of failure while a review is outstanding"
+    },
     "review-gate-reliability-closeout-20261108": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Consumer inventory with file:line for Theseus (gate, sweep, review_check) and BenchBox (pr_arm, pr_landing, merge digest, ruleset) recorded here.",
+    "Owner decision recorded here; if 'change', a follow-up implementation item is created with fail-closed acceptance; if 'keep', this item is finished with the reason."
+  ],
+  "context": "Raised by the review-output format audit (theseus-review-output-format-20261110) but deliberately excluded from it.",
+  "description": "Owner decision, outside the formatting work. Today review-gate posts `failure` while it waits for a verdict, which shows a red cross that contradicts 'waiting'. Changing it to `pending` could affect GitHub auto-merge semantics (pending required checks block differently from failing ones), BenchBox make pr-arm / pr_landing checks, the soundness merge digest, and the hourly sweep. Do not change behaviour until the owner decides.\nTo decide: list every consumer of the review-gate state in Theseus and BenchBox with file:line, describe the behaviour change for each, and present keep / change with a recommendation.",
+  "links": [
+    "~/.omp/agent/sessions/-Developer-BenchBox/2026-11-02T02-04-38-450Z_01a19a00-60b2-70a6-b56d-6f666415a725/local/review-comment-format-proposal.md (end of section 8.5)"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a",
+      "at": "2026-11-10T15:37:22Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "2a6f78f664554606ac7dec8bc1a1029e",
+      "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    }
+  ]
+}
