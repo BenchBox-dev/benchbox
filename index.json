@@ -7851,7 +7851,7 @@
         }
       },
       "integration_branch": "feat/server-engine-bulk-load-3",
-      "integration_head": "f97c87273240623dcbb8aac83fb48aa64e8b6779",
+      "integration_head": "5f22a3e69c2127955fd9e03422f77d1576501d51",
       "integration_log": [
         {
           "at": "2026-11-10T01:41:43Z",
@@ -8034,6 +8034,27 @@
             "release-uat-presto-trino-unreachable-20261030"
           ],
           "seq": 10
+        },
+        {
+          "at": "2026-11-10T17:26:25Z",
+          "changed_files": [
+            ".github/workflows/docker-integration.yml",
+            "docker/presto/catalog/hive.properties",
+            "tests/unit/platforms/base/test_data_loading_operations.py",
+            "tests/unit/platforms/test_clickhouse_adapter.py",
+            "tests/unit/platforms/test_no_midrun_destructive_ops.py",
+            "tests/unit/platforms/test_presto_trino_bulk.py"
+          ],
+          "head": "5f22a3e69c2127955fd9e03422f77d1576501d51",
+          "kind": "fix",
+          "op_id": "e44afaa696a64babbbbf4bac69d1e3b5",
+          "previous_head": "f97c87273240623dcbb8aac83fb48aa64e8b6779",
+          "requires_acceptance": [
+            "perf-clickhouse-server-bulk-load-20261030",
+            "perf-trino-presto-bulk-load-20261030",
+            "release-uat-presto-trino-unreachable-20261030"
+          ],
+          "seq": 11
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-server-engine-bulk-load-3",
