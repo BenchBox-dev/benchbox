@@ -129,3 +129,21 @@ def test_eligible_needs_a_conformance_entry_and_a_run_that_passes_the_floor_rule
     tight = {**good, "ms": 54.0}
     assert resolve_net_estimate_status(queries=[tight], **args) == "floor_suspect"
     assert resolve_net_estimate_status(queries=[good], **{**args, "platform": "bigquery"}) == "probe_unverified"
+
+
+def test_normalized_query_results_keep_timing_fields():
+    from benchbox.core.results.query_normalizer import normalize_query_result
+
+    normalized = normalize_query_result(
+        {
+            "query_id": "1",
+            "status": "SUCCESS",
+            "execution_time_seconds": 0.1,
+            "rows_returned": 1,
+            "request_count": 2,
+            "result_bytes": 5,
+            "platform_timing": {"status": "unavailable", "reason": "r"},
+        }
+    )
+    assert (normalized.request_count, normalized.result_bytes) == (2, 5)
+    assert normalized.platform_timing == {"status": "unavailable", "reason": "r"}
