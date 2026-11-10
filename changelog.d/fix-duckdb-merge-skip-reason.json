@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "DuckDB now runs the write-primitives MERGE INTO operations instead of skipping them with a stale 'DuckDB 1.3.2 rejects MERGE' reason; all 21 catalog operations that use MERGE INTO run and validate on DuckDB 1.5.5 at scale factor 0.01"
+    }
+  ]
+}
