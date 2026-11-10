@@ -237,6 +237,73 @@ def test_deferred_lookup_failure_marks_records_unavailable():
     assert fields["platform_timing"]["reason"] == "platform history lookup failed: RuntimeError"
 
 
+def test_deferred_lookup_widens_the_history_window_to_cover_the_phase():
+    import datetime
+    from unittest.mock import Mock
+
+    from benchbox.core.results.platform_timing import history_lookup_minutes
+    from benchbox.platforms.base.timing_contract import TimingContractMixin
+
+    seen_minutes: list[int] = []
+
+    class _Adapter(TimingContractMixin):
+        platform_timing_source = "mock.history"
+
+        def fetch_platform_timings(self, connection, statement_ids):
+            seen_minutes.append(history_lookup_minutes(5))
+            return {}
+
+    adapter = _Adapter()
+    ledger = RequestLedger()
+    ledger.add_request("query", "stmt-1")
+
+    with deferred_platform_timing() as deferred:
+        adapter.timing_fields_for(Mock(), ledger, elapsed_seconds=0.1)
+        deferred.entries[0].queued_at -= datetime.timedelta(minutes=40)
+        deferred.resolve()
+
+    assert seen_minutes and seen_minutes[0] >= 41
+    assert history_lookup_minutes(5) == 5
+
+
+def test_snowflake_history_sql_uses_the_widened_window():
+    import datetime
+
+    from benchbox.core.results.platform_timing import history_lookup_window
+    from benchbox.platforms.snowflake import SnowflakeAdapter
+
+    assert "DATEADD('MINUTE', -5," in SnowflakeAdapter._query_history_sql(["QUERY_ID"], ["01a2"])
+    since = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=90)
+    with history_lookup_window(since):
+        sql = SnowflakeAdapter._query_history_sql(["QUERY_ID"], ["01a2"])
+    assert "DATEADD('MINUTE', -92," in sql
+
+
+def test_non_deferrable_history_is_skipped_inside_a_measured_phase():
+    from unittest.mock import Mock
+
+    from benchbox.platforms.base.timing_contract import TimingContractMixin
+
+    class _Adapter(TimingContractMixin):
+        platform_timing_source = "mock.history"
+        platform_history_deferrable = False
+
+    adapter = _Adapter()
+    adapter.fetch_platform_timings = Mock(return_value={})
+    ledger = RequestLedger()
+    ledger.add_request("query", "stmt-1")
+
+    with deferred_platform_timing() as deferred:
+        fields = adapter.timing_fields_for(Mock(), ledger, elapsed_seconds=0.1)
+        assert deferred.entries == []
+        deferred.resolve()
+
+    adapter.fetch_platform_timings.assert_not_called()
+    assert fields["platform_timing"]["reason"] == (
+        "skipped inside a measured phase: platform history is kept too briefly to look up afterwards"
+    )
+
+
 def test_tpcds_power_test_resolves_platform_history_after_phase_end(monkeypatch):
     from unittest.mock import Mock
 

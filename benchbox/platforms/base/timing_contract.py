@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import datetime
 import logging
 import statistics
 from collections.abc import Iterable, Mapping, Sequence
@@ -11,6 +12,7 @@ from benchbox.core.results.platform_timing import (
     StatementTiming,
     active_deferred_platform_timing,
     build_platform_timing,
+    history_lookup_window,
     is_throughput_stream_active,
     rows_result_bytes,
     unavailable_platform_timing,
@@ -30,6 +32,7 @@ class TimingContractMixin:
     timing_method: int = TIMING_METHOD_LEGACY
     platform_timing_source: str | None = None
     platform_timing_definition: str = "server_complete"
+    platform_history_deferrable: bool = True
 
     def fetch_platform_timings(self, connection: Any, statement_ids: Sequence[str]) -> Mapping[str, StatementTiming]:
         return {}
@@ -80,6 +83,12 @@ class TimingContractMixin:
         deferred = active_deferred_platform_timing()
         if deferred is not None:
             statements = [StatementTiming(request.statement_id, request.kind, request.attempt) for request in requests]
+            if not self.platform_history_deferrable:
+                return unavailable_platform_timing(
+                    source,
+                    "skipped inside a measured phase: platform history is kept too briefly to look up afterwards",
+                    statements,
+                )
             record = unavailable_platform_timing(
                 source,
                 "platform history lookup deferred until the measured phase ends",
@@ -98,7 +107,9 @@ class TimingContractMixin:
         if source is None:
             return
         requests = [request for entry in entries for request in entry.requests]
-        statements, failure = self._statements_for(connection, requests)
+        since = min(entry.queued_at for entry in entries) - datetime.timedelta(minutes=1)
+        with history_lookup_window(since):
+            statements, failure = self._statements_for(connection, requests)
         offset = 0
         for entry in entries:
             mine = statements[offset : offset + len(entry.requests)]

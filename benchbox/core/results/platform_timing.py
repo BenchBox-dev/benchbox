@@ -47,6 +47,7 @@ class DeferredPlatformTimingEntry:
     requests: list[Any]
     client_ms: float | None
     record: dict[str, Any]
+    queued_at: _dt.datetime = field(default_factory=lambda: _dt.datetime.now(_dt.timezone.utc))
 
 
 @dataclass
@@ -82,6 +83,26 @@ def deferred_platform_timing() -> Iterator[DeferredPlatformTiming]:
 
 def active_deferred_platform_timing() -> DeferredPlatformTiming | None:
     return _DEFERRED_PLATFORM_TIMING.get()
+
+
+_HISTORY_LOOKUP_SINCE: ContextVar[_dt.datetime | None] = ContextVar("benchbox_history_lookup_since", default=None)
+
+
+@contextmanager
+def history_lookup_window(since: _dt.datetime) -> Iterator[None]:
+    token = _HISTORY_LOOKUP_SINCE.set(since)
+    try:
+        yield
+    finally:
+        _HISTORY_LOOKUP_SINCE.reset(token)
+
+
+def history_lookup_minutes(default_minutes: int) -> int:
+    since = _HISTORY_LOOKUP_SINCE.get()
+    if since is None:
+        return default_minutes
+    elapsed = (_dt.datetime.now(_dt.timezone.utc) - since).total_seconds()
+    return max(default_minutes, int(elapsed // 60) + 2)
 
 
 _FIXED_WIDTH_BYTES = 8

@@ -9,7 +9,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from benchbox.core.results.platform_timing import StatementTiming
+from benchbox.core.results.platform_timing import StatementTiming, history_lookup_minutes
 from benchbox.core.results.timer_scope import (
     REQUEST_KIND_BEGIN,
     REQUEST_KIND_COMMIT,
@@ -1577,7 +1577,7 @@ class SnowflakeAdapter(PlatformAdapter):
                     SELECT
                         {", ".join(columns)}
                     FROM TABLE(INFORMATION_SCHEMA.QUERY_HISTORY(
-                        END_TIME_RANGE_START => DATEADD('MINUTE', -{SNOWFLAKE_HISTORY_WINDOW_MINUTES}, CURRENT_TIMESTAMP()),
+                        END_TIME_RANGE_START => DATEADD('MINUTE', -{history_lookup_minutes(SNOWFLAKE_HISTORY_WINDOW_MINUTES)}, CURRENT_TIMESTAMP()),
                         END_TIME_RANGE_END => CURRENT_TIMESTAMP(),
                         RESULT_LIMIT => 10000
                     ))

@@ -85,6 +85,7 @@ class PrestoTrinoAdapterBase(CursorValidationQueryExecutionMixin, HiveExternalTa
     timing_method = TIMING_METHOD_QUERY_ONLY
     platform_timing_source = "system.runtime.queries"
     platform_timing_definition = "includes_fetch"
+    platform_history_deferrable = False
     runtime_planning_column = "planning_time_ms"
 
     def _init_connection_config(self, config: dict[str, Any]) -> None:
