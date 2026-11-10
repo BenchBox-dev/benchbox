@@ -10,6 +10,12 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from benchbox.core.results.timer_scope import (
+    REQUEST_KIND_QUERY,
+    TIMING_METHOD_QUERY_ONLY,
+    RequestLedger,
+    outside_query_timer,
+)
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 if TYPE_CHECKING:
@@ -82,6 +88,7 @@ class AthenaSparkAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkExternalT
     driver_isolation_capability = DriverIsolationCapability.NOT_FEASIBLE
 
     cloud_platform = CloudPlatform.EMR
+    timing_method = TIMING_METHOD_QUERY_ONLY
 
     def __init__(
         self,
@@ -471,15 +478,22 @@ result.show(100, truncate=False)
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
+        ledger = RequestLedger()
         start_time = mono_time()
         try:
             calculation_id, state = self._submit_calculation(query, code_type="SQL", wait_for_completion=True)
-            elapsed = elapsed_seconds(start_time)
-            self._query_count += 1
-            self._total_execution_time_seconds += elapsed
+            ledger.add_request(REQUEST_KIND_QUERY, calculation_id)
             if state not in AthenaSparkCalculationState.SUCCESS_STATES:
+                elapsed = elapsed_seconds(start_time)
+                self._query_count += 1
+                self._total_execution_time_seconds += elapsed
                 raise RuntimeError(f"Athena Spark calculation failed with state: {state}")
             results = self._get_calculation_result(calculation_id)
+            elapsed = elapsed_seconds(start_time)
+            with outside_query_timer():
+                self._query_count += 1
+                self._total_execution_time_seconds += elapsed
+                timing_fields = self.timing_fields_for(connection, ledger, rows=results, elapsed_seconds=elapsed)
             return {
                 "query_id": query_id,
                 "stream_id": stream_id,
@@ -488,6 +502,7 @@ result.show(100, truncate=False)
                 "rows_returned": len(results),
                 "results": results,
                 "error": None,
+                **timing_fields,
             }
         except Exception as e:
             return {

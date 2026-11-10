@@ -33,6 +33,7 @@ from benchbox.core.results.query_plan_models import (
     DEFAULT_RAW_OUTPUT_MAX_BYTES,
     DEFAULT_RAW_OUTPUT_POLICY,
 )
+from benchbox.core.results.timer_scope import excluded_from_query_timer
 from benchbox.platforms.base.models import (
     MaintenanceOperation,
     MaintenanceTestPhase,
@@ -799,6 +800,7 @@ class ResultCaptureMixin:
         self.query_plans_captured += 1
         return plan, capture_time_ms
 
+    @excluded_from_query_timer
     def _merge_plan_capture_into_result(
         self,
         result: dict[str, Any],
@@ -1016,6 +1018,7 @@ class ResultCaptureMixin:
                 return benchmark_id
         return None
 
+    @excluded_from_query_timer
     def _build_query_result_with_validation(
         self,
         query_id: str,
@@ -1027,6 +1030,7 @@ class ResultCaptureMixin:
         result_digest: str | None = None,
         materialized_rows: MaterializedRowsSource | None = None,
         fetch_mode: str | None = None,
+        timing_fields: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
         from benchbox.core.expected_results.models import ValidationMode
 
@@ -1043,6 +1047,9 @@ class ResultCaptureMixin:
 
         if fetch_mode is not None:
             result_dict["fetch_mode"] = fetch_mode
+
+        if timing_fields:
+            result_dict.update(timing_fields)
 
         if error:
             result_dict["error"] = error

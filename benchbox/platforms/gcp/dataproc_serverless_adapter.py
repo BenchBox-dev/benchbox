@@ -11,6 +11,12 @@ import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from benchbox.core.results.timer_scope import (
+    REQUEST_KIND_QUERY,
+    TIMING_METHOD_QUERY_ONLY,
+    RequestLedger,
+    outside_query_timer,
+)
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 if TYPE_CHECKING:
@@ -67,6 +73,7 @@ class DataprocBatchState:
 
 
 class DataprocServerlessAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkExternalTableMixin, PlatformAdapter):
+    timing_method = TIMING_METHOD_QUERY_ONLY
     plan_capture_phase_eligible = True
 
     driver_isolation_capability = DriverIsolationCapability.NOT_FEASIBLE
@@ -337,15 +344,22 @@ class DataprocServerlessAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkEx
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
+        ledger = RequestLedger()
         start_time = mono_time()
         try:
             batch_id, state = self._submit_spark_sql_batch(query, wait_for_completion=True)
-            elapsed = elapsed_seconds(start_time)
-            self._query_count += 1
-            self._total_batch_time_seconds += elapsed
+            ledger.add_request(REQUEST_KIND_QUERY, batch_id)
             if state not in DataprocBatchState.SUCCESS_STATES:
+                elapsed = elapsed_seconds(start_time)
+                self._query_count += 1
+                self._total_batch_time_seconds += elapsed
                 raise RuntimeError(f"Dataproc Serverless batch failed with state: {state}")
             results = self._retrieve_results(batch_id)
+            elapsed = elapsed_seconds(start_time)
+            with outside_query_timer():
+                self._query_count += 1
+                self._total_batch_time_seconds += elapsed
+                timing_fields = self.timing_fields_for(connection, ledger, rows=results, elapsed_seconds=elapsed)
             return {
                 "query_id": query_id,
                 "stream_id": stream_id,
@@ -354,6 +368,7 @@ class DataprocServerlessAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkEx
                 "rows_returned": len(results),
                 "results": results,
                 "error": None,
+                **timing_fields,
             }
         except Exception as e:
             return {

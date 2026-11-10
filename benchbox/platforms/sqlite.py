@@ -11,6 +11,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY, RequestLedger, outside_query_timer
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 if TYPE_CHECKING:
@@ -230,6 +231,7 @@ def _register_sqlite_compatibility_functions(connection: Any) -> None:
 
 class SQLiteAdapter(PlatformAdapter):
     driver_isolation_capability = DriverIsolationCapability.NOT_APPLICABLE
+    timing_method = TIMING_METHOD_QUERY_ONLY
     plan_capture_phase_eligible = True
     supports_refresh_functions = True
 
@@ -689,15 +691,19 @@ class SQLiteAdapter(PlatformAdapter):
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
-        start_time = mono_time()
+        ledger = RequestLedger()
         self.log_verbose(f"Executing query {query_id}")
         self.log_very_verbose(f"Query SQL (first 200 chars): {query[:200]}{'...' if len(query) > 200 else ''}")
 
         cursor = None
         _owns_cursor = False
+        start_time = mono_time()
         try:
             _owns_cursor = callable(getattr(connection, "cursor", None))
-            cursor = connection.cursor() if _owns_cursor else connection
+            with outside_query_timer():
+                cursor = connection.cursor() if _owns_cursor else connection
+            start_time = mono_time()
+            ledger.add_request()
             cursor.execute(query)
             results = cursor.fetchall()
 
@@ -705,27 +711,30 @@ class SQLiteAdapter(PlatformAdapter):
             actual_row_count = len(results)
 
             validation_result = None
-            if validate_row_count and benchmark_type:
-                from benchbox.core.validation.query_validation import QueryValidator
+            with outside_query_timer():
+                if validate_row_count and benchmark_type:
+                    from benchbox.core.validation.query_validation import QueryValidator
 
-                validator = QueryValidator()
-                validation_result = validator.validate_query_result(
-                    benchmark_type=benchmark_type,
-                    query_id=query_id,
-                    actual_row_count=actual_row_count,
-                    scale_factor=scale_factor,
-                    stream_id=stream_id,
-                )
-
-                if validation_result.warning_message:
-                    self.log_verbose(f"Row count validation: {validation_result.warning_message}")
-                elif not validation_result.is_valid:
-                    self.log_verbose(f"Row count validation FAILED: {validation_result.error_message}")
-                else:
-                    self.log_very_verbose(
-                        f"Row count validation PASSED: {actual_row_count} rows "
-                        f"(expected: {validation_result.expected_row_count})"
+                    validator = QueryValidator()
+                    validation_result = validator.validate_query_result(
+                        benchmark_type=benchmark_type,
+                        query_id=query_id,
+                        actual_row_count=actual_row_count,
+                        scale_factor=scale_factor,
+                        stream_id=stream_id,
                     )
+
+                    if validation_result.warning_message:
+                        self.log_verbose(f"Row count validation: {validation_result.warning_message}")
+                    elif not validation_result.is_valid:
+                        self.log_verbose(f"Row count validation FAILED: {validation_result.error_message}")
+                    else:
+                        self.log_very_verbose(
+                            f"Row count validation PASSED: {actual_row_count} rows "
+                            f"(expected: {validation_result.expected_row_count})"
+                        )
+
+            timing_fields = self.timing_fields_for(connection, ledger, rows=results, elapsed_seconds=execution_time)
 
             result = self._build_query_result_with_validation(
                 query_id=query_id,
@@ -734,6 +743,7 @@ class SQLiteAdapter(PlatformAdapter):
                 first_row=results[0] if results else None,
                 validation_result=validation_result,
                 materialized_rows=results,
+                timing_fields=timing_fields,
             )
             result["results"] = results
 
@@ -744,7 +754,8 @@ class SQLiteAdapter(PlatformAdapter):
                 cursor.close()
 
         if not self.capture_plans:
-            self.display_query_plan_if_enabled(connection, query, query_id)
+            with outside_query_timer():
+                self.display_query_plan_if_enabled(connection, query, query_id)
 
         self._merge_plan_capture_into_result(result, connection, query, query_id)
 

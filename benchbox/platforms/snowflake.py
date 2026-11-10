@@ -2,11 +2,22 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
+import time
 import uuid
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from benchbox.core.results.platform_timing import StatementTiming
+from benchbox.core.results.timer_scope import (
+    REQUEST_KIND_BEGIN,
+    REQUEST_KIND_COMMIT,
+    REQUEST_KIND_QUERY,
+    TIMING_METHOD_QUERY_ONLY,
+    RequestLedger,
+    outside_query_timer,
+)
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dialect_utils import translate_ddl
 
@@ -47,10 +58,52 @@ def _compact_metadata(payload: Mapping[str, Any]) -> dict[str, Any]:
     return {str(key): value for key, value in payload.items() if value not in (None, "", {}, [], ())}
 
 
+def _numeric(value: Any) -> float | int | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return value
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+_STATEMENT_ID_PATTERN = re.compile(r"[A-Za-z0-9_-]+")
+SNOWFLAKE_HISTORY_WINDOW_MINUTES = 5
+SNOWFLAKE_HISTORY_ATTEMPTS = 3
+SNOWFLAKE_HISTORY_RETRY_DELAY_SECONDS = 0.5
+SNOWFLAKE_QUEUE_COLUMNS = ("QUEUED_PROVISIONING_TIME", "QUEUED_REPAIR_TIME", "QUEUED_OVERLOAD_TIME")
+SNOWFLAKE_TIMING_COLUMNS = (
+    "QUERY_ID",
+    "TOTAL_ELAPSED_TIME",
+    "COMPILATION_TIME",
+    "EXECUTION_TIME",
+    *SNOWFLAKE_QUEUE_COLUMNS,
+    "TRANSACTION_BLOCKED_TIME",
+    "BYTES_SCANNED",
+    "ROWS_PRODUCED",
+)
+SNOWFLAKE_STATISTICS_COLUMNS = (
+    "QUERY_ID",
+    "TOTAL_ELAPSED_TIME",
+    "EXECUTION_TIME",
+    "COMPILATION_TIME",
+    "BYTES_SCANNED",
+    "ROWS_PRODUCED",
+    "CREDITS_USED_CLOUD_SERVICES",
+    "WAREHOUSE_SIZE",
+    "CLUSTER_NUMBER",
+)
+
+
 class SnowflakeAdapter(PlatformAdapter):
     gateway_endpoint: GatewayEndpoint | None = None
     plan_capture_phase_eligible = True
     supports_refresh_functions = True
+    timing_method = TIMING_METHOD_QUERY_ONLY
+    platform_timing_source = "snowflake.query_history"
+    platform_timing_definition = "server_complete"
 
     driver_isolation_capability = DriverIsolationCapability.FEASIBLE_CLIENT_ONLY
     supports_external_tables = True
@@ -1285,6 +1338,7 @@ class SnowflakeAdapter(PlatformAdapter):
         self.log_very_verbose(f"Executing query {query_id}: {query[:100]}...")
 
         start_time = mono_time()
+        ledger = RequestLedger()
 
         own_cursor = False
         if hasattr(connection, "cursor"):
@@ -1296,33 +1350,38 @@ class SnowflakeAdapter(PlatformAdapter):
             stats_connection = getattr(connection, "connection", connection)
 
         try:
-            query_tag = self._format_query_tag(query_id)
-            self.log_very_verbose(f"Setting query tag: {query_tag}")
-            cursor.execute(f"ALTER SESSION SET QUERY_TAG = '{query_tag}'")
+            with outside_query_timer():
+                query_tag = self._format_query_tag(query_id)
+                self.log_very_verbose(f"Setting query tag: {query_tag}")
+                cursor.execute(f"ALTER SESSION SET QUERY_TAG = '{query_tag}'")
 
-            query = self._apply_fork_safe_division(query)
-            self.log_verbose(f"Executing query {query_id} on Snowflake")
-            from benchbox.platforms.base.mysql_wire import split_sql_statements
+                query = self._apply_fork_safe_division(query)
+                self.log_verbose(f"Executing query {query_id} on Snowflake")
+                from benchbox.platforms.base.mysql_wire import split_sql_statements
 
-            statements = split_sql_statements(query)
-            statements_to_run = statements or [query]
+                statements = split_sql_statements(query)
+                statements_to_run = statements or [query]
+
+                keywords = [self._first_statement_keyword(s) for s in statements_to_run]
+                has_tx_control = any(kw in {"BEGIN", "START", "COMMIT", "ROLLBACK"} for kw in keywords)
+                has_ddl = any(
+                    kw in {"CREATE", "DROP", "ALTER", "TRUNCATE", "RENAME", "COMMENT", "GRANT", "REVOKE", "USE"}
+                    for kw in keywords
+                )
+                use_explicit_tx = len(statements_to_run) > 1 and not has_tx_control and not has_ddl
+
             result = []
-
-            keywords = [self._first_statement_keyword(s) for s in statements_to_run]
-            has_tx_control = any(kw in {"BEGIN", "START", "COMMIT", "ROLLBACK"} for kw in keywords)
-            has_ddl = any(
-                kw in {"CREATE", "DROP", "ALTER", "TRUNCATE", "RENAME", "COMMENT", "GRANT", "REVOKE", "USE"}
-                for kw in keywords
-            )
-            use_explicit_tx = len(statements_to_run) > 1 and not has_tx_control and not has_ddl
-
+            start_time = mono_time()
             if use_explicit_tx:
                 cursor.execute("BEGIN")
+                ledger.add_request(REQUEST_KIND_BEGIN, self._statement_id_of(cursor))
                 try:
                     for statement in statements_to_run:
                         cursor.execute(statement)
+                        ledger.add_request(REQUEST_KIND_QUERY, self._statement_id_of(cursor))
                         result = cursor.fetchall()
                     cursor.execute("COMMIT")
+                    ledger.add_request(REQUEST_KIND_COMMIT, self._statement_id_of(cursor))
                 except Exception:
                     try:
                         cursor.execute("ROLLBACK")
@@ -1332,35 +1391,43 @@ class SnowflakeAdapter(PlatformAdapter):
             else:
                 for statement in statements_to_run:
                     cursor.execute(statement)
+                    ledger.add_request(REQUEST_KIND_QUERY, self._statement_id_of(cursor))
                     result = cursor.fetchall()
 
             execution_time = elapsed_seconds(start_time)
             actual_row_count = len(result) if result else 0
 
-            query_stats = self._get_query_statistics(stats_connection, query_id)
-
             validation_result = None
-            if validate_row_count and benchmark_type:
-                from benchbox.core.validation.query_validation import QueryValidator
-
-                validator = QueryValidator()
-                validation_result = validator.validate_query_result(
-                    benchmark_type=benchmark_type,
-                    query_id=query_id,
-                    actual_row_count=actual_row_count,
-                    scale_factor=scale_factor,
-                    stream_id=stream_id,
+            with outside_query_timer():
+                final_statement_ids = ledger.statement_ids(REQUEST_KIND_QUERY)
+                query_stats = self._get_query_statistics(
+                    stats_connection, final_statement_ids[-1] if final_statement_ids else None
+                )
+                timing_fields = self.timing_fields_for(
+                    stats_connection, ledger, rows=result, elapsed_seconds=execution_time
                 )
 
-                if validation_result.warning_message:
-                    self.log_verbose(f"Row count validation: {validation_result.warning_message}")
-                elif not validation_result.is_valid:
-                    self.log_verbose(f"Row count validation FAILED: {validation_result.error_message}")
-                else:
-                    self.log_very_verbose(
-                        f"Row count validation PASSED: {actual_row_count} rows "
-                        f"(expected: {validation_result.expected_row_count})"
+                if validate_row_count and benchmark_type:
+                    from benchbox.core.validation.query_validation import QueryValidator
+
+                    validator = QueryValidator()
+                    validation_result = validator.validate_query_result(
+                        benchmark_type=benchmark_type,
+                        query_id=query_id,
+                        actual_row_count=actual_row_count,
+                        scale_factor=scale_factor,
+                        stream_id=stream_id,
                     )
+
+                    if validation_result.warning_message:
+                        self.log_verbose(f"Row count validation: {validation_result.warning_message}")
+                    elif not validation_result.is_valid:
+                        self.log_verbose(f"Row count validation FAILED: {validation_result.error_message}")
+                    else:
+                        self.log_very_verbose(
+                            f"Row count validation PASSED: {actual_row_count} rows "
+                            f"(expected: {validation_result.expected_row_count})"
+                        )
 
             result_dict = self._build_query_result_with_validation(
                 query_id=query_id,
@@ -1369,6 +1436,7 @@ class SnowflakeAdapter(PlatformAdapter):
                 first_row=result[0] if result else None,
                 validation_result=validation_result,
                 materialized_rows=result,
+                timing_fields=timing_fields,
             )
 
             result_dict["translated_query"] = None
@@ -1494,33 +1562,78 @@ class SnowflakeAdapter(PlatformAdapter):
             validation_details["integrity_error"] = str(e)
             return "FAILED", validation_details
 
+    @staticmethod
+    def _statement_id_of(cursor: Any) -> str | None:
+        sfqid = getattr(cursor, "sfqid", None)
+        return sfqid if isinstance(sfqid, str) and sfqid else None
+
+    def probe_statement_id(self, cursor: Any) -> str | None:
+        return self._statement_id_of(cursor)
+
+    @staticmethod
+    def _query_history_sql(columns: Sequence[str], statement_ids: Sequence[str]) -> str:
+        id_list = ", ".join(f"'{statement_id}'" for statement_id in statement_ids)
+        return f"""
+                    SELECT
+                        {", ".join(columns)}
+                    FROM TABLE(INFORMATION_SCHEMA.QUERY_HISTORY(
+                        END_TIME_RANGE_START => DATEADD('MINUTE', -{SNOWFLAKE_HISTORY_WINDOW_MINUTES}, CURRENT_TIMESTAMP()),
+                        END_TIME_RANGE_END => CURRENT_TIMESTAMP(),
+                        RESULT_LIMIT => 10000
+                    ))
+                    WHERE QUERY_ID IN ({id_list})
+                """
+
+    @staticmethod
+    def _valid_statement_ids(statement_ids: Sequence[str | None]) -> list[str]:
+        return [sid for sid in statement_ids if sid and _STATEMENT_ID_PATTERN.fullmatch(sid)]
+
+    def fetch_platform_timings(self, connection: Any, statement_ids: Sequence[str]) -> Mapping[str, StatementTiming]:
+        wanted = list(dict.fromkeys(self._valid_statement_ids(statement_ids)))
+        if not wanted:
+            return {}
+        found: dict[str, StatementTiming] = {}
+        cursor = connection.cursor()
+        try:
+            for attempt in range(SNOWFLAKE_HISTORY_ATTEMPTS):
+                pending = [sid for sid in wanted if sid not in found]
+                cursor.execute(self._query_history_sql(SNOWFLAKE_TIMING_COLUMNS, pending))
+                for row in cursor.fetchall():
+                    values = dict(zip(SNOWFLAKE_TIMING_COLUMNS, row, strict=False))
+                    statement_id = values["QUERY_ID"]
+                    fields = {
+                        name: number
+                        for name in SNOWFLAKE_TIMING_COLUMNS[1:]
+                        if (number := _numeric(values.get(name))) is not None
+                    }
+                    queue_parts = [fields[name] for name in SNOWFLAKE_QUEUE_COLUMNS if name in fields]
+                    found[statement_id] = StatementTiming(
+                        statement_id=statement_id,
+                        fields=fields,
+                        platform_ms=fields.get("TOTAL_ELAPSED_TIME"),
+                        queue_ms=float(sum(queue_parts)) if queue_parts else None,
+                        compile_ms=fields.get("COMPILATION_TIME"),
+                        exec_ms=fields.get("EXECUTION_TIME"),
+                    )
+                if len(found) == len(wanted):
+                    break
+                if attempt + 1 < SNOWFLAKE_HISTORY_ATTEMPTS:
+                    time.sleep(SNOWFLAKE_HISTORY_RETRY_DELAY_SECONDS * (2**attempt))
+        finally:
+            cursor.close()
+        return found
+
     def _get_query_statistics(
-        self, connection: Any, query_id: str, max_retries: int = 0, initial_delay: float = 0.5
+        self, connection: Any, snowflake_query_id: str | None, max_retries: int = 0, initial_delay: float = 0.5
     ) -> dict[str, Any]:
-        import time as time_module
+        statement_ids = self._valid_statement_ids([snowflake_query_id])
+        if not statement_ids:
+            return {"note": "Snowflake query id unavailable; query statistics not retrieved", "retrieval_attempts": 0}
 
         cursor = connection.cursor()
         for attempt in range(max_retries + 1):
             try:
-                cursor.execute(f"""
-                    SELECT
-                        QUERY_ID,
-                        TOTAL_ELAPSED_TIME,
-                        EXECUTION_TIME,
-                        COMPILATION_TIME,
-                        BYTES_SCANNED,
-                        ROWS_PRODUCED,
-                        CREDITS_USED_CLOUD_SERVICES,
-                        WAREHOUSE_SIZE,
-                        CLUSTER_NUMBER
-                    FROM TABLE(INFORMATION_SCHEMA.QUERY_HISTORY(
-                        END_TIME_RANGE_START => DATEADD('MINUTE', -5, CURRENT_TIMESTAMP()),
-                        END_TIME_RANGE_END => CURRENT_TIMESTAMP()
-                    ))
-                    WHERE QUERY_TAG = '{self._format_query_tag(query_id)}'
-                    ORDER BY START_TIME DESC
-                    LIMIT 1
-                """)
+                cursor.execute(self._query_history_sql(SNOWFLAKE_STATISTICS_COLUMNS, statement_ids))
 
                 result = cursor.fetchone()
 
@@ -1542,10 +1655,10 @@ class SnowflakeAdapter(PlatformAdapter):
                     if attempt < max_retries:
                         delay = initial_delay * (2**attempt)
                         self.logger.debug(
-                            f"Query statistics not yet available for {query_id}, "
+                            f"Query statistics not yet available for {snowflake_query_id}, "
                             f"retrying in {delay:.1f}s (attempt {attempt + 1}/{max_retries})"
                         )
-                        time_module.sleep(delay)
+                        time.sleep(delay)
                     else:
                         cursor.close()
                         return {

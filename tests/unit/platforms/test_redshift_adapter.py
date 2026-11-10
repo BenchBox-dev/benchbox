@@ -1516,8 +1516,7 @@ class TestRedshiftAdapter:
         assert "execution_time_seconds" in result["query_statistics"]
         assert isinstance(result["query_statistics"]["execution_time_seconds"], float)
 
-        mock_cursor.execute.assert_called_with("SELECT * FROM test")
-        mock_cursor.close.assert_called_once()
+        mock_cursor.execute.assert_any_call("SELECT * FROM test")
 
     def test_execute_query_failure(self):
         try:

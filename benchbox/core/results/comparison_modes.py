@@ -10,6 +10,7 @@ from benchbox.core.results.fetch_mode import (
     summarize_fetch_modes,
 )
 from benchbox.core.results.maintenance_method import LEGACY_MAINTENANCE_METHOD
+from benchbox.core.results.timer_scope import TIMING_METHOD_LEGACY
 
 
 class ModeField(NamedTuple):
@@ -73,8 +74,27 @@ def results_maintenance_method(results: Any) -> str | None:
     return phase.maintenance_method or LEGACY_MAINTENANCE_METHOD
 
 
+def _timing_method_label(value: Any) -> str:
+    if type(value) is int and value >= TIMING_METHOD_LEGACY:
+        return str(value)
+    return str(TIMING_METHOD_LEGACY)
+
+
+def bundle_timing_method(bundle: Mapping[str, Any]) -> str:
+    return _timing_method_label(_mapping(bundle.get("run")).get("timing_method"))
+
+
+def results_timing_method(results: Any) -> str:
+    return _timing_method_label(getattr(results, "timing_method", None))
+
+
+def stored_timing_method(metadata: Mapping[str, Any]) -> int:
+    return int(_timing_method_label(metadata.get("timing_method")))
+
+
 RUN_MODE_FIELDS: tuple[ModeField, ...] = (
     ModeField("fetch mode", bundle_fetch_mode, results_fetch_mode),
+    ModeField("timing method", bundle_timing_method, results_timing_method),
     ModeField("maintenance method", bundle_maintenance_method, results_maintenance_method),
 )
 

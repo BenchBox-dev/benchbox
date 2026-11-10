@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from benchbox.core.results.timer_scope import REQUEST_KIND_QUERY, RequestLedger, excluded_from_query_timer
 from benchbox.core.tuning.introspection import has_order_by_clause
 from benchbox.platforms.base.arrow_result import fetch_result
 from benchbox.platforms.base.result_capture import strip_leading_sql_comments
@@ -700,6 +701,41 @@ class ClickHouseWorkloadMixin:
             validation_details["integrity_error"] = str(e)
             return "FAILED", validation_details
 
+    @excluded_from_query_timer
+    def _validate_row_count(
+        self,
+        benchmark_type: str,
+        query_id: str,
+        actual_row_count: int,
+        scale_factor: float | None,
+        stream_id: int | None,
+    ) -> Any:
+        from benchbox.core.validation.query_validation import QueryValidator
+
+        validation_result = QueryValidator().validate_query_result(
+            benchmark_type=benchmark_type,
+            query_id=query_id,
+            actual_row_count=actual_row_count,
+            scale_factor=scale_factor,
+            stream_id=stream_id,
+        )
+        if validation_result.warning_message:
+            self.log_verbose(f"Row count validation: {validation_result.warning_message}")
+        elif not validation_result.is_valid:
+            self.log_verbose(f"Row count validation FAILED: {validation_result.error_message}")
+        else:
+            self.log_very_verbose(
+                f"Row count validation PASSED: {actual_row_count} rows "
+                f"(expected: {validation_result.expected_row_count})"
+            )
+        return validation_result
+
+    @excluded_from_query_timer
+    def _apply_result_validation(self, result_dict: dict[str, Any], query_id: str, rows: Any) -> None:
+        from benchbox.platforms.base.result_capture import apply_materialized_result_validation
+
+        apply_materialized_result_validation(result_dict, query_id, rows)
+
     def execute_query(
         self,
         connection: Any,
@@ -734,11 +770,15 @@ class ClickHouseWorkloadMixin:
             ):
                 additional_settings = {"join_algorithm": "grace_hash", "grace_hash_join_initial_buckets": 8}
             transformed_query = rewrite_query_for_clickhouse(query, additional_settings)
+            ledger = RequestLedger()
+            statement_id = self.new_statement_id()
 
+            send_options = {"query_id": statement_id} if statement_id else {}
+            ledger.add_request(REQUEST_KIND_QUERY, statement_id)
             start_time = mono_time()
             fetched = fetch_result(
                 self.fetch_mode,
-                fetch_rows=lambda: connection.execute(transformed_query) or [],
+                fetch_rows=lambda: connection.execute(transformed_query, **send_options) or [],
                 fetch_arrow=(
                     (lambda: connection.execute_arrow(transformed_query))
                     if hasattr(connection, "execute_arrow")
@@ -751,26 +791,9 @@ class ClickHouseWorkloadMixin:
 
             validation_result = None
             if validate_row_count and benchmark_type:
-                from benchbox.core.validation.query_validation import QueryValidator
-
-                validator = QueryValidator()
-                validation_result = validator.validate_query_result(
-                    benchmark_type=benchmark_type,
-                    query_id=query_id,
-                    actual_row_count=actual_row_count,
-                    scale_factor=scale_factor,
-                    stream_id=stream_id,
+                validation_result = self._validate_row_count(
+                    benchmark_type, query_id, actual_row_count, scale_factor, stream_id
                 )
-
-                if validation_result.warning_message:
-                    self.log_verbose(f"Row count validation: {validation_result.warning_message}")
-                elif not validation_result.is_valid:
-                    self.log_verbose(f"Row count validation FAILED: {validation_result.error_message}")
-                else:
-                    self.log_very_verbose(
-                        f"Row count validation PASSED: {actual_row_count} rows "
-                        f"(expected: {validation_result.expected_row_count})"
-                    )
 
                 if not validation_result.is_valid:
                     return {
@@ -810,9 +833,10 @@ class ClickHouseWorkloadMixin:
                     row_count_validation["warning"] = validation_result.warning_message
                 result_dict["row_count_validation"] = row_count_validation
 
-            from benchbox.platforms.base.result_capture import apply_materialized_result_validation
-
-            apply_materialized_result_validation(result_dict, query_id, fetched.rows)
+            self._apply_result_validation(result_dict, query_id, fetched.rows)
+            result_dict.update(
+                self.timing_fields_for(connection, ledger, rows=fetched.rows, elapsed_seconds=execution_time)
+            )
 
         except Exception as e:
             execution_time = elapsed_seconds(start_time)

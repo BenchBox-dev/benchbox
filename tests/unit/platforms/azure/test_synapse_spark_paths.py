@@ -206,7 +206,7 @@ class TestConnectionMapping:
 
 class TestExecuteAndClose:
     def test_execute_failure_envelope(self, adapter):
-        with patch.object(adapter, "_execute_statement", side_effect=RuntimeError("livy down")):
+        with patch.object(adapter, "_execute_statement_measured", side_effect=RuntimeError("livy down")):
             result = adapter.execute_query(None, "SELECT 1", "q1")
         assert result["status"] == "FAILED"
         assert result["rows_returned"] == 0

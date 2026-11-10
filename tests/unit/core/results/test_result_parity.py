@@ -400,8 +400,8 @@ def test_exported_sql_and_dataframe_bundles_share_cross_mode_contract(tmp_path):
     assert set(sql_payload) - set(df_payload) <= {"tables"}
     assert set(df_payload) - set(sql_payload) <= {"tables"}
     assert sql_payload["result_schema_version"] == df_payload["result_schema_version"]
-    assert sql_payload["version"] == "2.3"
-    assert df_payload["version"] == "2.3"
+    assert sql_payload["version"] == "2.4"
+    assert df_payload["version"] == "2.4"
     assert sql_payload["benchmark"] == df_payload["benchmark"]
 
     assert sql_payload["config"]["compression"] == df_payload["config"]["compression"]

@@ -10,6 +10,12 @@ import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 
+from benchbox.core.results.timer_scope import (
+    REQUEST_KIND_QUERY,
+    TIMING_METHOD_QUERY_ONLY,
+    RequestLedger,
+    outside_query_timer,
+)
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 if TYPE_CHECKING:
@@ -55,6 +61,7 @@ class QuantonAdapter(
     PlatformAdapter,
 ):
     plan_capture_phase_eligible = True
+    timing_method = TIMING_METHOD_QUERY_ONLY
 
     driver_isolation_capability = DriverIsolationCapability.NOT_FEASIBLE
 
@@ -310,10 +317,13 @@ class QuantonAdapter(
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
+        ledger = RequestLedger()
         start_time = mono_time()
         try:
-            result_id = f"results-{uuid.uuid4().hex[:12]}"
-            output_location = f"{self.s3_staging_dir}/results/{result_id}"
+            with outside_query_timer():
+                result_id = f"results-{uuid.uuid4().hex[:12]}"
+                output_location = f"{self.s3_staging_dir}/results/{result_id}"
+            start_time = mono_time()
             job_id = self._client.submit_sql_job(
                 sql=query,
                 database=self.database,
@@ -321,17 +331,20 @@ class QuantonAdapter(
                 output_location=output_location,
                 spark_config=self._spark_config,
             )
+            ledger.add_request(REQUEST_KIND_QUERY, str(job_id))
             result = self._client.wait_for_job(job_id, timeout_minutes=self.timeout_minutes)
-            elapsed = elapsed_seconds(start_time)
-            self._query_count += 1
-            if result.duration_seconds:
-                self._total_job_duration_seconds += result.duration_seconds
-            logger.debug(f"Query completed in {elapsed:.1f}s (job duration: {result.duration_seconds:.1f}s)")
             try:
                 results = self._client.get_job_results(job_id)
             except Exception as e:
                 logger.warning(f"Failed to retrieve results from API, trying S3: {e}")
                 results = self._retrieve_results_from_s3(output_location)
+            elapsed = elapsed_seconds(start_time)
+            with outside_query_timer():
+                self._query_count += 1
+                if result.duration_seconds:
+                    self._total_job_duration_seconds += result.duration_seconds
+                logger.debug(f"Query completed in {elapsed:.1f}s (job duration: {result.duration_seconds:.1f}s)")
+                timing_fields = self.timing_fields_for(connection, ledger, rows=results, elapsed_seconds=elapsed)
             return {
                 "query_id": query_id,
                 "stream_id": stream_id,
@@ -340,6 +353,7 @@ class QuantonAdapter(
                 "rows_returned": len(results),
                 "results": results,
                 "error": None,
+                **timing_fields,
             }
         except Exception as e:
             return {

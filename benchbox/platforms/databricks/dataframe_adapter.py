@@ -7,6 +7,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any, Callable
 
+from benchbox.core.results.timer_scope import RequestLedger, excluded_from_query_timer, outside_query_timer
 from benchbox.platforms.databricks.adapter import DatabricksAdapter, _normalize_table_format
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dependencies import get_package_install_message
@@ -47,6 +48,7 @@ except ImportError:
 
 
 class DatabricksDataFrameAdapter(DatabricksAdapter):
+    platform_timing_source = None
     plan_capture_phase_eligible = True
 
     def __init__(self, **config: Any) -> None:
@@ -155,24 +157,28 @@ class DatabricksDataFrameAdapter(DatabricksAdapter):
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
-        start_time = mono_time()
+        ledger = RequestLedger()
         self.log_verbose(f"Executing DataFrame query {query_id}")
 
+        start_time = mono_time()
         try:
-            spark = self.spark
+            with outside_query_timer():
+                spark = self.spark
 
-            spark.catalog.setCurrentCatalog(self.catalog)
-            spark.catalog.setCurrentDatabase(self.schema)
-            self.log_very_verbose(f"Set Spark context: {self.catalog}.{self.schema}")
+                spark.catalog.setCurrentCatalog(self.catalog)
+                spark.catalog.setCurrentDatabase(self.schema)
+                self.log_very_verbose(f"Set Spark context: {self.catalog}.{self.schema}")
 
-            table_registry: dict[str, SparkDataFrame] = {}
-            if tables:
-                for table_name, _table_path in tables.items():
-                    table_registry[table_name] = spark.table(table_name)
-                    self.log_very_verbose(f"Registered table: {table_name}")
+                table_registry: dict[str, SparkDataFrame] = {}
+                if tables:
+                    for table_name, _table_path in tables.items():
+                        table_registry[table_name] = spark.table(table_name)
+                        self.log_very_verbose(f"Registered table: {table_name}")
 
-            result_df = query_builder(spark, table_registry)
+                result_df = query_builder(spark, table_registry)
 
+            start_time = mono_time()
+            ledger.add_request()
             result = result_df.collect()
             execution_time = elapsed_seconds(start_time)
             actual_row_count = len(result)
@@ -181,16 +187,17 @@ class DatabricksDataFrameAdapter(DatabricksAdapter):
 
             validation_result = None
             if validate_row_count and benchmark_type:
-                from benchbox.core.validation.query_validation import QueryValidator
+                with outside_query_timer():
+                    from benchbox.core.validation.query_validation import QueryValidator
 
-                validator = QueryValidator()
-                validation_result = validator.validate_query_result(
-                    benchmark_type=benchmark_type,
-                    query_id=query_id,
-                    actual_row_count=actual_row_count,
-                    scale_factor=scale_factor,
-                    stream_id=stream_id,
-                )
+                    validator = QueryValidator()
+                    validation_result = validator.validate_query_result(
+                        benchmark_type=benchmark_type,
+                        query_id=query_id,
+                        actual_row_count=actual_row_count,
+                        scale_factor=scale_factor,
+                        stream_id=stream_id,
+                    )
 
                 if validation_result.warning_message:
                     self.log_verbose(f"Row count validation: {validation_result.warning_message}")
@@ -203,6 +210,7 @@ class DatabricksDataFrameAdapter(DatabricksAdapter):
                 actual_row_count=actual_row_count,
                 first_row=tuple(result[0]) if result else None,
                 validation_result=validation_result,
+                timing_fields=self.timing_fields_for(connection, ledger, rows=result, elapsed_seconds=execution_time),
                 materialized_rows=result,
             )
 
@@ -226,6 +234,7 @@ class DatabricksDataFrameAdapter(DatabricksAdapter):
         self._merge_dataframe_plan_into_result(result_dict, result_df, query_id, stream_id)
         return result_dict
 
+    @excluded_from_query_timer
     def _merge_dataframe_plan_into_result(
         self, result: dict[str, Any], dataframe: Any, query_id: str, stream_id: int | None = None
     ) -> None:

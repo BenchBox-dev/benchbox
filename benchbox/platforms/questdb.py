@@ -18,6 +18,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from benchbox.core.results.timer_scope import outside_query_timer
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dialect_utils import translate_ddl
 
@@ -1241,7 +1242,8 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
-        query = rewrite_query(query, self._table_columns)
+        with outside_query_timer():
+            query = rewrite_query(query, self._table_columns)
         result = execute_sql_query(
             connection,
             query,
@@ -1252,6 +1254,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
             scale_factor=scale_factor,
             validate_row_count=validate_row_count,
             stream_id=stream_id,
+            timing_fields_for=self._timing_fields_with_begin(connection),
         )
 
         self._merge_plan_capture_into_result(result, connection, query, query_id)

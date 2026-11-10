@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY, RequestLedger, outside_query_timer
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 if TYPE_CHECKING:
@@ -65,6 +66,7 @@ class SynapseLivySessionState:
 
 
 class SynapseSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter):
+    timing_method = TIMING_METHOD_QUERY_ONLY
     plan_capture_phase_eligible = True
 
     driver_isolation_capability = DriverIsolationCapability.NOT_FEASIBLE
@@ -384,14 +386,16 @@ class SynapseSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter)
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
+        ledger = RequestLedger()
         start_time = mono_time()
 
         try:
-            result = self._execute_statement(query, kind="sql")
-            execution_time = elapsed_seconds(start_time)
+            result, execution_time = self._execute_statement_measured(query, ledger, kind="sql")
             data = result.get("data", {})
             schema = data.get("schema", {})
             rows = data.get("values", [])
+            with outside_query_timer():
+                timing_fields = self.timing_fields_for(connection, ledger, rows=rows, elapsed_seconds=execution_time)
             return {
                 "query_id": query_id,
                 "stream_id": stream_id,
@@ -401,6 +405,7 @@ class SynapseSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter)
                 "columns": [f.get("name") for f in schema.get("fields", [])],
                 "results": rows,
                 "error": None,
+                **timing_fields,
             }
         except Exception as e:
             return {

@@ -3,10 +3,14 @@ from __future__ import annotations
 import ipaddress
 import re
 import sys
+import time
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
 from benchbox.core.benchmark_mixins import CursorValidationQueryExecutionMixin
+from benchbox.core.results.platform_timing import StatementTiming
+from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY, RequestLedger, outside_query_timer
 from benchbox.platforms.base.data_loading import resolve_adapter_data_source
 from benchbox.platforms.base.external_table_mixin import HiveExternalTableMixin
 from benchbox.platforms.presto_trino_utils import (
@@ -19,6 +23,10 @@ from benchbox.platforms.presto_trino_utils import (
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 from .base import PlatformAdapter
+
+_RUNTIME_QUERY_ID = re.compile(r"[A-Za-z0-9_]+")
+_RUNTIME_QUERIES_BUDGET_SECONDS = 5.0
+_RUNTIME_QUERIES_POLL_SECONDS = 0.25
 
 
 class PrestoTrinoAdapterBase(CursorValidationQueryExecutionMixin, HiveExternalTableMixin, PlatformAdapter):
@@ -74,6 +82,10 @@ class PrestoTrinoAdapterBase(CursorValidationQueryExecutionMixin, HiveExternalTa
     supported_tuning_type_names: tuple[str, ...] = ()
     qualify_analyze_table = False
     driver_module_attr = ""
+    timing_method = TIMING_METHOD_QUERY_ONLY
+    platform_timing_source = "system.runtime.queries"
+    platform_timing_definition = "includes_fetch"
+    runtime_planning_column = "planning_time_ms"
 
     def _init_connection_config(self, config: dict[str, Any]) -> None:
         self._dialect = self.target_dialect
@@ -671,7 +683,7 @@ class PrestoTrinoAdapterBase(CursorValidationQueryExecutionMixin, HiveExternalTa
         stream_id: int | None = None,
     ) -> dict[str, Any]:
         return self.execute_query_with_plan_capture(
-            super().execute_query,
+            self._execute_timed_query,
             connection=connection,
             query=query.rstrip().rstrip(";").rstrip(),
             query_id=query_id,
@@ -679,6 +691,139 @@ class PrestoTrinoAdapterBase(CursorValidationQueryExecutionMixin, HiveExternalTa
             scale_factor=scale_factor,
             validate_row_count=validate_row_count,
             stream_id=stream_id,
+        )
+
+    def _execute_timed_query(
+        self,
+        connection: Any,
+        query: str,
+        query_id: str,
+        benchmark_type: str | None = None,
+        scale_factor: float | None = None,
+        validate_row_count: bool = True,
+        stream_id: int | None = None,
+    ) -> dict[str, Any]:
+        ledger = RequestLedger()
+        with outside_query_timer():
+            cursor = connection.cursor()
+        start_time = mono_time()
+
+        try:
+            request = ledger.add_request()
+            cursor.execute(query)
+            request.statement_id = self.probe_statement_id(cursor)
+            result = cursor.fetchall()
+
+            execution_time = elapsed_seconds(start_time)
+            actual_row_count = len(result) if result else 0
+            query_stats = self._build_query_stats(
+                execution_time,
+                connection=connection,
+                query_id=query_id,
+            )
+
+            validation_result = None
+            if validate_row_count and benchmark_type:
+                with outside_query_timer():
+                    from benchbox.core.validation.query_validation import QueryValidator
+
+                    validator = QueryValidator()
+                    validation_result = validator.validate_query_result(
+                        benchmark_type=benchmark_type,
+                        query_id=query_id,
+                        actual_row_count=actual_row_count,
+                        scale_factor=scale_factor,
+                        stream_id=stream_id,
+                    )
+
+                if validation_result.warning_message:
+                    self.log_verbose(f"Row count validation: {validation_result.warning_message}")
+                elif not validation_result.is_valid:
+                    self.log_verbose(f"Row count validation FAILED: {validation_result.error_message}")
+                else:
+                    self.log_very_verbose(
+                        f"Row count validation PASSED: {actual_row_count} rows "
+                        f"(expected: {validation_result.expected_row_count})"
+                    )
+
+            result_dict = self._build_query_result_with_validation(
+                query_id=query_id,
+                execution_time=execution_time,
+                actual_row_count=actual_row_count,
+                first_row=result[0] if result else None,
+                validation_result=validation_result,
+                materialized_rows=result,
+                timing_fields=self.timing_fields_for(connection, ledger, rows=result, elapsed_seconds=execution_time),
+            )
+            self._attach_query_stats(result_dict, query_stats)
+            return result_dict
+
+        except Exception as e:
+            execution_time = elapsed_seconds(start_time)
+            return {
+                "query_id": query_id,
+                "status": "FAILED",
+                "execution_time_seconds": execution_time,
+                "rows_returned": 0,
+                "error": self._format_query_error(e),
+                "error_type": type(e).__name__,
+            }
+        finally:
+            cursor.close()
+
+    def probe_statement_id(self, cursor: Any) -> str | None:
+        statement_id = getattr(cursor, "query_id", None)
+        return statement_id if isinstance(statement_id, str) and statement_id else None
+
+    def fetch_platform_timings(self, connection: Any, statement_ids: Sequence[str]) -> Mapping[str, StatementTiming]:
+        wanted = list(dict.fromkeys(statement_ids))
+        if not all(_RUNTIME_QUERY_ID.fullmatch(statement_id) for statement_id in wanted):
+            raise ValueError("unsupported statement id format")
+        id_list = ", ".join(f"'{statement_id}'" for statement_id in wanted)
+        sql = (
+            f"SELECT query_id, queued_time_ms, analysis_time_ms, {self.runtime_planning_column}, "
+            f"date_diff('millisecond', created, \"end\") FROM system.runtime.queries "
+            f'WHERE query_id IN ({id_list}) AND "end" IS NOT NULL'
+        )
+        found: dict[str, StatementTiming] = {}
+        deadline = mono_time() + _RUNTIME_QUERIES_BUDGET_SECONDS
+        while True:
+            cursor = connection.cursor()
+            try:
+                cursor.execute(sql)
+                rows = cursor.fetchall()
+            finally:
+                cursor.close()
+            for row in rows:
+                timing = self._statement_timing_from_runtime_row(row)
+                if timing is not None:
+                    found[timing.statement_id] = timing
+            if all(statement_id in found for statement_id in wanted) or mono_time() >= deadline:
+                return found
+            time.sleep(_RUNTIME_QUERIES_POLL_SECONDS)
+
+    @staticmethod
+    def _statement_timing_from_runtime_row(row: Sequence[Any]) -> StatementTiming | None:
+        statement_id, queued_ms, analysis_ms, planning_ms, elapsed_ms = row
+        if elapsed_ms is None:
+            return None
+        compile_ms = None if analysis_ms is None or planning_ms is None else float(analysis_ms) + float(planning_ms)
+        fields = {
+            name: value
+            for name, value in (
+                ("elapsed_ms", elapsed_ms),
+                ("queued_time_ms", queued_ms),
+                ("analysis_time_ms", analysis_ms),
+                ("planning_time_ms", planning_ms),
+            )
+            if value is not None
+        }
+        return StatementTiming(
+            statement_id=str(statement_id),
+            fields=fields,
+            platform_ms=float(elapsed_ms),
+            queue_ms=None if queued_ms is None else float(queued_ms),
+            compile_ms=compile_ms,
         )
 
     def close_connection(self, connection: Any) -> None:

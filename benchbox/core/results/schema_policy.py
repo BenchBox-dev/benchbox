@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-CURRENT_SCHEMA_VERSION = "2.3"
+CURRENT_SCHEMA_VERSION = "2.4"
 KNOWN_SCHEMA_V2_VERSIONS = ("2.0", "2.1", "2.2", "2.3", "2.4")
 ROW_COUNT_VALIDATION_SCHEMA_VERSION = "2.2"
 LEGACY_NORMALIZED_SCHEMA_VERSION = "1.x"

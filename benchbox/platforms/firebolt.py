@@ -9,6 +9,12 @@ from urllib.parse import urlparse
 
 from benchbox.core.benchmark_mixins import CursorValidationQueryExecutionMixin
 from benchbox.core.deployment import deployment_class, select_adapter_deployment
+from benchbox.core.results.timer_scope import (
+    REQUEST_KIND_QUERY,
+    TIMING_METHOD_QUERY_ONLY,
+    RequestLedger,
+    outside_query_timer,
+)
 from benchbox.platforms.base.config_utils import make_registered_platform_config_builder
 from benchbox.platforms.base.runtime_metadata import build_default_normalized_result_metadata, with_canonical_compute
 from benchbox.platforms.base.tuning import make_informational_constraint_applier
@@ -124,6 +130,7 @@ def _validate_firebolt_mode_config(adapter: FireboltAdapter) -> None:
 
 class FireboltAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
     plan_capture_phase_eligible = True
+    timing_method = TIMING_METHOD_QUERY_ONLY
 
     driver_isolation_capability = DriverIsolationCapability.FEASIBLE_CLIENT_ONLY
 
@@ -1289,7 +1296,7 @@ class FireboltAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
         stream_id: int | None = None,
     ) -> dict[str, Any]:
         return self.execute_query_with_plan_capture(
-            super().execute_query,
+            self._execute_cursor_query,
             connection,
             query,
             query_id,
@@ -1298,6 +1305,85 @@ class FireboltAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
             validate_row_count=validate_row_count,
             stream_id=stream_id,
         )
+
+    def _execute_cursor_query(
+        self,
+        connection: Any,
+        query: str,
+        query_id: str,
+        benchmark_type: str | None = None,
+        scale_factor: float | None = None,
+        validate_row_count: bool = True,
+        stream_id: int | None = None,
+    ) -> dict[str, Any]:
+        ledger = RequestLedger()
+        start_time = mono_time()
+        cursor = None
+
+        try:
+            with outside_query_timer():
+                cursor = connection.cursor()
+            start_time = mono_time()
+            ledger.add_request(REQUEST_KIND_QUERY)
+            cursor.execute(query)
+            result = cursor.fetchall()
+
+            execution_time = elapsed_seconds(start_time)
+            actual_row_count = len(result) if result else 0
+
+            with outside_query_timer():
+                query_stats = self._build_query_stats(execution_time, connection=connection, query_id=query_id)
+
+                validation_result = None
+                if validate_row_count and benchmark_type:
+                    from benchbox.core.validation.query_validation import QueryValidator
+
+                    validator = QueryValidator()
+                    validation_result = validator.validate_query_result(
+                        benchmark_type=benchmark_type,
+                        query_id=query_id,
+                        actual_row_count=actual_row_count,
+                        scale_factor=scale_factor,
+                        stream_id=stream_id,
+                    )
+
+                    if validation_result.warning_message:
+                        self.log_verbose(f"Row count validation: {validation_result.warning_message}")
+                    elif not validation_result.is_valid:
+                        self.log_verbose(f"Row count validation FAILED: {validation_result.error_message}")
+                    else:
+                        self.log_very_verbose(
+                            f"Row count validation PASSED: {actual_row_count} rows "
+                            f"(expected: {validation_result.expected_row_count})"
+                        )
+
+                result_dict = self._build_query_result_with_validation(
+                    query_id=query_id,
+                    execution_time=execution_time,
+                    actual_row_count=actual_row_count,
+                    first_row=result[0] if result else None,
+                    validation_result=validation_result,
+                    materialized_rows=result,
+                    timing_fields=self.timing_fields_for(
+                        connection, ledger, rows=result, elapsed_seconds=execution_time
+                    ),
+                )
+                self._attach_query_stats(result_dict, query_stats)
+            return result_dict
+
+        except Exception as e:
+            execution_time = elapsed_seconds(start_time)
+            return {
+                "query_id": query_id,
+                "status": "FAILED",
+                "execution_time_seconds": execution_time,
+                "rows_returned": 0,
+                "error": self._format_query_error(e),
+                "error_type": type(e).__name__,
+            }
+        finally:
+            if cursor is not None:
+                cursor.close()
 
     def close_connection(self, connection: Any) -> None:
         try:

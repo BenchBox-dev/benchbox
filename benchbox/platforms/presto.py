@@ -49,6 +49,7 @@ class PrestoAdapter(PrestoTrinoAdapterBase):
     platform_config_fields = PrestoTrinoAdapterBase.common_platform_config_fields
     supported_tuning_type_names = ("PARTITIONING",)
     qualify_analyze_table = True
+    runtime_planning_column = "distributed_planning_time_ms"
     driver_module_attr = "prestodb"
     olap_session_settings = (
         "SET SESSION optimize_hash_generation = true",

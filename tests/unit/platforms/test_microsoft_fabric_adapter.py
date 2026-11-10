@@ -494,3 +494,22 @@ class TestFabricAddCliArguments:
         FabricWarehouseAdapter.add_cli_arguments(parser)
         args = parser.parse_args([])
         assert args.staging_path == "benchbox-staging"
+
+
+class TestFabricWarehouseTimingContract:
+    def test_method_two_with_request_count_and_result_bytes(self, fabric_adapter):
+        from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY
+
+        cursor = Mock()
+        cursor.fetchall.return_value = [(1,), (2,), (3,)]
+        connection = Mock()
+        connection.cursor.return_value = cursor
+
+        result = fabric_adapter.execute_query(connection, "SELECT 1", "Q1")
+
+        assert fabric_adapter.timing_method == TIMING_METHOD_QUERY_ONLY
+        assert fabric_adapter.platform_timing_source is None
+        assert result["status"] == "SUCCESS"
+        assert result["request_count"] == 1
+        assert result["result_bytes"] == 24
+        assert "platform_timing" not in result

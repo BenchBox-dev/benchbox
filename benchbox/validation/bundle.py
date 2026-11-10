@@ -86,6 +86,8 @@ def _load_timing_field_helpers():
         module.net_estimate_problems,
         module.bundle_timing_field_paths,
         module.supports_timing_fields,
+        module.client_link_timing_problems,
+        module.required_timing_problems,
     )
 
 
@@ -95,6 +97,8 @@ def _load_timing_field_helpers():
     net_estimate_problems,
     bundle_timing_field_paths,
     supports_timing_fields,
+    client_link_timing_problems,
+    required_timing_problems,
 ) = _load_timing_field_helpers()
 
 
@@ -892,6 +896,13 @@ def _validate_net_estimate_status(data: dict, vr: ValidationResult) -> None:
         vr.error(f"run.{problem}")
 
 
+def _validate_required_timing_fields(data: dict, version: Any, vr: ValidationResult) -> None:
+    if not supports_timing_fields(_schema_version_tuple(version)):
+        return
+    for problem in required_timing_problems(data):
+        vr.error(problem)
+
+
 def _validate_benchmark_section(benchmark: Any, vr: ValidationResult) -> None:
     if not isinstance(benchmark, dict):
         vr.error("'benchmark' must be a dict")
@@ -1672,6 +1683,9 @@ def _validate_environment_client_link(data: dict, vr: ValidationResult) -> None:
     overhead = client_link.get("statement_overhead_ms")
     if overhead is not None:
         _validate_overhead_shape(overhead, vr)
+    for problem in client_link_timing_problems(client_link):
+        if not problem.startswith("probed_at"):
+            vr.error(f"environment.client_link.{problem}")
 
 
 def _validate_overhead_shape(overhead: Any, vr: ValidationResult) -> None:
@@ -2534,6 +2548,7 @@ def _validate_bundle(
     _validate_queries_section(data.get("queries", []), version, vr)
     _validate_timing_field_versions(data, version, vr)
     _validate_net_estimate_status(data, vr)
+    _validate_required_timing_fields(data, version, vr)
     _warn_empty_result_rows(data, vr)
     _warn_timing_plateau(data, vr)
     _warn_small_scale_floor(data, vr)

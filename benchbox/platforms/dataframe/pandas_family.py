@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 from abc import ABC, abstractmethod
 from datetime import timedelta
@@ -18,9 +19,11 @@ from benchbox.core.dataframe.profiling import (
 )
 from benchbox.core.dataframe.query import DataFrameQuery
 from benchbox.core.dataframe.tuning import DataFrameTuningConfiguration
+from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY, RequestLedger, outside_query_timer
 from benchbox.platforms.dataframe._result_helpers import (
     build_failure_result_dict,
     build_success_result_dict,
+    dataframe_result_bytes,
 )
 from benchbox.platforms.dataframe.benchmark_mixin import BenchmarkExecutionMixin
 from benchbox.platforms.dataframe.shared_loading import declared_load_columns, resolve_dataframe_csv_dialect
@@ -226,6 +229,8 @@ class PandasFamilyContext(DataFrameContextImpl[DF], Generic[DF]):
 
 
 class PandasFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, ABC, Generic[DF]):
+    timing_method = TIMING_METHOD_QUERY_ONLY
+
     def __init__(
         self,
         working_dir: str | Path | None = None,
@@ -581,6 +586,7 @@ class PandasFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, ABC,
         qid = query_id or query.query_id
         self._log_verbose(f"Executing query {qid}: {query.query_name}")
 
+        ledger = RequestLedger()
         start_time = mono_time()
 
         try:
@@ -588,17 +594,18 @@ class PandasFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, ABC,
             if impl is None:
                 raise ValueError(f"Query '{qid}' has no pandas implementation")
 
+            ledger.add_request()
             result_df = impl(ctx)
 
             if hasattr(result_df, "compute"):
                 compute = getattr(self, "compute", None)
                 result_df = compute(result_df) if callable(compute) else result_df.compute()
 
-            row_count = self.get_row_count(result_df)
-
-            first_row = self._get_first_row(result_df)
-
             execution_time = elapsed_seconds(start_time)
+
+            with outside_query_timer():
+                row_count = self.get_row_count(result_df)
+                first_row = self._get_first_row(result_df)
 
             self._log_verbose(f"Query {qid} completed in {execution_time:.3f}s, returned {row_count} rows")
 
@@ -607,6 +614,8 @@ class PandasFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, ABC,
                 execution_time_seconds=execution_time,
                 row_count=row_count,
                 first_row=first_row,
+                request_count=ledger.count,
+                result_bytes=dataframe_result_bytes(result_df),
             )
 
         except Exception as e:
@@ -633,18 +642,20 @@ class PandasFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, ABC,
         self._log_verbose(f"Executing query {qid} with profiling: {query.query_name}")
 
         profile_ctx = QueryProfileContext(qid, self.platform_name)
-        profile_ctx._start_time = mono_time()
-
         memory_tracker: MemoryTracker | None = None
         if track_memory:
             memory_tracker = MemoryTracker(sample_interval_ms=memory_sample_interval_ms)
             memory_tracker.start()
+
+        ledger = RequestLedger()
+        profile_ctx._start_time = mono_time()
 
         try:
             impl = query.get_impl_for_family("pandas")
             if impl is None:
                 raise ValueError(f"Query '{qid}' has no pandas implementation")
 
+            ledger.add_request()
             result_df = impl(ctx)
 
             if hasattr(result_df, "compute"):
@@ -653,22 +664,25 @@ class PandasFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, ABC,
                 result_df = compute(result_df) if callable(compute) else result_df.compute()
                 profile_ctx.end_collect()
 
-            row_count = self.get_row_count(result_df)
-            profile_ctx.set_rows(row_count)
+            timed_profile = profile_ctx.get_profile()
+            execution_time = timed_profile.execution_time_ms / 1000.0
 
-            first_row = self._get_first_row(result_df)
+            with outside_query_timer():
+                row_count = self.get_row_count(result_df)
+                profile_ctx.set_rows(row_count)
 
-            if memory_tracker is not None:
-                peak_memory = memory_tracker.stop()
-                profile_ctx.set_peak_memory(peak_memory)
+                first_row = self._get_first_row(result_df)
 
-                stats = memory_tracker.get_statistics()
-                profile_ctx.add_metric("memory_baseline_mb", stats["baseline_mb"])
-                profile_ctx.add_metric("memory_delta_mb", stats["peak_delta_mb"])
-                profile_ctx.add_metric("memory_samples", stats["sample_count"])
+                if memory_tracker is not None:
+                    peak_memory = memory_tracker.stop()
+                    profile_ctx.set_peak_memory(peak_memory)
 
-            profile = profile_ctx.get_profile()
-            execution_time = profile.execution_time_ms / 1000.0
+                    stats = memory_tracker.get_statistics()
+                    profile_ctx.add_metric("memory_baseline_mb", stats["baseline_mb"])
+                    profile_ctx.add_metric("memory_delta_mb", stats["peak_delta_mb"])
+                    profile_ctx.add_metric("memory_samples", stats["sample_count"])
+
+            profile = dataclasses.replace(profile_ctx.get_profile(), execution_time_ms=timed_profile.execution_time_ms)
 
             self._log_verbose(
                 f"Query {qid} completed in {execution_time:.3f}s, "
@@ -681,6 +695,8 @@ class PandasFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, ABC,
                 execution_time_seconds=execution_time,
                 row_count=row_count,
                 first_row=first_row,
+                request_count=ledger.count,
+                result_bytes=dataframe_result_bytes(result_df),
             )
 
             return result_dict, profile
