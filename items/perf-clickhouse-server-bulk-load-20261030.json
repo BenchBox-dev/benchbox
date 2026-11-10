@@ -10,7 +10,7 @@
     ],
     "member_id": "perf-clickhouse-server-bulk-load-20261030"
   },
-  "context": "Review 2026-10-31: Cloud _execute_insert is clickhouse/client.py:271-281; clickhouse_cloud.py:379-387 falls back to super().load_data without staging, and ClickHouseNativeHandler emits server-side file() SQL (base/data_loading.py:1763-1773) that cannot read client-local files — the fix must use client-side insert_file/insert_arrow. clickhouse-connect 1.8.0 is already a dependency. Live verification of server mode needs the UAT memory-admission fix.",
+  "context": "Review 2026-10-31: Cloud _execute_insert is clickhouse/client.py:271-281; clickhouse_cloud.py:379-387 falls back to super().load_data without staging, and ClickHouseNativeHandler emits server-side file() SQL (base/data_loading.py:1763-1773) that cannot read client-local files — the fix must use client-side insert_file/insert_arrow. clickhouse-connect 1.8.0 is already a dependency. Live verification of server mode needs the UAT memory-admission fix.\n\n2026-11-10 live (mocker clickhouse-server 25.8, CLICKHOUSE_MEMORY_LIMIT=4g, make heavy-run + uat-bring-up, admitted; stack torn down, mocker ps and container ls -a clean). TPC-H dbgen files, sha256 row parity vs dbgen. BEFORE (row loader, integration head e4f6854b74): SF0.01 CSV parity MISMATCH all 8 tables (loader str.strip dropped leading whitespace in comments), 8 tables load 1.14s adapter. AFTER (HTTP byte stream): SF0.01 CSV parity MATCH all 8 tables; SF0.1 CSV 866,602 rows load 10.29s -> 0.59s adapter (12.3s -> 2.6s wall incl. connect/merge settle), parity MATCH all 8 tables (lineitem 600,572). SF0.01 Parquet (customer, lineitem, nation, orders, 76,700 rows): 0.57s -> 0.10s, parity MATCH. A first AFTER run showed the server's CSV parser trimming whitespace (nation/part/... MISMATCH); fixed by input_format_csv_trim_whitespaces=0 and rerun. ClickHouse Cloud path (clickhouse_connect raw_insert) covered by unit tests only: live cloud not approved, check NOT RUN.",
   "description": "base/data_loading.py:1523-1585 and :1661-1707 generate Python rows with per-field type conversion and insert via clickhouse_driver VALUES. Move to clickhouse_connect insert_arrow/insert_file (Parquet/CSV body) or INSERT ... FORMAT Parquet. Also check ClickHouse Cloud with no staging: _execute_insert (clickhouse/client.py:268-280) inserts Python lists, and ClickHouseNativeHandler's file() runs server-side and cannot see local files.",
   "sessions": [
     {
@@ -67,6 +67,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "830db67f3a444a448b9442a8d17bd031",
+      "session_id": "248466dc3ce04a7c8f4c76cdbd04176f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a",
+      "at": "2026-11-10T02:15:42Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "71238d99b14148e08871dd5ec99d2ee4",
       "session_id": "248466dc3ce04a7c8f4c76cdbd04176f"
     }
   ]
