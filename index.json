@@ -29554,15 +29554,10 @@
       "title": "Cover non-home paths and Windows drives in plan redaction and leak detection"
     },
     "plan-privacy-detector-residual-limits-20261108": {
-      "claim": {
-        "expires_at": "2026-11-11T04:26:24Z",
-        "generation": "d0254156126a484cbe32f9d3f67c9994",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:db7d69917905292075fe62aa"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Close residual gaps in the shared local-path detector and plan anonymizer"
     },
     "plan-review-recorded-decision-reconciliation": {
