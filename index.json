@@ -32771,6 +32771,13 @@
       "status": "done",
       "title": "✅ Reinstate Benchmark Coverage with Test Doubles"
     },
+    "relative-path-primary-writes-recur-after-guard-20261110": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Prevent delegated agents' relative-path edits from landing in the primary clone"
+    },
     "release-accounting-drift-correction": {
       "claim": null,
       "needs": [

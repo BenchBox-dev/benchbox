@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Reproduce: from a linked worktree, a file-tool edit with a relative path changes the primary clone (record the mechanism: harness cwd vs worktree).",
+    "Make the failure mode fail closed before the write where the repository controls it (for example worktree-scoped tooling, a pre-tool check, or a member-create step that pins absolute paths), or document why the repo cannot control it and what the narrowest enforceable check is.",
+    "Detect writes to the primary within one agent step (not only at pr-preflight), with a test.",
+    "Guidance in docs/agent and the batch member brief template states absolute paths as a hard rule."
+  ],
+  "context": "Recurring incident across this session; backup of one stray diff at ~/Developer/benchmark_runs/primary-stray-backup/detector-member-stray.patch. Guardrail: never revert or clean the primary automatically; other sessions' edits must not be lost. Verification rubric: reproduce first; fix; regression test; comment-policy and ruff; PR merged with green CI and passing oracle review.",
+  "description": "The report-only guard from agent-relative-path-primary-clone-writes (PR #3888) did not stop recurrence. In three batches on 2026-11-07..09, delegated workers wrote to /Users/joe/Developer/BenchBox through relative file-tool paths: the Spark-family leader (spark.py and its test, reverted with git apply -R), the plan-privacy detector member (anonymization.py and a test, restored by the controller from a backup), and a near miss in the publication batch (rejected). The edits were found only because batch tooling refused a dirty primary; each needed manual cleanup and owner authorization.",
+  "links": [
+    "docs/agent/primary-clone-guard.md",
+    "scripts/check_primary_clone_clean.sh",
+    "https://github.com/BenchBox-dev/BenchBox/pull/3888",
+    "https://github.com/BenchBox-dev/BenchBox/pull/4054"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:db7d69917905292075fe62aa",
+      "at": "2026-11-10T15:42:25Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8d4533a0f07f4e75bc469f2d38cb9986",
+      "session_id": "039807d800674f11b2d8d71dccd4e6ed"
+    }
+  ]
+}
