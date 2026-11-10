@@ -40957,10 +40957,15 @@
       "title": "Transactional staging reuse ignores provenance and silently benchmarks stale data"
     },
     "translation-runtime-unrecorded-for-unlogged-rewrites": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-11T02:10:07Z",
+        "generation": "e9f0aa54409b4014b9cc6421b7266814",
+        "renewals": 0,
+        "worker": "omp:sqlglot-delivery-hardening-leader"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Record the SQLGlot runtime for runs whose SQL SQLGlot rewrites without logging a translation"
     },
     "trial-capacity-disclosure-bundles-20261006": {
