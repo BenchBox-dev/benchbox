@@ -114,6 +114,12 @@ def test_clickhouse_metadata_from_config_reads_legacy_embedded_alias() -> None:
     assert adapter.config["deployment_mode"] == "local"
 
 
+def test_clickhouse_metadata_from_config_forwards_http_port() -> None:
+    adapter = _RecordingMetadataAdapter.from_config({"mode": "server", "http_port": 18123})
+
+    assert adapter.config["http_port"] == 18123
+
+
 def test_clickhouse_adapter_reads_legacy_mode_alias() -> None:
     from benchbox.platforms.clickhouse import ClickHouseAdapter
 
