@@ -10,6 +10,7 @@ from benchbox.platforms.presto_trino_bulk import (
     STAGE_DIR_NAME,
     BulkLoadSettings,
     _table_properties,
+    _text_projection,
     bulk_load_table,
     ineligibility_reason,
     remove_stage_root,
@@ -226,11 +227,32 @@ class TestBulkLoadTable:
         assert rows == 2
         calls = [call.args[0] for call in cursor.execute.call_args_list]
         assert any("CREATE SCHEMA IF NOT EXISTS hive.benchbox_stage" in c for c in calls)
-        assert any("CREATE TABLE hive.benchbox_stage.default_orders" in c for c in calls)
-        assert any(
-            "INSERT INTO memory.default.orders SELECT * FROM hive.benchbox_stage.default_orders" in c for c in calls
-        )
+        create = next(c for c in calls if "CREATE TABLE hive.benchbox_stage.default_orders" in c)
+        assert '("id" varchar, "amount" varchar)' in create
+        insert = next(c for c in calls if c.startswith("INSERT INTO memory.default.orders SELECT "))
+        assert 'CAST(trim("id") AS integer)' in insert
+        assert insert.endswith("FROM hive.benchbox_stage.default_orders")
         assert any("DROP TABLE IF EXISTS hive.benchbox_stage.default_orders" in c for c in calls)
+
+    def test_text_projection_casts_trims_and_maps_null_tokens(self):
+        expression = _text_projection("qty", "integer", "")
+        assert expression == (
+            'CASE WHEN "qty" IS NULL OR trim("qty") = \'\' OR lower(trim("qty")) = \'null\' '
+            'THEN NULL ELSE CAST(trim("qty") AS integer) END'
+        )
+
+    def test_text_projection_fails_on_values_longer_than_varchar_n(self):
+        expression = _text_projection("name", "varchar(25)", "")
+        assert expression.startswith('CASE WHEN length("name") > 25 THEN CAST(fail(')
+        assert expression.endswith('ELSE "name" END')
+
+    def test_text_projection_keeps_unbounded_varchar_raw(self):
+        assert _text_projection("comment", "varchar", "") == '"comment"'
+
+    def test_text_projection_maps_boolean_spellings(self):
+        expression = _text_projection("flag", "boolean", None)
+        assert "IN ('true', 't', '1') THEN true" in expression
+        assert "IN ('false', 'f', '0') THEN false" in expression
 
     def test_bulk_load_refuses_when_the_external_table_reads_fewer_rows_than_the_files_hold(self, tmp_path):
         csv_file = tmp_path / "orders.csv"

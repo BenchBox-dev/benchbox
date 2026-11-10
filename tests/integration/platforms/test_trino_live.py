@@ -122,3 +122,37 @@ class TestLiveTrinoBulkLoad:
         finally:
             cursor.execute("DROP TABLE IF EXISTS memory.default.trino_smoke_tbl")
             adapter.close_connection(connection)
+
+    def test_bulk_load_rejects_values_the_column_type_cannot_hold(self, trino_adapter, tmp_path):
+        data_root = Path(os.getenv("BENCHBOX_DATA_DIR", str(tmp_path)))
+        test_dir = data_root / "trino_bulk_bad_test"
+        test_dir.mkdir(parents=True, exist_ok=True)
+        csv_file = test_dir / "trino_bad_tbl.csv"
+        csv_file.write_text("1,alpha\nnot-a-number,beta\n", encoding="utf-8")
+
+        benchmark = SmokeBenchmark(
+            name="SmokeBenchmark",
+            create_sql="CREATE TABLE trino_bad_tbl (id INT, value VARCHAR(3))",
+            tables={"trino_bad_tbl": csv_file},
+        )
+        adapter = TrinoAdapter(
+            host=trino_adapter.host,
+            port=trino_adapter.port,
+            user=trino_adapter.username,
+            catalog="memory",
+            schema="default",
+            source_catalog="hive",
+        )
+        adapter.skip_database_management = True
+        connection = adapter.create_connection()
+        cursor = connection.cursor()
+        try:
+            cursor.execute("DROP TABLE IF EXISTS memory.default.trino_bad_tbl")
+            cursor.execute("CREATE TABLE memory.default.trino_bad_tbl (id INT, value VARCHAR(3))")
+            stats, _, _ = adapter.load_data(benchmark, connection, test_dir)
+            assert stats.get("trino_bad_tbl") == 0
+            cursor.execute("SELECT count(*) FROM memory.default.trino_bad_tbl WHERE id IS NULL")
+            assert cursor.fetchone()[0] == 0
+        finally:
+            cursor.execute("DROP TABLE IF EXISTS memory.default.trino_bad_tbl")
+            adapter.close_connection(connection)

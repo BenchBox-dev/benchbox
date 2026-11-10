@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from benchbox.platforms.presto_trino_utils import (
+    _varchar_limit,
+    base_type,
     default_dialect,
     has_structured_type,
 )
@@ -142,6 +144,32 @@ def _table_properties(
     return ", ".join(properties)
 
 
+def _sql_text(value: str) -> str:
+    return "'" + value.replace("'", "''") + "'"
+
+
+def _text_projection(name: str, type_name: str, null_token: str | None) -> str:
+    column = _quote(name)
+    kind = base_type(type_name)
+    if kind == "varchar":
+        limit = _varchar_limit(type_name)
+        if limit is None:
+            return column
+        message = _sql_text(f"value longer than {limit} characters for {type_name} column {name}")
+        return f"CASE WHEN length({column}) > {limit} THEN CAST(fail({message}) AS varchar) ELSE {column} END"
+    trimmed = f"trim({column})"
+    is_null = f"{trimmed} = {_sql_text(null_token or '')} OR lower({trimmed}) = 'null'"
+    if kind == "boolean":
+        value = (
+            f"CASE WHEN lower({trimmed}) IN ('true', 't', '1') THEN true "
+            f"WHEN lower({trimmed}) IN ('false', 'f', '0') THEN false "
+            f"ELSE CAST({trimmed} AS boolean) END"
+        )
+    else:
+        value = f"CAST({trimmed} AS {type_name})"
+    return f"CASE WHEN {column} IS NULL OR {is_null} THEN NULL ELSE {value} END"
+
+
 def _run(cursor: Any, sql: str) -> list[Any]:
     cursor.execute(sql)
     return list(cursor.fetchall())
@@ -195,7 +223,9 @@ def bulk_load_table(
     try:
         _run(cursor, f"CREATE SCHEMA IF NOT EXISTS {settings.source_catalog}.{STAGE_SCHEMA}")
         _run(cursor, f"DROP TABLE IF EXISTS {qualified_ext}")
-        column_sql = ", ".join(f"{_quote(name)} {type_name}" for name, type_name in columns)
+        is_parquet = get_data_extension(staged[0]) == ".parquet"
+        external_types = [type_name if is_parquet else "varchar" for _, type_name in columns]
+        column_sql = ", ".join(f"{_quote(name)} {kind}" for (name, _), kind in zip(columns, external_types))
         _run(
             cursor,
             f"CREATE TABLE {qualified_ext} ({column_sql}) WITH ({_table_properties(stage_dir, staged, dialect, settings)})",
@@ -208,7 +238,12 @@ def bulk_load_table(
                 f"{expected:,}. The server must read the BenchBox data directory at the same absolute path (mount "
                 "it into the server container) and the table's file format must match the staged files."
             )
-        inserted = int(_run(cursor, f"INSERT INTO {target_table} SELECT * FROM {qualified_ext}")[0][0])
+        if is_parquet:
+            projection = "*"
+        else:
+            null_token = (dialect or default_dialect(staged[0])).null_marker
+            projection = ", ".join(_text_projection(name, type_name, null_token) for name, type_name in columns)
+        inserted = int(_run(cursor, f"INSERT INTO {target_table} SELECT {projection} FROM {qualified_ext}")[0][0])
         if inserted != expected:
             raise RuntimeError(f"inserted {inserted:,} row(s) into {target_table}, the staged files hold {expected:,}")
         return inserted
