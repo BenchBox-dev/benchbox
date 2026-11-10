@@ -4,7 +4,7 @@
     "BenchBox digest tests pass against the release-B fixtures on the PR head (make heavy-run).",
     "Merged to develop with hosted SHIP and green required checks; merge SHA recorded.",
     "The first BenchBox PR reviewed under release B shows the new body and thread format, and the next scheduled soundness-merge-digest run after a merge reviewed under release B classifies its decision and any overridden findings correctly (run id recorded).",
-    "Minimise flag decision recorded."
+    "Minimise flag: the owner's decision is recorded here; if 'enable', it is done in a separate policy PR after this lock merges (not in this lock-only PR)."
   ],
   "context": "Part of theseus-review-output-format-20261110. Final delivery step of the format work.",
   "description": "Lock-only promotion of BenchBox to Theseus release B, same procedure as release A. This installs the new verdict-body and thread writer for BenchBox PRs.\nDecision gate: start only when benchbox-review-format-dual-read-20261110 is merged on develop (the digest's High-override classification fails open without it). If release B shipped the minimise flag, decide with the owner whether BenchBox enables `minimize_superseded` in .github/review.yml (recommend: enable, since the probe proved it is not an edit); record the decision here.\nGuardrails: BenchBox AGENTS.md write workflow; recompute and verify lock values independently; hosted SHIP on the final head; make pr-arm; no live model calls.",
@@ -19,6 +19,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "cf8a65b1ad0e41a588cc9cdbc1e18952",
+      "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a",
+      "at": "2026-11-10T17:59:23Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "73e1f9c104d749e48864033581d2cac3",
       "session_id": "977a65f4969143f4981bb9d49ff293b0"
     }
   ]
