@@ -1937,3 +1937,44 @@ The pinned engine already accepts `revert(review): restore omp `:
 `PinChange.is_revert` checks along with the automation author.
 `test_the_pinned_engine_recognises_the_review_named_revert_subject` exercises
 that actual verified engine, rather than merely checking workflow text.
+
+## Review body formats BenchBox reads
+
+BenchBox reads two generations of review output and keeps both readers
+permanently, because the merge digest reads merged history.
+
+- **Current format.** The body opens `### review-verdict: <state> for <sha>`
+  (historically `oracle-verdict` and `oracle-review-shadow`), then a
+  `Decision: **<label>**` line, then bold section titles with
+  `- **<Severity>**` bullets. An inline finding thread's first line starts
+  `**<Severity>**: `.
+- **Redesigned format.** The body opens with a verdict-first headline
+  `### <mark> <DECISION> · …` and carries the hidden marker
+  `<!-- review-verdict: v2 <state> <40hex> -->`. Findings are listed as
+  `<mark> **<Severity>** · D<n> · <title>` (collapsed ones in
+  `<details><summary><mark> <b><Severity></b> · D<n> …`), and an inline thread's
+  first line is `<mark> **<Severity>** · D<n> · <title>` plus a
+  `<!-- review-defect: c<n>-D<n> -->` marker. Severity words are unchanged:
+  Critical, High, Medium, Low.
+
+The contract is the protocol record (`<!-- review-protocol: v1 … -->`), the
+hidden markers and the frozen status tokens, not the prose. Where a record is
+present it decides: the decision and the open defects' severities come from it,
+and a thread's severity comes from its `review-defect` marker joined to the
+record's open defects. The headline words are never parsed. Title-line and
+section scraping remain only as the fallback for old-format history and for
+bodies without a record (for example when the marker limit forced the record
+out), which are read from their `<details>` blocks and `**Still open**` lists.
+
+The soundness merge digest reports a bot thread whose severity is in neither
+the record nor its title line as an "unclassifiable bot thread"; it counts as
+an override when resolved. It is never read as Low and never as not-an-override.
+
+`scripts/check_comment_cleanup_scope.py` accepts a reviewed head whose body
+carries either the verdict heading or the v2 hidden marker, and fails closed
+for a body with neither, with conflicting claims, or with a repeated marker.
+
+`scripts/pr_landing.py` treats a `review-gate` `failure` as pending when its
+description is either `review: waiting for the review's verdict on <head>,…` or
+begins with the frozen token `Waiting for review-verdict` and contains
+`Stand-in review: APPROVE <head>`. Any other failure description stays a failure.
