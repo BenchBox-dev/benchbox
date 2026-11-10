@@ -1,0 +1,199 @@
+{
+  "cases": [
+    {
+      "home": false,
+      "id": "known-root-users",
+      "leak": true,
+      "roots": [],
+      "text": "/Users/example-user/run/results.json"
+    },
+    {
+      "home": false,
+      "id": "known-root-tmp-in-sentence",
+      "leak": true,
+      "roots": [],
+      "text": "wrote plan to /tmp/example-run/plan.txt"
+    },
+    {
+      "home": false,
+      "id": "known-root-tilde",
+      "leak": true,
+      "roots": [],
+      "text": "~/example/plan.json"
+    },
+    {
+      "home": false,
+      "id": "known-root-opt",
+      "leak": true,
+      "roots": [],
+      "text": "/opt/example/bin"
+    },
+    {
+      "home": false,
+      "id": "drive-letter-backslash",
+      "leak": true,
+      "roots": [],
+      "text": "C:\\Example\\run\\plan.json"
+    },
+    {
+      "home": false,
+      "id": "drive-letter-forward-slash",
+      "leak": true,
+      "roots": [],
+      "text": "D:/example/run/plan.json"
+    },
+    {
+      "home": false,
+      "id": "unc-backslash",
+      "leak": true,
+      "roots": [],
+      "text": "\\\\example-host\\share\\run"
+    },
+    {
+      "home": false,
+      "id": "unc-forward-slash",
+      "leak": true,
+      "roots": [],
+      "text": "//example-host/share/run"
+    },
+    {
+      "home": false,
+      "id": "placeholder-data",
+      "leak": false,
+      "roots": [],
+      "text": "/data"
+    },
+    {
+      "home": false,
+      "id": "placeholder-output-slash",
+      "leak": false,
+      "roots": [],
+      "text": "/output/"
+    },
+    {
+      "home": false,
+      "id": "placeholder-redacted",
+      "leak": false,
+      "roots": [],
+      "text": "<redacted>"
+    },
+    {
+      "home": false,
+      "id": "relative-path",
+      "leak": false,
+      "roots": [],
+      "text": "results/example/plan.json"
+    },
+    {
+      "home": false,
+      "id": "url-with-known-root-segment",
+      "leak": false,
+      "roots": [],
+      "text": "https://example.com/Users/profile"
+    },
+    {
+      "home": false,
+      "id": "unknown-absolute-root",
+      "leak": false,
+      "roots": [],
+      "text": "/srv/example-service/data"
+    },
+    {
+      "home": false,
+      "id": "no-path",
+      "leak": false,
+      "roots": [],
+      "text": "scan on lineitem uses index"
+    },
+    {
+      "home": false,
+      "id": "data-root-match",
+      "leak": true,
+      "roots": [
+        "/srv/example-data"
+      ],
+      "text": "/srv/example-data/run/plan.json"
+    },
+    {
+      "home": false,
+      "id": "data-root-boundary",
+      "leak": false,
+      "roots": [
+        "/srv/example-data"
+      ],
+      "text": "/srv/example-database/plan.json"
+    },
+    {
+      "home": false,
+      "id": "neutral-placeholder-never-a-root",
+      "leak": false,
+      "roots": [
+        "/data"
+      ],
+      "text": "/data/run/plan.json"
+    },
+    {
+      "home": true,
+      "id": "home-root-match",
+      "leak": true,
+      "roots": [],
+      "text": "/srv/example-home/run/plan.json"
+    },
+    {
+      "home": true,
+      "id": "home-root-exact",
+      "leak": true,
+      "roots": [],
+      "text": "/srv/example-home"
+    },
+    {
+      "home": true,
+      "id": "home-ancestor-configured-root-still-scanned",
+      "leak": true,
+      "roots": [
+        "/srv"
+      ],
+      "text": "/srv/other-service/run"
+    }
+  ],
+  "drive_letter": {
+    "double_slash_excluded_for_forward": true,
+    "separators": [
+      "\\",
+      "/"
+    ]
+  },
+  "home_root": {
+    "scanned_as_root": true,
+    "synthetic_home": "/srv/example-home"
+  },
+  "known_roots": [
+    "/Users",
+    "/Volumes",
+    "/home",
+    "/mnt",
+    "/opt",
+    "/private",
+    "/root",
+    "/tmp",
+    "/var/folders",
+    "/var/run",
+    "~"
+  ],
+  "pattern": {
+    "flags": 34,
+    "source": "(?<![A-Za-z0-9_])(?:(?:~|/Users|/home|/root|/private|/var/folders|/var/run|/Volumes|/tmp|/mnt|/opt)/[^\\s'\\\",;)]*|[A-Za-z]:\\\\[^\\s'\\\",;)]*|[A-Za-z]:/(?!/)[^\\s'\\\",;)]*)|(?<![A-Za-z0-9_\\\\])\\\\{2,}[A-Za-z0-9_.$-]+\\\\+[^\\s'\\\",;)]*|(?<![A-Za-z0-9_:/\\\\])//[A-Za-z0-9_.$-]+/[A-Za-z0-9_.$-]+[^\\s'\\\",;)]*"
+  },
+  "placeholder_allowlist": [
+    "/data",
+    "/output"
+  ],
+  "redacted_placeholder": "<redacted>",
+  "schema_version": 1,
+  "unc": {
+    "prefixes": [
+      "\\\\",
+      "//"
+    ]
+  }
+}

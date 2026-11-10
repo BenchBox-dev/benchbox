@@ -175,7 +175,7 @@ case "$1 $2" in
     printf '[{"status":"%s","id":"%s","default":true},{"status":"running","id":"other"}]\\n' "$status" "${STUB_MACHINE:-m}" ;;
   "machine run")
     case "$*" in
-      *"systemctl poweroff"*) [ -n "${STUB_GUEST_IGNORES_POWEROFF:-}" ] || touch "$STUB_LOG.stopped"; exit 0 ;;
+      *"SIGRTMIN+4"*) [ -n "${STUB_GUEST_IGNORES_POWEROFF:-}" ] || touch "$STUB_LOG.stopped"; exit 0 ;;
     esac
     rm -f "$STUB_LOG.stopped"; touch "$STUB_LOG.running"
     [ -n "${STUB_RUN_HOOK:-}" ] && bash -c "$STUB_RUN_HOOK"; exit "${STUB_RUN_EXIT:-0}" ;;
@@ -287,7 +287,7 @@ def test_a_machine_this_run_started_is_stopped_afterwards_and_the_lock_is_held_m
     calls = _calls(tmp_path)
     assert [call for call in calls if call != "machine list --format json"][-3:] == [
         f"machine run -n {_machine_name(tmp_path)} -e A=1 -- true",
-        f"machine run -n {_machine_name(tmp_path)} -- systemctl poweroff --no-block",
+        f"machine run -n {_machine_name(tmp_path)} --uid 0 -- /bin/kill -s SIGRTMIN+4 1",
         f"machine stop {_machine_name(tmp_path)}",
     ]
 
@@ -434,7 +434,7 @@ def test_a_guest_that_powers_off_is_stopped_without_machine_stop(tmp_path: Path)
     result = _locked_wrapper(env, "--", "true")
     assert result.returncode == 0, result.stderr
     calls = _calls(tmp_path)
-    assert calls[-1] == f"machine run -n {env['STUB_MACHINE']} -- systemctl poweroff --no-block"
+    assert calls[-1] == f"machine run -n {env['STUB_MACHINE']} --uid 0 -- /bin/kill -s SIGRTMIN+4 1"
     assert not any(call.startswith("machine stop") for call in calls)
     assert "could not confirm" not in result.stderr and "ERROR" not in result.stderr
 
@@ -446,7 +446,7 @@ def test_a_guest_that_ignores_poweroff_falls_back_to_machine_stop(tmp_path: Path
     result = _locked_wrapper(env, "--", "true")
     assert result.returncode == 0, result.stderr
     assert _calls(tmp_path)[-2:] == [
-        f"machine run -n {env['STUB_MACHINE']} -- systemctl poweroff --no-block",
+        f"machine run -n {env['STUB_MACHINE']} --uid 0 -- /bin/kill -s SIGRTMIN+4 1",
         f"machine stop {env['STUB_MACHINE']}",
     ]
     assert "ERROR" not in result.stderr
@@ -514,7 +514,7 @@ def test_a_signal_during_the_run_exits_with_its_conventional_code_and_still_stop
     hook = f'kill -{signal_name} "$(ps -o ppid= -p $PPID | tr -d " ")"'
     result = _locked_wrapper(_stub_env(tmp_path, "stopped", STUB_RUN_HOOK=hook), "--", "true")
     assert result.returncode == code, result.stderr
-    assert _calls(tmp_path)[-1] == f"machine stop {_machine_name(tmp_path)}"
+    assert _calls(tmp_path)[-1] == f"machine stop {_machine_name(tmp_path)}", result.stderr
 
 
 @posix_only

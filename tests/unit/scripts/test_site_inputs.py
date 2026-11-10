@@ -605,3 +605,22 @@ def test_published_schema4_build_refuses_the_local_certifier() -> None:
     args = argparse.Namespace(profile="schema4", certified_by="local", out="unused")
     with pytest.raises(RuntimeError, match="certified_by candidate or a run id"):
         site_inputs.cmd_build(args)
+
+
+def test_built_doc_contracts_carry_the_path_privacy_contract_and_pass_the_schema(tmp_path: Path) -> None:
+    contracts_module = importlib.util.spec_from_file_location(
+        "doc_contracts_for_bundle", ROOT / "scripts/doc_contracts.py"
+    )
+    assert contracts_module is not None and contracts_module.loader is not None
+    module = importlib.util.module_from_spec(contracts_module)
+    sys.modules[contracts_module.name] = module
+    contracts_module.loader.exec_module(module)
+    out = module.write_contracts(tmp_path / "doc-contracts.json")
+    emitted = json.loads(out.read_text(encoding="utf-8"))
+    assert site_inputs.schema_errors(emitted, site_inputs.DOC_CONTRACTS_SCHEMA) == []
+    snapshot = json.loads((ROOT / "quality/path-privacy-contract.json").read_text(encoding="utf-8"))
+    assert emitted["path_privacy"] == snapshot
+    broken = {**emitted, "path_privacy": {**emitted["path_privacy"], "cases": []}}
+    assert site_inputs.schema_errors(broken, site_inputs.DOC_CONTRACTS_SCHEMA) != []
+    del emitted["path_privacy"]
+    assert site_inputs.schema_errors(emitted, site_inputs.DOC_CONTRACTS_SCHEMA) != []

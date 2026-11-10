@@ -318,11 +318,10 @@ class TestEffectiveWriteSqlFallbackKey:
         sql, reason = wp._get_effective_write_sql(op, platform_key="ducklake", platform_fallback_key="duckdb")
         assert (sql, reason) == ("INSERT INTO t VALUES (3)", None)
 
-    def test_duckdb_merge_gate_applies_via_fallback(self, wp: WritePrimitivesBenchmark):
+    def test_duckdb_merge_runs_via_fallback(self, wp: WritePrimitivesBenchmark):
         op = self._op(write_sql="MERGE INTO t USING s ON t.id = s.id WHEN MATCHED THEN UPDATE SET x = 1")
         sql, reason = wp._get_effective_write_sql(op, platform_key="ducklake", platform_fallback_key="duckdb")
-        assert sql is None
-        assert reason is not None and "DuckDB" in reason
+        assert (sql, reason) == (op.write_sql, None)
 
     def test_no_fallback_preserves_exact_match(self, wp: WritePrimitivesBenchmark):
         op = self._op(platform_overrides={"duckdb": "INSERT INTO t VALUES (2)"})
