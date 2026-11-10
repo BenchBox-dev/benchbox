@@ -37913,10 +37913,10 @@
     },
     "theseus-owner-reset-spent-by-skipped-run-20261109": {
       "claim": {
-        "expires_at": "2026-11-10T19:58:30Z",
-        "generation": "4e95104052494a2e97274d6fe589ac91",
+        "expires_at": "2026-11-11T00:21:29Z",
+        "generation": "03bc957cc18d479996f958f200ad0d45",
         "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f"
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:82b9fe75d2d6312f25803cd5"
       },
       "needs": [],
       "priority": "high",

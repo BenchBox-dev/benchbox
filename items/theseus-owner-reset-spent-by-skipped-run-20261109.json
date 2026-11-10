@@ -37,6 +37,17 @@
       "op": "update",
       "op_id": "a9024c77723f4faaa83513d841d9ffc8",
       "session_id": "ff599f834923406da7e6bd54d0a05e94"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:82b9fe75d2d6312f25803cd5",
+      "at": "2026-11-10T00:21:29Z",
+      "client": "omp-coding-agent",
+      "displaced": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "generation": "03bc957cc18d479996f958f200ad0d45",
+      "op": "takeover",
+      "op_id": "d707f6fc1b8647c9b47acd1e84e9aa56",
+      "reason": "Holder is this coordinating session's previous MCP server identity; that server process was restarted (current identity 82b9fe75d2d6312f25803cd5), so the old worker cannot resume. Taking over only to record notes and release before the tractable 1.0.0 restart.",
+      "session_id": "ff599f834923406da7e6bd54d0a05e94"
     }
   ]
 }
