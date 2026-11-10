@@ -29307,17 +29307,12 @@
       "title": "Fetch results as Arrow where the current driver supports it"
     },
     "perf-clickhouse-server-bulk-load-20261030": {
-      "claim": {
-        "expires_at": "2026-11-11T19:49:57Z",
-        "generation": "d156a6cdc01a40f498f3dd537b183923",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a"
-      },
+      "claim": null,
       "needs": [
         "uat-docker-memory-admission-decimal-units-20261030"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Bulk insert for ClickHouse server mode and Cloud without staging"
     },
     "perf-databend-bulk-load-20261030": {
