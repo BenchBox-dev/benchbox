@@ -3,71 +3,8 @@
     "Parquet and CSV loads send file bytes without per-row Python parsing.",
     "Row counts match."
   ],
-  "batch": {
-    "batch_id": "server-engine-bulk-load-3",
-    "implementation_dependencies": [
-      "uat-docker-memory-admission-decimal-units-20261030"
-    ],
-    "member_id": "perf-starrocks-parquet-load-20261030"
-  },
   "context": "Review 2026-10-31: StarRocksCSVHandler (starrocks/workload.py:382-437) is referenced nowhere, tests included. Live verification needs the UAT memory-admission fix so the StarRocks shard starts.\n\n2026-11-09 live (mocker starrocks 3.5.16, STARROCKS_MEMORY_LIMIT=4g, TPC-H dbgen shards): sha256 row parity vs dbgen MATCH all tables. SF0.01 CSV (8 tables) load before 6.35s / after 6.42s (stream load + tablet creation dominates). SF0.1 CSV before 10.90s after 6.55s, lineitem 600,572 rows parity MATCH. SF0.01 Parquet (customer, lineitem, nation, orders) before (executemany) 35.54s after 0.74s, parity MATCH, rows 76,700. StarRocks 3.5.16 Stream Load rejects format=parquet (unknown data format), so Parquet is converted to CSV by pyarrow batches (enclose=\") and null mapped via \\N; CSV null/NaN mapping moved server-side (columns header if/lower) and verified live with quoted fields, doubled quotes, embedded newline, header skip. StarRocksCSVHandler removed (unreferenced).",
   "description": "starrocks/workload.py:441-484 converts Parquet with to_pylist and inserts via pymysql executemany. Route through Stream Load (pyarrow.csv conversion) or the FILES() table function. Also :310-318 re-parses every CSV row with csv.reader just for null mapping; stream raw bytes and use Stream Load null/trim headers. Remove StarRocksCSVHandler (:382-438) if it is dead code.",
-  "prepared": {
-    "accepted_head": "64669b6476f115df7ba9503d6761678b592c623e",
-    "batch_id": "server-engine-bulk-load-3",
-    "changed_files": [
-      "benchbox/platforms/starrocks/stream_load.py",
-      "benchbox/platforms/starrocks/workload.py",
-      "changelog.d/starrocks-stream-load-bytes-20261109.json",
-      "tests/unit/platforms/test_starrocks_stream_load.py",
-      "tests/unit/platforms/test_starrocks_workload.py"
-    ],
-    "integration_head": "e4f6854b74ebac0483ac8ea540bd5c5734efbc90",
-    "integration_seq": 3,
-    "member_id": "perf-starrocks-parquet-load-20261030",
-    "overlaps": [],
-    "owner_epoch": 0,
-    "schema": "prepared_work_v2",
-    "scope_hash": "75421f5c53d6e5eb7bef57785ca36771402aedebc954175a1903f54ee1a3b9ed",
-    "source_base": "2182b73fb451fe5ce9b285c489c44d9729626bd2",
-    "source_revision": "64669b6476f115df7ba9503d6761678b592c623e",
-    "source_worktree": "/Users/joe/Developer/BenchBox.wt-server-engine-bulk-load-3--perf-starrocks-parquet-load-20261030",
-    "verification": {
-      "clean": true,
-      "command": [
-        "uv",
-        "run",
-        "--",
-        "python",
-        "-m",
-        "pytest",
-        "-n",
-        "0",
-        "-q",
-        "tests/integration/platforms/test_starrocks_smoke.py",
-        "tests/system/test_module_size_thresholds.py",
-        "tests/uat/test_connection_registry_drift.py",
-        "tests/unit/core/tuning/test_renderer_snapshot_starrocks.py",
-        "tests/unit/platforms/test_starrocks_adapter.py",
-        "tests/unit/platforms/test_starrocks_stream_load.py",
-        "tests/unit/platforms/test_starrocks_type_conversion.py",
-        "tests/unit/platforms/test_starrocks_workload.py"
-      ],
-      "review": {
-        "base_sha": "2182b73fb451fe5ce9b285c489c44d9729626bd2",
-        "head_sha": "64669b6476f115df7ba9503d6761678b592c623e",
-        "head_tree": "9a4073e2c94832f80e8790cf333f16774e0bc15a",
-        "outcome": "clear",
-        "patch_digest": "bf473eab8745d0e798fd4511d6e3df97",
-        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
-        "schema": "benchbox_member_review_v1",
-        "trusted_sha": "4c39e824a5925ddccb45edd72607321ba423f6a8"
-      },
-      "revision": "64669b6476f115df7ba9503d6761678b592c623e",
-      "status": "passed",
-      "suite": "member-tests"
-    }
-  },
   "sessions": [
     {
       "actor": "mcp:claude-code:root@vm:2d53e6a98f44f4f4a8a4dedd",
@@ -167,6 +104,14 @@
       "generation": "60e5ec529e154f8d932d8de96e7bf1c1",
       "op": "prepare",
       "op_id": "4c0d9ae7870f4e04a82841b0b490fe85",
+      "session_id": "248466dc3ce04a7c8f4c76cdbd04176f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a",
+      "at": "2026-11-10T17:43:31Z",
+      "client": "omp-coding-agent",
+      "op": "abort",
+      "op_id": "cccb7c65eaef43338fea50d1b8bee87d",
       "session_id": "248466dc3ce04a7c8f4c76cdbd04176f"
     }
   ]
