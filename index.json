@@ -39441,6 +39441,15 @@
       "status": "done",
       "title": "Prepare pinned local review and gateway-host tooling and track every upstream port"
     },
+    "theseus-lock-self-review-format-release-b-20261110": {
+      "claim": null,
+      "needs": [
+        "theseus-review-format-release-b-20261110"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Theseus: promote its own reviewer lock to review-format release B"
+    },
     "theseus-observation-disposition-20261102": {
       "claim": null,
       "needs": [
