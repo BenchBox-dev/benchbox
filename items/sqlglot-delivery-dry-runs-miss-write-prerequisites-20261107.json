@@ -202,6 +202,15 @@
       "op": "prepare",
       "op_id": "28504550c6c742a889d06c92178593a0",
       "session_id": "2d9d39b1e0cd477e8c2fccad7d0c6230"
+    },
+    {
+      "actor": "omp:sqlglot-delivery-hardening-leader",
+      "at": "2026-11-10T02:03:05Z",
+      "client": "mcp",
+      "generation": "8ca75537e9e54059a30025d8b785e0da",
+      "op": "take",
+      "op_id": "005df48793f248e8bb39153958f110ee",
+      "session_id": "3c49a3cf4ec24b1fb8da521facc76af0"
     }
   ]
 }
