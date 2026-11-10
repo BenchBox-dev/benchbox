@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "The Presto and Trino compose healthchecks now wait until the coordinator answers a query instead of passing on the early /v1/info response, so release UAT cells no longer start against a coordinator that reports the server unreachable."
+}
