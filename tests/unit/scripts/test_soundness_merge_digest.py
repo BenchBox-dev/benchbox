@@ -2630,8 +2630,11 @@ def test_the_protocol_record_wins_over_disagreeing_prose():
     [
         (f"<!-- review-verdict: v2 failure {HEAD} -->", "failure"),
         (f"<!-- review-verdict: v2 failure {OLD} -->", None),
-        (f"<!-- review-verdict: v2 failure {HEAD} -->\n<!-- review-verdict: v2 failure {HEAD} -->", None),
-        (f"### review-verdict: success for `{HEAD}`\n<!-- review-verdict: v2 failure {HEAD} -->", None),
+        (f"<!-- review-verdict: v2 failure {HEAD} -->\n<!-- review-verdict: v2 failure {HEAD} -->", "failure"),
+        (f"<!-- review-verdict: v2 success {HEAD} -->\n<!-- review-verdict: v2 failure {HEAD} -->", "failure"),
+        (f"### review-verdict: success for `{HEAD}`\n<!-- review-verdict: v2 failure {HEAD} -->", "failure"),
+        (f"### review-verdict: failure for `{HEAD}`\nquotes `<!-- review-verdict` syntax", "failure"),
+        (f"### review-verdict: failure for `{HEAD}`\n<!-- review-verdict: v2 failure {OLD} -->", None),
         (f"<!-- review-verdict: v3 failure {HEAD} -->", None),
         ("### SHIP \u00b7 clean", None),
         ("", None),

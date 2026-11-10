@@ -57,7 +57,6 @@ SEVERITY_MARK = "[\U0001f534\U0001f7e0\U0001f7e1\U0001f535\u26aa]\ufe0f?"
 FINDING_SEVERITY = re.compile(rf"\*\*({SEVERITY_WORDS})\*\*: ")
 MARKED_FINDING_SEVERITY = re.compile(rf"{SEVERITY_MARK}\s+\*\*({SEVERITY_WORDS})\*\*\s+\u00b7\s+D[1-9][0-9]{{0,3}}\b")
 VERDICT_MARKER = re.compile(r"<!-- review-verdict: v2 (?P<state>[a-z]+) (?P<sha>[0-9a-f]{40}) -->")
-VERDICT_MARKER_OPEN = re.compile(r"<\s*!\s*-\s*-\s*review-verdict")
 DECISION_LABELS = {
     "SHIP": "SHIP",
     "SHIP_WITH_FIXES": "SHIP WITH FIXES",
@@ -357,16 +356,16 @@ def thread_defect(body: str) -> tuple[int, str] | None:
 
 def review_verdict_state(body: str | None, sha: str) -> str | None:
     text = body or ""
-    markers = list(VERDICT_MARKER.finditer(text))
-    if len(markers) > 1 or len(VERDICT_MARKER_OPEN.findall(text)) != len(markers):
-        return None
     claims = {
-        (match.group("state"), match.group("sha")) for match in (REVIEW_VERDICT_LINE.match(text), *markers) if match
+        (match.group("state"), match.group("sha"))
+        for match in (REVIEW_VERDICT_LINE.match(text), *VERDICT_MARKER.finditer(text))
+        if match
     }
-    if len(claims) != 1:
+    if not claims or any(found != sha for _, found in claims):
         return None
-    state, found = next(iter(claims))
-    return state if found == sha else None
+    states = {state for state, _ in claims}
+    blocking = sorted(states - {"success"})
+    return blocking[0] if blocking else "success"
 
 
 def review_record(body: str | None) -> dict[str, Any] | None:
