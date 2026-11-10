@@ -14,6 +14,7 @@ from benchbox.core.plan_capture_phase import (
 )
 from benchbox.core.result_receipt import cursor_result_count
 from benchbox.core.results.fetch_mode import ConversionClock
+from benchbox.core.results.platform_timing import throughput_stream_context
 from benchbox.core.throughput.result import ThroughputResult, ThroughputStreamResult, throughput_stream_ids
 from benchbox.core.throughput.runner import StreamRunner
 from benchbox.core.tpch.power_test import _parse_tpch_query_id
@@ -507,6 +508,12 @@ class TPCHThroughputTest:
     def _execute_stream(
         self, stream_id: int, seed: int, config: TPCHThroughputTestConfig
     ) -> TPCHThroughputStreamResult:
+        with throughput_stream_context():
+            return self._execute_stream_body(stream_id, seed, config)
+
+    def _execute_stream_body(
+        self, stream_id: int, seed: int, config: TPCHThroughputTestConfig
+    ) -> TPCHThroughputStreamResult:
         start_time = mono_time()
 
         stream_result = TPCHThroughputStreamResult(
@@ -524,7 +531,6 @@ class TPCHThroughputTest:
         try:
             if config.verbose:
                 self.logger.info(f"Starting stream {stream_id} with seed {seed}")
-
             connection = self.connection_factory()
             stream_result.start_time = mono_time()
             stream_result.start_wall_time = datetime.now().isoformat()
@@ -564,8 +570,7 @@ class TPCHThroughputTest:
                     label = f"Stream_{stream_id}_Position_{position + 1}_Query_{query_id}"
                     try:
                         if hasattr(connection, "set_query_context"):
-                            connection.set_query_context(query_id)
-
+                            connection.set_query_context(query_id, stream_id=stream_id)
                         set_reference_seed_context(False)
                         set_data_refreshed_context(config.refresh_functions)
 

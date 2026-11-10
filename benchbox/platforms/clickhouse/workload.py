@@ -18,6 +18,7 @@ from benchbox.utils.sql_parsing import find_matching_parenthesis
 
 from .merge_settle import wait_for_merges_to_settle
 from .query_rewrites import rewrite_query_for_clickhouse
+from .statements import prepare_clickhouse_statements
 
 if TYPE_CHECKING:
     from .delta_lake import DeltaReader
@@ -770,20 +771,30 @@ class ClickHouseWorkloadMixin:
             ):
                 additional_settings = {"join_algorithm": "grace_hash", "grace_hash_join_initial_buckets": 8}
             transformed_query = rewrite_query_for_clickhouse(query, additional_settings)
+            statements = prepare_clickhouse_statements(transformed_query) or [transformed_query]
             ledger = RequestLedger()
-            statement_id = self.new_statement_id()
+            statement_ids = [self.new_statement_id() for _ in statements]
+            for stmt_id in statement_ids:
+                ledger.add_request(REQUEST_KIND_QUERY, stmt_id)
 
-            send_options = {"query_id": statement_id} if statement_id else {}
-            ledger.add_request(REQUEST_KIND_QUERY, statement_id)
+            def _fetch_rows_clickhouse() -> list[Any]:
+                result = None
+                for stmt, stmt_id in zip(statements, statement_ids):
+                    options = {"query_id": stmt_id} if stmt_id else {}
+                    result = connection.execute(stmt, **options)
+                return result or []
+
+            def _fetch_arrow_clickhouse() -> Any:
+                result = None
+                for stmt in statements:
+                    result = connection.execute_arrow(stmt)
+                return result
+
             start_time = mono_time()
             fetched = fetch_result(
                 self.fetch_mode,
-                fetch_rows=lambda: connection.execute(transformed_query, **send_options) or [],
-                fetch_arrow=(
-                    (lambda: connection.execute_arrow(transformed_query))
-                    if hasattr(connection, "execute_arrow")
-                    else None
-                ),
+                fetch_rows=_fetch_rows_clickhouse,
+                fetch_arrow=(_fetch_arrow_clickhouse if hasattr(connection, "execute_arrow") else None),
             )
 
             execution_time = elapsed_seconds(start_time)
@@ -835,7 +846,9 @@ class ClickHouseWorkloadMixin:
 
             self._apply_result_validation(result_dict, query_id, fetched.rows)
             result_dict.update(
-                self.timing_fields_for(connection, ledger, rows=fetched.rows, elapsed_seconds=execution_time)
+                self.timing_fields_for(
+                    connection, ledger, rows=fetched.rows, elapsed_seconds=execution_time, stream_id=stream_id
+                )
             )
 
         except Exception as e:

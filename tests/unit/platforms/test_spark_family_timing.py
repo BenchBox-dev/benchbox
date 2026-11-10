@@ -132,11 +132,17 @@ def test_execute_livy_statement_reports_submitted_id() -> None:
     post_resp.json.return_value = {"id": 42}
     seen: list[int] = []
 
-    with (
-        patch("benchbox.platforms.azure.spark_execution_utils.requests.post", return_value=post_resp),
-        patch("benchbox.platforms.azure.spark_execution_utils.wait_for_livy_statement", return_value={}),
-    ):
-        execute_livy_statement("https://api", 1, "SELECT 1", "sql", dict, 1.0, on_submit=seen.append)
+    with patch("benchbox.platforms.azure.spark_execution_utils.wait_for_livy_statement", return_value={}):
+        execute_livy_statement(
+            "https://api",
+            1,
+            "SELECT 1",
+            "sql",
+            dict,
+            1.0,
+            on_submit=seen.append,
+            post=lambda *args, **kwargs: post_resp,
+        )
 
     assert seen == [42]
 

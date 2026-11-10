@@ -9,6 +9,7 @@ from typing import Any
 from benchbox.core.results.platform_timing import (
     StatementTiming,
     build_platform_timing,
+    is_throughput_stream_active,
     rows_result_bytes,
     unavailable_platform_timing,
 )
@@ -56,11 +57,24 @@ class TimingContractMixin:
         return statements, failure
 
     def capture_platform_timing(
-        self, connection: Any, requests: Sequence[RecordedRequest], *, client_ms: float | None
+        self,
+        connection: Any,
+        requests: Sequence[RecordedRequest],
+        *,
+        client_ms: float | None,
+        stream_id: int | None = None,
+        is_throughput: bool = False,
     ) -> dict[str, Any] | None:
         source = self.platform_timing_source
         if source is None:
             return None
+        if is_throughput or (stream_id is not None and stream_id > 0) or is_throughput_stream_active():
+            statements = [StatementTiming(request.statement_id, request.kind, request.attempt) for request in requests]
+            return unavailable_platform_timing(
+                source,
+                "skipped during throughput stream to preserve stream timing",
+                statements,
+            )
         with outside_query_timer():
             statements, failure = self._statements_for(connection, requests)
             if failure is not None:
@@ -93,6 +107,8 @@ class TimingContractMixin:
         rows: Iterable[Any] | None = None,
         result_bytes: int | None = None,
         elapsed_seconds: float | None = None,
+        stream_id: int | None = None,
+        is_throughput: bool = False,
     ) -> dict[str, Any]:
         fields: dict[str, Any] = {"request_count": ledger.count}
         with outside_query_timer():
@@ -100,7 +116,13 @@ class TimingContractMixin:
         if measured_bytes is not None:
             fields["result_bytes"] = measured_bytes
         client_ms = None if elapsed_seconds is None else elapsed_seconds * 1000.0
-        platform_timing = self.capture_platform_timing(connection, ledger.requests, client_ms=client_ms)
+        platform_timing = self.capture_platform_timing(
+            connection,
+            ledger.requests,
+            client_ms=client_ms,
+            stream_id=stream_id,
+            is_throughput=is_throughput,
+        )
         if platform_timing is not None:
             fields["platform_timing"] = platform_timing
         return fields

@@ -218,3 +218,33 @@ class TestExpressionFamilyCaptureTimingContract:
 
         assert result_on["execution_time_seconds"] < _CAPTURE_SLEEP_MS * 0.5 / 1000.0
         assert result_off["status"] == "SUCCESS" and result_on["status"] == "SUCCESS"
+
+    def test_legacy_timing_method_one_keeps_row_count_inside_timer(self) -> None:
+        class _SlowRowAdapter(_TimingAdapter):
+            timing_method = 1
+
+            def get_row_count(self, df):
+                _clock.sleep(0.05)
+                return 3
+
+        class _FastRowAdapter(_TimingAdapter):
+            timing_method = 2
+
+            def get_row_count(self, df):
+                _clock.sleep(0.05)
+                return 3
+
+        query = DataFrameQuery(
+            query_id="Q1",
+            query_name="q",
+            description="q",
+            expression_impl=lambda c: {"rows": 3},
+        )
+
+        legacy_adapter = _SlowRowAdapter()
+        legacy_result = legacy_adapter.execute_query(legacy_adapter.create_context(), query)
+        assert legacy_result["execution_time_seconds"] >= 0.04
+
+        modern_adapter = _FastRowAdapter()
+        modern_result = modern_adapter.execute_query(modern_adapter.create_context(), query)
+        assert modern_result["execution_time_seconds"] < 0.05

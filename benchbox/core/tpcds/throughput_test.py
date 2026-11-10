@@ -12,6 +12,7 @@ from benchbox.core.plan_capture_phase import (
 from benchbox.core.result_receipt import cursor_result_count
 from benchbox.core.results.fetch_mode import ConversionClock
 from benchbox.core.results.metrics import TPC_QUERIES_PER_STREAM
+from benchbox.core.results.platform_timing import throughput_stream_context
 from benchbox.core.throughput.result import (
     THROUGHPUT_FIRST_STREAM_ID,
     ThroughputResult,
@@ -479,6 +480,12 @@ class TPCDSThroughputTest:
                 self.logger.warning(f"Failed to close connection for stream {stream_id}: {close_error}")
 
     def _execute_stream(
+        self, stream_id: int, seed: int, config: TPCDSThroughputTestConfig
+    ) -> TPCDSThroughputStreamResult:
+        with throughput_stream_context():
+            return self._execute_stream_body(stream_id, seed, config)
+
+    def _execute_stream_body(
         self, stream_id: int, seed: int, config: TPCDSThroughputTestConfig
     ) -> TPCDSThroughputStreamResult:
         start_time = mono_time()

@@ -104,7 +104,7 @@ class TestSnowflakeTimingContract:
         kinds = [(entry["kind"], entry["id"]) for entry in result["platform_timing"]["requests"]]
         assert kinds == [("begin", "id-b"), ("query", "id-1"), ("query", "id-2"), ("commit", "id-c")]
 
-    def test_history_lag_is_retried_within_bounded_budget(self, snowflake_adapter):
+    def test_history_lag_is_retried_within_bounded_budget(self, snowflake_adapter, monkeypatch):
         cursor = _SnowflakeCursor({})
         rows = [("sfqid-9", 10, 1, 2, 0, 0, 0, 0, 0, 0)]
         batches = iter([[], rows])
@@ -112,11 +112,10 @@ class TestSnowflakeTimingContract:
         connection = Mock()
         connection.cursor.return_value = cursor
 
-        with patch("time.sleep") as sleep:
-            found = snowflake_adapter.fetch_platform_timings(connection, ["sfqid-9"])
+        monkeypatch.setattr("benchbox.platforms.snowflake.SNOWFLAKE_HISTORY_RETRY_DELAY_SECONDS", 0.0)
+        found = snowflake_adapter.fetch_platform_timings(connection, ["sfqid-9"])
 
         assert found["sfqid-9"].platform_ms == 10
-        sleep.assert_called_once()
 
     def test_unsafe_statement_ids_are_never_interpolated(self, snowflake_adapter):
         connection = Mock()
@@ -233,11 +232,11 @@ class TestBigQueryTimingContract:
         assert result["execution_time_seconds"] < SETUP_DELAY_SECONDS
         assert excluded >= SETUP_DELAY_SECONDS
 
-    def test_unfinished_job_history_is_retried_then_raises_into_unavailable(self, bigquery_adapter):
+    def test_unfinished_job_history_is_retried_then_raises_into_unavailable(self, bigquery_adapter, monkeypatch):
         client = Mock()
         client.get_job.return_value = _bigquery_job(ended=None)
-        with patch("time.sleep"):
-            assert bigquery_adapter.fetch_platform_timings(client, ["job-1"]) == {}
+        monkeypatch.setattr("benchbox.platforms.bigquery.BIGQUERY_JOB_STATS_RETRY_DELAY_SECONDS", 0.0)
+        assert bigquery_adapter.fetch_platform_timings(client, ["job-1"]) == {}
 
 
 @pytest.fixture

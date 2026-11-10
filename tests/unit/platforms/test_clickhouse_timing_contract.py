@@ -1,3 +1,4 @@
+import time
 import uuid
 
 import pytest
@@ -243,3 +244,32 @@ def test_validation_digest_and_timing_lookup_run_outside_query_timer(monkeypatch
     adapter.execute_query(_LogConnection(), "SELECT 1", "q1", validate_row_count=False)
     assert depths["digest"] > 0
     assert depths["lookup"] > 0
+
+
+def test_server_execute_multistatement_query_allocates_separate_statement_ids(monkeypatch):
+    monkeypatch.setattr(ch_timing, "QUERY_LOG_POLL_INTERVAL_SECONDS", 0)
+    adapter = _make("server")
+    connection = _LogConnection()
+
+    def execute(sql, *args, **kwargs):
+        connection.statements.append(sql)
+        connection.options.append(kwargs)
+        if "system.query_log" in sql and sql.lstrip().upper().startswith("SELECT"):
+            return [_log_row(opt["query_id"], duration=5) for opt in connection.options if "query_id" in opt]
+        if sql.startswith("SYSTEM"):
+            return []
+        time.sleep(0.02)
+        return [(1,)]
+
+    connection.execute = execute
+    query = "CREATE VIEW v AS SELECT 1;\nSELECT * FROM v;\nDROP VIEW v;"
+    result = adapter.execute_query(connection, query, "q15", validate_row_count=False)
+
+    assert result["request_count"] == 3
+    timing = result["platform_timing"]
+    assert timing["status"] == "valid"
+    assert timing["platform_ms"] == 15.0
+    query_ids = [opt["query_id"] for opt in connection.options if "query_id" in opt]
+    assert len(query_ids) == 3
+    assert len(set(query_ids)) == 3
+    assert [req["id"] for req in timing["requests"]] == query_ids

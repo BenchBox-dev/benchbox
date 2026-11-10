@@ -122,7 +122,9 @@ def execute_sql_query(
                 result_digest = compute_result_digest(fetched.rows)
 
         timing_fields = (
-            timing_fields_for(connection, ledger, rows=fetched.rows, elapsed_seconds=execution_time)
+            timing_fields_for(
+                connection, ledger, rows=fetched.rows, elapsed_seconds=execution_time, stream_id=stream_id
+            )
             if timing_fields_for is not None
             else None
         )

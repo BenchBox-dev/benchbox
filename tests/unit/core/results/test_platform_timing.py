@@ -9,9 +9,11 @@ from benchbox.core.results.platform_timing import (
     NET_ESTIMATE_CONFORMANCE,
     StatementTiming,
     build_platform_timing,
+    is_throughput_stream_active,
     resolve_net_estimate_status,
     rows_result_bytes,
     summarize_run_platform_timing,
+    throughput_stream_context,
     unavailable_platform_timing,
 )
 from benchbox.core.results.timer_scope import RequestLedger, outside_query_timer
@@ -147,3 +149,34 @@ def test_normalized_query_results_keep_timing_fields():
     )
     assert (normalized.request_count, normalized.result_bytes) == (2, 5)
     assert normalized.platform_timing == {"status": "unavailable", "reason": "r"}
+
+
+def test_throughput_stream_skips_platform_history_polling():
+    from unittest.mock import Mock
+
+    from benchbox.platforms.base.timing_contract import TimingContractMixin
+
+    class _Adapter(TimingContractMixin):
+        platform_timing_source = "mock.history"
+
+    adapter = _Adapter()
+    adapter.fetch_platform_timings = Mock(return_value={})
+    ledger = RequestLedger()
+    ledger.add_request("query", "stmt-1")
+
+    assert not is_throughput_stream_active()
+
+    with throughput_stream_context():
+        assert is_throughput_stream_active()
+        fields = adapter.timing_fields_for(Mock(), ledger, elapsed_seconds=0.1)
+        assert fields["platform_timing"]["status"] == "unavailable"
+        assert fields["platform_timing"]["reason"] == "skipped during throughput stream to preserve stream timing"
+        assert fields["platform_timing"]["requests"][0]["id"] == "stmt-1"
+        adapter.fetch_platform_timings.assert_not_called()
+
+    assert not is_throughput_stream_active()
+
+    fields_stream = adapter.timing_fields_for(Mock(), ledger, elapsed_seconds=0.1, stream_id=1)
+    assert fields_stream["platform_timing"]["status"] == "unavailable"
+    assert fields_stream["platform_timing"]["reason"] == "skipped during throughput stream to preserve stream timing"
+    adapter.fetch_platform_timings.assert_not_called()

@@ -767,12 +767,15 @@ class ExpressionFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, 
             if hasattr(result_df, "collect"):
                 result_df = self.collect(result_df)
 
-            execution_time = elapsed_seconds(start_time)
-
-            with outside_query_timer():
+            if self.timing_method < TIMING_METHOD_QUERY_ONLY:
                 row_count = self.get_row_count(result_df)
                 first_row = self._get_first_row(result_df)
-
+                execution_time = elapsed_seconds(start_time)
+            else:
+                execution_time = elapsed_seconds(start_time)
+                with outside_query_timer():
+                    row_count = self.get_row_count(result_df)
+                    first_row = self._get_first_row(result_df)
             self._log_verbose(f"Query {qid} completed in {execution_time:.3f}s, returned {row_count} rows")
 
             return build_success_result_dict(

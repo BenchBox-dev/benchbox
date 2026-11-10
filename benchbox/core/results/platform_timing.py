@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import datetime as _dt
 import decimal
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -21,6 +23,22 @@ NET_ESTIMATE_PROBE_UNVERIFIED = "probe_unverified"
 NET_ESTIMATE_FLOOR_SUSPECT = "floor_suspect"
 
 NET_ESTIMATE_CONFORMANCE: Mapping[str, str] = {}
+
+_THROUGHPUT_STREAM_ACTIVE: ContextVar[bool] = ContextVar("benchbox_throughput_stream_active", default=False)
+
+
+@contextmanager
+def throughput_stream_context(active: bool = True) -> Iterator[None]:
+    token = _THROUGHPUT_STREAM_ACTIVE.set(active)
+    try:
+        yield
+    finally:
+        _THROUGHPUT_STREAM_ACTIVE.reset(token)
+
+
+def is_throughput_stream_active() -> bool:
+    return _THROUGHPUT_STREAM_ACTIVE.get()
+
 
 _FIXED_WIDTH_BYTES = 8
 
@@ -246,7 +264,9 @@ __all__ = [
     "build_platform_timing",
     "finalize_query_timing_fields",
     "resolve_net_estimate_status",
+    "is_throughput_stream_active",
     "rows_result_bytes",
     "summarize_run_platform_timing",
     "unavailable_platform_timing",
+    "throughput_stream_context",
 ]
