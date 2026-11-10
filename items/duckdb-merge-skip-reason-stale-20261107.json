@@ -4,7 +4,7 @@
     "The decision is checked against the DuckDB version the project actually pins or resolves, with the version named in the PR",
     "Tests covering the execution filter pass"
   ],
-  "context": "Found while re-measuring the SCD2 scale table for benchbox-site draft drafts/platform-deep-dives/drafts/apply-changes-into-vs-standard-sql.md (site PR #115), which now says the skip is a catalog decision rather than an engine limit.",
+  "context": "Found while re-measuring the SCD2 scale table for benchbox-site draft drafts/platform-deep-dives/drafts/apply-changes-into-vs-standard-sql.md (site PR #115), which now says the skip is a catalog decision rather than an engine limit.\n\n2026-11-07: Done in PR #4073 (merge b50a9ac1bd). uv.lock resolves duckdb 1.5.5 (pyproject requires >=1.5.0,<2.0.0). With the skip bypassed, `benchbox run --platform duckdb --benchmark write_primitives` at SF0.01 ran all 112 operations successfully with none skipped; the 21 rule-matched MERGE INTO operations (20 in the merge category plus bulk_load_upsert_mode) ran and validated. The skip module duckdb_write_primitives.py, its hook in core/write_primitives/benchmark.py and its gate test were removed, tests that expected the skip now assert the merge operations run, and changelog.d/fix-duckdb-merge-skip-reason.json was added. Noticed: medium-tier shard 2 stalled about 25 minutes at 98% on this PR and on unrelated PR #4076; the hanging test is unidentified.",
   "description": "DUCKDB_WRITE_PRIMITIVES_MERGE_SKIP_REASON in benchbox/sql_compat/rules/execution_filter/duckdb_write_primitives.py says 'DuckDB 1.3.2 rejects the catalog's MERGE INTO statements; keep them explicit skips until the bundled driver supports MERGE.' On DuckDB 1.5.5, the version uv resolved on 2026-11-02 at core 6f5692490e, a plain MERGE INTO succeeds. The skip still applies to every MERGE INTO operation, so the reason now gives a false cause for a catalog decision.",
   "links": [
     "benchbox/sql_compat/rules/execution_filter/duckdb_write_primitives.py",
@@ -18,6 +18,14 @@
       "op": "create",
       "op_id": "11efb172a8de45bab45656d35ae08f5f",
       "session_id": "795ec450a8414923a7950b67d6eba45e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8fca380e560ef9716ed1f36b",
+      "at": "2026-11-10T02:40:33Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c6ebc762f79046a2b1a47568f89864e1",
+      "session_id": "1bb6bc692fbb413e9b51c31ae6a8162b"
     }
   ]
 }
