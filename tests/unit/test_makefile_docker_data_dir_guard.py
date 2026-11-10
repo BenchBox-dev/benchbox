@@ -65,6 +65,8 @@ def _run_make(
     [
         ("test-docker-up-lakesail", "lakesail"),
         ("test-docker-up-velox", "velox"),
+        ("test-docker-up-trino", "trino"),
+        ("test-docker-up-presto", "presto"),
     ],
 )
 def test_guard_rejects_missing_data_dir_without_touching_compose(tmp_path, target, platform):
@@ -89,6 +91,8 @@ def test_guard_rejects_missing_data_dir_without_touching_compose(tmp_path, targe
     [
         ("test-docker-up-lakesail", "lakesail"),
         ("test-docker-up-velox", "velox"),
+        ("test-docker-up-trino", "trino"),
+        ("test-docker-up-presto", "presto"),
     ],
 )
 def test_guard_rejects_relative_data_dir_without_touching_compose(tmp_path, target, platform):
