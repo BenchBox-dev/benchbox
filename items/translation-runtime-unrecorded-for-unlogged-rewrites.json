@@ -5,7 +5,7 @@
     "Paths that use SQLGlot without changing executed SQL are listed with the reason they record nothing.",
     "No schema bump unless the owner approves (the block already exists)."
   ],
-  "context": "DECISION GATE: if recording needs a schema change or a new field, ask the owner. Related: bundle-translator-runtime-identity (done, #3712).",
+  "context": "DECISION GATE: if recording needs a schema change or a new field, ask the owner. Related: bundle-translator-runtime-identity (done, #3712).\n\nCensus run 2026-11-09 against origin/develop 4c39e824a5 (read paths verified by hand). Root cause: every translating helper already records an outcome when a translation context is active; the gap is propagation. benchbox/core/throughput/executor.py DaemonStreamExecutor starts plain threading.Thread workers and calls fn() without a copied context, so in throughput stream workers the outcomes ContextVar is None (nothing recorded) and the strict ContextVar is its default False (a run requested as strict silently translates non-strict there). core/throughput/runner.py:172 is the only user, so every benchmark's throughput streams are affected whenever query text is generated inline in a worker (TPC-DS _get_stream_query_text; TPC-H inline fallback). No schema change or new field is needed: the existing execution.translation.runtime block is populated once the context reaches the workers. Decision gate not triggered. Not gaps: TPC-DS qualification already stamps version+fork_sha[:12].sha256[:12] in its own artifact (not a result bundle); data-only/setup-only result builders contain no SQL translation; read_primitives variants are returned verbatim (sqlglot not involved); split_sql_statements and parse-only helpers do not change executed SQL.",
   "description": "#3712 records `execution.translation.runtime` (distribution, version, fork_sha, upstream_sha, wheel_sha256) only when a run logs a SQL translation. Some paths rewrite SQL through the bundled SQLGlot without logging one, so their bundles record no runtime even though their SQL depends on the wheel: read_primitives variants and TPC-DS query qualification were named during the translator-provenance work (2026-10-28 to 2026-10-30). Their results cannot be tied to a wheel version, which is the gap the provenance work closed for logged translations.",
   "sessions": [
     {
@@ -24,6 +24,14 @@
       "op": "take",
       "op_id": "b9bd65bb081745b7b7d7cd0c49147646",
       "session_id": "36716a0f465f4b9eb5915d453b3f0cb5"
+    },
+    {
+      "actor": "omp:sqlglot-delivery-hardening-leader",
+      "at": "2026-11-10T02:10:12Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "237685004fb24541a0f6d6a6ac6eb26b",
+      "session_id": "5fa6c12307f74d34b1fcf2666079bcb5"
     }
   ]
 }
