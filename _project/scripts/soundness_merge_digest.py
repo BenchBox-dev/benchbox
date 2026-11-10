@@ -89,7 +89,9 @@ OPEN_DEFECT_SECTIONS = frozenset(
         "Defects already open as review threads, not posted again",
     }
 )
-KNOWN_CLOSED_SECTIONS = frozenset({"Result withheld: the run's artifacts failed validation", "Reviewers not available"})
+KNOWN_CLOSED_SECTIONS = frozenset(
+    {"Result withheld: the run's artifacts failed validation", "Result withheld", "Reviewers not available"}
+)
 SECTION_HEADING = re.compile(r"^\*\*(.+?)\*\*$")
 DEFECT_BULLET = re.compile(rf"^[-*]\s+(?:{SEVERITY_MARK}\s+)?\*\*({SEVERITY_WORDS})\*\*")
 MARKED_DEFECT_BULLET = re.compile(

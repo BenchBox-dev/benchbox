@@ -1766,6 +1766,22 @@ def test_still_open_bullets_come_only_from_open_finding_sections():
     assert digest.still_open_severities(body) == ["Medium"]
 
 
+@pytest.mark.parametrize("title", ["Result withheld", "Result withheld: the run's artifacts failed validation"])
+def test_still_open_severities_stops_at_a_withheld_result_section(title):
+    body = "\n".join(
+        [
+            "**Still open**",
+            "",
+            "- **Medium** `a.py:1`: D1: open",
+            "",
+            f"**{title}**",
+            "",
+            "- **High** `b.py:2`: D2: prose",
+        ]
+    )
+    assert digest.still_open_severities(body) == ["Medium"]
+
+
 def test_render_standin_overrides_lists_each_override():
     text = digest.render_standin_overrides(digest.standin_overrides([overridden()]))
     assert f"| #7 | `{HEAD[:9]}` | joeharris76 | 1s | Medium |" in text
