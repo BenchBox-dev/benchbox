@@ -39562,6 +39562,15 @@
       "status": "open",
       "title": "Theseus: rewrite review-verdict and review-gate status descriptions to lead with the decision and fit 140 characters"
     },
+    "theseus-review-verdict-body-redesign-20261110": {
+      "claim": null,
+      "needs": [
+        "theseus-review-format-release-a-20261110"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Theseus: render verdict-first review bodies with severity marks, counts and collapsed detail"
+    },
     "theseus-test-isolation-gaps-20261106": {
       "claim": null,
       "needs": [],
