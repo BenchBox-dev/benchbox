@@ -44,9 +44,6 @@ from benchbox.sql_compat.rules.execution_filter.clickhouse_write_primitives impo
     clickhouse_write_primitive_skip_reason,
 )
 from benchbox.sql_compat.rules.execution_filter.doris_write_primitives import doris_write_primitive_skip_reason
-from benchbox.sql_compat.rules.execution_filter.duckdb_write_primitives import (
-    duckdb_write_primitive_skip_reason,
-)
 from benchbox.sql_compat.rules.execution_filter.postgres_write_primitives import (
     POSTGRES_WRITE_PRIMITIVES_CATEGORY_SKIPS,
     POSTGRES_WRITE_PRIMITIVES_OPERATION_SKIPS,
@@ -377,11 +374,6 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
             effective_sql = platform_override_sql
         else:
             effective_sql = self._dialect_base_write_sql(operation, platform_key or platform_fallback_key)
-
-        if (platform_key or "").lower() == "duckdb" or (platform_fallback_key or "").lower() == "duckdb":
-            duckdb_skip_reason = duckdb_write_primitive_skip_reason(operation, effective_sql)
-            if duckdb_skip_reason is not None:
-                return None, (f"Operation '{operation.id}' is skipped on DuckDB: {duckdb_skip_reason}")
 
         if (empty_reason := self._check_staging_table_population(operation.write_sql, connection)) is not None:
             return None, f"Operation '{operation.id}' is skipped because {empty_reason}"

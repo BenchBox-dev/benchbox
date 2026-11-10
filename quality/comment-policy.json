@@ -31221,30 +31221,6 @@
       "count": 1
     },
     {
-      "path": "tests/unit/sql_compat/test_duckdb_write_primitives_gate.py",
-      "symbol": "",
-      "text": "# Copyright 2026 Joe Harris / BenchBox Project",
-      "kind": "notice",
-      "consumer": "COPYRIGHT.md",
-      "necessity": "The repository contribution rule in COPYRIGHT.md requires appropriate copyright headers. Retain this existing authored notice payload unchanged in a source header.",
-      "alternative": "Removing or replacing this payload would lose existing notice wording. A runtime docstring is unnecessary; an exact source comment retains the notice without carrying explanatory prose.",
-      "owner": "comment-cleanup-sql-compat",
-      "removal": "Remove or change only after the owner records the governing notice requirement and confirms that the exact existing notice may be changed.",
-      "count": 1
-    },
-    {
-      "path": "tests/unit/sql_compat/test_duckdb_write_primitives_gate.py",
-      "symbol": "",
-      "text": "# Licensed under the MIT License. See LICENSE file in the project root for details.",
-      "kind": "notice",
-      "consumer": "LICENSE",
-      "necessity": "Preserve the existing per-file MIT-license reference conservatively while individual-file notice obligations are adjudicated. LICENSE requires copyright and permission notices in distributed copies; no claim is made that this abbreviated reference is legally required.",
-      "alternative": "Removing or replacing this payload would lose existing notice wording. A runtime docstring is unnecessary; an exact source comment retains the notice without carrying explanatory prose.",
-      "owner": "comment-cleanup-sql-compat",
-      "removal": "Remove or change only after the owner records the governing notice requirement and confirms that the exact existing notice may be changed.",
-      "count": 1
-    },
-    {
       "path": "benchbox/core/tpcds/streams.py",
       "symbol": "TPCDSStreamManager._generate_single_stream",
       "text": "-- Query __expression____expression__",
