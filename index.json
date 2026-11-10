@@ -37153,15 +37153,10 @@
       "title": "Fork controller can merge after a hold is applied during its mergeability retry"
     },
     "sqlglot-delivery-arm-waits-for-daily-run-20261107": {
-      "claim": {
-        "expires_at": "2026-11-11T02:02:56Z",
-        "generation": "5ce755c8fe1f46ce9d0bb05b1ae41760",
-        "renewals": 0,
-        "worker": "omp:sqlglot-delivery-hardening-leader"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "SQLGlot delivery consumer arms its adoption PR only on its next daily run"
     },
     "sqlglot-delivery-dry-runs-miss-write-prerequisites-20261107": {
