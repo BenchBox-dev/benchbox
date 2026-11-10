@@ -5428,6 +5428,93 @@
       "start_head": "4fe6b3aac7b884bd170cdd3ef61697af5bffbeec",
       "terminal_outcome": "deliver"
     },
+    "plan-export-contract": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/plan-export-contract",
+      "integration_head": "a727c47272dff457e73ecc03ab8a00a47a637592",
+      "integration_log": [
+        {
+          "at": "2026-11-10T00:39:48Z",
+          "head": "a727c47272dff457e73ecc03ab8a00a47a637592",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-export-contract",
+      "lifecycle": "active",
+      "members": [
+        "export-text-plan-result-fails-loader-query-plan-raw-20261108",
+        "plan-privacy-detector-residual-limits-20261108",
+        "core-bundle-export-path-privacy-contract-20261108"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:db7d69917905292075fe62aa",
+      "owner_epoch": 0,
+      "owner_generation": "71f7ab3f448237769488ad99cbd1c20b",
+      "project_id": "benchbox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "core-bundle-export-path-privacy-contract-20261108": [
+          "benchbox/validation/bundle.py",
+          "scripts/site_inputs.py",
+          "scripts/site_inputs_parent.py",
+          "scripts/doc_contracts.py",
+          "make/site-inputs.mk",
+          "quality/doc-contracts.schema.json",
+          "docs/internal/doc-contracts.md",
+          "docs/internal/site-inputs*",
+          "tests/unit/scripts/test_site_inputs*",
+          "tests/unit/scripts/test_doc_contracts*",
+          "tests/unit/validation/*",
+          "tests/unit/workflows/test_site_inputs*",
+          ".github/workflows/site-inputs.yml",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "export-text-plan-result-fails-loader-query-plan-raw-20261108": [
+          "benchbox/core/results/loader.py",
+          "benchbox/core/results/query_execution.py",
+          "benchbox/core/results/exporter.py",
+          "benchbox/core/results/schema.py",
+          "benchbox/core/results/query_normalizer.py",
+          "benchbox/cli/commands/show_plan.py",
+          "benchbox/cli/commands/export.py",
+          "tests/unit/core/results/test_loader.py",
+          "tests/unit/core/results/test_query_execution_contract.py",
+          "tests/unit/core/results/test_dataframe_plan_bundle.py",
+          "tests/unit/core/results/test_export_*",
+          "tests/unit/cli/*export*",
+          "tests/unit/cli/*show_plan*",
+          "tests/integration/*export*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "plan-privacy-detector-residual-limits-20261108": [
+          "benchbox/validation/bundle.py",
+          "benchbox/core/results/anonymization.py",
+          "tests/unit/core/dataframe/test_local_path_detector.py",
+          "tests/unit/core/dataframe/test_plan_path_redaction.py",
+          "tests/unit/core/results/test_anonymization.py",
+          "tests/unit/core/results/test_plans_export_text_fields.py",
+          "tests/unit/cli/commands/test_publish_plans_boundary.py",
+          "tests/unit/validation/*",
+          "docs/*privacy*",
+          "docs/*anonymiz*",
+          "docs/*plan*",
+          "docs/*publish*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ]
+      },
+      "scope_hash": "8b787b6003f0a362ed475514e9da571d76bffbf8126e86f98fa3e7635f87bf41",
+      "start_head": "a727c47272dff457e73ecc03ab8a00a47a637592",
+      "terminal_outcome": "deliver"
+    },
     "plan-privacy": {
       "accepted_members": {
         "plan-path-detector-root-and-drive-coverage-20261108": "5b61b7af2125006d0e0584f8e1697ce13cdb565a",
