@@ -42,11 +42,21 @@ def test_the_workflow_runs_daily_and_on_demand_with_dry_run_on_by_default() -> N
     assert inputs["retry"]["default"] is False
 
 
-@pytest.mark.parametrize("name", ["prepare", "publish"])
+@pytest.mark.parametrize("name", ["readiness", "prepare", "publish"])
 def test_every_job_runs_only_in_the_main_repository_on_develop(name: str) -> None:
     condition = job(name)["if"]
     assert "github.repository == 'BenchBox-dev/BenchBox'" in condition
     assert "github.ref == 'refs/heads/develop'" in condition
+
+
+@pytest.mark.parametrize(
+    ("event", "expected"), [("schedule", True), ("workflow_dispatch", True), ("workflow_run", False)]
+)
+def test_app_readiness_runs_on_the_schedule_and_dispatch_never_on_completion_events(event: str, expected: bool) -> None:
+    from tests.unit.workflows.workflow_expressions import evaluate
+
+    context = {"github": {"repository": "BenchBox-dev/BenchBox", "ref": "refs/heads/develop", "event_name": event}}
+    assert bool(evaluate(job("readiness")["if"], context)) is expected
 
 
 def test_runs_are_serialized_and_queued_rather_than_cancelled() -> None:

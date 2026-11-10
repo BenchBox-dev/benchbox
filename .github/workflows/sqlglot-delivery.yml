@@ -28,7 +28,9 @@ env:
 jobs:
   readiness:
     name: Verify the delivery App without repository mutations
-    if: github.repository == 'BenchBox-dev/BenchBox' && github.ref == 'refs/heads/develop'
+    if: >-
+      github.repository == 'BenchBox-dev/BenchBox' && github.ref == 'refs/heads/develop' &&
+      github.event_name != 'workflow_run'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: {}
