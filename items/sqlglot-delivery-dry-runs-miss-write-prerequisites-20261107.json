@@ -9,7 +9,7 @@
     "implementation_dependencies": [],
     "member_id": "sqlglot-delivery-dry-runs-miss-write-prerequisites-20261107"
   },
-  "context": "Owner approved read-only authenticated probe rather than credential-free installation claims. Implementation is uncommitted in /Users/joe/Developer/BenchBox.wt-sqlglot-delivery-hardening--readiness; hold required verification under ordinary heavy admission. Fork half finished separately via fork #86.",
+  "context": "Owner approved read-only authenticated probe rather than credential-free installation claims. Implementation is uncommitted in /Users/joe/Developer/BenchBox.wt-sqlglot-delivery-hardening--readiness; hold required verification under ordinary heavy admission. Fork half finished separately via fork #86.\n\nPre-restart checkpoint 2026-11-09 for tractable 1.0.0 cutover:\n- batch_id: sqlglot-delivery-hardening\n- owner_generation: eb5908c4b75af82653113ca365246ada\n- worktree: /Users/joe/Developer/BenchBox.wt-sqlglot-delivery-hardening--readiness\n- branch: feat/sqlglot-delivery-hardening--sqlglot-delivery-dry-runs-miss-write-prerequisites-20261107\n- head SHA: b65307b83eada4e6f2b76d9e1e393a48970bf578\n- progress: isolated App readiness probe and test additions in working tree; static checks pass.\n- next step after restart: run member verification, commit, run batch-member-check, land into integration worktree.",
   "description": "Core SQLGlot delivery dry runs must validate the configured App credentials, installation and permitted repository access in a separate trusted preflight job. The prior dry run passed while the App was not installed; first enabled run 42326369414 failed at token mint (404) before mutations. Owner approved a read-only authenticated probe using App credentials on 2026-11-07: perform authentication and read-only API calls only; never expose the key or a token to upstream-influenced preparation or downloaded bundles. Kill switch off and dry-run modes may probe but never mutate. Fork checks are tracked separately in sqlglot-fork-readiness-prerequisites-20261107.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/actions/runs/42326369414",
@@ -46,6 +46,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "a105461ee045431d9a3ffc6f2d3a565b",
+      "session_id": "2f41579dd2194a049659596cdd9a4f3d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f",
+      "at": "2026-11-10T00:23:18Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5ee84e46bafe42b78c284435ed14782f",
       "session_id": "2f41579dd2194a049659596cdd9a4f3d"
     }
   ]
