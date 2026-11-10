@@ -31593,15 +31593,10 @@
       "title": "Remote close-out make wrapper executes make functions in values, so text from a PR must never reach its command line"
     },
     "remote-review-claude-fallback-20261019": {
-      "claim": {
-        "expires_at": "2026-11-11T00:24:05Z",
-        "generation": "a7d6ff0528584eefbf40be777ecfa369",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9223083bcc7846039c82e5d5"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Use an isolated Claude reviewer when Codex quota is exhausted"
     },
     "remove-alpha-backward-compatibility-surface": {
