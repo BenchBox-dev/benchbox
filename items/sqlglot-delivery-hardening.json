@@ -36,6 +36,15 @@
       "op": "update",
       "op_id": "8f0755142cfc4a33b45edba03014f18f",
       "session_id": "a8a6d64d910f4ed397b0d76fb1d51205"
+    },
+    {
+      "actor": "omp:sqlglot-delivery-hardening-leader",
+      "at": "2026-11-10T02:05:07Z",
+      "client": "mcp",
+      "generation": "3a8c6a571c7f4f86b6764fac775972df",
+      "op": "take",
+      "op_id": "3821455fb974433cb6180d8fb0df2bf6",
+      "session_id": "52e0e15affe748509111c57aa34d8575"
     }
   ]
 }
