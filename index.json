@@ -29237,9 +29237,9 @@
     },
     "perf-trino-presto-bulk-load-20261030": {
       "claim": {
-        "expires_at": "2026-11-11T03:12:37Z",
+        "expires_at": "2026-11-11T03:27:18Z",
         "generation": "a27d7c9ea2a34389b20042aa9f96e814",
-        "renewals": 0,
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a"
       },
       "needs": [
