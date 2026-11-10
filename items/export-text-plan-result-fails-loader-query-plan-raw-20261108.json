@@ -4,6 +4,11 @@
     "Fix the loader/query_execution handling so the row field is accepted or correctly mapped, with a regression test that fails before and passes after.",
     "CLI smoke: export --anonymize on a real text-plan result succeeds and find_public_path_leaks is empty on the output; older results still load."
   ],
+  "batch": {
+    "batch_id": "plan-export-contract2",
+    "implementation_dependencies": [],
+    "member_id": "export-text-plan-result-fails-loader-query-plan-raw-20261108"
+  },
   "context": "Found by the plan-privacy batch (PR #4054). Verification rubric: reproduce first; focused suites with -n 0; comment-policy and ruff; smoke recorded in the PR body; PR merged with green CI and passing oracle review. Guardrail: do not loosen the unknown-field check globally.\n\nBATCH DECISIONS (2026-11-09): lands FIRST. The loader (loader.py ~line 620) itself sets result['query_plan_raw'] and show_plan reads it, but the legacy-field contract in core/results/query_execution.py rejects it. Decide by evidence whether the contract should list it as a known field or the loader should map it, but do NOT loosen the unknown-field check for other names; an unknown-field regression test must stay. GUARDRAILS: stored fingerprints are never recomputed; never print leaked path values in diagnostics; do not widen the detector to every absolute path (owner decision 2026-11-08); fail-closed publish behavior stays; private non-anonymized exports unchanged; no hosted data deletion or history rewrite. Verification rubric: (1) reproduce with a failing test or script before editing; (2) focused suites pass via uv run -- python -m pytest -n 0; (3) make comment-policy-check and ruff on touched files; (4) the runtime smoke named in acceptance is recorded in the PR body; (5) one final batch PR merges with green CI and a passing oracle review.",
   "description": "benchbox export on a DataFrame text-plan result fails in the result loader with: Unknown legacy query-result fields: ['query_plan_raw']. The plan-privacy batch had to smoke the export sanitizer through anonymize_plans_payload directly because the CLI export path never reached it for text-plan results. Users cannot export or anonymize such results from the CLI.",
   "links": [
@@ -78,6 +83,14 @@
       "client": "omp-coding-agent",
       "op": "abort",
       "op_id": "8bbf09909d3f414ba64b5c079d378a01",
+      "session_id": "039807d800674f11b2d8d71dccd4e6ed"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:db7d69917905292075fe62aa",
+      "at": "2026-11-10T01:45:59Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a1f2a739bda84ae99207d9656a3be522",
       "session_id": "039807d800674f11b2d8d71dccd4e6ed"
     }
   ]
