@@ -39608,7 +39608,9 @@
         "theseus-review-verdict-body-redesign-20261110",
         "theseus-review-thread-ids-footer-20261110",
         "benchbox-lock-theseus-review-format-release-a-20261110",
-        "benchbox-review-format-dual-read-20261110"
+        "benchbox-review-format-dual-read-20261110",
+        "review-gate-pending-while-waiting-decision-20261110",
+        "theseus-review-minimize-superseded-20261110"
       ],
       "priority": "high",
       "status": "open",

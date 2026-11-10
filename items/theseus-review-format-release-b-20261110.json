@@ -6,7 +6,7 @@
     "If main contains merged changes outside the release-B items that alter goldens or body output, the owner's include/defer decision is recorded here.",
     "Recorded here: release commit, tag, hashes and the exact BenchBox and Theseus lock values."
   ],
-  "context": "Part of theseus-review-output-format-20261110.",
+  "context": "Part of theseus-review-output-format-20261110.\n\n2026-11-11: release B also includes the gate-pending C1 change (owner decision on review-gate-pending-while-waiting-decision-20261110).",
   "description": "Cut the next unused Theseus patch release after release A, once the verdict-body and thread-id items have merged AND theseus-review-minimize-superseded-20261110 is either done or dropped (on probe NO-GO). Same release procedure as release A.\nDecision gate: release B changes the body and thread writer. It may be published only after (1) release A is published and BenchBox is locked to it (one release of reader overlap), and (2) benchbox-review-format-dual-read-20261110 has merged, because BenchBox's merge digest otherwise fails open on overridden High findings.\nGuardrails: release PR via hosted SHIP + green checks (independent review if it touches workflows, policy or lock); no owner-only actions; no live model calls.",
   "links": [
     "https://github.com/joeharris76/theseus/releases"
@@ -26,6 +26,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "7beb1ffadc464b7bb276ab68eb01a2a5",
+      "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a",
+      "at": "2026-11-10T23:32:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d3f7708165ed4de0ba8b5fbb54132fe5",
       "session_id": "977a65f4969143f4981bb9d49ff293b0"
     }
   ]
