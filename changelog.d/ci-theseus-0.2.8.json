@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "Promote the reviewed Theseus 0.2.8 release and keep the workflow callers pinned to its source commit. Multi-base policy activation remains a separate change so the previous reviewer can validate this promotion."}
