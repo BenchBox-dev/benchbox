@@ -39637,7 +39637,8 @@
     "theseus-review-structured-findings-20261110": {
       "claim": null,
       "needs": [
-        "theseus-review-format-release-b-20261110"
+        "theseus-review-format-release-b-20261110",
+        "theseus-trusted-candidate-evaluator-20261109"
       ],
       "priority": "low",
       "status": "open",
