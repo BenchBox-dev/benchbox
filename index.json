@@ -5593,7 +5593,7 @@
         }
       },
       "integration_branch": "feat/plan-export-contract2",
-      "integration_head": "bec7c413ebfb85826c7ef633daa747ecaecc5c05",
+      "integration_head": "1065913f0daf0bb2218d4706451261317f997327",
       "integration_log": [
         {
           "at": "2026-11-10T01:45:55Z",
@@ -5644,6 +5644,21 @@
             "plan-privacy-detector-residual-limits-20261108"
           ],
           "seq": 4
+        },
+        {
+          "at": "2026-11-10T03:13:49Z",
+          "changed_files": [
+            "tests/unit/core/dataframe/test_local_path_detector.py",
+            "tests/unit/core/results/test_plans_export_text_fields.py"
+          ],
+          "head": "1065913f0daf0bb2218d4706451261317f997327",
+          "kind": "fix",
+          "op_id": "987caeccb604402a85f191eff0e0f6ea",
+          "previous_head": "bec7c413ebfb85826c7ef633daa747ecaecc5c05",
+          "requires_acceptance": [
+            "plan-privacy-detector-residual-limits-20261108"
+          ],
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-export-contract2",
