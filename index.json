@@ -23807,15 +23807,10 @@
       "title": "Linux machine stop tests race under xdist because every test uses machine name m"
     },
     "heavy-choke-points-50-run-acceptance-20261108": {
-      "claim": {
-        "expires_at": "2026-11-11T04:15:47Z",
-        "generation": "e947e39f57074ade8444987c20a27eaf",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Run the 50-repetition stability check for tests/unit/test_heavy_choke_points.py that was skipped when its flake item closed"
     },
     "heavy-guard-admission-20261030": {
