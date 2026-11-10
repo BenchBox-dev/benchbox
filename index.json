@@ -39530,6 +39530,13 @@
       "status": "open",
       "title": "Theseus: read verdict and finding identity from markers so the review prose can change"
     },
+    "theseus-review-not-reviewed-output-20261110": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Theseus: replace raw provider errors in not-reviewed output with human reasons, posted once per head and cause"
+    },
     "theseus-review-status-descriptions-20261110": {
       "claim": null,
       "needs": [],

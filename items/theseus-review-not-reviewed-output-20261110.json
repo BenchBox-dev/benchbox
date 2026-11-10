@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Every absence kind in the code is mapped to a reason string; a test fails if a new absence kind has no mapping.",
+    "Given real captured payloads (429 Cloud Code Assist JSON, gateway unreachable, incomplete read), the posted body and status contain no provider payload text and no string matching common key patterns (sk-, Bearer, tskey-).",
+    "Two consecutive not-reviewed results with the same cause on the same head post one review, not two; a changed cause posts again (tests).",
+    "Each cause renders its specific next step (table-driven test).",
+    "The body still starts with the current `### review-verdict: pending for` heading in this release (test), so BenchBox and gate readers are unaffected.",
+    "Merged to Theseus main with hosted SHIP and green required checks on the final head."
+  ],
+  "context": "Part of theseus-review-output-format-20261110. Ships in release A.",
+  "description": "When no reviewer produces a verdict, Theseus posts a 'Reviewers not available' review that includes truncated raw provider JSON (public leak), repeats on every retry of the same head (BenchBox #4067 got two identical ones), and gives no next step.\nChange: map every absence kind to a short human reason (provider quota, gateway unreachable, did not read every changed hunk, invalid answer, timeout, too large, run artifacts failed validation, edited review); raw provider text goes only to the run log and uploaded artifacts. Skip posting when the previous bot post for the same head has the same cause set. The next-step sentence depends on the cause: transient causes say the hourly sweep retries and a maintainer can comment `/review`; oversize says split the PR or ask an owner for a stand-in; edited review says push a new head. Use the proposal's 'Not reviewed' layout (section 8.3) for the body only if the verdict-body redesign has not shipped yet: in release A keep the current heading `### review-verdict: pending for `<sha>`` so all existing readers keep working, and change only the content beneath it.\nGuardrails: the pending verdict status and the gate's decision are unchanged; the hourly retry/backoff and owner reset behaviour are unchanged (Theseus #55 semantics); no secret or token text can reach GitHub (test with payloads containing key-like strings); no live model calls; Theseus merge rule (hosted SHIP + CI).",
+  "links": [
+    "~/.omp/agent/sessions/-Developer-BenchBox/2026-11-02T02-04-38-450Z_01a19a00-60b2-70a6-b56d-6f666415a725/local/review-comment-format-proposal.md (sections 5.2, 7, 8.3 Not reviewed)",
+    "https://github.com/BenchBox-dev/benchbox/pull/4067"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a",
+      "at": "2026-11-10T15:37:17Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9de6632b1ab24f77b9e28281c390e7fa",
+      "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    }
+  ]
+}
