@@ -41072,9 +41072,9 @@
     },
     "translation-runtime-unrecorded-for-unlogged-rewrites": {
       "claim": {
-        "expires_at": "2026-11-11T02:10:07Z",
-        "generation": "e9f0aa54409b4014b9cc6421b7266814",
-        "renewals": 0,
+        "expires_at": "2026-11-11T03:06:48Z",
+        "generation": "5b69406725c746058e74e96ae787d6ee",
+        "renewals": 1,
         "worker": "omp:sqlglot-delivery-hardening-leader"
       },
       "needs": [],
