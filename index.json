@@ -39530,6 +39530,17 @@
       "status": "done",
       "title": "Theseus v0.1.7: hunk coverage, git-built diffs, rename-aware executed-surface promotions, capacity sizing, compaction fail-closed, preflight"
     },
+    "theseus-review-format-release-a-20261110": {
+      "claim": null,
+      "needs": [
+        "theseus-review-markers-dual-read-20261110",
+        "theseus-review-status-descriptions-20261110",
+        "theseus-review-not-reviewed-output-20261110"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Publish Theseus review-format release A (marker dual-read, status descriptions, not-reviewed output)"
+    },
     "theseus-review-markers-dual-read-20261110": {
       "claim": null,
       "needs": [],

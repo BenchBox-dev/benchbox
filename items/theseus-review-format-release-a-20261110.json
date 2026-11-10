@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Release PR merged with hosted SHIP and green checks; tag and GitHub release exist.",
+    "Two clean-clone builds are byte-identical; downloaded assets pass `shasum -c SHA256SUMS` and match the local build.",
+    "Verdict and thread goldens on the release commit are identical to v0.2.8's except where status descriptions or not-reviewed content changed (diff reviewed and summarised here).",
+    "Recorded here: release commit, tag, wheel/sdist sha256, SHA256SUMS sha256, and the exact BenchBox lock field values (version, source_commit, workflow_sha, source_sha256, delta_sha256 from BenchBox's then-current lock, artifact sha256 and URLs)."
+  ],
+  "context": "Part of theseus-review-output-format-20261110.",
+  "description": "Cut the next unused Theseus patch release (expected v0.2.9; confirm with `gh release list` and `git ls-remote --tags`) from main once all three release-A items have merged. Follow the repository's release procedure exactly as v0.2.8 did (release PR #57: pyproject.toml, uv.lock, PROVENANCE.md frozen source hash; annotated tag; wheel, retained wheel, sdist, SHA256SUMS).\nRelease A must NOT change the verdict body or thread format (the writer change is release B); it gives consumers one release in which readers accept both formats.\nGuardrails: release PR goes through hosted SHIP + green required checks (independent review only if it touches workflows, policy or lock); no owner-only actions; no live model calls.",
+  "links": [
+    "https://github.com/joeharris76/theseus/pull/57",
+    "https://github.com/joeharris76/theseus/releases"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a",
+      "at": "2026-11-10T15:38:07Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "61e0b73adb8246e2ad91507aba611c10",
+      "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    }
+  ]
+}
