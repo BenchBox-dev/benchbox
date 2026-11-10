@@ -1,0 +1,29 @@
+{
+  "acceptance": [
+    "Every BenchBox reader of Theseus review prose is inventoried (rg for the verdict heading, `Decision: **`, `**High**`/`**<Severity>**`, `review-verdict`, `review-defect`, `review-finding`, and the bot logins across scripts/, _project/scripts/, tools/, .github/) and each one is either migrated or recorded as not affected, in the PR body.",
+    "soundness_merge_digest.py classifies decision and open-defect severities identically for (a) a current-format body, (b) a redesigned-format body, (c) a historical oracle-verdict body; tests use fixtures copied from real bodies (current: BenchBox #4062 and Theseus #45; redesigned: built from the proposal mockups) and fail if any of the three is misread.",
+    "An overridden High finding is classified as an override for both thread formats; a new test fails on a bot thread whose severity cannot be recognised in either format, rather than silently treating it as Low or not-an-override.",
+    "check_comment_cleanup_scope.py accepts a reviewed head whose body uses either the heading or the v2 hidden marker; a body with neither still fails closed (test).",
+    "Where the protocol record is present it is the source of decision and severities; scraping is the fallback only (test shows a record-bearing body whose prose disagrees is classified by the record).",
+    "docs/internal/review-v2.md describes both formats and states the protocol record and hidden markers are the contract, not the prose.",
+    "PR merged to develop with hosted review-verdict SHIP on the final head, all required checks green, via make pr-arm; merge SHA recorded here."
+  ],
+  "context": "Part of theseus-review-output-format-20261110. Must merge before benchbox-lock-theseus-review-format-release-b-20261110 (that promotion installs the new writer). Independent of the v0.2.8 lock (#4062) and the adoption PR, but rebase on develop after they merge if they land first.",
+  "description": "Theseus will redesign its verdict review body and inline finding threads (verdict-first headline, severity marks, visible finding ids; see theseus-review-output-format-20261110). BenchBox scrapes the current prose in two places, and one of them fails open:\n- C1/C3/C4/C5 in _project/scripts/soundness_merge_digest.py: verdict heading regex, `^Decision: **…**` line, bold open-defect section titles with `^- **<Severity>**` bullets, and thread bodies that must START with `**<Severity>**: `. If the thread title line changes first, overridden High findings silently stop being classified as overrides (fail-open).\n- C2 in scripts/check_comment_cleanup_scope.py:1592: `### review-verdict: ([a-z]+) for `<40hex>``.\nThis item makes every BenchBox reader accept both formats BEFORE any Theseus release writes the new one. The digest reads merged history permanently, so old-format readers stay forever: add the new format, never swap.\nPreferred design: the digest already imports Theseus `protocol.decode_marker` (soundness_merge_digest.py ~:613, ~:794); read the decision and each open defect's severity from the `<!-- review-protocol: v1 … -->` record and use markdown scraping only as the fallback for history that lacks it. New-format tokens to accept: headline `### <mark> <DECISION> · …` where DECISION ∈ SHIP | SHIP WITH FIXES | DO NOT SHIP | NOT REVIEWED YET | NOT REVIEWED | REFUSED; hidden marker `<!-- review-verdict: v2 <state> <40hex> -->`; thread first line `<mark> **<Severity>** · D<n> · <title>` (mark ∈ 🔴 🟠 🟡 🔵 ⚪). Severity words are unchanged (Critical, High, Medium, Low).\nGuardrails: BenchBox AGENTS.md (worktree from origin/develop via make worktree-create, make agent-write-preflight, tests only via make heavy-run after make heavy-status, comment-policy 0, explicit staging, identity Joe Harris, no agent attribution, changelog.d fragment if user-facing, make pr-preflight, make pr-open, hosted SHIP + CI, make pr-arm). These are soundness paths: resolve every review thread on its merits. No live model calls. Do not touch .github/theseus-lock.json or the review callers (other PRs own them).",
+  "links": [
+    "~/.omp/agent/sessions/-Developer-BenchBox/2026-11-02T02-04-38-450Z_01a19a00-60b2-70a6-b56d-6f666415a725/local/review-comment-format-proposal.md (sections 6.2, 8.3, 8.4, 10)",
+    "_project/scripts/soundness_merge_digest.py",
+    "scripts/check_comment_cleanup_scope.py",
+    "docs/internal/review-v2.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a",
+      "at": "2026-11-10T15:36:31Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f753391626974c20a45bca6597ac2766",
+      "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    }
+  ]
+}
