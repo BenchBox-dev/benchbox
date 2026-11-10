@@ -44,6 +44,7 @@ jobs:
           case "$IMAGE" in
             clickhouse) compose=docker/clickhouse/docker-compose.yml; service=clickhouse ;;
             trino) compose=docker/trino/docker-compose.yml; service=trino ;;
+            presto) compose=docker/presto/docker-compose.yml; service=presto ;;
             cedardb) compose=docker/cedardb/docker-compose.yml; service=cedardb ;;
             postgres)
               compose=docker/postgresql/docker-compose.yml

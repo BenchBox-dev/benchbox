@@ -1048,6 +1048,18 @@ def test_presto_compose_mounts_jvm_config_with_bounded_heap():
     assert heap_bytes < docker_assets.parse_memory_bytes(service["mem_limit"])
 
 
+@pytest.mark.parametrize(("platform", "header"), [("presto", "X-Presto-User"), ("trino", "X-Trino-User")])
+def test_presto_trino_compose_healthcheck_waits_for_a_query_answer(platform, header):
+    spec = docker_assets.docker_platform_spec(platform)
+    compose = yaml.safe_load(spec.compose_files[0].read_text(encoding="utf-8"))
+    healthcheck = compose["services"][platform]["healthcheck"]
+    shell, script = healthcheck["test"]
+    assert shell == "CMD-SHELL"
+    assert "/v1/statement" in script and header in script and '"data":[[1]]' in script
+    assert "/v1/info" not in script
+    assert healthcheck["timeout"] == "25s"
+
+
 @pytest.mark.parametrize("platform", ["presto", "trino"])
 def test_presto_trino_declare_six_gib_container_limit(platform):
     spec = docker_assets.docker_platform_spec(platform)
