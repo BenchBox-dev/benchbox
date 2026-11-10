@@ -39619,7 +39619,9 @@
     "theseus-review-output-format-20261110": {
       "claim": null,
       "needs": [
-        "benchbox-lock-theseus-review-format-release-b-20261110"
+        "benchbox-lock-theseus-review-format-release-b-20261110",
+        "theseus-lock-self-review-format-release-b-20261110",
+        "theseus-governance-docs-owner-merge-rule-20261110"
       ],
       "priority": "high",
       "status": "open",
