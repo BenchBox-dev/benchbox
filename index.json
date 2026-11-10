@@ -30637,6 +30637,13 @@
       "status": "done",
       "title": "Address pre-existing issues surfaced by complexity batch 8-10 review"
     },
+    "preflight-runs-docs-inventory-and-project-reference-guards-20261110": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Make pr-preflight catch docs-inventory and project-reference drift that CI rejects"
+    },
     "preflight-targets-non-python-mapping-20261101": {
       "claim": null,
       "needs": [],

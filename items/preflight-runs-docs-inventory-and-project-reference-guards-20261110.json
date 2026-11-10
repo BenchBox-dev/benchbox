@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "On a branch that adds a test containing a non-existent '_project/scripts/<x>.json' sample path, make pr-preflight fails and names the project-reference guard.",
+    "On a branch that adds 'docs/guide.md' to a test or code file without regenerating the inventory, make pr-preflight fails and names docs-reference-inventory-check.",
+    "A change that touches neither code, tests nor docs does not pay for these checks, and pr-preflight wall time on a typical code PR grows by under 10 seconds.",
+    "uv run -- pytest -q tests/unit/scripts/test_preflight_targets.py passes, with new cases for the selection, if that route is chosen.",
+    "Decision gate: making the inventory scanner treat '\\.' as '.' would change its semantics for every file, so choose that only if the owner agrees; the default is to document the pitfall."
+  ],
+  "description": "Problem. On #4039, make pr-preflight passed at a head that CI then failed twice.\n(1) tests/unit/scripts/test_doc_reference_inventory.py::test_committed_inventory_is_current_and_fully_dispositioned failed. A test added the sample path docs/guide.md, and code named docs/internal/dev-loop-property-ledger\\.md as a regex-escaped literal. The inventory scanner records both as references (the escaped one as unresolved), so quality/docs-reference-inventory.json went stale. A plain literal resolves and needs no inventory change.\n(2) The lint job's guard-project-references (_project/scripts/check_project_references.py) failed on a new test sample path, _project/scripts/data/table.json, which does not exist.\n_project/scripts/preflight_targets.py selects neither test for the changed paths, and pr-preflight does not run either guard. Both are only seen after push.\n\nChange. Have pr-preflight run make docs-reference-inventory-check and _project/scripts/check_project_references.py (both take a few seconds) whenever a changed path is code, a test or a doc. Alternatively, have preflight_targets select test_doc_reference_inventory.py and test_check_project_references.py for those paths. Add one line to the inventory's documentation noting that a regex-escaped path in code is recorded as an unresolved reference.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read cited files on current origin/develop first.",
+  "links": [
+    "_project/scripts/preflight_targets.py",
+    "scripts/doc_reference_inventory.py",
+    "_project/scripts/check_project_references.py",
+    "make/pr-landing.mk",
+    "https://github.com/BenchBox-dev/benchbox/pull/4039"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af45b75c1ad8820899a19497",
+      "at": "2026-11-10T22:41:07Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "bb68289fa3194c37bec2677b1b61e617",
+      "session_id": "32045bbba1554b198973ff9701611e85"
+    }
+  ]
+}
