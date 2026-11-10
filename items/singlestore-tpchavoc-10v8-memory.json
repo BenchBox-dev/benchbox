@@ -4,7 +4,7 @@
     "Fix the rewrite or the load step (e.g. ANALYZE) so 10_v8 at SF0.01 stays under 1 GB across repeated runs",
     "Pin the SingleStore dev image to a digest"
   ],
-  "context": "2026-11-05: release-v2 run 41949185392 (v0.5.0rc5, commit 81cbcb2034) attempt 1 failed only singlestore x tpchavoc SF0.01, query 10_v8 error 1712 (4 executions, about 14.2 GB node memory). Owner pre-approved one recorded re-run of the olap shard for this failure; attempt 2 started at about 04:40 UTC. A second failure means pruning singlestore x tpchavoc from the release gate.",
+  "context": "2026-11-05: release-v2 run 41949185392 (v0.5.0rc5, commit 81cbcb2034) attempt 1 failed only singlestore x tpchavoc SF0.01, query 10_v8 error 1712 (4 executions, about 14.2 GB node memory). Owner pre-approved one recorded re-run of the olap shard for this failure; attempt 2 started at about 04:40 UTC. A second failure means pruning singlestore x tpchavoc from the release gate.\n\nTrunk UAT run https://github.com/BenchBox-dev/BenchBox/actions/runs/42718296767 at develop 52615914002012e24405b77b830dc98d35ba50e9 (attempt 1): 709/710 cells passed; the only failure was pandas-df write_primitives SF1 (segfault, unrelated). SingleStore: 19/19 selected cells passed, including tpchavoc SF0.01, after OPTIMIZE TABLE ... FLUSH before ANALYZE cleared AUTOSTATS_OUTDATED and removed the Q5 cross join (#4069). Remaining acceptance: repeated-run memory evidence for 10_v8 and pinning the dev image to a digest.",
   "description": "Release UAT stage 3 (olap shard) intermittently fails singlestore x tpchavoc SF0.01 on query 10_v8 with error 1712: about 12.6 GB of query-execution memory against about 0.5 GB of table memory. The exists_to_derived_join rewrite (dialect_compat.py SINGLESTORE_EXISTS_JOIN_VARIANT_IDS) did not hold: on the same source (7eba31ea4e), release-v2 run 41709904857 passed in 199 s, and run 41738182507 failed all 4 executions. Failures were also seen in release UAT dry runs 2 and 5. Suspected causes: plan nondeterminism without table statistics (the adapter never runs ANALYZE after load), or drift in the unpinned singlestoredb-dev:latest image (docker/singlestore/docker-compose.yml:3).",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/actions/runs/41738182507",
@@ -26,6 +26,14 @@
       "op": "update",
       "op_id": "b61b70096ef643ac97cdfa40e4ab0f91",
       "session_id": "7da446616e5349658579dfc9c4288973"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7bc97e5b905b990114418f4a",
+      "at": "2026-11-10T01:54:39Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8eb0e04e846f4c819093043f6aba5f3d",
+      "session_id": "9c850cdf96994544b99810e1605fa398"
     }
   ]
 }
