@@ -9,6 +9,8 @@ from benchbox.platforms.presto import PrestoAdapter
 from benchbox.platforms.presto_trino_bulk import (
     STAGE_DIR_NAME,
     BulkLoadSettings,
+    _external_parquet_type,
+    _parquet_projection,
     _table_properties,
     _text_projection,
     bulk_load_table,
@@ -245,6 +247,12 @@ class TestBulkLoadTable:
         expression = _text_projection("name", "varchar(25)", "")
         assert expression.startswith('CASE WHEN length("name") > 25 THEN CAST(fail(')
         assert expression.endswith('ELSE "name" END')
+
+    def test_parquet_reads_bounded_varchar_unbounded_and_checks_the_length(self):
+        assert _external_parquet_type("varchar(25)") == "varchar"
+        assert _external_parquet_type("integer") == "integer"
+        assert _parquet_projection("name", "varchar(25)").startswith('CASE WHEN length("name") > 25 THEN CAST(fail(')
+        assert _parquet_projection("id", "integer") == '"id"'
 
     def test_text_projection_keeps_unbounded_varchar_raw(self):
         assert _text_projection("comment", "varchar", "") == '"comment"'

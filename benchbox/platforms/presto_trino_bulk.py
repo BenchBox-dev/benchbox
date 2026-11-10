@@ -148,15 +148,28 @@ def _sql_text(value: str) -> str:
     return "'" + value.replace("'", "''") + "'"
 
 
+def _bounded_varchar_projection(name: str, type_name: str) -> str | None:
+    limit = _varchar_limit(type_name) if base_type(type_name) == "varchar" else None
+    if limit is None:
+        return None
+    column = _quote(name)
+    message = _sql_text(f"value longer than {limit} characters for {type_name} column {name}")
+    return f"CASE WHEN length({column}) > {limit} THEN CAST(fail({message}) AS varchar) ELSE {column} END"
+
+
+def _external_parquet_type(type_name: str) -> str:
+    return "varchar" if _bounded_varchar_projection("c", type_name) is not None else type_name
+
+
+def _parquet_projection(name: str, type_name: str) -> str:
+    return _bounded_varchar_projection(name, type_name) or _quote(name)
+
+
 def _text_projection(name: str, type_name: str, null_token: str | None) -> str:
     column = _quote(name)
     kind = base_type(type_name)
     if kind == "varchar":
-        limit = _varchar_limit(type_name)
-        if limit is None:
-            return column
-        message = _sql_text(f"value longer than {limit} characters for {type_name} column {name}")
-        return f"CASE WHEN length({column}) > {limit} THEN CAST(fail({message}) AS varchar) ELSE {column} END"
+        return _bounded_varchar_projection(name, type_name) or column
     trimmed = f"trim({column})"
     is_null = f"{trimmed} = {_sql_text(null_token or '')} OR lower({trimmed}) = 'null'"
     if kind == "boolean":
@@ -224,7 +237,7 @@ def bulk_load_table(
         _run(cursor, f"CREATE SCHEMA IF NOT EXISTS {settings.source_catalog}.{STAGE_SCHEMA}")
         _run(cursor, f"DROP TABLE IF EXISTS {qualified_ext}")
         is_parquet = get_data_extension(staged[0]) == ".parquet"
-        external_types = [type_name if is_parquet else "varchar" for _, type_name in columns]
+        external_types = [_external_parquet_type(type_name) if is_parquet else "varchar" for _, type_name in columns]
         column_sql = ", ".join(f"{_quote(name)} {kind}" for (name, _), kind in zip(columns, external_types))
         _run(
             cursor,
@@ -239,7 +252,7 @@ def bulk_load_table(
                 "it into the server container) and the table's file format must match the staged files."
             )
         if is_parquet:
-            projection = "*"
+            projection = ", ".join(_parquet_projection(name, type_name) for name, type_name in columns)
         else:
             null_token = (dialect or default_dialect(staged[0])).null_marker
             projection = ", ".join(_text_projection(name, type_name, null_token) for name, type_name in columns)

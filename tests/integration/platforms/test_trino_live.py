@@ -132,7 +132,7 @@ class TestLiveTrinoBulkLoad:
 
         benchmark = SmokeBenchmark(
             name="SmokeBenchmark",
-            create_sql="CREATE TABLE trino_bad_tbl (id INT, value VARCHAR(3))",
+            create_sql="CREATE TABLE trino_bad_tbl (id INT, value VARCHAR(8))",
             tables={"trino_bad_tbl": csv_file},
         )
         adapter = TrinoAdapter(
@@ -148,7 +148,7 @@ class TestLiveTrinoBulkLoad:
         cursor = connection.cursor()
         try:
             cursor.execute("DROP TABLE IF EXISTS memory.default.trino_bad_tbl")
-            cursor.execute("CREATE TABLE memory.default.trino_bad_tbl (id INT, value VARCHAR(3))")
+            cursor.execute("CREATE TABLE memory.default.trino_bad_tbl (id INT, value VARCHAR(8))")
             stats, _, _ = adapter.load_data(benchmark, connection, test_dir)
             assert stats.get("trino_bad_tbl") == 0
             cursor.execute("SELECT count(*) FROM memory.default.trino_bad_tbl WHERE id IS NULL")
