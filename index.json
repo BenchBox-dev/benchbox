@@ -29223,6 +29223,13 @@
       "status": "open",
       "title": "Replace VALUES-literal loading for Trino, Presto, Starburst"
     },
+    "perf-trino-presto-hive-target-sf1-20261110": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Trino/Presto SF>=1 bulk load memory connector limits and Hive target catalog"
+    },
     "performance-regression-detection-system": {
       "claim": null,
       "needs": [],

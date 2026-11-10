@@ -1,0 +1,13 @@
+{
+  "description": "Trino memory connector defaults to 128 MB per node, which prevents loading scale factors >= 1 into memory catalog without increasing memory.max-data-per-node or targeting a persistent Hive/Iceberg catalog. Verify external table load directly into a persistent Hive catalog target at SF>=1.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a",
+      "at": "2026-11-10T02:54:05Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b92e4343dae743c7b9a7ae6bcc41ce98",
+      "session_id": "248466dc3ce04a7c8f4c76cdbd04176f"
+    }
+  ]
+}
