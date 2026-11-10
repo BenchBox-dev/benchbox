@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Lock values independently recomputed and matching the release record; both wheel URLs hash to the recorded sha256.",
+    "Status-text consumer inventory recorded in the PR body (none, or migrated with tests).",
+    "Promotion and workflow contract tests pass via make heavy-run; comment-policy 0; make pr-preflight passes.",
+    "Merged to develop with hosted SHIP and green required checks; merge SHA recorded here.",
+    "After merge, the first BenchBox PR reviewed under release A shows the new status descriptions (link recorded)."
+  ],
+  "context": "Part of theseus-review-output-format-20261110.",
+  "description": "Lock-only promotion of BenchBox to Theseus release A, following the existing promotion procedure (as for v0.2.8: .github/theseus-lock.json version, source_commit, workflow_sha, source_sha256, delta_sha256 from the then-current lock, artifact sha256 and both URLs; the same SHA in `uses:` and `with.theseus_ref` of .github/workflows/review-gate.yml and review-verdict.yml; changelog fragment).\nStart only after the v0.2.8 lock (#4062) and the adoption PR (benchbox-adopt-theseus-v025-review-guidance-20261107) have merged, so promotions do not conflict.\nBefore promoting, confirm BenchBox does not parse any review-verdict or review-gate status description text that release A changed (rg for the old strings across scripts/, _project/scripts/, tools/, .github/); if one does, migrate it in this PR with tests.\nGuardrails: BenchBox AGENTS.md write workflow; recompute and verify every lock value independently (download both wheels and hash them); never weaken a required check; hosted SHIP on the final head; arm via make pr-arm; no live model calls.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4062",
+    ".github/theseus-lock.json"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a",
+      "at": "2026-11-10T15:38:41Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "48f8bfe7d79341de944e75e63598c368",
+      "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    }
+  ]
+}

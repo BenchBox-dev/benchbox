@@ -12662,6 +12662,16 @@
       "status": "done",
       "title": "Implement comprehensive BenchBox light/dark theming across public site and Results Explorer"
     },
+    "benchbox-lock-theseus-review-format-release-a-20261110": {
+      "claim": null,
+      "needs": [
+        "theseus-review-format-release-a-20261110",
+        "benchbox-adopt-theseus-v025-review-guidance-20261107"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "BenchBox: promote the Theseus lock to review-format release A"
+    },
     "benchbox-mcp-server-implementation": {
       "claim": null,
       "needs": [],
