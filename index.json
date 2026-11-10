@@ -9511,10 +9511,10 @@
     },
     "agent-instruction-audit-git-identity-return-type": {
       "claim": {
-        "expires_at": "2026-10-20T00:17:22Z",
-        "generation": "5184f6c408a2443da7915cc0b14e4ba5",
+        "expires_at": "2026-11-11T00:23:25Z",
+        "generation": "a32c8253aca64b29a05d3e640f12b2f5",
         "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6e21d202a3cbd56690913269"
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9223083bcc7846039c82e5d5"
       },
       "needs": [],
       "priority": "low",
