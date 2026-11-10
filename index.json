@@ -7838,7 +7838,7 @@
         }
       },
       "integration_branch": "feat/server-engine-bulk-load-3",
-      "integration_head": "2f04567be3162faf857f2bb8fbd42ab8c16f22ef",
+      "integration_head": "0f1f3fe3e358b885ab2e592dafedc57d90210570",
       "integration_log": [
         {
           "at": "2026-11-10T01:41:43Z",
@@ -7991,6 +7991,19 @@
             "release-uat-presto-trino-unreachable-20261030"
           ],
           "seq": 8
+        },
+        {
+          "at": "2026-11-10T15:15:05Z",
+          "changed_files": [
+            "benchbox/platforms/clickhouse/metadata.py",
+            "tests/unit/platforms/test_clickhouse_deployment_mode.py"
+          ],
+          "head": "0f1f3fe3e358b885ab2e592dafedc57d90210570",
+          "kind": "fix",
+          "op_id": "9e7877ca477b4672b630a91b6c0e0b9d",
+          "previous_head": "2f04567be3162faf857f2bb8fbd42ab8c16f22ef",
+          "requires_acceptance": [],
+          "seq": 9
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-server-engine-bulk-load-3",
