@@ -35024,7 +35024,7 @@
         "rv2r-07-oracle-pinned-dependency"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "Let PRs into release/X.Y.x branches get Theseus review and gating, and run trunk there"
     },
     "rx-ux-00-phase0-contract-decisions": {
