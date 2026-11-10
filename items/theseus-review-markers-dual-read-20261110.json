@@ -8,7 +8,7 @@
     "Marker grammar doc page exists (review-protocol v1, review-verdict v2, review-unavailable v1, review-defect, review-finding, review-local-record) and is linked from docs/hosted-workflows.md and docs/consumer-policy.md.",
     "Merged to Theseus main with hosted SHIP and green required checks on the final head, plus an independent review verdict SHIP on that exact head (reviewer, head, verdict recorded here)."
   ],
-  "context": "Part of theseus-review-output-format-20261110. Ships in Theseus review-format release A (theseus-review-format-release-a-20261110). Line numbers are from theseus main 360cead (v0.2.8); re-read before editing.",
+  "context": "Part of theseus-review-output-format-20261110. Ships in Theseus review-format release A (theseus-review-format-release-a-20261110). Line numbers are from theseus main 360cead (v0.2.8); re-read before editing.\n\n2026-11-10 coordinator decision: acceptance 'goldens unchanged' is amended. The dispute prompt now carries the bare finding title instead of the decorated first line, so only the two strings in tests/fixtures/review_golden/dispute_round.json change (hand-edited, no REVIEW_GOLDEN_UPDATE); the other 19 goldens stay byte-identical.",
   "description": "Theseus's own gate and dedup parse review prose (contracts from the format audit, at theseus main 360cead):\n- T2 review_check.py (~:20-23, :89-90, :138-146): a SHIP is receipt-backed only if the body STARTS with `### review-verdict: <state> for `<40hex>``.\n- T5 dedup.py (~:13, :30, :46) and cli.py (~:299): thread first line must match `^**<Severity>**: <title>$`; that raw first line (300 chars) is passed to the reviewer as the dispute title (render.py ~:341).\nThis item adds dual-read so the next release can change the writer (theseus-review-verdict-body-redesign-20261110, theseus-review-thread-ids-footer-20261110):\n1. Define and accept a hidden verdict marker `<!-- review-verdict: v2 <state> <40hex> -->`: exactly one, anywhere in the body; the heading form stays accepted. A body with both must agree on state and SHA, else not receipt-backed. Model text cannot forge it (verdict.py already neutralises `<!--`/`-->` in model text; add a test).\n2. Accept the thread title line in both forms: `**<Severity>**: <title>` and `<mark> **<Severity>** · D<n> · <title>` (mark ∈ 🔴 🟠 🟡 🔵 ⚪). The fingerprint (`<!-- review-finding: … -->`, dedup.py ~:16-31) keeps hashing the full title exactly as today, so existing threads still dedupe.\n3. The dispute prompt title comes from the parsed title, never the raw decorated first line.\n4. Write a consumer-facing doc page defining the marker grammar (review-protocol, review-verdict v2, review-defect, review-finding, review-local-record) as the supported machine interface and stating that prose is presentation and may change.\nWriter behaviour does NOT change in this item: current bodies and threads are byte-identical (goldens unchanged).\nGuardrails: never change the review-protocol record, review-defect or review-finding marker formats; never relax T6 (no bot review or thread may be edited); no live model calls; no owner-only actions. Theseus merge rule: current-head review-verdict SHIP from theseus-review[bot] plus green required checks, AND an independent review because this changes gate receipt and dedup parsing. Work in its own worktree ../theseus.wt-<slug> from origin/main.",
   "links": [
     "~/.omp/agent/sessions/-Developer-BenchBox/2026-11-02T02-04-38-450Z_01a19a00-60b2-70a6-b56d-6f666415a725/local/review-comment-format-proposal.md (sections 6.1, 8.1, 10.2)",
@@ -29,6 +29,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "d1bb66081cd24c27bd12f78c9f367ba6",
+      "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a",
+      "at": "2026-11-10T18:01:55Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c8da0e10821f4f9a942dbcec69d99e8c",
       "session_id": "977a65f4969143f4981bb9d49ff293b0"
     }
   ]
