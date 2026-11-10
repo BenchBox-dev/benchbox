@@ -9,6 +9,7 @@
     "implementation_dependencies": [],
     "member_id": "sqlglot-delivery-arm-waits-for-daily-run-20261107"
   },
+  "context": "Pre-restart checkpoint 2026-11-09 for tractable 1.0.0 cutover:\n- batch_id: sqlglot-delivery-hardening\n- owner_generation: eb5908c4b75af82653113ca365246ada\n- worktree: /Users/joe/Developer/BenchBox.wt-sqlglot-delivery-hardening--arm\n- branch: feat/sqlglot-delivery-hardening--sqlglot-delivery-arm-waits-for-daily-run-20261107\n- head SHA: b65307b83eada4e6f2b76d9e1e393a48970bf578\n- progress: workflow_run event arming and test additions in working tree; static checks pass.\n- next step after restart: run member verification, commit, run batch-member-check, land into integration worktree.",
   "description": "Problem. .github/workflows/sqlglot-delivery.yml runs daily at 06:37 UTC and on dispatch. The run that opens the App-authored adoption PR calls arm immediately, which correctly refuses because CI and the review verdict have not finished. Nothing re-arms the PR when they complete, so the PR sits until the next daily run, up to 24 h later. Observed on #3997 (30.30.0.1): the opening run 42326742524 reported not-armed (no verify-fast-duration verdict, no review verdict); arming happened only after a second manual dispatch (run 42331547173), which armed and merged it. This adds a day of latency to every release and makes a manual dispatch the routine fast path, which the first-release certification forbids.\n\nChange. Re-attempt arming of an open automation-owned adoption PR when its CI and review verdict complete, for example a workflow_run or check_suite trigger that runs only the arm step with the same ownership and live re-validation rules. Keep the kill switch, dry-run default and the rule that a human hold or disarm is never overridden.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3997",
@@ -30,6 +31,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "3c12376572f84b289f633a79af140597",
+      "session_id": "2f41579dd2194a049659596cdd9a4f3d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f",
+      "at": "2026-11-10T00:23:15Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3f0c90baa68c408d815777665086adf4",
       "session_id": "2f41579dd2194a049659596cdd9a4f3d"
     }
   ]
