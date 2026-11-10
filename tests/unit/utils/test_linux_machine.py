@@ -366,3 +366,28 @@ def test_the_stop_step_bounds_fit_inside_the_default_stop_timeout() -> None:
         lm.PROCESS_TIMEOUT_SECONDS * 2 + lm.POWEROFF_REQUEST_TIMEOUT_SECONDS + lm.GUEST_POWEROFF_WAIT_SECONDS
     )
     assert worst_before_stop <= lm.stop_timeout_seconds({}) - 20
+
+
+class _FakeProcess:
+    def __init__(self, error: BaseException | None, argv: list[str]) -> None:
+        self.error = error
+        self.argv = argv
+
+    def as_dict(self, attrs: list[str], ad_value: object = None) -> dict[str, object]:
+        if self.error is not None:
+            raise self.error
+        return {"pid": 7, "name": "container", "uids": None, "cmdline": self.argv}
+
+
+def test_a_process_that_cannot_be_read_does_not_abort_the_machine_scan(monkeypatch: pytest.MonkeyPatch) -> None:
+    import psutil
+
+    wrapper = ["bash", "scripts/linux_machine_run.sh", "m", "--", "true"]
+    processes = [
+        _FakeProcess(SystemError("proc_cmdline returned a result with an exception set"), []),
+        _FakeProcess(psutil.NoSuchProcess(3), []),
+        _FakeProcess(OSError("gone"), []),
+        _FakeProcess(None, wrapper),
+    ]
+    monkeypatch.setattr(psutil, "process_iter", lambda attrs=None: iter(processes))
+    assert lm.read_machine_processes("m", False) == [(7, tuple(wrapper))]

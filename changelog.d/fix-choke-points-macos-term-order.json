@@ -1,0 +1,1 @@
+{"schema": 1, "entries": [{"category": "fixed", "breaking": false, "text": "Fixed the Linux machine wrapper leaving the machine running when a process exited while its command line was being read during cleanup on macOS."}]}

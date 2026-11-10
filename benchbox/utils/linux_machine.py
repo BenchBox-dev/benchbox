@@ -128,8 +128,11 @@ def read_machine_processes(machine: str, machine_is_default: bool) -> list[tuple
 
     uid = os.getuid() if hasattr(os, "getuid") else None
     found: list[tuple[int, tuple[str, ...]]] = []
-    for proc in psutil.process_iter(["pid", "name", "uids", "cmdline"]):
-        info = proc.info
+    for proc in psutil.process_iter():
+        try:
+            info = proc.as_dict(["pid", "name", "uids", "cmdline"], ad_value=None)
+        except (psutil.Error, OSError, SystemError):
+            continue
         uids = info.get("uids")
         if uid is not None and uids is not None and uids.real != uid:
             continue
