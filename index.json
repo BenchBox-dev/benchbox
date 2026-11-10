@@ -39615,10 +39615,15 @@
       "title": "Publish Theseus review-format release B (verdict-first bodies, visible thread ids, optional minimising)"
     },
     "theseus-review-markers-dual-read-20261110": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-11T23:32:18Z",
+        "generation": "c5f7aa9202e34574a5df1104344188d2",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Theseus: read verdict and finding identity from markers so the review prose can change"
     },
     "theseus-review-minimize-superseded-20261110": {
