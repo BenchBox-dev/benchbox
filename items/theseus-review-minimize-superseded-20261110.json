@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Probe GO evidence is linked here before implementation starts.",
+    "With the flag on, after a new verdict only earlier bot verdict reviews are minimised (fake GitHub API test covering bot vs human reviews, newest vs older, threads untouched); with the flag off nothing is minimised.",
+    "A minimise API failure leaves verdict, statuses and gate output identical (test).",
+    "Edit detection does not flag the probe's recorded minimised review objects (test).",
+    "Policy key documented in consumer-policy.md with default false; policy parser accepts it and rejects non-boolean values.",
+    "Merged to Theseus main with hosted SHIP + green checks + independent review SHIP on the final head."
+  ],
+  "context": "Part of theseus-review-output-format-20261110. Ships in release B if GO; otherwise dropped and release B ships without it.",
+  "description": "Decision gate: proceed only if review-minimize-superseded-probe-20261110 recorded GO. On NO-GO, drop this item with that evidence.\nAfter Theseus posts a new verdict review on a PR, minimise the bot's earlier verdict reviews on that PR with GraphQL `minimizeComment(classifier: OUTDATED)`, so a long PR shows one open verdict and one-line stubs. Inline threads are not minimised (they carry open findings and disputes). Behind a consumer policy flag (e.g. `report.minimize_superseded: true|false`), default false; Theseus's own policy may enable it after the probe.\nGuardrails: never minimise the newest verdict, a non-bot review, an owner/attester comment, or any inline thread; a GraphQL failure is logged and never changes the verdict, status or gate result (fail-soft for presentation only); edit detection (T6) is unchanged and must not fire on minimised reviews (regression test using the probe's recorded responses); requires only the App's existing pull-request write permission (confirm; if a new permission is needed, stop and ask the owner); no live model calls; Theseus merge rule plus independent review (touches review posting).",
+  "links": [
+    "~/.omp/agent/sessions/-Developer-BenchBox/2026-11-02T02-04-38-450Z_01a19a00-60b2-70a6-b56d-6f666415a725/local/review-comment-format-proposal.md (section 8.6)"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a",
+      "at": "2026-11-10T15:38:18Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c428ec5803544c24b79e9599f1a163ae",
+      "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    }
+  ]
+}
