@@ -883,10 +883,12 @@ def _redact_plan_text_fields(container: dict[str, Any], detector: LocalPathDetec
 
 def anonymize_plans_payload(plans_payload: dict[str, Any], roots: Iterable[str | Path] = ()) -> dict[str, Any]:
     sanitized = copy.deepcopy(plans_payload)
+    detector = local_path_detector(roots)
+    if "errors" in sanitized:
+        sanitized["errors"] = detector.redact_value(sanitized["errors"])
     queries = sanitized.get("queries")
     if not isinstance(queries, dict):
         return sanitized
-    detector = local_path_detector(roots)
     for entry in queries.values():
         if not isinstance(entry, dict):
             continue

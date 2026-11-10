@@ -243,3 +243,23 @@ def test_backslash_rooted_configured_root_matches_forward_slash_plan_text():
     detector = local_path_detector(["\\srv\\data\\tpch"], redact_home=False)
 
     assert detector.redact_text("Scan [/srv/data/tpch/lineitem.parquet]") == "Scan [<redacted>/lineitem.parquet]"
+
+
+def test_custom_home_is_a_leak_scan_root(monkeypatch):
+    monkeypatch.setenv("HOME", "/srv/synthetic-home-xyz")
+
+    assert find_public_path_leaks({"a": "open /srv/synthetic-home-xyz/data/x.parquet"}) == ["a"]
+    assert find_public_path_leaks({"a": "open /srv/synthetic-home-xyz"}) == ["a"]
+
+
+@pytest.mark.parametrize("home", ["/", "", "/data", "/output", "/data/"])
+def test_neutral_or_placeholder_home_is_not_a_leak_root(monkeypatch, home):
+    monkeypatch.setenv("HOME", home)
+
+    assert find_public_path_leaks({"a": "scan /srv/other/x.parquet", "b": "/data/x", "c": "/output/y"}) == []
+
+
+def test_home_that_prefixes_another_name_is_not_a_false_hit(monkeypatch):
+    monkeypatch.setenv("HOME", "/srv/synthetic-home")
+
+    assert find_public_path_leaks({"a": "/srv/synthetic-home-two/x", "b": "/srv/synthetic-homes"}) == []

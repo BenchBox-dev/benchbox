@@ -123,20 +123,18 @@ def test_residual_leak_publishes_nothing_and_diagnostic_is_redacted(
     assert "synthetic" not in output
 
 
-def test_errors_only_leak_is_rejected_with_field_name_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_errors_only_leak_is_redacted_before_publication(tmp_path: Path) -> None:
     plans = _plans_payload()
     plans["errors"]["Q3"] = LEAK_ERROR
     source = _source(tmp_path, plans)
-    printed: list[str] = []
-    monkeypatch.setattr(publish_mod.console, "print", lambda *a, **_k: printed.append(str(a[0])))
     target = tmp_path / "published"
 
-    assert publish_bundle(source, target=str(target), label="local", quiet=True) is None
+    assert publish_bundle(source, target=str(target), label="local", quiet=True) is not None
 
-    assert not target.exists() or list(target.iterdir()) == []
-    output = "\n".join(printed)
-    assert "errors.Q3" in output
-    assert "synthetic" not in output
+    published = json.loads((target / (source.stem + ".plans.json")).read_text(encoding="utf-8"))
+    assert "synthetic" not in json.dumps(published)
+    assert "<redacted>" in published["errors"]["Q3"]
+    assert find_public_path_leaks(published) == []
 
 
 def test_tuning_companion_with_path_leak_is_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
