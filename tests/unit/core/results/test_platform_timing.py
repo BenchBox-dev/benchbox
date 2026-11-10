@@ -9,6 +9,7 @@ from benchbox.core.results.platform_timing import (
     NET_ESTIMATE_CONFORMANCE,
     StatementTiming,
     build_platform_timing,
+    deferred_platform_timing,
     is_throughput_stream_active,
     resolve_net_estimate_status,
     rows_result_bytes,
@@ -180,3 +181,94 @@ def test_throughput_stream_skips_platform_history_polling():
     assert fields_stream["platform_timing"]["status"] == "unavailable"
     assert fields_stream["platform_timing"]["reason"] == "skipped during throughput stream to preserve stream timing"
     adapter.fetch_platform_timings.assert_not_called()
+
+
+def test_measured_phase_defers_platform_history_until_resolved():
+    from unittest.mock import Mock
+
+    from benchbox.platforms.base.timing_contract import TimingContractMixin
+
+    class _Adapter(TimingContractMixin):
+        platform_timing_source = "mock.history"
+
+    adapter = _Adapter()
+    adapter.fetch_platform_timings = Mock(
+        return_value={"stmt-1": _statement("stmt-1", 40.0), "stmt-2": _statement("stmt-2", 60.0)}
+    )
+    connection = Mock()
+    first, second = RequestLedger(), RequestLedger()
+    first.add_request("query", "stmt-1")
+    second.add_request("query", "stmt-2")
+
+    with deferred_platform_timing() as deferred:
+        first_fields = adapter.timing_fields_for(connection, first, elapsed_seconds=0.1)
+        second_fields = adapter.timing_fields_for(connection, second, elapsed_seconds=0.1)
+        adapter.fetch_platform_timings.assert_not_called()
+        assert first_fields["platform_timing"]["status"] == "unavailable"
+        assert first_fields["platform_timing"]["reason"] == (
+            "platform history lookup deferred until the measured phase ends"
+        )
+        deferred.resolve()
+
+    adapter.fetch_platform_timings.assert_called_once_with(connection, ["stmt-1", "stmt-2"])
+    assert first_fields["platform_timing"]["status"] == "valid"
+    assert first_fields["platform_timing"]["platform_ms"] == 40.0
+    assert second_fields["platform_timing"]["platform_ms"] == 60.0
+
+
+def test_deferred_lookup_failure_marks_records_unavailable():
+    from unittest.mock import Mock
+
+    from benchbox.platforms.base.timing_contract import TimingContractMixin
+
+    class _Adapter(TimingContractMixin):
+        platform_timing_source = "mock.history"
+
+    adapter = _Adapter()
+    adapter.fetch_platform_timings = Mock(side_effect=RuntimeError("history down"))
+    ledger = RequestLedger()
+    ledger.add_request("query", "stmt-1")
+
+    with deferred_platform_timing() as deferred:
+        fields = adapter.timing_fields_for(Mock(), ledger, elapsed_seconds=0.1)
+        deferred.resolve()
+
+    assert fields["platform_timing"]["status"] == "unavailable"
+    assert fields["platform_timing"]["reason"] == "platform history lookup failed: RuntimeError"
+
+
+def test_tpcds_power_test_resolves_platform_history_after_phase_end(monkeypatch):
+    from unittest.mock import Mock
+
+    from benchbox.core.results import platform_timing
+    from benchbox.core.tpcds.power_test import TPCDSPowerTest
+
+    events: list[str] = []
+    real_resolve = platform_timing.DeferredPlatformTiming.resolve
+
+    def tracking_resolve(self):
+        events.append("resolve")
+        real_resolve(self)
+
+    monkeypatch.setattr(platform_timing.DeferredPlatformTiming, "resolve", tracking_resolve)
+
+    def execute(position, query_info, connection, seed, result):
+        assert platform_timing.active_deferred_platform_timing() is not None
+        events.append("query")
+
+    connection = Mock()
+    connection.close.side_effect = lambda: events.append("close")
+    test = TPCDSPowerTest.__new__(TPCDSPowerTest)
+    test._execute_one_query = execute
+    test._finalize_power_metrics = lambda result, start_time: events.append("finalize")
+    test._determine_available_query_ids = lambda: [1]
+    test._build_queries_to_execute = lambda ids: [(1, None)]
+    test._preflight_validate_generation = lambda ids: None
+    test.connection_factory = lambda: connection
+    test.config = Mock(verbose=False, seed=1, stream_id=0)
+    test.logger = Mock()
+
+    test.run()
+
+    assert events == ["query", "finalize", "resolve", "close"]
+    assert platform_timing.active_deferred_platform_timing() is None

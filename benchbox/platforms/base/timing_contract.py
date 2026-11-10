@@ -7,7 +7,9 @@ from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
 from benchbox.core.results.platform_timing import (
+    DeferredPlatformTimingEntry,
     StatementTiming,
+    active_deferred_platform_timing,
     build_platform_timing,
     is_throughput_stream_active,
     rows_result_bytes,
@@ -75,11 +77,38 @@ class TimingContractMixin:
                 "skipped during throughput stream to preserve stream timing",
                 statements,
             )
+        deferred = active_deferred_platform_timing()
+        if deferred is not None:
+            statements = [StatementTiming(request.statement_id, request.kind, request.attempt) for request in requests]
+            record = unavailable_platform_timing(
+                source,
+                "platform history lookup deferred until the measured phase ends",
+                statements,
+            )
+            deferred.add(DeferredPlatformTimingEntry(self, connection, list(requests), client_ms, record))
+            return record
         with outside_query_timer():
             statements, failure = self._statements_for(connection, requests)
             if failure is not None:
                 return unavailable_platform_timing(source, failure, statements)
             return build_platform_timing(source, statements, client_ms=client_ms)
+
+    def resolve_deferred_platform_timing(self, connection: Any, entries: Sequence[DeferredPlatformTimingEntry]) -> None:
+        source = self.platform_timing_source
+        if source is None:
+            return
+        requests = [request for entry in entries for request in entry.requests]
+        statements, failure = self._statements_for(connection, requests)
+        offset = 0
+        for entry in entries:
+            mine = statements[offset : offset + len(entry.requests)]
+            offset += len(entry.requests)
+            if failure is not None:
+                resolved = unavailable_platform_timing(source, failure, mine)
+            else:
+                resolved = build_platform_timing(source, mine, client_ms=entry.client_ms)
+            entry.record.clear()
+            entry.record.update(resolved)
 
     def capture_probe_platform_timing(self, connection: Any, statement_ids: Sequence[str]) -> dict[str, Any] | None:
         source = self.platform_timing_source

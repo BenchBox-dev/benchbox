@@ -15,6 +15,7 @@ from benchbox.core.plan_capture_phase import (
 )
 from benchbox.core.result_receipt import cursor_result_count
 from benchbox.core.results.fetch_mode import ConversionClock
+from benchbox.core.results.platform_timing import deferred_platform_timing
 from benchbox.core.tpch.benchmark import binds_answer_set_parameters, has_answer_set, power_stream_seed
 from benchbox.core.tpch.refresh import (
     TPCHRefreshUpdateSet,
@@ -234,6 +235,13 @@ class TPCHPowerTest:
         self.captured_items: list[tuple[str, str]] = []
 
     def run(self) -> TPCHPowerTestResult:
+        with deferred_platform_timing() as deferred:
+            try:
+                return self._run_measured()
+            finally:
+                deferred.resolve()
+
+    def _run_measured(self) -> TPCHPowerTestResult:
         start_time = mono_time()
         start_time_str = datetime.now().isoformat()
 

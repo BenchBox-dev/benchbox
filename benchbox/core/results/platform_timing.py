@@ -40,6 +40,50 @@ def is_throughput_stream_active() -> bool:
     return _THROUGHPUT_STREAM_ACTIVE.get()
 
 
+@dataclass
+class DeferredPlatformTimingEntry:
+    owner: Any
+    connection: Any
+    requests: list[Any]
+    client_ms: float | None
+    record: dict[str, Any]
+
+
+@dataclass
+class DeferredPlatformTiming:
+    entries: list[DeferredPlatformTimingEntry] = field(default_factory=list)
+
+    def add(self, entry: DeferredPlatformTimingEntry) -> None:
+        self.entries.append(entry)
+
+    def resolve(self) -> None:
+        groups: dict[tuple[int, int], list[DeferredPlatformTimingEntry]] = {}
+        for entry in self.entries:
+            groups.setdefault((id(entry.owner), id(entry.connection)), []).append(entry)
+        self.entries = []
+        for group in groups.values():
+            group[0].owner.resolve_deferred_platform_timing(group[0].connection, group)
+
+
+_DEFERRED_PLATFORM_TIMING: ContextVar[DeferredPlatformTiming | None] = ContextVar(
+    "benchbox_deferred_platform_timing", default=None
+)
+
+
+@contextmanager
+def deferred_platform_timing() -> Iterator[DeferredPlatformTiming]:
+    deferred = DeferredPlatformTiming()
+    token = _DEFERRED_PLATFORM_TIMING.set(deferred)
+    try:
+        yield deferred
+    finally:
+        _DEFERRED_PLATFORM_TIMING.reset(token)
+
+
+def active_deferred_platform_timing() -> DeferredPlatformTiming | None:
+    return _DEFERRED_PLATFORM_TIMING.get()
+
+
 _FIXED_WIDTH_BYTES = 8
 
 
