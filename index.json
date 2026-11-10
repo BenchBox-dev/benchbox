@@ -39516,6 +39516,13 @@
       "status": "done",
       "title": "Theseus v0.1.7: hunk coverage, git-built diffs, rename-aware executed-surface promotions, capacity sizing, compaction fail-closed, preflight"
     },
+    "theseus-review-markers-dual-read-20261110": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Theseus: read verdict and finding identity from markers so the review prose can change"
+    },
     "theseus-test-isolation-gaps-20261106": {
       "claim": null,
       "needs": [],
