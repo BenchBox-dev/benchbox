@@ -450,6 +450,14 @@ The soundness gate, as operated:
   auto-arm. The old `ready_for_review` arm point never fired (drafts were
   unused) and was deleted per
   `_project/decisions/auto-merge-policy-consolidation-2026-08-06.md`, D2.
+- SQLGlot delivery dry runs authenticate the configured App in an isolated,
+  checkout-free readiness job. The probe verifies full installation permissions
+  and access to BenchBox alone, then revokes its temporary read-only token.
+  Authentication creates and revokes a token but changes no repository content,
+  pull request or merge setting. Readiness failure blocks publication. Refresh
+  preparation never receives the key or a token. The owner configures
+  `SQLGLOT_DELIVERY_APP_ID` and `SQLGLOT_DELIVERY_APP_PRIVATE_KEY`; the App needs
+  contents and pull-requests write, metadata read, and no other permissions.
 - Durable holds are **draft** and label **`no-auto-merge`**. Arming checks both
   (`make pr-arm-auto-merge`, `pr-arm` and `pr-ready` refuse to arm). The nightly
   green-unmerged sweep never enables auto-merge and does not classify either
