@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "Recognize SingleStore's native 1712: error prefix in UAT failure evidence so memory-only cells use the existing single-retry policy; mixed product failures still do not retry."}

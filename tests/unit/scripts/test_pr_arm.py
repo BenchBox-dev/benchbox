@@ -226,7 +226,7 @@ def test_default_refuses_when_the_branch_does_not_name_exactly_one_pr(
         (_view(baseRefName="release"), {}, "arms only PRs into 'develop'"),
         (_view(headRefOid="b" * 40), {}, "push first"),
         (_view(), {"threads": True}, "unresolved, non-outdated review thread"),
-        (_view(), {"hidden": ["required check 'oracle-review' suite 9 failure is hidden"]}, "is hidden"),
+        (_view(), {"hidden": ["required check 'review' suite 9 failure is hidden"]}, "is hidden"),
         (_view(), {"unpublished": ["uncommitted working-tree changes"]}, "unpublished work"),
         (_view(), {"unpublished": ["2 local commit(s) not pushed to upstream"]}, "not pushed"),
     ],
@@ -707,25 +707,25 @@ def test_non_required_failing_check_does_not_refuse_arming() -> None:
 
 @pytest.mark.parametrize("state", ["failure", "error"])
 def test_visible_failed_required_status_refuses_arming(state: str, capsys: pytest.CaptureFixture[str]) -> None:
-    gh = FakeGh(statuses={"oracle-gate": state}, rules=["core", "oracle-gate"])
+    gh = FakeGh(statuses={"review-gate": state}, rules=["core", "review-gate"])
     assert _arm(gh) == 2
     assert gh.merged() == []
-    assert f"required status 'oracle-gate' completed with state {state!r}" in capsys.readouterr().err
+    assert f"required status 'review-gate' completed with state {state!r}" in capsys.readouterr().err
 
 
 def test_pending_required_status_still_arms() -> None:
-    gh = FakeGh(statuses={"oracle-gate": "pending"}, rules=["core", "oracle-gate"])
+    gh = FakeGh(statuses={"review-gate": "pending"}, rules=["core", "review-gate"])
     assert _arm(gh) == 0
     assert len(gh.merged()) == 1
 
 
 def test_waiting_oracle_description_for_another_head_does_not_mask_failure() -> None:
     gh = FakeGh(
-        statuses={"oracle-gate": "failure"},
+        statuses={"review-gate": "failure"},
         status_descriptions={
-            "oracle-gate": f"oracle-review: waiting for the oracle's verdict on {'b' * 40}, or a stand-in attestation"
+            "review-gate": f"review: waiting for the review's verdict on {'b' * 40}, or a stand-in attestation"
         },
-        rules=["core", "oracle-gate"],
+        rules=["core", "review-gate"],
     )
     assert _arm(gh) == 2
     assert gh.merged() == []
@@ -796,6 +796,40 @@ def test_a_real_core_failure_is_not_mistaken_for_a_placeholder_while_another_run
     assert "waiting for full CI run" not in err
     assert "make pr-rerun PR=7" in err
     assert "required check 'core' completed with conclusion 'failure'" in err
+
+
+@pytest.mark.parametrize("verdict", [None, {"verdict": "pass"}])
+def test_a_real_core_failure_inside_the_full_run_still_in_progress_waits_for_that_run(
+    verdict: dict | None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gh = FakeGh(
+        verdict=verdict,
+        core=("completed", "failure"),
+        core_url=FULL_URL,
+        ci_runs=[(91, "CI", "in_progress")],
+    )
+    assert _arm_live(gh) == 2
+    assert gh.merged() == []
+    err = capsys.readouterr().err
+    assert "waiting for full CI run 91 to complete" in err
+    assert "no verdict will arrive" not in err
+    assert "completed with conclusion" not in err
+    assert "make pr-rerun" in err
+
+
+def test_a_real_core_failure_inside_a_completed_run_advises_the_rerun_now(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    gh = FakeGh(
+        verdict=None,
+        core=("completed", "failure"),
+        core_url=FULL_URL,
+        ci_runs=[(91, "CI", "completed")],
+    )
+    assert _arm_live(gh) == 2
+    err = capsys.readouterr().err
+    assert "waiting for full CI run" not in err
+    assert "make pr-rerun PR=7" in err
 
 
 def _final_line(capsys: pytest.CaptureFixture[str]) -> str:
@@ -901,7 +935,7 @@ def test_a_fresh_gate_evaluation_that_does_not_pass_refuses_arming() -> None:
         suites=lambda *_a: [],
         duration=lambda *_a: [],
         visible=lambda *_a: [],
-        gate=lambda *_a: ["a fresh oracle-gate evaluation of aaaaaaaaa does not pass: waiting"],
+        gate=lambda *_a: ["a fresh review-gate evaluation of aaaaaaaaa does not pass: waiting"],
     )
     assert code == 2
     assert gh.merged() == []
@@ -913,7 +947,7 @@ def test_gate_refusals_map_the_evaluation_exit_code(exit_code: int, expected: ob
 
     def run(cmd: Sequence[str]) -> tuple[int, str]:
         seen.append(list(cmd))
-        return exit_code, "oracle-review: waiting for the verdict\n" if exit_code else ""
+        return exit_code, "review: waiting for the verdict\n" if exit_code else ""
 
     found = pr_arm.gate_refusals(run, "o/r", 7, HEAD)
     assert seen[0][-6:] == ["--repo", "o/r", "--pr", "7", "--head-sha", HEAD]

@@ -8,6 +8,7 @@ if [ "${BENCHBOX_LINUX_INNER:-}" = "1" ]; then
   cd "$1"
   shift
   export UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-$HOME/.cache/benchbox-linux-venv}"
+  export UV_PYTHON_INSTALL_DIR="${UV_PYTHON_INSTALL_DIR:-$HOME/.local/share/uv/python}"
   uv sync --frozen -q
   if [ ! -e /usr/share/zoneinfo/UTC ]; then
     echo "WARNING: this machine has no system tzdata; tests using zoneinfo fail to collect. Rebuild the agent image (docker/benchbox-agent) and recreate the machine." >&2

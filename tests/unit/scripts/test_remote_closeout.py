@@ -249,7 +249,7 @@ class FakeGitHub:
         if cmd[:3] == ["gh", "api", "--paginate"] and "/actions/workflows/ci.yml/runs?" in cmd[-1]:
             return 0, ""
         if cmd[:2] == ["gh", "api"] and "/rules/branches/" in cmd[-1]:
-            return 0, "\n".join([*pr_landing.REQUIRED_CONTEXTS, "hold", "oracle-gate", "oracle-review"])
+            return 0, "\n".join([*pr_landing.REQUIRED_CONTEXTS, "hold", "review-gate", "review"])
         if cmd[:2] == ["gh", "api"] and "/check-runs" in cmd[-1]:
             head = cmd[-1].split("/commits/")[1].split("/")[0]
             runs = [
@@ -719,9 +719,9 @@ def test_refuses_a_head_whose_fresh_gate_evaluation_does_not_pass(
     monkeypatch.setattr(
         remote_closeout.pr_arm,
         "gate_refusals",
-        lambda *_args: ["a fresh oracle-gate evaluation of aaaaaaaaa does not pass: waiting"],
+        lambda *_args: ["a fresh review-gate evaluation of aaaaaaaaa does not pass: waiting"],
     )
-    assert "a fresh oracle-gate evaluation of aaaaaaaaa does not pass" in _refusal(world, ready_pr, capsys)
+    assert "a fresh review-gate evaluation of aaaaaaaaa does not pass" in _refusal(world, ready_pr, capsys)
     assert ready_pr.arms() == []
 
 
@@ -767,27 +767,27 @@ def test_non_required_failing_check_does_not_refuse_arming(world: World, ready_p
 def test_refuses_a_failed_required_status(
     world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str], state: str
 ) -> None:
-    ready_pr.statuses["oracle-gate"] = state
+    ready_pr.statuses["review-gate"] = state
     err = _refusal(world, ready_pr, capsys)
-    assert f"condition 6: required status 'oracle-gate' failed with state {state!r}" in err
+    assert f"condition 6: required status 'review-gate' failed with state {state!r}" in err
 
 
 def test_a_failed_oracle_gate_status_from_another_account_is_ignored(world: World, ready_pr: FakeGitHub) -> None:
-    ready_pr.statuses["oracle-gate"] = "failure"
-    ready_pr.status_creators["oracle-gate"] = "joeharris76\tUser"
+    ready_pr.statuses["review-gate"] = "failure"
+    ready_pr.status_creators["review-gate"] = "joeharris76\tUser"
     assert arm(world, ready_pr) == 0
 
 
 def test_pending_required_status_still_arms(world: World, ready_pr: FakeGitHub) -> None:
-    ready_pr.statuses["oracle-gate"] = "pending"
+    ready_pr.statuses["review-gate"] = "pending"
     assert arm(world, ready_pr) == 0
     assert ready_pr.arms() == [merge_command(world.head)]
 
 
 def test_waiting_oracle_failure_status_arms_without_a_dispatch(world: World, ready_pr: FakeGitHub) -> None:
-    ready_pr.statuses["oracle-gate"] = "failure"
-    ready_pr.status_descriptions["oracle-gate"] = (
-        f"oracle-review: waiting for the oracle's verdict on {world.head}, or a stand-in attestation"
+    ready_pr.statuses["review-gate"] = "failure"
+    ready_pr.status_descriptions["review-gate"] = (
+        f"review: waiting for the review's verdict on {world.head}, or a stand-in attestation"
     )
     ready_pr.gate_state = "failure"
     assert arm(world, ready_pr) == 0
@@ -2107,7 +2107,7 @@ def test_claude_publication_can_resume_without_rerunning_the_reviewer(
 def test_refuses_a_stale_failed_suite_hidden_behind_a_newer_success(
     world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    template = {"name": "oracle-review", "status": "completed", "details_url": "", "check_suite": {"id": 0}}
+    template = {"name": "review", "status": "completed", "details_url": "", "check_suite": {"id": 0}}
     ready_pr.stale_suites = [
         {**template, "id": 98, "conclusion": "success", "started_at": "2", "check_suite": {"id": 8}},
         {
@@ -2121,6 +2121,6 @@ def test_refuses_a_stale_failed_suite_hidden_behind_a_newer_success(
     ]
     assert arm(world, ready_pr) == 2
     err = capsys.readouterr().err
-    assert "condition 6: required check 'oracle-review' suite 9 failure" in err
+    assert "condition 6: required check 'review' suite 9 failure" in err
     assert "actions/runs/77" in err
     assert ready_pr.arms() == []

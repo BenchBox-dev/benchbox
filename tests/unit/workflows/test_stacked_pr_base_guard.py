@@ -138,4 +138,4 @@ def test_stacking_rule_is_stated_consistently_in_agent_and_policy_docs() -> None
     assert "mark ready" in agents
     allowed = policy.split("## Allowed bases")[1].split("\n## ")[0]
     assert "draft PR in a stack" in allowed
-    assert "oracle review" in policy
+    assert "review" in policy

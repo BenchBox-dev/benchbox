@@ -25,7 +25,7 @@ PR = 7
 HEAD = "a" * 40
 OTHER_HEAD = "b" * 40
 BRANCH = "feature/rerun"
-REQUIRED = ["core", "oracle-review"]
+REQUIRED = ["core", "review"]
 
 
 def _pr(head: str = HEAD, branch: str = BRANCH) -> dict[str, Any]:
@@ -236,9 +236,7 @@ def test_main_rejects_a_bad_pr_number(capsys: pytest.CaptureFixture[str]) -> Non
     assert "positive number" in capsys.readouterr().err
 
 
-def _check(
-    run_id: int, suite: int, started: str, conclusion: str | None, name: str = "oracle-review"
-) -> dict[str, Any]:
+def _check(run_id: int, suite: int, started: str, conclusion: str | None, name: str = "review") -> dict[str, Any]:
     return {
         "id": run_id * 10 + suite,
         "name": name,
@@ -266,7 +264,7 @@ def test_stale_failed_suites_hidden_by_a_newer_success_are_rerun() -> None:
         ["gh", "run", "rerun", "501", "--repo", REPO, "--failed"],
         ["gh", "run", "rerun", "502", "--repo", REPO, "--failed"],
     ]
-    assert "run 501 (stale suite: oracle-review)" in message
+    assert "run 501 (stale suite: review)" in message
 
 
 def test_a_stale_suite_run_is_rerun_alongside_the_newest_failed_ci_run() -> None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -95,6 +96,21 @@ def test_prune_database_dir_actually_deletes(tmp_path: Path):
 def test_prune_database_dir_missing_target_returns_zero(tmp_path: Path):
     bytes_freed = cleanup.prune_database_dir(tmp_path, platform="duckdb", benchmark="tpch", scale=0.01)
     assert bytes_freed == 0
+
+
+def test_prune_server_database_ignores_non_singlestore():
+    assert cleanup.prune_server_database(platform="duckdb", benchmark="tpch", scale=0.01) is False
+
+
+def test_prune_server_database_dry_run_singlestore():
+    assert cleanup.prune_server_database(platform="singlestore", benchmark="tpch", scale=0.01, dry_run=True) is True
+
+
+def test_prune_server_database_drops_target_database():
+    mock_adapter = MagicMock()
+    with patch("benchbox.platforms.singlestore.SingleStoreAdapter.from_config", return_value=mock_adapter):
+        assert cleanup.prune_server_database(platform="singlestore", benchmark="tpch", scale=0.01) is True
+    mock_adapter.drop_database.assert_called_once_with(database="benchbox_tpch_sf001")
 
 
 def test_execute_platform_chunking_walks_one_platform_at_a_time(tmp_path: Path):

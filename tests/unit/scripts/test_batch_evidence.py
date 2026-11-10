@@ -61,6 +61,8 @@ def test_evidence_reruns_required_members_at_the_final_head_and_writes_the_contr
             "clean": True,
             "suite": world.tracker.receipts[member]["verification"]["suite"],
             "command": world.tracker.receipts[member]["verification"]["command"],
+            "ran_command": world.tracker.receipts[member]["verification"]["command"],
+            "dropped_paths": [],
             "worktree": str(integration),
         }
     executed = [call for call in world.calls if "pytest" in call[0]]
@@ -278,6 +280,156 @@ def test_evidence_refuses_when_a_develop_merge_removed_every_receipt_verificatio
         bi.build_evidence(integration)
 
 
+def test_a_develop_rename_of_a_receipt_test_is_not_a_plain_deletion(world: World) -> None:
+    integration = _legacy_batch(world)
+    git(world.seed, "mv", LEGACY_TEST, "tests/test_renamed.py")
+    git(world.seed, "commit", "-qm", "develop renames the legacy test")
+    git(world.seed, "push", "-q", "origin", "develop")
+    _merge_develop(world, integration)
+    tracker = _tracker_view(world)
+    assert not pr_landing.develop_plainly_deleted(integration, tracker, LEGACY_TEST)
+    forged = {"dropped_receipt_paths": {"zeta": [LEGACY_TEST]}}
+    failures = pr_landing._check_evidence_dropped_paths(integration, forged, world.head(), tracker, tracker["receipts"])
+    assert any("not plainly deleted" in item and LEGACY_TEST in item for item in failures)
+
+
+def test_a_deleted_path_outside_the_trailing_test_run_is_never_dropped(world: World) -> None:
+    integration = _legacy_batch(world)
+    _develop_commit(world, "develop retires the legacy test", remove=[LEGACY_TEST])
+    _merge_develop(world, integration)
+    tracker = bi.read_tracker(integration, BATCH)
+    excluded = bi._excluded_paths(integration, world.head(), tracker)
+    command = ["uv", "run", "--", "python", "-m", "pytest", "-q", "--ignore", LEGACY_TEST, "tests/test_zeta.py"]
+    kept, removed = bi._drop_develop_deleted_targets(integration, world.head(), command, excluded, tracker)
+    assert kept == command
+    assert removed == []
+
+
 def _tracker_view(world: World) -> dict:
     payload = json.loads(world.tracker.show(["batch", "show", BATCH]).stdout)["data"]
     return {key: value for key, value in payload.items() if key != "sections"}
+
+
+def _pytest_calls(world: World) -> list[list[str]]:
+    return [call[0] for call in world.calls if "pytest" in call[0]]
+
+
+def test_final_evidence_rows_record_the_recorded_command_the_ran_command_and_the_dropped_paths(world: World) -> None:
+    integration = _legacy_batch(world)
+    _develop_commit(world, "develop retires the legacy test", remove=[LEGACY_TEST])
+    _merge_develop(world, integration)
+    recorded = world.tracker.receipts["zeta"]["verification"]["command"]
+
+    built = bi.build_evidence(integration)
+
+    row = built["evidence"]["current_acceptance"]["zeta"]
+    assert row["command"] == recorded
+    assert row["ran_command"] == [arg for arg in recorded if arg != LEGACY_TEST]
+    assert row["dropped_paths"] == [LEGACY_TEST]
+    untouched = built["evidence"]["current_acceptance"]["alpha"]
+    assert untouched["ran_command"] == untouched["command"] and untouched["dropped_paths"] == []
+    entry = _ledger(integration)["acceptance"]["zeta"][-1]
+    assert entry["command"] == recorded and entry["ran_command"] == row["ran_command"]
+    tracker = _tracker_view(world)
+    assert (
+        pr_landing._check_evidence_acceptance(
+            integration, built["evidence"], world.head(), tracker, tracker["receipts"]
+        )
+        == []
+    )
+
+
+def test_landing_refuses_an_acceptance_row_whose_ran_command_is_not_the_receipt_minus_the_dropped_paths(
+    world: World,
+) -> None:
+    integration = _legacy_batch(world)
+    _develop_commit(world, "develop retires the legacy test", remove=[LEGACY_TEST])
+    _merge_develop(world, integration)
+    built = bi.build_evidence(integration)
+    tracker = _tracker_view(world)
+    row = built["evidence"]["current_acceptance"]["zeta"]
+    for forged_row in (
+        dict(row, ran_command=["true"]),
+        dict(row, ran_command=row["command"]),
+        dict(row, dropped_paths=[]),
+        dict(row, dropped_paths=["tests/test_zeta.py"]),
+    ):
+        evidence = dict(
+            built["evidence"], current_acceptance={**built["evidence"]["current_acceptance"], "zeta": forged_row}
+        )
+        failures = pr_landing._check_evidence_acceptance(
+            integration, evidence, world.head(), tracker, tracker["receipts"]
+        )
+        assert any("member zeta" in item for item in failures)
+
+
+def test_a_fix_rerun_drops_the_path_a_develop_merge_deleted_and_records_it(world: World) -> None:
+    integration = _legacy_batch(world)
+    _develop_commit(world, "develop retires the legacy test", remove=[LEGACY_TEST])
+    _merge_develop(world, integration)
+    recorded = world.tracker.receipts["zeta"]["verification"]["command"]
+    fix_head = world.commit(integration, {"src/a.py": "fixed\n"}, "fix")
+    world.calls.clear()
+
+    bi.advance_head(integration, "fix")
+
+    expected = [arg for arg in recorded if arg != LEGACY_TEST]
+    assert _pytest_calls(world) == [expected]
+    entry = _ledger(integration)["acceptance"]["zeta"][-1]
+    assert entry["reason"] == f"fix:{fix_head}" and entry["status"] == "passed"
+    assert entry["command"] == recorded and entry["ran_command"] == expected and entry["dropped_paths"] == [LEGACY_TEST]
+
+
+def test_an_overlap_rerun_drops_the_path_a_develop_merge_deleted_and_records_it(world: World) -> None:
+    _develop_commit(world, "legacy test", add={LEGACY_TEST: "def test_l():\n    assert True\n"})
+    integration = world.start()
+    world.deliver("zeta", {"src/a.py": "zeta change\n"}, tests=["tests/test_zeta.py", LEGACY_TEST])
+    world.land_and_prepare("zeta")
+    recorded = world.tracker.receipts["zeta"]["verification"]["command"]
+    _develop_commit(world, "develop retires the legacy test", remove=[LEGACY_TEST])
+    _merge_develop(world, integration)
+    world.deliver("mid", {"src/a.py": "mid change\n"}, tests=["tests/test_mid.py"])
+    world.calls.clear()
+
+    result = world.land("mid")
+
+    expected = [arg for arg in recorded if arg != LEGACY_TEST]
+    assert result["reruns"] == [{"member": "zeta", "paths": ["src/a.py"], "status": "passed"}]
+    assert expected in _pytest_calls(world) and recorded not in _pytest_calls(world)
+    entry = _ledger(integration)["acceptance"]["zeta"][-1]
+    assert entry["reason"] == "overlap:mid" and entry["command"] == recorded
+    assert entry["ran_command"] == expected and entry["dropped_paths"] == [LEGACY_TEST]
+
+
+def test_a_rerun_whose_recorded_test_paths_are_all_gone_fails_without_running_pytest(world: World) -> None:
+    _develop_commit(world, "legacy test", add={LEGACY_TEST: "def test_l():\n    assert True\n"})
+    integration = world.start()
+    world.deliver("zeta", {"src/a.py": "zeta change\n"}, tests=[LEGACY_TEST])
+    world.land_and_prepare("zeta")
+    _develop_commit(world, "develop retires the legacy test", remove=[LEGACY_TEST])
+    _merge_develop(world, integration)
+    world.deliver("mid", {"src/a.py": "mid change\n"}, tests=["tests/test_mid.py"])
+    world.calls.clear()
+
+    with _raises("overlap rerun failed for \\['zeta'\\]"):
+        world.land("mid")
+
+    assert all(LEGACY_TEST not in call for call in _pytest_calls(world))
+    entry = _ledger(integration)["acceptance"]["zeta"][-1]
+    assert entry["status"] == "failed" and entry["dropped_paths"] == [LEGACY_TEST]
+    assert "every verification path in member 'zeta'" in entry["output"]
+
+
+def test_an_overlap_rerun_still_fails_for_a_deleted_path_a_member_owns(world: World) -> None:
+    integration = _legacy_batch(world)
+    _develop_commit(world, "develop retires the legacy test", remove=[LEGACY_TEST])
+    _merge_develop(world, integration)
+    world.tracker.receipts["zeta"]["changed_files"].append(LEGACY_TEST)
+    world.commit(integration, {"src/a.py": "fixed\n"}, "fix")
+    world.calls.clear()
+
+    with _raises("broke earlier members \\['zeta'\\]"):
+        bi.advance_head(integration, "fix")
+
+    entry = _ledger(integration)["acceptance"]["zeta"][-1]
+    assert entry["dropped_paths"] == [] and entry["ran_command"] == entry["command"]

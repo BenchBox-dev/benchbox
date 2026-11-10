@@ -205,6 +205,14 @@ def _sf1_timeout_reason(platform: str) -> str:
     )
 
 
+_SINGLESTORE_JOINORDER_RUNTIME_ENVELOPE_REASON = (
+    "singlestore JoinOrder SF1 cannot meet the 1200s release-gate cell contract: the cell timed out at 1200s, "
+    "measured on the 4 vCPU / 16 GB release runner (release UAT dry run 2, run 41163626947). On the 4 GiB "
+    "SingleStore 10.9.0 stack the 74.19M-row load now completes in about 7.5 minutes, but query 7c's join "
+    "exceeds the container memory limit and the kernel OOM-kills memsqld (anon-rss 2.87 GB), so every later "
+    "query fails with 1735/1777. JoinOrder is fixed at the IMDb data set, so no smaller scale exists."
+)
+
 _SF1_TIMEOUT_PRUNED_CELLS = (
     (
         "dask-df",
@@ -240,7 +248,7 @@ _SF1_TIMEOUT_PRUNED_CELLS = (
     ("pg-mooncake", _sf1_timeout_reason("pg-mooncake"), ("tpcds_obt",)),
     ("postgresql", _sf1_timeout_reason("postgresql"), ("joinorder", "tpcds_obt")),
     ("timescaledb", _sf1_timeout_reason("timescaledb"), ("tpcds_obt",)),
-    ("singlestore", _sf1_timeout_reason("singlestore"), ("joinorder", "tpcds_obt")),
+    ("singlestore", _sf1_timeout_reason("singlestore"), ("tpcds_obt",)),
     ("questdb", _sf1_timeout_reason("questdb"), ("joinorder", "tpcds_obt")),
 )
 
@@ -304,6 +312,7 @@ _RELEASE_GATE_RUNTIME_ENVELOPES = (
         ("datafusion", "datavault"): _DATAFUSION_DATAVAULT_RUNTIME_ENVELOPE_REASON,
         ("sqlite", "tpcds"): _SQLITE_TPCDS_RUNTIME_ENVELOPE_REASON,
         ("sqlite", "tpcds_obt"): _SQLITE_TPCDS_OBT_RUNTIME_ENVELOPE_REASON,
+        ("singlestore", "joinorder"): _SINGLESTORE_JOINORDER_RUNTIME_ENVELOPE_REASON,
         ("pyspark-df", "tpchavoc", 0.1): _PYSPARK_DF_TPCHAVOC_SF01_RUNTIME_ENVELOPE_REASON,
     }
 )
@@ -319,6 +328,10 @@ _RELEASE_GATE_RUNTIME_ENVELOPE_EVIDENCE = (
         ("datafusion", "datavault"): "docs/internal/uat-release-campaign.md: DataFusion DataVault (2026-08-25)",
         ("sqlite", "tpcds"): "docs/internal/uat-release-campaign.md: SQLite TPC-DS (2026-08-25)",
         ("sqlite", "tpcds_obt"): "PR #1904; docs/internal/uat-release-campaign.md: SQLite TPC-DS OBT (2026-08-25)",
+        (
+            "singlestore",
+            "joinorder",
+        ): "release UAT dry run 2 (run 41163626947) terminal=timeout at 1200s; local SF1 rerun 2026-11-07: kernel oom-kill of memsqld during query 7c on the 4 GiB stack",
         (
             "sqlite",
             "datavault",

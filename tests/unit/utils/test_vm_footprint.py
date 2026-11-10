@@ -11,7 +11,7 @@ from benchbox.utils import heavy_watchdog as hw, process_tree as pt, vm_footprin
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 GIB = 2**30
-APP = "/Users/joe/Library/Application Support/com.apple.container/plugin-state/machine-apiserver/machines"
+APP = "/Users/example/Library/Application Support/com.apple.container/plugin-state/machine-apiserver/machines"
 WRAPPER_ARGV = ["bash", "scripts/linux_machine_run.sh", "benchbox-agent", "--", "pytest"]
 
 
@@ -21,7 +21,7 @@ def listing(machine: str) -> list[str]:
         f"{APP}/{machine}/rootfs.ext4",
         f"{APP}/{machine}",
         f"{APP}/{machine}/sbin.machine/init",
-        "/Users/joe/Developer/BenchBox/scripts/linux_machine_run.sh",
+        "/Users/example/Developer/BenchBox/scripts/linux_machine_run.sh",
     ]
 
 

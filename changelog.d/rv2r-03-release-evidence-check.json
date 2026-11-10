@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "Release workflow change with no user effect: releases reuse nightly trunk UAT evidence when it still applies, require a recent green release canary, and fall back to the full UAT stages otherwise"}

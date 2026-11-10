@@ -171,9 +171,58 @@ indexes and ten after (rerunning the `sql-execution-evidence` job only):
 
 After the change the slowest SQLite query in any of the ten runs took 4.4 s,
 about a third of the budget, so the 15 s budget keeps a margin of 3.4 times over
-the worst hosted time. The only entries that still reach 15 s on a hosted run are
-PostgreSQL TPC-H Q20 and Havoc `8_v10` and `9_v1`, which are the recorded
-`optional` PostgreSQL timeout entries in `expected_differences.json`.
+the worst hosted time.
+
+Before PostgreSQL got the same indexes, TPC-H Q20, the ten Havoc `20_v` variants
+and Havoc `8_v10` and `9_v1` reached the 15 s statement timeout on hosted runs
+and were recorded as `optional` timeout entries. `PostgresEngine.open` now
+creates the same leading-column and key indexes as SQLite, then runs
+`VACUUM (ANALYZE)` on each table it loaded so the visibility map allows
+index-only scans. Measured on one PostgreSQL 17 container, TPC-H Q20 went from
+15.00 s (statement timeout) to under 0.01 s, and the slowest PostgreSQL query of
+the default scope became TPC-H Q1 at 1.1 s. Those entries were removed rather
+than kept optional, so a regression now fails the gate.
+
+### OBT queries
+
+The nightly `t3:sql-execution-gate-obt` job timed out on the same OBT queries in
+every scheduled run from 2026-11-04 to 2026-11-08: PostgreSQL Q58 and Q60 at the
+15 s statement timeout in all five runs, PostgreSQL Q83 once (15.00 s on
+2026-11-08, 5.45 s on 2026-11-07), and SQLite augmented Q95 in the two runs that
+print timings (15.00 s for both seeds on 2026-11-07, 15.00 s and 14.19 s on
+2026-11-08). Indexing the key columns did not help because the OBT has no
+`*_sk` column that these queries filter or join on. The causes are in the plans:
+
+- Q95 (and Q16 and Q94) self-join the OBT on `sale_id`, so SQLite scanned the
+  whole table once per outer row. `sale_id` is not a key-named column.
+- Q56, Q58, Q60 and Q33 filter with `IN (SELECT ... FROM obt WHERE ...)` on
+  `item_i_item_id`, `item_i_manufact_id` and `sold_date_d_week_seq`, which the
+  planner could only answer by scanning the 715-column table per outer row.
+- Q83 and Q58 probe `sold_date_d_date` for each outer row with a bitmap heap
+  scan over wide rows (66,044 heap blocks in Q83). An index on
+  `(sold_date_d_date, sold_date_d_week_seq, channel)` after the `VACUUM` turns
+  that probe into an index-only scan with no heap fetches.
+
+`OBT_INDEXES` in `scripts/sql_execution_gate/obt.py` lists the extra indexes both
+engines build for the OBT datasets. Measured at SF0.01 on the maintainer host
+(PostgreSQL 16.2, SQLite 3.53.1) before and after:
+
+| Query | Before | After |
+|---|---|---|
+| PostgreSQL Q58 | 15.9 s (timeout) | 0.01 s |
+| PostgreSQL Q60 | 13.7 s | 0.4 s |
+| PostgreSQL Q83 | 15.0 s (timeout), 6.7 s with the date indexes only | 0.09 s |
+| PostgreSQL Q33 | 5.3 s with the other OBT indexes already in place | 0.13 s |
+| PostgreSQL Q56 | 4.5 s | 0.18 s |
+| SQLite augmented Q95 (both seeds) | 15.0 s (timeout) | 0.17 s or less |
+| Slowest PostgreSQL query of the OBT scope | 15.0 s (timeout) | 1.4 s (Q1) |
+| Slowest SQLite query of the OBT scope | 15.0 s (timeout) | 1.5 s (Q35) |
+| PostgreSQL engine time, OBT scope | 123.6 s | 54.0 s |
+
+The `optional` timeout entries for PostgreSQL OBT Q56, Q58 and Q60 were removed,
+so a timeout on any OBT query now fails the nightly gate. PostgreSQL Q58 now
+returns the same empty result as the other engines and joins the Q58 vacuous
+entry.
 
 ## Adoption evidence
 
@@ -231,7 +280,7 @@ data and the corpus, wrapper and bypass assertion tests), the
 `make sql-execution-gate`), the pin and retirement scripts, and their tests
 (`test_sql_execution_gate.py`, which holds the regression proofs below,
 `test_sync_sqlglot_runtime.py`, `test_check_sqlglot_repro_retirement.py` and the
-wrapper tests under `tests/unit/utils/`). A change to any of them needs an oracle
+wrapper tests under `tests/unit/utils/`). A change to any of them needs a review
 success review on the current head.
 
 ## Regression proofs
@@ -286,7 +335,8 @@ The gate is built to catch the regressions that the text corpus accepted:
   0.5 s. The outcome therefore depended on the SQLite version and on runner
   load. `SqliteEngine.open` now indexes the leading column of each table and
   every column that ends in `key`, `_sk`, `_order_number` or `_ticket_number`;
-  the OBT datasets keep only the leading-column index. With the indexes 3.46.1
+  the OBT datasets index the leading column and the `OBT_INDEXES` of
+  `scripts/sql_execution_gate/obt.py` instead. With the indexes 3.46.1
   plans `SEARCH cs2 USING INDEX catalog_sales_cs_order_number_ix` and runs Q16 in
   0.013 s, and all 347 default queries finish in at most 1.6 s on 3.46.1
   (measured with the SQLite 3.46.1 shell on the same SF0.01 data).

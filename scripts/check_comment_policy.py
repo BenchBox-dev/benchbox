@@ -31,7 +31,7 @@ from check_comment_cleanup_scope import (
     is_wheel_bump as _is_wheel_bump,
     load_comment_policy as load_policy,
     load_policy_bytes as load_scope_policy_bytes,
-    oracle_review_covers,
+    review_covers,
     validate_comment_policy_path as validate_path,
     verify_bound_wheel,
 )
@@ -80,7 +80,7 @@ def expiring_policy_warnings(policy: dict, today: date | None = None) -> list[st
         and today <= date.fromisoformat(entry["expires"]) <= horizon
     )
     return [
-        f"{count} directive exception(s) expire on {expires}; renew or remove them through an oracle-reviewed policy change"
+        f"{count} directive exception(s) expire on {expires}; renew or remove them through a reviewed policy change"
         for expires, count in sorted(by_date.items())
     ]
 
@@ -504,7 +504,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.bootstrap and not (compared and bootstrap_base_allowed(root, args.base)):
             raise ValueError("bootstrap requires a base that contains the initial rollout commit")
         owner_base = ownership_base(root, args.mode, args.base, args.ownership_base)
-        reviewed = compared and oracle_review_covers(root)
+        reviewed = compared and review_covers(root)
         candidate_notices = candidate_scope_notices(root, args.staged) if reviewed else None
         owned_exclusions = ownership_exclusions(root, owner_base, args.staged, candidate_notices)
         baseline_policy, bumped_wheels = policy, set()

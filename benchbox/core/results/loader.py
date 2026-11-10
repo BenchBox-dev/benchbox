@@ -764,6 +764,7 @@ def _reconstruct_execution_phases(
             power_at_size=power_at_size or 0.0,
             refresh_first_set=power_data.get("refresh_first_set"),
             refresh_functions=power_data.get("refresh_functions"),
+            validation=power_data.get("validation"),
             query_count=power_data.get("query_count"),
             success=power_data.get("status") == "COMPLETED",
         )

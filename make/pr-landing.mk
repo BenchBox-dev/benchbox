@@ -238,12 +238,12 @@ pr-open:
 	UNAVAILABLE_FILE=$$(mktemp); \
 	trap 'rm -f "$$RECORD_FILE" "$$UNAVAILABLE_FILE" "$$RECEIPT_FILE" "$$ALLOW_FILE"' EXIT; \
 	LOCAL_STATUS=0; \
-	python3 scripts/oracle_local_review.py --policy .github/oracle-reviewers.yml --base-ref "$$STACK_BASE" --trusted-ref origin/develop --head "$$REVIEWED" --rebuttals "$$PR_OPEN_REBUTTALS" --adjudicate "$$PR_OPEN_ADJUDICATE" --record-out "$$RECORD_FILE" --unavailable-out "$$UNAVAILABLE_FILE" || LOCAL_STATUS=$$?; \
+	python3 scripts/local_review.py --policy .github/review.yml --base-ref "$$STACK_BASE" --trusted-ref origin/develop --head "$$REVIEWED" --rebuttals "$$PR_OPEN_REBUTTALS" --adjudicate "$$PR_OPEN_ADJUDICATE" --record-out "$$RECORD_FILE" --unavailable-out "$$UNAVAILABLE_FILE" || LOCAL_STATUS=$$?; \
 	UNAVAILABLE_CAUSE=; \
 	if [ "$$LOCAL_STATUS" != 0 ]; then \
 		if [ "$$LOCAL_STATUS" = 2 ]; then UNAVAILABLE_CAUSE=$$(sed -n 's/^availability: //p' "$$UNAVAILABLE_FILE" | sed -n 1p); fi; \
-		if [ -z "$$UNAVAILABLE_CAUSE" ]; then echo "Refusing to open PR: the local oracle review did not clear this head. Nothing was pushed." >&2; exit 1; fi; \
-		echo "The local oracle review is unavailable ($$UNAVAILABLE_CAUSE); opening as a draft. The hosted review decides." >&2; \
+		if [ -z "$$UNAVAILABLE_CAUSE" ]; then echo "Refusing to open PR: the local review did not clear this head. Nothing was pushed." >&2; exit 1; fi; \
+		echo "The local review is unavailable ($$UNAVAILABLE_CAUSE); opening as a draft. The hosted review decides." >&2; \
 		DRAFT_FLAG=--draft; \
 	fi; \
 	$(MAKE) -s pr-conflict-scan BRANCH="$$CURRENT" REPO="$$REPOSITORY" || true; \
@@ -477,50 +477,7 @@ pr-review-followups:
 
 .PHONY: dev-loop-metrics
 dev-loop-metrics:
-	@set -e; \
-	TMP=$$(mktemp -d); \
-	trap 'rm -rf "$$TMP"' EXIT; \
-	SINCE=$$(uv run -- python -c 'from datetime import datetime, timedelta, timezone; print((datetime.now(timezone.utc) - timedelta(days=int("$(DEV_LOOP_METRICS_DAYS)"))).date().isoformat())'); \
-	echo "Fetching develop-post-merge metrics since $$SINCE (limit $(DEV_LOOP_METRICS_LIMIT))..."; \
-	RUN_IDS=$$(gh run list --workflow develop-post-merge.yml --branch develop --event push --created ">=$$SINCE" --limit "$(DEV_LOOP_METRICS_LIMIT)" --json databaseId --jq '.[].databaseId' 2>/dev/null || true); \
-	for id in $$RUN_IDS; do \
-		gh run download "$$id" -n metrics -D "$$TMP/$$id" >/dev/null 2>&1 || true; \
-	done; \
-	FILES=$$(find "$$TMP" -type f -name '*.json' | sort); \
-	if [ -z "$$FILES" ]; then \
-		echo "Metrics artifacts: 0"; \
-		echo "PR-to-merged P50: n/a"; \
-		echo "PR-to-merged P95: n/a"; \
-		echo "Post-merge red rate: n/a (0/0)"; \
-		echo "Conflict rate: n/a (0/0)"; \
-		echo "runner minutes total: 0"; \
-		exit 0; \
-	fi; \
-	jq -r -s ' \
-		def nums($$k): [.[].[$$k] | select(type == "number")]; \
-		def ceil_num: if . == floor then . else floor + 1 end; \
-		def pct($$a; $$p): \
-			if ($$a | length) == 0 then null \
-			else ($$a | sort) as $$s | (((($$s | length) * $$p / 100) | ceil_num) - 1) as $$idx | $$s[$$idx] end; \
-		def fmt: if . == null then "n/a" else tostring end; \
-		def rate($$n; $$d): if $$d == 0 then "n/a" else (((100 * $$n / $$d) | tostring) + "%") end; \
-		. as $$rows | \
-		($$rows | length) as $$total | \
-		(nums("pr_open_to_merged_seconds")) as $$merge_seconds | \
-		([$$rows[] | select(.post_merge_red == true)] | length) as $$red | \
-		([$$rows[] | select(.conflict_on_merge == true)] | length) as $$conflicts | \
-		((nums("ci_runner_minutes") | add) // 0) as $$runner | \
-		[ \
-			"Metrics artifacts: \($$total)", \
-			"PR-to-merged P50: \(pct($$merge_seconds; 50) | fmt) seconds", \
-			"PR-to-merged P95: \(pct($$merge_seconds; 95) | fmt) seconds", \
-			"Post-merge red rate: \(rate($$red; $$total)) (\($$red)/\($$total))", \
-			"Conflict rate: \(rate($$conflicts; $$total)) (\($$conflicts)/\($$total))", \
-			"runner minutes total: \($$runner)" \
-		] | .[]' $$FILES
-	@echo "---"; \
-	echo "Dev-loop PR metrics (CI-failure baseline, see dev-loop-metrics-ci-failure-baseline-2):"; \
-	test -f _project/scripts/dev_loop_pr_metrics.py && uv run -- python _project/scripts/dev_loop_pr_metrics.py --days "$(DEV_LOOP_METRICS_DAYS)" || true
+	uv run -- python _project/scripts/dev_loop_pr_metrics.py --days "$(DEV_LOOP_METRICS_DAYS)"
 
 CI_USAGE_OUTPUT ?= .cache/ci-usage-report/report-$(CI_USAGE_SINCE)_$(CI_USAGE_UNTIL).json
 

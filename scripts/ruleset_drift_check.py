@@ -19,7 +19,9 @@ DEFAULT_RUNBOOK = REPO_ROOT / "docs" / "internal" / "repo-admin-settings.md"
 sys.path.insert(0, str(REPO_ROOT / "_project" / "scripts"))
 
 from ruleset_review_enforcement import (
-    ORACLE_GATE_INTEGRATION_ID,
+    LEGACY_GATE_CONTEXT,
+    REVIEW_GATE_CONTEXT,
+    REVIEW_GATE_INTEGRATION_ID,
     TAG_RULESET_ENFORCED,
     extract_rules,
     review_enforcement_findings,
@@ -35,17 +37,21 @@ CAPTURE_IGNORED_FIELDS = frozenset({"updated_at", "_links", "current_user_can_by
 WARNING_PREFIX = "WARNING (non-blocking): "
 
 DEVELOP_REVIEW_RULE_ENFORCED = True
+RELEASE_BRANCHES_REF = "refs/heads/release/**"
+RELEASE_LIFECYCLE_RULESET = "release-branch-lifecycle"
+RELEASE_LIFECYCLE_BYPASS = (("User", 57046, "always"),)
+REVIEW_ENFORCED_RULESETS = frozenset({"develop-squash-only", "release-branches"})
 
 PYPI_ENVIRONMENT = "pypi"
 PYPI_REQUIRED_REVIEWERS = (("User", 57046, "joeharris76"),)
 PYPI_CAN_ADMINS_BYPASS = True
 PYPI_PREVENT_SELF_REVIEW = False
 TEST_PYPI_ENVIRONMENT = "test-pypi"
-ORACLE_ENVIRONMENT = "oracle"
+LEGACY_REVIEW_ENVIRONMENT = "oracle"
 ENVIRONMENT_DEPLOYMENT_POLICIES = {
     PYPI_ENVIRONMENT: (("tag", "v*"),),
     TEST_PYPI_ENVIRONMENT: (("branch", "develop"), ("tag", "v*")),
-    ORACLE_ENVIRONMENT: (("branch", "develop"),),
+    LEGACY_REVIEW_ENVIRONMENT: (("branch", "develop"), ("branch", "release/*")),
 }
 RETIRED_RELEASE_BRANCH = "release"
 
@@ -218,7 +224,7 @@ def _other_properties(section: str, name: str) -> dict[str, str]:
 
 def parse_expected_rulesets(runbook_text: str) -> dict[str, ExpectedRuleset]:
     expected: dict[str, ExpectedRuleset] = {}
-    for name in ("develop-squash-only",):
+    for name in ("develop-squash-only", "release-branches"):
         section = _section_for_ruleset(runbook_text, name)
         ref_match = re.search(r"targets?\s+`([^`]+)`", section)
         if not ref_match:
@@ -280,7 +286,7 @@ def compare_ruleset(
     if expected.ref not in _ref_includes(live):
         findings.append(f"{expected.name}: target refs {_ref_includes(live)!r}, expected {expected.ref!r}")
 
-    live_checks = _required_status_contexts(live)
+    live_checks = tuple(context for context in _required_status_contexts(live) if context != LEGACY_GATE_CONTEXT)
     if set(live_checks) != set(expected.required_checks):
         findings.append(
             f"{expected.name}: required checks {sorted(live_checks)!r}, expected {sorted(expected.required_checks)!r}"
@@ -313,7 +319,7 @@ def compare_ruleset(
                 actor_types = [actor.get("actor_type", "(unknown)") for actor in bypass_actors]
                 findings.append(f"{expected.name}: bypass actors {actor_types!r}, expected none")
 
-    if expected.name == "develop-squash-only":
+    if expected.name in REVIEW_ENFORCED_RULESETS:
         review_findings = review_enforcement_findings(extract_rules(live))
         if review_findings:
             if enforce_review_rule:
@@ -374,17 +380,20 @@ def capture_comparison_findings(capture: dict[str, Any], live: dict[str, Any]) -
     if live.get("enforcement") != "active":
         findings.append(f"live enforcement is {live.get('enforcement')!r}, expected 'active'")
     findings.extend(_differing_fields("", _normalized_for_capture(capture), _normalized_for_capture(live)))
-    oracle_bindings = [
-        check.get("integration_id")
-        for rule in live.get("rules", [])
-        if rule.get("type") == "required_status_checks"
-        for check in rule["parameters"]["required_status_checks"]
-        if check.get("context") == "oracle-gate"
-    ]
-    if not oracle_bindings or any(binding != ORACLE_GATE_INTEGRATION_ID for binding in oracle_bindings):
-        findings.append(
-            f"oracle-gate integration_id: live has {oracle_bindings!r}, expected {ORACLE_GATE_INTEGRATION_ID}"
-        )
+    gate_bindings = {
+        context: [
+            check.get("integration_id")
+            for rule in live.get("rules", [])
+            if rule.get("type") == "required_status_checks"
+            for check in rule["parameters"]["required_status_checks"]
+            if check.get("context") == context
+        ]
+        for context in (REVIEW_GATE_CONTEXT, LEGACY_GATE_CONTEXT)
+    }
+    for context, bindings in gate_bindings.items():
+        missing = context == REVIEW_GATE_CONTEXT and not bindings
+        if missing or any(binding != REVIEW_GATE_INTEGRATION_ID for binding in bindings):
+            findings.append(f"{context} integration_id: live has {bindings!r}, expected {REVIEW_GATE_INTEGRATION_ID}")
     return findings
 
 
@@ -458,6 +467,37 @@ def _fetch_environment_policies(repo: str, token: str, name: str) -> dict[str, A
     return _api_json(f"https://api.github.com/repos/{repo}/environments/{name}/deployment-branch-policies", token)
 
 
+def release_lifecycle_findings(
+    live: dict[str, Any] | None, *, require_bypass_actor_visibility: bool = False
+) -> list[str]:
+    name = RELEASE_LIFECYCLE_RULESET
+    if live is None:
+        return [f"{name}: live ruleset is missing"]
+    findings: list[str] = []
+    if live.get("enforcement") != "active":
+        findings.append(f"{name}: enforcement is {live.get('enforcement')!r}, expected 'active'")
+    if RELEASE_BRANCHES_REF not in _ref_includes(live):
+        findings.append(f"{name}: target refs {_ref_includes(live)!r}, expected {RELEASE_BRANCHES_REF!r}")
+    for rule_type in ("creation", "deletion"):
+        if _rule_by_type(live, rule_type) is None:
+            findings.append(f"{name}: {rule_type} rule is missing, so {RELEASE_BRANCHES_REF} is not owner-only")
+    if "bypass_actors" not in live:
+        if require_bypass_actor_visibility:
+            findings.append(
+                f"{name}: bypass actors are not visible to this token; "
+                "use RULESET_DRIFT_TOKEN with ruleset write/admin visibility"
+            )
+    else:
+        actors = tuple(
+            (actor.get("actor_type"), actor.get("actor_id"), actor.get("bypass_mode"))
+            for actor in live.get("bypass_actors") or []
+            if isinstance(actor, dict)
+        )
+        if actors != RELEASE_LIFECYCLE_BYPASS:
+            findings.append(f"{name}: bypass actors are {actors!r}, expected {RELEASE_LIFECYCLE_BYPASS!r}")
+    return findings
+
+
 def merge_queue_findings(live: dict[str, Any], name: str) -> list[str]:
     if _rule_by_type(live, "merge_queue") is None:
         return []
@@ -480,8 +520,11 @@ def render_summary(findings: list[str], expected: dict[str, ExpectedRuleset]) ->
         lines.append("- pypi environment: required reviewer joeharris76 (User id 57046)")
         lines.append("- pypi environment: deployments only from tag v*")
         lines.append("- test-pypi environment: deployments only from tag v* and branch develop")
+        lines.append(f"- {RELEASE_LIFECYCLE_RULESET}: creation and deletion of {RELEASE_BRANCHES_REF} owner-only")
         lines.append("- no `release` branch or ruleset")
-        lines.append("- oracle environment: deployments only from branch develop")
+        lines.append(
+            "- oracle environment (legacy name of the review environment): deployments only from branches develop and release/*"
+        )
     if warnings:
         lines += ["", "## Non-blocking warnings", "", *[f"- {finding}" for finding in warnings]]
     return "\n".join(lines) + "\n"
@@ -572,6 +615,12 @@ def main(argv: list[str] | None = None) -> int:
                 require_bypass_actor_visibility=args.require_bypass_actor_visibility,
             )
         )
+    findings.extend(
+        release_lifecycle_findings(
+            live_by_name.get(RELEASE_LIFECYCLE_RULESET),
+            require_bypass_actor_visibility=args.require_bypass_actor_visibility,
+        )
+    )
     develop_live = live_by_name.get("develop-squash-only")
     if develop_live is not None:
         findings.extend(merge_queue_findings(develop_live, "develop-squash-only"))

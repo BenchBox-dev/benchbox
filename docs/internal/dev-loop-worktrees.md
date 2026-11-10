@@ -36,7 +36,7 @@ The primary clone owns hook installation. Run it there once for the shared Git
 directory:
 
 ```bash
-cd /Users/joe/Developer/BenchBox
+cd ~/Developer/BenchBox
 uv run -- pre-commit install
 ```
 
@@ -113,12 +113,14 @@ The first gives up your claim; the second takes over a worktree whose owner is l
 ## Batch delivery choice
 
 Use the ordinary serial flow for standalone, unrelated, cross-repository,
-review-separated, or approval-separated work. An explicitly assigned cohesive
-batch defaults to feature delivery mode only after the installed, compatible
-registered-batch capability and its prerequisites have been verified against the
-active todo-db MCP server. Prerequisite runtime, catalog pin, and workflow rollout
-changes remain serial: changes enabling the loop cannot certify themselves.
-An unavailable capability is an owned blocker and keeps work in serial mode.
+review-separated, or approval-separated work. Related items go on one feature
+branch and one PR per feature. Feature delivery mode is opt-in: use it only when
+the owner names the batch, it has two or more members, and the installed,
+compatible registered-batch capability and its prerequisites have been verified
+against the active todo-db MCP server. Prerequisite runtime, catalog pin, and
+workflow rollout changes remain serial: changes enabling the loop cannot certify
+themselves. An unavailable capability is an owned blocker and keeps work in
+serial mode.
 See [Batch delivery modes](../agent/batch-feature-delivery.md) for the
 authoritative capability checks and delivery protocol.
 
@@ -164,7 +166,7 @@ with the single-worktree cleanup commands below.
 Before removing a worktree, you can preview single-target finish eligibility and view the exact proposed commands:
 
 ```bash
-cd /Users/joe/Developer/BenchBox
+cd ~/Developer/BenchBox
 make worktree-finish WORKTREE_PATH="$WORKTREE_PATH" EXPECTED_HEAD_OID="$OID"
 make worktree-finish WORKTREE_PATH="$WORKTREE_PATH" EXPECTED_HEAD_OID="$OID" FORMAT=json
 ```
@@ -191,7 +193,7 @@ The dry run prints one line per worktree (`remove`, `keep`, or `ambiguous`, then
 After the PR merges and the worktree is clean, remove the exact registration:
 
 ```bash
-cd /Users/joe/Developer/BenchBox
+cd ~/Developer/BenchBox
 make worktree-remove WORKTREE_PATH="$WORKTREE_PATH"
 ```
 

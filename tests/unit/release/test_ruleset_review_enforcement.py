@@ -25,13 +25,13 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 
 def _check(context: str, integration_id: int | None = None) -> dict:
-    if context == "oracle-gate" and integration_id is None:
+    if context == "review-gate" and integration_id is None:
         integration_id = 5201041
     return {"context": context} if integration_id is None else {"context": context, "integration_id": integration_id}
 
 
 def _pr_rule(
-    count: int, thread_resolution: bool | None = True, contexts: tuple[str, ...] = ("core", "oracle-gate")
+    count: int, thread_resolution: bool | None = True, contexts: tuple[str, ...] = ("core", "review-gate")
 ) -> list[dict]:
     parameters: dict[str, object] = {
         "required_approving_review_count": count,
@@ -85,37 +85,37 @@ def test_missing_required_status_rule_fails() -> None:
     assert "no required_status_checks rule" in " ".join(rre.review_enforcement_findings(rules))
 
 
-@pytest.mark.parametrize("contexts", [("core", "oracle-review", "oracle-gate"), ("core", "oracle-gate")])
-def test_review_enforced_when_the_app_bound_oracle_gate_is_required(contexts: tuple[str, ...]) -> None:
+@pytest.mark.parametrize("contexts", [("core", "oracle-gate", "review-gate"), ("core", "review-gate")])
+def test_review_enforced_when_the_app_bound_review_gate_is_required(contexts: tuple[str, ...]) -> None:
     rules = _pr_rule(count=0, contexts=contexts)
     assert rre.is_review_enforced(rules) is True
 
 
-def test_oracle_review_alone_no_longer_enforces_review() -> None:
-    rules = _pr_rule(count=0, contexts=("core", "oracle-review"))
+def test_the_legacy_gate_alone_does_not_enforce_review() -> None:
+    rules = _pr_rule(count=0, contexts=("core", "oracle-gate"))
     assert rre.is_review_enforced(rules) is False
-    assert "must include oracle-gate scoped to the oracle App" in " ".join(rre.review_enforcement_findings(rules))
+    assert "must include review-gate scoped to the review App" in " ".join(rre.review_enforcement_findings(rules))
 
 
 @pytest.mark.parametrize("integration_id", [None, 15368, 0])
-def test_oracle_gate_without_the_oracle_app_binding_fails(integration_id: int | None) -> None:
+def test_review_gate_without_the_review_app_binding_fails(integration_id: int | None) -> None:
     rules = _pr_rule(count=0)
     rules[0]["parameters"]["required_status_checks"] = [
         {"context": "core"},
-        {"context": "oracle-gate", **({} if integration_id is None else {"integration_id": integration_id})},
+        {"context": "review-gate", **({} if integration_id is None else {"integration_id": integration_id})},
     ]
     assert rre.is_review_enforced(rules) is False
-    assert "scoped to the oracle App" in " ".join(rre.review_enforcement_findings(rules))
+    assert "scoped to the review App" in " ".join(rre.review_enforcement_findings(rules))
 
 
 @pytest.mark.parametrize(
-    "checks", [[], [{"context": "core"}], [{"context": "oracle-review"}], [{"context": "oracle-gate-other"}]]
+    "checks", [[], [{"context": "core"}], [{"context": "review"}], [{"context": "review-gate-other"}]]
 )
-def test_missing_oracle_gate_fails(checks: list[dict]) -> None:
+def test_missing_review_gate_fails(checks: list[dict]) -> None:
     rules = _pr_rule(count=0)
     rules[0]["parameters"]["required_status_checks"] = checks
     assert rre.is_review_enforced(rules) is False
-    assert "must include oracle-gate scoped" in " ".join(rre.review_enforcement_findings(rules))
+    assert "must include review-gate scoped" in " ".join(rre.review_enforcement_findings(rules))
 
 
 @pytest.mark.parametrize(
@@ -125,13 +125,13 @@ def test_missing_oracle_gate_fails(checks: list[dict]) -> None:
         [],
         {},
         {"required_status_checks": None},
-        {"required_status_checks": "oracle-review"},
-        {"required_status_checks": {"context": "oracle-review"}},
-        {"required_status_checks": ["oracle-review"]},
+        {"required_status_checks": "review"},
+        {"required_status_checks": {"context": "review"}},
+        {"required_status_checks": ["review"]},
         {"required_status_checks": [{}]},
         {"required_status_checks": [{"context": ""}]},
         {"required_status_checks": [{"context": None}]},
-        {"required_status_checks": [{"context": "oracle-review"}, None]},
+        {"required_status_checks": [{"context": "review"}, None]},
     ],
 )
 def test_malformed_required_status_checks_fail_closed(parameters: object) -> None:
@@ -167,12 +167,12 @@ def test_cli_exit_codes(tmp_path: Path) -> None:
     assert rre.main(["--rules-file", str(unenforced)]) == 1
 
 
-def test_cli_rejects_missing_oracle_review(tmp_path: Path) -> None:
+def test_cli_rejects_missing_review_review(tmp_path: Path) -> None:
     import json
 
     rules = _pr_rule(count=0)
     rules[0]["parameters"]["required_status_checks"] = [{"context": "core"}]
-    missing_oracle = tmp_path / "missing-oracle.json"
-    missing_oracle.write_text(json.dumps(rules), encoding="utf-8")
+    missing_review = tmp_path / "missing-review.json"
+    missing_review.write_text(json.dumps(rules), encoding="utf-8")
 
-    assert rre.main(["--rules-file", str(missing_oracle)]) == 1
+    assert rre.main(["--rules-file", str(missing_review)]) == 1

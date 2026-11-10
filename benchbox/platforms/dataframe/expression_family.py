@@ -15,6 +15,7 @@ from benchbox.core.dataframe.profiling import (
     QueryExecutionProfile,
     QueryProfileContext,
     capture_query_plan,
+    redact_plan_local_paths,
 )
 from benchbox.core.dataframe.query import DataFrameQuery
 from benchbox.core.dataframe.tuning import DataFrameTuningConfiguration
@@ -829,7 +830,9 @@ class ExpressionFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, 
                 try:
                     plan = capture_query_plan(lazy_result, self.platform_name)
                     if plan:
-                        profile_ctx.set_query_plan(plan)
+                        profile_ctx.set_query_plan(
+                            redact_plan_local_paths(plan, (self.working_dir, *getattr(self, "plan_local_roots", ())))
+                        )
                 except Exception as e:
                     plan_capture_error = str(e)
                     self._record_dataframe_plan_capture_failure(qid, plan_capture_error)

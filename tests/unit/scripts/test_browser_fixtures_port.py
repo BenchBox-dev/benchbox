@@ -11,7 +11,7 @@ from _project.scripts.explorer_pipeline import browser_fixtures
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
-STAGED_SOURCE_SHA256 = "5bbe1df3a3b7c469f556f0b97e0dda4a61b673abb9a83489e6076e5f0fc3c48e"
+STAGED_SOURCE_SHA256 = "790f4369eb3fb7ba0b174152a052735520c6a4dd479423d3f1bba1f98651df8e"
 
 
 def _tree_digest(root: Path) -> str:

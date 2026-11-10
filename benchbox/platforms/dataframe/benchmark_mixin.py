@@ -554,6 +554,17 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
         return normalized
 
     @staticmethod
+    def _collect_plan_local_roots(data_paths: dict[str, Path | list[Path]], data_dir: Path | None) -> list[Path]:
+        roots: dict[Path, None] = {}
+        if data_dir:
+            roots[Path(data_dir)] = None
+        for table_name, file_path in data_paths.items():
+            for entry in file_path if isinstance(file_path, list) else [file_path]:
+                parent = Path(entry).parent
+                roots[parent.parent if parent.name == table_name else parent] = None
+        return list(roots)
+
+    @staticmethod
     def _find_missing_paths(paths: dict[str, Path | list[Path]]) -> dict[str, list[Path]]:
         missing: dict[str, list[Path]] = {}
         for table_name, file_path in paths.items():
@@ -786,6 +797,8 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
 
         if missing_paths:
             self._raise_missing_paths_error(missing_paths)
+
+        self.plan_local_roots = self._collect_plan_local_roots(data_paths, data_dir)
 
         column_names_map, csv_delimiter = self._resolve_column_names_and_delimiter(benchmark_config, benchmark_instance)
 
@@ -1049,6 +1062,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                     result["iteration"] = 0
                     result["stream_id"] = warmup_stream_id
                     result["run_type"] = "warmup"
+                    result["test_type"] = "power"
                     query_results.append(result)
 
     @staticmethod
@@ -1191,6 +1205,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
             raw_result["iteration"] = iteration
             raw_result["stream_id"] = stream_id
             raw_result["run_type"] = "measurement"
+            raw_result["test_type"] = "power"
             return raw_result
 
         if monitor:

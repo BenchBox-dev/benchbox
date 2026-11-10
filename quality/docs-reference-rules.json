@@ -9,7 +9,7 @@
   "rules": [
     {
       "id": "oracle-exposure-exemptions",
-      "match": [".github/oracle-reviewers.yml"],
+      "match": [".github/review.yml"],
       "disposition": "governance-stays",
       "reason": "Trusted oracle exposure policy matches documentation paths without reading site-owned page content or changing review scope."
     },
@@ -255,7 +255,10 @@
         "tests/unit/scripts/test_pr_review_followups.py",
         "tests/unit/scripts/test_preflight_targets.py",
         "tests/unit/scripts/test_reference_usage_audit.py",
+        "tests/unit/scripts/test_release_probe.py",
+        "tests/unit/scripts/test_release_probe_launch.py",
         "tests/unit/scripts/test_remote_closeout.py",
+        "tests/unit/scripts/test_trunk_uat.py",
         "tests/unit/test_artifact_hygiene_guardrails.py",
         "tests/unit/test_ruleset_drift.py",
         "tests/unit/workflows/test_ci_aggregate_cancelled.py",

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import subprocess
 import zipfile
@@ -62,6 +63,9 @@ def test_pin_receipt_and_tracked_mirror_bind_catalog_tip() -> None:
         assert _sha256(ROOT / ".claude/skills/todo" / relative) == expected
 
 
+_DEVELOPER_PATH = re.compile(r"/(?:Users|home)/[^/\s\"']+/Developer")
+
+
 def test_project_local_wheel_and_lock_are_exact_and_sibling_free() -> None:
     assert WHEEL.is_file()
     assert _sha256(WHEEL) == WHEEL_SHA256
@@ -71,9 +75,8 @@ def test_project_local_wheel_and_lock_are_exact_and_sibling_free() -> None:
     assert f'path = "{expected_path}"' in pyproject
     assert f'path = "{expected_path}"' in lock
     assert f'name = "tractable"\nversion = "{TRACTABLE_VERSION}"' in lock
-    assert "/Users/joe/Developer/tractable" not in pyproject
-    assert "/Users/joe/Developer/tractable" not in lock
-    assert "/Users/joe/Developer" not in lock
+    assert not _DEVELOPER_PATH.search(pyproject)
+    assert not _DEVELOPER_PATH.search(lock)
     with zipfile.ZipFile(WHEEL) as archive:
         names = set(archive.namelist())
         metadata_name = next(name for name in names if name.endswith(".dist-info/METADATA"))
@@ -85,7 +88,33 @@ def test_project_local_wheel_and_lock_are_exact_and_sibling_free() -> None:
     assert "tractable/database.py" not in names
 
 
+def _skip_unless_scripts_project_resolves_offline() -> None:
+    probe = subprocess.run(
+        [
+            "uv",
+            "run",
+            "--project",
+            str(SCRIPTS_PROJECT),
+            "--locked",
+            "--offline",
+            "--",
+            "python",
+            "-c",
+            "import todo_db",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    if probe.returncode != 0 and os.environ.get("GITHUB_ACTIONS") != "true":
+        pytest.skip(
+            "the _project/scripts environment is not installed and cannot resolve offline; "
+            "run `uv sync --project _project/scripts --locked` first (hosted CI always does)"
+        )
+
+
 def test_installed_runtime_handshake_exposes_registered_batch_tools(tmp_path: Path) -> None:
+    _skip_unless_scripts_project_resolves_offline()
     remote = tmp_path / "state.git"
     subprocess.run(["git", "init", "--bare", "--quiet", str(remote)], check=True, capture_output=True)
     subprocess.run(
