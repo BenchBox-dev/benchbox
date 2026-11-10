@@ -39407,6 +39407,13 @@
       "status": "open",
       "title": "Activate the named Theseus gateway client and prove its first App-bound gate after observation disposition"
     },
+    "theseus-governance-docs-owner-merge-rule-20261110": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Theseus: document the owner's merge and release review rule in CONTRIBUTING.md and RELEASING.md"
+    },
     "theseus-hosted-workflows-offline-20261102": {
       "claim": null,
       "needs": [

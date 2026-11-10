@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "CONTRIBUTING.md and RELEASING.md state the rule above, with the owner retaining stand-ins, adjudications, owner instructions and backoff resets.",
+    "No other file changes; merged with hosted SHIP + green required checks; merge SHA recorded here."
+  ],
+  "context": "Part of theseus-review-output-format-20261110 (raised by the item-set review).",
+  "description": "CONTRIBUTING.md:5,7 requires the owner's full-diff review for every merge (and explicitly for release tooling and lock changes), and RELEASING.md:13 requires the owner to have reviewed every diff since the previous tag. On 2026-11-10 the owner chose the rule already used in practice since the self-gate went live: every PR needs a current-head review-verdict SHIP from theseus-review[bot] plus green required checks; changes to gate, receipt, dedup or posting code, workflows, policy or the lock additionally need an independent review (a fresh-context agent session that did not author the change, of the exact final head SHA, with reviewer, head and verdict recorded); before tagging, the releaser confirms every diff since the previous tag merged under this rule. Update both documents to say exactly that, and nothing else.\nGuardrails: docs-only; does not change workflows, policy or the lock; hosted SHIP + green checks.",
+  "links": [
+    "https://github.com/joeharris76/theseus/blob/main/CONTRIBUTING.md",
+    "https://github.com/joeharris76/theseus/blob/main/RELEASING.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a",
+      "at": "2026-11-10T17:58:21Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b77d8c14ac9f40db91aa5c709e5b6dea",
+      "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    }
+  ]
+}
