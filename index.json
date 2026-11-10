@@ -21092,6 +21092,13 @@
       "status": "done",
       "title": "Follow-up duplicate-code triage and consolidation from AST clone report"
     },
+    "duration-refresh-workflow-closes-superseded-prs-20261110": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Close superseded duration-refresh PRs when the weekly refresh opens a new one"
+    },
     "e2e-cli-test-suite": {
       "claim": null,
       "needs": [],
