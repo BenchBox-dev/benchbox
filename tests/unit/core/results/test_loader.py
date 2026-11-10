@@ -1158,3 +1158,74 @@ class TestResultSchemaVersionLoading:
 
         with pytest.raises(UnsupportedSchemaError):
             load_result_file(file_path)
+
+
+class TestTextPlanRoundTrip:
+    def _write_text_plan_result(self, tmp_path: Path) -> Path:
+        result_file = tmp_path / "result.json"
+        write_v2_result_file(
+            result_file,
+            version="2.0",
+            platform="Polars",
+            scale_factor=0.01,
+            queries=[{"id": "1", "ms": 100.0, "rows": 4}],
+        )
+        (tmp_path / "result.plans.json").write_text(
+            json.dumps(
+                {
+                    "version": "2.0",
+                    "run_id": "test",
+                    "plans_captured": 1,
+                    "capture_failures": 0,
+                    "queries": {
+                        "1": {
+                            "fingerprint": "b" * 64,
+                            "plan_format": "text",
+                            "plan": "SELECT [col(a)] FROM DF",
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        return result_file
+
+    def test_text_plan_rows_survive_legacy_query_contract(self, tmp_path):
+        from benchbox.core.results.query_execution import query_execution_from_legacy_dict
+
+        result, _raw = load_result_file(self._write_text_plan_result(tmp_path))
+
+        row = result.query_results[0]
+        assert row["query_plan_raw"] == "SELECT [col(a)] FROM DF"
+        assert row["plan_fingerprint"] == "b" * 64
+        query_execution_from_legacy_dict(row)
+
+    def test_export_of_loaded_text_plan_result_anonymizes_plan_text(self, tmp_path):
+        from benchbox.cli.output import ResultExporter
+        from benchbox.core.results.anonymization import AnonymizationConfig
+
+        result, _raw = load_result_file(self._write_text_plan_result(tmp_path))
+        out = tmp_path / "out"
+        out.mkdir()
+
+        exporter = ResultExporter(
+            output_dir=out,
+            anonymize=True,
+            anonymization_config=AnonymizationConfig(machine_id_salt="test-salt"),
+        )
+        exported = exporter.export_result(result, formats=["json"])
+
+        assert exported["json"].exists()
+        plans = list(out.glob("*.plans.json"))
+        assert plans
+        payload = json.loads(plans[0].read_text(encoding="utf-8"))
+        assert payload["queries"]["1"]["plan"] == "SELECT [col(a)] FROM DF"
+
+    def test_unknown_legacy_field_still_rejected(self):
+        from benchbox.core.results.query_execution import (
+            QueryExecutionContractError,
+            query_execution_from_legacy_dict,
+        )
+
+        with pytest.raises(QueryExecutionContractError, match="Unknown legacy query-result fields"):
+            query_execution_from_legacy_dict({"query_id": "1", "execution_time_ms": 1.0, "query_plan_rawx": "x"})
