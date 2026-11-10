@@ -2645,12 +2645,12 @@ def test_the_protocol_record_wins_over_disagreeing_prose():
     ("body", "state"),
     [
         (f"<!-- review-verdict: v2 failure {HEAD} -->", "failure"),
-        (f"<!-- review-verdict: v2 failure {OLD} -->", None),
+        (f"<!-- review-verdict: v2 failure {OLD} -->", "failure"),
         (f"<!-- review-verdict: v2 failure {HEAD} -->\n<!-- review-verdict: v2 failure {HEAD} -->", "failure"),
         (f"<!-- review-verdict: v2 success {HEAD} -->\n<!-- review-verdict: v2 failure {HEAD} -->", "failure"),
         (f"### review-verdict: success for `{HEAD}`\n<!-- review-verdict: v2 failure {HEAD} -->", "failure"),
         (f"### review-verdict: failure for `{HEAD}`\nquotes `<!-- review-verdict` syntax", "failure"),
-        (f"### review-verdict: failure for `{HEAD}`\n<!-- review-verdict: v2 failure {OLD} -->", None),
+        (f"### review-verdict: failure for `{HEAD}`\n<!-- review-verdict: v2 failure {OLD} -->", "failure"),
         (f"<!-- review-verdict: v3 failure {HEAD} -->", None),
         ("### SHIP \u00b7 clean", None),
         ("", None),
@@ -2658,6 +2658,67 @@ def test_the_protocol_record_wins_over_disagreeing_prose():
 )
 def test_the_v2_hidden_marker_gives_the_verdict_state_and_fails_closed(body, state):
     assert digest.review_verdict_state(body, HEAD) == state
+
+
+AMBIGUOUS_BODIES = [
+    f"<!-- review-verdict: v2 success {OLD} -->",
+    f"### review-verdict: success for `{HEAD}`\n<!-- review-verdict: v2 success {OLD} -->",
+    "an unrecognised layout with no verdict claim",
+]
+
+
+@pytest.mark.parametrize("body", AMBIGUOUS_BODIES)
+def test_an_ambiguous_verdict_body_blocks_instead_of_reading_as_clean(body):
+    pull = evidence(reviews=(review(APP_BOT, HEAD, user_type="Bot", body=body),))
+    assert digest.blocking_verdict_decision(pull) == "failure"
+    assert not digest._review_success(pull)
+
+
+@pytest.mark.parametrize("body", AMBIGUOUS_BODIES)
+def test_an_ambiguous_verdict_body_keeps_the_standin_window_closed(body):
+    pull = evidence(reviews=(review(APP_BOT, HEAD, user_type="Bot", body=body),))
+    assert digest._standin_after(pull) == AFTER
+
+
+@pytest.mark.parametrize("body", AMBIGUOUS_BODIES)
+def test_an_ambiguous_verdict_body_is_a_status_disagreement(body):
+    assert digest._status_disagreement(review(APP_BOT, HEAD, user_type="Bot", body=body), ()) != ""
+
+
+def _classified_severity(monkeypatch, title, reviews):
+    body = f"{title}\n\n<!-- review-defect: c1-D1 -->"
+    monkeypatch.setattr(digest, "gh_json", lambda *args: graphql_threads([thread_with(body)]))
+    threads = digest.classify_threads(digest.collect_threads("o/r", 7), reviews)
+    return threads[0]
+
+
+def _recorded(severity, at=AFTER):
+    return review(
+        APP_BOT,
+        HEAD,
+        submitted_at=at,
+        user_type="Bot",
+        body=redesigned_body(record=protocol_record(defects=(("D1", severity),))),
+    )
+
+
+def test_a_later_round_that_rates_a_finding_high_is_an_override(monkeypatch):
+    thread = _classified_severity(
+        monkeypatch, "\U0001f535 **Low** \u00b7 D1 \u00b7 t", (_recorded("Low", BEFORE), _recorded("High", AFTER))
+    )
+    assert thread.severity == "High"
+    assert digest.is_overridden_finding(thread)
+
+
+def test_a_low_record_does_not_hide_a_high_title(monkeypatch):
+    thread = _classified_severity(monkeypatch, "**High**: t", (_recorded("Low"),))
+    assert thread.severity == "High"
+    assert digest.is_overridden_finding(thread)
+
+
+def test_a_record_that_raises_the_severity_wins_over_the_title(monkeypatch):
+    thread = _classified_severity(monkeypatch, "**Medium**: t", (_recorded("Critical"),))
+    assert thread.severity == "Critical"
 
 
 @pytest.mark.parametrize(

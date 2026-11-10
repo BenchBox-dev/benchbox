@@ -363,8 +363,10 @@ def review_verdict_state(body: str | None, sha: str) -> str | None:
         for match in (REVIEW_VERDICT_LINE.match(text), *VERDICT_MARKER.finditer(text))
         if match
     }
-    if not claims or any(found != sha for _, found in claims):
+    if not claims:
         return None
+    if any(found != sha for _, found in claims):
+        return "failure"
     states = {state for state, _ in claims}
     blocking = sorted(states - {"success"})
     return blocking[0] if blocking else "success"
@@ -413,7 +415,7 @@ def _standin_after(evidence: PullEvidence) -> str:
         engine().review_check.standin_not_before(
             evidence.base_changed_at,
             (
-                (review.submitted_at, "failure" if review.unverifiable else _review_verdict(review))
+                (review.submitted_at, "failure" if review.unverifiable else _review_verdict(review) or "failure")
                 for review in head_reviews
             ),
         )
@@ -576,7 +578,7 @@ def open_finding_severities(evidence: PullEvidence) -> tuple[str, ...]:
 
 def blocking_verdict_decision(evidence: PullEvidence) -> str | None:
     ordered = sorted(_gate_reviews(evidence, evidence.content_shas), key=lambda review: review.submitted_at)
-    blocking = [review for review in ordered if _review_verdict(review) not in (None, "success")]
+    blocking = [review for review in ordered if _review_verdict(review) != "success"]
     if not blocking:
         return None
     record = review_record(blocking[-1].body)
@@ -834,6 +836,11 @@ def commit_subject(sha: str) -> str:
     return run(["git", "show", "-s", "--format=%s", sha]).strip()
 
 
+def _more_severe(first: str | None, second: str | None) -> str:
+    known = [value for value in (first, second) if value]
+    return min(known, key=lambda value: SEVERITY_ORDER.get(value, -1)) if known else ""
+
+
 def classify_threads(threads: Sequence[Thread], reviews: Sequence[Review]) -> tuple[Thread, ...]:
     recorded: dict[tuple[int, str], str] = {}
     for review in sorted(reviews, key=lambda item: item.submitted_at):
@@ -846,14 +853,14 @@ def classify_threads(threads: Sequence[Thread], reviews: Sequence[Review]) -> tu
             continue
         record = review_record(review.body)
         for defect in (record or {}).get("open_defects") or ():
-            recorded.setdefault((record["cycle"], defect["id"]), defect["severity"])
+            key = (record["cycle"], defect["id"])
+            recorded[key] = _more_severe(recorded.get(key), defect["severity"])
     classified: list[Thread] = []
     for thread in threads:
         if thread.started_by.removesuffix("[bot]") != engine().bot_login or thread.unverifiable:
             classified.append(thread)
             continue
-        severity = recorded.get(thread.defect) if thread.defect is not None else None
-        severity = severity or thread.severity
+        severity = _more_severe(recorded.get(thread.defect) if thread.defect is not None else None, thread.severity)
         classified.append(replace(thread, severity=severity, unclassifiable=not severity))
     return tuple(classified)
 
