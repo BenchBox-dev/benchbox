@@ -2,6 +2,7 @@
   "acceptance": [
     "The test runs well inside the timeout on CI hardware, by reducing work or declaring an explicit larger timeout with a reason."
   ],
+  "context": "Resolved without a code change; the outcome already exists on develop. PR #3619 (60d8bc95d3, 2026-10-27) split test_no_benchmark_bypasses_translation_without_an_allowlisted_reason into per-benchmark-dialect cases, one day before this item was filed from CI run 40592135925 of PR 3545, which predates the split. Measured 2026-11-09 on develop 4c39e824a5 under the shared test lock: tests/unit/core/test_translation_source_dialects.py is 255 tests in 55.5 s, slowest single case 3.25 s (tpchavoc-doris), all passing; pytest.ini and pytest-ci.ini set timeout = 300. The slowest case is under 1.1% of the configured per-test timeout, so no reduction or timeout override is warranted.",
   "description": "tests/unit/core/test_translation_source_dialects.py::test_no_benchmark_bypasses_translation_without_an_allowlisted_reason takes about 39 seconds alone on a local arm64 machine and hit pytest-timeout (60s) on medium-test shard 3 twice for core PR 3545 (CI run 40592135925) before passing on the third attempt. It was added by core PR 3544.",
   "sessions": [
     {
@@ -20,6 +21,14 @@
       "op": "take",
       "op_id": "7de5ac797dd24a9c98578df0300b0754",
       "session_id": "f9e1544c3afa431292a5006f856ac27d"
+    },
+    {
+      "actor": "omp:sqlglot-delivery-hardening-leader",
+      "at": "2026-11-10T02:08:23Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "0bbebff45d4b4a3692e018010dbaf92d",
+      "session_id": "8c2e3859beaa4944900c67dec32817cf"
     }
   ]
 }
