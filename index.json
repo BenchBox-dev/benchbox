@@ -32626,10 +32626,15 @@
       "title": "Release UAT package phase fails on every shard because BENCHBOX_MACHINE_ID_SALT is unset"
     },
     "release-uat-presto-trino-unreachable-20261030": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-11T02:09:08Z",
+        "generation": "324191a7b8ae4d1c91d36d3007e57dac",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Release UAT Presto and Trino cells all report the server unreachable after compose start"
     },
     "release-uat-velox-container-exits-20261030": {
