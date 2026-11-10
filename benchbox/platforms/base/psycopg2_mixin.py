@@ -34,9 +34,9 @@ class PsycopgConnectionMixin:
         def timing_fields(conn: Any, ledger: RequestLedger, **kwargs: Any) -> dict[str, Any]:
             if begin_pending:
                 counted = RequestLedger()
-                counted.record(REQUEST_KIND_BEGIN)
+                counted.add_request(REQUEST_KIND_BEGIN)
                 for request in ledger.requests:
-                    counted.record(request.kind, request.statement_id, request.attempt)
+                    counted.add_request(request.kind, request.statement_id, request.attempt)
                 ledger = counted
             return self.timing_fields_for(conn, ledger, **kwargs)
 
