@@ -3,6 +3,11 @@
     "Presto and Trino cells reach the load phase in the release UAT shard.",
     "Readiness waits until the coordinator answers a query."
   ],
+  "batch": {
+    "batch_id": "server-engine-bulk-load",
+    "implementation_dependencies": [],
+    "member_id": "release-uat-presto-trino-unreachable-20261030"
+  },
   "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), artifact release-uat-v0.5.0rc2-stage3-query-engines: cells.jsonl, uat_gate_summary.json, validator_rollup.tsv, uat_lifecycle.log and per-cell logs. The artifacts do not keep result JSON, so query-level causes need a local rerun of the named cells.\n\nHosted trunk UAT run https://github.com/BenchBox-dev/BenchBox/actions/runs/42536258036 completed with failure at source 2d796acd59be06ab4b4a1742dda84cff419202b9. Presto and Trino are absent from this run’s current gate matrix, so this run provides no new server-reachability evidence. Keep the historical issue open. Counts cover the selected current matrix only; no historical issue is closed by this note. The full run is still red (702/710 passed), so this is not release certification.",
   "description": "In the stage 3 query-engines shard docker compose up --wait succeeded for Presto and Trino, then all 44 cells failed with 'Presto requires a catalog but server is unreachable' (same for Trino). Find whether the adapter probes the wrong host or port, or whether readiness passes before the coordinator accepts queries, and fix it.",
   "links": [
@@ -24,6 +29,14 @@
       "op": "update",
       "op_id": "752b251e0e18485bba854e9ffdfb8a6d",
       "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a",
+      "at": "2026-11-10T00:32:46Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "dc6a4a10223f4394929204c65931179b",
+      "session_id": "248466dc3ce04a7c8f4c76cdbd04176f"
     }
   ]
 }
