@@ -39551,6 +39551,17 @@
       "status": "open",
       "title": "Publish Theseus review-format release A (marker dual-read, status descriptions, not-reviewed output)"
     },
+    "theseus-review-format-release-b-20261110": {
+      "claim": null,
+      "needs": [
+        "theseus-review-verdict-body-redesign-20261110",
+        "theseus-review-thread-ids-footer-20261110",
+        "benchbox-lock-theseus-review-format-release-a-20261110"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Publish Theseus review-format release B (verdict-first bodies, visible thread ids, optional minimising)"
+    },
     "theseus-review-markers-dual-read-20261110": {
       "claim": null,
       "needs": [],
