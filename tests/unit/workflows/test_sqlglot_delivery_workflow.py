@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import json
+import os
 import re
+import shutil
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -82,7 +86,7 @@ def test_publication_needs_the_kill_switch_a_real_run_and_an_adoption() -> None:
     assert "vars.SQLGLOT_DELIVERY_ENABLED == 'true'" in condition
     assert "needs.prepare.outputs.state == 'adopt'" in condition
     assert "inputs.dry_run == false" in condition
-    assert job("publish")["needs"] == "prepare"
+    assert job("publish")["needs"] == ["prepare", "readiness"]
 
 
 def test_every_action_is_pinned_to_a_commit_already_used_elsewhere_in_the_repository() -> None:
@@ -119,3 +123,92 @@ def test_arming_goes_through_the_delivery_script_with_the_app_token() -> None:
     arm = next(step for step in job("publish")["steps"] if "sqlglot_delivery arm" in step.get("run", ""))
     assert arm["env"]["GH_TOKEN"] == "${{ steps.app-token.outputs.token }}"
     assert "pr_arm" not in arm["run"] and "gh pr merge" not in arm["run"]
+
+
+@pytest.mark.parametrize(
+    ("case", "message"),
+    [
+        ("ready", "Verified configured App authentication"),
+        ("missing", "Configure SQLGLOT_DELIVERY_APP_ID"),
+        ("bad-key", "private key is invalid"),
+        ("uninstalled", "HTTP 404"),
+        ("wrong-app", "missing or suspended"),
+        ("suspended", "missing or suspended"),
+        ("all-repositories", "selected BenchBox-dev repositories"),
+        ("extra-permission", "only contents/PR write"),
+        ("missing-permission", "only contents/PR write"),
+        ("wrong-repository", "installed on BenchBox only"),
+        ("extra-repository", "installed on BenchBox only"),
+        ("unreadable-repositories", "HTTP 403"),
+    ],
+)
+def test_readiness_authenticates_without_repository_mutations(tmp_path: Path, case: str, message: str) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node.js is unavailable")
+    script = job("readiness")["steps"][0]["run"]
+    probe = "\n".join(script.splitlines()[1:-1])
+    prefix = """
+const scenario = process.env.PROBE_SCENARIO;
+const fixtureCrypto = require('node:crypto');
+process.env.APP_ID = scenario === 'missing' ? '' : '42';
+process.env.APP_KEY = scenario === 'bad-key' ? 'invalid' : fixtureCrypto.generateKeyPairSync('rsa', {
+  modulusLength: 2048, privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+  publicKeyEncoding: { type: 'spki', format: 'pem' },
+}).privateKey;
+const calls = [];
+globalThis.fetch = async (url, options) => {
+  calls.push([options.method, new URL(url).pathname]);
+  require('node:fs').writeFileSync(process.env.PROBE_CALLS, JSON.stringify(calls));
+  let value;
+  let status = 200;
+  if (url.endsWith('/installation')) {
+    value = { id: 7, app_id: 42, account: { login: 'BenchBox-dev' }, repository_selection: 'selected',
+      permissions: { contents: 'write', pull_requests: 'write', metadata: 'read' } };
+    if (scenario === 'uninstalled') status = 404;
+    if (scenario === 'wrong-app') value.app_id = 99;
+    if (scenario === 'suspended') value.suspended_at = '2026-01-01';
+    if (scenario === 'all-repositories') value.repository_selection = 'all';
+    if (scenario === 'extra-permission') value.permissions.actions = 'write';
+    if (scenario === 'missing-permission') delete value.permissions.contents;
+  } else if (url.endsWith('/access_tokens')) {
+    const requested = JSON.parse(options.body).permissions;
+    if (requested.contents !== 'read' || requested.pull_requests !== 'read')
+      throw new Error('probe requested a writable token');
+    value = { token: 'temporary-read-token' };
+  } else if (options.method === 'DELETE') {
+    status = 204;
+  } else {
+    value = { total_count: 1, repositories: [{ full_name: 'BenchBox-dev/BenchBox' }] };
+    if (scenario === 'wrong-repository') value.repositories[0].full_name = 'BenchBox-dev/benchbox-sqlglot';
+    if (scenario === 'extra-repository') value.total_count = 2;
+    if (scenario === 'unreadable-repositories') status = 403;
+  }
+  return { ok: status >= 200 && status < 300, status, json: async () => value };
+};
+"""
+    summary = tmp_path / "summary.md"
+    calls_path = tmp_path / "calls.json"
+    result = subprocess.run(
+        [node, "-"],
+        input=prefix + probe,
+        text=True,
+        encoding="utf-8",
+        capture_output=True,
+        env={
+            **os.environ,
+            "PROBE_SCENARIO": case,
+            "PROBE_CALLS": str(calls_path),
+            "GITHUB_STEP_SUMMARY": str(summary),
+        },
+        timeout=20,
+    )
+    assert (result.returncode == 0) is (case == "ready"), result.stderr
+    assert message in summary.read_text(encoding="utf-8")
+    calls = json.loads(calls_path.read_text(encoding="utf-8")) if calls_path.exists() else []
+    assert all(
+        method == "GET" or path in {"/app/installations/7/access_tokens", "/installation/token"}
+        for method, path in calls
+    )
+    if case in {"ready", "wrong-repository", "extra-repository", "unreadable-repositories"}:
+        assert calls[-1] == ["DELETE", "/installation/token"]

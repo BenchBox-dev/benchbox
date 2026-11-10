@@ -26,6 +26,80 @@ env:
   SQLGLOT_DELIVERY_ENABLED: ${{ vars.SQLGLOT_DELIVERY_ENABLED }}
 
 jobs:
+  readiness:
+    name: Verify the delivery App without repository mutations
+    if: github.repository == 'BenchBox-dev/BenchBox' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Authenticate and check installation scope
+        env:
+          APP_ID: ${{ secrets.SQLGLOT_DELIVERY_APP_ID }}
+          APP_KEY: ${{ secrets.SQLGLOT_DELIVERY_APP_PRIVATE_KEY }}
+        run: |
+          node <<'NODE'
+          const { sign } = require('node:crypto');
+          const { appendFileSync } = require('node:fs');
+          const repository = 'BenchBox-dev/BenchBox';
+          const expected = { contents: 'write', pull_requests: 'write', metadata: 'read' };
+          const summary = message => appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## SQLGlot App readiness\n\n${message}\n`);
+          const requireValue = (condition, message) => { if (!condition) throw new Error(message); };
+          async function request(method, path, token, body) {
+            const response = await fetch(`https://api.github.com${path}`, {
+              method,
+              headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28',
+                'Content-Type': 'application/json',
+              },
+              body: body === undefined ? undefined : JSON.stringify(body),
+            });
+            requireValue(response.ok, `${method} ${path}: HTTP ${response.status}`);
+            return response.status === 204 ? null : response.json();
+          }
+          async function probe() {
+            requireValue(/^\d+$/.test(process.env.APP_ID || '') && process.env.APP_KEY,
+              'Configure SQLGLOT_DELIVERY_APP_ID and SQLGLOT_DELIVERY_APP_PRIVATE_KEY');
+            const now = Math.floor(Date.now() / 1000);
+            const encode = value => Buffer.from(JSON.stringify(value)).toString('base64url');
+            const payload = `${encode({ alg: 'RS256', typ: 'JWT' })}.${encode({ iat: now - 60, exp: now + 300, iss: process.env.APP_ID })}`;
+            let signature;
+            try { signature = sign('RSA-SHA256', Buffer.from(payload), process.env.APP_KEY).toString('base64url'); }
+            catch { throw new Error('The delivery App private key is invalid'); }
+            const jwt = `${payload}.${signature}`;
+            console.log(`::add-mask::${jwt}`);
+            const installation = await request('GET', `/repos/${repository}/installation`, jwt);
+            requireValue(String(installation.app_id) === process.env.APP_ID && !installation.suspended_at,
+              'The configured delivery App installation is missing or suspended');
+            requireValue(installation.account?.login === 'BenchBox-dev' && installation.repository_selection === 'selected',
+              'Install the delivery App on selected BenchBox-dev repositories only');
+            const permissions = installation.permissions || {};
+            requireValue(Object.entries(expected).every(([name, level]) => permissions[name] === level) &&
+              Object.entries(permissions).every(([name, level]) => expected[name] === level || level === 'none'),
+              'The delivery App needs only contents/PR write and metadata read');
+            const auth = await request('POST', `/app/installations/${installation.id}/access_tokens`, jwt,
+              { permissions: { contents: 'read', pull_requests: 'read' } });
+            requireValue(typeof auth.token === 'string' && auth.token.length > 0, 'No read-only installation token returned');
+            console.log(`::add-mask::${auth.token}`);
+            try {
+              const access = await request('GET', '/installation/repositories?per_page=100', auth.token);
+              requireValue(access.total_count === 1 && access.repositories?.length === 1 &&
+                access.repositories[0].full_name?.toLowerCase() === repository.toLowerCase(),
+                'The delivery App must be installed on BenchBox only');
+            } finally {
+              await request('DELETE', '/installation/token', auth.token);
+            }
+            summary('Verified configured App authentication, installation on BenchBox only, and contents/PR write permissions. The temporary probe token was read-only and revoked; no repository content or PR was changed.');
+          }
+          probe().catch(error => {
+            summary(`Readiness failed: ${error.message}. No publication is permitted.`);
+            console.error(`::error::${error.message}`);
+            process.exitCode = 1;
+          });
+          NODE
+
   prepare:
     name: Verify the newest delivery and prepare its adoption
     if: github.repository == 'BenchBox-dev/BenchBox' && github.ref == 'refs/heads/develop'
@@ -115,7 +189,7 @@ jobs:
 
   publish:
     name: Publish the adoption pull request and arm it
-    needs: prepare
+    needs: [prepare, readiness]
     if: >-
       github.repository == 'BenchBox-dev/BenchBox' && github.ref == 'refs/heads/develop' &&
       vars.SQLGLOT_DELIVERY_ENABLED == 'true' && needs.prepare.outputs.state == 'adopt' &&
