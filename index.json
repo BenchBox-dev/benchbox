@@ -5429,26 +5429,12 @@
       "terminal_outcome": "deliver"
     },
     "plan-export-contract": {
-      "accepted_members": {
-        "export-text-plan-result-fails-loader-query-plan-raw-20261108": "01203d43c6acb1cc416c8dcb609427b80613784f"
-      },
+      "accepted_members": {},
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {
-        "export-text-plan-result-fails-loader-query-plan-raw-20261108": {
-          "accepted_head": "01203d43c6acb1cc416c8dcb609427b80613784f",
-          "changed_files": [
-            "benchbox/core/results/query_execution.py",
-            "benchbox/core/results/schema.py",
-            "changelog.d/feat-plan-export-contract--export-text-plan-result-fails-loader-query-plan-raw-20261108.json",
-            "tests/unit/core/results/test_loader.py"
-          ],
-          "integration_head": "fc08ce21726b2a5cd082643dd3bdbb4df7782352",
-          "integration_seq": 1
-        }
-      },
+      "integrated_members": {},
       "integration_branch": "feat/plan-export-contract",
       "integration_head": "fc08ce21726b2a5cd082643dd3bdbb4df7782352",
       "integration_log": [
@@ -5469,7 +5455,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-export-contract",
-      "lifecycle": "active",
+      "lifecycle": "aborted",
       "members": [
         "export-text-plan-result-fails-loader-query-plan-raw-20261108",
         "plan-privacy-detector-residual-limits-20261108",
