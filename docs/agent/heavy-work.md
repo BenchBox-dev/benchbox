@@ -162,14 +162,18 @@ systemd as PID 1, which does not shut down on the SIGTERM that
 `container machine stop` sends, so a plain stop ends in a forced kill (exit
 status 137). The stop step (`python -m benchbox.utils.linux_machine
 stop-sequence`) therefore reads the state from `container machine list --format
-json`. If the machine is `running` it asks the guest to shut down with
-`container machine run -n <machine> -- systemctl poweroff --no-block` (cut off
-after 8 s), waits up to `BENCHBOX_LINUX_POWEROFF_WAIT_SECONDS` (default 15) for
-it to reach `stopped`, and otherwise falls back to `container machine stop`. A
-`stopped` machine is left alone and is never booted to power it off; an
-unreadable state goes straight to `container machine stop`. The whole sequence
-runs inside the same stop timeout and process group, and the fallback starts by
-about 33 s, leaving at least 27 s of the default 60 s timeout.
+json`. If the machine is `running` it asks the guest to shut down by sending
+SIGRTMIN+4, systemd's poweroff signal, to PID 1 as root:
+`container machine run -n <machine> --uid 0 -- /bin/kill -s SIGRTMIN+4 1` (cut
+off after 8 s). `systemctl poweroff` does not work here because commands run by
+`container machine run` cannot reach the systemd bus, and the CLI splits
+arguments on whitespace, so the command must not rely on a shell string. The
+stop step then waits up to `BENCHBOX_LINUX_POWEROFF_WAIT_SECONDS` (default 15)
+for the machine to reach `stopped`, and otherwise falls back to `container
+machine stop`. A `stopped` machine is left alone and is never booted to power it
+off; an unreadable state goes straight to `container machine stop`. The whole
+sequence runs inside the same stop timeout and process group, and the fallback
+starts by about 33 s, leaving at least 27 s of the default 60 s timeout.
 
 The sentinel takes the host lock with a non-blocking acquire before it stops
 an idle machine, so it never races a new run and never waits on one, and holds

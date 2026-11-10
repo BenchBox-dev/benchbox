@@ -243,6 +243,7 @@ def lock_lost(environ: Mapping[str, str] | None = None) -> bool:
 GUEST_POWEROFF_WAIT_ENV = "BENCHBOX_LINUX_POWEROFF_WAIT_SECONDS"
 GUEST_POWEROFF_WAIT_SECONDS = 15
 POWEROFF_REQUEST_TIMEOUT_SECONDS = 8.0
+GUEST_POWEROFF_COMMAND = ("/bin/kill", "-s", "SIGRTMIN+4", "1")
 
 
 def guest_poweroff_wait_seconds(environ: Mapping[str, str] | None = None) -> int:
@@ -256,7 +257,7 @@ def _say(message: str) -> None:
 
 
 def _request_guest_poweroff(machine: str, timeout: float) -> None:
-    argv = ["container", "machine", "run", "-n", machine, "--", "systemctl", "poweroff", "--no-block"]
+    argv = ["container", "machine", "run", "-n", machine, "--uid", "0", "--", *GUEST_POWEROFF_COMMAND]
     try:
         subprocess.run(argv, stdin=subprocess.DEVNULL, timeout=timeout, check=False)
     except subprocess.TimeoutExpired:
