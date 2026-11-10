@@ -1,11 +1,12 @@
 {
   "acceptance": [
-    "Probe GO evidence is linked here before implementation starts.",
-    "With the flag on, after a new verdict only earlier bot verdict reviews are minimised (fake GitHub API test covering bot vs human reviews, newest vs older, threads untouched); with the flag off nothing is minimised.",
-    "A minimise API failure leaves verdict, statuses and gate output identical (test).",
-    "Edit detection does not flag the probe's recorded minimised review objects (test).",
-    "Policy key documented in consumer-policy.md with default false; policy parser accepts it and rejects non-boolean values.",
-    "Merged to Theseus main with hosted SHIP + green checks + independent review SHIP on the final head."
+    "Probe GO evidence is linked here before implementation starts (done: see context).",
+    "Only a review carrying a protocol record triggers minimising; only earlier record-bearing bot reviews are minimised; never the latest review for the current head, a not-reviewed post, a human review, or any inline thread (fake GitHub API tests for each case). With the flag off nothing is minimised.",
+    "A minimise API failure (including a permission error for the App installation token) leaves verdict, statuses and gate output identical (test).",
+    "Edit detection (edits.py, protocol.py history, review_check receipt check, promotion.py ~:1515-1517) does not flag the probe's recorded minimised review objects (test using ~/Developer/benchmark_runs/review-minimize-probe-2026-11-10/).",
+    "Before enabling for any consumer, the first real use under the App installation token is observed: minimise succeeds with the posting token's permissions, the minimised review shows no edit fields, and the webhook events it emits (if any) do not trigger an unwanted gate or verdict run; results recorded here. If the App token lacks permission, the flag stays off and the owner decides on the permission.",
+    "Policy key documented in consumer-policy.md with default false; the policy parser accepts it and rejects non-boolean values.",
+    "Merged to Theseus main with hosted SHIP + green checks + independent review SHIP on the final head (recorded here)."
   ],
   "context": "Part of theseus-review-output-format-20261110. Ships in release B if GO; otherwise dropped and release B ships without it.\n\n2026-11-10: decision gate passed. review-minimize-superseded-probe-20261110 recorded GO (minimising a review or an inline comment sets no edit field; Theseus's edit detectors do not fire). Evidence: ~/Developer/benchmark_runs/review-minimize-probe-2026-11-10/. Use detector_output.json and the after_review_minimize captures as the regression-test fixtures. Also cover promotion.py:1515-1517 in the regression test (the probe did not run it).",
   "description": "Decision gate: proceed only if review-minimize-superseded-probe-20261110 recorded GO. On NO-GO, drop this item with that evidence.\nAfter Theseus posts a new verdict review on a PR, minimise the bot's earlier verdict reviews on that PR with GraphQL `minimizeComment(classifier: OUTDATED)`, so a long PR shows one open verdict and one-line stubs. Inline threads are not minimised (they carry open findings and disputes). Behind a consumer policy flag (e.g. `report.minimize_superseded: true|false`), default false; Theseus's own policy may enable it after the probe.\nGuardrails: never minimise the newest verdict, a non-bot review, an owner/attester comment, or any inline thread; a GraphQL failure is logged and never changes the verdict, status or gate result (fail-soft for presentation only); edit detection (T6) is unchanged and must not fire on minimised reviews (regression test using the probe's recorded responses); requires only the App's existing pull-request write permission (confirm; if a new permission is needed, stop and ask the owner); no live model calls; Theseus merge rule plus independent review (touches review posting).",
@@ -27,6 +28,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "fe3b91980874470593d7092ab7845a78",
+      "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a",
+      "at": "2026-11-10T17:59:19Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4bfde8a413df4fbaa3d1178fc713ec00",
       "session_id": "977a65f4969143f4981bb9d49ff293b0"
     }
   ]
