@@ -36,6 +36,13 @@ def test_http_insert_posts_the_chunk_iterator_and_returns_written_rows():
     }
 
 
+def test_http_insert_names_the_file_columns_so_unknown_names_fail():
+    with patch("benchbox.platforms.clickhouse.http_insert._post_request", return_value=_response()) as post:
+        http_insert(_ENDPOINT, "t", "Parquet", iter([b"x"]), {}, ["id", "name"])
+
+    assert post.call_args.kwargs["params"]["query"] == "INSERT INTO t (id, name) FORMAT Parquet"
+
+
 def test_http_insert_uses_https_when_secure():
     secure = HttpEndpoint("ch.example", 8443, "bench", "u", "p", secure=True)
     with patch("benchbox.platforms.clickhouse.http_insert._post_request", return_value=_response()) as post:
@@ -80,4 +87,16 @@ def test_cloud_client_streams_through_raw_insert():
     chunks = iter([b"x"])
 
     assert client.insert_stream("t", "CSV", chunks, {"a": 1}) == 9
-    client._client.raw_insert.assert_called_once_with("t", insert_block=chunks, settings={"a": 1}, fmt="CSV")
+    client._client.raw_insert.assert_called_once_with(
+        "t", column_names=None, insert_block=chunks, settings={"a": 1}, fmt="CSV"
+    )
+
+
+def test_cloud_client_names_the_file_columns():
+    client = ClickHouseCloudClient.__new__(ClickHouseCloudClient)
+    client._client = Mock()
+    client._client.raw_insert.return_value = SimpleNamespace(written_rows=2)
+
+    client.insert_stream("t", "Parquet", iter([b"x"]), {}, ["id", "name"])
+
+    assert client._client.raw_insert.call_args.kwargs["column_names"] == ["id", "name"]

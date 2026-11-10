@@ -33,6 +33,7 @@ on:
       - 'benchbox/platforms/presto.py'
       - 'benchbox/platforms/presto_trino_adapter_base.py'
       - 'benchbox/platforms/presto_trino_utils.py'
+      - 'benchbox/platforms/presto_trino_bulk.py'
       - 'benchbox/platforms/clickhouse/**'
       - 'benchbox/platforms/clickhouse_cloud.py'
       - 'benchbox/platforms/base/data_loading.py'

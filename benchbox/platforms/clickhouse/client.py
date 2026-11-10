@@ -127,11 +127,11 @@ class ClickHouseServerConnection:
         self._lightweight_update_tables: set[str] = set()
         self._database: str | None = None
 
-    def insert_stream(self, table: str, insert_format: str, chunks, settings) -> int:
+    def insert_stream(self, table: str, insert_format: str, chunks, settings, columns=None) -> int:
         if self._http is None:
             raise RuntimeError("ClickHouse server connection has no HTTP endpoint for bulk inserts")
         endpoint = replace(self._http, database=self._database) if self._database else self._http
-        return http_insert(endpoint, table, insert_format, chunks, settings)
+        return http_insert(endpoint, table, insert_format, chunks, settings, columns)
 
     def execute(self, query, *args, **kwargs):
         if args or not isinstance(query, str):
@@ -416,8 +416,14 @@ class ClickHouseCloudClient:
         self._client.command(query)
         return []
 
-    def insert_stream(self, table: str, insert_format: str, chunks, settings) -> int:
-        summary = self._client.raw_insert(table, insert_block=chunks, settings=dict(settings), fmt=insert_format)
+    def insert_stream(self, table: str, insert_format: str, chunks, settings, columns=None) -> int:
+        summary = self._client.raw_insert(
+            table,
+            column_names=list(columns) if columns else None,
+            insert_block=chunks,
+            settings=dict(settings),
+            fmt=insert_format,
+        )
         return int(summary.written_rows)
 
     def command(self, query: str):

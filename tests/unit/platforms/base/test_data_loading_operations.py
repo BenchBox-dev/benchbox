@@ -113,7 +113,7 @@ class _ServerConnection:
     def __init__(self) -> None:
         self.calls: list[tuple[str, str, bytes, dict]] = []
 
-    def insert_stream(self, table: str, insert_format: str, chunks, settings) -> int:
+    def insert_stream(self, table: str, insert_format: str, chunks, settings, columns=None) -> int:
         body = b"".join(chunks)
         self.calls.append((table, insert_format, body, dict(settings)))
         return body.count(b"\n") if insert_format != "Parquet" else 1

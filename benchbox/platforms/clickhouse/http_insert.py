@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -32,10 +32,12 @@ def http_insert(
     insert_format: str,
     chunks: Iterable[bytes],
     settings: Mapping[str, object],
+    columns: Sequence[str] | None = None,
 ) -> int:
     scheme = "https" if endpoint.secure else "http"
+    column_list = f" ({', '.join(columns)})" if columns else ""
     params = {
-        "query": f"INSERT INTO {table} FORMAT {insert_format}",
+        "query": f"INSERT INTO {table}{column_list} FORMAT {insert_format}",
         "database": endpoint.database,
         **{key: str(value) for key, value in settings.items()},
     }

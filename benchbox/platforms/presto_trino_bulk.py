@@ -62,6 +62,8 @@ def ineligibility_reason(
         base = lowered.split("(", 1)[0].strip()
         if has_structured_type([type_name]) and not is_parquet:
             return f"column type {type_name} has no delimited-text representation"
+        if base == "varbinary" and not is_parquet:
+            return f"column type {type_name} is decoded as base64 from Hive text but as hex by the VALUES loader"
         if "with time zone" in lowered or (base not in _HIVE_BASE_TYPES and not has_structured_type([type_name])):
             return f"column type {type_name} cannot back an external Hive table"
     if is_parquet:

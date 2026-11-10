@@ -1520,7 +1520,8 @@ class ClickHouseNativeHandler(FileFormatHandler):
                 expected_rows = self._expected_parquet_rows(validated_table, file_paths)
                 if expected_rows == 0:
                     return 0
-                insert_format, settings = "Parquet", {}
+                insert_format = "Parquet"
+                settings: dict[str, Any] = {"input_format_parquet_allow_missing_columns": 0}
             else:
                 expected_rows = None
                 csv_config = self._get_csv_loading_config(validated_table)
@@ -1530,8 +1531,9 @@ class ClickHouseNativeHandler(FileFormatHandler):
             for file_path in file_paths:
                 if file_path.stat().st_size == 0:
                     continue
+                columns = self._insert_columns(file_path, insert_format, settings.get("format_csv_delimiter"))
                 chunks = _file_byte_chunks(file_path)
-                row_count += connection.insert_stream(validated_table, insert_format, chunks, settings)
+                row_count += connection.insert_stream(validated_table, insert_format, chunks, settings, columns=columns)
             if expected_rows is not None and row_count != expected_rows:
                 raise DataLoadingError(f"inserted {row_count:,} row(s), expected {expected_rows:,}")
             return row_count
@@ -1539,6 +1541,22 @@ class ClickHouseNativeHandler(FileFormatHandler):
             raise
         except Exception as exc:
             raise ClickHouseServerLoadError(validated_table, file_paths, row_count, exc) from exc
+
+    @staticmethod
+    def _insert_columns(file_path: Path, insert_format: str, delimiter: str | None) -> list[str] | None:
+        if insert_format == "Parquet":
+            import pyarrow.parquet as pq
+
+            names = pq.ParquetFile(file_path).schema_arrow.names
+        elif insert_format == "CSVWithNames":
+            import csv
+
+            with _open_binary_stream(file_path, FileFormatRegistry.get_compression_handler(file_path)) as source:
+                header = source.readline().decode("utf-8").rstrip("\r\n")
+            names = next(csv.reader([header], delimiter=delimiter or ","), [])
+        else:
+            return None
+        return [validate_sql_identifier(name.strip(), "column name") for name in names if name.strip()]
 
     @staticmethod
     def _expected_parquet_rows(validated_table: str, file_paths: list[Path]) -> int:

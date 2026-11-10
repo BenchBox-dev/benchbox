@@ -212,7 +212,9 @@ class TestClickHouseAdapter:
             with (
                 patch(
                     "benchbox.platforms.clickhouse.client.http_insert",
-                    side_effect=lambda endpoint, table, fmt, chunks, settings: b"".join(chunks).count(b"\n"),
+                    side_effect=lambda endpoint, table, fmt, chunks, settings, columns=None: b"".join(chunks).count(
+                        b"\n"
+                    ),
                 ) as http_insert,
                 patch(
                     "benchbox.platforms.clickhouse.workload.wait_for_merges_to_settle",
@@ -913,7 +915,7 @@ class TestClickHouseNativeHandlerBulk:
         connection = Mock()
         seen: dict[str, object] = {}
 
-        def insert_stream(table, insert_format, chunks, settings):
+        def insert_stream(table, insert_format, chunks, settings, columns=None):
             seen.update(table=table, insert_format=insert_format, body=b"".join(chunks), settings=dict(settings))
             return 2
 
@@ -940,7 +942,7 @@ class TestClickHouseNativeHandlerBulk:
         connection = Mock()
         bodies: list[bytes] = []
 
-        def insert_stream(table, insert_format, chunks, settings):
+        def insert_stream(table, insert_format, chunks, settings, columns=None):
             bodies.append(b"".join(chunks))
             return 1
 
@@ -975,8 +977,8 @@ class TestClickHouseNativeHandlerBulk:
         connection = Mock()
         seen: dict[str, object] = {}
 
-        def insert_stream(table, insert_format, chunks, settings):
-            seen.update(insert_format=insert_format, body=b"".join(chunks), settings=dict(settings))
+        def insert_stream(table, insert_format, chunks, settings, columns=None):
+            seen.update(insert_format=insert_format, body=b"".join(chunks), settings=dict(settings), columns=columns)
             return 1
 
         connection.insert_stream.side_effect = insert_stream
@@ -987,6 +989,7 @@ class TestClickHouseNativeHandlerBulk:
         assert seen["insert_format"] == "CSVWithNames"
         assert seen["body"] == b"id,name\n1,alpha\n"
         assert seen["settings"]["format_csv_delimiter"] == ","
+        assert seen["columns"] == ["id", "name"]
 
     def test_server_mode_parquet_streams_file_bytes(self, tmp_path):
         pa = pytest.importorskip("pyarrow")
@@ -998,8 +1001,9 @@ class TestClickHouseNativeHandlerBulk:
         connection = Mock()
         seen: dict[str, object] = {}
 
-        def insert_stream(table, insert_format, chunks, settings):
-            seen.update(insert_format=insert_format, body=b"".join(chunks))
+        def insert_stream(table, insert_format, chunks, settings, columns=None):
+            seen.update(insert_format=insert_format, body=b"".join(chunks), columns=columns)
+            assert settings["input_format_parquet_allow_missing_columns"] == 0
             return 2
 
         connection.insert_stream.side_effect = insert_stream
@@ -1007,7 +1011,7 @@ class TestClickHouseNativeHandlerBulk:
         result = handler.load_table_bulk("events", [shard], connection, Mock(), Mock())
 
         assert result == 2
-        assert seen == {"insert_format": "Parquet", "body": shard.read_bytes()}
+        assert seen == {"insert_format": "Parquet", "body": shard.read_bytes(), "columns": ["id", "name"]}
 
     def test_server_mode_failure_is_typed_and_terminal(self, tmp_path):
         from benchbox.platforms.base.data_loading import ClickHouseServerLoadError

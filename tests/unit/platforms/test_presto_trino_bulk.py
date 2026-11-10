@@ -53,6 +53,16 @@ class TestIneligibilityReason:
         assert reason is not None
         assert "cannot back an external Hive table" in reason
 
+    def test_ineligible_varbinary_in_delimited_text(self, tmp_path):
+        csv_file = tmp_path / "test.csv"
+        csv_file.write_text("1,ff00\n", encoding="utf-8")
+        dialect = CsvDialect(
+            delimiter=",", has_header=False, null_marker=None, normalize_booleans=False, quote=None, encoding="utf-8"
+        )
+        reason = ineligibility_reason([("id", "integer"), ("payload", "varbinary")], [csv_file], dialect)
+        assert reason is not None
+        assert "base64" in reason
+
     def test_ineligible_quoted_csv(self, tmp_path):
         csv_file = tmp_path / "test.csv"
         csv_file.write_text('"1","alpha"\n', encoding="utf-8")
