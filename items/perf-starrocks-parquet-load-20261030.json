@@ -10,7 +10,7 @@
     ],
     "member_id": "perf-starrocks-parquet-load-20261030"
   },
-  "context": "Review 2026-10-31: StarRocksCSVHandler (starrocks/workload.py:382-437) is referenced nowhere, tests included. Live verification needs the UAT memory-admission fix so the StarRocks shard starts.",
+  "context": "Review 2026-10-31: StarRocksCSVHandler (starrocks/workload.py:382-437) is referenced nowhere, tests included. Live verification needs the UAT memory-admission fix so the StarRocks shard starts.\n\n2026-11-09 live (mocker starrocks 3.5.16, STARROCKS_MEMORY_LIMIT=4g, TPC-H dbgen shards): sha256 row parity vs dbgen MATCH all tables. SF0.01 CSV (8 tables) load before 6.35s / after 6.42s (stream load + tablet creation dominates). SF0.1 CSV before 10.90s after 6.55s, lineitem 600,572 rows parity MATCH. SF0.01 Parquet (customer, lineitem, nation, orders) before (executemany) 35.54s after 0.74s, parity MATCH, rows 76,700. StarRocks 3.5.16 Stream Load rejects format=parquet (unknown data format), so Parquet is converted to CSV by pyarrow batches (enclose=\") and null mapped via \\N; CSV null/NaN mapping moved server-side (columns header if/lower) and verified live with quoted fields, doubled quotes, embedded newline, header skip. StarRocksCSVHandler removed (unreferenced).",
   "description": "starrocks/workload.py:441-484 converts Parquet with to_pylist and inserts via pymysql executemany. Route through Stream Load (pyarrow.csv conversion) or the FILES() table function. Also :310-318 re-parses every CSV row with csv.reader just for null mapping; stream raw bytes and use Stream Load null/trim headers. Remove StarRocksCSVHandler (:382-438) if it is dead code.",
   "prepared": {
     "accepted_head": "7c48c78ce997a7ae1259dd7fdc57789bb1dff9d7",
@@ -109,6 +109,14 @@
       "generation": "8b7119b4878f49e4890d30e0cf291a94",
       "op": "prepare",
       "op_id": "beb4ab17c1294533bf7448990a046590",
+      "session_id": "248466dc3ce04a7c8f4c76cdbd04176f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a",
+      "at": "2026-11-10T01:18:26Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1dfacfe18adc48d78e1b5b4fb32edca5",
       "session_id": "248466dc3ce04a7c8f4c76cdbd04176f"
     }
   ]
