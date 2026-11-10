@@ -190,9 +190,6 @@ class TestClickHouseAdapter:
         execute_results = iter([[], [], None, None])
 
         def execute(*args, **kwargs):
-            if len(args) > 1 and isinstance(args[1], GeneratorType):
-                list(args[1])
-                return None
             return next(execute_results)
 
         mock_client.execute.side_effect = execute
@@ -212,11 +209,19 @@ class TestClickHouseAdapter:
             adapter = ClickHouseAdapter(deployment_mode="server")
             connection = adapter.create_connection()
 
-            with patch(
-                "benchbox.platforms.clickhouse.workload.wait_for_merges_to_settle",
-                return_value=MergeSettleResult(True, 0.0, 1),
+            with (
+                patch(
+                    "benchbox.platforms.clickhouse.client.http_insert",
+                    side_effect=lambda endpoint, table, fmt, chunks, settings: b"".join(chunks).count(b"\n"),
+                ) as http_insert,
+                patch(
+                    "benchbox.platforms.clickhouse.workload.wait_for_merges_to_settle",
+                    return_value=MergeSettleResult(True, 0.0, 1),
+                ),
             ):
                 table_stats, load_time, _ = adapter.load_data(mock_benchmark, connection, Path("/tmp"))
+
+            assert http_insert.call_args.args[0].port == 8123
 
             assert isinstance(table_stats, dict)
             assert isinstance(load_time, float)
@@ -587,84 +592,9 @@ class TestClickHouseAdapter:
             assert "event_id Nullable" not in keyed
             assert "event_date Nullable" not in keyed
 
-    def test_array_field_parsed_to_list_not_float(self):
-        from benchbox.platforms.base.data_loading import ClickHouseNativeHandler
-
-        handler = ClickHouseNativeHandler(delimiter=",", adapter=None, benchmark=None)
-
-        for type_name in ("Array(Float32)", "FLOAT_ARRAY", "Array(Float64)"):
-            converted = handler._convert_field_for_clickhouse("[0.1,0.2]", type_name)
-            assert converted == [0.1, 0.2], f"{type_name} should parse to a list"
-
-        assert handler._convert_field_for_clickhouse("0.5", "FLOAT") == 0.5
-        assert handler._convert_field_for_clickhouse("\\N", "Array(Float32)") is None
-
-    def test_vector_bracket_type_parsed_to_list_not_float(self):
-        from benchbox.platforms.base.data_loading import ClickHouseNativeHandler
-
-        handler = ClickHouseNativeHandler(delimiter=",", adapter=None, benchmark=None)
-
-        assert handler._convert_field_for_clickhouse("[0.02,0.5,0.9]", "FLOAT[3]") == [0.02, 0.5, 0.9]
-        assert handler._convert_field_for_clickhouse("[1,2,3]", "INTEGER[]") == [1, 2, 3]
-        assert handler._convert_field_for_clickhouse("[0.1,0.2]", "DOUBLE[2]") == [0.1, 0.2]
-        assert handler._convert_field_for_clickhouse("", "FLOAT[3]") is None
-        assert handler._convert_field_for_clickhouse("\\N", "FLOAT[3]") is None
-
-    def test_boolean_conversion_maps_null_true_false_and_rejects_unknown(self):
-        from benchbox.platforms.base.data_loading import ClickHouseNativeHandler
-
-        handler = ClickHouseNativeHandler(delimiter=",", adapter=None, benchmark=None)
-        conv = handler._convert_field_for_clickhouse
-
-        for token in ("", "\\N", "NULL", "null"):
-            assert conv(token, "Bool") is None
-        for token in ("true", "T", "1", "Yes"):
-            assert conv(token, "Nullable(Bool)") is True
-        for token in ("false", "F", "0", "no"):
-            assert conv(token, "BOOLEAN") is False
-        with pytest.raises(ValueError):
-            conv("maybe", "Bool")
-
-    def test_datetime_and_timestamp_conversion(self):
-        from datetime import date as date_cls, datetime as dt
-
-        from benchbox.platforms.base.data_loading import ClickHouseNativeHandler
-
-        handler = ClickHouseNativeHandler(delimiter=",", adapter=None, benchmark=None)
-        conv = handler._convert_field_for_clickhouse
-
-        assert conv("2020-01-15 12:30:00", "DATETIME") == dt(2020, 1, 15, 12, 30, 0)
-        assert conv("2020-01-15 12:30:00", "TIMESTAMP") == dt(2020, 1, 15, 12, 30, 0)
-        assert conv("2016-01-01T00:00:00Z", "DateTime64(3)").year == 2016
-        assert conv("2020-01-15", "DATE") == date_cls(2020, 1, 15)
-        assert conv("", "DATETIME") is None
-        assert conv("", "TIMESTAMP") is None
-
-    def test_datetime_z_suffix_parses_on_python_3_10(self):
-        from datetime import datetime as dt, timezone
-
-        from benchbox.platforms.base.data_loading import ClickHouseNativeHandler
-
-        handler = ClickHouseNativeHandler(delimiter=",", adapter=None, benchmark=None)
-        conv = handler._convert_field_for_clickhouse
-
-        assert conv("2016-01-01T00:00:00Z", "DATETIME") == dt(2016, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-        assert conv("2016-01-01T00:00:00Z", "TIMESTAMP") == dt(2016, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-
-    def test_empty_numeric_date_fields_become_null_not_default(self):
-        from benchbox.platforms.base.data_loading import ClickHouseNativeHandler
-
-        handler = ClickHouseNativeHandler(delimiter=",", adapter=None, benchmark=None)
-        conv = handler._convert_field_for_clickhouse
-
-        for type_name in ("INTEGER", "BIGINT", "DECIMAL(10,2)", "DOUBLE", "DATE", "DATETIME"):
-            assert conv("", type_name) is None, f"empty {type_name} must become NULL"
-        assert conv("", "VARCHAR") == ""
-        assert conv("", "CHAR(16)") == ""
-
-    def test_object_schema_table_column_count_and_types(self):
+    def test_schema_inspector_counts_object_and_dict_schema_columns(self):
         from benchbox.core.datavault import schema as dv
-        from benchbox.platforms.base.data_loading import ClickHouseNativeHandler, SchemaInspector
+        from benchbox.platforms.base.data_loading import SchemaInspector
 
         class _ObjectSchemaBenchmark:
             def get_schema(self):
@@ -672,22 +602,15 @@ class TestClickHouseAdapter:
 
         benchmark = _ObjectSchemaBenchmark()
         table_name, table = next(iter(dv.TABLES_BY_NAME.items()))
-
-        count = SchemaInspector.get_column_count(benchmark, table_name, file_handle=None, delimiter=",")
-        assert count == len(table.columns)
-
-        handler = ClickHouseNativeHandler.__new__(ClickHouseNativeHandler)
-        type_names = handler._get_column_type_names(benchmark, table_name)
-        assert len(type_names) == len(table.columns)
-        assert type_names == [col.get_sql_type().upper() for col in table.columns]
+        assert SchemaInspector.get_column_count(benchmark, table_name, file_handle=None, delimiter=",") == len(
+            table.columns
+        )
 
         class _DictSchemaBenchmark:
             def get_schema(self):
                 return {"t": {"columns": [{"type": "INTEGER"}, {"type": "VARCHAR"}]}}
 
-        dict_bm = _DictSchemaBenchmark()
-        assert SchemaInspector.get_column_count(dict_bm, "t", file_handle=None, delimiter=",") == 2
-        assert handler._get_column_type_names(dict_bm, "t") == ["INTEGER", "VARCHAR"]
+        assert SchemaInspector.get_column_count(_DictSchemaBenchmark(), "t", file_handle=None, delimiter=",") == 2
 
     @patch("benchbox.platforms.clickhouse.setup.ClickHouseClient")
     def test_get_platform_metadata(self, mock_client_class):
@@ -982,71 +905,51 @@ class TestClickHouseNativeHandlerBulk:
         assert not connection.execute.called
         handler.adapter.capture_sql.assert_called_once()
 
-    def test_server_mode_loads_host_files_with_client_batches(self, tmp_path):
+    def test_server_mode_streams_host_files_over_the_client_insert(self, tmp_path):
         shard = tmp_path / "region.tbl"
         shard.write_text("1|AFRICA\n2|AMERICA\n", encoding="utf-8")
 
         handler = self._make_handler(server_mode=True)
         connection = Mock()
-        connection.execute.side_effect = lambda query, params=None, **kwargs: (
-            list(params) if params is not None else None
-        )
-        benchmark = Mock()
-        benchmark.get_schema.return_value = {
-            "region": {
-                "columns": [
-                    {"name": "r_regionkey", "type": "INTEGER"},
-                    {"name": "r_name", "type": "CHAR(25)"},
-                ]
-            }
-        }
+        seen: dict[str, object] = {}
+
+        def insert_stream(table, insert_format, chunks, settings):
+            seen.update(table=table, insert_format=insert_format, body=b"".join(chunks), settings=dict(settings))
+            return 2
+
+        connection.insert_stream.side_effect = insert_stream
 
         with patch("benchbox.platforms.base.data_loading.RowBatchProcessor") as batch_processor:
-            result = handler.load_table_bulk("region", [shard], connection, benchmark, Mock())
+            result = handler.load_table_bulk("region", [shard], connection, Mock(), Mock())
 
         assert result == 2
         batch_processor.assert_not_called()
-        query, params = connection.execute.call_args.args[:2]
-        assert query == "INSERT INTO region VALUES"
-        assert isinstance(params, GeneratorType)
-        assert connection.execute.call_args.kwargs["settings"]["insert_block_size"] > 1000
-        assert "file(" not in connection.execute.call_args[0][0]
+        assert not connection.execute.called
+        assert seen["table"] == "region"
+        assert seen["insert_format"] == "CSV"
+        assert seen["body"] == b"1|AFRICA\n2|AMERICA\n"
+        assert seen["settings"]["max_insert_block_size"] == 65536
+        assert seen["settings"]["format_csv_delimiter"] == "|"
 
-    def test_server_mode_uses_one_generator_across_shards(self, tmp_path):
+    def test_server_mode_inserts_each_shard_as_its_own_stream(self, tmp_path):
         shards = [tmp_path / "region.tbl.1", tmp_path / "region.tbl.2"]
         shards[0].write_text("1|AFRICA\n", encoding="utf-8")
         shards[1].write_text("2|AMERICA\n", encoding="utf-8")
 
         handler = self._make_handler(server_mode=True)
-        benchmark = Mock()
-        benchmark.get_schema.return_value = {
-            "region": {
-                "columns": [
-                    {"name": "r_regionkey", "type": "INTEGER"},
-                    {"name": "r_name", "type": "CHAR(25)"},
-                ]
-            }
-        }
         connection = Mock()
-        seen: dict[str, object] = {}
+        bodies: list[bytes] = []
 
-        def execute(query, params=None, **kwargs):
-            seen["query"] = query
-            seen["params_type"] = type(params)
-            seen["generator"] = params
-            seen["rows"] = list(params)
-            seen["settings"] = kwargs["settings"]
+        def insert_stream(table, insert_format, chunks, settings):
+            bodies.append(b"".join(chunks))
+            return 1
 
-        connection.execute.side_effect = execute
+        connection.insert_stream.side_effect = insert_stream
 
-        result = handler.load_table_bulk("region", shards, connection, benchmark, Mock())
+        result = handler.load_table_bulk("region", shards, connection, Mock(), Mock())
 
         assert result == 2
-        assert seen["query"] == "INSERT INTO region VALUES"
-        assert seen["params_type"] is GeneratorType
-        assert seen["rows"] == [(1, "AFRICA"), (2, "AMERICA")]
-        assert seen["settings"] == {"insert_block_size": 65536}
-        assert seen["generator"].gi_frame is None
+        assert bodies == [b"1|AFRICA\n", b"2|AMERICA\n"]
 
     def test_server_mode_dry_run_is_explicit_and_not_a_batch_placeholder(self, tmp_path):
         shard = tmp_path / "region.tbl"
@@ -1057,35 +960,35 @@ class TestClickHouseNativeHandlerBulk:
         result = handler.load_table_bulk("region", [shard], connection, Mock(), Mock())
 
         assert result == 0
-        assert not connection.execute.called
+        assert not connection.insert_stream.called
         handler.adapter.capture_sql.assert_called_once()
-        assert "INSERT INTO region VALUES" in handler.adapter.capture_sql.call_args.args[0]
+        assert "INSERT INTO region FORMAT CSV" in handler.adapter.capture_sql.call_args.args[0]
 
-    def test_server_mode_preserves_header_blank_and_width_normalization(self, tmp_path):
+    def test_server_mode_header_files_use_csv_with_names(self, tmp_path):
         shard = tmp_path / "events.csv.gz"
         with gzip.open(shard, "wt", encoding="utf-8") as file_handle:
-            file_handle.write("id,name\n\n1,alpha,ignored\n2\n")
+            file_handle.write("id,name\n1,alpha\n")
 
         handler = self._make_handler(server_mode=True)
         handler.delimiter_char = ","
         handler.has_header = True
-        benchmark = Mock()
-        benchmark.get_schema.return_value = {"events": {"columns": [{"type": "INTEGER"}, {"type": "STRING"}]}}
         connection = Mock()
-        seen_rows: list[tuple[object, ...]] = []
+        seen: dict[str, object] = {}
 
-        def execute(query, params=None, **kwargs):
-            assert isinstance(params, GeneratorType)
-            seen_rows.extend(params)
+        def insert_stream(table, insert_format, chunks, settings):
+            seen.update(insert_format=insert_format, body=b"".join(chunks), settings=dict(settings))
+            return 1
 
-        connection.execute.side_effect = execute
+        connection.insert_stream.side_effect = insert_stream
 
-        result = handler.load_table_bulk("events", [shard], connection, benchmark, Mock())
+        result = handler.load_table_bulk("events", [shard], connection, Mock(), Mock())
 
-        assert result == 2
-        assert seen_rows == [(1, "alpha"), (2, "")]
+        assert result == 1
+        assert seen["insert_format"] == "CSVWithNames"
+        assert seen["body"] == b"id,name\n1,alpha\n"
+        assert seen["settings"]["format_csv_delimiter"] == ","
 
-    def test_server_mode_parquet_is_bounded_and_not_materialized(self, tmp_path):
+    def test_server_mode_parquet_streams_file_bytes(self, tmp_path):
         pa = pytest.importorskip("pyarrow")
         import pyarrow.parquet as pq
 
@@ -1095,21 +998,16 @@ class TestClickHouseNativeHandlerBulk:
         connection = Mock()
         seen: dict[str, object] = {}
 
-        def execute(query, params=None, **kwargs):
-            seen["type"] = type(params)
-            seen["rows"] = list(params)
-            seen["settings"] = kwargs["settings"]
+        def insert_stream(table, insert_format, chunks, settings):
+            seen.update(insert_format=insert_format, body=b"".join(chunks))
+            return 2
 
-        connection.execute.side_effect = execute
+        connection.insert_stream.side_effect = insert_stream
 
         result = handler.load_table_bulk("events", [shard], connection, Mock(), Mock())
 
         assert result == 2
-        assert seen == {
-            "type": GeneratorType,
-            "rows": [(1, "alpha"), (2, "beta")],
-            "settings": {"insert_block_size": 65536},
-        }
+        assert seen == {"insert_format": "Parquet", "body": shard.read_bytes()}
 
     def test_server_mode_failure_is_typed_and_terminal(self, tmp_path):
         from benchbox.platforms.base.data_loading import ClickHouseServerLoadError
@@ -1118,14 +1016,7 @@ class TestClickHouseNativeHandlerBulk:
         shard.write_text("1|alpha\n2|beta\n", encoding="utf-8")
         handler = self._make_handler(server_mode=True)
         connection = Mock()
-
-        def execute(query, params=None, **kwargs):
-            if params is None:
-                return []
-            list(params)
-            raise RuntimeError("server timed out")
-
-        connection.execute.side_effect = execute
+        connection.insert_stream.side_effect = RuntimeError("server timed out")
 
         with pytest.raises(ClickHouseServerLoadError) as exc_info:
             handler.load_table_bulk("events", [shard], connection, Mock(), Mock())
@@ -1133,7 +1024,7 @@ class TestClickHouseNativeHandlerBulk:
         error = exc_info.value
         assert error.table_name == "events"
         assert error.source_files == (shard,)
-        assert error.rows_attempted == 2
+        assert error.rows_attempted == 0
         assert "server timed out" in str(error)
 
 

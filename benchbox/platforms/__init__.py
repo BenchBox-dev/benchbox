@@ -735,6 +735,7 @@ clickhouse|port|ClickHouse native protocol port.|{'parser': 'int', 'default': 90
 clickhouse|username|ClickHouse username for authentication.|{'default': 'default', 'aliases': ('user',)}
 clickhouse|password|ClickHouse password for authentication.|{'default': ''}
 clickhouse|secure|Enable TLS for ClickHouse connections (server mode).|{'parser': 'parse_bool', 'default': False}
+clickhouse|http_port|ClickHouse HTTP port used for bulk inserts in server mode (default 8123, or 8443 with secure).|{'parser': 'int'}
 clickhouse|data_path|Data path for ClickHouse local mode (optional).|{}
 clickhouse-local|data_path|Path to chDB database directory for persistent local storage (optional).|{}
 clickhouse-server|host|ClickHouse server hostname.|{'default': 'localhost'}
@@ -742,6 +743,7 @@ clickhouse-server|port|ClickHouse native protocol port.|{'parser': 'int', 'defau
 clickhouse-server|username|ClickHouse username for authentication.|{'default': 'default', 'aliases': ('user',)}
 clickhouse-server|password|ClickHouse password for authentication.|{'default': ''}
 clickhouse-server|secure|Enable TLS for ClickHouse server connections.|{'parser': 'parse_bool', 'default': False}
+clickhouse-server|http_port|ClickHouse HTTP port used for bulk inserts (default 8123, or 8443 with secure).|{'parser': 'int'}
 duckdb|memory_limit|DuckDB memory limit (e.g. '4GB').|{'default': '8GB'}
 duckdb|threads|Thread pool size for DuckDB (None uses auto detection).|{'parser': 'int'}
 duckdb|temp_directory|Temporary directory for DuckDB spill files.|{}

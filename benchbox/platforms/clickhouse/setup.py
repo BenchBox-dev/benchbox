@@ -7,6 +7,7 @@ from typing import Any
 
 from ._dependencies import ClickHouseClient
 from .client import ClickHouseCloudClient, ClickHouseLocalClient, ClickHouseServerConnection
+from .http_insert import HttpEndpoint
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,7 @@ class ClickHouseSetupMixin:
         self.username = config.get("username", config.get("user", "default"))
         self.password = config.get("password", "")
         self.secure = config.get("secure", False)
+        self.http_port = config.get("http_port") or (8443 if self.secure else 8123)
         self.compression = config.get("compression", False)
 
         self.max_memory_usage = config.get("max_memory_usage", "8GB")
@@ -191,7 +193,15 @@ class ClickHouseSetupMixin:
             client.execute("SELECT 1")
             self.logger.info(f"Connected to ClickHouse server at {params['host']}:{params['port']}")
 
-            return ClickHouseServerConnection(client)
+            endpoint = HttpEndpoint(
+                host=params["host"],
+                port=self.http_port,
+                database=database,
+                username=params["user"],
+                password=params["password"],
+                secure=bool(params["secure"]),
+            )
+            return ClickHouseServerConnection(client, endpoint)
 
         except Exception as e:
             self.logger.error(f"Failed to connect to ClickHouse server: {e}")

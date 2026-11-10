@@ -380,20 +380,14 @@ def verify_native_streaming_loader() -> tuple[bool, str]:
     try:
         from benchbox.platforms.base.data_loading import ClickHouseNativeHandler
 
-        delimited = inspect.getsource(ClickHouseNativeHandler._load_delimited_via_client_insert)
-        parquet = inspect.getsource(ClickHouseNativeHandler._load_parquet_via_client_insert)
+        source = inspect.getsource(ClickHouseNativeHandler._load_via_client_insert)
     except (ImportError, OSError, TypeError) as exc:
         return False, f"could not inspect ClickHouse native loader: {exc}"
-    for name, source in (("delimited", delimited), ("parquet", parquet)):
-        if (
-            "row_generator" not in source
-            or "connection.execute(" not in source
-            or "settings=self._server_insert_settings()" not in source
-        ):
-            return False, f"ClickHouse {name} path is not a native generator insert"
-        if "executemany(" in source or "batch_size = 1000" in source:
-            return False, f"ClickHouse {name} path contains an application batch fallback"
-    return True, "native generator insert contract verified"
+    if "_file_byte_chunks(" not in source or "connection.insert_stream(" not in source:
+        return False, "ClickHouse load path is not a native byte-stream insert"
+    if "executemany(" in source or "to_pylist(" in source or "batch_size = 1000" in source:
+        return False, "ClickHouse load path contains an application row-batch fallback"
+    return True, "native byte-stream insert contract verified"
 
 
 def read_host_memory() -> HostMemorySample:

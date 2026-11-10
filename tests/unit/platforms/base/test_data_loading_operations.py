@@ -111,13 +111,12 @@ class TestDeltaTableDirDispatch:
 
 class _ServerConnection:
     def __init__(self) -> None:
-        self.rows: list[tuple] = []
-        self.query: str | None = None
+        self.calls: list[tuple[str, str, bytes, dict]] = []
 
-    def execute(self, query: str, rows=None, **_kwargs):
-        self.query = query
-        if rows is not None:
-            self.rows.extend(rows)
+    def insert_stream(self, table: str, insert_format: str, chunks, settings) -> int:
+        body = b"".join(chunks)
+        self.calls.append((table, insert_format, body, dict(settings)))
+        return body.count(b"\n") if insert_format != "Parquet" else 1
 
 
 class _ServerAdapter:
@@ -133,44 +132,29 @@ def test_clickhouse_delimited_loader_skips_empty_first_shard(tmp_path: Path) -> 
     connection = _ServerConnection()
     handler = ClickHouseNativeHandler("|", _ServerAdapter(), object())
 
-    assert (
-        handler._load_delimited_via_client_insert(
-            "events", [empty, populated], connection, object(), logging.getLogger()
-        )
-        == 1
-    )
-    assert connection.rows == [("1", "alpha")]
+    assert handler._load_via_client_insert("events", [empty, populated], connection) == 1
+    assert [(call[0], call[1], call[2]) for call in connection.calls] == [("events", "CSV", b"1|alpha\n")]
 
 
-class _KeyedColumnsBenchmark:
-    def get_schema(self):
-        return {
-            "zones": {
-                "columns": {
-                    "location_id": {"type": "INTEGER"},
-                    "name": {"type": "VARCHAR(10)"},
-                    "latitude": {"type": "DOUBLE"},
-                    "seen_at": {"type": "TIMESTAMP"},
-                }
-            }
-        }
-
-
-def test_clickhouse_delimited_loader_converts_keyed_column_schemas(tmp_path: Path) -> None:
-    path = tmp_path / "zones.tbl"
-    path.write_text("7|north|1.5|2024-01-01 00:00:10\n8|||\n", encoding="utf-8")
+def test_clickhouse_delimited_loader_streams_file_bytes_with_csv_settings(tmp_path: Path) -> None:
+    path = tmp_path / "zones.tbl.gz"
+    with gzip.open(path, "wb") as handle:
+        handle.write(b"7|north|1.5|2024-01-01 00:00:10|\n8||||\n")
     connection = _ServerConnection()
-    benchmark = _KeyedColumnsBenchmark()
-    handler = ClickHouseNativeHandler("|", _ServerAdapter(), benchmark)
+    handler = ClickHouseNativeHandler("|", _ServerAdapter(), object())
 
-    assert handler._load_delimited_via_client_insert("zones", [path], connection, benchmark, logging.getLogger()) == 2
-    assert connection.rows == [
-        (7, "north", 1.5, datetime(2024, 1, 1, 0, 0, 10)),
-        (8, "", None, None),
-    ]
+    assert handler._load_via_client_insert("zones", [path], connection) == 2
+    table, insert_format, body, settings = connection.calls[0]
+    assert (table, insert_format) == ("zones", "CSV")
+    assert body == b"7|north|1.5|2024-01-01 00:00:10|\n8||||\n"
+    assert settings["format_csv_delimiter"] == "|"
+    assert settings["input_format_csv_allow_variable_number_of_columns"] == 1
+    assert settings["input_format_csv_trim_whitespaces"] == 0
+    assert settings["date_time_input_format"] == "best_effort"
+    assert settings["max_insert_block_size"] == 16
 
 
-def test_clickhouse_parquet_loader_uses_logical_nested_names(tmp_path: Path) -> None:
+def test_clickhouse_parquet_loader_streams_file_bytes_and_checks_row_count(tmp_path: Path) -> None:
     pa = pytest.importorskip("pyarrow")
     pq = pytest.importorskip("pyarrow.parquet")
     path = tmp_path / "events.parquet"
@@ -178,9 +162,35 @@ def test_clickhouse_parquet_loader_uses_logical_nested_names(tmp_path: Path) -> 
     connection = _ServerConnection()
     handler = ClickHouseNativeHandler("|", _ServerAdapter(), object())
 
-    assert handler._load_parquet_via_client_insert("events", [path], connection) == 1
-    assert "embedding,event_id" in (connection.query or "")
-    assert connection.rows == [([1, 2], 1)]
+    assert handler._load_via_client_insert("events", [path], connection) == 1
+    table, insert_format, body, _settings = connection.calls[0]
+    assert (table, insert_format) == ("events", "Parquet")
+    assert body == path.read_bytes()
+
+
+def test_clickhouse_parquet_loader_rejects_row_count_mismatch(tmp_path: Path) -> None:
+    pa = pytest.importorskip("pyarrow")
+    pq = pytest.importorskip("pyarrow.parquet")
+    path = tmp_path / "events.parquet"
+    pq.write_table(pa.table({"event_id": [1, 2, 3]}), path)
+    handler = ClickHouseNativeHandler("|", _ServerAdapter(), object())
+
+    with pytest.raises(ClickHouseServerLoadError, match="expected 3"):
+        handler._load_via_client_insert("events", [path], _ServerConnection())
+
+
+def test_clickhouse_cloud_mode_uses_the_client_insert_path(tmp_path: Path) -> None:
+    class _CloudAdapter:
+        deployment_mode = "cloud"
+        insert_block_size = 16
+
+    path = tmp_path / "t.tbl"
+    path.write_text("1|a\n", encoding="utf-8")
+    connection = _ServerConnection()
+    handler = ClickHouseNativeHandler("|", _CloudAdapter(), object())
+
+    assert handler.load_table("t", path, connection, object(), logging.getLogger()) == 1
+    assert connection.calls[0][1] == "CSV"
 
 
 class TestValidateSqlIdentifier:
