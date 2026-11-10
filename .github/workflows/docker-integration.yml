@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       services:
-        description: 'Comma-separated subset to run (default: all). Choices: postgres,clickhouse,trino,singlestore,firebolt'
+        description: 'Comma-separated subset to run (default: all). Choices: postgres,clickhouse,trino,presto,singlestore,firebolt'
         required: false
         default: 'all'
   pull_request:
@@ -26,6 +26,20 @@ on:
       - 'tests/integration/platforms/test_firebolt_core_live.py'
       - 'tests/integration/platforms/test_firebolt_core_native_load_live.py'
       - '.github/workflows/docker-integration.yml'
+      - 'docker/trino/**'
+      - 'docker/presto/**'
+      - 'docker/clickhouse/**'
+      - 'benchbox/platforms/trino.py'
+      - 'benchbox/platforms/presto.py'
+      - 'benchbox/platforms/presto_trino_adapter_base.py'
+      - 'benchbox/platforms/presto_trino_utils.py'
+      - 'benchbox/platforms/presto_trino_bulk.py'
+      - 'benchbox/platforms/clickhouse/**'
+      - 'benchbox/platforms/clickhouse_cloud.py'
+      - 'benchbox/platforms/base/data_loading.py'
+      - 'tests/integration/platforms/test_trino_live.py'
+      - 'tests/integration/platforms/test_presto_live.py'
+      - 'tests/integration/platforms/test_clickhouse_live.py'
   schedule:
     - cron: '0 7 * * *'
 
@@ -43,6 +57,7 @@ jobs:
       run_postgres: ${{ steps.select.outputs.run_postgres }}
       run_clickhouse: ${{ steps.select.outputs.run_clickhouse }}
       run_trino: ${{ steps.select.outputs.run_trino }}
+      run_presto: ${{ steps.select.outputs.run_presto }}
       run_singlestore: ${{ steps.select.outputs.run_singlestore }}
       run_firebolt: ${{ steps.select.outputs.run_firebolt }}
     steps:
@@ -53,8 +68,8 @@ jobs:
           SERVICES: ${{ inputs.services }}
         run: |
           set -euo pipefail
-          SERVICE_NAMES=(postgres clickhouse trino singlestore firebolt)
-          PULL_REQUEST_SERVICES=(singlestore firebolt)
+          SERVICE_NAMES=(postgres clickhouse trino presto singlestore firebolt)
+          PULL_REQUEST_SERVICES=(clickhouse trino presto singlestore firebolt)
           declare -A selected
           for name in "${SERVICE_NAMES[@]}"; do selected[$name]=false; done
           emit() {
@@ -80,13 +95,13 @@ jobs:
             t="$(echo "$tok" | tr -d '[:space:]')"
             case "$t" in
               all) for name in "${SERVICE_NAMES[@]}"; do selected[$name]=true; done ;;
-              postgres|clickhouse|trino|singlestore|firebolt) selected[$t]=true ;;
+              postgres|clickhouse|trino|presto|singlestore|firebolt) selected[$t]=true ;;
               '')
                 echo "::error::Empty service token in services input '$SERVICES'."
                 exit 1
                 ;;
               *)
-                echo "::error::Unknown service '$t'. Choices: postgres,clickhouse,trino,singlestore,firebolt (or all)."
+                echo "::error::Unknown service '$t'. Choices: postgres,clickhouse,trino,presto,singlestore,firebolt (or all)."
                 exit 1
                 ;;
             esac
@@ -120,6 +135,16 @@ jobs:
       packages: write
     with:
       images: '["trino"]'
+
+  mirror-presto:
+    needs: validate-input
+    if: ${{ needs.validate-input.outputs.run_presto == 'true' }}
+    uses: ./.github/workflows/mirror-ci-images.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      images: '["presto"]'
 
   mirror-postgres:
     needs: validate-input
@@ -190,6 +215,7 @@ jobs:
       packages: read
     env:
       CLICKHOUSE_IMAGE: ghcr.io/benchbox-dev/clickhouse:25.8@sha256:0152dd511befe6a2c2ef53e930726179669b08116da78500b37c51c96ff5ee77
+      CLICKHOUSE_MEMORY_LIMIT: 4g
     steps:
       - name: Checkout code
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
@@ -211,8 +237,6 @@ jobs:
         run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
 
       - name: Bring up ClickHouse compose stack
-        env:
-          CLICKHOUSE_MEMORY_LIMIT: 4g
         run: docker compose -f docker/clickhouse/docker-compose.yml up -d --wait
 
       - name: Run ClickHouse live integration tests
@@ -260,6 +284,12 @@ jobs:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
 
+      - name: Prepare shared data directory
+        run: |
+          data_dir="${{ runner.temp }}/benchbox-data"
+          mkdir -p "$data_dir"
+          echo "BENCHBOX_DATA_DIR=$data_dir" >> "$GITHUB_ENV"
+
       - name: Bring up Trino compose stack
         run: docker compose -f docker/trino/docker-compose.yml up -d --wait
 
@@ -277,6 +307,60 @@ jobs:
       - name: Tear down compose stack
         if: always()
         run: docker compose -f docker/trino/docker-compose.yml down -v
+
+  presto:
+    needs: [validate-input, mirror-presto]
+    if: ${{ needs.validate-input.outputs.run_presto == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+    env:
+      PRESTO_IMAGE: ghcr.io/benchbox-dev/presto:0.297@sha256:7da6d257a4c879f61b5010feca9d73ff70b069935505edb2ecff435cbe486bf9
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Authenticate to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Prepare shared data directory
+        run: |
+          data_dir="${{ runner.temp }}/benchbox-data"
+          mkdir -p "$data_dir"
+          echo "BENCHBOX_DATA_DIR=$data_dir" >> "$GITHUB_ENV"
+
+      - name: Bring up Presto compose stack
+        run: docker compose -f docker/presto/docker-compose.yml up -d --wait
+
+      - name: Run Presto live integration tests
+        run: |
+          set -o pipefail
+          uv run -- python -m pytest tests/integration/platforms/test_presto_live.py \
+            -m "live_presto" --tb=short -v -p no:cacheprovider \
+            | tee /tmp/presto_docker_output.txt
+          if ! grep -Eq '[0-9]+ passed' /tmp/presto_docker_output.txt; then
+            echo "::error::Presto Docker integration produced no passing tests."
+            exit 1
+          fi
+
+      - name: Tear down compose stack
+        if: always()
+        run: docker compose -f docker/presto/docker-compose.yml down -v
 
   singlestore:
     needs: validate-input

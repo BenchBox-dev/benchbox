@@ -116,9 +116,13 @@ def build_insert_sql(qualified_table: str, column_types: Sequence[str], rows_jso
     )
 
 
-def fetch_column_types(cursor: Any, qualified_table: str) -> list[str]:
+def fetch_columns(cursor: Any, qualified_table: str) -> list[tuple[str, str]]:
     cursor.execute(f"DESCRIBE {qualified_table}")
-    return [str(row[1]) for row in cursor.fetchall()]
+    return [(str(row[0]), str(row[1])) for row in cursor.fetchall()]
+
+
+def fetch_column_types(cursor: Any, qualified_table: str) -> list[str]:
+    return [type_name for _, type_name in fetch_columns(cursor, qualified_table)]
 
 
 def _run_insert(cursor: Any, sql: str) -> None:
@@ -175,6 +179,24 @@ def _iter_parquet_rows(file_path: Path, column_count: int) -> Iterator[list[list
         yield [list(row) for row in zip(*columns)]
 
 
+def default_dialect(file_path: Path) -> CsvDialect:
+    from benchbox.platforms.base.data_loading import CsvDialect as _CsvDialect
+    from benchbox.utils.file_format import get_data_extension, get_delimiter_for_file
+
+    is_tpc = get_data_extension(file_path) in (".tbl", ".dat")
+    return _CsvDialect(
+        delimiter=get_delimiter_for_file(file_path),
+        has_header=False,
+        null_marker="" if is_tpc else None,
+        normalize_booleans=False,
+        quote=None,
+    )
+
+
+def has_structured_type(column_types: Sequence[str]) -> bool:
+    return any(base_type(type_name) in _STRUCTURED_BASE_TYPES for type_name in column_types)
+
+
 def load_file_batches(
     cursor: Any,
     file_path: Path,
@@ -183,8 +205,7 @@ def load_file_batches(
     dialect: CsvDialect | None = None,
     column_types: Sequence[str] | None = None,
 ) -> int:
-    from benchbox.platforms.base.data_loading import CsvDialect as _CsvDialect
-    from benchbox.utils.file_format import get_data_extension, get_delimiter_for_file
+    from benchbox.utils.file_format import get_data_extension
 
     if column_types is None:
         column_types = fetch_column_types(cursor, qualified_table)
@@ -197,14 +218,7 @@ def load_file_batches(
         null_token: str | None = None
     else:
         if dialect is None:
-            is_tpc = get_data_extension(file_path) in (".tbl", ".dat")
-            dialect = _CsvDialect(
-                delimiter=get_delimiter_for_file(file_path),
-                has_header=False,
-                null_marker="" if is_tpc else None,
-                normalize_booleans=False,
-                quote=None,
-            )
+            dialect = default_dialect(file_path)
         batches = _iter_delimited_rows(file_path, column_count, dialect, dialect.delimiter)
         null_token = dialect.null_marker
 

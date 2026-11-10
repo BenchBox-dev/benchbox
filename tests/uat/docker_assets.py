@@ -341,6 +341,8 @@ _PLATFORM_STATIC_OPTS: dict[str, list[str]] = {
         "--platform-option",
         "ssl=false",
     ],
+    "trino": ["--platform-option", "source_catalog=hive", "--platform-option", "catalog=memory"],
+    "presto": ["--platform-option", "source_catalog=hive", "--platform-option", "catalog=memory"],
 }
 
 _PLATFORM_CLI_SELECTORS: dict[str, str] = {
@@ -356,6 +358,7 @@ _PLATFORM_SECONDARY_PORTS: dict[str, dict[str, int]] = {
     "questdb": {"http_port": 9000},
     "starrocks": {"http_port": 8040},
     "doris": {"http_port": 8030, "be_http_port": 8040},
+    "clickhouse-server": {"http_port": 8123},
 }
 
 _PLATFORM_PASSWORD_ENV_KEYS: dict[str, str] = {
@@ -675,16 +678,26 @@ def compose_ps_unhealthy_services(ps_stdout: str) -> tuple[str, ...]:
     return tuple(unhealthy)
 
 
+_COMPOSE_MEMORY_VARIABLE_RE = re.compile(r"\$\{(?P<var>[A-Za-z_][A-Za-z0-9_]*)(?:(?P<op>:?-)(?P<default>[^}]*))?\}")
+
+
 def _resolve_compose_memory_value(value: object, *, env: dict[str, str] | None) -> str:
     raw = str(value).strip()
-    match = re.fullmatch(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}", raw)
+    match = _COMPOSE_MEMORY_VARIABLE_RE.fullmatch(raw)
     if match is None:
         return raw
     environment = os.environ if env is None else env
-    resolved = environment.get(match.group(1))
-    if not resolved:
-        raise DockerAssetError(f"compose memory variable {match.group(1)!r} is not set")
-    return resolved.strip()
+    variable = match.group("var")
+    resolved = environment.get(variable)
+    operator = match.group("op")
+    if operator == "-" and resolved is not None:
+        return resolved.strip()
+    if resolved:
+        return resolved.strip()
+    default = (match.group("default") or "").strip()
+    if operator is not None and default:
+        return default
+    raise DockerAssetError(f"compose memory variable {variable!r} is not set")
 
 
 def compose_declared_memory_limits(spec: DockerPlatformSpec, *, env: dict[str, str] | None = None) -> dict[str, str]:
@@ -778,7 +791,7 @@ def compose_environment(
         environment[CLICKHOUSE_MEMORY_LIMIT_ENV_VAR] = resolved
     if spec.platform == "starrocks":
         environment["STARROCKS_MEMORY_LIMIT"] = os.environ.get("STARROCKS_MEMORY_LIMIT", starrocks_memory_limit or "8g")
-    if spec.platform not in {"lakesail", "velox"}:
+    if spec.platform not in {"lakesail", "velox", "presto", "trino"}:
         return environment
     if benchmark_runs_dir is None:
         raise DockerAssetError(

@@ -13,8 +13,9 @@ from benchbox.core.results.platform_timing import StatementTiming
 from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY, RequestLedger, outside_query_timer
 from benchbox.platforms.base.data_loading import resolve_adapter_data_source
 from benchbox.platforms.base.external_table_mixin import HiveExternalTableMixin
+from benchbox.platforms.presto_trino_bulk import BulkLoadSettings, bulk_load_table, remove_stage_root
 from benchbox.platforms.presto_trino_utils import (
-    fetch_column_types,
+    fetch_columns,
     load_file_batches,
     normalize_existing_files,
     show_tables_lower,
@@ -51,6 +52,10 @@ class PrestoTrinoAdapterBase(CursorValidationQueryExecutionMixin, HiveExternalTa
         "staging_root",
         "source_catalog",
     )
+    bulk_native_compression: frozenset[str] = frozenset({".gz"})
+    bulk_null_format_property: str | None = "null_format"
+    bulk_field_delimiter_property: str = "textfile_field_separator"
+    _values_fallback_warned = False
     extra_config_defaults: dict[str, Any] = {}
     olap_session_settings: tuple[str, ...] = ()
     memory_error_markers = ("MEMORY_LIMIT_EXCEEDED",)
@@ -532,7 +537,35 @@ class PrestoTrinoAdapterBase(CursorValidationQueryExecutionMixin, HiveExternalTa
             dialect = resolve_csv_dialect(data_source, table_name, valid_files[0], benchmark)
 
         qualified_table = f"{target_catalog}.{target_schema}.{table_name_lower}"
-        column_types = fetch_column_types(cursor, qualified_table)
+        columns = fetch_columns(cursor, qualified_table)
+        column_types = [type_name for _, type_name in columns]
+
+        if self.source_catalog:
+            bulk_rows = bulk_load_table(
+                cursor,
+                settings=BulkLoadSettings(
+                    self.source_catalog,
+                    self.bulk_native_compression,
+                    self.bulk_null_format_property,
+                    self.bulk_field_delimiter_property,
+                ),
+                target_table=qualified_table,
+                ext_name=f"{target_schema}_{table_name_lower}",
+                columns=columns,
+                files=valid_files,
+                dialect=dialect,
+                logger=self.logger,
+            )
+            if bulk_rows is not None:
+                return bulk_rows, len(valid_files)
+        elif not self._values_fallback_warned:
+            self._values_fallback_warned = True
+            self.logger.warning(
+                f"{self.platform_log_name} loads through INSERT ... VALUES statements, which is slow at larger scale "
+                "factors. Set --platform-option source_catalog=<hive catalog> and mount the BenchBox data directory "
+                "into the server at the same path to load through an external table."
+            )
+
         rows_loaded = 0
         for file_path in valid_files:
             rows_loaded += load_file_batches(
@@ -594,7 +627,11 @@ class PrestoTrinoAdapterBase(CursorValidationQueryExecutionMixin, HiveExternalTa
             self.logger.error(f"Data loading failed: {e}")
             raise
         finally:
-            cursor.close()
+            try:
+                if self.source_catalog:
+                    remove_stage_root(data_dir)
+            finally:
+                cursor.close()
 
         return table_stats, total_time, None
 

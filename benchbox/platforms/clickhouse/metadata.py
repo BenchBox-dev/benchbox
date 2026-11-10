@@ -69,6 +69,7 @@ class ClickHouseMetadataMixin:
         for key in [
             "host",
             "port",
+            "http_port",
             "username",
             "user",
             "password",
