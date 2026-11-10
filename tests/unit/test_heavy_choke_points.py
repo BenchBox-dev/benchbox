@@ -514,7 +514,7 @@ def test_a_signal_during_the_run_exits_with_its_conventional_code_and_still_stop
     hook = f'kill -{signal_name} "$(ps -o ppid= -p $PPID | tr -d " ")"'
     result = _locked_wrapper(_stub_env(tmp_path, "stopped", STUB_RUN_HOOK=hook), "--", "true")
     assert result.returncode == code, result.stderr
-    assert _calls(tmp_path)[-1] == f"machine stop {_machine_name(tmp_path)}"
+    assert _calls(tmp_path)[-1] == f"machine stop {_machine_name(tmp_path)}", result.stderr
 
 
 @posix_only

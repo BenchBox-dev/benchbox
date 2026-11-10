@@ -101,3 +101,40 @@ def test_export_anonymize_text_companion_has_no_leaks(monkeypatch, tmp_path):
     assert HOME not in text
     assert DATA_DIR not in text
     assert Path(tmp_path).as_posix() not in text
+
+
+CUSTOM_HOME = "/srv/synthetic-home-xyz"
+
+
+def test_anonymize_plans_payload_redacts_top_level_errors(monkeypatch):
+    monkeypatch.setenv("HOME", CUSTOM_HOME)
+    monkeypatch.setenv("USERPROFILE", CUSTOM_HOME)
+    payload = {
+        "queries": {},
+        "errors": [
+            {"query_id": "Q3", "error": f"cannot open {CUSTOM_HOME}/data/part.tbl", "detail": ["x", 3, None]},
+            "plain",
+            7,
+        ],
+    }
+    payload["queries"] = {"Q1": {"plan": "SCAN x"}}
+
+    sanitized = anonymize_plans_payload(payload)
+
+    assert find_public_path_leaks(sanitized) == []
+    assert CUSTOM_HOME not in str(sanitized["errors"])
+    assert "<redacted>" in sanitized["errors"][0]["error"]
+    assert sanitized["errors"][0]["query_id"] == "Q3"
+    assert sanitized["errors"][0]["detail"] == ["x", 3, None]
+    assert sanitized["errors"][1:] == ["plain", 7]
+
+
+def test_anonymize_plans_payload_redacts_errors_mapping_and_string(monkeypatch):
+    monkeypatch.setenv("HOME", CUSTOM_HOME)
+    monkeypatch.setenv("USERPROFILE", CUSTOM_HOME)
+    mapping = anonymize_plans_payload({"queries": {}, "errors": {"Q3": f"open {CUSTOM_HOME}/a"}})
+    text = anonymize_plans_payload({"queries": {}, "errors": f"open {CUSTOM_HOME}/a"})
+
+    assert CUSTOM_HOME not in str(mapping["errors"]) + str(text["errors"])
+    assert anonymize_plans_payload({"queries": {}, "errors": None})["errors"] is None
+    assert anonymize_plans_payload({"queries": {}, "errors": 5})["errors"] == 5

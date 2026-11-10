@@ -42,10 +42,27 @@ object the exporter owns, so a new field requires a schema change in the same co
 | `write_primitives` | validation-query bounds from the catalog YAML | sketch-function page checks |
 | `publication` | publish allowlist and exclusions, gated pages, link-check ignore patterns | publish-policy readers and link-check policy |
 | `ownership` | ownership counts, site-owned paths, transitions | negative ownership guard |
+| `path_privacy` | the local-path detector contract: known roots, drive-letter and UNC rules, placeholder allowlist, home-root rule, the detector regex, and synthetic accepted and rejected example cases | drift check for the site deploy gate's ported path detector |
 
 The MCP omission tiers, tool-to-CLI mapping and omitted command families live in
 `quality/mcp-run-surface.json`. The exporter embeds that file and the retained MCP tests
 read the same file, so the two cannot disagree.
+
+## Path-privacy contract
+
+`path_privacy` is built by `build_path_privacy_contract()` in
+`benchbox/validation/bundle.py` from the detector's own data
+(`PRIVATE_LOCAL_ROOTS`, `PRIVATE_LOCAL_PATH_RE`, `NEUTRAL_PLACEHOLDERS`). Each example case is
+evaluated by the real detector while the contract is generated; generation raises when the
+detector disagrees with a case's expected verdict. Cases use synthetic placeholder paths only.
+The bundle's existing `doc-contracts.json` member carries the section, so the bundle member set
+does not change.
+
+`quality/path-privacy-contract.json` is the committed snapshot. `doc_contracts.py --check`
+(and so `make doc-contracts-guard`) and `tests/unit/scripts/test_doc_contracts.py` fail when the
+detector and the snapshot differ. After an intentional detector change, review it and run
+`uv run -- python scripts/doc_contracts.py --write-path-privacy-snapshot`, then update the
+site's detector to match the published contract.
 
 ## Lock-test inventory
 

@@ -441,7 +441,7 @@ def test_bundle_leak_scan_shares_the_single_detector_source() -> None:
         path.relative_to(repo).as_posix()
         for root in ("benchbox", "scripts")
         for path in (repo / root).rglob("*.py")
-        if "/var/folders|/var/run" in path.read_text(encoding="utf-8")
+        if '"/var/folders"' in path.read_text(encoding="utf-8")
     )
     assert owners == ["benchbox/validation/bundle.py"]
     sample = {

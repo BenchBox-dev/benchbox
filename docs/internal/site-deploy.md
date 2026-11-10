@@ -32,7 +32,7 @@ schemas 4 and 5, so an `exact3` bundle cannot be deployed.
 Schema 5 keeps the schema 4 contract checks: `verify` selects the exact member
 set from `manifest.schema` and rejects any other set, validates
 `docs-data/docs-data.json` against `quality/docs-data.schema.json` and
-`doc-contracts.json` against `quality/doc-contracts.schema.json`, and checks
+`doc-contracts.json` against `quality/doc-contracts.schema.json` (including its `path_privacy` detector contract), and checks
 `certified_by` the way the site's verifier does (schemas 4 and 5 take
 `candidate` or a numeric run id string). `build` records
 `candidate` when no `--certified-by` is given (schema 3 keeps `local`). The
