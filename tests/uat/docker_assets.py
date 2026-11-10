@@ -675,16 +675,26 @@ def compose_ps_unhealthy_services(ps_stdout: str) -> tuple[str, ...]:
     return tuple(unhealthy)
 
 
+_COMPOSE_MEMORY_VARIABLE_RE = re.compile(r"\$\{(?P<var>[A-Za-z_][A-Za-z0-9_]*)(?:(?P<op>:?-)(?P<default>[^}]*))?\}")
+
+
 def _resolve_compose_memory_value(value: object, *, env: dict[str, str] | None) -> str:
     raw = str(value).strip()
-    match = re.fullmatch(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}", raw)
+    match = _COMPOSE_MEMORY_VARIABLE_RE.fullmatch(raw)
     if match is None:
         return raw
     environment = os.environ if env is None else env
-    resolved = environment.get(match.group(1))
-    if not resolved:
-        raise DockerAssetError(f"compose memory variable {match.group(1)!r} is not set")
-    return resolved.strip()
+    variable = match.group("var")
+    resolved = environment.get(variable)
+    operator = match.group("op")
+    if operator == "-" and resolved is not None:
+        return resolved.strip()
+    if resolved:
+        return resolved.strip()
+    default = (match.group("default") or "").strip()
+    if operator is not None and default:
+        return default
+    raise DockerAssetError(f"compose memory variable {variable!r} is not set")
 
 
 def compose_declared_memory_limits(spec: DockerPlatformSpec, *, env: dict[str, str] | None = None) -> dict[str, str]:
