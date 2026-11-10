@@ -7831,14 +7831,28 @@
       "terminal_outcome": "deliver"
     },
     "sqlglot-delivery-hardening": {
-      "accepted_members": {},
+      "accepted_members": {
+        "sqlglot-delivery-arm-waits-for-daily-run-20261107": "f344efee83d6094956a609f761f96da4f8430ff0"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "sqlglot-delivery-arm-waits-for-daily-run-20261107": {
+          "accepted_head": "f344efee83d6094956a609f761f96da4f8430ff0",
+          "changed_files": [
+            ".github/workflows/sqlglot-delivery.yml",
+            "changelog.d/sqlglot-event-arming.json",
+            "docs/internal/dev-loop-property-ledger.md",
+            "tests/unit/workflows/test_sqlglot_delivery_workflow.py"
+          ],
+          "integration_head": "42e58c9bcaf374d30ff6b0b2959fc6b7c4782dd0",
+          "integration_seq": 2
+        }
+      },
       "integration_branch": "feat/sqlglot-delivery-hardening",
-      "integration_head": "0194854760e504faffa0ca6fe403c29fc7bae6f0",
+      "integration_head": "42e58c9bcaf374d30ff6b0b2959fc6b7c4782dd0",
       "integration_log": [
         {
           "at": "2026-11-07T18:38:46Z",
@@ -8246,6 +8260,15 @@
           "op_id": "45244bed223c4f88a8c69be7705da6c8",
           "previous_head": "b65307b83eada4e6f2b76d9e1e393a48970bf578",
           "seq": 1
+        },
+        {
+          "at": "2026-11-10T00:40:13Z",
+          "head": "42e58c9bcaf374d30ff6b0b2959fc6b7c4782dd0",
+          "kind": "prepare",
+          "member": "sqlglot-delivery-arm-waits-for-daily-run-20261107",
+          "op_id": "d54f933c11844667b405899e9091bc9b",
+          "previous_head": "0194854760e504faffa0ca6fe403c29fc7bae6f0",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-sqlglot-delivery-hardening",
@@ -36647,15 +36670,10 @@
       "title": "Fork controller can merge after a hold is applied during its mergeability retry"
     },
     "sqlglot-delivery-arm-waits-for-daily-run-20261107": {
-      "claim": {
-        "expires_at": "2026-11-11T00:40:08Z",
-        "generation": "2355c044224b4254bd92fd6896d73d62",
-        "renewals": 0,
-        "worker": "omp:sqlglot-delivery-hardening-leader"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "SQLGlot delivery consumer arms its adoption PR only on its next daily run"
     },
     "sqlglot-delivery-dry-runs-miss-write-prerequisites-20261107": {
