@@ -9,7 +9,7 @@ services:
     volumes:
       - ./catalog:/opt/presto-server/etc/catalog:ro
       - ./jvm.properties:/opt/presto-server/etc/jvm.config:ro
-      - "${BENCHBOX_DATA_DIR:-/tmp/benchbox-data}:${BENCHBOX_DATA_DIR:-/tmp/benchbox-data}:ro"
+      - "${BENCHBOX_DATA_DIR}:${BENCHBOX_DATA_DIR}:ro"
     healthcheck:
       test:
         - CMD-SHELL
