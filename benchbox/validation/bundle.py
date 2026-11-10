@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import contextlib
 import datetime
+import functools
 import hashlib
 import importlib.util
 import json
@@ -8,9 +10,12 @@ import math
 import re
 import statistics
 import sys
+from collections.abc import Callable, Iterable, Mapping
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
+
+FETCH_MODES = ("rows", "arrow")
 
 
 def _load_schema_policy_helpers():
@@ -93,32 +98,256 @@ def _load_timing_field_helpers():
 ) = _load_timing_field_helpers()
 
 
+REDACTED_PLACEHOLDER = "<redacted>"
+
+NEUTRAL_PLACEHOLDERS = frozenset({"/data", "/output"})
+
+_PATH_TAIL = r"[^\s'\",;)]*"
+_PATH_BOUNDARY = r"(?=[/\\\s'\",;)\]}]|$)"
+
+PRIVATE_LOCAL_ROOTS = (
+    "~",
+    "/Users",
+    "/home",
+    "/root",
+    "/private",
+    "/var/folders",
+    "/var/run",
+    "/Volumes",
+    "/tmp",
+    "/mnt",
+    "/opt",
+)
+
 PRIVATE_LOCAL_PATH_RE = re.compile(
     r"(?<![A-Za-z0-9_])(?:"
-    r"(?:~|/Users|/home|/root|/private/var|/var/folders|/var/run|/Volumes)/[^\s'\",;)]*"
-    r"|[A-Za-z]:\\Users\\[^\s'\",;)]*"
-    r")",
+    rf"(?:{'|'.join(PRIVATE_LOCAL_ROOTS)})/{_PATH_TAIL}"
+    rf"|[A-Za-z]:\\{_PATH_TAIL}"
+    rf"|[A-Za-z]:/(?!/){_PATH_TAIL}"
+    r")"
+    rf"|(?<![A-Za-z0-9_\\])\\{{2,}}[A-Za-z0-9_.$-]+\\+{_PATH_TAIL}"
+    rf"|(?<![A-Za-z0-9_:/\\])//[A-Za-z0-9_.$-]+/[A-Za-z0-9_.$-]+{_PATH_TAIL}",
     flags=re.IGNORECASE,
 )
 
 
-def find_public_path_leaks(value: Any, key_path: tuple[str, ...] = ()) -> list[str]:
-    leaks: list[str] = []
-    pending: list[tuple[Any, tuple[str, ...]]] = [(value, key_path)]
-    while pending:
-        node, path = pending.pop()
-        if isinstance(node, dict):
-            for key, child in node.items():
-                label = str(key)
-                if isinstance(key, str) and PRIVATE_LOCAL_PATH_RE.search(key):
-                    label = "<key>"
-                    leaks.append(".".join((*path, label)))
-                pending.append((child, (*path, label)))
-        elif isinstance(node, (list, tuple, set, frozenset)):
-            pending.extend((child, (*path, str(index))) for index, child in enumerate(node))
-        elif isinstance(node, str) and PRIVATE_LOCAL_PATH_RE.search(node):
-            leaks.append(".".join(path) or "<root>")
-    return leaks
+def is_neutral_placeholder(text: str) -> bool:
+    return text.rstrip("/\\") in NEUTRAL_PLACEHOLDERS
+
+
+def _root_variants(root: str | Path) -> set[str]:
+    text = str(root).rstrip("/\\")
+    if not text:
+        return set()
+    if not (text.startswith(("/", "\\")) or text[1:3] in (":\\", ":/")):
+        with contextlib.suppress(OSError, RuntimeError):
+            text = str(Path(text).resolve()).rstrip("/\\")
+    if len(text) <= 1 or not (text.startswith(("/", "\\")) or text[1:3] in (":\\", ":/")):
+        return set()
+    if is_neutral_placeholder(text):
+        return set()
+    variants = {text, text.replace("\\", "/")}
+    with contextlib.suppress(OSError, RuntimeError):
+        resolved = str(Path(text).resolve()).rstrip("/\\")
+        variants |= {resolved, resolved.replace("\\", "/")}
+    return {variant for variant in variants if len(variant) > 1 and not is_neutral_placeholder(variant)}
+
+
+def _root_alternatives(variants: Iterable[str]) -> list[str]:
+    alternatives = []
+    for variant in sorted(variants, key=len, reverse=True):
+        alternatives.append(rf"(?<![A-Za-z0-9_]){re.escape(variant)}")
+        if variant.startswith("/") and len(variant.strip("/").split("/")) >= 2:
+            alternatives.append(rf"(?<![A-Za-z0-9_/.]){re.escape(variant[1:])}")
+    return alternatives
+
+
+def _is_home_or_ancestor(root: str, home: Path) -> bool:
+    with contextlib.suppress(ValueError):
+        return home.is_relative_to(Path(root))
+    return False
+
+
+def _keep_closing_brackets(match: re.Match[str]) -> str:
+    matched = match.group(0)
+    return REDACTED_PLACEHOLDER + matched[len(matched.rstrip("]}")) :]
+
+
+class LocalPathDetector:
+    def __init__(self, roots: Iterable[str | Path] = (), *, redact_home: bool = True):
+        home = Path.home() if redact_home else None
+        data_variants: set[str] = set()
+        for root in roots:
+            data_variants |= {v for v in _root_variants(root) if home is None or not _is_home_or_ancestor(v, home)}
+        self._data_re = (
+            re.compile("(?:" + "|".join(_root_alternatives(data_variants)) + ")" + _PATH_BOUNDARY)
+            if data_variants
+            else None
+        )
+        home_variants = _root_variants(home) if home is not None else set()
+        self._home_re = (
+            re.compile(
+                "(?:" + "|".join(_root_alternatives(home_variants)) + ")" + _PATH_BOUNDARY + r"(?:[/\\][^\s'\",;)]*)?"
+            )
+            if home_variants
+            else None
+        )
+
+    def contains(self, text: str) -> bool:
+        if self._data_re is not None and self._data_re.search(text):
+            return True
+        if self._home_re is not None and self._home_re.search(text):
+            return True
+        return any(not is_neutral_placeholder(match.group(0)) for match in PRIVATE_LOCAL_PATH_RE.finditer(text))
+
+    def redact_text(self, text: str) -> str:
+        if self._data_re is not None:
+            text = self._data_re.sub(REDACTED_PLACEHOLDER, text)
+        if self._home_re is not None:
+            text = self._home_re.sub(_keep_closing_brackets, text)
+        return PRIVATE_LOCAL_PATH_RE.sub(
+            lambda match: match.group(0) if is_neutral_placeholder(match.group(0)) else _keep_closing_brackets(match),
+            text,
+        )
+
+    def redact_value(self, value: Any) -> Any:
+        return redact_structure(value, self.redact_text)
+
+    def find_leaks(self, value: Any, key_path: tuple[str, ...] = ()) -> list[str]:
+        leaks: list[str] = []
+        stack: list[tuple[Any, tuple[str, ...]]] = [(value, key_path)]
+        while stack:
+            node, path = stack.pop()
+            if isinstance(node, dict):
+                children = []
+                for key, child in node.items():
+                    label = str(key)
+                    if isinstance(key, str) and self.contains(key):
+                        label = "<key>"
+                        leaks.append(".".join((*path, label)))
+                    children.append((child, (*path, label)))
+                stack.extend(reversed(children))
+            elif isinstance(node, (list, tuple, set, frozenset)):
+                stack.extend(reversed([(child, (*path, str(index))) for index, child in enumerate(node)]))
+            elif isinstance(node, str) and self.contains(node):
+                leaks.append(".".join(path) or "<root>")
+        return leaks
+
+
+def redact_structure(value: Any, redact_text: Callable[[str], str]) -> Any:
+    if isinstance(value, str):
+        return redact_text(value)
+    if isinstance(value, dict):
+        return {key: redact_structure(child, redact_text) for key, child in value.items()}
+    if isinstance(value, list):
+        return [redact_structure(child, redact_text) for child in value]
+    if isinstance(value, tuple):
+        return tuple(redact_structure(child, redact_text) for child in value)
+    return value
+
+
+@functools.lru_cache(maxsize=32)
+def _cached_detector(roots: tuple[str, ...], redact_home: bool, home: str) -> LocalPathDetector:
+    return LocalPathDetector(roots, redact_home=redact_home)
+
+
+def local_path_detector(roots: Iterable[str | Path] = (), *, redact_home: bool = True) -> LocalPathDetector:
+    return _cached_detector(
+        tuple(sorted({str(root) for root in roots if root})), redact_home, str(Path.home()) if redact_home else ""
+    )
+
+
+def _public_scan_detector(roots: Iterable[str | Path], home: Path | None) -> LocalPathDetector:
+    scan_roots = [*roots]
+    if home is not None:
+        scan_roots.append(str(home))
+    return local_path_detector(scan_roots, redact_home=False)
+
+
+def find_public_path_leaks(value: Any, key_path: tuple[str, ...] = (), roots: Iterable[str | Path] = ()) -> list[str]:
+    home = None
+    with contextlib.suppress(OSError, RuntimeError):
+        home = Path.home()
+    return _public_scan_detector(roots, home).find_leaks(value, key_path)
+
+
+PATH_PRIVACY_CONTRACT_VERSION = 1
+_CONTRACT_SYNTHETIC_HOME = "/srv/example-home"
+
+_PATH_PRIVACY_CASES: tuple[dict[str, Any], ...] = (
+    {"id": "known-root-users", "text": "/Users/example-user/run/results.json", "leak": True},
+    {"id": "known-root-tmp-in-sentence", "text": "wrote plan to /tmp/example-run/plan.txt", "leak": True},
+    {"id": "known-root-tilde", "text": "~/example/plan.json", "leak": True},
+    {"id": "known-root-opt", "text": "/opt/example/bin", "leak": True},
+    {"id": "drive-letter-backslash", "text": "C:\\Example\\run\\plan.json", "leak": True},
+    {"id": "drive-letter-forward-slash", "text": "D:/example/run/plan.json", "leak": True},
+    {"id": "unc-backslash", "text": "\\\\example-host\\share\\run", "leak": True},
+    {"id": "unc-forward-slash", "text": "//example-host/share/run", "leak": True},
+    {"id": "placeholder-data", "text": "/data", "leak": False},
+    {"id": "placeholder-output-slash", "text": "/output/", "leak": False},
+    {"id": "placeholder-redacted", "text": REDACTED_PLACEHOLDER, "leak": False},
+    {"id": "relative-path", "text": "results/example/plan.json", "leak": False},
+    {"id": "url-with-known-root-segment", "text": "https://example.com/Users/profile", "leak": False},
+    {"id": "unknown-absolute-root", "text": "/srv/example-service/data", "leak": False},
+    {"id": "no-path", "text": "scan on lineitem uses index", "leak": False},
+    {"id": "data-root-match", "text": "/srv/example-data/run/plan.json", "roots": ["/srv/example-data"], "leak": True},
+    {
+        "id": "data-root-boundary",
+        "text": "/srv/example-database/plan.json",
+        "roots": ["/srv/example-data"],
+        "leak": False,
+    },
+    {
+        "id": "neutral-placeholder-never-a-root",
+        "text": "/data/run/plan.json",
+        "roots": ["/data"],
+        "leak": False,
+    },
+    {"id": "home-root-match", "text": f"{_CONTRACT_SYNTHETIC_HOME}/run/plan.json", "home": True, "leak": True},
+    {"id": "home-root-exact", "text": _CONTRACT_SYNTHETIC_HOME, "home": True, "leak": True},
+    {
+        "id": "home-ancestor-configured-root-still-scanned",
+        "text": "/srv/other-service/run",
+        "roots": ["/srv"],
+        "home": True,
+        "leak": True,
+    },
+)
+
+
+def _contract_case_verdict(case: Mapping[str, Any]) -> bool:
+    home = Path(_CONTRACT_SYNTHETIC_HOME) if case.get("home") else None
+    return _public_scan_detector(case.get("roots", ()), home).contains(case["text"])
+
+
+def build_path_privacy_contract() -> dict[str, Any]:
+    cases = []
+    for case in _PATH_PRIVACY_CASES:
+        verdict = _contract_case_verdict(case)
+        if verdict != case["leak"]:
+            raise ValueError(
+                f"path privacy contract case {case['id']!r} expects leak={case['leak']} but the detector says {verdict}"
+            )
+        cases.append(
+            {
+                "id": case["id"],
+                "text": case["text"],
+                "roots": list(case.get("roots", ())),
+                "home": bool(case.get("home", False)),
+                "leak": case["leak"],
+            }
+        )
+    return {
+        "schema_version": PATH_PRIVACY_CONTRACT_VERSION,
+        "known_roots": sorted(PRIVATE_LOCAL_ROOTS),
+        "drive_letter": {"separators": ["\\", "/"], "double_slash_excluded_for_forward": True},
+        "unc": {"prefixes": ["\\\\", "//"]},
+        "placeholder_allowlist": sorted(NEUTRAL_PLACEHOLDERS),
+        "redacted_placeholder": REDACTED_PLACEHOLDER,
+        "home_root": {"scanned_as_root": True, "synthetic_home": _CONTRACT_SYNTHETIC_HOME},
+        "pattern": {"source": PRIVATE_LOCAL_PATH_RE.pattern, "flags": PRIVATE_LOCAL_PATH_RE.flags},
+        "cases": cases,
+    }
 
 
 SUBMISSION_NOTES_MAX_LEN = 500
@@ -205,6 +434,8 @@ CANONICAL_LOGICAL_QUERY_IDS: dict[str, frozenset[str]] = {
 
 TPCHAVOC_CANONICAL_VARIANTS = frozenset(f"{query}_v{variant}" for query in range(1, 23) for variant in range(1, 11))
 TPCHAVOC_DOCUMENTED_SKIPS: dict[str, frozenset[str]] = {
+    "sqlite": frozenset(["5_v8"]),
+    "starrocks": frozenset(["1_v7", "8_v1"]),
     "datafusion": frozenset(
         [
             "12_v1",
@@ -235,6 +466,7 @@ TPCHAVOC_DOCUMENTED_SKIPS: dict[str, frozenset[str]] = {
             "17_v2",
             "17_v4",
             "17_v7",
+            "1_v1",
             "1_v7",
             "1_v8",
             "2_v5",
@@ -458,6 +690,21 @@ KNOWN_PLATFORMS = {
     "fabric_dw",
     "fabric-lakehouse",
     "fabric-spark",
+    "apache-doris",
+    "singlestore",
+    "velox",
+    "paradedb",
+    "citus",
+    "gizmosql",
+    "databricks-df",
+    "glue",
+    "emr-serverless",
+    "athena-spark",
+    "dataproc",
+    "dataproc-serverless",
+    "synapse-spark",
+    "snowpark-connect",
+    "quanton",
 }
 
 MAX_QUERY_DURATION_MS = 7_200_000
@@ -698,6 +945,7 @@ def _validate_run_section(run: Any, vr: ValidationResult) -> None:
         vr.error(f"Missing keys in 'run': {sorted(missing_run)}")
 
     _validate_run_timing_fields(run, vr)
+    _validate_fetch_mode("run", run, (*FETCH_MODES, "mixed"), vr)
 
     total_ms = run.get("total_duration_ms")
     if total_ms is None:
@@ -727,6 +975,12 @@ def _validate_query_timing_fields(index: int, q: dict, vr: ValidationResult) -> 
         return
     for problem in platform_timing_problems(q["platform_timing"]):
         vr.error(f"queries[{index}].platform_timing {problem}")
+
+
+def _validate_fetch_mode(path: str, block: dict, allowed: tuple[str, ...], vr: ValidationResult) -> None:
+    value = block.get("fetch_mode")
+    if value is not None and value not in allowed:
+        vr.error(f"{path}.fetch_mode must be one of {list(allowed)}, got {value!r}")
 
 
 def _validate_timing_field_versions(data: dict, version: Any, vr: ValidationResult) -> None:
@@ -1115,8 +1369,13 @@ def _validate_cache_control_section(
         )
 
 
+ROWLESS_DML_BENCHMARKS = frozenset({"write_primitives", "transaction_primitives"})
+
+
 def _warn_empty_result_rows(data: dict[str, Any], vr: ValidationResult) -> None:
     if not isinstance(data, dict):
+        return
+    if _bundle_benchmark_id(data) in ROWLESS_DML_BENCHMARKS:
         return
     queries = data.get("queries")
     if not isinstance(queries, list):
@@ -1339,6 +1598,9 @@ def _validate_summary_section(
             vr.error(f"summary.validation must be 'passed' for public submissions, got {validation_status!r}")
 
 
+TRANSLATION_RUNTIME_STRING_KEYS = ("distribution", "version", "fork_sha", "upstream_sha", "wheel_sha256")
+
+
 def _normalize_status(value: Any) -> str | None:
     if isinstance(value, dict):
         value = value.get("status")
@@ -1362,6 +1624,88 @@ def _validate_translation_section(data: dict, vr: ValidationResult) -> None:
         vr.error("execution.translation.status is required when execution.translation is present")
     elif translation_status in PUBLIC_NON_CLEAN_TRANSLATION_STATUSES:
         vr.error(f"execution.translation.status={translation_status!r} is not accepted for public submissions")
+
+    if isinstance(translation, dict) and "runtime" in translation:
+        _validate_translation_runtime(translation["runtime"], vr)
+
+
+def _validate_translation_runtime(runtime: Any, vr: ValidationResult) -> None:
+    if not isinstance(runtime, dict):
+        vr.error(f"execution.translation.runtime must be an object, got {type(runtime).__name__}")
+        return
+    for key in TRANSLATION_RUNTIME_STRING_KEYS:
+        value = runtime.get(key)
+        if not isinstance(value, str) or not value.strip():
+            vr.error(f"execution.translation.runtime.{key} must be a non-empty string, got {value!r}")
+
+
+SQL_TRANSLATOR_VERSION_KEY = "sql_translator_version"
+SQL_TRANSLATOR_ATTESTATION_KEYS = ("version", "fork_sha", "upstream_sha", "wheel_sha256", "evidence")
+SQL_TRANSLATOR_IDENTITY_KEYS = ("version", "fork_sha", "upstream_sha", "wheel_sha256")
+TRANSLATOR_VERSION_RECORDED = "recorded"
+TRANSLATOR_VERSION_ATTESTED = "attested"
+TRANSLATOR_VERSION_NOT_RECORDED = "not_recorded"
+TRANSLATOR_VERSION_NOT_APPLICABLE = "not_applicable"
+_TRANSLATOR_VERSION_RE = re.compile(r"\d+(?:\.\d+)*")
+
+
+class TranslatorVersionError(Exception):
+    pass
+
+
+def attested_translator_version(manifest: Any) -> dict[str, str] | None:
+    if not isinstance(manifest, dict) or SQL_TRANSLATOR_VERSION_KEY not in manifest:
+        return None
+    block = manifest[SQL_TRANSLATOR_VERSION_KEY]
+    label = f"Manifest {SQL_TRANSLATOR_VERSION_KEY}"
+    if not isinstance(block, dict):
+        raise TranslatorVersionError(f"{label} must be an object, got {type(block).__name__}")
+    unknown = sorted(set(block) - set(SQL_TRANSLATOR_ATTESTATION_KEYS))
+    if unknown:
+        raise TranslatorVersionError(f"{label} has unknown keys {unknown}")
+    for key in SQL_TRANSLATOR_ATTESTATION_KEYS:
+        value = block.get(key)
+        if not isinstance(value, str) or not value.strip():
+            raise TranslatorVersionError(f"{label}.{key} must be a non-empty string, got {value!r}")
+    if not _TRANSLATOR_VERSION_RE.fullmatch(block["version"]):
+        raise TranslatorVersionError(f"{label}.version must be a dotted numeric version, got {block['version']!r}")
+    return {key: block[key] for key in SQL_TRANSLATOR_ATTESTATION_KEYS}
+
+
+def reconcile_translator_version(bundle: Any, attested: dict[str, str] | None) -> dict[str, str]:
+    execution = bundle.get("execution") if isinstance(bundle, dict) else None
+    translation = execution.get("translation") if isinstance(execution, dict) else None
+    if isinstance(translation, dict) and "runtime" in translation:
+        runtime = translation["runtime"]
+        if not isinstance(runtime, dict):
+            raise TranslatorVersionError(
+                f"execution.translation.runtime must be an object, got {type(runtime).__name__}"
+            )
+        recorded = {key: runtime[key] for key in SQL_TRANSLATOR_IDENTITY_KEYS if isinstance(runtime.get(key), str)}
+        if attested is not None:
+            for key, value in recorded.items():
+                if attested[key] != value:
+                    raise TranslatorVersionError(
+                        f"Manifest {SQL_TRANSLATOR_VERSION_KEY}.{key} {attested[key]!r} conflicts with the "
+                        f"bundle's recorded execution.translation.runtime.{key} {value!r}"
+                    )
+        return {"source": TRANSLATOR_VERSION_RECORDED, **recorded}
+    if attested is not None:
+        return {"source": TRANSLATOR_VERSION_ATTESTED, **attested}
+    return {"source": TRANSLATOR_VERSION_NOT_RECORDED}
+
+
+def resolve_translator_version(bundle: Any, bundle_path: Path | None = None) -> dict[str, str]:
+    attested = None
+    if bundle_path is not None:
+        try:
+            manifest = json.loads(
+                bundle_path.with_name(f"{bundle_path.stem}{SUBMISSION_MANIFEST_SUFFIX}").read_text(encoding="utf-8")
+            )
+        except (OSError, ValueError):
+            manifest = None
+        attested = attested_translator_version(manifest)
+    return reconcile_translator_version(bundle, attested)
 
 
 def _validate_execution_class_fields(block: Any, label: str, vr: ValidationResult) -> None:
@@ -1859,6 +2203,7 @@ def _validate_single_query(index: int, q: Any, version: Any, vr: ValidationResul
 
     _validate_row_count_validation(index, q, version, vr)
     _validate_query_timing_fields(index, q, vr)
+    _validate_fetch_mode(f"queries[{index}]", q, FETCH_MODES, vr)
 
     ms = q.get("ms")
     if ms is None:
@@ -1918,11 +2263,11 @@ def _coerce_stream_id(raw_id: Any) -> int | None:
     return None
 
 
-def _completed_throughput_block(data: dict[str, Any]) -> dict[str, Any] | None:
+def _completed_throughput_block(data: dict[str, Any], name: str = "throughput_test") -> dict[str, Any] | None:
     phases = data.get("phases")
     if not isinstance(phases, dict):
         return None
-    block = phases.get("throughput_test")
+    block = phases.get(name)
     if not isinstance(block, dict):
         return None
     if str(block.get("status") or "").upper() != "COMPLETED":
@@ -1930,9 +2275,11 @@ def _completed_throughput_block(data: dict[str, Any]) -> dict[str, Any] | None:
     return block
 
 
-def _validated_throughput_stream_ids(streams: Any, vr: ValidationResult) -> list[int] | None:
+def _validated_throughput_stream_ids(
+    streams: Any, vr: ValidationResult, first_stream_id: int = 1, phase_name: str = "throughput_test"
+) -> list[int] | None:
     if not isinstance(streams, list) or not streams:
-        vr.error("phases.throughput_test.status='COMPLETED' requires a non-empty stream_results list")
+        vr.error(f"phases.{phase_name}.status='COMPLETED' requires a non-empty stream_results list")
         return None
     stream_ids: list[int] = []
     for entry in streams:
@@ -1945,8 +2292,9 @@ def _validated_throughput_stream_ids(streams: Any, vr: ValidationResult) -> list
             vr.error(f"throughput stream {stream_id} did not succeed")
             return None
         stream_ids.append(stream_id)
-    if sorted(stream_ids) != list(range(1, len(stream_ids) + 1)):
-        vr.error(f"throughput stream_ids must be contiguous 1..{len(stream_ids)}, got {sorted(stream_ids)}")
+    expected = list(range(first_stream_id, first_stream_id + len(stream_ids)))
+    if sorted(stream_ids) != expected:
+        vr.error(f"throughput stream_ids must be contiguous {expected[0]}..{expected[-1]}, got {sorted(stream_ids)}")
         return None
     return stream_ids
 
@@ -2026,13 +2374,61 @@ def _validate_throughput_stream_coverage(
         )
 
 
+def _validate_second_round_phases(data: dict[str, Any], vr: ValidationResult) -> None:
+    phases = data.get("phases")
+    if not isinstance(phases, dict):
+        return
+    second_throughput = phases.get("throughput_test_2")
+    second_maintenance = phases.get("maintenance_test_2")
+    if second_throughput is None and second_maintenance is None:
+        return
+    if not isinstance(second_throughput, dict) or not isinstance(second_maintenance, dict):
+        vr.error("phases.throughput_test_2 and phases.maintenance_test_2 must be recorded together")
+        return
+    first_throughput = phases.get("throughput_test")
+    first_streams = (first_throughput or {}).get("stream_results") if isinstance(first_throughput, dict) else None
+    second_streams = second_throughput.get("stream_results")
+    if (
+        isinstance(first_streams, list)
+        and isinstance(second_streams, list)
+        and len(first_streams) != len(second_streams)
+    ):
+        vr.error(f"throughput_test_2 ran {len(second_streams)} streams but throughput_test ran {len(first_streams)}")
+    first_maintenance = phases.get("maintenance_test")
+    if not isinstance(first_maintenance, dict):
+        vr.error("phases.maintenance_test_2 requires phases.maintenance_test")
+        return
+
+    def refresh_sets(block: dict[str, Any]) -> set[int]:
+        return {
+            op["refresh_set"]
+            for op in block.get("operations") or []
+            if isinstance(op, dict) and isinstance(op.get("refresh_set"), int)
+        }
+
+    first_sets, second_sets = refresh_sets(first_maintenance), refresh_sets(second_maintenance)
+    if first_sets and second_sets and min(second_sets) <= max(first_sets):
+        vr.error("maintenance_test_2 must use refresh sets that follow maintenance_test")
+
+
 def _validate_throughput_stream_completeness(data: dict[str, Any], vr: ValidationResult) -> None:
+    _validate_second_round_phases(data, vr)
     block = _completed_throughput_block(data)
-    if block is None:
+    second = _completed_throughput_block(data, "throughput_test_2")
+    if block is None and second is None:
         return
-    stream_ids = _validated_throughput_stream_ids(block.get("stream_results"), vr)
-    if stream_ids is None:
-        return
+    stream_ids: list[int] = []
+    rounds: list[tuple[str, list[int]]] = []
+    first_id = 1
+    for name, candidate in (("throughput_test", block), ("throughput_test_2", second)):
+        if candidate is None:
+            continue
+        ids = _validated_throughput_stream_ids(candidate.get("stream_results"), vr, first_id, name)
+        if ids is None:
+            return
+        rounds.append((name, ids))
+        stream_ids.extend(ids)
+        first_id += len(ids)
     benchmark = data.get("benchmark")
     benchmark_id = benchmark.get("id") if isinstance(benchmark, dict) else None
     normalized_benchmark = benchmark_id.strip().casefold() if isinstance(benchmark_id, str) else None
@@ -2041,7 +2437,14 @@ def _validate_throughput_stream_completeness(data: dict[str, Any], vr: Validatio
     observed_by_stream = _grouped_throughput_observations(_throughput_measurement_queries(data.get("queries")), vr)
     if observed_by_stream is None:
         return
-    _validate_throughput_stream_coverage(stream_ids, observed_by_stream, normalized_benchmark, vr)
+    for _name, ids in rounds:
+        _validate_throughput_stream_coverage(
+            ids, {key: value for key, value in observed_by_stream.items() if key in set(ids)}, normalized_benchmark, vr
+        )
+    known = set(stream_ids)
+    for stream_key in sorted(observed_by_stream):
+        if stream_key not in known:
+            vr.error(f"throughput query references unknown stream_id {stream_key}")
 
 
 def throughput_stream_defects(data: dict[str, Any]) -> list[str]:
@@ -2594,6 +2997,20 @@ def _validate_manifest_class_matches_bundle(manifest: dict[str, Any], primary_pa
         vr.error(f"Manifest execution_class {attested!r} conflicts with the bundle's recorded {recorded!r}")
 
 
+def _validate_manifest_translator_version(manifest: dict[str, Any], primary_path: Path, vr: ValidationResult) -> None:
+    try:
+        attested = attested_translator_version(manifest)
+        if attested is None or not primary_path.is_file():
+            return
+        try:
+            bundle = json.loads(primary_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return
+        reconcile_translator_version(bundle, attested)
+    except TranslatorVersionError as exc:
+        vr.error(str(exc))
+
+
 def _validate_manifest_provenance(manifest: dict[str, Any], primary_path: Path, vr: ValidationResult) -> None:
     funding = manifest.get("funding")
     if funding is not None and funding not in FUNDING_SOURCES:
@@ -2624,6 +3041,7 @@ def _validate_manifest_provenance(manifest: dict[str, Any], primary_path: Path, 
             vr.error("Manifest execution_class requires a non-empty execution_class_evidence string")
 
     _validate_manifest_class_matches_bundle(manifest, primary_path, vr)
+    _validate_manifest_translator_version(manifest, primary_path, vr)
 
     known_defects = manifest.get("known_defects")
     if known_defects is not None:
