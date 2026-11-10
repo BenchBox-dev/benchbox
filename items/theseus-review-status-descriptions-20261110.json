@@ -1,12 +1,14 @@
 {
   "acceptance": [
     "Every description builder (review-verdict, review-gate, sweep, gate errors) is listed with file:line in the PR body and produces the proposal's string for each case in section 8.5, including stand-in, escalated, refused, carried, owner ruling, repost, fork, edited, withheld, oversize, quota, gateway down, incomplete read.",
-    "A test asserts len(description) <= 140 for every case, using worst-case inputs (40-hex SHA, 10-digit run id, longest provider list, many escalated ids), and that truncation never cuts a parsed token.",
+    "Cases absent from 8.5 also get new strings <= 140 without the `review:` prefix or a repeated 40-hex SHA: omp pin bump refused, theseus promotion refused, exempt-but-review-required, success without an unedited receipt (review_check.py ~:255-300), and any other builder found by the inventory.",
+    "A test asserts len(description) <= 140 for every case with worst-case inputs (40-hex SHA, 10-digit run id, longest provider list, many escalated ids), and that truncation never cuts a parsed token.",
+    "Every grammar quoted in a status is built from STANDIN_APPROVAL, adjudication.GRAMMAR or COMMENT_DISPUTE_GRAMMAR and round-trips through its parser (test).",
     "Readers classify every new string exactly as they classified the old one (table-driven test over old and new strings for T8-T12), and an unclassifiable description still fails closed.",
     "Tokens live in shared constants imported by writer and readers (grep shows no duplicated literal).",
     "No status contains raw provider payload text (test with a real 429 JSON payload as input).",
     "Full suite and ruff pass; goldens regenerated only where they embed status text, with the diff limited to descriptions.",
-    "Merged to Theseus main with hosted SHIP + green required checks + independent review SHIP on the final head."
+    "Merged to Theseus main with hosted SHIP + green required checks + independent review SHIP on the final head (recorded here)."
   ],
   "context": "Part of theseus-review-output-format-20261110. Ships in release A. Independent of the body redesign.",
   "description": "The commit-status line is the most-seen review surface, and today most waiting/open-findings statuses are cut at 140 characters (the full SHA is repeated) and quota statuses leak raw provider JSON. Rewrite every review-verdict and review-gate description to the proposal's table (section 8.5): decision or state first, no tier name, no repeated SHA where the status is already attached to the commit (keep it once where the author must copy it, e.g. the stand-in grammar), counts by severity, no raw provider text, no emoji (the status icon already carries pass/fail/pending).\nParsed tokens MUST survive exactly (contracts T8-T12): trailing ` [run <id>]`; ` (reposted)` before the run suffix; substring `SHIP WITH FIXES` for open findings; `escalated D1,D2`; exact `only exempt paths changed`; prefixes `refused after…`, `a review was edited…`, `review-verdict failed twice without a result at: …`; and T13 ` · degraded: <providers>` for local output. Move these tokens into named constants shared by the writer and every reader so wording and parsing cannot drift.\nOut of scope (separate owner decision, review-gate-pending-while-waiting-decision-20261110): changing the gate's `failure` state to `pending` while waiting.\nGuardrails: body format unchanged; no change to the gate's decision logic, only its description text; never weaken a parser (a description the reader cannot classify must still fail closed); no live model calls; Theseus merge rule plus independent review (gate-facing strings and parsers).",
@@ -20,6 +22,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "d1696bcf4ae54fa59a4323e86b402592",
+      "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a",
+      "at": "2026-11-10T17:57:53Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ec97402091be483897aa59e8a1f96825",
       "session_id": "977a65f4969143f4981bb9d49ff293b0"
     }
   ]
