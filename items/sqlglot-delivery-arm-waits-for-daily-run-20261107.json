@@ -178,6 +178,15 @@
       "op": "prepare",
       "op_id": "d54f933c11844667b405899e9091bc9b",
       "session_id": "f202954b55bb4a909be9c05bb2a9b5d3"
+    },
+    {
+      "actor": "omp:sqlglot-delivery-hardening-leader",
+      "at": "2026-11-10T02:02:56Z",
+      "client": "mcp",
+      "generation": "5ce755c8fe1f46ce9d0bb05b1ae41760",
+      "op": "take",
+      "op_id": "5b856643bc78413c88a7dac7905c0d52",
+      "session_id": "2320058872864d5ab7b82bbdcf05a66c"
     }
   ]
 }
