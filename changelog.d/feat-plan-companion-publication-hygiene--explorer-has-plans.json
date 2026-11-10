@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed the Results Explorer build marking a run as having plans when its plan companion held only capture errors, which offered View plans for runs with none."
+    }
+  ]
+}

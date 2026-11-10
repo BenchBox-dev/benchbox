@@ -514,86 +514,6 @@ class TestDorisDataLoading:
         finally:
             temp_path.unlink()
 
-    def test_load_data_insert_fallback(self):
-        try:
-            adapter = DorisAdapter()
-        except ImportError:
-            pytest.skip("pymysql not installed")
-
-        mock_connection = Mock()
-        mock_cursor = Mock()
-        mock_connection.cursor.return_value = mock_cursor
-
-        mock_benchmark = Mock()
-
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", encoding="utf-8", delete=False) as f:
-            f.write("1,test1\n2,test2\n")
-            temp_path = Path(f.name)
-
-        try:
-            fake_ds = DataSource(
-                source_type="benchmark_tables",
-                tables={"test_table": [temp_path]},
-                table_metadata={"test_table": {"csv_delimiter": ","}},
-            )
-
-            with (
-                patch("benchbox.platforms.doris.DataSourceResolver") as mock_resolver_cls,
-                patch("benchbox.platforms.doris._requests", None),
-            ):
-                mock_resolver_cls.return_value.resolve.return_value = fake_ds
-                table_stats, load_time, per_table = adapter.load_data(mock_benchmark, mock_connection, Path("/tmp"))
-
-            assert isinstance(table_stats, dict)
-            assert isinstance(load_time, float)
-            assert "test_table" in table_stats
-            assert table_stats["test_table"] == 2
-            assert mock_cursor.executemany.called
-
-        finally:
-            temp_path.unlink()
-
-    def test_load_data_tbl_files_insert_fallback(self):
-        try:
-            adapter = DorisAdapter()
-        except ImportError:
-            pytest.skip("pymysql not installed")
-
-        mock_connection = Mock()
-        mock_cursor = Mock()
-        mock_connection.cursor.return_value = mock_cursor
-
-        mock_benchmark = Mock()
-
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".tbl", encoding="utf-8", delete=False) as f:
-            f.write("1|test1|\n2|test2|\n")
-            temp_path = Path(f.name)
-
-        try:
-            fake_ds = DataSource(
-                source_type="benchmark_tables",
-                tables={"customer": [temp_path]},
-                table_metadata={"customer": {"csv_delimiter": "|", "csv_null_marker": ""}},
-            )
-
-            with (
-                patch("benchbox.platforms.doris.DataSourceResolver") as mock_resolver_cls,
-                patch("benchbox.platforms.doris._requests", None),
-            ):
-                mock_resolver_cls.return_value.resolve.return_value = fake_ds
-                table_stats, load_time, _ = adapter.load_data(mock_benchmark, mock_connection, Path("/tmp"))
-
-            assert "customer" in table_stats
-            assert table_stats["customer"] == 2
-
-            assert mock_cursor.executemany.called
-            insert_sql, rows = mock_cursor.executemany.call_args[0]
-            assert "INSERT INTO `customer`" in insert_sql
-            assert rows == [["1", "test1"], ["2", "test2"]]
-
-        finally:
-            temp_path.unlink()
-
     def test_load_data_missing_file(self):
         try:
             adapter = DorisAdapter()
@@ -607,10 +527,7 @@ class TestDorisDataLoading:
             table_metadata={},
         )
 
-        with (
-            patch("benchbox.platforms.doris.DataSourceResolver") as mock_resolver_cls,
-            patch("benchbox.platforms.doris._requests", None),
-        ):
+        with patch("benchbox.platforms.doris.DataSourceResolver") as mock_resolver_cls:
             mock_resolver_cls.return_value.resolve.return_value = fake_ds
             table_stats, load_time, _ = adapter.load_data(mock_benchmark, Mock(), Path("/tmp"))
 
@@ -879,6 +796,37 @@ class TestDorisTuning:
         mock_connection.cursor.return_value = mock_cursor
 
         adapter.configure_for_benchmark(mock_connection, "generic")
+
+    def test_configure_for_benchmark_custom_pipeline_parallelism(self):
+        try:
+            adapter = DorisAdapter(parallel_pipeline_task_num=2)
+        except ImportError:
+            pytest.skip("pymysql not installed")
+
+        mock_connection = Mock()
+        mock_cursor = Mock()
+        mock_connection.cursor.return_value = mock_cursor
+
+        adapter.configure_for_benchmark(mock_connection, "olap")
+
+        calls = [str(c) for c in mock_cursor.execute.call_args_list]
+        assert any("parallel_pipeline_task_num = 2" in c for c in calls)
+
+    def test_configure_for_benchmark_custom_exec_mem_limit(self):
+        try:
+            adapter = DorisAdapter(exec_mem_limit=2147483648)
+        except ImportError:
+            pytest.skip("pymysql not installed")
+
+        mock_connection = Mock()
+        mock_cursor = Mock()
+        mock_connection.cursor.return_value = mock_cursor
+
+        adapter.configure_for_benchmark(mock_connection, "olap")
+
+        calls = [str(c) for c in mock_cursor.execute.call_args_list]
+        assert any("exec_mem_limit = 2147483648" in c for c in calls)
+        assert not any("exec_mem_limit = 5368709120" in c for c in calls)
 
     def test_supports_tuning_type(self):
         try:
@@ -1239,6 +1187,153 @@ class TestDorisChunkedLoading:
                 mock_requests.put.return_value = mock_response
                 with pytest.raises(RuntimeError, match="chunk.*failed"):
                     adapter._stream_load_file("test_table", temp_path, CsvDialect(",", False, None, False, None))
+        finally:
+            temp_path.unlink()
+
+    def test_small_parquet_file_uses_single_load(self):
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
+        adapter = DorisAdapter(database="test_db", stream_load_chunk_size=1024 * 1024)
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"Status": "Success", "NumberLoadedRows": 5}
+
+        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as f:
+            temp_path = Path(f.name)
+
+        try:
+            table = pa.Table.from_arrays([pa.array([1, 2, 3, 4, 5])], names=["id"])
+            pq.write_table(table, temp_path)
+
+            with patch("benchbox.platforms.doris._requests") as mock_requests:
+                mock_requests.put.return_value = mock_response
+                rows = adapter._stream_load_file("test_table", temp_path, CsvDialect(",", False, None, False, None))
+
+            assert rows == 5
+            assert mock_requests.put.call_count == 1
+        finally:
+            temp_path.unlink()
+
+    def test_large_parquet_file_uses_chunked_load(self):
+        import io
+
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
+        adapter = DorisAdapter(database="test_db", stream_load_chunk_size=100)
+        uploaded_batches: list[pa.Table] = []
+
+        def _mock_put(_url, data, _headers=None, **_kwargs):
+            buf = io.BytesIO(data)
+            chunk_table = pq.read_table(buf)
+            uploaded_batches.append(chunk_table)
+            resp = Mock()
+            resp.status_code = 200
+            resp.json.return_value = {"Status": "Success", "NumberLoadedRows": len(chunk_table)}
+            return resp
+
+        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as f:
+            temp_path = Path(f.name)
+
+        try:
+            source_table = pa.Table.from_arrays(
+                [pa.array(range(100)), pa.array(["val_" + str(i) for i in range(100)])], names=["id", "val"]
+            )
+            pq.write_table(source_table, temp_path)
+
+            with patch.object(adapter, "_stream_load_put", side_effect=_mock_put):
+                rows = adapter._stream_load_file("test_table", temp_path, CsvDialect(",", False, None, False, None))
+
+            assert len(uploaded_batches) > 1
+            combined = pa.concat_tables(uploaded_batches)
+            assert combined.schema == source_table.schema
+            assert combined.to_pydict() == source_table.to_pydict()
+            assert rows == 100
+        finally:
+            temp_path.unlink()
+
+    def test_large_compressed_parquet_file_uses_chunked_load(self):
+        import gzip
+        import io
+
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
+        adapter = DorisAdapter(database="test_db", stream_load_chunk_size=100)
+        uploaded_batches: list[pa.Table] = []
+
+        def _mock_put(_url, data, _headers=None, **_kwargs):
+            buf = io.BytesIO(data)
+            chunk_table = pq.read_table(buf)
+            uploaded_batches.append(chunk_table)
+            resp = Mock()
+            resp.status_code = 200
+            resp.json.return_value = {"Status": "Success", "NumberLoadedRows": len(chunk_table)}
+            return resp
+
+        with tempfile.NamedTemporaryFile(suffix=".parquet.gz", delete=False) as f:
+            temp_path = Path(f.name)
+
+        try:
+            source_table = pa.Table.from_arrays(
+                [pa.array(range(100)), pa.array(["val_" + str(i) for i in range(100)])], names=["id", "val"]
+            )
+            buf = io.BytesIO()
+            pq.write_table(source_table, buf)
+            temp_path.write_bytes(gzip.compress(buf.getvalue()))
+
+            with patch.object(adapter, "_stream_load_put", side_effect=_mock_put):
+                rows = adapter._stream_load_file("test_table", temp_path, CsvDialect(",", False, None, False, None))
+
+            assert len(uploaded_batches) > 1
+            combined = pa.concat_tables(uploaded_batches)
+            assert combined.schema == source_table.schema
+            assert combined.to_pydict() == source_table.to_pydict()
+            assert rows == 100
+        finally:
+            temp_path.unlink()
+
+    def test_large_zstd_compressed_parquet_file_uses_chunked_load(self):
+        import io
+
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+        import zstandard as zstd
+
+        adapter = DorisAdapter(database="test_db", stream_load_chunk_size=100)
+        uploaded_batches: list[pa.Table] = []
+
+        def _mock_put(_url, data, _headers=None, **_kwargs):
+            buf = io.BytesIO(data)
+            chunk_table = pq.read_table(buf)
+            uploaded_batches.append(chunk_table)
+            resp = Mock()
+            resp.status_code = 200
+            resp.json.return_value = {"Status": "Success", "NumberLoadedRows": len(chunk_table)}
+            return resp
+
+        with tempfile.NamedTemporaryFile(suffix=".parquet.zst", delete=False) as f:
+            temp_path = Path(f.name)
+
+        try:
+            source_table = pa.Table.from_arrays(
+                [pa.array(range(100)), pa.array(["val_" + str(i) for i in range(100)])], names=["id", "val"]
+            )
+            buf = io.BytesIO()
+            pq.write_table(source_table, buf)
+            cctx = zstd.ZstdCompressor()
+            temp_path.write_bytes(cctx.compress(buf.getvalue()))
+
+            with patch.object(adapter, "_stream_load_put", side_effect=_mock_put):
+                rows = adapter._stream_load_file("test_table", temp_path, CsvDialect(",", False, None, False, None))
+
+            assert len(uploaded_batches) > 1
+            combined = pa.concat_tables(uploaded_batches)
+            assert combined.schema == source_table.schema
+            assert combined.to_pydict() == source_table.to_pydict()
+            assert rows == 100
         finally:
             temp_path.unlink()
 
@@ -1765,7 +1860,7 @@ class TestDorisStreamLoadFilterRatio:
 
 class TestDorisParquetStreamLoad:
     def test_parquet_uses_streaming_upload_with_parquet_format(self, tmp_path):
-        adapter = DorisAdapter(database="test_db", stream_load_chunk_size=1)
+        adapter = DorisAdapter(database="test_db", stream_load_chunk_size=1024 * 1024)
         parquet_bytes = b"PAR1benchbox-parquetPAR1"
         data_file = tmp_path / "rows.parquet"
         data_file.write_bytes(parquet_bytes)
@@ -2015,15 +2110,3 @@ class TestDorisHeaderedCsv:
         assert "id|name" not in "\n".join(bodies)
         assert sum(body.count("row") for body in bodies) == 6
         assert all("skip_lines" not in call.kwargs["headers"] for call in mock_requests.put.call_args_list)
-
-    def test_insert_fallback_skips_header_line(self, tmp_path):
-        adapter = self._adapter()
-        data_file = tmp_path / "t.csv"
-        data_file.write_text("id|name\n1|a\n2|b\n", encoding="utf-8")
-        connection = Mock()
-
-        with patch.object(adapter, "_execute_batch_insert") as insert:
-            count = adapter._insert_load_file(connection, "t", data_file, CsvDialect("|", True, None, False, None))
-
-        assert count == 2
-        assert insert.call_args.args[2] == [["1", "a"], ["2", "b"]]

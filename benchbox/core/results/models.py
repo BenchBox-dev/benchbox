@@ -268,6 +268,7 @@ class PowerTestPhase:
 
     refresh_first_set: int | None = None
     refresh_functions: list[dict[str, Any]] | None = None
+    validation: dict[str, Any] | None = None
     query_count: int | None = None
     success: bool | None = None
 

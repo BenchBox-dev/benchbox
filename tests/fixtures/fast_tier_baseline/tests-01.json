@@ -15340,67 +15340,67 @@
     "p50_seconds": 0.051497
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_a_develop_whose_lock_the_first_stage_rejects_is_refused_even_when_the_working_tree_lock_is_good",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_a_develop_whose_lock_the_first_stage_rejects_is_refused_even_when_the_working_tree_lock_is_good",
     "p50_seconds": 0.535611
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_an_unsafe_or_malformed_denylist_refuses_before_anything_is_written[Bad Name\\n-384-one lowercase provider id per line]",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_an_unsafe_or_malformed_denylist_refuses_before_anything_is_written[Bad Name\\n-384-one lowercase provider id per line]",
     "p50_seconds": 0.943098
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_an_unsafe_or_malformed_denylist_refuses_before_anything_is_written[openai-codex\\n-420-chmod 600]",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_an_unsafe_or_malformed_denylist_refuses_before_anything_is_written[openai-codex\\n-420-chmod 600]",
     "p50_seconds": 0.929874
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_revoke_and_the_token_file_check_accept_the_same_names[my-ci]",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_revoke_and_the_token_file_check_accept_the_same_names[my-ci]",
     "p50_seconds": 0.533367
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_the_clients_check_accepts_each_client_with_its_own_token_hash",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_the_clients_check_accepts_each_client_with_its_own_token_hash",
     "p50_seconds": 0.535744
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_the_clients_check_refuses_a_client_whose_recorded_hash_is_not_its_token_files",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_the_clients_check_refuses_a_client_whose_recorded_hash_is_not_its_token_files",
     "p50_seconds": 0.535002
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_the_host_refuses_a_pinned_build_without_the_clients_scope_flag",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_the_host_refuses_a_pinned_build_without_the_clients_scope_flag",
     "p50_seconds": 0.796476
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_the_host_refuses_when_develop_pins_no_omp_and_does_not_fall_back_to_a_path_omp",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_the_host_refuses_when_develop_pins_no_omp_and_does_not_fall_back_to_a_path_omp",
     "p50_seconds": 0.810371
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_the_host_runs_omp_from_the_develop_pin_never_from_path_or_the_working_tree",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_the_host_runs_omp_from_the_develop_pin_never_from_path_or_the_working_tree",
     "p50_seconds": 0.799481
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_the_monitor_alerts_once_per_change_and_closes_the_issue_on_recovery",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_the_monitor_alerts_once_per_change_and_closes_the_issue_on_recovery",
     "p50_seconds": 5.218856
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_the_pin_follows_a_develop_that_moved_since_the_last_fetch",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_the_pin_follows_a_develop_that_moved_since_the_last_fetch",
     "p50_seconds": 0.814663
   },
   {
-    "id": "tests/unit/scripts/test_oracle_local_review.py::test_rebuttals_and_adjudication_are_forwarded",
+    "id": "tests/unit/scripts/test_local_review.py::test_rebuttals_and_adjudication_are_forwarded",
     "p50_seconds": 0.034167
   },
   {
-    "id": "tests/unit/scripts/test_oracle_local_review.py::test_the_record_path_and_cache_locations_reach_the_review_environment",
+    "id": "tests/unit/scripts/test_local_review.py::test_the_record_path_and_cache_locations_reach_the_review_environment",
     "p50_seconds": 0.03328
   },
   {
-    "id": "tests/unit/scripts/test_oracle_local_review.py::test_the_unavailable_path_reaches_the_review_environment_only_when_given",
+    "id": "tests/unit/scripts/test_local_review.py::test_the_unavailable_path_reaches_the_review_environment_only_when_given",
     "p50_seconds": 0.036333
   },
   {
-    "id": "tests/unit/scripts/test_oracle_policy_pin.py::test_the_gate_paths_cover_the_theseus_wiring",
+    "id": "tests/unit/scripts/test_review_policy_pin.py::test_the_gate_paths_cover_the_theseus_wiring",
     "p50_seconds": 0.020446
   },
   {
-    "id": "tests/unit/scripts/test_oracle_policy_pin.py::test_the_policy_carries_no_theseus_owned_review_size_or_bootstrap_keys",
+    "id": "tests/unit/scripts/test_review_policy_pin.py::test_the_policy_carries_no_theseus_owned_review_size_or_bootstrap_keys",
     "p50_seconds": 0.01996
   },
   {
@@ -18204,7 +18204,7 @@
     "p50_seconds": 0.055646
   },
   {
-    "id": "tests/unit/workflows/test_oracle_gate_workflow.py::test_the_caller_has_no_steps_and_passes_named_secrets_with_no_in_tree_engine_references",
+    "id": "tests/unit/workflows/test_review_gate_workflow.py::test_the_caller_has_no_steps_and_passes_named_secrets_with_no_in_tree_engine_references",
     "p50_seconds": 0.034787
   },
   {

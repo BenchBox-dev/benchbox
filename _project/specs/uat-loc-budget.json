@@ -31,7 +31,8 @@
       "chartered evidence artifacts (validate/report/package/cells_io/gate_summary)": 2100,
       "throughput": 440,
       "artifact hygiene": 400,
-      "package init markers": 50
+      "package init markers": 50,
+      "UAT rubric verdict": 700
     },
     "total": 13050
   }

@@ -3123,7 +3123,7 @@ def struct_construction_expression_impl(ctx: DataFrameContext) -> Any:
         .sort("c_custkey")
         .select(
             "c_custkey",
-            pl.concat_list([pl.col("c_name"), pl.col("c_address"), pl.col("c_phone")]).alias("contact_info"),
+            pl.struct([pl.col("c_name"), pl.col("c_address"), pl.col("c_phone")]).alias("contact_info"),
             "c_acctbal",
         )
         .limit(100)
@@ -3133,7 +3133,9 @@ def struct_construction_expression_impl(ctx: DataFrameContext) -> Any:
 def struct_construction_pandas_impl(ctx: DataFrameContext) -> Any:
     customer = ctx.get_table("customer")
     filtered = customer[customer["c_nationkey"] == 1].copy().sort_values("c_custkey")
-    filtered["contact_info"] = filtered.apply(lambda row: [row["c_name"], row["c_address"], row["c_phone"]], axis=1)
+    filtered["contact_info"] = filtered.apply(
+        lambda row: {"c_name": row["c_name"], "c_address": row["c_address"], "c_phone": row["c_phone"]}, axis=1
+    )
     return filtered[["c_custkey", "contact_info", "c_acctbal"]].head(100).reset_index(drop=True)
 
 

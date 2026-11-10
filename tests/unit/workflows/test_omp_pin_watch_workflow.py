@@ -67,7 +67,7 @@ def test_the_evaluation_runs_the_verified_theseus_install_from_the_checked_out_d
     assert 'THESEUS="$(python3 scripts/theseus_cli.py --trusted-ref "$(git rev-parse HEAD)" path)"' in command
     assert '"$THESEUS" omp-watch evaluate' in command
     assert '--repo "$GITHUB_REPOSITORY"' in command
-    assert "--policy .github/oracle-reviewers.yml" in command
+    assert "--policy .github/review.yml" in command
     assert "--watch-workflow .github/workflows/omp-pin-watch.yml" in command
     assert "uv run" not in WORKFLOW.read_text(encoding="utf-8")
 
@@ -91,14 +91,14 @@ def test_a_revert_opens_only_for_the_revert_state_and_never_twice_for_one_versio
 
 def test_the_revert_commit_subject_is_the_one_the_watch_recognises_as_a_revert() -> None:
     text = run_text(opener_job())
-    assert 'git commit -m "revert(oracle): restore omp ${PREVIOUS}"' in text
-    assert 'title="revert(oracle): restore omp ${PREVIOUS}"' in text
+    assert 'git commit -m "revert(review): restore omp ${PREVIOUS}"' in text
+    assert 'title="revert(review): restore omp ${PREVIOUS}"' in text
 
 
 def test_the_revert_changes_only_the_policy_file_and_nothing_merges_or_pushes_to_develop() -> None:
     text = run_text(opener_job())
-    assert re.findall(r"git add (.+)", text) == [".github/oracle-reviewers.yml"]
-    assert 'cp "$OUT_DIR/policy.yml" .github/oracle-reviewers.yml' in text
+    assert re.findall(r"git add (.+)", text) == [".github/review.yml"]
+    assert 'cp "$OUT_DIR/policy.yml" .github/review.yml' in text
     assert "gh pr merge" not in text and "git push origin develop" not in text
 
 

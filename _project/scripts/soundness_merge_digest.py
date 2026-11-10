@@ -16,11 +16,12 @@ from types import ModuleType
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-POLICY_PATH = ".github/oracle-reviewers.yml"
+POLICY_PATH = ".github/review.yml"
 THESEUS_MODULES = ("review_check", "adjudication", "edits", "protocol", "policy", "_vendor.yaml")
 
-ORACLE_VERDICT_LINE = re.compile(
-    r"### (?:review-verdict|oracle-verdict|oracle-review-shadow): (?P<state>[a-z]+) for `(?P<sha>[0-9a-f]{40})`"
+HISTORICAL_VERDICT_HEADINGS = "review-verdict|oracle-verdict|oracle-review-shadow"
+REVIEW_VERDICT_LINE = re.compile(
+    rf"### (?:{HISTORICAL_VERDICT_HEADINGS}): (?P<state>[a-z]+) for `(?P<sha>[0-9a-f]{{40}})`"
 )
 MANIFEST_PATH = ".github/soundness-paths.txt"
 PREDICATE_PATH = "_project/scripts/soundness_paths.py"
@@ -53,7 +54,7 @@ GAP_REASON = re.compile(r"Why it is listed: ([^\n]*)\.\n")
 REASON_NO_REVIEW = "no completed review after the last content commit"
 FINDING_SEVERITY = re.compile(r"\*\*(Critical|High|Medium|Low)\*\*: ")
 OVERRIDDEN_SEVERITIES = frozenset({"Critical", "High"})
-CLASS_OVERRIDE = "override of an oracle High finding"
+CLASS_OVERRIDE = "override of a review High finding"
 CLASS_DEFERRED = "deferred finding"
 CLASS_NO_SIGNAL = "no review signal"
 CONNECTOR_LOGINS = frozenset({"chatgpt-codex-connector", "chatgpt-codex-connector[bot]"})
@@ -328,7 +329,7 @@ def finding_severity(body: str) -> str:
     return match.group(1) if match else ""
 
 
-def _oracle_reviews(
+def _gate_reviews(
     evidence: PullEvidence, shas: frozenset[str] | set[str], *, include_unverifiable: bool = False
 ) -> list[Review]:
     return [
@@ -344,12 +345,12 @@ def _oracle_reviews(
 
 
 def _review_verdict(review: Review) -> str | None:
-    return engine().review_check.verdict_state(review.body, review.commit_sha, ORACLE_VERDICT_LINE)
+    return engine().review_check.verdict_state(review.body, review.commit_sha, REVIEW_VERDICT_LINE)
 
 
-def _oracle_success(evidence: PullEvidence) -> bool:
+def _review_success(evidence: PullEvidence) -> bool:
     latest = max(
-        _oracle_reviews(evidence, evidence.content_shas, include_unverifiable=True),
+        _gate_reviews(evidence, evidence.content_shas, include_unverifiable=True),
         key=lambda review: review.submitted_at,
         default=None,
     )
@@ -359,7 +360,7 @@ def _oracle_success(evidence: PullEvidence) -> bool:
 def _standin_after(evidence: PullEvidence) -> str:
     if not evidence.commits:
         return ""
-    head_reviews = _oracle_reviews(evidence, {evidence.commits[-1].sha}, include_unverifiable=True)
+    head_reviews = _gate_reviews(evidence, {evidence.commits[-1].sha}, include_unverifiable=True)
     return (
         engine().review_check.standin_not_before(
             evidence.base_changed_at,
@@ -433,8 +434,8 @@ def review_signals(evidence: PullEvidence) -> tuple[str, ...]:
         for r in evidence.reviews
     ):
         signals.append("connector-review")
-    if _oracle_success(evidence):
-        signals.append("oracle-review")
+    if _review_success(evidence):
+        signals.append("review")
     if connector_era and any(
         r.login in CONNECTOR_LOGINS and r.content == "+1" and in_window(r.created_at) for r in evidence.reactions
     ):
@@ -505,13 +506,13 @@ def open_finding_severities(evidence: PullEvidence) -> tuple[str, ...]:
         and thread.severity
         and thread.first_comment_sha in shas
     }
-    for review in _oracle_reviews(evidence, evidence.content_shas):
+    for review in _gate_reviews(evidence, evidence.content_shas):
         found.update(still_open_severities(review.body))
     return tuple(sorted(found, key=lambda severity: SEVERITY_ORDER[severity]))
 
 
 def blocking_verdict_decision(evidence: PullEvidence) -> str | None:
-    ordered = sorted(_oracle_reviews(evidence, evidence.content_shas), key=lambda review: review.submitted_at)
+    ordered = sorted(_gate_reviews(evidence, evidence.content_shas), key=lambda review: review.submitted_at)
     blocking = [review for review in ordered if _review_verdict(review) not in (None, "success")]
     if not blocking:
         return None
@@ -524,9 +525,9 @@ def blocking_verdict_decision(evidence: PullEvidence) -> str | None:
 UNVERIFIABLE_FINDING = "unverifiable"
 
 
-def unverifiable_oracle_evidence(evidence: PullEvidence) -> bool:
+def unverifiable_review_evidence(evidence: PullEvidence) -> bool:
     return any(
-        review.unverifiable for review in _oracle_reviews(evidence, evidence.content_shas, include_unverifiable=True)
+        review.unverifiable for review in _gate_reviews(evidence, evidence.content_shas, include_unverifiable=True)
     ) or any(
         thread.unverifiable
         and not thread.resolved
@@ -539,13 +540,13 @@ def standin_overrides(pulls: Sequence[PullEvidence]) -> list[StandinOverride]:
     found: list[StandinOverride] = []
     for pull in pulls:
         comment = standin_comment(pull)
-        if comment is None or "oracle-review" in review_signals(pull):
+        if comment is None or "review" in review_signals(pull):
             continue
         severities = open_finding_severities(pull)
         if not severities:
             blocking = blocking_verdict_decision(pull)
             severities = (blocking,) if blocking is not None else ()
-        if unverifiable_oracle_evidence(pull):
+        if unverifiable_review_evidence(pull):
             severities = (*severities, UNVERIFIABLE_FINDING)
         if not severities:
             continue
@@ -591,7 +592,7 @@ def withdrawn_findings(pulls: Sequence[PullEvidence]) -> list[Withdrawal]:
     found: list[Withdrawal] = []
     for pull in pulls:
         items: list[str] = []
-        for review in _oracle_reviews(pull, pull.content_shas):
+        for review in _gate_reviews(pull, pull.content_shas):
             items.extend(withdrawn_in_body(review.body))
         unique = tuple(dict.fromkeys(items))
         if unique:
@@ -602,7 +603,7 @@ def withdrawn_findings(pulls: Sequence[PullEvidence]) -> list[Withdrawal]:
 
 def _recorded_rulings(pull: PullEvidence) -> list[tuple[str, str, str]]:
     reviews = sorted(
-        _oracle_reviews(pull, {commit.sha for commit in pull.commits}, include_unverifiable=True),
+        _gate_reviews(pull, {commit.sha for commit in pull.commits}, include_unverifiable=True),
         key=lambda review: review.submitted_at,
     )
     first: dict[tuple[str, str], str] = {}
@@ -656,7 +657,7 @@ def adjudication_records(pulls: Sequence[PullEvidence]) -> list[AdjudicationReco
                         defect_id,
                         instruction_gap_seconds(pull, posted_at),
                         pull.merged_at,
-                        "recorded by the oracle; its comment is missing or was edited",
+                        "recorded by the review; its comment is missing or was edited",
                     )
                 )
     return sorted(found, key=lambda record: (record.merged_at, record.number, record.defect_id))
@@ -774,8 +775,8 @@ def _thread_unverifiable(comment: Mapping[str, Any]) -> str:
     try:
         edited = engine().edits.node_edited(comment)
     except engine().edits.EditStateError as exc:
-        return f"an oracle finding's edit state could not be read ({exc})"
-    return "an oracle finding was edited after posting" if edited else ""
+        return f"a review finding's edit state could not be read ({exc})"
+    return "a review finding was edited after posting" if edited else ""
 
 
 def _graphql_review_edits(node_ids: Sequence[str]) -> dict[str, tuple[Any, bool]]:
@@ -826,7 +827,7 @@ def _status_disagreement(review: Review, statuses: Sequence[Mapping[str, Any]]) 
     return ""
 
 
-def verify_oracle_reviews(repo: str, reviews: Sequence[Review]) -> tuple[Review, ...]:
+def verify_reviews(repo: str, reviews: Sequence[Review]) -> tuple[Review, ...]:
     candidates = [
         review
         for review in reviews
@@ -839,7 +840,7 @@ def verify_oracle_reviews(repo: str, reviews: Sequence[Review]) -> tuple[Review,
     reasons: dict[int, str] = {}
     try:
         if not all(review.node_id for review in candidates):
-            raise engine().edits.EditStateError("an oracle review has no node id")
+            raise engine().edits.EditStateError("an review has no node id")
         states = _graphql_review_edits([review.node_id for review in candidates])
     except (engine().edits.EditStateError, ReadError, ValueError, OSError) as exc:
         return tuple(
@@ -904,8 +905,8 @@ def collect_threads(repo: str, number: int) -> tuple[Thread, ...]:
                 continue
             first = node["comments"]["nodes"][0]
             started_by = (first.get("author") or {}).get("login", "")
-            is_oracle = started_by.removesuffix("[bot]") == engine().bot_login
-            unverifiable = _thread_unverifiable(first) if is_oracle else ""
+            is_reviewer = started_by.removesuffix("[bot]") == engine().bot_login
+            unverifiable = _thread_unverifiable(first) if is_reviewer else ""
             parsed.append(
                 Thread(
                     resolved=bool(node["isResolved"]),
@@ -1016,7 +1017,7 @@ def collect_pull(repo: str, sha: str) -> PullEvidence | None:
         author=pull["user"]["login"],
         merged_at=pull["merged_at"],
         commits=commits,
-        reviews=verify_oracle_reviews(
+        reviews=verify_reviews(
             repo,
             tuple(
                 Review(
@@ -1179,7 +1180,7 @@ def red_armings(
 def render_standin_overrides(overrides: Sequence[StandinOverride]) -> str:
     lines = [
         "",
-        "Stand-in overrides: merged PRs that passed oracle-review by stand-in while an oracle finding was open.",
+        "Stand-in overrides: merged PRs that passed review by stand-in while a review finding was open.",
     ]
     if not overrides:
         return "\n".join(lines + ["None."])
@@ -1218,7 +1219,7 @@ def render_red_armings(armings: Sequence[RedArming], unknowns: Sequence[UnknownA
 def render_withdrawals(withdrawals: Sequence[Withdrawal]) -> str:
     if not withdrawals:
         return ""
-    lines = ["", "Oracle withdrawals: findings the oracle withdrew in its review of the merged head."]
+    lines = ["", "Review withdrawals: findings the review withdrew in its review of the merged head."]
     for withdrawal in withdrawals:
         lines.append(f"- #{withdrawal.number} (`{withdrawal.head[:9]}`):")
         lines.extend(f"  - {item}" for item in withdrawal.items)
@@ -1230,7 +1231,7 @@ def render_adjudications(records: Sequence[AdjudicationRecord]) -> str:
         return ""
     lines = [
         "",
-        "Owner adjudications: oracle findings the owner ruled on by comment before merge.",
+        "Owner adjudications: review findings the owner ruled on by comment before merge.",
         "| Pull request | Head | Attester | Ruling | Instruction gap |",
         "|---|---|---|---|---|",
     ]
@@ -1266,8 +1267,8 @@ def render_unverifiable(pulls: Sequence[PullEvidence]) -> str:
         return ""
     lines = [
         "",
-        "Unverifiable oracle evidence: reviews and findings that were edited, unreadable or disagree with the "
-        "App's status are not counted as oracle review.",
+        "Unverifiable review evidence: reviews and findings that were edited, unreadable or disagree with the "
+        "App's status are not counted as review.",
     ]
     lines.extend(f"- #{number}: {reason}." for number, reason in items)
     return "\n".join(lines)
@@ -1490,7 +1491,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "\nRed-trunk armings are unavailable for this window: the window's pull requests were unreadable."
             )
             supplement += (
-                "\nOracle withdrawals are unavailable for this window: the window's pull requests were unreadable."
+                "\nReview withdrawals are unavailable for this window: the window's pull requests were unreadable."
             )
             supplement += (
                 "\nOwner adjudications are unavailable for this window: the window's pull requests were unreadable."
@@ -1514,7 +1515,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 supplement += render_withdrawals(marked)
                 clean.append(not marked)
             except (ReadError, KeyError, TypeError, ValueError) as exc:
-                supplement += f"\nOracle withdrawals are unavailable for this window: {exc}."
+                supplement += f"\nReview withdrawals are unavailable for this window: {exc}."
             try:
                 supplement += render_adjudications(adjudication_records(pulls))
             except (ReadError, KeyError, TypeError, ValueError) as exc:

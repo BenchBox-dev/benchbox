@@ -17,7 +17,18 @@ Polars has no parser, so its plan stays raw text: no DAG, no fingerprint and no 
 
 Expression-family engines (Polars, DataFusion, PySpark, LakeSail) capture after the query is collected, so planning work that the engine caches on the frame (Spark analysis and optimization) is paid by the measured collect and not moved into `plan_capture_time_ms`. Capture time is reported in `plan_capture_time_ms` and subtracted from the measured execution time. Strict capture therefore raises after one execution of the query. SDK imports stay lazy: LakeSail and Databricks reuse the PySpark helper and import nothing from their client packages during capture.
 
-The plans companion keeps one entry per `Q#<stream>:<test_type>` and records the `iteration` and `run_type` of the execution it came from; the loader attaches the plan, fingerprint and capture time only to that row, including DataFrame rows whose `test_type` is empty.
+The plans companion keeps one entry per query key: `Q#` when a query ran once, `Q#<stream>` when the stream disambiguates the executions, and `Q#<stream>:<test_type>` otherwise. An entry records the `iteration` and `run_type` of the execution it came from, and the loader attaches the plan, fingerprint and capture time only to that row. DataFrame rows carry `test_type` `power`, like the SQL power rows, so keys have the same shape on every platform; companions written before that change with keys ending in `:` (for example `Q1#0:`) still load.
+
+Plan text is redacted at capture time, before any plan is parsed or fingerprinted. The loaded data directories and the working directory are replaced by `<redacted>` and the rest of the path is kept, so `/srv/d/tpch_sf1/lineitem.parquet` becomes `<redacted>/lineitem.parquet` and the parsers still derive table names from it. Paths under the home directory that are not under a loaded data directory, and paths that match the private-path detector, are replaced whole by `<redacted>`. An absolute path outside those roots that the detector does not match is not redacted, so check a companion with `find_public_path_leaks` and review any other absolute path before publishing it. Fingerprints of plans under a loaded data directory do not depend on the machine's paths; Polars text plans carry no fingerprint.
+
+When the executions that share one companion entry captured different plan fingerprints, the entry also carries two optional fields:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `fingerprint_varied` | `true` | Present only when at least two distinct `plan_fingerprint` values were captured for that entry |
+| `fingerprint_variants` | list of `{fingerprint, iteration, run_type}` | One item per distinct fingerprint, in capture order, naming the first execution that produced it; `iteration` and `run_type` are omitted when the row has none |
+
+Both fields are absent when every execution produced the same fingerprint, and executions without a fingerprint (for example Polars text plans) are not counted. The stored `plan`, `fingerprint`, `iteration` and `run_type` always describe the last captured execution, so the variants list is the only record of the earlier plans' fingerprints; the earlier plan bodies are not stored.
 
 Databricks DataFrame mode runs inside the plan-capture phase: while a measured workload is active it only records the result frame per query and stream, and the explain round trips run after measurement, for successful rows only, with the same accounting as SQL capture.
 

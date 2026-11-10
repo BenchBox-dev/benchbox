@@ -107,7 +107,7 @@ owner's GitHub account has posted an unedited comment whose whole body is
 after that run completed, with the PR's current head and the first red run of the
 streak (the culprit above). A new push, or a streak that starts from a different run,
 voids it. The authorization lifts only the red-trunk refusal: required checks,
-`oracle-gate`, review-thread resolution and owner holds still apply, and a draft
+`review-gate`, review-thread resolution and owner holds still apply, and a draft
 must still be marked ready before it can be armed. `docs/agent/merge-authority.md`
 says when an agent may post it.
 

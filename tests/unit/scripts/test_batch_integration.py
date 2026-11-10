@@ -46,13 +46,18 @@ def test_start_creates_a_role_integration_worktree_and_a_registrable_payload(wor
     assert bi.role_of(worktree) == "integration" and bi._config_get(worktree, "id") == BATCH
     assert git(worktree, "branch", "--show-current") == f"feat/{BATCH}"
     assert arguments["members"] == MEMBERS
-    assert arguments["scope"] == SCOPE and arguments["scope_hash"] == TRACKER_SCOPE_HASH
+    assert arguments["scope"] == {m: [*SCOPE[m], *bi.COMPANION_SCOPE] for m in MEMBERS}
+    assert arguments["scope_hash"] == bi.scope_digest(arguments["scope"])
     assert arguments["develop_ref"] == "refs/remotes/origin/develop"
     assert arguments["start_head"] == git(world.primary, "rev-parse", "refs/remotes/origin/develop")
     assert arguments["integration_worktree"] == str(worktree) and arguments["project_id"] == "proj"
     assert arguments["repository"] == str(world.origin) and len(arguments["owner_generation"]) == 32
     assert (worktree / ".todo-batch" / BATCH / "ledger.json").is_file()
     assert bi._is_clean(worktree)
+
+
+def test_scope_digest_matches_the_hash_the_tracker_computes() -> None:
+    assert bi.scope_digest(SCOPE) == TRACKER_SCOPE_HASH
 
 
 @pytest.mark.parametrize(
@@ -69,6 +74,33 @@ def test_start_refuses_a_bad_member_set_or_scope_before_creating_anything(
     with _raises("members|scope|identifier"):
         bi.start_batch(world.primary, BATCH, members, scope, project_id=PROJECT)
     assert not world.calls_matching("worktree-create")
+
+
+@pytest.mark.parametrize("members", [[], ["zeta"]])
+def test_start_refuses_fewer_than_two_members_and_points_to_serial_work(world: World, members: list[str]) -> None:
+    with _raises("at least two members.*serial"):
+        bi.start_batch(world.primary, BATCH, members, {m: SCOPE[m] for m in members}, project_id=PROJECT)
+    assert not world.calls_matching("worktree-create")
+    assert not (world.primary.parent / f"{world.primary.name}.wt-{BATCH}").exists()
+    assert git(world.primary, "branch", "--list", f"feat/{BATCH}") == ""
+
+
+def test_start_freezes_the_companion_files_into_every_scope_and_its_hash(world: World) -> None:
+    world.start()
+    frozen = world.payload["arguments"]["scope"]
+    for member in MEMBERS:
+        assert frozen[member] == [*SCOPE[member], "changelog.d/*", "docs/internal/dev-loop-property-ledger.md"]
+    assert world.payload["arguments"]["scope_hash"] == bi.scope_digest(frozen)
+    assert _ledger(world.integration)["scope"] == frozen
+
+
+def test_start_does_not_repeat_a_companion_pattern_the_scope_already_names(world: World) -> None:
+    world.start(scope={"zeta": ["src/*", "changelog.d/*"], "alpha": ["src/*"], "mid": ["src/*"]})
+    assert world.payload["arguments"]["scope"]["zeta"] == [
+        "src/*",
+        "changelog.d/*",
+        "docs/internal/dev-loop-property-ledger.md",
+    ]
 
 
 def test_start_prints_one_update_item_step_per_member_merging_needs_with_dependencies(world: World) -> None:
@@ -177,20 +209,12 @@ def test_member_check_records_a_result_keyed_by_member_head_and_integration_head
     integration_head = world.head()
     record = world.check(member, ["tests/test_zeta.py"])
     stored = bi._read_check(member, member_head, integration_head)
-    assert stored == record and stored["review_outcome"] == "clear"
+    assert stored == record
     assert stored["trusted_sha"] == git(world.primary, "rev-parse", "refs/remotes/origin/develop")
     assert bi._read_check(member, member_head, "0" * 40) is None
     assert bi._read_check(member, "0" * 40, integration_head) is None
     preflight = [call for call in world.calls if call[0][:2] == ["make", "pr-preflight"]]
     assert preflight == [(["make", "pr-preflight", f"BASE={integration_head}"], member)]
-
-
-def test_member_check_records_an_exempt_only_member_as_not_reviewed(world: World) -> None:
-    world.start()
-    member = world.member("zeta")
-    world.commit(member, {"docs/note.md": "changed\n"})
-    record = world.check(member, ["tests/test_zeta.py"])
-    assert record["review_outcome"] == "not-reviewed"
 
 
 def test_member_review_runs_the_wrapper_from_the_trusted_commit_not_the_checkout(world: World) -> None:
@@ -229,7 +253,7 @@ def test_the_wrapper_runs_from_a_bare_copy_and_reaches_the_install_step(
     repo_scripts = str(ROOT / "scripts")
     monkeypatch.setattr(sys, "path", [entry for entry in sys.path if entry != repo_scripts])
     monkeypatch.delitem(sys.modules, "theseus_cli", raising=False)
-    monkeypatch.setattr(sys, "argv", ["oracle_local_review.py", "--trusted-ref", "HEAD"])
+    monkeypatch.setattr(sys, "argv", ["local_review.py", "--trusted-ref", "HEAD"])
     monkeypatch.chdir(repo)
 
     with pytest.raises(SystemExit) as exit_info:
@@ -240,18 +264,49 @@ def test_the_wrapper_runs_from_a_bare_copy_and_reaches_the_install_step(
     assert "the verified Theseus install" in capsys.readouterr().err
 
 
-def test_member_check_records_nothing_when_preflight_or_review_fails(world: World) -> None:
+def test_member_check_records_nothing_when_preflight_fails(world: World) -> None:
     integration = world.start()
     member = world.member("zeta")
     head = world.commit(member, {"src/a.py": "member\n"})
     world.preflight_rc = 1
     with _raises("preflight failed"):
         world.check(member, ["tests/test_zeta.py"])
-    world.preflight_rc = 0
-    world.review_rc = 1
-    with _raises("did not clear"):
-        world.check(member, ["tests/test_zeta.py"])
     assert bi._read_check(member, head, git(integration, "rev-parse", "HEAD")) is None
+
+
+def test_member_check_runs_no_review_and_succeeds_when_the_review_would_fail(world: World) -> None:
+    world.start()
+    member = world.member("zeta")
+    world.commit(member, {"src/a.py": "member\n"})
+    world.review_rc = 1
+    record = world.check(member, ["tests/test_zeta.py"])
+    assert record["trusted_sha"] == git(world.primary, "rev-parse", "refs/remotes/origin/develop")
+    assert "review_outcome" not in record
+    assert world.review_wrappers == []
+
+
+def test_member_check_refuses_a_path_outside_the_frozen_scope_before_any_check_runs(world: World) -> None:
+    world.start()
+    member = world.member("zeta")
+    head = world.commit(member, {"src/a.py": "member\n", "config/x.yaml": "k: v\n"})
+    with _raises(r"outside its frozen scope: config/x.yaml"):
+        world.check(member, ["tests/test_zeta.py"])
+    assert not world.calls_matching("pr-preflight")
+    assert bi._read_check(member, head, world.head()) is None
+
+
+def test_member_check_accepts_the_companion_files_every_scope_carries(world: World) -> None:
+    world.start()
+    member = world.member("zeta")
+    world.commit(
+        member,
+        {
+            "src/a.py": "member\n",
+            "changelog.d/zeta.json": "{}\n",
+            "docs/internal/dev-loop-property-ledger.md": "row\n",
+        },
+    )
+    assert world.check(member, ["tests/test_zeta.py"])["member"] == "zeta"
 
 
 @pytest.mark.parametrize("action", ["check", "land"])
@@ -326,13 +381,13 @@ def test_member_check_refuses_tracked_primary_changes_outside_every_scope(world:
         world.check(member, ["tests/test_zeta.py"])
     assert bi._read_check(member, git(member, "rev-parse", "HEAD"), world.head()) is None
     git(world.primary, "checkout", "--", ".gitignore", "tests/test_mid.py")
-    assert world.check(member, ["tests/test_zeta.py"])["review_outcome"] == "clear"
+    assert world.check(member, ["tests/test_zeta.py"])["member_head"] == git(member, "rev-parse", "HEAD")
 
 
-def test_a_long_review_finding_is_printed_in_full_and_saved(world: World) -> None:
-    world.start()
-    member = world.member("zeta")
-    head = world.commit(member, {"src/a.py": "member\n"})
+def test_a_long_review_finding_is_printed_in_full_and_saved_at_landing(world: World) -> None:
+    integration = world.start()
+    member = world.deliver("zeta", {"src/a.py": "member\n"})
+    head = git(member, "rev-parse", "HEAD")
     finding = "High finding: " + "detail " * 200 + "END-OF-FINDING"
     original = world.review
 
@@ -344,12 +399,12 @@ def test_a_long_review_finding_is_printed_in_full_and_saved(world: World) -> Non
     world.review = long_review
     world.review_rc = 1
     with pytest.raises(bi.BatchError) as raised:
-        world.check(member, ["tests/test_zeta.py"])
+        world.land("zeta")
     assert finding in str(raised.value)
-    saved = Path(git(member, "rev-parse", "--absolute-git-dir")) / f"member-review-{head[:12]}.txt"
+    saved = Path(git(integration, "rev-parse", "--absolute-git-dir")) / f"member-review-{head[:12]}.txt"
     assert saved.read_text(encoding="utf-8").strip() == finding
     assert str(saved) in str(raised.value)
-    assert git(member, "status", "--porcelain") == ""
+    assert git(integration, "status", "--porcelain") == ""
 
 
 def test_recover_takes_over_the_batch_worktrees_and_records_the_handoff(
@@ -685,24 +740,10 @@ def test_land_refuses_a_member_that_synced_before_the_integration_head_moved(wor
     assert world.land("zeta")["status"] == "merged"
 
 
-def test_land_refuses_when_the_review_cache_has_no_result_even_if_member_config_says_clear(world: World) -> None:
-    world.start()
-    member = world.deliver("zeta", {"src/a.py": "member\n"})
-    stored = bi._read_check(member, git(member, "rev-parse", "HEAD"), world.head())
-    assert stored["review_outcome"] == "clear"
-    world.require_cached_review = True
-    world.review_cache.clear()
-    before = world.head()
-    with _raises("no result for this member's patch"):
-        world.land("zeta")
-    assert world.head() == before
-
-
-def test_land_refuses_a_cached_findings_result(world: World) -> None:
+def test_land_refuses_a_findings_result(world: World) -> None:
     world.start()
     world.deliver("zeta", {"src/a.py": "member\n"})
-    for key, value in list(world.review_cache.items()):
-        world.review_cache[key] = {**value, "outcome": "findings"}
+    world.review_rc = 1
     with _raises("blocks landing"):
         world.land("zeta")
 
@@ -715,9 +756,13 @@ def test_land_accepts_a_not_reviewed_result_for_an_exempt_only_member(world: Wor
 
 
 def test_land_refuses_paths_outside_the_members_frozen_scope(world: World) -> None:
-    world.start()
-    world.deliver("zeta", {"config/x.yaml": "k: v\n"}, tests=["tests/test_zeta.py"])
-    with _raises("outside its frozen scope"):
+    integration = world.start()
+    world.deliver("zeta", {"src/a.py": "member\n"}, tests=["tests/test_zeta.py"])
+    ledger_path = integration / ".todo-batch" / BATCH / "ledger.json"
+    ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+    ledger["scope"]["zeta"] = ["tests/*"]
+    ledger_path.write_text(json.dumps(ledger), encoding="utf-8")
+    with _raises("outside its frozen scope: src/a.py"):
         world.land("zeta")
 
 
@@ -794,18 +839,6 @@ def test_a_hand_made_merge_carrying_an_extra_edit_is_refused_and_never_prepared(
     status = bi.batch_status(integration)
     assert any("cannot be verified" in step for step in status["next"])
     with _raises("carries edits the member never checked"):
-        world.land("zeta")
-
-
-def test_a_hand_made_merge_of_a_member_with_no_stored_review_is_refused(world: World) -> None:
-    integration = world.start()
-    member = world.deliver("zeta", {"src/a.py": "member\n"})
-    stored = bi._read_check(member, git(member, "rev-parse", "HEAD"), world.head())
-    assert stored["review_outcome"] == "clear"
-    world.require_cached_review = True
-    world.review_cache.clear()
-    _merge_by_hand(integration, member)
-    with _raises("no result for this member's patch"):
         world.land("zeta")
 
 

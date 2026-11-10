@@ -165,3 +165,71 @@ def test_compose_files_referenced_exist() -> None:
         "docker/trino/docker-compose.yml",
     ):
         assert (REPO_ROOT / compose).exists(), f"missing {compose}"
+
+
+def test_singlestore_job_runs_live_marker_against_pinned_compose_image() -> None:
+    workflow = _load_workflow()
+    job = workflow["jobs"]["singlestore"]
+    assert "run_singlestore" in job["if"]
+    assert job["permissions"] == {"contents": "read"}
+    text = "\n".join(str(step.get("run", "")) for step in job["steps"])
+    assert "docker/singlestore/docker-compose.yml" in text
+    assert "up -d --wait" in text
+    assert '-m "live_singlestore"' in text
+    assert "tests/integration/platforms/test_singlestore_tpcds_maintenance_live.py" in text
+    assert "tests/integration/platforms/test_singlestore_decimal_load_live.py" in text
+    assert "uv sync --group dev --extra singlestore" in text
+    assert "no passing tests" in text
+    teardown = job["steps"][-1]
+    assert teardown["if"] == "always()"
+    assert "down -v" in teardown["run"]
+    compose = yaml.safe_load((REPO_ROOT / "docker/singlestore/docker-compose.yml").read_text(encoding="utf-8"))
+    default_image = compose["services"]["singlestore"]["image"]
+    assert default_image.startswith("${SINGLESTORE_IMAGE:-") and default_image.endswith("}")
+    pinned = job["env"]["SINGLESTORE_IMAGE"]
+    assert re.fullmatch(r"ghcr\.io/singlestore-labs/singlestoredb-dev:[\w.-]+@sha256:[0-9a-f]{64}", pinned)
+
+
+def test_pull_request_trigger_is_path_filtered_and_selects_only_new_jobs() -> None:
+    workflow = _load_workflow()
+    triggers = _triggers(workflow)
+    paths = triggers["pull_request"]["paths"]
+    assert {
+        "benchbox/platforms/singlestore.py",
+        "docker/singlestore/**",
+        "tests/integration/platforms/test_singlestore_live.py",
+        "tests/integration/platforms/test_singlestore_decimal_load_live.py",
+        "benchbox/core/tpcds/maintenance_functions.py",
+        "benchbox/core/tpcds/maintenance_test.py",
+        "benchbox/core/write_primitives/catalog/operations.yaml",
+        ".github/workflows/docker-integration.yml",
+        "docker/firebolt/**",
+        "benchbox/platforms/firebolt.py",
+        "tests/integration/platforms/test_firebolt_core_live.py",
+        "tests/integration/platforms/test_firebolt_core_native_load_live.py",
+    } <= set(paths)
+    assert workflow["permissions"] == {"contents": "read"}
+    select = next(step for step in workflow["jobs"]["validate-input"]["steps"] if step.get("id") == "select")
+    assert "PULL_REQUEST_SERVICES=(singlestore firebolt)" in select["run"]
+    assert "singlestore" in triggers["workflow_dispatch"]["inputs"]["services"]["description"]
+    outputs = workflow["jobs"]["validate-input"]["outputs"]
+    assert "run_singlestore" in outputs
+    assert "run_firebolt" in outputs
+
+
+def test_firebolt_job_runs_native_load_verification_against_pinned_image() -> None:
+    workflow = _load_workflow()
+    job = workflow["jobs"]["firebolt"]
+    assert "run_firebolt" in job["if"]
+    assert job["timeout-minutes"] >= 45
+    text = "\n".join(str(step.get("run", "")) + str(step.get("uses", "")) for step in job["steps"])
+    assert "docker/firebolt/docker-compose.yml" in text
+    assert "tests/integration/platforms/test_firebolt_core_native_load_live.py" in text
+    assert '-m "live_firebolt_core"' in text
+    assert "actions/upload-artifact@" in text
+    compose = yaml.safe_load((REPO_ROOT / "docker/firebolt/docker-compose.yml").read_text(encoding="utf-8"))
+    default_image = compose["services"]["firebolt"]["image"]
+    assert default_image.startswith("${FIREBOLT_IMAGE:-") and default_image.endswith("}")
+    assert re.fullmatch(r"ghcr\.io/firebolt-db/firebolt-core:[\w.-]+@sha256:[0-9a-f]{64}", job["env"]["FIREBOLT_IMAGE"])
+    select = next(step for step in workflow["jobs"]["validate-input"]["steps"] if step.get("id") == "select")
+    assert "firebolt" in select["run"]

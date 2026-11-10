@@ -1,6 +1,6 @@
 {
   "models": {
-    "anthropic/claude-fable-5-1": {
+    "anthropic/claude-fable-5-2": {
       "contextWindow": 1000000,
       "maxTokens": 128000
     },
@@ -41,5 +41,5 @@
       "maxTokens": 128000
     }
   },
-  "omp": "18.13.3"
+  "omp": "18.16.0"
 }

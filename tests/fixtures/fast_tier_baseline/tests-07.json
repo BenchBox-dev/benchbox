@@ -15648,39 +15648,39 @@
     "p50_seconds": 0.032001
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_a_provider_without_a_login_is_excluded_and_the_gateway_still_starts[anthropic]",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_a_provider_without_a_login_is_excluded_and_the_gateway_still_starts[anthropic]",
     "p50_seconds": 2.278924
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_a_token_file_that_derives_a_second_oracle_ci_is_refused",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_a_token_file_that_derives_a_second_oracle_ci_is_refused",
     "p50_seconds": 0.534098
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_check_json_gives_the_state_and_each_message",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_check_json_gives_the_state_and_each_message",
     "p50_seconds": 2.259921
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_revoke_and_the_token_file_check_accept_the_same_names[my_ci]",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_revoke_and_the_token_file_check_accept_the_same_names[my_ci]",
     "p50_seconds": 0.535
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_the_host_script_names_no_provider_and_holds_no_provider_list",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_the_host_script_names_no_provider_and_holds_no_provider_list",
     "p50_seconds": 0.028581
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_the_issue_body_carries_no_gateway_url_or_home_path",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_the_issue_body_carries_no_gateway_url_or_home_path",
     "p50_seconds": 1.186047
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_without_a_denylist_the_gateway_home_lists_no_disabled_provider",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_without_a_denylist_the_gateway_home_lists_no_disabled_provider",
     "p50_seconds": 1.212994
   },
   {
-    "id": "tests/unit/scripts/test_oracle_local_review.py::test_a_ref_without_a_first_stage_is_a_refusal",
+    "id": "tests/unit/scripts/test_local_review.py::test_a_ref_without_a_first_stage_is_a_refusal",
     "p50_seconds": 0.053
   },
   {
-    "id": "tests/unit/scripts/test_oracle_local_review.py::test_an_explicit_state_directory_is_not_overridden",
+    "id": "tests/unit/scripts/test_local_review.py::test_an_explicit_state_directory_is_not_overridden",
     "p50_seconds": 0.033463
   },
   {
@@ -18348,35 +18348,35 @@
     "p50_seconds": 0.034147
   },
   {
-    "id": "tests/unit/workflows/test_oracle_gate_workflow.py::test_marker_comments_and_marker_edits_gate_in_the_pull_request_group",
+    "id": "tests/unit/workflows/test_review_gate_workflow.py::test_marker_comments_and_marker_edits_gate_in_the_pull_request_group",
     "p50_seconds": 0.109911
   },
   {
-    "id": "tests/unit/workflows/test_oracle_gate_workflow.py::test_the_caller_calls_the_pinned_theseus_gate_workflow_with_the_same_commit_as_the_lock",
+    "id": "tests/unit/workflows/test_review_gate_workflow.py::test_the_caller_calls_the_pinned_theseus_gate_workflow_with_the_same_commit_as_the_lock",
     "p50_seconds": 0.030856
   },
   {
-    "id": "tests/unit/workflows/test_oracle_gate_workflow.py::test_triggers_are_trusted_only_and_the_push_trigger_has_no_path_filter",
+    "id": "tests/unit/workflows/test_review_gate_workflow.py::test_triggers_are_trusted_only_and_the_push_trigger_has_no_path_filter",
     "p50_seconds": 0.030856
   },
   {
-    "id": "tests/unit/workflows/test_oracle_review_workflow.py::test_one_job_named_review_event_produces_no_review_request_check",
+    "id": "tests/unit/workflows/test_review_workflow.py::test_one_job_named_review_event_produces_no_review_request_check",
     "p50_seconds": 0.02582
   },
   {
-    "id": "tests/unit/workflows/test_oracle_review_workflow.py::test_workflow_has_no_concurrency_cancellation",
+    "id": "tests/unit/workflows/test_review_workflow.py::test_workflow_has_no_concurrency_cancellation",
     "p50_seconds": 0.02701
   },
   {
-    "id": "tests/unit/workflows/test_oracle_verdict_workflow.py::test_only_a_pull_request_event_cancels_a_run_in_flight[pull_request_target-True]",
+    "id": "tests/unit/workflows/test_review_verdict_workflow.py::test_only_a_pull_request_event_cancels_a_run_in_flight[pull_request_target-True]",
     "p50_seconds": 0.029185
   },
   {
-    "id": "tests/unit/workflows/test_oracle_verdict_workflow.py::test_only_a_pull_request_event_cancels_a_run_in_flight[workflow_dispatch-False]",
+    "id": "tests/unit/workflows/test_review_verdict_workflow.py::test_only_a_pull_request_event_cancels_a_run_in_flight[workflow_dispatch-False]",
     "p50_seconds": 0.029301
   },
   {
-    "id": "tests/unit/workflows/test_oracle_verdict_workflow.py::test_the_run_title_records_the_head_the_run_targets[workflow_dispatch-event1-inputs1-review-verdict (workflow_dispatch pr=7)]",
+    "id": "tests/unit/workflows/test_review_verdict_workflow.py::test_the_run_title_records_the_head_the_run_targets[workflow_dispatch-event1-inputs1-review-verdict (workflow_dispatch pr=7)]",
     "p50_seconds": 0.029043
   },
   {

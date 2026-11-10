@@ -1,11 +1,12 @@
 # Batch delivery modes
 
-BenchBox has two delivery modes. An explicitly assigned cohesive batch uses
-feature delivery mode by default once its prerequisites are installed and
-verified. Serial mode covers standalone, cross-repository, review-separated,
-approval-separated, or unrelated items. A source PR, catalog revision, or local mirror
-does not by itself install the capability required for feature mode. The
-decision to use two layers is recorded in
+Feature delivery mode is opt-in: the owner names the batch, it has two or more
+members, and the capability below is present. Related work otherwise goes on one
+feature branch and one PR per feature, built by one session. Serial mode covers
+standalone, cross-repository, review-separated, approval-separated, or unrelated
+items. A source PR, catalog revision, or local mirror does not by itself install
+the capability required for feature mode. The decision to use two layers is
+recorded in
 [`batch-integration-loop-2026-11-01.md`](../../_project/decisions/batch-integration-loop-2026-11-01.md);
 the tracker side is in [`batch-tracker-contract.md`](batch-tracker-contract.md).
 
@@ -15,6 +16,21 @@ Use the ordinary claim, implementation, isolated-worktree, verification, review,
 merge, deployment, and authority boundaries. Tracker dependencies remain
 tracker-managed, and a shared branch must not be used to make independent work
 look related.
+
+### Feature branch
+
+Related items are delivered on one feature branch and one PR per feature, built
+by one session:
+
+1. Create an umbrella item and add it to each member's `needs`, so no one else
+   can take them.
+2. Take the umbrella, create `feat/<slug>` in one worktree, and implement the
+   members there.
+3. Open one PR. After it merges, finish the umbrella, then take and finish each
+   member.
+4. A late related item joins the branch.
+5. Re-check each item's diagnosis against current `origin/develop` before
+   implementing it.
 
 ## Feature delivery mode
 
@@ -37,7 +53,7 @@ worker, and an older client has been shown to refuse with `E_SCHEMA`.
 | Layer | Who | Owns |
 |---|---|---|
 | Leader | One agent session | The batch registration, the one integration branch `feat/<batch>` and its worktree, landing each member, the tracker, the ledger, and the one final PR to `develop` |
-| Member | One agent session per member | One worktree and branch `feat/<batch>--<member>` started at the integration head; implementation, scoped checks, local review, and a landing report |
+| Member | One agent session per member | One worktree and branch `feat/<batch>--<member>` started at the integration head; implementation, scoped checks, and a landing report |
 
 The leader is the only tracker writer. A member never calls `take`, `prepare`,
 `finish`, `release`, or any other tracker write; while the batch is active the
@@ -65,7 +81,7 @@ Rules that hold for the whole batch:
 - No new CI skips, protected-branch bypasses, credential changes, or
   publication shortcuts. Feature mode never weakens hosted/native review, merge,
   deployment, or authority gates, hold labels, the unresolved-thread refusal, or
-  the oracle gate.
+  the reviewer gate.
 - A member that merged in the integration head is a normal branch. Member
   scopes are frozen at registration; a change outside a member's scope is
   refused at landing, and a leader fix cannot widen the union of scopes.
@@ -76,14 +92,14 @@ Rules that hold for the whole batch:
 
 | Target | Run by | Does |
 |---|---|---|
-| `make batch-start BATCH= MEMBERS= SCOPE_JSON= PROJECT_ID= [WORKTREE_PATH=] [DEPENDENCIES=member=dep1+dep2,...] [CONFIRM_CUTOVER=1]` | Leader, any worktree | Creates `feat/<batch>` and its worktree from `refs/remotes/origin/develop`, writes the ledger and owner generation, and prints the `register_batch` arguments and an `after_register` block of `update_item` steps |
+| `make batch-start BATCH= MEMBERS= SCOPE_JSON= PROJECT_ID= [WORKTREE_PATH=] [DEPENDENCIES=member=dep1+dep2,...] [CONFIRM_CUTOVER=1]` | Leader, any worktree | Refuses fewer than two members (one member is serial work). Appends `changelog.d/*` and `docs/internal/dev-loop-property-ledger.md` to every member's scope before hashing it. Creates `feat/<batch>` and its worktree from `refs/remotes/origin/develop`, writes the ledger and owner generation, and prints the `register_batch` arguments and an `after_register` block of `update_item` steps |
 | `make batch-member-create MEMBER= [WORKTREE_PATH=]` | Leader, integration worktree | Creates `feat/<batch>--<member>` at the current integration head; refuses an existing branch, and refuses while the primary clone has uncommitted tracked changes (the files are named) |
-| `make batch-member-check [TESTS=a,b]` | Member | Requires a clean branch that contains the integration head and has changes, no uncommitted tracked change anywhere in the primary clone, and no change there under the member's frozen scope (the files are named); runs `make pr-preflight` against that head (or the command given as `PREFLIGHT_CMD`, which is recorded and warned about at landing) and the changelog check, then executes the union of the mapped and named tests and records success only if that command passes and the checkout stays clean at the same head; runs the member review as early feedback and, when it does not clear the head, prints its full output and the path of the file holding it |
+| `make batch-member-check [TESTS=a,b]` | Member | Requires a clean branch that contains the integration head and has changes, no uncommitted tracked change anywhere in the primary clone, and no change there under the member's frozen scope (the files are named); refuses a changed path outside the member's frozen scope (the paths are named), with the message `batch-land` uses; runs `make pr-preflight` against that head (or the command given as `PREFLIGHT_CMD`, which is recorded and warned about at landing) and the changelog check, then executes the union of the mapped and named tests and records success only if that command passes and the checkout stays clean at the same head; runs no review: the leader reviews the exact patch at landing |
 | `make batch-land MEMBER= [ACCEPT_WRITES=op_id,...]` | Leader | Merges a checked member with `--no-ff` and prints the `take`/`prepare` payload (`prepare` only for a dependent member, which must already be taken); the member's implementation dependencies are read from its registered tracker metadata |
 | `make batch-advance REASON=fix\|develop-merge` | Leader | Records a leader commit or a develop merge and prints the `advance_batch_head` payload |
 | `make batch-status` | Leader | Reconciles the ledger with the tracker and Git (rebuilding a missing ledger) and names the next step |
 | `make batch-verify` | Leader | Checks first-parent history, recorded heads, and member ancestry |
-| `make batch-evidence` | Leader | Executes every member's receipt command afresh on the clean final head, writes `.todo-batch/<batch>/final-evidence.json` only after all pass, and prints the `finish` payloads with suite `member-reruns`; a test path a receipt names that a recorded `develop-merge` deleted is dropped from that rerun and listed under `dropped_receipt_paths` in the evidence (a path a member itself deleted still fails, and a receipt left with no verification path is refused) |
+| `make batch-evidence` | Leader | Executes every member's receipt command afresh on the clean final head, writes `.todo-batch/<batch>/final-evidence.json` only after all pass, and prints the `finish` payloads with suite `member-reruns`; a test path a receipt names that a recorded `develop-merge` deleted is dropped from that rerun and listed under `dropped_receipt_paths` in the evidence (a path a member itself deleted still fails, and a receipt left with no verification path is refused). Overlap reruns, fix reruns and the evidence rows keep `command` as recorded and add `ran_command` and `dropped_paths`; a rerun whose recorded test paths are all gone fails without running pytest |
 | `make batch-finish [EXECUTE=1]` | Leader, integration worktree | After the batch is completed and final PR merged: dry run by default; execute removes qualifying member worktrees/branches, then finishes the integration worktree and local branch last |
 
 The scripts only read the tracker. Every tracker write is printed as a payload
@@ -91,12 +107,21 @@ and submitted by the leader through the tractable MCP tools.
 
 ## Protocol
 
+### Plan first
+
+Registration freezes members and scopes. Group the whole ready set, then ask the
+owner, in one message, every decision that changes membership or scope. Start
+only members no pending answer can regroup. Questions that surface later go in
+one message and block only the members they affect.
+
 ### 1. Register (leader)
 
 1. Create or keep the member items. Put batch notes on an umbrella item that is
    not a member.
 2. Write the scope file: a JSON object mapping every member, and only members,
-   to a non-empty list of path patterns.
+   to a non-empty list of path patterns. A batch has at least two members;
+   one member is serial work. `batch-start` adds the member's changelog fragment
+   and the property ledger to every scope.
 3. Run `make batch-start`. It refuses unless `origin/develop` is fetched.
 4. Submit `register_batch` with the printed arguments (the first one on an older
    store also carries the cutover confirmation). Registration records one
@@ -131,12 +156,11 @@ A member:
 - runs the union of mapped tests and any it names, through `make batch-member-check
   TESTS=...` (non-Python changes must name tests); a named test that fails or
   collects nothing blocks the check; it does not run the fast tier;
-- runs the member review as early feedback. The leader does not trust that
-  result: it reviews the exact patch again before landing. A change that
-  touches only exempt paths is recorded `not-reviewed`, the same bar as a
-  standalone PR (`docs/internal/oracle-review-v2.md`);
+- runs no review. The leader reviews the exact patch at landing, where a change
+  that touches only exempt paths is recorded `not-reviewed`, the same bar as a
+  standalone PR (`docs/internal/review-v2.md`);
 - stops with a landing report: branch, accepted head, base, changed files,
-  tests, and review outcome. It does not push for publication, open a PR, or
+  and tests. It does not push for publication, open a PR, or
   touch the tracker.
 
 ### 3. Land (leader), one member at a time
@@ -282,9 +306,10 @@ Theseus install. Landing, advancing and evidence refuse on exit 3 or 2 and print
 Theseus's reasons verbatim; status prints the answer and refuses nothing.
 Refusals include a landing that carries a Theseus lock change (land that on its
 own pull request) and a change too large for any reviewer's capacity (split the
-batch). Advisories from a reviewable answer print as warnings. Run the preflight
-on the members' combined change before `register_batch` (or `make batch-status`
-once members exist); do not estimate.
+batch). Advisories from a reviewable answer print as warnings. Before
+registration only an existing branch can be measured; after members land,
+`make batch-status` reports the answer for the integration head, which covers
+landed members only.
 
 ## Rollback and recovery
 

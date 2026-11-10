@@ -21,11 +21,28 @@ class Dataset:
     ddl: str
     tables: dict[str, Path]
     index_keys: bool = True
+    indexes: tuple[tuple[str, ...], ...] = ()
 
 
 def index_columns(columns: list[str], index_keys: bool = True) -> list[str]:
     leading, *rest = columns
     return [leading, *(column for column in rest if index_keys and KEY_COLUMN.search(column))]
+
+
+def index_statements(table: str, columns: list[str], dataset: Dataset) -> list[str]:
+    named = [(f"{table}_{column}_ix", (column,)) for column in index_columns(columns, dataset.index_keys)]
+    named += [
+        (f"{table}_x{position}_ix", index)
+        for position, index in enumerate(dataset.indexes)
+        if set(index) <= set(columns)
+    ]
+    return [
+        f'CREATE INDEX "{name}" ON {table} ({", ".join(_quote(column) for column in index)})' for name, index in named
+    ]
+
+
+def _quote(column: str) -> str:
+    return f'"{column}"'
 
 
 class QueryTimeout(Exception):
@@ -71,8 +88,8 @@ class SqliteEngine:
             marks = ",".join("?" * columns)
             self.connection.executemany(f"INSERT INTO {table} VALUES ({marks})", _data_lines(path, columns))
             if info:
-                for column in index_columns([row[1] for row in info], dataset.index_keys):
-                    self.connection.execute(f'CREATE INDEX "{table}_{column}_ix" ON {table} ("{column}")')
+                for statement in index_statements(table, [row[1] for row in info], dataset):
+                    self.connection.execute(statement)
         self.connection.commit()
 
     def execute(self, sql: str) -> list[tuple]:
@@ -221,25 +238,36 @@ class PostgresEngine:
     def available() -> bool:
         return bool(os.environ.get("BENCHBOX_POSTGRES_DSN")) and importlib.util.find_spec("psycopg") is not None
 
-    def open(self, dataset: Dataset, parquet_dir: Path) -> None:
+    @staticmethod
+    def _connect():
         import psycopg
 
-        self.connection = psycopg.connect(os.environ["BENCHBOX_POSTGRES_DSN"], autocommit=True)
+        return psycopg.connect(os.environ["BENCHBOX_POSTGRES_DSN"], autocommit=True)
+
+    def open(self, dataset: Dataset, parquet_dir: Path) -> None:
+        self.connection = self._connect()
         self.connection.execute(f"DROP SCHEMA IF EXISTS {self.schema} CASCADE")
         self.connection.execute(f"CREATE SCHEMA {self.schema}")
         self.connection.execute(f"SET search_path TO {self.schema}")
         self.connection.execute(dataset.ddl)
         for table, path in dataset.tables.items():
-            columns = self.connection.execute(
-                "SELECT count(*) FROM information_schema.columns WHERE table_schema = %s AND table_name = %s",
-                (self.schema, table),
-            ).fetchone()[0]
+            names = [
+                row[0]
+                for row in self.connection.execute(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_schema = %s AND table_name = %s ORDER BY ordinal_position",
+                    (self.schema, table),
+                ).fetchall()
+            ]
+            columns = len(names)
             statement = f"COPY {table} FROM STDIN (FORMAT csv, DELIMITER '|', NULL '', QUOTE E'\\x01')"
             with self.connection.cursor().copy(statement) as copy:
                 writer = csv.writer(_Sink(copy), delimiter="|", quotechar="\x01", lineterminator="\n")
                 for row in _data_lines(path, columns):
                     writer.writerow(["" if cell is None else cell for cell in row])
-        self.connection.execute("ANALYZE")
+            for statement in index_statements(table, names, dataset):
+                self.connection.execute(statement)
+            self.connection.execute(f"VACUUM (ANALYZE) {table}")
         self.connection.execute(f"SET statement_timeout = {int(self.timeout * 1000)}")
 
     def execute(self, sql: str) -> list[tuple]:

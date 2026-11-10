@@ -44,7 +44,7 @@ things call it.
 
 `.github/soundness-paths.txt` lists the ledger, the scope checker, and
 `tests/unit/scripts/test_comment_cleanup_scope.py`. Any change to them needs
-oracle review.
+review.
 
 ## What the ownership manifest enforces
 

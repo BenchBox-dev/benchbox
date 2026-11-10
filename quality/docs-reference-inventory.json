@@ -238,22 +238,6 @@
    ]
   },
   {
-   "disposition": "governance-stays",
-   "kinds": {
-    "pattern": 1
-   },
-   "occurrences": 1,
-   "path": ".github/oracle-reviewers.yml",
-   "rule": "oracle-exposure-exemptions",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "pattern",
-     "target": "docs/*.md"
-    }
-   ]
-  },
-  {
    "disposition": "wiring-updated",
    "kinds": {
     "extra": 1,
@@ -324,6 +308,22 @@
     {
      "kind": "extra",
      "target": "quality/docs-ownership.json"
+    }
+   ]
+  },
+  {
+   "disposition": "governance-stays",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": ".github/review.yml",
+   "rule": "oracle-exposure-exemptions",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
     }
    ]
   },
@@ -1270,10 +1270,32 @@
     "unresolved": 1
    },
    "occurrences": 2,
-   "path": "_project/decisions/oracle-gate-required-check-2026-10-21.md",
+   "path": "_project/decisions/oracle-gate-relaxation-muse-login-loss-2026-11-06.md",
    "rule": "project-records",
    "target_count": 1,
-   "targets_sha256": "188f0acfae3b01f0a45138d494ff3b382031a800246d5326b6c1760fc5802362"
+   "targets_sha256": "f3db2ef266b1fae49b105fdc5c9874006d537f8f0d55cefbf86f098ca65fe156"
+  },
+  {
+   "disposition": "historical-record",
+   "kinds": {
+    "unresolved": 2
+   },
+   "occurrences": 4,
+   "path": "_project/decisions/oracle-gate-required-check-2026-10-21.md",
+   "rule": "project-records",
+   "target_count": 2,
+   "targets_sha256": "4d80522b1eb06b50475c4b54e097f833e5fe0db8627c75e7474f54b038d1b0b9"
+  },
+  {
+   "disposition": "historical-record",
+   "kinds": {
+    "unresolved": 1
+   },
+   "occurrences": 2,
+   "path": "_project/decisions/oracle-review-check-retired-2026-10-24.md",
+   "rule": "project-records",
+   "target_count": 1,
+   "targets_sha256": "877bc68b8b10c5b0132d46817f70032a6d5bbf4335e229bcd122895ff8488cea"
   },
   {
    "disposition": "historical-record",
@@ -1303,10 +1325,54 @@
     "unresolved": 2
    },
    "occurrences": 2,
+   "path": "_project/decisions/oracle-reviewer-gateway-2026-10-22.md",
+   "rule": "project-records",
+   "target_count": 2,
+   "targets_sha256": "530e279a80e9f143bc4c50e78acd9412802c1cc13f32da8fcabe1770a8d30234"
+  },
+  {
+   "disposition": "historical-record",
+   "kinds": {
+    "unresolved": 1
+   },
+   "occurrences": 1,
+   "path": "_project/decisions/oracle-single-review-job-2026-10-25.md",
+   "rule": "project-records",
+   "target_count": 1,
+   "targets_sha256": "877bc68b8b10c5b0132d46817f70032a6d5bbf4335e229bcd122895ff8488cea"
+  },
+  {
+   "disposition": "historical-record",
+   "kinds": {
+    "unresolved": 1
+   },
+   "occurrences": 1,
+   "path": "_project/decisions/oracle-small-reviewer-model-2026-10-23.md",
+   "rule": "project-records",
+   "target_count": 1,
+   "targets_sha256": "877bc68b8b10c5b0132d46817f70032a6d5bbf4335e229bcd122895ff8488cea"
+  },
+  {
+   "disposition": "historical-record",
+   "kinds": {
+    "unresolved": 2
+   },
+   "occurrences": 2,
    "path": "_project/decisions/public-site-visual-required-check-2026-09-24.md",
    "rule": "project-records",
    "target_count": 2,
    "targets_sha256": "e2438eaca5e87ddda0dc663913f2d6d3d58df5dfa6d490807dbf59452b203bad"
+  },
+  {
+   "disposition": "historical-record",
+   "kinds": {
+    "unresolved": 1
+   },
+   "occurrences": 1,
+   "path": "_project/decisions/review-depth-and-capacity-2026-11-05.md",
+   "rule": "project-records",
+   "target_count": 1,
+   "targets_sha256": "877bc68b8b10c5b0132d46817f70032a6d5bbf4335e229bcd122895ff8488cea"
   },
   {
    "disposition": "historical-record",
@@ -1386,6 +1452,17 @@
    "rule": "project-records",
    "target_count": 1,
    "targets_sha256": "4b23194c53454d0d50d4e2acc648f7dca492eb73ae15c379a82aac93188f6ea7"
+  },
+  {
+   "disposition": "historical-record",
+   "kinds": {
+    "unresolved": 1
+   },
+   "occurrences": 1,
+   "path": "_project/decisions/theseus-oracle-extraction-inventory-2026-11-02.md",
+   "rule": "project-records",
+   "target_count": 1,
+   "targets_sha256": "f3db2ef266b1fae49b105fdc5c9874006d537f8f0d55cefbf86f098ca65fe156"
   },
   {
    "disposition": "historical-record",
@@ -3176,7 +3253,7 @@
    "kinds": {
     "unresolved": 1
    },
-   "occurrences": 5,
+   "occurrences": 4,
    "path": "tests/unit/scripts/test_batch_integration.py",
    "rule": "test-sample-data",
    "target_count": 1,
@@ -3927,6 +4004,38 @@
   {
    "disposition": "fixture-data",
    "kinds": {
+    "file": 1
+   },
+   "occurrences": 1,
+   "path": "tests/unit/scripts/test_release_probe.py",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "file",
+     "target": "docs/README.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "unresolved": 1
+   },
+   "occurrences": 1,
+   "path": "tests/unit/scripts/test_release_probe_launch.py",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "unresolved",
+     "target": "docs/release.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
     "unresolved": 4
    },
    "occurrences": 38,
@@ -4004,6 +4113,42 @@
   {
    "disposition": "fixture-data",
    "kinds": {
+    "unresolved": 6
+   },
+   "occurrences": 8,
+   "path": "tests/unit/scripts/test_trunk_uat.py",
+   "rule": "test-sample-data",
+   "target_count": 6,
+   "targets": [
+    {
+     "kind": "unresolved",
+     "target": "docs/guide.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/note.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/one.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/other.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/two.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/x.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
     "root": 1
    },
    "occurrences": 1,
@@ -4071,14 +4216,14 @@
    "kinds": {
     "unresolved": 1
    },
-   "occurrences": 2,
+   "occurrences": 3,
    "path": "tests/unit/test_ruleset_drift.py",
    "rule": "test-sample-data",
    "target_count": 1,
    "targets": [
     {
      "kind": "unresolved",
-     "target": "docs/tooling/hold/oracle-gate"
+     "target": "docs/tooling/hold/review-gate/release-v2 probe"
     }
    ]
   },
@@ -4136,26 +4281,26 @@
   "dispositions": {
    "contract-replaced": 1,
    "contract-tooling": 6,
-   "fixture-data": 37,
+   "fixture-data": 40,
    "governance-stays": 11,
-   "historical-record": 111,
+   "historical-record": 118,
    "lock-test": 4,
    "prose-link-pinned": 12,
    "site-pipeline-cutover": 4,
    "wiring-updated": 31
   },
-  "files": 217,
+  "files": 227,
   "kinds": {
    "built-url": 29037,
    "dir": 163,
    "extra": 37,
-   "file": 1377,
+   "file": 1378,
    "generated": 3,
    "pattern": 332,
    "root": 200,
-   "unresolved": 2051
+   "unresolved": 2072
   },
-  "references": 33200,
+  "references": 33222,
   "unclassified": 0
  }
 }

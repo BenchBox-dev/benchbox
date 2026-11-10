@@ -8,10 +8,11 @@ import logging
 import os
 import threading
 import time
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Iterable
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 try:
@@ -446,18 +447,31 @@ def plan_capture_support(platform: str) -> PlanCaptureSupport:
     return _PLAN_CAPTURE_SUPPORT.get(normalize_dataframe_platform(platform), PlanCaptureSupport.UNSUPPORTED)
 
 
+def redact_plan_local_paths(plan: QueryPlan, roots: Iterable[str | Path] = ()) -> QueryPlan:
+    from benchbox.core.results.anonymization import local_path_detector
+
+    detector = local_path_detector(roots)
+    return replace(
+        plan,
+        plan_text=detector.redact_text(plan.plan_text),
+        plan_data=detector.redact_value(plan.plan_data),
+        optimization_hints=detector.redact_value(plan.optimization_hints),
+    )
+
+
 def capture_query_plan(df: Any, platform: str) -> QueryPlan | None:
     platform_lower = normalize_dataframe_platform(platform)
 
+    plan: QueryPlan | None = None
     if platform_lower == "polars":
         if hasattr(df, "explain"):
-            return capture_polars_plan(df)
+            plan = capture_polars_plan(df)
     elif platform_lower == "datafusion":
-        return capture_datafusion_plan(df)
+        plan = capture_datafusion_plan(df)
     elif platform_lower in _SPARK_FAMILY_PLATFORMS:
-        return capture_pyspark_plan(df, platform=platform_lower)
+        plan = capture_pyspark_plan(df, platform=platform_lower)
 
-    return None
+    return plan
 
 
 def _analyze_polars_plan(plan: str) -> list[str]:

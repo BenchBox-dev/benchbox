@@ -12,11 +12,11 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 BOOTSTRAP_PATH = "_project/scripts/theseus_bootstrap.py"
-POLICY_PATH = ".github/oracle-reviewers.yml"
+POLICY_PATH = ".github/review.yml"
 TRUSTED_TREE = ".github"
 DEVELOP_REF = "origin/develop"
 FETCH_BRANCH = "develop"
-LOCAL_STATE = Path(".cache") / "benchbox" / "local-oracle"
+LOCAL_STATE = Path(".cache") / "benchbox" / "local-review"
 OMP_CACHE = Path(".cache") / "benchbox" / "omp"
 FULL_SHA = re.compile(r"[0-9a-f]{40}")
 GATE_WAITING_EXIT = 3
@@ -30,7 +30,7 @@ class TheseusError(Exception):
 
 
 def _release_tree(root: Path) -> bool:
-    if (root / ".github" / "theseus-lock.json").exists() or (root / ".github" / "oracle-reviewers.yml").exists():
+    if (root / ".github" / "theseus-lock.json").exists() or (root / ".github" / "review.yml").exists():
         return False
     print("release tree: no Theseus lock; skipping", file=sys.stderr)
     return True

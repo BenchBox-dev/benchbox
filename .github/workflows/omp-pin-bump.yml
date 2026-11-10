@@ -42,9 +42,9 @@ jobs:
           echo "base=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           THESEUS="$(python3 scripts/theseus_cli.py --trusted-ref "$(git rev-parse HEAD)" path)"
           "$THESEUS" omp-bump prepare \
-            --policy .github/oracle-reviewers.yml \
-            --omp-config .github/oracle-omp-config.yml \
-            --fixtures tests/fixtures/oracle_reviewers/omp_candidate \
+            --policy .github/review.yml \
+            --omp-config .github/review-omp-config.yml \
+            --fixtures tests/fixtures/review_candidates/omp_candidate \
             --out-dir "$OUT_DIR"
 
       - name: Report the candidate
@@ -133,12 +133,12 @@ jobs:
               exit 1
             }
             git checkout -b "$BRANCH"
-            cp "$OUT_DIR/policy.yml" .github/oracle-reviewers.yml
-            git add .github/oracle-reviewers.yml
-            git commit -m "chore(oracle): pin omp ${VERSION}"
+            cp "$OUT_DIR/policy.yml" .github/review.yml
+            git add .github/review.yml
+            git commit -m "chore(review): pin omp ${VERSION}"
             git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${AUTH}" push origin "$BRANCH"
             PR="$(gh api --method POST "repos/${GITHUB_REPOSITORY}/pulls" \
-              -f title="chore(oracle): pin omp ${VERSION}" -F body=@"$OUT_DIR/pr-body.md" \
+              -f title="chore(review): pin omp ${VERSION}" -F body=@"$OUT_DIR/pr-body.md" \
               -f base=develop -f head="$BRANCH" --jq .number)"
           else
             if ! printf '%s\n' "$existing" | jq -e --arg repo "$GITHUB_REPOSITORY" '
@@ -160,13 +160,13 @@ jobs:
             if ! git merge-base --is-ancestor "$PREPARED_BASE" HEAD; then
               git merge --no-commit --no-ff "$PREPARED_BASE"
             fi
-            if ! cmp -s .github/oracle-reviewers.yml "$OUT_DIR/policy.yml" ||
-              ! git diff --quiet "$PREPARED_BASE" -- . ':!.github/oracle-reviewers.yml'; then
+            if ! cmp -s .github/review.yml "$OUT_DIR/policy.yml" ||
+              ! git diff --quiet "$PREPARED_BASE" -- . ':!.github/review.yml'; then
               echo "Candidate differs from the validated pin-only change; leaving it unchanged." >&2
               exit 1
             fi
             if git rev-parse --quiet --verify MERGE_HEAD > /dev/null; then
-              git commit -m "chore(oracle): refresh omp ${VERSION} against current policy"
+              git commit -m "chore(review): refresh omp ${VERSION} against current policy"
               git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${AUTH}" push origin "$BRANCH"
             fi
           fi
