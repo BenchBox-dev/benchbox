@@ -14195,6 +14195,13 @@
       "status": "done",
       "title": "medium-collect spends about 108 s collecting because it starts with a cold assertion-rewrite cache"
     },
+    "ci-medium-shard-hangs-after-last-test-20261110": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Make a hung medium-test shard fail fast with a stack dump instead of a silent 25-minute cancel"
+    },
     "ci-oracle-reviewer-availability-and-head-race": {
       "claim": null,
       "needs": [],

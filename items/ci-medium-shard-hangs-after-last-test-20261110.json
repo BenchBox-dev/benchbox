@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "A deliberately hung test or session-finish hook in a throwaway CI run produces, in the job log, the stacks of every worker and the process tree, and the job fails within 5 minutes of the hang starting, naming the stuck node id or phase.",
+    "Normal medium-test runs are unaffected: wall time is within 2% of the previous week's median for the same shard.",
+    "If the dump on a real recurrence identifies a cause (leaked process, thread, or fixture teardown), a regression test covers it.",
+    "Decision gate: if the hang does not recur within two weeks of the diagnostics landing, finish with the diagnostics only and record a deferral naming the evidence to collect next time."
+  ],
+  "description": "Problem. On PR #4039, CI run 42431461560 (merge commit 4952dd265e68480436132dfb6f4f156e5d50bea5), medium-test (shard 2) was cancelled at the job timeout three times: attempts 1-3, each about 25 minutes. In attempt 2 the shard reached 99% at 02:17 and then sat idle until 02:34. The resource monitor showed the xdist workers alive, with steady RSS and the load average falling toward 0.1. The per-test --timeout=60 never fired, so the hang is outside a test call: likely session or xdist teardown, a leaked child process, or a non-daemon thread. The same shard passed on the previous merge commit (run 42427026571), and passed again after the PR was closed and reopened for a fresh merge ref. The cancelled suite then blocked arming ('hidden behind a newer success'), which needed a rerun-then-cancel to clear. Nothing in the log names what was stuck, and the run burned about 75 runner-minutes.\n\nChange.\n(1) Before the job timeout, dump every pytest and xdist worker's Python stacks, plus the process tree, into the job log, for example with a watchdog step using py-spy dump or faulthandler via a signal.\n(2) End the run with a non-zero exit that names the stuck phase or test.\n(3) Fix the root cause if the dump identifies it.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read cited files on current origin/develop first. The repo refuses pytest's faulthandler_timeout locally (tests/conftest.py); do not re-enable it there. Do not raise the job timeout.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/42431461560",
+    "https://github.com/BenchBox-dev/benchbox/pull/4039",
+    ".github/workflows/ci.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af45b75c1ad8820899a19497",
+      "at": "2026-11-10T22:41:02Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "43ab3fe9b3544c688669263cf38fe06d",
+      "session_id": "32045bbba1554b198973ff9701611e85"
+    }
+  ]
+}
