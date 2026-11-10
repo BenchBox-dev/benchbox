@@ -7711,6 +7711,7 @@
       "accepted_members": {
         "perf-clickhouse-server-bulk-load-20261030": "d43381ea1331b8f04e31b13fba9f905a3821f42e",
         "perf-starrocks-parquet-load-20261030": "64669b6476f115df7ba9503d6761678b592c623e",
+        "perf-trino-presto-bulk-load-20261030": "03cfea4e50089458596a11e1c1009c9b37908fae",
         "release-uat-presto-trino-unreachable-20261030": "5cb8f5fb6914569f6018a61ad1687e161739af47",
         "uat-docker-memory-admission-decimal-units-20261030": "9ea0af9b4f2692b86e23f9e4c83f9800a839ae29"
       },
@@ -7749,6 +7750,29 @@
           "integration_head": "e4f6854b74ebac0483ac8ea540bd5c5734efbc90",
           "integration_seq": 3
         },
+        "perf-trino-presto-bulk-load-20261030": {
+          "accepted_head": "03cfea4e50089458596a11e1c1009c9b37908fae",
+          "changed_files": [
+            ".github/workflows/docker-integration.yml",
+            "benchbox/platforms/presto.py",
+            "benchbox/platforms/presto_trino_adapter_base.py",
+            "benchbox/platforms/presto_trino_bulk.py",
+            "benchbox/platforms/presto_trino_utils.py",
+            "benchbox/platforms/trino.py",
+            "changelog.d/trino-presto-bulk-load-20261110.json",
+            "docker/presto/catalog/hive.properties",
+            "docker/presto/docker-compose.yml",
+            "docker/trino/catalog/hive.properties",
+            "docker/trino/catalog/memory.properties",
+            "docker/trino/docker-compose.yml",
+            "tests/integration/platforms/test_presto_live.py",
+            "tests/integration/platforms/test_trino_live.py",
+            "tests/uat/docker_assets.py",
+            "tests/unit/platforms/test_presto_trino_bulk.py"
+          ],
+          "integration_head": "6b1568cc7837ec1cda005c7645d82bcf080c1671",
+          "integration_seq": 5
+        },
         "release-uat-presto-trino-unreachable-20261030": {
           "accepted_head": "5cb8f5fb6914569f6018a61ad1687e161739af47",
           "changed_files": [
@@ -7775,7 +7799,7 @@
         }
       },
       "integration_branch": "feat/server-engine-bulk-load-3",
-      "integration_head": "662e2da9d3eb0bfebce98cb500d13d616924fb9d",
+      "integration_head": "6b1568cc7837ec1cda005c7645d82bcf080c1671",
       "integration_log": [
         {
           "at": "2026-11-10T01:41:43Z",
@@ -7818,6 +7842,15 @@
           "op_id": "06a7754413404d88b65e1a8ac1a65993",
           "previous_head": "e4f6854b74ebac0483ac8ea540bd5c5734efbc90",
           "seq": 4
+        },
+        {
+          "at": "2026-11-10T03:51:43Z",
+          "head": "6b1568cc7837ec1cda005c7645d82bcf080c1671",
+          "kind": "prepare",
+          "member": "perf-trino-presto-bulk-load-20261030",
+          "op_id": "f41d6f2aa7b246e4afc08e0e55498a85",
+          "previous_head": "662e2da9d3eb0bfebce98cb500d13d616924fb9d",
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-server-engine-bulk-load-3",
@@ -29236,17 +29269,12 @@
       "title": "TPC-H RF1: ingest the update-set files with each engine's native reader inside the RF1 timer; keep VALUES as fallback"
     },
     "perf-trino-presto-bulk-load-20261030": {
-      "claim": {
-        "expires_at": "2026-11-11T03:27:18Z",
-        "generation": "a27d7c9ea2a34389b20042aa9f96e814",
-        "renewals": 1,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a"
-      },
+      "claim": null,
       "needs": [
         "release-uat-presto-trino-unreachable-20261030"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Replace VALUES-literal loading for Trino, Presto, Starburst"
     },
     "perf-trino-presto-hive-target-sf1-20261110": {
