@@ -173,16 +173,15 @@ The pin is healthy when, on each pull request:
 - the run logs `HAS_APP: true` (an empty secret still ends the job green, so a green run
   alone proves nothing);
 - `review-verdict` and `review-gate` are posted for the head by
-  `benchbox-oracle[bot]`; with v0.2.4, the legacy `oracle-verdict` and
-  `oracle-gate` mirrors are posted too;
+  `benchbox-oracle[bot]`; no `oracle-*` mirror is posted;
 - the trivial pull request reaches `success` on every required gate context;
 - the defect pull request gets a verdict that lists the defect, and its gate does not report
   `success`.
 
 Each caller also ends with a `posting-check` job (`review-verdict.yml`, `review-gate.yml`)
 that reads `needs.<caller job>.result` explicitly and fails when the head the run handled has
-no status from `benchbox-oracle[bot]` in `review-verdict`/`oracle-verdict` (verdict) or
-`review-gate`/`oracle-gate` (gate), so an empty secret mapping can no longer end green while
+no status from `benchbox-oracle[bot]` in `review-verdict` (verdict) or
+`review-gate` (gate), so an empty secret mapping can no longer end green while
 posting nothing on a head that has no status yet. It asserts only for `pull_request_target`
 and `workflow_dispatch` runs, and skips the runs the callee skips by design: sweeps and
 comment events, closed or draft pull requests, a base other than `develop`, a head that has
@@ -1893,8 +1892,7 @@ dependence on the old names. In BenchBox:
 - Every BenchBox consumer reads `review-gate` and `review-verdict`
   (`scripts/pr_landing.py`, `scripts/pr_arm.py`, `scripts/check_comment_cleanup_scope.py`,
   `_project/scripts/soundness_merge_digest.py`, `scripts/ruleset_drift_check.py`).
-  Nothing reads an `oracle-*` status (the digest still recognises the historical `oracle-verdict` review headings of merged PRs). The drift check ignores `oracle-gate` while
-  the ruleset still lists it.
+  Nothing reads an `oracle-*` status (the digest still recognises the historical `oracle-verdict` review headings of merged PRs). The drift check reports `oracle-gate` as an unexpected required context.
 - **Legacy infrastructure names kept.** The callers keep `environment: oracle`
   and pass `tailscale_tag: tag:oracle-ci`, the tag the tailnet policy and OAuth
   client already use; the cloud nodes keep `tag:oracle-cloud`. The secrets block
@@ -1914,8 +1912,8 @@ dependence on the old names. In BenchBox:
   `Review adjudication:` and `Review backoff reset:`. The old `/oracle-review`,
   `Stand-in oracle review:` and `Oracle adjudication:` spellings are no longer
   documented; do not use them.
-- `review-gate` is the required context. The legacy `oracle-gate` context may
-  stay on the ruleset until the owner removes it just before the v0.2.5 relock.
+- `review-gate` is the only required review context; the owner removed the legacy
+  `oracle-gate` from the live ruleset on 2026-11-10.
 
 ### Pin-watch continuity at the policy rename
 

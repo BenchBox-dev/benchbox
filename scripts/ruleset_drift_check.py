@@ -19,7 +19,6 @@ DEFAULT_RUNBOOK = REPO_ROOT / "docs" / "internal" / "repo-admin-settings.md"
 sys.path.insert(0, str(REPO_ROOT / "_project" / "scripts"))
 
 from ruleset_review_enforcement import (
-    LEGACY_GATE_CONTEXT,
     REVIEW_GATE_CONTEXT,
     REVIEW_GATE_INTEGRATION_ID,
     TAG_RULESET_ENFORCED,
@@ -286,7 +285,7 @@ def compare_ruleset(
     if expected.ref not in _ref_includes(live):
         findings.append(f"{expected.name}: target refs {_ref_includes(live)!r}, expected {expected.ref!r}")
 
-    live_checks = tuple(context for context in _required_status_contexts(live) if context != LEGACY_GATE_CONTEXT)
+    live_checks = tuple(_required_status_contexts(live))
     if set(live_checks) != set(expected.required_checks):
         findings.append(
             f"{expected.name}: required checks {sorted(live_checks)!r}, expected {sorted(expected.required_checks)!r}"
@@ -388,7 +387,7 @@ def capture_comparison_findings(capture: dict[str, Any], live: dict[str, Any]) -
             for check in rule["parameters"]["required_status_checks"]
             if check.get("context") == context
         ]
-        for context in (REVIEW_GATE_CONTEXT, LEGACY_GATE_CONTEXT)
+        for context in (REVIEW_GATE_CONTEXT,)
     }
     for context, bindings in gate_bindings.items():
         missing = context == REVIEW_GATE_CONTEXT and not bindings

@@ -85,9 +85,8 @@ def test_missing_required_status_rule_fails() -> None:
     assert "no required_status_checks rule" in " ".join(rre.review_enforcement_findings(rules))
 
 
-@pytest.mark.parametrize("contexts", [("core", "oracle-gate", "review-gate"), ("core", "review-gate")])
-def test_review_enforced_when_the_app_bound_review_gate_is_required(contexts: tuple[str, ...]) -> None:
-    rules = _pr_rule(count=0, contexts=contexts)
+def test_review_enforced_when_the_app_bound_review_gate_is_required() -> None:
+    rules = _pr_rule(count=0, contexts=("core", "review-gate"))
     assert rre.is_review_enforced(rules) is True
 
 

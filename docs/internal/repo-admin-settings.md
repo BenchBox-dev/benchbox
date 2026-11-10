@@ -296,10 +296,11 @@ History of the required contexts:
   `_project/decisions/oracle-review-check-retired-2026-10-24.md`.
 - 2026-11-08: the Theseus review contexts replaced the oracle names. The live
   ruleset requires `review-gate` (bound to integration 5201041) alongside the
-  legacy `oracle-gate`, which the owner removes just before the Theseus v0.2.8
-  relock merges. `scripts/ruleset_drift_check.py` expects `review-gate` and
-  ignores `oracle-gate` while it is still present; no BenchBox script reads an
-  `oracle-*` status.
+  legacy `oracle-gate`.
+- 2026-11-10: the owner removed the legacy `oracle-gate` from the live ruleset.
+  The migration is done: `review-gate` is the only required review check, and
+  `scripts/ruleset_drift_check.py` treats `oracle-gate` as drift like any other
+  unexpected required context. No BenchBox script reads an `oracle-*` status.
 
 ### No merge queue
 
