@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import concurrent.futures
+import contextvars
 import queue
 import threading
 from typing import Any, Callable
 
-_WorkItem = tuple[concurrent.futures.Future, Callable[..., Any], tuple[Any, ...], dict[str, Any]]
+_WorkItem = tuple[concurrent.futures.Future, contextvars.Context, Callable[..., Any], tuple[Any, ...], dict[str, Any]]
 
 
 class DaemonStreamExecutor:
@@ -25,7 +26,7 @@ class DaemonStreamExecutor:
             if self._shutdown:
                 raise RuntimeError("cannot schedule new futures after shutdown")
             future: concurrent.futures.Future = concurrent.futures.Future()
-            self._work_queue.put((future, fn, args, kwargs))
+            self._work_queue.put((future, contextvars.copy_context(), fn, args, kwargs))
             self._spawn_worker_if_needed()
             return future
 
@@ -68,13 +69,13 @@ class DaemonStreamExecutor:
             item = self._work_queue.get()
             if item is None:
                 return
-            future, fn, args, kwargs = item
+            future, context, fn, args, kwargs = item
             if future.set_running_or_notify_cancel():
                 try:
-                    outcome = fn(*args, **kwargs)
+                    outcome = context.run(fn, *args, **kwargs)
                 except BaseException as exc:
                     future.set_exception(exc)
                 else:
                     future.set_result(outcome)
-            del item, future, fn, args, kwargs
+            del item, future, context, fn, args, kwargs
             self._idle_workers.release()
