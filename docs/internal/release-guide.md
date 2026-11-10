@@ -68,7 +68,12 @@ push run on that branch with its `dist-artifact`. It refuses:
 - a `vX.Y.Z` tag on a `develop` commit while `release/X.Y.x` exists;
 - a tag for another minor on a maintenance branch (`v0.6.1` on `release/0.5.x`);
 - a commit on both lines, or on neither;
-- a commit whose trunk run is missing, failed, or ran on another branch.
+- a commit whose trunk run is missing, failed, or ran on another branch;
+- on a maintenance line: a tagged commit that is not a pull request merged into
+  the line, a line that does not start from a final tag of its minor, a merge
+  commit on the line, or a creation commit whose changes do not match the one
+  `develop` snapshot it names (see "Branch rulesets — `release/X.Y.x`
+  maintenance lines" in [repo-admin-settings.md](repo-admin-settings.md)).
 
 `trunk.yml` runs on pushes to `release/**` as well as `develop`, so each
 commit merged to a maintenance line gets its own trunk run and `dist-artifact`
@@ -97,19 +102,36 @@ The procedure:
 1. Confirm both rulesets are live with `scripts/ruleset_drift_check.py`. The
    legacy `release` branch and its rulesets are gone; Git cannot hold `release`
    and `release/X.Y.x` together, so none may be recreated.
-2. The owner creates the branch from the `vX.Y.0` tag commit, or from the newest
-   `vX.Y.Z` tag of that minor:
-   `git push origin "vX.Y.0^{commit}:refs/heads/release/X.Y.x"`.
-3. The branch starts with the workflows and release scripts of that tag. Because
-   the `oracle` environment admits `release/*`, the owner makes the branch carry
-   `develop`'s current `.github/workflows/review-verdict.yml`,
-   `review-gate.yml`, `.github/theseus-lock.json` and
-   `.github/oracle-reviewers.yml` before anyone dispatches workflows on it: a
-   tag that predates the pinned callers must not leave older reviewer code
-   able to run with the App secrets. If the tag predates maintenance-line
-   support, the first pull request into the branch brings
-   `.github/workflows/trunk.yml`, `release-canary.yml`, `ci.yml`,
-   `release-v2.yml`, `scripts/release_artifact_consumer.py`,
+2. The owner creates the branch as one commit on top of the `vX.Y.0` tag commit
+   (or the newest `vX.Y.Z` tag of that minor). Because the `oracle` and review
+   environments admit `release/*`, that commit must replace the tag's reviewer
+   files with `develop`'s before any workflow can run on the branch: a tag that
+   predates the pinned callers must not leave older reviewer code able to run
+   with the App secrets. From a detached worktree at the tag:
+
+   ```bash
+   source="$(git rev-parse origin/develop)"
+   git rm -q --ignore-unmatch -- .github/workflows/oracle-verdict.yml \
+     .github/workflows/oracle-gate.yml .github/workflows/oracle-review.yml \
+     .github/oracle-reviewers.yml .github/oracle-omp-config.yml
+   git checkout "$source" -- \
+     .github/workflows/review-verdict.yml .github/workflows/review-gate.yml \
+     .github/workflows/review-request.yml .github/review.yml \
+     .github/review-omp-config.yml .github/theseus-lock.json \
+     .github/soundness-paths.txt .github/inert-paths.txt \
+     scripts/theseus_cli.py scripts/theseus_release_check.py \
+     _project/scripts/theseus_bootstrap.py
+   git commit -m "chore(release): carry develop's reviewer files onto release/X.Y.x" \
+     -m "Develop-Source: $source"
+   git push origin "HEAD:refs/heads/release/X.Y.x"
+   ```
+
+   `release-branches` accepts this push because it does not enforce status
+   checks or linear history on creation (see
+   [repo-admin-settings.md](repo-admin-settings.md)).
+3. If the tag predates maintenance-line support, the first pull request into
+   the branch brings `.github/workflows/trunk.yml`, `release-canary.yml`,
+   `ci.yml`, `release-v2.yml`, `scripts/release_artifact_consumer.py`,
    `scripts/release_canary_freshness.py` (and whatever they need) from
    `develop`; `ci.yml` accepts a `release/X.Y.x` base.
 4. Land the fix by pull request into `release/X.Y.x`; the pull request
