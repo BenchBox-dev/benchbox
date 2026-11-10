@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Final PR merged; all five members, the batch and this umbrella closed; no stacks left running."
+  ],
+  "context": "2026-11-09 leader start. Host admission refused heavy bring-up at start (Error 76: available 3.63 GiB, pressure level 2); live runs retried every ~10 min up to 3h. Standing decisions: no live cloud (ClickHouse Cloud check recorded not run), no manual nightly dispatch.\nFinding at start: tests/uat/docker_assets.py already uses binary units (#3748, in develop a727c47272). Live on develop: `make uat-bring-up PLATFORM=starrocks` fails before admission with \"invalid memory limit '${STARROCKS_MEMORY_LIMIT:-8g}'\" even when STARROCKS_MEMORY_LIMIT=4g is set, because docker_assets._resolve_compose_memory_value only accepts ${VAR} (no :-default). That is the remaining defect for member 1.",
+  "description": "Leader notes for feature batch server-engine-bulk-load. Members: uat-docker-memory-admission-decimal-units-20261030, release-uat-presto-trino-unreachable-20261030, perf-clickhouse-server-bulk-load-20261030 (needs 1), perf-starrocks-parquet-load-20261030 (needs 1), perf-trino-presto-bulk-load-20261030 (needs 2). Not a member.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a",
+      "at": "2026-11-10T00:31:56Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "7b926ecc8c0a4ae09b0920e55256660a",
+      "session_id": "248466dc3ce04a7c8f4c76cdbd04176f"
+    }
+  ]
+}

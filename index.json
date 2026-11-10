@@ -11469,6 +11469,13 @@
       "status": "done",
       "title": "Umbrella: result-validity feature batch"
     },
+    "batch-server-engine-bulk-load-umbrella-20261109": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Batch server-engine-bulk-load: umbrella notes (not a member)"
+    },
     "batch-skill-pinned-rollout": {
       "claim": null,
       "needs": [
