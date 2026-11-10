@@ -16834,12 +16834,17 @@
       "title": "Copyright and License Declaration Updates ✅ COMPLETED"
     },
     "core-bundle-export-path-privacy-contract-20261108": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-11T04:26:30Z",
+        "generation": "84f99d306a1249c4bbd9775d1e3eabac",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:db7d69917905292075fe62aa"
+      },
       "needs": [
         "plan-privacy-detector-residual-limits-20261108"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Export the local-path privacy contract in the core bundle so the site gate can check drift"
     },
     "core-docs-advisory-site-build-20261017": {
