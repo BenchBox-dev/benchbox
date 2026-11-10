@@ -284,6 +284,12 @@ jobs:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
 
+      - name: Prepare shared data directory
+        run: |
+          data_dir="${{ runner.temp }}/benchbox-data"
+          mkdir -p "$data_dir"
+          echo "BENCHBOX_DATA_DIR=$data_dir" >> "$GITHUB_ENV"
+
       - name: Bring up Trino compose stack
         run: docker compose -f docker/trino/docker-compose.yml up -d --wait
 
@@ -331,6 +337,12 @@ jobs:
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Prepare shared data directory
+        run: |
+          data_dir="${{ runner.temp }}/benchbox-data"
+          mkdir -p "$data_dir"
+          echo "BENCHBOX_DATA_DIR=$data_dir" >> "$GITHUB_ENV"
 
       - name: Bring up Presto compose stack
         run: docker compose -f docker/presto/docker-compose.yml up -d --wait

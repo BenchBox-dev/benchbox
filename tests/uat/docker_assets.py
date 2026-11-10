@@ -341,6 +341,8 @@ _PLATFORM_STATIC_OPTS: dict[str, list[str]] = {
         "--platform-option",
         "ssl=false",
     ],
+    "trino": ["--platform-option", "source_catalog=hive", "--platform-option", "catalog=memory"],
+    "presto": ["--platform-option", "source_catalog=hive", "--platform-option", "catalog=memory"],
 }
 
 _PLATFORM_CLI_SELECTORS: dict[str, str] = {
@@ -789,7 +791,7 @@ def compose_environment(
         environment[CLICKHOUSE_MEMORY_LIMIT_ENV_VAR] = resolved
     if spec.platform == "starrocks":
         environment["STARROCKS_MEMORY_LIMIT"] = os.environ.get("STARROCKS_MEMORY_LIMIT", starrocks_memory_limit or "8g")
-    if spec.platform not in {"lakesail", "velox"}:
+    if spec.platform not in {"lakesail", "velox", "presto", "trino"}:
         return environment
     if benchmark_runs_dir is None:
         raise DockerAssetError(
