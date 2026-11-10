@@ -688,7 +688,7 @@ class ResultCaptureMixin:
         ):
             return None, 0.0
 
-        from benchbox.core.dataframe.profiling import capture_pyspark_plan
+        from benchbox.core.dataframe.profiling import capture_pyspark_plan, redact_plan_local_paths
 
         start_time = time.perf_counter()
         try:
@@ -714,7 +714,11 @@ class ResultCaptureMixin:
             )
             return None, (time.perf_counter() - start_time) * 1000
 
-        return self._parse_captured_plan(query_id, captured.plan_text, start_time)
+        local_roots = [
+            root for root in (getattr(self, "working_dir", None), *getattr(self, "plan_local_roots", ())) if root
+        ]
+        plan_text = redact_plan_local_paths(captured, local_roots).plan_text
+        return self._parse_captured_plan(query_id, plan_text, start_time)
 
     def _parse_captured_plan(
         self,
@@ -1515,6 +1519,7 @@ class ResultCaptureMixin:
         power_at_size_value = 0.0
         power_refresh_functions = None
         power_refresh_first_set = None
+        power_validation = None
         power_query_count = None
         power_success = None
         power_timing = None
@@ -1525,6 +1530,9 @@ class ResultCaptureMixin:
             power_refresh_functions = list(refresh_functions) if refresh_functions is not None else None
             if refresh_functions is not None:
                 power_refresh_first_set = getattr(getattr(last_power_result, "config", None), "refresh_first_set", None)
+            validation_runs = getattr(last_power_result, "validation_runs", None)
+            if validation_runs:
+                power_validation = {"runs": list(validation_runs)}
             power_query_count = getattr(last_power_result, "queries_executed", None)
             power_success = getattr(last_power_result, "success", None)
             if execution_type == "combined":
@@ -1564,6 +1572,7 @@ class ResultCaptureMixin:
                 power_at_size=power_at_size_value,
                 refresh_first_set=power_refresh_first_set,
                 refresh_functions=power_refresh_functions,
+                validation=power_validation,
                 query_count=power_query_count,
                 success=power_success,
             )

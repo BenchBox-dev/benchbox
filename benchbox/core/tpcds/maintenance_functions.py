@@ -7,6 +7,8 @@ METHOD_FACT_INSERT = 1
 METHOD_FACT_DELETE = 2
 METHOD_INVENTORY_DELETE = 3
 
+MYSQL_INTEGER_CAST_DIALECTS = frozenset({"mysql", "singlestore"})
+
 
 @dataclass(frozen=True)
 class MaintenanceFunction:
@@ -21,6 +23,11 @@ class MaintenanceFunction:
     @property
     def operation_type(self) -> str:
         return "INSERT" if self.method == METHOD_FACT_INSERT else "DELETE"
+
+    def statements_for(self, dialect: str | None) -> tuple[str, ...]:
+        if dialect is not None and dialect.lower() in MYSQL_INTEGER_CAST_DIALECTS:
+            return tuple(statement.replace("AS INTEGER)", "AS SIGNED)") for statement in self.statements)
+        return self.statements
 
 
 def _insert(target: str, columns: tuple[tuple[str, str], ...], source: str) -> str:

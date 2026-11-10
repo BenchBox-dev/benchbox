@@ -15,7 +15,7 @@ def _tree(root: Path, *, lock: bool, policy: bool) -> Path:
     if lock:
         (root / ".github" / "theseus-lock.json").write_text("{}", encoding="utf-8")
     if policy:
-        (root / ".github" / "oracle-reviewers.yml").write_text("reviewers: []\n", encoding="utf-8")
+        (root / ".github" / "review.yml").write_text("reviewers: []\n", encoding="utf-8")
     return root
 
 

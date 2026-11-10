@@ -670,3 +670,42 @@ def test_bounded_remediation_lifecycle(world: World) -> None:
         done = successor.ok(payload["tool"], **{**payload["arguments"], "generation": claim})
         assert done["status"] == "done"
     assert loop.tracker()["lifecycle"] == "completed"
+
+
+def test_start_refuses_one_member_and_members_are_held_to_their_frozen_scope(world: World, leader: McpServer) -> None:
+    scope_file = world.root / "solo-scope.json"
+    scope_file.write_text(json.dumps({"bs-m1": ["src/m1.py"]}))
+    refused = world.refused(
+        world.primary,
+        "batch-start",
+        BATCH="bs",
+        MEMBERS="bs-m1",
+        SCOPE_JSON=str(scope_file),
+        PROJECT_ID="disposable",
+        CONFIRM_CUTOVER="1",
+    )
+    assert "at least two members" in refused and "serial" in refused
+    assert world.git(world.primary, "branch", "--list", "feat/bs") == ""
+
+    loop = Loop(world, leader, "bs", {"m1": ["src/m1.py", "tests/test_m1.py"], "m2": ["src/m2.py"]})
+    loop.register()
+    m1 = loop.mid("m1")
+    frozen = loop.tracker()["scope"][m1]
+    assert frozen == ["src/m1.py", "tests/test_m1.py", "changelog.d/*", "docs/internal/dev-loop-property-ledger.md"]
+
+    worktree = loop.member("m1")
+    loop.implement("m1", {"src/m1.py": "VALUE = 1\n", "src/stray.py": "VALUE = 0\n"})
+    refused = world.refused(
+        worktree, "batch-member-check", TESTS="tests/test_m1.py", PREFLIGHT_CMD=world.preflight_command
+    )
+    assert "outside its frozen scope: src/stray.py" in refused
+    world.git(worktree, "rm", "-q", "src/stray.py")
+    world.git(worktree, "commit", "-q", "-m", "fix: drop the stray file")
+    loop.implement(
+        "m1",
+        {
+            "tests/test_m1.py": "from src import m1\n\n\ndef test_value():\n    assert m1.VALUE == 1\n",
+            "changelog.d/bs-m1.json": '{"schema": 1, "internal": "Exercise the frozen scope."}\n',
+        },
+    )
+    assert loop.check("m1", "tests/test_m1.py")["member"] == m1

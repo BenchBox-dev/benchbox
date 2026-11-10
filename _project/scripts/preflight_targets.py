@@ -17,21 +17,21 @@ PLATFORM_BRANCH = re.compile(
     r"\bsys\.platform\b|\bos\.name\b|\bplatform\.system\(|\bIS_(?:LINUX|MACOS|DARWIN|WINDOWS|POSIX)\b"
 )
 PATCH_CALLEE = re.compile(r"(^|\.)patch(\.|$)")
-ORACLE_CONSUMER_TESTS = (
-    "tests/unit/scripts/test_oracle_local_review.py",
+REVIEW_CONSUMER_TESTS = (
+    "tests/unit/scripts/test_local_review.py",
     "tests/unit/scripts/test_pr_arm.py",
     "tests/unit/scripts/test_pr_landing.py",
     "tests/unit/scripts/test_remote_closeout.py",
     "tests/unit/scripts/test_soundness_merge_digest.py",
     "tests/unit/scripts/test_theseus_lock.py",
     "tests/unit/scripts/test_theseus_release_check.py",
-    "tests/unit/scripts/test_oracle_gateway_host.py",
-    "tests/integration/oracle/test_curated_capture_fixtures.py",
-    "tests/unit/scripts/test_oracle_policy_pin.py",
+    "tests/unit/scripts/test_review_gateway_host.py",
+    "tests/integration/review/test_curated_capture_fixtures.py",
+    "tests/unit/scripts/test_review_policy_pin.py",
     "tests/unit/scripts/test_soundness_merge_digest_dispatch.py",
-    "tests/unit/workflows/test_oracle_gate_workflow.py",
-    "tests/unit/workflows/test_oracle_review_workflow.py",
-    "tests/unit/workflows/test_oracle_verdict_workflow.py",
+    "tests/unit/workflows/test_review_gate_workflow.py",
+    "tests/unit/workflows/test_review_workflow.py",
+    "tests/unit/workflows/test_review_verdict_workflow.py",
 )
 WORKFLOW_TESTS_ROOT = "tests/unit/workflows/"
 SOURCE_GUARD_TESTS: dict[str, tuple[str, ...]] = {
@@ -44,21 +44,32 @@ SOURCE_GUARD_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "benchbox/platforms/": ("tests/uat/test_connection_registry_drift.py",),
     "benchbox/platforms/base/": ("tests/integration/platforms/test_local_platforms_smoke.py",),
-    "scripts/oracle_local_review.py": ORACLE_CONSUMER_TESTS,
-    "scripts/theseus_cli.py": ORACLE_CONSUMER_TESTS,
-    "scripts/theseus_release_check.py": ORACLE_CONSUMER_TESTS,
-    "_project/scripts/theseus_bootstrap.py": ORACLE_CONSUMER_TESTS,
-    "_project/scripts/oracle_gateway_host.sh": ORACLE_CONSUMER_TESTS,
-    "_project/scripts/soundness_merge_digest.py": ORACLE_CONSUMER_TESTS,
-    "_project/scripts/soundness_manifest.py": ORACLE_CONSUMER_TESTS,
-    "_project/scripts/soundness_paths.py": ORACLE_CONSUMER_TESTS,
-    "scripts/pr_arm.py": ORACLE_CONSUMER_TESTS,
-    "scripts/pr_landing.py": ORACLE_CONSUMER_TESTS,
-    "tests/fixtures/oracle_reviewers/": ORACLE_CONSUMER_TESTS,
-    ".github/workflows/review-": ORACLE_CONSUMER_TESTS,
-    ".github/oracle-": ORACLE_CONSUMER_TESTS,
-    ".github/theseus-lock.json": ORACLE_CONSUMER_TESTS,
+    "scripts/local_review.py": REVIEW_CONSUMER_TESTS,
+    "scripts/theseus_cli.py": REVIEW_CONSUMER_TESTS,
+    "scripts/theseus_release_check.py": REVIEW_CONSUMER_TESTS,
+    "_project/scripts/theseus_bootstrap.py": REVIEW_CONSUMER_TESTS,
+    "_project/scripts/review_gateway_host.sh": REVIEW_CONSUMER_TESTS,
+    "_project/scripts/soundness_merge_digest.py": REVIEW_CONSUMER_TESTS,
+    "_project/scripts/soundness_manifest.py": REVIEW_CONSUMER_TESTS,
+    "_project/scripts/soundness_paths.py": REVIEW_CONSUMER_TESTS,
+    "scripts/pr_arm.py": REVIEW_CONSUMER_TESTS,
+    "scripts/pr_landing.py": REVIEW_CONSUMER_TESTS,
+    "tests/fixtures/review_candidates/": REVIEW_CONSUMER_TESTS,
+    ".github/workflows/review-": REVIEW_CONSUMER_TESTS,
+    ".github/review": REVIEW_CONSUMER_TESTS,
+    ".github/theseus-lock.json": REVIEW_CONSUMER_TESTS,
 }
+LEDGER_COVERAGE_TEST = "tests/unit/test_ledger_coverage.py"
+LEDGER_DOCUMENT = "docs/internal/dev-loop-property-ledger.md"
+LEDGER_GOVERNED = re.compile(
+    r"\.github/workflows/[^/]+\.yml"
+    r"|scripts/[^/]+\.py"
+    r"|_project/scripts/.+"
+    r"|tests/unit/(?:workflows|scripts|release)/.+"
+    r"|tests/unit/test_(?:auto_merge|release)_[^/]*"
+    r"|\.pre-commit-config\.yaml"
+    rf"|{re.escape(LEDGER_DOCUMENT)}"
+)
 
 
 def _git_lines(repo: Path, *args: str) -> list[str]:
@@ -280,7 +291,7 @@ EXTRA_TEST_MAP: dict[str, list[str]] = {
     "Makefile": [*WORKTREE_TESTS, *MAKE_INTERFACE_TESTS],
     **{
         f"make/{module}.mk": MAKE_INTERFACE_TESTS
-        for module in ("tests", "reports", "oracle", "quality", "build", "pr-landing", "uat")
+        for module in ("tests", "reports", "oracle", "review", "quality", "build", "pr-landing", "uat")
     },
 }
 
@@ -295,6 +306,8 @@ def map_tests(repo: Path, paths: list[str]) -> list[str]:
     for path in paths:
         selected.update(_workflow_tests(repo, path, test_files, texts))
         selected.update(EXTRA_TEST_MAP.get(path, ()))
+        if LEDGER_GOVERNED.fullmatch(path) and LEDGER_COVERAGE_TEST in test_files:
+            selected.add(LEDGER_COVERAGE_TEST)
         if not path.endswith(".py"):
             selected.update(_guard_tests(path, test_files))
             continue

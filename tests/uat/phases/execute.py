@@ -16,8 +16,8 @@ from benchbox.utils.resource_limits import (
     free_space_gib as default_free_space_reader,
     read_memory_snapshot as default_free_memory_reader,
 )
-from tests.uat import docker_assets, managed_runtime
-from tests.uat.cleanup import CellKey, can_prune, prune_database_dir, source_reuse_graph
+from tests.uat import docker_assets, managed_runtime, mocker_launch
+from tests.uat.cleanup import CellKey, can_prune, prune_database_dir, prune_server_database, source_reuse_graph
 from tests.uat.config import OutputConfig, UATConfig
 from tests.uat.ladder import LadderRung, plan_ladder
 from tests.uat.matrix import (
@@ -327,17 +327,30 @@ def _start_docker_platform_if_needed(
     except docker_assets.DockerAssetError as exc:
         return _DockerPlatformState(spec=spec, project_name=project_name), str(exc)
 
-    up_result = docker_runner(
-        docker_assets.compose_up_command(
-            spec,
-            project_name,
-            start_timeout_s=config.cleanup.docker_start_timeout_s,
-        ),
-        dry_run=config.dry_run,
-        timeout_s=config.cleanup.docker_start_timeout_s,
-        cwd=docker_assets.REPO_ROOT,
-        env=compose_env,
-    )
+    if mocker_launch.applies(spec):
+        try:
+            up_result = mocker_launch.launch_stack(
+                spec,
+                project_name,
+                env=compose_env,
+                runner=docker_runner,
+                timeout_s=config.cleanup.docker_start_timeout_s,
+                dry_run=config.dry_run,
+            )
+        except docker_assets.DockerAssetError as exc:
+            return _DockerPlatformState(spec=spec, project_name=project_name), str(exc)
+    else:
+        up_result = docker_runner(
+            docker_assets.compose_up_command(
+                spec,
+                project_name,
+                start_timeout_s=config.cleanup.docker_start_timeout_s,
+            ),
+            dry_run=config.dry_run,
+            timeout_s=config.cleanup.docker_start_timeout_s,
+            cwd=docker_assets.REPO_ROOT,
+            env=compose_env,
+        )
     _record_docker_event(
         docker_events,
         log_dir=log_dir,
@@ -437,7 +450,9 @@ def _capture_container_logs(
     if config.dry_run:
         return
     result = docker_runner(
-        docker_assets.compose_logs_command(spec, project_name),
+        mocker_launch.logs_command(spec, project_name)
+        if mocker_launch.applies(spec)
+        else docker_assets.compose_logs_command(spec, project_name),
         dry_run=False,
         timeout_s=_CONTAINER_LOG_CAPTURE_TIMEOUT_S,
         cwd=docker_assets.REPO_ROOT,
@@ -479,7 +494,9 @@ def _container_state_report(
     env: dict[str, str],
 ) -> str:
     ids_result = docker_runner(
-        docker_assets.compose_container_ids_command(spec, project_name),
+        mocker_launch.container_ids_command(project_name)
+        if mocker_launch.applies(spec)
+        else docker_assets.compose_container_ids_command(spec, project_name),
         dry_run=False,
         timeout_s=_CONTAINER_LOG_CAPTURE_TIMEOUT_S,
         cwd=docker_assets.REPO_ROOT,
@@ -701,17 +718,28 @@ def _run_docker_teardown(
     except docker_assets.DockerAssetError:
         compose_env = {"BENCHBOX_DATA_DIR": str(docker_assets.REPO_ROOT)}
 
-    down_result = docker_runner(
-        docker_assets.compose_down_command(
+    if mocker_launch.applies(docker_state.spec):
+        down_result = mocker_launch.teardown_stack(
             docker_state.spec,
             docker_state.project_name,
             config.cleanup.docker_platform_switch,
-        ),
-        dry_run=config.dry_run,
-        timeout_s=config.cleanup.docker_start_timeout_s,
-        cwd=docker_assets.REPO_ROOT,
-        env=compose_env,
-    )
+            runner=docker_runner,
+            timeout_s=config.cleanup.docker_start_timeout_s,
+            env=compose_env,
+            dry_run=config.dry_run,
+        )
+    else:
+        down_result = docker_runner(
+            docker_assets.compose_down_command(
+                docker_state.spec,
+                docker_state.project_name,
+                config.cleanup.docker_platform_switch,
+            ),
+            dry_run=config.dry_run,
+            timeout_s=config.cleanup.docker_start_timeout_s,
+            cwd=docker_assets.REPO_ROOT,
+            env=compose_env,
+        )
     cleanup_status = "ok" if down_result.succeeded else "failed"
     _record_docker_event(
         docker_events,
@@ -1093,6 +1121,12 @@ def _maybe_prune_completed(
             if decision.safe_to_prune:
                 prune_database_dir(
                     databases_root,
+                    platform=platform,
+                    benchmark=prev_bench,
+                    scale=scale,
+                    dry_run=dry_run,
+                )
+                prune_server_database(
                     platform=platform,
                     benchmark=prev_bench,
                     scale=scale,

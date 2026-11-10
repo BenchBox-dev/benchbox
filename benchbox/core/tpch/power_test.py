@@ -25,10 +25,45 @@ from benchbox.core.tpch.refresh import (
     check_rf2_applied,
 )
 from benchbox.core.validation.query_validation import (
+    DATA_REFRESHED_REASON,
+    clear_data_refreshed_context,
     clear_reference_seed_context,
+    set_data_refreshed_context,
     set_reference_seed_context,
 )
 from benchbox.utils.clock import elapsed_seconds, mono_time
+
+DATA_STATE_BASE = "base"
+DATA_STATE_REFRESHED = "refreshed"
+
+
+def summarize_power_validation(query_results: list[dict[str, Any]], data_state: str) -> dict[str, Any]:
+    validated: list[int] = []
+    failed: list[int] = []
+    skipped: list[int] = []
+    errored: list[int] = []
+    for query_result in query_results:
+        evidence = query_result.get("row_count_validation")
+        status = evidence.get("status") if isinstance(evidence, dict) else None
+        if status == "PASSED":
+            validated.append(query_result["query_id"])
+        elif status == "FAILED":
+            failed.append(query_result["query_id"])
+        elif query_result.get("error") and not query_result.get("success"):
+            errored.append(query_result["query_id"])
+        else:
+            skipped.append(query_result["query_id"])
+    summary: dict[str, Any] = {
+        "data_state": data_state,
+        "validated_against": "base" if validated or failed else None,
+        "validated_queries": sorted(validated),
+        "failed_queries": sorted(failed),
+        "skipped_queries": sorted(skipped),
+        "errored_queries": sorted(errored),
+    }
+    if data_state == DATA_STATE_REFRESHED:
+        summary["skip_reason"] = DATA_REFRESHED_REASON
+    return summary
 
 
 def _parse_tpch_query_id(qid: object) -> int:
@@ -69,6 +104,8 @@ class TPCHPowerTestResult:
     success: bool
     errors: list[str]
     refresh_functions: list[dict[str, Any]] | None = None
+    validation: dict[str, Any] | None = None
+    validation_runs: list[dict[str, Any]] | None = None
 
     @property
     def scale_factor(self) -> float:
@@ -99,6 +136,8 @@ class TPCHPowerTestResult:
         }
         if self.refresh_functions is not None:
             result["refresh_functions"] = self.refresh_functions
+        if self.validation is not None:
+            result["validation"] = self.validation
         return result
 
 
@@ -264,7 +303,7 @@ class TPCHPowerTest:
                     )
                     raise RuntimeError("TPC-H Power Test refresh RF1 failed")
                 refresh_applied = True
-            self._run_queries(query_permutation, result)
+            self._run_queries(query_permutation, result, data_refreshed=refresh_applied)
 
             if refresh_applied:
                 refresh_rf2_attempted = True
@@ -328,7 +367,9 @@ class TPCHPowerTest:
                 except Exception:
                     pass
 
-    def _run_queries(self, query_permutation: list[int], result: TPCHPowerTestResult) -> None:
+    def _run_queries(
+        self, query_permutation: list[int], result: TPCHPowerTestResult, *, data_refreshed: bool = False
+    ) -> None:
         for position, query_id in enumerate(query_permutation):
             query_start: float | None = None
             query_result = {
@@ -358,11 +399,14 @@ class TPCHPowerTest:
                         self.connection.set_query_context(query_id, stream_id=self.config.stream_id)
 
                     set_reference_seed_context(binds_answer_set_parameters(stream_seed))
+                    set_data_refreshed_context(data_refreshed)
 
                     cursor = self.connection.execute(query_text)
 
                     if hasattr(cursor, "platform_result"):
                         result_dict = cursor.platform_result
+                        if isinstance(result_dict.get("row_count_validation"), dict):
+                            query_result["row_count_validation"] = result_dict["row_count_validation"]
                         if result_dict.get("status") == "FAILED":
                             error_msg = result_dict.get(
                                 "error", result_dict.get("row_count_validation_error", "Query validation failed")
@@ -376,6 +420,7 @@ class TPCHPowerTest:
                         self.connection.commit()
                 finally:
                     clear_reference_seed_context()
+                    clear_data_refreshed_context()
                     self.captured_items.append((label, query_text))
 
                 execution_time = max(0.0, elapsed_seconds(query_start) - conversion_clock.finish())
@@ -412,6 +457,12 @@ class TPCHPowerTest:
 
             result.query_results.append(query_result)
             result.queries_executed += 1
+
+        if self.config.validation:
+            result.validation = summarize_power_validation(
+                result.query_results,
+                DATA_STATE_REFRESHED if data_refreshed else DATA_STATE_BASE,
+            )
 
     def _append_refresh_function_result(
         self,

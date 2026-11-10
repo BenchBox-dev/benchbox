@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pytest
 
-from benchbox.platforms.doris import _empty_fields_to_null
 from benchbox.utils.dialect_utils import translate_sql_query
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -36,11 +35,6 @@ def test_rollup_over_empty_input_still_emits_the_grand_total_row():
 def test_rollup_with_grouping_function_is_left_alone():
     sql = _doris("SELECT a, GROUPING(a) AS g, SUM(x) FROM t GROUP BY ROLLUP (a)")
     assert "UNION" not in sql
-
-
-def test_empty_fields_become_nulls_without_touching_the_trailing_delimiter():
-    assert _empty_fields_to_null("1||x|", "|") == "1|\\N|x|"
-    assert _empty_fields_to_null("1||x", "|") == "1|\\N|x"
 
 
 def test_sourceless_exists_is_inlined_as_its_predicate():

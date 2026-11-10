@@ -20,6 +20,7 @@ from benchbox.core.dataframe.profiling import (
     PlanCaptureSupport,
     capture_query_plan,
     plan_capture_support,
+    redact_plan_local_paths,
 )
 from benchbox.core.tpch.dataframe_queries import get_tpch_dataframe_queries
 from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
@@ -373,7 +374,7 @@ class DataFrameBenchmarkSuite:
 
         for query_id in query_ids:
             logger.info(f"  Running {query_id}...")
-            result = self._benchmark_query(query_id, context, family, platform_name)
+            result = self._benchmark_query(query_id, context, family, platform_name, plan_roots=(data_dir,))
             query_results.append(result)
 
         return PlatformBenchmarkResult(
@@ -408,6 +409,7 @@ class DataFrameBenchmarkSuite:
         context: DataFrameContext,
         family: str,
         platform_name: str,
+        plan_roots: tuple[str | Path, ...] = (),
     ) -> QueryBenchmarkResult:
         query = self._query_registry.get(query_id)
         if query is None:
@@ -473,7 +475,7 @@ class DataFrameBenchmarkSuite:
                     plan_frame = query.execute(context, family)
                     plan = capture_query_plan(plan_frame, platform_name)
                     if plan is not None and plan.plan_type != "error":
-                        query_plan = plan.plan_text
+                        query_plan = redact_plan_local_paths(plan, plan_roots).plan_text
                 except Exception as e:
                     logger.debug(f"Could not capture DataFrame plan for {query_id}: {e}")
                 finally:

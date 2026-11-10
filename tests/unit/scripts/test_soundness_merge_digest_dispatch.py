@@ -31,7 +31,7 @@ PUSHED = "2026-10-02T10:00:00Z"
 AFTER = "2026-10-02T11:00:00Z"
 MERGED_AT = "2026-10-02T12:00:00Z"
 LATER = "2026-10-02T13:00:00Z"
-ORACLE_BOT = "benchbox-oracle[bot]"
+APP_BOT = "benchbox-oracle[bot]"
 CONNECTOR = "chatgpt-codex-connector[bot]"
 
 
@@ -98,12 +98,12 @@ def evidence(**overrides):
 
 
 def standin(sha=HEAD, at=AFTER):
-    return digest.Comment("joeharris76", f"Stand-in oracle review: APPROVE {sha}", at, "User")
+    return digest.Comment("joeharris76", f"Stand-in review: APPROVE {sha}", at, "User")
 
 
-def oracle_review(state="failure", at=AFTER, body=None, sha=HEAD, review_state="COMMENTED"):
+def app_verdict_review(state="failure", at=AFTER, body=None, sha=HEAD, review_state="COMMENTED"):
     text = body if body is not None else f"### review-verdict: {state} for `{sha}`\n\nDetails."
-    return review(ORACLE_BOT, sha, at, review_state, "Bot", text)
+    return review(APP_BOT, sha, at, review_state, "Bot", text)
 
 
 def test_run_returns_what_the_command_wrote():
@@ -224,7 +224,7 @@ def test_threads_are_read_with_one_graphql_query_naming_owner_repo_pull_and_page
     assert args[4:] == ("-f", "o=owner", "-f", "n=name", "-F", "p=7", "-F", "first=100")
 
 
-def test_an_oracle_thread_keeps_the_severity_and_a_missing_commit_is_empty(monkeypatch):
+def test_an_app_thread_keeps_the_severity_and_a_missing_commit_is_empty(monkeypatch):
     nodes = [thread_node(False, "benchbox-oracle", HEAD), {"isResolved": True, "comments": {"nodes": [{"body": "x"}]}}]
     monkeypatch.setattr(digest, "gh_json", lambda *args: graphql_threads(nodes))
     assert digest.collect_threads("o/r", 7) == (
@@ -549,12 +549,12 @@ def test_gap_closures_read_the_comments_and_entries_of_the_repository_asked(shel
 
 
 def test_a_closure_comment_carries_the_marker_signals_and_summary():
-    entry = classified(HEAD, pull=evidence(comments=(standin(),), reviews=(oracle_review("success", PUSHED),)))
-    assert entry.signals == ("oracle-review", "stand-in")
+    entry = classified(HEAD, pull=evidence(comments=(standin(),), reviews=(app_verdict_review("success", PUSHED),)))
+    assert entry.signals == ("review", "stand-in")
     closure = digest.resolved_closure(30, entry)
-    assert closure.summary == "review signal found (oracle-review, stand-in)"
+    assert closure.summary == "review signal found (review, stand-in)"
     assert f"<!-- soundness-gap-closed:{HEAD} -->" in closure.comment
-    assert "Review signal: oracle-review, stand-in." in closure.comment
+    assert "Review signal: review, stand-in." in closure.comment
 
 
 def test_an_attested_closure_names_the_reviewer_the_attester_and_the_evidence():
@@ -754,28 +754,28 @@ def test_the_arrival_query_names_the_head_and_a_run_at_the_pull_creation_counts(
 def test_the_blocking_decision_is_the_latest_blocking_verdict(verdict_body, expected):
     reviews = ()
     if verdict_body is not None:
-        reviews = (oracle_review(body=verdict_body.format(head=HEAD)),)
+        reviews = (app_verdict_review(body=verdict_body.format(head=HEAD)),)
     assert digest.blocking_verdict_decision(evidence(reviews=reviews)) == expected
 
 
 def test_the_latest_blocking_review_by_time_decides_whatever_the_listing_order():
-    later = oracle_review(at=AFTER, body=f"### review-verdict: failure for `{HEAD}`\n\nDecision: **LATER**.")
-    earlier = oracle_review(at=PUSHED, body=f"### review-verdict: failure for `{HEAD}`\n\nDecision: **EARLIER**.")
+    later = app_verdict_review(at=AFTER, body=f"### review-verdict: failure for `{HEAD}`\n\nDecision: **LATER**.")
+    earlier = app_verdict_review(at=PUSHED, body=f"### review-verdict: failure for `{HEAD}`\n\nDecision: **EARLIER**.")
     assert digest.blocking_verdict_decision(evidence(reviews=(later, earlier))) == "LATER"
     assert digest.blocking_verdict_decision(evidence(reviews=(earlier, later))) == "LATER"
 
 
 @pytest.mark.parametrize("state", ["DISMISSED", "PENDING"])
-def test_a_dismissed_or_pending_oracle_review_is_not_a_blocking_verdict(state):
-    assert digest.blocking_verdict_decision(evidence(reviews=(oracle_review(review_state=state),))) is None
+def test_a_dismissed_or_pending_app_verdict_review_is_not_a_blocking_verdict(state):
+    assert digest.blocking_verdict_decision(evidence(reviews=(app_verdict_review(review_state=state),))) is None
 
 
-def test_an_unverifiable_oracle_review_is_counted_only_when_asked_for():
-    flagged = review(ORACLE_BOT, HEAD, AFTER, "COMMENTED", "Bot", "", "edited")
+def test_an_unverifiable_app_verdict_review_is_counted_only_when_asked_for():
+    flagged = review(APP_BOT, HEAD, AFTER, "COMMENTED", "Bot", "", "edited")
     pull = evidence(reviews=(flagged,))
-    assert digest.unverifiable_oracle_evidence(pull) is True
-    assert digest._oracle_reviews(pull, {HEAD}) == []
-    assert digest._oracle_reviews(pull, {HEAD}, include_unverifiable=True) == [flagged]
+    assert digest.unverifiable_review_evidence(pull) is True
+    assert digest._gate_reviews(pull, {HEAD}) == []
+    assert digest._gate_reviews(pull, {HEAD}, include_unverifiable=True) == [flagged]
 
 
 def test_with_no_commits_there_is_no_standin_floor():
@@ -811,10 +811,10 @@ def test_an_instruction_at_the_standin_instant_gives_a_zero_gap():
 
 
 def bot_login_thread(severity="High", resolved=True, **fields):
-    return digest.Thread(resolved, ORACLE_BOT, HEAD, severity, **fields)
+    return digest.Thread(resolved, APP_BOT, HEAD, severity, **fields)
 
 
-def test_a_finding_posted_by_the_app_account_is_still_the_oracles():
+def test_a_finding_posted_by_the_app_account_is_still_the_reviews():
     assert digest.is_overridden_finding(bot_login_thread("High")) is True
     assert digest.is_overridden_finding(bot_login_thread("Medium")) is False
     assert digest.is_overridden_finding(bot_login_thread("Medium", unverifiable="edited")) is True
@@ -880,21 +880,21 @@ def test_a_withdrawn_list_may_end_the_body_and_none_body_has_none():
 
 def test_a_withdrawal_names_the_last_commit_and_lists_pulls_by_number():
     body = f"### review-verdict: failure for `{HEAD}`\n\nWithdrawn as never defects:\n- one\n- one\n- two\n"
-    first = evidence(number=9, reviews=(oracle_review(body=body),))
-    second = evidence(number=3, reviews=(oracle_review(body=body),))
-    bare = evidence(number=4, commits=(), reviews=(oracle_review(body=body),))
+    first = evidence(number=9, reviews=(app_verdict_review(body=body),))
+    second = evidence(number=3, reviews=(app_verdict_review(body=body),))
+    bare = evidence(number=4, commits=(), reviews=(app_verdict_review(body=body),))
     withdrawals = digest.withdrawn_findings([first, second])
     assert [(w.number, w.head, w.items) for w in withdrawals] == [(3, HEAD, ("one", "two")), (9, HEAD, ("one", "two"))]
     assert digest.withdrawn_findings([bare]) == []
 
 
-def test_a_standin_with_an_oracle_success_review_is_not_an_override():
+def test_a_standin_with_an_review_success_review_is_not_an_override():
     pull = evidence(
-        reviews=(oracle_review("success", PUSHED),),
+        reviews=(app_verdict_review("success", PUSHED),),
         comments=(standin(HEAD, AFTER),),
         threads=(bot_login_thread("High", resolved=False),),
     )
-    assert "oracle-review" in digest.review_signals(pull)
+    assert "review" in digest.review_signals(pull)
     assert digest.standin_overrides([pull]) == []
 
 
@@ -910,9 +910,7 @@ def test_overrides_are_found_past_pulls_that_are_not_overrides():
 
 
 def test_an_override_with_unverifiable_evidence_lists_it_next_to_the_decision():
-    flagged = review(
-        ORACLE_BOT, HEAD, PUSHED, "COMMENTED", "Bot", f"### review-verdict: failure for `{HEAD}`", "edited"
-    )
+    flagged = review(APP_BOT, HEAD, PUSHED, "COMMENTED", "Bot", f"### review-verdict: failure for `{HEAD}`", "edited")
     pull = evidence(reviews=(flagged,), comments=(standin(HEAD, AFTER),))
     assert digest.standin_overrides([pull])[0].severities == (digest.UNVERIFIABLE_FINDING,)
 
@@ -1034,7 +1032,7 @@ def test_the_withdrawal_section_lists_each_item_under_its_pull():
     withdrawal = digest.Withdrawal(7, HEAD, ("one", "two"))
     lines = digest.render_withdrawals([withdrawal]).split("\n")
     assert lines[0] == ""
-    assert lines[1].startswith("Oracle withdrawals:")
+    assert lines[1].startswith("Review withdrawals:")
     assert lines[2:] == [f"- #7 (`{HEAD[:9]}`):", "  - one", "  - two"]
 
 
@@ -1342,7 +1340,7 @@ def test_each_supplement_section_lands_in_the_report_in_order(wired, capsys):
         "Unreadable pull requests:",
         "Stand-in overrides:",
         "Armed while Trunk was red:",
-        "Oracle withdrawals:",
+        "Review withdrawals:",
         "Gap issues to close:",
     ]
     positions = [out.index(marker) for marker in markers]
@@ -1371,7 +1369,7 @@ def test_a_failing_supplement_is_reported_and_the_others_still_land(wired, capsy
     unavailable = {
         "overrides": "Stand-in overrides are unavailable for this window: section broke.",
         "red": "Red-trunk armings are unavailable for this window: section broke.",
-        "withdrawals": "Oracle withdrawals are unavailable for this window: section broke.",
+        "withdrawals": "Review withdrawals are unavailable for this window: section broke.",
     }
     present = {
         "overrides": "| #7 | `aaaaaaaaa` | joeharris76 | 5s | High |",
@@ -1432,7 +1430,7 @@ def test_review_edit_states_are_read_in_batches_of_unique_node_ids(shell):
     assert seen[1] == head + ("-f", "ids[]=N_98", "-f", "ids[]=N_99")
 
 
-def bare_app_review(state="COMMENTED", body="", node_id="", login=ORACLE_BOT, user_type="Bot"):
+def bare_app_review(state="COMMENTED", body="", node_id="", login=APP_BOT, user_type="Bot"):
     return digest.Review(login, HEAD, AFTER, state, user_type, body, node_id)
 
 
@@ -1447,11 +1445,11 @@ def bare_app_review(state="COMMENTED", body="", node_id="", login=ORACLE_BOT, us
     ids=["other-bot", "app-as-user", "pending", "dismissed"],
 )
 def test_only_a_submitted_review_by_the_app_bot_is_checked_for_edits(candidate):
-    assert digest.verify_oracle_reviews("o/r", [candidate]) == (candidate,)
+    assert digest.verify_reviews("o/r", [candidate]) == (candidate,)
 
 
 def test_a_review_with_no_node_id_cannot_have_its_edit_state_read():
-    (checked,) = digest.verify_oracle_reviews("o/r", [bare_app_review()])
+    (checked,) = digest.verify_reviews("o/r", [bare_app_review()])
     assert "no node id" in checked.unverifiable
 
 
@@ -1462,7 +1460,7 @@ def test_an_edited_review_does_not_stop_the_checks_of_the_reviews_after_it(monke
             "context": "review-verdict",
             "state": "failure",
             "description": "d",
-            "creator": {"login": ORACLE_BOT, "type": "Bot"},
+            "creator": {"login": APP_BOT, "type": "Bot"},
             "created_at": AFTER,
         }
     ]
@@ -1493,7 +1491,7 @@ def test_an_edited_review_does_not_stop_the_checks_of_the_reviews_after_it(monke
     edited = bare_app_review(body=body("SHIP", "success"), node_id="PRR_1")
     disagreeing = bare_app_review(body=body("SHIP", "success"), node_id="PRR_2")
     user = bare_app_review(login="joe", user_type="User")
-    first, second, third = digest.verify_oracle_reviews("o/r", [edited, disagreeing, user])
+    first, second, third = digest.verify_reviews("o/r", [edited, disagreeing, user])
     assert "edited" in first.unverifiable
     assert "failure status" in second.unverifiable
     assert third.unverifiable == ""
@@ -1526,29 +1524,29 @@ def test_a_ship_review_with_a_run_id_no_status_carries_is_not_matched_to_a_bare_
         "context": "review-verdict",
         "state": "success",
         "description": "bare",
-        "creator": {"login": ORACLE_BOT, "type": "Bot"},
+        "creator": {"login": APP_BOT, "type": "Bot"},
         "created_at": AFTER,
     }
     monkeypatch.setattr(digest, "_graphql_review_edits", lambda ids: {"PRR_1": (None, False)})
     monkeypatch.setattr(digest, "gh_pages", lambda endpoint: [status])
-    (checked,) = digest.verify_oracle_reviews("o/r", [bare_app_review(body=body, node_id="PRR_1")])
+    (checked,) = digest.verify_reviews("o/r", [bare_app_review(body=body, node_id="PRR_1")])
     assert "no review-verdict status" in checked.unverifiable
 
 
-def test_an_oracle_thread_posted_by_the_app_bot_account_is_checked_for_edits(monkeypatch):
-    node = thread_node(False, ORACLE_BOT, HEAD)
+def test_an_app_thread_posted_by_the_app_bot_account_is_checked_for_edits(monkeypatch):
+    node = thread_node(False, APP_BOT, HEAD)
     node["comments"]["nodes"][0]["lastEditedAt"] = LATER
     monkeypatch.setattr(digest, "gh_json", lambda *args: graphql_threads([node]))
     (thread,) = digest.collect_threads("o/r", 7)
     assert thread.severity == "" and "edited" in thread.unverifiable
 
 
-def test_an_oracle_review_at_the_retarget_instant_or_at_the_merge_instant():
+def test_an_app_verdict_review_at_the_retarget_instant_or_at_the_merge_instant():
     verdict = f"### review-verdict: failure for `{HEAD}`"
-    at_retarget = evidence(base_changed_at=AFTER, reviews=(oracle_review(at=AFTER, body=verdict),))
-    at_merge = evidence(reviews=(oracle_review(at=MERGED_AT, body=verdict),))
-    assert digest._oracle_reviews(at_retarget, {HEAD}) == []
-    assert len(digest._oracle_reviews(at_merge, {HEAD})) == 1
+    at_retarget = evidence(base_changed_at=AFTER, reviews=(app_verdict_review(at=AFTER, body=verdict),))
+    at_merge = evidence(reviews=(app_verdict_review(at=MERGED_AT, body=verdict),))
+    assert digest._gate_reviews(at_retarget, {HEAD}) == []
+    assert len(digest._gate_reviews(at_merge, {HEAD})) == 1
 
 
 def three_commit_pull(**fields):
@@ -1563,7 +1561,7 @@ def test_an_override_names_the_last_commit_of_the_pull():
 
 def test_a_withdrawal_names_the_last_commit_of_the_pull():
     body = f"### review-verdict: failure for `{HEAD}`\n\nWithdrawn as never defects:\n- one\n"
-    pull = three_commit_pull(reviews=(oracle_review(body=body),))
+    pull = three_commit_pull(reviews=(app_verdict_review(body=body),))
     assert digest.withdrawn_findings([pull])[0].head == HEAD
 
 
@@ -1597,7 +1595,7 @@ def test_a_pull_merge_base_is_the_commit_before_the_merge_commit(shell, monkeypa
     seen = []
     monkeypatch.setattr(digest, "merge_adds_content", lambda sha, base, cwd=None: seen.append((sha, base)) or False)
     verified = []
-    monkeypatch.setattr(digest, "verify_oracle_reviews", lambda repo, reviews: verified.append(repo) or tuple(reviews))
+    monkeypatch.setattr(digest, "verify_reviews", lambda repo, reviews: verified.append(repo) or tuple(reviews))
     queries = []
 
     def graphql(command):
@@ -1680,7 +1678,7 @@ def serve_app_status(monkeypatch, state):
         "context": "review-verdict",
         "state": state,
         "description": "d",
-        "creator": {"login": ORACLE_BOT, "type": "Bot"},
+        "creator": {"login": APP_BOT, "type": "Bot"},
         "created_at": AFTER,
     }
     monkeypatch.setattr(digest, "_graphql_review_edits", lambda ids: {"PRR_1": (None, False)})
@@ -1692,7 +1690,7 @@ def test_a_marker_decision_contradicting_the_header_is_unreadable_even_when_the_
 ):
     serve_app_status(monkeypatch, "success")
     review_ = bare_app_review(body=marked_body("SHIP", "failure"), node_id="PRR_1")
-    (checked,) = digest.verify_oracle_reviews("o/r", [review_])
+    (checked,) = digest.verify_reviews("o/r", [review_])
     assert "cannot be read" in checked.unverifiable
 
 
@@ -1700,12 +1698,12 @@ def test_a_marker_decision_contradicting_the_header_is_unreadable_even_when_the_
 def test_a_review_with_neither_marker_nor_header_is_unreadable_whatever_the_status_says(monkeypatch, status):
     serve_app_status(monkeypatch, status)
     review_ = bare_app_review(body="Free text, no verdict.", node_id="PRR_1")
-    (checked,) = digest.verify_oracle_reviews("o/r", [review_])
+    (checked,) = digest.verify_reviews("o/r", [review_])
     assert "cannot be read" in checked.unverifiable
 
 
 def test_a_marker_with_no_header_agreeing_with_the_status_verifies(monkeypatch):
     serve_app_status(monkeypatch, "success")
     review_ = bare_app_review(body=marked_body("SHIP", "success", header=False), node_id="PRR_1")
-    (checked,) = digest.verify_oracle_reviews("o/r", [review_])
+    (checked,) = digest.verify_reviews("o/r", [review_])
     assert checked.unverifiable == ""

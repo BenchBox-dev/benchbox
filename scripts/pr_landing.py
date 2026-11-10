@@ -70,8 +70,8 @@ TERMINAL_STATUS_FAILURES = frozenset({"failure", "error"})
 STATUS_CONTEXTS_JQ = (
     r'.[] | [.context, .state, (.creator.login // ""), (.creator.type // ""), (.description // "")] | @tsv'
 )
-ORACLE_GATE_CONTEXT = "oracle-gate"
-ORACLE_APP_LOGIN = "benchbox-oracle"
+REVIEW_GATE_CONTEXT = "review-gate"
+REVIEW_APP_LOGIN = "benchbox-oracle"
 MAX_RERUNS_PER_JOB = 1
 MAX_REENTRIES_PER_HEAD = 1
 PREPARED_RECEIPT_SCHEMA = "prepared_work_v2"
@@ -608,7 +608,7 @@ class ReadyEvidence:
     hold_labels: list | None = None
     soundness_paths_changed: bool = False
     maintainer_approved: bool = False
-    oracle_gate_state: str | None = None
+    review_gate_state: str | None = None
     batch_evidence: dict | None = None
     require_batch: bool = False
     repository: str | None = None
@@ -689,15 +689,10 @@ def live_commit_statuses(run: Runner, repo_full: str, head: str) -> dict[str, st
         if len(parts) < 2 or parts[0] in statuses:
             continue
         name, state, login, account_type, description = [*parts, "", "", ""][:5]
-        if name == ORACLE_GATE_CONTEXT:
-            if login.removesuffix("[bot]") != ORACLE_APP_LOGIN or account_type != "Bot":
+        if name == REVIEW_GATE_CONTEXT:
+            if login.removesuffix("[bot]") != REVIEW_APP_LOGIN or account_type != "Bot":
                 continue
-            if state == "failure" and description.startswith(
-                (
-                    f"oracle-review: waiting for the oracle's verdict on {head},",
-                    f"review: waiting for the review's verdict on {head},",
-                )
-            ):
+            if state == "failure" and description.startswith(f"review: waiting for the review's verdict on {head},"):
                 state = "pending"
         statuses[name] = state
     return statuses
@@ -1103,20 +1098,109 @@ def _check_evidence_acceptance(repo: Path, evidence: dict, head: str, tracker: d
             failures.append(f"current acceptance for member {member} ran outside the integration worktree")
         if row.get("suite") != verification.get("suite") or row.get("command") != verification.get("command"):
             failures.append(f"current acceptance for member {member} is not its own receipt verification")
+        failures.extend(_check_ran_command(member, row, verification.get("command"), evidence))
     return failures
+
+
+def _command_without_paths(command: object, dropped: set[str]) -> list | None:
+    if not isinstance(command, list):
+        return None
+    if not dropped:
+        return list(command)
+    start = trailing_test_run_start(command)
+    if start is None:
+        return None
+    return [*command[:start], *(arg for arg in command[start:] if str(arg).split("::", 1)[0] not in dropped)]
+
+
+def _check_ran_command(member: str, row: dict, recorded: object, evidence: dict) -> list[str]:
+    claimed = evidence.get("dropped_receipt_paths", {})
+    listed = claimed.get(member, []) if isinstance(claimed, dict) else []
+    dropped = row.get("dropped_paths", [])
+    if not isinstance(dropped, list) or not all(isinstance(path, str) for path in dropped):
+        return [f"current acceptance for member {member} has malformed dropped_paths"]
+    if not isinstance(listed, list) or sorted(dropped) != sorted(listed):
+        return [f"current acceptance for member {member} dropped paths differ from the evidence dropped_receipt_paths"]
+    if row.get("ran_command", recorded) != _command_without_paths(recorded, set(dropped)):
+        return [f"current acceptance for member {member} ran a command other than its receipt minus the dropped paths"]
+    return []
 
 
 def _path_in_tree(repo: Path, head: str, path: str) -> bool:
     return subprocess.run(["git", "cat-file", "-e", f"{head}:{path}"], cwd=repo, capture_output=True).returncode == 0
 
 
+TEST_RUN_ANCHORS = ("-q", "pytest")
+
+
+def trailing_test_run_start(command: list) -> int | None:
+    start = len(command)
+    while start > 0 and isinstance(command[start - 1], str) and command[start - 1].startswith("tests/"):
+        start -= 1
+    if start == len(command) or start == 0 or command[start - 1] not in TEST_RUN_ANCHORS:
+        return None
+    return start
+
+
 def _receipt_verification_paths(receipt: object) -> set[str]:
     verification = receipt.get("verification") if isinstance(receipt, dict) else None
     command = verification.get("command") if isinstance(verification, dict) else None
-    if not isinstance(command, list):
+    if not isinstance(command, list) or "pytest" not in command:
         return set()
-    paths = {arg.split("::", 1)[0] for arg in command if isinstance(arg, str) and not arg.startswith("-")}
-    return {path for path in paths if "/" in path or path.endswith(".py")}
+    start = trailing_test_run_start(command)
+    if start is None:
+        return set()
+    return {arg.split("::", 1)[0] for arg in command[start:]}
+
+
+def _git_stdout(repo: Path, *args: str) -> str | None:
+    proc = subprocess.run(["git", *args], cwd=repo, check=False, capture_output=True, encoding="utf-8", timeout=120)
+    return proc.stdout if proc.returncode == 0 else None
+
+
+def _develop_anchors(repo: Path, tracker: dict) -> list[str] | None:
+    start_head = _revision(tracker.get("start_head"))
+    log = tracker.get("integration_log")
+    if start_head is None or not isinstance(log, list):
+        return None
+    anchors = [start_head]
+    for entry in log:
+        if not isinstance(entry, dict) or entry.get("kind") != "develop-merge":
+            continue
+        merge = _revision(entry.get("head"))
+        parents = _git_stdout(repo, "rev-list", "--parents", "-n", "1", merge) if merge else None
+        if parents is None or len(parents.split()) != 3:
+            return None
+        anchors.append(parents.split()[2])
+    return anchors
+
+
+def _plainly_deleted(repo: Path, anchor: str, tip: str, path: str) -> bool:
+    logged = _git_stdout(
+        repo, "log", "--format=%H", "--no-renames", "--diff-filter=D", f"{anchor}..{tip}", "--", f":(literal){path}"
+    )
+    commits = logged.split() if logged else []
+    if not commits:
+        return False
+    for commit in commits:
+        shown = _git_stdout(repo, "show", "--format=", "--no-renames", "--name-status", "-z", "--diff-filter=A", commit)
+        if shown is None or any(token.startswith("tests/") for token in shown.split("\0")[1::2]):
+            return False
+    return True
+
+
+def develop_plainly_deleted(repo: Path, tracker: dict, path: str) -> bool:
+    anchors = _develop_anchors(repo, tracker)
+    if anchors is None:
+        return False
+    present = []
+    for anchor in anchors:
+        listed = _git_stdout(repo, "ls-tree", "--name-only", anchor, "--", path)
+        if listed is None:
+            return False
+        if listed.strip():
+            present.append(anchor)
+    return bool(present) and all(_plainly_deleted(repo, anchor, DEVELOP_TRACKING_REF, path) for anchor in present)
 
 
 def _check_evidence_dropped_paths(repo: Path, evidence: dict, head: str, tracker: dict, receipts: dict) -> list[str]:
@@ -1132,7 +1216,11 @@ def _check_evidence_dropped_paths(repo: Path, evidence: dict, head: str, tracker
             failures.append(f"dropped receipt paths for {member} are malformed")
             continue
         named = _receipt_verification_paths(receipts.get(member))
-        expected = {path for path in named if path in excluded and not _path_in_tree(repo, head, path)}
+        expected = {
+            path
+            for path in named
+            if path in excluded and not _path_in_tree(repo, head, path) and develop_plainly_deleted(repo, tracker, path)
+        }
         for path in sorted(set(claimed) - named):
             failures.append(f"dropped path {path} is not named by member {member}'s receipt command")
         for path in sorted(set(claimed) & named):
@@ -1140,6 +1228,10 @@ def _check_evidence_dropped_paths(repo: Path, evidence: dict, head: str, tracker
                 failures.append(f"dropped path {path} was not removed by a recorded develop merge")
             elif _path_in_tree(repo, head, path):
                 failures.append(f"dropped path {path} still exists at the PR head")
+            elif not develop_plainly_deleted(repo, tracker, path):
+                failures.append(
+                    f"dropped path {path} was not plainly deleted by develop (a rename, replacement or unreadable diff)"
+                )
         failures.extend(
             f"member {member} receipt path {path} was removed by a recorded develop merge but is not listed as dropped"
             for path in sorted(expected - set(claimed))
@@ -1377,10 +1469,10 @@ def ready_failures(
             evidence, repo, identity, expected_head if head_valid else None, tracker, run=active_run, discover=discover
         )
     )
-    if soundness_changed and evidence.oracle_gate_state != "success":
+    if soundness_changed and evidence.review_gate_state != "success":
         failures.append(
-            f"soundness paths changed and the required {ORACLE_GATE_CONTEXT!r} status at {expected_head[:12]} "
-            f"is {evidence.oracle_gate_state or 'absent'}, not success"
+            f"soundness paths changed and the required {REVIEW_GATE_CONTEXT!r} status at {expected_head[:12]} "
+            f"is {evidence.review_gate_state or 'absent'}, not success"
         )
     return failures
 
@@ -2048,7 +2140,7 @@ def _run_ready(args: argparse.Namespace, identity: GitIdentity, branch: str, rep
         hold_labels=evidence_data.get("hold_labels", []),
         soundness_paths_changed=bool(evidence_data.get("soundness_paths_changed")),
         maintainer_approved=bool(evidence_data.get("maintainer_approved")),
-        oracle_gate_state=live_commit_statuses(live_run, args.repo, args.expected_head).get(ORACLE_GATE_CONTEXT),
+        review_gate_state=live_commit_statuses(live_run, args.repo, args.expected_head).get(REVIEW_GATE_CONTEXT),
         batch_evidence=_load_batch_evidence(repo, evidence_data.get("batch_evidence_path"))
         if delivery_mode == "batch" or args.require_batch
         else None,

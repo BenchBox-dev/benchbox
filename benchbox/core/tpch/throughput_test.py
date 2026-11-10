@@ -27,7 +27,9 @@ from benchbox.core.tpch.refresh import (
     generate_refresh_update_sets,
 )
 from benchbox.core.validation.query_validation import (
+    clear_data_refreshed_context,
     clear_reference_seed_context,
+    set_data_refreshed_context,
     set_reference_seed_context,
 )
 from benchbox.utils.clock import elapsed_seconds, mono_time
@@ -565,6 +567,7 @@ class TPCHThroughputTest:
                             connection.set_query_context(query_id)
 
                         set_reference_seed_context(False)
+                        set_data_refreshed_context(config.refresh_functions)
 
                         cursor = connection.execute(query_text)
 
@@ -581,6 +584,7 @@ class TPCHThroughputTest:
                             connection.commit()
                     finally:
                         clear_reference_seed_context()
+                        clear_data_refreshed_context()
                         if hasattr(self, "captured_items"):
                             self.captured_items.append((label, query_text))
 

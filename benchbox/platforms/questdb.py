@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import csv
+import io
 import json
 import re
 import socket
@@ -13,6 +14,7 @@ import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import replace
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -57,6 +59,153 @@ _ILP_VERIFY_TIMEOUT_SECONDS = 120.0
 _ILP_VERIFY_POLL_SECONDS = 0.5
 _ROWS_IMPORTED_RE = re.compile(r"Rows imported\s*\|\s*(\d+)")
 _ROWS_HANDLED_RE = re.compile(r"Rows handled\s*\|\s*(\d+)")
+_IMPORT_COLUMN_LINE_RE = re.compile(r"^\|\s*(\d+)\s*\|\s*(\S.*?)\s*\|\s*(\w+)\s*\|\s*(\d+)\s*\|\s*$", re.MULTILINE)
+_IMPORT_ABORT_RE = re.compile(r"^.*(?:bad syntax|\[line=\d+, col=\d+\]).*$", re.MULTILINE)
+_INT_BOUNDS: dict[str, tuple[int, int]] = {
+    "INT": (-(2**31) + 1, 2**31 - 1),
+    "LONG": (-(2**63) + 1, 2**63 - 1),
+    "SHORT": (-(2**15), 2**15 - 1),
+    "BYTE": (-(2**7), 2**7 - 1),
+}
+_TIMESTAMP_FORMATS = ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S.%fZ", "%Y-%m-%dT%H:%M:%SZ")
+
+
+def _value_parses(value: str, type_name: str) -> bool:
+    if value == "":
+        return True
+    try:
+        if type_name in _INT_BOUNDS:
+            low, high = _INT_BOUNDS[type_name]
+            return low <= int(value) <= high
+        if type_name in ("DOUBLE", "FLOAT"):
+            float(value)
+            return True
+        if type_name in ("DATE", "TIMESTAMP"):
+            for fmt in _TIMESTAMP_FORMATS:
+                try:
+                    datetime.strptime(value, fmt)
+                    return True
+                except ValueError:
+                    continue
+            return False
+    except ValueError:
+        return False
+    return True
+
+
+def _locate_invalid_value(
+    stream: Any, *, delimiter: str, has_header: bool, column_index: int, type_name: str, encoding: str = "utf-8"
+) -> tuple[int, int, str] | None:
+    text = io.TextIOWrapper(stream, encoding=encoding, newline="")
+    reader = csv.reader(text, delimiter=delimiter)
+    row_number = 0
+    for line_number, record in enumerate(reader, start=1):
+        if has_header and line_number == 1:
+            continue
+        row_number += 1
+        if column_index < len(record) and not _value_parses(record[column_index], type_name):
+            text.detach()
+            return row_number, line_number, record[column_index]
+    text.detach()
+    return None
+
+
+def _check_import_value_errors(
+    response_text: str,
+    table_name: str,
+    *,
+    open_source: Any,
+    delimiter: str,
+    has_header: bool,
+    row_offset: int = 0,
+    encoding: str = "utf-8",
+) -> None:
+    abort = _IMPORT_ABORT_RE.search(response_text)
+    flagged = [
+        (int(index), name, type_name.upper(), int(count))
+        for index, name, type_name, count in _IMPORT_COLUMN_LINE_RE.findall(response_text)
+        if int(count) > 0
+    ]
+    if not flagged and abort is None:
+        return
+    details = []
+    for index, name, type_name, count in flagged:
+        located = None
+        try:
+            with open_source() as stream:
+                located = _locate_invalid_value(
+                    stream,
+                    delimiter=delimiter,
+                    has_header=has_header,
+                    column_index=index,
+                    type_name=type_name,
+                    encoding=encoding,
+                )
+        except Exception:
+            located = None
+        where = (
+            f"first at row {located[0] + row_offset:,} (file line {located[1] + row_offset:,}), value {located[2]!r}"
+            if located
+            else "row not located in source"
+        )
+        details.append(
+            f"column '{name}' ({type_name}): {count:,} value(s) QuestDB could not parse and stored as NULL; {where}"
+        )
+    if not details:
+        details.append(abort.group(0).strip())
+    raise RuntimeError(f"QuestDB import into '{table_name}' altered source values: " + "; ".join(details))
+
+
+def _count_non_empty(
+    stream: Any, *, delimiter: str, column_names: list[str], encoding: str = "utf-8"
+) -> tuple[dict[str, int], dict[str, tuple[int, str]]]:
+    text = io.TextIOWrapper(stream, encoding=encoding, newline="")
+    reader = csv.reader(text, delimiter=delimiter)
+    counts = dict.fromkeys(column_names, 0)
+    first: dict[str, tuple[int, str]] = {}
+    positions: dict[str, int] = {}
+    for line_number, record in enumerate(reader, start=1):
+        if line_number == 1:
+            positions = {name: record.index(name) for name in column_names if name in record}
+            continue
+        for name, position in positions.items():
+            value = record[position] if position < len(record) else ""
+            if value == "":
+                continue
+            counts[name] += 1
+            if name not in first or (
+                _value_parses(first[name][1], "TIMESTAMP") and not _value_parses(value, "TIMESTAMP")
+            ):
+                first[name] = (line_number - 1, value)
+    text.detach()
+    return counts, first
+
+
+def _check_timestamps_not_nulled(
+    table_name: str,
+    column_names: list[str],
+    before: list[int],
+    after: list[int],
+    *,
+    open_source: Any,
+    delimiter: str,
+    encoding: str = "utf-8",
+    row_offset: int = 0,
+) -> None:
+    with open_source() as stream:
+        expected, first = _count_non_empty(stream, delimiter=delimiter, column_names=column_names, encoding=encoding)
+    details = []
+    for name, count_before, count_after in zip(column_names, before, after, strict=True):
+        lost = expected[name] - (count_after - count_before)
+        if lost > 0:
+            row, value = first[name]
+            details.append(
+                f"column '{name}' (TIMESTAMP): {lost:,} of {expected[name]:,} non-empty value(s) stored as NULL "
+                f"because QuestDB could not parse them without an import pattern; "
+                f"first source value at row {row + row_offset:,}: {value!r}"
+            )
+    if details:
+        raise RuntimeError(f"QuestDB import into '{table_name}' altered source values: " + "; ".join(details))
 
 
 def _imported_rows(response_text: str, expected: int | None = None) -> int | None:
@@ -717,6 +866,8 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
             "durable": "true",
             "delimiter": dialect.delimiter,
         }
+        if dialect.has_header:
+            params["forceHeader"] = "true"
 
         extension = get_data_extension(data_file)
         strip_trailing_delim = extension == ".tbl"
@@ -733,8 +884,30 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                 schema = self._import_schema(table_name, named_only=dialect.has_header)
                 if schema:
                     files = {"schema": (None, schema, "application/json"), **files}
+                timestamp_columns = (
+                    self._unpatterned_timestamp_columns(table_name, schema) if dialect.has_header else []
+                )
+                before = self._non_null_counts(table_name, timestamp_columns) if timestamp_columns else []
                 response = _http_post(url, params=params, files=files, timeout=300)
-        response.raise_for_status()
+            response.raise_for_status()
+            _check_import_value_errors(
+                response.text,
+                table_name,
+                open_source=lambda: open(load_path, "rb"),
+                delimiter=dialect.delimiter,
+                has_header=dialect.has_header,
+                encoding=dialect.encoding,
+            )
+            if timestamp_columns:
+                _check_timestamps_not_nulled(
+                    table_name,
+                    timestamp_columns,
+                    before,
+                    self._non_null_counts(table_name, timestamp_columns),
+                    open_source=lambda: open(load_path, "rb"),
+                    delimiter=dialect.delimiter,
+                    encoding=dialect.encoding,
+                )
 
         imported = _imported_rows(response.text)
         if imported is not None:
@@ -750,8 +923,6 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
             raise ImportError(
                 "pyarrow is required to load parquet files into QuestDB. Install it with: uv add pyarrow"
             ) from exc
-
-        import io
 
         url = f"{'https' if self.use_tls else 'http'}://{self.host}:{self.http_port}/imp"
         total_rows = 0
@@ -775,8 +946,28 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                 files = {"data": (f"{table_name}.csv", csv_buf, "text/csv")}
                 if schema:
                     files = {"schema": (None, schema, "application/json"), **files}
+                timestamp_columns = self._unpatterned_timestamp_columns(table_name, schema)
+                before = self._non_null_counts(table_name, timestamp_columns) if timestamp_columns else []
                 response = _http_post(url, params=params, files=files, timeout=600)
                 response.raise_for_status()
+                _check_import_value_errors(
+                    response.text,
+                    table_name,
+                    open_source=lambda: io.BytesIO(csv_buf.getvalue()),
+                    delimiter=",",
+                    has_header=True,
+                    row_offset=total_rows,
+                )
+                if timestamp_columns:
+                    _check_timestamps_not_nulled(
+                        table_name,
+                        timestamp_columns,
+                        before,
+                        self._non_null_counts(table_name, timestamp_columns),
+                        open_source=lambda: io.BytesIO(csv_buf.getvalue()),
+                        delimiter=",",
+                        row_offset=total_rows,
+                    )
                 imported = _imported_rows(response.text, expected=len(batch))
             except Exception as exc:
                 raise RuntimeError(
@@ -910,6 +1101,27 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                 continue
             columns.append(entry)
         return json.dumps(columns) if columns else None
+
+    def _unpatterned_timestamp_columns(self, table_name: str, schema: str | None) -> list[str]:
+        url = f"{'https' if self.use_tls else 'http'}://{self.host}:{self.http_port}/exec"
+        try:
+            response = _http_get(url, params={"query": f'SHOW COLUMNS FROM "{table_name}"'}, timeout=30)
+            response.raise_for_status()
+            rows = [row for row in response.json().get("dataset", []) if len(row) >= 2]
+        except Exception as exc:
+            raise RuntimeError(f"Cannot read the column types of '{table_name}' to verify the import: {exc}") from exc
+        patterned = {entry["name"] for entry in json.loads(schema) if "pattern" in entry} if schema else set()
+        return [row[0] for row in rows if str(row[1]).upper() == "TIMESTAMP" and row[0] not in patterned]
+
+    def _non_null_counts(self, table_name: str, column_names: list[str]) -> list[int]:
+        url = f"{'https' if self.use_tls else 'http'}://{self.host}:{self.http_port}/exec"
+        select = ", ".join('count("' + name.replace('"', '""') + '")' for name in column_names)
+        try:
+            response = _http_get(url, params={"query": f'SELECT {select} FROM "{table_name}"'}, timeout=300)
+            response.raise_for_status()
+            return [int(value) for value in response.json()["dataset"][0]]
+        except Exception as exc:
+            raise RuntimeError(f"Cannot count non-null values of '{table_name}' to verify the import: {exc}") from exc
 
     def _ilp_timestamp_columns(self, table_name: str, designated: str | None) -> frozenset[str]:
         if not self._validate_identifier(table_name):

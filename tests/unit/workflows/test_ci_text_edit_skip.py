@@ -14,7 +14,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 ROOT = Path(__file__).resolve().parents[3]
 WORKFLOW = ROOT / ".github/workflows/ci.yml"
-GATE_CONTEXT = "oracle-gate"
+GATE_CONTEXT = "review-gate"
 ADMIN_SETTINGS = ROOT / "docs/internal/repo-admin-settings.md"
 TEXT_EDIT = "github.event.action == 'edited' && !github.event.changes.base"
 ROOT_JOBS = ("comment-policy", "ci-paths")
@@ -181,7 +181,7 @@ def _required_names() -> set[str]:
         for path in WORKFLOW.parent.glob("*.yml")
         if path != WORKFLOW
         for job_id, job in (yaml.safe_load(path.read_text(encoding="utf-8")).get("jobs") or {}).items()
-    } | {_gate_context()}
+    } | {_gate_context(), "review-gate"}
     return required - elsewhere
 
 

@@ -8,6 +8,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Protocol
 
+from tests.uat.failure_signature import classify_failure, evidence_from_row
 from tests.uat.phases.report import atomic_write_text, terminal_state
 from tests.uat.runner import CellResult
 
@@ -41,35 +42,40 @@ def cells_inprogress_path(cells_jsonl: Path) -> Path:
 
 def _render_cell_row(cell: CellResult, *, source_info: SourceInfo) -> str:
     cell_terminal_state = terminal_state(cell)
-    failed_queries = _failed_query_details(cell)
+    failed_queries = failed_query_details(cell)
     failure_tail = _persist_cell_failure_context(
         cell, terminal_state=cell_terminal_state, failed_queries=failed_queries
     )
-    return (
-        json.dumps(
-            {
-                "platform": cell.platform,
-                "benchmark": cell.benchmark,
-                "scale": cell.scale,
-                "status": cell.status,
-                "terminal_state": cell_terminal_state,
-                "submit_terminal_state": cell.submit_terminal_state,
-                "timed_out": cell.status == "timed-out",
-                "exit_code": cell.exit_code,
-                "elapsed_s": cell.elapsed_s,
-                "log_path": str(cell.log_path),
-                "result_path": (str(cell.result_path) if cell.result_path else None),
-                "load_failure_path": (str(cell.load_failure_path) if cell.load_failure_path else None),
-                "throughput_check": cell.throughput_check,
-                "failure_tail": failure_tail,
-                "failed_queries": failed_queries,
-                "source_commit_sha": source_info.commit_sha,
-                "source_commit_short_sha": source_info.commit_short_sha,
-                "source_dirty": source_info.dirty,
-            }
-        )
-        + "\n"
-    )
+    payload = {
+        "platform": cell.platform,
+        "benchmark": cell.benchmark,
+        "scale": cell.scale,
+        "status": cell.status,
+        "terminal_state": cell_terminal_state,
+        "submit_terminal_state": cell.submit_terminal_state,
+        "timed_out": cell.status == "timed-out",
+        "exit_code": cell.exit_code,
+        "elapsed_s": cell.elapsed_s,
+        "log_path": str(cell.log_path),
+        "result_path": (str(cell.result_path) if cell.result_path else None),
+        "load_failure_path": (str(cell.load_failure_path) if cell.load_failure_path else None),
+        "throughput_check": cell.throughput_check,
+        "failure_tail": failure_tail,
+        "failed_queries": failed_queries,
+        "attempt": cell.attempt,
+        "retry_signature": cell.retry_signature,
+        "retry_outcome": cell.retry_outcome,
+        "first_attempt_status": cell.first_attempt_status,
+        "first_attempt_log_path": (str(cell.first_attempt_log_path) if cell.first_attempt_log_path else None),
+        "first_attempt_elapsed_s": cell.first_attempt_elapsed_s,
+        "source_commit_sha": source_info.commit_sha,
+        "source_commit_short_sha": source_info.commit_short_sha,
+        "source_dirty": source_info.dirty,
+    }
+    failure = classify_failure(evidence_from_row(payload))
+    payload["failure_kind"] = failure.kind if failure else None
+    payload["failure_signature"] = failure.signature if failure else None
+    return json.dumps(payload) + "\n"
 
 
 class CellStreamWriter:
@@ -200,6 +206,14 @@ def read_cells_jsonl(path: Path) -> list[CellResult]:
                     load_failure_path=(
                         Path(payload["load_failure_path"]) if payload.get("load_failure_path") else None
                     ),
+                    attempt=int(payload.get("attempt") or 1),
+                    retry_signature=payload.get("retry_signature"),
+                    retry_outcome=payload.get("retry_outcome"),
+                    first_attempt_status=payload.get("first_attempt_status"),
+                    first_attempt_log_path=(
+                        Path(payload["first_attempt_log_path"]) if payload.get("first_attempt_log_path") else None
+                    ),
+                    first_attempt_elapsed_s=payload.get("first_attempt_elapsed_s"),
                 )
             )
     return cells
@@ -245,7 +259,7 @@ def _failed_query_error(entries: list[tuple[str, str]], cursor: dict[str, int], 
     return entries[min(index, len(entries) - 1)][1]
 
 
-def _failed_query_details(cell: CellResult) -> list[dict[str, str]]:
+def failed_query_details(cell: CellResult) -> list[dict[str, str]]:
     if cell.status == "passed" or cell.result_path is None:
         return []
     try:
@@ -290,7 +304,7 @@ def _persist_cell_failure_context(
     if cell.status == "passed" and cell.result_path is not None:
         return ""
     log_path = Path(cell.log_path)
-    tail = _cell_log_tail(log_path)
+    tail = cell_log_tail(log_path)
     if log_path.exists():
         if not _cell_log_has_marker(log_path):
             with log_path.open("a", encoding="utf-8") as fh:
@@ -308,7 +322,7 @@ def _persist_cell_failure_context(
     return tail
 
 
-def _cell_log_tail(log_path: Path) -> str:
+def cell_log_tail(log_path: Path) -> str:
     if not log_path.exists():
         return ""
     lines: deque[str] = deque(maxlen=FAILURE_TAIL_LINES)

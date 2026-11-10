@@ -7,6 +7,7 @@ from __future__ import annotations
 import contextlib
 import functools
 import gzip
+import io
 import math
 import os
 import re
@@ -60,15 +61,6 @@ _DEFAULT_STREAM_LOAD_MAX_FILTER_RATIO = "0"
 _DEFAULT_BUCKETS = 10
 _BACKEND_READY_TIMEOUT_S = 120.0
 _BACKEND_READY_POLL_S = 2.0
-
-
-def _empty_fields_to_null(line: str, delimiter: str) -> str:
-    trailing = line.endswith(delimiter)
-    fields = line.split(delimiter)
-    if trailing:
-        fields.pop()
-    joined = delimiter.join(r"\N" if field == "" else field for field in fields)
-    return joined + delimiter if trailing else joined
 
 
 def _stream_load_text_body(data: bytes) -> bytes:
@@ -298,6 +290,8 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
             "enable_bitmap_index",
             "verify_ssl",
             "ca_cert_path",
+            "parallel_pipeline_task_num",
+            "exec_mem_limit",
         ]:
             if key in config:
                 adapter_config[key] = config[key]
@@ -356,6 +350,8 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         self.enable_bloom_filter: bool = config.get("enable_bloom_filter", False)
         self.enable_bitmap_index: bool = config.get("enable_bitmap_index", False)
 
+        self.parallel_pipeline_task_num: int | None = config.get("parallel_pipeline_task_num")
+        self.exec_mem_limit: int | None = config.get("exec_mem_limit")
         if not self._validate_identifier(self.database):
             raise ValueError(f"Invalid database identifier: {self.database}")
 
@@ -451,10 +447,8 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         data_source: Any,
     ) -> int:
         dialect = resolve_csv_dialect(data_source, source_table_name, data_file, benchmark)
-        if _requests is not None:
-            columns = self._table_column_names(connection, table_name) if dialect.null_marker is not None else None
-            return self._stream_load_file(table_name, data_file, dialect, columns)
-        return self._insert_load_file(connection, table_name, data_file, dialect)
+        columns = self._table_column_names(connection, table_name) if dialect.null_marker is not None else None
+        return self._stream_load_file(table_name, data_file, dialect, columns)
 
     @staticmethod
     def _table_column_names(connection: Any, table_name: str) -> list[str]:
@@ -471,6 +465,9 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         data_file = Path(data_file)
 
         if get_data_extension(data_file) == ".parquet":
+            file_size = data_file.stat().st_size
+            if file_size > self.stream_load_chunk_size:
+                return self._stream_load_parquet_chunked(table_name, data_file)
             return self._stream_load_parquet(table_name, data_file)
 
         if dialect.null_marker is not None and not columns:
@@ -537,6 +534,8 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
             yield iter(lambda: f.read(1 << 20), b"")
 
     def _stream_load_put(self, url: str, data: bytes | Callable[[], Any], headers: dict):
+        if _requests is None:
+            raise ImportError("Doris Stream Load requires the 'requests' package")
         kwargs = {
             "auth": (self.username, self.password),
             "timeout": 1800,
@@ -678,6 +677,50 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         result = self._handle_stream_load_response(resp, context="Stream Load (Parquet)")
         return int(result.get("NumberLoadedRows", 0))
 
+    def _stream_load_parquet_chunked(self, table_name: str, data_file: Path) -> int:
+        scheme = "https" if self.use_tls else "http"
+        url = f"{scheme}://{self.host}:{self.http_port}/api/{self.database}/{table_name}/_stream_load"
+        headers = self._stream_load_headers(format_name="parquet")
+
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
+        with self._open_data_file_binary(data_file) as source:
+            seekable_source: Any = source
+            if not isinstance(FileFormatRegistry.get_compression_handler(data_file), NoCompressionHandler):
+                seekable_source = io.BytesIO(source.read())
+            parquet_file = pq.ParquetFile(seekable_source)
+            num_row_groups = parquet_file.num_row_groups
+            total_rows = parquet_file.metadata.num_rows
+
+            if total_rows == 0:
+                return 0
+
+            total_bytes = sum(parquet_file.metadata.row_group(i).total_byte_size for i in range(num_row_groups))
+            avg_row_bytes = max(1, total_bytes // total_rows)
+            target_batch_rows = max(1, min(200_000, self.stream_load_chunk_size // avg_row_bytes))
+
+            total_loaded = 0
+            chunk_num = 0
+
+            for batch in parquet_file.iter_batches(batch_size=target_batch_rows):
+                chunk_num += 1
+                chunk_table = pa.Table.from_batches([batch])
+                buffer = io.BytesIO()
+                pq.write_table(chunk_table, buffer, compression="snappy")
+                chunk_bytes = buffer.getvalue()
+                self.log_verbose(
+                    f"Stream Load Parquet chunk {chunk_num} for {table_name}: {len(chunk_bytes):,} bytes ({len(chunk_table):,} rows)"
+                )
+                resp = self._stream_load_put(url, chunk_bytes, headers)
+                result = self._handle_stream_load_response(resp, context=f"Stream Load (Parquet) chunk {chunk_num}")
+                total_loaded += int(result.get("NumberLoadedRows", 0))
+
+            self.log_verbose(
+                f"Chunked Parquet Stream Load complete for {table_name}: {chunk_num} chunks, {total_loaded:,} total rows"
+            )
+            return total_loaded
+
     def _stream_load_file_chunked(
         self, table_name: str, data_file: Path, dialect: CsvDialect, columns: list[str] | None = None
     ) -> int:
@@ -709,53 +752,6 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         )
         return total_rows
 
-    def _insert_load_file(self, connection: Any, table_name: str, data_file: Path, dialect: CsvDialect) -> int:
-        delimiter = dialect.delimiter
-        is_tpc = dialect.null_marker is not None
-        row_count = 0
-        batch_size = 1000
-
-        cursor = connection.cursor()
-
-        with open(data_file, encoding="utf-8") as f:
-            if dialect.has_header:
-                next(f, None)
-            batch = []
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-
-                if is_tpc and line.endswith(delimiter):
-                    line = line[: -len(delimiter)]
-
-                values = line.split(delimiter)
-                batch.append(values)
-
-                if len(batch) >= batch_size:
-                    self._execute_batch_insert(cursor, table_name, batch)
-                    row_count += len(batch)
-                    batch = []
-
-            if batch:
-                self._execute_batch_insert(cursor, table_name, batch)
-                row_count += len(batch)
-
-        connection.commit()
-        cursor.close()
-
-        return row_count
-
-    def _execute_batch_insert(self, cursor: Any, table_name: str, rows: list[list[str]]) -> None:
-        if not rows:
-            return
-
-        num_cols = len(rows[0])
-        placeholders = ", ".join(["%s"] * num_cols)
-        sql = f"INSERT INTO `{table_name}` VALUES ({placeholders})"
-
-        cursor.executemany(sql, rows)
-
     def configure_for_benchmark(self, connection: Any, benchmark_type: str) -> None:
         cursor = connection.cursor()
 
@@ -777,12 +773,23 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         except Exception as e:
             self.logger.debug(f"Could not validate cache setting: {e}")
 
+        if self.parallel_pipeline_task_num is not None:
+            try:
+                cursor.execute(f"SET parallel_pipeline_task_num = {self.parallel_pipeline_task_num}")
+            except Exception as e:
+                self.logger.debug(f"Could not set parallel_pipeline_task_num: {e}")
         try:
             cursor.execute("SET parallel_fragment_exec_instance_num = 8")
         except Exception as e:
             self.logger.debug(f"Could not set parallel execution: {e}")
 
-        if benchmark_type == "olap":
+        if self.exec_mem_limit is not None:
+            try:
+                cursor.execute(f"SET exec_mem_limit = {self.exec_mem_limit}")
+            except Exception as e:
+                self.logger.debug(f"Could not set exec_mem_limit: {e}")
+
+        elif benchmark_type == "olap":
             try:
                 cursor.execute("SET exec_mem_limit = 5368709120")
             except Exception as e:
@@ -833,11 +840,12 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
             "configuration": {
                 "database": self.database,
                 "http_port": self.http_port,
-                "stream_load_available": _requests is not None,
                 "table_model": self.table_model,
                 "default_buckets": self.default_buckets,
                 "stream_load_chunk_size": self.stream_load_chunk_size,
                 "stream_load_max_filter_ratio": self.stream_load_max_filter_ratio,
+                "parallel_pipeline_task_num": self.parallel_pipeline_task_num,
+                "exec_mem_limit": self.exec_mem_limit,
                 "enable_partitioning": self.enable_partitioning,
                 "enable_bloom_filter": self.enable_bloom_filter,
                 "enable_bitmap_index": self.enable_bitmap_index,
@@ -861,6 +869,13 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
                 if db_row:
                     platform_info["configuration"]["current_database"] = db_row[0]
 
+                cursor.execute("SHOW VARIABLES LIKE 'parallel_pipeline_task_num'")
+                task_row = cursor.fetchone()
+                if task_row:
+                    try:
+                        platform_info["configuration"]["parallel_pipeline_task_num"] = int(task_row[1])
+                    except (ValueError, TypeError):
+                        platform_info["configuration"]["parallel_pipeline_task_num"] = task_row[1]
                 cursor.close()
 
             except Exception as e:
@@ -997,18 +1012,11 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
             except (AttributeError, ValueError, IndexError):
                 warnings.append("Could not determine pymysql version")
 
-        if _requests is None:
-            warnings.append(
-                "requests library not available - Stream Load disabled, falling back to INSERT loading. "
-                "Install with 'pip install requests' for better performance."
-            )
-
         platform_info = {
             "platform": self.platform_name,
             "benchmark_type": benchmark_type,
             "dry_run_mode": self.dry_run_mode,
             "pymysql_available": pymysql is not None,
-            "requests_available": _requests is not None,
             "host": self.host,
             "port": self.port,
             "http_port": self.http_port,

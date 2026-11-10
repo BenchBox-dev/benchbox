@@ -357,10 +357,6 @@ class World:
         cached = self.review_cache.get((base, head, trusted))
         if cached is not None:
             outcome = cached.get("outcome", outcome)
-        elif getattr(self, "require_cached_review", False):
-            return done(
-                1, stderr="the local review cache holds no result for this member's patch; run batch-member-check"
-            )
         result = {
             "schema": "benchbox_member_review_v1",
             "outcome": outcome,

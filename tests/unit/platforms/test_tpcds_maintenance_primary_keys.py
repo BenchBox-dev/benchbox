@@ -123,15 +123,11 @@ def test_postgresql_filters_primary_key_constraints_to_the_maintenance_tables():
     assert "contype = 'p'" in connection.execute.call_args.args[0]
 
 
-def test_singlestore_reports_tpcds_maintenance_as_unsupported_while_keeping_tpch_refresh():
+def test_singlestore_supports_tpcds_maintenance_and_tpch_refresh():
     from benchbox.core.tpcds.maintenance_test import maintenance_unsupported_reason
     from benchbox.platforms.singlestore import SingleStoreAdapter
 
     adapter = SingleStoreAdapter.__new__(SingleStoreAdapter)
 
-    reason = maintenance_unsupported_reason(adapter)
-
-    assert reason is not None
-    assert "not supported by platform" in reason
-    assert "not been validated" in reason
+    assert maintenance_unsupported_reason(adapter) is None
     assert SingleStoreAdapter.supports_refresh_functions is True

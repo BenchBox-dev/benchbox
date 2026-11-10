@@ -15472,47 +15472,47 @@
     "p50_seconds": 0.021535
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_a_develop_without_the_theseus_first_stage_is_refused",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_a_develop_without_the_theseus_first_stage_is_refused",
     "p50_seconds": 0.532286
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_a_monitor_run_whose_issue_cannot_be_filed_records_nothing_so_the_next_run_retries",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_a_monitor_run_whose_issue_cannot_be_filed_records_nothing_so_the_next_run_retries",
     "p50_seconds": 1.174483
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_a_token_file_with_a_non_matching_name_is_refused_by_name[-x]",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_a_token_file_with_a_non_matching_name_is_refused_by_name[-x]",
     "p50_seconds": 0.533368
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_check_names_a_granted_provider_the_gateway_does_not_serve",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_check_names_a_granted_provider_the_gateway_does_not_serve",
     "p50_seconds": 1.218663
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_check_passes_when_every_provider_is_granted_and_served",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_check_passes_when_every_provider_is_granted_and_served",
     "p50_seconds": 1.21351
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_export_gives_develops_github_tree_not_the_checked_out_branchs",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_export_gives_develops_github_tree_not_the_checked_out_branchs",
     "p50_seconds": 0.796882
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_revoke_and_the_token_file_check_accept_the_same_names[a.b]",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_revoke_and_the_token_file_check_accept_the_same_names[a.b]",
     "p50_seconds": 0.531864
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_revoking_one_client_leaves_the_others_byte_identical_and_calls_no_service",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_revoking_one_client_leaves_the_others_byte_identical_and_calls_no_service",
     "p50_seconds": 0.534995
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_the_live_scope_check_passes_when_every_client_sees_the_same_models",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_the_live_scope_check_passes_when_every_client_sees_the_same_models",
     "p50_seconds": 0.531364
   },
   {
-    "id": "tests/unit/scripts/test_oracle_local_review.py::test_a_first_stage_failure_is_a_refusal",
+    "id": "tests/unit/scripts/test_local_review.py::test_a_first_stage_failure_is_a_refusal",
     "p50_seconds": 0.075965
   },
   {
-    "id": "tests/unit/scripts/test_oracle_local_review.py::test_a_non_sha_trusted_commit_is_refused",
+    "id": "tests/unit/scripts/test_local_review.py::test_a_non_sha_trusted_commit_is_refused",
     "p50_seconds": 0.049071
   },
   {
@@ -18240,31 +18240,31 @@
     "p50_seconds": 0.057793
   },
   {
-    "id": "tests/unit/workflows/test_oracle_gate_workflow.py::test_only_the_theseus_caller_jobs_can_post_the_gate_context",
+    "id": "tests/unit/workflows/test_review_gate_workflow.py::test_only_the_theseus_caller_jobs_can_post_the_gate_context",
     "p50_seconds": 0.77791
   },
   {
-    "id": "tests/unit/workflows/test_oracle_gate_workflow.py::test_push_sweeps_share_a_group_apart_from_pull_request_gates",
+    "id": "tests/unit/workflows/test_review_gate_workflow.py::test_push_sweeps_share_a_group_apart_from_pull_request_gates",
     "p50_seconds": 0.043271
   },
   {
-    "id": "tests/unit/workflows/test_oracle_gate_workflow.py::test_the_concurrency_group_keeps_the_gate_prefix_and_never_cancels_pushes",
+    "id": "tests/unit/workflows/test_review_gate_workflow.py::test_the_concurrency_group_keeps_the_gate_prefix_and_never_cancels_pushes",
     "p50_seconds": 0.029265
   },
   {
-    "id": "tests/unit/workflows/test_oracle_gate_workflow.py::test_titles_carry_the_pull_request_number_or_the_source_head_sha",
+    "id": "tests/unit/workflows/test_review_gate_workflow.py::test_titles_carry_the_pull_request_number_or_the_source_head_sha",
     "p50_seconds": 0.048816
   },
   {
-    "id": "tests/unit/workflows/test_oracle_review_workflow.py::test_workflow_uses_no_actions_secrets_or_tools",
+    "id": "tests/unit/workflows/test_review_workflow.py::test_workflow_uses_no_actions_secrets_or_tools",
     "p50_seconds": 0.025164
   },
   {
-    "id": "tests/unit/workflows/test_oracle_verdict_workflow.py::test_push_and_schedule_sweeps_share_one_group_that_never_cancels",
+    "id": "tests/unit/workflows/test_review_verdict_workflow.py::test_push_and_schedule_sweeps_share_one_group_that_never_cancels",
     "p50_seconds": 0.049956
   },
   {
-    "id": "tests/unit/workflows/test_oracle_verdict_workflow.py::test_the_dispatch_inputs_are_a_required_pull_request_and_two_optional_strings",
+    "id": "tests/unit/workflows/test_review_verdict_workflow.py::test_the_dispatch_inputs_are_a_required_pull_request_and_two_optional_strings",
     "p50_seconds": 0.028701
   },
   {

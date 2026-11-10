@@ -13,10 +13,18 @@ BUDGET_PATH = REPO_ROOT / "_project" / "specs" / "uat-loc-budget.json"
 UAT_DIR = REPO_ROOT / "tests" / "uat"
 
 BUCKETS: list[tuple[str, list[str]]] = [
-    ("plumbing (orchestrator/config/`_cli`)", ["orchestrator.py", "config.py", "_cli.py"]),
+    ("plumbing (orchestrator/config/`_cli`)", ["orchestrator.py", "config.py", "_cli.py", "config_guard.py"]),
     (
         "core exercise (execute/matrix/runner/enumerate/cleanup/ladder)",
-        ["phases/execute.py", "matrix.py", "runner.py", "phases/enumerate.py", "cleanup.py", "ladder.py"],
+        [
+            "phases/execute.py",
+            "matrix.py",
+            "runner.py",
+            "phases/enumerate.py",
+            "cleanup.py",
+            "ladder.py",
+            "infrastructure_retry.py",
+        ],
     ),
     (
         "preflight/compat/timeouts",
@@ -24,15 +32,23 @@ BUCKETS: list[tuple[str, list[str]]] = [
     ),
     (
         "Docker lifecycle (default-OFF, incl. `container_cleanup.py`)",
-        ["docker_assets.py", "docker_cleanup.py", "container_cleanup.py"],
+        ["docker_assets.py", "docker_cleanup.py", "container_cleanup.py", "image_pins.py"],
     ),
     (
         "chartered evidence artifacts (validate/report/package/cells_io/gate_summary)",
-        ["phases/validate.py", "phases/report.py", "phases/package.py", "cells_io.py", "gate_summary.py"],
+        [
+            "phases/validate.py",
+            "phases/report.py",
+            "phases/package.py",
+            "cells_io.py",
+            "gate_summary.py",
+            "failure_signature.py",
+        ],
     ),
     ("throughput", ["throughput.py", "throughput_baseline.py"]),
     ("artifact hygiene", ["artifact_hygiene.py"]),
     ("package init markers", ["__init__.py", "phases/__init__.py"]),
+    ("UAT rubric verdict", ["rubric.py", "rubric_fixtures.py"]),
 ]
 
 ALL_MODULES: list[str] = [name for _label, names in BUCKETS for name in names]

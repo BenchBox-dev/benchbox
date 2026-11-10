@@ -126,9 +126,9 @@ tests/unit/workflows/test_docker_integration_workflow.py
 tests/unit/workflows/test_nightly_t3_workflow.py
 tests/unit/workflows/test_omp_pin_bump_workflow.py
 tests/unit/workflows/test_omp_pin_watch_workflow.py
-tests/unit/workflows/test_oracle_gate_workflow.py
-tests/unit/workflows/test_oracle_verdict_workflow.py
-tests/unit/workflows/test_oracle_review_workflow.py
+tests/unit/workflows/test_review_gate_workflow.py
+tests/unit/workflows/test_review_verdict_workflow.py
+tests/unit/workflows/test_review_workflow.py
 tests/unit/workflows/test_published_results_base_ci.py
 tests/unit/workflows/test_release_canary_shard_evidence.py
 tests/unit/workflows/test_sqlglot_delivery_workflow.py

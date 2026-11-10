@@ -37,12 +37,90 @@ jobs:
       actions: write
       contents: read
       pull-requests: read
-    uses: joeharris76/theseus/.github/workflows/gate.yml@8635dc71ec169886082c1afbc1a9080920237db2
+    uses: joeharris76/theseus/.github/workflows/gate.yml@2900aa67639f792bce5a9abbe58f1c84ab3dd597
     with:
       environment: oracle
-      theseus_ref: 8635dc71ec169886082c1afbc1a9080920237db2
+      theseus_ref: 2900aa67639f792bce5a9abbe58f1c84ab3dd597
       gated_base: develop
-      policy_path: .github/oracle-reviewers.yml
+      policy_path: .github/review.yml
     secrets:
       REVIEW_APP_ID: ${{ secrets.ORACLE_APP_ID }}
       REVIEW_APP_PRIVATE_KEY: ${{ secrets.ORACLE_APP_PRIVATE_KEY }}
+
+  posting-check:
+    name: gate posting check
+    needs: [gate]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+      statuses: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      EVENT_NAME: ${{ github.event_name }}
+      EVENT_PR: ${{ github.event.pull_request.number }}
+      EVENT_HEAD: ${{ github.event.pull_request.head.sha }}
+      INPUT_PR: ${{ inputs.pr }}
+      JOB_RESULT: ${{ needs.gate.result }}
+      GATED_BASE: develop
+      POSTER: benchbox-oracle[bot]
+      CONTEXTS: review-gate oracle-gate
+    steps:
+      - name: Fail when no gate status was posted for the handled head
+        run: |
+          set -euo pipefail
+          case "$JOB_RESULT" in
+            success | failure | cancelled | skipped) ;;
+            *)
+              echo "::error::the gate job ended with the unrecognised result '$JOB_RESULT'"
+              exit 1
+              ;;
+          esac
+          case "$EVENT_NAME" in
+            pull_request_target)
+              pr="$EVENT_PR"
+              handled="$EVENT_HEAD"
+              ;;
+            workflow_dispatch)
+              pr="$INPUT_PR"
+              handled=""
+              ;;
+            *)
+              echo "$EVENT_NAME runs post no gate for one head; nothing to check."
+              exit 0
+              ;;
+          esac
+          pull="$(gh api "repos/$REPO/pulls/$pr")"
+          state="$(jq -r '.state' <<<"$pull")"
+          base="$(jq -r '.base.ref' <<<"$pull")"
+          draft="$(jq -r '.draft' <<<"$pull")"
+          head="$(jq -r '.head.sha' <<<"$pull")"
+          if [ "$state" != open ]; then
+            echo "#$pr is $state; the gate skips it by design."
+            exit 0
+          fi
+          if [ "$base" != "$GATED_BASE" ]; then
+            echo "#$pr targets $base, not $GATED_BASE; the gate skips it by design."
+            exit 0
+          fi
+          if [ "$draft" = true ]; then
+            echo "#$pr is a draft; the gate skips it by design."
+            exit 0
+          fi
+          if [ -n "$handled" ] && [ "$handled" != "$head" ]; then
+            echo "#$pr moved from $handled to $head; the run for the current head covers it."
+            exit 0
+          fi
+          posted="$(gh api --paginate "repos/$REPO/commits/$head/statuses?per_page=100" | jq -s --arg poster "$POSTER" --arg contexts "$CONTEXTS" '[.[][] | select(.creator.login == $poster and (.context as $context | ($contexts | split(" ") | index($context)) != null))] | length')"
+          if [ "$posted" -eq 0 ]; then
+            echo "::error::no gate status ($CONTEXTS) from $POSTER exists for head $head of #$pr; the gate job ended '$JOB_RESULT' without posting one"
+            exit 1
+          fi
+          echo "Head $head of #$pr carries $posted gate status(es) from $POSTER."
+          if [ "$JOB_RESULT" = failure ] || [ "$JOB_RESULT" = cancelled ]; then
+            echo "::error::the gate job ended '$JOB_RESULT'"
+            exit 1
+          fi

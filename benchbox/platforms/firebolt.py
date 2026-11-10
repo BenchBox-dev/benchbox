@@ -20,6 +20,11 @@ logger = logging.getLogger(__name__)
 CORE_UPLOAD_MAX_BYTES = 1_000_000_000
 CORE_UPLOAD_PART_NAME = "benchbox_load"
 
+
+class FireboltColumnCountError(ValueError):
+    pass
+
+
 if TYPE_CHECKING:
     from benchbox.core.tuning.interface import (
         PlatformOptimizationConfiguration,
@@ -820,6 +825,9 @@ class FireboltAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
                         f"Loaded {total_rows_loaded:,} rows into {table_name_lower}{chunk_info} in {load_time:.2f}s"
                     )
 
+                except FireboltColumnCountError as e:
+                    self.logger.error(f"Failed to load {table_name}: {e}")
+                    raise
                 except Exception as e:
                     error_message = str(e) or repr(e) or type(e).__name__
                     self.logger.error(f"Failed to load {table_name}: {error_message}")
@@ -866,7 +874,12 @@ class FireboltAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
     def _build_core_upload_sql(table_name_quoted: str, column_types: list[str], part_name: str, dialect: Any) -> str:
         delimiter = dialect.delimiter.replace("'", "''")
         null_marker = dialect.null_marker
-        options = [f"URL => 'upload://{part_name}'", f"DELIMITER => '{delimiter}'", "HEADER => FALSE"]
+        options = [
+            f"URL => 'upload://{part_name}'",
+            f"DELIMITER => '{delimiter}'",
+            "HEADER => FALSE",
+            "INFER_SCHEMA => FALSE",
+        ]
         if null_marker is None:
             options.append("EMPTY_FIELD_AS_NULL => FALSE")
         elif null_marker == "":
@@ -927,6 +940,15 @@ class FireboltAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
                 "using INSERT batching"
             )
             return None
+        mismatch = self._find_core_upload_column_mismatch(
+            file_path, dialect.delimiter, dialect.null_marker is not None, len(column_types)
+        )
+        if mismatch is not None:
+            line_number, found = mismatch
+            raise FireboltColumnCountError(
+                f"Inconsistent column count in {file_path}: line {line_number} has {found} fields, "
+                f"expected {len(column_types)} for {table_name_lower}"
+            )
         part_name = CORE_UPLOAD_PART_NAME
         sql = self._build_core_upload_sql(table_name_quoted, column_types, part_name, dialect)
         try:
@@ -953,6 +975,23 @@ class FireboltAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
             f"Loaded {rows_loaded:,} rows from {file_path.name} via Core upload in {elapsed_seconds(start):.2f}s"
         )
         return rows_loaded
+
+    @staticmethod
+    def _find_core_upload_column_mismatch(
+        file_path: Path, delimiter: str, trailing_delimiter: bool, expected: int
+    ) -> tuple[int, int] | None:
+        delimiter_bytes = delimiter.encode("utf-8")
+        with file_path.open("rb") as handle:
+            for line_number, raw_line in enumerate(handle, start=1):
+                line = raw_line.rstrip(b"\r\n")
+                if not line:
+                    continue
+                found = line.count(delimiter_bytes) + 1
+                if trailing_delimiter and line.endswith(delimiter_bytes):
+                    found -= 1
+                if found != expected:
+                    return line_number, found
+        return None
 
     @staticmethod
     def _scan_core_upload_file(file_path: Path) -> tuple[int, bool, str]:
@@ -1014,7 +1053,7 @@ class FireboltAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
                         f"({', '.join([placeholder for _ in range(column_count)])})"
                     )
                 elif len(values) != column_count:
-                    raise ValueError(
+                    raise FireboltColumnCountError(
                         f"Inconsistent column count in {file_path}: expected {column_count}, got {len(values)}"
                     )
 

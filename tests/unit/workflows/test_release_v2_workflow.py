@@ -1,15 +1,23 @@
 from __future__ import annotations
 
+import os
 import re
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 
 import pytest
 import yaml
 
+from tests.utilities.posix_shell import run_posix_shell, skip_without_posix_shell
+
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 WORKFLOWS = Path(__file__).resolve().parents[3] / ".github" / "workflows"
 WORKFLOW = WORKFLOWS / "release-v2.yml"
+REAL_MODE = "${{ github.event_name == 'push' || inputs.probe == 'none' }}"
+PROBE_MODE = "${{ github.event_name == 'workflow_dispatch' && inputs.probe != 'none' }}"
 
 
 def _text() -> str:
@@ -27,6 +35,10 @@ def _triggers(path: Path) -> dict:
 
 def _step_commands(job: dict) -> str:
     return "\n".join(step.get("run", "") for step in job["steps"])
+
+
+def _decide_step() -> dict:
+    return next(s for s in _jobs()["uat-reuse"]["steps"] if s.get("id") == "decide")
 
 
 def _tag_shape_regex() -> re.Pattern[str]:
@@ -117,9 +129,13 @@ def test_publish_stages_then_attests_then_publishes_only_staged_files():
 
 
 def test_workflow_covers_the_twelve_cell_install_matrix():
-    matrix = _jobs()["install-matrix"]["strategy"]["matrix"]
-    assert matrix["os"] == ["ubuntu-latest", "macos-latest", "windows-latest"]
-    assert matrix["python-version"] == ["3.11", "3.12", "3.13", "3.14"]
+    from scripts import release_probe_graph as graph
+
+    expression = _jobs()["install-matrix"]["strategy"]["matrix"]
+    for event, inputs in (("push", {}), ("workflow_dispatch", {"probe": "none"})):
+        matrix = graph.evaluate(expression, {"github": {"event_name": event}, "inputs": inputs})
+        assert matrix["os"] == ["ubuntu-latest", "macos-latest", "windows-latest"]
+        assert matrix["python-version"] == ["3.11", "3.12", "3.13", "3.14"]
 
 
 def test_install_matrix_installs_the_staged_wheel_not_the_checkout():
@@ -134,6 +150,7 @@ def test_admit_job_runs_every_pre_publish_gate():
     assert "make release-check" in run
     assert "ruleset_drift_check.py" in run
     assert "release_blocker_check.py" in run
+    assert "release_canary_freshness.py" in run
     assert "unset RELEASE_READINESS_OVERRIDE_SHA RELEASE_READINESS_OVERRIDE_REASON" in run
     assert "RELEASE_READINESS_OVERRIDE" not in "".join(str(s.get("env", "")) for s in admit["steps"])
 
@@ -195,7 +212,7 @@ def test_stages_run_independently_of_each_other_and_skip_only_when_reuse_is_veri
 
 def test_release_uat_gate_checks_every_shard_against_the_admitted_digest():
     gate = _jobs()["release-uat"]
-    assert set(gate["needs"]) == {"admit", "uat-reuse", *UAT_STAGE_JOBS}
+    assert set(gate["needs"]) == {"admit", "uat-reuse", *UAT_STAGE_JOBS, *PROBE_EVIDENCE_JOBS}
     assert "!cancelled()" in gate["if"]
     normal = next(s for s in gate["steps"] if s.get("name") == "Check the combined release gate over every shard")
     assert normal["if"] == "${{ needs.uat-reuse.outputs.reuse != 'true' }}"
@@ -210,21 +227,22 @@ def test_release_uat_gate_checks_every_shard_against_the_admitted_digest():
     assert not any("uat-sweep" in step.get("run", "") for step in gate["steps"])
 
 
-def test_release_uat_reuse_path_regates_the_release_candidates_shards_with_its_admitted_digest():
+def test_release_uat_reuse_path_regates_the_reused_runs_shards_with_its_admitted_digest():
     gate = _jobs()["release-uat"]
-    download = next(s for s in gate["steps"] if s.get("name") == "Download the release candidate's shard evidence")
+    download = next(s for s in gate["steps"] if s.get("name") == "Download the reused run's shard evidence")
     assert download["if"] == "${{ needs.uat-reuse.outputs.reuse == 'true' }}"
-    assert download["with"]["run-id"] == "${{ needs.uat-reuse.outputs.rc_run_id }}"
+    assert download["with"]["run-id"] == "${{ needs.uat-reuse.outputs.source_run_id }}"
     assert download["with"]["github-token"] == "${{ github.token }}"
-    assert download["with"]["pattern"] == "release-uat-${{ needs.uat-reuse.outputs.rc_tag }}-stage*"
-    verify = next(s for s in gate["steps"] if s.get("name", "").startswith("Re-verify the release candidate"))
+    assert download["with"]["pattern"] == "release-uat-${{ needs.uat-reuse.outputs.source_tag }}-stage*"
+    verify = next(s for s in gate["steps"] if s.get("name", "").startswith("Re-verify the reused run's evidence"))
     assert verify["if"] == "${{ needs.uat-reuse.outputs.reuse == 'true' }}"
-    assert verify["env"]["RC_DIST_DIGEST"] == "${{ needs.uat-reuse.outputs.rc_dist_digest }}"
-    assert 'DIST_DIGEST="$RC_DIST_DIGEST"' in verify["run"]
+    assert verify["env"]["SOURCE_DIST_DIGEST"] == "${{ needs.uat-reuse.outputs.source_dist_digest }}"
+    assert 'DIST_DIGEST="$SOURCE_DIST_DIGEST"' in verify["run"]
     assert "make uat-gate-check" in verify["run"]
     assert "release_reuse_uat_evidence.py verify-gate" in verify["run"]
+    assert '--evidence "$evidence"' in verify["run"]
     for number in (1, 2, 3):
-        assert f'release-uat-"$RC_TAG"-stage{number}-*/run' in verify["run"]
+        assert f'release-uat-"$SOURCE_TAG"-stage{number}-*/run' in verify["run"]
 
 
 def test_release_uat_gate_fails_unless_every_shard_job_succeeded_or_was_replaced_by_verified_reuse():
@@ -232,7 +250,10 @@ def test_release_uat_gate_fails_unless_every_shard_job_succeeded_or_was_replaced
     step = next(s for s in gate["steps"] if s.get("name", "").startswith("Require every shard job"))
     assert step["if"] == "always()"
     for number in (1, 2, 3):
-        assert step["env"][f"STAGE{number}_RESULT"] == f"${{{{ needs.uat-stage{number}.result }}}}"
+        real = f"needs.uat-stage{number}.result"
+        assert step["env"][f"STAGE{number}_RESULT"] == (
+            f"${{{{ ({PROBE_MODE[4:-3]}) && needs.probe-uat-stub.result || {real} }}}}"
+        )
     assert step["env"]["REUSE"] == "${{ needs.uat-reuse.outputs.reuse }}"
     assert step["env"]["REUSE_RESULT"] == "${{ needs.uat-reuse.result }}"
     run = step["run"]
@@ -243,12 +264,19 @@ def test_release_uat_gate_fails_unless_every_shard_job_succeeded_or_was_replaced
     assert 'exit "$status"' in run
 
 
-def test_uat_reuse_runs_only_for_final_tags_and_only_after_admission():
+def test_uat_reuse_runs_for_every_tag_and_only_after_admission():
     job = _jobs()["uat-reuse"]
     assert job["needs"] == "admit"
-    assert job["if"] == "${{ needs.admit.outputs.target == 'pypi' }}"
+    assert "if" not in job
     assert job["permissions"] == {"contents": "read", "actions": "read"}
-    assert set(job["outputs"]) == {"reuse", "rc_tag", "rc_sha", "rc_run_id", "rc_dist_digest"}
+    assert set(job["outputs"]) == {
+        "reuse",
+        "source_kind",
+        "source_tag",
+        "source_sha",
+        "source_run_id",
+        "source_dist_digest",
+    }
     for value in job["outputs"].values():
         assert value.startswith("${{ steps.decide.outputs.")
 
@@ -326,7 +354,9 @@ def test_only_admission_checks_out_the_mutable_tag_ref():
             if "actions/checkout" not in step.get("uses", ""):
                 continue
             ref = step.get("with", {}).get("ref")
-            if name == "admit":
+            if name == "admit" and step.get("if") == PROBE_MODE:
+                assert "ref" not in step.get("with", {})
+            elif name == "admit":
                 assert ref == "${{ inputs.tag || github.ref_name }}"
             else:
                 assert ref == "${{ needs.admit.outputs.head_sha }}", f"{name} must check out the admitted commit"
@@ -445,3 +475,224 @@ def test_every_uat_job_frees_runner_disk_through_the_shared_environment_action()
     for name in ("uat-stage1", "uat-stage2", "uat-stage3"):
         uses = [step.get("uses") for step in _jobs()[name]["steps"]]
         assert "./.github/actions/release-uat-env" in uses
+
+
+RELEASE_STEP = "Create the GitHub release from the admitted distributions"
+
+
+def _run_release_step(tmp_path: Path, branch: str, *, existing: bool):
+    skip_without_posix_shell()
+    step = next(s for s in _jobs()["github-release"]["steps"] if s.get("name") == RELEASE_STEP)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    log = tmp_path / "gh.log"
+    (bin_dir / "python3").write_text("#!/bin/sh\nexit 0\n")
+    (bin_dir / "gh").write_text(
+        f'#!/bin/sh\nif [ "$1 $2" = "release view" ]; then exit {0 if existing else 1}; fi\necho "$*" >> "{log}"\n'
+    )
+    for stub in bin_dir.iterdir():
+        stub.chmod(0o755)
+    (tmp_path / "staged").mkdir()
+    (tmp_path / "staged" / "benchbox-0.5.1-py3-none-any.whl").write_text("")
+    result = run_posix_shell(
+        step["run"],
+        cwd=tmp_path,
+        env={
+            "PATH": f"{bin_dir}:/usr/bin:/bin",
+            "RELEASE_TAG": "v0.5.1",
+            "HEAD_SHA": "a" * 40,
+            "RELEASE_BRANCH": branch,
+            "GH_TOKEN": "unused",
+        },
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return result, log.read_text(encoding="utf-8") if log.exists() else ""
+
+
+def test_admission_reports_the_release_line_to_the_github_release_job():
+    admit = _jobs()["admit"]
+    assert admit["outputs"]["branch"] == "${{ steps.admit.outputs.branch || steps.probe-admit.outputs.branch }}"
+    admit_step = next(s for s in admit["steps"] if s.get("id") == "admit")
+    assert "release_artifact_consumer.py line" in admit_step["run"]
+    assert 'echo "branch=$branch" >> "$GITHUB_OUTPUT"' in admit_step["run"]
+    release_env = next(s for s in _jobs()["github-release"]["steps"] if s.get("name") == RELEASE_STEP)["env"]
+    assert release_env["RELEASE_BRANCH"] == "${{ needs.admit.outputs.branch }}"
+
+
+@pytest.mark.parametrize("existing", [False, True])
+def test_a_maintenance_release_is_never_marked_latest(tmp_path, existing):
+    result, calls = _run_release_step(tmp_path, "release/0.5.x", existing=existing)
+    assert result.returncode == 0, result.stdout + result.stderr
+    verb = "edit" if existing else "create"
+    (call,) = [line for line in calls.splitlines() if line.startswith(f"release {verb}")]
+    assert call.endswith("--latest=false")
+
+
+@pytest.mark.parametrize("existing", [False, True])
+def test_a_develop_release_keeps_the_default_latest_behavior(tmp_path, existing):
+    result, calls = _run_release_step(tmp_path, "develop", existing=existing)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "--latest" not in calls
+    assert f"release {'edit' if existing else 'create'} v0.5.1" in calls
+
+
+@pytest.mark.parametrize("branch", ["", "main", "feature/x"])
+def test_an_unreported_release_line_publishes_no_github_release(tmp_path, branch):
+    result, calls = _run_release_step(tmp_path, branch, existing=False)
+    assert result.returncode != 0
+    assert "no release line" in result.stdout
+    assert calls == ""
+
+
+OUTCOME_JOBS = ("admit", "install-matrix", "release-uat", "publish", "github-release")
+PROBE_EVIDENCE_JOBS = ("probe-uat-stub", "probe-reused-evidence")
+PYPI_SUCCESS = dict.fromkeys(OUTCOME_JOBS, "success")
+TEST_PYPI_SUCCESS = {**PYPI_SUCCESS, "github-release": "skipped"}
+RUN_41949185392_ATTEMPT_2 = {**TEST_PYPI_SUCCESS, "publish": "skipped"}
+
+
+def _outcome_step() -> dict:
+    return _jobs()["release-outcome"]["steps"][0]
+
+
+def _run_outcome(target: str, results: dict[str, str]) -> subprocess.CompletedProcess[str]:
+    bash = shutil.which("bash")
+    assert bash is not None
+    step = _outcome_step()
+    env = {"PATH": os.environ["PATH"], "TARGET": target}
+    for name, value in step["env"].items():
+        if name.endswith("_RESULT"):
+            job = next(job for job in OUTCOME_JOBS if f"needs.{job}.result" in value)
+            env[name] = results[job]
+    with tempfile.TemporaryDirectory() as directory:
+        (Path(directory) / "step.sh").write_text(step["run"], encoding="utf-8", newline="\n")
+        return subprocess.run(
+            [bash, "step.sh"], cwd=directory, env=env, capture_output=True, text=True, timeout=30, check=False
+        )
+
+
+def test_release_outcome_job_waits_for_every_release_job_and_always_runs():
+    job = _jobs()["release-outcome"]
+    assert set(job["needs"]) == {*OUTCOME_JOBS, "publish-probe"}
+    assert job["if"] == "${{ always() }}"
+    assert job["permissions"] == {}
+    assert len(job["steps"]) == 1
+    assert _outcome_step()["env"]["TARGET"] == "${{ needs.admit.outputs.target }}"
+
+
+def test_release_outcome_stays_green_for_a_complete_pypi_release():
+    result = _run_outcome("pypi", PYPI_SUCCESS)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_release_outcome_stays_green_for_a_complete_test_pypi_release_where_github_release_is_skipped():
+    result = _run_outcome("test-pypi", TEST_PYPI_SUCCESS)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_release_outcome_fails_the_run_that_went_green_with_publish_skipped():
+    result = _run_outcome("test-pypi", RUN_41949185392_ATTEMPT_2)
+    assert result.returncode == 1
+    assert "publish finished as 'skipped', not 'success'" in result.stdout
+    assert result.stdout.count("::error::") == 1
+
+
+@pytest.mark.parametrize("job", ["admit", "install-matrix", "release-uat", "publish"])
+@pytest.mark.parametrize("result", ["skipped", "failure", "cancelled", ""])
+@pytest.mark.parametrize("target", ["pypi", "test-pypi"])
+def test_release_outcome_cannot_be_bypassed_by_a_job_that_did_not_succeed(target, result, job):
+    results = {**(PYPI_SUCCESS if target == "pypi" else TEST_PYPI_SUCCESS), job: result}
+    outcome = _run_outcome(target, results)
+    assert outcome.returncode == 1
+    assert f"{job} finished as" in outcome.stdout
+
+
+@pytest.mark.parametrize("result", ["skipped", "failure", "cancelled", ""])
+def test_release_outcome_requires_the_github_release_of_a_pypi_publish(result):
+    outcome = _run_outcome("pypi", {**PYPI_SUCCESS, "github-release": result})
+    assert outcome.returncode == 1
+    assert "github-release finished as" in outcome.stdout
+
+
+def test_release_outcome_refuses_a_github_release_for_a_test_pypi_publish():
+    outcome = _run_outcome("test-pypi", {**TEST_PYPI_SUCCESS, "github-release": "success"})
+    assert outcome.returncode == 1
+
+
+@pytest.mark.parametrize("target", ["", "unknown"])
+def test_release_outcome_fails_when_the_admitted_target_is_not_a_tag_target(target):
+    outcome = _run_outcome(target, PYPI_SUCCESS)
+    assert outcome.returncode == 1
+    assert "neither 'pypi' nor 'test-pypi'" in outcome.stdout
+
+
+def test_release_uat_requires_executed_cells_before_the_combined_gate_on_both_paths():
+    steps = _jobs()["release-uat"]["steps"]
+    names = [step.get("name") for step in steps]
+    fresh = steps[names.index("Require executed cells in every stage's shard evidence")]
+    reused = steps[names.index("Require executed cells in the reused run's shard evidence")]
+    assert fresh["if"] == "${{ needs.uat-reuse.outputs.reuse != 'true' }}"
+    assert reused["if"] == "${{ needs.uat-reuse.outputs.reuse == 'true' }}"
+    assert fresh["env"]["RELEASE_TAG"] == "${{ inputs.tag || github.ref_name }}"
+    assert reused["env"]["SOURCE_TAG"] == "${{ needs.uat-reuse.outputs.source_tag }}"
+    for step, tag in ((fresh, "RELEASE_TAG"), (reused, "SOURCE_TAG")):
+        assert f'scripts/release_uat_evidence_check.py --root "$RUNNER_TEMP/uat-evidence" --tag "${tag}"' in step["run"]
+    assert names.index(fresh["name"]) < names.index("Check the combined release gate over every shard")
+    gate_check = "Re-verify the reused run's evidence with the combined release gate"
+    assert names.index(reused["name"]) < names.index(gate_check)
+
+
+def test_admit_refuses_a_release_without_a_fresh_green_canary_before_admitting_artifacts():
+    steps = _jobs()["admit"]["steps"]
+    names = [step.get("name") for step in steps]
+    canary = steps[names.index("Require a fresh green release canary on an ancestor of the tagged commit")]
+    assert names.index(canary["name"]) < names.index("Admit the trunk-tested artifacts")
+    assert canary["env"] == {"GH_TOKEN": "${{ github.token }}", "RELEASE_TAG": "${{ inputs.tag || github.ref_name }}"}
+    assert '--tag "$RELEASE_TAG"' in canary["run"]
+    assert "release_canary_freshness.py check" in canary["run"]
+    assert '--head-sha "$(git rev-parse HEAD)"' in canary["run"]
+    assert "continue-on-error" not in canary
+    assert canary["if"] == REAL_MODE
+
+
+def test_every_downstream_job_waits_for_the_admission_that_checks_the_canary():
+    jobs = _jobs()
+    for name in ("uat-reuse", "install-matrix", "uat-stage1", "uat-stage2", "uat-stage3", "release-uat", "publish"):
+        needs = jobs[name]["needs"]
+        assert "admit" in ([needs] if isinstance(needs, str) else needs), name
+    for name in ("uat-stage1", "uat-stage2", "uat-stage3", "release-uat", "publish"):
+        assert "needs.admit.result == 'success'" in jobs[name]["if"], name
+
+
+def test_the_reuse_decision_never_asks_uv_run_to_skip_the_project_install():
+    run = _decide_step()["run"]
+    assert "uv sync --locked --no-dev --no-install-project" in run
+    for command in re.findall(r"uv run[^\n]*", run):
+        assert "--no-install-project" not in command
+        assert "--no-sync" in command
+
+
+def test_the_reuse_decision_reports_an_unrunnable_decision_as_a_full_uat_run_not_a_job_failure():
+    run = _decide_step()["run"]
+    assert run.startswith("set -uo pipefail\n")
+    assert 'echo "reuse=false" >> "$GITHUB_OUTPUT"' in run
+    assert "::warning::" in run
+
+
+def test_every_stage_sweep_outlasts_the_infrastructure_retry_budget_of_its_config():
+    from tests.uat.config import load_config
+
+    configs = {
+        "uat-stage1": "release-gate-01-native-dataframe.yaml",
+        "uat-stage2": "release-gate-02-docker-nonoltp.yaml",
+        "uat-stage3": "release-gate-03-docker-oltp.yaml",
+    }
+    for name, config_name in configs.items():
+        budget_s = load_config(
+            REPO_ROOT / "tests" / "uat" / "configs" / config_name
+        ).execute.infrastructure_retry_job_budget_s
+        sweep = next(s for s in _jobs()[name]["steps"] if "make uat-sweep" in s.get("run", ""))
+        assert budget_s is not None
+        assert budget_s / 60 + 15 <= sweep["timeout-minutes"], name

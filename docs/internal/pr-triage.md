@@ -63,7 +63,7 @@ auto-merge, merges, or edits a PR's mergeability; both only alert.
   touch a soundness-critical path (or have the
   owner as a requested reviewer): flags ones parked more than 24h since
   their required lane went green, so they don't sit forgotten accumulating
-  conflicts while waiting on the review that `oracle-gate` requires.
+  conflicts while waiting on the review that `review-gate` requires.
 - **Green-unmerged nightly sweep**
   (`_project/scripts/green_unmerged_sweep.py`,
   `.github/workflows/green-unmerged-sweep.yml`) — alerts only on **true stranding**:
@@ -73,7 +73,7 @@ auto-merge, merges, or edits a PR's mergeability; both only alert.
   green" means **every** `develop-squash-only` required context is
   latest-success — the documented required contexts are
   `core`, `explorer`, `results-data`, `docs` and `tooling`, plus `hold` and
-  `oracle-gate` — so a
+  `review-gate` — so a
   PR that is green on one and red or silent on another is not green and is not
   alerted.
   `--apply` only
@@ -106,13 +106,13 @@ auto-merge, merges, or edits a PR's mergeability; both only alert.
   (`gh pr merge <n> --disable-auto`) or withdraw it with
   `make pr-landing-withdraw PR=<n> HEAD=<sha>`, then add the label. The
   evidence transaction also refuses for soundness paths.
-  Soundness-path PRs require `oracle-gate` on the current head and resolved
-  threads. After any push or refresh, rerun CI and wait for the oracle's
+  Soundness-path PRs require `review-gate` on the current head and resolved
+  threads. After any push or refresh, rerun CI and wait for the reviewer's
   result on that head (or the stand-in approval) before arming.
   Withdraw readiness before editing an armed PR.
 
-  `oracle-gate` is posted by the verdict run for the head it reviewed and
-  re-evaluates on its own when a stand-in comment lands, an oracle review is
+  `review-gate` is posted by the verdict run for the head it reviewed and
+  re-evaluates on its own when a stand-in comment lands, a review is
   edited or dismissed, gate code or policy changes on `develop`, and hourly.
   Resolving a review thread starts no run; `make pr-arm` dispatches nothing. For
   a PR that is already armed, re-evaluate it from `develop`:
@@ -122,8 +122,8 @@ auto-merge, merges, or edits a PR's mergeability; both only alert.
   ```
 
   The workflow reads the PR's current head itself, so this also works for a
-  fork PR. Confirm the `oracle-gate` status on the still-current head before
-  assessing readiness. A passing `oracle-gate` does not arm the PR.
+  fork PR. Confirm the `review-gate` status on the still-current head before
+  assessing readiness. A passing `review-gate` does not arm the PR.
 
   **Classifier (arm intent):** a PR is stranded only when auto-merge is off
   *and* the issue/PR timeline includes at least one of

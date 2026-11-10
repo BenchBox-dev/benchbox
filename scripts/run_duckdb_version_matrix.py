@@ -24,7 +24,7 @@ CLI_DESCRIPTION = (
     "\n"
     "Run from the BenchBox checkout with:\n"
     "\n"
-    "    uv run --no-sync -- python scripts/run_duckdb_version_matrix.py       --output-dir /Users/joe/Developer/benchmark_runs/duckdb-version-matrix-20260829\n"
+    "    uv run --no-sync -- python scripts/run_duckdb_version_matrix.py       --output-dir /Users/example/Developer/benchmark_runs/duckdb-version-matrix-20260829\n"
     "\n"
     "``--no-sync`` is required because the runner changes the active DuckDB wheel\n"
     "between subprocesses while the BenchBox project lock intentionally remains\n"

@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed TPC-H power runs with refresh functions failing Q13 row-count validation after RF1 had changed the data.",
+      "details": [
+        "Queries that run after RF1 are no longer checked against the base-data answer set and record the skip reason 'data refreshed'.",
+        "The power_test phase records a validation summary per run: the data state (base or refreshed) and which queries were validated or skipped."
+      ],
+      "benchmarks": ["tpch"]
+    }
+  ]
+}

@@ -64,25 +64,12 @@ logger = logging.getLogger(__name__)
 
 
 class _ResultProxy(Sequence):
-    def __init__(self, rows_or_df) -> None:
-        self._df = None
-        self._rows: list | None = None
-        if rows_or_df is None:
-            self._rows = []
-        elif hasattr(rows_or_df, "itertuples"):
-            self._df = rows_or_df
-        else:
-            self._rows = list(rows_or_df)
+    def __init__(self, rows) -> None:
+        self._rows: list = [] if rows is None else list(rows)
         self._pos = 0
 
-    def _ensure_rows(self) -> list:
-        if self._rows is None:
-            assert self._df is not None
-            self._rows = [tuple(r) for r in self._df.itertuples(index=False, name=None)]
-        return self._rows
-
     def fetchone(self):
-        rows = self._ensure_rows()
+        rows = self._rows
         if self._pos < len(rows):
             row = rows[self._pos]
             self._pos += 1
@@ -90,30 +77,28 @@ class _ResultProxy(Sequence):
         return None
 
     def fetchall(self):
-        rows = self._ensure_rows()
+        rows = self._rows
         remaining = rows[self._pos :]
         self._pos = len(rows)
         return remaining
 
     def __getitem__(self, idx):
-        return self._ensure_rows()[idx]
+        return self._rows[idx]
 
     def __iter__(self):
-        return iter(self._ensure_rows())
+        return iter(self._rows)
 
     def __len__(self):
-        if self._df is not None and self._rows is None:
-            return len(self._df)
-        return len(self._rows or [])
+        return len(self._rows)
 
     def __bool__(self):
         return self.__len__() > 0
 
     def __eq__(self, other):
         if isinstance(other, _ResultProxy):
-            return self._ensure_rows() == other._ensure_rows()
+            return self._rows == other._rows
         if isinstance(other, list):
-            return self._ensure_rows() == other
+            return self._rows == other
         return NotImplemented
 
 
@@ -223,7 +208,9 @@ class ClickHouseLocalClient:
             if query.strip().upper().startswith("INSERT") and params:
                 return self._execute_insert(query, params)
 
-            return _ResultProxy(self._arrow_table(self._query_arrow_stream(query)).to_pandas())
+            table = self._arrow_table(self._query_arrow_stream(query))
+            columns = [column.to_pylist() for column in table.columns]
+            return _ResultProxy(list(zip(*columns)) if columns else [()] * table.num_rows)
 
         except Exception as e:
             raise RuntimeError(f"ClickHouse local query failed: {e}") from e
