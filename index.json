@@ -12672,6 +12672,17 @@
       "status": "open",
       "title": "BenchBox: promote the Theseus lock to review-format release A"
     },
+    "benchbox-lock-theseus-review-format-release-b-20261110": {
+      "claim": null,
+      "needs": [
+        "theseus-review-format-release-b-20261110",
+        "benchbox-review-format-dual-read-20261110",
+        "benchbox-lock-theseus-review-format-release-a-20261110"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "BenchBox: promote the Theseus lock to review-format release B"
+    },
     "benchbox-mcp-server-implementation": {
       "claim": null,
       "needs": [],
