@@ -104,6 +104,12 @@ REDSHIFT_TIMING_COLUMNS = (
     "returned_bytes",
     "result_cache_hit",
 )
+REDSHIFT_STL_TIMING_COLUMNS = ("query_id", "elapsed_time", "queue_time", "execution_time")
+REDSHIFT_STL_TIMING_SQL = (
+    "SELECT q.query, DATEDIFF(microsecond, q.starttime, q.endtime), w.total_queue_time, w.total_exec_time "
+    "FROM stl_query q LEFT JOIN stl_wlm_query w ON w.query = q.query "
+    "WHERE q.query IN ({placeholders})"
+)
 
 
 class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
@@ -112,7 +118,13 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
     plan_capture_phase_eligible = True
     physical_identifier_case = "lower"
     timing_method = TIMING_METHOD_QUERY_ONLY
-    platform_timing_source = "redshift.sys_query_history"
+
+    @property
+    def platform_timing_source(self) -> str:
+        if getattr(self, "deployment_type", None) == "provisioned":
+            return "redshift.stl_query"
+        return "redshift.sys_query_history"
+
     platform_timing_definition = "includes_fetch"
 
     def __init__(self, **config):
@@ -1921,17 +1933,22 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
             for attempt in range(REDSHIFT_HISTORY_ATTEMPTS):
                 pending = [sid for sid in wanted if sid not in found]
                 placeholders = ", ".join(["%s"] * len(pending))
-                cursor.execute(
-                    f"SELECT {', '.join(REDSHIFT_TIMING_COLUMNS)} FROM sys_query_history "
-                    f"WHERE query_id IN ({placeholders})",
-                    tuple(int(sid) for sid in pending),
-                )
+                if self.deployment_type == "provisioned":
+                    columns = REDSHIFT_STL_TIMING_COLUMNS
+                    sql = REDSHIFT_STL_TIMING_SQL.format(placeholders=placeholders)
+                else:
+                    columns = REDSHIFT_TIMING_COLUMNS
+                    sql = (
+                        f"SELECT {', '.join(REDSHIFT_TIMING_COLUMNS)} FROM sys_query_history "
+                        f"WHERE query_id IN ({placeholders})"
+                    )
+                cursor.execute(sql, tuple(int(sid) for sid in pending))
                 for row in cursor.fetchall():
-                    values = dict(zip(REDSHIFT_TIMING_COLUMNS, row, strict=False))
+                    values = dict(zip(columns, row, strict=False))
                     statement_id = str(values["query_id"])
                     fields = {
                         name: value
-                        for name in REDSHIFT_TIMING_COLUMNS[1:]
+                        for name in columns[1:]
                         if isinstance(value := values.get(name), (int, float)) and not isinstance(value, bool)
                     }
                     elapsed = fields.get("elapsed_time")

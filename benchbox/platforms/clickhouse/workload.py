@@ -794,7 +794,9 @@ class ClickHouseWorkloadMixin:
             fetched = fetch_result(
                 self.fetch_mode,
                 fetch_rows=_fetch_rows_clickhouse,
-                fetch_arrow=(_fetch_arrow_clickhouse if hasattr(connection, "execute_arrow") else None),
+                fetch_arrow=(
+                    _fetch_arrow_clickhouse if hasattr(connection, "execute_arrow") and not any(statement_ids) else None
+                ),
             )
 
             execution_time = elapsed_seconds(start_time)

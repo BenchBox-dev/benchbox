@@ -124,7 +124,8 @@ class TestDatabricksTimingContract:
 
         with (
             patch.object(adapter, "_query_history_client", return_value=client),
-            patch("benchbox.platforms.databricks.adapter.time.sleep"),
+            patch("benchbox.platforms.databricks.adapter._QUERY_HISTORY_INITIAL_DELAY_SECONDS", 0.0),
+            patch("benchbox.platforms.databricks.adapter._QUERY_HISTORY_MAX_DELAY_SECONDS", 0.0),
         ):
             timings = adapter.fetch_platform_timings(Mock(), ["stmt-1"])
 
@@ -220,7 +221,7 @@ class TestPrestoTrinoTimingContract:
         connection.cursor.return_value = cursor
 
         with (
-            patch("benchbox.platforms.presto_trino_adapter_base.time.sleep"),
+            patch("benchbox.platforms.presto_trino_adapter_base._RUNTIME_QUERIES_POLL_SECONDS", 0.0),
             patch("benchbox.platforms.presto_trino_adapter_base._RUNTIME_QUERIES_BUDGET_SECONDS", 0.0),
         ):
             adapter.fetch_platform_timings(connection, ["q_1"])

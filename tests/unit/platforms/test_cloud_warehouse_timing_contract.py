@@ -131,7 +131,7 @@ class TestSnowparkConnectTimingContract:
             assert SnowparkConnectAdapter.timing_method == TIMING_METHOD_QUERY_ONLY
             assert SnowparkConnectAdapter.platform_timing_source is None
 
-    def test_execute_counts_one_request_and_result_bytes(self):
+    def test_execute_counts_the_sql_and_collect_requests_and_result_bytes(self):
         with patch("benchbox.platforms.snowpark_connect.check_platform_dependencies", return_value=(True, [])):
             from benchbox.platforms.snowpark_connect import SnowparkConnectAdapter
 
@@ -148,7 +148,7 @@ class TestSnowparkConnectTimingContract:
             ):
                 result = adapter.execute_query(session, "SELECT 1", "Q1")
 
-        assert result["request_count"] == 1
+        assert result["request_count"] == 2
         assert result["result_bytes"] > 0
         assert "platform_timing" not in result
 
@@ -272,6 +272,24 @@ class TestRedshiftTimingContract:
         assert redshift_adapter.timing_method == TIMING_METHOD_QUERY_ONLY
         assert redshift_adapter.platform_timing_source == "redshift.sys_query_history"
         assert redshift_adapter.platform_timing_definition == "includes_fetch"
+
+    def test_provisioned_cluster_reads_stl_query_by_stl_query_id(self, redshift_adapter):
+        redshift_adapter.deployment_type = "provisioned"
+        cursor = Mock()
+        cursor.fetchall.return_value = [(42, 250000, 10000, 200000)]
+        connection = Mock()
+        connection.cursor.return_value = cursor
+
+        timings = redshift_adapter.fetch_platform_timings(connection, ["42"])
+
+        sql, params = cursor.execute.call_args.args
+        assert "FROM stl_query q LEFT JOIN stl_wlm_query w" in sql
+        assert "sys_query_history" not in sql
+        assert params == (42,)
+        assert redshift_adapter.platform_timing_source == "redshift.stl_query"
+        assert timings["42"].platform_ms == 250.0
+        assert timings["42"].queue_ms == 10.0
+        assert timings["42"].exec_ms == 200.0
 
     def test_execute_uses_query_id_from_session_and_sys_query_history(self, redshift_adapter):
         history = [(42, 250000, 10000, 20000, 5000, 200000, 0, 2, 100, True)]

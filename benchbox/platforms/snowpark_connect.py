@@ -291,7 +291,7 @@ class SnowparkConnectAdapter(SparkTuningMixin, PlatformAdapter):
 
         try:
             dataframe = session.sql(query)
-            start_time = mono_time()
+            ledger.add_request(REQUEST_KIND_QUERY)
             result = dataframe.collect()
             ledger.add_request(REQUEST_KIND_QUERY)
             elapsed = elapsed_seconds(start_time)
