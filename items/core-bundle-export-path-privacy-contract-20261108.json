@@ -4,6 +4,13 @@
     "The site gate test consumes that contract (bundle:fetch) and fails on drift; the hand-copied case tables are removed.",
     "A core test fails when the contract changes without the bundle regenerating."
   ],
+  "batch": {
+    "batch_id": "plan-export-contract2",
+    "implementation_dependencies": [
+      "plan-privacy-detector-residual-limits-20261108"
+    ],
+    "member_id": "core-bundle-export-path-privacy-contract-20261108"
+  },
   "context": "Cross-repo: the core change must publish before the site change can consume it (see benchbox-site bundle:fetch flow). Verification rubric: reproduce drift (change an allowlist entry, show nothing fails today); fix; tests in both repos; comment-policy and ruff; PRs merged with green CI.\n\nBATCH DECISIONS (2026-11-09): this batch delivers the CORE half only: generate the detector contract (roots, drive/UNC rules, placeholder allowlist, accepted/rejected example cases) from the shared detector in benchbox/validation/bundle.py into the site-inputs bundle (see scripts/site_inputs.py, make/site-inputs.mk, quality/doc-contracts.schema.json and docs/internal/doc-contracts.md for the established contract shape; decide by evidence whether it extends doc-contracts.json or is a new sidecar, and update the schema/tests accordingly) plus a core test that fails when the contract and detector disagree. The bundle is published automatically by .github/workflows/site-inputs.yml after merge to develop. The SITE half (consume the contract in the deploy gate test, remove hand-copied case tables in benchbox-site) is done by the controller in a separate site PR after core merges; do not touch benchbox-site. Must land AFTER the residual-limits item if both change the detector contract (the contract should describe the final detector). GUARDRAILS: stored fingerprints are never recomputed; never print leaked path values in diagnostics; do not widen the detector to every absolute path (owner decision 2026-11-08); fail-closed publish behavior stays; private non-anonymized exports unchanged; no hosted data deletion or history rewrite. Verification rubric: (1) reproduce with a failing test or script before editing; (2) focused suites pass via uv run -- python -m pytest -n 0; (3) make comment-policy-check and ruff on touched files; (4) the runtime smoke named in acceptance is recorded in the PR body; (5) one final batch PR merges with green CI and a passing oracle review.",
   "description": "The site deploy gate (benchbox-site PR #128) uses a hand-ported TypeScript copy of core's local-path detector (known roots, drive letters, UNC, placeholder allowlist). The core site-inputs bundle publishes no path-privacy contract, so nothing mechanically detects drift between the two; the site README only asks maintainers to keep them in step. A core change to the roots or allowlist could silently desynchronize the site gate.",
   "links": [
@@ -42,6 +49,14 @@
       "client": "omp-coding-agent",
       "op": "abort",
       "op_id": "8bbf09909d3f414ba64b5c079d378a01",
+      "session_id": "039807d800674f11b2d8d71dccd4e6ed"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:db7d69917905292075fe62aa",
+      "at": "2026-11-10T01:46:07Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d67e13b632bb442197a5a617ec515370",
       "session_id": "039807d800674f11b2d8d71dccd4e6ed"
     }
   ]
