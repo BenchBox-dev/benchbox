@@ -22282,9 +22282,9 @@
     },
     "export-text-plan-result-fails-loader-query-plan-raw-20261108": {
       "claim": {
-        "expires_at": "2026-11-11T04:25:17Z",
-        "generation": "e51ef6d4e40f4721a6891591bb0c8f67",
-        "renewals": 0,
+        "expires_at": "2026-11-11T04:25:32Z",
+        "generation": "c3fad300b2e64fd8bc3554ed553ceea1",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:db7d69917905292075fe62aa"
       },
       "needs": [],
