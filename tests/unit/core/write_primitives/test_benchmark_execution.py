@@ -824,34 +824,18 @@ class TestExecuteOperation:
         assert "MERGE" in (result.skip_reason or "")
         mock_conn.execute.assert_not_called()
 
-    def test_execute_operation_skips_duckdb_merge_gap(self, wp_benchmark, monkeypatch):
-        mock_conn = Mock()
-        mock_conn.execute = Mock()
-        monkeypatch.setattr(wp_benchmark, "is_setup", lambda conn: True)
-
-        result = wp_benchmark.execute_operation("merge_simple_upsert_small", mock_conn, platform_key="duckdb")
-
-        assert result.status == "SKIPPED"
-        assert result.success is True
-        assert result.error is None
-        assert "MERGE" in (result.skip_reason or "")
-        mock_conn.execute.assert_not_called()
-
-    def test_scd2_merge_category_ops_are_not_skipped_on_duckdb(self, wp_benchmark):
+    def test_scd2_and_merge_into_ops_are_not_skipped_on_duckdb(self, wp_benchmark):
         for op_id in (
             "merge_scd_type2_basic",
             "merge_scd_type2_no_change",
             "merge_scd_type2_new_keys_only",
+            "merge_simple_upsert_small",
         ):
             operation = wp_benchmark.get_operation(op_id)
             assert operation.category == "merge"
             effective_sql, skip_reason = wp_benchmark._get_effective_write_sql(operation, platform_key="duckdb")
             assert skip_reason is None, f"{op_id} was wrongly skipped on DuckDB: {skip_reason}"
             assert effective_sql, f"{op_id} returned no effective SQL"
-
-        merge_op = wp_benchmark.get_operation("merge_simple_upsert_small")
-        _, merge_skip = wp_benchmark._get_effective_write_sql(merge_op, platform_key="duckdb")
-        assert merge_skip is not None and "MERGE" in merge_skip
 
     def test_execute_operation_uses_platform_override_when_available(self, wp_benchmark, monkeypatch):
         operation = wp_benchmark.get_operation("insert_on_conflict_ignore")
@@ -1911,7 +1895,7 @@ def test_get_effective_write_sql_no_overrides(fast_bench):
     assert skip is None
 
 
-def test_get_effective_write_sql_duckdb_skips_merge_into(fast_bench):
+def test_get_effective_write_sql_duckdb_runs_merge_into(fast_bench):
     operation = SimpleNamespace(
         id="merge_simple_upsert_small",
         write_sql="MERGE INTO t AS target USING s ON t.k = s.k WHEN MATCHED THEN UPDATE SET v = s.v",
@@ -1919,9 +1903,8 @@ def test_get_effective_write_sql_duckdb_skips_merge_into(fast_bench):
         category="merge",
     )
     sql, skip = fast_bench._get_effective_write_sql(operation, platform_key="duckdb")
-    assert sql is None
-    assert skip is not None
-    assert "MERGE INTO" in skip
+    assert skip is None
+    assert sql == operation.write_sql
 
 
 def test_get_effective_write_sql_duckdb_runs_portable_merge(fast_bench):
@@ -1994,24 +1977,13 @@ def test_get_effective_write_sql_empty_supplier_staging_skips_gdpr_delete(fast_b
     assert "delete_ops_supplier" in skip
 
 
-def test_get_effective_write_sql_duckdb_gate_matches_catalog(fast_bench):
-    portable_ops = (
-        "merge_scd_type2_basic",
-        "merge_scd_type2_no_change",
-        "merge_scd_type2_new_keys_only",
-    )
-    for op_id in portable_ops:
-        operation = fast_bench.get_operation(op_id)
-        assert operation.category == "merge"
-        assert "MERGE INTO" not in operation.write_sql.upper()
-        _, skip = fast_bench._get_effective_write_sql(operation, platform_key="duckdb")
+def test_get_effective_write_sql_duckdb_runs_every_catalog_merge_operation(fast_bench):
+    merge_ops = fast_bench.get_operations_by_category("merge")
+    assert any("MERGE INTO" in operation.write_sql.upper() for operation in merge_ops.values())
+    for op_id, operation in merge_ops.items():
+        sql, skip = fast_bench._get_effective_write_sql(operation, platform_key="duckdb")
         assert skip is None, f"{op_id} should run on DuckDB, got skip: {skip}"
-
-    legacy = fast_bench.get_operation("merge_simple_upsert_small")
-    assert "MERGE INTO" in legacy.write_sql.upper()
-    _, legacy_skip = fast_bench._get_effective_write_sql(legacy, platform_key="duckdb")
-    assert legacy_skip is not None
-    assert "MERGE INTO" in legacy_skip
+        assert sql
 
 
 def test_get_effective_write_sql_skips_when_file_dependencies_missing(fast_bench, tmp_path):

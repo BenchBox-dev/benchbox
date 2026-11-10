@@ -414,6 +414,20 @@ class TestWritePrimitivesDuckDBBenchmarkRuns:
             (9, 1010, 210, 1, 55.0, 550.0, 0.10, 0.02, 'R', 'F', '2024-01-24', '2024-01-19', '2024-01-29', 'TAKE BACK RETURN', 'RAIL', 'comment 10')
         """)
 
+        conn.execute(
+            "CREATE TABLE customer (c_custkey INTEGER PRIMARY KEY, c_name VARCHAR(25), "
+            "c_address VARCHAR(40), c_nationkey INTEGER, c_phone VARCHAR(15), c_acctbal DECIMAL(15,2), "
+            "c_mktsegment VARCHAR(10), c_comment VARCHAR(117))"
+        )
+        conn.execute("""
+            INSERT INTO customer
+            SELECT i, 'Customer#' || CAST(i AS VARCHAR), 'Addr ' || CAST(i AS VARCHAR),
+                   (i % 25), '555-' || CAST(i AS VARCHAR), (i * 10.0),
+                   CASE WHEN i % 2 = 0 THEN 'BUILDING' ELSE 'AUTOMOBILE' END,
+                   'comment ' || CAST(i AS VARCHAR)
+            FROM range(100, 110) t(i)
+        """)
+
         write_bench = WritePrimitives(scale_factor=small_scale_factor, output_dir=temp_dir, quiet=True)
         write_bench.setup(conn, force=True)
 
@@ -444,7 +458,10 @@ class TestWritePrimitivesDuckDBBenchmarkRuns:
 
         merge_results = [r for r in results if r.operation_id.startswith("merge_")]
         merge_failures = [r for r in merge_results if not r.success]
-        assert len(merge_failures) > 0, "Expected some MERGE operations to fail on DuckDB"
+        assert merge_results, "Expected the catalog's merge operations to run"
+        assert not merge_failures, (
+            f"MERGE operations failed on DuckDB: {[(r.operation_id, r.error) for r in merge_failures]}"
+        )
 
     def test_run_benchmark_by_category(self, setup_env):
 
@@ -620,12 +637,6 @@ class TestWritePrimitivesConsolidatedOperations:
         assert isinstance(result, OperationResult)
         assert result.operation_id == "merge_etl_aggregation_pattern"
 
-        if not result.success:
-            assert "Parser Error" in result.error and "MERGE" in result.error, (
-                f"Expected MERGE syntax error on DuckDB, got: {result.error}"
-            )
-            pytest.skip("DuckDB doesn't support MERGE syntax - test cannot run on DuckDB")
-
         assert result.success is True, f"Operation failed: {result.error}"
         assert result.validation_passed is True, f"Validation failed: {result.validation_results}"
         assert result.cleanup_success is True
@@ -647,12 +658,6 @@ class TestWritePrimitivesConsolidatedOperations:
 
         assert isinstance(result, OperationResult)
         assert result.operation_id == "merge_deduplication_window_function"
-
-        if not result.success:
-            assert "Parser Error" in result.error and "MERGE" in result.error, (
-                f"Expected MERGE syntax error on DuckDB, got: {result.error}"
-            )
-            pytest.skip("DuckDB doesn't support MERGE syntax - test cannot run on DuckDB")
 
         assert result.success is True, f"Operation failed: {result.error}"
         assert result.validation_passed is True, f"Validation failed: {result.validation_results}"
@@ -1107,26 +1112,21 @@ class TestWritePrimitivesSCD2DuckDB:
         assert result.status == "SUCCESS"
         conn.close()
 
-    def test_scd2_ops_succeed_and_legacy_merge_skipped_under_duckdb_platform_key(self, scd2_env):
+    def test_scd2_and_merge_into_ops_succeed_under_duckdb_platform_key(self, scd2_env):
         write_bench, conn = scd2_env
         for op_id in (
             "merge_scd_type2_basic",
             "merge_scd_type2_no_change",
             "merge_scd_type2_new_keys_only",
-        ):
-            result = write_bench.execute_operation(op_id, conn, platform_key="duckdb")
-            assert result.status == "SUCCESS", result.error
-            assert result.success is True
-            assert result.validation_passed is True
-        for op_id in (
             "merge_simple_upsert_small",
             "merge_overlap_50pct",
             "merge_conditional_update",
         ):
+            write_bench.reset(conn)
             result = write_bench.execute_operation(op_id, conn, platform_key="duckdb")
-            assert result.status == "SKIPPED", result.error
+            assert result.status == "SUCCESS", result.error
             assert result.success is True
-            assert "MERGE INTO" in (result.skip_reason or "")
+            assert result.validation_passed is True
 
     def test_sequential_scd2_ops_without_reset_restore_dim_to_seed(self, scd2_env):
         write_bench, conn = scd2_env
