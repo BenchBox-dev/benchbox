@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 import time
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
@@ -19,6 +20,8 @@ from benchbox.platforms.starrocks import _dependencies
 _CHUNK_BYTES = 8 * 1024 * 1024
 _NULL_MARKER = "\\N"
 _NULL_TEXT_TOKENS = ("nan", "inf", "-inf", "+inf")
+_PARQUET_NULL_SENTINEL = "\x00benchbox-null\x00"
+_QUOTED_PARQUET_NULL = re.compile(rb'(?<![^,\n])"\x00benchbox-null\x00"(?=[,\n]|\Z)')
 _MAX_ATTEMPTS = 3
 _SUCCESS_STATUSES = frozenset(("Success", "Publish Timeout"))
 
@@ -47,14 +50,22 @@ def file_chunks(file_path: Path) -> Iterator[bytes]:
 
 def parquet_csv_chunks(file_path: Path, batch_rows: int = 65_536) -> Iterator[bytes]:
     import pyarrow as pa
+    import pyarrow.compute as pc
     import pyarrow.csv as pacsv
     import pyarrow.parquet as pq
 
     options = pacsv.WriteOptions(include_header=False, quoting_style="needed")
     for batch in pq.ParquetFile(file_path).iter_batches(batch_size=batch_rows):
+        columns = [
+            pc.fill_null(column, _PARQUET_NULL_SENTINEL)
+            if pa.types.is_string(column.type) or pa.types.is_large_string(column.type)
+            else column
+            for column in batch.columns
+        ]
         sink = pa.BufferOutputStream()
-        pacsv.write_csv(pa.Table.from_batches([batch]), sink, options)
-        yield sink.getvalue().to_pybytes()
+        pacsv.write_csv(pa.Table.from_arrays(columns, names=batch.schema.names), sink, options)
+        marker = _NULL_MARKER.encode()
+        yield _QUOTED_PARQUET_NULL.sub(lambda _: marker, sink.getvalue().to_pybytes())
 
 
 def _sleep(seconds: float) -> None:
@@ -203,6 +214,6 @@ class StarRocksParquetHandler(FileFormatHandler):
             "column_separator": ",",
             "format": "CSV",
             "enclose": '"',
-            "columns": null_mapped_columns_header(names, text_tokens=True),
+            "columns": ",".join(f"`{name}`" for name in names),
         }
         return stream_load(self.target, table_name, headers, lambda: parquet_csv_chunks(file_path), logger)

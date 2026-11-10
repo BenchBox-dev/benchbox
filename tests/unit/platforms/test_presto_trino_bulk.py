@@ -13,6 +13,7 @@ from benchbox.platforms.presto_trino_bulk import (
     bulk_load_table,
     ineligibility_reason,
     remove_stage_root,
+    source_row_count,
     stage_files,
 )
 from benchbox.platforms.trino import TrinoAdapter
@@ -220,6 +221,59 @@ class TestBulkLoadTable:
             "INSERT INTO memory.default.orders SELECT * FROM hive.benchbox_stage.default_orders" in c for c in calls
         )
         assert any("DROP TABLE IF EXISTS hive.benchbox_stage.default_orders" in c for c in calls)
+
+    def test_bulk_load_refuses_when_the_external_table_reads_fewer_rows_than_the_files_hold(self, tmp_path):
+        csv_file = tmp_path / "orders.csv"
+        csv_file.write_text("1,100\n2,200\n3,300\n", encoding="utf-8")
+        cursor = MagicMock()
+        cursor.fetchall.side_effect = [[], [], [], [(2,)], []]
+        settings = BulkLoadSettings(
+            source_catalog="hive", native_compression=frozenset({".gz"}), null_format_property="null_format"
+        )
+        with pytest.raises(RuntimeError, match="reads 2 row\\(s\\).*staged files hold 3"):
+            bulk_load_table(
+                cursor,
+                settings=settings,
+                target_table="memory.default.orders",
+                ext_name="default_orders",
+                columns=[("id", "integer"), ("amount", "integer")],
+                files=[csv_file],
+                dialect=None,
+                logger=logging.getLogger("test"),
+            )
+        calls = [call.args[0] for call in cursor.execute.call_args_list]
+        assert not any(c.startswith("INSERT INTO") for c in calls)
+
+
+class TestSourceRowCount:
+    def test_counts_lines_including_a_last_line_without_newline(self, tmp_path):
+        path = tmp_path / "t.tbl"
+        path.write_bytes(b"1|a|\n2|b|\n3|c|")
+        assert source_row_count([path], None) == 3
+
+    def test_subtracts_the_header_per_file(self, tmp_path):
+        first, second = tmp_path / "a.csv", tmp_path / "b.csv"
+        first.write_text("id,v\n1,2\n2,3\n", encoding="utf-8")
+        second.write_text("id,v\n3,4\n", encoding="utf-8")
+        dialect = CsvDialect(
+            delimiter=",", has_header=True, null_marker=None, normalize_booleans=False, quote=None, encoding="utf-8"
+        )
+        assert source_row_count([first, second], dialect) == 3
+
+    def test_counts_gzip_content(self, tmp_path):
+        import gzip
+
+        path = tmp_path / "t.tbl.gz"
+        path.write_bytes(gzip.compress(b"1|a|\n2|b|\n"))
+        assert source_row_count([path], None) == 2
+
+    def test_uses_parquet_metadata(self, tmp_path):
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
+        path = tmp_path / "t.parquet"
+        pq.write_table(pa.table({"id": [1, 2, 3, 4]}), path)
+        assert source_row_count([path], None) == 4
 
     def test_bulk_load_skips_ineligible(self, tmp_path):
         csv_file = tmp_path / "orders.csv"

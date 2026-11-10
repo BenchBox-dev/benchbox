@@ -6,7 +6,7 @@ services:
       - "${TRINO_HOST_PORT:-18080}:8080"
     volumes:
       - ./catalog:/etc/trino/catalog:ro
-      - "${BENCHBOX_DATA_DIR:-/tmp}:${BENCHBOX_DATA_DIR:-/tmp}:ro"
+      - "${BENCHBOX_DATA_DIR:-/tmp/benchbox-data}:${BENCHBOX_DATA_DIR:-/tmp/benchbox-data}:ro"
     healthcheck:
       test:
         - CMD-SHELL

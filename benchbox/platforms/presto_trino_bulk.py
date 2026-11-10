@@ -150,6 +150,27 @@ def remove_stage_root(data_dir: Path) -> None:
         (data_dir / STAGE_DIR_NAME).rmdir()
 
 
+def source_row_count(staged: Sequence[Path], dialect: CsvDialect | None) -> int:
+    if get_data_extension(staged[0]) == ".parquet":
+        import pyarrow.parquet as pq
+
+        return sum(pq.ParquetFile(path).metadata.num_rows for path in staged)
+    from benchbox.platforms.base.data_loading import _file_byte_chunks
+
+    has_header = (dialect or default_dialect(staged[0])).has_header
+    total = 0
+    for path in staged:
+        lines = 0
+        last = b""
+        for chunk in _file_byte_chunks(path):
+            lines += chunk.count(b"\n")
+            last = chunk[-1:]
+        if last not in (b"", b"\n"):
+            lines += 1
+        total += max(0, lines - 1) if has_header else lines
+    return total
+
+
 def bulk_load_table(
     cursor: Any,
     *,
@@ -177,16 +198,17 @@ def bulk_load_table(
             cursor,
             f"CREATE TABLE {qualified_ext} ({column_sql}) WITH ({_table_properties(stage_dir, staged, dialect, settings)})",
         )
-        expected = int(_run(cursor, f"SELECT count(*) FROM {qualified_ext}")[0][0])
-        if expected == 0 and any(path.stat().st_size > 0 for path in staged):
+        expected = source_row_count(staged, dialect)
+        visible = int(_run(cursor, f"SELECT count(*) FROM {qualified_ext}")[0][0])
+        if visible != expected:
             raise RuntimeError(
-                f"{settings.source_catalog} sees no rows in {stage_dir}. The server must read the BenchBox data "
-                "directory at the same absolute path (mount it into the server container) and the table's file "
-                "format must match the staged files."
+                f"{settings.source_catalog} reads {visible:,} row(s) from {stage_dir} but the staged files hold "
+                f"{expected:,}. The server must read the BenchBox data directory at the same absolute path (mount "
+                "it into the server container) and the table's file format must match the staged files."
             )
         inserted = int(_run(cursor, f"INSERT INTO {target_table} SELECT * FROM {qualified_ext}")[0][0])
         if inserted != expected:
-            raise RuntimeError(f"inserted {inserted:,} row(s) into {target_table}, external table has {expected:,}")
+            raise RuntimeError(f"inserted {inserted:,} row(s) into {target_table}, the staged files hold {expected:,}")
         return inserted
     finally:
         try:
