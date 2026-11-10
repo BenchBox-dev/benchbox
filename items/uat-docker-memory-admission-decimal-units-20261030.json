@@ -4,6 +4,11 @@
     "Unit tests pin the suffix semantics against Docker's documented units.",
     "The StarRocks and ClickHouse server shards start and run cells."
   ],
+  "batch": {
+    "batch_id": "server-engine-bulk-load-3",
+    "implementation_dependencies": [],
+    "member_id": "uat-docker-memory-admission-decimal-units-20261030"
+  },
   "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), artifact release-uat-v0.5.0rc2-stage2-starrocks: cells.jsonl, uat_gate_summary.json, validator_rollup.tsv, uat_lifecycle.log and per-cell logs. The artifacts do not keep result JSON, so query-level causes need a local rerun of the named cells. Also release-uat-v0.5.0rc2-stage2-clickhouse-server.\n\nHosted trunk UAT run https://github.com/BenchBox-dev/BenchBox/actions/runs/42536258036 completed with failure at source 2d796acd59be06ab4b4a1742dda84cff419202b9. StarRocks: all 51 selected cells passed. ClickHouse server: all 48 selected cells passed. Both current containerized platforms therefore started and executed selected cells on the real hosted runner. Counts cover the selected current matrix only; no historical issue is closed by this note. The full run is still red (702/710 passed), so this is not release certification.\n\n2026-11-09 live evidence (mocker, integration worktree feat/server-engine-bulk-load at f044b8cc95, SF0.01): BEFORE (develop a727c47272): `STARROCKS_MEMORY_LIMIT=4g make uat-bring-up PLATFORM=starrocks` -> exit 2 \"invalid memory limit '${STARROCKS_MEMORY_LIMIT:-8g}'\" (also with the variable unset), before admission. Cause: docker_assets._resolve_compose_memory_value accepted only ${VAR}. #3748 had already fixed g=1024^3 (develop). AFTER: same command -> admission ADMITTED need 4 GiB, mocker compose up OK, container up; `benchbox run --platform starrocks --benchmark tpch --scale 0.01 --phases generate,load` loaded all 8 tables (lineitem 60,175) in 6.35s; sha256 row parity vs dbgen shards all 8 tables MATCH (/tmp/parity.py). Stack torn down (mocker ps + container ls -a clean). ClickHouse server shard not restarted live yet (admission refused at start; retried later). `make uat-cell` itself waited 19 min on the shared host test lock and found no stack (uat-cell does not start one); not repeated.",
   "description": "tests/uat/docker_assets.py:48 maps the 'g' suffix to 1000**3, but Docker treats '4g' as 4 GiB. The runtime memory admission check in tests/uat/managed_runtime.py:228 then compares 4000000000 requested bytes with the 4294967296 bytes Docker reports, and fails. In run 40971306663 the StarRocks shard ('requested 4g (4000000000 bytes), runtime reported 4294967296 bytes') and the ClickHouse server shard ('requested 5.25g (5250000000 bytes), runtime reported 5637144576 bytes') ran 0 cells with 57 startup failures each. Use Docker's binary units for k, m and g and check every caller of parse_memory_bytes.",
   "links": [
@@ -82,6 +87,14 @@
       "client": "omp-coding-agent",
       "op": "abort",
       "op_id": "104c7d0abeac487e98ac5ec5977a0246",
+      "session_id": "248466dc3ce04a7c8f4c76cdbd04176f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a",
+      "at": "2026-11-10T01:41:50Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "aa4371945bbe492ab63839e5f9531bfe",
       "session_id": "248466dc3ce04a7c8f4c76cdbd04176f"
     }
   ]
