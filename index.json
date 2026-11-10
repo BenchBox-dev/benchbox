@@ -5525,20 +5525,44 @@
       "terminal_outcome": "deliver"
     },
     "plan-export-contract2": {
-      "accepted_members": {},
+      "accepted_members": {
+        "export-text-plan-result-fails-loader-query-plan-raw-20261108": "b146a2cd177572c4143fe19ee1779cc657e82a0d"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "export-text-plan-result-fails-loader-query-plan-raw-20261108": {
+          "accepted_head": "b146a2cd177572c4143fe19ee1779cc657e82a0d",
+          "changed_files": [
+            "benchbox/core/results/query_execution.py",
+            "benchbox/core/results/schema.py",
+            "changelog.d/feat-plan-export-contract2--export-text-plan-result-fails-loader-query-plan-raw-20261108.json",
+            "tests/unit/core/results/test_loader.py",
+            "tests/unit/core/results/test_local_result_diagnosability.py"
+          ],
+          "integration_head": "42dea5b8d5934acb675df9b2b295ee11608b0b20",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/plan-export-contract2",
-      "integration_head": "a727c47272dff457e73ecc03ab8a00a47a637592",
+      "integration_head": "42dea5b8d5934acb675df9b2b295ee11608b0b20",
       "integration_log": [
         {
           "at": "2026-11-10T01:45:55Z",
           "head": "a727c47272dff457e73ecc03ab8a00a47a637592",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-10T01:51:06Z",
+          "head": "42dea5b8d5934acb675df9b2b295ee11608b0b20",
+          "kind": "prepare",
+          "member": "export-text-plan-result-fails-loader-query-plan-raw-20261108",
+          "op_id": "ebc25806c31240f8a3e1349f1f63068f",
+          "previous_head": "a727c47272dff457e73ecc03ab8a00a47a637592",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-export-contract2",
@@ -21987,15 +22011,10 @@
       "title": "Root-cause the WebKit benchmark-index data-binding failure on /results/tpch/"
     },
     "export-text-plan-result-fails-loader-query-plan-raw-20261108": {
-      "claim": {
-        "expires_at": "2026-11-11T01:50:59Z",
-        "generation": "1c44785a35c44a8789f49be5cb536bd0",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:db7d69917905292075fe62aa"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Fix benchbox export on results with text-plan rows failing on query_plan_raw"
     },
     "expose-query-comparability-metadata-in-cli-output-and-persis": {
