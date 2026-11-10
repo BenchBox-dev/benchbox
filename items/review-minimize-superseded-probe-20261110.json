@@ -6,7 +6,7 @@
     "Decision recorded: GO (lastEditedAt null, includesCreatedEdit false, body unchanged, inline threads visible and repliable, Theseus detectors do not fire) or NO-GO with the failing field; on NO-GO, theseus-review-minimize-superseded-20261110 is dropped with this evidence as the reason.",
     "Scratch repository cleanup is done or handed to the owner with the exact commands."
   ],
-  "context": "Part of theseus-review-output-format-20261110.",
+  "context": "Part of theseus-review-output-format-20261110.\n\n2026-11-10 owner approval: create private scratch repository joeharris76/review-minimize-probe; test as the authenticated user only (no App installation token). The owner deletes the repository afterwards with `gh repo delete joeharris76/review-minimize-probe --yes` after `gh auth refresh -h github.com -s delete_repo`.",
   "description": "Decision gate for theseus-review-minimize-superseded-20261110. Theseus treats any edited bot review or thread as tampering and holds the PR (protocol.py ~:396-402, review_check.py ~:138-146, dedup.py ~:39, cli.py ~:264: lastEditedAt / includesCreatedEdit). The redesign wants to collapse superseded verdict reviews with the GraphQL `minimizeComment(classifier: OUTDATED)` mutation on PullRequestReview. Evidence so far is indirect (212 of 213 minimised issue comments on cli/cli had lastEditedAt null). A wrong guess would hold every PR, so this must be observed directly before any code is written.\nProbe, no model calls: in a scratch repository approved by the owner, open a PR, post a PullRequestReview with a body and two inline comments (as the authenticated user; if the owner approves, also as a GitHub App installation token), then minimise the review with classifier OUTDATED, and read back via GraphQL: review lastEditedAt, includesCreatedEdit, isMinimized, minimizedReason, body unchanged; each inline comment's lastEditedAt, isMinimized, and whether its thread is still visible/resolvable/repliable; and the REST review and comment objects. Then run Theseus's own edit-detection functions on the fetched objects (offline script against the real responses) to show they do not flag them. Also record whether unminimize restores the state.\nGuardrails: scratch repository only, never BenchBox or Theseus PRs; creating it is an external action that needs the owner's explicit approval in the current task; record the exact repo and delete instructions; no secrets in logs; no live model calls.",
   "links": [
     "~/.omp/agent/sessions/-Developer-BenchBox/2026-11-02T02-04-38-450Z_01a19a00-60b2-70a6-b56d-6f666415a725/local/review-comment-format-proposal.md (section 8.6)",
@@ -19,6 +19,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "5b8fc3a20bf148bea0886e9ed3fb0e04",
+      "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a",
+      "at": "2026-11-10T15:41:02Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3d5e4c6ca931429f88e00e0335b56564",
       "session_id": "977a65f4969143f4981bb9d49ff293b0"
     }
   ]
