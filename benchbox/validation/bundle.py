@@ -244,7 +244,10 @@ def local_path_detector(roots: Iterable[str | Path] = (), *, redact_home: bool =
 
 
 def find_public_path_leaks(value: Any, key_path: tuple[str, ...] = (), roots: Iterable[str | Path] = ()) -> list[str]:
-    return local_path_detector(roots, redact_home=False).find_leaks(value, key_path)
+    scan_roots = [*roots]
+    with contextlib.suppress(OSError, RuntimeError):
+        scan_roots.append(str(Path.home()))
+    return local_path_detector(scan_roots, redact_home=False).find_leaks(value, key_path)
 
 
 SUBMISSION_NOTES_MAX_LEN = 500
