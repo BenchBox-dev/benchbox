@@ -243,9 +243,21 @@ runtime, read from `benchbox/_vendor/sqlglot.json`. The field is additive under
 the existing result schema version and the public export and `benchbox submit`
 keep it unchanged; `benchbox.validation.bundle` type-checks it when present.
 Absent means not recorded: old bundles, DataFrame runs and runs without
-translation outcomes carry none, and it is never inferred. SQLGlot also changes
-SQL in paths that log no translation outcomes (read-primitives variant
-contracts, TPC-DS qualification); such runs show no runtime.
+translation outcomes carry none, and it is never inferred.
+
+Every helper that changes executed SQL (query translation, DDL translation and
+engine rewrites) logs an outcome inside the run's translation context.
+Throughput streams run on their own worker threads, so the stream executor gives
+each submitted item a copy of its submitter's context: a translation made inside
+a worker is recorded in the run's outcomes, and strict translation mode applies
+there. Paths that use SQLGlot without changing executed SQL record nothing:
+statement splitting and the parse-only helpers, the read-primitives variant
+contract (it parses projection names; hand-written variant SQL is returned
+verbatim, and the other read-primitives queries are translated and recorded),
+and the DataFrame join-order queries, which parse SQL into a plan and execute no
+SQL. TPC-DS qualification changes SQL outside a result bundle and records the
+wheel in its own artifact, under `dependencies` as `benchbox-sqlglot`: the
+version with the fork SHA and wheel hash prefixes.
 
 Published bundles cannot be edited, so a bundle that predates the field can be
 attested through its manifest sidecar: `sql_translator_version` holds `version`,
@@ -280,7 +292,7 @@ data and the corpus, wrapper and bypass assertion tests), the
 `make sql-execution-gate`), the pin and retirement scripts, and their tests
 (`test_sql_execution_gate.py`, which holds the regression proofs below,
 `test_sync_sqlglot_runtime.py`, `test_check_sqlglot_repro_retirement.py` and the
-wrapper tests under `tests/unit/utils/`). A change to any of them needs an oracle
+wrapper tests under `tests/unit/utils/`). A change to any of them needs a review
 success review on the current head.
 
 ## Regression proofs

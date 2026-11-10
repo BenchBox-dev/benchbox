@@ -70,8 +70,8 @@ TERMINAL_STATUS_FAILURES = frozenset({"failure", "error"})
 STATUS_CONTEXTS_JQ = (
     r'.[] | [.context, .state, (.creator.login // ""), (.creator.type // ""), (.description // "")] | @tsv'
 )
-ORACLE_GATE_CONTEXT = "oracle-gate"
-ORACLE_APP_LOGIN = "benchbox-oracle"
+REVIEW_GATE_CONTEXT = "review-gate"
+REVIEW_APP_LOGIN = "benchbox-oracle"
 MAX_RERUNS_PER_JOB = 1
 MAX_REENTRIES_PER_HEAD = 1
 PREPARED_RECEIPT_SCHEMA = "prepared_work_v2"
@@ -608,7 +608,7 @@ class ReadyEvidence:
     hold_labels: list | None = None
     soundness_paths_changed: bool = False
     maintainer_approved: bool = False
-    oracle_gate_state: str | None = None
+    review_gate_state: str | None = None
     batch_evidence: dict | None = None
     require_batch: bool = False
     repository: str | None = None
@@ -689,15 +689,10 @@ def live_commit_statuses(run: Runner, repo_full: str, head: str) -> dict[str, st
         if len(parts) < 2 or parts[0] in statuses:
             continue
         name, state, login, account_type, description = [*parts, "", "", ""][:5]
-        if name == ORACLE_GATE_CONTEXT:
-            if login.removesuffix("[bot]") != ORACLE_APP_LOGIN or account_type != "Bot":
+        if name == REVIEW_GATE_CONTEXT:
+            if login.removesuffix("[bot]") != REVIEW_APP_LOGIN or account_type != "Bot":
                 continue
-            if state == "failure" and description.startswith(
-                (
-                    f"oracle-review: waiting for the oracle's verdict on {head},",
-                    f"review: waiting for the review's verdict on {head},",
-                )
-            ):
+            if state == "failure" and description.startswith(f"review: waiting for the review's verdict on {head},"):
                 state = "pending"
         statuses[name] = state
     return statuses
@@ -1474,10 +1469,10 @@ def ready_failures(
             evidence, repo, identity, expected_head if head_valid else None, tracker, run=active_run, discover=discover
         )
     )
-    if soundness_changed and evidence.oracle_gate_state != "success":
+    if soundness_changed and evidence.review_gate_state != "success":
         failures.append(
-            f"soundness paths changed and the required {ORACLE_GATE_CONTEXT!r} status at {expected_head[:12]} "
-            f"is {evidence.oracle_gate_state or 'absent'}, not success"
+            f"soundness paths changed and the required {REVIEW_GATE_CONTEXT!r} status at {expected_head[:12]} "
+            f"is {evidence.review_gate_state or 'absent'}, not success"
         )
     return failures
 
@@ -2145,7 +2140,7 @@ def _run_ready(args: argparse.Namespace, identity: GitIdentity, branch: str, rep
         hold_labels=evidence_data.get("hold_labels", []),
         soundness_paths_changed=bool(evidence_data.get("soundness_paths_changed")),
         maintainer_approved=bool(evidence_data.get("maintainer_approved")),
-        oracle_gate_state=live_commit_statuses(live_run, args.repo, args.expected_head).get(ORACLE_GATE_CONTEXT),
+        review_gate_state=live_commit_statuses(live_run, args.repo, args.expected_head).get(REVIEW_GATE_CONTEXT),
         batch_evidence=_load_batch_evidence(repo, evidence_data.get("batch_evidence_path"))
         if delivery_mode == "batch" or args.require_batch
         else None,

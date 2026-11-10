@@ -1,0 +1,1 @@
+{"schema": 1, "entries": [{"category": "fixed", "breaking": false, "text": "Preserve all three read_primitives struct_construction contact fields in DuckDB row and Arrow results by assigning unique struct field names.", "platforms": ["duckdb"]}]}

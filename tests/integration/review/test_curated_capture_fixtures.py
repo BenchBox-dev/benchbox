@@ -11,7 +11,7 @@ import pytest
 pytestmark = [pytest.mark.integration, pytest.mark.medium]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-FIXTURES = REPO_ROOT / "tests" / "fixtures" / "oracle_reviewers"
+FIXTURES = REPO_ROOT / "tests" / "fixtures" / "review_candidates"
 PROVENANCE = json.loads((FIXTURES / "provenance.json").read_text(encoding="utf-8"))["fixtures"]
 ORIGINS = {"ci-run", "local-review", "live-jev", "captured", "derived", "hand-built"}
 LEAKS = {
@@ -121,7 +121,7 @@ def test_a_token_split_across_streamed_jsonl_deltas_fails_the_structural_check(t
 @pytest.mark.parametrize("kind", sorted(PLANTED))
 @pytest.mark.parametrize("name", ["omp_candidate/static_outputs.json", "omp_candidate/chain_review.jsonl"])
 def test_a_planted_leak_in_a_copy_of_the_fixtures_is_caught(kind: str, name: str, tmp_path: Path) -> None:
-    copy = tmp_path / "oracle_reviewers"
+    copy = tmp_path / "review_candidates"
     shutil.copytree(FIXTURES, copy)
     assert not _scan(name, copy)
     path = copy / name
@@ -136,7 +136,7 @@ def test_a_planted_leak_in_a_copy_of_the_fixtures_is_caught(kind: str, name: str
 
 
 def test_a_fixture_missing_from_the_provenance_manifest_is_detected(tmp_path: Path) -> None:
-    copy = tmp_path / "oracle_reviewers"
+    copy = tmp_path / "review_candidates"
     shutil.copytree(FIXTURES, copy)
     (copy / "omp_candidate" / "unlisted.json").write_text("{}", encoding="utf-8")
 

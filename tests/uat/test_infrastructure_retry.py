@@ -125,8 +125,14 @@ def test_second_infrastructure_failure_fails_the_cell_without_a_third_attempt(tm
             "submit": "query_failure",
             "errors": [("Q1", "ERROR 1712 (HY000): Leaf Error: out of memory"), ("Q2", "(1712, 'Leaf Error')")],
         },
+        {
+            "status": "failed",
+            "exit_code": 1,
+            "submit": "unofficial",
+            "errors": [("Q5", "1712: Leaf Error (127.0.0.1:3307): maximum_memory reached")],
+        },
     ],
-    ids=["memory", "download", "singlestore-1712"],
+    ids=["memory", "download", "singlestore-1712", "singlestore-native-1712"],
 )
 def test_each_infrastructure_signature_retries(tmp_path, first):
     attempts = _Attempts(tmp_path, [first, PASSED])
@@ -154,8 +160,27 @@ def test_each_infrastructure_signature_retries(tmp_path, first):
         },
         {"status": "failed", "exit_code": 1, "submit": "schema_violation", "log": "validation failed"},
         {"status": "failed", "exit_code": 1, "log": "Traceback (most recent call last):\nKeyError: 'x'"},
+        {
+            "status": "failed",
+            "exit_code": 1,
+            "submit": "query_failure",
+            "errors": [("Q5", "1712: Leaf Error: maximum_memory reached"), ("Q12", "Result mismatch")],
+        },
+        {
+            "status": "failed",
+            "exit_code": 1,
+            "submit": "query_failure",
+            "errors": [("Q5", "17120: Leaf Error: a different error")],
+        },
     ],
-    ids=["wrong-results", "1712-mixed-with-wrong-results", "validation-failure", "crash"],
+    ids=[
+        "wrong-results",
+        "1712-mixed-with-wrong-results",
+        "validation-failure",
+        "crash",
+        "native-1712-mixed-with-wrong-results",
+        "different-native-error-code",
+    ],
 )
 def test_product_signature_failures_are_never_retried(tmp_path, first):
     attempts = _Attempts(tmp_path, [first, PASSED])

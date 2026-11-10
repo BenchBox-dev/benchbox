@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from _project.scripts import oracle_mutation
+from _project.scripts import review_mutation
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -22,7 +22,7 @@ def test_staging_links_every_top_level_path_to_the_source_tree(tmp_path: Path) -
     root = tmp_path / "root"
     _tree(root)
     target = tmp_path / "stage"
-    oracle_mutation.stage(root, target, SETTINGS)
+    review_mutation.stage(root, target, SETTINGS)
     assert (target / "src").resolve() == (root / "src").resolve()
     assert (target / "tests").resolve() == (root / "tests").resolve()
 
@@ -32,7 +32,7 @@ def test_staging_repoints_a_link_left_by_another_checkout(tmp_path: Path) -> Non
     _tree(old)
     _tree(root)
     target = tmp_path / "stage"
-    oracle_mutation.stage(old, target, SETTINGS)
-    oracle_mutation.stage(root, target, SETTINGS)
+    review_mutation.stage(old, target, SETTINGS)
+    review_mutation.stage(root, target, SETTINGS)
     assert (target / "src").resolve() == (root / "src").resolve()
     assert (target / "tests").resolve() == (root / "tests").resolve()

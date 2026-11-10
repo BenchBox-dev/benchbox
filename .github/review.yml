@@ -8,9 +8,9 @@ consumer:
   attesters:
     - joeharris76
   soundness_manifest: .github/soundness-paths.txt
-  omp_config: .github/oracle-omp-config.yml
+  omp_config: .github/review-omp-config.yml
   inert_manifest: .github/inert-paths.txt
-  omp_fixture_prefix: tests/fixtures/oracle_reviewers/omp_candidate
+  omp_fixture_prefix: tests/fixtures/review_candidates/omp_candidate
 max_attempts: 5
 protocol:
   max_defects: 10
@@ -109,11 +109,15 @@ buckets:
 classifier:
   unavailable_bucket: max
   gate_paths:
+    - .github/review.yml
+    - .github/review-omp-config.yml
     - .github/oracle-reviewers.yml
     - .github/oracle-omp-config.yml
+    - scripts/oracle_local_review.py
+    - _project/scripts/oracle_gateway_host.sh
     - .github/theseus-lock.json
     - _project/scripts/theseus_bootstrap.py
-    - _project/scripts/oracle_gateway_host.sh
+    - _project/scripts/review_gateway_host.sh
     - .github/soundness-paths.txt
     - .github/workflows/review-gate.yml
     - .github/workflows/review-request.yml
@@ -129,17 +133,17 @@ classifier:
     - _project/scripts/check_soundness_review.py
     - _project/scripts/ruleset_review_enforcement.py
     - scripts/ruleset_drift_check.py
-    - scripts/oracle_local_review.py
+    - scripts/local_review.py
     - scripts/theseus_cli.py
     - scripts/theseus_release_check.py
     - tests/unit/scripts/test_theseus_lock.py
     - tests/unit/scripts/test_theseus_release_check.py
-    - tests/unit/scripts/test_oracle_gateway_host.py
+    - tests/unit/scripts/test_review_gateway_host.py
     - tests/unit/scripts/test_review_provider_diversity.py
     - tests/fixtures/review_provider_diversity/omp_catalog_windows.json
-    - tests/integration/oracle/test_curated_capture_fixtures.py
-    - tests/fixtures/oracle_reviewers/provenance.json
-    - tests/unit/scripts/test_oracle_policy_pin.py
+    - tests/integration/review/test_curated_capture_fixtures.py
+    - tests/fixtures/review_candidates/provenance.json
+    - tests/unit/scripts/test_review_policy_pin.py
     - _project/scripts/soundness_manifest.py
   logic_paths:
     - benchbox/core/equivalence/*

@@ -95,8 +95,8 @@ install_omp() {
     say "cannot fetch origin/develop; not installing OMP"
     return 1
   fi
-  if ! policy=$(git -C "$top" show origin/develop:.github/oracle-reviewers.yml 2>/dev/null); then
-    say "the OMP pin in origin/develop:.github/oracle-reviewers.yml is unreadable; not installing OMP"
+  if ! policy=$(git -C "$top" show origin/develop:.github/review.yml 2>/dev/null); then
+    say "the OMP pin in origin/develop:.github/review.yml is unreadable; not installing OMP"
     return 1
   fi
   log="$state_dir/omp-install.log"
@@ -104,7 +104,7 @@ install_omp() {
   rm -rf "$trusted"
   mkdir -p "$trusted"
   if git -C "$top" archive origin/develop .github | tar -x -C "$trusted" &&
-    python3 "$top/scripts/theseus_cli.py" run -- install-omp --policy "$trusted/.github/oracle-reviewers.yml" >"$state_dir/omp-binary" 2>"$log"; then
+    python3 "$top/scripts/theseus_cli.py" run -- install-omp --policy "$trusted/.github/review.yml" >"$state_dir/omp-binary" 2>"$log"; then
     rm -rf "$trusted"
     omp_state=installed
     say "OMP installed and verified"

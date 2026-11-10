@@ -20,7 +20,8 @@
     "sf1_calibrated_sizes",
     "write_primitives",
     "publication",
-    "ownership"
+    "ownership",
+    "path_privacy"
   ],
   "$defs": {
     "strings": {"type": "array", "items": {"type": "string"}},
@@ -588,6 +589,73 @@
               "core_destination": {"$ref": "#/$defs/nullableString"},
               "site_destination": {"$ref": "#/$defs/nullableString"},
               "action": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "path_privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "known_roots",
+        "drive_letter",
+        "unc",
+        "placeholder_allowlist",
+        "redacted_placeholder",
+        "home_root",
+        "pattern",
+        "cases"
+      ],
+      "properties": {
+        "schema_version": {"const": 1},
+        "known_roots": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1, "uniqueItems": true},
+        "drive_letter": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["separators", "double_slash_excluded_for_forward"],
+          "properties": {
+            "separators": {"$ref": "#/$defs/strings"},
+            "double_slash_excluded_for_forward": {"type": "boolean"}
+          }
+        },
+        "unc": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["prefixes"],
+          "properties": {"prefixes": {"$ref": "#/$defs/strings"}}
+        },
+        "placeholder_allowlist": {"type": "array", "items": {"type": "string", "pattern": "^/"}, "minItems": 1, "uniqueItems": true},
+        "redacted_placeholder": {"type": "string", "minLength": 1},
+        "home_root": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["scanned_as_root", "synthetic_home"],
+          "properties": {
+            "scanned_as_root": {"type": "boolean"},
+            "synthetic_home": {"type": "string", "pattern": "^/"}
+          }
+        },
+        "pattern": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source", "flags"],
+          "properties": {"source": {"type": "string", "minLength": 1}, "flags": {"type": "integer"}}
+        },
+        "cases": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "text", "roots", "home", "leak"],
+            "properties": {
+              "id": {"type": "string", "minLength": 1},
+              "text": {"type": "string"},
+              "roots": {"$ref": "#/$defs/strings"},
+              "home": {"type": "boolean"},
+              "leak": {"type": "boolean"}
             }
           }
         }

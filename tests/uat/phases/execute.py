@@ -17,7 +17,7 @@ from benchbox.utils.resource_limits import (
     read_memory_snapshot as default_free_memory_reader,
 )
 from tests.uat import docker_assets, managed_runtime, mocker_launch
-from tests.uat.cleanup import CellKey, can_prune, prune_database_dir, source_reuse_graph
+from tests.uat.cleanup import CellKey, can_prune, prune_database_dir, prune_server_database, source_reuse_graph
 from tests.uat.config import OutputConfig, UATConfig
 from tests.uat.ladder import LadderRung, plan_ladder
 from tests.uat.matrix import (
@@ -1121,6 +1121,12 @@ def _maybe_prune_completed(
             if decision.safe_to_prune:
                 prune_database_dir(
                     databases_root,
+                    platform=platform,
+                    benchmark=prev_bench,
+                    scale=scale,
+                    dry_run=dry_run,
+                )
+                prune_server_database(
                     platform=platform,
                     benchmark=prev_bench,
                     scale=scale,

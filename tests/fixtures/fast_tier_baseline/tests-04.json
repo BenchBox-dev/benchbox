@@ -15924,79 +15924,79 @@
     "p50_seconds": 0.050406
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_a_refused_theseus_install_stops_the_script_before_any_agent_or_clients_file_is_touched[check-unreachable]",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_a_refused_theseus_install_stops_the_script_before_any_agent_or_clients_file_is_touched[check-unreachable]",
     "p50_seconds": 0.808918
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_a_token_file_with_a_non_matching_name_is_refused_by_name[a--b]",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_a_token_file_with_a_non_matching_name_is_refused_by_name[a--b]",
     "p50_seconds": 0.534974
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_a_token_file_with_a_non_matching_name_is_refused_by_name[my_ci]",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_a_token_file_with_a_non_matching_name_is_refused_by_name[my_ci]",
     "p50_seconds": 0.534
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_check_fails_when_the_gateway_serves_a_model_the_clients_file_does_not_grant",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_check_fails_when_the_gateway_serves_a_model_the_clients_file_does_not_grant",
     "p50_seconds": 0.922192
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_check_refuses_an_unsafe_denylist_instead_of_skipping_it",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_check_refuses_an_unsafe_denylist_instead_of_skipping_it",
     "p50_seconds": 0.910753
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_check_reports_a_failed_usage_probe_as_degraded",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_check_reports_a_failed_usage_probe_as_degraded",
     "p50_seconds": 1.215641
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_gateway_clients_are_generated_from_origin_develop_not_the_checked_out_branch",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_gateway_clients_are_generated_from_origin_develop_not_the_checked_out_branch",
     "p50_seconds": 1.277901
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_monitor_install_renders_a_fifteen_minute_agent_that_runs_the_monitor",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_monitor_install_renders_a_fifteen_minute_agent_that_runs_the_monitor",
     "p50_seconds": 0.657291
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_one_logged_in_provider_is_enough_to_serve[openai-codex]",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_one_logged_in_provider_is_enough_to_serve[openai-codex]",
     "p50_seconds": 2.263364
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_revoke_and_the_token_file_check_accept_the_same_names[Ops]",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_revoke_and_the_token_file_check_accept_the_same_names[Ops]",
     "p50_seconds": 0.532366
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_revoke_and_the_token_file_check_accept_the_same_names[a--b]",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_revoke_and_the_token_file_check_accept_the_same_names[a--b]",
     "p50_seconds": 0.531861
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_revoke_and_the_token_file_check_accept_the_same_names[ci2]",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_revoke_and_the_token_file_check_accept_the_same_names[ci2]",
     "p50_seconds": 0.535264
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_the_broker_command_advises_a_login_for_each_missing_provider",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_the_broker_command_advises_a_login_for_each_missing_provider",
     "p50_seconds": 0.921513
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_the_clients_check_refuses_models_that_differ_from_oracle_ci",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_the_clients_check_refuses_models_that_differ_from_oracle_ci",
     "p50_seconds": 0.535003
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_the_gateway_refuses_before_writing_clients_when_a_broker_login_is_missing",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_the_gateway_refuses_before_writing_clients_when_a_broker_login_is_missing",
     "p50_seconds": 0.790953
   },
   {
-    "id": "tests/unit/scripts/test_oracle_gateway_host.py::test_the_host_refuses_a_pinned_omp_that_is_not_executable",
+    "id": "tests/unit/scripts/test_review_gateway_host.py::test_the_host_refuses_a_pinned_omp_that_is_not_executable",
     "p50_seconds": 0.798031
   },
   {
-    "id": "tests/unit/scripts/test_oracle_policy_pin.py::test_every_pinned_omp_build_names_a_platform_and_a_sha256",
+    "id": "tests/unit/scripts/test_review_policy_pin.py::test_every_pinned_omp_build_names_a_platform_and_a_sha256",
     "p50_seconds": 0.020236
   },
   {
-    "id": "tests/unit/scripts/test_oracle_policy_pin.py::test_live_reviewers_match_buckets_one_to_one",
+    "id": "tests/unit/scripts/test_review_policy_pin.py::test_live_reviewers_match_buckets_one_to_one",
     "p50_seconds": 0.020236
   },
   {
-    "id": "tests/unit/scripts/test_oracle_policy_pin.py::test_the_evidence_exemptions_keep_readmes_and_changelogs",
+    "id": "tests/unit/scripts/test_review_policy_pin.py::test_the_evidence_exemptions_keep_readmes_and_changelogs",
     "p50_seconds": 0.020236
   },
   {
@@ -18884,27 +18884,27 @@
     "p50_seconds": 0.035025
   },
   {
-    "id": "tests/unit/workflows/test_oracle_gate_workflow.py::test_pull_request_comment_bridge_dispatch_and_schedule_triggers_keep_their_shape",
+    "id": "tests/unit/workflows/test_review_gate_workflow.py::test_pull_request_comment_bridge_dispatch_and_schedule_triggers_keep_their_shape",
     "p50_seconds": 0.02973
   },
   {
-    "id": "tests/unit/workflows/test_oracle_gate_workflow.py::test_the_calling_job_grants_the_documented_permission_ceiling",
+    "id": "tests/unit/workflows/test_review_gate_workflow.py::test_the_calling_job_grants_the_documented_permission_ceiling",
     "p50_seconds": 0.029867
   },
   {
-    "id": "tests/unit/workflows/test_oracle_gate_workflow.py::test_unrelated_comments_run_in_a_group_of_their_own",
+    "id": "tests/unit/workflows/test_review_gate_workflow.py::test_unrelated_comments_run_in_a_group_of_their_own",
     "p50_seconds": 0.051592
   },
   {
-    "id": "tests/unit/workflows/test_oracle_review_workflow.py::test_only_review_events_trigger_the_workflow",
+    "id": "tests/unit/workflows/test_review_workflow.py::test_only_review_events_trigger_the_workflow",
     "p50_seconds": 0.025146
   },
   {
-    "id": "tests/unit/workflows/test_oracle_verdict_workflow.py::test_the_caller_has_no_steps_and_passes_named_secrets_with_no_in_tree_engine_references",
+    "id": "tests/unit/workflows/test_review_verdict_workflow.py::test_the_caller_has_no_steps_and_passes_named_secrets_with_no_in_tree_engine_references",
     "p50_seconds": 0.035156
   },
   {
-    "id": "tests/unit/workflows/test_oracle_verdict_workflow.py::test_the_run_title_records_the_head_the_run_targets[pull_request_target-event2-None-review-verdict (pull_request_target pr=9 head=cccccccccccccccccccccccccccccccccccccccc)]",
+    "id": "tests/unit/workflows/test_review_verdict_workflow.py::test_the_run_title_records_the_head_the_run_targets[pull_request_target-event2-None-review-verdict (pull_request_target pr=9 head=cccccccccccccccccccccccccccccccccccccccc)]",
     "p50_seconds": 0.029678
   },
   {

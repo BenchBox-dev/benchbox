@@ -71,12 +71,12 @@ def test_the_preparation_runs_the_verified_theseus_install_from_the_checked_out_
     command = " ".join(str(prepare["run"]).split())
     assert 'THESEUS="$(python3 scripts/theseus_cli.py --trusted-ref "$(git rev-parse HEAD)" path)"' in command
     assert '"$THESEUS" omp-bump prepare' in command
-    assert "--policy .github/oracle-reviewers.yml" in command
-    assert "--omp-config .github/oracle-omp-config.yml" in command
-    assert "--fixtures tests/fixtures/oracle_reviewers/omp_candidate" in command
+    assert "--policy .github/review.yml" in command
+    assert "--omp-config .github/review-omp-config.yml" in command
+    assert "--fixtures tests/fixtures/review_candidates/omp_candidate" in command
     assert '--out-dir "$OUT_DIR"' in command
     assert "uv run" not in WORKFLOW.read_text(encoding="utf-8")
-    assert "oracle_reviewers" not in command.replace("tests/fixtures/oracle_reviewers", "")
+    assert "oracle_reviewers" not in command
 
 
 def git(root: Path, *args: str) -> str:
@@ -95,10 +95,10 @@ def lifecycle(tmp_path: Path) -> tuple[Path, Path, dict[str, str]]:
     git(checkout, "config", "user.email", "fixture@example.invalid")
     git(checkout, "config", "core.autocrlf", "false")
     git(checkout, "checkout", "-b", "develop")
-    policy = checkout / ".github" / "oracle-reviewers.yml"
+    policy = checkout / ".github" / "review.yml"
     policy.parent.mkdir()
     policy.write_text("omp:\n  version: 18.13.3\nclassifier:\n  mode: previous\n", encoding="utf-8", newline="\n")
-    git(checkout, "add", ".github/oracle-reviewers.yml")
+    git(checkout, "add", ".github/review.yml")
     git(checkout, "commit", "-m", "Initial policy")
     git(checkout, "push", "origin", "develop")
     git(checkout, "checkout", "-b", "chore/omp-pin-18.16.0")
@@ -215,7 +215,7 @@ def test_existing_candidate_imports_current_policy_without_changing_its_pin_and_
     result = run_opener(lifecycle)
     assert result.returncode == 0, result.stderr
     head = git(checkout, "rev-parse", "HEAD")
-    policy = ".github/oracle-reviewers.yml"
+    policy = ".github/review.yml"
     expected = Path(environment["OUT_DIR"], "policy.yml").read_text(encoding="utf-8")
     assert git(checkout, "show", f"HEAD:{policy}") == expected.strip()
     assert git(checkout, "diff", "--name-only", environment["PREPARED_BASE"], "HEAD") == policy
@@ -256,7 +256,7 @@ def test_new_candidate_closes_only_older_unheld_automation_prs_across_pages(life
     assert state["created"] == 1
     assert state["closed"] == [1, 2]
     assert git(checkout, "ls-remote", "origin", "develop").split()[0] == environment["PREPARED_BASE"]
-    assert git(checkout, "diff", "--name-only", environment["PREPARED_BASE"], "HEAD") == ".github/oracle-reviewers.yml"
+    assert git(checkout, "diff", "--name-only", environment["PREPARED_BASE"], "HEAD") == ".github/review.yml"
     assert state["reviews"] == [f"head={git(checkout, 'rev-parse', 'HEAD')}"]
 
 
@@ -279,7 +279,7 @@ def test_refused_candidates_do_not_push_close_other_prs_or_start_reviews(lifecyc
             (checkout / "unexpected.txt").write_text("Unrelated candidate edit\n", encoding="utf-8")
             git(checkout, "add", "unexpected.txt")
         else:
-            policy = checkout / ".github" / "oracle-reviewers.yml"
+            policy = checkout / ".github" / "review.yml"
             policy.write_text(
                 policy.read_text(encoding="utf-8").replace("18.16.0", "18.16.1")
                 if failure == "edited"

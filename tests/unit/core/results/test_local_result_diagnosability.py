@@ -238,7 +238,7 @@ class TestOutwardPathsStayRedacted:
         published_override = tmp_path / "published" / override.name
         assert published_override.read_text(encoding="utf-8") == override.read_text(encoding="utf-8")
 
-    def test_redacted_publish_refuses_dirty_plans_without_redacted_output(self, tmp_path):
+    def test_redacted_publish_strips_raw_explain_output_from_text_plans(self, tmp_path):
         import json as _json
 
         from benchbox.cli.commands.publish import _redacted_publish_source
@@ -252,7 +252,14 @@ class TestOutwardPathsStayRedacted:
             encoding="utf-8",
         )
 
-        assert _redacted_publish_source(source) == (None, None)
+        redacted, scratch = _redacted_publish_source(source)
+        try:
+            assert redacted is not None
+            redacted_plans = redacted.with_name(f"{redacted.stem}.plans.json")
+            assert "EXPLAIN SELECT" not in redacted_plans.read_text(encoding="utf-8")
+        finally:
+            if scratch is not None:
+                scratch.cleanup()
 
     @pytest.mark.parametrize("contents", (b'{"receipt": ', b"\xff"))
     @pytest.mark.parametrize("suffix", (".plans.json", ".applied.json", ".tuning.json"))

@@ -50,7 +50,7 @@ This document provides guidelines and instructions for contributing.
 
 `develop` is the long-lived development branch and the repository's default branch; **all changes land via PR**. Releases are tags on `develop` commits (see `docs/internal/release-guide.md`). PRs target `develop` and squash-merge with linear history.
 
-Required CI on `develop` reports five unit results (`core`, `explorer`, `results-data`, `docs` and `tooling` from `.github/workflows/ci.yml`), plus `hold` and `oracle-gate`. `oracle-gate` is posted by the `benchbox-oracle` app from `develop` code and passes on a result-affecting PR only when the app's latest review of its current head reports success (or a listed attester has posted the stand-in approval for that head) and the oracle's threads are resolved. Soundness-path review applies even when the author uses the owner's account; once a finished branch is armed, auto-merge lands it when required checks are green and all review threads are resolved.
+Required CI on `develop` reports five unit results (`core`, `explorer`, `results-data`, `docs` and `tooling` from `.github/workflows/ci.yml`), plus `hold` and `review-gate`. `review-gate` is posted by the `benchbox-oracle` app from `develop` code and passes on a result-affecting PR only when the app's latest review of its current head reports success (or a listed attester has posted the stand-in approval for that head) and the reviewer's threads are resolved. Soundness-path review applies even when the author uses the owner's account; once a finished branch is armed, auto-merge lands it when required checks are green and all review threads are resolved.
 
 ### CI lanes
 
@@ -175,8 +175,8 @@ independently to each member.
    `make pr-open` then pushes and opens a draft whose body ends with `Local review: unavailable (<reason>); the
    hosted review decides`, never arms it (an existing PR keeps its state and gets the marker), and `make pr-arm` refuses it until the hosted `review-gate` passes
    for the head.
-   It pushes and arms exactly the commit it reviewed. The review is advisory, may differ from the CI oracle,
-   and posts nothing to GitHub. See `docs/internal/oracle-review-v2.md`, Local pre-PR review.
+   It pushes and arms exactly the commit it reviewed. The review is advisory, may differ from the CI review,
+   and posts nothing to GitHub. See `docs/internal/review-v2.md`, Local pre-PR review.
 
 5. **Arm it and monitor until it merges:**
 
@@ -190,7 +190,7 @@ independently to each member.
    `make pr-arm` reads the live PR first, so a `no-auto-merge` label or a requested change stops it instead of
    being mistaken for a failing check; remove a hold deliberately to release it. Before editing an armed PR,
    withdraw it with the revision transaction (`make pr-landing-withdraw`, see `docs/agent/review-protocol.md`),
-   push the correction, rerun CI and obtain the oracle's success review (or the stand-in approval) on the new head before arming:
+   push the correction, rerun CI and obtain the reviewer's success review (or the stand-in approval) on the new head before arming:
    a later `--match-head-commit` cannot undo a merge of the old head.
    `make pr-ready PR=<n> HEAD=<sha>` arms an open PR through `make pr-arm`. `BATCH=1` asserts the PR is a
    registered batch PR and refuses otherwise. With `EVIDENCE` it runs the readiness evidence transaction, where the

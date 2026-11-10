@@ -9,7 +9,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import IO, Any
 
@@ -123,13 +123,21 @@ def argv_matches(argv: Sequence[str], machine: str, machine_is_default: bool) ->
     return argv_targets_machine(argv, machine, machine_is_default) or argv_runs_wrapper(argv, machine)
 
 
-def read_machine_processes(machine: str, machine_is_default: bool) -> list[tuple[int, tuple[str, ...]]]:
+def read_machine_processes(
+    machine: str,
+    machine_is_default: bool,
+    *,
+    iterate: Callable[[], Iterable[Any]] | None = None,
+) -> list[tuple[int, tuple[str, ...]]]:
     import psutil
 
     uid = os.getuid() if hasattr(os, "getuid") else None
     found: list[tuple[int, tuple[str, ...]]] = []
-    for proc in psutil.process_iter(["pid", "name", "uids", "cmdline"]):
-        info = proc.info
+    for proc in (psutil.process_iter if iterate is None else iterate)():
+        try:
+            info = proc.as_dict(["pid", "name", "uids", "cmdline"], ad_value=None)
+        except (psutil.Error, OSError, SystemError):
+            continue
         uids = info.get("uids")
         if uid is not None and uids is not None and uids.real != uid:
             continue
@@ -243,6 +251,7 @@ def lock_lost(environ: Mapping[str, str] | None = None) -> bool:
 GUEST_POWEROFF_WAIT_ENV = "BENCHBOX_LINUX_POWEROFF_WAIT_SECONDS"
 GUEST_POWEROFF_WAIT_SECONDS = 15
 POWEROFF_REQUEST_TIMEOUT_SECONDS = 8.0
+GUEST_POWEROFF_COMMAND = ("/bin/kill", "-s", "SIGRTMIN+4", "1")
 
 
 def guest_poweroff_wait_seconds(environ: Mapping[str, str] | None = None) -> int:
@@ -256,7 +265,7 @@ def _say(message: str) -> None:
 
 
 def _request_guest_poweroff(machine: str, timeout: float) -> None:
-    argv = ["container", "machine", "run", "-n", machine, "--", "systemctl", "poweroff", "--no-block"]
+    argv = ["container", "machine", "run", "-n", machine, "--uid", "0", "--", *GUEST_POWEROFF_COMMAND]
     try:
         subprocess.run(argv, stdin=subprocess.DEVNULL, timeout=timeout, check=False)
     except subprocess.TimeoutExpired:

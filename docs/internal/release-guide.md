@@ -86,9 +86,9 @@ protected line the tagged commit is on, and accepts only a canary run on that
 same line: a `release/X.Y.x` canary never satisfies a `develop` tag or a tag on
 another line, and a `develop` canary never satisfies a maintenance tag.
 
-Prerequisite still open: `oracle-gate` and the review gate name `develop` as
+Prerequisite still open: `review-gate` and the review gate name `develop` as
 the only gated base until the pinned Theseus callers accept release lines, so a
-pull request into a maintenance line cannot report `oracle-gate` before that
+pull request into a maintenance line cannot report `review-gate` before that
 pin lands. See the gate coverage note in
 [repo-admin-settings.md](repo-admin-settings.md).
 

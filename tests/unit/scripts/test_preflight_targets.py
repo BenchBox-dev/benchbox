@@ -222,17 +222,17 @@ def test_source_guard_tests_exist() -> None:
         "_project/scripts/soundness_merge_digest.py",
         "scripts/pr_arm.py",
         "scripts/pr_landing.py",
-        "tests/fixtures/oracle_reviewers/omp_candidate/manifest.json",
+        "tests/fixtures/review_candidates/omp_candidate/manifest.json",
         ".github/workflows/review-verdict.yml",
         ".github/workflows/review-gate.yml",
-        ".github/oracle-reviewers.yml",
-        ".github/oracle-omp-config.yml",
+        ".github/review.yml",
+        ".github/review-omp-config.yml",
     ],
 )
-def test_an_oracle_change_selects_every_consumer_test(path: str) -> None:
+def test_a_review_change_selects_every_consumer_test(path: str) -> None:
     selected = pt.map_tests(SCRIPT.parents[2], [path])
 
-    assert set(pt.ORACLE_CONSUMER_TESTS) <= set(selected)
+    assert set(pt.REVIEW_CONSUMER_TESTS) <= set(selected)
 
 
 def test_platform_smoke_mapping_needs_the_whole_platform_name(repo: Path) -> None:
@@ -286,12 +286,12 @@ def test_python_file_in_a_composite_action_selects_workflow_tests(repo: Path) ->
     ]
 
 
-def test_oracle_workflow_change_still_selects_the_consumer_tests(repo: Path) -> None:
-    for test in pt.ORACLE_CONSUMER_TESTS:
+def test_review_workflow_change_still_selects_the_consumer_tests(repo: Path) -> None:
+    for test in pt.REVIEW_CONSUMER_TESTS:
         _write(repo, test)
     _write(repo, "tests/unit/workflows/test_every_workflow.py")
 
-    assert set(pt.ORACLE_CONSUMER_TESTS) <= set(pt.map_tests(repo, [".github/workflows/review-gate.yml"]))
+    assert set(pt.REVIEW_CONSUMER_TESTS) <= set(pt.map_tests(repo, [".github/workflows/review-gate.yml"]))
 
 
 def test_changed_test_package_init_selects_its_package_and_importers(

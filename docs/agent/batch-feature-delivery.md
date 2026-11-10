@@ -81,7 +81,7 @@ Rules that hold for the whole batch:
 - No new CI skips, protected-branch bypasses, credential changes, or
   publication shortcuts. Feature mode never weakens hosted/native review, merge,
   deployment, or authority gates, hold labels, the unresolved-thread refusal, or
-  the oracle gate.
+  the reviewer gate.
 - A member that merged in the integration head is a normal branch. Member
   scopes are frozen at registration; a change outside a member's scope is
   refused at landing, and a leader fix cannot widen the union of scopes.
@@ -158,7 +158,7 @@ A member:
   collects nothing blocks the check; it does not run the fast tier;
 - runs no review. The leader reviews the exact patch at landing, where a change
   that touches only exempt paths is recorded `not-reviewed`, the same bar as a
-  standalone PR (`docs/internal/oracle-review-v2.md`);
+  standalone PR (`docs/internal/review-v2.md`);
 - stops with a landing report: branch, accepted head, base, changed files,
   and tests. It does not push for publication, open a PR, or
   touch the tracker.

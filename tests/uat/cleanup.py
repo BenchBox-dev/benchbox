@@ -95,3 +95,38 @@ def prune_database_dir(
     if not dry_run:
         shutil.rmtree(target, ignore_errors=True)
     return bytes_total
+
+
+def prune_server_database(
+    *,
+    platform: str,
+    benchmark: str,
+    scale: float,
+    dry_run: bool = False,
+) -> bool:
+    if platform != "singlestore":
+        return False
+    if dry_run:
+        return True
+    try:
+        import os
+
+        from benchbox.platforms.singlestore import SingleStoreAdapter
+        from benchbox.utils.scale_factor import format_benchmark_name
+
+        benchmark_name = format_benchmark_name(benchmark, scale)
+        db_name = f"benchbox_{benchmark_name}".lower().replace("-", "_")
+        port = int(os.environ.get("SINGLESTORE_HOST_PORT", os.environ.get("SINGLESTORE_PORT", "13306")))
+        password = os.environ.get("SINGLESTORE_PASSWORD", os.environ.get("ROOT_PASSWORD", "benchbox"))
+        adapter = SingleStoreAdapter.from_config(
+            {
+                "host": os.environ.get("SINGLESTORE_HOST", "localhost"),
+                "port": port,
+                "username": os.environ.get("SINGLESTORE_USER", "root"),
+                "password": password,
+            }
+        )
+        adapter.drop_database(database=db_name)
+        return True
+    except Exception:
+        return False

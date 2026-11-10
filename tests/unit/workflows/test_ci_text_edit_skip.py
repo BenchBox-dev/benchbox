@@ -14,7 +14,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 ROOT = Path(__file__).resolve().parents[3]
 WORKFLOW = ROOT / ".github/workflows/ci.yml"
-GATE_CONTEXT = "oracle-gate"
+GATE_CONTEXT = "review-gate"
 ADMIN_SETTINGS = ROOT / "docs/internal/repo-admin-settings.md"
 TEXT_EDIT = "github.event.action == 'edited' && !github.event.changes.base"
 ROOT_JOBS = ("comment-policy", "ci-paths")
