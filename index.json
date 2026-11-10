@@ -39408,10 +39408,15 @@
       "title": "Activate the named Theseus gateway client and prove its first App-bound gate after observation disposition"
     },
     "theseus-governance-docs-owner-merge-rule-20261110": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-11T18:26:23Z",
+        "generation": "dba11c9b07164ead81768dd57345c68f",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Theseus: document the owner's merge and release review rule in CONTRIBUTING.md and RELEASING.md"
     },
     "theseus-hosted-workflows-offline-20261102": {
