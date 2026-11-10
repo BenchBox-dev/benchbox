@@ -39530,6 +39530,13 @@
       "status": "open",
       "title": "Theseus: read verdict and finding identity from markers so the review prose can change"
     },
+    "theseus-review-status-descriptions-20261110": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Theseus: rewrite review-verdict and review-gate status descriptions to lead with the decision and fit 140 characters"
+    },
     "theseus-test-isolation-gaps-20261106": {
       "claim": null,
       "needs": [],
