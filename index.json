@@ -7838,7 +7838,7 @@
         }
       },
       "integration_branch": "feat/server-engine-bulk-load-3",
-      "integration_head": "0f1f3fe3e358b885ab2e592dafedc57d90210570",
+      "integration_head": "f97c87273240623dcbb8aac83fb48aa64e8b6779",
       "integration_log": [
         {
           "at": "2026-11-10T01:41:43Z",
@@ -8004,6 +8004,23 @@
           "previous_head": "2f04567be3162faf857f2bb8fbd42ab8c16f22ef",
           "requires_acceptance": [],
           "seq": 9
+        },
+        {
+          "at": "2026-11-10T15:47:22Z",
+          "changed_files": [
+            ".github/workflows/mirror-ci-images.yml",
+            "docker/presto/docker-compose.yml",
+            "docker/trino/docker-compose.yml"
+          ],
+          "head": "f97c87273240623dcbb8aac83fb48aa64e8b6779",
+          "kind": "fix",
+          "op_id": "62672935b9654f4bad9c9010eec08ffe",
+          "previous_head": "0f1f3fe3e358b885ab2e592dafedc57d90210570",
+          "requires_acceptance": [
+            "perf-trino-presto-bulk-load-20261030",
+            "release-uat-presto-trino-unreachable-20261030"
+          ],
+          "seq": 10
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-server-engine-bulk-load-3",
