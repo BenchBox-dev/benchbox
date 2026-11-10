@@ -4,6 +4,11 @@
     "If closed: add the case to the shared detector or sanitizer with allowlist false-positive tests and a publish dry-run smoke.",
     "Otherwise record the accepted limit in the privacy docs."
   ],
+  "batch": {
+    "batch_id": "plan-export-contract",
+    "implementation_dependencies": [],
+    "member_id": "plan-privacy-detector-residual-limits-20261108"
+  },
   "context": "Low priority: publish already fails closed on any residual leak. Verification rubric: tests for each closed case, allowlist tests unchanged, comment-policy and ruff, PR merged with green CI.\n\nBATCH DECISIONS (2026-11-09, owner-delegated defaults): (a) CLOSE: a custom $HOME is added as a leak-scan root when it is set and is not a neutral placeholder. (b) CLOSE: anonymize_plans_payload sanitizes top-level errors text like the other text fields. (c) ACCEPT AND DOCUMENT: paths outside the known roots (e.g. /srv/...) stay flagged only when configured; record this in the privacy docs with the configured-roots escape hatch; do not widen the known root list without evidence from real captured plans. Each closed case needs allowlist false-positive tests unchanged plus a publish dry-run smoke. Depends on the detector and sanitizer code merged in PR #4054; sequence after the loader item only if they touch the same file. GUARDRAILS: stored fingerprints are never recomputed; never print leaked path values in diagnostics; do not widen the detector to every absolute path (owner decision 2026-11-08); fail-closed publish behavior stays; private non-anonymized exports unchanged; no hosted data deletion or history rewrite. Verification rubric: (1) reproduce with a failing test or script before editing; (2) focused suites pass via uv run -- python -m pytest -n 0; (3) make comment-policy-check and ruff on touched files; (4) the runtime smoke named in acceptance is recorded in the PR body; (5) one final batch PR merges with green CI and a passing oracle review.",
   "description": "Documented limits of the merged detector (PR #4054): a custom $HOME is used for redaction but not as a leak-scan root; paths outside the known roots (for example /srv/...) are flagged only when configured; anonymize_plans_payload does not touch top-level errors, so a leak there is rejected at publish instead of redacted. These are accepted limits, not confirmed leaks.",
   "links": [
@@ -26,6 +31,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "6fa42497c0a244fc8387397ee7d86c4a",
+      "session_id": "039807d800674f11b2d8d71dccd4e6ed"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:db7d69917905292075fe62aa",
+      "at": "2026-11-10T00:40:00Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ca1e4b3b0930468ba9c9272ba81220e9",
       "session_id": "039807d800674f11b2d8d71dccd4e6ed"
     }
   ]
