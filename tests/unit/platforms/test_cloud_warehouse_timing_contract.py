@@ -362,18 +362,14 @@ class TestRedshiftTimingContract:
 
 
 @pytest.fixture
-def athena_adapter(tmp_path, monkeypatch):
-    aws_dir = tmp_path / ".aws"
-    aws_dir.mkdir()
-    (aws_dir / "credentials").write_text("[default]\naws_access_key_id = t\naws_secret_access_key = t\n")
-    monkeypatch.setenv("HOME", str(tmp_path))
+def athena_adapter():
     with patch.dict(
         "sys.modules",
         {"boto3": MagicMock(), "pyathena": MagicMock(), "pyathena.cursor": MagicMock()},
     ):
         from benchbox.platforms.athena import AthenaAdapter
 
-        yield AthenaAdapter(s3_bucket="bucket")
+        yield AthenaAdapter(s3_bucket="bucket", aws_access_key_id="t", aws_secret_access_key="t")
 
 
 class TestAthenaTimingContract:
