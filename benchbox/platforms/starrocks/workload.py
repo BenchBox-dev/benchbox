@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY, outside_query_timer
 from benchbox.core.transactional.staging_keys import leading_key_columns
 from benchbox.core.tuning.generators.starrocks import DEFAULT_BUCKET_COUNT
 from benchbox.platforms.base.data_loading import (
@@ -41,6 +42,8 @@ def _alias_derived_tables(query: str) -> str:
 
 
 class StarRocksWorkloadMixin:
+    timing_method = TIMING_METHOD_QUERY_ONLY
+
     def create_schema(self, benchmark, connection: Any) -> float:
         start_time = mono_time()
 
@@ -254,7 +257,8 @@ class StarRocksWorkloadMixin:
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
-        query = _alias_derived_tables(query)
+        with outside_query_timer():
+            query = _alias_derived_tables(query)
         result = execute_sql_query(
             connection,
             query,
@@ -265,6 +269,7 @@ class StarRocksWorkloadMixin:
             scale_factor=scale_factor,
             validate_row_count=validate_row_count,
             stream_id=stream_id,
+            timing_fields_for=self.timing_fields_for,
         )
         result.setdefault("translated_query", None)
         return result

@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -20,9 +21,11 @@ from benchbox.core.dataframe.profiling import (
 from benchbox.core.dataframe.query import DataFrameQuery
 from benchbox.core.dataframe.tuning import DataFrameTuningConfiguration
 from benchbox.core.errors import PlanCaptureError
+from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY, RequestLedger, outside_query_timer
 from benchbox.platforms.dataframe._result_helpers import (
     build_failure_result_dict,
     build_success_result_dict,
+    dataframe_result_bytes,
 )
 from benchbox.platforms.dataframe.benchmark_mixin import BenchmarkExecutionMixin
 from benchbox.platforms.dataframe.datafusion_identifiers import datafusion_column as df_col
@@ -452,6 +455,8 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
 
 
 class ExpressionFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, ABC, Generic[DF, LazyDF, Expr]):
+    timing_method = TIMING_METHOD_QUERY_ONLY
+
     def __init__(
         self,
         working_dir: str | Path | None = None,
@@ -745,6 +750,7 @@ class ExpressionFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, 
         qid = query_id or query.query_id
         self._log_verbose(f"Executing query {qid}: {query.query_name}")
 
+        ledger = RequestLedger()
         start_time = mono_time()
 
         try:
@@ -752,6 +758,7 @@ class ExpressionFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, 
             if impl is None:
                 raise ValueError(f"Query '{qid}' has no expression implementation")
 
+            ledger.add_request()
             result_df = impl(ctx)
 
             if isinstance(result_df, UnifiedLazyFrame):
@@ -760,12 +767,15 @@ class ExpressionFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, 
             if hasattr(result_df, "collect"):
                 result_df = self.collect(result_df)
 
-            row_count = self.get_row_count(result_df)
-
-            first_row = self._get_first_row(result_df)
-
-            execution_time = elapsed_seconds(start_time)
-
+            if self.timing_method < TIMING_METHOD_QUERY_ONLY:
+                row_count = self.get_row_count(result_df)
+                first_row = self._get_first_row(result_df)
+                execution_time = elapsed_seconds(start_time)
+            else:
+                execution_time = elapsed_seconds(start_time)
+                with outside_query_timer():
+                    row_count = self.get_row_count(result_df)
+                    first_row = self._get_first_row(result_df)
             self._log_verbose(f"Query {qid} completed in {execution_time:.3f}s, returned {row_count} rows")
 
             return build_success_result_dict(
@@ -773,6 +783,8 @@ class ExpressionFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, 
                 execution_time_seconds=execution_time,
                 row_count=row_count,
                 first_row=first_row,
+                request_count=ledger.count,
+                result_bytes=dataframe_result_bytes(result_df),
             )
 
         except Exception as e:
@@ -800,7 +812,6 @@ class ExpressionFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, 
         self._log_verbose(f"Executing query {qid} with profiling: {query.query_name}")
 
         profile_ctx = QueryProfileContext(qid, self.platform_name)
-        profile_ctx._start_time = mono_time()
 
         plan_capture_error: str | None = None
 
@@ -809,12 +820,16 @@ class ExpressionFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, 
             memory_tracker = MemoryTracker(sample_interval_ms=memory_sample_interval_ms)
             memory_tracker.start()
 
+        ledger = RequestLedger()
+        profile_ctx._start_time = mono_time()
+
         try:
             impl = query.get_impl_for_family("expression")
             if impl is None:
                 raise ValueError(f"Query '{qid}' has no expression implementation")
 
             profile_ctx.start_planning()
+            ledger.add_request()
             lazy_result = impl(ctx)
             profile_ctx.end_planning()
 
@@ -846,22 +861,25 @@ class ExpressionFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, 
                 finally:
                     profile_ctx.end_plan_capture()
 
-            row_count = self.get_row_count(result_df)
-            profile_ctx.set_rows(row_count)
+            timed_profile = profile_ctx.get_profile()
+            execution_time = timed_profile.execution_time_ms / 1000.0
 
-            first_row = self._get_first_row(result_df)
+            with outside_query_timer():
+                row_count = self.get_row_count(result_df)
+                profile_ctx.set_rows(row_count)
 
-            if memory_tracker is not None:
-                peak_memory = memory_tracker.stop()
-                profile_ctx.set_peak_memory(peak_memory)
+                first_row = self._get_first_row(result_df)
 
-                stats = memory_tracker.get_statistics()
-                profile_ctx.add_metric("memory_baseline_mb", stats["baseline_mb"])
-                profile_ctx.add_metric("memory_delta_mb", stats["peak_delta_mb"])
-                profile_ctx.add_metric("memory_samples", stats["sample_count"])
+                if memory_tracker is not None:
+                    peak_memory = memory_tracker.stop()
+                    profile_ctx.set_peak_memory(peak_memory)
 
-            profile = profile_ctx.get_profile()
-            execution_time = profile.execution_time_ms / 1000.0
+                    stats = memory_tracker.get_statistics()
+                    profile_ctx.add_metric("memory_baseline_mb", stats["baseline_mb"])
+                    profile_ctx.add_metric("memory_delta_mb", stats["peak_delta_mb"])
+                    profile_ctx.add_metric("memory_samples", stats["sample_count"])
+
+            profile = dataclasses.replace(profile_ctx.get_profile(), execution_time_ms=timed_profile.execution_time_ms)
 
             self._log_verbose(
                 f"Query {qid} completed in {execution_time:.3f}s, "
@@ -875,6 +893,8 @@ class ExpressionFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, 
                 execution_time_seconds=execution_time,
                 row_count=row_count,
                 first_row=first_row,
+                request_count=ledger.count,
+                result_bytes=dataframe_result_bytes(result_df),
             )
             if plan_capture_error is not None:
                 result_dict["plan_capture_error"] = plan_capture_error

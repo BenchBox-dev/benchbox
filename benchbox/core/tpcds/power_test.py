@@ -17,6 +17,7 @@ from benchbox.core.plan_capture_phase import (
 )
 from benchbox.core.result_receipt import cursor_result_count
 from benchbox.core.results.fetch_mode import ConversionClock
+from benchbox.core.results.platform_timing import deferred_platform_timing
 from benchbox.core.validation.query_validation import (
     clear_reference_seed_context,
     set_reference_seed_context,
@@ -169,11 +170,13 @@ class TPCDSPowerTest:
             if self.config.verbose:
                 self.logger.info(f"Using parameter seed {stream_param_seed} for stream {self.config.stream_id}")
 
-            for position, query_info in enumerate(queries_to_execute):
-                self._execute_one_query(position, query_info, connection, stream_param_seed, result)
+            with deferred_platform_timing() as deferred:
+                for position, query_info in enumerate(queries_to_execute):
+                    self._execute_one_query(position, query_info, connection, stream_param_seed, result)
+                self._finalize_power_metrics(result, start_time)
+                deferred.resolve()
 
             connection.close()
-            self._finalize_power_metrics(result, start_time)
             return result
         except Exception as e:
             result.total_time = elapsed_seconds(start_time)

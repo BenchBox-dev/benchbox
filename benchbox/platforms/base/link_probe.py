@@ -6,11 +6,15 @@ from __future__ import annotations
 import logging
 import statistics
 import threading
+from collections.abc import Callable
 from typing import Any
 
+from benchbox.core.results.platform_timing import PROBE_SAMPLE_COUNT
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 logger = logging.getLogger(__name__)
+
+StatementIdOf = Callable[[Any], str | None]
 
 
 def _allowlisted_error(exc: BaseException) -> dict[str, Any]:
@@ -23,27 +27,36 @@ def _allowlisted_error(exc: BaseException) -> dict[str, Any]:
     }
 
 
-def _run_samples(execute_one: Any, sample_count: int) -> list[float]:
+def _run_samples(
+    execute_one: Callable[[], Any], sample_count: int, statement_id_of: StatementIdOf | None
+) -> tuple[list[float], list[str]]:
     execute_one()
     samples: list[float] = []
+    statement_ids: list[str] = []
     for _ in range(sample_count):
         query_start = mono_time()
-        execute_one()
+        handle = execute_one()
         samples.append(elapsed_seconds(query_start) * 1000.0)
-    return samples
+        statement_id = statement_id_of(handle) if statement_id_of is not None else None
+        if statement_id:
+            statement_ids.append(statement_id)
+    return samples, statement_ids
 
 
-def _sample_via_cursor(connection: Any, sample_count: int) -> list[float]:
+def _sample_via_cursor(
+    connection: Any, sample_count: int, statement_id_of: StatementIdOf | None
+) -> tuple[list[float], list[str]]:
     cursor = connection.cursor()
     try:
 
-        def execute_one() -> None:
+        def execute_one() -> Any:
             cursor.execute("SELECT 1")
             fetchall = getattr(cursor, "fetchall", None)
             if callable(fetchall):
                 fetchall()
+            return cursor
 
-        return _run_samples(execute_one, sample_count)
+        return _run_samples(execute_one, sample_count, statement_id_of)
     finally:
         close = getattr(cursor, "close", None)
         if callable(close):
@@ -53,24 +66,28 @@ def _sample_via_cursor(connection: Any, sample_count: int) -> list[float]:
                 pass
 
 
-def _sample_via_query_api(connection: Any, timeout_seconds: float, sample_count: int) -> list[float]:
+def _sample_via_query_api(
+    connection: Any, timeout_seconds: float, sample_count: int, statement_id_of: StatementIdOf | None
+) -> tuple[list[float], list[str]]:
     per_statement_timeout = max(0.5, timeout_seconds / (sample_count + 1))
 
-    def execute_one() -> None:
+    def execute_one() -> Any:
         job = connection.query("SELECT 1")
         result = getattr(job, "result", None)
         if callable(result):
             result(timeout=per_statement_timeout)
         elif hasattr(job, "__iter__"):
             list(job)
+        return job
 
-    return _run_samples(execute_one, sample_count)
+    return _run_samples(execute_one, sample_count, statement_id_of)
 
 
 def probe_statement_overhead(
     connection: Any,
     timeout_seconds: float = 5.0,
-    sample_count: int = 5,
+    sample_count: int = PROBE_SAMPLE_COUNT,
+    statement_id_of: StatementIdOf | None = None,
 ) -> dict[str, Any]:
     if connection is None:
         return {
@@ -98,9 +115,11 @@ def probe_statement_overhead(
                 except Exception as exc:
                     logger.debug("Link probe pre-rollback skipped: %r", exc)
             if callable(cursor_factory):
-                samples = _sample_via_cursor(connection, sample_count)
+                samples, statement_ids = _sample_via_cursor(connection, sample_count, statement_id_of)
             else:
-                samples = _sample_via_query_api(connection, timeout_seconds, sample_count)
+                samples, statement_ids = _sample_via_query_api(
+                    connection, timeout_seconds, sample_count, statement_id_of
+                )
             if not samples:
                 raise RuntimeError("No statement overhead samples collected")
             outcome["result"] = {
@@ -111,6 +130,7 @@ def probe_statement_overhead(
                     "min": round(min(samples), 3),
                     "median": round(statistics.median(samples), 3),
                 },
+                "statement_ids": statement_ids,
             }
         except Exception as exc:
             outcome["result"] = _allowlisted_error(exc)

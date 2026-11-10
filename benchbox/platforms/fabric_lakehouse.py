@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     )
 
 from benchbox.core.exceptions import ConfigurationError, ReadOnlyPlatformError
+from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY, RequestLedger, outside_query_timer
 from benchbox.platforms.base import DriverIsolationCapability, PlatformAdapter
 from benchbox.utils.dependencies import check_platform_dependencies, get_dependency_error_message
 
@@ -31,6 +32,7 @@ except ImportError:
 
 
 class FabricLakehouseAdapter(PlatformAdapter):
+    timing_method = TIMING_METHOD_QUERY_ONLY
     plan_capture_phase_eligible = True
 
     driver_isolation_capability = DriverIsolationCapability.NOT_FEASIBLE
@@ -251,9 +253,12 @@ class FabricLakehouseAdapter(PlatformAdapter):
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
+        ledger = RequestLedger()
         start_time = mono_time()
 
-        if not self._is_read_only_query(query):
+        with outside_query_timer():
+            read_only = self._is_read_only_query(query)
+        if not read_only:
             error = self._read_only_error(query)
             return {
                 "query_id": query_id,
@@ -265,16 +270,21 @@ class FabricLakehouseAdapter(PlatformAdapter):
                 "error_type": type(error).__name__,
             }
 
-        cursor = connection.cursor()
+        with outside_query_timer():
+            cursor = connection.cursor()
         try:
+            start_time = mono_time()
+            ledger.add_request()
             cursor.execute(query)
             rows = cursor.fetchall() if getattr(cursor, "description", None) else []
+            execution_time = elapsed_seconds(start_time)
             return {
                 "query_id": query_id,
                 "stream_id": stream_id,
                 "status": "SUCCESS",
-                "execution_time_seconds": elapsed_seconds(start_time),
+                "execution_time_seconds": execution_time,
                 "rows_returned": len(rows),
+                **self.timing_fields_for(connection, ledger, rows=rows, elapsed_seconds=execution_time),
             }
         except Exception as exc:
             return {

@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 from typing import Any, Callable
 
+from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.sql_identifier import is_valid_sql_identifier
 
@@ -116,6 +117,7 @@ class MySqlWireConnectionWrapper:
 
 
 class MySqlWireLifecycleMixin:
+    timing_method = TIMING_METHOD_QUERY_ONLY
     database_identifier_max_length = 128
     connection_operation_name = "MySQL-wire connection"
     database_exists_rethrow_error_code: int | None = None
@@ -149,6 +151,7 @@ class MySqlWireLifecycleMixin:
             scale_factor=scale_factor,
             validate_row_count=validate_row_count,
             stream_id=stream_id,
+            timing_fields_for=self.timing_fields_for,
         )
 
     def _validate_identifier(self, identifier: str) -> bool:

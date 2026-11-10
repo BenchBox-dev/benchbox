@@ -15,6 +15,7 @@ from typing import Any
 from benchbox.core.execution_engine import ExecutionEngineReceipt, platform_default_receipt
 from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW, FETCH_MODE_ROWS
 from benchbox.core.results.platform_options import sanitize_platform_options
+from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dialect_utils import split_sql_statements
 
@@ -435,6 +436,7 @@ def _fetch_arrow_table(cursor: Any) -> Any:
 class GizmoSQLAdapter(PlatformAdapter):
     driver_isolation_capability = DriverIsolationCapability.FEASIBLE_CLIENT_ONLY
     plan_capture_phase_eligible = True
+    timing_method = TIMING_METHOD_QUERY_ONLY
     physical_identifier_case = "lower"
     default_fetch_mode = FETCH_MODE_ARROW
     _supported_tuning_type_names = ()
@@ -1118,6 +1120,7 @@ class GizmoSQLAdapter(PlatformAdapter):
             scale_factor=scale_factor,
             validate_row_count=validate_row_count,
             stream_id=stream_id,
+            timing_fields_for=self.timing_fields_for,
             fetch_mode=FETCH_MODE_ROWS if self.dry_run_mode else self.fetch_mode,
             fetch_arrow=_fetch_arrow_table,
         )

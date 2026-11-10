@@ -9,10 +9,13 @@ from benchbox.core.results.comparison_modes import (
     IncomparableModesError,
     bundle_maintenance_method,
     bundle_mode_differences,
+    bundle_timing_method,
     modes_comparable,
     require_comparable_modes,
     results_maintenance_method,
     results_mode_differences,
+    results_timing_method,
+    stored_timing_method,
 )
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -117,3 +120,50 @@ def test_results_method_is_legacy_when_unrecorded():
 def test_results_method_is_none_without_phase():
     assert results_maintenance_method(_results(None, with_phase=False)) is None
     assert results_maintenance_method(SimpleNamespace(execution_phases=None)) is None
+
+
+def _timed(method: int | None) -> dict:
+    return {"run": {} if method is None else {"timing_method": method}, "phases": {}}
+
+
+def test_run_mode_fields_include_timing_method():
+    assert any(field.name == "timing method" for field in RUN_MODE_FIELDS)
+
+
+def test_bundle_without_timing_method_is_legacy():
+    assert bundle_timing_method(_timed(None)) == "1"
+    assert bundle_timing_method(_timed(2)) == "2"
+
+
+def test_unrecorded_timing_method_compares_with_method_one():
+    assert modes_comparable(_timed(None), _timed(1))
+
+
+def test_different_timing_methods_differ():
+    assert bundle_mode_differences(_timed(1), _timed(2)) == ["timing method differs (1 vs 2)"]
+    assert bundle_mode_differences(_timed(None), _timed(2)) == ["timing method differs (1 vs 2)"]
+
+
+def test_require_comparable_modes_raises_for_different_timing_methods():
+    with pytest.raises(IncomparableModesError, match="timing method differs"):
+        require_comparable_modes(_timed(2), _timed(1))
+
+
+def test_results_timing_method_defaults_to_legacy():
+    assert results_timing_method(SimpleNamespace(timing_method=None)) == "1"
+    assert results_timing_method(SimpleNamespace(timing_method=2)) == "2"
+    assert results_timing_method(SimpleNamespace()) == "1"
+
+
+def test_results_with_two_timing_methods_report_one_difference():
+    differences = results_mode_differences(
+        [SimpleNamespace(timing_method=2), SimpleNamespace(timing_method=1), SimpleNamespace(timing_method=2)]
+    )
+    assert len(differences) == 1
+    assert "timing method differs" in differences[0]
+
+
+def test_stored_timing_method_defaults_to_legacy():
+    assert stored_timing_method({}) == 1
+    assert stored_timing_method({"timing_method": 2}) == 2
+    assert stored_timing_method({"timing_method": "2"}) == 1

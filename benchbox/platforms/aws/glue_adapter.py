@@ -11,6 +11,12 @@ import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from benchbox.core.results.timer_scope import (
+    REQUEST_KIND_QUERY,
+    TIMING_METHOD_QUERY_ONLY,
+    RequestLedger,
+    outside_query_timer,
+)
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 if TYPE_CHECKING:
@@ -60,6 +66,7 @@ class GlueJobStatus:
 
 class AWSGlueAdapter(SparkTuningMixin, SparkExternalTableMixin, PlatformAdapter):
     plan_capture_phase_eligible = True
+    timing_method = TIMING_METHOD_QUERY_ONLY
     external_staging_instruction = "Pass --output s3://bucket/path."
 
     driver_isolation_capability = DriverIsolationCapability.NOT_FEASIBLE
@@ -304,16 +311,22 @@ class AWSGlueAdapter(SparkTuningMixin, SparkExternalTableMixin, PlatformAdapter)
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
+        ledger = RequestLedger()
         start_time = mono_time()
         try:
-            self._ensure_job_exists()
+            with outside_query_timer():
+                self._ensure_job_exists()
+            start_time = mono_time()
             run_id = self._submit_job_run(query)
+            ledger.add_request(REQUEST_KIND_QUERY, run_id)
             status = self._wait_for_job(run_id)
             if status != GlueJobStatus.SUCCEEDED:
                 raise RuntimeError(f"Glue job failed with status: {status}")
             results = self._retrieve_results(run_id)
             elapsed = elapsed_seconds(start_time)
-            self._query_count += 1
+            with outside_query_timer():
+                self._query_count += 1
+                timing_fields = self.timing_fields_for(connection, ledger, rows=results, elapsed_seconds=elapsed)
             return {
                 "query_id": query_id,
                 "stream_id": stream_id,
@@ -322,6 +335,7 @@ class AWSGlueAdapter(SparkTuningMixin, SparkExternalTableMixin, PlatformAdapter)
                 "rows_returned": len(results),
                 "results": results,
                 "error": None,
+                **timing_fields,
             }
         except Exception as e:
             return {

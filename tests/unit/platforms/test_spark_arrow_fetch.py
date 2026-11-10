@@ -19,11 +19,12 @@ from benchbox.platforms.base.spark_execution_mixin import (
     spark_arrow_converters,
     spark_dataframe_supports_arrow,
 )
+from benchbox.platforms.base.timing_contract import TimingContractMixin
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 
-class _Host(SparkQueryExecutionMixin):
+class _Host(TimingContractMixin, SparkQueryExecutionMixin):
     dry_run_mode = False
     disable_cache = False
 

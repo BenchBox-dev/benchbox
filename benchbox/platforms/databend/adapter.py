@@ -12,6 +12,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
+from benchbox.core.results.timer_scope import (
+    REQUEST_KIND_QUERY,
+    TIMING_METHOD_QUERY_ONLY,
+    RequestLedger,
+    outside_query_timer,
+)
 from benchbox.platforms.base.tuning import make_informational_constraint_applier
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
@@ -48,6 +54,7 @@ _QUOTED_INTERVAL = re.compile(r"\bINTERVAL\s+'\s*(-?\d+)\s+([A-Za-z]+)\s*'", re.
 
 class DatabendAdapter(PlatformAdapter):
     physical_identifier_case = "lower"
+    timing_method = TIMING_METHOD_QUERY_ONLY
 
     plan_capture_phase_eligible = True
     default_service_port = 8000
@@ -565,12 +572,16 @@ class DatabendAdapter(PlatformAdapter):
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
-        connection.exec(f"USE {self._quote_identifier(self.database)}")
+        with outside_query_timer():
+            connection.exec(f"USE {self._quote_identifier(self.database)}")
+            statement = _QUOTED_INTERVAL.sub(r"INTERVAL '\1' \2", query)
 
+        ledger = RequestLedger()
         start_time = mono_time()
 
         try:
-            rows = connection.query_iter(_QUOTED_INTERVAL.sub(r"INTERVAL '\1' \2", query))
+            ledger.add_request(REQUEST_KIND_QUERY)
+            rows = connection.query_iter(statement)
             result = list(rows)
 
             execution_time = elapsed_seconds(start_time)
@@ -579,36 +590,43 @@ class DatabendAdapter(PlatformAdapter):
             query_stats = {"execution_time_seconds": execution_time}
 
             validation_result = None
-            if validate_row_count and benchmark_type:
-                from benchbox.core.validation.query_validation import QueryValidator
+            with outside_query_timer():
+                if validate_row_count and benchmark_type:
+                    from benchbox.core.validation.query_validation import QueryValidator
 
-                validator = QueryValidator()
-                validation_result = validator.validate_query_result(
-                    benchmark_type=benchmark_type,
-                    query_id=query_id,
-                    actual_row_count=actual_row_count,
-                    scale_factor=scale_factor,
-                    stream_id=stream_id,
-                )
-
-                if validation_result.warning_message:
-                    self.log_verbose(f"Row count validation: {validation_result.warning_message}")
-                elif not validation_result.is_valid:
-                    self.log_verbose(f"Row count validation FAILED: {validation_result.error_message}")
-                else:
-                    self.log_very_verbose(
-                        f"Row count validation PASSED: {actual_row_count} rows "
-                        f"(expected: {validation_result.expected_row_count})"
+                    validator = QueryValidator()
+                    validation_result = validator.validate_query_result(
+                        benchmark_type=benchmark_type,
+                        query_id=query_id,
+                        actual_row_count=actual_row_count,
+                        scale_factor=scale_factor,
+                        stream_id=stream_id,
                     )
 
-            result_dict = self._build_query_result_with_validation(
-                query_id=query_id,
-                execution_time=execution_time,
-                actual_row_count=actual_row_count,
-                first_row=result[0] if result else None,
-                validation_result=validation_result,
-                materialized_rows=result,
-            )
+                    if validation_result.warning_message:
+                        self.log_verbose(f"Row count validation: {validation_result.warning_message}")
+                    elif not validation_result.is_valid:
+                        self.log_verbose(f"Row count validation FAILED: {validation_result.error_message}")
+                    else:
+                        self.log_very_verbose(
+                            f"Row count validation PASSED: {actual_row_count} rows "
+                            f"(expected: {validation_result.expected_row_count})"
+                        )
+
+                result_dict = self._build_query_result_with_validation(
+                    query_id=query_id,
+                    execution_time=execution_time,
+                    actual_row_count=actual_row_count,
+                    first_row=result[0] if result else None,
+                    validation_result=validation_result,
+                    materialized_rows=result,
+                    timing_fields=self.timing_fields_for(
+                        connection,
+                        ledger,
+                        rows=[self._row_tuple(row) for row in result],
+                        elapsed_seconds=execution_time,
+                    ),
+                )
 
             result_dict["query_statistics"] = query_stats
             result_dict["resource_usage"] = query_stats

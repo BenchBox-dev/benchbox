@@ -122,6 +122,7 @@ def propagate_query_execution_metadata(source: Mapping[str, Any], target: dict[s
     resource_usage = source.get("resource_usage")
     if resource_usage is not None:
         target["resource_usage"] = resource_usage
-    fetch_mode = source.get("fetch_mode")
-    if fetch_mode is not None:
-        target["fetch_mode"] = fetch_mode
+    for key in ("fetch_mode", "request_count", "result_bytes", "platform_timing"):
+        value = source.get(key)
+        if value is not None:
+            target[key] = value

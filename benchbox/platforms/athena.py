@@ -5,10 +5,17 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from benchbox.core.results.platform_timing import StatementTiming
+from benchbox.core.results.timer_scope import (
+    REQUEST_KIND_QUERY,
+    TIMING_METHOD_QUERY_ONLY,
+    RequestLedger,
+    outside_query_timer,
+)
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 if TYPE_CHECKING:
@@ -45,7 +52,25 @@ def _compact_metadata(payload: Mapping[str, Any]) -> dict[str, Any]:
     return {str(key): value for key, value in payload.items() if value not in (None, "", {}, [], ())}
 
 
+def _optional_float(value: Any) -> float | None:
+    return None if value is None else float(value)
+
+
+ATHENA_STATISTICS_FIELDS = (
+    "TotalExecutionTimeInMillis",
+    "QueryQueueTimeInMillis",
+    "ServicePreProcessingTimeInMillis",
+    "QueryPlanningTimeInMillis",
+    "EngineExecutionTimeInMillis",
+    "ServiceProcessingTimeInMillis",
+    "DataScannedInBytes",
+)
+
+
 class AthenaAdapter(PlatformAdapter):
+    timing_method = TIMING_METHOD_QUERY_ONLY
+    platform_timing_source = "athena.get_query_execution"
+    platform_timing_definition = "server_complete"
     physical_identifier_case = "lower"
 
     plan_capture_phase_eligible = True
@@ -943,6 +968,39 @@ class AthenaAdapter(PlatformAdapter):
     def configure_for_benchmark(self, connection: Any, benchmark_type: str) -> None:
         self.log_verbose(f"Configuring Athena for {benchmark_type} benchmark")
 
+    @staticmethod
+    def _statement_id_of(cursor: Any) -> str | None:
+        query_execution_id = getattr(cursor, "query_id", None)
+        return query_execution_id if isinstance(query_execution_id, str) and query_execution_id else None
+
+    def probe_statement_id(self, cursor: Any) -> str | None:
+        return self._statement_id_of(cursor)
+
+    def fetch_platform_timings(self, connection: Any, statement_ids: Sequence[str]) -> Mapping[str, StatementTiming]:
+        found: dict[str, StatementTiming] = {}
+        client = connection.client
+        for statement_id in dict.fromkeys(statement_ids):
+            statistics = client.get_query_execution(QueryExecutionId=statement_id)["QueryExecution"]["Statistics"]
+            fields: dict[str, float | int | bool | None] = {
+                name: statistics[name]
+                for name in ATHENA_STATISTICS_FIELDS
+                if isinstance(statistics.get(name), (int, float)) and not isinstance(statistics.get(name), bool)
+            }
+            total = fields.get("TotalExecutionTimeInMillis")
+            if total is None:
+                continue
+            reused = (statistics.get("ResultReuseInformation") or {}).get("ReusedPreviousResult")
+            found[statement_id] = StatementTiming(
+                statement_id=statement_id,
+                fields=fields,
+                platform_ms=float(total),
+                queue_ms=_optional_float(fields.get("QueryQueueTimeInMillis")),
+                compile_ms=_optional_float(fields.get("QueryPlanningTimeInMillis")),
+                exec_ms=_optional_float(fields.get("EngineExecutionTimeInMillis")),
+                cache_hit=reused if isinstance(reused, bool) else None,
+            )
+        return found
+
     def execute_query(
         self,
         connection: Any,
@@ -953,45 +1011,51 @@ class AthenaAdapter(PlatformAdapter):
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
+        ledger = RequestLedger()
         start_time = mono_time()
         cursor = connection.cursor()
 
         try:
+            start_time = mono_time()
             cursor.execute(query)
+            query_execution_id = self._statement_id_of(cursor)
+            ledger.add_request(REQUEST_KIND_QUERY, query_execution_id)
             result = cursor.fetchall()
 
             execution_time = elapsed_seconds(start_time)
             actual_row_count = len(result) if result else 0
 
-            data_scanned_bytes = 0
-            query_execution_id = None
+            with outside_query_timer():
+                data_scanned_bytes = 0
 
-            if hasattr(cursor, "query_id"):
-                query_execution_id = cursor.query_id
+                if hasattr(cursor, "query_id"):
+                    query_execution_id = cursor.query_id
 
-            if hasattr(cursor, "data_scanned_in_bytes"):
-                data_scanned_bytes = cursor.data_scanned_in_bytes or 0
-                self._total_data_scanned_bytes += data_scanned_bytes
+                if hasattr(cursor, "data_scanned_in_bytes"):
+                    data_scanned_bytes = cursor.data_scanned_in_bytes or 0
+                    self._total_data_scanned_bytes += data_scanned_bytes
 
-            self._query_count += 1
+                self._query_count += 1
 
-            validation_result = None
-            if validate_row_count and benchmark_type:
-                from benchbox.core.validation.query_validation import QueryValidator
+                validation_result = None
+                if validate_row_count and benchmark_type:
+                    from benchbox.core.validation.query_validation import QueryValidator
 
-                validator = QueryValidator()
-                validation_result = validator.validate_query_result(
-                    benchmark_type=benchmark_type,
-                    query_id=query_id,
-                    actual_row_count=actual_row_count,
-                    scale_factor=scale_factor,
-                    stream_id=stream_id,
-                )
+                    validator = QueryValidator()
+                    validation_result = validator.validate_query_result(
+                        benchmark_type=benchmark_type,
+                        query_id=query_id,
+                        actual_row_count=actual_row_count,
+                        scale_factor=scale_factor,
+                        stream_id=stream_id,
+                    )
 
-            from benchbox.core.cost.pricing import resolve_athena_price_per_tb
+                from benchbox.core.cost.pricing import resolve_athena_price_per_tb
 
-            cost_per_tb = resolve_athena_price_per_tb(self.region or "us-east-1").value or 5.0
-            cost = (data_scanned_bytes / (10**12)) * cost_per_tb
+                cost_per_tb = resolve_athena_price_per_tb(self.region or "us-east-1").value or 5.0
+                cost = (data_scanned_bytes / (10**12)) * cost_per_tb
+
+                timing_fields = self.timing_fields_for(connection, ledger, rows=result, elapsed_seconds=execution_time)
 
             result_dict = self._build_query_result_with_validation(
                 query_id=query_id,
@@ -1000,6 +1064,7 @@ class AthenaAdapter(PlatformAdapter):
                 first_row=result[0] if result else None,
                 validation_result=validation_result,
                 materialized_rows=result,
+                timing_fields=timing_fields,
             )
 
             result_dict["data_scanned_bytes"] = data_scanned_bytes

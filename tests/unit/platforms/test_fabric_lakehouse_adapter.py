@@ -114,3 +114,26 @@ class TestFabricLakehouseConnection:
 
         assert info["platform"] == "fabric-lakehouse"
         assert info["read_only"] is True
+
+
+class TestFabricLakehouseTimingContract:
+    def test_method_two_with_request_count_and_result_bytes(self, lakehouse_adapter):
+        from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY
+
+        connection = Mock()
+        cursor = Mock()
+        cursor.description = [("value",)]
+        cursor.fetchall.return_value = [(1,), (2,)]
+        connection.cursor.return_value = cursor
+
+        result = lakehouse_adapter.execute_query(connection=connection, query="SELECT 1", query_id="Q2")
+
+        assert lakehouse_adapter.timing_method == TIMING_METHOD_QUERY_ONLY
+        assert result["request_count"] == 1
+        assert result["result_bytes"] == 16
+
+    def test_rejected_write_records_no_timing_fields(self, lakehouse_adapter):
+        result = lakehouse_adapter.execute_query(connection=Mock(), query="INSERT INTO t VALUES (1)", query_id="Q1")
+
+        assert result["status"] == "FAILED"
+        assert "request_count" not in result

@@ -10,12 +10,19 @@ import json
 import logging
 import tempfile
 import time
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from benchbox.core.errors import PlanCaptureError
+from benchbox.core.results.platform_timing import StatementTiming
+from benchbox.core.results.timer_scope import (
+    REQUEST_KIND_QUERY,
+    TIMING_METHOD_QUERY_ONLY,
+    RequestLedger,
+    outside_query_timer,
+)
 from benchbox.platforms.base.config_utils import make_registered_platform_config_builder
 from benchbox.platforms.base.mysql_wire import split_sql_statements
 from benchbox.platforms.base.tuning import make_informational_constraint_applier
@@ -81,6 +88,10 @@ def _is_project_scoped_information_schema_view(name: str) -> bool:
     return upper.rsplit(".", 1)[-1] in _PROJECT_SCOPED_INFORMATION_SCHEMA_VIEWS
 
 
+BIGQUERY_JOB_STATS_ATTEMPTS = 2
+BIGQUERY_JOB_STATS_RETRY_DELAY_SECONDS = 0.25
+
+
 class BigQueryAdapter(PlatformAdapter):
     driver_isolation_capability = DriverIsolationCapability.FEASIBLE_CLIENT_ONLY
     supports_external_tables = True
@@ -88,6 +99,9 @@ class BigQueryAdapter(PlatformAdapter):
     _DELIMITED_FORMATS = frozenset({"tbl", "csv"})
     plan_capture_phase_eligible = False
     ledger_execute_verbs = ("query",)
+    timing_method = TIMING_METHOD_QUERY_ONLY
+    platform_timing_source = "bigquery.jobs"
+    platform_timing_definition = "server_complete"
 
     def __init__(self, **config):
         super().__init__(**config)
@@ -1528,6 +1542,59 @@ class BigQueryAdapter(PlatformAdapter):
             if default_config is not None and hasattr(default_config, "dry_run"):
                 default_config.dry_run = bool(getattr(self, "dry_run", False))
 
+    @staticmethod
+    def _statement_id_of(job: Any) -> str | None:
+        job_id = getattr(job, "job_id", None)
+        return job_id if isinstance(job_id, str) and job_id else None
+
+    def probe_statement_id(self, handle: Any) -> str | None:
+        return self._statement_id_of(handle)
+
+    @staticmethod
+    def _epoch_ms(moment: Any) -> float | None:
+        timestamp = getattr(moment, "timestamp", None)
+        if not callable(timestamp):
+            return None
+        value = timestamp()
+        return value * 1000.0 if isinstance(value, (int, float)) else None
+
+    def fetch_platform_timings(self, connection: Any, statement_ids: Sequence[str]) -> Mapping[str, StatementTiming]:
+        found: dict[str, StatementTiming] = {}
+        for statement_id in dict.fromkeys(statement_ids):
+            for attempt in range(BIGQUERY_JOB_STATS_ATTEMPTS):
+                job = connection.get_job(statement_id)
+                created = self._epoch_ms(getattr(job, "created", None))
+                started = self._epoch_ms(getattr(job, "started", None))
+                ended = self._epoch_ms(getattr(job, "ended", None))
+                if created is not None and ended is not None:
+                    break
+                if attempt + 1 < BIGQUERY_JOB_STATS_ATTEMPTS:
+                    time.sleep(BIGQUERY_JOB_STATS_RETRY_DELAY_SECONDS * (2**attempt))
+            else:
+                continue
+            fields: dict[str, float | int | bool | None] = {"creationTime": created, "endTime": ended}
+            if started is not None:
+                fields["startTime"] = started
+            for name, value in (
+                ("totalSlotMs", getattr(job, "slot_millis", None)),
+                ("totalBytesProcessed", getattr(job, "total_bytes_processed", None)),
+                ("totalBytesBilled", getattr(job, "total_bytes_billed", None)),
+            ):
+                if isinstance(value, (int, float)) and not isinstance(value, bool):
+                    fields[name] = value
+            cache_hit = getattr(job, "cache_hit", None)
+            if isinstance(cache_hit, bool):
+                fields["cacheHit"] = cache_hit
+            found[statement_id] = StatementTiming(
+                statement_id=statement_id,
+                fields=fields,
+                platform_ms=ended - created,
+                queue_ms=None if started is None else started - created,
+                exec_ms=None if started is None else ended - started,
+                cache_hit=cache_hit if isinstance(cache_hit, bool) else None,
+            )
+        return found
+
     def execute_query(
         self,
         connection: Any,
@@ -1539,63 +1606,70 @@ class BigQueryAdapter(PlatformAdapter):
         stream_id: int | None = None,
     ) -> dict[str, Any]:
         start_time = mono_time()
+        ledger = RequestLedger()
 
         try:
-            translated_query = query
-            if "`" in translated_query:
-                translated_query = self._normalize_table_names_case(translated_query)
-                translated_query = self._qualify_table_names(translated_query, allow_fallback=("`" not in query))
-            else:
-                translated_query = self._qualify_table_names(translated_query)
+            with outside_query_timer():
+                translated_query = query
+                if "`" in translated_query:
+                    translated_query = self._normalize_table_names_case(translated_query)
+                    translated_query = self._qualify_table_names(translated_query, allow_fallback=("`" not in query))
+                else:
+                    translated_query = self._qualify_table_names(translated_query)
 
-            translated_query = self._apply_safe_division(translated_query)
+                translated_query = self._apply_safe_division(translated_query)
 
-            if "`" in translated_query:
-                translated_query = self._normalize_table_names_case(translated_query)
+                if "`" in translated_query:
+                    translated_query = self._normalize_table_names_case(translated_query)
 
-            translated_query = self._translate_create_table(translated_query)
+                translated_query = self._translate_create_table(translated_query)
 
-            job_config = getattr(connection, "_default_job_config", bigquery.QueryJobConfig())
-            if hasattr(job_config, "dry_run") and job_config.dry_run != self.dry_run:
-                job_config.dry_run = self.dry_run
+                job_config = getattr(connection, "_default_job_config", bigquery.QueryJobConfig())
+                if hasattr(job_config, "dry_run") and job_config.dry_run != self.dry_run:
+                    job_config.dry_run = self.dry_run
 
+            start_time = mono_time()
             query_job = connection.query(translated_query, job_config=job_config)
+            ledger.add_request(REQUEST_KIND_QUERY, self._statement_id_of(query_job))
             result = list(query_job.result())
 
             execution_time = elapsed_seconds(start_time)
             actual_row_count = len(result) if result else 0
 
-            job_stats = {
-                "bytes_processed": query_job.total_bytes_processed,
-                "bytes_billed": query_job.total_bytes_billed,
-                "slot_ms": query_job.slot_millis,
-                "creation_time": query_job.created.isoformat() if query_job.created else None,
-                "start_time": query_job.started.isoformat() if query_job.started else None,
-                "end_time": query_job.ended.isoformat() if query_job.ended else None,
-            }
+            with outside_query_timer():
+                job_stats = {
+                    "bytes_processed": query_job.total_bytes_processed,
+                    "bytes_billed": query_job.total_bytes_billed,
+                    "slot_ms": query_job.slot_millis,
+                    "creation_time": query_job.created.isoformat() if query_job.created else None,
+                    "start_time": query_job.started.isoformat() if query_job.started else None,
+                    "end_time": query_job.ended.isoformat() if query_job.ended else None,
+                }
 
-            validation_result = None
-            if validate_row_count and benchmark_type:
-                from benchbox.core.validation.query_validation import QueryValidator
+                validation_result = None
+                if validate_row_count and benchmark_type:
+                    from benchbox.core.validation.query_validation import QueryValidator
 
-                validator = QueryValidator()
-                validation_result = validator.validate_query_result(
-                    benchmark_type=benchmark_type,
-                    query_id=query_id,
-                    actual_row_count=actual_row_count,
-                    scale_factor=scale_factor,
-                    stream_id=stream_id,
-                )
-
-                if validation_result.warning_message:
-                    self.log_verbose(f"Row count validation: {validation_result.warning_message}")
-                elif not validation_result.is_valid:
-                    self.log_verbose(f"Row count validation FAILED: {validation_result.error_message}")
-                else:
-                    self.log_very_verbose(
-                        f"Row count validation PASSED: {actual_row_count} rows "
-                        f"(expected: {validation_result.expected_row_count})"
+                    validator = QueryValidator()
+                    validation_result = validator.validate_query_result(
+                        benchmark_type=benchmark_type,
+                        query_id=query_id,
+                        actual_row_count=actual_row_count,
+                        scale_factor=scale_factor,
+                        stream_id=stream_id,
                     )
+
+                    if validation_result.warning_message:
+                        self.log_verbose(f"Row count validation: {validation_result.warning_message}")
+                    elif not validation_result.is_valid:
+                        self.log_verbose(f"Row count validation FAILED: {validation_result.error_message}")
+                    else:
+                        self.log_very_verbose(
+                            f"Row count validation PASSED: {actual_row_count} rows "
+                            f"(expected: {validation_result.expected_row_count})"
+                        )
+
+                timing_fields = self.timing_fields_for(connection, ledger, rows=result, elapsed_seconds=execution_time)
 
             result_dict = self._build_query_result_with_validation(
                 query_id=query_id,
@@ -1604,6 +1678,7 @@ class BigQueryAdapter(PlatformAdapter):
                 first_row=result[0] if result else None,
                 validation_result=validation_result,
                 materialized_rows=result,
+                timing_fields=timing_fields,
             )
 
             result_dict["translated_query"] = translated_query if translated_query != query else None
@@ -1612,7 +1687,8 @@ class BigQueryAdapter(PlatformAdapter):
             result_dict["resource_usage"] = job_stats
 
             if self.capture_plans and result_dict.get("status") == "SUCCESS":
-                query_plan, plan_capture_time_ms = self._capture_bq_plan(query_job, query_id)
+                with outside_query_timer():
+                    query_plan, plan_capture_time_ms = self._capture_bq_plan(query_job, query_id)
                 if query_plan:
                     result_dict["query_plan"] = query_plan
                     result_dict["plan_fingerprint"] = query_plan.plan_fingerprint

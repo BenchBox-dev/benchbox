@@ -87,6 +87,9 @@ class QueryResultInput(QueryExecution):
         resource_usage: dict[str, Any] | None = None,
         execution_order: int | None = None,
         execution_time_ms: float | None = None,
+        request_count: int | None = None,
+        result_bytes: int | None = None,
+        platform_timing: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(
             query_id=query_id,
@@ -111,6 +114,9 @@ class QueryResultInput(QueryExecution):
             result_digest=result_digest,
             test_type=test_type,
             error_type=error_type,
+            request_count=request_count,
+            result_bytes=result_bytes,
+            platform_timing=platform_timing,
         )
 
     @classmethod
@@ -138,6 +144,9 @@ class QueryResultInput(QueryExecution):
             error_type=execution.error_type,
             resource_usage=execution.resource_usage,
             execution_order=execution.execution_order,
+            request_count=execution.request_count,
+            result_bytes=execution.result_bytes,
+            platform_timing=execution.platform_timing,
         )
 
 

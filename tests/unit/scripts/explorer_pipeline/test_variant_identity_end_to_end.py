@@ -60,7 +60,7 @@ def mixed_corpus(tmp_path_factory: pytest.TempPathFactory) -> Path:
     default = _export_rerun(POLARS_LEGACY, bundles, "rerun-default", 1, engine="default")
     streaming = _export_rerun(POLARS_LEGACY, bundles, "rerun-streaming", 2, engine="streaming")
     rerun_duckdb = _export_rerun(DUCKDB_LEGACY, bundles, "rerun-duckdb", 3)
-    assert [default["version"], streaming["version"], rerun_duckdb["version"]] == ["2.3"] * 3
+    assert [default["version"], streaming["version"], rerun_duckdb["version"]] == ["2.4"] * 3
     assert default["platform"]["variant"] == "polars-df"
     assert streaming["platform"]["variant"] == "polars-df+streaming"
     assert rerun_duckdb["platform"]["variant"] == "duckdb"

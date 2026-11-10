@@ -4,11 +4,43 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
+
+from benchbox.core.results.timer_scope import (
+    REQUEST_KIND_BEGIN,
+    TIMING_METHOD_QUERY_ONLY,
+    RequestLedger,
+    outside_query_timer,
+)
 
 
 class PsycopgConnectionMixin:
     _max_identifier_length: int = 63
+    timing_method = TIMING_METHOD_QUERY_ONLY
+
+    def _implicit_begin_pending(self, connection: Any) -> bool:
+        try:
+            if connection.autocommit is not False:
+                return False
+            return int(connection.info.transaction_status) == 0
+        except Exception:
+            return False
+
+    def _timing_fields_with_begin(self, connection: Any) -> Callable[..., dict[str, Any]]:
+        with outside_query_timer():
+            begin_pending = self._implicit_begin_pending(connection)
+
+        def timing_fields(conn: Any, ledger: RequestLedger, **kwargs: Any) -> dict[str, Any]:
+            if begin_pending:
+                counted = RequestLedger()
+                counted.add_request(REQUEST_KIND_BEGIN)
+                for request in ledger.requests:
+                    counted.add_request(request.kind, request.statement_id, request.attempt)
+                ledger = counted
+            return self.timing_fields_for(conn, ledger, **kwargs)
+
+        return timing_fields
 
     def execute_query(
         self,
@@ -32,6 +64,7 @@ class PsycopgConnectionMixin:
             scale_factor=scale_factor,
             validate_row_count=validate_row_count,
             stream_id=stream_id,
+            timing_fields_for=self._timing_fields_with_begin(connection),
         )
 
     def _validate_identifier(self, identifier: str) -> bool:

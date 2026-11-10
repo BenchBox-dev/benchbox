@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from benchbox.core.deployment import deployment_class
+from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY
 from benchbox.platforms.base import DriverIsolationCapability, PlatformAdapter
 from benchbox.platforms.base.data_loading import DataLoadingError, FileFormatRegistry, _open_binary_stream
 from benchbox.platforms.base.sql_execution import execute_sql_query
@@ -43,6 +44,7 @@ class InfluxDBAdapter(
     PlatformAdapter,
 ):
     plan_capture_phase_eligible = True
+    timing_method = TIMING_METHOD_QUERY_ONLY
     default_service_port = 8181
 
     driver_isolation_capability = DriverIsolationCapability.FEASIBLE_CLIENT_ONLY
@@ -412,6 +414,7 @@ class InfluxDBAdapter(
             scale_factor=scale_factor,
             validate_row_count=validate_row_count,
             stream_id=stream_id,
+            timing_fields_for=self.timing_fields_for,
             fetch_mode=self.fetch_mode,
             fetch_arrow=lambda cursor: cursor.fetch_arrow_table(),
         )

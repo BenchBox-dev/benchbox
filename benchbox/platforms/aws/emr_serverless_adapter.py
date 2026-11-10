@@ -11,6 +11,12 @@ import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from benchbox.core.results.timer_scope import (
+    REQUEST_KIND_QUERY,
+    TIMING_METHOD_QUERY_ONLY,
+    RequestLedger,
+    outside_query_timer,
+)
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 if TYPE_CHECKING:
@@ -57,6 +63,7 @@ class EMRServerlessJobState:
 
 class EMRServerlessAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkExternalTableMixin, PlatformAdapter):
     plan_capture_phase_eligible = True
+    timing_method = TIMING_METHOD_QUERY_ONLY
 
     driver_isolation_capability = DriverIsolationCapability.NOT_FEASIBLE
 
@@ -468,19 +475,25 @@ spark.stop()
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
+        ledger = RequestLedger()
         start_time = mono_time()
         try:
-            self._ensure_application_started()
+            with outside_query_timer():
+                self._ensure_application_started()
+            start_time = mono_time()
             job_run_id = self._submit_job_run(query)
+            ledger.add_request(REQUEST_KIND_QUERY, job_run_id)
             state, resource_usage = self._wait_for_job_run(job_run_id)
+            results = self._retrieve_results(job_run_id)
             elapsed = elapsed_seconds(start_time)
 
-            self._query_count += 1
-            vcpu_hours = resource_usage.get("vCPUHour", 0)
-            memory_gb_hours = resource_usage.get("memoryGBHour", 0)
-            self._total_vcpu_hours += vcpu_hours
-            self._total_memory_gb_hours += memory_gb_hours
-            results = self._retrieve_results(job_run_id)
+            with outside_query_timer():
+                self._query_count += 1
+                vcpu_hours = resource_usage.get("vCPUHour", 0)
+                memory_gb_hours = resource_usage.get("memoryGBHour", 0)
+                self._total_vcpu_hours += vcpu_hours
+                self._total_memory_gb_hours += memory_gb_hours
+                timing_fields = self.timing_fields_for(connection, ledger, rows=results, elapsed_seconds=elapsed)
             return {
                 "query_id": query_id,
                 "stream_id": stream_id,
@@ -489,6 +502,7 @@ spark.stop()
                 "rows_returned": len(results),
                 "results": results,
                 "error": None,
+                **timing_fields,
             }
         except Exception as e:
             return {

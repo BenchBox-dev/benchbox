@@ -11,6 +11,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY, RequestLedger, outside_query_timer
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 if TYPE_CHECKING:
@@ -75,6 +76,7 @@ class LivySessionState:
 
 
 class FabricSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter):
+    timing_method = TIMING_METHOD_QUERY_ONLY
     plan_capture_phase_eligible = True
 
     driver_isolation_capability = DriverIsolationCapability.NOT_FEASIBLE
@@ -412,18 +414,22 @@ class FabricSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter):
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
+        ledger = RequestLedger()
         start_time = mono_time()
 
         try:
-            result = self._execute_statement(query, kind="sql")
+            result, execution_time = self._execute_statement_measured(query, ledger, kind="sql")
             data = result.get("data", {})
             values = data.get("values", []) if isinstance(data, dict) else []
+            with outside_query_timer():
+                timing_fields = self.timing_fields_for(connection, ledger, rows=values, elapsed_seconds=execution_time)
             return {
                 "query_id": query_id,
                 "stream_id": stream_id,
                 "status": "SUCCESS",
-                "execution_time_seconds": elapsed_seconds(start_time),
+                "execution_time_seconds": execution_time,
                 "rows_returned": len(values),
+                **timing_fields,
             }
         except Exception as exc:
             return {

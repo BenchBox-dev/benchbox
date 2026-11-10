@@ -11,6 +11,7 @@ import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY, RequestLedger, outside_query_timer
 from benchbox.platforms.base.tuning import make_informational_constraint_applier
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dialect_utils import translate_ddl
@@ -36,6 +37,7 @@ except ImportError:
 
 
 class FabricWarehouseAdapter(PlatformAdapter):
+    timing_method = TIMING_METHOD_QUERY_ONLY
     plan_capture_phase_eligible = True
 
     driver_isolation_capability = DriverIsolationCapability.NOT_FEASIBLE
@@ -468,10 +470,13 @@ class FabricWarehouseAdapter(PlatformAdapter):
         stream_id: int | None = None,
         iteration: int | None = None,
     ) -> dict[str, Any]:
-        cursor = connection.cursor()
+        ledger = RequestLedger()
+        with outside_query_timer():
+            cursor = connection.cursor()
         start_time = mono_time()
 
         try:
+            ledger.add_request()
             cursor.execute(query)
 
             rows = cursor.fetchall()
@@ -486,6 +491,7 @@ class FabricWarehouseAdapter(PlatformAdapter):
                 "status": "SUCCESS",
                 "execution_time_seconds": execution_time,
                 "rows_returned": row_count,
+                **self.timing_fields_for(connection, ledger, rows=rows, elapsed_seconds=execution_time),
             }
 
         except pyodbc.Error as e:

@@ -70,9 +70,9 @@ def _bundle_2_4() -> dict:
     return payload
 
 
-def test_readers_accept_2_4_before_the_producer_writes_it():
+def test_producer_writes_the_current_2_4_schema():
     assert RUNTIME_SCHEMA_POLICY.evaluate("2.4").accepted
-    assert CURRENT_SCHEMA_VERSION == "2.3"
+    assert CURRENT_SCHEMA_VERSION == "2.4"
 
 
 def test_timing_fields_round_trip_through_the_compact_entry_in_order():
@@ -96,10 +96,11 @@ def test_loading_a_2_4_bundle_keeps_query_and_run_timing_fields():
     assert loaded.run_platform_timing == RUN_TIMING["platform_timing"]
 
 
-def test_the_2_3_producer_cannot_write_2_4_fields():
-    loaded = reconstruct_benchmark_results(_bundle_2_4())
-    with pytest.raises(SchemaV2ValidationError, match="requires schema version 2.4 or later"):
-        SchemaV2Validator().validate(build_result_payload(loaded))
+def test_re_exporting_a_loaded_2_4_bundle_keeps_its_timing_fields():
+    payload = build_result_payload(reconstruct_benchmark_results(_bundle_2_4()))
+    SchemaV2Validator().validate(payload)
+    assert payload["run"]["timing_method"] == 2
+    assert payload["queries"][0]["request_count"] == 1
 
 
 def test_a_2_3_bundle_carrying_2_4_fields_is_rejected_on_load():
@@ -109,10 +110,46 @@ def test_a_2_3_bundle_carrying_2_4_fields_is_rejected_on_load():
         reconstruct_benchmark_results(bundle)
 
 
-def test_absent_producers_do_not_fill_timing_fields():
+def test_producer_writes_required_run_fields_for_an_unaudited_timer():
     payload = build_result_payload(make_benchmark_results(platform="duckdb", query_results=[_execution()]))
+    SchemaV2Validator().validate(payload)
+    assert payload["version"] == "2.4"
+    assert payload["run"]["timing_method"] == 1
+    assert payload["run"]["net_estimate_status"] in {"embedded", "endpoint_unknown"}
+    assert "platform_timing" not in payload["run"]
     assert not {"request_count", "result_bytes", "platform_timing"} & set(payload["queries"][0])
-    assert not {"timing_method", "net_estimate_status", "platform_timing"} & set(payload["run"])
+
+
+def test_producer_summarises_platform_timing_and_never_marks_eligible():
+    results = make_benchmark_results(
+        platform="snowflake",
+        query_results=[_execution(request_count=1, result_bytes=96, platform_timing=PLATFORM_TIMING)],
+    )
+    results.timing_method = 2
+    results.run_platform_timing = {"source": "snowflake.query_history", "definition": "server_complete"}
+    payload = build_result_payload(results)
+    SchemaV2Validator().validate(payload)
+    assert payload["run"]["timing_method"] == 2
+    assert payload["run"]["platform_timing"] == {
+        "source": "snowflake.query_history",
+        "definition": "server_complete",
+        "coverage": 1.0,
+    }
+    assert payload["run"]["net_estimate_status"] != "eligible"
+
+
+def test_method_2_requires_request_count_and_result_bytes_on_every_successful_query():
+    results = make_benchmark_results(platform="duckdb", query_results=[_execution()])
+    results.timing_method = 2
+    with pytest.raises(SchemaV2ValidationError, match="request_count is required"):
+        SchemaV2Validator().validate(build_result_payload(results))
+
+
+def test_a_2_4_bundle_without_run_timing_fields_is_rejected():
+    payload = build_result_payload(make_benchmark_results(platform="duckdb", query_results=[_execution()]))
+    del payload["run"]["timing_method"]
+    with pytest.raises(SchemaV2ValidationError, match="timing_method is required"):
+        SchemaV2Validator().validate(payload)
 
 
 @pytest.mark.parametrize(

@@ -17,7 +17,13 @@ from pathlib import Path
 from typing import Any
 
 from benchbox.core.cost.models import cost_status_of, published_total_cost
-from benchbox.core.results.comparison_modes import IncomparableModesError, results_fetch_mode, stored_fetch_mode
+from benchbox.core.results.comparison_modes import (
+    IncomparableModesError,
+    results_fetch_mode,
+    results_timing_method,
+    stored_fetch_mode,
+    stored_timing_method,
+)
 from benchbox.core.results.environment import build_platform_metadata_payload
 from benchbox.core.results.execution_variant import ExecutionVariant, platform_info_bundle, read_execution_variant
 from benchbox.core.results.fetch_mode import MIXED_FETCH_MODE, parse_fetch_mode
@@ -40,6 +46,11 @@ _BACKUP_TABLE_NAME_PATTERN = re.compile(r"^queries_orphan_backup_\d{20}$")
 _STORED_FETCH_MODE_SQL = (
     "CASE WHEN json_extract(metadata_json, '$.fetch_mode') IN ('rows', 'arrow', 'mixed') "
     "THEN json_extract(metadata_json, '$.fetch_mode') ELSE 'rows' END"
+)
+_STORED_TIMING_METHOD_SQL = (
+    "CASE WHEN json_type(metadata_json, '$.timing_method') = 'integer' "
+    "AND json_extract(metadata_json, '$.timing_method') >= 1 "
+    "THEN json_extract(metadata_json, '$.timing_method') ELSE 1 END"
 )
 
 
@@ -354,6 +365,7 @@ class ResultDatabase:
             "test_execution_type": result.test_execution_type,
             "execution_variant": asdict(_result_variant(result)),
             "fetch_mode": results_fetch_mode(result),
+            "timing_method": int(results_timing_method(result)),
         }
         has_explicit_platform_meta = any(
             getattr(result, name, None) is not None
@@ -655,6 +667,7 @@ class ResultDatabase:
         config: RankingConfig | None = None,
         include_unofficial: bool = False,
         fetch_mode: str | None = None,
+        timing_method: int | None = None,
     ) -> list[PlatformRanking]:
         config = config or RankingConfig()
 
@@ -696,6 +709,26 @@ class ResultDatabase:
             else:
                 resolved_mode = parse_fetch_mode(fetch_mode)
             mode_filter = f"AND {_STORED_FETCH_MODE_SQL} = '{resolved_mode}'" if resolved_mode else ""
+
+            if timing_method is None:
+                cursor.execute(
+                    f"SELECT DISTINCT {_STORED_TIMING_METHOD_SQL} AS method FROM results "
+                    f"WHERE {mode_scope} {mode_filter}",
+                    (benchmark, scale_factor, cutoff.isoformat()),
+                )
+                methods = sorted(int(row["method"]) for row in cursor.fetchall())
+                if len(methods) > 1:
+                    raise IncomparableModesError(
+                        [
+                            "timing method differs across stored results "
+                            f"({', '.join(str(method) for method in methods)}); rank one timing method at a time"
+                        ]
+                    )
+                resolved_method = methods[0] if methods else None
+            else:
+                resolved_method = int(timing_method)
+            if resolved_method is not None:
+                mode_filter += f" AND {_STORED_TIMING_METHOD_SQL} = {resolved_method}"
 
             cursor.execute(
                 f"""
@@ -823,10 +856,11 @@ class ResultDatabase:
         newest_mode = stored_fetch_mode(parsed[0][2]) if parsed else None
         if newest_mode == MIXED_FETCH_MODE:
             return []
+        newest_method = stored_timing_method(parsed[0][2]) if parsed else None
         return [
             (timestamp, value, _stored_variant(platform, metadata))
             for timestamp, value, metadata in parsed
-            if stored_fetch_mode(metadata) == newest_mode
+            if stored_fetch_mode(metadata) == newest_mode and stored_timing_method(metadata) == newest_method
         ]
 
     def _distinct_variants(self, platform: str, benchmark: str, scale_factor: float) -> list[ExecutionVariant]:
