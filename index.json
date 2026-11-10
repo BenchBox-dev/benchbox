@@ -7688,6 +7688,7 @@
     },
     "server-engine-bulk-load-3": {
       "accepted_members": {
+        "perf-clickhouse-server-bulk-load-20261030": "d43381ea1331b8f04e31b13fba9f905a3821f42e",
         "perf-starrocks-parquet-load-20261030": "64669b6476f115df7ba9503d6761678b592c623e",
         "release-uat-presto-trino-unreachable-20261030": "5cb8f5fb6914569f6018a61ad1687e161739af47",
         "uat-docker-memory-admission-decimal-units-20261030": "9ea0af9b4f2692b86e23f9e4c83f9800a839ae29"
@@ -7697,6 +7698,24 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "perf-clickhouse-server-bulk-load-20261030": {
+          "accepted_head": "d43381ea1331b8f04e31b13fba9f905a3821f42e",
+          "changed_files": [
+            "benchbox/platforms/__init__.py",
+            "benchbox/platforms/base/data_loading.py",
+            "benchbox/platforms/clickhouse/client.py",
+            "benchbox/platforms/clickhouse/http_insert.py",
+            "benchbox/platforms/clickhouse/setup.py",
+            "changelog.d/clickhouse-server-http-bulk-insert-20261110.json",
+            "tests/uat/clickhouse_memory.py",
+            "tests/uat/docker_assets.py",
+            "tests/unit/platforms/base/test_data_loading_operations.py",
+            "tests/unit/platforms/test_clickhouse_adapter.py",
+            "tests/unit/platforms/test_clickhouse_http_insert.py"
+          ],
+          "integration_head": "662e2da9d3eb0bfebce98cb500d13d616924fb9d",
+          "integration_seq": 4
+        },
         "perf-starrocks-parquet-load-20261030": {
           "accepted_head": "64669b6476f115df7ba9503d6761678b592c623e",
           "changed_files": [
@@ -7735,7 +7754,7 @@
         }
       },
       "integration_branch": "feat/server-engine-bulk-load-3",
-      "integration_head": "e4f6854b74ebac0483ac8ea540bd5c5734efbc90",
+      "integration_head": "662e2da9d3eb0bfebce98cb500d13d616924fb9d",
       "integration_log": [
         {
           "at": "2026-11-10T01:41:43Z",
@@ -7769,6 +7788,15 @@
           "op_id": "4c0d9ae7870f4e04a82841b0b490fe85",
           "previous_head": "2182b73fb451fe5ce9b285c489c44d9729626bd2",
           "seq": 3
+        },
+        {
+          "at": "2026-11-10T02:38:04Z",
+          "head": "662e2da9d3eb0bfebce98cb500d13d616924fb9d",
+          "kind": "prepare",
+          "member": "perf-clickhouse-server-bulk-load-20261030",
+          "op_id": "06a7754413404d88b65e1a8ac1a65993",
+          "previous_head": "e4f6854b74ebac0483ac8ea540bd5c5734efbc90",
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-server-engine-bulk-load-3",
@@ -29050,17 +29078,12 @@
       "title": "Fetch results as Arrow where the current driver supports it"
     },
     "perf-clickhouse-server-bulk-load-20261030": {
-      "claim": {
-        "expires_at": "2026-11-11T02:32:49Z",
-        "generation": "7e2281aeb9224d00ad385f77e3754510",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a"
-      },
+      "claim": null,
       "needs": [
         "uat-docker-memory-admission-decimal-units-20261030"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Bulk insert for ClickHouse server mode and Cloud without staging"
     },
     "perf-databend-bulk-load-20261030": {
