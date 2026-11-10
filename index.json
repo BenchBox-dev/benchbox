@@ -16081,7 +16081,9 @@
     },
     "core-bundle-export-path-privacy-contract-20261108": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "plan-privacy-detector-residual-limits-20261108"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Export the local-path privacy contract in the core bundle so the site gate can check drift"
