@@ -379,7 +379,7 @@ class _FakeProcess:
         return {"pid": 7, "name": "container", "uids": None, "cmdline": self.argv}
 
 
-def test_a_process_that_cannot_be_read_does_not_abort_the_machine_scan(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_process_that_cannot_be_read_does_not_abort_the_machine_scan() -> None:
     import psutil
 
     wrapper = ["bash", "scripts/linux_machine_run.sh", "m", "--", "true"]
@@ -389,5 +389,4 @@ def test_a_process_that_cannot_be_read_does_not_abort_the_machine_scan(monkeypat
         _FakeProcess(OSError("gone"), []),
         _FakeProcess(None, wrapper),
     ]
-    monkeypatch.setattr(psutil, "process_iter", lambda attrs=None: iter(processes))
-    assert lm.read_machine_processes("m", False) == [(7, tuple(wrapper))]
+    assert lm.read_machine_processes("m", False, iterate=lambda: iter(processes)) == [(7, tuple(wrapper))]

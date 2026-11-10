@@ -9,7 +9,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import IO, Any
 
@@ -123,12 +123,17 @@ def argv_matches(argv: Sequence[str], machine: str, machine_is_default: bool) ->
     return argv_targets_machine(argv, machine, machine_is_default) or argv_runs_wrapper(argv, machine)
 
 
-def read_machine_processes(machine: str, machine_is_default: bool) -> list[tuple[int, tuple[str, ...]]]:
+def read_machine_processes(
+    machine: str,
+    machine_is_default: bool,
+    *,
+    iterate: Callable[[], Iterable[Any]] | None = None,
+) -> list[tuple[int, tuple[str, ...]]]:
     import psutil
 
     uid = os.getuid() if hasattr(os, "getuid") else None
     found: list[tuple[int, tuple[str, ...]]] = []
-    for proc in psutil.process_iter():
+    for proc in (psutil.process_iter if iterate is None else iterate)():
         try:
             info = proc.as_dict(["pid", "name", "uids", "cmdline"], ad_value=None)
         except (psutil.Error, OSError, SystemError):
