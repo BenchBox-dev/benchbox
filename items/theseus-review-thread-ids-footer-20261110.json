@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "New threads render the mark, bold severity word, visible D<n> and the footer (snapshot test); markers unchanged.",
+    "A v0.2.8-format thread and a new-format thread for the same finding are recognised as duplicates (test); a disputed new-format thread is parsed to the same defect id and the reviewer receives the bare title (test).",
+    "BenchBox digest tests (from the dual-read item) pass against the new thread fixture, including High-override classification.",
+    "Goldens regenerated with a rendering-only diff.",
+    "Merged to Theseus main with hosted SHIP + green checks + independent review SHIP on the final head."
+  ],
+  "context": "Part of theseus-review-output-format-20261110. Ships in release B.",
+  "description": "Finding ids (D<n>) exist only in a hidden marker today, yet summaries list 'fixed: D11' and the dispute grammar needs `D<n>`. Change the inline thread renderer (proposal section 8.4, step 1 only) to:\n`<mark> **<Severity>** · D<n> · <title>` as the first line, the unchanged detail, then `<sub>Blocks merge · to contest, reply starting <code>Dispute:</code> with file:line evidence</sub>`, then the unchanged `<!-- review-defect: c<cycle>-D<n> -->` and `<!-- review-finding: <16hex> -->` markers.\nOut of scope: structured Problem/Impact/Fix detail (reviewer-brief change, theseus-review-structured-findings-20261110) and suggestion blocks.\nGuardrails: the fingerprint hashes the same full title as today, so existing threads dedupe across the format change (test with a thread posted by v0.2.8 and a new finding with the same title); threads are never edited; release-A dedup reads both forms; BenchBox digest must already read the new form before a BenchBox lock installs it; no live model calls; Theseus merge rule plus independent review (dedup and dispute parsing).",
+  "links": [
+    "~/.omp/agent/sessions/-Developer-BenchBox/2026-11-02T02-04-38-450Z_01a19a00-60b2-70a6-b56d-6f666415a725/local/review-comment-format-proposal.md (section 8.4)"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a",
+      "at": "2026-11-10T15:38:14Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e1acde7358a141f6a73fb0db91b23cce",
+      "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    }
+  ]
+}
