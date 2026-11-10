@@ -33726,12 +33726,17 @@
       "title": "✅ Result Object Migration (BenchmarkResult → BenchmarkResults)"
     },
     "result-schema-2-4-producer-20261022": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-11T17:32:21Z",
+        "generation": "ec4b33890457444b87d9c92d1be00f26",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a"
+      },
       "needs": [
         "power-test-times-query-generation-20261031"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Write result schema 2.4: method-2 timer, request counts and platform timing capture"
     },
     "result-schema-policy-and-explorer-input-gate": {
