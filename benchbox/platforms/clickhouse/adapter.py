@@ -11,6 +11,7 @@ from .deployment_mode import CLICKHOUSE_DEPLOYMENT_MODE_VALUES, resolve_clickhou
 from .diagnostics import ClickHouseDiagnosticsMixin
 from .metadata import ClickHouseMetadataMixin
 from .setup import ClickHouseSetupMixin
+from .timing import ClickHouseTimingMixin
 from .tuning import ClickHouseTuningMixin
 from .workload import ClickHouseWorkloadMixin
 
@@ -18,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class ClickHouseAdapter(
+    ClickHouseTimingMixin,
     ClickHouseMetadataMixin,
     ClickHouseSetupMixin,
     ClickHouseDiagnosticsMixin,

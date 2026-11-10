@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY, RequestLedger, outside_query_timer
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dialect_utils import translate_ddl
 
@@ -34,6 +35,7 @@ except ImportError:
 
 
 class AzureSynapseAdapter(PlatformAdapter):
+    timing_method = TIMING_METHOD_QUERY_ONLY
     plan_capture_phase_eligible = True
 
     driver_isolation_capability = DriverIsolationCapability.NOT_FEASIBLE
@@ -916,11 +918,13 @@ class AzureSynapseAdapter(PlatformAdapter):
         stream_id: int | None = None,
     ) -> dict[str, Any]:
         self.log_operation_start("Azure Synapse query execution", query_id)
+        ledger = RequestLedger()
+        with outside_query_timer():
+            cursor = connection.cursor()
         start_time = mono_time()
 
-        cursor = connection.cursor()
-
         try:
+            ledger.add_request()
             cursor.execute(query)
             result = cursor.fetchall()
 
@@ -929,16 +933,17 @@ class AzureSynapseAdapter(PlatformAdapter):
 
             validation_result = None
             if validate_row_count and benchmark_type:
-                from benchbox.core.validation.query_validation import QueryValidator
+                with outside_query_timer():
+                    from benchbox.core.validation.query_validation import QueryValidator
 
-                validator = QueryValidator()
-                validation_result = validator.validate_query_result(
-                    benchmark_type=benchmark_type,
-                    query_id=query_id,
-                    actual_row_count=actual_row_count,
-                    scale_factor=scale_factor,
-                    stream_id=stream_id,
-                )
+                    validator = QueryValidator()
+                    validation_result = validator.validate_query_result(
+                        benchmark_type=benchmark_type,
+                        query_id=query_id,
+                        actual_row_count=actual_row_count,
+                        scale_factor=scale_factor,
+                        stream_id=stream_id,
+                    )
 
             result_dict = self._build_query_result_with_validation(
                 query_id=query_id,
@@ -947,6 +952,7 @@ class AzureSynapseAdapter(PlatformAdapter):
                 first_row=result[0] if result else None,
                 validation_result=validation_result,
                 materialized_rows=result,
+                timing_fields=self.timing_fields_for(connection, ledger, rows=result, elapsed_seconds=execution_time),
             )
 
             self.log_verbose(f"Query {query_id} completed: {actual_row_count} rows in {execution_time:.3f}s")

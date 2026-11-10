@@ -4,12 +4,15 @@ import json
 import logging
 import os
 import re
+import time
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import urlparse
 
+from benchbox.core.results.platform_timing import StatementTiming
+from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY, RequestLedger, outside_query_timer
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 if TYPE_CHECKING:
@@ -257,7 +260,16 @@ def _select_databricks_platform_version(parsed: Mapping[str, Any] | None) -> str
     return _clean_version_token(parsed.get("dbsql_version")) or _clean_version_token(parsed.get("dbr_version"))
 
 
+_QUERY_HISTORY_BUDGET_SECONDS = 20.0
+_QUERY_HISTORY_INITIAL_DELAY_SECONDS = 0.5
+_QUERY_HISTORY_MAX_DELAY_SECONDS = 4.0
+
+
 class DatabricksAdapter(PlatformAdapter):
+    timing_method = TIMING_METHOD_QUERY_ONLY
+    platform_timing_source = "databricks.query_history_api"
+    platform_timing_definition = "server_complete"
+
     plan_capture_phase_eligible = True
 
     driver_isolation_capability = DriverIsolationCapability.FEASIBLE_CLIENT_ONLY
@@ -2452,38 +2464,44 @@ class DatabricksAdapter(PlatformAdapter):
         stream_id: int | None = None,
     ) -> dict[str, Any]:
         own_cursor = False
-        if hasattr(connection, "cursor"):
-            cursor = connection.cursor()
-            own_cursor = True
-        else:
-            cursor = connection
+        ledger = RequestLedger()
+        with outside_query_timer():
+            if hasattr(connection, "cursor"):
+                cursor = connection.cursor()
+                own_cursor = True
+            else:
+                cursor = connection
 
-        try:
-            self._ensure_session_cache_disabled(cursor, session=connection if own_cursor else None)
-        except Exception as exc:
-            if own_cursor:
-                cursor.close()
-            return {
-                "query_id": query_id,
-                "status": "FAILED",
-                "execution_time_seconds": 0.0,
-                "rows_returned": 0,
-                "error": str(exc),
-                "error_type": type(exc).__name__,
-            }
+            try:
+                self._ensure_session_cache_disabled(cursor, session=connection if own_cursor else None)
+            except Exception as exc:
+                if own_cursor:
+                    cursor.close()
+                return {
+                    "query_id": query_id,
+                    "status": "FAILED",
+                    "execution_time_seconds": 0.0,
+                    "rows_returned": 0,
+                    "error": str(exc),
+                    "error_type": type(exc).__name__,
+                }
 
-        start_time = mono_time()
         self.log_verbose(f"Executing query {query_id}")
         self.log_very_verbose(f"Query SQL (first 200 chars): {query[:200]}{'...' if len(query) > 200 else ''}")
 
+        start_time = mono_time()
         try:
-            query = self._normalize_databricks_query(query)
-            from benchbox.platforms.base.mysql_wire import split_sql_statements
+            with outside_query_timer():
+                query = self._normalize_databricks_query(query)
+                from benchbox.platforms.base.mysql_wire import split_sql_statements
 
-            statements = split_sql_statements(query)
+                statements = split_sql_statements(query)
+            start_time = mono_time()
             result = []
             for statement in statements or [query]:
+                request = ledger.add_request()
                 cursor.execute(statement)
+                request.statement_id = self.probe_statement_id(cursor)
                 result = cursor.fetchall()
 
             execution_time = elapsed_seconds(start_time)
@@ -2491,16 +2509,17 @@ class DatabricksAdapter(PlatformAdapter):
 
             validation_result = None
             if validate_row_count and benchmark_type:
-                from benchbox.core.validation.query_validation import QueryValidator
+                with outside_query_timer():
+                    from benchbox.core.validation.query_validation import QueryValidator
 
-                validator = QueryValidator()
-                validation_result = validator.validate_query_result(
-                    benchmark_type=benchmark_type,
-                    query_id=query_id,
-                    actual_row_count=actual_row_count,
-                    scale_factor=scale_factor,
-                    stream_id=stream_id,
-                )
+                    validator = QueryValidator()
+                    validation_result = validator.validate_query_result(
+                        benchmark_type=benchmark_type,
+                        query_id=query_id,
+                        actual_row_count=actual_row_count,
+                        scale_factor=scale_factor,
+                        stream_id=stream_id,
+                    )
 
                 if validation_result.warning_message:
                     self.log_verbose(f"Row count validation: {validation_result.warning_message}")
@@ -2519,6 +2538,7 @@ class DatabricksAdapter(PlatformAdapter):
                 first_row=result[0] if result else None,
                 validation_result=validation_result,
                 materialized_rows=result,
+                timing_fields=self.timing_fields_for(connection, ledger, rows=result, elapsed_seconds=execution_time),
             )
 
             result_dict["translated_query"] = None
@@ -2545,6 +2565,57 @@ class DatabricksAdapter(PlatformAdapter):
         self._merge_plan_capture_into_result(result_dict, connection, query, query_id)
 
         return result_dict
+
+    def probe_statement_id(self, cursor: Any) -> str | None:
+        statement_id = getattr(cursor, "query_id", None)
+        return statement_id if isinstance(statement_id, str) and statement_id else None
+
+    def _query_history_client(self) -> Any:
+        from databricks.sdk import WorkspaceClient
+
+        return WorkspaceClient(host=f"https://{self.server_hostname}", token=self.access_token)
+
+    def fetch_platform_timings(self, connection: Any, statement_ids: Sequence[str]) -> Mapping[str, StatementTiming]:
+        from databricks.sdk.service.sql import QueryFilter
+
+        wanted = list(dict.fromkeys(statement_ids))
+        client = self._query_history_client()
+        found: dict[str, StatementTiming] = {}
+        deadline = mono_time() + _QUERY_HISTORY_BUDGET_SECONDS
+        delay = _QUERY_HISTORY_INITIAL_DELAY_SECONDS
+        while True:
+            response = client.query_history.list(
+                filter_by=QueryFilter(statement_ids=wanted), include_metrics=True, max_results=len(wanted)
+            )
+            for info in response.res or []:
+                timing = self._statement_timing_from_query_info(info)
+                if timing is not None:
+                    found[timing.statement_id] = timing
+            if all(statement_id in found for statement_id in wanted) or mono_time() + delay > deadline:
+                return found
+            time.sleep(delay)
+            delay = min(delay * 2, _QUERY_HISTORY_MAX_DELAY_SECONDS)
+
+    @staticmethod
+    def _statement_timing_from_query_info(info: Any) -> StatementTiming | None:
+        metrics = getattr(info, "metrics", None)
+        statement_id = getattr(info, "query_id", None)
+        if metrics is None or not statement_id or metrics.total_time_ms is None:
+            return None
+        fields = {
+            name: getattr(metrics, name)
+            for name in ("total_time_ms", "compilation_time_ms", "execution_time_ms", "result_fetch_time_ms")
+            if getattr(metrics, name, None) is not None
+        }
+        cache_hit = metrics.result_from_cache
+        return StatementTiming(
+            statement_id=statement_id,
+            fields=fields,
+            platform_ms=float(metrics.total_time_ms),
+            compile_ms=None if metrics.compilation_time_ms is None else float(metrics.compilation_time_ms),
+            exec_ms=None if metrics.execution_time_ms is None else float(metrics.execution_time_ms),
+            cache_hit=None if cache_hit is None else bool(cache_hit),
+        )
 
     def get_query_plan(self, connection: Any, query: str) -> str | None:
         from benchbox.platforms.base.sql_execution import join_explain_rows

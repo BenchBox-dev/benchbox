@@ -8,6 +8,7 @@ from typing import Any
 from benchbox.core.deployment import deployment_class, select_adapter_deployment
 from benchbox.core.execution_engine import ExecutionEngineReceipt, ObservedSource
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
+from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 from ..utils.dependencies import (
@@ -72,6 +73,7 @@ def _is_local_jar_path(jar: str) -> bool:
 
 
 class VeloxAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutionMixin, PlatformAdapter):
+    timing_method = TIMING_METHOD_QUERY_ONLY
     plan_capture_phase_eligible = True
     default_service_port = 50051
 

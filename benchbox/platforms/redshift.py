@@ -6,11 +6,20 @@ from __future__ import annotations
 
 import json
 import tempfile
-from collections.abc import Mapping
+import time
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from benchbox.core.benchmark_mixins import CursorValidationQueryExecutionMixin
+from benchbox.core.results.platform_timing import StatementTiming
+from benchbox.core.results.timer_scope import (
+    REQUEST_KIND_BEGIN,
+    REQUEST_KIND_QUERY,
+    TIMING_METHOD_QUERY_ONLY,
+    RequestLedger,
+    outside_query_timer,
+)
 from benchbox.platforms.base.tuning import make_informational_constraint_applier
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dialect_utils import translate_ddl
@@ -81,11 +90,42 @@ def redshift_resource_key(config: Mapping[str, Any]) -> str | None:
     return _RESOURCE_KEY_BY_DEPLOYMENT.get(redshift_deployment_type(config.get("host")))
 
 
+REDSHIFT_HISTORY_ATTEMPTS = 3
+REDSHIFT_HISTORY_RETRY_DELAY_SECONDS = 0.5
+REDSHIFT_TIMING_COLUMNS = (
+    "query_id",
+    "elapsed_time",
+    "queue_time",
+    "compile_time",
+    "planning_time",
+    "execution_time",
+    "lock_wait_time",
+    "returned_rows",
+    "returned_bytes",
+    "result_cache_hit",
+)
+REDSHIFT_STL_TIMING_COLUMNS = ("query_id", "elapsed_time", "queue_time", "execution_time")
+REDSHIFT_STL_TIMING_SQL = (
+    "SELECT q.query, DATEDIFF(microsecond, q.starttime, q.endtime), w.total_queue_time, w.total_exec_time "
+    "FROM stl_query q LEFT JOIN stl_wlm_query w ON w.query = q.query "
+    "WHERE q.query IN ({placeholders})"
+)
+
+
 class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
     driver_isolation_capability = DriverIsolationCapability.FEASIBLE_CLIENT_ONLY
     supports_external_tables = True
     plan_capture_phase_eligible = True
     physical_identifier_case = "lower"
+    timing_method = TIMING_METHOD_QUERY_ONLY
+
+    @property
+    def platform_timing_source(self) -> str:
+        if getattr(self, "deployment_type", None) == "serverless":
+            return "redshift.sys_query_history"
+        return "redshift.stl_query"
+
+    platform_timing_definition = "includes_fetch"
 
     def __init__(self, **config):
         super().__init__(**config)
@@ -1845,16 +1885,92 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
         *,
         connection: Any = None,
         query_id: str | None = None,
+        redshift_query_id: int | None = None,
     ) -> dict[str, Any]:
         stats = {"execution_time_seconds": execution_time}
         if connection is None:
             return stats
         try:
-            redshift_stats = self._get_query_statistics(connection, query_id or "")
+            redshift_stats = self._get_query_statistics(connection, query_id or "", redshift_query_id=redshift_query_id)
             redshift_stats["execution_time_seconds"] = execution_time
             return redshift_stats
         except Exception:
             return stats
+
+    @staticmethod
+    def _implicit_begin_pending(connection: Any) -> bool:
+        if getattr(connection, "autocommit", True) is not False:
+            return False
+        status = getattr(connection, "get_transaction_status", None)
+        return callable(status) and status() == 0
+
+    def _last_statement_id(self, connection: Any) -> str | None:
+        cursor = connection.cursor()
+        try:
+            cursor.execute("SELECT pg_last_query_id()")
+            row = cursor.fetchone()
+            value = row[0] if row else None
+        except Exception as exc:
+            self.logger.debug(f"Could not read pg_last_query_id: {exc}")
+            return None
+        finally:
+            cursor.close()
+        if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+            return None
+        return str(value)
+
+    def probe_statement_id(self, cursor: Any) -> str | None:
+        connection = getattr(cursor, "connection", None)
+        return None if connection is None else self._last_statement_id(connection)
+
+    def fetch_platform_timings(self, connection: Any, statement_ids: Sequence[str]) -> Mapping[str, StatementTiming]:
+        wanted = list(dict.fromkeys(sid for sid in statement_ids if sid and sid.isdigit()))
+        if not wanted:
+            return {}
+        found: dict[str, StatementTiming] = {}
+        cursor = connection.cursor()
+        try:
+            for attempt in range(REDSHIFT_HISTORY_ATTEMPTS):
+                pending = [sid for sid in wanted if sid not in found]
+                placeholders = ", ".join(["%s"] * len(pending))
+                if self.deployment_type != "serverless":
+                    columns = REDSHIFT_STL_TIMING_COLUMNS
+                    sql = REDSHIFT_STL_TIMING_SQL.format(placeholders=placeholders)
+                else:
+                    columns = REDSHIFT_TIMING_COLUMNS
+                    sql = (
+                        f"SELECT {', '.join(REDSHIFT_TIMING_COLUMNS)} FROM sys_query_history "
+                        f"WHERE query_id IN ({placeholders})"
+                    )
+                cursor.execute(sql, tuple(int(sid) for sid in pending))
+                for row in cursor.fetchall():
+                    values = dict(zip(columns, row, strict=False))
+                    statement_id = str(values["query_id"])
+                    fields = {
+                        name: value
+                        for name in columns[1:]
+                        if isinstance(value := values.get(name), (int, float)) and not isinstance(value, bool)
+                    }
+                    elapsed = fields.get("elapsed_time")
+                    if elapsed is None:
+                        continue
+                    cache_hit = values.get("result_cache_hit")
+                    found[statement_id] = StatementTiming(
+                        statement_id=statement_id,
+                        fields=fields,
+                        platform_ms=elapsed / 1000.0,
+                        queue_ms=fields["queue_time"] / 1000.0 if "queue_time" in fields else None,
+                        compile_ms=fields["compile_time"] / 1000.0 if "compile_time" in fields else None,
+                        exec_ms=fields["execution_time"] / 1000.0 if "execution_time" in fields else None,
+                        cache_hit=cache_hit if isinstance(cache_hit, bool) else None,
+                    )
+                if len(found) == len(wanted):
+                    break
+                if attempt + 1 < REDSHIFT_HISTORY_ATTEMPTS:
+                    time.sleep(REDSHIFT_HISTORY_RETRY_DELAY_SECONDS * (2**attempt))
+        finally:
+            cursor.close()
+        return found
 
     def execute_query(
         self,
@@ -1866,23 +1982,84 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
-        result = super().execute_query(
-            connection,
-            query,
-            query_id,
-            benchmark_type=benchmark_type,
-            scale_factor=scale_factor,
-            validate_row_count=validate_row_count,
-            stream_id=stream_id,
-        )
-        if result.get("status") == "FAILED":
-            return result
+        ledger = RequestLedger()
+        start_time = mono_time()
+        cursor = connection.cursor()
 
-        result["translated_query"] = None
+        try:
+            implicit_begin = self._implicit_begin_pending(connection)
+            start_time = mono_time()
+            cursor.execute(query)
+            if implicit_begin:
+                ledger.add_request(REQUEST_KIND_BEGIN)
+            result = cursor.fetchall()
+            execution_time = elapsed_seconds(start_time)
+            actual_row_count = len(result) if result else 0
+
+            with outside_query_timer():
+                redshift_query_id = self._last_statement_id(connection)
+                ledger.add_request(REQUEST_KIND_QUERY, redshift_query_id)
+                query_stats = self._build_query_stats(
+                    execution_time,
+                    connection=connection,
+                    query_id=query_id,
+                    redshift_query_id=int(redshift_query_id) if redshift_query_id else None,
+                )
+
+                validation_result = None
+                if validate_row_count and benchmark_type:
+                    from benchbox.core.validation.query_validation import QueryValidator
+
+                    validator = QueryValidator()
+                    validation_result = validator.validate_query_result(
+                        benchmark_type=benchmark_type,
+                        query_id=query_id,
+                        actual_row_count=actual_row_count,
+                        scale_factor=scale_factor,
+                        stream_id=stream_id,
+                    )
+
+                    if validation_result.warning_message:
+                        self.log_verbose(f"Row count validation: {validation_result.warning_message}")
+                    elif not validation_result.is_valid:
+                        self.log_verbose(f"Row count validation FAILED: {validation_result.error_message}")
+                    else:
+                        self.log_very_verbose(
+                            f"Row count validation PASSED: {actual_row_count} rows "
+                            f"(expected: {validation_result.expected_row_count})"
+                        )
+
+                timing_fields = self.timing_fields_for(connection, ledger, rows=result, elapsed_seconds=execution_time)
+
+            result_dict = self._build_query_result_with_validation(
+                query_id=query_id,
+                execution_time=execution_time,
+                actual_row_count=actual_row_count,
+                first_row=result[0] if result else None,
+                validation_result=validation_result,
+                materialized_rows=result,
+                timing_fields=timing_fields,
+            )
+            self._attach_query_stats(result_dict, query_stats)
+        except Exception as e:
+            execution_time = elapsed_seconds(start_time)
+            return {
+                "query_id": query_id,
+                "status": "FAILED",
+                "execution_time_seconds": execution_time,
+                "rows_returned": 0,
+                "error": self._format_query_error(e),
+                "error_type": type(e).__name__,
+            }
+        finally:
+            cursor.close()
+
+        result_dict["translated_query"] = None
         if not self.capture_plans:
-            self.display_query_plan_if_enabled(connection, query, query_id)
-        self._merge_plan_capture_into_result(result, connection, query, query_id)
-        return result
+            with outside_query_timer():
+                self.display_query_plan_if_enabled(connection, query, query_id)
+        self._merge_plan_capture_into_result(result_dict, connection, query, query_id)
+        return result_dict
 
     def _extract_table_name(self, statement: str) -> str | None:
         from benchbox.core.sql_utils import extract_table_name
@@ -2008,15 +2185,18 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
         finally:
             cursor.close()
 
-    def _get_query_statistics(self, connection: Any, query_id: str) -> dict[str, Any]:
+    def _get_query_statistics(
+        self, connection: Any, query_id: str, redshift_query_id: int | None = None
+    ) -> dict[str, Any]:
         cursor = connection.cursor()
         try:
-            cursor.execute("SELECT pg_last_query_id()")
-            result = cursor.fetchone()
-            if not result or result[0] == -1:
-                return {}
+            if redshift_query_id is None:
+                cursor.execute("SELECT pg_last_query_id()")
+                result = cursor.fetchone()
+                if not result or result[0] == -1:
+                    return {}
 
-            redshift_query_id = result[0]
+                redshift_query_id = result[0]
 
             if self.deployment_type == "serverless":
                 cursor.execute(

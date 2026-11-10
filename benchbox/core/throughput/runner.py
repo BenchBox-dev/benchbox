@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any, Callable, Protocol
 
 from benchbox.core.results.metrics import TPCMetricsCalculator
+from benchbox.core.results.platform_timing import throughput_stream_context
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 from .containment import record_outstanding_result
@@ -171,14 +172,15 @@ class StreamRunner:
 
         executor = DaemonStreamExecutor(max_workers=max_workers + (1 if auxiliary_fn else 0))
         try:
-            for stream_id in stream_ids:
-                future = executor.submit(stream_fn, stream_id, config.base_seed + stream_id, config)
-                future_to_stream_id[future] = stream_id
-                pending.add(future)
-            if auxiliary_fn:
-                future = executor.submit(auxiliary_fn)
-                future_to_stream_id[future] = 0
-                pending.add(future)
+            with throughput_stream_context():
+                for stream_id in stream_ids:
+                    future = executor.submit(stream_fn, stream_id, config.base_seed + stream_id, config)
+                    future_to_stream_id[future] = stream_id
+                    pending.add(future)
+                if auxiliary_fn:
+                    future = executor.submit(auxiliary_fn)
+                    future_to_stream_id[future] = 0
+                    pending.add(future)
 
             try:
                 for future in concurrent.futures.as_completed(pending, timeout=timeout):

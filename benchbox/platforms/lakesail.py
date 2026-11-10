@@ -10,6 +10,7 @@ import subprocess
 from typing import Any
 
 from benchbox.core.deployment import deployment_class, select_adapter_deployment
+from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 from ..utils.dependencies import (
@@ -56,6 +57,7 @@ except ImportError:
 
 
 class LakeSailAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutionMixin, PlatformAdapter):
+    timing_method = TIMING_METHOD_QUERY_ONLY
     plan_capture_phase_eligible = True
     default_service_port = 50051
 

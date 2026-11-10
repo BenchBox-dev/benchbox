@@ -4,6 +4,12 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from benchbox.core.results.timer_scope import (
+    REQUEST_KIND_QUERY,
+    TIMING_METHOD_QUERY_ONLY,
+    RequestLedger,
+    outside_query_timer,
+)
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 if TYPE_CHECKING:
@@ -33,6 +39,7 @@ logger = logging.getLogger(__name__)
 
 class SnowparkConnectAdapter(SparkTuningMixin, PlatformAdapter):
     plan_capture_phase_eligible = True
+    timing_method = TIMING_METHOD_QUERY_ONLY
 
     driver_isolation_capability = DriverIsolationCapability.FEASIBLE_CLIENT_ONLY
 
@@ -279,22 +286,29 @@ class SnowparkConnectAdapter(SparkTuningMixin, PlatformAdapter):
             raise ConfigurationError("No active session. Call create_connection() first.")
 
         self._session = session
+        ledger = RequestLedger()
         start_time = mono_time()
 
         try:
-            result = session.sql(query).collect()
+            dataframe = session.sql(query)
+            ledger.add_request(REQUEST_KIND_QUERY)
+            result = dataframe.collect()
+            ledger.add_request(REQUEST_KIND_QUERY)
             elapsed = elapsed_seconds(start_time)
 
-            self._query_count += 1
-            self._total_execution_time_seconds += elapsed
+            with outside_query_timer():
+                self._query_count += 1
+                self._total_execution_time_seconds += elapsed
 
-            rows = self._rows_to_dicts(result)
+                rows = self._rows_to_dicts(result)
+                timing_fields = self.timing_fields_for(session, ledger, rows=result, elapsed_seconds=elapsed)
             result_dict = self._build_query_result_with_validation(
                 query_id=query_id,
                 execution_time=elapsed,
                 actual_row_count=len(rows),
                 first_row=rows[0] if rows else None,
                 materialized_rows=result,
+                timing_fields=timing_fields,
             )
             result_dict["stream_id"] = stream_id
             result_dict["results"] = rows

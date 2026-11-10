@@ -30,6 +30,7 @@ except ImportError:
 from benchbox.core.dataframe.schema_utils import extract_schema_columns
 from benchbox.core.errors import PlanCaptureError
 from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW
+from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY, RequestLedger, outside_query_timer
 from benchbox.platforms.base import DriverIsolationCapability, PlatformAdapter
 from benchbox.platforms.base.arrow_result import ArrowRows, fetch_result
 from benchbox.platforms.base.data_loading import (
@@ -154,6 +155,7 @@ class DataFusionConnectionCompat:
 
 class DataFusionAdapter(NoConstraintEnforcementMixin, PlatformAdapter):
     driver_isolation_capability = DriverIsolationCapability.SUPPORTED
+    timing_method = TIMING_METHOD_QUERY_ONLY
     supports_external_tables = True
     plan_capture_phase_eligible = True
     ledger_execute_verbs = ("sql",)
@@ -1341,7 +1343,8 @@ class DataFusionAdapter(NoConstraintEnforcementMixin, PlatformAdapter):
         if not benchmark_type or benchmark_slug == "tpch":
             from benchbox.platforms.datafusion_tpch_rewrites import rewrite_datafusion_tpch_query
 
-            rewritten = rewrite_datafusion_tpch_query(query, query_id)
+            with outside_query_timer():
+                rewritten = rewrite_datafusion_tpch_query(query, query_id)
             if rewritten != query:
                 self.log_verbose(f"Query {query_id}: Applied fork rewrite for DataFusion")
             query = rewritten
@@ -1360,9 +1363,12 @@ class DataFusionAdapter(NoConstraintEnforcementMixin, PlatformAdapter):
                 "dry_run": True,
             }
 
+        ledger = RequestLedger()
         start_time = mono_time()
 
         try:
+            start_time = mono_time()
+            ledger.add_request()
             df = connection.sql(query)
 
             result_batches = df.collect()
@@ -1378,27 +1384,32 @@ class DataFusionAdapter(NoConstraintEnforcementMixin, PlatformAdapter):
             logger.debug(f"Query {query_id} completed in {execution_time:.3f}s, returned {actual_row_count} rows")
 
             validation_result = None
-            if validate_row_count and benchmark_type:
-                from benchbox.core.validation.query_validation import QueryValidator
+            with outside_query_timer():
+                if validate_row_count and benchmark_type:
+                    from benchbox.core.validation.query_validation import QueryValidator
 
-                validator = QueryValidator()
-                validation_result = validator.validate_query_result(
-                    benchmark_type=benchmark_type,
-                    query_id=query_id,
-                    actual_row_count=actual_row_count,
-                    scale_factor=scale_factor,
-                    stream_id=stream_id,
-                )
-
-                if validation_result.warning_message:
-                    self.log_verbose(f"Row count validation: {validation_result.warning_message}")
-                elif not validation_result.is_valid:
-                    self.log_verbose(f"Row count validation FAILED: {validation_result.error_message}")
-                else:
-                    self.log_very_verbose(
-                        f"Row count validation PASSED: {actual_row_count} rows "
-                        f"(expected: {validation_result.expected_row_count})"
+                    validator = QueryValidator()
+                    validation_result = validator.validate_query_result(
+                        benchmark_type=benchmark_type,
+                        query_id=query_id,
+                        actual_row_count=actual_row_count,
+                        scale_factor=scale_factor,
+                        stream_id=stream_id,
                     )
+
+                    if validation_result.warning_message:
+                        self.log_verbose(f"Row count validation: {validation_result.warning_message}")
+                    elif not validation_result.is_valid:
+                        self.log_verbose(f"Row count validation FAILED: {validation_result.error_message}")
+                    else:
+                        self.log_very_verbose(
+                            f"Row count validation PASSED: {actual_row_count} rows "
+                            f"(expected: {validation_result.expected_row_count})"
+                        )
+
+            timing_fields = self.timing_fields_for(
+                connection, ledger, rows=fetched.rows, elapsed_seconds=execution_time
+            )
 
             result = self._build_query_result_with_validation(
                 query_id=query_id,
@@ -1408,10 +1419,12 @@ class DataFusionAdapter(NoConstraintEnforcementMixin, PlatformAdapter):
                 validation_result=validation_result,
                 materialized_rows=fetched.rows,
                 fetch_mode=fetched.fetch_mode,
+                timing_fields=timing_fields,
             )
 
             if not self.capture_plans:
-                self.display_query_plan_if_enabled(connection, query, query_id)
+                with outside_query_timer():
+                    self.display_query_plan_if_enabled(connection, query, query_id)
 
             self._merge_plan_capture_into_result(result, connection, query, query_id)
 

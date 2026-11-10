@@ -1136,3 +1136,22 @@ class TestSynapseStagingRootAcceptsEveryAzureSpelling:
                 password="secret",
                 staging_root=staging_root,
             )
+
+
+class TestSynapseTimingContract:
+    def test_method_two_with_request_count_and_result_bytes(self, synapse_stubs):
+        from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY
+
+        cursor = Mock()
+        cursor.fetchall.return_value = [(1,), (2,)]
+        connection = Mock()
+        connection.cursor.return_value = cursor
+        adapter = AzureSynapseAdapter(server="test.sql.azuresynapse.net", username="admin", password="secret")
+
+        result = adapter.execute_query(connection, "SELECT 1", "q1")
+
+        assert adapter.timing_method == TIMING_METHOD_QUERY_ONLY
+        assert adapter.platform_timing_source is None
+        assert result["request_count"] == 1
+        assert result["result_bytes"] == 16
+        assert "platform_timing" not in result

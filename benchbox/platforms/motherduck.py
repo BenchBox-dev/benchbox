@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from benchbox.core.config_inheritance import (
     resolve_dialect_for_query_translation,
 )
+from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY, RequestLedger, outside_query_timer
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dependencies import get_package_install_message
 
@@ -56,6 +57,7 @@ class MotherDuckAdapter(PlatformAdapter):
     driver_isolation_capability = DriverIsolationCapability.FEASIBLE_CLIENT_ONLY
     supports_external_tables = True
     plan_capture_phase_eligible = True
+    timing_method = TIMING_METHOD_QUERY_ONLY
 
     def __init__(self, **config):
         super().__init__(**config)
@@ -211,12 +213,15 @@ class MotherDuckAdapter(PlatformAdapter):
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
-        conn = connection or self.connection
-        if conn is None:
-            conn = self.create_connection()
+        ledger = RequestLedger()
+        with outside_query_timer():
+            conn = connection or self.connection
+            if conn is None:
+                conn = self.create_connection()
 
         start_time = mono_time()
         try:
+            ledger.add_request()
             result = conn.execute(query)
             rows = result.fetchall()
             execution_time = elapsed_seconds(start_time)
@@ -229,6 +234,7 @@ class MotherDuckAdapter(PlatformAdapter):
                 "rows_returned": len(rows),
                 "first_row": rows[0] if rows else None,
                 "error": None,
+                **self.timing_fields_for(conn, ledger, rows=rows, elapsed_seconds=execution_time),
             }
         except Exception as e:
             execution_time = elapsed_seconds(start_time)
@@ -244,7 +250,8 @@ class MotherDuckAdapter(PlatformAdapter):
             }
 
         if not self.capture_plans:
-            self.display_query_plan_if_enabled(conn, query, query_id)
+            with outside_query_timer():
+                self.display_query_plan_if_enabled(conn, query, query_id)
 
         self._merge_plan_capture_into_result(result_dict, conn, query, query_id)
 

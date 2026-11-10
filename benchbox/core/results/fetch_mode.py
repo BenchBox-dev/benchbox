@@ -72,6 +72,7 @@ def register_fetch_mode_specs() -> None:
 
 
 _ACTIVE_CONVERSION_CLOCK: ContextVar[ConversionClock | None] = ContextVar("conversion_clock", default=None)
+EXCLUSION_DEPTH: ContextVar[int] = ContextVar("timer_exclusion_depth", default=0)
 
 
 class ConversionClock:
@@ -95,5 +96,5 @@ class ConversionClock:
     @staticmethod
     def record_since(started: float) -> None:
         clock = _ACTIVE_CONVERSION_CLOCK.get()
-        if clock is not None:
+        if clock is not None and EXCLUSION_DEPTH.get() == 0:
             clock.seconds += elapsed_seconds(started)

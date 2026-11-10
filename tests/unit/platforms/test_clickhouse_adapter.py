@@ -1271,7 +1271,7 @@ class TestClickHouseWorkloadCoverage:
 
         adapter.execute_query(connection, "SELECT 1", query_id, benchmark_type="datavault", validate_row_count=False)
 
-        statement = connection.execute.call_args.args[0]
+        statement = connection.execute.call_args_list[0].args[0]
         assert ("join_algorithm = 'grace_hash'" in statement) is grace
         assert ("grace_hash_join_initial_buckets = 8" in statement) is grace
 
@@ -1282,7 +1282,7 @@ class TestClickHouseWorkloadCoverage:
 
         adapter.execute_query(connection, "SELECT 1", "5_v7", benchmark_type="tpchavoc", validate_row_count=False)
 
-        statement = connection.execute.call_args.args[0]
+        statement = connection.execute.call_args_list[0].args[0]
         assert "join_algorithm" not in statement
 
     @pytest.mark.parametrize("query_id", ["21", "Q21"])
@@ -1294,7 +1294,7 @@ class TestClickHouseWorkloadCoverage:
 
         adapter.execute_query(connection, "SELECT 1", query_id, benchmark_type="tpch", validate_row_count=False)
 
-        assert "join_algorithm = 'hash'" in connection.execute.call_args.args[0]
+        assert "join_algorithm = 'hash'" in connection.execute.call_args_list[0].args[0]
 
     @pytest.mark.parametrize(
         ("deployment_mode", "tuning_enabled", "benchmark_type", "query_id"),
@@ -1315,7 +1315,7 @@ class TestClickHouseWorkloadCoverage:
 
         adapter.execute_query(connection, "SELECT 1", query_id, benchmark_type=benchmark_type, validate_row_count=False)
 
-        assert "join_algorithm" not in connection.execute.call_args.args[0]
+        assert "join_algorithm" not in connection.execute.call_args_list[0].args[0]
 
     def test_extract_primary_key_columns_handles_inline_and_composite_keys(self):
         adapter = self._adapter()
@@ -1419,7 +1419,9 @@ class TestClickHouseWorkloadCoverage:
         assert result["status"] == "SUCCESS"
         assert result["row_count_validation"]["status"] == "PASSED"
         assert result["row_count_validation"]["warning"] == "expected row count unavailable"
-        connection.execute.assert_called_once_with("SELECT * FROM orders SETTINGS joined_subquery_requires_alias = 0")
+        first_call = connection.execute.call_args_list[0]
+        assert first_call.args == ("SELECT * FROM orders SETTINGS joined_subquery_requires_alias = 0",)
+        assert first_call.kwargs["query_id"]
 
     def test_execute_query_turns_validation_failures_into_failed_results(self):
         adapter = self._adapter()

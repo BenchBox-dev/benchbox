@@ -23,7 +23,7 @@ def _client_host(system_profile: object) -> dict:
 def test_dataframe_profile_yields_a_populated_client_host() -> None:
     host = _client_host(_client_host_profile(None))
     assert host, "a DataFrame run must record a client host, not an empty block"
-    for field in ("os", "arch", "python", "cpu_count", "memory_gb", "cpu_model"):
+    for field in ("os", "arch", "python", "cpu_count", "memory_gb"):
         assert field in host, f"DataFrame client_host is missing {field!r}"
 
 

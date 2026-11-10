@@ -11,6 +11,7 @@ import time
 from typing import Any
 
 from benchbox.core.benchmark_table_ownership import MOONCAKE_STAGING_PREFIX
+from benchbox.core.results.timer_scope import excluded_from_query_timer
 from benchbox.utils.dialect_utils import mooncake_mirror_statements
 
 from .base.config_utils import (
@@ -32,6 +33,7 @@ except ImportError:
 
 MIRROR_ORDER_MAX_DESCENT_RATIO = 0.05
 MIRROR_LOCATION_PATTERN = re.compile(r"^[A-Za-z0-9_./:@=+,~ -]+$")
+FAILED_ATTEMPT_REQUESTS = 2
 
 
 class PgMooncakeAdapter(PostgreSQLAdapter):
@@ -391,10 +393,13 @@ class PgMooncakeAdapter(PostgreSQLAdapter):
                 validate_row_count=validate_row_count,
                 stream_id=stream_id,
             )
+            if "request_count" in result:
+                result["request_count"] += FAILED_ATTEMPT_REQUESTS
 
         self._close_mooncake_query_transaction(connection, action="commit", phase="after query")
         return result
 
+    @excluded_from_query_timer
     def _close_mooncake_query_transaction(self, connection: Any, *, action: str, phase: str) -> None:
         closer = getattr(connection, action, None)
         if not callable(closer):

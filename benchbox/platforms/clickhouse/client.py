@@ -380,12 +380,15 @@ class ClickHouseCloudClient:
 
         logger.info(f"ClickHouse Cloud client initialized: {host}:{port}")
 
-    def execute(self, query: str, params=None):
+    def execute(self, query: str, params=None, query_id: str | None = None):
         try:
             if query.strip().upper().startswith("INSERT") and params:
                 return self._execute_insert(query, params)
 
-            result = self._client.query(query)
+            if query_id:
+                result = self._client.query(query, settings={"query_id": query_id})
+            else:
+                result = self._client.query(query)
 
             if result.result_set:
                 return [tuple(row) for row in result.result_set]

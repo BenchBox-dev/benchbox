@@ -53,9 +53,10 @@ from benchbox.platforms.base.phase_tracking import (
 )
 from benchbox.platforms.base.result_capture import ResultCaptureMixin
 from benchbox.platforms.base.sorted_ingestion import SortedIngestionMixin
+from benchbox.platforms.base.timing_contract import TimingContractMixin
 from benchbox.platforms.base.tuning import TuningHooksMixin
 from benchbox.platforms.base.tuning_config import TuningConfigMixin
-from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.clock import elapsed_seconds, mono_time, utc_now
 from benchbox.utils.printing import quiet_console
 from benchbox.utils.toggles import is_probe_requested
 from benchbox.utils.verbosity import VerbosityMixin, VerbositySettings
@@ -109,6 +110,7 @@ class PlatformAdapter(
     SchemaHelpersMixin,
     SortedIngestionMixin,
     TestDriversMixin,
+    TimingContractMixin,
     TuningConfigMixin,
     TuningHooksMixin,
     VerbosityMixin,
@@ -759,6 +761,7 @@ class PlatformAdapter(
                 test_execution_type=execution_type,
             )
             result.effective_session_config = self.effective_session_config_payload()
+            self.stamp_timing_contract(result)
             return result
 
         finally:
@@ -842,8 +845,14 @@ class PlatformAdapter(
         dry_run = bool(getattr(self, "dry_run_mode", False) or run_config.get("dry_run_mode", False))
         probe_requested = is_probe_requested(run_config.get("link_probe", True)) and not dry_run
         probe_result: dict[str, Any] | None = None
+        probed_at: str | None = None
+        probe_platform_timing: dict[str, Any] | None = None
         if probe_requested:
-            probe_result = probe_statement_overhead(connection)
+            probed_at = utc_now().isoformat()
+            statement_id_of = self.probe_statement_id if self.platform_timing_source is not None else None
+            probe_result = probe_statement_overhead(connection, statement_id_of=statement_id_of)
+            if probe_result.get("statement_ids"):
+                probe_platform_timing = self.capture_probe_platform_timing(connection, probe_result["statement_ids"])
 
         merged_config = {
             **self.platform_config,
@@ -866,7 +875,7 @@ class PlatformAdapter(
         else:
             collection_status = "unavailable"
 
-        return {
+        client_link: dict[str, Any] = {
             "collection_status": collection_status,
             "source": region_info.get("source", "unavailable"),
             "client_region": region_info.get("client_region"),
@@ -875,6 +884,11 @@ class PlatformAdapter(
             "collection_error_class": probe_result.get("collection_error_class") if probe_result else None,
             "collection_error_message": probe_result.get("collection_error_message") if probe_result else None,
         }
+        if probed_at is not None:
+            client_link["probed_at"] = probed_at
+        if probe_platform_timing is not None:
+            client_link["platform_timing"] = probe_platform_timing
+        return client_link
 
     def _collect_platform_metadata(self, connection: Any) -> tuple[dict[str, Any], dict[str, Any]]:
         if self._link_probe_timed_out:

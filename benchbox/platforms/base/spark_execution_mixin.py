@@ -13,6 +13,7 @@ from typing import Any
 
 from benchbox.core.loaded_tables import is_data_loading_skipped
 from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW
+from benchbox.core.results.timer_scope import REQUEST_KIND_QUERY, RequestLedger, outside_query_timer
 from benchbox.platforms.base.arrow_result import ArrowRows, ArrowSource, fetch_result
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.file_format import DATA_FORMAT_EXTENSIONS, detect_compression, strip_compression_suffix
@@ -437,15 +438,16 @@ class SparkQueryExecutionMixin:
     ) -> dict[str, Any]:
         from benchbox.core.tpchavoc.dialect_compat import SPARK_VARIANT_IDS, normalize_variant_id, rewrite_spark_variant
 
-        benchmark_slug = (benchmark_type or "").lower().replace("-", "")
-        needs_rewrite = benchmark_slug == "tpchavoc" or (
-            benchmark_type is None and normalize_variant_id(query_id) in SPARK_VARIANT_IDS
-        )
-        if needs_rewrite:
-            rewritten = rewrite_spark_variant(query_id, query)
-            if rewritten != query:
-                self.log_very_verbose(f"Query {query_id}: Applied fork rewrite for Spark")
-            query = rewritten
+        with outside_query_timer():
+            benchmark_slug = (benchmark_type or "").lower().replace("-", "")
+            needs_rewrite = benchmark_slug == "tpchavoc" or (
+                benchmark_type is None and normalize_variant_id(query_id) in SPARK_VARIANT_IDS
+            )
+            if needs_rewrite:
+                rewritten = rewrite_spark_variant(query_id, query)
+                if rewritten != query:
+                    self.log_very_verbose(f"Query {query_id}: Applied fork rewrite for Spark")
+                query = rewritten
         return self._execute_query_spark(
             connection=connection,
             query=query,
@@ -475,15 +477,19 @@ class SparkQueryExecutionMixin:
         if self.disable_cache and self._catalog_clear_cache_supported:
             clear_start = mono_time()
             try:
-                spark.catalog.clearCache()
+                with outside_query_timer():
+                    spark.catalog.clearCache()
             except Exception as e:
                 return self._build_query_failure_result(query_id, clear_start, e)
 
-        pandas_enabled = self._ensure_spark_arrow_pandas(spark)
+        with outside_query_timer():
+            pandas_enabled = self._ensure_spark_arrow_pandas(spark)
 
+        ledger = RequestLedger()
         start_time = mono_time()
 
         try:
+            ledger.add_request(REQUEST_KIND_QUERY)
             result_df = spark.sql(query)
             fetched = fetch_result(
                 self.fetch_mode,
@@ -492,44 +498,49 @@ class SparkQueryExecutionMixin:
             )
 
             execution_time = elapsed_seconds(start_time)
-            actual_row_count = fetched.row_count
-            if isinstance(fetched.rows, ArrowRows):
-                fetched.rows.convert_columns(spark_arrow_converters(result_df.schema))
 
-            query_stats = {"execution_time_seconds": execution_time}
+            with outside_query_timer():
+                actual_row_count = fetched.row_count
+                if isinstance(fetched.rows, ArrowRows):
+                    fetched.rows.convert_columns(spark_arrow_converters(result_df.schema))
 
-            validation_result = None
-            if validate_row_count and benchmark_type:
-                from benchbox.core.validation.query_validation import QueryValidator
+                query_stats = {"execution_time_seconds": execution_time}
 
-                validator = QueryValidator()
-                validation_result = validator.validate_query_result(
-                    benchmark_type=benchmark_type,
-                    query_id=query_id,
-                    actual_row_count=actual_row_count,
-                    scale_factor=scale_factor,
-                    stream_id=stream_id,
-                )
+                validation_result = None
+                if validate_row_count and benchmark_type:
+                    from benchbox.core.validation.query_validation import QueryValidator
 
-                if validation_result.warning_message:
-                    self.log_verbose(f"Row count validation: {validation_result.warning_message}")
-                elif not validation_result.is_valid:
-                    self.log_verbose(f"Row count validation FAILED: {validation_result.error_message}")
-                else:
-                    self.log_very_verbose(
-                        f"Row count validation PASSED: {actual_row_count} rows "
-                        f"(expected: {validation_result.expected_row_count})"
+                    validator = QueryValidator()
+                    validation_result = validator.validate_query_result(
+                        benchmark_type=benchmark_type,
+                        query_id=query_id,
+                        actual_row_count=actual_row_count,
+                        scale_factor=scale_factor,
+                        stream_id=stream_id,
                     )
 
-            result_dict = self._build_query_result_with_validation(
-                query_id=query_id,
-                execution_time=execution_time,
-                actual_row_count=actual_row_count,
-                first_row=None if fetched.first_row is None else tuple(fetched.first_row),
-                validation_result=validation_result,
-                materialized_rows=fetched.rows,
-                fetch_mode=fetched.fetch_mode,
-            )
+                    if validation_result.warning_message:
+                        self.log_verbose(f"Row count validation: {validation_result.warning_message}")
+                    elif not validation_result.is_valid:
+                        self.log_verbose(f"Row count validation FAILED: {validation_result.error_message}")
+                    else:
+                        self.log_very_verbose(
+                            f"Row count validation PASSED: {actual_row_count} rows "
+                            f"(expected: {validation_result.expected_row_count})"
+                        )
+
+                result_dict = self._build_query_result_with_validation(
+                    query_id=query_id,
+                    execution_time=execution_time,
+                    actual_row_count=actual_row_count,
+                    first_row=None if fetched.first_row is None else tuple(fetched.first_row),
+                    validation_result=validation_result,
+                    materialized_rows=fetched.rows,
+                    fetch_mode=fetched.fetch_mode,
+                    timing_fields=self.timing_fields_for(
+                        connection, ledger, rows=fetched.rows, elapsed_seconds=execution_time
+                    ),
+                )
 
             result_dict["query_statistics"] = query_stats
             result_dict["resource_usage"] = query_stats

@@ -112,13 +112,12 @@ class TestGetQueryStatisticsRetry:
         mock_conn.cursor.return_value = mock_cursor
         mock_cursor.fetchone.return_value = None
 
-        with patch("time.sleep"):
-            adapter._get_query_statistics(mock_conn, "BENCHQ17", max_retries=0)
+        adapter._get_query_statistics(mock_conn, "sfqid-17", max_retries=0, initial_delay=0)
 
         executed_sqls = [c.args[0] for c in mock_cursor.execute.call_args_list]
         assert any("QUERY_HISTORY" in s for s in executed_sqls), f"No QUERY_HISTORY in: {executed_sqls}"
-        assert any("BENCHQ17" in s for s in executed_sqls), f"query_id not in SQL: {executed_sqls}"
-        assert "QUERY_TAG = 'BenchBox_BENCHQ17'" in executed_sqls[0]
+        assert "WHERE QUERY_ID IN ('sfqid-17')" in executed_sqls[0]
+        assert "QUERY_TAG" not in executed_sqls[0]
 
 
 class TestBuildCtasSortSql:

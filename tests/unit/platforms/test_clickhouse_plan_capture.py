@@ -20,7 +20,7 @@ class _FakeConn:
         self._explain_rows = _PLAN_TEXT.splitlines() if explain_rows is None else explain_rows
         self.executed = []
 
-    def execute(self, sql, params=None):
+    def execute(self, sql, params=None, query_id=None):
         self.executed.append(sql)
         if sql.strip().upper().startswith("EXPLAIN"):
             return [(line,) for line in self._explain_rows]

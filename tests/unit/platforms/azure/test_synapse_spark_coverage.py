@@ -105,13 +105,16 @@ def test_load_data_validates_source_dir_and_builds_table_uris(tmp_path: Path) ->
 
 def test_execute_query_shapes_result_payload() -> None:
     adapter = _adapter()
-    adapter._execute_statement = MagicMock(
-        return_value={
-            "data": {
-                "schema": {"fields": [{"name": "c1"}, {"name": "c2"}]},
-                "values": [[1, "a"], [2, "b"]],
-            }
-        }
+    adapter._execute_statement_measured = MagicMock(
+        return_value=(
+            {
+                "data": {
+                    "schema": {"fields": [{"name": "c1"}, {"name": "c2"}]},
+                    "values": [[1, "a"], [2, "b"]],
+                }
+            },
+            0.25,
+        )
     )
 
     output = adapter.execute_query(None, "SELECT * FROM t", "q1")
@@ -119,6 +122,8 @@ def test_execute_query_shapes_result_payload() -> None:
     assert output["status"] == "SUCCESS"
     assert output["rows_returned"] == 2
     assert output["columns"] == ["c1", "c2"]
+    assert output["execution_time_seconds"] == 0.25
+    assert output["request_count"] == 0
 
 
 @pytest.mark.parametrize(

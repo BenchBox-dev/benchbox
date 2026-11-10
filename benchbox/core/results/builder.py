@@ -45,6 +45,7 @@ from benchbox.core.results.subscale_policy import (
     platform_info_gateway,
     routed_compliance_class,
 )
+from benchbox.core.results.timer_scope import effective_timing_method
 
 if TYPE_CHECKING:
     pass
@@ -212,6 +213,8 @@ class ResultBuilder:
         self._plan_capture_errors: list[dict[str, str]] = []
 
         self._cost_summary: dict[str, Any] | None = None
+        self._timing_method: int | None = None
+        self._run_platform_timing: dict[str, Any] | None = None
 
         self._execution_phases_override: ExecutionPhases | None = None
         self._total_duration_seconds: float | None = None
@@ -348,6 +351,10 @@ class ResultBuilder:
 
     def set_cost_summary(self, cost_summary: dict[str, Any]) -> None:
         self._cost_summary = cost_summary
+
+    def set_timing_contract(self, timing_method: int, run_platform_timing: dict[str, Any] | None = None) -> None:
+        self._timing_method = timing_method
+        self._run_platform_timing = run_platform_timing
 
     def set_execution_phases(self, phases: ExecutionPhases) -> None:
         self._execution_phases_override = phases
@@ -490,6 +497,12 @@ class ResultBuilder:
             plan_capture_failures=self._plan_capture_failures,
             plan_capture_errors=self._plan_capture_errors,
             cost_summary=self._cost_summary,
+            timing_method=(
+                None
+                if self._timing_method is None
+                else effective_timing_method(self._timing_method, query_results_list)
+            ),
+            run_platform_timing=self._run_platform_timing,
             _benchmark_id_override=self._benchmark.benchmark_id,
             compliance_class=compliance_class,
         )

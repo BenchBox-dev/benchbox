@@ -8,6 +8,7 @@ from typing import Any
 from benchbox.core.results.fetch_mode import FETCH_MODE_ROWS
 from benchbox.core.results.models import QueryExecution
 from benchbox.core.results.query_execution import query_execution_to_legacy_dict
+from benchbox.core.results.timer_scope import RequestLedger, outside_query_timer
 from benchbox.platforms.base.arrow_result import fetch_result
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
@@ -77,13 +78,19 @@ def execute_sql_query(
     stream_id: int | None = None,
     fetch_mode: str = FETCH_MODE_ROWS,
     fetch_arrow: Callable[[Any], Any] | None = None,
+    timing_fields_for: Callable[..., dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    start_time = mono_time()
+    ledger = RequestLedger()
     log_verbose(f"Executing query {query_id}")
 
     _owns_cursor = callable(getattr(connection, "cursor", None))
-    cursor = connection.cursor() if _owns_cursor else connection
+    cursor = None
+    start_time = mono_time()
     try:
+        with outside_query_timer():
+            cursor = connection.cursor() if _owns_cursor else connection
+        start_time = mono_time()
+        ledger.add_request()
         cursor.execute(query)
         fetched = fetch_result(
             fetch_mode,
@@ -95,22 +102,31 @@ def execute_sql_query(
         actual_row_count = fetched.row_count
 
         validation_result = None
-        if validate_row_count and benchmark_type:
-            from benchbox.core.validation.query_validation import QueryValidator
+        result_digest = None
+        with outside_query_timer():
+            if validate_row_count and benchmark_type:
+                from benchbox.core.validation.query_validation import QueryValidator
 
-            validator = QueryValidator()
-            validation_result = validator.validate_query_result(
-                benchmark_type=benchmark_type,
-                query_id=query_id,
-                actual_row_count=actual_row_count,
-                scale_factor=scale_factor,
-                stream_id=stream_id,
+                validator = QueryValidator()
+                validation_result = validator.validate_query_result(
+                    benchmark_type=benchmark_type,
+                    query_id=query_id,
+                    actual_row_count=actual_row_count,
+                    scale_factor=scale_factor,
+                    stream_id=stream_id,
+                )
+
+            from benchbox.core.results.result_digest import compute_result_digest, result_digest_enabled
+
+            if result_digest_enabled() and stream_id in (None, 0):
+                result_digest = compute_result_digest(fetched.rows)
+
+        timing_fields = (
+            timing_fields_for(
+                connection, ledger, rows=fetched.rows, elapsed_seconds=execution_time, stream_id=stream_id
             )
-
-        from benchbox.core.results.result_digest import compute_result_digest, result_digest_enabled
-
-        result_digest = (
-            compute_result_digest(fetched.rows) if result_digest_enabled() and stream_id in (None, 0) else None
+            if timing_fields_for is not None
+            else None
         )
 
         return build_query_result_with_validation(
@@ -122,6 +138,7 @@ def execute_sql_query(
             result_digest=result_digest,
             materialized_rows=fetched.rows,
             fetch_mode=fetched.fetch_mode,
+            **({"timing_fields": timing_fields} if timing_fields else {}),
         )
 
     except Exception as exc:
@@ -151,5 +168,5 @@ def execute_sql_query(
             error_field="error",
         )
     finally:
-        if _owns_cursor:
+        if _owns_cursor and cursor is not None:
             cursor.close()

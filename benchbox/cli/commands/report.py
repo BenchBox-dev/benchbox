@@ -94,6 +94,12 @@ def report() -> None:
     help="Rank only results recorded in this fetch mode, rows or arrow. Defaults to BENCHBOX_FETCH_MODE when set.",
 )
 @click.option(
+    "--timing-method",
+    type=click.IntRange(min=1),
+    default=None,
+    help="Rank only results recorded under this run.timing_method (results without one are method 1).",
+)
+@click.option(
     "--db-path",
     type=click.Path(path_type=Path),
     help="Path to result database (default: ~/.benchbox/results.db)",
@@ -105,6 +111,7 @@ def rankings(
     min_samples: int,
     lookback_days: int,
     fetch_mode: str | None,
+    timing_method: int | None,
     db_path: Path | None,
 ) -> None:
     db = ResultDatabase(db_path)
@@ -117,10 +124,12 @@ def rankings(
 
     try:
         rankings_list = db.calculate_rankings(
-            benchmark, scale_factor, config, fetch_mode=fetch_mode or env_fetch_mode()
+            benchmark, scale_factor, config, fetch_mode=fetch_mode or env_fetch_mode(), timing_method=timing_method
         )
     except IncomparableModesError as exc:
-        raise click.ClickException(f"{exc} Pass --fetch-mode rows or arrow to rank one mode.") from exc
+        raise click.ClickException(
+            f"{exc} Pass --fetch-mode rows or arrow and --timing-method N to rank one mode."
+        ) from exc
 
     if not rankings_list:
         console.print(f"[yellow]No results found for {benchmark} at scale factor {scale_factor}[/yellow]")

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -92,6 +93,8 @@ def test_collect_client_link_metadata_with_probe_and_region() -> None:
     ):
         adapter._collect_client_link_metadata(conn, {"link_probe": True})
 
+    probed_at = adapter._client_link_metadata.pop("probed_at")
+    assert datetime.fromisoformat(probed_at).tzinfo is not None
     assert adapter._client_link_metadata == {
         "collection_status": "available",
         "source": "observed",

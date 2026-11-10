@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW, FETCH_MODE_ROWS
+from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.heavy_run_events import current_run_id
 from benchbox.utils.resource_limits import heavy_memory_budget_gib
@@ -174,6 +175,7 @@ def _ensure_compatible_java(java_home_override: str | None = None) -> str | None
 
 class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutionMixin, PlatformAdapter):
     physical_identifier_case = "lower"
+    timing_method = TIMING_METHOD_QUERY_ONLY
     _df_caching_supported = False
 
     plan_capture_phase_eligible = True

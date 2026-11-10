@@ -971,7 +971,7 @@ def _build_platform_runner(fetch_mode: str | None = None):
         mode_differences = results_mode_differences([*executed, result])
         if mode_differences:
             raise ValueError(
-                f"{IncomparableModesError(mode_differences)} Pass --fetch-mode rows or arrow to measure every platform the same way."
+                f"{IncomparableModesError(mode_differences)} Pass --fetch-mode rows or arrow to measure every platform the same way; platforms on different timing methods cannot be compared."
             )
         executed.append(result)
         return result

@@ -18,6 +18,7 @@ except ImportError:
 
 from benchbox.core.errors import PlanCaptureError
 from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW, FETCH_MODE_ROWS
+from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY, RequestLedger, outside_query_timer
 from benchbox.utils.cloud_storage import get_cloud_path_info, is_cloud_path
 from benchbox.utils.printing import emit
 
@@ -535,6 +536,7 @@ def _create_duckdb_external_views(
 
 class DuckDBAdapter(PlatformAdapter):
     driver_isolation_capability = DriverIsolationCapability.SUPPORTED
+    timing_method = TIMING_METHOD_QUERY_ONLY
     supports_external_tables = True
     supports_refresh_functions = True
     supports_native_refresh_ingest = True
@@ -1080,13 +1082,17 @@ class DuckDBAdapter(PlatformAdapter):
                 "dry_run": True,
             }
 
+        ledger = RequestLedger()
         start_time = mono_time()
 
         try:
             if self.show_query_plans and not self.capture_plans:
-                connection.execute("PRAGMA enable_profiling = 'query_tree'")
+                with outside_query_timer():
+                    connection.execute("PRAGMA enable_profiling = 'query_tree'")
                 logger.debug("DuckDB query profiling enabled for this query")
 
+            start_time = mono_time()
+            ledger.add_request()
             result = connection.execute(query)
             fetched = fetch_result(
                 self.fetch_mode,
@@ -1100,36 +1106,41 @@ class DuckDBAdapter(PlatformAdapter):
                 fetched.rows.convert_columns(_duckdb_arrow_converters(result.description))
             logger.debug(f"Query {query_id} completed in {execution_time:.3f}s, returned {actual_row_count} rows")
 
-            if not self.capture_plans:
-                self.display_query_plan_if_enabled(connection, query, query_id)
-
             validation_result = None
-            if validate_row_count and benchmark_type:
-                from benchbox.core.validation.query_validation import QueryValidator
+            result_digest = None
+            with outside_query_timer():
+                if not self.capture_plans:
+                    self.display_query_plan_if_enabled(connection, query, query_id)
 
-                validator = QueryValidator()
-                validation_result = validator.validate_query_result(
-                    benchmark_type=benchmark_type,
-                    query_id=query_id,
-                    actual_row_count=actual_row_count,
-                    scale_factor=scale_factor,
-                    stream_id=stream_id,
-                )
+                if validate_row_count and benchmark_type:
+                    from benchbox.core.validation.query_validation import QueryValidator
 
-                if validation_result.warning_message:
-                    self.log_verbose(f"Row count validation: {validation_result.warning_message}")
-                elif not validation_result.is_valid:
-                    self.log_verbose(f"Row count validation FAILED: {validation_result.error_message}")
-                else:
-                    self.log_very_verbose(
-                        f"Row count validation PASSED: {actual_row_count} rows "
-                        f"(expected: {validation_result.expected_row_count})"
+                    validator = QueryValidator()
+                    validation_result = validator.validate_query_result(
+                        benchmark_type=benchmark_type,
+                        query_id=query_id,
+                        actual_row_count=actual_row_count,
+                        scale_factor=scale_factor,
+                        stream_id=stream_id,
                     )
 
-            from benchbox.core.results.result_digest import compute_result_digest, result_digest_enabled
+                    if validation_result.warning_message:
+                        self.log_verbose(f"Row count validation: {validation_result.warning_message}")
+                    elif not validation_result.is_valid:
+                        self.log_verbose(f"Row count validation FAILED: {validation_result.error_message}")
+                    else:
+                        self.log_very_verbose(
+                            f"Row count validation PASSED: {actual_row_count} rows "
+                            f"(expected: {validation_result.expected_row_count})"
+                        )
 
-            result_digest = (
-                compute_result_digest(fetched.rows) if result_digest_enabled() and stream_id in (None, 0) else None
+                from benchbox.core.results.result_digest import compute_result_digest, result_digest_enabled
+
+                if result_digest_enabled() and stream_id in (None, 0):
+                    result_digest = compute_result_digest(fetched.rows)
+
+            timing_fields = self.timing_fields_for(
+                connection, ledger, rows=fetched.rows, elapsed_seconds=execution_time
             )
 
             result = self._build_query_result_with_validation(
@@ -1141,6 +1152,7 @@ class DuckDBAdapter(PlatformAdapter):
                 result_digest=result_digest,
                 materialized_rows=fetched.rows,
                 fetch_mode=fetched.fetch_mode,
+                timing_fields=timing_fields,
             )
 
             self._merge_plan_capture_into_result(result, connection, query, query_id)
@@ -1166,7 +1178,8 @@ class DuckDBAdapter(PlatformAdapter):
             }
         finally:
             if self.show_query_plans and not self.capture_plans:
-                connection.execute("PRAGMA disable_profiling")
+                with outside_query_timer():
+                    connection.execute("PRAGMA disable_profiling")
 
     def get_query_plan(self, connection: Any, query: str) -> str | None:
         from benchbox.platforms.base.result_capture import is_dml_query

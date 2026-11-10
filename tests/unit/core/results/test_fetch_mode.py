@@ -99,10 +99,9 @@ class TestQueryExecutionContract:
 
 
 class TestExportedBundle:
-    def test_fetch_mode_is_additive_at_the_current_schema_version(self):
+    def test_fetch_mode_is_additive_at_schema_2_3_and_later(self):
         bundle = _bundle(["arrow", "arrow"])
         assert bundle["result_schema_version"] == CURRENT_SCHEMA_VERSION
-        assert CURRENT_SCHEMA_VERSION != "2.4"
         assert [query["fetch_mode"] for query in bundle["queries"]] == ["arrow", "arrow"]
         assert bundle["run"]["fetch_mode"] == "arrow"
         SchemaV2Validator().validate(bundle)
@@ -318,3 +317,64 @@ class TestUnrecordedEntriesAndMixedRuns:
             runner(platform="duckdb", **kwargs)
             with pytest.raises(ValueError, match="compared and ranked within one mode"):
                 runner(platform="sqlite", **kwargs)
+
+
+class TestTimingMethodRankings:
+    @staticmethod
+    def _timed(execution_id: str, platform: str, method: int | None, ms: float, when: datetime):
+        result = _stored(execution_id, platform, "rows", ms, when)
+        result.timing_method = method
+        return result
+
+    def test_rankings_refuse_stored_results_that_mix_timing_methods(self, tmp_path):
+        db = ResultDatabase(tmp_path / "r.db")
+        now = datetime.now(timezone.utc)
+        db.store_result(self._timed("a", "DuckDB", 2, 100.0, now))
+        db.store_result(self._timed("b", "Snowflake", 1, 200.0, now))
+        with pytest.raises(IncomparableModesError, match="timing method differs across stored results \\(1, 2\\)"):
+            db.calculate_rankings("TPC-H", 1.0)
+
+    def test_rankings_rank_one_selected_timing_method(self, tmp_path):
+        db = ResultDatabase(tmp_path / "r.db")
+        now = datetime.now(timezone.utc)
+        db.store_result(self._timed("a", "DuckDB", 2, 100.0, now))
+        db.store_result(self._timed("b", "DataFusion", 2, 150.0, now))
+        db.store_result(self._timed("c", "Snowflake", 1, 50.0, now))
+        assert [e.platform for e in db.calculate_rankings("TPC-H", 1.0, timing_method=2)] == ["DuckDB", "DataFusion"]
+        assert [e.platform for e in db.calculate_rankings("TPC-H", 1.0, timing_method=1)] == ["Snowflake"]
+
+    def test_results_without_timing_method_rank_as_method_one(self, tmp_path):
+        db = ResultDatabase(tmp_path / "r.db")
+        now = datetime.now(timezone.utc)
+        db.store_result(self._timed("a", "DuckDB", None, 100.0, now))
+        db.store_result(self._timed("b", "Snowflake", 1, 200.0, now))
+        assert [e.platform for e in db.calculate_rankings("TPC-H", 1.0)] == ["DuckDB", "Snowflake"]
+
+    def test_stored_metadata_records_timing_method(self, tmp_path):
+        db = ResultDatabase(tmp_path / "r.db")
+        now = datetime.now(timezone.utc)
+        row_id = db.store_result(self._timed("a", "DuckDB", 2, 100.0, now))
+        with db._connection() as conn:
+            stored = conn.execute("SELECT metadata_json FROM results WHERE id = ?", (row_id,)).fetchone()
+        assert json.loads(stored["metadata_json"])["timing_method"] == 2
+
+    def test_trends_use_only_runs_in_the_newest_timing_method(self, tmp_path):
+        db = ResultDatabase(tmp_path / "r.db")
+        now = datetime.now(timezone.utc)
+        db.store_result(self._timed("old", "DuckDB", 1, 400.0, now - timedelta(days=40)))
+        db.store_result(self._timed("new", "DuckDB", 2, 100.0, now - timedelta(days=1)))
+        trends = db.get_performance_trends("DuckDB", "TPC-H", 1.0, periods=3, period_days=30)
+        assert sum(trend.sample_count for trend in trends) == 1
+        assert trends[0].avg_geometric_mean_ms == 100.0
+
+    def test_regression_detection_skips_runs_of_other_timing_methods(self, tmp_path):
+        older = _bundle(["rows"], execution_id="older")
+        older["run"]["timestamp"] = "2026-01-01T00:00:00"
+        newer = _bundle(["rows"], execution_id="newer")
+        newer["run"]["timestamp"] = "2026-01-02T00:00:00"
+        newer["run"]["timing_method"] = 2
+        older["run"].pop("timing_method", None)
+        _write(tmp_path, "older.json", older)
+        _write(tmp_path, "newer.json", newer)
+        outcome = detect_regressions(tmp_path)
+        assert outcome["status"] == "insufficient_data"

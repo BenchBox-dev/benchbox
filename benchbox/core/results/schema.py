@@ -21,6 +21,7 @@ from benchbox.core.results.execution_variant import execution_engine_payload, ga
 from benchbox.core.results.fetch_mode import summarize_fetch_modes
 from benchbox.core.results.metrics import UNOFFICIAL_COMPLIANCE_CLASSES, percentile_ms
 from benchbox.core.results.platform_options import sanitize_platform_options
+from benchbox.core.results.platform_timing import resolve_net_estimate_status, summarize_run_platform_timing
 from benchbox.core.results.query_execution import (
     QueryExecutionContractError,
     normalize_row_count_validation,
@@ -43,10 +44,13 @@ from benchbox.core.results.subscale_policy import (
     result_compliance_class,
     unofficial_metric_marker,
 )
+from benchbox.core.results.timer_scope import TIMING_METHOD_LEGACY
 from benchbox.core.results.timing_fields import (
     bundle_timing_field_paths,
+    client_link_timing_problems,
     net_estimate_problems,
     platform_timing_problems,
+    required_timing_problems,
     run_timing_problems,
 )
 from benchbox.validation.bundle import REQUIRED_TOP_KEYS
@@ -216,21 +220,29 @@ def _validate_timing_fields(payload: Mapping[str, Any], version: Any, run: Mappi
     run_problems = [*run_timing_problems(run), *net_estimate_problems(payload)]
     if run_problems:
         raise SchemaV2ValidationError(f"run.{run_problems[0]}")
+    environment = payload.get("environment")
+    client_link = environment.get("client_link") if isinstance(environment, Mapping) else None
+    client_link_problems = client_link_timing_problems(client_link)
+    if client_link_problems:
+        raise SchemaV2ValidationError(f"environment.client_link.{client_link_problems[0]}")
     queries = payload.get("queries")
-    if not isinstance(queries, list):
-        return
-    for index, query in enumerate(queries):
-        if not isinstance(query, Mapping):
-            continue
-        for key in ("request_count", "result_bytes"):
-            count = query.get(key)
-            if count is not None and (isinstance(count, bool) or not isinstance(count, int) or count < 0):
-                raise SchemaV2ValidationError(f"queries[{index}].{key} must be a non-negative int, got {count!r}")
-        if query.get("platform_timing") is None:
-            continue
-        query_problems = platform_timing_problems(query["platform_timing"])
-        if query_problems:
-            raise SchemaV2ValidationError(f"queries[{index}].platform_timing {query_problems[0]}")
+    if isinstance(queries, list):
+        for index, query in enumerate(queries):
+            if not isinstance(query, Mapping):
+                continue
+            for key in ("request_count", "result_bytes"):
+                count = query.get(key)
+                if count is not None and (isinstance(count, bool) or not isinstance(count, int) or count < 0):
+                    raise SchemaV2ValidationError(f"queries[{index}].{key} must be a non-negative int, got {count!r}")
+            if query.get("platform_timing") is None:
+                continue
+            query_problems = platform_timing_problems(query["platform_timing"])
+            if query_problems:
+                raise SchemaV2ValidationError(f"queries[{index}].platform_timing {query_problems[0]}")
+    if supports_round_trip_timing_fields(version):
+        required_problems = required_timing_problems(payload)
+        if required_problems:
+            raise SchemaV2ValidationError(required_problems[0])
 
 
 def build_result_payload(result: BenchmarkResults, *, sanitize_platform_secrets: bool = True) -> dict[str, Any]:
@@ -257,6 +269,7 @@ def build_result_payload(result: BenchmarkResults, *, sanitize_platform_secrets:
     platform = _build_platform_section(result, driver_metadata, sanitize_platform_secrets=sanitize_platform_secrets)
 
     environment = _build_environment_block(result)
+    _apply_timing_fields(result, run, platform, environment, queries_list)
 
     tables = _build_tables_block(result.table_statistics)
 
@@ -480,6 +493,37 @@ def _run_fetch_mode(queries: list[dict[str, Any]]) -> str | None:
     return summarize_fetch_modes(query.get("fetch_mode") for query in successful)
 
 
+def _apply_timing_fields(
+    result: BenchmarkResults,
+    run: dict[str, Any],
+    platform: Mapping[str, Any],
+    environment: Mapping[str, Any],
+    queries: list[dict[str, Any]],
+) -> None:
+    timing_method = getattr(result, "timing_method", None) or TIMING_METHOD_LEGACY
+    run["timing_method"] = timing_method
+    declared = getattr(result, "run_platform_timing", None)
+    if isinstance(declared, Mapping) and "coverage" in declared:
+        run["platform_timing"] = dict(declared)
+    elif isinstance(declared, Mapping):
+        summary = summarize_run_platform_timing(
+            queries, source=str(declared["source"]), definition=str(declared["definition"])
+        )
+        if summary is not None:
+            run["platform_timing"] = summary
+    status = getattr(result, "net_estimate_status", None)
+    if status is None:
+        deployment = platform.get("deployment")
+        status = resolve_net_estimate_status(
+            platform=platform.get("name"),
+            timing_method=timing_method,
+            endpoint_class=deployment.get("endpoint_class") if isinstance(deployment, Mapping) else None,
+            client_link=environment.get("client_link"),
+            queries=queries,
+        )
+    run["net_estimate_status"] = status
+
+
 def _build_run_section(
     result: BenchmarkResults,
     query_times_ms: list[float],
@@ -499,15 +543,6 @@ def _build_run_section(
     maintenance_phase = getattr(getattr(result, "execution_phases", None), "maintenance_test", None)
     if maintenance_phase is not None and maintenance_phase.maintenance_method is not None:
         run["maintenance_method"] = maintenance_phase.maintenance_method
-    timing_method = getattr(result, "timing_method", None)
-    if timing_method is not None:
-        run["timing_method"] = timing_method
-    net_estimate_status = getattr(result, "net_estimate_status", None)
-    if net_estimate_status is not None:
-        run["net_estimate_status"] = net_estimate_status
-    run_platform_timing = getattr(result, "run_platform_timing", None)
-    if run_platform_timing is not None:
-        run["platform_timing"] = run_platform_timing
     return run
 
 

@@ -37,6 +37,7 @@ else:
     StructType = Any
 
 from benchbox.core.dataframe.tuning import DataFrameTuningConfiguration
+from benchbox.core.results.timer_scope import TIMING_METHOD_LEGACY
 from benchbox.platforms.dataframe.expression_family import (
     ExpressionFamilyAdapter,
 )
@@ -59,6 +60,8 @@ else:
 
 
 class PySparkDataFrameAdapter(ExpressionFamilyAdapter[PySparkDF, PySparkLazyDF, PySparkExpr]):
+    timing_method = TIMING_METHOD_LEGACY
+
     def __init__(
         self,
         working_dir: str | Path | None = None,

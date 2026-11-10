@@ -56,6 +56,7 @@ from benchbox.core.results.models import (
 )
 from benchbox.core.results.query_plan_models import QueryPlanDAG
 from benchbox.core.results.schema import compute_plan_capture_stats
+from benchbox.core.results.timer_scope import TIMING_METHOD_LEGACY
 from benchbox.core.schemas import BenchmarkConfig, SystemProfile
 from benchbox.platforms.base.adapter import DriverIsolationCapability
 from benchbox.platforms.base.client_region import discover_client_region
@@ -237,6 +238,7 @@ def _client_link_block_for_dataframe(benchmark_config: Any, options_map: dict[st
 class BenchmarkExecutionMixin(ExecutionEngineHook):
     driver_isolation_capability: DriverIsolationCapability = DriverIsolationCapability.NOT_APPLICABLE
     is_dataframe_adapter: bool = True
+    timing_method: int = TIMING_METHOD_LEGACY
 
     platform_name: str
     family: str
@@ -328,6 +330,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
             platform=platform_info,
         )
         builder.mark_started()
+        builder.set_timing_contract(self.timing_method)
         builder.set_validation_status("NOT_RUN")
         builder.set_system_profile(_client_host_profile(system_profile))
 
