@@ -5599,7 +5599,7 @@
         }
       },
       "integration_branch": "feat/plan-export-contract2",
-      "integration_head": "1065913f0daf0bb2218d4706451261317f997327",
+      "integration_head": "c3409e2bffc0e2eefe9a7afbbc0c2a4048eb822b",
       "integration_log": [
         {
           "at": "2026-11-10T01:45:55Z",
@@ -5665,6 +5665,39 @@
             "plan-privacy-detector-residual-limits-20261108"
           ],
           "seq": 5
+        },
+        {
+          "at": "2026-11-10T04:09:25Z",
+          "changed_files": [
+            ".github/workflows/sqlglot-delivery.yml",
+            "benchbox/core/throughput/executor.py",
+            "benchbox/core/write_primitives/benchmark.py",
+            "benchbox/sql_compat/rules/execution_filter/duckdb_write_primitives.py",
+            "benchbox/utils/linux_machine.py",
+            "changelog.d/fix-duckdb-merge-skip-reason.json",
+            "changelog.d/fix-throughput-workers-keep-translation-context.json",
+            "changelog.d/fix-vm-guest-poweroff-signal.json",
+            "changelog.d/sqlglot-app-readiness.json",
+            "changelog.d/sqlglot-event-arming.json",
+            "docs/agent/heavy-work.md",
+            "docs/internal/dev-loop-property-ledger.md",
+            "docs/internal/repo-admin-settings.md",
+            "docs/internal/sql-execution-evidence-gate.md",
+            "quality/comment-policy.json",
+            "tests/integration/test_write_primitives_duckdb.py",
+            "tests/unit/core/throughput/test_translation_context.py",
+            "tests/unit/core/write_primitives/test_benchmark_execution.py",
+            "tests/unit/core/write_primitives/test_benchmark_operations.py",
+            "tests/unit/sql_compat/test_duckdb_write_primitives_gate.py",
+            "tests/unit/test_heavy_choke_points.py",
+            "tests/unit/workflows/test_sqlglot_delivery_workflow.py"
+          ],
+          "head": "c3409e2bffc0e2eefe9a7afbbc0c2a4048eb822b",
+          "kind": "develop-merge",
+          "merged_parent": "4f03d3e66dd652dd091ee906b9d116377c9cc77a",
+          "op_id": "b2a9abc59152415b95ce80b55f88ed19",
+          "previous_head": "1065913f0daf0bb2218d4706451261317f997327",
+          "seq": 6
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-export-contract2",
