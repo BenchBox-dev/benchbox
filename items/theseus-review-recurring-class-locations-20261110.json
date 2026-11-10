@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "The 'list it once … counts as one defect' instruction is removed from gate.md, deep.md and standard.md (and any other template carrying it); no template tells the reviewer to merge distinct locations into one finding.",
+    "A test fails if any template contains an instruction to list a recurring class once or to count several locations as one defect.",
+    "Goldens change only by the removed template lines and the matching load counts; the diff is shown in the PR body.",
+    "Merged to Theseus main with hosted SHIP + green required checks + independent review SHIP on the final head (recorded here)."
+  ],
+  "context": "Part of theseus-review-output-format-20261110 delivery: ships in release A, which BenchBox #4062 will promote instead of v0.2.8.",
+  "description": "Found by the hosted review of BenchBox #4062 (Theseus v0.2.8 promotion), finding D10 (Medium). Since v0.2.7 (2e35f77b) the templates gate.md:69-70, deep.md:61-62 and standard.md:50-51 say: when one defect class recurs at several places, list it once, with every other location only in the detail; it counts as one defect. The protocol record keeps only id, severity, file, line, end_line and title (protocol.py defect_entry), the follow-up brief lists one location per earlier defect (render.py ~:326-333), and the report opens one thread at the anchor. In the next round the reviewer can see the anchored line fixed and mark the class fixed; under FOLLOW_UP_SCOPE_RULE the other instances in unchanged files are not new, so N-1 instances can merge unseen, and consolidation also keeps counts below max_defects (no DO NOT SHIP or strike). v0.2.6, which BenchBox runs today, does not have this instruction, so shipping it would weaken reviews.\nOwner decision 2026-11-10: fix it in release A by removing the 'list once' instruction from the three templates, so each location is its own finding (deduplicated by fingerprint as today). Carrying multiple locations per finding in the record is not part of this fix.\nGuardrails: changes reviewer instructions, so record it as a reviewer-behaviour change in the PR body; the eval score rule is inactive (no authenticated baseline) and no live model or eval spend is approved; Theseus merge rule plus independent review (templates drive every verdict); goldens regenerate only where they embed the template text.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4062"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a",
+      "at": "2026-11-10T20:05:20Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "71635630891642628e7cb31111c5fea2",
+      "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    }
+  ]
+}

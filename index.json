@@ -39628,6 +39628,13 @@
       "status": "open",
       "title": "Make Theseus review output verdict-first, concise and easy to scan"
     },
+    "theseus-review-recurring-class-locations-20261110": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Theseus: stop telling reviewers to list a recurring defect class once, so every location stays tracked"
+    },
     "theseus-review-status-descriptions-20261110": {
       "claim": null,
       "needs": [],
