@@ -7757,7 +7757,20 @@
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
-      "final_pr_history": [],
+      "final_pr": {
+        "head": "f97c87273240623dcbb8aac83fb48aa64e8b6779",
+        "node_id": "PR_kwDOQ7J64c8AAAABOJnlUQ",
+        "number": 4082,
+        "repository": "BenchBox-dev/BenchBox"
+      },
+      "final_pr_history": [
+        {
+          "at": "2026-11-10T16:25:54Z",
+          "head": "f97c87273240623dcbb8aac83fb48aa64e8b6779",
+          "op_id": "b4822ded9bef43d8ba92a30285a85e3d",
+          "previous_head": null
+        }
+      ],
       "integrated_members": {
         "perf-clickhouse-server-bulk-load-20261030": {
           "accepted_head": "d43381ea1331b8f04e31b13fba9f905a3821f42e",
