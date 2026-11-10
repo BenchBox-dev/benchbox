@@ -8012,7 +8012,20 @@
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
-      "final_pr_history": [],
+      "final_pr": {
+        "head": "2b12f2eb9397e05c37d37df4aa9726613aded4c9",
+        "node_id": "PR_kwDOQ7J64c8AAAABN_wRlw",
+        "number": 4075,
+        "repository": "BenchBox-dev/BenchBox"
+      },
+      "final_pr_history": [
+        {
+          "at": "2026-11-10T01:40:36Z",
+          "head": "2b12f2eb9397e05c37d37df4aa9726613aded4c9",
+          "op_id": "2fc7e38309cd4dafaf0a467c24f51e37",
+          "previous_head": null
+        }
+      ],
       "integrated_members": {
         "sqlglot-delivery-arm-waits-for-daily-run-20261107": {
           "accepted_head": "f344efee83d6094956a609f761f96da4f8430ff0",
