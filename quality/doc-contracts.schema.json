@@ -631,10 +631,9 @@
         "home_root": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["scanned_as_root", "ancestors_of_home_are_not_data_roots", "synthetic_home"],
+          "required": ["scanned_as_root", "synthetic_home"],
           "properties": {
             "scanned_as_root": {"type": "boolean"},
-            "ancestors_of_home_are_not_data_roots": {"type": "boolean"},
             "synthetic_home": {"type": "string", "pattern": "^/"}
           }
         },

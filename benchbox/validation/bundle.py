@@ -14,7 +14,6 @@ from collections.abc import Callable, Iterable, Mapping
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
-from unittest import mock
 
 FETCH_MODES = ("rows", "arrow")
 
@@ -258,11 +257,18 @@ def local_path_detector(roots: Iterable[str | Path] = (), *, redact_home: bool =
     )
 
 
-def find_public_path_leaks(value: Any, key_path: tuple[str, ...] = (), roots: Iterable[str | Path] = ()) -> list[str]:
+def _public_scan_detector(roots: Iterable[str | Path], home: Path | None) -> LocalPathDetector:
     scan_roots = [*roots]
+    if home is not None:
+        scan_roots.append(str(home))
+    return local_path_detector(scan_roots, redact_home=False)
+
+
+def find_public_path_leaks(value: Any, key_path: tuple[str, ...] = (), roots: Iterable[str | Path] = ()) -> list[str]:
+    home = None
     with contextlib.suppress(OSError, RuntimeError):
-        scan_roots.append(str(Path.home()))
-    return local_path_detector(scan_roots, redact_home=False).find_leaks(value, key_path)
+        home = Path.home()
+    return _public_scan_detector(roots, home).find_leaks(value, key_path)
 
 
 PATH_PRIVACY_CONTRACT_VERSION = 1
@@ -300,21 +306,18 @@ _PATH_PRIVACY_CASES: tuple[dict[str, Any], ...] = (
     {"id": "home-root-match", "text": f"{_CONTRACT_SYNTHETIC_HOME}/run/plan.json", "home": True, "leak": True},
     {"id": "home-root-exact", "text": _CONTRACT_SYNTHETIC_HOME, "home": True, "leak": True},
     {
-        "id": "home-ancestor-root-not-widened",
+        "id": "home-ancestor-configured-root-still-scanned",
         "text": "/srv/other-service/run",
         "roots": ["/srv"],
         "home": True,
-        "leak": False,
+        "leak": True,
     },
 )
 
 
 def _contract_case_verdict(case: Mapping[str, Any]) -> bool:
-    roots = list(case.get("roots", ()))
-    if case.get("home"):
-        with mock.patch.object(Path, "home", return_value=Path(_CONTRACT_SYNTHETIC_HOME)):
-            return LocalPathDetector(roots, redact_home=True).contains(case["text"])
-    return LocalPathDetector(roots, redact_home=False).contains(case["text"])
+    home = Path(_CONTRACT_SYNTHETIC_HOME) if case.get("home") else None
+    return _public_scan_detector(case.get("roots", ()), home).contains(case["text"])
 
 
 def build_path_privacy_contract() -> dict[str, Any]:
@@ -341,11 +344,7 @@ def build_path_privacy_contract() -> dict[str, Any]:
         "unc": {"prefixes": ["\\\\", "//"]},
         "placeholder_allowlist": sorted(NEUTRAL_PLACEHOLDERS),
         "redacted_placeholder": REDACTED_PLACEHOLDER,
-        "home_root": {
-            "scanned_as_root": True,
-            "ancestors_of_home_are_not_data_roots": True,
-            "synthetic_home": _CONTRACT_SYNTHETIC_HOME,
-        },
+        "home_root": {"scanned_as_root": True, "synthetic_home": _CONTRACT_SYNTHETIC_HOME},
         "pattern": {"source": PRIVATE_LOCAL_PATH_RE.pattern, "flags": PRIVATE_LOCAL_PATH_RE.flags},
         "cases": cases,
     }

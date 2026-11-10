@@ -148,8 +148,8 @@
     },
     {
       "home": true,
-      "id": "home-ancestor-root-not-widened",
-      "leak": false,
+      "id": "home-ancestor-configured-root-still-scanned",
+      "leak": true,
       "roots": [
         "/srv"
       ],
@@ -164,7 +164,6 @@
     ]
   },
   "home_root": {
-    "ancestors_of_home_are_not_data_roots": true,
     "scanned_as_root": true,
     "synthetic_home": "/srv/example-home"
   },
