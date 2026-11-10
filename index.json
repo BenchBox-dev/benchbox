@@ -7838,7 +7838,7 @@
         }
       },
       "integration_branch": "feat/server-engine-bulk-load-3",
-      "integration_head": "6b1568cc7837ec1cda005c7645d82bcf080c1671",
+      "integration_head": "81834a2ea3f602d838a10eff790052d67aae4261",
       "integration_log": [
         {
           "at": "2026-11-10T01:41:43Z",
@@ -7890,6 +7890,29 @@
           "op_id": "f41d6f2aa7b246e4afc08e0e55498a85",
           "previous_head": "662e2da9d3eb0bfebce98cb500d13d616924fb9d",
           "seq": 5
+        },
+        {
+          "at": "2026-11-10T14:08:13Z",
+          "changed_files": [
+            ".github/workflows/nightly-v2.yml",
+            "benchbox/platforms/clickhouse/http_insert.py",
+            "benchbox/platforms/starrocks/stream_load.py",
+            "docker/presto/docker-compose.yml",
+            "docker/trino/docker-compose.yml",
+            "tests/unit/platforms/test_clickhouse_http_insert.py",
+            "tests/unit/platforms/test_starrocks_stream_load.py"
+          ],
+          "head": "81834a2ea3f602d838a10eff790052d67aae4261",
+          "kind": "fix",
+          "op_id": "cdcc287c5c0d405d8ecc4a3d6a49c67e",
+          "previous_head": "6b1568cc7837ec1cda005c7645d82bcf080c1671",
+          "requires_acceptance": [
+            "perf-clickhouse-server-bulk-load-20261030",
+            "perf-starrocks-parquet-load-20261030",
+            "perf-trino-presto-bulk-load-20261030",
+            "release-uat-presto-trino-unreachable-20261030"
+          ],
+          "seq": 6
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-server-engine-bulk-load-3",
