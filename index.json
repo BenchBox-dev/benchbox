@@ -12525,10 +12525,15 @@
       "title": "Umbrella: result-validity feature batch"
     },
     "batch-server-engine-bulk-load-umbrella-20261109": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-11T19:50:24Z",
+        "generation": "7bd81dee4654403896e3b6820b968c8a",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Batch server-engine-bulk-load: umbrella notes (not a member)"
     },
     "batch-skill-pinned-rollout": {
