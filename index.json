@@ -22295,10 +22295,15 @@
       "title": "Make bundled review-and-fix requests deterministically read-only"
     },
     "harden-complexity-checker-cli-arguments-20260811": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-11T00:23:38Z",
+        "generation": "0538c393367c4ac08940d6476254bb54",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9223083bcc7846039c82e5d5"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Fix --top 0 crash and empty-argv fallback in the complexity checker"
     },
     "harden-is-dml-query-replace-upsert": {
