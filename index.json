@@ -37167,15 +37167,10 @@
       "title": "Verify core SQLGlot delivery App readiness before publishing"
     },
     "sqlglot-delivery-hardening": {
-      "claim": {
-        "expires_at": "2026-11-11T02:05:07Z",
-        "generation": "3a8c6a571c7f4f86b6764fac775972df",
-        "renewals": 0,
-        "worker": "omp:sqlglot-delivery-hardening-leader"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Make core SQLGlot delivery event-driven and verify App readiness"
     },
     "sqlglot-dialect-translation-code-review-implementation": {
