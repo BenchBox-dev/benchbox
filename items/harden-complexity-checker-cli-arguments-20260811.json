@@ -1,5 +1,5 @@
 {
-  "context": "Pin both defects with failing tests, then guard the empty top slice with a width fallback and replace the argv coalescing with an explicit None check.",
+  "context": "Pin both defects with failing tests, then guard the empty top slice with a width fallback and replace the argv coalescing with an explicit None check.\n\nFixed in PR #3935, merged from branch fix/complexity-checker-cli-arguments (head 3db80f839b7d0018105a300c7f4ee1ff1b67e98b), built in a claude.ai cloud session. max(..., default=0) on the three width calls; main reads sys.argv[1:] if argv is None else argv; three tests added (two defect pins, one no-argument guard). Independent review approved with 0 findings; hosted oracle SHIP. No worktree, no batch.",
   "description": "Two defects in _project/scripts/check_complexity.py from the 2026-08-09 adversarial review of PR #1644, deferred at merge without a tracker record. First, _print_report computes max() over the empty top slice, so --top 0 raises ValueError instead of printing a zero-row report (line 451). Second, main() uses argv or sys.argv[1:], so an explicitly passed empty argument list falls back to the process argv (line 522) and a programmatic main([]) parses foreign options such as pytest flags. Both are the falsy-coalescing defect class this repository's own quality batch banned.",
   "legacy": {
     "anti_patterns": [
@@ -178,6 +178,14 @@
       "generation": "0538c393367c4ac08940d6476254bb54",
       "op": "take",
       "op_id": "3b45615591454f94a1d10882a223c846",
+      "session_id": "b9e33e5c4d50497da6736e2b45fa0d11"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9223083bcc7846039c82e5d5",
+      "at": "2026-11-10T00:23:45Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9562667fa90f4f639b45d892ed879e8c",
       "session_id": "b9e33e5c4d50497da6736e2b45fa0d11"
     }
   ]
