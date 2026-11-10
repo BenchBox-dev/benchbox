@@ -65,7 +65,7 @@ def execute_livy_statement(
     get_headers: Callable[[], dict[str, str]],
     timeout_minutes: float,
     on_submit: Callable[[int], None] | None = None,
-    post: Callable[..., Any] = requests.post,
+    post: Callable[..., Any] | None = None,
 ) -> tuple[dict[str, Any], float]:
     statements_url = f"{livy_endpoint}/{session_id}/statements"
 
@@ -75,6 +75,8 @@ def execute_livy_statement(
     }
 
     start_time = mono_time()
+    if post is None:
+        post = requests.post
 
     response = post(
         statements_url,

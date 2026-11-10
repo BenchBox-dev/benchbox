@@ -570,7 +570,7 @@ class TPCHThroughputTest:
                     label = f"Stream_{stream_id}_Position_{position + 1}_Query_{query_id}"
                     try:
                         if hasattr(connection, "set_query_context"):
-                            connection.set_query_context(query_id, stream_id=stream_id)
+                            connection.set_query_context(query_id)
                         set_reference_seed_context(False)
                         set_data_refreshed_context(config.refresh_functions)
 
