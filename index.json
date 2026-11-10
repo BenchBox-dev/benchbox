@@ -7388,7 +7388,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-server-engine-bulk-load-2",
-      "lifecycle": "active",
+      "lifecycle": "aborted",
       "members": [
         "uat-docker-memory-admission-decimal-units-20261030",
         "release-uat-presto-trino-unreachable-20261030",
