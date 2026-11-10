@@ -7203,38 +7203,12 @@
       "terminal_outcome": "deliver"
     },
     "server-engine-bulk-load": {
-      "accepted_members": {
-        "perf-starrocks-parquet-load-20261030": "7c48c78ce997a7ae1259dd7fdc57789bb1dff9d7",
-        "uat-docker-memory-admission-decimal-units-20261030": "c844c605f83129193950605d96b449d1ac455b61"
-      },
+      "accepted_members": {},
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {
-        "perf-starrocks-parquet-load-20261030": {
-          "accepted_head": "7c48c78ce997a7ae1259dd7fdc57789bb1dff9d7",
-          "changed_files": [
-            "benchbox/platforms/starrocks/stream_load.py",
-            "benchbox/platforms/starrocks/workload.py",
-            "changelog.d/starrocks-stream-load-bytes-20261109.json",
-            "tests/unit/platforms/test_starrocks_stream_load.py",
-            "tests/unit/platforms/test_starrocks_workload.py"
-          ],
-          "integration_head": "fe2fb01541665408dbac754ec7c8e08d6c078ebc",
-          "integration_seq": 2
-        },
-        "uat-docker-memory-admission-decimal-units-20261030": {
-          "accepted_head": "c844c605f83129193950605d96b449d1ac455b61",
-          "changed_files": [
-            "changelog.d/uat-compose-memory-defaults-20261030.json",
-            "tests/uat/docker_assets.py",
-            "tests/uat/test_docker_assets.py"
-          ],
-          "integration_head": "f044b8cc952f1e557620348640c6ccc71c750a89",
-          "integration_seq": 1
-        }
-      },
+      "integrated_members": {},
       "integration_branch": "feat/server-engine-bulk-load",
       "integration_head": "fe2fb01541665408dbac754ec7c8e08d6c078ebc",
       "integration_log": [
@@ -7264,7 +7238,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-server-engine-bulk-load",
-      "lifecycle": "active",
+      "lifecycle": "aborted",
       "members": [
         "uat-docker-memory-admission-decimal-units-20261030",
         "release-uat-presto-trino-unreachable-20261030",
