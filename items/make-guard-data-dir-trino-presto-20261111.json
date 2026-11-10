@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "`make test-docker-up-trino` and `-presto` refuse an unset or relative BENCHBOX_DATA_DIR before the engine runs.",
+    "tests/unit/test_makefile_docker_data_dir_guard.py covers both platforms.",
+    "PR merged."
+  ],
+  "description": "PR #4082 (batch server-engine-bulk-load-3) changed docker/trino and docker/presto compose files to mount ${BENCHBOX_DATA_DIR}:${BENCHBOX_DATA_DIR}:ro with no fallback, like LakeSail and Velox. The Make guard require_data_dir_if_mounted in make/platform-tests.mk only covers lakesail and velox, so `make test-docker-up-trino` / `-presto` with BENCHBOX_DATA_DIR unset would mount an empty path instead of refusing. The fix was written and tested (12 passed) but make/platform-tests.mk was outside the batch's frozen scope, so it is held as a patch at ~/Developer/benchmark_runs/make-guard-trino-presto.patch (adds trino and presto to the guard's case list and to the two parametrized cases in tests/unit/test_makefile_docker_data_dir_guard.py).\n\nGuardrails: linked worktree; serial PR; land after #4082.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/4082"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5959d4630c1bd08cd58f955a",
+      "at": "2026-11-10T16:25:24Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "afa85880125f42d3831227407115e458",
+      "session_id": "248466dc3ce04a7c8f4c76cdbd04176f"
+    }
+  ]
+}
