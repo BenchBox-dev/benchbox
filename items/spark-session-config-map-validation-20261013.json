@@ -4,8 +4,8 @@
     "Unknown keys are rejected unless explicitly allowed.",
     "No spark map values are logged."
   ],
-  "context": "Found 2026-10-13 by an adversarial review of #2876 at origin/develop 77048bfb9.",
-  "description": "## Problem\nThe `platform_optimizations.spark` map added by 250d92252 (#2876) is checked with a partial denylist, not an allowlist. The parser accepts:\n- typos such as `spark.sql.shuffle.partitoins`;\n- static settings such as `spark.serializer` and `spark.sql.catalogImplementation`;\n- credential keys such as `spark.hadoop.fs.azure.account.key.*`, `fs.azure.sas.*` and `…json.keyfile`.\n\nSpark accepts unknown keys silently, so the ledger reports them as executed.\n\n**Leak risk.**\n- VERIFIED: the public anonymizer redacts the value.\n- PLAUSIBLE: raw local bundles keep it, and `benchbox/platforms/_spark_helpers.py:328` logs it.\n\n**Not in scope here.** Runtime application (the map is skipped on reuse and reset by `configure_for_benchmark`) is covered by `spark-session-config-runtime`.\n\n## Change\n- Reject `spark.hadoop.*` and `fs.*` keys.\n- Broaden the credential patterns.\n- Validate against a known modifiable-key allowlist, with an explicit override flag.\n- Stop logging values.",
+  "context": "Found 2026-10-13 by an adversarial review of #2876 at origin/develop 77048bfb9.\n\nRevalidated 2026-11-11: still required but partly delivered. Since the original review, a denylist for static, core-deploy, adapter-owned and substring-credential keys was added in benchbox/core/tuning/interface.py (_SPARK_STATIC_KEYS/_SPARK_STATIC_PREFIXES/_SPARK_CORE_PREFIXES/_SPARK_ADAPTER_OWNED_KEYS/_SPARK_CREDENTIAL_SUBSTRINGS), and apply-time checks use conf.isModifiable and read-back verification. Description rewritten to match; the allowlist/typo rejection, spark.hadoop.*/fs.* rejection, broader credential patterns and no-value logging remain. Acceptance unchanged.",
+  "description": "## Problem\nThe `platform_optimizations.spark` map added by 250d92252 (#2876) is still checked with a partial denylist, not an allowlist. On origin/develop (c7b75c80bc) `_canonicalize_spark_config` in `benchbox/core/tuning/interface.py` (about lines 710-780) now rejects: static keys (`spark.sql.extensions`, `spark.sql.warehouse.dir`, `spark.sql.catalog.*`), `spark.driver.*` and `spark.executor.*`, adapter-owned keys (`spark.app.name`, `spark.plugins`, off-heap and shuffle-manager keys), and keys containing secret/password/token/credential/access.key. It still accepts:\n- typos such as `spark.sql.shuffle.partitoins` (no allowlist; Spark accepts unknown keys silently, so the ledger reports them as executed);\n- static settings not in that list, such as `spark.serializer` and `spark.sql.catalogImplementation`;\n- credential keys the substring list misses, such as `spark.hadoop.fs.azure.account.key.*` (the `access.key` marker does not match `account.key`), `fs.azure.sas.*` and `...json.keyfile`, and any `spark.hadoop.*` or `fs.*` key.\n\nValue logging: the apply path (`apply_tuned_spark_session_config` in `benchbox/platforms/_spark_helpers.py`, about lines 398-440) logs `conf_key=text` in the override warning (about line 416) and logs engine error text; the effective-config report redacts through `benchbox/platforms/spark_effective_config.py:redact_spark_conf_value`, and the ledger records the raw value for non-listed keys. The old line reference `_spark_helpers.py:328` is stale.\n\n**Not in scope here.** Runtime application (the map is skipped on reuse and reset by `configure_for_benchmark`) is covered by `spark-session-config-runtime`.\n\n## Change\n- Reject `spark.hadoop.*` and `fs.*` keys.\n- Broaden the credential patterns (include account.key, sas, keyfile).\n- Validate against a known modifiable-key allowlist, with an explicit override flag.\n- Stop logging values (override warning and any other log that interpolates a map value).",
   "links": [
     "benchbox/platforms/_spark_helpers.py",
     "benchbox/core/tuning/interface.py"
@@ -18,6 +18,14 @@
       "op": "create",
       "op_id": "d61714c7507048ccbdc57e17a43f6a56",
       "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:36:40Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "bca3bb2ef179417da46807d95e15638a",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
