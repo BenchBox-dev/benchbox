@@ -4,7 +4,7 @@
     "TPC-H RF1/RF2 and TPC-DS maintenance streams under greybeam fail fast by default (auto-skip only with loud warning + maintenance_skipped:true)",
     "Quiescence runbook in gateway doc: row-count parity, lag threshold, abort criteria"
   ],
-  "context": "Plan v2 F1-F3. Runtime enforcement, not doc-only: doc-only lets an operator fire queries at an empty Iceberg replica. Depends on gw-snowflake-conn. Guardrails: escape hatch double-gated (flag + env).",
+  "context": "Plan v2 F1-F3. Runtime enforcement, not doc-only: doc-only lets an operator fire queries at an empty Iceberg replica. Depends on gw-snowflake-conn. Guardrails: escape hatch double-gated (flag + env).\n\nRevalidated 2026-11-11: DONE. Delivered by PR #3476 (dd9af331c2, 2026-10-26, \"feat(gateway): enforce greybeam lifecycle guardrails at runtime\"), on origin/develop c7b75c80bc. (1) benchbox/core/gateway.py:254-286 enforce_greybeam_lifecycle raises ConfigurationError for generate/load phases unless --allow-greybeam-inline-load (run.py:2730) AND BENCHBOX_I_UNDERSTAND_GREYBEAM_LOAD=1 (gateway.py:23), and the message calls the results invalid data. (2) Explicit maintenance fails fast (gateway.py:288 raise_greybeam_maintenance_unsupported); implicit maintenance is skipped with a warning and maintenance_skipped (core/results/query_execution.py:85, core/runner/runner.py:1391 onward); TPC-H refresh functions in power and throughput phases are blocked before any refresh executes (core/tpch/refresh.py). (3) The quiescence runbook (row-count parity, lag threshold, abort criteria) is in docs/platforms/snowflake.md in BenchBox-dev/benchbox-site (lines ~159-166). Tests: tests/unit/core/test_greybeam_lifecycle.py and tests/unit/platforms/test_snowflake_gateway.py (greybeam lifecycle and database-guard cases). Dependency gw-snowflake-conn is done.",
   "description": "Runtime Greybeam lifecycle guardrails: block inline load/generate phases and maintenance streams via ConfigurationError/fail-fast with double-gated escape hatch, plus CDC quiescence runbook.",
   "sessions": [
     {
@@ -14,6 +14,14 @@
       "op": "create",
       "op_id": "2cfbee86e8f34e58b62590b2ee210e97",
       "session_id": "ef41fa9156174ab5afbd28b6e4f0bdd3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:30:04Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c8a399d057c2496b918d254aeefc9a87",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
