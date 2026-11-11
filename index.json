@@ -33000,15 +33000,10 @@
       "title": "Several rc3 UAT fixes are verified only by unit tests, not on a real runner shard"
     },
     "release-uat-influxdb-extra-missing-20261030": {
-      "claim": {
-        "expires_at": "2026-11-12T02:32:54Z",
-        "generation": "3e6fa20304f04aefa54a01474508ade1",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7bc97e5b905b990114418f4a"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Release UAT timeseries shard runs InfluxDB without the influxdb extra installed"
     },
     "release-uat-java-25-breaks-pyspark-20261030": {
