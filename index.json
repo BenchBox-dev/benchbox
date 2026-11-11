@@ -27888,12 +27888,17 @@
       "title": "Operate results platform security, observability, and abuse controls"
     },
     "operational-facts-sessions-rediscovered-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T18:00:03Z",
+        "generation": "8c7c5b8de8f6429987e8b63c54638dea",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549"
+      },
       "needs": [
         "feature-agent-docs-operational-facts-20261111"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Write down the operational facts sessions kept rediscovering"
     },
     "optimize-benchmark-results-json-output-format": {
