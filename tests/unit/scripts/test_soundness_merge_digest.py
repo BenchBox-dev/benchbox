@@ -1766,6 +1766,22 @@ def test_still_open_bullets_come_only_from_open_finding_sections():
     assert digest.still_open_severities(body) == ["Medium"]
 
 
+@pytest.mark.parametrize("title", ["Result withheld", "Result withheld: the run's artifacts failed validation"])
+def test_still_open_severities_stops_at_a_withheld_result_section(title):
+    body = "\n".join(
+        [
+            "**Still open**",
+            "",
+            "- **Medium** `a.py:1`: D1: open",
+            "",
+            f"**{title}**",
+            "",
+            "- **High** `b.py:2`: D2: prose",
+        ]
+    )
+    assert digest.still_open_severities(body) == ["Medium"]
+
+
 def test_render_standin_overrides_lists_each_override():
     text = digest.render_standin_overrides(digest.standin_overrides([overridden()]))
     assert f"| #7 | `{HEAD[:9]}` | joeharris76 | 1s | Medium |" in text
@@ -2013,6 +2029,31 @@ def test_withdrawals_list_the_marked_findings():
     assert "D1, D2. Resolve their review threads." in text
 
 
+INLINE_WITHDRAWN_LINE = (
+    "Reviewed <sha0> \u00b7 changes since <sha1> \u00b7 withdrawn as never defects: **D1** (resolve its thread)"
+)
+
+
+@pytest.mark.parametrize(
+    ("line", "ids"),
+    [
+        (INLINE_WITHDRAWN_LINE, ["D1"]),
+        ("Reviewed a \u00b7 withdrawn as never defects: **D1**, **D3** (resolve their threads)", ["D1", "D3"]),
+        ("Reviewed a \u00b7 Withdrawn as never defects: **D2**", ["D2"]),
+        ("Reviewed a \u00b7 withdrawn as never defects: none", []),
+    ],
+)
+def test_the_inline_withdrawn_line_of_the_redesigned_body_is_read(line, ids):
+    body = f"### \u2705 SHIP \u00b7 no open findings\n\n{line}\n\n**Dispute dispositions**\n\n- D1 (withdrawn): x\n"
+    assert digest.withdrawn_in_body(body) == ids
+
+
+def test_an_inline_withdrawal_is_reported_for_the_pull():
+    body = f"### \u2705 SHIP \u00b7 no open findings\n\n{INLINE_WITHDRAWN_LINE}\n"
+    pull = evidence(reviews=(failure_review(body=body),))
+    assert [w.items for w in digest.withdrawn_findings([pull])] == [("D1",)]
+
+
 def test_withdrawals_are_skipped_when_no_review_marks_any():
     assert digest.withdrawn_findings([overridden()]) == []
     assert digest.render_withdrawals([]) == ""
@@ -2213,7 +2254,7 @@ def test_a_ship_with_fixes_review_agreeing_with_the_app_failure_status_counts(mo
     body = verdict_review_body("SHIP_WITH_FIXES", "failure")
     (checked,) = digest.verify_reviews("o/r", [app_review(body)])
     assert checked.unverifiable == ""
-    assert digest.blocking_verdict_decision(evidence(reviews=(checked,))) == "failure"
+    assert digest.blocking_verdict_decision(evidence(reviews=(checked,))) == "SHIP WITH FIXES"
 
 
 def test_an_edited_review_is_unverifiable_and_never_review_evidence(monkeypatch):
@@ -2537,3 +2578,253 @@ def test_a_recovered_ruling_needs_an_instruction_before_the_review_that_preceded
     early = digest.adjudication_records([evidence(reviews=reviews, comments=(instruction("2026-10-02T10:15:00Z"),))])
     assert late[0].instruction_gap_seconds is None
     assert early[0].instruction_gap_seconds is not None
+
+
+def protocol_record(decision="DO_NOT_SHIP", defects=(("D1", "High"),), head=HEAD):
+    return {
+        "v": 1,
+        "cycle": 1,
+        "round": 1,
+        "kind": "first",
+        "decision": decision,
+        "head_sha": head,
+        "base_ref": "develop",
+        "reviewer": "",
+        "tier": "",
+        "strikes_after": 0,
+        "open_defects": [
+            {"id": ident, "severity": severity, "file": "a.py", "line": 1, "end_line": None, "title": "t"}
+            for ident, severity in defects
+        ],
+        "next_id": 9,
+        "patch_digest": "d" * 32,
+        "carried": False,
+        "summary": "",
+    }
+
+
+def redesigned_body(state="failure", headline="DO NOT SHIP", record=None, extra="", head=HEAD):
+    marker = ""
+    if record is not None:
+        from theseus_reviewer import protocol
+
+        marker = protocol.encode_marker(record)
+    return f"### \U0001f534 {headline} \u00b7 1 open\n\n{extra}\n<!-- review-verdict: v2 {state} {head} -->\n{marker}\n"
+
+
+CURRENT_BODY = (
+    f"### review-verdict: failure for `{HEAD}`\n\nDecision: **DO NOT SHIP**.\n\n**Still open**\n\n"
+    "- **High** `a.py:1`: D1: finding\n- **Low** `b.py:2`: D2: other\n"
+)
+HISTORICAL_BODY = (
+    f"### oracle-verdict: failure for `{HEAD}`\n\nDecision: **DO NOT SHIP**.\n\n**Still open**\n\n"
+    "- **High** `a.py:1`: D1: finding\n"
+)
+RECORDLESS_DETAILS_BODY = redesigned_body(
+    extra=(
+        "<details><summary>\U0001f7e0 <b>High</b> \u00b7 D1 \u00b7 finding</summary>\n\nbody\n\n</details>\n"
+        "<details><summary>\U0001f535 <b>Low</b> \u00b7 D2 \u00b7 other</summary>\n\nbody\n\n</details>\n"
+    )
+)
+STILL_OPEN_MARKED_BODY = redesigned_body(
+    extra="**Still open**\n\n- \U0001f7e0 **High** \u00b7 D1 \u00b7 `a.py:1` finding\n- \U0001f535 **Low** \u00b7 D2 \u00b7 `b.py:2` other\n"
+)
+
+
+def recorded_body():
+    return redesigned_body(record=protocol_record(defects=(("D1", "High"), ("D2", "Low"))))
+
+
+@pytest.mark.parametrize(
+    ("body", "severities", "decision"),
+    [
+        (CURRENT_BODY, ["High", "Low"], "DO NOT SHIP"),
+        (HISTORICAL_BODY, ["High"], "DO NOT SHIP"),
+        (recorded_body, ["High", "Low"], "DO NOT SHIP"),
+        (RECORDLESS_DETAILS_BODY, ["High", "Low"], "failure"),
+        (STILL_OPEN_MARKED_BODY, ["High", "Low"], "failure"),
+    ],
+    ids=["current", "historical", "redesigned-record", "recordless-details", "recordless-still-open"],
+)
+def test_every_review_body_format_classifies_open_severities_and_decision(body, severities, decision):
+    body = body() if callable(body) else body
+    assert digest.review_open_severities(body) == severities
+    state = "failure"
+    assert digest.review_verdict_state(body, HEAD) == state
+    pull = evidence(reviews=(review(APP_BOT, HEAD, user_type="Bot", body=body),))
+    assert digest.blocking_verdict_decision(pull) == decision
+
+
+def test_the_protocol_record_wins_over_disagreeing_prose():
+    body = redesigned_body(
+        headline="SHIP",
+        record=protocol_record(decision="DO_NOT_SHIP", defects=(("D1", "Critical"),)),
+        extra="**Still open**\n\n- \U0001f535 **Low** \u00b7 D1 \u00b7 `a.py:1` prose\n",
+    )
+    pull = evidence(reviews=(review(APP_BOT, HEAD, user_type="Bot", body=body),))
+    assert digest.review_open_severities(body) == ["Critical"]
+    assert digest.blocking_verdict_decision(pull) == "DO NOT SHIP"
+
+
+@pytest.mark.parametrize(
+    ("body", "state"),
+    [
+        (f"<!-- review-verdict: v2 failure {HEAD} -->", "failure"),
+        (f"<!-- review-verdict: v2 failure {OLD} -->", "failure"),
+        (f"<!-- review-verdict: v2 failure {HEAD} -->\n<!-- review-verdict: v2 failure {HEAD} -->", "failure"),
+        (f"<!-- review-verdict: v2 success {HEAD} -->\n<!-- review-verdict: v2 success {HEAD} -->", "failure"),
+        (f"### review-verdict: success for `{HEAD}`\n<!--review-verdict: v2 failure {HEAD.upper()} -->", "failure"),
+        (f"<!-- review-verdict: v2 success {HEAD} -->\n<!-- review-verdict: v2 failure {HEAD.upper()} -->", "failure"),
+        (f"<!-- review-verdict: v2 success {HEAD} -->\n<!-- review-verdict: v2 failure {HEAD} -->", "failure"),
+        (f"### review-verdict: success for `{HEAD}`\n<!-- review-verdict: v2 failure {HEAD} -->", "failure"),
+        (f"### review-verdict: failure for `{HEAD}`\nquotes `<!-- review-verdict` syntax", "failure"),
+        (f"### review-verdict: failure for `{HEAD}`\n<!-- review-verdict: v2 failure {OLD} -->", "failure"),
+        (f"<!-- review-verdict: v3 failure {HEAD} -->", "failure"),
+        ("### SHIP \u00b7 clean", None),
+        ("", None),
+    ],
+)
+def test_the_v2_hidden_marker_gives_the_verdict_state_and_fails_closed(body, state):
+    assert digest.review_verdict_state(body, HEAD) == state
+
+
+AMBIGUOUS_BODIES = [
+    f"<!-- review-verdict: v2 success {OLD} -->",
+    f"### review-verdict: success for `{HEAD}`\n<!-- review-verdict: v2 success {OLD} -->",
+    "an unrecognised layout with no verdict claim",
+]
+
+
+@pytest.mark.parametrize("body", AMBIGUOUS_BODIES)
+def test_an_ambiguous_verdict_body_blocks_instead_of_reading_as_clean(body):
+    pull = evidence(reviews=(review(APP_BOT, HEAD, user_type="Bot", body=body),))
+    assert digest.blocking_verdict_decision(pull) == "failure"
+    assert not digest._review_success(pull)
+
+
+@pytest.mark.parametrize("body", AMBIGUOUS_BODIES)
+def test_an_ambiguous_verdict_body_keeps_the_standin_window_closed(body):
+    pull = evidence(reviews=(review(APP_BOT, HEAD, user_type="Bot", body=body),))
+    assert digest._standin_after(pull) == AFTER
+
+
+@pytest.mark.parametrize("body", AMBIGUOUS_BODIES)
+def test_an_ambiguous_verdict_body_is_a_status_disagreement(body):
+    assert digest._status_disagreement(review(APP_BOT, HEAD, user_type="Bot", body=body), ()) != ""
+
+
+def _classified_severity(monkeypatch, title, reviews):
+    body = f"{title}\n\n<!-- review-defect: c1-D1 -->"
+    monkeypatch.setattr(digest, "gh_json", lambda *args: graphql_threads([thread_with(body)]))
+    threads = digest.classify_threads(digest.collect_threads("o/r", 7), reviews)
+    return threads[0]
+
+
+def _recorded(severity, at=AFTER):
+    return review(
+        APP_BOT,
+        HEAD,
+        submitted_at=at,
+        user_type="Bot",
+        body=redesigned_body(record=protocol_record(defects=(("D1", severity),))),
+    )
+
+
+def test_a_later_round_that_rates_a_finding_high_is_an_override(monkeypatch):
+    thread = _classified_severity(
+        monkeypatch, "\U0001f535 **Low** \u00b7 D1 \u00b7 t", (_recorded("Low", BEFORE), _recorded("High", AFTER))
+    )
+    assert thread.severity == "High"
+    assert digest.is_overridden_finding(thread)
+
+
+def test_a_low_record_does_not_hide_a_high_title(monkeypatch):
+    thread = _classified_severity(monkeypatch, "**High**: t", (_recorded("Low"),))
+    assert thread.severity == "High"
+    assert digest.is_overridden_finding(thread)
+
+
+def test_a_record_that_raises_the_severity_wins_over_the_title(monkeypatch):
+    thread = _classified_severity(monkeypatch, "**Medium**: t", (_recorded("Critical"),))
+    assert thread.severity == "Critical"
+
+
+@pytest.mark.parametrize(
+    ("title", "marker", "expected"),
+    [
+        ("**High**: the title", "", "High"),
+        ("\U0001f7e0 **High** \u00b7 D1 \u00b7 the title", "", "High"),
+        ("\U0001f534 **Critical** \u00b7 D12 \u00b7 the title", "", "Critical"),
+        ("\U0001f535 **Low** \u00b7 D3 \u00b7 the title", "", "Low"),
+        ("Consider **High** performance", "", ""),
+        ("\U0001f7e0 High \u00b7 D1 \u00b7 the title", "", ""),
+    ],
+)
+def test_a_thread_title_line_in_either_format_gives_the_severity(title, marker, expected):
+    assert digest.finding_severity(title) == expected
+
+
+@pytest.mark.parametrize(
+    ("marker", "found"),
+    [
+        ("<!-- oracle-defect: c1-D1 -->", (1, "D1")),
+        ("<!-- review-defect: c2-D14 -->", (2, "D14")),
+        ("<!--review-defect:c3-D2-->", (3, "D2")),
+        ("<!-- review-defect: c1-D0 -->", None),
+        ("no marker", None),
+    ],
+)
+def test_a_thread_defect_marker_is_read_in_either_spelling(marker, found):
+    assert digest.thread_defect(f"anything\n{marker}\n") == found
+
+
+def thread_with(body, resolved=True, login="benchbox-oracle"):
+    node = thread_node(resolved, login, HEAD)
+    node["comments"]["nodes"][0]["body"] = body
+    return node
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "**High**: the title\n\ndetail",
+        "\U0001f7e0 **High** \u00b7 D1 \u00b7 the title\n\n<!-- review-defect: c1-D1 -->",
+        "a title the redesign changed\n\n<!-- review-defect: c1-D1 -->",
+    ],
+    ids=["current", "redesigned", "recorded-only"],
+)
+def test_a_resolved_high_thread_in_either_format_is_an_override(monkeypatch, body):
+    monkeypatch.setattr(digest, "gh_json", lambda *args: graphql_threads([thread_with(body)]))
+    raw = digest.collect_threads("o/r", 7)
+    recorded = review(
+        APP_BOT, HEAD, user_type="Bot", body=redesigned_body(record=protocol_record(defects=(("D1", "High"),)))
+    )
+    threads = digest.classify_threads(raw, (recorded,))
+    assert [thread.severity for thread in threads] == ["High"]
+    assert digest.is_overridden_finding(threads[0])
+    pull = evidence(threads=threads, comments=(standin(HEAD),))
+    assert digest.CLASS_OVERRIDE in digest.classify("f" * 40, "change", ["AGENTS.md"], pull).reason_classes
+
+
+def test_the_record_severity_wins_over_the_thread_title(monkeypatch):
+    body = "\U0001f535 **Low** \u00b7 D1 \u00b7 the title\n\n<!-- review-defect: c1-D1 -->"
+    monkeypatch.setattr(digest, "gh_json", lambda *args: graphql_threads([thread_with(body)]))
+    recorded = review(
+        APP_BOT, HEAD, user_type="Bot", body=redesigned_body(record=protocol_record(defects=(("D1", "High"),)))
+    )
+    threads = digest.classify_threads(digest.collect_threads("o/r", 7), (recorded,))
+    assert [thread.severity for thread in threads] == ["High"]
+
+
+def test_an_unrecognised_bot_thread_is_unclassifiable_never_low(monkeypatch):
+    nodes = [thread_with("a brand new layout\n\nwith no marker"), thread_with("**Low**: known", login="dev")]
+    monkeypatch.setattr(digest, "gh_json", lambda *args: graphql_threads(nodes))
+    threads = digest.classify_threads(digest.collect_threads("o/r", 7), ())
+    assert [(t.severity, t.unclassifiable) for t in threads] == [("", True), ("Low", False)]
+    assert digest.is_overridden_finding(threads[0])
+    open_thread = digest.replace(threads[0], resolved=False)
+    pull = evidence(threads=(open_thread,), comments=(standin(HEAD),))
+    assert [o.severities for o in digest.standin_overrides([pull])] == [(digest.UNCLASSIFIABLE_FINDING,)]
+    text = digest.render_unclassifiable([evidence(threads=threads[:1])])
+    assert "#7: 1 unclassifiable bot thread(s)" in text
+    assert digest.render_unclassifiable([evidence(threads=threads[1:])]) == ""

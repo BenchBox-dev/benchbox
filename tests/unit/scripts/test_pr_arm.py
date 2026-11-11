@@ -731,6 +731,24 @@ def test_waiting_oracle_description_for_another_head_does_not_mask_failure() -> 
     assert gh.merged() == []
 
 
+@pytest.mark.parametrize(
+    ("description", "arms"),
+    [
+        (f"Waiting for review-verdict · comment `Stand-in review: APPROVE {'a' * 40}` to waive", True),
+        (f"Waiting for review-verdict · comment `Stand-in review: APPROVE {'b' * 40}` to waive", False),
+        ("Waiting for review-verdict", False),
+    ],
+)
+def test_waiting_review_description_masks_failure_only_for_this_head(description: str, arms: bool) -> None:
+    gh = FakeGh(
+        statuses={"review-gate": "failure"},
+        status_descriptions={"review-gate": description},
+        rules=["core", "review-gate"],
+    )
+    assert _arm(gh) == (0 if arms else 2)
+    assert len(gh.merged()) == (1 if arms else 0)
+
+
 PLACEHOLDER_URL = f"https://github.com/{pr_arm.REPOSITORY}/actions/runs/90/job/1"
 FULL_URL = f"https://github.com/{pr_arm.REPOSITORY}/actions/runs/91/job/1"
 

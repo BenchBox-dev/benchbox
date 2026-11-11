@@ -52,7 +52,20 @@ ATTESTED_REVIEW = re.compile(r"\s*External review: (codex|muse|agy)\b")
 CLEAN_LINE = re.compile(r"(?m)^Verified clean\b")
 GAP_REASON = re.compile(r"Why it is listed: ([^\n]*)\.\n")
 REASON_NO_REVIEW = "no completed review after the last content commit"
-FINDING_SEVERITY = re.compile(r"\*\*(Critical|High|Medium|Low)\*\*: ")
+SEVERITY_WORDS = "Critical|High|Medium|Low"
+SEVERITY_MARK = "[\U0001f534\U0001f7e0\U0001f7e1\U0001f535\u26aa]\ufe0f?"
+FINDING_SEVERITY = re.compile(rf"\*\*({SEVERITY_WORDS})\*\*: ")
+MARKED_FINDING_SEVERITY = re.compile(rf"{SEVERITY_MARK}\s+\*\*({SEVERITY_WORDS})\*\*\s+\u00b7\s+D[1-9][0-9]{{0,3}}\b")
+VERDICT_MARKER = re.compile(r"<!-- review-verdict: v2 (?P<state>[a-z]+) (?P<sha>[0-9a-f]{40}) -->")
+VERDICT_MARKER_OPEN = re.compile(r"<\s*!\s*-\s*-\s*review-verdict")
+DECISION_LABELS = {
+    "SHIP": "SHIP",
+    "SHIP_WITH_FIXES": "SHIP WITH FIXES",
+    "DO_NOT_SHIP": "DO NOT SHIP",
+    "REFUSED": "REFUSED",
+}
+THREAD_DEFECT = re.compile(r"<!--\s*(?:oracle|review)-defect:\s*c([0-9]+)-(D[1-9][0-9]{0,3})\s*-->")
+UNCLASSIFIABLE_FINDING = "unclassifiable"
 OVERRIDDEN_SEVERITIES = frozenset({"Critical", "High"})
 CLASS_OVERRIDE = "override of a review High finding"
 CLASS_DEFERRED = "deferred finding"
@@ -77,11 +90,20 @@ OPEN_DEFECT_SECTIONS = frozenset(
         "Defects already open as review threads, not posted again",
     }
 )
-KNOWN_CLOSED_SECTIONS = frozenset({"Result withheld: the run's artifacts failed validation", "Reviewers not available"})
+KNOWN_CLOSED_SECTIONS = frozenset(
+    {"Result withheld: the run's artifacts failed validation", "Result withheld", "Reviewers not available"}
+)
 SECTION_HEADING = re.compile(r"^\*\*(.+?)\*\*$")
-DEFECT_BULLET = re.compile(r"^[-*]\s+\*\*(Critical|High|Medium|Low)\*\*")
+DEFECT_BULLET = re.compile(rf"^[-*]\s+(?:{SEVERITY_MARK}\s+)?\*\*({SEVERITY_WORDS})\*\*")
+MARKED_DEFECT_BULLET = re.compile(
+    rf"^[-*]\s+{SEVERITY_MARK}\s+\*\*({SEVERITY_WORDS})\*\*\s+\u00b7\s+D[1-9][0-9]{{0,3}}\b"
+)
+DEFECT_SUMMARY = re.compile(
+    rf"<details>\s*<summary>\s*{SEVERITY_MARK}\s+<b>({SEVERITY_WORDS})</b>\s+\u00b7\s+D[1-9][0-9]{{0,3}}\b"
+)
 DECISION_LINE = re.compile(r"(?m)^Decision: \*\*(.+?)\*\*")
 WITHDRAWN_HEADING = re.compile(r"^\s*(?:\*\*)?Withdrawn as never defects:(?:\*\*)?\s*(.*)$")
+WITHDRAWN_INLINE = re.compile(r"withdrawn as never defects:\s*((?:\*\*D\d+\*\*(?:,\s*)?)+)", re.IGNORECASE)
 WITHDRAWN_ITEM = re.compile(r"^\s*[-*]\s+(.+?)\s*$")
 DETAILS_BLOCK = re.compile(r"<details>.*?</details>", re.DOTALL)
 SEVERITY_ORDER = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
@@ -180,6 +202,8 @@ class Thread:
     first_comment_sha: str
     severity: str = ""
     unverifiable: str = ""
+    defect: tuple[int, str] | None = None
+    unclassifiable: bool = False
 
 
 @dataclass(frozen=True)
@@ -325,8 +349,37 @@ class Withdrawal:
 
 
 def finding_severity(body: str) -> str:
-    match = FINDING_SEVERITY.match(body)
+    match = FINDING_SEVERITY.match(body) or MARKED_FINDING_SEVERITY.match(body)
     return match.group(1) if match else ""
+
+
+def thread_defect(body: str) -> tuple[int, str] | None:
+    found = THREAD_DEFECT.findall(body or "")
+    return (int(found[-1][0]), found[-1][1]) if found else None
+
+
+def review_verdict_state(body: str | None, sha: str) -> str | None:
+    text = body or ""
+    markers = list(VERDICT_MARKER.finditer(text))
+    if len(markers) > 1 or len(VERDICT_MARKER_OPEN.findall(text)) != len(markers):
+        return "failure"
+    claims = {
+        (match.group("state"), match.group("sha")) for match in (REVIEW_VERDICT_LINE.match(text), *markers) if match
+    }
+    if not claims:
+        return None
+    if any(found != sha for _, found in claims):
+        return "failure"
+    states = {state for state, _ in claims}
+    blocking = sorted(states - {"success"})
+    return blocking[0] if blocking else "success"
+
+
+def review_record(body: str | None) -> dict[str, Any] | None:
+    try:
+        return engine().protocol.decode_marker(body or "")
+    except engine().protocol.MarkerError:
+        return None
 
 
 def _gate_reviews(
@@ -345,7 +398,7 @@ def _gate_reviews(
 
 
 def _review_verdict(review: Review) -> str | None:
-    return engine().review_check.verdict_state(review.body, review.commit_sha, REVIEW_VERDICT_LINE)
+    return review_verdict_state(review.body, review.commit_sha)
 
 
 def _review_success(evidence: PullEvidence) -> bool:
@@ -365,7 +418,7 @@ def _standin_after(evidence: PullEvidence) -> str:
         engine().review_check.standin_not_before(
             evidence.base_changed_at,
             (
-                (review.submitted_at, "failure" if review.unverifiable else _review_verdict(review))
+                (review.submitted_at, "failure" if review.unverifiable else _review_verdict(review) or "failure")
                 for review in head_reviews
             ),
         )
@@ -466,28 +519,36 @@ def unreviewed_thread_count(evidence: PullEvidence) -> int:
 
 def is_overridden_finding(thread: Thread) -> bool:
     return thread.started_by.removesuffix("[bot]") == engine().bot_login and (
-        thread.severity in OVERRIDDEN_SEVERITIES or bool(thread.unverifiable)
+        thread.severity in OVERRIDDEN_SEVERITIES or bool(thread.unverifiable) or thread.unclassifiable
     )
 
 
 def still_open_severities(body: str) -> list[str]:
+    found = [match.group(1) for match in DEFECT_SUMMARY.finditer(body or "")]
     text = DETAILS_BLOCK.sub("", body or "")
-    found: list[str] = []
     in_open = False
+    closed = False
     for raw in text.splitlines():
         line = raw.strip()
         if not line:
             continue
         if WITHDRAWN_HEADING.match(line):
             in_open = False
+            closed = True
             continue
         heading = SECTION_HEADING.match(line)
         if heading is not None:
             title = heading.group(1)
             if title in OPEN_DEFECT_SECTIONS:
                 in_open = True
+                closed = False
             elif title in KNOWN_CLOSED_SECTIONS:
                 in_open = False
+                closed = True
+            continue
+        marked = MARKED_DEFECT_BULLET.match(line)
+        if marked is not None and not closed:
+            found.append(marked.group(1))
             continue
         if in_open:
             match = DEFECT_BULLET.match(line)
@@ -496,26 +557,36 @@ def still_open_severities(body: str) -> list[str]:
     return found
 
 
+def review_open_severities(body: str) -> list[str]:
+    record = review_record(body)
+    if record is not None:
+        return [defect["severity"] for defect in record["open_defects"]]
+    return still_open_severities(body)
+
+
 def open_finding_severities(evidence: PullEvidence) -> tuple[str, ...]:
     shas = {commit.sha for commit in evidence.commits}
     found = {
-        thread.severity
+        thread.severity or UNCLASSIFIABLE_FINDING
         for thread in evidence.threads
         if not thread.resolved
         and thread.started_by.removesuffix("[bot]") == engine().bot_login
-        and thread.severity
+        and (thread.severity or thread.unclassifiable)
         and thread.first_comment_sha in shas
     }
     for review in _gate_reviews(evidence, evidence.content_shas):
-        found.update(still_open_severities(review.body))
-    return tuple(sorted(found, key=lambda severity: SEVERITY_ORDER[severity]))
+        found.update(review_open_severities(review.body))
+    return tuple(sorted(found, key=lambda severity: SEVERITY_ORDER.get(severity, len(SEVERITY_ORDER))))
 
 
 def blocking_verdict_decision(evidence: PullEvidence) -> str | None:
     ordered = sorted(_gate_reviews(evidence, evidence.content_shas), key=lambda review: review.submitted_at)
-    blocking = [review for review in ordered if _review_verdict(review) not in (None, "success")]
+    blocking = [review for review in ordered if _review_verdict(review) != "success"]
     if not blocking:
         return None
+    record = review_record(blocking[-1].body)
+    if record is not None:
+        return DECISION_LABELS[record["decision"]]
     match = DECISION_LINE.search(blocking[-1].body or "")
     if match:
         return match.group(1).strip()
@@ -569,9 +640,12 @@ def withdrawn_in_body(body: str) -> list[str]:
     found: list[str] = []
     index = 0
     while index < len(lines):
-        heading = WITHDRAWN_HEADING.match(lines[index])
+        line = lines[index]
+        heading = WITHDRAWN_HEADING.match(line)
         index += 1
         if heading is None:
+            for inline in WITHDRAWN_INLINE.finditer(line):
+                found.extend(re.findall(r"D\d+", inline.group(1)))
             continue
         rest = heading.group(1).strip()
         if rest:
@@ -609,10 +683,7 @@ def _recorded_rulings(pull: PullEvidence) -> list[tuple[str, str, str]]:
     first: dict[tuple[str, str], str] = {}
     previous = ""
     for review in reviews:
-        try:
-            record = engine().protocol.decode_marker(review.body)
-        except engine().protocol.MarkerError:
-            record = None
+        record = review_record(review.body)
         for item in (record or {}).get("adjudicated") or ():
             first.setdefault((item["action"], item["id"]), previous or review.submitted_at)
         previous = review.submitted_at
@@ -771,6 +842,35 @@ def commit_subject(sha: str) -> str:
     return run(["git", "show", "-s", "--format=%s", sha]).strip()
 
 
+def _more_severe(first: str | None, second: str | None) -> str:
+    known = [value for value in (first, second) if value]
+    return min(known, key=lambda value: SEVERITY_ORDER.get(value, -1)) if known else ""
+
+
+def classify_threads(threads: Sequence[Thread], reviews: Sequence[Review]) -> tuple[Thread, ...]:
+    recorded: dict[tuple[int, str], str] = {}
+    for review in sorted(reviews, key=lambda item: item.submitted_at):
+        if (
+            review.login != f"{engine().bot_login}[bot]"
+            or review.user_type != "Bot"
+            or review.state in ("PENDING", "DISMISSED")
+            or review.unverifiable
+        ):
+            continue
+        record = review_record(review.body)
+        for defect in (record or {}).get("open_defects") or ():
+            key = (record["cycle"], defect["id"])
+            recorded[key] = _more_severe(recorded.get(key), defect["severity"])
+    classified: list[Thread] = []
+    for thread in threads:
+        if thread.started_by.removesuffix("[bot]") != engine().bot_login or thread.unverifiable:
+            classified.append(thread)
+            continue
+        severity = _more_severe(recorded.get(thread.defect) if thread.defect is not None else None, thread.severity)
+        classified.append(replace(thread, severity=severity, unclassifiable=not severity))
+    return tuple(classified)
+
+
 def _thread_unverifiable(comment: Mapping[str, Any]) -> str:
     try:
         edited = engine().edits.node_edited(comment)
@@ -790,10 +890,7 @@ def _graphql_review_edits(node_ids: Sequence[str]) -> dict[str, tuple[Any, bool]
 
 
 def _review_decision(review: Review) -> tuple[str | None, str | None, str | None]:
-    try:
-        record = engine().protocol.decode_marker(review.body)
-    except engine().protocol.MarkerError:
-        record = None
+    record = review_record(review.body)
     header = _review_verdict(review)
     if record is None:
         return None, None, header
@@ -914,6 +1011,7 @@ def collect_threads(repo: str, number: int) -> tuple[Thread, ...]:
                     first_comment_sha=(first.get("originalCommit") or {}).get("oid", ""),
                     severity="" if unverifiable else finding_severity(first.get("body") or ""),
                     unverifiable=unverifiable,
+                    defect=thread_defect(first.get("body") or "") if is_reviewer else None,
                 )
             )
     except (KeyError, IndexError, TypeError) as exc:
@@ -1012,26 +1110,27 @@ def collect_pull(repo: str, sha: str) -> PullEvidence | None:
         for event in timeline
         if event.get("event") in ARMING_EVENTS and event.get("created_at")
     )
+    reviews = verify_reviews(
+        repo,
+        tuple(
+            Review(
+                (r.get("user") or {}).get("login", ""),
+                r.get("commit_id") or "",
+                r.get("submitted_at") or "",
+                r.get("state") or "",
+                (r.get("user") or {}).get("type", ""),
+                r.get("body") or "",
+                r.get("node_id") or "",
+            )
+            for r in gh_pages(f"repos/{repo}/pulls/{number}/reviews")
+        ),
+    )
     return PullEvidence(
         number=number,
         author=pull["user"]["login"],
         merged_at=pull["merged_at"],
         commits=commits,
-        reviews=verify_reviews(
-            repo,
-            tuple(
-                Review(
-                    (r.get("user") or {}).get("login", ""),
-                    r.get("commit_id") or "",
-                    r.get("submitted_at") or "",
-                    r.get("state") or "",
-                    (r.get("user") or {}).get("type", ""),
-                    r.get("body") or "",
-                    r.get("node_id") or "",
-                )
-                for r in gh_pages(f"repos/{repo}/pulls/{number}/reviews")
-            ),
-        ),
+        reviews=reviews,
         reactions=tuple(
             Reaction((r.get("user") or {}).get("login", ""), r["content"], r["created_at"])
             for r in gh_pages(f"repos/{repo}/issues/{number}/reactions")
@@ -1046,7 +1145,7 @@ def collect_pull(repo: str, sha: str) -> PullEvidence | None:
             )
             for c in gh_pages(f"repos/{repo}/issues/{number}/comments")
         ),
-        threads=collect_threads(repo, number),
+        threads=classify_threads(collect_threads(repo, number), reviews),
         base_changed_at=engine().review_check.latest_base_change(timeline) or "",
         armed_at=tuple(armed),
     )
@@ -1274,6 +1373,23 @@ def render_unverifiable(pulls: Sequence[PullEvidence]) -> str:
     return "\n".join(lines)
 
 
+def render_unclassifiable(pulls: Sequence[PullEvidence]) -> str:
+    items = [
+        (pull.number, sum(thread.unclassifiable for thread in pull.threads))
+        for pull in pulls
+        if any(thread.unclassifiable for thread in pull.threads)
+    ]
+    if not items:
+        return ""
+    lines = [
+        "",
+        "Unclassifiable bot threads: review threads whose severity is in neither the review record nor the title "
+        "line; resolved ones count as overrides.",
+    ]
+    lines.extend(f"- #{number}: {count} unclassifiable bot thread(s)." for number, count in items)
+    return "\n".join(lines)
+
+
 def find_state_issue(repo: str) -> dict[str, Any] | None:
     issues = gh_pages(f"repos/{repo}/issues?labels={STATE_LABEL}&state=all&per_page=100")
     if len(issues) > 1:
@@ -1497,7 +1613,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "\nOwner adjudications are unavailable for this window: the window's pull requests were unreadable."
             )
         else:
-            supplement = render_unreadable(unreadable) + render_unverifiable(pulls)
+            supplement = render_unreadable(unreadable) + render_unverifiable(pulls) + render_unclassifiable(pulls)
             try:
                 found = standin_overrides(pulls)
                 supplement += render_standin_overrides(found)

@@ -2595,6 +2595,43 @@ def test_review_covers_reads_the_verdict_heading(tmp_path: Path, monkeypatch: py
     assert scope.review_covers(tmp_path) is True
 
 
+def _marker_body(state: str = "success", head: str = "a" * 40) -> str:
+    return f"### \u2705 SHIP \u00b7 no open findings\n\n<!-- review-verdict: v2 {state} {head} -->\n"
+
+
+@pytest.mark.parametrize(
+    ("body", "covered"),
+    [
+        (_marker_body(), True),
+        (_marker_body("failure"), False),
+        (_marker_body(head="b" * 40), False),
+        (_marker_body() + _marker_body(), False),
+        (f"### review-verdict: success for `{'a' * 40}`\n\n" + f"<!-- review-verdict: v2 success {'a' * 40} -->", True),
+        (
+            f"### review-verdict: success for `{'a' * 40}`\n\n" + f"<!-- review-verdict: v2 failure {'a' * 40} -->",
+            False,
+        ),
+        (f"### SHIP\n\n<!-- review-verdict: v3 success {'a' * 40} -->\n", False),
+        ("### \u2705 SHIP \u00b7 no open findings\n", False),
+        ("", False),
+    ],
+)
+def test_review_covers_reads_the_v2_marker_and_fails_closed_without_a_verdict(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, body: str, covered: bool
+) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_env(tmp_path, monkeypatch)
+    review = {**_verdict_review(), "body": body}
+    status = _gate_status()
+
+    def api(token: str, path: str):
+        return [review] if "/reviews?" in path else [status]
+
+    monkeypatch.setattr(scope, "_github_api", api)
+    assert scope.review_covers(tmp_path) is covered
+
+
 def test_review_covers_rejects_review_check_run_without_gate_status(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

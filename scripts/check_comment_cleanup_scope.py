@@ -1590,6 +1590,16 @@ def immutable_dependency_artifacts(
 REVIEW_GATE_CONTEXT = "review-gate"
 REVIEW_APP_LOGIN = "benchbox-oracle"
 _REVIEW_VERDICT = re.compile(r"### review-verdict: ([a-z]+) for `([0-9a-f]{40})`")
+_REVIEW_VERDICT_MARKER = re.compile(r"<!-- review-verdict: v2 ([a-z]+) ([0-9a-f]{40}) -->")
+_REVIEW_VERDICT_MARKER_OPEN = re.compile(r"<\s*!\s*-\s*-\s*review-verdict")
+
+
+def _review_verdict_claim(body: str) -> tuple[str, str] | None:
+    markers = list(_REVIEW_VERDICT_MARKER.finditer(body))
+    if len(markers) > 1 or len(_REVIEW_VERDICT_MARKER_OPEN.findall(body)) != len(markers):
+        return None
+    claims = {match.groups() for match in (_REVIEW_VERDICT.match(body), *markers) if match}
+    return next(iter(claims)) if len(claims) == 1 else None
 
 
 def _github_api(token: str, path: str) -> Any:
@@ -1622,9 +1632,9 @@ def _review_verdict_covers(token: str, repo: str, number: Any, head: str) -> boo
                 continue
             if review.get("commit_id") != head or review.get("state") in {"PENDING", "DISMISSED"}:
                 continue
-            match = _REVIEW_VERDICT.match(review.get("body") or "")
-            if match and match.group(2) == head:
-                verdicts.append((review.get("submitted_at") or "", match.group(1)))
+            claim = _review_verdict_claim(review.get("body") or "")
+            if claim and claim[1] == head:
+                verdicts.append((review.get("submitted_at") or "", claim[0]))
         if len(reviews) < 100 or page >= 10:
             break
         page += 1

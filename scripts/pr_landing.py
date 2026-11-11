@@ -72,6 +72,7 @@ STATUS_CONTEXTS_JQ = (
 )
 REVIEW_GATE_CONTEXT = "review-gate"
 REVIEW_APP_LOGIN = "benchbox-oracle"
+REVIEW_GATE_WAITING_PREFIX = "Waiting for review-verdict"
 MAX_RERUNS_PER_JOB = 1
 MAX_REENTRIES_PER_HEAD = 1
 PREPARED_RECEIPT_SCHEMA = "prepared_work_v2"
@@ -670,6 +671,12 @@ def hidden_failed_suites(run: Runner, repo_full: str, branch: str, head: str) ->
     return _hidden_failures(run, repo_full, branch, live_check_runs(run, repo_full, head))
 
 
+def review_gate_waiting(description: str, head: str) -> bool:
+    if description.startswith(f"review: waiting for the review's verdict on {head},"):
+        return True
+    return description.startswith(REVIEW_GATE_WAITING_PREFIX) and f"Stand-in review: APPROVE {head}" in description
+
+
 def live_commit_statuses(run: Runner, repo_full: str, head: str) -> dict[str, str]:
     rc, out = run(
         [
@@ -692,7 +699,7 @@ def live_commit_statuses(run: Runner, repo_full: str, head: str) -> dict[str, st
         if name == REVIEW_GATE_CONTEXT:
             if login.removesuffix("[bot]") != REVIEW_APP_LOGIN or account_type != "Bot":
                 continue
-            if state == "failure" and description.startswith(f"review: waiting for the review's verdict on {head},"):
+            if state == "failure" and review_gate_waiting(description, head):
                 state = "pending"
         statuses[name] = state
     return statuses
