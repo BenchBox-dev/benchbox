@@ -39979,7 +39979,7 @@
       ],
       "priority": "high",
       "status": "open",
-      "title": "Publish Theseus review-format release B (verdict-first bodies, visible thread ids, optional minimising)"
+      "title": "Publish Theseus review-format release B (v0.2.11: verdict-first bodies, visible thread ids, optional minimising, pending gate)"
     },
     "theseus-review-markers-dual-read-20261110": {
       "claim": null,
