@@ -126,7 +126,7 @@ def verify_admitted(directory: Path, tag: str, head_sha: str) -> tuple[dict[str,
     _require(
         type(producer["schema"]) is int
         and producer["schema"] == 1
-        and producer["repository"] == _consumer.REPOSITORY
+        and str(producer["repository"]).casefold() == _consumer.REPOSITORY.casefold()
         and producer["workflow_path"] == _consumer.WORKFLOW
         and producer["job_name"] == _consumer.JOB_NAME
         and producer["head_sha"] == head_sha,
