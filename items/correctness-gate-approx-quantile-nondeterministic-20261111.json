@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Decision gate: this is a correctness gate; choose between (a) a baseline classification for approximate cells that tolerates both outcomes and (b) removing the nondeterminism, and get the owner's agreement before changing gate semantics.",
+    "Verification: reproduce the flip (run the report repeatedly, or seed it) and show the gate result no longer depends on it.",
+    "Verification: an exact cell that becomes equivalent still fails the gate as stale; a test covers both classes.",
+    "Soundness review passes for the changed gate files.",
+    "Done when merged."
+  ],
+  "description": "Found on 2026-11-11 while delivering retro-navigation-fixes-umbrella-20261111 (or in the retrospective over 25 agent sessions that preceded it) and not addressed there.\n\nProblem. On PR #4100 (a change to checker messages only), job `correctness-gate (b)` failed in `make cross-surface-equivalence-report` with 'GATE FAILURE - previously-known divergences now equivalent: approx_quantile_groupby_expression, approx_quantile_groupby_pandas - remove the stale baseline entry in a reviewed change'. A re-run of the failed jobs on the same head passed, and trunk.yml was green on the five develop commits around it. The baseline lists these cells as known divergences because DuckDB's APPROX_QUANTILE is a sketch; on some runs the sketch result equals the exact DataFrame value, and the gate then treats the baseline entry as stale.\n\nChange. Make a known-divergent cell whose reason is 'inherently approximate' unable to fail the gate by matching, or make the comparison deterministic for those cells.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read every cited file on current origin/develop first, because line numbers and commits here are from 2026-11-11 (origin/develop 5bd2c19cc4); close at a merged PR and finish only after the merge is observed.",
+  "links": [
+    "make/reports.mk",
+    "https://github.com/BenchBox-dev/benchbox/pull/4100",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/43041683685"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T16:38:11Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c5e06710246d472d9980b38efaa98b24",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    }
+  ]
+}

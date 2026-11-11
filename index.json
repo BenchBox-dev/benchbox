@@ -17323,6 +17323,13 @@
       "status": "done",
       "title": "Throughput decision record misstates the p50 interarrival in its own evidence file"
     },
+    "correctness-gate-approx-quantile-nondeterministic-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Stop the cross-surface gate failing when an approximate-quantile cell happens to match"
+    },
     "correctness-gate-value-digest-fidelity-followups": {
       "claim": null,
       "needs": [],
