@@ -35162,7 +35162,6 @@
         "rv2r-05-release-probe-mode",
         "rv2r-06-fail-closed-detectors",
         "rv2r-07-oracle-pinned-dependency",
-        "rv2r-08-release-freeze-guard",
         "rv2r-09-trunk-dist-every-commit",
         "rv2r-11-loop-metrics-dashboard"
       ],

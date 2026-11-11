@@ -4,12 +4,11 @@
     "The release reused trunk UAT evidence (job summary shows the trunk-uat run id); if it fell back to full UAT, the reason is recorded and a follow-up item filed",
     "TestPyPI (rc) or PyPI (final) files match SHA256SUMS; gh attestation verify passes with signer workflow release-v2.yml; a Linux --no-deps install works",
     "Zero owner decisions were needed for gate tuning between this release's tag and publish (rubric handled any envelope changes)",
-    "No infrastructure merges during the release window (G13 `hold` check history)",
     "Every PR touching release-v2.yml since rv2r-05 merged shows a green probe run",
     "The Theseus pin was unchanged in the window, or bumped via the rv2r-07 procedure",
     "Nightly trunk UAT has at least 7 consecutive runs (completed or skipped) with per-cell history, and the infrastructure-failure rate per cell is visible in the dashboard"
   ],
-  "context": "Final verification for the remediation program. The tag and the pypi approval stay owner-only. DECISION GATE: if any acceptance line fails, file the gap as a new item with the run evidence and ask the owner whether to release anyway; do not tune gates outside the rubric to make it pass.",
+  "context": "Final verification for the remediation program. The tag and the pypi approval stay owner-only. DECISION GATE: if any acceptance line fails, file the gap as a new item with the run evidence and ask the owner whether to release anyway; do not tune gates outside the rubric to make it pass.\n\nOwner decision 2026-11-11: removed the dependency on dropped rv2r-08 and its acceptance line (no infrastructure merges during the release window, G13 hold history), because the owner retired the G13 freeze on 2026-11-06. This next release is now also the base for the rv2r-14 maintenance-line rehearsal. An adversarial audit on 2026-11-11 (develop fc91789f, PR #4086 ec942c73) found the v0.5.0-based rehearsal likely to fail: develop's UAT harness passes parallel_pipeline_task_num=1 to Doris, which v0.5.0 rejects as an unknown platform option, and develop's 4 GiB Doris/SingleStore limits need product fixes (#4069, #4071) absent from v0.5.0. It would also need a multi-thousand-line backport that is deleted afterwards.",
   "description": "Closing gate for the release-v2 remediation: the next release after 0.5.0 (0.5.1 or 0.6.0rc1) must demonstrate the outcomes the retrospective found missing. The release runs admit, the install matrix and the trunk UAT evidence check; publishes without owner intervention beyond the tag and the pypi approval; and every process component executes live. Measure it against the targets below and record the result on this item and in the rv2r-11 dashboard.",
   "links": [
     "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-27T12-06-43-989Z_01a17d41-7415-7202-9145-695263c763ec/ReleaseV2Retro.md",
@@ -31,6 +30,14 @@
       "op": "update",
       "op_id": "6918ab2e5aaa4fb79820b006739db54d",
       "session_id": "7da446616e5349658579dfc9c4288973"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7bc97e5b905b990114418f4a",
+      "at": "2026-11-11T02:13:04Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c27dc58603af4e459d70c489e62d41ed",
+      "session_id": "9c850cdf96994544b99810e1605fa398"
     }
   ]
 }
