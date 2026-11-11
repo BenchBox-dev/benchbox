@@ -39659,10 +39659,15 @@
       "title": "Make Theseus review output verdict-first, concise and easy to scan"
     },
     "theseus-review-recurring-class-locations-20261110": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T02:15:20Z",
+        "generation": "254ed87f78164626af1b6e344dfeaf6b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Theseus: stop telling reviewers to list a recurring defect class once, so every location stays tracked"
     },
     "theseus-review-status-descriptions-20261110": {
