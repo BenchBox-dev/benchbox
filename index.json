@@ -25584,17 +25584,12 @@
       "title": "Locally produced result bundles fail submission validation (raw tuning diagnostics, absolute paths, no manifest)"
     },
     "local-review-discoverability-20261111": {
-      "claim": {
-        "expires_at": "2026-11-12T17:57:43Z",
-        "generation": "2a673598928740d6a694d8f372246f41",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549"
-      },
+      "claim": null,
       "needs": [
         "feature-agent-docs-operational-facts-20261111"
       ],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Make the local pre-PR review findable without reading review-v2.md"
     },
     "local-review-rebuttal-needs-same-head-and-preflight-kill-20261111": {
