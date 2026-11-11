@@ -37188,7 +37188,9 @@
     },
     "soundness-digest-since-floor-and-api-retry-20261111": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "feature-review-tooling-source-path-and-digest-20261111"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Soundness digest: document the --since floor and survive one API error"
