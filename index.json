@@ -41739,6 +41739,13 @@
       "status": "open",
       "title": "Trino and Presto record no platform timing inside power tests"
     },
+    "trino-presto-text-bulk-varbinary-and-sf1-gaps-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Trino/Presto bulk load falls back to slow VALUES for varbinary text; verify the new cast projection against TPC-DS and wide schemas"
+    },
     "trunk-alarm-3511-selfclose-20261026": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "TPC-DS SF0.01 loads through the bulk path with per-column checksum parity against the VALUES loader on Trino and Presto.",
+    "varbinary text either loads natively with hex parity or the fallback is documented with its reason."
+  ],
+  "description": "PR #4082: delimited-text tables with varbinary columns, quoted CSV, custom Presto null markers and non-UTF-8 files fall back to the VALUES loader. The new all-varchar external table plus CAST projection was verified live only on TPC-H SF0.01 and a small smoke table; decimals with spaces, dates, timestamps and very wide tables (TPC-DS, 715-column OBT) were not. Related existing item: perf-trino-presto-hive-target-sf1-20261110.\n\nChange. Run TPC-DS and one wide table through the bulk path on Trino and Presto in CI or mocker, compare value checksums with the VALUES loader, and decide whether a hex-decoding projection (from_hex) can cover varbinary text.\n\nGuardrails: linked worktree; no explanatory comments; changelog fragment if user-facing; no live cloud without owner approval quoted in context; heavy runs through make heavy-run.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/4082"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T17:06:25Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "51f63e36e10341fe97b7a34b9e0f9169",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
+    }
+  ]
+}
