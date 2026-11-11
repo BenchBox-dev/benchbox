@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "With a successful full run and one failed text-edit placeholder run on the head, `make pr-rerun` re-runs the placeholder's failed jobs, or says why it will not and what to do instead",
+    "A unit test covers that state",
+    "The advice printed by `make pr-arm` for that state names a command that works"
+  ],
+  "description": "Observed 2026-11-11 on PR #4112 head 2c6bc9bdf: full CI run 43089849237 had succeeded, the single 'CI (text edit)' run 43089851201 was still failed because its refresh was queued behind a runner backlog, and `make pr-rerun PR=4112` answered 'CI run 43089849237 on 2c6bc9bdf succeeded; nothing to re-run'. On #4110, which had two placeholder runs, the same command did re-run the older one as a 'stale suite'. Since #4120 `make pr-arm` waits through this state and the refresh job re-runs every failed placeholder, so the command is rarely needed here; but when the refresh job itself fails or never starts, pr-arm falls back to advising `make pr-rerun`, which then does nothing.",
+  "links": [
+    "scripts/pr_rerun.py",
+    "scripts/pr_arm.py",
+    "scripts/ci_text_edit_verdict.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T22:33:24Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "4c9a552a4dd94c13a9beebdc0db29d60",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    }
+  ]
+}
