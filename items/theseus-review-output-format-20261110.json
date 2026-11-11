@@ -16,6 +16,14 @@
       "reason": "Independent review of Theseus #68 (v0.2.9) found this non-blocking P3 at report.py:112-117,139-143,549. The same code is on main via #63. The owner chose to ship v0.2.9 as reviewed and fix it on main in the re-land PR. The gate is unaffected: both findings still count.",
       "resolution": "open",
       "summary": "Fix in the v0.2.10 re-land PR: split and _threads_to_open use separate open_counts rooms; one unmarked thread can hide a carried same-title location."
+    },
+    {
+      "created_at": "2026-11-11T17:23:24Z",
+      "from_item": "theseus-review-output-format-20261110",
+      "id": 2,
+      "reason": "Non-blocking P3 test gap from the independent review of Theseus #69 at bd07af24 (SHIP). The code is correct, and a mutation of the widen condition goes undetected. Folding it into the next Theseus PR avoids another hosted review cycle on #69.",
+      "resolution": "open",
+      "summary": "Strengthen test_comment_delivery_does_not_call_a_same_line_re_report_an_open_thread: set plan['threaded']=[] instead of deleting it, so it covers the delivery=='review' check."
     }
   ],
   "description": "Owner request (2026-11-10): replace the 'wall of text' Theseus review output with a cleaner, scannable format that shows each finding's importance visually. Audit and proposal (read-only research, mockups rendered via GitHub's Markdown API): ~/.omp/agent/sessions/-Developer-BenchBox/2026-11-02T02-04-38-450Z_01a19a00-60b2-70a6-b56d-6f666415a725/local/review-comment-format-proposal.md.\nMeasured today vs proposed visible text: SHIP WITH FIXES 6 findings 6,001 -> 861 chars; 1 finding 2,793 -> 505; SHIP 2,891 -> 224; not reviewed 573 (posted twice) -> 197 (once).\nDelivery sequence (serial: two repositories and two releases; a registered batch cannot span them):\n1. benchbox-review-format-dual-read-20261110 (BenchBox readers accept both formats; closes a fail-open before it can occur)\n2. theseus-review-markers-dual-read-20261110, theseus-review-status-descriptions-20261110, theseus-review-not-reviewed-output-20261110 -> theseus-review-format-release-a-20261110\n3. benchbox-lock-theseus-review-format-release-a-20261110 (after the v0.2.8 lock and adoption PR)\n4. review-minimize-superseded-probe-20261110 (decision gate) -> theseus-review-minimize-superseded-20261110 (or dropped)\n5. theseus-review-verdict-body-redesign-20261110, theseus-review-thread-ids-footer-20261110 -> theseus-review-format-release-b-20261110\n6. benchbox-lock-theseus-review-format-release-b-20261110\nFollow-ups outside the delivery: review-gate-pending-while-waiting-decision-20261110, theseus-review-structured-findings-20261110, theseus-review-format-optional-surfaces-20261110.\nCross-cutting guardrails (each item repeats the ones it needs):\nG1 Markers are the API, prose is presentation: never change the review-protocol record, review-defect or review-finding markers; verdict reviews and threads are never edited after posting.\nG2 Reader before writer: no release changes a body or thread format until the previous release and BenchBox already read it.\nG3 Never weaken a gate: unclassifiable text fails closed; parsed status tokens kept as shared constants; statuses <= 140 chars by test.\nG4 Accessibility: every emoji is followed by its bold word; Unicode, not shortcodes; no emoji in commit statuses; severity order most severe first; 'blocks merge' stated in words.\nG5 Model text in collapsibles neutralises <details, </details>, <!-- and -->.\nG6 No live model or API spend without owner approval; no owner-only actions (stand-ins, adjudications, owner instructions, backoff resets).\nG7 Theseus merges: current-head hosted SHIP + green required checks; independent review for gate/receipt/dedup/posting changes and for workflows, policy or lock. BenchBox merges: AGENTS.md write workflow through make pr-arm.",
@@ -53,6 +61,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "d3a73a9a2c194a2c801b18ee87bfadad",
+      "session_id": "ac7352d3450d445aa9132af1db2251b7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57133450e487c312386efb7b",
+      "at": "2026-11-11T17:23:24Z",
+      "client": "omp-coding-agent",
+      "op": "defer",
+      "op_id": "69de13df0dd241c2ae43fa27697312db",
       "session_id": "ac7352d3450d445aa9132af1db2251b7"
     }
   ]
