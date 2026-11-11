@@ -8,7 +8,7 @@
     "Cells stay inside 6h per cell; anything outside needs approval stating command, maximum runtime, log path, and stop condition",
     "Held bundles cleared by rerun, not override"
   ],
-  "context": "Mirrors first-live-cloud-benchmark-run-and-publish. Credential and reachability proof is owned by athena-sql-live-credential-probe-20261006 and the platform smoke in new-platform-tpch-smoke-20261006. Parquet conversion path already exists via athena-parquet-optimization. Tuned runs deferred until tuning-portable-metadata-store-20261001 lands (Athena needs Iceberg-with-location or an explicit unsupported declaration there).",
+  "context": "Mirrors first-live-cloud-benchmark-run-and-publish. Credential and reachability proof is owned by athena-sql-live-credential-probe-20261006 and the platform smoke in new-platform-tpch-smoke-20261006. Parquet conversion path already exists via athena-parquet-optimization. Tuned runs deferred until tuning-portable-metadata-store-20261001 lands (Athena needs Iceberg-with-location or an explicit unsupported declaration there).\n\nRevalidated 2026-11-11: still required; needs unchanged and still unmet (new-platform-tpch-smoke-20261006, vendor-benchmark-publication-conditions-20261022 are both open). Correction to the context above: the tuned-run metadata blocker is resolved, since tuning-portable-metadata-store-20261001 and tuned-run-marker-aborts-athena-synapse-bigquery-20261013 are done, so the only reason tuned runs are out of scope here is the notuning scope of this item. athena-parquet-optimization is done. AthenaAdapter records platform timing via get_query_execution (benchbox/platforms/athena.py:72, 979). Live runs are not approved by the owner. Related open items: athena-sql-live-credential-probe-20261006, trial-capacity-disclosure-bundles-20261006.",
   "description": "Run and publish the first live Athena SQL corpus: TPC-H at SF 0.1, 1.0, 10.0, notuning, on current develop, using the Parquet path. Record TB scanned and credit account type per bundle per trial-capacity-disclosure-bundles-20261006. No live runs outside campaign limits without explicit approval stating command, maximum runtime, log path, and stop condition.",
   "sessions": [
     {
@@ -26,6 +26,14 @@
       "op": "update",
       "op_id": "3be414612e2140c9800cf6b7d8396e8c",
       "session_id": "e9f0cc7a22044c60b8b2b71e8d7d25c0"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:29:04Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a287d2dc98124c0389a006384a1a3d5d",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
