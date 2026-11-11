@@ -30,6 +30,8 @@ EXIT_OWNERSHIP = 78
 EXIT_ADMISSION = 76
 EXIT_USAGE = 2
 ADMIT_ENV = "BENCHBOX_HEAVY_ADMIT"
+ADMIT_RETRY_SECONDS = 60.0
+ADMIT_WAIT_MAX_MINUTES = 60
 LOG_PREFIX = "[host-lock]"
 WATCHDOG_MODE_ENV = "BENCHBOX_HEAVY_WATCHDOG"
 WATCHDOG_FLAG_HOLDER = b"H"
@@ -1145,6 +1147,7 @@ def run_command(
     admit: bool = False,
     admit_need_gib: float | None = None,
     guard: bool = False,
+    admit_wait_seconds: float = 0.0,
 ) -> int:
     rejected = _load_sibling("heavy_preflight_scope").rejection_message(command)
     if rejected is not None:
@@ -1152,29 +1155,43 @@ def run_command(
         return EXIT_USAGE
     path = lock_path()
     rendered = " ".join(shlex.quote(part) for part in command)
-    try:
-        handle, created = _acquire(
-            path,
-            wait_seconds=None,
-            phase=phase,
-            gate=gate,
-            command=rendered,
-            environ=None,
-            admit=admit,
-            admit_need_gib=admit_need_gib,
-            guard=guard,
-        )
-    except LockOwnershipError as exc:
-        _log(str(exc))
-        return EXIT_OWNERSHIP
-    except LockUnavailable as exc:
-        _log(f"BLOCKED: {exc}")
-        return EXIT_REFUSED
-    except AdmissionRefused as exc:
-        _log(f"REFUSED: host is not ready for heavy work; lock released\n{exc.report}")
-        return EXIT_ADMISSION
-    except KeyboardInterrupt:
-        return 128 + signal.SIGINT
+    admit_deadline = _now() + admit_wait_seconds
+    while True:
+        try:
+            handle, created = _acquire(
+                path,
+                wait_seconds=None,
+                phase=phase,
+                gate=gate,
+                command=rendered,
+                environ=None,
+                admit=admit,
+                admit_need_gib=admit_need_gib,
+                guard=guard,
+            )
+            break
+        except LockOwnershipError as exc:
+            _log(str(exc))
+            return EXIT_OWNERSHIP
+        except LockUnavailable as exc:
+            _log(f"BLOCKED: {exc}")
+            return EXIT_REFUSED
+        except AdmissionRefused as exc:
+            remaining = admit_deadline - _now()
+            if remaining <= 0:
+                _log(f"REFUSED: host is not ready for heavy work; lock released\n{exc.report}")
+                return EXIT_ADMISSION
+            pause = min(ADMIT_RETRY_SECONDS, remaining)
+            _log(
+                "admission refused; lock released; "
+                f"checking again in {pause:.0f}s (up to {remaining:.0f}s more)\n{exc.report}"
+            )
+            try:
+                _sleep(pause)
+            except KeyboardInterrupt:
+                return 128 + signal.SIGINT
+        except KeyboardInterrupt:
+            return 128 + signal.SIGINT
     env = _with_run_identity(dict(os.environ), handle) if handle.inherited else owner_environment(handle=handle)
     run = handle.run
     watcher = handle.guard
@@ -1245,6 +1262,18 @@ def machine_need_command(machine: str, fallback_gib: float) -> int:
     return 0
 
 
+def _admit_wait_minutes(value: str) -> int:
+    try:
+        minutes = int(value)
+    except ValueError:
+        minutes = 0
+    if not 1 <= minutes <= ADMIT_WAIT_MAX_MINUTES or str(minutes) != value.strip():
+        raise argparse.ArgumentTypeError(
+            f"admission wait must be a whole number of minutes from 1 to {ADMIT_WAIT_MAX_MINUTES}, got {value!r}"
+        )
+    return minutes
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m benchbox.utils.host_lock")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -1253,6 +1282,12 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--gate")
     run.add_argument("--admit", action="store_true", help="refuse to start when the host is under pressure")
     run.add_argument("--need-gib", type=float, help="memory needed for --admit")
+    run.add_argument(
+        "--admit-wait-minutes",
+        type=_admit_wait_minutes,
+        default=0,
+        help=f"with --admit, re-check a refused admission for up to this many minutes (1-{ADMIT_WAIT_MAX_MINUTES})",
+    )
     run.add_argument(
         "--guard",
         action="store_true",
@@ -1302,6 +1337,7 @@ def main(argv: list[str] | None = None) -> int:
         admit=args.admit,
         admit_need_gib=args.need_gib,
         guard=args.guard,
+        admit_wait_seconds=args.admit_wait_minutes * 60.0,
     )
 
 

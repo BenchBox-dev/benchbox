@@ -23,7 +23,7 @@ help:
 	@echo "  make test-required-local-cases Run the required local-engine cases; a skipped, deselected or failed case fails"
 	@echo "  make test-ci         Maintained broad local CI profile"
 	@echo "  make heavy-status    Show heavy-work lock holder, waiters, host pressure, VMs and orphaned servers (read-only)"
-	@echo "  make heavy-run CMD=...  Run a hand-started heavy command under the host lock with admission and watchdog"
+	@echo "  make heavy-run CMD=... [HEAVY_ADMIT_WAIT=minutes]  Run a hand-started heavy command under the host lock with admission and watchdog; HEAVY_ADMIT_WAIT re-checks a refused admission every minute for up to that long (1-60)"
 	@echo ""
 	@echo "Marker-Selected Testing:"
 	@echo "  make test-marker TEST_MARKER=\"tpch or tpcds\" Run the tests a pytest marker expression selects"
