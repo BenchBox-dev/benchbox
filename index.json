@@ -24030,7 +24030,7 @@
         "tuning-evidence-measurement-harness-20261008"
       ],
       "priority": "high",
-      "status": "blocked",
+      "status": "open",
       "title": "Harness re-applies ClickHouse server session settings beyond load time"
     },
     "heavy-choke-machine-name-xdist-race-20261107": {
