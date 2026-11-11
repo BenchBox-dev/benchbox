@@ -177,19 +177,20 @@ authorization lands, then arm with `make pr-arm`.
 | Kind | Meaning | Exit |
 |---|---|---|
 | `armed` | Auto-merge is enabled for the exact head | 0 |
-| `waiting` | Every reason is a check that has not finished: the full CI run, or the `core` job that records the fast-duration verdict | 2 |
-| `refused` | Anything else: a hold, an open review thread, a failed required check, a pending or failing review verdict, a red trunk, a head mismatch | 2; 1 when live state could not be read; the `gh` exit code when the merge command itself fails |
+| `waiting` | Every reason is a check that has not finished: the full CI run, or the `core` job that records the fast-duration verdict. With `WAIT`, a review verdict that is still pending for this head also counts | 2 |
+| `refused` | Anything else: a hold, an open review thread, a failed required check, a failing review verdict or one that waits for the owner, a red trunk, a head mismatch. Without `WAIT`, a pending review verdict is also `refused` | 2; 1 when live state could not be read; the `gh` exit code when the merge command itself fails |
 
 `waiting` and `refused` usually both exit 2; read the outcome line, not the exit
 code, to tell them apart.
 
-`make pr-arm WAIT=<minutes>` (1 to 120) is the supported way to wait. While the
-outcome is `waiting` it checks again every 3 minutes, and it runs the red-trunk
-check (`scripts/trunk_revert.py arm-gate`) before each new check. It stops at
-once on `armed` or `refused`, and when the time runs out it prints the last
-`waiting` outcome with `(WAIT=<minutes> expired)`. It never re-runs a job,
-rebases, or changes a hold. A pending review verdict is `refused`, so start the
-wait after the verdict is in. Do not write a polling loop around `make pr-arm`.
+`make pr-arm WAIT=<minutes>` (1 to 120) is the supported way to wait, and it can
+be started right after a push. While the outcome is `waiting` it checks again
+every 3 minutes, and it runs the red-trunk check
+(`scripts/trunk_revert.py arm-gate`) before each new check. It stops at once on
+`armed` or `refused`: a verdict that comes back with findings ends the wait. When
+the time runs out it prints the last `waiting` outcome with
+`(WAIT=<minutes> expired)`. It never re-runs a job, rebases, or changes a hold.
+Do not write a polling loop around `make pr-arm`.
 
 ## Stale failed check suites
 
