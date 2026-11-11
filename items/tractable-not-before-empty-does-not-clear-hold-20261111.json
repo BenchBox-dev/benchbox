@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Decision gate: fix in the tractable repository and release; BenchBox then takes the new wheel through its normal tracker runtime bump. Do not patch the vendored wheel.",
+    "Verification: a tractable test sets a future not_before, clears it with an empty value, and takes the item immediately.",
+    "Done when the fixed release is pinned in BenchBox, or the documentation is corrected and that release is pinned."
+  ],
+  "description": "Found on 2026-11-11 while delivering retro-navigation-fixes-umbrella-20261111 (or in the retrospective over 25 agent sessions that preceded it) and not addressed there.\n\nCross-repository item (joeharris76/tractable), tracked here because BenchBox drives the tracker.\n\nProblem. The server instructions and the update_item tool description say `not_before=\"\"` clears a hold. On tractable 1.0.0, `update_item {\"id\": <item with waiting_until set>, \"not_before\": \"\"}` returns `E_STATE: operation produced no state change` and the hold stays; sent together with `context_append`, only the context changes. Observed five times on 2026-11-11 on open, unclaimed items. Workaround used: set not_before a few seconds in the future, wait, then take.\n\nChange. Make the empty value clear the hold as documented, or change the documentation and name the supported way.",
+  "links": [
+    "https://github.com/joeharris76/tractable",
+    ".claude/skills/todo/SKILL.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T16:38:21Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d22847464bb44f349ac9410895d13c14",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    }
+  ]
+}

@@ -41573,6 +41573,13 @@
       "status": "open",
       "title": "tractable expect_store accepts a prefix-named repository, so the wrong-tracker gate can pass for the wrong project"
     },
+    "tractable-not-before-empty-does-not-clear-hold-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "tractable: update_item with not_before=\"\" does not clear a hold"
+    },
     "trailing-delimiter-probe-swallows-read-errors": {
       "claim": null,
       "needs": [],
