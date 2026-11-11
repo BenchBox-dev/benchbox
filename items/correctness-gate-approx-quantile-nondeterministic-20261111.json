@@ -6,7 +6,7 @@
     "Soundness review passes for the changed gate files.",
     "Done when merged."
   ],
-  "context": "Revalidated 2026-11-11: still required, text accurate; no fix has landed. On origin/develop (c7b75c80bc) the stale-baseline failure message is still emitted at benchbox/core/equivalence/cross_surface.py:1746, the \"inherently approximate sketches\" classification is at cross_surface.py:924, and tests/unit/core/equivalence/test_cross_surface.py:1182-1198 lists approx_quantile_groupby_expression/_pandas among the 17 read_primitives known divergences. PR #4100 is merged; the linked run 43041683685 (branch fix/check-failures-name-their-fix) shows success, consistent with the flip being intermittent. The decision gate (tolerate both outcomes vs make the comparison deterministic) still needs the owner.",
+  "context": "Revalidated 2026-11-11: still required, text accurate; no fix has landed. On origin/develop (c7b75c80bc) the stale-baseline failure message is still emitted at benchbox/core/equivalence/cross_surface.py:1746, the \"inherently approximate sketches\" classification is at cross_surface.py:924, and tests/unit/core/equivalence/test_cross_surface.py:1182-1198 lists approx_quantile_groupby_expression/_pandas among the 17 read_primitives known divergences. PR #4100 is merged; the linked run 43041683685 (branch fix/check-failures-name-their-fix) shows success, consistent with the flip being intermittent. The decision gate (tolerate both outcomes vs make the comparison deterministic) still needs the owner.\n\nOwner decision 2026-11-11 (choice dialog): option (a). Approximate cells get a baseline classification that tolerates both match and divergence; exact cells keep the strict stale-entry check, with a test for each class.",
   "description": "Found on 2026-11-11 while delivering retro-navigation-fixes-umbrella-20261111 (or in the retrospective over 25 agent sessions that preceded it) and not addressed there.\n\nProblem. On PR #4100 (a change to checker messages only), job `correctness-gate (b)` failed in `make cross-surface-equivalence-report` with 'GATE FAILURE - previously-known divergences now equivalent: approx_quantile_groupby_expression, approx_quantile_groupby_pandas - remove the stale baseline entry in a reviewed change'. A re-run of the failed jobs on the same head passed, and trunk.yml was green on the five develop commits around it. The baseline lists these cells as known divergences because DuckDB's APPROX_QUANTILE is a sketch; on some runs the sketch result equals the exact DataFrame value, and the gate then treats the baseline entry as stale.\n\nChange. Make a known-divergent cell whose reason is 'inherently approximate' unable to fail the gate by matching, or make the comparison deterministic for those cells.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read every cited file on current origin/develop first, because line numbers and commits here are from 2026-11-11 (origin/develop 5bd2c19cc4); close at a merged PR and finish only after the merge is observed.",
   "links": [
     "make/reports.mk",
@@ -28,6 +28,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "a4cd92aeef10441699641e9954d9b158",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T23:39:28Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "cec6901eeaff49719f5612f468867f5b",
       "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
