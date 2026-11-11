@@ -30811,7 +30811,9 @@
     },
     "preflight-receipt-does-not-require-guard-steps-20261111": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "feature-pr-landing-guards-20261111"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Make pr-open require the preflight guard steps in the receipt"
