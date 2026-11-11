@@ -4,7 +4,7 @@
     "Each member's own acceptance criteria are met or its unmet part is recorded on that member with the reason",
     "Each member is finished after the merge is observed on origin/develop"
   ],
-  "context": "2026-11-11: PR #4116 opened, head afe5b75d51, branch docs/agent-operational-facts, worktree /Users/joe/Developer/BenchBox.wt-docs-agent-operational-facts. Local review: no Critical or High finding. Left out, with reasons: the make help line for local-review-discoverability (moved to feature-pr-landing-guards-20261111); deleted gate paths and hosted-credentials.md kept (owner decisions); the issue index and secret-name table dismissed under the item's own gate; scale-factor sites described as 'several' because six could not be confirmed. Next: CI and hosted review, arm, observe merge, finish the five members then this item.",
+  "context": "2026-11-11: PR #4116 opened, head afe5b75d51, branch docs/agent-operational-facts, worktree /Users/joe/Developer/BenchBox.wt-docs-agent-operational-facts. Local review: no Critical or High finding. Left out, with reasons: the make help line for local-review-discoverability (moved to feature-pr-landing-guards-20261111); deleted gate paths and hosted-credentials.md kept (owner decisions); the issue index and secret-name table dismissed under the item's own gate; scale-factor sites described as 'several' because six could not be confirmed. Next: CI and hosted review, arm, observe merge, finish the five members then this item.\n\n2026-11-11: delivered in PR #4116, merged to develop as f30accdb17 (verified an ancestor of origin/develop).",
   "description": "Delivery: one feature branch and one pull request for the members below, built by one delegated session; the coordinating session opens no second PR, arms the PR, observes the merge and closes the tracker items. This is the feature-branch form of serial mode. A registered batch is not used because its members must be separate top-level sessions, and the owner asked for delegation to subagents. The members list this item in their needs so nobody claims them separately. Documentation only. Branch docs/agent-operational-facts. Where a member has a decision gate that needs the owner, the conservative branch of the gate is taken and recorded; nothing is deleted on a guess. docs/agent/merge-authority.md and make/help.mk are left alone because two open pull requests (#4110, #4112) change them. Members: heavy-work-guard-doc-admission-wait-20261111, local-review-discoverability-20261111, worktree-claim-subagent-shared-pid-doc-20261111, stale-docs-remaining-after-retro-20261111, operational-facts-sessions-rediscovered-20261111.",
   "sessions": [
     {
@@ -39,6 +39,14 @@
       "generation": "aa2243d86658404aa01b1451c314acd3",
       "op": "take",
       "op_id": "7062601ef32640ce953d1b42def3c143",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T17:56:22Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1e092396f0c94e369052e5e00a1729dd",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
