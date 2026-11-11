@@ -22715,10 +22715,15 @@
       "title": "Review tooling: document the pinned reviewer source and harden the soundness digest"
     },
     "feature-test-fixture-and-ci-shard-hygiene-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T18:00:42Z",
+        "generation": "c0feb534f1da4c328a314a4691369a98",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Tests: remove the duplicate scale-factor fixture and explain the cancelled medium shard"
     },
     "fetch-mode-cli-and-influxdb-followups-20261107": {
