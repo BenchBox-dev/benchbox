@@ -24127,7 +24127,9 @@
     },
     "heavy-work-guard-doc-admission-wait-20261111": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "feature-agent-docs-operational-facts-20261111"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Document the admission wait in the operations heavy-work page"
