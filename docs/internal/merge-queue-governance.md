@@ -475,8 +475,9 @@ anything:
 an earlier one is refused with a message naming the earliest usable commit.
 Runtime grows with the window, at several API calls per commit: a six-week
 window made several thousand calls and took 15 to 25 minutes in earlier runs.
-A failed GitHub read is retried twice with a short pause; if it still fails
-the run exits 2 with no partial report.
+A failed GitHub read is retried twice with a short pause before it counts as
+failed. A persistent failure is never reported as success: some reads end the
+run with exit 2, others are named in the report as unreadable or unavailable.
 
 A review or connector review names a commit, so it cannot be backdated.
 Known limits: a posted review is text the author can write, so it shows a

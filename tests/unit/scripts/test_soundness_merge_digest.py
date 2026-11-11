@@ -2834,18 +2834,19 @@ def test_an_unrecognised_bot_thread_is_unclassifiable_never_low(monkeypatch):
 
 def test_one_transient_api_failure_is_retried(monkeypatch):
     outcomes = [digest.ReadError("TLS handshake timeout"), '{"ok": true}']
-    delays = []
+    calls = []
 
     def flaky(args, **_):
+        calls.append(args)
         outcome = outcomes.pop(0)
         if isinstance(outcome, Exception):
             raise outcome
         return outcome
 
     monkeypatch.setattr(digest, "run", flaky)
-    monkeypatch.setattr(digest.time, "sleep", delays.append)
+    monkeypatch.setattr(digest, "API_RETRY_DELAYS", (0.0,))
     assert digest.gh_json("api", "x") == {"ok": True}
-    assert len(delays) == 1
+    assert len(calls) == 2
 
 
 def test_a_persistent_api_failure_still_fails_after_bounded_retries(monkeypatch):
@@ -2856,7 +2857,7 @@ def test_a_persistent_api_failure_still_fails_after_bounded_retries(monkeypatch)
         raise digest.ReadError("TLS handshake timeout")
 
     monkeypatch.setattr(digest, "run", broken)
-    monkeypatch.setattr(digest.time, "sleep", lambda delay: None)
+    monkeypatch.setattr(digest, "API_RETRY_DELAYS", (0.0, 0.0))
     with pytest.raises(digest.ReadError):
         digest.gh_json("api", "x")
     assert len(calls) == len(digest.API_RETRY_DELAYS) + 1
