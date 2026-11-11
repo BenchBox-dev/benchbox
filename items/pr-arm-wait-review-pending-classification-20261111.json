@@ -12,7 +12,7 @@
     "scripts/pr_landing.py",
     "docs/agent/merge-authority.md"
   ],
-  "not_before": "2026-11-11T19:30:00Z",
+  "not_before": "2026-11-11T17:54:13Z",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
@@ -70,6 +70,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "fd465f5dcc7b4d2794f2ca4349f6e955",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T17:54:05Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5f46bb90d2874775bbe9cfbddd867e7a",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
