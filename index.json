@@ -25095,10 +25095,15 @@
       "title": "Add LakeSail Sail platform support for SQL and DataFrame benchmarking"
     },
     "lakesail-uat-failures-20261030": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T02:32:12Z",
+        "generation": "220527a46a474be3b499f3548ddd636a",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7bc97e5b905b990114418f4a"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "LakeSail: TPC-DI load cast error, TPC-Havoc failures and SF1 timeouts in release UAT"
     },
     "land-and-observe-develop-post-merge-sweep-pr-1599-20260805": {
