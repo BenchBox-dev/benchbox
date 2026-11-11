@@ -15015,7 +15015,7 @@
         "tuning-evidence-measurement-harness-20261008"
       ],
       "priority": "medium",
-      "status": "blocked",
+      "status": "open",
       "title": "Find why TPC-H Q3, Q5 and Q18 slow down under the date-first ClickHouse sort key"
     },
     "clickhouse-tpchavoc-q6-decimal-bug": {
