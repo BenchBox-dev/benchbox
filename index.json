@@ -16452,14 +16452,19 @@
       "title": "Comment-policy staged ratchet blocks all commits after legitimate vendored-wheel upgrade"
     },
     "comment-policy-shell-payload-coverage-20261011": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T20:46:23Z",
+        "generation": "e142baca66544adb967d09fdff5bb574",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66"
+      },
       "needs": [
         "comment-policy-strict-scope-mismatch",
         "comment-policy-digest-and-base-exception-catch22-20261008",
         "native-task-model-tier-selection-20261011"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Resolve shell payload coverage errors blocking the required comment-policy gate"
     },
     "comment-policy-staged-hook-runtime-20261020": {
