@@ -4,7 +4,7 @@
     "Each member's own acceptance criteria are met or its unmet part is recorded on that member with the reason",
     "Each member is finished after the merge is observed on origin/develop"
   ],
-  "context": "2026-11-11: two additions. (1) New member pr-arm-placeholder-refresh-gap-misread-as-hidden-failure-20261111, found while waiting on #4110 and #4112; do it first, it is the most costly of the group. (2) local-review-discoverability-20261111 was delivered in PR #4116 except for its `make help` criterion, because make/help.mk was reserved for #4110 and #4112: add to the `make pr-open` help line that it runs the local review, in this feature's PR.",
+  "context": "2026-11-11: two additions. (1) New member pr-arm-placeholder-refresh-gap-misread-as-hidden-failure-20261111, found while waiting on #4110 and #4112; do it first, it is the most costly of the group. (2) local-review-discoverability-20261111 was delivered in PR #4116 except for its `make help` criterion, because make/help.mk was reserved for #4110 and #4112: add to the `make pr-open` help line that it runs the local review, in this feature's PR.\n\n2026-11-11: #4110 merged (864a12c6eb), so work started from origin/develop without waiting for #4112; the branch avoids #4112's pr-status hunks and merges develop before preflight. Branch fix/pr-landing-guards, worktree /Users/joe/Developer/BenchBox.wt-fix-pr-landing-guards, built by one delegated session; six members plus the make help phrase for pr-open.",
   "description": "Delivery: one feature branch and one pull request for the members below, built by one delegated session; the coordinating session opens no second PR, arms the PR, observes the merge and closes the tracker items. This is the feature-branch form of serial mode. A registered batch is not used because its members must be separate top-level sessions, and the owner asked for delegation to subagents. The members list this item in their needs so nobody claims them separately. Branch fix/pr-landing-guards. Starts only after pull requests #4110 and #4112 merge, because it changes the same files (scripts/pr_arm.py, make/pr-landing.mk, docs/agent/merge-authority.md). These members change the delivery loop itself, so the PR needs the soundness review and is never certified by a batch. Members: pr-landing-surface-unresolved-threads-20261101, preflight-misses-sparse-checkout-consumer-tests-20261111, preflight-receipt-does-not-require-guard-steps-20261111, pr-open-title-env-ignored-and-amended-develop-commit-message-20261111, origin-remote-and-default-repo-slug-case-20261111.",
   "sessions": [
     {
@@ -21,6 +21,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "71a1d5eba5bf4b24a527578c4681e610",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T18:03:36Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "82e857e6a79f45d7897d67000bcc2bb1",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
