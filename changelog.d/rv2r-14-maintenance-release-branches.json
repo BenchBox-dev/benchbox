@@ -1,1 +1,0 @@
-{"schema": 1, "internal": "Release admission accepts tags on owner-created release/X.Y.x branches with --latest=false; the ruleset drift check expects their rulesets. Trunk runs and oracle gating there come later; no package change."}

@@ -1,1 +1,0 @@
-{"schema": 1, "internal": "Added a scheduled workflow that verifies fork deliveries of the SQLGlot runtime wheel and opens one adoption pull request."}

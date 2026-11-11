@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "Batch overlap, fix and final-evidence reruns drop test paths a recorded develop merge deleted, record ran_command and dropped_paths, and fail closed without running pytest when every recorded test path is gone"
-}
