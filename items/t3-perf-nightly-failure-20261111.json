@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Cause recorded with the per-query deltas and runner CPU class.",
+    "A real regression gets its own fix item; a baseline effect is folded into the rebaseline item."
+  ],
+  "description": "t3:perf was green on scheduled runs 2026-11-06..10 after #3960, then failed on 2026-11-11 (nightly-v2 run 43048718870). The job log and artifact endpoints returned HTTP 502 when revalidating on 2026-11-11, so the cause is unread. Read the t3-perf-result artifact and log; decide whether it is a runner-class/baseline effect (feeds perf-smoke-rebaseline-after-power-query-generation-20261103) or a real regression in the commits since 2026-11-10 (includes #4080 result-schema 2.4 and #4082 bulk loads).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T23:41:33Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b16932b2dc924839931b70532fdcf9bb",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
+    }
+  ]
+}

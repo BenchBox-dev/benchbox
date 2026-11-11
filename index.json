@@ -39555,6 +39555,13 @@
       "status": "done",
       "title": "Investigate the hosted TPC-H slowdown after the execution-variants schema change"
     },
+    "t3-perf-nightly-failure-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Find why nightly-v2 t3:perf failed on 2026-11-11 (run 43048718870)"
+    },
     "table-format-integration-ci-coverage": {
       "claim": null,
       "needs": [],
