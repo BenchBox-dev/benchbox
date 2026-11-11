@@ -34835,6 +34835,21 @@
       "status": "open",
       "title": "Correct stale agent and maintainer docs that sent sessions to wrong or missing information"
     },
+    "retro-navigation-fixes-umbrella-20261111": {
+      "claim": null,
+      "needs": [
+        "retro-docs-stale-corrections-20261111",
+        "retro-check-failures-name-fix-20261111",
+        "pr-arm-wait-mode-20261111",
+        "heavy-run-admission-wait-20261111",
+        "preflight-runs-docs-inventory-and-project-reference-guards-20261110",
+        "skill-catalog-release-freeze-and-tpc-specs-20261111",
+        "skill-pin-reland-member-review-optional-20261111"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Umbrella: deliver and verify the navigation and stale-doc fixes from the 2026-11-11 retrospective"
+    },
     "review-anthropic-api-fallback-provider-20261109": {
       "claim": null,
       "needs": [],

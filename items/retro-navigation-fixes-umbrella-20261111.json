@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Every member item is done, each closed only after its PR merge was observed.",
+    "Decision gate (regressions): after the last merge, origin/develop's latest trunk.yml run is green or fails only for a named reason unrelated to these PRs.",
+    "Verification: on origin/develop, AGENTS.md is within 17,300 bytes and 170 lines and make agent-instructions-check passes.",
+    "Verification: each member's 'Done when' line holds on origin/develop (or the catalog's origin/main), checked by reading the merged tree, not the PR description.",
+    "Every deferral recorded on a member is promoted to an item or dismissed with a reason.",
+    "/tmp/retro-benchbox is deleted.",
+    "Final report gives one row per item: tracker state, PR and state, head, verification exercised, blocker, next action."
+  ],
+  "description": "Holds the order, owner decisions and close-out check for seven items. It is not a batch member and carries no code change.\n\nDelivery mode: serial, one PR per item, one claim at a time. Registered feature delivery mode is not used: three items change the delivery loop itself (pr-arm, heavy-run admission, pr-preflight), one is in another repository, and the policy requires members to be separate top-level sessions.\n\nOrder and reasons:\n1. retro-docs-stale-corrections-20261111 (first: other items edit the same AGENTS.md section afterwards)\n2. retro-check-failures-name-fix-20261111\n3. preflight-runs-docs-inventory-and-project-reference-guards-20261110\n4. heavy-run-admission-wait-20261111\n5. pr-arm-wait-mode-20261111 (needs 1)\n6. skill-catalog-release-freeze-and-tpc-specs-20261111 (other repository)\n7. skill-pin-reland-member-review-optional-20261111 (needs 6)\nItems 2, 3, 4 and 6 are independent of each other; this order only keeps one claim live.\n\nOwner decisions, 2026-11-11 (choice dialog): batch members do not run a local review, re-land the reverted pin with the trunk failure fixed; add `make pr-arm WAIT=<minutes>` and reword AGENTS.md; add opt-in `HEAVY_ADMIT_WAIT` to heavy-run; the remote close-out exception is not live yet, reword only; track the CI failure helper as ci-failure-excerpt-helper-20261111 and do not build it now; delete the /tmp/retro-benchbox scratch at the end.\n\nRejected in review, with reasons, so they are not rediscovered: a docs/internal index (a copy of the directory listing that drifts); a new doc-path guard (would catch one accepted item); per-target AGENTS.md pointers for tools `make help` lists; the `make review-local` alias; edits to historical review-v2.md sections and ADRs; tests/README.md lock text (it is correct); `PR_OPEN_TITLE` handling (the documented interface is TITLE); a worktree takeover hint (the refusal already prints it).\n\nGuardrails for every member are in each item. Stop conditions for the set: a hold label or unresolved Critical/High review on any PR; an owner-only action; a failed decision gate. On a stop, record the blocker and next action in the affected item's context and continue with items that do not depend on it.",
+  "links": [
+    "docs/agent/batch-feature-delivery.md",
+    "docs/agent/merge-authority.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T13:11:59Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f4d6469836c64f8f80abbf6fcd598ae8",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    }
+  ]
+}
