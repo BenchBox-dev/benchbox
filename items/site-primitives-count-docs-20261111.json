@@ -1,10 +1,10 @@
 {
   "acceptance": [
     "`git grep -n -e '12-query' -- docs/benchmarks/support-status.md` finds no write_primitives or transaction_primitives row; both rows read 112-query and 23-query.",
-    "`git grep -n -E '8 operations|12 (write|transaction) operations|7 categories' -- docs/benchmarks` finds nothing.",
+    "`git grep -nE '\\*\\*: 8 operations|12 (write|transaction) operations|7 categories' -- docs/benchmarks` finds nothing.",
     "Against a bundle that contains the core count change, `npm run docs:check` passes; against the previous bundle its only failures are the two `benchmark-status-matrix` rows."
   ],
-  "description": "## Problem\nbenchbox-site repeats the wrong query counts for the write and transaction primitives:\n- `docs/benchmarks/support-status.md`: '12-query' for both rows. The site's `benchmark-status-matrix` check compares this number with the registry export, so it must change together with core.\n- `docs/benchmarks/index.md`: '12 write operations across 7 categories (..., TRANSACTION)' and '12 transaction operations'.\n- `docs/benchmarks/write-primitives.md`: 'Transaction Primitives: 8 operations'.\n\n## Change\nWrite 112 operations in 6 categories (INSERT, UPDATE, DELETE, BULK_LOAD, MERGE, DDL) and 23 transaction operations wherever the pages above state a count. Keep the `<n>-query` token form in the `support-status.md` rows.\n\n## Decision gates\n- Before editing, re-read the lines on current `origin/main` and search all of `docs/` for other statements of these counts.\n- **Merge gate (leader):** `primitives-query-count-registry-20261111` is merged and its site-inputs bundle is certified; `npm run docs:check` against that bundle passes. Until then the check is expected to fail on exactly these two rows and nothing else.\n\n## Guardrails\n- Repository: `BenchBox-dev/benchbox-site`. Work on branch `docs/benchmark-scale-and-count-fixes` in a linked worktree; never commit to `main`.\n- Edit only pages under `docs/benchmarks/` named here. No Explorer, deploy, gate or `docs-contracts/` code.\n- Commit identity Joe Harris <joeharris76@gmail.com>; no agent or co-author trailer; stage by explicit path.\n- Commit and pull request text give the durable reason only: no tracker ids, plan references or CI counts.\n- Every number written into a page comes from the core code or a measurement named in this item, not from memory.\n- Subagents make no tracker write, push nothing and open no pull request.\n",
+  "description": "## Problem\nbenchbox-site repeats the wrong query counts for the write and transaction primitives:\n- `docs/benchmarks/support-status.md`: '12-query' for both rows. The site's `benchmark-status-matrix` check compares this number with the registry export, so it must change together with core.\n- `docs/benchmarks/index.md`: '12 write operations across 7 categories (..., TRANSACTION)' and '12 transaction operations'.\n- `docs/benchmarks/write-primitives.md`: 'Transaction Primitives: 8 operations' in two places (the comparison list and the closing summary). The line '(8 operations)' in `transaction-primitives.md` is a correct sub-count and stays.\n\n## Change\nWrite 112 operations in 6 categories (INSERT, UPDATE, DELETE, BULK_LOAD, MERGE, DDL) and 23 transaction operations wherever the pages above state a count. Keep the `<n>-query` token form in the `support-status.md` rows.\n\n## Decision gates\n- Before editing, re-read the lines on current `origin/main` and search all of `docs/` for other statements of these counts.\n- **Merge gate (leader):** `primitives-query-count-registry-20261111` is merged and its site-inputs bundle is certified; `npm run docs:check` against that bundle passes. Until then the check is expected to fail on exactly these two rows and nothing else.\n\n## Guardrails\n- Repository: `BenchBox-dev/benchbox-site`. Work on branch `docs/benchmark-scale-and-count-fixes` in a linked worktree; never commit to `main`.\n- Edit only the pages named here, plus any other page under `docs/` that a fresh search shows stating these two totals. No Explorer, deploy, gate or `docs-contracts/` code.\n- Commit identity Joe Harris <joeharris76@gmail.com>; no agent or co-author trailer; stage by explicit path.\n- Commit and pull request text give the durable reason only: no tracker ids, plan references or CI counts.\n- Every number written into a page comes from the core code or a measurement named in this item, not from memory.\n- Subagents make no tracker write, push nothing and open no pull request.\n",
   "links": [
     "https://github.com/BenchBox-dev/benchbox-site/blob/main/docs/benchmarks/support-status.md",
     "https://github.com/BenchBox-dev/benchbox-site/blob/main/docs/benchmarks/index.md",
@@ -18,6 +18,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "c79f4ee8341e466f84f679f68bdfa5a7",
+      "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba",
+      "at": "2026-11-11T20:31:38Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "99e2d1dde5334c0cac8f1f132d626044",
       "session_id": "84d81f109eb348759fdc1c024f00b55b"
     }
   ]
