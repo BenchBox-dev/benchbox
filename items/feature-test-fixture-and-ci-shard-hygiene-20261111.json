@@ -4,6 +4,7 @@
     "Each member's own acceptance criteria are met or its unmet part is recorded on that member with the reason",
     "Each member is finished after the merge is observed on origin/develop"
   ],
+  "context": "2026-11-11: PR #4115 opened for the duplicate fixture, branch test/fixture-and-shard-hygiene, worktree /Users/joe/Developer/BenchBox.wt-test-fixture-and-shard-hygiene. The cancelled-shard member turned out to be a recurring hang and was detached from this feature with its findings recorded on it; this feature now has one member. Next: CI and hosted review, arm, observe merge, finish the member then this item.",
   "description": "Delivery: one feature branch and one pull request for the members below, built by one delegated session; the coordinating session opens no second PR, arms the PR, observes the merge and closes the tracker items. This is the feature-branch form of serial mode. A registered batch is not used because its members must be separate top-level sessions, and the owner asked for delegation to subagents. The members list this item in their needs so nobody claims them separately. Branch test/fixture-and-shard-hygiene. The shard member is an investigation first: if the cause is not a repository defect, it closes with the finding recorded and no code change. Members: duplicate-small-scale-factor-fixture-20261111, ci-medium-shard-cancelled-without-cause-20261111.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "5502d18e03bd4c1595e4924b63ff25b4",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T17:39:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f9fe4fbabf5c4569b480ddd57bb95f7f",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
