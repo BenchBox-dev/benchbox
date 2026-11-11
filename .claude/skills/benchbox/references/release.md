@@ -27,8 +27,7 @@ prepare them, hand the exact commands to the owner, and stop.
    - `make release-check VERSION=X.Y.Z RELEASE_PRE_TAG=1` passes;
    - the latest `release-canary.yml` run is green, under 48 hours old, and ran
      on an ancestor of the commit; report a red or stale canary to the owner
-     before tagging;
-   - develop is frozen for infrastructure changes until the release publishes.
+     before tagging.
 4. Tag with an annotated PEP 440 tag (`git tag -a vX.Y.Z <sha> -m vX.Y.Z`) and
    push it. A release candidate goes to TestPyPI; a final goes to PyPI after the
    owner approves the `pypi` environment.

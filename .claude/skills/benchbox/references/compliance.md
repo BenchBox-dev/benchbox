@@ -13,3 +13,15 @@ Check benchmark implementations against spec expectations.
 ## Rules
 
 Use source/spec evidence, not memory. Report missing queries, drift, platform-specific exceptions, and exact verification commands.
+
+## Spec sources
+
+The specifications are bundled in the repository; read them there, not from
+memory or the web:
+
+- TPC-H 3.0.1: `_sources/tpc-h/specification.pdf`
+- TPC-DS 4.0.0: `_sources/tpc-ds/specification/specification_4.0.0.pdf`
+- TPC-DI is not bundled.
+
+Which code intervals each clause times is recorded in
+`docs/internal/tpc-measured-intervals.md`.
