@@ -14216,7 +14216,9 @@
     },
     "ci-medium-shard-cancelled-without-cause-20261111": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "feature-test-fixture-and-ci-shard-hygiene-20261111"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Find why a PR medium-test shard was cancelled after 25 minutes"
