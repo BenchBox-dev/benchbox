@@ -5,7 +5,7 @@
     "`make test-pytest` passes on a fresh develop checkout.",
     "`make test-pytest` passes once serially and three times with `-n 8` on a fresh develop checkout, with the commit SHA recorded"
   ],
-  "context": "Merged PR #3421 fixed four real defects found by a full `-m 'not stress' -n 8` run on develop (49974 passed, 0 failed on the branch): Spark CREATE TABLE put USING DELTA after PARTITIONED BY/CLUSTER BY (new dialect_utils.lift_ddl_table_layouts); compat_lint exemption restored on FlightDataQueryManager.get_query; ClickHouse Q47/Q57 test normalizer treats comma joins and CROSS JOIN as equal (test edit, not a source fix); DataFusion TPC-Havoc 1_v4 added to DATAFUSION_KNOWN_DIVERGENCES (decimal-avg-scale-rounding, review by 2027-01-24; baseline entry for a real engine difference after the SQLGlot 30.24.0.8 adoption). The three originally named tests already passed on develop. Not done: the item's verification of one serial full run plus three -n 8 runs on a fresh develop checkout with the SHA recorded; item left open for that.",
+  "context": "Merged PR #3421 fixed four real defects found by a full `-m 'not stress' -n 8` run on develop (49974 passed, 0 failed on the branch): Spark CREATE TABLE put USING DELTA after PARTITIONED BY/CLUSTER BY (new dialect_utils.lift_ddl_table_layouts); compat_lint exemption restored on FlightDataQueryManager.get_query; ClickHouse Q47/Q57 test normalizer treats comma joins and CROSS JOIN as equal (test edit, not a source fix); DataFusion TPC-Havoc 1_v4 added to DATAFUSION_KNOWN_DIVERGENCES (decimal-avg-scale-rounding, review by 2027-01-24; baseline entry for a real engine difference after the SQLGlot 30.24.0.8 adoption). The three originally named tests already passed on develop. Not done: the item's verification of one serial full run plus three -n 8 runs on a fresh develop checkout with the SHA recorded; item left open for that.\n\nRevalidated 2026-11-11 (develop c7b75c80bc): still required in a narrower form, and the text needs correcting. (a) `make test-pytest` no longer exists: #4010 (0e27d68037, 2026-11-07) removed it; the targets now are make/tests.mk test-all, test-unit, test-integration, test-fast, test-medium, etc. Acceptance lines 3-4 should be read as `make test-all` (once serially, three times with -n 8). (b) Of the three named tests, tests/integration/test_database_integration.py::test_database_resource_management and tests/integration/test_export_cli.py::test_export_preserves_content still exist; the third file tests/integration/tuning/test_post_load_reconciliation_e2e.py is no longer in the tree (last touched by #3086, ceb0724149; the DuckDB tuning e2e tests now live in tests/integration/tuning/test_duckdb_*_e2e.py), so that test no longer exists to pass. Lines 1-2 stay met (#3027, #3035, #3039, #3086). (c) trunk.yml on develop is green on 34 of the last 40 runs (the other 6 cancelled), and it runs the fast and medium tiers, not the full suite, so it does not satisfy line 3-4. The earlier note that the named tests already passed and #3421 fixed four other real defects stands. Remaining: one serial and three -n 8 full-suite runs on a fresh develop checkout with the commit SHA recorded (a heavy local run; use the lock-taking entry points).",
   "description": "The general batch agent found three failures under `make test-pytest`. They also fail on unmodified develop, so they come from earlier work, not from that batch:\n- `tests/integration/test_database_integration.py::test_database_resource_management`\n- `tests/integration/test_export_cli.py::test_export_preserves_content`\n- `tests/integration/tuning/test_post_load_reconciliation_e2e.py::test_duckdb_inline_keys_are_satisfied_and_undeclared_unique_constraints_not_dropped`\n\nUntil they are fixed, no batch can pass a final verification that requires a clean `make test-pytest`.",
   "sessions": [
     {
@@ -31,6 +31,14 @@
       "op": "update",
       "op_id": "5a32229c2f244e95ae4272a54025a351",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:38:56Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "dd6d0060d5ed4be78470d4980435cff6",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
