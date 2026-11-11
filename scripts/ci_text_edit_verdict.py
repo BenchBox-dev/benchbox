@@ -110,15 +110,14 @@ def _with_retries(action: Callable[[], T]) -> T:
     return action()
 
 
-def newest_failed_text_edit_run(runs: list[dict[str, Any]]) -> int | None:
-    failed = [
+def failed_text_edit_runs(runs: list[dict[str, Any]]) -> list[int]:
+    return sorted(
         run["id"]
         for run in runs
         if run.get("display_title") == TEXT_EDIT_RUN_NAME
         and run.get("status") == "completed"
         and run.get("conclusion") == "failure"
-    ]
-    return max(failed, default=None)
+    )
 
 
 def text_edit_run_unfinished(runs: list[dict[str, Any]]) -> bool:
@@ -155,12 +154,18 @@ def _refresh(args: argparse.Namespace) -> int:
     except (urllib.error.URLError, TimeoutError) as error:
         print(f"GitHub API request failed: {error}", file=sys.stderr)
         return 1
-    run_id = newest_failed_text_edit_run(runs)
-    if run_id is None:
+    run_ids = failed_text_edit_runs(runs)
+    if not run_ids:
         print(f"no failed {TEXT_EDIT_RUN_NAME!r} run on {args.sha}")
         return 0
-    print(f"re-running failed jobs of {TEXT_EDIT_RUN_NAME!r} run {run_id}", flush=True)
-    return subprocess.run(["gh", "run", "rerun", str(run_id), "--failed", "--repo", args.repo], check=False).returncode
+    status = 0
+    for run_id in run_ids:
+        print(f"re-running failed jobs of {TEXT_EDIT_RUN_NAME!r} run {run_id}", flush=True)
+        code = subprocess.run(
+            ["gh", "run", "rerun", str(run_id), "--failed", "--repo", args.repo], check=False
+        ).returncode
+        status = status or code
+    return status
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -172,7 +177,7 @@ def main(argv: list[str] | None = None) -> int:
     verdict.add_argument("--unit", required=True)
     verdict.add_argument("--run-id", type=int, required=True)
     verdict.set_defaults(handler=_verdict)
-    refresh = commands.add_parser("refresh", help="re-run the newest failed text-edit run on a commit")
+    refresh = commands.add_parser("refresh", help="re-run every failed text-edit run on a commit")
     refresh.add_argument("--repo", required=True)
     refresh.add_argument("--sha", required=True)
     refresh.set_defaults(handler=_refresh)

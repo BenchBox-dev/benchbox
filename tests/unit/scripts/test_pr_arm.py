@@ -6,6 +6,7 @@ import os
 import subprocess
 import sys
 from collections.abc import Sequence
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -126,7 +127,7 @@ class FakeGh:
             return 0, "\n".join(self.rules)
         if cmd[:3] == ["gh", "api", "--paginate"] and "/actions/workflows/ci.yml/runs?" in cmd[-1]:
             assert f"head_sha={self.local_head}" in cmd[-1]
-            return 0, "\n".join(f"{run_id}\t{title}\t{status}" for run_id, title, status in self.ci_runs)
+            return 0, "\n".join("\t".join(str(field) for field in (run + ("", ""))[:5]) for run in self.ci_runs)
         if cmd[:3] == ["gh", "api", "--paginate"] and "/check-runs?" in cmd[-1]:
             return 0, self._check_runs()
         if cmd[:2] == ["gh", "api"] and cmd[-1].endswith("/pulls/7/files"):
@@ -173,13 +174,17 @@ class FakeGh:
         return [call for call in self.calls if call[:3] == ["gh", "pr", "merge"]]
 
 
+def _threads(unresolved: bool) -> list[dict]:
+    return [{"id": "T1", "path": "scripts/x.py", "isResolved": False, "isOutdated": False}] if unresolved else []
+
+
 def _arm(gh: FakeGh, pr: str | None = "7", head: str | None = None, *, unpublished=(), threads=False, hidden=()) -> int:
     return pr_arm.arm(
         pr,
         head,
         run=gh,
         unpublished=lambda _checkout: list(unpublished),
-        threads=lambda _run, _repo, _number: threads,
+        threads=lambda _run, _repo, _number: _threads(threads),
         suites=lambda _run, _repo, _base, _head: list(hidden),
         gate=lambda _run, _repo, _number, _head: [],
     )
@@ -225,7 +230,7 @@ def test_default_refuses_when_the_branch_does_not_name_exactly_one_pr(
         (_view(baseRefName="feature/x"), {}, "arms only PRs into 'develop'"),
         (_view(baseRefName="release"), {}, "arms only PRs into 'develop'"),
         (_view(headRefOid="b" * 40), {}, "push first"),
-        (_view(), {"threads": True}, "unresolved, non-outdated review thread"),
+        (_view(), {"threads": True}, "1 unresolved review thread(s) block the merge"),
         (_view(), {"hidden": ["required check 'review' suite 9 failure is hidden"]}, "is hidden"),
         (_view(), {"unpublished": ["uncommitted working-tree changes"]}, "unpublished work"),
         (_view(), {"unpublished": ["2 local commit(s) not pushed to upstream"]}, "not pushed"),
@@ -254,6 +259,25 @@ def test_a_matching_expected_head_is_accepted() -> None:
     gh = FakeGh()
     assert _arm(gh, head=HEAD) == 0
     assert gh.merged()[0][-1] == HEAD
+
+
+def test_an_outdated_unresolved_thread_alone_refuses_arming_and_is_named(capsys: pytest.CaptureFixture[str]) -> None:
+    gh = FakeGh()
+    outdated = [{"id": "T9", "path": "scripts/old.py", "isResolved": False, "isOutdated": True}]
+    code = pr_arm.arm(
+        "7",
+        None,
+        run=gh,
+        unpublished=lambda _checkout: [],
+        threads=lambda _run, _repo, _number: outdated,
+        suites=lambda _run, _repo, _base, _head: [],
+        gate=lambda _run, _repo, _number, _head: [],
+    )
+    assert code == 2
+    assert gh.merged() == []
+    captured = capsys.readouterr()
+    assert "scripts/old.py (outdated)" in captured.err
+    assert "outcome: refused" in captured.out
 
 
 def test_reports_every_reason_not_just_the_first(capsys: pytest.CaptureFixture[str]) -> None:
@@ -785,21 +809,105 @@ def test_a_placeholder_core_failure_with_the_full_run_in_progress_waits_and_neve
     assert "completed with conclusion" not in err
 
 
-def test_a_placeholder_core_failure_after_the_full_run_completed_advises_the_rerun(
+NOW = datetime(2026, 11, 11, 18, 0, 0, tzinfo=timezone.utc)
+
+
+def _stamp(seconds_ago: int) -> str:
+    return (NOW - timedelta(seconds=seconds_ago)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+@pytest.fixture
+def fixed_now(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(pr_arm, "_now", lambda: NOW)
+
+
+def _placeholder_gap(full_conclusion: str, full_age: int, placeholder_age: int, **extra: object) -> FakeGh:
+    return FakeGh(
+        verdict=None,
+        core=("completed", "failure"),
+        core_url=PLACEHOLDER_URL,
+        ci_runs=[
+            (90, "CI (text edit)", "completed", "failure", _stamp(placeholder_age)),
+            (91, "CI", "completed", full_conclusion, _stamp(full_age)),
+        ],
+        **extra,
+    )
+
+
+def test_a_placeholder_core_failure_just_after_the_full_run_succeeded_waits_for_the_refresh(
+    fixed_now: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert _arm_live(_placeholder_gap("success", full_age=20, placeholder_age=900)) == 2
+    captured = capsys.readouterr()
+    assert "waiting for the placeholder re-run" in captured.err
+    assert "pr-rerun" not in captured.err
+    assert "completed with conclusion" not in captured.err
+    assert "outcome: waiting" in captured.out
+
+
+def test_a_placeholder_core_failure_with_its_rerun_in_progress_waits_for_the_refresh(
+    fixed_now: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gh = FakeGh(
+        verdict=None,
+        core=("completed", "failure"),
+        core_url=PLACEHOLDER_URL,
+        ci_runs=[
+            (90, "CI (text edit)", "completed", "failure", _stamp(900)),
+            (92, "CI (text edit)", "queued", "", _stamp(5)),
+            (91, "CI", "completed", "success", _stamp(2000)),
+        ],
+    )
+    assert _arm_live(gh) == 2
+    err = capsys.readouterr().err
+    assert "waiting for the placeholder re-run of CI run 92" in err
+    assert "pr-rerun" not in err
+
+
+def test_a_placeholder_core_failure_that_ran_again_after_the_full_run_completed_is_refused_with_the_rerun_advice(
+    fixed_now: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert _arm_live(_placeholder_gap("success", full_age=60, placeholder_age=10)) == 2
+    err = capsys.readouterr().err
+    assert "waiting for" not in err
+    assert "make pr-rerun PR=7" in err
+    assert "required check 'core' completed with conclusion 'failure'" in err
+
+
+def test_a_placeholder_core_failure_past_the_refresh_bound_is_refused_with_the_rerun_advice(
+    fixed_now: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gap = pr_arm.PLACEHOLDER_REFRESH_SECONDS + 1
+    assert _arm_live(_placeholder_gap("success", full_age=gap, placeholder_age=gap + 900)) == 2
+    err = capsys.readouterr().err
+    assert "waiting for" not in err
+    assert "make pr-rerun PR=7" in err
+    assert "required check 'core' completed with conclusion 'failure'" in err
+
+
+@pytest.mark.parametrize("conclusion", ["failure", "cancelled"])
+def test_a_placeholder_core_failure_behind_a_full_run_that_did_not_succeed_is_refused_with_the_rerun_advice(
+    conclusion: str, fixed_now: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert _arm_live(_placeholder_gap(conclusion, full_age=20, placeholder_age=900)) == 2
+    err = capsys.readouterr().err
+    assert "waiting for" not in err
+    assert "make pr-rerun PR=7" in err
+
+
+def test_a_placeholder_core_failure_without_run_timestamps_is_refused_with_the_rerun_advice(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     gh = FakeGh(
         verdict=None,
         core=("completed", "failure"),
         core_url=PLACEHOLDER_URL,
-        ci_runs=[(90, "CI (text edit)", "completed"), (91, "CI", "completed")],
+        ci_runs=[(90, "CI (text edit)", "completed", "failure"), (91, "CI", "completed", "success")],
     )
     assert _arm_live(gh) == 2
-    assert gh.merged() == []
     err = capsys.readouterr().err
-    assert "waiting for full CI run" not in err
+    assert "waiting for" not in err
     assert "make pr-rerun PR=7" in err
-    assert "required check 'core' completed with conclusion 'failure'" in err
 
 
 def test_a_real_core_failure_is_not_mistaken_for_a_placeholder_while_another_run_is_in_progress(
@@ -1233,7 +1341,7 @@ def _scripted(outcomes: list[tuple[str, int]]) -> tuple[list[int], object]:
 
 WAITING = ("waiting: PR #7 is not armed yet: the core job that records it has not finished for aaaaaaaaa", 2)
 ARMED = (f"armed: PR #7 at head {HEAD}", 0)
-REFUSED = ("refused: PR #7 was not armed: an unresolved, non-outdated review thread is open", 2)
+REFUSED = ("refused: PR #7 was not armed: 1 unresolved review thread(s) block the merge", 2)
 
 
 def _last_outcome_line(capsys: pytest.CaptureFixture[str]) -> str:
@@ -1409,7 +1517,7 @@ def _arm_with_gate(gate_reasons: list[str], *, wait: bool, threads: bool = False
         None,
         run=gh or FakeGh(),
         unpublished=lambda _checkout: [],
-        threads=lambda _run, _repo, _number: threads,
+        threads=lambda _run, _repo, _number: _threads(threads),
         suites=lambda _run, _repo, _base, _head: [],
         gate=lambda _run, _repo, _number, _head: list(gate_reasons),
         wait_on_pending_review=wait,
