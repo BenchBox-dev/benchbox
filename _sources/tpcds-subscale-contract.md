@@ -12,7 +12,7 @@ This document defines the exact expectations for TPC-DS data generated at scale 
 using the BenchBox patched `dsdgen` binaries. It is derived from measured Gate Zero evidence in
 `_sources/tpcds-subscale-probe.md`, not from assumptions.
 
-"Subscale" means `scale_factor < 1.0`. The currently supported subscale range is `0.001 <= sf < 1.0`.
+"Subscale" means `scale_factor < 1.0`. The currently supported subscale range is `0.01 <= sf < 1.0`.
 Scale factors at or above 1.0 are governed by the existing official TPC-DS data contract, which
 this document does not replace.
 

@@ -4,11 +4,13 @@ import pytest
 
 from benchbox.core.benchmark_registry import (
     BENCHMARK_METADATA,
+    get_benchmark_default_scale,
     get_scale_factor_rule,
     nonstandard_scale_note,
     validate_scale_factor,
 )
 from benchbox.core.errors import ScaleFactorNotSupportedError, ScaleFactorOutOfRangeError
+from benchbox.core.tpcds.compliance import TpcdsComplianceClass, validate_tpcds_scale
 
 pytestmark = [
     pytest.mark.unit,
@@ -108,3 +110,31 @@ def test_note_only_for_nonstandard_values() -> None:
 def test_unknown_benchmark_raises_clear_error() -> None:
     with pytest.raises(ValueError, match="Unknown benchmark 'does-not-exist'"):
         validate_scale_factor("does-not-exist", 999.0)
+
+
+@pytest.mark.parametrize("benchmark_id", ["tpcds", "tpcds_obt", "coffeeshop", "joinorder_synthetic"])
+@pytest.mark.parametrize("sf", [0.001, 0.005])
+def test_values_below_the_floor_are_rejected(benchmark_id: str, sf: float) -> None:
+    with pytest.raises(ValueError, match="0.01"):
+        validate_scale_factor(benchmark_id, sf)
+
+
+@pytest.mark.parametrize("benchmark_id", ["tpcds", "tpcds_obt", "coffeeshop", "joinorder_synthetic"])
+def test_floor_value_is_accepted(benchmark_id: str) -> None:
+    validate_scale_factor(benchmark_id, 0.01)
+
+
+def test_tpcds_scale_validator_names_the_floor() -> None:
+    with pytest.raises(ValueError, match="0.01"):
+        validate_tpcds_scale(0.001)
+    assert validate_tpcds_scale(0.01) is TpcdsComplianceClass.UNOFFICIAL_SUBSCALE
+
+
+def test_coffeeshop_default_scale_is_the_floor() -> None:
+    assert get_benchmark_default_scale("coffeeshop") == 0.01
+
+
+def test_no_registry_entry_goes_below_the_floor() -> None:
+    for benchmark_id, meta in BENCHMARK_METADATA.items():
+        values = [*meta["scale_options"], meta["default_scale"], meta.get("min_scale", 0.01)]
+        assert min(values) >= 0.01, benchmark_id

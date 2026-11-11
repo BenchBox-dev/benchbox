@@ -1156,7 +1156,7 @@ def _dry_run_validate_inputs(s: types.SimpleNamespace) -> None:
     if s.scale >= 1 and s.scale != int(s.scale):
         console.print(f"[red]❌ Scale factors >= 1 must be whole integers. Got: {s.scale}[/red]")
         console.print("[yellow]Use values like 1, 2, 10, etc. for large scale factors[/yellow]")
-        console.print("[yellow]Use values like 0.1, 0.01, 0.001, etc. for small scale factors[/yellow]")
+        console.print("[yellow]Use values like 0.1, 0.01, etc. for small scale factors[/yellow]")
         if logger:
             logger.error(f"Invalid scale factor for dry run: {s.scale}")
         ctx.exit(1)
@@ -1325,7 +1325,7 @@ def _run_direct(s: types.SimpleNamespace) -> None:
     if s.scale >= 1 and s.scale != int(s.scale):
         console.print(f"[red]❌ Scale factors >= 1 must be whole integers. Got: {s.scale}[/red]")
         console.print("[yellow]Use values like 1, 2, 10, etc. for large scale factors[/yellow]")
-        console.print("[yellow]Use values like 0.1, 0.01, 0.001, etc. for small scale factors[/yellow]")
+        console.print("[yellow]Use values like 0.1, 0.01, etc. for small scale factors[/yellow]")
         if logger:
             logger.error(f"Invalid scale factor for direct execution: {s.scale}")
         return

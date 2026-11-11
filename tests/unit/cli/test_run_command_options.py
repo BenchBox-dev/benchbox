@@ -355,7 +355,7 @@ class TestDryRunValidation:
         assert result.exit_code == 1
         assert "joinorder accepts scale_factor in [1.0]; got 0.01" in result.output
 
-    @pytest.mark.parametrize("scale", ["0.001", "0.01", "0.1", "1", "10", "100000"])
+    @pytest.mark.parametrize("scale", ["0.01", "0.1", "1", "10", "100000"])
     def test_dry_run_tpcds_obt_accepts_tpcds_scale_range(self, tmp_path, scale):
         runner = CliRunner()
 
