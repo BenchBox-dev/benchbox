@@ -1,4 +1,5 @@
 {
+  "context": "Revalidated 2026-11-11 against origin/develop c7b75c80bc: still required, with w2, w3, w4 and w5 all still open. The three needs items (tuning-no-midrun-destructive-db-handling, tuning-layout-op-skip-vs-fail, tuning-post-load-seam) are done. w2 confirmed: the 4-key cap exists only for per-table clustering in platforms/databricks/tuning_validation.py:50-60; the platform_optimizations path has no count check (core/tuning/interface.py:829-870 validates strategy conflicts only, and adapter.py:395 and :2996 consume liquid_clustering_columns unchecked). w3 confirmed: adapter.py only reads DBR/DBSQL version and warehouse channel for reporting (lines ~170-260, 800-830, 1045); nothing gates liquid SQL on runtime, channel, Unity Catalog or optimize-full eligibility. Result metadata already carries requested_databricks_clustering_strategy and liquid_clustering_columns_config (adapter.py:712-746, 2690-2701), which is the starting point for w5. w4 still requires explicit owner approval for a live Databricks run (not given) and the Unity Catalog quota check.",
   "description": "REVALIDATED 2026-10-01. Credentials are no longer the blocker: Databricks credentials are configured in ~/.benchbox/credentials.yaml and live Databricks runs are executing from develop. The item was imported as Blocked on w4 (live SF 0.01 runs) and had been stalled since 2026-05-26.\n\nRemaining work, in order:\n- w2: reject liquid_clustering_columns over 4 keys in manual mode. Table-level clustering is capped at 4 in platforms/databricks/tuning_validation.py, but the platform_optimizations path (core/tuning/interface.py, liquid_clustering_columns) has no 4-key check, and the item's own note records a 5-key manual config being accepted.\n- w3: runtime compatibility checks (DBR, channel, warehouse, Unity Catalog, optimize-full eligibility) before liquid-clustering SQL is emitted. w2 and w3 are engineering and need no credentials.\n- w4: live Databricks SF 0.01 tpch/tpcds liquid-template runs; needs w3 and an explicit live-run approval stating command, maximum runtime, log path and stop condition. Check the 500-table Unity Catalog metastore quota first.\n- w5: verify the result metadata carries the liquid-specific fields.",
   "legacy": {
     "item_meta": {
@@ -163,6 +164,14 @@
       "op": "update",
       "op_id": "0a524221174b44de9b7746b4852820f2",
       "session_id": "796d606672604f3d869b9c79926d482c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:33:40Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5292187cf5254bb2a564c85ee56c07de",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
