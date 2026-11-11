@@ -21127,7 +21127,9 @@
     },
     "duplicate-small-scale-factor-fixture-20261111": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "feature-test-fixture-and-ci-shard-hygiene-20261111"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Remove or rename the duplicate small_scale_factor fixture"
