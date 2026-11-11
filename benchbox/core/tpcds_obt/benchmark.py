@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Union
 
 from benchbox.base import BaseBenchmark
+from benchbox.core.tpcds.compliance import validate_tpcds_scale
 from benchbox.core.tpcds.generator import TPCDSDataGenerator
 from benchbox.core.tpcds_obt.etl.transformer import SUPPORTED_CHANNELS, TPCDSOBTTransformer
 from benchbox.core.tpcds_obt.queries import TPCDSOBTQueryManager
@@ -54,8 +55,7 @@ class TPCDSOBTBenchmark(BaseBenchmark):
     ) -> None:
         super().__init__(scale_factor=scale_factor, **kwargs)
 
-        if scale_factor < 1.0:
-            raise ValueError("TPC-DS-OBT requires scale_factor >= 1.0 to align with TPC-DS generation.")
+        validate_tpcds_scale(scale_factor)
 
         self._name = "TPC-DS One Big Table Benchmark"
         self._version = "0.2"

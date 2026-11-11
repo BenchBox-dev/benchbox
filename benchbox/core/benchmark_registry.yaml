@@ -151,13 +151,15 @@ benchmark_metadata:
     description: Single-table TPC-DS (One Big Table) benchmark
     category: Experimental
     support_status: experimental
-    num_queries: 17
-    query_description: OBT-adapted analytical queries
+    num_queries: 90
+    query_description: 90 SQL queries (93 statements); 17 DataFrame queries
     supports_streams: false
     default_scale: 1.0
     scale_options:
+    - 0.01
+    - 0.1
     - 1.0
-    min_scale: 1.0
+    - 10.0
     complexity: Medium
     estimated_time_range:
     - 5

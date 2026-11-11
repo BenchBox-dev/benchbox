@@ -15,8 +15,6 @@ class TPCDSOBT(BaseBenchmark):
         output_dir: Optional[Union[str, Path]] = None,
         **kwargs: Any,
     ) -> None:
-        if scale_factor < 1.0:
-            raise ValueError("TPC-DS-OBT requires scale_factor >= 1.0 to align with TPC-DS generation.")
         super().__init__(scale_factor=scale_factor, output_dir=output_dir, **kwargs)
         self._initialize_benchmark_implementation(
             TPCDSOBTBenchmark,
