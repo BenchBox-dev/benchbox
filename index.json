@@ -43968,15 +43968,10 @@
       "title": "The documented uv 0.13.4 minimum is not enforced"
     },
     "v-tag-ruleset-allows-tag-moves-20261009": {
-      "claim": {
-        "expires_at": "2026-11-12T20:42:01Z",
-        "generation": "aa4aa5f8b31844df95aca79368523e22",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "The v-tag ruleset blocks only tag creation, so release tags can be moved or deleted"
     },
     "validate-agent-behavioral-eval-rubrics": {
