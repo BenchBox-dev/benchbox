@@ -14210,10 +14210,15 @@
       "title": "medium-collect spends about 108 s collecting because it starts with a cold assertion-rewrite cache"
     },
     "ci-medium-shard-cancelled-without-cause-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T19:14:01Z",
+        "generation": "08f1e65b9d8b4bb39d895b14f0c43eea",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "medium-test shard 2 hangs until its timeout after a watchdog test kills its own pytest-xdist worker"
     },
     "ci-medium-shard-hangs-after-last-test-20261110": {
