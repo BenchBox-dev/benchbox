@@ -42066,10 +42066,15 @@
       "title": "Confirm tsbs_devops DataFrame-SQL id mapping"
     },
     "tsbs-query-manager-stateful-rng-20261026": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T20:41:27Z",
+        "generation": "77726e14e85f4912b4b3a8ad7b92df3d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "TSBSDevOpsQueryManager uses the same stateful RNG pattern fixed for NYCTaxi in #3554"
     },
     "tuned-run-marker-aborts-athena-synapse-bigquery-20261013": {
