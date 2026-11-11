@@ -39909,18 +39909,13 @@
       "title": "Theseus: read verdict and finding identity from markers so the review prose can change"
     },
     "theseus-review-minimize-superseded-20261110": {
-      "claim": {
-        "expires_at": "2026-11-12T20:01:39Z",
-        "generation": "20fc57c93dc342e5983f9263bcde4376",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57133450e487c312386efb7b"
-      },
+      "claim": null,
       "needs": [
         "review-minimize-superseded-probe-20261110",
         "theseus-review-format-release-a-20261110"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Theseus: collapse superseded bot verdict reviews as outdated after a new verdict posts"
     },
     "theseus-review-not-reviewed-output-20261110": {
