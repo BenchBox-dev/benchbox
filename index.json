@@ -22696,6 +22696,13 @@
       "status": "done",
       "title": "DECISION GATE: adopt a wall-clock fast-lane budget once 4 weeks of WS9 duration data exist"
     },
+    "feature-agent-docs-operational-facts-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Agent docs: record the operational facts sessions kept rediscovering"
+    },
     "fetch-mode-cli-and-influxdb-followups-20261107": {
       "claim": null,
       "needs": [],

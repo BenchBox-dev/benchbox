@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "One pull request containing every member's change is merged to develop",
+    "Each member's own acceptance criteria are met or its unmet part is recorded on that member with the reason",
+    "Each member is finished after the merge is observed on origin/develop"
+  ],
+  "description": "Delivery: one feature branch and one pull request for the members below, built by one delegated session; the coordinating session opens no second PR, arms the PR, observes the merge and closes the tracker items. This is the feature-branch form of serial mode. A registered batch is not used because its members must be separate top-level sessions, and the owner asked for delegation to subagents. The members list this item in their needs so nobody claims them separately. Documentation only. Branch docs/agent-operational-facts. Where a member has a decision gate that needs the owner, the conservative branch of the gate is taken and recorded; nothing is deleted on a guess. docs/agent/merge-authority.md and make/help.mk are left alone because two open pull requests (#4110, #4112) change them. Members: heavy-work-guard-doc-admission-wait-20261111, local-review-discoverability-20261111, worktree-claim-subagent-shared-pid-doc-20261111, stale-docs-remaining-after-retro-20261111, operational-facts-sessions-rediscovered-20261111.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T17:24:57Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "bdc30db064d04121bcba348189735449",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    }
+  ]
+}
