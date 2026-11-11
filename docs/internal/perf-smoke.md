@@ -46,16 +46,6 @@ floor is 1.25 times 64.9 rounded up to a whole millisecond: 82 ms. With the 547 
 baseline it lets the noisiest observed night (+57.7 ms) pass while a uniform 2x slowdown
 still fails.
 
-## Skipping the check
-
-Attach the `skip-perf-smoke` label to the PR. Use it only for:
-
-- Intentional performance shifts where the baseline needs refresh.
-- GH-runner flake that you've confirmed by re-running the workflow.
-
-Don't use it to merge code you know regresses perf. The baseline refresh
-below is the right move.
-
 ## Refreshing the baseline
 
 The baseline is rebuilt from several CI runs, never from one run. A single
@@ -116,7 +106,7 @@ uv run -- benchbox compare _project/baselines/perf_smoke_duckdb_tpch_001.json \
 The script chooses the CPU model itself and refuses to build when none has
 five results; pass `--cpu-model` to override it. It prints the largest
 per-query spread across all the sources and the floor that follows from it. If either floor changes, update
-`--min-regression-delta` and `--min-aggregate-regression-delta` in both workflows and the Noise floor section above.
+`--min-regression-delta` and `--min-aggregate-regression-delta` in `.github/workflows/nightly-v2.yml` and the Noise floor section above.
 
 When the aggregate check fails and no single query explains it, check the
 night's CPU model against the baseline's before treating it as a regression:
@@ -124,9 +114,8 @@ the floor only covers the spread seen on the baseline's own runner class.
 
 ## Troubleshooting
 
-- **Flake on GH runners**: re-run the workflow once. If it persists,
-  attach `skip-perf-smoke` and open an issue so the baseline or threshold
-  can be reviewed; don't chase the flake under PR pressure.
+- **Flake on GH runners**: re-run the nightly perf domain once. If it persists,
+  open an issue so the baseline or threshold can be reviewed.
 - **Compare command errors**: validate the baseline with
   `uv run -- python -c 'import json; json.load(open("_project/baselines/perf_smoke_duckdb_tpch_001.json"))'`.
 - **Baseline drift over time**: if the noise floor creeps but no single

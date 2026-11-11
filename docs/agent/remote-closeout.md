@@ -4,9 +4,9 @@
 narrow exception it makes to the read-only primary clone, the reviewer record
 that gates it, and the PRs it never applies to. The checkout-free path also
 needs the builder to open its own PR. Until `make pr-open` works in cloud
-sessions and the `make pr-arm-remote` and `make pr-landing-remote` targets
-exist, every PR closes out from a linked worktree as
-`docs/agent/cloud-builder.md` describes.
+sessions, every PR closes out from a linked worktree as
+`docs/agent/cloud-builder.md` describes; the `make pr-arm-remote` and
+`make pr-landing-remote` targets below already exist.
 
 ## Why
 

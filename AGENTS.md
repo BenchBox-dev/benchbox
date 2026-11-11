@@ -72,7 +72,7 @@ make agent-write-preflight
 
 Stop if `git rev-parse --show-toplevel` is the primary clone; emergency writes there need explicit authorization plus `BENCHBOX_ALLOW_MAIN_CLONE_WRITE=1`. Preserve unrelated dirty work; never use destructive Git/filesystem commands without approval. Use `rg`; stage only authorized paths; never `git add -A`.
 
-`[REMOTE-CLOSEOUT-001]` A local closer of a cloud-built branch may skip the worktree: fetch the PR head in the primary clone, then run the `make pr-arm-remote` and `pr-landing-remote` targets listed in `docs/agent/remote-closeout.md`, arming only on a stored reviewer record for that head and changing no repository file, local branch, or config. Feature, batch, stack, and soundness PRs use a worktree, as does every PR until those targets exist.
+`[REMOTE-CLOSEOUT-001]` A local closer of a cloud-built branch may skip the worktree: fetch the PR head in the primary clone, then run `make pr-arm-remote` and `pr-landing-remote` per `docs/agent/remote-closeout.md`, arming only on a stored reviewer record for that head and changing no repository file, local branch, or config. Feature, batch, stack, and soundness PRs use a worktree, as does every PR until cloud `pr-open` works.
 
 A disposable clone (remote session, CI runner) declares `BENCHBOX_EPHEMERAL_CLONE=1`. Local sessions must use linked worktrees, except under `[REMOTE-CLOSEOUT-001]`. Never run `git worktree prune` or `gc` inside a container mounting `.git` (pruning destroys host registrations); unlock only after confirming the mount is inactive.
 
@@ -127,7 +127,7 @@ controls, and cannot certify or unlock the changes that make it possible.
 - CLI dry runs must propagate explicit phases; deterministic runs use a seed.
 - Green focused/fast tests are not UAT or production certification.
 
-Apple/macOS: correctness-gate digests are Linux-generated; use `make ci-linux` (`release-guide.md`). Mocker is local-only, never CI: databend, doris and starrocks are single-service stacks. Per-stack status: https://benchbox.dev/docs/operations/uat-framework.html. Never prune globally.
+Apple/macOS: correctness-gate digests are Linux-generated; use `make ci-linux`. Local containers run on `mocker` (no `docker`), never in CI: databend, doris and starrocks are single-service stacks. Per-stack status: https://benchbox.dev/docs/operations/uat-framework.html. Never prune globally.
 
 ## Skills and generated mirrors
 
