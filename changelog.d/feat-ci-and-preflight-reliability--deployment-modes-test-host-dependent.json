@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "The deployment-mode recording tests pin execution-class detection and cover both container and native variant ids, so their result no longer depends on the host they run on."
-}

@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "Adopt shallow git checkouts for tree-only CI workflows to reduce runner overhead"
-}

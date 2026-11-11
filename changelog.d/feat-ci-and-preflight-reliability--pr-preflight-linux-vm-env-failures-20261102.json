@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "The Linux VM preflight leg no longer fails two tests for environment reasons: the unlock test supplies its own python3 and the todo-db handshake test skips with a stated prerequisite when the scripts project is not installed, while CI still runs and enforces both."
-}

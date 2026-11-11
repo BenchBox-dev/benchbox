@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "Every develop push now gets its own completed trunk run and dist artifact, so every merged commit can be released; release-check can name the newest releasable commit."
-}

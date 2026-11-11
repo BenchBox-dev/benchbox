@@ -1,1 +1,0 @@
-{"schema": 1, "internal": "Docker integration workflow gains a firebolt job (pull_request and nightly) that loads TPC-H SF0.01 into a digest-pinned Firebolt Core through the native upload path and checks row counts and column-count rejection."}

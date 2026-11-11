@@ -1,1 +1,0 @@
-{"schema": 1, "internal": "Test-only change: a dedicated workflow runs the batch loop end-to-end tests when batch tooling or the files the fixture copies change, and nightly."}
