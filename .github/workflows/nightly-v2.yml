@@ -119,6 +119,12 @@ jobs:
           LEG_POSTGRES_IMAGE: ${{ matrix.postgres_image }}
         run: echo "POSTGRES_IMAGE=${LEG_POSTGRES_IMAGE}" >> "$GITHUB_ENV"
 
+      - name: Create the BenchBox data directory
+        run: |
+          data_dir="${{ runner.temp }}/benchbox-data"
+          mkdir -p "$data_dir"
+          echo "BENCHBOX_DATA_DIR=$data_dir" >> "$GITHUB_ENV"
+
       - name: Bring up compose stack
         run: docker compose -f "${{ matrix.compose }}" up -d --wait
 

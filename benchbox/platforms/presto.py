@@ -36,6 +36,9 @@ class PrestoAdapter(PrestoTrinoAdapterBase):
     table_format_choices = ("memory", "hive")
     ddl_memory_catalog_names = ("memory",)
     target_dialect = PRESTO_DIALECT
+    bulk_native_compression = frozenset({".gz"})
+    bulk_null_format_property = None
+    bulk_field_delimiter_property = "textfile_field_delim"
     uses_client_source = True
     from_config_optional_fields = (*PrestoTrinoAdapterBase.from_config_optional_fields, "source")
     memory_error_markers = ("MEMORY_LIMIT_EXCEEDED", "exceeds max memory")

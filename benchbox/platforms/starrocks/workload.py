@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import csv
 import logging
 import re
 from pathlib import Path
@@ -11,30 +10,20 @@ from benchbox.core.transactional.staging_keys import leading_key_columns
 from benchbox.core.tuning.generators.starrocks import DEFAULT_BUCKET_COUNT
 from benchbox.platforms.base.data_loading import (
     DataSource,
-    FileFormatHandler,
     FileFormatRegistry,
     resolve_csv_dialect,
-    validate_sql_identifier,
 )
 from benchbox.platforms.base.sql_execution import execute_sql_query
+from benchbox.platforms.starrocks.stream_load import (
+    StarRocksParquetHandler,
+    StarRocksStreamLoadHandler,
+    StreamLoadTarget,
+    treats_empty_as_null,
+)
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dialect_utils import apply_rewrite, create_table_shape, is_create_table, translate_ddl
 
 logger = logging.getLogger(__name__)
-
-
-_STREAM_LOAD_NULL_TOKENS = frozenset(("nan", "inf", "-inf", "+inf"))
-
-
-def _stream_load_treats_empty_as_null(delimiter: str, null_marker: str | None = None) -> bool:
-    return delimiter == "," or null_marker == ""
-
-
-def _stream_load_row(cells: list[str], *, null_empty: bool, delimiter: str) -> str:
-    if null_empty:
-        null_tokens = _STREAM_LOAD_NULL_TOKENS if delimiter == "," else ()
-        cells = ["\\N" if (cell == "" or cell.lower() in null_tokens) else cell for cell in cells]
-    return delimiter.join(cells)
 
 
 def _alias_derived_tables(query: str) -> str:
@@ -189,6 +178,8 @@ class StarRocksWorkloadMixin:
     ) -> tuple[dict[str, int], float, dict[str, Any] | None]:
         from benchbox.platforms.base.data_loading import DataLoader
 
+        target = StreamLoadTarget(self.host, self.http_port, self.database, self.username, self.password)
+
         def starrocks_handler_factory(file_path, adapter, benchmark_instance, table_name=None, data_source=None):
             base_ext = FileFormatRegistry.get_base_data_extension(file_path)
 
@@ -197,19 +188,15 @@ class StarRocksWorkloadMixin:
                 dialect = resolve_csv_dialect(
                     dialect_source, table_name or file_path.stem, file_path, benchmark_instance
                 )
-                null_empty = _stream_load_treats_empty_as_null(dialect.delimiter, dialect.null_marker)
+                null_empty = treats_empty_as_null(dialect.delimiter, dialect.null_marker)
                 return StarRocksStreamLoadHandler(
-                    delimiter=dialect.delimiter,
-                    host=self.host,
-                    http_port=self.http_port,
-                    database=self.database,
-                    username=self.username,
-                    password=self.password,
+                    dialect.delimiter,
+                    target,
                     null_empty_strings=null_empty,
                     has_header=dialect.has_header,
                 )
             elif base_ext == ".parquet":
-                return StarRocksParquetHandler()
+                return StarRocksParquetHandler(target)
             return None
 
         cursor = connection.cursor()
@@ -275,240 +262,4 @@ class StarRocksWorkloadMixin:
         return result
 
 
-class StarRocksStreamLoadHandler(FileFormatHandler):
-    def __init__(
-        self,
-        delimiter: str,
-        host: str,
-        http_port: int,
-        database: str,
-        username: str,
-        password: str,
-        *,
-        null_empty_strings: bool = True,
-        has_header: bool = False,
-    ) -> None:
-        self.delimiter = delimiter
-        self.host = host
-        self.http_port = http_port
-        self.database = database
-        self.username = username
-        self.password = password
-        self.null_empty_strings = null_empty_strings
-        self.has_header = has_header
-
-    def get_delimiter(self) -> str:
-        return self.delimiter
-
-    def load_table(
-        self,
-        table_name: str,
-        file_path: Path,
-        connection: Any,
-        benchmark: Any,
-        logger: Any,
-    ) -> int:
-        import base64
-        import json as _json
-        import time as _time
-
-        from benchbox.platforms.starrocks import _dependencies
-
-        _requests = _dependencies.requests
-        if _requests is None:
-            raise ImportError("StarRocks Stream Load requires the 'requests' package")
-
-        validate_sql_identifier(table_name, "table name")
-
-        url = f"http://{self.host}:{self.http_port}/api/{self.database}/{table_name}/_stream_load"
-        creds = base64.b64encode(f"{self.username}:{self.password}".encode()).decode()
-        headers = {
-            "Authorization": f"Basic {creds}",
-            "Expect": "100-continue",
-            "column_separator": self.delimiter,
-            "format": "CSV",
-            "max_filter_ratio": "0",
-            "strict_mode": "false",
-        }
-        if self.null_empty_strings:
-            headers["null_format"] = "\\N"
-
-        compression_handler = FileFormatRegistry.get_compression_handler(file_path)
-
-        def _data_stream():
-            with compression_handler.open(file_path) as f:
-                reader = csv.reader(f, delimiter=self.delimiter)
-                if self.has_header:
-                    next(reader, None)
-                for row in reader:
-                    line = _stream_load_row(
-                        row,
-                        null_empty=self.null_empty_strings,
-                        delimiter=self.delimiter,
-                    )
-                    yield (line + "\n").encode("utf-8")
-
-        max_attempts = 3
-        last_err: Exception | None = None
-        resp: Any = None
-        for attempt in range(1, max_attempts + 1):
-            try:
-                resp = _requests.put(url, headers=headers, data=_data_stream(), timeout=7200)
-                if resp.status_code in (200, 307):
-                    try:
-                        body = _json.loads(resp.text)
-                        msg = body.get("Message", "")
-                        if ":0" in msg and attempt < max_attempts:
-                            logger.warning(
-                                "STREAM LOAD BE unavailable for %s (attempt %d/%d, msg=%r); retrying",
-                                table_name,
-                                attempt,
-                                max_attempts,
-                                msg,
-                            )
-                            _time.sleep(10 * attempt)
-                            continue
-                    except Exception:
-                        pass
-                    break
-                if 500 <= resp.status_code < 600 and attempt < max_attempts:
-                    logger.warning(
-                        "STREAM LOAD HTTP %s for %s (attempt %d/%d); retrying",
-                        resp.status_code,
-                        table_name,
-                        attempt,
-                        max_attempts,
-                    )
-                    _time.sleep(5 * attempt)
-                    continue
-                raise RuntimeError(f"STREAM LOAD HTTP {resp.status_code} for {table_name}: {resp.text[:500]}")
-            except _requests.ConnectionError as e:
-                last_err = e
-                if attempt < max_attempts:
-                    logger.warning(
-                        "STREAM LOAD connection error for %s (attempt %d/%d): %s; retrying",
-                        table_name,
-                        attempt,
-                        max_attempts,
-                        e,
-                    )
-                    _time.sleep(5 * attempt)
-                    continue
-                raise RuntimeError(f"STREAM LOAD connection error for {table_name}: {e}") from e
-        else:
-            raise RuntimeError(f"STREAM LOAD exhausted retries for {table_name}: {last_err}")
-
-        result = _json.loads(resp.text)
-        status = result.get("Status", "")
-        if status not in ("Success", "Publish Timeout"):
-            raise RuntimeError(f"STREAM LOAD failed for {table_name}: {result.get('Message', result)}")
-
-        return int(result.get("NumberLoadedRows", 0))
-
-
-class StarRocksCSVHandler(FileFormatHandler):
-    def __init__(self, delimiter: str, *, null_empty_strings: bool = True, has_header: bool = False):
-        self.delimiter = delimiter
-        self.null_empty_strings = null_empty_strings
-        self.has_header = has_header
-
-    def get_delimiter(self) -> str:
-        return self.delimiter
-
-    def load_table(self, table_name: str, file_path: Path, connection: Any, benchmark: Any, logger: Any) -> int:
-        validate_sql_identifier(table_name, "table name")
-
-        row_count = 0
-        batch_size = 9_999
-        compression_handler = FileFormatRegistry.get_compression_handler(file_path)
-        sql: str | None = None
-
-        cursor = connection.cursor()
-        try:
-            with compression_handler.open(file_path) as f:
-                reader = csv.reader(f, delimiter=self.delimiter)
-                if self.has_header:
-                    next(reader, None)
-                batch: list[list] = []
-
-                for row in reader:
-                    if self.null_empty_strings:
-                        batch.append(
-                            [
-                                None if cell == "" or cell.lower() in ("nan", "inf", "-inf", "+inf") else cell
-                                for cell in row
-                            ]
-                        )
-                    else:
-                        batch.append(list(row))
-                    row_count += 1
-
-                    if sql is None:
-                        placeholders = ", ".join(["%s"] * len(row))
-                        sql = f"INSERT INTO `{table_name}` VALUES ({placeholders})"
-
-                    if len(batch) >= batch_size:
-                        cursor.executemany(sql, batch)
-                        batch = []
-
-                if batch and sql:
-                    cursor.executemany(sql, batch)
-
-        except Exception as e:
-            logger.error(f"Failed to load data from {file_path} into {table_name}: {e}")
-            raise
-        finally:
-            cursor.close()
-
-        return row_count
-
-
-class StarRocksParquetHandler(FileFormatHandler):
-    def get_delimiter(self) -> str:
-        return ""
-
-    def load_table(self, table_name: str, file_path: Path, connection: Any, benchmark: Any, logger: Any) -> int:
-        validate_sql_identifier(table_name, "table name")
-
-        try:
-            import pyarrow.parquet as pq
-        except ImportError as e:
-            raise RuntimeError("pyarrow is required to load Parquet files") from e
-
-        pf = pq.ParquetFile(file_path)
-        if pf.metadata.num_rows == 0:
-            return 0
-
-        schema = pf.schema_arrow
-        column_names = schema.names
-        validated_cols = [validate_sql_identifier(c, "column name") for c in column_names]
-        placeholders = ", ".join(["%s"] * len(validated_cols))
-        columns_str = ", ".join(f"`{c}`" for c in validated_cols)
-        insert_sql = f"INSERT INTO `{table_name}` ({columns_str}) VALUES ({placeholders})"
-
-        num_cols = len(column_names)
-        if num_cols <= 30:
-            batch_size = 10_000
-        elif num_cols <= 100:
-            batch_size = 2_000
-        else:
-            batch_size = 100
-
-        row_count = 0
-        cursor = connection.cursor()
-        try:
-            for batch in pf.iter_batches(batch_size=batch_size):
-                rows = [tuple(row[col] for col in column_names) for row in batch.to_pylist()]
-                if rows:
-                    cursor.executemany(insert_sql, rows)
-                    row_count += len(rows)
-        except Exception as e:
-            logger.error(f"Failed to load Parquet data from {file_path} into {table_name}: {e}")
-            raise
-        finally:
-            cursor.close()
-
-        return row_count
-
-
-__all__ = ["StarRocksWorkloadMixin", "StarRocksCSVHandler", "StarRocksParquetHandler"]
+__all__ = ["StarRocksWorkloadMixin"]

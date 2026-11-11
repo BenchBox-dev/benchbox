@@ -35,6 +35,7 @@ DOWNLOAD_TIMEOUT_SECONDS = 60.0
 PRODUCER_WAIT_SECONDS = 60.0
 PRODUCER_POLL_SECONDS = 3.0
 Api = Callable[[str], dict[str, Any]]
+ListApi = Callable[[str], list[dict[str, Any]]]
 
 _CHILD_ENVIRONMENT_KEYS = frozenset({"PATH", "LANG", "LC_ALL", "LC_CTYPE", "TMPDIR", "TEMP", "TMP", "SYSTEMROOT"})
 _GIT_ENVIRONMENT = {"GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull, "GIT_TERMINAL_PROMPT": "0"}
@@ -138,7 +139,7 @@ def _object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return result
 
 
-def github_json(path: str) -> dict[str, Any]:
+def _gh_api(path: str) -> Any:
     endpoint = f"repos/{REPOSITORY}" + (f"/{path}" if path else "")
     result = subprocess.run(
         ["gh", "api", "--hostname", "github.com", endpoint],
@@ -147,8 +148,18 @@ def github_json(path: str) -> dict[str, Any]:
         timeout=60,
         env=_gh_environment(),
     )
-    value = json.loads(result.stdout, object_pairs_hook=_object)
+    return json.loads(result.stdout, object_pairs_hook=_object)
+
+
+def github_json(path: str) -> dict[str, Any]:
+    value = _gh_api(path)
     _require(isinstance(value, dict), "API response is not an object")
+    return value
+
+
+def github_json_list(path: str) -> list[dict[str, Any]]:
+    value = _gh_api(path)
+    _require(isinstance(value, list) and all(isinstance(row, dict) for row in value), "API response is not a list")
     return value
 
 
@@ -406,7 +417,7 @@ def verify_producer_receipt(directory: Path, run: dict[str, Any], job: dict[str,
     return expected
 
 
-def _remote_branch_tip(root: Path, branch: str) -> str | None:
+def remote_branch_tip(root: Path, branch: str) -> str | None:
     result = _run_git(
         root,
         "rev-parse",
@@ -421,7 +432,7 @@ def _remote_branch_tip(root: Path, branch: str) -> str | None:
 
 
 def _contains_commit(root: Path, commit: str, branch: str) -> bool:
-    if _remote_branch_tip(root, branch) is None:
+    if remote_branch_tip(root, branch) is None:
         return False
     result = _run_git(
         root,
@@ -460,10 +471,167 @@ def protected_line(root: Path, tag: str, commit: str) -> str:
     if on_maintenance:
         return maintenance
     _require(
-        _remote_branch_tip(root, maintenance) is None,
+        remote_branch_tip(root, maintenance) is None,
         f"{maintenance} exists, so {tag} must be tagged on it, not on {PRODUCER_BRANCH}",
     )
     return PRODUCER_BRANCH
+
+
+def _git_text(root: Path, *args: str) -> str:
+    return _run_git(root, *args, check=True, text=True, stdout=subprocess.PIPE, timeout=600).stdout
+
+
+def _base_release_tags(root: Path, commit: str, branch: str, tag: str | None) -> list[str]:
+    from packaging.version import InvalidVersion, Version
+
+    released = Version(tag[1:]) if tag else None
+    tags = []
+    for name in _git_text(root, "tag", "--points-at", commit, "--list", "v*").split():
+        try:
+            version = Version(name[1:])
+        except InvalidVersion:
+            continue
+        if version.is_prerelease or version.is_devrelease or version.is_postrelease or version.local:
+            continue
+        if maintenance_branch(name[1:]) == branch and (released is None or version < released):
+            tags.append(name)
+    return tags
+
+
+def _merged_into(commit: str, branch: str, pulls: ListApi) -> bool:
+    return any(
+        row.get("merge_commit_sha") == commit
+        and isinstance(row.get("merged_at"), str)
+        and (row.get("base") or {}).get("ref") == branch
+        and _is_repository(((row.get("base") or {}).get("repo") or {}).get("full_name"))
+        for row in pulls(f"commits/{commit}/pulls")
+    )
+
+
+CREATION_SOURCE_TRAILER = "Develop-Source"
+CREATION_REVIEW_PATHS = (
+    ".github/review.yml",
+    ".github/review-omp-config.yml",
+    ".github/theseus-lock.json",
+    ".github/soundness-paths.txt",
+    ".github/inert-paths.txt",
+    "scripts/theseus_cli.py",
+    "scripts/theseus_release_check.py",
+    "_project/scripts/theseus_bootstrap.py",
+)
+CREATION_REVIEW_WORKFLOW = re.compile(r"\.github/workflows/(review|oracle)-[^/]+")
+
+
+def _creation_sources(root: Path, commit: str) -> list[str]:
+    return _git_text(root, "log", "-1", f"--format=%(trailers:key={CREATION_SOURCE_TRAILER},valueonly)", commit).split()
+
+
+def _earlier_creation_sources(root: Path, base: str) -> list[str]:
+    develop = f"refs/remotes/origin/{PRODUCER_BRANCH}"
+    found = []
+    for earlier in _git_text(root, "rev-list", "--first-parent", base, "--not", develop).split():
+        sources = _creation_sources(root, earlier)
+        if len(sources) == 1 and re.fullmatch(r"[0-9a-f]{40}", sources[0]) is not None:
+            found.append(sources[0])
+    return found
+
+
+def _creation_source(root: Path, creation: str, base: str, branch: str) -> str:
+    develop = f"refs/remotes/origin/{PRODUCER_BRANCH}"
+    sources = _creation_sources(root, creation)
+    _require(
+        len(sources) == 1 and re.fullmatch(r"[0-9a-f]{40}", sources[0]) is not None,
+        f"{branch} creation commit must name one full {PRODUCER_BRANCH} commit in a {CREATION_SOURCE_TRAILER} trailer",
+    )
+    source = sources[0]
+    fork = _git_text(root, "merge-base", base, develop).strip()
+    first_parent = set(_git_text(root, "rev-list", "--first-parent", develop, f"^{fork}").split())
+    descends = _run_git(root, "merge-base", "--is-ancestor", fork, source, timeout=60).returncode == 0
+    first_parent = first_parent if descends else set()
+    _require(
+        source in first_parent,
+        f"{branch} creation source {source} is not a first-parent {PRODUCER_BRANCH} commit newer than the line's tag",
+    )
+    for previous in _earlier_creation_sources(root, base):
+        _require(
+            _run_git(root, "merge-base", "--is-ancestor", previous, source, timeout=60).returncode == 0,
+            f"{branch} creation source {source} is older than {previous}, a {CREATION_SOURCE_TRAILER} "
+            "already on the line",
+        )
+    return source
+
+
+def _state_at(root: Path, revision: str, path: str) -> str:
+    return _run_git(root, "ls-tree", "-z", revision, "--", path, stdout=subprocess.PIPE, text=True, timeout=60).stdout
+
+
+def creation_review_paths(root: Path, *revisions: str) -> set[str]:
+    paths = set(CREATION_REVIEW_PATHS)
+    for revision in revisions:
+        listing = _git_text(root, "ls-tree", "-r", "-z", "--name-only", revision, "--", ".github/workflows")
+        paths.update(path for path in listing.split("\0") if CREATION_REVIEW_WORKFLOW.fullmatch(path))
+    return paths
+
+
+def _creation_changes(root: Path, parent: str, creation: str) -> list[tuple[str, str, str, str]]:
+    fields = _git_text(root, "diff-tree", "-r", "-z", "--no-renames", "--raw", parent, creation).split("\0")
+    changes = []
+    for header, path in zip(fields[0::2], fields[1::2], strict=False):
+        if not header:
+            continue
+        _, new_mode, _, new_blob, status = header.lstrip(":").split(" ")
+        changes.append((status, path, new_mode, new_blob))
+    return changes
+
+
+def _verify_line(root: Path, branch: str, tip: str, pulls: ListApi, tag: str | None) -> None:
+    develop = f"refs/remotes/origin/{PRODUCER_BRANCH}"
+    line = _git_text(root, "rev-list", "--first-parent", tip, "--not", develop).split()
+    _require(bool(line), f"{tag or tip} has no commits of its own on {branch}")
+    for entry in _git_text(root, "rev-list", "--parents", "--no-walk", *line).splitlines():
+        _require(len(entry.split()) == 2, f"{branch} commit {entry.split()[0]} is not a single-parent commit")
+    older = f" older than {tag}" if tag else ""
+    _require(
+        bool(_base_release_tags(root, _git_text(root, "rev-parse", f"{line[-1]}^1").strip(), branch, tag)),
+        f"{branch} does not start from a final release tag of its minor{older}",
+    )
+    if tag:
+        _require(_merged_into(tip, branch, pulls), f"{tag} does not point at a pull request merged into {branch}")
+    for candidate in line[1:] if tag else line:
+        if _merged_into(candidate, branch, pulls):
+            continue
+        base = _git_text(root, "rev-parse", f"{candidate}^1").strip()
+        _require(
+            bool(_base_release_tags(root, base, branch, tag)),
+            f"{branch} commit {candidate} is neither a pull request merged into it "
+            "nor a creation commit on a final release tag of its minor",
+        )
+        _verify_creation(root, candidate, base, branch)
+
+
+def verify_maintenance_line(root: Path, tag: str, commit: str, branch: str, pulls: ListApi) -> None:
+    _verify_line(root, branch, commit, pulls, tag)
+
+
+def verify_line(root: Path, branch: str, tip: str, pulls: ListApi) -> None:
+    _require(MAINTENANCE_BRANCH.fullmatch(branch) is not None, "invalid maintenance branch")
+    _verify_line(root, branch, tip, pulls, None)
+
+
+def _verify_creation(root: Path, creation: str, base: str, branch: str) -> None:
+    source = _creation_source(root, creation, base, branch)
+    for status, path, mode, blob in _creation_changes(root, base, creation):
+        expected = "" if status == "D" else f"{mode} blob {blob}\t{path}\0"
+        _require(
+            _state_at(root, source, path) == expected,
+            f"{branch} creation {'deletes' if status == 'D' else 'sets'} {path}, "
+            f"which differs from {PRODUCER_BRANCH} at {source}",
+        )
+    for path in sorted(creation_review_paths(root, creation, source)):
+        _require(
+            _state_at(root, creation, path) == _state_at(root, source, path),
+            f"{branch} creation does not carry {path} as {PRODUCER_BRANCH} has it at {source}",
+        )
 
 
 def resolve_tag(root: Path, tag: str) -> dict[str, str]:
@@ -717,20 +885,20 @@ def _download(artifact_id: int, archive: Path) -> None:
         raise
 
 
-def hosted_refspecs(tag: str) -> list[str]:
-    _require(bool(re.fullmatch(TAG_PATTERN, tag)), "invalid version tag")
-    return [
-        "develop:refs/remotes/origin/develop",
-        "refs/heads/release/*:refs/remotes/origin/release/*",
-        f"+refs/tags/{tag}:refs/tags/{tag}",
-    ]
+def hosted_refspecs(tag: str | None) -> list[str]:
+    refspecs = ["develop:refs/remotes/origin/develop", "refs/heads/release/*:refs/remotes/origin/release/*"]
+    if tag is not None:
+        _require(bool(re.fullmatch(TAG_PATTERN, tag)), "invalid version tag")
+        refspecs.append(f"+refs/tags/{tag}:refs/tags/{tag}")
+    return refspecs
 
 
-def fetch_hosted_refs(source: Path, tag: str) -> None:
+def fetch_hosted_refs(source: Path, tag: str | None, *, prune: bool = False) -> None:
     _run_git(
         source,
         "fetch",
         "--no-tags",
+        *(["--prune"] if prune else []),
         f"https://github.com/{REPOSITORY}.git",
         *hosted_refspecs(tag),
         check=True,
@@ -738,9 +906,26 @@ def fetch_hosted_refs(source: Path, tag: str) -> None:
     )
 
 
-def admit(root: Path, tag: str, output: Path, api: Api = github_json) -> dict[str, Any]:
+def resolve_line_tip(root: Path, branch: str, tip: str | None) -> str:
+    _require(MAINTENANCE_BRANCH.fullmatch(branch) is not None, "invalid maintenance branch")
+    if tip is None:
+        tip = remote_branch_tip(root, branch)
+        _require(tip is not None, f"{branch} does not exist on the hosted repository")
+    _require(re.fullmatch(r"[0-9a-f]{40}", tip) is not None, "line tip must be a full commit SHA")
+    _require(
+        _run_git(root, "cat-file", "-e", f"{tip}^{{commit}}", stderr=subprocess.DEVNULL, timeout=60).returncode == 0,
+        f"line tip {tip} is not a commit in the checkout",
+    )
+    return tip
+
+
+def admit(
+    root: Path, tag: str, output: Path, api: Api = github_json, pulls: ListApi = github_json_list
+) -> dict[str, Any]:
     source = resolve_tag(root, tag)
     branch = protected_line(root, tag, source["head_sha"])
+    if branch != PRODUCER_BRANCH:
+        verify_maintenance_line(root, tag, source["head_sha"], branch, pulls)
     run, job, artifact = select_producer(source["head_sha"], api, branch=branch)
     _require(not output.exists(), "output already exists")
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -769,6 +954,8 @@ def admit(root: Path, tag: str, output: Path, api: Api = github_json) -> dict[st
         _require(current == (run, job, artifact), "producer changed during admission")
         _require(resolve_tag(root, tag) == source, "tagged source changed during admission")
         _require(protected_line(root, tag, source["head_sha"]) == branch, "release line changed during admission")
+        if branch != PRODUCER_BRANCH:
+            verify_maintenance_line(root, tag, source["head_sha"], branch, pulls)
         summary = {
             **source,
             "producer": receipt,
@@ -799,6 +986,10 @@ def main(argv: list[str] | None = None) -> int:
     line = commands.add_parser("line")
     line.add_argument("--source", type=Path, required=True)
     line.add_argument("--tag", required=True)
+    verify = commands.add_parser("verify-line")
+    verify.add_argument("--source", type=Path, required=True)
+    verify.add_argument("--branch", required=True)
+    verify.add_argument("--tip")
     args = parser.parse_args(argv)
     try:
         if args.command == "producer":
@@ -815,6 +1006,12 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "line":
             source = args.source.resolve()
             print(protected_line(source, args.tag, resolve_tag(source, args.tag)["head_sha"]))
+        elif args.command == "verify-line":
+            source = args.source.resolve()
+            fetch_hosted_refs(source, None, prune=True)
+            tip = resolve_line_tip(source, args.branch, args.tip)
+            verify_line(source, args.branch, tip, github_json_list)
+            print(f"{args.branch} {tip} verified")
         else:
             fetch_hosted_refs(args.source, args.tag)
             print(json.dumps(admit(args.source.resolve(), args.tag, args.output.absolute()), indent=2))

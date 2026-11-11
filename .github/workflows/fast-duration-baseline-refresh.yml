@@ -357,6 +357,13 @@ jobs:
             cat fast-refresh/drift.md
           } > "$BODY_FILE"
           if [ -z "$(gh pr list --head "$BRANCH" --state open --json number -q '.[].number')" ]; then
-            gh pr create --title "chore(ci): refresh the medium-shard durations" \
-              --body-file "$BODY_FILE" --base develop --head "$BRANCH"
+            NEW_URL=$(gh pr create --title "chore(ci): refresh the medium-shard durations" \
+              --body-file "$BODY_FILE" --base develop --head "$BRANCH")
+            NEW_NUMBER="${NEW_URL##*/}"
+            for earlier in $(gh pr list --state open --base develop --limit 100 \
+              --json number,headRefName \
+              -q ".[] | select(.headRefName | startswith(\"chore/medium-durations-\")) | select(.headRefName != \"$BRANCH\") | .number"); do
+              gh pr close "$earlier" --delete-branch \
+                --comment "Superseded by #$NEW_NUMBER, which refreshes the medium-shard durations from newer Trunk runs."
+            done
           fi

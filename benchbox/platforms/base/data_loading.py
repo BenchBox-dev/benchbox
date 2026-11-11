@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import bz2
 import contextlib
 import csv
@@ -20,8 +19,6 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import date, datetime
-from decimal import Decimal
 from importlib import metadata as importlib_metadata
 from pathlib import Path
 from typing import Any, Protocol
@@ -1417,9 +1414,18 @@ class DuckDBVortexHandler(FileFormatHandler):
             return after - before
 
 
-_CLICKHOUSE_TRUE_TOKENS = frozenset(("true", "t", "1", "yes"))
-_CLICKHOUSE_FALSE_TOKENS = frozenset(("false", "f", "0", "no"))
-_CLICKHOUSE_VECTOR_TYPE_RE = re.compile(r"\[\s*\d*\s*\]")
+_CLICKHOUSE_INSERT_CHUNK_BYTES = 8 * 1024 * 1024
+_CLICKHOUSE_CSV_INSERT_SETTINGS = {
+    "input_format_csv_allow_variable_number_of_columns": 1,
+    "input_format_csv_trim_whitespaces": 0,
+    "date_time_input_format": "best_effort",
+}
+
+
+def _file_byte_chunks(file_path: Path) -> Iterator[bytes]:
+    with _open_binary_stream(file_path, FileFormatRegistry.get_compression_handler(file_path)) as source:
+        while chunk := source.read(_CLICKHOUSE_INSERT_CHUNK_BYTES):
+            yield chunk
 
 
 class ClickHouseNativeHandler(FileFormatHandler):
@@ -1432,17 +1438,14 @@ class ClickHouseNativeHandler(FileFormatHandler):
     def get_delimiter(self) -> str:
         return self.delimiter_char
 
-    def _uses_server_mode(self) -> bool:
-        return getattr(self.adapter, "deployment_mode", None) == "server"
+    def _uses_client_insert(self) -> bool:
+        return getattr(self.adapter, "deployment_mode", None) in ("server", "cloud")
 
     def _server_insert_block_size(self) -> int:
         value = getattr(self.adapter, "insert_block_size", 65536)
         if isinstance(value, bool) or not isinstance(value, int) or value <= 0 or value == 1000:
             raise DataLoadingError("ClickHouse server insert_block_size must be a positive integer other than 1000")
         return value
-
-    def _server_insert_settings(self) -> dict[str, int]:
-        return {"insert_block_size": self._server_insert_block_size()}
 
     def _get_csv_loading_config(self, table_name: str) -> dict[str, str]:
         config = {"delimiter": self.delimiter_char, "format": "CSVWithNames" if self.has_header else "CSV"}
@@ -1469,13 +1472,8 @@ class ClickHouseNativeHandler(FileFormatHandler):
         validated_table = validate_sql_identifier(table_name, "table name")
 
         try:
-            if self._uses_server_mode():
-                base_ext = FileFormatRegistry.get_base_data_extension(file_path)
-                if base_ext == ".parquet":
-                    return self._load_parquet_via_client_insert(validated_table, [file_path], connection)
-                return self._load_delimited_via_client_insert(
-                    validated_table, [file_path], connection, benchmark, logger
-                )
+            if self._uses_client_insert():
+                return self._load_via_client_insert(validated_table, [file_path], connection)
 
             escaped_path = escape_sql_string_literal(str(file_path))
 
@@ -1515,217 +1513,68 @@ class ClickHouseNativeHandler(FileFormatHandler):
             logger.error(f"ClickHouse file loading failed: {e}")
             raise
 
-    def _load_delimited_via_client_insert(
-        self,
-        validated_table: str,
-        file_paths: list[Path],
-        connection: Any,
-        benchmark: Any,
-        logger: Any,
-    ) -> int:
+    def _load_via_client_insert(self, validated_table: str, file_paths: list[Path], connection: Any) -> int:
         row_count = 0
-        row_generator: Any | None = None
         try:
-            column_count = None
+            if FileFormatRegistry.get_base_data_extension(file_paths[0]) == ".parquet":
+                expected_rows = self._expected_parquet_rows(validated_table, file_paths)
+                if expected_rows == 0:
+                    return 0
+                insert_format = "Parquet"
+                settings: dict[str, Any] = {"input_format_parquet_allow_missing_columns": 0}
+            else:
+                expected_rows = None
+                csv_config = self._get_csv_loading_config(validated_table)
+                insert_format = csv_config["format"]
+                settings = {**_CLICKHOUSE_CSV_INSERT_SETTINGS, "format_csv_delimiter": csv_config["delimiter"]}
+            settings["max_insert_block_size"] = self._server_insert_block_size()
             for file_path in file_paths:
-                compression_handler = FileFormatRegistry.get_compression_handler(file_path)
-                with compression_handler.open(file_path) as file_handle:
-                    column_count = SchemaInspector.get_column_count(
-                        benchmark, validated_table, file_handle, self.delimiter_char
-                    )
-                if column_count is not None:
-                    break
-            if column_count is None:
-                logger.debug(f"Could not determine column count for {validated_table}")
-                return 0
-
-            column_types = self._get_column_type_names(benchmark, validated_table)
-            if not any(column_types):
-                column_types = self._describe_server_column_types(connection, validated_table)
-
-            def rows() -> Iterator[tuple[Any, ...]]:
-                nonlocal row_count
-                for file_path in file_paths:
-                    handler = FileFormatRegistry.get_compression_handler(file_path)
-                    with handler.open(file_path) as file_handle:
-                        if self.has_header:
-                            next(file_handle, None)
-                        for line in file_handle:
-                            line = line.strip()
-                            if not line:
-                                continue
-                            fields = line.split(self.delimiter_char)
-                            fields.extend([""] * max(0, column_count - len(fields)))
-                            fields = fields[:column_count]
-                            row_count += 1
-                            yield tuple(
-                                self._convert_field_for_clickhouse(
-                                    value,
-                                    column_types[index] if index < len(column_types) else None,
-                                )
-                                for index, value in enumerate(fields)
-                            )
-
-            row_generator = rows()
-            connection.execute(
-                f"INSERT INTO {validated_table} VALUES",
-                row_generator,
-                settings=self._server_insert_settings(),
-            )
+                if file_path.stat().st_size == 0:
+                    continue
+                columns = self._insert_columns(file_path, insert_format, settings.get("format_csv_delimiter"))
+                chunks = _file_byte_chunks(file_path)
+                row_count += connection.insert_stream(validated_table, insert_format, chunks, settings, columns=columns)
+            if expected_rows is not None and row_count != expected_rows:
+                raise DataLoadingError(f"inserted {row_count:,} row(s), expected {expected_rows:,}")
             return row_count
         except ClickHouseServerLoadError:
             raise
         except Exception as exc:
             raise ClickHouseServerLoadError(validated_table, file_paths, row_count, exc) from exc
-        finally:
-            if row_generator is not None:
-                row_generator.close()
-
-    def _get_column_type_names(self, benchmark: Any, table_name: str) -> list[str | None]:
-        schema = benchmark.get_schema() if hasattr(benchmark, "get_schema") else {}
-        table_schema = _resolve_table_schema(schema, table_name)
-        columns = _schema_table_columns(table_schema)
-        if columns is None:
-            keyed = table_schema.get("columns") if isinstance(table_schema, dict) else None
-            columns = list(keyed.values()) if isinstance(keyed, dict) else []
-
-        type_names: list[str | None] = []
-        for column in columns:
-            if isinstance(column, dict):
-                type_names.append(str(column.get("type") or column.get("data_type") or "").upper() or None)
-            elif hasattr(column, "get_sql_type"):
-                type_names.append(str(column.get_sql_type()).upper())
-            else:
-                type_names.append(None)
-        return type_names
 
     @staticmethod
-    def _describe_server_column_types(connection: Any, validated_table: str) -> list[str | None]:
-        rows = connection.execute(
-            "SELECT type FROM system.columns "
-            f"WHERE database = currentDatabase() AND table = '{validated_table}' ORDER BY position"
-        )
-        return [str(row[0]) for row in rows or []]
+    def _insert_columns(file_path: Path, insert_format: str, delimiter: str | None) -> list[str] | None:
+        if insert_format == "Parquet":
+            import pyarrow.parquet as pq
 
-    def _convert_rows_for_clickhouse(
-        self,
-        rows: list[tuple[Any, ...]],
-        column_types: list[str | None],
-    ) -> list[tuple[Any, ...]]:
-        if not column_types:
-            return rows
-        return [
-            tuple(
-                self._convert_field_for_clickhouse(
-                    value,
-                    column_types[index] if index < len(column_types) else None,
-                )
-                for index, value in enumerate(row)
-            )
-            for row in rows
-        ]
+            names = pq.ParquetFile(file_path).schema_arrow.names
+        elif insert_format == "CSVWithNames":
+            import csv
 
-    def _convert_field_for_clickhouse(self, value: Any, type_name: str | None) -> Any:
-        if type_name is None or not isinstance(value, str):
-            return value
+            with _open_binary_stream(file_path, FileFormatRegistry.get_compression_handler(file_path)) as source:
+                header = source.readline().decode("utf-8").rstrip("\r\n")
+            names = next(csv.reader([header], delimiter=delimiter or ","), [])
+        else:
+            return None
+        return [validate_sql_identifier(name.strip(), "column name") for name in names if name.strip()]
 
-        type_upper = type_name.upper()
-        while type_upper.startswith(("NULLABLE(", "LOWCARDINALITY(")):
-            type_upper = type_upper[type_upper.index("(") + 1 : -1]
-
-        if "ARRAY" in type_upper or _CLICKHOUSE_VECTOR_TYPE_RE.search(type_upper):
-            if not value or value.upper() in ("\\N", "NULL"):
-                return None
-            try:
-                parsed = ast.literal_eval(value)
-                if isinstance(parsed, (list, tuple)):
-                    return list(parsed)
-            except (ValueError, SyntaxError):
-                pass
-            return value
-
-        is_datetime = "DATETIME" in type_upper or "TIMESTAMP" in type_upper
-        is_date = not is_datetime and type_upper.startswith("DATE")
-
-        is_bool = type_upper.startswith("BOOL")
-        needs_non_string_value = (
-            is_bool
-            or "INT" in type_upper
-            or any(token in type_upper for token in ("DECIMAL", "NUMERIC", "DOUBLE", "FLOAT", "REAL"))
-            or is_date
-            or is_datetime
-        )
-        if value == "":
-            return None if needs_non_string_value else value
-
-        if is_bool:
-            token = value.strip().lower()
-            if token in ("\\n", "null"):
-                return None
-            if token in _CLICKHOUSE_TRUE_TOKENS:
-                return True
-            if token in _CLICKHOUSE_FALSE_TOKENS:
-                return False
-            raise ValueError(f"Unrecognised boolean value for ClickHouse column type {type_name}: {value!r}")
-        if "INT" in type_upper:
-            return int(value)
-        if any(token in type_upper for token in ("DECIMAL", "NUMERIC")):
-            return Decimal(value)
-        if any(token in type_upper for token in ("DOUBLE", "FLOAT", "REAL")):
-            return float(value)
-        if is_datetime:
-            return datetime.fromisoformat(value.replace("Z", "+00:00"))
-        if is_date:
-            return date.fromisoformat(value)
-        return value
-
-    def _load_parquet_via_client_insert(self, validated_table: str, file_paths: list[Path], connection: Any) -> int:
-        row_count = 0
-        row_generator: Any | None = None
+    @staticmethod
+    def _expected_parquet_rows(validated_table: str, file_paths: list[Path]) -> int:
         try:
-            try:
-                import pyarrow.parquet as pq
-            except ImportError as exc:
-                raise RuntimeError("pyarrow is required for Parquet loading") from exc
+            import pyarrow.parquet as pq
+        except ImportError as exc:
+            raise RuntimeError("pyarrow is required for Parquet loading") from exc
 
-            first_table = pq.ParquetFile(file_paths[0])
-            column_names = first_table.schema_arrow.names
-            validated_columns = [validate_sql_identifier(col, "column name") for col in column_names]
-            expected_rows = 0
-            for file_path in file_paths:
-                parquet_file = pq.ParquetFile(file_path)
-                if parquet_file.schema_arrow.names != column_names:
-                    raise DataLoadingError(
-                        f"ClickHouse server Parquet shards for {validated_table!r} have different columns: {file_path}"
-                    )
-                expected_rows += parquet_file.metadata.num_rows if parquet_file.metadata is not None else 0
-            if expected_rows == 0:
-                return 0
-
-            insert_sql = f"INSERT INTO {validated_table} ({','.join(validated_columns)}) VALUES"
-            batch_size = self._server_insert_block_size()
-
-            def rows() -> Iterator[tuple[Any, ...]]:
-                nonlocal row_count
-                for file_path in file_paths:
-                    parquet_file = pq.ParquetFile(file_path)
-                    for batch in parquet_file.iter_batches(batch_size=batch_size):
-                        for row in zip(*(batch.column(name).to_pylist() for name in column_names)):
-                            row_count += 1
-                            yield row
-
-            row_generator = rows()
-            connection.execute(insert_sql, row_generator, settings=self._server_insert_settings())
-            if row_count != expected_rows:
-                raise DataLoadingError(f"streamed {row_count:,} row(s), expected {expected_rows:,}")
-            return row_count
-        except ClickHouseServerLoadError:
-            raise
-        except Exception as exc:
-            raise ClickHouseServerLoadError(validated_table, file_paths, row_count, exc) from exc
-        finally:
-            if row_generator is not None:
-                row_generator.close()
+        column_names = pq.ParquetFile(file_paths[0]).schema_arrow.names
+        expected_rows = 0
+        for file_path in file_paths:
+            parquet_file = pq.ParquetFile(file_path)
+            if parquet_file.schema_arrow.names != column_names:
+                raise DataLoadingError(
+                    f"ClickHouse Parquet shards for {validated_table!r} have different columns: {file_path}"
+                )
+            expected_rows += parquet_file.metadata.num_rows if parquet_file.metadata is not None else 0
+        return expected_rows
 
     def load_table_bulk(
         self,
@@ -1735,7 +1584,7 @@ class ClickHouseNativeHandler(FileFormatHandler):
         benchmark: Any,
         logger: Any,
     ) -> int:
-        if self._uses_server_mode():
+        if self._uses_client_insert():
             if not file_paths:
                 return 0
             validated_table = validate_sql_identifier(table_name, "table name")
@@ -1749,17 +1598,12 @@ class ClickHouseNativeHandler(FileFormatHandler):
                 )
             if hasattr(self.adapter, "dry_run_mode") and self.adapter.dry_run_mode:
                 if hasattr(self.adapter, "capture_sql"):
-                    extension = next(iter(base_extensions))
-                    sql = (
-                        f"INSERT INTO {validated_table} VALUES"
-                        if extension != ".parquet"
-                        else f"INSERT INTO {validated_table}"
+                    fmt = "Parquet" if next(iter(base_extensions)) == ".parquet" else "CSV"
+                    self.adapter.capture_sql(
+                        f"INSERT INTO {validated_table} FORMAT {fmt}", "load_data_bulk", validated_table
                     )
-                    self.adapter.capture_sql(sql, "load_data_bulk", validated_table)
                 return 0
-            if next(iter(base_extensions)) == ".parquet":
-                return self._load_parquet_via_client_insert(validated_table, file_paths, connection)
-            return self._load_delimited_via_client_insert(validated_table, file_paths, connection, benchmark, logger)
+            return self._load_via_client_insert(validated_table, file_paths, connection)
 
         if len(file_paths) == 1:
             return self.load_table(table_name, file_paths[0], connection, benchmark, logger)

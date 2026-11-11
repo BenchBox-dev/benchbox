@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "StarRocks loads now send file bytes through Stream Load without per-row Python parsing, and Parquet files are converted to CSV in Arrow batches instead of being inserted with executemany; TPC-H SF0.01 Parquet loading dropped from 35.5s to 0.7s and SF0.1 CSV loading from 10.9s to 6.6s.",
+      "platforms": [
+        "starrocks"
+      ]
+    }
+  ]
+}

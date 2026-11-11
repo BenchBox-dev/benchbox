@@ -507,6 +507,10 @@ def test_develop_ruleset_matching_runbook_has_no_findings() -> None:
         (lambda live: live["rules"].append({"type": "merge_queue", "parameters": {}}), "merge_queue"),
         (lambda live: live["rules"].insert(0, {"type": "required_status_checks", "parameters": {}}), "required checks"),
         (lambda live: live.pop("bypass_actors"), "bypass actors are not visible"),
+        (
+            lambda live: _rule(live, "required_status_checks")["parameters"].update(do_not_enforce_on_create=True),
+            "do_not_enforce_on_create",
+        ),
     ],
 )
 def test_develop_ruleset_drift_is_blocking(mutate, expected_text: str) -> None:
@@ -728,7 +732,8 @@ def _verified_release_branches_ruleset() -> dict:
     live["name"] = "release-branches"
     live["target"] = "branch"
     live["conditions"]["ref_name"]["include"] = ["refs/heads/release/**"]
-    live["rules"] = [rule for rule in live["rules"] if rule["type"] != "deletion"]
+    live["rules"] = [rule for rule in live["rules"] if rule["type"] not in {"deletion", "required_linear_history"}]
+    _rule(live, "required_status_checks")["parameters"]["do_not_enforce_on_create"] = True
     return live
 
 
@@ -758,7 +763,9 @@ def test_runbook_expects_the_release_branches_ruleset_with_the_develop_gate() ->
     assert release.ref == "refs/heads/release/**"
     assert release.required_checks == rulesets["develop-squash-only"].required_checks == RELEASE_BRANCHES_CHECKS
     assert release.strict_required_status_checks_policy is False
-    assert release.required_linear_history is True
+    assert release.required_linear_history is False
+    assert release.do_not_enforce_on_create is True
+    assert rulesets["develop-squash-only"].do_not_enforce_on_create is False
     assert release.non_fast_forward is True
     assert release.deletion is False
     assert release.bypass_actors_none is True
@@ -776,7 +783,11 @@ def test_matching_release_branches_ruleset_has_no_findings() -> None:
         (lambda live: live["rules"].insert(0, {"type": "required_status_checks", "parameters": {}}), "required checks"),
         (lambda live: live["rules"].append({"type": "deletion"}), "deletion"),
         (lambda live: live["rules"].remove({"type": "non_fast_forward"}), "non_fast_forward"),
-        (lambda live: live["rules"].remove({"type": "required_linear_history"}), "required_linear_history"),
+        (lambda live: live["rules"].append({"type": "required_linear_history"}), "required_linear_history"),
+        (
+            lambda live: _rule(live, "required_status_checks")["parameters"].update(do_not_enforce_on_create=False),
+            "do_not_enforce_on_create",
+        ),
         (lambda live: live.update(bypass_actors=[dict(OWNER_BYPASS)]), "bypass actors"),
         (lambda live: live.pop("bypass_actors"), "bypass actors are not visible"),
         (lambda live: _check(live, "review-gate").pop("integration_id"), "review-gate"),

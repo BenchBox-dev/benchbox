@@ -191,3 +191,12 @@ def test_refresh_pr_uses_the_existing_pr_token_so_runs_start_unapproved() -> Non
     expected = "${{ secrets.CROSS_SURFACE_BASELINE_PR_TOKEN || github.token }}"
     assert step_named("Checkout code")["with"]["token"] == expected
     assert step_named("Create refresh PR")["env"]["GH_TOKEN"] == expected
+
+
+def test_medium_pr_supersedes_earlier_open_refresh_prs_after_opening_the_new_one() -> None:
+    text = all_run_text("medium")
+    assert text.index("gh pr create") < text.index("gh pr close")
+    assert 'startswith(\\"chore/medium-durations-\\")' in text
+    assert 'select(.headRefName != \\"$BRANCH\\")' in text
+    assert "Superseded by #$NEW_NUMBER" in text
+    assert text.count("gh pr close") == 1

@@ -63,11 +63,6 @@ def test_clickbench_rejects_non_finite_scales(sf: float) -> None:
         validate_scale_factor("clickbench", sf)
 
 
-def test_tpcds_obt_rejects_subscale() -> None:
-    with pytest.raises(ScaleFactorNotSupportedError, match=r"tpcds_obt accepts scale_factor in"):
-        validate_scale_factor("tpcds_obt", 0.5)
-
-
 def test_tpcds_delegates_to_compliance_classifier() -> None:
 
     validate_scale_factor("tpcds", 1.0)

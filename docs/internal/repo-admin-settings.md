@@ -123,6 +123,7 @@ Other ruleset properties to preserve:
 
 ```text
 strict_required_status_checks_policy: false
+do_not_enforce_on_create: false
 required_linear_history: true
 non_fast_forward: true
 required_pull_request_reviews:    squash-only PRs
@@ -518,10 +519,60 @@ once, so delete the legacy `release` branch before the first line is created.
 Ruleset name: `release-branches`, targets `refs/heads/release/**`.
 
 Pull requests into a maintenance line pass the same gate as `develop`: squash
-merge only, the same required contexts, resolved review threads, linear
-history, no force push. The ruleset has no bypass actors, so a push made with
+merge only, the same required contexts, resolved review threads, no force
+push. The ruleset has no bypass actors, so once a line exists a push made with
 the owner's credentials is refused as well. It carries no `creation` or
 `deletion` rule; those belong to `release-branch-lifecycle` below.
+
+Two settings differ from `develop` so that the owner can create a line at all.
+`do_not_enforce_on_create` is `true` because a tag commit never carries the
+required contexts. `required_linear_history` is absent because every release
+tag has merge commits in its history, which that rule rejects when a branch is
+created. Squash-only merging and `non_fast_forward` still keep a line's own
+history linear after creation, and `release-branch-lifecycle` limits creation to
+the owner.
+
+The creation push is therefore the one change on a line that no pull request
+reviews. Release admission (`scripts/release_artifact_consumer.py`) checks it
+instead and refuses a tag on a maintenance line unless:
+
+- every commit on the line (first-parent, not on `develop`) has exactly one
+  parent;
+- the line starts from a final release tag of the same minor, older than the
+  tag being released;
+- the tagged commit is the merge commit of a pull request merged into that
+  line, and every other commit on the line is either such a merge or a creation
+  commit whose parent carries a final release tag of the same minor, older than
+  the tag being released (a line recreated from a patch tag of an earlier copy
+  of the line has one creation commit per copy);
+- each creation commit names one `develop` commit in a
+  `Develop-Source: <sha>` trailer, that commit is on `develop`'s first-parent
+  history after the point where the line left `develop`, and every path the
+  creation commit changes or deletes has exactly that commit's mode and
+  content, or is absent there. For a line recreated from a patch tag of an
+  earlier copy, that commit must also equal or descend from every
+  `Develop-Source` already on that copy, so no reviewer file can be rolled back
+  to a state older than the earlier copy carried (and so than the tag's own).
+  The creation commit must also match that
+  snapshot on every reviewer file, whether or not it changed it: the review
+  policy and its omp config, the Theseus lock, the soundness and inert path
+  manifests, `scripts/theseus_cli.py`, `scripts/theseus_release_check.py`,
+  `_project/scripts/theseus_bootstrap.py`, and every `review-*` or `oracle-*`
+  workflow in either tree. A line therefore cannot keep the tag's older reviewer
+  workflows or carry only some of develop's.
+
+`scripts/release_line_create.py` builds the creation commit and runs these
+creation checks before pushing. `release_artifact_consumer.py verify-line
+--source <checkout> --branch release/X.Y.x [--tip <sha>]` runs them on the
+hosted line without a tag, so a mistake shows up right after the push rather
+than at release time; it relaxes only the two rules that need the tag (the
+tagged commit being a merged pull request and the base tag being older than the
+release).
+
+Admission runs from the tagged tree, so this guards against mistakes and
+unreviewed content in the creation commit, not against a creator who also
+replaces the admission script. Publishing to PyPI still needs the owner's
+approval in the `pypi` environment.
 
 Required status checks:
 
@@ -550,7 +601,8 @@ Other ruleset properties to preserve:
 
 ```text
 strict_required_status_checks_policy: false
-required_linear_history: true
+do_not_enforce_on_create: true
+required_linear_history: false
 non_fast_forward: true
 required_pull_request_reviews:    squash-only PRs
 require_extra_approval_for_unattributed_changes: true
@@ -591,7 +643,7 @@ Apply (owner only; save the block as `release-branches.json`, then
       "type": "required_status_checks",
       "parameters": {
         "strict_required_status_checks_policy": false,
-        "do_not_enforce_on_create": false,
+        "do_not_enforce_on_create": true,
         "required_status_checks": [
           {"context": "core"},
           {"context": "explorer"},
@@ -604,7 +656,6 @@ Apply (owner only; save the block as `release-branches.json`, then
         ]
       }
     },
-    {"type": "required_linear_history"},
     {"type": "non_fast_forward"}
   ]
 }

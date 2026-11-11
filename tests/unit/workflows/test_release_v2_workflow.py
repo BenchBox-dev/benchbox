@@ -179,7 +179,7 @@ def test_release_uat_stages_start_together_and_each_shards_one_stage_config():
     jobs = _jobs()
     for number, name in enumerate(UAT_STAGE_JOBS, start=1):
         job = jobs[name]
-        assert set(job["needs"]) == {"admit", "uat-reuse"}
+        assert set(job["needs"]) == {"admit", "uat-reuse", "cancel-trunk-uat"}
         run = _step_commands(job)
         assert f"release-gate-0{number}-" in "\n".join(
             str(step.get("env", {}).get("UAT_CONFIG", "")) for step in job["steps"]
@@ -299,8 +299,30 @@ def test_uat_reuse_decides_from_the_admitted_final_distribution_and_the_git_hist
 def test_only_the_reuse_and_gate_jobs_read_other_runs():
     for name, job in _jobs().items():
         actions = job.get("permissions", {}).get("actions")
-        assert (actions == "read") == (name in {"admit", "uat-reuse", "release-uat"}), name
+        expected = (
+            "write" if name == "cancel-trunk-uat" else "read" if name in {"admit", "uat-reuse", "release-uat"} else None
+        )
+        assert actions == expected, name
     assert yaml.safe_load(_text())["permissions"] == {"contents": "read"}
+
+
+def test_the_full_uat_fallback_of_a_real_release_cancels_trunk_uat_before_the_stages_start():
+    jobs = _jobs()
+    job = jobs["cancel-trunk-uat"]
+    assert job["permissions"] == {"contents": "read", "actions": "write"}
+    assert set(job["needs"]) == {"admit", "uat-reuse"}
+    condition = job["if"]
+    assert "needs.uat-reuse.outputs.reuse != 'true'" in condition
+    assert "needs.admit.result == 'success'" in condition
+    assert "(github.event_name == 'push' || inputs.probe == 'none')" in condition
+    assert "!cancelled()" in condition
+    step = next(s for s in job["steps"] if "trunk_uat.py cancel" in s.get("run", ""))
+    assert "release-v2 run $GITHUB_RUN_ID full UAT fallback" in step["run"]
+    assert '--summary "$GITHUB_STEP_SUMMARY"' in step["run"]
+    for name in UAT_STAGE_JOBS:
+        assert "cancel-trunk-uat" in jobs[name]["needs"]
+    assert "cancel-trunk-uat" not in jobs["release-uat"]["needs"]
+    assert "cancel-trunk-uat" not in jobs["publish"]["needs"]
 
 
 def test_publish_runs_on_gate_results_so_a_skipped_reuse_job_cannot_skip_it():

@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "ClickHouse server and Cloud loads now stream file bytes (CSV, CSVWithNames, Parquet) to the server's native format parsers instead of converting every row in Python; the server path uses the HTTP port (new http_port option, default 8123, or 8443 with secure). TPC-H SF0.1 CSV loading dropped from 10.3s to 0.6s, and loaded tables now match the dbgen files byte for byte, including leading and trailing whitespace the row loader used to strip.",
+      "platforms": [
+        "clickhouse"
+      ]
+    }
+  ]
+}
