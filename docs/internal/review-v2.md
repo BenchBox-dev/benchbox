@@ -28,6 +28,12 @@ carries that code: module names in the sections below (`cli.py`, `local.py`,
 `src/theseus_reviewer/` in that repository, and their unit and scenario tests
 live there.
 
+To read the pinned engine's source, run
+`uv run -- python scripts/theseus_cli.py --trusted-ref HEAD path`. It prints
+`<install>/bin/theseus`; the source is `<install>/site/theseus_reviewer`. Do not
+pick a directory under `~/.cache/theseus/installs` by hand: it holds every
+past version.
+
 BenchBox keeps the consumer side:
 
 - `.github/workflows/review-verdict.yml` and `review-gate.yml`: thin callers of

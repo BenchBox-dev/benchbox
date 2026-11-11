@@ -470,6 +470,13 @@ nothing, and later runs report the commits after it. Restore a damaged
 checkpoint with `--since <sha> --apply`. Run it locally without changing
 anything:
 `uv run -- python _project/scripts/soundness_merge_digest.py --since <sha>`.
+`--since` must be commit `6ab697f91c` (2026-09-29, where
+`.github/soundness-paths.txt` was added) or later on the first-parent history;
+an earlier one is refused with a message naming the earliest usable commit.
+Runtime grows with the window, at several API calls per commit: a six-week
+window made several thousand calls and took 15 to 25 minutes in earlier runs.
+A failed GitHub read is retried twice with a short pause; if it still fails
+the run exits 2 with no partial report.
 
 A review or connector review names a commit, so it cannot be backdated.
 Known limits: a posted review is text the author can write, so it shows a

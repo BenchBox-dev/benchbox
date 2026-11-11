@@ -8,6 +8,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime
@@ -64,7 +65,7 @@ DECISION_LABELS = {
     "DO_NOT_SHIP": "DO NOT SHIP",
     "REFUSED": "REFUSED",
 }
-THREAD_DEFECT = re.compile(r"<!--\s*(?:oracle|review)-defect:\s*c([0-9]+)-(D[1-9][0-9]{0,3})\s*-->")
+API_RETRY_DELAYS = (2.0, 6.0)
 UNCLASSIFIABLE_FINDING = "unclassifiable"
 OVERRIDDEN_SEVERITIES = frozenset({"Critical", "High"})
 CLASS_OVERRIDE = "override of a review High finding"
@@ -351,11 +352,6 @@ class Withdrawal:
 def finding_severity(body: str) -> str:
     match = FINDING_SEVERITY.match(body) or MARKED_FINDING_SEVERITY.match(body)
     return match.group(1) if match else ""
-
-
-def thread_defect(body: str) -> tuple[int, str] | None:
-    found = THREAD_DEFECT.findall(body or "")
-    return (int(found[-1][0]), found[-1][1]) if found else None
 
 
 def review_verdict_state(body: str | None, sha: str) -> str | None:
@@ -789,7 +785,30 @@ def run(args: Sequence[str], *, input_text: str | None = None, cwd: Path | None 
 
 
 def gh_json(*args: str) -> Any:
+    for delay in API_RETRY_DELAYS:
+        try:
+            return json.loads(run(["gh", *args]))
+        except ReadError:
+            time.sleep(delay)
     return json.loads(run(["gh", *args]))
+
+
+def manifest_floor(ref: str) -> str:
+    added = run(
+        ["git", "log", "--first-parent", "--reverse", "--diff-filter=A", "--format=%H", ref, "--", MANIFEST_PATH]
+    ).split()
+    if not added:
+        raise ReadError(f"{MANIFEST_PATH} has no history on {ref}")
+    return added[0]
+
+
+def require_manifest_at(since: str, ref: str) -> None:
+    try:
+        run(["git", "cat-file", "-e", f"{since}:{MANIFEST_PATH}"])
+    except ReadError:
+        raise ReadError(
+            f"{since[:9]} predates {MANIFEST_PATH}; the earliest usable --since is {manifest_floor(ref)[:10]}"
+        ) from None
 
 
 def gh_pages(endpoint: str) -> list[Any]:
@@ -1011,7 +1030,7 @@ def collect_threads(repo: str, number: int) -> tuple[Thread, ...]:
                     first_comment_sha=(first.get("originalCommit") or {}).get("oid", ""),
                     severity="" if unverifiable else finding_severity(first.get("body") or ""),
                     unverifiable=unverifiable,
-                    defect=thread_defect(first.get("body") or "") if is_reviewer else None,
+                    defect=engine().protocol.thread_finding(first.get("body") or "") if is_reviewer else None,
                 )
             )
     except (KeyError, IndexError, TypeError) as exc:
@@ -1589,6 +1608,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         since = run(["git", "rev-parse", "--verify", f"{since}^{{commit}}"]).strip()
         if since not in run(["git", "rev-list", "--first-parent", until]).split():
             raise ReadError(f"checkpoint {since[:9]} is not on the first-parent history of {args.ref}")
+        require_manifest_at(since, args.ref)
         entries = collect_entries(args.repo, until, since)
         try:
             pulls, unreadable = collect_window_pulls(args.repo, until, since)

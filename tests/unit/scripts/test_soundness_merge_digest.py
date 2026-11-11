@@ -892,6 +892,22 @@ def test_an_explicit_since_off_the_first_parent_history_is_refused(stubbed):
     assert stubbed["checkpoint"] == []
 
 
+def test_a_since_before_the_manifest_existed_is_refused_naming_the_first_valid_commit(stubbed, monkeypatch, capsys):
+    floor = "f" * 40
+
+    def git(args, **kwargs):
+        if args[:2] == ["git", "cat-file"]:
+            raise digest.ReadError("missing")
+        if args[:2] == ["git", "log"]:
+            return f"{floor}\n{HEAD}\n"
+        return fake_git(args, **kwargs)
+
+    monkeypatch.setattr(digest, "run", git)
+    assert digest.main(["--apply", "--since", ON_HISTORY]) == 2
+    assert floor[:10] in capsys.readouterr().err
+    assert stubbed["checkpoint"] == []
+
+
 def test_apply_opens_issues_and_then_advances_the_checkpoint(stubbed):
     assert digest.main(["--apply"]) == 0
     assert len(stubbed["issues"]) == 1
@@ -2764,20 +2780,6 @@ def test_a_thread_title_line_in_either_format_gives_the_severity(title, marker, 
     assert digest.finding_severity(title) == expected
 
 
-@pytest.mark.parametrize(
-    ("marker", "found"),
-    [
-        ("<!-- oracle-defect: c1-D1 -->", (1, "D1")),
-        ("<!-- review-defect: c2-D14 -->", (2, "D14")),
-        ("<!--review-defect:c3-D2-->", (3, "D2")),
-        ("<!-- review-defect: c1-D0 -->", None),
-        ("no marker", None),
-    ],
-)
-def test_a_thread_defect_marker_is_read_in_either_spelling(marker, found):
-    assert digest.thread_defect(f"anything\n{marker}\n") == found
-
-
 def thread_with(body, resolved=True, login="benchbox-oracle"):
     node = thread_node(resolved, login, HEAD)
     node["comments"]["nodes"][0]["body"] = body
@@ -2828,3 +2830,33 @@ def test_an_unrecognised_bot_thread_is_unclassifiable_never_low(monkeypatch):
     text = digest.render_unclassifiable([evidence(threads=threads[:1])])
     assert "#7: 1 unclassifiable bot thread(s)" in text
     assert digest.render_unclassifiable([evidence(threads=threads[1:])]) == ""
+
+
+def test_one_transient_api_failure_is_retried(monkeypatch):
+    outcomes = [digest.ReadError("TLS handshake timeout"), '{"ok": true}']
+    delays = []
+
+    def flaky(args, **_):
+        outcome = outcomes.pop(0)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+    monkeypatch.setattr(digest, "run", flaky)
+    monkeypatch.setattr(digest.time, "sleep", delays.append)
+    assert digest.gh_json("api", "x") == {"ok": True}
+    assert len(delays) == 1
+
+
+def test_a_persistent_api_failure_still_fails_after_bounded_retries(monkeypatch):
+    calls = []
+
+    def broken(args, **_):
+        calls.append(args)
+        raise digest.ReadError("TLS handshake timeout")
+
+    monkeypatch.setattr(digest, "run", broken)
+    monkeypatch.setattr(digest.time, "sleep", lambda delay: None)
+    with pytest.raises(digest.ReadError):
+        digest.gh_json("api", "x")
+    assert len(calls) == len(digest.API_RETRY_DELAYS) + 1
