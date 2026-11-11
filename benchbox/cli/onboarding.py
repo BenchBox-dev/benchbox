@@ -178,7 +178,6 @@ def _show_scale_factor_guide() -> None:
     scale_table.add_column("Runtime", style="green", width=12)
     scale_table.add_column("Use Case", style="white", width=25)
 
-    scale_table.add_row("0.001", "~1 MB", "< 1 GB", "< 1 min", "Quick smoke test")
     scale_table.add_row("0.01", "~10 MB", "1-2 GB", "2-5 min", "Development, testing")
     scale_table.add_row("0.1", "~100 MB", "2-4 GB", "5-15 min", "CI/CD, local validation")
     scale_table.add_row("1.0", "~1 GB", "4-8 GB", "10-30 min", "Small-scale benchmarking")

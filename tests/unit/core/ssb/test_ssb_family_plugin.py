@@ -12,7 +12,7 @@ from benchbox.core.benchmark_registry import (
     list_loader_benchmark_ids,
     list_public_benchmark_ids,
 )
-from benchbox.core.errors import ScaleFactorNotSupportedError
+from benchbox.core.errors import ScaleFactorOutOfRangeError
 from benchbox.core.schemas import BenchmarkConfig
 from benchbox.core.ssb.benchmark import SSBBenchmark
 from benchbox.core.ssb.family import SSBFamily
@@ -50,8 +50,9 @@ def test_ssb_family_default_scale_uses_registry_options() -> None:
     family = SSBFamily()
     assert family.default_scale() == 0.01
     assert family.default_scale(1.0) == 1.0
-    with pytest.raises(ScaleFactorNotSupportedError):
-        family.default_scale(2.0)
+    assert family.default_scale(2.0) == 2.0
+    with pytest.raises(ScaleFactorOutOfRangeError):
+        family.default_scale(1.5)
 
 
 def test_ssb_family_create_constructs_core_benchmark() -> None:

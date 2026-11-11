@@ -14,7 +14,7 @@ from benchbox.core.benchmark_registry import (
     CATEGORY_ORDER,
     get_all_benchmarks,
     get_benchmark_surface,
-    validate_scale_factor as core_validate_scale_factor,
+    nonstandard_scale_note,
 )
 from benchbox.core.constants import VALID_PHASES
 from benchbox.core.schemas import MIN_THROUGHPUT_STREAMS, BenchmarkConfig
@@ -67,7 +67,9 @@ class BenchmarkManager:
         return _SUPPORT_STATUS_LABELS.get(status, status.replace("_", "-"))
 
     def validate_scale_factor(self, benchmark_id: str, scale_factor: float) -> None:
-        core_validate_scale_factor(benchmark_id, scale_factor)
+        note = nonstandard_scale_note(benchmark_id, scale_factor)
+        if note:
+            console.print(f"[yellow]{note}[/yellow]")
 
     def list_available_benchmarks(self):
         categories = {}
@@ -709,13 +711,11 @@ class BenchmarkManager:
     ):
         from rich.prompt import Confirm
 
-        min_scale = benchmark_info.get("min_scale")
-        if min_scale is not None and scale_factor < min_scale:
-            console.print(
-                f"[red]Error: {benchmark_id.upper()} requires scale_factor >= {min_scale} (got {scale_factor})[/red]"
-            )
-            console.print("[yellow]The native data generator crashes with fractional scale factors.[/yellow]")
-            raise ValueError(f"Scale factor {scale_factor} is below minimum {min_scale} for {benchmark_id}")
+        try:
+            self.validate_scale_factor(benchmark_id, scale_factor)
+        except ValueError as exc:
+            console.print(f"[red]Error: {exc}[/red]")
+            raise
 
         est_memory = self._estimate_memory_usage(benchmark_id, scale_factor)
         available_memory = system_profile["memory_gb"]

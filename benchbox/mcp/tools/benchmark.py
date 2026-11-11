@@ -18,6 +18,7 @@ from benchbox.core.benchmark_registry import (
     get_all_benchmarks,
     get_benchmark_surface,
     get_public_benchmark_class,
+    nonstandard_scale_note,
 )
 from benchbox.core.constants import VALID_PHASES
 from benchbox.core.deprecation_notices import begin_run
@@ -134,15 +135,28 @@ def register_benchmark_tools(
             response["status"] = "failed"
             return attach_deprecations(response)
 
-        if validate_only:
-            return attach_deprecations(
-                _validate_config_impl(selection, benchmark, scale_factor, mode, normalized_platform_options)
-            )
-
-        if dry_run:
-            return attach_deprecations(
-                _dry_run_impl(selection, benchmark, scale_factor, queries, mode, normalized_platform_options)
-            )
+        if validate_only or dry_run:
+            scale_note, scale_message = _check_scale_factor(benchmark, scale_factor)
+            if validate_only:
+                response = _validate_config_impl(selection, benchmark, scale_factor, mode, normalized_platform_options)
+                if scale_message:
+                    response["valid"] = False
+                    response["errors"].append(scale_message)
+                elif scale_note:
+                    response["warnings"].append(scale_note)
+                return attach_deprecations(response)
+            if scale_message:
+                response = make_error(
+                    ErrorCode.VALIDATION_INVALID_SCALE_FACTOR,
+                    scale_message,
+                    details={"benchmark": benchmark, "scale_factor": scale_factor},
+                )
+                response["status"] = "error"
+                return attach_deprecations(response)
+            response = _dry_run_impl(selection, benchmark, scale_factor, queries, mode, normalized_platform_options)
+            if scale_note and response.get("status") != "error":
+                response.setdefault("warnings", []).append(scale_note)
+            return attach_deprecations(response)
 
         if not allow_synchronous_execution:
             response = make_error(
@@ -153,22 +167,24 @@ def register_benchmark_tools(
             response["status"] = "failed"
             return attach_deprecations(response)
 
-        return attach_deprecations(
-            _run_benchmark_impl(
-                platform,
-                benchmark,
-                scale_factor,
-                queries,
-                phases,
-                mode,
-                capture_plans,
-                link_probe=link_probe,
-                execution_engine=resolved_execution_engine,
-                platform_options=normalized_platform_options,
-                results_dir=resolve_path_provider(results_dir),
-                anonymize=anonymize_results,
-            )
+        scale_note, _ = _check_scale_factor(benchmark, scale_factor)
+        response = _run_benchmark_impl(
+            platform,
+            benchmark,
+            scale_factor,
+            queries,
+            phases,
+            mode,
+            capture_plans,
+            link_probe=link_probe,
+            execution_engine=resolved_execution_engine,
+            platform_options=normalized_platform_options,
+            results_dir=resolve_path_provider(results_dir),
+            anonymize=anonymize_results,
         )
+        if scale_note and response.get("status") not in ("error", "failed"):
+            response.setdefault("warnings", []).append(scale_note)
+        return attach_deprecations(response)
 
     @mcp.tool(
         description="Get detailed information about a specific query.\n\n        Args:\n            benchmark: Benchmark name (tpch, tpcds, ssb, clickbench, nyctaxi, tsbs_devops, h2odb, amplab, coffeeshop, tpch_skew, datavault, and more)\n            query_id: Query identifier (e.g., '1', 'Q1', '17')\n            platform: Target platform for dialect translation\n            mode: Execution mode: 'sql' or 'dataframe'\n\n        Returns:\n            Query details including SQL text or DataFrame source code.\n        ",
@@ -698,6 +714,16 @@ def _preview_dry_run(
             return error_response
 
     return result
+
+
+def _check_scale_factor(benchmark: str, scale_factor: float) -> tuple[str | None, str | None]:
+    benchmark_lower = benchmark.lower()
+    if benchmark_lower not in get_all_benchmarks():
+        return None, None
+    try:
+        return nonstandard_scale_note(benchmark_lower, scale_factor), None
+    except ValueError as exc:
+        return None, str(exc)
 
 
 def _validate_config_impl(

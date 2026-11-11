@@ -11,7 +11,7 @@ OFFICIAL_SCALE_POINTS: frozenset[float] = frozenset(
     {1.0, 10.0, 100.0, 300.0, 1000.0, 3000.0, 10000.0, 30000.0, 100000.0}
 )
 
-TPCDS_MIN_SUBSCALE: float = 0.001
+TPCDS_MIN_SUBSCALE: float = 0.01
 
 
 def classify_tpcds_run(scale_factor: float, *, official: bool = False) -> TpcdsComplianceClass:

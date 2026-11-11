@@ -46,6 +46,7 @@ class BenchmarkMeta(BaseModel):
     data_source: str | None
     supports_dataframe: bool
     min_scale: float | None = None
+    scale_policy: Literal["fixed"] | None = None
     surface: Surface | None = None
     data_manifest: str | None = None
     supports_statistics_phase: bool = False

@@ -327,6 +327,7 @@ benchmark_metadata:
     scale_options:
     - 1.0
     min_scale: 1.0
+    scale_policy: fixed
     complexity: Low
     estimated_time_range:
     - 1
@@ -389,6 +390,7 @@ benchmark_metadata:
     scale_options:
     - 1.0
     min_scale: 1.0
+    scale_policy: fixed
     complexity: High
     estimated_time_range:
     - 30
@@ -409,13 +411,12 @@ benchmark_metadata:
     supports_streams: false
     default_scale: 1.0
     scale_options:
-    - 0.001
     - 0.01
     - 0.1
     - 0.5
     - 1.0
     - 2.0
-    min_scale: 0.001
+    min_scale: 0.01
     complexity: Medium
     estimated_time_range:
     - 2
@@ -432,13 +433,12 @@ benchmark_metadata:
     num_queries: 11
     query_description: 11 analytics queries
     supports_streams: false
-    default_scale: 0.001
+    default_scale: 0.01
     scale_options:
-    - 0.001
     - 0.01
     - 0.1
     - 1.0
-    min_scale: 0.001
+    min_scale: 0.01
     complexity: Medium
     estimated_time_range:
     - 3
