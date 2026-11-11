@@ -35478,17 +35478,12 @@
       "title": "Fail the review callers when no verdict or gate status was posted for the head"
     },
     "rv2r-16-release-branch-review-gating": {
-      "claim": {
-        "expires_at": "2026-11-12T22:29:06Z",
-        "generation": "7abf632c2d8e4fd38c68fb6c8dc2e922",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:59839a37111603c2152bb8d7"
-      },
+      "claim": null,
       "needs": [
         "rv2r-07-oracle-pinned-dependency"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Let PRs into release/X.Y.x branches get Theseus review and gating, and run trunk there"
     },
     "rx-ux-00-phase0-contract-decisions": {
