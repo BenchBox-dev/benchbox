@@ -139,6 +139,12 @@ _SQLITE_TPCDS_OBT_RUNTIME_ENVELOPE_REASON = (
     "issue. Keep it pruned until a bounded atomic bulk loader fits the declared budget."
 )
 
+_SQLITE_TPCDS_OBT_SF01_RUNTIME_ENVELOPE_REASON = (
+    "SQLite TPC-DS OBT SF0.1 cannot meet the 1200s release-gate cell contract on the native UAT host. "
+    "The 2026-11-11 run loaded 503,753 rows in 103.7s, then query 35 was still running when the cell reached "
+    "1200s; SF0.01 completed in 123s. Keep SF0.1 pruned until the OBT queries fit the budget on SQLite."
+)
+
 _SQLITE_TPCDS_RUNTIME_ENVELOPE_REASON = (
     "SQLite TPC-DS missed the 1200s release-gate contract at all three scales on 2026-08-25. "
     "At SF0.01, query 13 and query 48 exceeded 300s; eleven queries also need unsupported ROLLUP semantics. "
@@ -244,15 +250,12 @@ _SF1_TIMEOUT_PRUNED_CELLS = (
     ("pandas-df", _sf1_timeout_reason("pandas-df"), ("joinorder",)),
     ("sqlite", _sf1_timeout_reason("sqlite"), ("joinorder", "flightdata", "tsbs_devops")),
     ("lakesail", _sf1_timeout_reason("lakesail"), ("datavault",)),
-    ("pg-duckdb", _sf1_timeout_reason("pg-duckdb"), ("tpcds_obt", "joinorder")),
-    ("pg-mooncake", _sf1_timeout_reason("pg-mooncake"), ("tpcds_obt",)),
-    ("postgresql", _sf1_timeout_reason("postgresql"), ("joinorder", "tpcds_obt")),
-    ("timescaledb", _sf1_timeout_reason("timescaledb"), ("tpcds_obt",)),
-    ("singlestore", _sf1_timeout_reason("singlestore"), ("tpcds_obt",)),
-    ("questdb", _sf1_timeout_reason("questdb"), ("joinorder", "tpcds_obt")),
+    ("pg-duckdb", _sf1_timeout_reason("pg-duckdb"), ("joinorder",)),
+    ("postgresql", _sf1_timeout_reason("postgresql"), ("joinorder",)),
+    ("questdb", _sf1_timeout_reason("questdb"), ("joinorder",)),
 )
 
-_SF1_ONLY_BENCHMARKS = frozenset({"joinorder", "tpcds_obt"})
+_SF1_ONLY_BENCHMARKS = frozenset({"joinorder"})
 
 _SF1_TIMEOUT_RUNTIME_ENVELOPES = {
     ((platform, benchmark) if benchmark in _SF1_ONLY_BENCHMARKS else (platform, benchmark, 1.0)): reason
@@ -311,7 +314,8 @@ _RELEASE_GATE_RUNTIME_ENVELOPES = (
         ("sqlite", "tpchavoc", 1.0): _SQLITE_TPCHAVOC_SF1_RUNTIME_ENVELOPE_REASON,
         ("datafusion", "datavault"): _DATAFUSION_DATAVAULT_RUNTIME_ENVELOPE_REASON,
         ("sqlite", "tpcds"): _SQLITE_TPCDS_RUNTIME_ENVELOPE_REASON,
-        ("sqlite", "tpcds_obt"): _SQLITE_TPCDS_OBT_RUNTIME_ENVELOPE_REASON,
+        ("sqlite", "tpcds_obt", 0.1): _SQLITE_TPCDS_OBT_SF01_RUNTIME_ENVELOPE_REASON,
+        ("sqlite", "tpcds_obt", 1.0): _SQLITE_TPCDS_OBT_RUNTIME_ENVELOPE_REASON,
         ("singlestore", "joinorder"): _SINGLESTORE_JOINORDER_RUNTIME_ENVELOPE_REASON,
         ("pyspark-df", "tpchavoc", 0.1): _PYSPARK_DF_TPCHAVOC_SF01_RUNTIME_ENVELOPE_REASON,
     }
@@ -327,7 +331,8 @@ _RELEASE_GATE_RUNTIME_ENVELOPE_EVIDENCE = (
     | {
         ("datafusion", "datavault"): "docs/internal/uat-release-campaign.md: DataFusion DataVault (2026-08-25)",
         ("sqlite", "tpcds"): "docs/internal/uat-release-campaign.md: SQLite TPC-DS (2026-08-25)",
-        ("sqlite", "tpcds_obt"): "PR #1904; docs/internal/uat-release-campaign.md: SQLite TPC-DS OBT (2026-08-25)",
+        ("sqlite", "tpcds_obt", 0.1): "docs/internal/uat-release-campaign.md: SQLite TPC-DS OBT (2026-11-11)",
+        ("sqlite", "tpcds_obt", 1.0): "PR #1904; docs/internal/uat-release-campaign.md: SQLite TPC-DS OBT (2026-08-25)",
         (
             "singlestore",
             "joinorder",

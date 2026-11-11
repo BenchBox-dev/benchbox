@@ -237,6 +237,24 @@ def _validate_phase_coverage(payload: dict, requested_phases: list[str]) -> None
         assert status not in {"", "NOT_RUN"}, f"Phase '{requested}' was not executed (status={status})"
 
 
+def _canonical_query_id(benchmark_name: str, raw_id: object) -> str:
+    value = str(raw_id).strip()
+    if benchmark_name in ("tpcds", "tpcds_obt"):
+        match = re.match(r"^q?(\d+)", value, flags=re.IGNORECASE)
+        if match:
+            return str(int(match.group(1)))
+    return value
+
+
+def _dataframe_query_count(benchmark_name: str) -> int | None:
+    from benchbox.core.dataframe.query_resolution import registry_dataframe_queries
+
+    query_ids = {
+        _canonical_query_id(benchmark_name, query.query_id) for query in registry_dataframe_queries(benchmark_name)
+    }
+    return len(query_ids) or None
+
+
 def _validate_completion(payload: dict, benchmark_name: str, expected_query_count: int | None = None) -> None:
     summary = payload.get("summary", {})
     query_summary = summary.get("queries", {})
@@ -253,16 +271,8 @@ def _validate_completion(payload: dict, benchmark_name: str, expected_query_coun
     expected_query_count = expected_query_count or int(metadata.get("num_queries", 0))
     measured = _measurement_queries(payload)
 
-    def _canonical_query_id(raw_id: object) -> str:
-        value = str(raw_id).strip()
-        if benchmark_name == "tpcds":
-            match = re.match(r"^q?(\d+)", value, flags=re.IGNORECASE)
-            if match:
-                return str(int(match.group(1)))
-        return value
-
     unique_measurement_ids = {
-        _canonical_query_id(query.get("id")) for query in measured if query.get("status") == "SUCCESS"
+        _canonical_query_id(benchmark_name, query.get("id")) for query in measured if query.get("status") == "SUCCESS"
     }
 
     if expected_query_count > 0:
@@ -671,7 +681,7 @@ def test_local_dataframe_platform_benchmark_matrix(
 
     _, payload = _load_result_payload(case_dir, benchmark_name)
     _validate_phase_coverage(payload, phases)
-    _validate_completion(payload, benchmark_name)
+    _validate_completion(payload, benchmark_name, expected_query_count=_dataframe_query_count(benchmark_name))
 
 
 @pytest.mark.integration

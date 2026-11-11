@@ -23,6 +23,7 @@ from typing import Any
 WORKFLOW_FILE = "trunk-uat.yml"
 WORKFLOW_PATH = ".github/workflows/trunk-uat.yml"
 RELEASE_WORKFLOW_FILE = "release-v2.yml"
+PROBE_ONLY_JOBS = frozenset({"probe UAT stub evidence", "probe reused UAT evidence", "publish dry run"})
 RECORD_PREFIX = "trunk-uat-record-"
 RECORD_NAME = re.compile(re.escape(RECORD_PREFIX) + r"([0-9a-f]{40})")
 SHARD_DIRECTORY = re.compile(r"release-uat-trunk-[0-9a-f]{40}-stage([0-9]+)-(.+)")
@@ -111,6 +112,28 @@ def active_runs(api: Api, workflow: str) -> list[dict[str, Any]]:
     return sorted((run for run in runs if run.get("status") != "completed"), key=lambda run: run["id"], reverse=True)
 
 
+def _is_probe(api: Api, run: dict[str, Any]) -> bool:
+    if run.get("event") != "workflow_dispatch":
+        return False
+    attempt = run.get("run_attempt")
+    try:
+        jobs = run_jobs(api, run["id"], attempt if isinstance(attempt, int) and attempt > 0 else 1)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return False
+    return any(
+        job.get("name") in PROBE_ONLY_JOBS
+        and (
+            job.get("status") == "in_progress"
+            or (job.get("status") == "completed" and job.get("conclusion") != "skipped")
+        )
+        for job in jobs
+    )
+
+
+def active_release_runs(api: Api) -> list[dict[str, Any]]:
+    return [run for run in active_runs(api, RELEASE_WORKFLOW_FILE) if not _is_probe(api, run)]
+
+
 @dataclass(frozen=True)
 class ExecutedRun:
     run_id: int
@@ -166,7 +189,7 @@ def decide(
     changed: Callable[[str, str], list[str] | None],
     fetch: Fetch | None = None,
 ) -> Decision:
-    active = active_runs(api, RELEASE_WORKFLOW_FILE)
+    active = active_release_runs(api)
     if active:
         return Decision("defer", f"deferred: release-v2 run {active[0]['id']} in progress")
     source = _releasable.newest_releasable(api)
@@ -321,6 +344,31 @@ def run_jobs(api: Api, run_id: int, attempt: int) -> list[dict[str, Any]]:
     raise ValueError("job listing limit exceeded")
 
 
+def producing_attempts(api: Api, run_id: int, attempt: int, jobs: list[dict[str, Any]]) -> dict[str, int]:
+    starts: dict[int, datetime | None] = {}
+    for number in range(1, attempt + 1):
+        payload = api(f"actions/runs/{run_id}/attempts/{number}")
+        starts[number] = _parse_time(payload.get("run_started_at"))
+    produced: dict[str, int] = {}
+    for item in jobs:
+        match = SHARD_JOB.fullmatch(str(item.get("name")))
+        if match is None:
+            continue
+        started = _parse_time(item.get("started_at"))
+        found = attempt
+        if started is not None:
+            found = next(
+                (
+                    number
+                    for number in range(attempt, 0, -1)
+                    if starts[number] is not None and started >= starts[number]
+                ),
+                1,
+            )
+        produced[f"{match.group(1)}:{match.group(2)}"] = found
+    return produced
+
+
 def _hit_step_timeout(job: dict[str, Any]) -> bool:
     for step in job.get("steps") or []:
         if not isinstance(step, dict) or not RUN_STEP.fullmatch(str(step.get("name"))):
@@ -403,6 +451,11 @@ def render_summary(record: dict[str, Any]) -> str:
     ]
     if record.get("reason"):
         lines.append(f"Reason: {record['reason']}")
+    if record.get("partial_rerun"):
+        lines.append(
+            f"**Partial re-run: attempt {record['run_attempt']} kept the earlier results of "
+            f"{', '.join(record['carried_over_shards'])}.**"
+        )
     cells = record.get("cells")
     if cells:
         lines.append(f"Cells: {cells['total']} executed, {cells['passed']} passed, {cells['failed']} not passed")
@@ -444,14 +497,16 @@ def build_record(
         "verdict": _gate_verdict(gate),
         "job_results": job_results,
     }
-    costs = job_costs(run_jobs(api, run_id, attempt))
+    jobs = run_jobs(api, run_id, attempt)
+    costs = job_costs(jobs)
+    produced = producing_attempts(api, run_id, attempt, jobs) if attempt > 1 else {}
     timed_out = [
         f"stage {item['stage']} {item['shard']}"
         for item in costs["shards"]
         if item["step_timeout"] or (item["state"] == "cancelled" and item["hours"] >= SHARD_TIMEOUT_HOURS)
     ]
     if "cancelled" in job_results.values() and not timed_out:
-        others = active_runs(api, RELEASE_WORKFLOW_FILE)
+        others = active_release_runs(api)
         record["outcome"] = "cancelled"
         record["reason"] = (
             f"cancelled: release-v2 run {others[0]['id']} in progress (full UAT fallback)"
@@ -476,11 +531,15 @@ def build_record(
         )
         return record, []
     record["outcome"] = "executed"
+    record["carried_over_shards"] = sorted(
+        f"stage {key.replace(':', ' ')}" for key, found in produced.items() if found != attempt
+    )
+    record["partial_rerun"] = bool(record["carried_over_shards"])
     rows = [
         {
             "schema": HISTORY_SCHEMA,
             "run_id": run_id,
-            "run_attempt": attempt,
+            "run_attempt": produced.get(f"{cell['stage']}:{cell['shard']}", attempt),
             "event": event,
             "source_sha": sha,
             "dist_digest": record["dist_digest"],

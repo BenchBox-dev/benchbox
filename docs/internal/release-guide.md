@@ -68,7 +68,12 @@ push run on that branch with its `dist-artifact`. It refuses:
 - a `vX.Y.Z` tag on a `develop` commit while `release/X.Y.x` exists;
 - a tag for another minor on a maintenance branch (`v0.6.1` on `release/0.5.x`);
 - a commit on both lines, or on neither;
-- a commit whose trunk run is missing, failed, or ran on another branch.
+- a commit whose trunk run is missing, failed, or ran on another branch;
+- on a maintenance line: a tagged commit that is not a pull request merged into
+  the line, a line that does not start from a final tag of its minor, a merge
+  commit on the line, or a creation commit whose changes do not match the one
+  `develop` snapshot it names (see "Branch rulesets — `release/X.Y.x`
+  maintenance lines" in [repo-admin-settings.md](repo-admin-settings.md)).
 
 `trunk.yml` runs on pushes to `release/**` as well as `develop`, so each
 commit merged to a maintenance line gets its own trunk run and `dist-artifact`
@@ -97,19 +102,48 @@ The procedure:
 1. Confirm both rulesets are live with `scripts/ruleset_drift_check.py`. The
    legacy `release` branch and its rulesets are gone; Git cannot hold `release`
    and `release/X.Y.x` together, so none may be recreated.
-2. The owner creates the branch from the `vX.Y.0` tag commit, or from the newest
-   `vX.Y.Z` tag of that minor:
-   `git push origin "vX.Y.0^{commit}:refs/heads/release/X.Y.x"`.
-3. The branch starts with the workflows and release scripts of that tag. Because
-   the `oracle` environment admits `release/*`, the owner makes the branch carry
-   `develop`'s current `.github/workflows/review-verdict.yml`,
-   `review-gate.yml`, `.github/theseus-lock.json` and
-   `.github/oracle-reviewers.yml` before anyone dispatches workflows on it: a
-   tag that predates the pinned callers must not leave older reviewer code
-   able to run with the App secrets. If the tag predates maintenance-line
-   support, the first pull request into the branch brings
-   `.github/workflows/trunk.yml`, `release-canary.yml`, `ci.yml`,
-   `release-v2.yml`, `scripts/release_artifact_consumer.py`,
+2. The owner creates the branch as one commit on top of the `vX.Y.0` tag commit
+   (or the newest `vX.Y.Z` tag of that minor). Because the `oracle` environment
+   admits `release/*`, that commit must replace the tag's reviewer files with
+   `develop`'s before any workflow can run on the branch: a tag that predates
+   the pinned callers must not leave older reviewer code able to run with the
+   App secrets. The script fetches `develop`, the release lines and the tag,
+   builds the commit from the freshly fetched `develop` tip, records it in a
+   `Develop-Source` trailer, and runs the line check on the result before
+   anything is pushed:
+
+   ```bash
+   uv run -- python scripts/release_line_create.py --tag vX.Y.Z
+   uv run -- python scripts/release_line_create.py --tag vX.Y.Z --push
+   ```
+
+   The first command only verifies; `--push` creates `release/X.Y.x`. The
+   reviewer file set comes from `CREATION_REVIEW_PATHS` and the `review-*` and
+   `oracle-*` workflows in `scripts/release_artifact_consumer.py`, the same
+   constants admission checks, so the two cannot drift. Creation commits are
+   immutable, so check the line again from `develop` after the push, and any
+   time before a tag, without a tag in hand:
+
+   ```bash
+   uv run -- python scripts/release_artifact_consumer.py verify-line \
+     --source . --branch release/X.Y.x
+   ```
+
+   `verify-line` fetches the hosted refs, applies the creation rules to every
+   creation commit on the line, and requires every other commit to be a merged
+   pull request; it skips only the rules that need the tag (the tagged commit
+   being a merged pull request and the base tag being older than the release).
+   When a line is recreated from a patch tag of its earlier copy, the new
+   `Develop-Source` must be a descendant of (or equal to) every
+   `Develop-Source` already on the line's earlier copy, so the reviewer files
+   cannot move back past what the earlier copy carried.
+
+   `release-branches` accepts this push because it does not enforce status
+   checks or linear history on creation (see
+   [repo-admin-settings.md](repo-admin-settings.md)).
+3. If the tag predates maintenance-line support, the first pull request into
+   the branch brings `.github/workflows/trunk.yml`, `release-canary.yml`,
+   `ci.yml`, `release-v2.yml`, `scripts/release_artifact_consumer.py`,
    `scripts/release_canary_freshness.py` (and whatever they need) from
    `develop`; `ci.yml` accepts a `release/X.Y.x` base.
 4. Land the fix by pull request into `release/X.Y.x`; the pull request
@@ -437,6 +471,12 @@ append-only log.
   and `first_attempt_elapsed_s` from the infrastructure retry, with `attempt`
   1 when the harness wrote no retry.
 
+On a partial re-run (only some jobs re-run) GitHub reports the latest
+`run_attempt` for every job, so `run_attempt` in each row is the attempt whose
+`run_started_at` precedes the shard job's `started_at`: the attempt that
+actually produced the cell. `record.json` adds `partial_rerun` and
+`carried_over_shards` (shards whose results predate the latest attempt).
+
 Print the rows of the newest executed runs, newest first:
 
 ```bash
@@ -469,26 +509,30 @@ uv run -- python scripts/uat_rubric.py --history-dir ~/trunk-uat-history --outpu
 
 ### Interaction with `release-v2`
 
-A `release-v2.yml` run that is not completed defers trunk UAT (above). The
-release workflow does not cancel a trunk UAT run that is already executing:
-its full-UAT fallback and a running trunk UAT run proceed side by side, and
-`release-v2.yml` holds no `actions: write` permission. An operator who wants to
-stop an in-progress trunk UAT run, for example to free runners before a
-release, runs the command by hand with a token that has `actions: write`:
+A `release-v2.yml` run that is not completed defers trunk UAT (above). When a
+real release (not a probe) falls back to the full three-stage UAT because no
+trunk evidence qualifies for reuse, the `cancel in-progress trunk UAT` job runs
+before the UAT stages start and cancels every unfinished `trunk-uat.yml` run, so
+the two never contend for runners. It is the only `release-v2.yml` job with
+`actions: write`, probe runs never cancel, and a failed cancellation does not
+block the stages. The same command can be run by hand with a token that has
+`actions: write`:
 
 ```bash
 uv run -- python scripts/trunk_uat.py cancel --reason "release-v2 run <id> full UAT fallback" \
   --summary "$GITHUB_STEP_SUMMARY"
 ```
 
-The command cancels every unfinished `trunk-uat.yml` run and records the run
-ids in the summary. The cancelled run's `record` job still runs and records
+The command records the cancelled run ids in the job summary. The cancelled
+run's `record` job still runs and records
 `cancelled: release-v2 run <id> in progress (full UAT fallback)`; a cancelled run
 is never a skip baseline.
 
 A release reuses a trunk UAT run only when every shard, `gate` and `record` job
-of the run's latest attempt succeeded and ran in that attempt. Re-running only
-the failed jobs of a run mixes attempts, so the run stops qualifying and the
+of the run's latest attempt succeeded and started after that attempt's
+`run_started_at`. Re-running only the failed jobs of a run mixes attempts (GitHub
+reports the latest `run_attempt` for the kept jobs too), so the run is refused
+as partially re-run, naming the re-run and kept jobs, and the
 release runs the full UAT; re-run all jobs to produce reusable evidence. The
 newest completed trunk UAT run that executed cells for an ancestor of the tagged
 commit decides, and no older trunk run is used after it. When that run is red (a

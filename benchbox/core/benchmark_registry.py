@@ -386,7 +386,7 @@ def validate_scale_factor(
 ) -> None:
     from benchbox.core.errors import ScaleFactorNotSupportedError
 
-    if benchmark_id == "tpcds":
+    if benchmark_id in ("tpcds", "tpcds_obt"):
         from benchbox.core.tpcds.compliance import validate_tpcds_scale
 
         validate_tpcds_scale(scale_factor)

@@ -473,7 +473,7 @@ def test_release_gate_stage1_prunes_sf1_timeouts_measured_in_dry_run_2():
     assert pruned >= _SF1_TIMEOUT_PRUNED_CELLS
     assert _SF1_TIMEOUT_PRUNED_CELLS.isdisjoint(cells)
     for platform, benchmark, _ in _SF1_TIMEOUT_PRUNED_CELLS:
-        if benchmark not in ("joinorder", "tpcds_obt"):
+        if benchmark != "joinorder":
             assert {
                 scale
                 for cell_platform, cell_benchmark, scale in cells
@@ -491,31 +491,21 @@ _DOCKER_SF1_TIMEOUT_PRUNED_CELLS = {
         {
             ("lakesail", "datavault", 1.0),
             ("clickhouse-server", "flightdata", 1.0),
-            ("clickhouse-server", "tpcds_obt", 0.01),
-            ("clickhouse-server", "tpcds_obt", 0.1),
             ("clickhouse-server", "tpcds_obt", 1.0),
             ("clickhouse-server", "write_primitives", 1.0),
             ("starrocks", "joinorder", 0.01),
             ("starrocks", "joinorder", 0.1),
             ("starrocks", "joinorder", 1.0),
-            ("starrocks", "tpcds_obt", 0.01),
-            ("starrocks", "tpcds_obt", 0.1),
             ("starrocks", "tpcds_obt", 1.0),
             ("starrocks", "write_primitives", 1.0),
         }
     ),
     "release-gate-03-docker-oltp.yaml": frozenset(
         {
-            ("pg-duckdb", "tpcds_obt", 0.01),
             ("pg-duckdb", "joinorder", 0.01),
-            ("pg-mooncake", "tpcds_obt", 0.01),
             ("postgresql", "joinorder", 0.01),
-            ("postgresql", "tpcds_obt", 0.01),
             ("singlestore", "joinorder", 0.01),
-            ("singlestore", "tpcds_obt", 0.01),
             ("questdb", "joinorder", 0.01),
-            ("questdb", "tpcds_obt", 0.01),
-            ("timescaledb", "tpcds_obt", 0.01),
             ("timescaledb", "joinorder", 0.01),
             ("velox", "joinorder", 0.01),
         }
@@ -582,8 +572,8 @@ def test_release_gate_stage1_prunes_measured_runtime_envelopes():
     for cell in result.cells:
         by_pair.setdefault((cell.platform, cell.benchmark), set()).add(cell.scale)
     eligible = sum(1 for scales in by_pair.values() if set(stage1.scales.rungs).issubset(scales))
-    assert eligible == 109
-    assert stage1.report.cross_scale_coverage_min_pairs == int(0.8 * eligible) == 87
+    assert eligible == 117
+    assert stage1.report.cross_scale_coverage_min_pairs == int(0.8 * eligible) == 93
 
 
 def test_release_gate_cross_scale_floors_are_tuned_and_achievable():
@@ -847,7 +837,9 @@ def test_scale_specific_runtime_envelope_prunes_only_that_scale(monkeypatch):
         ("sqlite", "datavault", 1.0),
         ("sqlite", "tpchavoc", 1.0),
         ("pyspark-df", "tpchavoc", 0.1),
-        *(cell for cell in _SF1_TIMEOUT_PRUNED_CELLS if cell[1] not in ("joinorder", "tpcds_obt")),
+        ("sqlite", "tpcds_obt", 0.1),
+        ("sqlite", "tpcds_obt", 1.0),
+        *(cell for cell in _SF1_TIMEOUT_PRUNED_CELLS if cell[1] != "joinorder"),
     }
 
     cells = {(cell.platform, cell.benchmark, cell.scale) for cell in enumerate_cells_with_pruning(cfg).cells}
@@ -855,6 +847,7 @@ def test_scale_specific_runtime_envelope_prunes_only_that_scale(monkeypatch):
     for benchmark in ("datavault", "tpchavoc"):
         assert {("sqlite", benchmark, 0.01), ("sqlite", benchmark, 0.1)} <= cells
     assert ("pyspark-df", "tpchavoc", 0.01) in cells
+    assert ("sqlite", "tpcds_obt", 0.01) in cells
 
     unscaled = {
         (cell.platform, cell.benchmark)
@@ -862,7 +855,6 @@ def test_scale_specific_runtime_envelope_prunes_only_that_scale(monkeypatch):
         if "release_gate_runtime_envelope" in cell.rule_id and ".sf" not in cell.rule_id
     }
     assert ("sqlite", "tpcds") in unscaled
-    assert ("sqlite", "tpcds_obt") in unscaled
     assert ("datafusion", "datavault") in unscaled
 
 

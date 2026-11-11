@@ -186,9 +186,16 @@ growth, with external readers seeing no rows until the loader commits. The
 probe and original killed-run evidence were captured outside the repository
 under `BENCHBOX_OUTPUT_DIR=<checkout-parent>/benchmark_runs` and `/tmp`.
 
-This exclusion is represented by
-`uat.compat.sqlite.tpcds_obt.release_gate_runtime_envelope`. It prunes the
-requested `0.01`, `0.1`, and `1.0` ladder entries before the existing TPC-DS OBT
-minimum-scale fallback can substitute `1.0`; it is not a blanket skip or a
-timeout increase. A future atomic SQLite bulk-loader optimization must replace
-the rule only after a bounded native measurement fits the same contract.
+The SF1 exclusion is represented by
+`uat.compat.sqlite.tpcds_obt.sf1.release_gate_runtime_envelope`; it is not a
+blanket skip or a timeout increase. A future atomic SQLite bulk-loader
+optimization must replace the rule only after a bounded native measurement
+fits the same contract.
+
+TPC-DS OBT accepts scales below 1, so the release ladder also requests SF0.01
+and SF0.1. On 2026-11-11, on an Apple M4 with 16 GB, a native
+`benchbox run --platform sqlite --benchmark tpcds_obt` completed SF0.01 in 123
+seconds (10.0 seconds to load 50,335 rows). At SF0.1 it loaded 503,753 rows in
+103.7 seconds, then query 35 was still running when the 1200-second cell limit
+stopped it. `uat.compat.sqlite.tpcds_obt.sf0.1.release_gate_runtime_envelope`
+prunes that cell; SF0.01 stays in the gate.

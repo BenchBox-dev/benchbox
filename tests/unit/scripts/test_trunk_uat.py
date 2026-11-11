@@ -35,6 +35,7 @@ class Github:
         self.release_runs: list[dict] = []
         self.jobs: dict[int, list[dict]] = {}
         self.calls: list[str] = []
+        self.attempt_starts: dict[int, str] = {}
         self.records: dict[int, bytes] = {}
         self._next = 1000
 
@@ -80,9 +81,9 @@ class Github:
     def fetch(self, artifact_id: int) -> bytes:
         return self.records[artifact_id]
 
-    def release_run(self, status: str) -> int:
+    def release_run(self, status: str, **fields) -> int:
         self._next += 1
-        self.release_runs.append({"id": self._next, "status": status})
+        self.release_runs.append({"id": self._next, "status": status, **fields})
         return self._next
 
     def __call__(self, path: str) -> dict:
@@ -96,6 +97,8 @@ class Github:
             return {"workflow_runs": list(self.release_runs)}
         if parsed.path.startswith("actions/runs/") and parsed.path.endswith("/artifacts"):
             return {"artifacts": self.artifacts[int(parsed.path.split("/")[2])]}
+        if parsed.path.startswith("actions/runs/") and "/attempts/" in parsed.path and "/jobs" not in parsed.path:
+            return {"run_started_at": self.attempt_starts[int(parsed.path.rsplit("/", 1)[1])]}
         if parsed.path.startswith("actions/runs/") and "/jobs" in parsed.path:
             return {"jobs": self.jobs.get(int(parsed.path.split("/")[2]), [])}
         raise AssertionError(f"unexpected API path {path}")
@@ -293,6 +296,51 @@ def test_nothing_starts_while_a_release_run_is_in_progress(releasable, status, e
     decision = decide(github, History({sha("a"): set()}), event=event)
     assert decision.action == "defer"
     assert decision.reason == f"deferred: release-v2 run {active} in progress"
+
+
+def test_an_in_progress_probe_dispatch_does_not_defer(releasable):
+    github = Github()
+    probe = github.release_run("in_progress", event="workflow_dispatch", head_branch="fix/x", run_attempt=1)
+    github.jobs[probe] = [
+        {"name": "admit", "status": "completed", "conclusion": "success"},
+        {"name": "probe UAT stub evidence", "status": "in_progress", "conclusion": None},
+    ]
+    assert decide(github, History({sha("a"): set()}), event="workflow_dispatch").action == "run"
+
+
+def test_a_tag_push_release_in_progress_defers_even_with_probe_runs_beside_it(releasable):
+    github = Github()
+    probe = github.release_run("in_progress", event="workflow_dispatch", run_attempt=1)
+    github.jobs[probe] = [{"name": "publish dry run", "status": "in_progress", "conclusion": None}]
+    release = github.release_run("in_progress", event="push", head_branch="v0.5.0", run_attempt=1)
+    decision = decide(github, History({sha("a"): set()}), event="schedule")
+    assert decision.reason == f"deferred: release-v2 run {release} in progress"
+
+
+@pytest.mark.parametrize(
+    "jobs",
+    [
+        [],
+        [{"name": "admit", "status": "in_progress", "conclusion": None}],
+        [{"name": "probe UAT stub evidence", "status": "completed", "conclusion": "skipped"}],
+        [{"name": "probe UAT stub evidence", "status": "queued", "conclusion": None}],
+        [{"name": "publish dry run", "status": "waiting", "conclusion": None}],
+    ],
+)
+def test_a_dispatch_run_not_proven_to_be_a_probe_defers(releasable, jobs):
+    github = Github()
+    run = github.release_run("in_progress", event="workflow_dispatch", run_attempt=1)
+    github.jobs[run] = jobs
+    decision = decide(github, History({sha("a"): set()}), event="schedule")
+    assert decision.reason == f"deferred: release-v2 run {run} in progress"
+
+
+def test_a_run_with_no_event_defers(releasable):
+    github = Github()
+    run = github.release_run("in_progress")
+    assert decide(github, History({sha("a"): set()}), event="schedule").reason == (
+        f"deferred: release-v2 run {run} in progress"
+    )
 
 
 def test_completed_release_runs_do_not_defer(releasable):
@@ -500,6 +548,34 @@ def test_record_lists_every_executed_cell_with_state_elapsed_memory_signature_an
     for row in rows:
         assert row["source_sha"] == sha("a") and row["run_id"] == 42 and row["stage"] == 1 and row["shard"] == "sqlite"
         assert row["dist_digest"] == record["dist_digest"]
+
+
+def test_record_attributes_each_shards_cells_to_the_attempt_that_produced_them(tmp_path):
+    github = Github()
+    github.attempt_starts = {1: "2026-11-06T02:00:00Z", 2: "2026-11-06T06:00:00Z"}
+    github.jobs[42] = [
+        job("UAT stage 1 sqlite", "02:10", "05:10"),
+        job("UAT stage 1 pandas-df", "06:05", "06:30"),
+    ]
+    evidence = tmp_path / "evidence"
+    write_shard(evidence, 1, "sqlite", [passed_row("sqlite", "sqlite.log")])
+    write_shard(evidence, 1, "pandas-df", [passed_row("pandas-df", "pandas.log")])
+    record, rows = build(github, tmp_path, attempt=2)
+    assert record["partial_rerun"] is True
+    assert record["carried_over_shards"] == ["stage 1 sqlite"]
+    assert {row["shard"]: row["run_attempt"] for row in rows} == {"sqlite": 1, "pandas-df": 2}
+    assert "Partial re-run: attempt 2 kept the earlier results of stage 1 sqlite" in trunk_uat.render_summary(record)
+
+
+def test_record_of_a_full_rerun_or_a_first_attempt_is_not_a_partial_rerun(tmp_path):
+    github = Github()
+    github.attempt_starts = {1: "2026-11-06T02:00:00Z", 2: "2026-11-06T06:00:00Z"}
+    github.jobs[42] = [job("UAT stage 1 sqlite", "06:05", "06:30")]
+    write_shard(tmp_path / "evidence", 1, "sqlite", [passed_row("sqlite", "sqlite.log")])
+    record, rows = build(github, tmp_path, attempt=2)
+    assert record["partial_rerun"] is False and rows[0]["run_attempt"] == 2
+    record, rows = build(github, tmp_path, attempt=1)
+    assert record["partial_rerun"] is False and rows[0]["run_attempt"] == 1
 
 
 def test_record_reports_wall_time_runner_hours_and_per_shard_state(tmp_path):

@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Release evidence reuse now refuses a trunk UAT run whose latest attempt re-ran only some jobs, and the trunk UAT history records the attempt that produced each shard's cells."
+}
