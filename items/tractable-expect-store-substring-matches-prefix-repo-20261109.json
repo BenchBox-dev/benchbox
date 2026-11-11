@@ -4,7 +4,7 @@
     "Accepted forms still work: owner/repo, owner/repo.git, a bare repo name when unambiguous, and the full clone URL, case-insensitively.",
     "The todo skill's critical rule states the exact matching rule and the safe form until the product change ships."
   ],
-  "context": "Found while resuming after the tractable 1.0.0 rename restart; the restarted session was bound to the fork tracker only, and the core-named check passed. The workaround used here: expect_store with the .git suffix, plus verifying the Remote line of get_instructions.",
+  "context": "Found while resuming after the tractable 1.0.0 rename restart; the restarted session was bound to the fork tracker only, and the core-named check passed. The workaround used here: expect_store with the .git suffix, plus verifying the Remote line of get_instructions.\n\n2026-11-11: merged duplicate todo-db-expect-store-substring-matches-sibling-repo-20261030 into this item. Second observation (2026-10-30, todo-db 0.11.0): a server bound to https://github.com/BenchBox-dev/benchbox-site.git accepted expect_store BenchBox-dev/BenchBox. The fix is to match owner/repo against the remote path exactly, ignoring a trailing .git and case.",
   "description": "Problem. get_instructions(expect_store=...) matches a case-insensitive SUBSTRING of the bound remote (documented in the todo skill). With two projects whose names share a prefix, the gate cannot tell them apart: observed 2026-11-09 on tractable 1.0.0 with a server bound to https://github.com/BenchBox-dev/benchbox-sqlglot.git#todo-state, expect_store='BenchBox-dev/BenchBox' was ACCEPTED (it is a prefix of 'benchbox-dev/benchbox-sqlglot'), so the 'wrong tracker' refusal that protects every first write silently passes. expect_store='BenchBox-dev/BenchBox.git' was refused correctly. Impact: an agent that follows the skill literally (pass the full owner/repo) can write core work into the fork tracker, or fork work into core, with no gate. Both repos exist and both have trackers, so this is a live hazard here, not a hypothetical.\n\nChange (product: tractable, plus the todo skill). Make the match segment-aware: compare normalized owner/repo path segments (strip scheme, host, trailing .git) for equality, or require the expected value to match a whole path component. Keep accepting a bare repo name or full URL. Until then the skill should tell agents to pass the repository with a '.git' suffix or the full URL.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/tree/todo-state"
@@ -17,6 +17,14 @@
       "op": "create",
       "op_id": "de045f19f8864c1987337d72459700bc",
       "session_id": "b302c66496e945fa9c7879036f7a361a"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:22:10Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "abcea1d00f274e219caa502176d85726",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
