@@ -1,5 +1,39 @@
 # Corpus Generation Notes - 2026-04-03
 
+## First bundles with captured query plans (2026-11-11)
+
+Two TPC-H SF 0.1 bundles (`result_source: internal`) are the first in the
+corpus to carry a `.plans.json` companion, so the Results Explorer can show
+and serve query plans for them:
+
+| Platform | Bundle | Plans |
+|---|---|---|
+| DuckDB 1.5.5 (SQL) | `tpch_sf01_duckdb_sql_20261111_154211_a31c24ca` | 22 estimated `EXPLAIN` plans as operator trees, each with a fingerprint |
+| Polars 1.44.2 (DataFrame) | `tpch_sf01_polars_df_20261111_154204_3d7d3e84` | 22 optimized lazy plans as text, without fingerprints |
+
+Both ran on the Darwin Apple M4 host (10 CPUs, 16 GB RAM) with
+`--phases generate,load,power --capture-plans --compression zstd:9`, 3
+iterations and the qgen default substitution parameters (no `--seed`). Each
+ran 22 queries three times with no failures, every row count matches the
+SF 0.1 reference, and `summary.validation` is `passed`. DuckDB ran with 8
+threads and an 8 GB memory limit. Both bundles are `unofficial_subscale`.
+
+Plan capture stays outside the timed windows. DuckDB plans come from a
+separate `EXPLAIN` after the measured iterations. Polars plans are read after
+each query's result is collected, and the capture time is subtracted from the
+recorded query time. Every measured row records one request.
+
+The runs use default parameters rather than a seed because a seeded DataFrame
+TPC-H run skips the parameter-sensitive row counts, records validation
+`uncertain`, and is not staged. Polars has no plan parser, so its plans carry
+no fingerprint and cannot record `fingerprint_varied`.
+
+`benchbox publish run` sanitized each companion (it removes the raw `EXPLAIN`
+text and operator platform metadata and redacts local paths) and
+`make corpus-stage-local` anonymized the result with an internal manifest.
+The publish step rewrites companion keys from `Q<id>#<stream>:<test_type>` to
+the bare query id; the plan content and fingerprints are unchanged.
+
 ## TPC-DS OBT at SF 0.01 and SF 0.1 (2026-11-11)
 
 TPC-DS OBT has accepted scales below 1 since 2026-11-11 (#4088), so these are

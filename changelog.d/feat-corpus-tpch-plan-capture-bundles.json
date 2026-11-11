@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "The published results corpus adds its first bundles with captured query plans: TPC-H SF 0.1 on DuckDB and on Polars DataFrame. The Results Explorer shows the plans on each result page and offers the plans file for download.",
+      "details": ["DuckDB plans are estimated EXPLAIN operator trees with fingerprints; Polars plans are optimized lazy plans as text, without fingerprints. Both runs use the qgen default parameters and passed row-count validation on all 22 queries."],
+      "platforms": ["duckdb", "polars"],
+      "benchmarks": ["tpch"]
+    }
+  ]
+}

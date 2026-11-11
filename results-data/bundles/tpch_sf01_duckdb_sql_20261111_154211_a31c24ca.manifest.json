@@ -1,0 +1,11 @@
+{
+  "bundle_file": "tpch_sf01_duckdb_sql_20261111_154211_a31c24ca.json",
+  "bundle_hash": "0318de1506190600038d97f371d2373be185e7c165866d0bd223b15c9756883f",
+  "companion_hashes": {
+    "tpch_sf01_duckdb_sql_20261111_154211_a31c24ca.plans.json": "0f3ef50711c688ec29487e983b86cdefc5e34a7da41111a8e936a9ad018a56dd"
+  },
+  "funding": "unspecified",
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer"
+}
