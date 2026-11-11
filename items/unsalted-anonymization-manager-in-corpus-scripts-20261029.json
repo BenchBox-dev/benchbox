@@ -3,7 +3,7 @@
     "Every AnonymizationManager construction in corpus, bundle or snapshot producing code requires the salt or is shown unreachable from public outputs, with a test per changed site that fails without the salt",
     "git grep -n 'AnonymizationManager(' lists no unsalted construction on a public publication path"
   ],
-  "context": "2026-11-01: #3878 (cd374960b6) deliberately kept the Explorer pipeline (pipeline.py:564), the CPU attestation backfill and the sync-results-data-to-published workflow on an unsalted `AnonymizationManager()`, and added tests pinning that they read neither the env var nor the salt file. Reason (adversarial plan review): they run in CI over already-public bundles, already-public pseudonyms pass through unchanged, and a per-run generated salt would make publication digests and result_ids nondeterministic. That conflicts with this item's default ('require the salt'). DECISION NEEDED before work: either accept the #3878 reasoning (show no raw identifier reaches these paths, then close) or require the CI secret there. result_capture and the exporter library default remain env-only soft reads; corpus staging and migration now require env or the existing salt file.",
+  "context": "2026-11-01: #3878 (cd374960b6) deliberately kept the Explorer pipeline (pipeline.py:564), the CPU attestation backfill and the sync-results-data-to-published workflow on an unsalted `AnonymizationManager()`, and added tests pinning that they read neither the env var nor the salt file. Reason (adversarial plan review): they run in CI over already-public bundles, already-public pseudonyms pass through unchanged, and a per-run generated salt would make publication digests and result_ids nondeterministic. That conflicts with this item's default ('require the salt'). DECISION NEEDED before work: either accept the #3878 reasoning (show no raw identifier reaches these paths, then close) or require the CI secret there. result_capture and the exporter library default remain env-only soft reads; corpus staging and migration now require env or the existing salt file.\n\nRevalidated 2026-11-11: still open and still needs the owner decision recorded on 2026-11-01. Current state on origin/develop (c7b75c80bc): unsalted `AnonymizationManager()` remains at _project/scripts/results_explorer_cpu_attestation_backfill.py:100, _project/scripts/explorer_pipeline/pipeline.py:564 and .github/workflows/sync-results-data-to-published.yml:114. Salted or salt-requiring: _project/scripts/results_explorer_corpus_migrate.py:125 (require_salt=True), scripts/stage_seed_corpus_bundle.py:67 and benchbox/cli/commands/submit.py:768 (explicit salt). Soft env-only reads: benchbox/platforms/base/result_capture.py:1625 (was :1492, from_public_environ() without require_salt) and benchbox/core/results/exporter.py:104-105. Decision still needed: accept the #3878 reasoning (these run in CI over already-public bundles) with evidence that no raw identifier reaches them and add a structural test, or require the CI salt secret.",
   "description": "Found 2026-10-29 while landing PR 3672, which made _project/scripts/results_explorer_corpus_migrate.py require the salt (AnonymizationConfig.from_public_environ(require_salt=True)) after the oracle showed that an empty-salt public identifier hash is a confirmation oracle for low-entropy identifiers. Two more call sites on origin/develop construct the manager without a salt and have not been examined: _project/scripts/results_explorer_cpu_attestation_backfill.py:100 (`manager = AnonymizationManager()`) and _project/scripts/explorer_pipeline/pipeline.py:564 (`public_anonymizer = AnonymizationManager()`). Also review benchbox/platforms/base/result_capture.py:1492 (from_public_environ() without require_salt) and benchbox/core/results/exporter.py:104.\n\nFor each site decide whether its output can reach the public corpus, a published bundle or the Explorer snapshot. Where it can, require the salt (existing from_public_environ(require_salt=True)) and fail clearly when it is missing; where it cannot, record why in the code through structure or a test, not a comment. Check the pipeline path first: it names a public anonymizer.",
   "links": [
     "BenchBox-dev/BenchBox: _project/scripts/results_explorer_cpu_attestation_backfill.py",
@@ -26,6 +26,14 @@
       "op": "update",
       "op_id": "85d55574f18e4c5a926426a3f70e6f3e",
       "session_id": "a36a04b6bc394082b5008f654e1bf00b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:36:06Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ff01efb7d57f4db5bcbcb96099539da1",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
