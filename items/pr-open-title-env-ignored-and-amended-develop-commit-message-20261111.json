@@ -6,6 +6,7 @@
     "Soundness review passes (make/ is a soundness path).",
     "Done when merged."
   ],
+  "context": "2026-11-11: delivered in PR #4120, merged to develop as 591c21ba5e (verified an ancestor of origin/develop). PR_OPEN_TITLE without TITLE is refused with a message naming TITLE; the conflict refusal explains the amended-develop-commit case; the make help line for pr-open says it runs the local review.",
   "description": "Found on 2026-11-11 while delivering retro-navigation-fixes-umbrella-20261111 (or in the retrospective over 25 agent sessions that preceded it) and not addressed there.\n\nProblem. (1) `make pr-open` sets `export PR_OPEN_TITLE := $(TITLE)` in make/pr-landing.mk, so a `PR_OPEN_TITLE=...` given in the environment is silently replaced by an empty value and the title falls back to the first commit subject. Three delegated prompts in the reviewed sessions used that form; it went unnoticed because the subjects happened to match. `PR_BODY_FILE` does work from the environment, which makes the difference easy to miss. (2) In two of five reviewed write sessions a pre-commit hook rejected a commit and the agent then ran `git commit --amend`, which amended the develop squash commit under it. `make pr-open` then refused with a generic 'HEAD conflicts with origin/develop', and each agent spent several calls on rebase, abort and reflog before finding the cause.\n\nChange. (1) Refuse when PR_OPEN_TITLE is set in the environment without TITLE, naming TITLE. (2) Before the merge-tree check, detect a branch commit whose subject ends '(#N)' and is not on origin/develop, and say that a develop commit was amended and how to recover.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read every cited file on current origin/develop first, because line numbers and commits here are from 2026-11-11 (origin/develop 5bd2c19cc4); close at a merged PR and finish only after the merge is observed.",
   "links": [
     "make/pr-landing.mk",
@@ -35,6 +36,14 @@
       "generation": "fcb813015fae44e9955bc23c1ac56db7",
       "op": "take",
       "op_id": "ab45687875b1439e9c60791f11aed3dd",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T22:32:54Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3ded61bf7cf943f0b8c6458981bf412b",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
