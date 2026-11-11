@@ -2,7 +2,7 @@
   "acceptance": [
     "Measure queue depth and wait per workflow for one week; identify runs that add no signal (superseded heads, duplicate extension-smoke, cancelled-but-queued) and add concurrency cancellation or path filters; decide on runner capacity. Report median core wait before and after."
   ],
-  "context": "2026-10-31 evidence (session on CI time): the queue is mostly CI, not oracle. A CI run executes about 22 jobs and about 4,300 runner-seconds per pull-request event; oracle work uses about 2 runner-minutes per event, so CI is about 97% of runner time. Between 11:23 and 15:17 UTC there were 122 pull-request events against 8 develop pushes, with 54 open pull requests. By run count about 125 of 205 queued runs were oracle workflows, but they take almost no runner time. The queue drained to 0 by 2026-11-01 13:06 UTC. Editing oracle workflows to shrink it was reviewed and judged unsafe (see oracle-gate-bridge-noop-runs-hold-runner-slots-20261101). Options with no gate risk: cap open pull requests or concurrent pushes, avoid ready_for_review in the same second as a push (oracle-verdict-same-second-push-and-ready-cancels-new-head-20261101), and reduce ci.yml fan-out (ci.yml is a soundness path). The owner chose not to change runner capacity; the Free plan pool is 20 jobs.",
+  "context": "2026-10-31 evidence (session on CI time): the queue is mostly CI, not oracle. A CI run executes about 22 jobs and about 4,300 runner-seconds per pull-request event; oracle work uses about 2 runner-minutes per event, so CI is about 97% of runner time. Between 11:23 and 15:17 UTC there were 122 pull-request events against 8 develop pushes, with 54 open pull requests. By run count about 125 of 205 queued runs were oracle workflows, but they take almost no runner time. The queue drained to 0 by 2026-11-01 13:06 UTC. Editing oracle workflows to shrink it was reviewed and judged unsafe (see oracle-gate-bridge-noop-runs-hold-runner-slots-20261101). Options with no gate risk: cap open pull requests or concurrent pushes, avoid ready_for_review in the same second as a push (oracle-verdict-same-second-push-and-ready-cancels-new-head-20261101), and reduce ci.yml fan-out (ci.yml is a soundness path). The owner chose not to change runner capacity; the Free plan pool is 20 jobs.\n\n2026-11-11: merged duplicate throwaway-workflows-starve-required-ci-20261101 into this item. Contributor from that item: on 2026-10-31 a throwaway release-UAT dry run (run 41163626947, branch ci/release-uat-dryrun) held about 15 parallel jobs for hours while 100+ required runs queued. Candidate remedy: a concurrency cap for experimental workflows (max-parallel, separate runner group, or off-hours schedule).",
   "description": "Observed 2026-10-31: 59-128 queued workflow runs with 1-6 in progress; later 197 queued and 0 in progress at 15:32Z, oldest queued run from 11:50Z. pr-arm refuses until core records the verify-fast-duration verdict, so each push (including GitHub \"Update branch\" merges, which also restart oracle review) restarts a multi-hour wait. Six release-UAT fix PRs took from about 07:30Z to 14:11Z to merge once their CI was fixed; later fixes waited 5+ h more. Queue contributors include about 30 concurrent QuestDB PRs from one session and per-PR oracle and extension-smoke runs.",
   "links": [
     "ci-usage-metrics-report-20261024"
@@ -23,6 +23,14 @@
       "op": "update",
       "op_id": "aac220bb3867422c8f626f3ac91a623b",
       "session_id": "77bfd3a6737c4f8e9b68d27f796e8651"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:22:45Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "54469a8716b44fc3957761a905c643a0",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
