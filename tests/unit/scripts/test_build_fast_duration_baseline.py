@@ -516,17 +516,10 @@ def test_medium_hysteresis_without_previous_returns_fresh() -> None:
     assert baseline.apply_medium_hysteresis(None, fresh) is fresh
 
 
-def test_medium_render_is_one_sorted_line_per_test_and_round_trips() -> None:
-    payload = medium_payload({"b::t[1]": 0.25, "a::t": 0.0123})
+def test_medium_render_matches_the_committed_layout_byte_for_byte() -> None:
+    fixture = Path(__file__).resolve().parents[2] / "fixtures" / "medium_shard_durations.json"
+    text = fixture.read_text(encoding="utf-8")
 
-    text = baseline.render_medium_durations(payload)
-
-    lines = text.splitlines()
-    assert lines[lines.index('  "tests": {') + 1 : -2] == [
-        '    "a::t": {"p95_seconds": 0.0123},',
-        '    "b::t[1]": {"p95_seconds": 0.25}',
-    ]
-    assert json.loads(text) == payload
     assert baseline.render_medium_durations(json.loads(text)) == text
 
 

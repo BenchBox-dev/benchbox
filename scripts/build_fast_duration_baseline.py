@@ -430,15 +430,7 @@ def apply_medium_hysteresis(previous: dict[str, Any] | None, fresh: dict[str, An
 
 
 def render_medium_durations(payload: dict[str, Any]) -> str:
-    header = {key: value for key, value in payload.items() if key != "tests"}
-    lines = ["{"]
-    lines.extend(f"  {json.dumps(key)}: {json.dumps(value)}," for key, value in header.items())
-    lines.append('  "tests": {')
-    rows = [f"    {json.dumps(nodeid)}: {json.dumps(payload['tests'][nodeid])}" for nodeid in sorted(payload["tests"])]
-    if rows:
-        lines.append(",\n".join(rows))
-    lines.extend(["  }", "}"])
-    return "\n".join(lines) + "\n"
+    return json.dumps(payload, indent=2) + "\n"
 
 
 def read_previous_medium(path: Path) -> dict[str, Any] | None:
