@@ -5,6 +5,7 @@
     "Verification: tests/unit/scripts/test_soundness_merge_digest.py passes; soundness review passes.",
     "Done when merged."
   ],
+  "context": "2026-11-11: delivered in PR #4117, merged to develop as 4b60d5592a (verified an ancestor of origin/develop). The duplicate marker regex was removed in favour of the reviewer engine's own parser, with a test that runs the digest's thread join against the pinned engine for both marker spellings; docs/internal/review-v2.md now says where the pinned source is and names the markers the reviewer writes today; a --since earlier than the manifest's first commit is refused; read calls retry twice. The runtime figure in the governance doc comes from earlier runs and was not re-measured.",
   "description": "Found on 2026-11-11 while delivering retro-navigation-fixes-umbrella-20261111 (or in the retrospective over 25 agent sessions that preceded it) and not addressed there.\n\nProblem. (1) No document says how to find the source of the pinned Theseus engine. Four reviewed sessions each looked somewhere different: Theseus origin/main (unreleased), a whole-filesystem grep, the first directory under ~/.cache/theseus/installs (which holds every past version), and a development worktree. One read a cached 0.1.6 and concluded the pinned release could not read `review-defect` markers. (2) On that wrong premise it added its own pattern: `_project/scripts/soundness_merge_digest.py` defines `THREAD_DEFECT` (line 67, used at line 357), which landed with #4085. The pinned engine already parses both marker forms.\n\nChange. Document the lookup: `uv run -- python scripts/theseus_cli.py --trusted-ref HEAD path` prints `<install>/bin/theseus`, and the source is `<install>/site/theseus_reviewer`; never pick a directory under ~/.cache/theseus/installs by hand. Then replace `THREAD_DEFECT` with the engine's own parser if the pinned version exposes one.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read every cited file on current origin/develop first, because line numbers and commits here are from 2026-11-11 (origin/develop 5bd2c19cc4); close at a merged PR and finish only after the merge is observed.",
   "links": [
     "scripts/theseus_cli.py",
@@ -36,6 +37,14 @@
       "generation": "02fe06dd75204eaaac5fd56261a0526e",
       "op": "take",
       "op_id": "bf101116c6c34b00b5a21fe60f30fdce",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T19:13:18Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "08499fe6692145f7973565b6a4e64f37",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
