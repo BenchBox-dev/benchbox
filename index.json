@@ -12707,15 +12707,10 @@
       "title": "Retire the oracle names BenchBox still uses after its migration to Theseus review-* names"
     },
     "benchbox-review-format-dual-read-20261110": {
-      "claim": {
-        "expires_at": "2026-11-12T14:42:28Z",
-        "generation": "22372f7b91814f63a1b7069cd3d827da",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57133450e487c312386efb7b"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Make BenchBox review-output readers accept both the current and the redesigned Theseus format"
     },
     "benchbox-score-advanced-fixtures": {
