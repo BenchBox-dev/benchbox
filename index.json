@@ -35817,18 +35817,13 @@
       "title": "Umbrella: make scale-factor rules, registry counts and site docs agree"
     },
     "scale-factor-floor-0-01-20261111": {
-      "claim": {
-        "expires_at": "2026-11-12T23:20:37Z",
-        "generation": "2e62509333da4e9daa18f2c3f1552fe4",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba"
-      },
+      "claim": null,
       "needs": [
         "scale-factor-consistency-umbrella-20261111",
         "scale-factor-registry-caps-vs-docs-20261013"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Raise the minimum scale factor to 0.01 for every benchmark"
     },
     "scale-factor-nonstandard-note-surfaces-20261111": {
