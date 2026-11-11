@@ -3,7 +3,7 @@
     "A sweep running write_primitives then transaction_primitives, and tpcds then tpcds_obt, on the same platform succeeds.",
     "The guard still refuses to drop a database holding tables BenchBox did not create."
   ],
-  "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), artifacts release-uat-v0.5.0rc2-stage3-olap and release-uat-v0.5.0rc2-stage3-postgres-family: cells.jsonl, uat_gate_summary.json, validator_rollup.tsv, uat_lifecycle.log and per-cell logs.",
+  "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), artifacts release-uat-v0.5.0rc2-stage3-olap and release-uat-v0.5.0rc2-stage3-postgres-family: cells.jsonl, uat_gate_summary.json, validator_rollup.tsv, uat_lifecycle.log and per-cell logs.\n\nClosed 2026-11-11 against current evidence: Fixed by PR #3742 (947b16f): sibling benchmarks sharing a DB are recognised via benchbox_table_ownership and replaced; unowned tables still block the drop. Trunk UAT 42718296767 (52615914) green: Doris ran write_primitives then transaction_primitives and tpcds then tpcds_obt; pg-duckdb and SingleStore ran write then transaction. Tests: tests/unit/platforms/test_shared_database_sibling_tables.py. Scheduled 42789483182 (ce39d768) green.",
   "description": "benchbox/platforms/base/connection_lifecycle.py:253 refuses to drop a database that holds tables not owned by the current benchmark. Benchmarks that share a database name now fail in sequence: transaction_primitives after write_primitives on Doris, SingleStore and pg_duckdb (batch_metadata, bulk_load_ops_target, insert_ops_* ...), and tpcds_obt after tpcds on SingleStore and pg_mooncake. Decide whether these benchmarks should use distinct database names, whether the guard should treat tables of known BenchBox benchmarks differently, or whether UAT should pass --force-recreate, without weakening protection for user tables.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/actions/runs/40971306663"
@@ -24,6 +24,14 @@
       "generation": "25f9a73ded6647eb82f11104f4bfb3ab",
       "op": "take",
       "op_id": "ea7797181c744866afed92c2362f89f7",
+      "session_id": "9c850cdf96994544b99810e1605fa398"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7bc97e5b905b990114418f4a",
+      "at": "2026-11-11T02:31:14Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d4e8dd2d3b3e4402aa990e394a4202f6",
       "session_id": "9c850cdf96994544b99810e1605fa398"
     }
   ]
