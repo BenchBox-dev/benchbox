@@ -30856,17 +30856,12 @@
       "title": "Address pre-existing issues surfaced by complexity batch 8-10 review"
     },
     "preflight-misses-sparse-checkout-consumer-tests-20261111": {
-      "claim": {
-        "expires_at": "2026-11-12T22:32:30Z",
-        "generation": "9196e11c3c0b48cd8a95a661e1b6f6ef",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549"
-      },
+      "claim": null,
       "needs": [
         "feature-pr-landing-guards-20261111"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Select tests of scripts that import a changed module from a sparse checkout"
     },
     "preflight-receipt-does-not-require-guard-steps-20261111": {
