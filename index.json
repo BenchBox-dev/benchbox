@@ -31626,7 +31626,7 @@
         "core-exec-polars-matrix-docs-refresh"
       ],
       "priority": "medium",
-      "status": "blocked",
+      "status": "open",
       "title": "Draft the blog post on Polars 2.0 performance across versions"
     },
     "pypi-environment-protection-20261023": {

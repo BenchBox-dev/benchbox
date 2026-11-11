@@ -6,7 +6,7 @@
     "The draft links to the published results from pvm-s6-publish-polars-results, or states where the data lives",
     "The draft names the core --execution-engine setting (default, in-memory, streaming) in its setup descriptions and reproduce commands, matching the refreshed methodology, and never a Polars `engine` platform option"
   ],
-  "context": "2026-10-09: pvm-s5 is done. A draft exists uncommitted in worktree ../BenchBox.wt-polars-blog (branch docs/polars-2-matrix-blog-draft): _blog/platform-deep-dives/drafts/polars-2-version-matrix.md and research/polars-2-version-matrix-figures-2026-10-09.md. Held until core-exec-polars-matrix-docs-refresh lands, because the Polars `engine` option the draft describes is being replaced by the core --execution-engine setting (ADR docs/development/adr/adr-core-execution-variants.md). Before committing: change the reproduce commands and the setup descriptions to --execution-engine, re-run the blog skill critique and voice checks, and fix the 1.35.2 wording (the probe did not attribute its streaming divergence to Polars). Draft goes in _blog/platform-deep-dives/drafts/ and is not published (D5).",
+  "context": "2026-10-09: pvm-s5 is done. A draft exists uncommitted in worktree ../BenchBox.wt-polars-blog (branch docs/polars-2-matrix-blog-draft): _blog/platform-deep-dives/drafts/polars-2-version-matrix.md and research/polars-2-version-matrix-figures-2026-10-09.md. Held until core-exec-polars-matrix-docs-refresh lands, because the Polars `engine` option the draft describes is being replaced by the core --execution-engine setting (ADR docs/development/adr/adr-core-execution-variants.md). Before committing: change the reproduce commands and the setup descriptions to --execution-engine, re-run the blog skill critique and voice checks, and fix the 1.35.2 wording (the probe did not attribute its streaming divergence to Polars). Draft goes in _blog/platform-deep-dives/drafts/ and is not published (D5).\n\nRevalidated 2026-11-11: no unmet needs remain (core-exec-polars-matrix-docs-refresh is done), so the blocked status was stale; moved back to open. PR #3142 was closed and superseded by benchbox-site#51 (merged 2026-10-19), which holds an outline and research notes only, not a full draft.",
   "description": "Write the post that presents the Polars 2.0 results, using the blog skill (plan, draft, critique, voice and style checks).\n\nGuardrails:\n- Choose the title and angle after reading the pvm-s5 findings, not before.\n- Lead with the default-settings comparison (setup A), then separate the engine-default change from engine improvements (setup B) and streaming against streaming (setup C).\n- Include the disclosures: host (Apple M4, 16 GiB), thread count, data generation, Parquet reads in each run, min–max per median, did-not-complete cells, the correctness evidence used, and no speed claims against DuckDB.\n- Every chart and number cites the analysis output.\n- Draft only: publishing goes through the blog skill's normal review, and its own approval.",
   "links": [
     "_blog/STYLE_GUIDE.md",
@@ -53,6 +53,14 @@
       "op": "update",
       "op_id": "8bece04868284a88830396e4bd6afe68",
       "session_id": "ece27cd7b1e84cfdb901409d637eabe8"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:40:14Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "34b65e80fdaa43dc92a6bb045bf9b2f5",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
