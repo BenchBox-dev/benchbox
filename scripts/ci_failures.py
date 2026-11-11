@@ -25,6 +25,7 @@ CONTEXT_LINES = 8
 DETAIL_LINES = 12
 DETAIL_PREFIX = "E   "
 FAILED_CONCLUSIONS = ("failure", "timed_out", "cancelled", "startup_failure")
+JOBLESS_FAILURES = ("failure", "timed_out", "startup_failure")
 REPOSITORY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*$")
 NUMBER_RE = re.compile(r"^[1-9][0-9]{0,18}$")
 TIMESTAMP_RE = re.compile(r"^\ufeff?\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z ?")
@@ -191,7 +192,7 @@ def report_run(runner: Runner, repo: str, run: Run, limit: int) -> tuple[list[st
         return [f"{header}: placeholder for a title or body edit; the full CI run decides"], 0
     jobs = failed_jobs(runner, repo, run.run_id)
     if not jobs:
-        if run.conclusion not in FAILED_CONCLUSIONS:
+        if run.conclusion not in JOBLESS_FAILURES:
             return [], 0
         return [header, f"  the run ended {run.conclusion} with no failed job recorded; open the run to see why"], 1
     out = [header]

@@ -307,7 +307,7 @@ def test_an_api_failure_exits_one_with_the_reason(capsys: pytest.CaptureFixture[
     assert "gh: HTTP 502" in capsys.readouterr().err
 
 
-@pytest.mark.parametrize("conclusion", ["failure", "startup_failure", "timed_out", "cancelled"])
+@pytest.mark.parametrize("conclusion", ["failure", "startup_failure", "timed_out"])
 def test_a_failed_run_with_no_failed_job_is_still_reported_as_failed(conclusion: str) -> None:
     gh = FakeGh([(11, "CI", "fix: thing", "completed", conclusion)], {}, {})
 
@@ -316,3 +316,9 @@ def test_a_failed_run_with_no_failed_job_is_still_reported_as_failed(conclusion:
     assert "no failed job found" not in lines
     assert any("run 11" in line and conclusion in line for line in lines)
     assert any("no failed job recorded" in line for line in lines)
+
+
+def test_a_run_cancelled_before_any_job_ran_is_not_reported_as_a_failure() -> None:
+    gh = FakeGh([(21, "review-gate (pull_request_target pr=7)", "gate", "completed", "cancelled")], {}, {})
+
+    assert ci_failures.report(gh, REPO, pr=7, run_id=None)[1:] == ["no failed job found"]
