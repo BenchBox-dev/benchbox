@@ -272,17 +272,19 @@ these are the settings BenchBox sets and what each one does at its limit.
   when its key is missing or it answers a 4xx). Its answers follow the same
   rules as TypeSafe's: a size answer under 0.60 probability steps down one
   bucket, and gate paths force the `gate` template and at least `large`.
-  `fallback_min_bucket: medium` lifts only a Decisions size to at least
-  `medium`; it is lower than the `max` bucket used when no classifier answers
-  at all. The owner chose that trade: an outage still gets a classified size,
-  and `classifier.size_floor` (1500 changed lines outside data and excluded
-  files) still raises a large change to `large`.
+  `fallback_min_bucket: large` lifts a Decisions size to at least `large`, so
+  the fallback can never select a reviewer below `large`; the `max` bucket
+  still applies when no classifier answers at all. `classifier.size_floor`
+  (1500 changed lines outside data and excluded files) likewise raises a large
+  change to `large` on any backend.
 - `OPENAI_API_KEY` is optional and reaches the same steps as
   `TYPESAFE_API_KEY` except the invalid-attempt recovery steps: prepare, the
   three disk scans and the verdict redaction. It never reaches the attempt
   loop, where the unconfined reviewer runs, so the rule that the reviewer
   holds no provider credential still holds for the reviewer itself. The key is
-  a classification-only credential for the Decisions API and is scanned for
+  a classification-only credential for the Decisions API. The owner confirmed
+  it is a new key, distinct from the provider key the 2026-10-22 gateway
+  decision retired. It is scanned for
   and redacted like the other secrets. This accepts that the prepare and scan
   steps hold one more third-party key. Removing the caller mapping and the
   environment secret withdraws it.
@@ -365,12 +367,12 @@ a manual dispatch, a `pull_request_target` event other than a plain edit, and a
    without the policy key the attempts stay pending. Before that bucket
    applies, `classifier.fallback: decisions` asks the OpenAI Decisions API the
    same questions and raises its size to at least `classifier.fallback_min_bucket`
-   (`medium`). `classifier.size_floor` raises any backend's size to `large` when
+   (`large`). `classifier.size_floor` raises any backend's size to `large` when
    at least `min_lines` (1500) changed lines remain after `data_paths` and the
    `exclude` globs, which cover lockfiles, generated pages and baseline data.
-   With the fallback enabled, an outage that Decisions answers can select a
-   reviewer below `max` (never below `medium`; gate paths still get at least
-   `large`). Only when Decisions fails too is the `max` bucket used.
+   With the fallback enabled, an outage that Decisions answers selects `large`
+   or above (`huge` and `max` stay possible); only when Decisions fails too is
+   the `max` bucket used.
    The bucket names the first reviewer in `.github/review.yml`;
    later slots reuse the classification and can move up the chain (see
    Rounds). Review-machinery changes always get the `gate` template and at

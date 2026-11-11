@@ -112,7 +112,7 @@ buckets:
 classifier:
   unavailable_bucket: max
   fallback: decisions
-  fallback_min_bucket: medium
+  fallback_min_bucket: large
   size_floor:
     min_lines: 1500
     exclude:

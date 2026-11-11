@@ -64,7 +64,7 @@ def test_the_adopted_review_settings_are_pinned() -> None:
     assert POLICY["brief"] == {"include_intent": True}
     assert classifier["unavailable_bucket"] == "max"
     assert classifier["fallback"] == "decisions"
-    assert classifier["fallback_min_bucket"] == "medium"
+    assert classifier["fallback_min_bucket"] == "large"
     assert classifier["size_floor"]["min_lines"] == 1500
     assert not [pattern for pattern in classifier["size_floor"]["exclude"] if pattern.endswith((".py", ".sh"))]
 
@@ -157,7 +157,7 @@ def test_the_pinned_engine_loads_the_adopted_policy(theseus_engine) -> None:
     assert policy.protocol.max_finding_rounds == 4
     assert policy.protocol.pre_existing == "block"
     assert policy.brief.include_intent is True
-    assert (policy.classifier.fallback, policy.classifier.fallback_min_bucket) == ("decisions", "medium")
+    assert (policy.classifier.fallback, policy.classifier.fallback_min_bucket) == ("decisions", "large")
     assert policy.classifier.size_floor_min_lines == 1500
     assert ".github/review-guidance.md" in policy.classifier.gate_paths
 
