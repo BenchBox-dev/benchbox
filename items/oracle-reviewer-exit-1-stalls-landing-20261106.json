@@ -5,7 +5,7 @@
     "Document permitted exact-head manual workflow dispatch/rerun and existing backoff/budget guards in the current agent review protocol, clearly separating a plain supported rerun from an owner-only backoff reset.",
     "Prove the identified cause fails before and passes after through a retained affected head or deterministic fake-service regression, and record a real exact-head verdict after repair. Keep runner queueing and host pin drift classified separately from reviewer process exit."
   ],
-  "context": "Evidence: PR #3887, #3888, #3891, #3896 on 2026-11-01..06. Also seen: the gate job failing after 35m-1h32m and a trunk.yml run queued over 69 minutes; check whether runner queueing is a separate cause. Verification rubric: reproduce or inspect logs first; fix; confirm a head that failed now gets a verdict; CI green.\n\nReviewed 2026-11-08: current runner retains diagnostics and retry.py already bounds retries. Parent authenticated gh downloads succeeded for capture archives of runs41238738881/41235152289/41217587322/41253327640; each retained capture reports exit_code0 and no absence. Run41238738881 attempt1 logs also show SHIP. These are not the cited failing attempts, so no exit1 cause can be inferred from them. Scout API401/403 was a tool credential-path issue, not an owner access blocker; parent gh could read logs. Need locate the actual failing runs before fixing.",
+  "context": "Evidence: PR #3887, #3888, #3891, #3896 on 2026-11-01..06. Also seen: the gate job failing after 35m-1h32m and a trunk.yml run queued over 69 minutes; check whether runner queueing is a separate cause. Verification rubric: reproduce or inspect logs first; fix; confirm a head that failed now gets a verdict; CI green.\n\nReviewed 2026-11-08: current runner retains diagnostics and retry.py already bounds retries. Parent authenticated gh downloads succeeded for capture archives of runs41238738881/41235152289/41217587322/41253327640; each retained capture reports exit_code0 and no absence. Run41238738881 attempt1 logs also show SHIP. These are not the cited failing attempts, so no exit1 cause can be inferred from them. Scout API401/403 was a tool credential-path issue, not an owner access blocker; parent gh could read logs. Need locate the actual failing runs before fixing.\n\nRevalidated 2026-11-11: Still required but unconfirmed; diagnosis remains blocked on locating a failing attempt. Last 7 days of review-verdict runs (639 runs since 2026-11-06): 4 failures (0.6%): 42466165197 (schedule sweep, 11-08), 42504514497 (dispatch pr=4052, 11-08), 42511613462 (pull_request_target pr=4055, 11-08), 42691202109 (dispatch pr=4062, 11-09); none since 11-09. Job and log APIs returned HTTP 502 for these at this check, so their cause is unrecorded, and per-attempt 'absent (error): exit code 1' counts were not measured. Mitigations that landed since: the posting-check job in review-verdict.yml (#4060), Theseus #55 (owner backoff reset spent only on a started attempt), #59 (human not-reviewed reasons), #65 (review-gate pending while a head has no verdict). Next step: re-fetch the four runs when the API recovers; if none shows exit 1, record that the symptom has not recurred in the window and close on that evidence. Current names: workflows review-verdict.yml, review-gate.yml and review-request.yml (renamed from oracle-* in #4055; the GitHub environment, secrets and App bot still use 'oracle'/benchbox-oracle[bot]); status contexts review-verdict and review-gate; engine joeharris76/theseus, locked on origin/develop to v0.2.9 (v0.2.10 promotion is open as #4123).",
   "description": "During one batch, several PR heads (#3887 first head, #3888 first head, #3891, #3896) got no oracle verdict: every reviewer attempt ended 'absent (error): exit code 1', so oracle-gate stayed failing and make pr-arm refused. Recovery was by hand: gh run rerun of the verdict workflow, or amending the commit to force a new head. make oracle-backoff-reset needs an owner instruction comment, so workers could not use it. This added hours to landing. Root cause is unknown.",
   "links": [
     "docs/agent/review-protocol.md",
@@ -27,6 +27,14 @@
       "op": "update",
       "op_id": "5c1b7dee05e949a7b5e7f728b0d8bea8",
       "session_id": "83fcfb8d4a5c4fe8a47e5ac53802ec97"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:32:11Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "2885d1f75a3b4158b283faea8939c436",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
