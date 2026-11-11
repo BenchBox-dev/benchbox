@@ -695,3 +695,17 @@ def test_the_guide_scripts_creation_instead_of_listing_the_reviewer_files():
     assert "verify-line" in guide
     for path in consumer.CREATION_REVIEW_PATHS:
         assert path not in guide
+
+
+def test_a_pull_request_commit_naming_an_older_source_does_not_lower_the_recreation_floor(created_line):
+    root = created_line
+    create(root, fixture_sha(root, "tip"))
+    git(root, "commit", "-q", "--allow-empty", "-m", f"Fix\n\nDevelop-Source: {fixture_sha(root, 'reviewed')}")
+    merged = land(root, "0.4.2")
+    tag(root, "v0.4.2")
+    git(root, "update-ref", "-d", f"refs/remotes/origin/{LINE}")
+    git(root, "checkout", "-q", "-B", LINE, merged)
+    git(root, "commit", "-q", "--allow-empty", "-m", f"Recreate\n\nDevelop-Source: {fixture_sha(root, 'reviewed')}")
+    fixed = land(root, "0.4.3")
+    with pytest.raises(ValueError, match="is older than"):
+        consumer.verify_maintenance_line(root, "v0.4.3", fixed, LINE, merged_pulls(merged, fixed))

@@ -134,9 +134,9 @@ The procedure:
    pull request; it skips only the rules that need the tag (the tagged commit
    being a merged pull request and the base tag being older than the release).
    When a line is recreated from a patch tag of its earlier copy, the new
-   `Develop-Source` must be the earlier creation's source or a descendant of
-   it, so the reviewer files cannot move back past what the earlier copy
-   carried.
+   `Develop-Source` must be a descendant of (or equal to) every
+   `Develop-Source` already on the line's earlier copy, so the reviewer files
+   cannot move back past what the earlier copy carried.
 
    `release-branches` accepts this push because it does not enforce status
    checks or linear history on creation (see

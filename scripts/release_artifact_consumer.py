@@ -526,13 +526,14 @@ def _creation_sources(root: Path, commit: str) -> list[str]:
     return _git_text(root, "log", "-1", f"--format=%(trailers:key={CREATION_SOURCE_TRAILER},valueonly)", commit).split()
 
 
-def _previous_creation_source(root: Path, base: str) -> str | None:
+def _earlier_creation_sources(root: Path, base: str) -> list[str]:
     develop = f"refs/remotes/origin/{PRODUCER_BRANCH}"
+    found = []
     for earlier in _git_text(root, "rev-list", "--first-parent", base, "--not", develop).split():
         sources = _creation_sources(root, earlier)
         if len(sources) == 1 and re.fullmatch(r"[0-9a-f]{40}", sources[0]) is not None:
-            return sources[0]
-    return None
+            found.append(sources[0])
+    return found
 
 
 def _creation_source(root: Path, creation: str, base: str, branch: str) -> str:
@@ -551,11 +552,11 @@ def _creation_source(root: Path, creation: str, base: str, branch: str) -> str:
         source in first_parent,
         f"{branch} creation source {source} is not a first-parent {PRODUCER_BRANCH} commit newer than the line's tag",
     )
-    previous = _previous_creation_source(root, base)
-    if previous is not None:
+    for previous in _earlier_creation_sources(root, base):
         _require(
             _run_git(root, "merge-base", "--is-ancestor", previous, source, timeout=60).returncode == 0,
-            f"{branch} creation source {source} is older than {previous}, the source of the line's earlier creation",
+            f"{branch} creation source {source} is older than {previous}, a {CREATION_SOURCE_TRAILER} "
+            "already on the line",
         )
     return source
 

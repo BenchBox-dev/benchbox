@@ -549,9 +549,10 @@ instead and refuses a tag on a maintenance line unless:
   history after the point where the line left `develop`, and every path the
   creation commit changes or deletes has exactly that commit's mode and
   content, or is absent there. For a line recreated from a patch tag of an
-  earlier copy, that commit must also be the earlier copy's `Develop-Source` or
-  a descendant of it, so no reviewer file can be rolled back to a state older
-  than the earlier copy carried (and so than the tag's own). The creation commit must also match that
+  earlier copy, that commit must also equal or descend from every
+  `Develop-Source` already on that copy, so no reviewer file can be rolled back
+  to a state older than the earlier copy carried (and so than the tag's own).
+  The creation commit must also match that
   snapshot on every reviewer file, whether or not it changed it: the review
   policy and its omp config, the Theseus lock, the soundness and inert path
   manifests, `scripts/theseus_cli.py`, `scripts/theseus_release_check.py`,
