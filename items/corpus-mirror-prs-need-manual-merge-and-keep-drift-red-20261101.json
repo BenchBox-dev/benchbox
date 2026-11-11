@@ -2,6 +2,7 @@
   "acceptance": [
     "Decide whether to auto-merge mirror PRs after their checks or make t3:drift tolerate a pending mirror. Triage #3906. State when bot-managed issues #2471 and #3511 may be closed and stay closed."
   ],
+  "context": "Evidence 2026-11-11: mirror PR #4114 was the first mirror merged to published-results since #3656 on 2026-10-28; every mirror in between was superseded unmerged. It carried 137 files (+186,352 lines), most of them unrelated to the change that triggered it, and needed an owner decision to merge. Merged as 4331a43a54. The ledger seed was not recut afterwards; see ledger-seed-recut-after-published-results-advance-20261111.",
   "description": "Mirror PRs #3629, #3635, #3656, #3790 (closed unmerged) and #3906 (open for develop@cd374960) needed hand merging. Until one merges, the nightly t3:drift corpus step is red and bot issue #2471 reopens (closed 2026-10-28 with evidence, reopened 2026-10-28 and 2026-10-29 by github-actions). Issue #3511 (trunk duration alarm) likewise reopened after closure. #3906 was not merged by this session because the earlier instruction named only #3635 and #3656.",
   "links": [
     "issue #2471",
@@ -16,6 +17,14 @@
       "op": "create",
       "op_id": "901fbd55a1d64dccb93c6ac2fffd3619",
       "session_id": "b38147de5e3b4952857534e2b3c9221c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba",
+      "at": "2026-11-11T23:48:27Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8a4adb96d0ae414e9758040ff0430a97",
+      "session_id": "84d81f109eb348759fdc1c024f00b55b"
     }
   ]
 }
