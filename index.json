@@ -30617,7 +30617,9 @@
     },
     "pr-open-title-env-ignored-and-amended-develop-commit-message-20261111": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "feature-pr-landing-guards-20261111"
+      ],
       "priority": "low",
       "status": "open",
       "title": "pr-open: refuse an ignored PR_OPEN_TITLE and name an amended develop commit"
