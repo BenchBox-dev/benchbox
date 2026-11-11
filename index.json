@@ -40297,7 +40297,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Keep throwaway workflow runs from holding most Actions runners"
     },
     "tigerdata-cloud-enhancements": {
