@@ -4,7 +4,7 @@
     "Name the native component and operation that faults (faulthandler or core dump)",
     "Fix or pin around the cause so the cell passes repeatedly without retry; no cell pruning or gate loosening"
   ],
-  "context": "Raised to high 2026-11-11 (owner): a product-class crash in a gated cell, seen in one of five executions of that cell; run 42718296767 was turned green by a manual partial rerun, which also hid the crash from per-cell history (all rows record run_attempt 2).",
+  "context": "Raised to high 2026-11-11 (owner): a product-class crash in a gated cell, seen in one of five executions of that cell; run 42718296767 was turned green by a manual partial rerun, which also hid the crash from per-cell history (all rows record run_attempt 2).\n\nFollow-up landed 2026-11-11: PR #4087 (merge 3a8ddae5) makes release evidence reuse refuse a trunk UAT run whose latest attempt re-ran only some required jobs (each job's started_at is compared with the attempt's run_started_at; for run 42718296767 only 'UAT stage 1 pandas-df', gate and record started after attempt 2's 01:53:47Z start). trunk_uat.py record now attributes each shard's cells to the attempt that produced them and marks partial_rerun/carried_over_shards, so a crash fixed by rerun stays visible in history.",
   "description": "Trunk UAT run https://github.com/BenchBox-dev/BenchBox/actions/runs/42718296767 attempt 1 (develop 52615914002012e24405b77b830dc98d35ba50e9) failed pandas-df write_primitives SF1 with exit 139 (SIGSEGV) about 35 s in, after loading the TPC-H tables twice and before any Python traceback; the in-harness diagnostic rerun timed out (exit 124). Attempt 2 of the same job passed. The same cell passed in run 42536258036, and the commits between those sources do not touch pandas, write_primitives or uv.lock, so the crash is native and intermittent.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/actions/runs/42718296767"
@@ -24,6 +24,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "36e4028278394569b0851e26d8c9bc89",
+      "session_id": "9c850cdf96994544b99810e1605fa398"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7bc97e5b905b990114418f4a",
+      "at": "2026-11-11T02:57:35Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e5fc3428db6749cf9d48e45bbaa66341",
       "session_id": "9c850cdf96994544b99810e1605fa398"
     }
   ]
