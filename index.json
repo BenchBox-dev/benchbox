@@ -12707,7 +12707,7 @@
     "benchbox-residual-oracle-names-20261106": {
       "claim": null,
       "needs": [
-        "theseus-v021-stdin-rendered-mode-20261105"
+        "theseus-v025-review-convergence-20261107"
       ],
       "priority": "medium",
       "status": "open",
