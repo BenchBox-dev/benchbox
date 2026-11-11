@@ -20765,15 +20765,10 @@
       "title": "Remove Doris load leftovers kept only because out-of-scope tests import them"
     },
     "doris-uat-failures-20261030": {
-      "claim": {
-        "expires_at": "2026-11-12T23:41:11Z",
-        "generation": "454b13be376b4c7fafa4429ea2c89a56",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Doris: query failures across seven benchmarks in release UAT"
     },
     "drop-chdb-core-from-core-dependencies": {
