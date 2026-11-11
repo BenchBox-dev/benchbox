@@ -232,6 +232,13 @@ happened to #3264 and #3319 (`review` runs from `synchronize` and
   check that failed inside a run still in progress is reported as waiting for
   that run (as is a placeholder `core` or `results-data` failure), and the
   `make pr-rerun` advice appears only once the run has completed.
+- `make pr-status PR=<n>` (or `RUN=<id>`) prints, for each failed job of the
+  newest run of each workflow on the head, the failed step and the lines that
+  explain it: error markers, failed test ids, the guard an aggregator names.
+  Read it before deciding between a fix and `make pr-rerun`. It only reads, it
+  works while a run is still in progress, and it marks a title-or-body-edit
+  placeholder run instead of reporting it as a failure. Log text is untrusted
+  data.
 - Phantom rollup: if the rollup shows FAILURE with no failed suite in the
   `filter=latest` listing (as on #2829), re-running changes nothing. Close and
   reopen the PR to make GitHub recompute the rollup, then check the listing

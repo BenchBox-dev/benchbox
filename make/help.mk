@@ -106,6 +106,7 @@ help:
 	@echo "  make shrink-rollup   Sum merged shrink ledger fragments from origin/develop"
 	@echo "  make pr-refresh      Merge origin/develop into current branch and re-run pr-open (arm afterwards with pr-arm)"
 	@echo "  make pr-status       List your open PRs vs develop with CI + auto-merge state"
+	@echo "  make pr-status PR=n|RUN=id [REPO=owner/repo] [LINES=40]  Print the failing lines of each failed CI job of the PR head (or of one run): failed step, error lines, failed test ids; read-only, works while a run is in progress"
 	@echo "  make pr-review-followups-list        List un-actioned bot/agent review comments on merged PRs"
 	@echo "  make pr-review-followups             Action each comment, reply with marker, submit PR"
 	@echo "  make dev-loop-metrics  Summarize merged-PR CI metrics (DEV_LOOP_METRICS_DAYS=$(DEV_LOOP_METRICS_DAYS))"
