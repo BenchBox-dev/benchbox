@@ -35810,15 +35810,10 @@
       "title": "Scaffold the results explorer frontend with Vite, TypeScript, and DuckDB-WASM"
     },
     "scale-factor-consistency-umbrella-20261111": {
-      "claim": {
-        "expires_at": "2026-11-12T20:17:52Z",
-        "generation": "e5c1c00738db49179e365f5756169515",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Umbrella: make scale-factor rules, registry counts and site docs agree"
     },
     "scale-factor-floor-0-01-20261111": {
