@@ -20771,6 +20771,13 @@
       "status": "done",
       "title": "Remove Doris load leftovers kept only because out-of-scope tests import them"
     },
+    "doris-tpcds-obt-results-capped-parallelism-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Published Doris TPC-DS-OBT results ran with parallel_pipeline_task_num=1 and understate Doris"
+    },
     "doris-uat-failures-20261030": {
       "claim": null,
       "needs": [],
