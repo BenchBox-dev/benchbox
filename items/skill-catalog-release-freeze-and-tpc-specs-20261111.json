@@ -6,6 +6,7 @@
     "Verification: the catalog's own test or validation command passes on the PR head.",
     "Done when the catalog PR is merged; record the merged revision in this item's context for the pin bump."
   ],
+  "context": "2026-11-11 done. Catalog PR https://github.com/joeharris76/skill-sync-skills/pull/114 merged by squash as cdb35df85accfe280100d60cb17d018a68c3b142 after its required check ('Template gate and wrapper cycle') passed. The catalog has no agent instruction file; its rules are the README, the pre-commit hook and that workflow, none of which needs an owner-only step for a skill text change. Verified on origin/main: no 'frozen for infrastructure' under skills/, compliance.md names both bundled spec paths; local `python3 -m unittest discover -s tests` passed (30 tests) on the PR head. Pin revision for the BenchBox bump: cdb35df85accfe280100d60cb17d018a68c3b142. Against the current BenchBox pins, that revision changes only todo/references/batch.md and shared-review-protocol/SKILL.md (member review wording) in the cc8adf58 group, and benchbox/references/{compliance,release}.md in the 9d13c588 group. The catalog worktree and branch were removed.",
   "description": "Source: a retrospective over 25 agent sessions (2026-10-18 to 2026-11-11), followed by an adversarial re-check of each claim against origin/develop 4835f5a537.\n\nCross-repository item, tracked here because it serves BenchBox. Repository: joeharris76/skill-sync-skills (local clone ~/Developer/skill-sync-skills, whose working tree has unresolved conflicts that belong to the owner: do not touch it; create a linked worktree from origin/main).\n\nProblem. (1) skills/benchbox/references/release.md still says 'develop is frozen for infrastructure changes until the release publishes'. The owner dropped the freeze on 2026-11-06 and docs/internal/release-guide.md has no freeze. (2) skills/benchbox/references/compliance.md says to use spec evidence but not where the specs are. A session concluded the repository had no defined timing boundary, reported a wrong root cause, and downloaded PDFs from tpc.org, while the specs were bundled.\n\nChange. Delete the freeze bullet. Add to compliance.md the bundled paths `_sources/tpc-h/specification.pdf` (3.0.1) and `_sources/tpc-ds/specification/specification_4.0.0.pdf`, that TPC-DI is not bundled, and that timer sites and clauses are in docs/internal/tpc-measured-intervals.md.\n\nGuardrails: follow that repository's own agent instructions and checks; work in a linked worktree of the catalog, never its primary working tree; stage paths explicitly; change only the two files named plus anything that repository's checks require (version, changelog); never bypass its checks; merge through its normal PR flow. Owner authorized opening and merging this catalog PR on 2026-11-11.",
   "links": [
     "https://github.com/joeharris76/skill-sync-skills",
@@ -30,6 +31,14 @@
       "generation": "ce0fce15b31d4953bf8de757071755df",
       "op": "take",
       "op_id": "63c8778b95d84b4ebf65a48671f38f1a",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T14:05:44Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "48cd62ba3deb4bddb5abede155150737",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
