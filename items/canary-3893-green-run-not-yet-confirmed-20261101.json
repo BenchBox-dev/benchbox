@@ -2,6 +2,7 @@
   "acceptance": [
     "#3911 merged; the next release-canary run on an ancestor of the release head is green and issue #3893 closes. Record whether the 50 GiB floor should be lowered or the tests made runnable on developer machines."
   ],
+  "context": "Revalidated 2026-11-11: DONE. Issue #3893 closed 2026-11-07T04:18Z by the automation after green canary runs. PR #3911 was closed unmerged (2026-11-06) as superseded by #3970 (ac992fe44f, merged 2026-11-06T15:43Z, 'fix: make the release canary green'), which carries the lazy prefetch and compat registration with the other canary fixes. Scheduled Release Canary runs 42382474083 (2026-11-07, 766364b8a, a descendant of ac992fe44f), 42491171323 (2026-11-08) and 42850383121 (2026-11-10, ce39d7680) all succeeded. The 50 GiB heavy-test disk floor question is moot in CI: every workflow, including release-canary.yml:19, now sets BENCHBOX_HEAVY_MIN_FREE_DISK_GIB to 5. The later canary reds (2026-11-09 run 42671859813 and 2026-11-11 run 43051915343, issue #4106, failing tests/integration/test_submission_validation.py::test_validator_accepts_forward_numeric_schema_v2_family) are a different failure and are tracked by #4106, not by this item.",
   "description": "Issue #3893 (canary run 41209235137 on 8a2054135): test_large_scale_generation_uses_manifest_tracked_flight_shards (the BTS prefetcher started in _prefetching_months and hit the network guard) and test_compat_lint_passes (unregistered dialect branch _manifest_text_type from #3851). Fix PR #3911 (head f72248cb73, unmerged at filing) makes the prefetcher lazy and registers the branch with compat_local. Neither resource-heavy test could run locally: the heavy-test harness requires 50 GiB free disk (BENCHBOX_HEAVY_MIN_FREE_DISK_GIB) and the dev machine had 26.3 GiB, so the fix is verified only by unit tests and scripts/compat_lint.py. A red canary blocks every release PR in release_readiness_check.py.",
   "links": [
     "issue #3893",
@@ -17,6 +18,14 @@
       "op": "create",
       "op_id": "9fc2f684155c4c08909c5bf29ce901c1",
       "session_id": "b38147de5e3b4952857534e2b3c9221c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:37:47Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "056f4bb7fd6d49888e4beb02822000f2",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
