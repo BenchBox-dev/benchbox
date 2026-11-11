@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The chosen mechanism is implemented with a bounded end-to-end test.",
+    "A scope amendment, if allowed, is visible in show_batch and in final evidence, and a path outside amended scope is still refused."
+  ],
+  "description": "Across 2026-11-04 to 2026-11-10, batches were aborted or re-registered because a needed file was outside the frozen scope: tpc-timer-boundaries (docs-ownership.json), arrow-result-fetch, server-engine-bulk-load (twice; make/platform-tests.mk and tests/uat files), ci-and-preflight-reliability. Each abort costs a re-land of every member plus a new CI cycle. batch-advance REASON=fix refuses paths outside the union of scopes, and scopes are immutable by design (batch-feature-delivery.md).\n\nChange. Reduce the cost without weakening the audit: (a) batch-start warns when a member's changed or likely-coupled files (compose files with guards, quality/*.json, make/*.mk named in tests) fall outside scope; (b) allow an owner-recorded scope amendment that is hashed into the ledger and the receipt, applying only to the integration head forward; or (c) document a standard broad scope template. Batch tooling ships serially.\n\nGuardrails: linked worktree; no explanatory comments; changelog fragment if user-facing; no live cloud without owner approval quoted in context; heavy runs through make heavy-run.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T17:06:28Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1e8b2233ae634e4faabf9f0793f20316",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
+    }
+  ]
+}

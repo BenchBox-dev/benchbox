@@ -12524,6 +12524,13 @@
       "status": "done",
       "title": "Umbrella: result-validity feature batch"
     },
+    "batch-scope-cannot-be-amended-forces-abort-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "A frozen batch scope cannot be amended, so a needed file outside it forces abort and re-registration"
+    },
     "batch-server-engine-bulk-load-umbrella-20261109": {
       "claim": null,
       "needs": [],
