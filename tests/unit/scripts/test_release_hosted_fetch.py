@@ -3,7 +3,11 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from scripts import release_artifact_consumer as consumer
+
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 
 def _git(root: Path, *args: str) -> str:
