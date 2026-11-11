@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "One pull request containing every member's change is merged to develop",
+    "Each member's own acceptance criteria are met or its unmet part is recorded on that member with the reason",
+    "Each member is finished after the merge is observed on origin/develop"
+  ],
+  "description": "Delivery: one feature branch and one pull request for the members below, built by one delegated session; the coordinating session opens no second PR, arms the PR, observes the merge and closes the tracker items. This is the feature-branch form of serial mode. A registered batch is not used because its members must be separate top-level sessions, and the owner asked for delegation to subagents. The members list this item in their needs so nobody claims them separately. Branch fix/review-tooling-source-and-digest. Both members concern the tools around the hosted reviewer. Members: theseus-pinned-source-path-and-duplicate-defect-regex-20261111, soundness-digest-since-floor-and-api-retry-20261111.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T17:25:19Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "eecbe48b603446159df467f672c55ad3",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    }
+  ]
+}

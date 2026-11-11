@@ -22703,6 +22703,13 @@
       "status": "open",
       "title": "Agent docs: record the operational facts sessions kept rediscovering"
     },
+    "feature-review-tooling-source-path-and-digest-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Review tooling: document the pinned reviewer source and harden the soundness digest"
+    },
     "fetch-mode-cli-and-influxdb-followups-20261107": {
       "claim": null,
       "needs": [],
