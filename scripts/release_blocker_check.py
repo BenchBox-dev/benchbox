@@ -7,7 +7,7 @@ import sys
 from typing import Any
 
 BLOCKING_LABEL = "release-blocking"
-REPOSITORY = "BenchBox-dev/BenchBox"
+REPOSITORY = "BenchBox-dev/benchbox"
 
 
 def _require(condition: bool, message: str) -> None:

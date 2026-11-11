@@ -264,6 +264,59 @@ def test_workflow_change_selects_workflow_tests_and_tests_naming_the_file(repo: 
     ]
 
 
+def _sparse_workflow(repo: Path) -> None:
+    _write(
+        repo,
+        ".github/workflows/ci.yml",
+        "jobs:\n  a:\n    steps:\n      - uses: actions/checkout@x\n        with:\n"
+        "          sparse-checkout: |\n            scripts/listed.py\n            data/table.json\n"
+        "          sparse-checkout-cone-mode: false\n  b:\n    steps:\n      - uses: actions/checkout@x\n"
+        "        with:\n          sparse-checkout: scripts/single.py\n",
+    )
+    _write(repo, "tests/unit/workflows/test_guards_sparse_checkout.py")
+    _write(repo, "tests/system/test_names_ci.py", "WORKFLOW = '.github/workflows/ci.yml'\n")
+    _write(repo, "scripts/listed.py", "import helper_mod\n")
+    _write(repo, "scripts/single.py")
+    _write(repo, "scripts/helper_mod.py")
+    _write(repo, "scripts/unlisted.py")
+    _commit_all(repo, "sparse")
+    _git(repo, "update-ref", "refs/remotes/origin/develop", "HEAD")
+
+
+SPARSE_SELECTION = [
+    "tests/system/test_names_ci.py",
+    "tests/unit/workflows/test_guards_sparse_checkout.py",
+]
+
+
+@pytest.mark.parametrize("path", ["scripts/listed.py", "data/table.json", "scripts/single.py"])
+def test_a_path_named_in_a_workflow_sparse_checkout_selects_the_tests_guarding_that_workflow(
+    repo: Path, path: str
+) -> None:
+    _sparse_workflow(repo)
+    assert pt.map_tests(repo, [path]) == SPARSE_SELECTION
+
+
+def test_a_module_imported_by_a_sparse_checkout_file_selects_the_tests_guarding_that_workflow(repo: Path) -> None:
+    _sparse_workflow(repo)
+    assert pt.map_tests(repo, ["scripts/helper_mod.py"]) == SPARSE_SELECTION
+
+
+def test_a_path_outside_every_sparse_checkout_selects_no_workflow_tests(repo: Path) -> None:
+    _sparse_workflow(repo)
+    assert pt.map_tests(repo, ["scripts/unlisted.py"]) == []
+
+
+def test_a_new_import_in_a_sparse_checkout_file_selects_the_guarding_tests_through_the_cli(
+    repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _sparse_workflow(repo)
+    _write(repo, "scripts/listed.py", "import helper_mod\nimport unlisted\n")
+    _commit_all(repo, "new import")
+    assert pt.main(["tests", "--repo-root", str(repo)]) == 0
+    assert capsys.readouterr().out.split() == SPARSE_SELECTION
+
+
 def test_composite_action_change_selects_workflow_tests_and_tests_naming_the_action(repo: Path) -> None:
     _write(repo, "tests/unit/workflows/test_every_workflow.py")
     _write(repo, "tests/system/test_uses_action.py", "USES = './.github/actions/setup-env'\n")

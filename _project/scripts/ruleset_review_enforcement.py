@@ -229,7 +229,7 @@ def _load_rules(args: argparse.Namespace) -> list[dict[str, Any]]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--rules-file", help="Path to a JSON rules/ruleset payload, or '-' to read stdin.")
-    parser.add_argument("--repo", default="BenchBox-dev/BenchBox", help="owner/repo for live fetch.")
+    parser.add_argument("--repo", default="BenchBox-dev/benchbox", help="owner/repo for live fetch.")
     parser.add_argument("--branch", default="develop", help="Branch whose ruleset to check.")
     parser.add_argument("--token", default="", help="Ruleset-read token for live fetch.")
     parser.add_argument(

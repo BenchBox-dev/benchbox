@@ -39,7 +39,7 @@ PREDICATE_DRIVER = (
     "else sp.is_soundness_path; "
     "print(json.dumps([p for p in json.load(sys.stdin) if judge(p)]))"
 )
-DEFAULT_REPO = "BenchBox-dev/BenchBox"
+DEFAULT_REPO = "BenchBox-dev/benchbox"
 BASE_BRANCH = "develop"
 STATE_LABEL = "soundness-merge-digest"
 GAP_LABEL = "soundness-review-gap"

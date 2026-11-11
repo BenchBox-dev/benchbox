@@ -16,6 +16,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 SCHEMA = 1
+RECEIPT_SCHEMA = 2
 TAIL_LINES = 40
 COMMAND_DISPLAY_LIMIT = 110
 RECEIPT_DIR_ENV = "BENCHBOX_PREFLIGHT_RECEIPT_DIR"
@@ -23,7 +24,8 @@ ENTRY_KEYS = frozenset({"step", "test", "reason", "tracker"})
 ACCEPTED_OUTCOMES = frozenset({"passed", "unverified", "known-failure"})
 ALLOWLISTED_STEPS = frozenset({"linux-pytest"})
 PYTEST_FAILED_EXIT = 1
-SELECTION_KEYS = ("python_files", "test_files", "linux_files")
+GUARD_STEPS = ("docs-reference-inventory", "project-references", "docs-ownership")
+SELECTION_KEYS = ("python_files", "test_files", "linux_files", *GUARD_STEPS)
 TREE_PATTERN = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
 SUMMARY_LINE = re.compile(r"^\W*(?P<body>.*?\d+ \w+.*?) in (?P<secs>[0-9.]+)s\b")
 COUNT = re.compile(r"(\d+) (passed|failed|skipped|deselected|errors?|xfailed|xpassed|warnings?)")
@@ -263,7 +265,7 @@ def write_receipt(args: argparse.Namespace) -> int:
             raise ReceiptError("the tree changed while preflight ran")
         allowlist = Path(args.allowlist) if args.allowlist else None
         receipt = {
-            "schema": SCHEMA,
+            "schema": RECEIPT_SCHEMA,
             "tree": start["tree"],
             "head": start["head"],
             "base_ref": begin["base_ref"],
@@ -356,7 +358,7 @@ def verify_receipt(directory: Path, tree: str, allowlist: dict[tuple[str, str], 
         receipt = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise ReceiptError(f"preflight receipt {path} is unreadable: {exc}") from exc
-    if not isinstance(receipt, dict) or receipt.get("schema") != SCHEMA or receipt.get("tree") != tree:
+    if not isinstance(receipt, dict) or receipt.get("schema") != RECEIPT_SCHEMA or receipt.get("tree") != tree:
         raise ReceiptError(f"preflight receipt {path} does not describe tree {tree}; rerun `make pr-preflight`")
     steps = receipt.get("steps")
     if not isinstance(steps, list) or not steps or not all(isinstance(step, dict) for step in steps):
@@ -382,6 +384,7 @@ def verify_receipt(directory: Path, tree: str, allowlist: dict[tuple[str, str], 
         required.append("pytest")
     if selection["linux_files"] > 0:
         required.append("linux-pytest")
+    required += [name for name in GUARD_STEPS if selection[name] > 0]
     recorded = {step.get("name") for step in steps}
     missing = [name for name in required if name not in recorded]
     if missing:

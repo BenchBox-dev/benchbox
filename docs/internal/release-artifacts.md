@@ -48,7 +48,7 @@ uv run -- python scripts/release_artifact_consumer.py admit \
 
 The command fetches `develop`, checks tag/version agreement and ancestry, and
 selects the latest exact-SHA trunk run. The run must belong to
-`BenchBox-dev/BenchBox`, use `.github/workflows/trunk.yml`, and have completed
+`BenchBox-dev/benchbox`, use `.github/workflows/trunk.yml`, and have completed
 successfully on a `push` to `develop`. Its exact attempt must have one successful
 `dist-artifact` job and one unexpired attempt-qualified artifact.
 

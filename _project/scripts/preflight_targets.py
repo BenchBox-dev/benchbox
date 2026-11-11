@@ -272,6 +272,58 @@ def _workflow_tests(repo: Path, path: str, test_files: list[str], texts: dict[st
     return selected
 
 
+SPARSE_CHECKOUT_KEY = re.compile(r"^(?P<indent> *)(?:- )?sparse-checkout:[ \t]*(?P<value>.*)$")
+
+
+def _sparse_checkout_lists(repo: Path) -> dict[str, set[str]]:
+    lists: dict[str, set[str]] = {}
+    for workflow in sorted((repo / ".github/workflows").glob("*.y*ml")):
+        try:
+            lines = workflow.read_text(encoding="utf-8").splitlines()
+        except (OSError, UnicodeDecodeError):
+            continue
+        listed: set[str] = set()
+        for number, line in enumerate(lines):
+            match = SPARSE_CHECKOUT_KEY.match(line)
+            if match is None:
+                continue
+            value = match["value"].strip()
+            if value[:1] in {"|", ">"}:
+                indent = len(match["indent"])
+                for entry in lines[number + 1 :]:
+                    if entry.strip() and len(entry) - len(entry.lstrip()) <= indent:
+                        break
+                    listed.add(entry.strip().strip("\"'"))
+            elif value:
+                listed.add(value.strip("\"'"))
+        listed.discard("")
+        if listed:
+            lists[f".github/workflows/{workflow.name}"] = listed
+    return lists
+
+
+def _sparse_checkout_tests(
+    repo: Path,
+    path: str,
+    lists: dict[str, set[str]],
+    cache: dict[str, ast.AST | None],
+    test_files: list[str],
+    texts: dict[str, str],
+) -> list[str]:
+    pure = PurePosixPath(path)
+    dotted = {_module_name(path)} if pure.suffix == ".py" else set()
+    selected: list[str] = []
+    for workflow, listed in lists.items():
+        if path in listed or any(
+            entry.endswith(".py")
+            and _imported_modules(repo, entry, cache)
+            & (dotted | ({pure.stem} if pure.suffix == ".py" and PurePosixPath(entry).parent == pure.parent else set()))
+            for entry in listed
+        ):
+            selected.extend(_workflow_tests(repo, workflow, test_files, texts))
+    return selected
+
+
 WORKTREE_TESTS = [
     "tests/integration/worktree/test_worktree_finish_preview.py",
     "tests/integration/worktree/test_worktree_lifecycle_metadata.py",
@@ -378,8 +430,11 @@ def map_tests(repo: Path, paths: list[str], *, doc_readers: bool = False) -> lis
     helpers: list[str] = []
     sources: list[str] = []
     texts: dict[str, str] = {}
+    sparse_lists = _sparse_checkout_lists(repo)
+    sparse_cache: dict[str, ast.AST | None] = {}
     for path in paths:
         selected.update(_workflow_tests(repo, path, test_files, texts))
+        selected.update(_sparse_checkout_tests(repo, path, sparse_lists, sparse_cache, test_files, texts))
         selected.update(EXTRA_TEST_MAP.get(path, ()))
         if LEDGER_GOVERNED.fullmatch(path) and LEDGER_COVERAGE_TEST in test_files:
             selected.add(LEDGER_COVERAGE_TEST)

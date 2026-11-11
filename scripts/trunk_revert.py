@@ -12,7 +12,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import NamedTuple
 
-REPOSITORY = "BenchBox-dev/BenchBox"
+REPOSITORY = "BenchBox-dev/benchbox"
 BASE_BRANCH = "develop"
 TRUNK_WORKFLOW = "trunk.yml"
 REVERT_PREFIX = "fix/revert-"

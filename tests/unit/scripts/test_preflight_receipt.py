@@ -487,6 +487,59 @@ def test_pr_open_proceeds_on_a_matching_receipt_and_renders_it_into_the_pr_body(
     assert "https://github.com/BenchBox-dev/BenchBox/pull/7" in proc.stdout
 
 
+def _diverge_from_develop(world: dict[str, object], branch_subject: str) -> None:
+    work, env = world["work"], world["env"]
+    _commit(work, env, "shared.txt", "branch\n")
+    _git(work, env, "commit", "-q", "--amend", "-m", branch_subject)
+    _git(work, env, "checkout", "-q", "develop")
+    _commit(work, env, "shared.txt", "develop\n")
+    _git(work, env, "commit", "-q", "--amend", "-m", "fix thing (#5)")
+    _git(work, env, "push", "-q", "origin", "develop")
+    _git(work, env, "checkout", "-q", "feat/receipt")
+
+
+def test_pr_open_names_an_amended_develop_squash_commit_when_the_branch_conflicts_with_develop(open_world) -> None:
+    _diverge_from_develop(open_world, "fix thing (#5)")
+    proc = _pr_open(open_world)
+    assert proc.returncode != 0
+    assert "HEAD conflicts with origin/develop" in proc.stderr
+    assert "fix thing (#5)" in proc.stderr
+    assert "git commit --amend" in proc.stderr
+    assert "feat/receipt" not in _origin_branches(open_world)
+
+
+def test_pr_open_gives_the_plain_conflict_message_when_no_branch_commit_looks_like_a_develop_squash(open_world) -> None:
+    _diverge_from_develop(open_world, "fix thing")
+    proc = _pr_open(open_world)
+    assert proc.returncode != 0
+    assert "HEAD conflicts with origin/develop" in proc.stderr
+    assert "amend" not in proc.stderr
+
+
+def test_pr_open_refuses_a_title_given_only_through_the_pr_open_title_environment_variable(open_world) -> None:
+    _record_receipt(open_world, [("ruff-check", "ok", 0), ("pytest", "3 passed in 0.10s", 0)], 0)
+    open_world["env"]["PR_OPEN_TITLE"] = "fix(x): a title"
+    proc = _pr_open(open_world)
+    assert proc.returncode != 0
+    assert "TITLE" in proc.stderr
+    assert "feat/receipt" not in _origin_branches(open_world)
+
+
+def test_pr_open_accepts_the_title_given_as_a_make_variable(open_world) -> None:
+    _record_receipt(open_world, [("ruff-check", "ok", 0), ("pytest", "3 passed in 0.10s", 0)], 0)
+    proc = subprocess.run(
+        ["make", "-s", "pr-open", "TITLE=fix(x): a title"],
+        cwd=open_world["work"],
+        env=open_world["env"],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=180,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "feat/receipt" in _origin_branches(open_world)
+
+
 def test_pr_open_accepts_an_allowlisted_failure_from_the_committed_allowlist_and_names_it(open_world) -> None:
     work, env, tmp = open_world["work"], open_world["env"], open_world["tmp"]
     (work / ".github").mkdir()
@@ -551,6 +604,47 @@ def test_a_receipt_with_every_required_step_is_accepted(repo, tmp_path: Path) ->
     _note(root, env, stage, python_files=1, test_files=2, linux_files=1)
     assert _finalize(root, env, stage, 0, None).returncode == 0
     assert _verify(root, env, None, "--base-ref", "origin/develop").returncode == 0
+
+
+def test_a_receipt_whose_selection_names_a_guard_but_lacks_its_step_is_refused(repo, tmp_path: Path) -> None:
+    root, env = repo
+    stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0), ("project-references", "ok", 0)], None)
+    _note(root, env, stage, **{"project-references": 1, "docs-ownership": 1})
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    done = _verify(root, env, None)
+    assert done.returncode == 1
+    assert "lacks required step(s) docs-ownership" in done.stderr
+    assert "project-references" not in done.stderr.split("lacks required step(s)")[1]
+
+
+def test_a_receipt_whose_selection_names_a_guard_with_its_step_is_accepted(repo, tmp_path: Path) -> None:
+    root, env = repo
+    steps = [(name, "ok", 0) for name in ("changelog-check", "docs-reference-inventory", "docs-ownership")]
+    stage, _ = _steps(root, env, tmp_path, steps, None)
+    _note(root, env, stage, **{"docs-reference-inventory": 1, "docs-ownership": 1})
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    assert _verify(root, env, None, "--base-ref", "origin/develop").returncode == 0
+
+
+def test_a_receipt_written_before_guards_were_recorded_is_refused_as_an_older_schema(repo, tmp_path: Path) -> None:
+    root, env = repo
+    stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0)], None)
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    receipt_file = next((tmp_path / "receipts").glob("*.json"))
+    receipt = json.loads(receipt_file.read_text(encoding="utf-8"))
+    receipt["schema"] = 1
+    for guard in preflight_receipt.GUARD_STEPS:
+        del receipt["selection"][guard]
+    receipt_file.write_text(json.dumps(receipt), encoding="utf-8")
+    done = _verify(root, env, None)
+    assert done.returncode == 1
+    assert "rerun `make pr-preflight`" in done.stderr
+
+
+def test_a_note_for_an_unknown_guard_is_refused(repo, tmp_path: Path) -> None:
+    root, env = repo
+    stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0)], None)
+    assert _script(root, env, "note", "--stage", str(stage), "docs-unknown=1").returncode == 2
 
 
 def test_a_receipt_without_a_selection_is_refused(repo, tmp_path: Path) -> None:

@@ -50,6 +50,7 @@ pr-preflight:
 	fi; \
 	for GUARD in $$(cat "$$GUARD_LIST"); do \
 		echo "==> guard: $$GUARD"; \
+		$$NOTE "$$GUARD=1"; \
 		case "$$GUARD" in \
 			docs-reference-inventory) $$RECORD --name docs-reference-inventory -- $(MAKE) -s docs-reference-inventory-check ;; \
 			project-references) $$RECORD --name project-references -- uv run -- python _project/scripts/check_project_references.py ;; \
@@ -99,13 +100,13 @@ pr-preflight-fast-tests:
 	fi
 
 pr-landing-start:
-	uv run -- python scripts/pr_landing.py --repo "$(or $(REPO),BenchBox-dev/BenchBox)" \
+	uv run -- python scripts/pr_landing.py --repo "$(or $(REPO),BenchBox-dev/benchbox)" \
 		--worktree . --branch "$(or $(BRANCH),$(shell git branch --show-current))" \
 		$(if $(WORKTREE_ID),--worktree-id "$(WORKTREE_ID)",) start
 
 pr-landing-withdraw:
 	@[ -n "$(PR)" ] || { echo "PR is required" >&2; exit 2; }; \
-	uv run -- python scripts/pr_landing.py --repo "$(or $(REPO),BenchBox-dev/BenchBox)" \
+	uv run -- python scripts/pr_landing.py --repo "$(or $(REPO),BenchBox-dev/benchbox)" \
 		--worktree . --branch "$(or $(BRANCH),$(shell git branch --show-current))" \
 		$(if $(WORKTREE_ID),--worktree-id "$(WORKTREE_ID)",) \
 		$(if $(PR_NODE_ID),--pr-node-id "$(PR_NODE_ID)",) withdraw --pr "$(PR)" \
@@ -116,8 +117,8 @@ pr-landing-ready:
 	[ -n "$(PR)" ] || { echo "PR is required" >&2; exit 2; }; \
 	[ -n "$(HEAD)" ] || { echo "HEAD is required" >&2; exit 2; }; \
 	[ -n "$(EVIDENCE)" ] || { echo "EVIDENCE is required" >&2; exit 2; }; \
-	$(if $(ARM),uv run -- python scripts/trunk_revert.py arm-gate --pr "$(PR)" --repo "$(or $(REPO),BenchBox-dev/BenchBox)"; ,)\
-	uv run -- python scripts/pr_landing.py --repo "$(or $(REPO),BenchBox-dev/BenchBox)" \
+	$(if $(ARM),uv run -- python scripts/trunk_revert.py arm-gate --pr "$(PR)" --repo "$(or $(REPO),BenchBox-dev/benchbox)"; ,)\
+	uv run -- python scripts/pr_landing.py --repo "$(or $(REPO),BenchBox-dev/benchbox)" \
 		--worktree . --branch "$(or $(BRANCH),$(shell git branch --show-current))" \
 		$(if $(WORKTREE_ID),--worktree-id "$(WORKTREE_ID)",) \
 		$(if $(PR_NODE_ID),--pr-node-id "$(PR_NODE_ID)",) ready --pr "$(PR)" \
@@ -159,6 +160,8 @@ pr-content-guard:
 		echo "No docs paths changed."; \
 	fi
 
+PR_OPEN_TITLE_IGNORED := $(if $(value PR_OPEN_TITLE),$(if $(value TITLE),,1))
+
 .PHONY: pr-open
 pr-open: override TITLE := $(value TITLE)
 pr-open: export PR_OPEN_TITLE := $(TITLE)
@@ -177,6 +180,10 @@ pr-open:
 		echo "Refusing: this is a batch member worktree. Members never open pull requests; the leader lands the member with batch-land and opens the final PR." >&2; \
 		exit 1; \
 	fi; \
+	if [ -n "$(PR_OPEN_TITLE_IGNORED)" ]; then \
+		echo "Refusing: PR_OPEN_TITLE is set in the environment but pr-open reads TITLE and would ignore it; pass TITLE=<title> instead." >&2; \
+		exit 2; \
+	fi; \
 	$(MAKE) -s agent-write-preflight; \
 	CURRENT=$$(git branch --show-current); \
 	case "$$CURRENT" in \
@@ -186,7 +193,7 @@ pr-open:
 		echo "PR_BODY_FILE does not exist: $$PR_OPEN_BODY_FILE" >&2; \
 		exit 1; \
 	fi; \
-	REPOSITORY="$(or $(REPO),BenchBox-dev/BenchBox)"; \
+	REPOSITORY="$(or $(REPO),BenchBox-dev/benchbox)"; \
 	case "$$REPOSITORY" in \
 		*/*/*|/*|*/|"") echo "REPO must be a GitHub owner/name identity" >&2; exit 2 ;; \
 		*/*) ;; \
@@ -224,8 +231,13 @@ pr-open:
 		PARENT_ARGS="--parent $$PR_OPEN_PARENT"; \
 		git merge-base --is-ancestor "$$STACK_BASE" HEAD || { echo "Refusing to open PR: HEAD does not contain $$STACK_BASE. Rebase onto the parent first." >&2; exit 1; }; \
 	elif ! git merge-base --is-ancestor origin/develop HEAD; then \
+		AMENDED=$$(git log --format='%h %s' origin/develop..HEAD | grep -E '\(#[0-9]+\)$$' | sed -n 1p || true); \
 		if ! git merge-tree --write-tree origin/develop HEAD >/dev/null 2>&1; then \
-			echo "Refusing to open PR: HEAD conflicts with origin/develop. Resolve the conflict first; no refresh merge is attempted." >&2; \
+			if [ -n "$$AMENDED" ]; then \
+				echo "Refusing to open PR: HEAD conflicts with origin/develop, and the branch carries a develop squash commit that is not on origin/develop ($$AMENDED). It was most likely rewritten by git commit --amend, for example after a hook rejected a commit. Find the original commit with git reflog, restore the branch from it, and commit the fix as a new commit; or recreate the branch from origin/develop and re-apply only your own commits." >&2; \
+			else \
+				echo "Refusing to open PR: HEAD conflicts with origin/develop. Resolve the conflict first; no refresh merge is attempted." >&2; \
+			fi; \
 			exit 1; \
 		fi; \
 	fi; \
@@ -293,7 +305,7 @@ pr-open:
 pr-arm-auto-merge:
 	@set -eu; \
 	[ -n "$(EVIDENCE)" ] || { echo "EVIDENCE is required; use pr-landing-ready with exact readiness evidence" >&2; exit 2; }; \
-	REPOSITORY="$(or $(REPO),BenchBox-dev/BenchBox)"; \
+	REPOSITORY="$(or $(REPO),BenchBox-dev/benchbox)"; \
 	CURRENT=$$(git branch --show-current); \
 	PR_NUMBER="$(PR)"; \
 	if [ -n "$(URL)" ]; then \
@@ -316,7 +328,7 @@ PR_ARM_WAIT_SET := $(if $(filter undefined,$(origin WAIT)),,1)
 pr-rerun: override PR := $(value PR)
 pr-rerun: override REPO := $(value REPO)
 pr-rerun: export PR_RERUN_PR := $(PR)
-pr-rerun: export PR_RERUN_REPO := $(or $(REPO),BenchBox-dev/BenchBox)
+pr-rerun: export PR_RERUN_REPO := $(or $(REPO),BenchBox-dev/benchbox)
 pr-rerun:
 	@uv run -- python scripts/pr_rerun.py
 
@@ -337,9 +349,9 @@ pr-arm: export PR_ARM_REQUIRE_BATCH := $(if $(BATCH),1,0)
 pr-arm:
 	@set -eu; \
 	if [ -n "$${PR_ARM_PR:-}" ]; then \
-		uv run -- python scripts/trunk_revert.py arm-gate --pr "$$PR_ARM_PR" --repo "$${PR_ARM_REPO:-BenchBox-dev/BenchBox}"; \
+		uv run -- python scripts/trunk_revert.py arm-gate --pr "$$PR_ARM_PR" --repo "$${PR_ARM_REPO:-BenchBox-dev/benchbox}"; \
 	else \
-		uv run -- python scripts/trunk_revert.py arm-gate --branch "$$(git branch --show-current)" --repo "$${PR_ARM_REPO:-BenchBox-dev/BenchBox}"; \
+		uv run -- python scripts/trunk_revert.py arm-gate --branch "$$(git branch --show-current)" --repo "$${PR_ARM_REPO:-BenchBox-dev/benchbox}"; \
 	fi; \
 	uv run -- python scripts/pr_arm.py
 
@@ -350,9 +362,9 @@ $(foreach name,$(REMOTE_CLOSEOUT_VARIABLES),$(eval $(REMOTE_CLOSEOUT_TARGETS): o
 $(foreach name,$(REMOTE_CLOSEOUT_VARIABLES),$(eval $(REMOTE_CLOSEOUT_TARGETS): export REMOTE_CLOSEOUT_$(name) := $$($(name))))
 $(REMOTE_CLOSEOUT_TARGETS): export PYTHONDONTWRITEBYTECODE := 1
 REMOTE_ARM_GATE = if [ -n "$${REMOTE_CLOSEOUT_PR:-}" ]; then \
-		uv run --no-project -- python scripts/trunk_revert.py arm-gate --pr "$$REMOTE_CLOSEOUT_PR" --repo "$${REMOTE_CLOSEOUT_REPO:-BenchBox-dev/BenchBox}"; \
+		uv run --no-project -- python scripts/trunk_revert.py arm-gate --pr "$$REMOTE_CLOSEOUT_PR" --repo "$${REMOTE_CLOSEOUT_REPO:-BenchBox-dev/benchbox}"; \
 	else \
-		uv run --no-project -- python scripts/trunk_revert.py arm-gate --branch "$${REMOTE_CLOSEOUT_BRANCH:-$$(git branch --show-current)}" --repo "$${REMOTE_CLOSEOUT_REPO:-BenchBox-dev/BenchBox}"; \
+		uv run --no-project -- python scripts/trunk_revert.py arm-gate --branch "$${REMOTE_CLOSEOUT_BRANCH:-$$(git branch --show-current)}" --repo "$${REMOTE_CLOSEOUT_REPO:-BenchBox-dev/benchbox}"; \
 	fi
 pr-arm-remote:
 	@set -eu; $(REMOTE_ARM_GATE); \
@@ -369,28 +381,28 @@ pr-landing-remote:
 trunk-revert:
 	@$(MAKE) -s agent-write-preflight
 	@case "$(PR)" in ""|*[!0-9]*) echo "PR=<merged PR number> is required" >&2; exit 2 ;; esac
-	@uv run -- python scripts/trunk_revert.py revert --pr "$(PR)" --repo "$(or $(REPO),BenchBox-dev/BenchBox)"
+	@uv run -- python scripts/trunk_revert.py revert --pr "$(PR)" --repo "$(or $(REPO),BenchBox-dev/benchbox)"
 
 .PHONY: trunk-status
 trunk-status:
-	@uv run -- python scripts/trunk_revert.py status --repo "$(or $(REPO),BenchBox-dev/BenchBox)"
+	@uv run -- python scripts/trunk_revert.py status --repo "$(or $(REPO),BenchBox-dev/benchbox)"
 
 .PHONY: pr-ready
 pr-ready:
 	@[ -n "$(PR)" ] || [ -n "$(URL)" ] || { echo "PR or URL is required" >&2; exit 2; }
 	@[ -n "$(HEAD)" ] || { echo "HEAD is required" >&2; exit 2; }
 	@if [ -n "$(EVIDENCE)" ]; then \
-		$(MAKE) -s pr-arm-auto-merge REPO="$(or $(REPO),BenchBox-dev/BenchBox)" PR="$(PR)" URL="$(URL)" HEAD="$(HEAD)" EVIDENCE="$(EVIDENCE)" $(if $(BATCH),BATCH=1,); \
+		$(MAKE) -s pr-arm-auto-merge REPO="$(or $(REPO),BenchBox-dev/benchbox)" PR="$(PR)" URL="$(URL)" HEAD="$(HEAD)" EVIDENCE="$(EVIDENCE)" $(if $(BATCH),BATCH=1,); \
 	elif [ -n "$(URL)" ]; then \
 		[ -z "$(PR)" ] || { echo "PR and URL are mutually exclusive" >&2; exit 2; }; \
-		REPOSITORY="$(or $(REPO),BenchBox-dev/BenchBox)"; \
+		REPOSITORY="$(or $(REPO),BenchBox-dev/benchbox)"; \
 		PR_INFO=$$(gh pr view --repo "$$REPOSITORY" "$(URL)" --json number,url --jq '"\(.number) \(.url)"') || { echo "Could not resolve URL to a PR in $$REPOSITORY" >&2; exit 1; }; \
 		PR_NUMBER="$${PR_INFO%% *}"; PR_URL=$$(printf '%s' "$${PR_INFO#* }" | tr 'A-Z' 'a-z'); \
 		WANT=$$(printf '%s' "$$REPOSITORY" | tr 'A-Z' 'a-z'); \
 		case "$$PR_URL" in "https://github.com/$$WANT/pull/"*) ;; *) echo "URL names a PR outside $$REPOSITORY; refusing to arm it" >&2; exit 2 ;; esac; \
 		$(MAKE) -s pr-arm PR="$$PR_NUMBER" REPO="$$REPOSITORY" HEAD="$(HEAD)" $(if $(BATCH),BATCH=1,); \
 	else \
-		$(MAKE) -s pr-arm PR="$(PR)" REPO="$(or $(REPO),BenchBox-dev/BenchBox)" HEAD="$(HEAD)" $(if $(BATCH),BATCH=1,); \
+		$(MAKE) -s pr-arm PR="$(PR)" REPO="$(or $(REPO),BenchBox-dev/benchbox)" HEAD="$(HEAD)" $(if $(BATCH),BATCH=1,); \
 	fi
 
 .PHONY: shrink-rollup
@@ -437,7 +449,7 @@ pr-refresh:
 pr-conflict-scan:
 	@CURRENT="$(BRANCH)"; \
 	[ -n "$$CURRENT" ] || CURRENT=$$(git branch --show-current); \
-	gh api --method GET --paginate "repos/$(or $(REPO),BenchBox-dev/BenchBox)/pulls?base=develop&state=open&per_page=100" \
+	gh api --method GET --paginate "repos/$(or $(REPO),BenchBox-dev/benchbox)/pulls?base=develop&state=open&per_page=100" \
 		--jq '.[] | "\(.number) \(.head.ref)"' 2>/dev/null | \
 	while read num branch; do \
 		[ "$$branch" = "$$CURRENT" ] && continue; \

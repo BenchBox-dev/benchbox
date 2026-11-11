@@ -22,7 +22,7 @@ import pr_landing
 
 CLI_DESCRIPTION = "Bind, record, arm, withdraw, and re-arm a cloud-built pull request from fetched objects alone."
 
-REPOSITORY = "BenchBox-dev/BenchBox"
+REPOSITORY = "BenchBox-dev/benchbox"
 BASE_BRANCH = "develop"
 STORE_SCHEMA = "remote_closeout_v1"
 STORE_ENV = "BENCHBOX_REVIEWS_DIR"
