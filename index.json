@@ -25537,6 +25537,13 @@
       "status": "done",
       "title": "Locally produced result bundles fail submission validation (raw tuning diagnostics, absolute paths, no manifest)"
     },
+    "local-review-discoverability-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Make the local pre-PR review findable without reading review-v2.md"
+    },
     "local-tpcdi-bundles-regenerate-current-generator": {
       "claim": null,
       "needs": [],
