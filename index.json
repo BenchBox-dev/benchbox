@@ -44616,12 +44616,17 @@
       "title": "Commit hooks leave an untracked .build/ directory in every worktree"
     },
     "worktree-claim-subagent-shared-pid-doc-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T17:58:27Z",
+        "generation": "f1252c1a7ad44d32aa4b15584198a92b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549"
+      },
       "needs": [
         "feature-agent-docs-operational-facts-20261111"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Say that a subagent's worktree claim never goes stale"
     },
     "worktree-concurrent-session-ownership-guard-20261028": {
