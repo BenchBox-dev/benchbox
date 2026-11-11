@@ -27832,6 +27832,13 @@
       "status": "done",
       "title": "Operate results platform security, observability, and abuse controls"
     },
+    "operational-facts-sessions-rediscovered-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Write down the operational facts sessions kept rediscovering"
+    },
     "optimize-benchmark-results-json-output-format": {
       "claim": null,
       "needs": [],
