@@ -30437,12 +30437,17 @@
       "title": "Make the pr-arm duration-verdict message say whether the pull request was armed"
     },
     "pr-arm-placeholder-refresh-gap-misread-as-hidden-failure-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T22:32:11Z",
+        "generation": "82d3d5a3e75d4bb29de6fa4bdb729a68",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549"
+      },
       "needs": [
         "feature-pr-landing-guards-20261111"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "make pr-arm reads the gap before a text-edit placeholder re-runs as a hidden failure and tells the user to re-run CI"
     },
     "pr-arm-red-develop-refusal-prints-no-outcome-line-20261101": {
