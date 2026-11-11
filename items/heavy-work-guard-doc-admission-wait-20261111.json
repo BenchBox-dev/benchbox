@@ -4,6 +4,7 @@
     "Verification: make docs-validate and make pr-preflight pass.",
     "Done when merged."
   ],
+  "context": "2026-11-11: delivered in PR #4116, merged to develop as f30accdb17 (verified an ancestor of origin/develop).",
   "description": "Found on 2026-11-11 while delivering retro-navigation-fixes-umbrella-20261111 (or in the retrospective over 25 agent sessions that preceded it) and not addressed there.\n\nProblem. PR #4101 added `HEAVY_ADMIT_WAIT` / `--admit-wait-minutes` and documented it in docs/agent/heavy-work.md and make help. docs/operations/heavy-work-guard.md, which describes exit code 76 and the BENCHBOX_HEAVY_* settings, does not mention it. Two behaviours are stated only in the PR body: time spent queued for the host lock counts against the admission wait, and targets that call the host lock without going through heavy-run do not read the variable.\n\nChange. Add the option and those two facts to docs/operations/heavy-work-guard.md, and the queueing fact to docs/agent/heavy-work.md.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read every cited file on current origin/develop first, because line numbers and commits here are from 2026-11-11 (origin/develop 5bd2c19cc4); close at a merged PR and finish only after the merge is observed.",
   "links": [
     "docs/operations/heavy-work-guard.md",
@@ -34,6 +35,14 @@
       "generation": "bdac2b8aaf8d43dc96da2923454b78cd",
       "op": "take",
       "op_id": "569e4982faa04bd5891dc92049741876",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T17:57:15Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "599ddf034daa4a3a9c6a1792655739a6",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
