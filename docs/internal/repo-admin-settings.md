@@ -548,15 +548,25 @@ instead and refuses a tag on a maintenance line unless:
   `Develop-Source: <sha>` trailer, that commit is on `develop`'s first-parent
   history after the point where the line left `develop`, and every path the
   creation commit changes or deletes has exactly that commit's mode and
-  content, or is absent there. A
-  single snapshot newer than the tag means no reviewer file can be rolled back
-  to a state older than the tag's own. The creation commit must also match that
+  content, or is absent there. For a line recreated from a patch tag of an
+  earlier copy, that commit must also equal or descend from every
+  `Develop-Source` already on that copy, so no reviewer file can be rolled back
+  to a state older than the earlier copy carried (and so than the tag's own).
+  The creation commit must also match that
   snapshot on every reviewer file, whether or not it changed it: the review
   policy and its omp config, the Theseus lock, the soundness and inert path
   manifests, `scripts/theseus_cli.py`, `scripts/theseus_release_check.py`,
   `_project/scripts/theseus_bootstrap.py`, and every `review-*` or `oracle-*`
   workflow in either tree. A line therefore cannot keep the tag's older reviewer
   workflows or carry only some of develop's.
+
+`scripts/release_line_create.py` builds the creation commit and runs these
+creation checks before pushing. `release_artifact_consumer.py verify-line
+--source <checkout> --branch release/X.Y.x [--tip <sha>]` runs them on the
+hosted line without a tag, so a mistake shows up right after the push rather
+than at release time; it relaxes only the two rules that need the tag (the
+tagged commit being a merged pull request and the base tag being older than the
+release).
 
 Admission runs from the tagged tree, so this guards against mistakes and
 unreviewed content in the creation commit, not against a creator who also

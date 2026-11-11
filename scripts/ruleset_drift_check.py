@@ -537,9 +537,7 @@ def render_summary(findings: list[str], expected: dict[str, ExpectedRuleset]) ->
         lines.append("- test-pypi environment: deployments only from tag v* and branch develop")
         lines.append(f"- {RELEASE_LIFECYCLE_RULESET}: creation and deletion of {RELEASE_BRANCHES_REF} owner-only")
         lines.append("- no `release` branch or ruleset")
-        lines.append(
-            "- oracle environment (legacy name of the review environment): deployments only from branches develop and release/*"
-        )
+        lines.append("- oracle environment: deployments only from branches develop and release/*")
     if warnings:
         lines += ["", "## Non-blocking warnings", "", *[f"- {finding}" for finding in warnings]]
     return "\n".join(lines) + "\n"
