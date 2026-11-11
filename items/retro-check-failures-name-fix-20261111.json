@@ -10,6 +10,7 @@
     "Verification (ledger): tests under tests/unit/scripts need a row in docs/internal/dev-loop-property-ledger.md; this item adds cases to existing test files only. If a new test file is unavoidable, add its ledger row and run test_ledger_coverage.py.",
     "Done when the PR is merged to develop."
   ],
+  "context": "2026-11-11 checkpoint before releasing the claim while CI and review run. PR #4100 (https://github.com/BenchBox-dev/benchbox/pull/4100), head dba2b910d2c841d18dfff14f80424bd72d29473a, branch fix/check-failures-name-their-fix, worktree /Users/joe/Developer/BenchBox.wt-fix-check-failure-messages. All three parts shipped; the digest part needed only a local change at the print site (the finding already carries the scoped digest as its payload), so no deferral was recorded. Verified locally: test_docs_ownership.py and test_comment_policy.py (1053 passed), the reader index test failing with the regeneration command on a deliberately stale index and passing when restored, comment-policy-check, pr-preflight receipt for tree 60cefc98 (1099 mapped tests), local review with no Critical or High findings. No new test file, so no ledger row. Not armed yet. Next action: after checks and the soundness review verdict, make pr-arm from that worktree, observe the merge, clear this hold, take and finish.",
   "description": "Source: a retrospective over 25 agent sessions (2026-10-18 to 2026-11-11), followed by an adversarial re-check of each claim against origin/develop 4835f5a537.\n\nProblem. Three failures gave no next step, so sessions read checker source to find it.\n(1) tests/unit/scripts/test_inert_paths.py::test_checked_in_readers_match_the_rebuilt_index is a bare assert. The fix command, `_project/scripts/inert_paths.py --regenerate-readers`, appears only in docs/internal/review-v2.md. One session spent about 10 calls and 8 minutes after a CI failure.\n(2) scripts/check_docs_ownership.py raises 'tracked docs coverage mismatch: missing=[...]' without naming quality/docs-ownership.json or the owner value to add. Two sessions grepped for a sibling doc to find the manifest.\n(3) A comment-policy `payload-error` for a registered fixture whose payload changed prints neither the computed digest nor a pointer to docs/internal/comment-policy.md. One session re-read the checker four times (about 30 calls) and once concluded wrongly that the rebind had failed.\n\nChange. (1) Give the assert a message naming the regeneration command. (2) Extend the ownership error to name the manifest and say that a new core doc is registered as `core-only`. (3) Where a payload-error concerns a registered fixture with a different payload, include the computed `sha256:` digest and the doc path in the finding text, and state that `make comment-policy-check` ignores same-commit fixtures.\n\nNon-goals. No change to what any check accepts or rejects. The worktree ownership refusal already prints the takeover command (scripts/worktree_lifecycle_metadata.py) and is not changed.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly, never git add -A; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission or skipping the test lock; never bypass a required check, ruleset, hold label or review gate, and never post a stand-in; change only the files this item names, and report anything else as noticed-but-not-touched; re-read every cited file on current origin/develop before editing, because the line numbers here are hints from 2026-11-11 (origin/develop 4835f5a537); close at a merged PR (make pr-open, make pr-arm), and finish this item only after the merge is observed.",
   "links": [
     "tests/unit/scripts/test_inert_paths.py",
@@ -20,6 +21,7 @@
     "scripts/comment_syntax.py",
     "docs/internal/comment-policy.md"
   ],
+  "not_before": "2026-11-11T17:45:00Z",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
@@ -44,6 +46,14 @@
       "generation": "4440fb80a5a643fda4f3e1b471cc4fe2",
       "op": "take",
       "op_id": "ab9b3d85cd9e49afaf4f9c06adb72fea",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T13:52:38Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "45a7d8a250164ee983b185b30e87ee43",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
