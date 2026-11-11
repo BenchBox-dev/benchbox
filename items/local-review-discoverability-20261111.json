@@ -4,6 +4,7 @@
     "Verification: `make help | grep -i 'local review'` shows the pr-open line saying it runs the review; a docs/agent page gives the standalone command; make docs-validate passes.",
     "Done when merged."
   ],
+  "context": "2026-11-11: delivered in PR #4116 (f30accdb17): docs/agent/preflight-receipt.md has a 'Local review' section. The `make help` criterion was not met there because make/help.mk was reserved for other open PRs; it is recorded as work for feature-pr-landing-guards-20261111.",
   "description": "Found on 2026-11-11 while delivering retro-navigation-fixes-umbrella-20261111 (or in the retrospective over 25 agent sessions that preceded it) and not addressed there.\n\nProblem. `make pr-open` runs the local review (`scripts/local_review.py`), but no make target name, AGENTS.md line or docs/agent page says so; it is described only in docs/internal/review-v2.md under 'Local pre-PR review'. In one reviewed session an agent searched the make targets, concluded no local review existed, and ran another CLI as a reviewer six times until the owner objected. An AGENTS.md sentence was considered and does not fit the 17,300-byte instruction budget (17,269 used).\n\nChange. State it where agents already look without spending instruction bytes: the `make pr-open` help line and docs/agent/merge-authority.md or docs/agent/preflight-receipt.md, with the command to run the review alone before pushing.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read every cited file on current origin/develop first, because line numbers and commits here are from 2026-11-11 (origin/develop 5bd2c19cc4); close at a merged PR and finish only after the merge is observed.",
   "links": [
     "make/help.mk",
@@ -35,6 +36,14 @@
       "generation": "2a673598928740d6a694d8f372246f41",
       "op": "take",
       "op_id": "8dbf0e465e394346aa1d970186805ff2",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T17:57:59Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6daad80077fb47dcbb2d070cb5321136",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
