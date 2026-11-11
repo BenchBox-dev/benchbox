@@ -53,3 +53,5 @@ Current release: `v0.5.0`. Use `benchbox --version` for a human-readable summary
 - [Frequently Asked Questions (FAQ)](https://benchbox.dev/docs/usage/faq.html) answers common questions about BenchBox.
 - [Troubleshooting guide](https://benchbox.dev/docs/usage/troubleshooting.html) covers common errors and remediation steps.
 - Open issues or discussions on GitHub if you get stuck.
+
+Release-line review gating check.
