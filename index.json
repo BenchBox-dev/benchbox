@@ -35775,7 +35775,8 @@
       "claim": null,
       "needs": [
         "scale-factor-consistency-umbrella-20261111",
-        "scale-factor-registry-caps-vs-docs-20261013"
+        "scale-factor-registry-caps-vs-docs-20261013",
+        "scale-factor-floor-0-01-20261111"
       ],
       "priority": "medium",
       "status": "open",
