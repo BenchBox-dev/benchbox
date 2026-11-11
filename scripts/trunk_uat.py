@@ -23,6 +23,7 @@ from typing import Any
 WORKFLOW_FILE = "trunk-uat.yml"
 WORKFLOW_PATH = ".github/workflows/trunk-uat.yml"
 RELEASE_WORKFLOW_FILE = "release-v2.yml"
+PROBE_ONLY_JOBS = frozenset({"probe UAT stub evidence", "probe reused UAT evidence", "publish dry run"})
 RECORD_PREFIX = "trunk-uat-record-"
 RECORD_NAME = re.compile(re.escape(RECORD_PREFIX) + r"([0-9a-f]{40})")
 SHARD_DIRECTORY = re.compile(r"release-uat-trunk-[0-9a-f]{40}-stage([0-9]+)-(.+)")
@@ -111,6 +112,21 @@ def active_runs(api: Api, workflow: str) -> list[dict[str, Any]]:
     return sorted((run for run in runs if run.get("status") != "completed"), key=lambda run: run["id"], reverse=True)
 
 
+def _is_probe(api: Api, run: dict[str, Any]) -> bool:
+    if run.get("event") != "workflow_dispatch":
+        return False
+    attempt = run.get("run_attempt")
+    try:
+        jobs = run_jobs(api, run["id"], attempt if isinstance(attempt, int) and attempt > 0 else 1)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return False
+    return any(job.get("name") in PROBE_ONLY_JOBS and job.get("conclusion") != "skipped" for job in jobs)
+
+
+def active_release_runs(api: Api) -> list[dict[str, Any]]:
+    return [run for run in active_runs(api, RELEASE_WORKFLOW_FILE) if not _is_probe(api, run)]
+
+
 @dataclass(frozen=True)
 class ExecutedRun:
     run_id: int
@@ -166,7 +182,7 @@ def decide(
     changed: Callable[[str, str], list[str] | None],
     fetch: Fetch | None = None,
 ) -> Decision:
-    active = active_runs(api, RELEASE_WORKFLOW_FILE)
+    active = active_release_runs(api)
     if active:
         return Decision("defer", f"deferred: release-v2 run {active[0]['id']} in progress")
     source = _releasable.newest_releasable(api)
@@ -483,7 +499,7 @@ def build_record(
         if item["step_timeout"] or (item["state"] == "cancelled" and item["hours"] >= SHARD_TIMEOUT_HOURS)
     ]
     if "cancelled" in job_results.values() and not timed_out:
-        others = active_runs(api, RELEASE_WORKFLOW_FILE)
+        others = active_release_runs(api)
         record["outcome"] = "cancelled"
         record["reason"] = (
             f"cancelled: release-v2 run {others[0]['id']} in progress (full UAT fallback)"
