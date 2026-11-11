@@ -15751,12 +15751,17 @@
       "title": "Remove comments from Explorer pages and components"
     },
     "comment-cleanup-external-ownership": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T20:46:38Z",
+        "generation": "2d55d209639d43a0b6019173dcbb8049",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66"
+      },
       "needs": [
         "comment-cleanup-scope-policy"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Resolve external tools and skill mirrors in comment-removal scope"
     },
     "comment-cleanup-final-enforcement": {
