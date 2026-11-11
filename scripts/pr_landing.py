@@ -11,7 +11,7 @@ import os
 import re
 import subprocess
 import sys
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import BinaryIO
@@ -768,13 +768,25 @@ def verify_evidence_live(run: Runner, repo_full: str, pr: dict, evidence: ReadyE
         if claimed not in live_labels:
             raise LandingError(f"live verification: claimed label {claimed!r} absent from live labels")
     if unresolved_review_threads(run, repo_full, int(pr.get("number") or 0)):
-        raise LandingError("live verification: unresolved, non-outdated review threads remain")
+        raise LandingError("live verification: unresolved review threads remain (outdated ones included)")
 
 
-def unresolved_review_threads(run: Runner, repo_full: str, pr_number: int) -> bool:
-    return any(
-        isinstance(thread, dict) and not thread.get("isResolved") and not thread.get("isOutdated")
-        for thread in review_threads(run, repo_full, pr_number)
+def unresolved_review_threads(run: Runner, repo_full: str, pr_number: int) -> list[dict]:
+    return [
+        thread
+        for thread in review_threads(run, repo_full, pr_number, "id isResolved isOutdated path")
+        if isinstance(thread, dict) and not thread.get("isResolved")
+    ]
+
+
+def describe_unresolved_threads(threads: Sequence[dict]) -> str:
+    named = ", ".join(
+        f"{thread.get('path') or thread.get('id') or 'unnamed thread'}{' (outdated)' if thread.get('isOutdated') else ''}"
+        for thread in threads
+    )
+    return (
+        f"{len(threads)} unresolved review thread(s) block the merge, outdated ones included, because the ruleset "
+        f"requires every conversation to be resolved: {named}"
     )
 
 
@@ -1544,7 +1556,9 @@ def enqueue_pr(
         if str(current.get("reviewDecision") or "") != expected_review_decision:
             raise LandingError("PR review disposition changed before enqueue; readiness is invalid")
         if unresolved_review_threads(run, repo_full, pr_number):
-            raise LandingError("PR review threads changed before enqueue; unresolved, non-outdated threads remain")
+            raise LandingError(
+                "PR review threads changed before enqueue; unresolved threads remain (outdated ones included)"
+            )
     gate_reasons = theseus_cli.gate_refusals(run, repo_full, pr_number, expected_head, "pr-landing")
     if gate_reasons:
         raise LandingError("; ".join(gate_reasons))

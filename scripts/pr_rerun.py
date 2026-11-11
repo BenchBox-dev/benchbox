@@ -323,7 +323,7 @@ def main(argv: Sequence[str] | None = None, environ: Mapping[str, str] = os.envi
     if argv:
         print(USAGE, file=sys.stderr)
         return 2
-    repo = environ.get("PR_RERUN_REPO") or "BenchBox-dev/BenchBox"
+    repo = environ.get("PR_RERUN_REPO") or "BenchBox-dev/benchbox"
     pr_text = environ.get("PR_RERUN_PR", "")
     try:
         if pr_text:

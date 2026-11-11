@@ -11,8 +11,9 @@ import sys
 import tempfile
 import time
 from collections.abc import Callable, Mapping, Sequence
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ci_text_edit_verdict
@@ -23,7 +24,7 @@ import trunk_revert
 CLI_DESCRIPTION = "Arm a pull request for its exact head after a live check that nothing holds it."
 
 HOLD_LABEL = pr_landing.HOLD_LABEL
-REPOSITORY = "BenchBox-dev/BenchBox"
+REPOSITORY = "BenchBox-dev/benchbox"
 BASE_BRANCH = "develop"
 VIEW_FIELDS = "number,state,isDraft,labels,reviewDecision,headRefOid,baseRefName,headRefName,id"
 
@@ -32,7 +33,7 @@ VERDICT_ARTIFACT_PREFIX = "fast-duration-verdict"
 VERDICT_FILE = "fast-duration-verdict.json"
 PROCEEDING_VERDICTS = frozenset({"pass", "neutral", "not-applicable"})
 PRODUCER_CHECK = "core"
-WAITING_MARKERS = ("waiting for full CI run", "has not finished for")
+WAITING_MARKERS = ("waiting for full CI run", "waiting for the placeholder re-run", "has not finished for")
 WAIT_INTERVAL_SECONDS = 180.0
 WAIT_MAX_MINUTES = 120
 
@@ -40,10 +41,44 @@ _last_outcome = ""
 
 Runner = Callable[[list[str]], tuple[int, str]]
 
-CI_RUNS_JQ = r".workflow_runs[] | [.id, .display_title, .status] | @tsv"
+CI_RUNS_JQ = r".workflow_runs[] | [.id, .display_title, .status, .conclusion, .updated_at] | @tsv"
+PLACEHOLDER_REFRESH_SECONDS = 600
+REFRESH_RUNS_JQ = (
+    '.workflow_runs[] | select(.display_title == "ci-text-edit-refresh ({head})") | [.id, .status, .conclusion] | @tsv'
+)
 
 
-def _ci_runs(run: Runner, repo: str, head: str) -> list[tuple[int, str, str]]:
+class CiRun(NamedTuple):
+    id: int
+    title: str
+    status: str
+    conclusion: str = ""
+    updated_at: datetime | None = None
+
+
+class Wait(NamedTuple):
+    run_id: int
+    kind: str
+
+
+FULL_RUN = "full"
+PLACEHOLDER_BEHIND_FULL_RUN = "placeholder-behind-full"
+PLACEHOLDER_REFRESH = "placeholder-refresh"
+PLACEHOLDER_RERUNNING = "placeholder-rerunning"
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _timestamp(raw: str) -> datetime | None:
+    try:
+        return datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _ci_runs(run: Runner, repo: str, head: str) -> list[CiRun]:
     code, out = run(
         [
             "gh",
@@ -56,42 +91,96 @@ def _ci_runs(run: Runner, repo: str, head: str) -> list[tuple[int, str, str]]:
     )
     if code != 0:
         raise pr_landing.LandingError(f"could not list the CI runs of {head[:9]}: {out.strip()[:200]}")
-    runs: list[tuple[int, str, str]] = []
+    runs: list[CiRun] = []
     for line in out.splitlines():
-        fields = line.split("\t")
-        if len(fields) == 3 and fields[0].isdigit():
-            runs.append((int(fields[0]), fields[1], fields[2]))
+        fields = (line.split("\t") + ["", "", "", "", ""])[:5]
+        if fields[0].isdigit():
+            runs.append(CiRun(int(fields[0]), fields[1], fields[2], fields[3], _timestamp(fields[4])))
     return runs
 
 
-def _waiting_full_run(runs: Sequence[tuple[int, str, str]], url: str) -> tuple[int, bool] | None:
+def _refresh_runs(run: Runner, repo: str, head: str) -> list[CiRun]:
+    if not re.fullmatch(r"[0-9a-f]{40}", head):
+        return []
+    code, out = run(
+        [
+            "gh",
+            "api",
+            "--paginate",
+            "--jq",
+            REFRESH_RUNS_JQ.format(head=head),
+            f"repos/{repo}/actions/workflows/ci-text-edit-refresh.yml/runs?event=workflow_run&per_page=100",
+        ]
+    )
+    if code != 0:
+        return []
+    runs: list[CiRun] = []
+    for line in out.splitlines():
+        fields = (line.split("\t") + ["", "", ""])[:3]
+        if fields[0].isdigit():
+            runs.append(CiRun(int(fields[0]), "", fields[1], fields[2]))
+    return runs
+
+
+def _placeholder_refresh_pending(
+    failed: CiRun, full_runs: Sequence[CiRun], refresh: Sequence[CiRun], now: datetime
+) -> Wait | None:
+    if not full_runs:
+        return None
+    newest = max(full_runs, key=lambda item: item.id)
+    if newest.conclusion != "success" or newest.updated_at is None or failed.updated_at is None:
+        return None
+    if failed.updated_at >= newest.updated_at:
+        return None
+    live = [item for item in refresh if item.conclusion != "skipped"]
+    if any(item.status != "completed" for item in live):
+        return Wait(newest.id, PLACEHOLDER_REFRESH)
+    if live:
+        return None
+    if 0 <= (now - newest.updated_at).total_seconds() < PLACEHOLDER_REFRESH_SECONDS:
+        return Wait(newest.id, PLACEHOLDER_REFRESH)
+    return None
+
+
+def _waiting_full_run(runs: Sequence[CiRun], url: str, now: datetime, refresh: Sequence[CiRun] = ()) -> Wait | None:
     match = pr_landing.check_suites.ACTIONS_RUN_RE.search(url)
     if match is None:
         return None
     failed_run = int(match.group(1))
-    placeholder = {run_id for run_id, title, _ in runs if title == ci_text_edit_verdict.TEXT_EDIT_RUN_NAME}
-    if failed_run not in placeholder:
-        in_progress = any(run_id == failed_run and status != "completed" for run_id, _, status in runs)
-        return (failed_run, False) if in_progress else None
-    full_run = next(
-        (
-            run_id
-            for run_id, title, status in runs
-            if title != ci_text_edit_verdict.TEXT_EDIT_RUN_NAME and status != "completed"
-        ),
-        None,
-    )
-    return None if full_run is None else (full_run, True)
+    placeholders = [item for item in runs if item.title == ci_text_edit_verdict.TEXT_EDIT_RUN_NAME]
+    failed = next((item for item in placeholders if item.id == failed_run), None)
+    if failed is None:
+        in_progress = any(item.id == failed_run and item.status != "completed" for item in runs)
+        return Wait(failed_run, FULL_RUN) if in_progress else None
+    full_runs = [item for item in runs if item.title != ci_text_edit_verdict.TEXT_EDIT_RUN_NAME]
+    full_open = next((item for item in full_runs if item.status != "completed"), None)
+    if full_open is not None:
+        return Wait(full_open.id, PLACEHOLDER_BEHIND_FULL_RUN)
+    rerunning = next((item for item in placeholders if item.status != "completed"), None)
+    if rerunning is not None:
+        return Wait(rerunning.id, PLACEHOLDER_RERUNNING)
+    return _placeholder_refresh_pending(failed, full_runs, refresh, now)
 
 
-def _waiting_reason(name: str, full_run: int, placeholder: bool) -> str:
-    if placeholder:
+def _waiting_reason(name: str, run_id: int, kind: str) -> str:
+    if kind == PLACEHOLDER_BEHIND_FULL_RUN:
         return (
-            f"waiting for full CI run {full_run}: the required {name!r} check is a placeholder failure that re-runs "
+            f"waiting for full CI run {run_id}: the required {name!r} check is a placeholder failure that re-runs "
             f"on its own when that run completes; arm again after it completes"
         )
+    if kind == PLACEHOLDER_RERUNNING:
+        return (
+            f"waiting for the placeholder re-run of CI run {run_id}: the required {name!r} check is a placeholder "
+            f"failure that is being re-run on its own; arm again in a few minutes"
+        )
+    if kind == PLACEHOLDER_REFRESH:
+        return (
+            f"waiting for the placeholder re-run after full CI run {run_id} completed: the required {name!r} check "
+            f"is a placeholder failure that the ci-text-edit-refresh workflow re-runs on its own; "
+            f"arm again in a few minutes"
+        )
     return (
-        f"waiting for full CI run {full_run} to complete: the required {name!r} check already failed inside it, "
+        f"waiting for full CI run {run_id} to complete: the required {name!r} check already failed inside it, "
         f"and GitHub re-runs failed jobs only after the whole run completes; once it completes, run make pr-rerun "
         f"if the check is still failed, then arm again"
     )
@@ -106,7 +195,9 @@ def _core_state(run: Runner, repo: str, number: int, head: str) -> str:
         )
     conclusion = core.get("conclusion")
     if conclusion not in pr_landing.check_suites.NON_BLOCKING:
-        waiting = _waiting_full_run(_ci_runs(run, repo, head), str(core.get("url") or ""))
+        waiting = _waiting_full_run(
+            _ci_runs(run, repo, head), str(core.get("url") or ""), _now(), _refresh_runs(run, repo, head)
+        )
         if waiting is not None:
             return _waiting_reason(PRODUCER_CHECK, *waiting)
     remedy = f"rerun it with make pr-rerun PR={number}"
@@ -124,11 +215,13 @@ def _in_flight_waits(run: Runner, repo: str, branch: str, head: str) -> tuple[di
         pr_landing.live_check_runs(run, repo, head), required, pr_landing.check_suites.NON_BLOCKING
     )
     runs = _ci_runs(run, repo, head) if any(item.failed for item in evaluations.values()) else []
+    refresh = _refresh_runs(run, repo, head) if runs else []
+    now = _now()
     waits_by_name: dict[str, dict] = {}
     for name, item in evaluations.items():
         waits = {}
         for suite in item.failed:
-            waiting = _waiting_full_run(runs, suite.url)
+            waiting = _waiting_full_run(runs, suite.url, now, refresh)
             if waiting is not None:
                 waits[suite] = waiting
         waits_by_name[name] = waits
@@ -239,7 +332,7 @@ def refusals(
     local_head: str,
     *,
     unpublished: Sequence[str],
-    unresolved_threads: bool,
+    unresolved_threads: Sequence[dict] = (),
     hidden_failures: Sequence[str] = (),
 ) -> list[str]:
     reasons: list[str] = []
@@ -255,7 +348,7 @@ def refusals(
     if view.get("reviewDecision") == "CHANGES_REQUESTED":
         reasons.append("a reviewer requested changes")
     if unresolved_threads:
-        reasons.append("an unresolved, non-outdated review thread is open")
+        reasons.append(pr_landing.describe_unresolved_threads(unresolved_threads))
     reasons.extend(hidden_failures)
     reasons.extend(f"unpublished work: {problem}" for problem in unpublished)
     if view.get("headRefOid") != local_head:
@@ -375,7 +468,7 @@ def arm(
     run: Runner = pr_landing.live_run,
     checkout: Path = Path("."),
     unpublished: Callable[[Path], list[str]] = pr_landing.unpublished_work,
-    threads: Callable[[Runner, str, int], bool] = pr_landing.unresolved_review_threads,
+    threads: Callable[[Runner, str, int], Sequence[dict]] = pr_landing.unresolved_review_threads,
     suites: Callable[[Runner, str, str, str], list[str]] = suite_refusals,
     duration: Callable[[Runner, str, int, str], list[str]] = duration_verdict_refusals,
     visible: Callable[[Runner, str, str, str], list[str]] = visible_refusals,

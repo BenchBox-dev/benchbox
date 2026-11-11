@@ -250,8 +250,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     parser.add_argument(
         "--repo",
-        default="BenchBox-dev/BenchBox",
-        help="GitHub repository slug (default: BenchBox-dev/BenchBox).",
+        default="BenchBox-dev/benchbox",
+        help="GitHub repository slug (default: BenchBox-dev/benchbox).",
     )
     args = parser.parse_args(argv)
 

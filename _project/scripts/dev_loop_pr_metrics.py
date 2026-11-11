@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_REPO = "BenchBox-dev/BenchBox"
+DEFAULT_REPO = "BenchBox-dev/benchbox"
 FAST_LANE_POLICY_PATH = "_project/config/fast_test_lane_policy.json"
 REQUIRED_LANE_WORKFLOW_NAMES = ("CI", "Develop PR")
 FAST_TEST_JOB_NAME = "test (ubuntu-latest, 3.12)"

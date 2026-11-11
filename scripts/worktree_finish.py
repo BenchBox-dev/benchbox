@@ -662,7 +662,7 @@ def evaluate_finish_preview(
     target_path: Path,
     expected_head_oid: str,
     repo_root: Path,
-    repo_slug: str = "BenchBox-dev/BenchBox",
+    repo_slug: str = "BenchBox-dev/benchbox",
     evidence_file: Optional[Path] = None,
     pr_lookup: Optional[PrLookup] = None,
     refresh_target: Optional[TargetRefresher] = None,
@@ -817,8 +817,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--repo",
-        default="BenchBox-dev/BenchBox",
-        help="GitHub repository slug (default: BenchBox-dev/BenchBox).",
+        default="BenchBox-dev/benchbox",
+        help="GitHub repository slug (default: BenchBox-dev/benchbox).",
     )
     parser.add_argument(
         "--apply",

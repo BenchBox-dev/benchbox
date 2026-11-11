@@ -30,7 +30,7 @@ from soundness_manifest import any_soundness_path
 
 FIXTURE_PATH = SCRIPT_DIR / "fixtures" / "green_unmerged_fixture.json"
 
-DEFAULT_REPO = "BenchBox-dev/BenchBox"
+DEFAULT_REPO = "BenchBox-dev/benchbox"
 GRACE_PERIOD_HOURS = 2.0
 API_ROOT = "https://api.github.com"
 AUTO_MERGE_HOLD_LABEL = "no-auto-merge"

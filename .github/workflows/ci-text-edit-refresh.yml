@@ -31,7 +31,7 @@ jobs:
           sparse-checkout: scripts/ci_text_edit_verdict.py
           sparse-checkout-cone-mode: false
 
-      - name: Re-run the newest failed text-edit run on this commit
+      - name: Re-run every failed text-edit run on this commit
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}

@@ -246,7 +246,7 @@ class FakeGitHub:
         gate = self._gate(cmd)
         if gate is not None:
             return gate
-        if cmd[:3] == ["gh", "api", "--paginate"] and "/actions/workflows/ci.yml/runs?" in cmd[-1]:
+        if cmd[:3] == ["gh", "api", "--paginate"] and "/actions/workflows/" in cmd[-1] and "/runs?" in cmd[-1]:
             return 0, ""
         if cmd[:2] == ["gh", "api"] and "/rules/branches/" in cmd[-1]:
             return 0, "\n".join([*pr_landing.REQUIRED_CONTEXTS, "hold", "review-gate", "review"])
@@ -729,7 +729,16 @@ def test_refuses_an_unresolved_review_thread(
     world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str]
 ) -> None:
     ready_pr.threads = [{"id": "T1", "isResolved": False, "isOutdated": False}]
-    assert "condition 6: an unresolved, non-outdated review thread is open" in _refusal(world, ready_pr, capsys)
+    assert "condition 6: 1 unresolved review thread(s) block the merge" in _refusal(world, ready_pr, capsys)
+
+
+def test_refuses_an_unresolved_outdated_review_thread_and_names_it(
+    world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str]
+) -> None:
+    ready_pr.threads = [{"id": "T7", "isResolved": False, "isOutdated": True}]
+    refusal = _refusal(world, ready_pr, capsys)
+    assert "condition 6: 1 unresolved review thread(s) block the merge" in refusal
+    assert "T7 (outdated)" in refusal
 
 
 @pytest.mark.parametrize(("conclusion", "refused"), [("failure", True), ("cancelled", True), (None, False)])

@@ -52,7 +52,7 @@ def test_pr_ready_without_evidence_arms_through_pr_arm(tmp_path: Path) -> None:
         result, argv, env = _make_pr_ready(record, *assignments, f"HEAD={HEAD}")
         assert result.returncode == 0, (name, result.stderr)
         assert argv == ["run", "--", "python", "scripts/pr_arm.py"], name
-        assert (env["PR_ARM_PR"], env["PR_ARM_HEAD"], env["PR_ARM_REPO"]) == (expected, HEAD, "BenchBox-dev/BenchBox")
+        assert (env["PR_ARM_PR"], env["PR_ARM_HEAD"], env["PR_ARM_REPO"]) == (expected, HEAD, "BenchBox-dev/benchbox")
 
 
 def test_pr_ready_refuses_a_url_that_names_a_pr_in_another_repository(tmp_path: Path) -> None:
@@ -62,7 +62,7 @@ def test_pr_ready_refuses_a_url_that_names_a_pr_in_another_repository(tmp_path: 
         f"HEAD={HEAD}",
         gh_output="7 https://github.com/other-org/other-repo/pull/7",
     )
-    assert result.returncode == 2 and "outside BenchBox-dev/BenchBox" in result.stderr
+    assert result.returncode == 2 and "outside BenchBox-dev/benchbox" in result.stderr
     assert argv == [] and env == {}
 
 

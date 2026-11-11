@@ -31,7 +31,7 @@ FIXTURE_PATH = SCRIPT_DIR / "fixtures" / "soundness_drain_fixture.json"
 
 OWNER_LOGIN = "joeharris76"
 
-DEFAULT_REPO = "BenchBox-dev/BenchBox"
+DEFAULT_REPO = "BenchBox-dev/benchbox"
 DRAIN_LABEL = "awaiting-owner"
 DRAIN_LABEL_COLOR = "b60205"
 DRAIN_LABEL_DESCRIPTION = "Green, gated on owner review, parked >24h (see docs/internal/soundness-drain.md)"

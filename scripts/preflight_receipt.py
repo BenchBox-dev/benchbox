@@ -5,6 +5,7 @@ import argparse
 import collections
 import datetime
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -16,6 +17,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 SCHEMA = 1
+RECEIPT_SCHEMA = 2
 TAIL_LINES = 40
 COMMAND_DISPLAY_LIMIT = 110
 RECEIPT_DIR_ENV = "BENCHBOX_PREFLIGHT_RECEIPT_DIR"
@@ -263,7 +265,7 @@ def write_receipt(args: argparse.Namespace) -> int:
             raise ReceiptError("the tree changed while preflight ran")
         allowlist = Path(args.allowlist) if args.allowlist else None
         receipt = {
-            "schema": SCHEMA,
+            "schema": RECEIPT_SCHEMA,
             "tree": start["tree"],
             "head": start["head"],
             "base_ref": begin["base_ref"],
@@ -343,6 +345,20 @@ def render(receipt: dict[str, object]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _expected_guards(receipt: dict[str, object]) -> list[str]:
+    module_path = Path(__file__).resolve().parent.parent / "_project" / "scripts" / "preflight_targets.py"
+    spec = importlib.util.spec_from_file_location("preflight_targets", module_path)
+    if spec is None or spec.loader is None or not module_path.is_file():
+        raise ReceiptError(f"cannot derive the required guard steps: {module_path} is missing")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    merge_base, head = str(receipt.get("merge_base") or ""), str(receipt.get("head") or "")
+    if not merge_base or not head:
+        raise ReceiptError("the preflight receipt records no merge base or head; rerun `make pr-preflight`")
+    paths = _git("diff", "--name-only", "--no-renames", merge_base, head).splitlines()
+    return module.guards(paths)
+
+
 def verify_receipt(directory: Path, tree: str, allowlist: dict[tuple[str, str], dict[str, str]]) -> dict[str, object]:
     if not TREE_PATTERN.fullmatch(tree):
         raise ReceiptError(f"{tree!r} is not a tree hash")
@@ -356,7 +372,12 @@ def verify_receipt(directory: Path, tree: str, allowlist: dict[tuple[str, str], 
         receipt = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise ReceiptError(f"preflight receipt {path} is unreadable: {exc}") from exc
-    if not isinstance(receipt, dict) or receipt.get("schema") != SCHEMA or receipt.get("tree") != tree:
+    if isinstance(receipt, dict) and receipt.get("schema") != RECEIPT_SCHEMA:
+        raise ReceiptError(
+            f"preflight receipt {path} predates guard-step recording (schema {receipt.get('schema')}, "
+            f"need {RECEIPT_SCHEMA}); rerun `make pr-preflight`"
+        )
+    if not isinstance(receipt, dict) or receipt.get("tree") != tree:
         raise ReceiptError(f"preflight receipt {path} does not describe tree {tree}; rerun `make pr-preflight`")
     steps = receipt.get("steps")
     if not isinstance(steps, list) or not steps or not all(isinstance(step, dict) for step in steps):
@@ -382,6 +403,7 @@ def verify_receipt(directory: Path, tree: str, allowlist: dict[tuple[str, str], 
         required.append("pytest")
     if selection["linux_files"] > 0:
         required.append("linux-pytest")
+    required += _expected_guards(receipt)
     recorded = {step.get("name") for step in steps}
     missing = [name for name in required if name not in recorded]
     if missing:

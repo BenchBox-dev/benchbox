@@ -1061,7 +1061,7 @@ def test_a_closure_comment_names_the_commit_and_pull_of_the_gap():
 def test_the_default_options_name_the_repository_and_the_integration_branch():
     args = digest._parse_args([])
     assert (args.repo, args.ref, args.since, args.apply, args.bootstrap) == (
-        "BenchBox-dev/BenchBox",
+        "BenchBox-dev/benchbox",
         "origin/develop",
         None,
         False,
@@ -1185,7 +1185,7 @@ def wired(monkeypatch):
 
 def test_a_default_dry_run_reads_the_default_repository_and_branch_and_changes_nothing(wired, capsys):
     assert digest.main([]) == 0
-    repo = "BenchBox-dev/BenchBox"
+    repo = "BenchBox-dev/benchbox"
     assert wired.calls("read_checkpoint") == [(repo,)]
     assert wired.calls("collect_entries") == [(repo, HEAD, SINCE)]
     assert wired.calls("collect_window_pulls") == [(repo, HEAD, SINCE)]
@@ -1257,7 +1257,7 @@ def test_bootstrap_over_a_stored_checkpoint_says_so_on_stderr(wired, capsys):
     captured = capsys.readouterr()
     assert captured.out == ""
     assert "checkpoint" in captured.err
-    assert wired.calls("read_checkpoint") == [("BenchBox-dev/BenchBox",)]
+    assert wired.calls("read_checkpoint") == [("BenchBox-dev/benchbox",)]
     assert wired.calls("write_checkpoint") == []
 
 
@@ -1323,7 +1323,7 @@ def test_the_window_pulls_and_trunk_runs_feed_the_supplements(wired, capsys):
     wired.trunk_runs = [trunk_run(3)]
     assert digest.main([]) == 0
     assert wired.calls("standin_overrides") == [(pulls,)]
-    assert wired.calls("red_armings") == [("BenchBox-dev/BenchBox", pulls, wired.trunk_runs)]
+    assert wired.calls("red_armings") == [("BenchBox-dev/benchbox", pulls, wired.trunk_runs)]
     assert wired.calls("withdrawn_findings") == [(pulls,)]
     out = capsys.readouterr().out
     assert "- #8 armed at" in out
