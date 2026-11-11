@@ -2,6 +2,7 @@
   "acceptance": [
     "Owner records approve, modify or reject per cut class with the measured timings as evidence, or chooses a larger runner or a higher per-cell timeout instead. Each approved cut has a reinstatement condition or tracked item (influxdb-general-loader-uat for InfluxDB). Gate floors in tests/uat match the decision."
   ],
+  "context": "Revalidated 2026-11-11: still required, now as a retroactive owner decision rather than a pre-merge gate. PR #3902 merged 2026-11-03 (7eba31ea4e) and v0.5.0 was published 2026-11-06 with the cuts in place. What was actually merged differs from the description above: the PR body lists InfluxDB, CedarDB, Presto/Trino and Databend as excluded platforms (not InfluxDB only), and floors floor(0.8 x eligible pairs) of 88/32/105 (not 92/48/148). On develop today: release-gate-02 excludes cedardb; release-gate-03 excludes influxdb, presto, trino and databend; cross_scale_coverage_min_pairs is 93/32/112 in release-gate-01/02/03; the SF1 pruned cells live in tests/uat/compatibility.py (_SF1_TIMEOUT_PRUNED_CELLS, _LATER_SF1_TIMEOUT_PRUNED_CELLS, each citing the measured run); validator_clean_rate_floor is 1.0. Each excluded platform has an open restoration item: influxdb-general-loader-uat, cedardb-release-uat-coverage, presto-trino-release-uat-coverage, databend-release-uat-coverage. Neither the PR nor the tracker records an owner approval of the cuts; the owner tagged v0.5.0 and approved its publish with them in place, which is implicit acceptance at most. Unblocks when the owner records approve, modify or reject per cut class (SF1 pruning, platform exclusions, floors, UAT-only gates) on this item.",
   "description": "PR #3902 (fix/release-uat-rc3, another session) folds the rc3 UAT fixes and also reduces what the release gate certifies: it prunes SF1 cells measured above the 1200 s per-cell limit (dask-df 9 benchmarks, pyspark-df 5, spark joinorder/tpchavoc/tpcds_obt, pandas-df joinorder/flightdata/datavault, sqlite joinorder/flightdata/tsbs_devops, lakesail datavault, pg-duckdb tpcds_obt/joinorder, pg-mooncake tpcds_obt, postgresql joinorder/tpcds_obt, singlestore joinorder/tpcds_obt, questdb tpcds_obt), excludes InfluxDB from the gate, and recomputes cross-scale floors as floor(0.8 x eligible) (92/115, 48/60, 148/186). Gate reductions are owner decisions and no owner approval was found on record in the tracker. The already-merged ai_primitives pruning, the Doris write_primitives rework and three SingleStore fulltext skips are likewise not recorded as approved.",
   "links": [
     "PR #3902",
@@ -16,6 +17,14 @@
       "op": "create",
       "op_id": "13cfcdb36ba941839d9a4f2289b21173",
       "session_id": "b38147de5e3b4952857534e2b3c9221c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:30:26Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a45d6d9b5a60461087b5818d75cfa5ac",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
