@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "The ClickBench table gives 1M rows at SF 1 and no row at 0.001; `git grep -n -e '~100M' -e '~1B' -- docs/benchmarks/clickbench.md` finds nothing.",
+    "The TPC-DS-OBT table has exactly the rows SF 0.01, 0.1, 1 and 10 with the measured row counts above.",
+    "`docs/benchmarks/tpc-di.md` names FactMarketHistory (100,000) and FactWatches (25,000) as capped.",
+    "`npm run docs:check` passes for these three pages (no new violation attributed to them)."
+  ],
+  "description": "## Problem\nThree benchbox-site tables give sizes the code does not produce:\n- `docs/benchmarks/clickbench.md`, Scale Factor Guidelines: says SF 1 is about 100M rows and 10 GB. The generator writes `int(1_000_000 * scale_factor)` rows (`benchbox/core/clickbench/generator.py`); SF 0.01 produced 10,000 rows, and the calibrated SF 1 size is 552,136,075 bytes (`docs/benchmarks/sf1-calibrated-sizes.md`).\n- `docs/benchmarks/tpc-ds-obt.md`, Scale Factors: lists SF 1, 10, 100 and 1000 with estimated sizes. Measured on DuckDB (Parquet): SF 0.01 50,335 rows, 14.5 MB; SF 0.1 503,753 rows, 117 MB; SF 1 5,041,336 rows, 1.38 GB; SF 10 50,399,818 rows, 18.2 GB.\n- `docs/benchmarks/tpc-di.md`, Scale Factor Guidelines: implies every table keeps growing. FactMarketHistory is capped at 100,000 rows and FactWatches at 25,000 (`benchbox/core/tpcdi/generator/facts.py`).\n\n## Change\n1. ClickBench: rebuild the table from 1M rows per scale-factor unit; state sizes only where measured (SF 1 about 0.55 GB) or mark the others as proportional estimates; say the data is synthetic.\n2. TPC-DS-OBT: replace the table with the four measured rows and say they are DuckDB Parquet measurements.\n3. TPC-DI: add one sentence naming the two capped tables and their caps.\n\n## Decision gates\n- Before editing, re-read the three tables on current `origin/main` and re-read the two generator files on current core `origin/develop` to confirm the constants.\n- If `docs/benchmarks/sf1-calibrated-sizes.md` or a `doc-contracts` SF 1 size check disagrees with a number to be written, use the contract value and report the difference.\n\n## Guardrails\n- Repository: `BenchBox-dev/benchbox-site`. Work on branch `docs/benchmark-scale-and-count-fixes` in a linked worktree; never commit to `main`.\n- Edit only pages under `docs/benchmarks/` named here. No Explorer, deploy, gate or `docs-contracts/` code.\n- Commit identity Joe Harris <joeharris76@gmail.com>; no agent or co-author trailer; stage by explicit path.\n- Commit and pull request text give the durable reason only: no tracker ids, plan references or CI counts.\n- Every number written into a page comes from the core code or a measurement named in this item, not from memory.\n- Subagents make no tracker write, push nothing and open no pull request.\n- No timing claims ('Seconds', 'Minutes', 'Hours') are added; remove the ClickBench timing column if it cannot be sourced.\n",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-site/blob/main/docs/benchmarks/clickbench.md",
+    "https://github.com/BenchBox-dev/benchbox-site/blob/main/docs/benchmarks/tpc-ds-obt.md",
+    "https://github.com/BenchBox-dev/benchbox-site/blob/main/docs/benchmarks/tpc-di.md",
+    "benchbox/core/clickbench/generator.py",
+    "benchbox/core/tpcdi/generator/facts.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba",
+      "at": "2026-11-11T20:16:02Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "dea5c221548844bdbb2efb48620437b3",
+      "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    }
+  ]
+}

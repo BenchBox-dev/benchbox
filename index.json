@@ -36386,6 +36386,15 @@
       "status": "done",
       "title": "Include TPC license sidecars for downloadable query templates in the certified site bundle"
     },
+    "site-clickbench-obt-tpcdi-tables-20261111": {
+      "claim": null,
+      "needs": [
+        "scale-factor-consistency-umbrella-20261111"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Site docs: correct the ClickBench, TPC-DS-OBT and TPC-DI size tables"
+    },
     "site-comment-policy-parity-20261017": {
       "claim": null,
       "needs": [],
