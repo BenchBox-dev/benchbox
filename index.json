@@ -22694,15 +22694,10 @@
       "title": "DECISION GATE: adopt a wall-clock fast-lane budget once 4 weeks of WS9 duration data exist"
     },
     "feature-agent-docs-operational-facts-20261111": {
-      "claim": {
-        "expires_at": "2026-11-12T17:55:55Z",
-        "generation": "aa2243d86658404aa01b1451c314acd3",
-        "renewals": 1,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Agent docs: record the operational facts sessions kept rediscovering"
     },
     "feature-pr-landing-guards-20261111": {
