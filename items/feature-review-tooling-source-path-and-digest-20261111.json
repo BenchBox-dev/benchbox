@@ -4,6 +4,7 @@
     "Each member's own acceptance criteria are met or its unmet part is recorded on that member with the reason",
     "Each member is finished after the merge is observed on origin/develop"
   ],
+  "context": "2026-11-11: PR #4117 opened, head e31819a01f31c2d68723eb0c28e95ebd8597ab35, branch fix/review-tooling-source-and-digest, worktree /Users/joe/Developer/BenchBox.wt-fix-review-tooling-source-and-digest. Duplicate regex removed in favour of the reviewer engine's protocol.thread_finding; --since before the manifest's first commit is refused with exit 2; read calls retried twice. Touches docs/internal/review-v2.md, as does #4116: land one, merge develop into the other. Next: CI and hosted review, arm, observe merge, finish both members then this item.",
   "description": "Delivery: one feature branch and one pull request for the members below, built by one delegated session; the coordinating session opens no second PR, arms the PR, observes the merge and closes the tracker items. This is the feature-branch form of serial mode. A registered batch is not used because its members must be separate top-level sessions, and the owner asked for delegation to subagents. The members list this item in their needs so nobody claims them separately. Branch fix/review-tooling-source-and-digest. Both members concern the tools around the hosted reviewer. Members: theseus-pinned-source-path-and-duplicate-defect-regex-20261111, soundness-digest-since-floor-and-api-retry-20261111.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "eecbe48b603446159df467f672c55ad3",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T17:39:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c504c1bdb0944141baa227ddb0abbbc3",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
