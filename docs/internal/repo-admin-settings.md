@@ -539,12 +539,16 @@ instead and refuses a tag on a maintenance line unless:
   parent;
 - the line starts from a final release tag of the same minor, older than the
   tag being released;
-- the tagged commit, and every other commit on the line except the first, is
-  the merge commit of a pull request merged into that line;
-- if the first commit is not such a merge, it names one `develop` commit in a
+- the tagged commit is the merge commit of a pull request merged into that
+  line, and every other commit on the line is either such a merge or a creation
+  commit whose parent carries a final release tag of the same minor, older than
+  the tag being released (a line recreated from a patch tag of an earlier copy
+  of the line has one creation commit per copy);
+- each creation commit names one `develop` commit in a
   `Develop-Source: <sha>` trailer, that commit is on `develop`'s first-parent
-  history after the line's tag, and every path the creation commit changes or
-  deletes has exactly that commit's mode and content, or is absent there. A
+  history after the point where the line left `develop`, and every path the
+  creation commit changes or deletes has exactly that commit's mode and
+  content, or is absent there. A
   single snapshot newer than the tag means no reviewer file can be rolled back
   to a state older than the tag's own. The creation commit must also match that
   snapshot on every reviewer file, whether or not it changed it: the review

@@ -532,8 +532,9 @@ def _creation_source(root: Path, creation: str, base: str, branch: str) -> str:
         f"{branch} creation commit must name one full {PRODUCER_BRANCH} commit in a {CREATION_SOURCE_TRAILER} trailer",
     )
     source = sources[0]
-    first_parent = set(_git_text(root, "rev-list", "--first-parent", develop, f"^{base}").split())
-    descends = _run_git(root, "merge-base", "--is-ancestor", base, source, timeout=60).returncode == 0
+    fork = _git_text(root, "merge-base", base, develop).strip()
+    first_parent = set(_git_text(root, "rev-list", "--first-parent", develop, f"^{fork}").split())
+    descends = _run_git(root, "merge-base", "--is-ancestor", fork, source, timeout=60).returncode == 0
     first_parent = first_parent if descends else set()
     _require(
         source in first_parent,
@@ -571,21 +572,24 @@ def verify_maintenance_line(root: Path, tag: str, commit: str, branch: str, pull
     _require(bool(line), f"{tag} has no commits of its own on {branch}")
     for entry in _git_text(root, "rev-list", "--parents", "--no-walk", *line).splitlines():
         _require(len(entry.split()) == 2, f"{branch} commit {entry.split()[0]} is not a single-parent commit")
-    creation = line[-1]
-    base = _git_text(root, "rev-parse", f"{creation}^1").strip()
     _require(
-        bool(_base_release_tags(root, base, branch, tag)),
+        bool(_base_release_tags(root, _git_text(root, "rev-parse", f"{line[-1]}^1").strip(), branch, tag)),
         f"{branch} does not start from a final release tag of its minor older than {tag}",
     )
     _require(_merged_into(commit, branch, pulls), f"{tag} does not point at a pull request merged into {branch}")
-    for reviewed in line[1:-1]:
+    for candidate in line[1:]:
+        if _merged_into(candidate, branch, pulls):
+            continue
+        base = _git_text(root, "rev-parse", f"{candidate}^1").strip()
         _require(
-            _merged_into(reviewed, branch, pulls), f"{branch} commit {reviewed} is not a pull request merged into it"
+            bool(_base_release_tags(root, base, branch, tag)),
+            f"{branch} commit {candidate} is neither a pull request merged into it "
+            "nor a creation commit on a final release tag of its minor",
         )
-    if len(line) == 1:
-        return
-    if _merged_into(creation, branch, pulls):
-        return
+        _verify_creation(root, candidate, base, branch)
+
+
+def _verify_creation(root: Path, creation: str, base: str, branch: str) -> None:
     source = _creation_source(root, creation, base, branch)
     for status, path, mode, blob in _creation_changes(root, base, creation):
         expected = "" if status == "D" else f"{mode} blob {blob}\t{path}\0"

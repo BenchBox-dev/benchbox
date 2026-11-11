@@ -332,7 +332,7 @@ def test_a_line_created_at_the_bare_tag_needs_only_merged_pull_requests(created_
     second = land(created_line, "0.4.2rc2")
     fixed = land(created_line, "0.4.2")
     consumer.verify_maintenance_line(created_line, "v0.4.2", fixed, LINE, merged_pulls(first, second, fixed))
-    with pytest.raises(ValueError, match=f"{LINE} commit {second} is not a pull request merged into it"):
+    with pytest.raises(ValueError, match=f"{LINE} commit {second} is neither a pull request merged into it"):
         consumer.verify_maintenance_line(created_line, "v0.4.2", fixed, LINE, merged_pulls(first, fixed))
 
 
@@ -382,6 +382,30 @@ def test_a_creation_commit_that_carries_only_part_of_the_reviewer_files_is_refus
     fixed = land(created_line, "0.4.2")
     with pytest.raises(ValueError, match=f"creation does not carry {re.escape(missing)} as develop has it"):
         consumer.verify_maintenance_line(created_line, "v0.4.2", fixed, LINE, merged_pulls(fixed))
+
+
+def recreate_on_patch_tag(root: Path, source: str | None) -> tuple[str, str]:
+    create(root, fixture_sha(root, "tip"))
+    old_fixed = land(root, "0.4.2")
+    tag(root, "v0.4.2")
+    git(root, "update-ref", "-d", f"refs/remotes/origin/{LINE}")
+    git(root, "checkout", "-q", "-B", LINE, old_fixed)
+    message = "Recreate the line"
+    if source:
+        message += f"\n\nDevelop-Source: {source}"
+    git(root, "commit", "-q", "--allow-empty", "-m", message)
+    return old_fixed, land(root, "0.4.3")
+
+
+def test_a_line_recreated_from_a_patch_tag_of_an_earlier_line_is_admitted(created_line):
+    old_fixed, fixed = recreate_on_patch_tag(created_line, fixture_sha(created_line, "tip"))
+    consumer.verify_maintenance_line(created_line, "v0.4.3", fixed, LINE, merged_pulls(old_fixed, fixed))
+
+
+def test_a_recreated_line_still_checks_its_new_creation_commit(created_line):
+    old_fixed, fixed = recreate_on_patch_tag(created_line, None)
+    with pytest.raises(ValueError, match="must name one full develop commit in a Develop-Source trailer"):
+        consumer.verify_maintenance_line(created_line, "v0.4.3", fixed, LINE, merged_pulls(old_fixed, fixed))
 
 
 def test_a_creation_commit_without_a_develop_source_is_refused(created_line):
