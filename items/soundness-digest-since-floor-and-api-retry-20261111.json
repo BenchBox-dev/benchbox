@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Decision gate: retries must be bounded and must not turn a persistent failure into a silent success; the run still exits non-zero when retries are exhausted.",
+    "Verification: a `--since` before the floor is refused with a message naming the first valid commit, with a test.",
+    "Verification: a test shows one transient API failure is retried and a persistent one still fails.",
+    "Verification: merge-queue-governance.md section 6 states the floor and the expected runtime. Soundness review passes.",
+    "Done when merged."
+  ],
+  "description": "Found on 2026-11-11 while delivering retro-navigation-fixes-umbrella-20261111 (or in the retrospective over 25 agent sessions that preceded it) and not addressed there.\n\nProblem. `_project/scripts/soundness_merge_digest.py --since <sha>` fails with `fatal: path '.github/soundness-paths.txt' exists on disk, but not in '<sha>~1'` for any commit before 6ab697f91c (2026-09-29), where the manifest was added. Four reviewed sessions each rediscovered that floor. A six-week window makes several thousand GitHub API calls and takes 15 to 25 minutes, and a single API error (TLS handshake timeouts were seen) ends the run with exit 2 and no partial output, so four sessions spent over two hours without one completed dry run. docs/internal/merge-queue-governance.md documents the command with no floor, runtime or failure mode. A tracker acceptance asked for a 90-day dry run when only about 42 days of manifest history existed.\n\nChange. Document the floor and runtime beside the command; retry a failed API call a bounded number of times.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read every cited file on current origin/develop first, because line numbers and commits here are from 2026-11-11 (origin/develop 5bd2c19cc4); close at a merged PR and finish only after the merge is observed.",
+  "links": [
+    "_project/scripts/soundness_merge_digest.py",
+    "docs/internal/merge-queue-governance.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T16:38:46Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ab71b84c567142238b5c05d5c988eedd",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    }
+  ]
+}

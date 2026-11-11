@@ -37105,6 +37105,13 @@
       "status": "done",
       "title": "Inventory oracle findings marked deferred on merged soundness PRs and track each"
     },
+    "soundness-digest-since-floor-and-api-retry-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Soundness digest: document the --since floor and survive one API error"
+    },
     "soundness-drain-all-ruleset-required-checks-20260806": {
       "claim": null,
       "needs": [],
