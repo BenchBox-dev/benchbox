@@ -6,6 +6,7 @@
     "Verification: make docs-validate, make docs-reference-inventory-check and make pr-preflight pass.",
     "Done when merged."
   ],
+  "context": "2026-11-11: delivered in PR #4116 (f30accdb17). Six of eight facts documented where verified against code or a command; the issue index and the secret-name table were dismissed under the item's own gate (they would restate live state with no check against drift); the docs-freeze checker and the exact count of scale-factor sites could not be confirmed and were left out or worded as 'several'.",
   "description": "Found on 2026-11-11 while delivering retro-navigation-fixes-umbrella-20261111 (or in the retrospective over 25 agent sessions that preceded it) and not addressed there.\n\nProblem. Each fact below cost a reviewed session between three and seventy calls to rediscover, and none is written where an agent would look. They were left out of #4099 as single episodes; they are recorded here so the evidence is not lost.\n1. `make ci-linux CI_LINUX_CMD=...`: anything beyond a one-line command breaks the shell quoting (two failures: a `python -c` with parentheses, and a multi-line value); the working form is a script path under the mounted home directory. The target is in make/quality.mk.\n2. The bundled SQLGlot is a wheel zip (`benchbox/_vendor/benchbox_sqlglot-*.whl.zip`, described by `benchbox/_vendor/sqlglot.json`), so `benchbox/_vendor/sqlglot/<file>` does not exist on disk; read it with `unzip -p`.\n3. `scripts/trunk_uat.py fetch-runs --output DIR --run-limit N` downloads trunk UAT shard evidence; docs/internal/release-guide.md mentions it only as rubric input, and an audit session unzipped 16 artifacts by hand instead.\n4. Upgrading the vendored tracker wheel touches six pin sites (`_project/scripts/pyproject.toml`, `_project/scripts/uv.lock`, `_project/scripts/todo_state_contract_check.py` EXPECTED_VERSION, `_project/analysis/batch-rollout-evidence.json`, the `external` entry in `quality/comment-policy.json`, the wheel hash in `tests/integration/worktree/test_batch_skill_delivery.py`) and three steps after merge (`uv sync --project _project/scripts --locked` in the primary clone, restart the MCP server, reinstall any global tool with the `[mcp]` extra). One attempt dropped the extra and broke three sessions.\n5. Checkers that CI runs from the base commit (comment policy, changelog fragments, soundness paths, docs freeze, the review gate) judge a pull request by develop's copy, so a change to such a checker cannot take effect in its own pull request. One session lost about a day to this on #3212.\n6. A benchmark's accepted scale factors are enforced in at least six places (`benchmark_registry.yaml`, `benchbox/base.py`, `benchbox/core/base_benchmark.py`, `benchbox/cli/benchmarks.py`, `tests/uat/compatibility.py` `_SF1_ONLY_BENCHMARKS`, `tests/integration/test_local_platform_benchmark_matrix.py`); one was missed until review.\n7. There is no index of automatically filed GitHub issues (label, producing workflow or script, what closes it); the owner asked 'why are there N open issues' four times and each answer was rebuilt from workflows.\n8. Eighteen of the 32 secret names the workflows reference appear in no document; a missing token went unnoticed for about two days behind a `|| github.token` fallback.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read every cited file on current origin/develop first, because line numbers and commits here are from 2026-11-11 (origin/develop 5bd2c19cc4); close at a merged PR and finish only after the merge is observed.",
   "links": [
     "make/quality.mk",
@@ -39,6 +40,14 @@
       "generation": "8c7c5b8de8f6429987e8b63c54638dea",
       "op": "take",
       "op_id": "95358f97565d4cda8640e4de69f23f0e",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T18:00:18Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "340c40886169487d965f2dd5ff0f4cfd",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
