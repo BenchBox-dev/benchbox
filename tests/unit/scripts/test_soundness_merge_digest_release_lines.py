@@ -228,6 +228,8 @@ class Wired:
 
     def run(self, args, **_):
         key = tuple(args)
+        if key[:3] == ("git", "cat-file", "-e"):
+            return ""
         if key not in self.git:
             raise AssertionError(f"unexpected command {list(key)}")
         return self.git[key]
