@@ -40738,7 +40738,7 @@
         "todo-priority-criteria-definition"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "Add priority-level criteria to AGENTS.md so automated agents can apply them consistently"
     },
     "todo-review-own-edit-target-freshness": {

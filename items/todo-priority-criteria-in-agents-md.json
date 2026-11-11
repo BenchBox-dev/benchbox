@@ -1,5 +1,6 @@
 {
   "description": "`todo-priority-criteria-definition` (filed in the 2026-06-08 batch) targets\n`_project/TODO/README.md` and `TODO_ENTRY_TEMPLATE.yaml`. Those files are\nread by humans authoring TODOs.\n\nAGENTS.md (at the repo root) is the behavioral guidance file read by\nautomated agents at session start. Without priority criteria in AGENTS.md,\nagents performing prioritization or triage cannot apply the agreed-upon\ndefinitions — they fall back to implicit heuristics that differ from the\ndocumented criteria.\n\nOnce `todo-priority-criteria-definition` is done and the criteria are in\nREADME.md, add a concise cross-reference or summary section to AGENTS.md\nso agents have the same definitions available.\n",
+  "drop_reason": "Duplicate of todo-priority-criteria-definition; owner asked on 2026-11-11 to clean up duplicates. Its evidence was appended to todo-priority-criteria-definition's context.",
   "legacy": {
     "item_deps": [
       {
@@ -79,5 +80,15 @@
         "wid": "w2"
       }
     ]
-  }
+  },
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:23:02Z",
+      "client": "omp-coding-agent",
+      "op": "drop",
+      "op_id": "95e8a4db45d74e2295ebd66b63b2b74f",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
+    }
+  ]
 }
