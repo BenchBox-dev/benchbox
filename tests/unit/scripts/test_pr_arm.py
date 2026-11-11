@@ -72,6 +72,8 @@ class FakeGh:
         self.rules = kwargs.get("rules", ["core"])
         self.core_url = kwargs.get("core_url", "")
         self.ci_runs = kwargs.get("ci_runs", [])
+        self.refresh_runs = kwargs.get("refresh_runs", [])
+        self.refresh_code = kwargs.get("refresh_code", 0)
         self.calls: list[list[str]] = []
         self.rules = kwargs.get("rules", ["core"])
         self.statuses = kwargs.get("statuses", {})
@@ -85,6 +87,15 @@ class FakeGh:
         }
         self.registry = kwargs.get("registry", {})
         self.tracker_tip = "d" * 40
+
+    def _workflow_runs(self, cmd: list[str]) -> tuple[int, str]:
+        assert f"head_sha={self.local_head}" in cmd[-1] or "ci-text-edit-refresh.yml" in cmd[-1]
+        if "ci-text-edit-refresh.yml" in cmd[-1]:
+            assert f"ci-text-edit-refresh ({self.local_head})" in cmd[cmd.index("--jq") + 1]
+            if self.refresh_code != 0:
+                return self.refresh_code, "gh: HTTP 502"
+            return 0, "\n".join("\t".join(str(field) for field in run) for run in self.refresh_runs)
+        return 0, "\n".join("\t".join(str(field) for field in (run + ("", ""))[:5]) for run in self.ci_runs)
 
     def __call__(self, cmd: Sequence[str]) -> tuple[int, str]:
         cmd = list(cmd)
@@ -125,9 +136,8 @@ class FakeGh:
             return 0, ""
         if cmd[:2] == ["gh", "api"] and "/rules/branches/" in cmd[-1]:
             return 0, "\n".join(self.rules)
-        if cmd[:3] == ["gh", "api", "--paginate"] and "/actions/workflows/ci.yml/runs?" in cmd[-1]:
-            assert f"head_sha={self.local_head}" in cmd[-1]
-            return 0, "\n".join("\t".join(str(field) for field in (run + ("", ""))[:5]) for run in self.ci_runs)
+        if cmd[:3] == ["gh", "api", "--paginate"] and "/actions/workflows/" in cmd[-1]:
+            return self._workflow_runs(cmd)
         if cmd[:3] == ["gh", "api", "--paginate"] and "/check-runs?" in cmd[-1]:
             return 0, self._check_runs()
         if cmd[:2] == ["gh", "api"] and cmd[-1].endswith("/pulls/7/files"):
@@ -843,6 +853,51 @@ def test_a_placeholder_core_failure_just_after_the_full_run_succeeded_waits_for_
     assert "pr-rerun" not in captured.err
     assert "completed with conclusion" not in captured.err
     assert "outcome: waiting" in captured.out
+
+
+@pytest.mark.parametrize("status", ["queued", "in_progress"])
+def test_a_placeholder_core_failure_waits_past_the_window_while_the_refresh_workflow_has_not_finished(
+    status: str, fixed_now: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gap = pr_arm.PLACEHOLDER_REFRESH_SECONDS * 3
+    gh = _placeholder_gap("success", full_age=gap, placeholder_age=gap + 900, refresh_runs=[(500, status, "")])
+    assert _arm_live(gh) == 2
+    captured = capsys.readouterr()
+    assert "waiting for the placeholder re-run after full CI run 91 completed" in captured.err
+    assert "pr-rerun" not in captured.err
+    assert "outcome: waiting" in captured.out
+
+
+def test_a_placeholder_core_failure_is_refused_when_the_refresh_workflow_completed_and_it_is_still_failed(
+    fixed_now: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gh = _placeholder_gap("success", full_age=20, placeholder_age=900, refresh_runs=[(500, "completed", "success")])
+    assert _arm_live(gh) == 2
+    err = capsys.readouterr().err
+    assert "waiting for" not in err
+    assert "make pr-rerun PR=7" in err
+
+
+def test_skipped_refresh_runs_leave_the_window_as_the_only_wait(
+    fixed_now: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    skipped = [(500, "completed", "skipped")]
+    assert _arm_live(_placeholder_gap("success", full_age=20, placeholder_age=900, refresh_runs=skipped)) == 2
+    assert "waiting for the placeholder re-run" in capsys.readouterr().err
+    gap = pr_arm.PLACEHOLDER_REFRESH_SECONDS + 1
+    assert _arm_live(_placeholder_gap("success", full_age=gap, placeholder_age=gap + 900, refresh_runs=skipped)) == 2
+    assert "make pr-rerun PR=7" in capsys.readouterr().err
+
+
+def test_an_error_reading_the_refresh_runs_never_turns_a_refusal_into_waiting(
+    fixed_now: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gap = pr_arm.PLACEHOLDER_REFRESH_SECONDS + 1
+    gh = _placeholder_gap("success", full_age=gap, placeholder_age=gap + 900, refresh_code=1)
+    assert _arm_live(gh) == 2
+    err = capsys.readouterr().err
+    assert "waiting for" not in err
+    assert "make pr-rerun PR=7" in err
 
 
 def test_a_placeholder_core_failure_with_its_rerun_in_progress_waits_for_the_refresh(

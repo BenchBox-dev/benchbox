@@ -43,6 +43,9 @@ Runner = Callable[[list[str]], tuple[int, str]]
 
 CI_RUNS_JQ = r".workflow_runs[] | [.id, .display_title, .status, .conclusion, .updated_at] | @tsv"
 PLACEHOLDER_REFRESH_SECONDS = 600
+REFRESH_RUNS_JQ = (
+    '.workflow_runs[] | select(.display_title == "ci-text-edit-refresh ({head})") | [.id, .status, .conclusion] | @tsv'
+)
 
 
 class CiRun(NamedTuple):
@@ -96,19 +99,50 @@ def _ci_runs(run: Runner, repo: str, head: str) -> list[CiRun]:
     return runs
 
 
-def _placeholder_refresh_pending(failed: CiRun, full_runs: Sequence[CiRun], now: datetime) -> Wait | None:
+def _refresh_runs(run: Runner, repo: str, head: str) -> list[CiRun]:
+    if not re.fullmatch(r"[0-9a-f]{40}", head):
+        return []
+    code, out = run(
+        [
+            "gh",
+            "api",
+            "--paginate",
+            "--jq",
+            REFRESH_RUNS_JQ.format(head=head),
+            f"repos/{repo}/actions/workflows/ci-text-edit-refresh.yml/runs?event=workflow_run&per_page=100",
+        ]
+    )
+    if code != 0:
+        return []
+    runs: list[CiRun] = []
+    for line in out.splitlines():
+        fields = (line.split("\t") + ["", "", ""])[:3]
+        if fields[0].isdigit():
+            runs.append(CiRun(int(fields[0]), "", fields[1], fields[2]))
+    return runs
+
+
+def _placeholder_refresh_pending(
+    failed: CiRun, full_runs: Sequence[CiRun], refresh: Sequence[CiRun], now: datetime
+) -> Wait | None:
     if not full_runs:
         return None
     newest = max(full_runs, key=lambda item: item.id)
     if newest.conclusion != "success" or newest.updated_at is None or failed.updated_at is None:
         return None
-    age = (now - newest.updated_at).total_seconds()
-    if failed.updated_at < newest.updated_at and 0 <= age < PLACEHOLDER_REFRESH_SECONDS:
+    if failed.updated_at >= newest.updated_at:
+        return None
+    live = [item for item in refresh if item.conclusion != "skipped"]
+    if any(item.status != "completed" for item in live):
+        return Wait(newest.id, PLACEHOLDER_REFRESH)
+    if live:
+        return None
+    if 0 <= (now - newest.updated_at).total_seconds() < PLACEHOLDER_REFRESH_SECONDS:
         return Wait(newest.id, PLACEHOLDER_REFRESH)
     return None
 
 
-def _waiting_full_run(runs: Sequence[CiRun], url: str, now: datetime) -> Wait | None:
+def _waiting_full_run(runs: Sequence[CiRun], url: str, now: datetime, refresh: Sequence[CiRun] = ()) -> Wait | None:
     match = pr_landing.check_suites.ACTIONS_RUN_RE.search(url)
     if match is None:
         return None
@@ -125,7 +159,7 @@ def _waiting_full_run(runs: Sequence[CiRun], url: str, now: datetime) -> Wait | 
     rerunning = next((item for item in placeholders if item.status != "completed"), None)
     if rerunning is not None:
         return Wait(rerunning.id, PLACEHOLDER_RERUNNING)
-    return _placeholder_refresh_pending(failed, full_runs, now)
+    return _placeholder_refresh_pending(failed, full_runs, refresh, now)
 
 
 def _waiting_reason(name: str, run_id: int, kind: str) -> str:
@@ -161,7 +195,9 @@ def _core_state(run: Runner, repo: str, number: int, head: str) -> str:
         )
     conclusion = core.get("conclusion")
     if conclusion not in pr_landing.check_suites.NON_BLOCKING:
-        waiting = _waiting_full_run(_ci_runs(run, repo, head), str(core.get("url") or ""), _now())
+        waiting = _waiting_full_run(
+            _ci_runs(run, repo, head), str(core.get("url") or ""), _now(), _refresh_runs(run, repo, head)
+        )
         if waiting is not None:
             return _waiting_reason(PRODUCER_CHECK, *waiting)
     remedy = f"rerun it with make pr-rerun PR={number}"
@@ -179,12 +215,13 @@ def _in_flight_waits(run: Runner, repo: str, branch: str, head: str) -> tuple[di
         pr_landing.live_check_runs(run, repo, head), required, pr_landing.check_suites.NON_BLOCKING
     )
     runs = _ci_runs(run, repo, head) if any(item.failed for item in evaluations.values()) else []
+    refresh = _refresh_runs(run, repo, head) if runs else []
     now = _now()
     waits_by_name: dict[str, dict] = {}
     for name, item in evaluations.items():
         waits = {}
         for suite in item.failed:
-            waiting = _waiting_full_run(runs, suite.url, now)
+            waiting = _waiting_full_run(runs, suite.url, now, refresh)
             if waiting is not None:
                 waits[suite] = waiting
         waits_by_name[name] = waits

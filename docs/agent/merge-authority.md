@@ -177,7 +177,7 @@ authorization lands, then arm with `make pr-arm`.
 | Kind | Meaning | Exit |
 |---|---|---|
 | `armed` | Auto-merge is enabled for the exact head | 0 |
-| `waiting` | Every reason is a check that has not finished: the full CI run, the `core` job that records the fast-duration verdict, or a `CI (text edit)` placeholder failure that the refresh workflow re-runs on its own (during the run, or for 10 minutes after a successful full run if it has not re-run yet). With `WAIT`, a review verdict that is still pending for this head also counts | 2 |
+| `waiting` | Every reason is a check that has not finished: the full CI run, the `core` job that records the fast-duration verdict, or a `CI (text edit)` placeholder failure that the refresh workflow re-runs on its own (during the run, while the `ci-text-edit-refresh` run for the head is queued or in progress, or, before that run exists, for 10 minutes after a successful full run if it has not re-run yet). With `WAIT`, a review verdict that is still pending for this head also counts | 2 |
 | `refused` | Anything else: a hold, an unresolved review thread (outdated ones count, and each is named, because the ruleset requires every conversation to be resolved), a failed required check, a failing review verdict or one that waits for the owner, a red trunk, a head mismatch. Without `WAIT`, a pending review verdict is also `refused` | 2; 1 when live state could not be read; the `gh` exit code when the merge command itself fails |
 
 `waiting` and `refused` usually both exit 2; read the outcome line, not the exit
@@ -234,9 +234,12 @@ happened to #3264 and #3319 (`review` runs from `synchronize` and
   that run (as is a placeholder `core` or `results-data` failure), and the
   `make pr-rerun` advice appears only once the run has completed. After a
   successful full run the refresh workflow re-runs every failed `CI (text edit)`
-  run on the head, so a placeholder failure stays `waiting` for up to 10
-  minutes and `make pr-rerun` is not needed; past that, or when the full run
-  failed, the refusal and the advice stand.
+  run on the head, so a placeholder failure stays `waiting` while that
+  refresh run is queued or in progress (and for up to 10 minutes if it has not
+  appeared yet) and `make pr-rerun` is not needed; once the refresh run has
+  completed with the placeholder still failed, past the 10 minutes with no
+  refresh run, or when the full run failed, the refusal and the advice stand. An
+  error reading the refresh runs counts as no refresh run known.
 - Phantom rollup: if the rollup shows FAILURE with no failed suite in the
   `filter=latest` listing (as on #2829), re-running changes nothing. Close and
   reopen the PR to make GitHub recompute the rollup, then check the listing
