@@ -24065,15 +24065,10 @@
       "title": "Engine-level memory caps (DuckDB memory_limit, -Xmx, Spark driver memory) and per-service Apple container limits derived from the budget"
     },
     "heavy-run-admission-wait-20261111": {
-      "claim": {
-        "expires_at": "2026-11-12T13:52:44Z",
-        "generation": "703778dfbadf45a7a6fb593d77ca2908",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Add an opt-in admission wait to make heavy-run"
     },
     "heavy-tier-merge-group-dead-code-20261009": {
