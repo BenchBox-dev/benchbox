@@ -8,7 +8,7 @@
     "Cells stay inside 6h per cell and the recorded Redshift spend discipline; anything outside needs approval stating command, maximum runtime, log path, and stop condition",
     "Held bundles cleared by rerun, not override"
   ],
-  "context": "Mirrors first-live-cloud-benchmark-run-and-publish (TPC-H on Snowflake, Databricks, BigQuery). Cluster reachability from the run host is owned by approx-survey-remaining-legs; this item runs only once reachable. Serverless workgroup paused when idle; storage draws from the same credit. Tuned runs deferred until tuning-portable-metadata-store-20261001 lands.",
+  "context": "Mirrors first-live-cloud-benchmark-run-and-publish (TPC-H on Snowflake, Databricks, BigQuery). Cluster reachability from the run host is owned by approx-survey-remaining-legs; this item runs only once reachable. Serverless workgroup paused when idle; storage draws from the same credit. Tuned runs deferred until tuning-portable-metadata-store-20261001 lands.\n\nRevalidated 2026-11-11: still required; needs unchanged and still unmet (new-platform-tpch-smoke-20261006, vendor-benchmark-publication-conditions-20261022 are open). Correction to the context above: tuning-portable-metadata-store-20261001 is done, so tuned runs are no longer waiting on it (this item stays notuning). Redshift reachability is still owned by approx-survey-remaining-legs (open). RedshiftAdapter has platform timing capture (redshift.py:1922-1960: sys_query_history for serverless, stl tables otherwise), which is only fake-driver tested; see schema-24-platform-timing-cloud-adapters-unverified-20261111. Live runs are not approved by the owner.",
   "description": "Run and publish the first live Redshift Serverless corpus: TPC-H at SF 0.1, 1.0, 10.0, notuning, on current develop. Record the RPU base and region per bundle per trial-capacity-disclosure-bundles-20261006. No live runs outside campaign limits without explicit approval stating command, maximum runtime, log path, and stop condition.",
   "sessions": [
     {
@@ -26,6 +26,14 @@
       "op": "update",
       "op_id": "f7c8c5ca960f41efaa0fd64e9a0f4b5e",
       "session_id": "e9f0cc7a22044c60b8b2b71e8d7d25c0"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:29:18Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b3ec247242f345a2abf720b77daa44b5",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
