@@ -3,7 +3,7 @@
     "Each listed cell passes, or is pruned with a documented reason in the UAT registry.",
     "Fixed query failures have regression tests."
   ],
-  "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), artifact release-uat-v0.5.0rc2-stage1-dask-df. The artifact does not keep result JSON, so query-level causes need a local rerun of the named cells.\n\nHosted trunk UAT run https://github.com/BenchBox-dev/BenchBox/actions/runs/42536258036 completed with failure at source 2d796acd59be06ab4b4a1742dda84cff419202b9. Dask DataFrame: all 31 selected cells passed. Counts cover the selected current matrix only; no historical issue is closed by this note. The full run is still red (702/710 passed), so this is not release certification.",
+  "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), artifact release-uat-v0.5.0rc2-stage1-dask-df. The artifact does not keep result JSON, so query-level causes need a local rerun of the named cells.\n\nHosted trunk UAT run https://github.com/BenchBox-dev/BenchBox/actions/runs/42536258036 completed with failure at source 2d796acd59be06ab4b4a1742dda84cff419202b9. Dask DataFrame: all 31 selected cells passed. Counts cover the selected current matrix only; no historical issue is closed by this note. The full run is still red (702/710 passed), so this is not release certification.\n\nClosed 2026-11-11 against current evidence: Every listed cell now passes or is pruned with a recorded reason. Trunk UAT 42718296767 (52615914) dask-df: read_primitives, flightdata, tpch 0.1, tpcds, h2odb, metadata_primitives 1.0, tpcds_obt 1.0 passed; SF1 timeouts (tpch, tpcds, joinorder, coffeeshop, tpchavoc, nyctaxi, flightdata, datavault, clickbench, amplab, tsbs_devops) pruned via release_gate_runtime_envelope. Fixes #3749/#3759/#3761/#3764/#3770/#3773/#3778/#3817/#3825 with dask parity tests. Scheduled 42789483182 green.",
   "description": "Stage 1 dask-df shard, run 40971306663. Known errors: read_primitives 0.01 and 0.1 'ValueError: cannot reindex on an axis with duplicate labels' in dask_expr assign; flightdata 0.01 and 0.1 'TypeError: int() argument must be ... not NAType'; metadata_primitives SF1 'Metadata Primitives DataFrame fixtures are not implemented for platform Dask' (benchbox/core/metadata_primitives/benchmark.py:1221; should be compatibility-pruned, not failed); tpch 0.1 exited 1 with no result. Query failures without retained detail: tpcds_obt SF1, clickbench SF1, h2odb, amplab and tsbs_devops at all scales; coffeeshop, tpchavoc, nyctaxi and datavault at 0.01 and 0.1; tpcds 0.01 and 0.1 exited 1 (UAT state failed:unofficial, a sub-scale TPC result with failures). Timeouts at SF1: tpch, tpcds, joinorder, coffeeshop, tpchavoc, nyctaxi, flightdata, datavault, with leaked-semaphore warnings.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/actions/runs/40971306663"
@@ -32,6 +32,14 @@
       "generation": "37ab9d0e78e04618b88e2efaa24e785a",
       "op": "take",
       "op_id": "5bf0e3175dde48348f1440dc696139a2",
+      "session_id": "9c850cdf96994544b99810e1605fa398"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7bc97e5b905b990114418f4a",
+      "at": "2026-11-11T02:31:56Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9fd572700fb144aabfe4a5452a05d638",
       "session_id": "9c850cdf96994544b99810e1605fa398"
     }
   ]
