@@ -37248,15 +37248,10 @@
       "title": "Spark SQL TPCHavoc scalar subquery and dual rewrites"
     },
     "spark-sql-uat-failures-20261030": {
-      "claim": {
-        "expires_at": "2026-11-12T02:32:02Z",
-        "generation": "47b03a58b22d48dfbd4cad00cbdf1e1a",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7bc97e5b905b990114418f4a"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Spark SQL: 14 failed and 3 timed-out release UAT cells"
     },
     "spark-test-connection-stops-shared-session": {
