@@ -4,7 +4,7 @@
     "Q41 expression row counts equal the SQL reference for the streams that differ today, at a scale where the rows are non-trivial",
     "A regression test fails on the current code and passes after the fix"
   ],
-  "context": "Evidence: ~/Developer/benchmark_runs/polars-sf10-pilot-20261009/ (reference-row-counts.json sha256 6906fa56...; q41check/summary.txt; cells/tpcds/2.0.0-A-r*/result.json). Found during the Polars version matrix pilot; the matrix qualification file lists tpcds 1:41 as a known divergence (reference 12, observed 10) so the Polars analysis is not blocked.\n\n2026-11-01 prioritization (SQL translation and query correctness ranking): priority raised to medium-high. Wrong answer with a known reproduction: Polars expression Q41 returns fewer rows than DuckDB SQL at SF10.",
+  "context": "Evidence: ~/Developer/benchmark_runs/polars-sf10-pilot-20261009/ (reference-row-counts.json sha256 6906fa56...; q41check/summary.txt; cells/tpcds/2.0.0-A-r*/result.json). Found during the Polars version matrix pilot; the matrix qualification file lists tpcds 1:41 as a known divergence (reference 12, observed 10) so the Polars analysis is not blocked.\n\n2026-11-01 prioritization (SQL translation and query correctness ranking): priority raised to medium-high. Wrong answer with a known reproduction: Polars expression Q41 returns fewer rows than DuckDB SQL at SF10.\n\nRevalidated 2026-11-11: still required, text accurate. On origin/develop (c7b75c80bc) benchbox/core/tpcds/dataframe_queries/queries.py still has _Q41_GROUPS (line 3646), _q41_parameters (3658) and q41_expression_impl (3668), and parameter_adapters.py:289 _q41 is unchanged; the last commit to touch the Q41 expression code is fe056ee84e (#2605). No fix or regression test for non-default-stream Q41 has landed (tests/unit/core/tpcds/test_parameter_adapters.py:67 only checks that the adapter binds every drawn attribute). The cause is still not identified.",
   "description": "At SF10 on the same generated data, polars-df (expression family) returns 10 rows for TPC-DS Q41 stream 1 and 9 rows for stream 3, while DuckDB SQL returns 12 and 10. Streams 2 and every other TPC-DS query agree. The count is identical on Polars 1.31.0, 1.44.2 and 2.0.0 (default and in-memory engines), so it is not a Polars-version effect; it comes from the expression implementation or its stream parameter binding (benchbox/core/tpcds/dataframe_queries/queries.py q41_expression_impl, _q41_parameters, parameter_adapters.py). The SF0.1 cross-surface gate does not catch it. Find the cause, fix it, and add a regression that compares Q41 row counts with SQL on a bound non-default stream.",
   "sessions": [
     {
@@ -22,6 +22,14 @@
       "op": "update",
       "op_id": "e8d28d22ec0d4188b46b7e6e97bbec34",
       "session_id": "a36a04b6bc394082b5008f654e1bf00b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:28:01Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9ce48e9bcdd8414a9c784dcc0e9210de",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
