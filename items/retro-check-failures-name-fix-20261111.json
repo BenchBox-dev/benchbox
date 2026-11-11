@@ -1,12 +1,13 @@
 {
   "acceptance": [
-    "Decision gate (scope of 3): if printing the digest at the payload-error site needs more than a local change (for example restructuring how findings are built in scripts/comment_syntax.py or scripts/check_comment_policy.py), ship only the doc pointer in the message and record the digest part as a deferral on this item.",
-    "Decision gate (soundness): scripts/check_docs_ownership.py and scripts/check_comment_policy.py are soundness paths; arm only on the reviewer's success verdict for the current head.",
+    "Decision gate (scope of 3): if printing the digest at the payload-error site needs more than a local change (for example restructuring how findings are built in scripts/comment_syntax.py or scripts/check_comment_policy.py), ship only the doc pointer in the message and record the digest part as a deferral, then promote that deferral to a new item (or dismiss it with the owner's reason) before finish, because finish refuses while a deferral is open.",
+    "Decision gate (soundness): scripts/check_docs_ownership.py, scripts/check_comment_policy.py and scripts/comment_syntax.py are soundness paths; arm only on the reviewer's success verdict for the current head.",
     "Decision gate (frozen wording): do not add tests that pin the exact message text; assert only that the command, manifest path or digest appears.",
     "Verification (1): with a deliberately stale _project/inert-doc-readers.json in the worktree, the test fails and its output contains `inert_paths.py --regenerate-readers`; restored, it passes.",
-    "Verification (2): an unregistered file under docs/internal makes the check fail with a message containing `quality/docs-ownership.json`; tests/unit/scripts/test_docs_ownership.py passes with a case for it.",
+    "Verification (2): an unregistered file that is staged or committed under docs/internal (the check sees only tracked files) makes the check fail with a message containing `quality/docs-ownership.json`, for both the missing and the stale case; tests/unit/scripts/test_docs_ownership.py passes with a case for it.",
     "Verification (3): a fixture entry with a changed payload produces a finding that contains the computed digest (or, under the gate, the doc path); tests/unit/scripts/test_comment_policy*.py pass.",
     "Verification: the pass/fail result of each check is unchanged on origin/develop (run each check before and after on a clean tree); make comment-policy-check and make pr-preflight pass.",
+    "Verification (ledger): tests under tests/unit/scripts need a row in docs/internal/dev-loop-property-ledger.md; this item adds cases to existing test files only. If a new test file is unavoidable, add its ledger row and run test_ledger_coverage.py.",
     "Done when the PR is merged to develop."
   ],
   "description": "Source: a retrospective over 25 agent sessions (2026-10-18 to 2026-11-11), followed by an adversarial re-check of each claim against origin/develop 4835f5a537.\n\nProblem. Three failures gave no next step, so sessions read checker source to find it.\n(1) tests/unit/scripts/test_inert_paths.py::test_checked_in_readers_match_the_rebuilt_index is a bare assert. The fix command, `_project/scripts/inert_paths.py --regenerate-readers`, appears only in docs/internal/review-v2.md. One session spent about 10 calls and 8 minutes after a CI failure.\n(2) scripts/check_docs_ownership.py raises 'tracked docs coverage mismatch: missing=[...]' without naming quality/docs-ownership.json or the owner value to add. Two sessions grepped for a sibling doc to find the manifest.\n(3) A comment-policy `payload-error` for a registered fixture whose payload changed prints neither the computed digest nor a pointer to docs/internal/comment-policy.md. One session re-read the checker four times (about 30 calls) and once concluded wrongly that the rebind had failed.\n\nChange. (1) Give the assert a message naming the regeneration command. (2) Extend the ownership error to name the manifest and say that a new core doc is registered as `core-only`. (3) Where a payload-error concerns a registered fixture with a different payload, include the computed `sha256:` digest and the doc path in the finding text, and state that `make comment-policy-check` ignores same-commit fixtures.\n\nNon-goals. No change to what any check accepts or rejects. The worktree ownership refusal already prints the takeover command (scripts/worktree_lifecycle_metadata.py) and is not changed.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly, never git add -A; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission or skipping the test lock; never bypass a required check, ruleset, hold label or review gate, and never post a stand-in; change only the files this item names, and report anything else as noticed-but-not-touched; re-read every cited file on current origin/develop before editing, because the line numbers here are hints from 2026-11-11 (origin/develop 4835f5a537); close at a merged PR (make pr-open, make pr-arm), and finish this item only after the merge is observed.",
@@ -26,6 +27,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "02bcb9484ea249898d3e50ae759e0365",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T13:21:12Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "beaab166d4c849c4b5de270a03c9a650",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
