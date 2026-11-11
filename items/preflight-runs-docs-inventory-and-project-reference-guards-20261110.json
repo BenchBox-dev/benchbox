@@ -24,7 +24,7 @@
     "quality/docs-ownership.json",
     "https://github.com/BenchBox-dev/benchbox/pull/3925"
   ],
-  "not_before": "2026-11-11T16:30:00Z",
+  "not_before": "2026-11-11T14:34:05Z",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af45b75c1ad8820899a19497",
@@ -106,6 +106,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "39ecad8f20b84b8e90fac3cfa16fec57",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T14:33:46Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9dc476ebfae242948c644d7634592432",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
