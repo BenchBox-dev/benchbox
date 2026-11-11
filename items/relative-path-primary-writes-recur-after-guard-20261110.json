@@ -5,7 +5,7 @@
     "Detect writes to the primary within one agent step (not only at pr-preflight), with a test.",
     "Guidance in docs/agent and the batch member brief template states absolute paths as a hard rule."
   ],
-  "context": "Recurring incident across this session; backup of one stray diff at ~/Developer/benchmark_runs/primary-stray-backup/detector-member-stray.patch. Guardrail: never revert or clean the primary automatically; other sessions' edits must not be lost. Verification rubric: reproduce first; fix; regression test; comment-policy and ruff; PR merged with green CI and passing oracle review.",
+  "context": "Recurring incident across this session; backup of one stray diff at ~/Developer/benchmark_runs/primary-stray-backup/detector-member-stray.patch. Guardrail: never revert or clean the primary automatically; other sessions' edits must not be lost. Verification rubric: reproduce first; fix; regression test; comment-policy and ruff; PR merged with green CI and passing oracle review.\n\n2026-11-11 evidence from a retrospective over 25 sessions (2026-10-18 to 2026-11-11): about 15 stray primary-clone edits or resets in one release session, 6 incidents that blocked every worker's preflight in another, and at least 5 more by delegated workers after #3888. The mechanism in every case: harness read, edit and grep tools resolve relative paths against the session directory (the primary clone) even after `cd` in bash, so `git rev-parse --show-toplevel` in the shell reports the worktree while the edit lands in the primary clone. A read-side variant also occurs: relative reads return the primary clone's files, which lagged origin/develop by 30 to 195 commits in late October. A one-sentence AGENTS.md pointer was considered and does not fit the 17,300-byte instruction budget (21 bytes free); docs/agent/primary-clone-guard.md already carries the worker rule and incidents continued, so a mechanical guard is the fix to pursue here.",
   "description": "The report-only guard from agent-relative-path-primary-clone-writes (PR #3888) did not stop recurrence. In three batches on 2026-11-07..09, delegated workers wrote to /Users/joe/Developer/BenchBox through relative file-tool paths: the Spark-family leader (spark.py and its test, reverted with git apply -R), the plan-privacy detector member (anonymization.py and a test, restored by the controller from a backup), and a near miss in the publication batch (rejected). The edits were found only because batch tooling refused a dirty primary; each needed manual cleanup and owner authorization.",
   "links": [
     "docs/agent/primary-clone-guard.md",
@@ -21,6 +21,14 @@
       "op": "create",
       "op_id": "8d4533a0f07f4e75bc469f2d38cb9986",
       "session_id": "039807d800674f11b2d8d71dccd4e6ed"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T13:35:47Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5c42c9cbbefe484fae64b95d63e834fe",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
 }
