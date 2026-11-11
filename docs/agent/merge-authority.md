@@ -170,6 +170,27 @@ for more than 30 minutes, `make pr-open` opens the PR as a draft and prints that
 arming needs this authorization; mark it ready (`gh pr ready <n>`) after the
 authorization lands, then arm with `make pr-arm`.
 
+## Arm outcomes and waiting
+
+`make pr-arm` ends with one line, `pr-arm: outcome: <kind>: <detail>`:
+
+| Kind | Meaning | Exit |
+|---|---|---|
+| `armed` | Auto-merge is enabled for the exact head | 0 |
+| `waiting` | Every reason is a check that has not finished: the full CI run, or the `core` job that records the fast-duration verdict | 2 |
+| `refused` | Anything else: a hold, an open review thread, a failed required check, a pending or failing review verdict, a red trunk, a head mismatch | 2; 1 when live state could not be read; the `gh` exit code when the merge command itself fails |
+
+`waiting` and `refused` usually both exit 2; read the outcome line, not the exit
+code, to tell them apart.
+
+`make pr-arm WAIT=<minutes>` (1 to 120) is the supported way to wait. While the
+outcome is `waiting` it checks again every 3 minutes, and it runs the red-trunk
+check (`scripts/trunk_revert.py arm-gate`) before each new check. It stops at
+once on `armed` or `refused`, and when the time runs out it prints the last
+`waiting` outcome with `(WAIT=<minutes> expired)`. It never re-runs a job,
+rebases, or changes a hold. A pending review verdict is `refused`, so start the
+wait after the verdict is in. Do not write a polling loop around `make pr-arm`.
+
 ## Stale failed check suites
 
 `gh pr checks --required` shows one result per check name, so a superseded
