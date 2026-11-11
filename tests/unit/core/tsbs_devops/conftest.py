@@ -20,12 +20,6 @@ def start_time() -> datetime:
 
 
 @pytest.fixture
-def small_scale_factor() -> float:
-
-    return 0.01
-
-
-@pytest.fixture
 def test_num_hosts() -> int:
 
     return 5

@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "Site-inputs doc-contracts.json now publishes the local-path detector contract with detector-evaluated examples, and a committed snapshot fails the guard on drift"
-}

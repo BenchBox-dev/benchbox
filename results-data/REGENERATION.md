@@ -168,7 +168,7 @@ Benchmarks with **no** checked-in primary bundles after the trust cut:
 | metadata_primitives | SF 1.0 × >=3 local platforms | Scale is unused for sizing; needs three validation-passed platforms |
 | nyctaxi | SF 0.01 × >=3 local platforms | |
 | tpcdi | SF 0.01 × >=3 local platforms | |
-| tpcds_obt | SF 1.0 × >=3 local platforms | Integer SF >= 1 only (TPC-DS generator alignment) |
+| tpcds_obt | SF 0.01 × >=3 local platforms | Recorded as SF 1.0 when the benchmark accepted only SF 1; it has accepted the TPC-DS range (SF 0.001 to 100000) since 2026-11-11 |
 | tpchavoc | SF 0.01 × >=3 local platforms | Experimental; large query count |
 | write_primitives | SF 0.01 × >=3 local platforms | Needs three validation-passed local platforms |
 | star_schema | — | Alias of `ssb` — **not admitted as a separate cell** |
@@ -201,7 +201,7 @@ and the inventory regenerated:
 | flightdata | SF 0.01, SF 0.1, SF 1.0 | — |
 | nyctaxi | SF 0.01, SF 0.1, SF 1.0 | — |
 | tpcdi | SF 0.01, SF 0.1, SF 1.0 | — |
-| tpcds_obt | SF 1.0 | — |
+| tpcds_obt | SF 1.0; SF 0.01 and SF 0.1 added 2026-11-11 (DuckDB, DataFusion, Apache Doris, and LakeSail at SF 0.01) | LakeSail SF 0.1: the run failed, see `CORPUS_NOTES.md` |
 | tpchavoc | SF 0.01, SF 0.1, SF 1.0 | — |
 | vector_search | — (see deferral) | DEFERRED 2026-09-26: single DuckDB tuned-fallback SF 0.01 run (applied_unverified) withheld from promotion, never committed to the seed corpus — each committed cohort needs >=3 comparison identities per results-data/validate_corpus.py. Restore only with two more genuine validation-passed platform runs (ClickHouse Local and StarRocks per the dropped-cell list; DataFusion has no vector_search query path). SF 0.1, SF 1.0 — deferred, no tuned path run yet |
 | joinorder_synthetic | — (see deferral) | DEFERRED 2026-09-26: single DuckDB tuned-fallback SF 1.0 run (applied_unverified) withheld from promotion, never committed — the internal surface has no inventory exclusion in scripts/generate_corpus_inventory.py or results-data/validate_corpus.py, so both consumers count it as a one-identity cohort and the depth gate fails. Restore only with two more genuine validation-passed platform runs, or implement the exclusion consistently first. |

@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "Local preflight now selects the dev-loop ledger coverage test whenever a ledger-governed path changes, including deleted and renamed files"
-}

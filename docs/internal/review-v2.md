@@ -28,6 +28,23 @@ carries that code: module names in the sections below (`cli.py`, `local.py`,
 `src/theseus_reviewer/` in that repository, and their unit and scenario tests
 live there.
 
+The full `_project/scripts/oracle_*` paths in Calibration, Cut-over and Required gate
+from trusted code are the same modules by their former location; none of those
+paths exists in this repository. Cut-over is a record of how the gate was introduced,
+not a current procedure.
+
+`gate_paths` in `.github/review.yml` and `.github/soundness-paths.txt` still list
+`.github/oracle-reviewers.yml`, `.github/oracle-omp-config.yml`,
+`scripts/oracle_local_review.py` and `_project/scripts/oracle_gateway_host.sh`, none of
+which exists. While listed, re-creating one of them is treated as a soundness change.
+They are left in place until the owner decides whether that is wanted.
+
+To read the pinned engine's source, run
+`uv run -- python scripts/theseus_cli.py --trusted-ref HEAD path`. It prints
+`<install>/bin/theseus`; the source is `<install>/site/theseus_reviewer`. Do not
+pick a directory under `~/.cache/theseus/installs` by hand: it holds every
+past version.
+
 BenchBox keeps the consumer side:
 
 - `.github/workflows/review-verdict.yml` and `review-gate.yml`: thin callers of
@@ -660,8 +677,8 @@ with no preceding `Owner instruction` comment. `review-gate` never parses
 findings.
 
 The reviewer never resolves a thread: a follow-up lists defects it verified fixed,
-and the author resolves those. Each new thread carries a hidden `oracle-defect:
-c<cycle>-D<n>` marker before its `oracle-finding` fingerprint, which stays last.
+and the author resolves those. Each new thread carries a hidden `review-defect:
+c<cycle>-D<n>` marker before its `review-finding` fingerprint, which stays last.
 
 After three DO NOT SHIP decisions on distinct patches of one PR, the reviewer
 posts a refusal (`failure`, `Decision: **REFUSED**.`) once per head and reviews
@@ -1616,6 +1633,8 @@ equivalent, written in the pull request body. Tests import the gate and digest s
 module name never runs their mutants.
 
 ## Cut-over
+
+Historical: the paths below are the pre-Theseus locations; see Theseus ownership.
 
 Done: `.github/review.yml` sets `mode: enforce`, and the checker
 (`_project/scripts/oracle_review_check.py`), reported by the required

@@ -1,1 +1,0 @@
-{"schema": 1, "internal": "CI change: the review verdict and review gate callers fail when no status was posted for the head they handled, the trunk workflow runs on release lines, and the release canary check accepts a canary run on the tag's own release line."}

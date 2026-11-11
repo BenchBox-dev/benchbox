@@ -403,6 +403,10 @@ The soundness gate, as operated:
   including changes to the gate itself. Any non-inert PR needs the
   `benchbox-oracle` App's success review of its current head, or the stand-in
   approval, with every review thread resolved.
+- **Checkers run from the base commit.** CI runs the comment-policy checker and launcher, the changelog-fragment
+  checker and the soundness-path reader from the PR's base commit (`git show <base sha>:<path>`), and `review-gate`
+  runs `develop`'s code. A pull request that changes one of them is judged by the unchanged copy, so the change
+  cannot take effect in its own pull request; it applies to pull requests opened after it merges.
 - **Residual risk:** `review-gate` is evaluated from `develop` code on trusted
   triggers, so a pull request cannot change the check that judges it. What
   stops a pull request workflow with `statuses: write` from posting a forged

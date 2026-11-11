@@ -1,1 +1,0 @@
-{"schema": 1, "internal": "Remove the legacy core SQLGlot fork refresh workflow, its script and the sqlglot-fork-diff tool now that the fork's controller and the delivery workflow refresh, deliver and adopt SQLGlot releases."}

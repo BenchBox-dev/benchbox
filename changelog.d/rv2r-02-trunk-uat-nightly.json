@@ -1,1 +1,0 @@
-{"schema": 1, "internal": "Nightly CI workflow that runs the release-gate UAT matrix against the trunk distribution and keeps per-cell history; no shipped code changes"}

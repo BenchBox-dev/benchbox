@@ -193,7 +193,7 @@ The standard gates are intentionally split by the risk they are meant to catch:
   blocking routine PRs.
 
 Code-routed PRs currently run the complete medium tier in the `medium-test`
-matrix. Coverage selection is in **shadow mode**: it records what it would
+matrix. Coverage selection is in **shadow mode** (`SELECTION_SHADOW` in `scripts/coverage_test_selection.py`): it records what it would
 select but escalates to the complete tier. `scripts/heavy_tier_needed.py`
 therefore reports `heavy-needed == 'true'`; `medium-collect` collects the
 complete tier and four Python 3.12 shards partition it using

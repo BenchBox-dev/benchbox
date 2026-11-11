@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-11-11
+
+### Before you upgrade
+
+- **BREAKING: TPC-DS maintenance follows the specification and refuses enforced primary keys.** Refresh data now comes from `dsdgen -update`, loads into staging tables inside each timed function, and runs the 11 spec functions as set-based SQL. Maintenance stops when primary keys are enforced on a target table (DuckDB, PostgreSQL, SQLite); use `--tuning notuning`. Snowflake and SingleStore run unchanged.
+- **Maintenance timings are not comparable with earlier versions.** Results record `run.maintenance_method` (`dsdgen_refresh_sets`), and `benchbox compare` and the comparison APIs refuse to mix methods. Operation timings no longer include connection setup, and the synthetic row generator is removed.
+- **Result bundles are schema 2.4 with timing method 2.** Adapters that record it time only the query; tag setup, statistics, validation, digests and plan capture run outside the timer. Compare, report and rankings work within one timing method only, so rerun older baselines.
+- **Results record how rows were fetched.** Each query and run has a `fetch_mode` (`rows` or `arrow`), and comparisons, regression detection and rankings refuse to mix modes. DuckDB, DataFusion, GizmoSQL, ClickHouse local and Spark 4.0 and newer default to Arrow; set the `fetch_mode` platform option to `rows` to switch back.
+- **Rerun baselines: power, refresh and exported times.** Power-test times exclude query generation, TPC-H RF1 reads update sets with the engine's native reader, RF1 and RF2 checks run after the timer stops, and the throughput refresh stream starts after its connection opens. Exported per-query times keep seven significant digits.
+- **InfluxDB defaults to port 8181 in core mode and 443 in cloud mode.** InfluxDB 2 users must pass `--platform-option port=8086`.
+- **Loads fail instead of recording partial data.** File-based loads fail when a handler raises or a non-empty source loads 0 rows. QuestDB, Databend, InfluxDB and SingleStore loads fail on missing rows, changed values or non-numeric DECIMAL text, and Doris now always loads through Stream Load.
+- **Regenerate DataFrame plan companions before publishing.** `.plans.json` files from `--capture-plans` on DataFrame platforms can contain local paths. New files redact them and use `Q1#0:power` keys; old keys still load.
+
+### Added
+
+- `--fetch-mode` on `benchbox report rankings` and `benchbox compare` chooses rows or Arrow results, and InfluxDB queries now record `fetch_mode`.
+- Guarded heavy runs append timing records (queue wait, admission, execution, cleanup, outcome) to `~/.benchbox/heavy-runs.jsonl`, with no command lines or environment captured.
+- TPC-DS data maintenance runs on SingleStore: all eleven functions completed on SingleStore 10.9.0 at scale factor 0.01. A SingleStore job in the Docker integration workflow runs the live tests nightly and on relevant pull requests.
+- TPC-DS runs with power, throughput and maintenance phases follow clause 7.4.2 and report QphDS@Size in `summary.tpc_metrics.qphds_at_size`, with its terms in `qphds_terms`. It is exported only when every input is valid; otherwise `qphds_unavailable` lists the reasons.
+- DuckDB, DataFusion and GizmoSQL receive results as Arrow inside the query timer, and Spark uses `DataFrame.toArrow` where PySpark provides it. Rows and Arrow gave identical digests for all 22 TPC-H queries at scale factor 0.01.
+- Added an opt-in admission wait to the host lock: `python -m benchbox.utils.host_lock run --admit --admit-wait-minutes N` (and `make heavy-run HEAVY_ADMIT_WAIT=N`) re-checks a refused admission every minute for up to N minutes with the lock released in between.
+- The published results corpus adds TPC-DS OBT cohorts at SF 0.01 (DuckDB, DataFusion, Apache Doris and LakeSail) and SF 0.1 (DuckDB, DataFusion and Apache Doris). Every bundle ran all 93 statements without failures, and each cohort meets the three-platform ranking floor.
+  - Apache Doris ran in a 4 GiB container with parallel_pipeline_task_num=1, so its timings reflect one pipeline task per query fragment; DuckDB ran with 8 threads and DataFusion with 10 partitions.
+
+### Changed
+
+- **Bulk loading is much faster.** ClickHouse server and Cloud, StarRocks, Doris, Databend, Firebolt Core, Trino and Presto stream file bytes to server-side parsers instead of converting rows in Python. ClickHouse TPC-H SF0.1 CSV loading dropped from 10.3s to 0.6s, and StarRocks SF0.01 Parquet loading from 35.5s to 0.7s.
+- Trino and Presto load through an external Hive table (`source_catalog` option) with `INSERT ... VALUES` kept as a warned fallback, and ClickHouse server loads use the HTTP port (new `http_port` option, default 8123).
+- Local load-file preparation for PostgreSQL, SingleStore, DataFusion and Databend strips delimiters, normalises booleans and decompresses gzip, bz2 and zstd in bulk byte chunks.
+- QuestDB ILP and InfluxDB TSBS loading build line protocol with vectorised Arrow compute, about 3-4x faster.
+- Library data loading for TPC-DS, TSBS DevOps, CoffeeShop, TPC-DI, SSB, AMPLab and ClickBench uses DuckDB `read_csv` on DuckDB connections, and `TPCDIDataLoader.load_csv_file` is removed.
+- TPC-DI ETL loads DataFrames through DuckDB registration or PostgreSQL COPY, and SCD Type 2 updates are set-based. The historical load at scale factor 10 dropped from about 1.6s to 0.02s.
+- SSB, AMPLab, TSBS DevOps and TPC-DI generation write through Apache Arrow with byte-identical files; SSB SF1 generation drops from about 58s to 39s.
+- DuckDB loads Vortex and DuckLake with native handlers, and Delta, DuckLake, Iceberg and Vortex fallbacks insert Arrow tables directly. Iceberg maintenance, Spark and Hudi ingestion and the DataFusion cursor stay in Arrow.
+- The pandas loader casts date columns to `date32` in Arrow, speeding CSV loads of date-heavy tables.
+- TPC-H RF1 on SingleStore uses `LOAD DATA LOCAL INFILE` inside the timed transaction, and DuckLake keeps its RF1/RF2 declaration on a recorded SF0.01 run.
+- The bundled SQLGlot moves from 30.29.0.1 to 30.30.0.1 (fork commit `79831c9ffd0e`), a verified delivery of the benchbox-sqlglot fork.
+- The benchmark listing and MCP discovery report 90 queries for TPC-DS OBT instead of 17.
+
+### Fixed
+
+- **Loads that lost or changed data.** QuestDB ILP loads no longer drop rows or load `lineitem` as zero rows, and QuestDB REST loads fail when an import changes a value or any chunk fails. Databend loads use COPY INTO and fail on mismatches, InfluxDB loads read compressed TSBS data, and SingleStore DECIMAL loads abort on non-numeric text.
+- **Doris and Iceberg.** Doris Stream Load streams Parquet in bounded chunks, fits a 4GiB container, and maps the dialect's NULL marker so ClickBench loads. Iceberg loads on DuckDB use the metadata file instead of silently loading 0 rows.
+- **SingleStore.** Tables are analyzed after loading, which stops TPC-DS query 24a from hanging. FULL OUTER JOIN and ROLLUP over empty input return the expected rows for queries 18 and 97, Parquet loads in 1,000,000-row chunks, and columnstore segments are flushed before statistics.
+- **TPC-DS and TPC-H.** Maintenance row generation, seeds and monotonic timing are reproducible, and the run seed reaches the maintenance test. TPC-DS OBT accepts the same scale factors as TPC-DS, and TPC-H power runs with refresh functions no longer fail Q13 validation after RF1.
+- **Spark.** Validating or recreating a database no longer stops the shared session, the connection test leaves an in-use session alone, and Hudi maintenance supports Spark 3.5, 4.0 and 4.1 with Hudi 1.2.1. Local Spark sizes its default driver heap within the heavy-run memory budget.
+- **Plans and publishing.** Plan companions, `benchbox export`, `benchbox publish` and leak detection redact local paths (including `/tmp`, `/mnt`, `/opt`, drive letters and UNC paths), and `export` no longer fails on DataFrame results captured with `--capture-plans`.
+- **Platform options and DuckDB.** EMR Serverless, Dataproc, Synapse Spark, Fabric Spark, Snowpark Connect, AWS Glue and TimescaleDB honor options they ignored, DuckDB runs write-primitives `MERGE INTO`, and `struct_construction` keeps all contact fields.
+- **ClickHouse local.** Results no longer turn NULL into NaN and are received as Arrow by default.
+- **Throughput and FlightData.** Throughput runs record SQL translated inside stream workers and apply strict translation, and FlightData downloads start with the first month processed.
+- **UAT and the Linux VM.** UAT bring-up verifies each container's entrypoint, memory limit, ulimits and platform, and prunes completed databases during sweeps. Stopping the Linux VM powers the guest off cleanly (`BENCHBOX_LINUX_POWEROFF_WAIT_SECONDS`, default 15), and heavy-run shutdown is more reliable.
+- **Contributor workflow.** Removing the `no-auto-merge` label clears the hold check without a new commit, and wrapping `make pr-preflight` in `make heavy-run` or `host_lock run` is refused with exit code 2.
+
 ## [0.5.0] - 2026-11-04
 
 ### Before you upgrade
@@ -1004,7 +1057,8 @@ benchbox run --platform polars-df --benchmark tpch --scale 0.01
 - **Discussions**: [Ask questions and request features](https://github.com/BenchBox-dev/BenchBox/discussions)
 - **PyPI**: [pypi.org/project/benchbox](https://pypi.org/project/benchbox/)
 
-[Unreleased]: https://github.com/BenchBox-dev/BenchBox/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/BenchBox-dev/BenchBox/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/BenchBox-dev/BenchBox/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/BenchBox-dev/BenchBox/compare/v0.4.2...v0.5.0
 [0.4.2]: https://github.com/BenchBox-dev/BenchBox/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/BenchBox-dev/BenchBox/compare/v0.4.0...v0.4.1

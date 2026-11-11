@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "Maintenance lines are created by scripts/release_line_create.py, which verifies the creation commit before pushing; release_artifact_consumer.py verify-line checks a hosted line without a tag."
-}

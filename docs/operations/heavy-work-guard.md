@@ -57,6 +57,12 @@ Before starting, the command checks memory pressure, available memory and free d
 `BENCHBOX_HEAVY_ADMIT_MIN_GIB`, `BENCHBOX_HEAVY_MIN_LEVEL` and `BENCHBOX_HEAVY_MIN_FREE_DISK_GIB`.
 `BENCHBOX_HEAVY_ADMIT=force` runs despite a refusal and logs a warning.
 
+`make heavy-run CMD='...' HEAVY_ADMIT_WAIT=<minutes>` (or `host_lock run --admit-wait-minutes <minutes>`; 1 to 60) checks a
+refused admission again every 60 seconds for up to that many minutes, with the lock released between checks. The
+deadline starts when the command starts, so time spent queued for the host lock counts against the wait. When it runs
+out the command exits 76 with the last report. Only `make heavy-run` reads `HEAVY_ADMIT_WAIT`; targets that call the host
+lock without going through it do not.
+
 ## Watchdog
 
 `BENCHBOX_HEAVY_WATCHDOG` selects the mode:

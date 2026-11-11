@@ -1,5 +1,52 @@
 # Corpus Generation Notes - 2026-04-03
 
+## TPC-DS OBT at SF 0.01 and SF 0.1 (2026-11-11)
+
+TPC-DS OBT has accepted scales below 1 since 2026-11-11 (#4088), so these are
+its first cohorts below SF1. Seven bundles (`result_source: internal`) come from
+one UAT sweep of the code that made that change. All of them ran on the Darwin
+Apple M4 host (10 CPUs, 16 GB RAM) with BenchBox tuning off (`tuning_source:
+baseline`), phases `generate`, `load` and `power`, and 3 iterations:
+
+| Platform | SF 0.01 | SF 0.1 |
+|---|---|---|
+| DuckDB 1.5.5 | `tpcds_obt_sf001_duckdb_sql_20261111_105936_37e7cc9b` | `tpcds_obt_sf01_duckdb_sql_20261111_110025_688df8f3` |
+| DataFusion 54.0.0 | `tpcds_obt_sf001_datafusion_sql_20261111_110035_78695483` | `tpcds_obt_sf01_datafusion_sql_20261111_110045_4a0d3139` |
+| Apache Doris 4.0.3 | `tpcds_obt_sf001_doris_sql_20261111_110147_93ab6464` | `tpcds_obt_sf01_doris_sql_20261111_110240_9315b4c2` |
+| LakeSail (PySail 0.7.1, PySpark client 4.2.0) | `tpcds_obt_sf001_lakesail_sql_20261111_110322_a1896614` | not admitted |
+
+Each bundle ran all 93 statements three times: the 90 queries, with Q14, Q23
+and Q24 as lettered statements. None failed, and `summary.validation` is
+`passed`. The table holds 50,335 rows at SF 0.01 and 503,753 at SF 0.1. At each
+scale every statement returns the same row count on every platform. With the
+default parameter draw, 21 ids return no rows at SF 0.01 and 16 at SF 0.1, on
+every platform.
+
+DuckDB and DataFusion ran in-process. Doris and LakeSail ran as server
+containers under mocker (Apple container VMs) on the same Mac. The bundles
+record the native client host. `scripts/annotate_execution_class.py` makes no
+attestation for them because the client class is measured, so their manifests
+carry no container execution class.
+
+The engines did not run with equal parallelism. DuckDB ran with 8 threads and
+an 8 GB memory limit, and DataFusion with 10 target partitions and a 12 GB
+limit. Doris ran with `parallel_pipeline_task_num=1`, which the UAT harness sets
+for every local Doris cell (`tests/uat/docker_assets.py`) so that queries fit
+the 4 GiB container; it limits each Doris query fragment to one pipeline task.
+Both Doris bundles record the setting in `config.platform_options`. Read the
+Doris timings in these cohorts as single-task Doris in a 4 GiB container, not
+as Doris at full parallelism.
+
+LakeSail SF 0.1 is not admitted. Its run failed after about 20 minutes, and the
+verbose diagnostic re-run could not connect to the LakeSail server at
+`sc://localhost:50051`. The cell runs with `--quiet`, so the original error was
+not captured. SF 0.1 still has three comparison identities without it.
+
+`uv run -- python results-data/validate_corpus.py` exits 0 with 487 bundles. It
+reports 4 identities for `tpcds_obt` SF 0.01 and 3 for SF 0.1, so both cohorts
+meet the three-identity floor. All seven bundles pass
+`scripts/validate_submission.py --require-manifest --trust-internal-source`.
+
 ## Results from variant and loader bugs (2026-10-28)
 
 Seven ranked bundles recorded wrong values because of BenchBox's own
