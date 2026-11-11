@@ -252,7 +252,7 @@ def test_ratchet_rejects_renaming_a_wheel_to_a_different_distribution_and_owner(
         "provenance": "_project/scripts/pyproject.toml",
     }
     renamed_entry = {
-        "path": "_project/scripts/vendor/tractable-1.0.0-py3-none-any.whl",
+        "path": "_project/scripts/vendor/tractable-1.1.0-py3-none-any.whl",
         "owner": "tractable",
         "provenance": "_project/scripts/pyproject.toml",
     }

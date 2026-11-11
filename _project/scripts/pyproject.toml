@@ -16,4 +16,4 @@ managed = true
 required-version = ">=0.13.4"
 
 [tool.uv.sources]
-tractable = { path = "vendor/tractable-1.0.0-py3-none-any.whl" }
+tractable = { path = "vendor/tractable-1.1.0-py3-none-any.whl" }
