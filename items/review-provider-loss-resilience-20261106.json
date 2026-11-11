@@ -14,7 +14,9 @@
       "from_item": "review-provider-loss-resilience-20261106",
       "id": 1,
       "reason": "These need a live omp build. The independent review of Theseus #35 judged them not blocking: the omp pin doesn't change in v0.2.2, and the unavailable branch fails closed and has unit tests.",
-      "resolution": "open",
+      "resolution": "dismissed",
+      "resolved_at": "2026-11-11T20:44:00Z",
+      "resolved_reason": "Delivered: Theseus PR #53 (joeharris76/theseus, merged, in v0.2.8+) adds candidate-check contract rows C1-C3 (rows 15-17) in the loopback harness and deterministic fail-closed tests for the no-candidate path. Revalidated 2026-11-11.",
       "summary": "Add omp candidate-check rows C1-C3 on the next omp pin bump, and an integration test for the no-candidate unavailable branch"
     }
   ],
@@ -134,6 +136,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "6e9e95ed1f8a4f48b66ed7872f691767",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:44:00Z",
+      "client": "omp-coding-agent",
+      "op": "dismiss",
+      "op_id": "a248c57937f7434fa15cf74b75208974",
       "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
