@@ -14202,6 +14202,13 @@
       "status": "done",
       "title": "medium-collect spends about 108 s collecting because it starts with a cold assertion-rewrite cache"
     },
+    "ci-medium-shard-cancelled-without-cause-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Find why a PR medium-test shard was cancelled after 25 minutes"
+    },
     "ci-medium-shard-hangs-after-last-test-20261110": {
       "claim": null,
       "needs": [],

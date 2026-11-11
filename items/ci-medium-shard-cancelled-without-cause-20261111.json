@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Decision gate: if the cause cannot be established from this one run and it has not recurred in the last 14 days of PR runs, close this item with that finding rather than change CI on a guess.",
+    "Verification: the cause is stated with the log line or setting that proves it.",
+    "Done when the cause is fixed and merged, or the item is closed as not recurring."
+  ],
+  "description": "Found on 2026-11-11 while delivering retro-navigation-fixes-umbrella-20261111 (or in the retrospective over 25 agent sessions that preceded it) and not addressed there.\n\nProblem. On PR #4100 head 87096f7e, `medium-test (shard 2)` of CI run 43041683685 ran from 14:49:02Z to 15:14:19Z and ended `cancelled`; the other three shards succeeded and `core` then failed because of it. Nothing cancelled it by hand. `make pr-rerun` re-ran the run and the shard passed. One observation, so the cause is unknown: a job timeout, a runner loss, or concurrency cancellation.\n\nChange. Establish the cause from the job log and the workflow's timeout and concurrency settings. If it is a timeout near the shard's normal duration, raise the margin or rebalance; if it is concurrency, fix the group.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read every cited file on current origin/develop first, because line numbers and commits here are from 2026-11-11 (origin/develop 5bd2c19cc4); close at a merged PR and finish only after the merge is observed.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/43041683685",
+    ".github/workflows/ci.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T16:38:14Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "311ce0b4f34f473bbe44e0c13d4ed450",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    }
+  ]
+}
