@@ -2029,6 +2029,31 @@ def test_withdrawals_list_the_marked_findings():
     assert "D1, D2. Resolve their review threads." in text
 
 
+INLINE_WITHDRAWN_LINE = (
+    "Reviewed <sha0> \u00b7 changes since <sha1> \u00b7 withdrawn as never defects: **D1** (resolve its thread)"
+)
+
+
+@pytest.mark.parametrize(
+    ("line", "ids"),
+    [
+        (INLINE_WITHDRAWN_LINE, ["D1"]),
+        ("Reviewed a \u00b7 withdrawn as never defects: **D1**, **D3** (resolve their threads)", ["D1", "D3"]),
+        ("Reviewed a \u00b7 Withdrawn as never defects: **D2**", ["D2"]),
+        ("Reviewed a \u00b7 withdrawn as never defects: none", []),
+    ],
+)
+def test_the_inline_withdrawn_line_of_the_redesigned_body_is_read(line, ids):
+    body = f"### \u2705 SHIP \u00b7 no open findings\n\n{line}\n\n**Dispute dispositions**\n\n- D1 (withdrawn): x\n"
+    assert digest.withdrawn_in_body(body) == ids
+
+
+def test_an_inline_withdrawal_is_reported_for_the_pull():
+    body = f"### \u2705 SHIP \u00b7 no open findings\n\n{INLINE_WITHDRAWN_LINE}\n"
+    pull = evidence(reviews=(failure_review(body=body),))
+    assert [w.items for w in digest.withdrawn_findings([pull])] == [("D1",)]
+
+
 def test_withdrawals_are_skipped_when_no_review_marks_any():
     assert digest.withdrawn_findings([overridden()]) == []
     assert digest.render_withdrawals([]) == ""

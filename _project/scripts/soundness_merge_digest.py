@@ -102,6 +102,7 @@ DEFECT_SUMMARY = re.compile(
 )
 DECISION_LINE = re.compile(r"(?m)^Decision: \*\*(.+?)\*\*")
 WITHDRAWN_HEADING = re.compile(r"^\s*(?:\*\*)?Withdrawn as never defects:(?:\*\*)?\s*(.*)$")
+WITHDRAWN_INLINE = re.compile(r"withdrawn as never defects:\s*((?:\*\*D\d+\*\*(?:,\s*)?)+)", re.IGNORECASE)
 WITHDRAWN_ITEM = re.compile(r"^\s*[-*]\s+(.+?)\s*$")
 DETAILS_BLOCK = re.compile(r"<details>.*?</details>", re.DOTALL)
 SEVERITY_ORDER = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
@@ -637,9 +638,12 @@ def withdrawn_in_body(body: str) -> list[str]:
     found: list[str] = []
     index = 0
     while index < len(lines):
-        heading = WITHDRAWN_HEADING.match(lines[index])
+        line = lines[index]
+        heading = WITHDRAWN_HEADING.match(line)
         index += 1
         if heading is None:
+            for inline in WITHDRAWN_INLINE.finditer(line):
+                found.extend(re.findall(r"D\d+", inline.group(1)))
             continue
         rest = heading.group(1).strip()
         if rest:
