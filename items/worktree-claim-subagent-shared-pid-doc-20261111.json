@@ -4,6 +4,7 @@
     "Verification: the section states the shared-pid case and `BENCHBOX_WORKTREE_TAKEOVER=1 make agent-write-preflight`; make docs-validate passes.",
     "Done when merged."
   ],
+  "context": "2026-11-11: delivered in PR #4116, merged to develop as f30accdb17 (verified an ancestor of origin/develop).",
   "description": "Found on 2026-11-11 while delivering retro-navigation-fixes-umbrella-20261111 (or in the retrospective over 25 agent sessions that preceded it) and not addressed there.\n\nProblem. docs/internal/dev-loop-worktrees.md ('Session ownership guard') says a second session is refused while the recorded process is alive and that a dead pid counts as stale and is replaced. Subagents of one harness share the harness pid, so a finished subagent's claim never goes stale: in one reviewed chain, five successor subagents in a row were refused and each spent two to three calls (and up to 2.5 minutes) before taking over. The refusal message already prints the takeover command; the document does not mention the case, and parent prompts do not carry the command.\n\nChange. Add the subagent case and the takeover command to that section.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read every cited file on current origin/develop first, because line numbers and commits here are from 2026-11-11 (origin/develop 5bd2c19cc4); close at a merged PR and finish only after the merge is observed.",
   "links": [
     "docs/internal/dev-loop-worktrees.md",
@@ -33,6 +34,14 @@
       "generation": "f1252c1a7ad44d32aa4b15584198a92b",
       "op": "take",
       "op_id": "adb6484023534daf87e6c2d7ca64de31",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T17:58:43Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "63e7310c247942ca947c9151542295de",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
