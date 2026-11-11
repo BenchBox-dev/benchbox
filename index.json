@@ -33166,15 +33166,10 @@
       "title": "Add full-suite canary and GitHub ruleset drift detection for release readiness"
     },
     "release-gate-envelope-cuts-owner-decision-20261101": {
-      "claim": {
-        "expires_at": "2026-11-12T23:41:03Z",
-        "generation": "da4e04f65b8949b187c3b1e3a694fa02",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Owner decision: release-gate cuts carried by the combined rc3 PR (SF1 cell pruning, InfluxDB exclusion, recomputed coverage floors)"
     },
     "release-guide-accounting-literal-timing": {
