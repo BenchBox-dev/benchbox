@@ -473,7 +473,7 @@ def _verified_develop_ruleset() -> dict:
         strict=False,
     )
     live["name"] = "develop-squash-only"
-    bound = {"oracle-gate": 5201041, "review-gate": 5201041, "release-v2 probe": 15368}
+    bound = {"review-gate": 5201041, "release-v2 probe": 15368}
     for check in live["rules"][0]["parameters"]["required_status_checks"]:
         if check["context"] in bound:
             check["integration_id"] = bound[check["context"]]

@@ -29,7 +29,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: review-verdict-${{ ((github.event_name == 'schedule' || github.event_name == 'push') && 'sweep') || (((github.event_name == 'pull_request_target' && (github.event.action != 'edited' || github.event.changes.base)) || (github.event_name == 'issue_comment' && github.event.issue.pull_request && (startsWith(github.event.comment.body, '/review') || startsWith(github.event.comment.body, '/oracle-review') || startsWith(github.event.comment.body, 'Review adjudication:') || startsWith(github.event.comment.body, 'Oracle adjudication:')) && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) || github.event_name == 'workflow_dispatch') && format('pr-{0}', github.event.pull_request.number || github.event.issue.number || inputs.pr) || format('run-{0}', github.run_id)) }}
+  group: review-verdict-${{ ((github.event_name == 'schedule' || github.event_name == 'push') && 'sweep') || (((github.event_name == 'pull_request_target' && (github.event.action != 'edited' || github.event.changes.base)) || (github.event_name == 'issue_comment' && github.event.issue.pull_request && (startsWith(github.event.comment.body, '/review') || startsWith(github.event.comment.body, 'Review adjudication:')) && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) || github.event_name == 'workflow_dispatch') && format('pr-{0}', github.event.pull_request.number || github.event.issue.number || inputs.pr) || format('run-{0}', github.run_id)) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
 
 jobs:
@@ -38,10 +38,10 @@ jobs:
       actions: write
       contents: read
       pull-requests: read
-    uses: joeharris76/theseus/.github/workflows/review.yml@2900aa67639f792bce5a9abbe58f1c84ab3dd597
+    uses: joeharris76/theseus/.github/workflows/review.yml@370c10c412c49f4b3ec69471513a1b1c7718918f
     with:
       environment: oracle
-      theseus_ref: 2900aa67639f792bce5a9abbe58f1c84ab3dd597
+      theseus_ref: 370c10c412c49f4b3ec69471513a1b1c7718918f
       gated_base: develop
       policy_path: .github/review.yml
       tailscale_tag: tag:oracle-ci
@@ -77,7 +77,7 @@ jobs:
       JOB_RESULT: ${{ needs.verdict.result }}
       GATED_BASE: develop
       POSTER: benchbox-oracle[bot]
-      CONTEXTS: review-verdict oracle-verdict
+      CONTEXTS: review-verdict
     steps:
       - name: Fail when no verdict status was posted for the handled head
         run: |

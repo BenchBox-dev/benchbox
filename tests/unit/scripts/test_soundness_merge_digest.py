@@ -1284,7 +1284,7 @@ def gate_accepts(verdicts, standin_at, base_change):
         "last_edited_at": None,
         "includes_created_edit": False,
     }
-    binding = policy.Binding(digest.engine().bot_login, digest.engine().attesters, "develop")
+    binding = policy.Binding(digest.engine().bot_login, digest.engine().attesters)
     status, _ = checker.decide(
         HEAD, ["AGENTS.md"], statuses, lambda _files: True, base_change, comments, binding=binding, reviews=[receipt]
     )

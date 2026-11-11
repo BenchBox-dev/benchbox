@@ -215,7 +215,7 @@ Explicit cryptographic tag signatures are dropped. Release integrity relies on:
 ### Amendment 2026-10-27: evidence reconciliation and owner decisions
 
 The required `ci.yml` units are five: `core`, `explorer`, `results-data`, `docs` and `tooling`. The `hold` check,
-the App-bound `oracle-gate` status and the other required contexts are separate controls, not units.
+the App-bound `review-gate` status and the other required contexts are separate controls, not units.
 
 The property ledger (G3) now classifies each safety property as high-risk (merge safety and required contexts,
 release integrity, commit identity and attribution, the soundness hold, the oracle gate) or process-only. A

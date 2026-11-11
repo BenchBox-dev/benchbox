@@ -10,7 +10,6 @@ from typing import Any
 
 REVIEW_GATE_CONTEXT = "review-gate"
 REVIEW_GATE_INTEGRATION_ID = 5201041
-LEGACY_GATE_CONTEXT = "oracle-gate"
 
 
 def extract_rules(payload: Any) -> list[dict[str, Any]]:

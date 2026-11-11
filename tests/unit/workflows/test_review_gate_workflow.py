@@ -142,22 +142,20 @@ def test_push_sweeps_share_a_group_apart_from_pull_request_gates() -> None:
 def test_marker_comments_and_marker_edits_gate_in_the_pull_request_group() -> None:
     assert _group("issue_comment", _comment("created", STANDIN)) == "review-gate-8"
     assert _group("issue_comment", _comment("deleted", STANDIN)) == "review-gate-8"
-    assert _group("issue_comment", _comment("created", "Oracle adjudication: WITHDRAW D1 - done")) == "review-gate-8"
     assert _group("issue_comment", _comment("created", "Review adjudication: WITHDRAW D1 - done")) == "review-gate-8"
-    assert _group("issue_comment", _comment("created", "Stand-in oracle review: APPROVE")) == "review-gate-8"
     assert _group("issue_comment", _comment("edited", "withdrawn", STANDIN)) == "review-gate-8"
     assert _group("issue_comment", _comment("edited", STANDIN, "draft")) == "review-gate-8"
-    assert (
-        _group("issue_comment", _comment("edited", "withdrawn", "Stand-in oracle review: APPROVE")) == "review-gate-8"
-    )
-    assert (
-        _group("issue_comment", _comment("edited", "withdrawn", "Oracle adjudication: WITHDRAW D1 - x"))
-        == "review-gate-8"
-    )
     assert (
         _group("issue_comment", _comment("edited", "withdrawn", "Review adjudication: WITHDRAW D1 - x"))
         == "review-gate-8"
     )
+
+
+@pytest.mark.parametrize("body", ["Stand-in oracle review: APPROVE", "Oracle adjudication: WITHDRAW D1 - done"])
+def test_retired_legacy_comments_never_share_the_pull_request_group(body: str) -> None:
+    assert _group("issue_comment", _comment("created", body)) == "review-gate-ignored-55"
+    assert _group("issue_comment", _comment("deleted", body)) == "review-gate-ignored-55"
+    assert _group("issue_comment", _comment("edited", "withdrawn", body)) == "review-gate-ignored-55"
 
 
 def test_unrelated_comments_run_in_a_group_of_their_own() -> None:

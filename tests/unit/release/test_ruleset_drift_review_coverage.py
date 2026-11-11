@@ -126,10 +126,9 @@ def _expected_with_gate_contexts(*contexts: str):
     return replace(expected, required_checks=(*base, *contexts))
 
 
-@pytest.mark.parametrize("contexts", [("review-gate",), ("oracle-gate", "review-gate")])
-def test_develop_drift_passes_when_the_app_bound_gate_is_required_with_or_without_the_legacy_gate(contexts):
+def test_develop_drift_passes_when_the_app_bound_gate_is_required():
     expected = _develop_expected()
-    live = _live_develop_ruleset(gate_contexts=contexts)
+    live = _live_develop_ruleset(gate_contexts=("review-gate",))
 
     assert compare_ruleset(expected, live) == []
 
