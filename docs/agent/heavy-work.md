@@ -74,7 +74,8 @@ process, VM, or the lock file. Stopping an orphan is the owner's call or the
 task that started it.
 
 On `Error 76`, run the command again with `HEAVY_ADMIT_WAIT`; do not write a
-retry loop, and never set `BENCHBOX_HEAVY_ADMIT=force` to get past it.
+retry loop, and never set `BENCHBOX_HEAVY_ADMIT=force` to get past it. Time spent queued for the host
+lock counts against `HEAVY_ADMIT_WAIT`, and only `make heavy-run` reads it.
 
 ## Sentinel
 
@@ -195,6 +196,10 @@ likely stalled in, and the bounds and `STUCK` report remain for anything else.
 `make ci-linux` and `scripts/linux_preflight_pytest.sh` export
 `BENCHBOX_HEAVY_LINUX_MACHINE` from `CI_LINUX_MACHINE` (default that variable,
 else `benchbox-agent`) so the wrapper and the sentinel name the same machine.
+
+`CI_LINUX_CMD` is passed through make and the shell, so keep it to a one-line command. A `python -c` with
+parentheses or a multi-line value breaks the quoting. For anything longer, put it in a script under the
+home directory, which the machine mounts (`--home-mount rw`), and pass that script's path as `CI_LINUX_CMD`.
 
 ## Git floods
 

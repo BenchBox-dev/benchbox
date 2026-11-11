@@ -24,6 +24,19 @@ can read what ran.
    `<!-- preflight-receipt: v1 begin tree=… -->` and `<!-- preflight-receipt: v1 end -->`, replacing the section
    from an earlier push of the same PR.
 
+## Local review
+
+After the receipt check, `make pr-open` runs the local pre-PR review (`scripts/local_review.py`) on the committed
+`HEAD` and refuses to push when it does not clear the head; running another reviewer first is unnecessary. To run the review alone
+before pushing, commit and run:
+
+```bash
+python3 scripts/local_review.py --policy .github/review.yml --trusted-ref origin/develop
+```
+
+It reviews the diff against `origin/develop` (`--base-ref` changes that), never uncommitted changes, and posts nothing
+to GitHub. Setup, the classifier key and exit codes are in `docs/internal/review-v2.md` under "Local pre-PR review".
+
 ## Known environment-only failures
 
 `.github/preflight-known-failures.json` is the only way a failing step is accepted:

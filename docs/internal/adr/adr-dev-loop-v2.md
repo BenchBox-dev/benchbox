@@ -4,6 +4,8 @@
 
 Accepted (2026-09-28).
 
+Superseded in part: the stand-in review attesters are listed in `.github/review.yml` (`consumer.attesters`) and the comment marker is `Stand-in review: APPROVE <full head SHA>`; `STANDIN_ATTESTERS` and `_project/scripts/oracle_review_check.py` no longer exist in this repository.
+
 Supersedes:
 
 - [`docs/internal/merge-queue-governance.md`](../merge-queue-governance.md)
