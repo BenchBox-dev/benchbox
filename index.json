@@ -43318,10 +43318,15 @@
       "title": "Show the tuned-to-notuning ratio in UAT reports as a tuning diagnostic, never as a gate"
     },
     "uat-validator-tuning-statement-privacy-20261030": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T02:31:30Z",
+        "generation": "86ad95fb088c4f5ca34cc7e5ae2d48de",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7bc97e5b905b990114418f4a"
+      },
       "needs": [],
       "priority": "critical",
-      "status": "open",
+      "status": "active",
       "title": "Validator rejects DuckDB and ClickHouse Local results for unanonymized tuning statements"
     },
     "unattributed-update-branch-commits-block-merge-20261008": {
