@@ -30669,17 +30669,12 @@
       "title": "`make pr-open` cannot open the stacked draft that the PR base-branch policy requires"
     },
     "pr-open-title-env-ignored-and-amended-develop-commit-message-20261111": {
-      "claim": {
-        "expires_at": "2026-11-12T22:32:51Z",
-        "generation": "fcb813015fae44e9955bc23c1ac56db7",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549"
-      },
+      "claim": null,
       "needs": [
         "feature-pr-landing-guards-20261111"
       ],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "pr-open: refuse an ignored PR_OPEN_TITLE and name an amended develop commit"
     },
     "pr-postgres-sample-antiskip-guard": {
