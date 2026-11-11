@@ -450,8 +450,19 @@ pr-conflict-scan:
 	done; true
 
 .PHONY: pr-status
+pr-status: override PR := $(value PR)
+pr-status: override RUN := $(value RUN)
+pr-status: override REPO := $(value REPO)
+pr-status: override LINES := $(value LINES)
+pr-status: export CI_FAILURES_PR := $(PR)
+pr-status: export CI_FAILURES_RUN := $(RUN)
+pr-status: export CI_FAILURES_REPO := $(or $(REPO),BenchBox-dev/BenchBox)
+pr-status: export CI_FAILURES_LINES := $(LINES)
 pr-status:
-	@if [ "$(ALL_OPEN)" = "1" ] || [ "$(ALL_OPEN)" = "true" ] || [ "$(ALL_OPEN)" = "yes" ]; then \
+	@if [ -n "$${CI_FAILURES_PR:-}$${CI_FAILURES_RUN:-}" ]; then \
+		exec uv run -- python scripts/ci_failures.py; \
+	fi; \
+	if [ "$(ALL_OPEN)" = "1" ] || [ "$(ALL_OPEN)" = "true" ] || [ "$(ALL_OPEN)" = "yes" ]; then \
 		echo "All open develop PRs (bounded to $(PR_STATUS_ALL_OPEN_LIMIT)):"; \
 		LIMIT="$(PR_STATUS_ALL_OPEN_LIMIT)"; \
 	else \
