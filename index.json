@@ -31434,6 +31434,13 @@
       "status": "done",
       "title": "Publication Pages deploy never reaches terminal success; live bytes and durable journal head diverge"
     },
+    "publish-run-rewrites-plans-companion-keys-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "benchbox publish run rewrites plans companion keys from Q<id>#<stream>:<test_type> to the bare query id"
+    },
     "publish-tpcds-obt-subscale-results-20261111": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "publish run preserves companion keys byte-for-byte apart from sanitization",
+    "fingerprint_varied and fingerprint_variants survive publish run",
+    "A round-trip test covers both"
+  ],
+  "description": "Found 2026-11-11. A run with --capture-plans writes a companion keyed `Q1#0:power` (22 keys for TPC-H). After `benchbox publish run <result> --target <local dir>` the published companion is keyed `1`, `10`, ... The entry content (plan, fingerprint, iteration, run_type, capture_time_ms) is unchanged. The companion is rebuilt from the loaded result, where each query has a single plan row, so `build_plans_payload` (benchbox/core/results/schema.py) takes its single-row branch and drops the stream and test-type qualifier. Consequences: the public companion no longer matches the documented key format, the Explorer labels lose the stream and phase, and a published companion cannot be joined back to the run output by key. The two bundles published on 2026-11-11 (tpch_sf01_duckdb_sql_20261111_154211_a31c24ca, tpch_sf01_polars_df_20261111_154204_3d7d3e84) carry bare keys. Also check that fingerprint_varied survives the same round trip, since it is derived from multiple rows per key.",
+  "links": [
+    "BenchBox-dev/BenchBox: benchbox/cli/commands/publish.py",
+    "BenchBox-dev/BenchBox: benchbox/core/results/schema.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ce763d5976f477ecde9610ed",
+      "at": "2026-11-11T20:49:33Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "bfadfefd09464a3f85011584ce483346",
+      "session_id": "2aa9edd3163b4d51b2004989f5bf7f8d"
+    }
+  ]
+}
