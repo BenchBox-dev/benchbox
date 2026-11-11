@@ -30802,7 +30802,9 @@
     },
     "preflight-misses-sparse-checkout-consumer-tests-20261111": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "feature-pr-landing-guards-20261111"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Select tests of scripts that import a changed module from a sparse checkout"
