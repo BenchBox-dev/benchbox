@@ -2818,6 +2818,32 @@ def test_the_record_severity_wins_over_the_thread_title(monkeypatch):
     assert [thread.severity for thread in threads] == ["High"]
 
 
+@pytest.mark.parametrize(
+    ("marker", "joined"),
+    [
+        ("<!-- oracle-defect: c1-D1 -->", True),
+        ("<!-- review-defect: c1-D1 -->", True),
+        ("<!--review-defect:c1-D1-->", True),
+        ("<!-- review-defect: c1-D0 -->", False),
+        ("<!-- review-defect: c2-D1 -->", False),
+    ],
+)
+def test_a_thread_marker_joins_the_recorded_defect_under_the_pinned_engine(monkeypatch, marker, joined):
+    body = f"\U0001f535 **Low** \u00b7 D1 \u00b7 the title\n\n{marker}"
+    monkeypatch.setattr(digest, "gh_json", lambda *args: graphql_threads([thread_with(body)]))
+    recorded = review(
+        APP_BOT, HEAD, user_type="Bot", body=redesigned_body(record=protocol_record(defects=(("D1", "High"),)))
+    )
+    (thread,) = digest.collect_threads("o/r", 7)
+    assert (thread.defect is not None) == (marker != "<!-- review-defect: c1-D0 -->")
+    if thread.defect is not None:
+        assert isinstance(thread.defect[0], int)
+        assert isinstance(thread.defect[1], str)
+        hash(thread.defect)
+    (classified,) = digest.classify_threads((thread,), (recorded,))
+    assert classified.severity == ("High" if joined else "Low")
+
+
 def test_an_unrecognised_bot_thread_is_unclassifiable_never_low(monkeypatch):
     nodes = [thread_with("a brand new layout\n\nwith no marker"), thread_with("**Low**: known", login="dev")]
     monkeypatch.setattr(digest, "gh_json", lambda *args: graphql_threads(nodes))

@@ -666,8 +666,8 @@ with no preceding `Owner instruction` comment. `review-gate` never parses
 findings.
 
 The reviewer never resolves a thread: a follow-up lists defects it verified fixed,
-and the author resolves those. Each new thread carries a hidden `oracle-defect:
-c<cycle>-D<n>` marker before its `oracle-finding` fingerprint, which stays last.
+and the author resolves those. Each new thread carries a hidden `review-defect:
+c<cycle>-D<n>` marker before its `review-finding` fingerprint, which stays last.
 
 After three DO NOT SHIP decisions on distinct patches of one PR, the reviewer
 posts a refusal (`failure`, `Decision: **REFUSED**.`) once per head and reviews
