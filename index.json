@@ -40569,7 +40569,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Make expect_store refuse a store whose repository name merely starts with the expected one"
     },
     "todo-db-git-backend-checkout-timeout-resilience": {
