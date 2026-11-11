@@ -33187,10 +33187,15 @@
       "title": "Align release-test command surfaces and repair stale release ratchets"
     },
     "release-uat-cedardb-connection-refused-20261030": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T20:42:15Z",
+        "generation": "fd6057a3b20f479f8cce373242b92835",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Release UAT CedarDB cells all get connection refused after a successful compose start"
     },
     "release-uat-dataframe-runner-shutdown-20261030": {
