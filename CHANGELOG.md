@@ -62,6 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Throughput and FlightData.** Throughput runs record SQL translated inside stream workers and apply strict translation, and FlightData downloads start with the first month processed.
 - **UAT and the Linux VM.** UAT bring-up verifies each container's entrypoint, memory limit, ulimits and platform, and prunes completed databases during sweeps. Stopping the Linux VM powers the guest off cleanly (`BENCHBOX_LINUX_POWEROFF_WAIT_SECONDS`, default 15), and heavy-run shutdown is more reliable.
 - **Contributor workflow.** Removing the `no-auto-merge` label clears the hold check without a new commit, and wrapping `make pr-preflight` in `make heavy-run` or `host_lock run` is refused with exit code 2.
+- Fixed the reported query totals for the write_primitives and transaction_primitives benchmarks: they now show 112 and 23 operations instead of 12, so subset messages and MCP discovery match the operations that run.
 
 ## [0.5.0] - 2026-11-04
 
