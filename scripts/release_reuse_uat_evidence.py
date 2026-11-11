@@ -11,6 +11,7 @@ import sys
 import tarfile
 import traceback
 import zipfile
+from datetime import datetime
 from pathlib import Path
 from typing import Any, NamedTuple
 
@@ -583,6 +584,43 @@ def _trunk_run_problem(run: dict[str, Any]) -> str | None:
     return None
 
 
+def _api_time(value: Any) -> datetime | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo is not None else None
+
+
+def _carried_over_jobs(run: dict[str, Any], jobs: list[dict[str, Any]]) -> str | None:
+    attempt = int(run.get("run_attempt") or 1)
+    if attempt == 1:
+        return None
+    attempt_start = _api_time(run.get("run_started_at"))
+    if attempt_start is None:
+        return f"run attempt {attempt} records no usable run_started_at, so a partial re-run cannot be ruled out"
+    carried: list[str] = []
+    rerun: list[str] = []
+    for job in jobs:
+        name = str(job.get("name"))
+        if TRUNK_STAGE_JOB.fullmatch(name) is None and name not in (TRUNK_GATE_JOB, TRUNK_RECORD_JOB):
+            continue
+        started = _api_time(job.get("started_at"))
+        if started is None or started < attempt_start:
+            carried.append(name)
+        else:
+            rerun.append(name)
+    if not carried:
+        return None
+    return (
+        f"the run was partially re-run in attempt {attempt}: re-run jobs {', '.join(sorted(rerun)) or 'none'}; "
+        f"jobs that kept results from an earlier attempt {', '.join(sorted(carried))}; "
+        "only a run whose latest attempt executed every required job qualifies"
+    )
+
+
 def _trunk_attempt_problem(run: dict[str, Any], jobs: list[dict[str, Any]]) -> str | None:
     attempt = int(run.get("run_attempt") or 1)
     stages: set[str] = set()
@@ -607,7 +645,7 @@ def _trunk_attempt_problem(run: dict[str, Any], jobs: list[dict[str, Any]]) -> s
     missing = sorted({"1", "2", "3"} - stages)
     if missing:
         return f"no UAT stage {', '.join(missing)} shard job in the latest attempt"
-    return None
+    return _carried_over_jobs(run, jobs)
 
 
 def _executed_sources(artifacts: list[dict[str, Any]]) -> list[str]:

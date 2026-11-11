@@ -437,6 +437,12 @@ append-only log.
   and `first_attempt_elapsed_s` from the infrastructure retry, with `attempt`
   1 when the harness wrote no retry.
 
+On a partial re-run (only some jobs re-run) GitHub reports the latest
+`run_attempt` for every job, so `run_attempt` in each row is the attempt whose
+`run_started_at` precedes the shard job's `started_at`: the attempt that
+actually produced the cell. `record.json` adds `partial_rerun` and
+`carried_over_shards` (shards whose results predate the latest attempt).
+
 Print the rows of the newest executed runs, newest first:
 
 ```bash
@@ -487,8 +493,10 @@ ids in the summary. The cancelled run's `record` job still runs and records
 is never a skip baseline.
 
 A release reuses a trunk UAT run only when every shard, `gate` and `record` job
-of the run's latest attempt succeeded and ran in that attempt. Re-running only
-the failed jobs of a run mixes attempts, so the run stops qualifying and the
+of the run's latest attempt succeeded and started after that attempt's
+`run_started_at`. Re-running only the failed jobs of a run mixes attempts (GitHub
+reports the latest `run_attempt` for the kept jobs too), so the run is refused
+as partially re-run, naming the re-run and kept jobs, and the
 release runs the full UAT; re-run all jobs to produce reusable evidence. The
 newest completed trunk UAT run that executed cells for an ancestor of the tagged
 commit decides, and no older trunk run is used after it. When that run is red (a
