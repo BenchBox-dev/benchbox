@@ -5,6 +5,7 @@
     "If B or C: tests in tests/unit/scripts/test_pr_arm.py show that the wait continues on a pending verdict (and, for C, on a placeholder failure with its full run in progress), that it still ends at once on a hold, an open thread, a real failed check and a red trunk, and that behaviour without WAIT is unchanged.",
     "Verification: measure on three real pull requests how many polls a wait started right after the push makes before arming, and record the result here."
   ],
+  "context": "2026-11-11 owner decision, in reply to the three options: 'c'. Implement option C: inside the wait loop also treat a pending review verdict as waiting, and make the visible required-check reason recognise a placeholder failure whose full run for the same head is in progress, as the suite check already does.",
   "description": "Owner decision item; no code until decided.\n\nProblem. `make pr-arm` reports `outcome: waiting` only when every refusal reason matches WAITING_MARKERS ('waiting for full CI run', 'has not finished for'). Right after a push the reasons are usually mixed. Observed on PR #4098 minutes after a push: the fast-duration verdict was missing because core had not finished (a waiting marker), `required check 'core' completed with conclusion 'failure'` (the placeholder failure from the 'CI (text edit)' run while the real CI run was still in progress), and `review: waiting for the review's verdict`. That combination is `refused`, so `make pr-arm WAIT=<minutes>` (pr-arm-wait-mode-20261111, which by the owner's decision loops only on `waiting`) exits at once in the most common early state and helps only in the later window when the verdict is in and core is still running.\n\nEvidence from 629 `pr-arm: outcome:` lines in 25 reviewed sessions: 141 waiting, 492 refused, 66 armed. Among the refused reasons, about 17 were a pending review verdict, about 35 were waiting markers mixed with another reason, and an unknown share of the 92 'core completed with conclusion failure' lines were placeholders.\n\nOptions. (A) Keep it: the wait covers only `waiting`. (B) Inside the wait loop only, also treat a pending review verdict as waiting; without WAIT nothing changes, the wait stays bounded, and arming still needs every gate to pass. (C) B, and also make the visible required-check reason recognise a placeholder failure whose full run for the same head is in progress, as the suite check already does, so the two reasons stop disagreeing.\n\nGuardrails: never change what arms or refuses; a hold, an open review thread, a real failed check or a red trunk must still end the wait at once; never post a stand-in; scripts/pr_arm.py is a soundness path.",
   "links": [
     "scripts/pr_arm.py",
@@ -18,6 +19,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "c1f2b238ff4b4c5ea3f33fef71cffd6c",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T16:39:36Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "25962d243c0d41568e45d7ad770a5773",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
