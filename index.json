@@ -12624,7 +12624,7 @@
       ],
       "priority": "high",
       "status": "open",
-      "title": "BenchBox: re-lock to Theseus v0.2.5 and add review guidance, round cap and pre-existing policy"
+      "title": "BenchBox: adopt Theseus review guidance and round cap (PR #4118)"
     },
     "benchbox-cli-query-exclude-option": {
       "claim": null,

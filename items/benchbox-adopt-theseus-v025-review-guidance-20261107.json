@@ -1,12 +1,12 @@
 {
   "acceptance": [
-    "The promotion gets a hosted SHIP with complete audit-coverage.",
-    "The guidance file is in gate_paths and the soundness manifest, and a test proves a PR can't change the guidance it is reviewed with.",
+    "The adoption PR gets a hosted SHIP with complete audit-coverage.",
+    "The guidance file is in gate_paths and the soundness manifest, and a test proves a PR can't change the guidance it is reviewed with. Note: Theseus 0.2.10 has no reader for the guidance file (the `consumer.review_guidance` key is refused); record whether the file is read by the reviewer under the locked release or is only a gated document until Theseus implements D3.",
     "The first PRs after adoption show the round cap and step-back working, linked as evidence.",
-    "Consumer activation also owns the relock acceptance transferred from theseus-body-only-finding-cannot-be-adjudicated-20261106: BenchBox must pin a released Theseus artifact containing the merged threadless-dispute fix and its end-to-end scenario, then record exact-head hosted dispute/escalation/adjudication and gate evidence. v0.2.5 from Theseus #46 does not contain #45; select the actual released fixed version, not the obsolete planned version number."
+    "Consumer activation also owns the relock evidence transferred from theseus-body-only-finding-cannot-be-adjudicated-20261106: BenchBox pins a released Theseus artifact containing the merged threadless-dispute fix and its end-to-end scenario (first released in v0.2.7; BenchBox is locked to v0.2.9, so satisfied), and exact-head hosted dispute/escalation/adjudication and gate evidence is recorded."
   ],
-  "context": "TODO review 2026-11-08: re-homed consumer activation from the body-only finding item here to break the producer/release/consumer logical cycle. Existing needs on theseus-v025-review-convergence-20261107 is preserved. The existing v0.2.5 lock PR #4047 contains #46, not the open #45 fix. Use the actual future fixed release version; do not reuse a published tag. Original guidance/policy/eval scope remains unchanged.\n\nState as of 2026-11-09: BenchBox is locked to Theseus v0.2.6 (develop de48b788cc, promotion merged), not v0.2.5. The title and acceptance may need updating to the version the owner wants; check against the later Theseus releases before working this item.",
-  "description": "A lock-only promotion PR to Theseus v0.2.5, then one PR adding:\n- `.github/review-guidance.md` (D3: repository failure modes plus a do-not-flag list covering the no-docstring policy and changelog fragments), registered in gate_paths and the soundness manifest;\n- policy keys `protocol.max_finding_rounds: 4`, pre-existing advisory for Medium/Low, and the intent block enabled;\n- the weekly live eval schedule.\nD10: the human step stays an owner instruction recorded for audit. D11: no separate owner-attention list, because the soundness manifest covers those paths. Revisit both if a second human reviewer joins.",
+  "context": "TODO review 2026-11-08: re-homed consumer activation from the body-only finding item here to break the producer/release/consumer logical cycle. Existing needs on theseus-v025-review-convergence-20261107 is preserved. The existing v0.2.5 lock PR #4047 contains #46, not the open #45 fix. Use the actual future fixed release version; do not reuse a published tag. Original guidance/policy/eval scope remains unchanged.\n\nState as of 2026-11-09: BenchBox is locked to Theseus v0.2.6 (develop de48b788cc, promotion merged), not v0.2.5. The title and acceptance may need updating to the version the owner wants; check against the later Theseus releases before working this item.\n\nRevalidated 2026-11-11: BenchBox develop's lock is Theseus v0.2.9 (origin/develop c7b75c80bc), not v0.2.5/v0.2.6; v0.2.10 promotion is PR #4123 (open). The adoption is open as PR #4118 (not draft): max_finding_rounds 4, include_intent, classifier fallback decisions, size floor 1500, review-guidance.md registered in gate_paths and soundness-paths. The step-back and round cap exist in Theseus since v0.2.7. The pre-existing policy part was dropped from the description (see theseus-known-defects-pre-existing-20261109). The weekly live eval schedule is still unscheduled in BenchBox. Open question for the owner: Theseus has no guidance reader (D3 not implemented), so review-guidance.md may not influence reviews yet.",
+  "description": "Adopt the Theseus review settings that BenchBox's current lock supports, in one PR (open as BenchBox #4118 'feat(review): adopt the classifier fallback, size floor and review guidance'):\n- `.github/review-guidance.md` (D3: repository failure modes plus a do-not-flag list covering the no-docstring policy and changelog fragments), registered in classifier.gate_paths and the soundness manifest;\n- policy keys `protocol.max_finding_rounds: 4` and `brief.include_intent: true` (plus the classifier fallback and size floor);\n- the weekly live eval schedule (not in #4118; separate step).\nThe pre-existing policy is no longer part of this item: Theseus now treats every finding as blocking (#54), and the known-defects mechanism is tracked in theseus-known-defects-pre-existing-20261109.\nThe lock-only promotions are separate items: v0.2.10 (benchbox-lock-theseus-review-format-release-a-20261110, PR #4123) and v0.2.11 (benchbox-lock-theseus-review-format-release-b-20261110).\nD10: the human step stays an owner instruction recorded for audit. D11: no separate owner-attention list, because the soundness manifest covers those paths. Revisit both if a second human reviewer joins.",
   "links": [
     "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-11-02T02-04-38-450Z_01a19a00-60b2-70a6-b56d-6f666415a725/local/review-practice-integration-plan.md"
   ],
@@ -34,6 +34,14 @@
       "op": "update",
       "op_id": "a85fcc8b58a346c4939d3cbd9420e0ad",
       "session_id": "02c14526fd7648f49c893339d8cfcf9e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:41:24Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "481f2ac79b054b068e7e63c3e7d55a19",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
