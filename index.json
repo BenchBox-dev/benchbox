@@ -39660,6 +39660,13 @@
       "status": "done",
       "title": "Package Theseus with consumer-configured identity and a hash-verified isolated installer"
     },
+    "theseus-pinned-source-path-and-duplicate-defect-regex-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Document where the pinned Theseus source is, and stop duplicating its thread-marker regex"
+    },
     "theseus-post-cutover-observation-closeout-20261102": {
       "claim": null,
       "needs": [
