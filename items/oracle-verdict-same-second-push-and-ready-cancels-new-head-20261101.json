@@ -6,7 +6,7 @@
     "Assess review-gate event freshness separately: either cover its equivalent race in the same fix or record concrete evidence explaining why its live-head reread/final status path is safe. Do not silently change unrelated workflow cancellation behavior.",
     "Merge the consumer workflow fix with required CI and exact-head hosted review; preserve develop-only environment policy."
   ],
-  "context": "Found 2026-10-31 by an adversarial review of oracle queue load. Evidence: oracle-verdict.yml concurrency group (lines 32-33, cancel-in-progress for pull_request_target) and the skip message at _project/scripts/oracle_reviewers/cli.py:382-383; log of run 41208598369. The cause of the same-second pair (tooling that marks a pull request ready right after pushing) is an inference, not confirmed. Oracle workflows are soundness paths: the owner authorized reviewer code and tests only for the earlier quota item, so ask before editing workflow files.\n\nReviewed 2026-11-08: active issue persists in review-verdict.yml:31-33 plus Theseus cli.py stale event guard. Original file paths and registry are stale after extraction. The current task authorizes this workflow repair; earlier task-local ask-before-workflow note is not a standing prohibition. Existing #4047 edits pin refs only; do not base this work on its unmerged branch.",
+  "context": "Found 2026-10-31 by an adversarial review of oracle queue load. Evidence: oracle-verdict.yml concurrency group (lines 32-33, cancel-in-progress for pull_request_target) and the skip message at _project/scripts/oracle_reviewers/cli.py:382-383; log of run 41208598369. The cause of the same-second pair (tooling that marks a pull request ready right after pushing) is an inference, not confirmed. Oracle workflows are soundness paths: the owner authorized reviewer code and tests only for the earlier quota item, so ask before editing workflow files.\n\nReviewed 2026-11-08: active issue persists in review-verdict.yml:31-33 plus Theseus cli.py stale event guard. Original file paths and registry are stale after extraction. The current task authorizes this workflow repair; earlier task-local ask-before-workflow note is not a standing prohibition. Existing #4047 edits pin refs only; do not base this work on its unmerged branch.\n\nRevalidated 2026-11-11: Still required; the defect is still present. origin/develop review-verdict.yml (renamed from oracle-verdict.yml) still uses the per-PR concurrency group 'pr-<N>' with cancel-in-progress for pull_request_target (lines 21-27), so a delayed stale-head event can still cancel the live-head run. Cancelled runs are expected for superseded heads (3 on 2026-11-11, 16 on 11-07), so counts alone do not show harm. Theseus #65 (review-gate pending while a head has no verdict) and the posting-check job (#4060) make the failure visible but do not prevent it. Authorization to edit the workflow is as stated in the 2026-11-08 note; the scenario must use the real consumer concurrency expression and the pytest integration harness. Current names: workflows review-verdict.yml, review-gate.yml and review-request.yml (renamed from oracle-* in #4055; the GitHub environment, secrets and App bot still use 'oracle'/benchbox-oracle[bot]); status contexts review-verdict and review-gate; engine joeharris76/theseus, locked on origin/develop to v0.2.9 (v0.2.10 promotion is open as #4123).",
   "description": "BenchBox owns workflow event concurrency; Theseus owns stale-head guards. review-verdict.yml still puts different-head synchronize/ready_for_review events in a shared per-PR cancellation group. A delayed stale event can cancel the live-head run, then skip because its head is stale, leaving no live review. Same-second event timing was a historical inference, not the correctness boundary: handle stale/new-head interleavings regardless of timestamp. Isolate different-head pull_request_target invocations while preserving trusted-base execution, duplicate handling and final exact-head publication guards. No evidence-policy or retry-budget relaxation.",
   "sessions": [
     {
@@ -24,6 +24,14 @@
       "op": "update",
       "op_id": "6001d771a38a466b824500d54b71da8d",
       "session_id": "83fcfb8d4a5c4fe8a47e5ac53802ec97"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:32:25Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "eecbac3f903641aa999c2ab9b5871a00",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
