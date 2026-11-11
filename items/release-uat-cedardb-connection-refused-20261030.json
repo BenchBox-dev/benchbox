@@ -3,7 +3,7 @@
     "CedarDB cells connect in the release UAT shard.",
     "When the server is not accepting connections the shard records one startup failure with the container log, not one connection failure per cell."
   ],
-  "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), artifact release-uat-v0.5.0rc2-stage2-cedardb: cells.jsonl, uat_gate_summary.json, validator_rollup.tsv, uat_lifecycle.log and per-cell logs. The artifacts do not keep result JSON, so query-level causes need a local rerun of the named cells.\n\nHosted trunk UAT run https://github.com/BenchBox-dev/BenchBox/actions/runs/42536258036 completed with failure at source 2d796acd59be06ab4b4a1742dda84cff419202b9. CedarDB is absent from this run’s current gate matrix, so this run provides no new CedarDB reachability evidence. Keep the historical issue open. Counts cover the selected current matrix only; no historical issue is closed by this note. The full run is still red (702/710 passed), so this is not release certification.",
+  "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), artifact release-uat-v0.5.0rc2-stage2-cedardb: cells.jsonl, uat_gate_summary.json, validator_rollup.tsv, uat_lifecycle.log and per-cell logs. The artifacts do not keep result JSON, so query-level causes need a local rerun of the named cells.\n\nHosted trunk UAT run https://github.com/BenchBox-dev/BenchBox/actions/runs/42536258036 completed with failure at source 2d796acd59be06ab4b4a1742dda84cff419202b9. CedarDB is absent from this run’s current gate matrix, so this run provides no new CedarDB reachability evidence. Keep the historical issue open. Counts cover the selected current matrix only; no historical issue is closed by this note. The full run is still red (702/710 passed), so this is not release certification.\n\nReview 2026-11-11: the one-startup-failure-with-container-log behaviour is tested (test_phases.py:1342). Open line: release-gate-02-docker-nonoltp.yaml excludes cedardb, so no run shows CedarDB connecting. Remaining: re-enable cedardb in stage 2 and get a green trunk run.",
   "description": "In the stage 2 CedarDB shard docker compose up and ps succeeded, then 55 of 57 cells failed with 'connection to server at 127.0.0.1, port 5432 failed: Connection refused' and 2 timed out. Readiness did not prove the server accepts connections. Find whether the container exits, listens on another port, or needs longer to start on hosted runners; make readiness fail fast with the container log when the port does not accept connections.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/actions/runs/40971306663"
@@ -24,6 +24,14 @@
       "op": "update",
       "op_id": "537a98880f664e05901f9c6bb83df34a",
       "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7bc97e5b905b990114418f4a",
+      "at": "2026-11-11T02:33:34Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "892307cb18af4537ad70aaa232b12b37",
+      "session_id": "9c850cdf96994544b99810e1605fa398"
     }
   ]
 }
