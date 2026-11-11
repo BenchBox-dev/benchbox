@@ -41732,6 +41732,13 @@
       "status": "done",
       "title": "Trino Platform Adapter"
     },
+    "trino-presto-platform-timing-in-power-tests-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Trino and Presto record no platform timing inside power tests"
+    },
     "trunk-alarm-3511-selfclose-20261026": {
       "claim": null,
       "needs": [],

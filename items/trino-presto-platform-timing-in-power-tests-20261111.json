@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "A TPC-H SF0.01 power run on Trino and on Presto records valid platform_timing for each query, with timings within noise of a run without capture.",
+    "The chosen source and its retention limits are documented."
+  ],
+  "description": "PR #4080 defers platform-history lookups to after a power test, but system.runtime.queries keeps finished queries only briefly, so Trino/Presto set platform_history_deferrable = False and record statement IDs with status unavailable inside power tests. Run-level platform_timing coverage for these engines is therefore 0.0 for power runs.\n\nChange. Find a source that survives the phase: an event listener or query-completed log, system.runtime.queries polled by a side connection during the run (outside the timed connection), or the coordinator's query info REST endpoint by ID. Measure that it does not change query times, then enable it.\n\nGuardrails: linked worktree; no explanatory comments; changelog fragment if user-facing; no live cloud without owner approval quoted in context; heavy runs through make heavy-run.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/4080"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T17:06:21Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5c81707418f6427e952df8bcea0433c3",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
+    }
+  ]
+}
