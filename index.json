@@ -30865,17 +30865,12 @@
       "title": "Select tests of scripts that import a changed module from a sparse checkout"
     },
     "preflight-receipt-does-not-require-guard-steps-20261111": {
-      "claim": {
-        "expires_at": "2026-11-12T22:32:42Z",
-        "generation": "bad8376c19bc45c1984d280d647fa6d6",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549"
-      },
+      "claim": null,
       "needs": [
         "feature-pr-landing-guards-20261111"
       ],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Make pr-open require the preflight guard steps in the receipt"
     },
     "preflight-runs-docs-inventory-and-project-reference-guards-20261110": {
