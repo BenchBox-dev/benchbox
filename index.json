@@ -27871,7 +27871,9 @@
     },
     "operational-facts-sessions-rediscovered-20261111": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "feature-agent-docs-operational-facts-20261111"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Write down the operational facts sessions kept rediscovering"
