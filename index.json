@@ -38928,7 +38928,9 @@
     },
     "stale-docs-remaining-after-retro-20261111": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "feature-agent-docs-operational-facts-20261111"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Correct or retire the stale documentation the retrospective left in place"
