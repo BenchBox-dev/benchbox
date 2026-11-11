@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **InfluxDB defaults to port 8181 in core mode and 443 in cloud mode.** InfluxDB 2 users must pass `--platform-option port=8086`.
 - **Loads fail instead of recording partial data.** File-based loads fail when a handler raises or a non-empty source loads 0 rows. QuestDB, Databend, InfluxDB and SingleStore loads fail on missing rows, changed values or non-numeric DECIMAL text, and Doris now always loads through Stream Load.
 - **Regenerate DataFrame plan companions before publishing.** `.plans.json` files from `--capture-plans` on DataFrame platforms can contain local paths. New files redact them and use `Q1#0:power` keys; old keys still load.
+- **BREAKING: Minimum scale factor is 0.01.** The minimum scale factor is now 0.01 for every benchmark. TPC-DS, TPC-DS-OBT, CoffeeShop and JoinOrder Synthetic no longer accept 0.001, and the CoffeeShop default scale changed from 0.001 to 0.01.
 
 ### Added
 
@@ -30,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added an opt-in admission wait to the host lock: `python -m benchbox.utils.host_lock run --admit --admit-wait-minutes N` (and `make heavy-run HEAVY_ADMIT_WAIT=N`) re-checks a refused admission every minute for up to N minutes with the lock released in between.
 - The published results corpus adds TPC-DS OBT cohorts at SF 0.01 (DuckDB, DataFusion, Apache Doris and LakeSail) and SF 0.1 (DuckDB, DataFusion and Apache Doris). Every bundle ran all 93 statements without failures, and each cohort meets the three-platform ranking floor.
   - Apache Doris ran in a 4 GiB container with parallel_pipeline_task_num=1, so its timings reflect one pipeline task per query fragment; DuckDB ran with 8 threads and DataFusion with 10 partitions.
+- A scale factor that is accepted but not a standard value for the benchmark now prints a one-line note that results are not comparable with published results, on the command line (run, datagen and the interactive prompt) and in MCP dry-run and validate-only responses. MCP benchmark discovery also reports the accepted maximum and whether the listed scales are exact.
 
 ### Changed
 
@@ -43,8 +45,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - DuckDB loads Vortex and DuckLake with native handlers, and Delta, DuckLake, Iceberg and Vortex fallbacks insert Arrow tables directly. Iceberg maintenance, Spark and Hudi ingestion and the DataFusion cursor stay in Arrow.
 - The pandas loader casts date columns to `date32` in Arrow, speeding CSV loads of date-heavy tables.
 - TPC-H RF1 on SingleStore uses `LOAD DATA LOCAL INFILE` inside the timed transaction, and DuckLake keeps its RF1/RF2 declaration on a recorded SF0.01 run.
-- The bundled SQLGlot moves from 30.29.0.1 to 30.30.0.1 (fork commit `79831c9ffd0e`), a verified delivery of the benchbox-sqlglot fork.
+- The bundled SQLGlot moves from 30.29.0.1 to 30.31.0.1 (fork commit `945aced55e0e`, upstream SQLGlot v30.31.0), a verified delivery of the benchbox-sqlglot fork.
 - The benchmark listing and MCP discovery report 90 queries for TPC-DS OBT instead of 17.
+- Every benchmark now accepts any scale factor from its minimum up to 100000 (whole numbers from 1), not only the values in its scale list; JoinOrder and the metadata primitives still accept only SF 1. Values outside the range are rejected with a message that states the accepted range and the standard values.
 
 ### Fixed
 
@@ -59,6 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Throughput and FlightData.** Throughput runs record SQL translated inside stream workers and apply strict translation, and FlightData downloads start with the first month processed.
 - **UAT and the Linux VM.** UAT bring-up verifies each container's entrypoint, memory limit, ulimits and platform, and prunes completed databases during sweeps. Stopping the Linux VM powers the guest off cleanly (`BENCHBOX_LINUX_POWEROFF_WAIT_SECONDS`, default 15), and heavy-run shutdown is more reliable.
 - **Contributor workflow.** Removing the `no-auto-merge` label clears the hold check without a new commit, and wrapping `make pr-preflight` in `make heavy-run` or `host_lock run` is refused with exit code 2.
+- Fixed the reported query totals for the write_primitives and transaction_primitives benchmarks: they now show 112 and 23 operations instead of 12, so subset messages and MCP discovery match the operations that run.
 
 ## [0.5.0] - 2026-11-04
 

@@ -820,15 +820,22 @@ def test_verify_evidence_live_refuses_unresolved_review_thread() -> None:
         landing.verify_evidence_live(run, "o/r", _live_pr(HEAD), _evidence(HEAD))
 
 
-def test_review_thread_verification_accepts_resolved_and_outdated_pages() -> None:
+def test_review_thread_verification_accepts_resolved_pages_and_counts_an_unresolved_outdated_thread() -> None:
     run = FakeRun(
         [
             (0, _live_threads([{"isResolved": True, "isOutdated": False}], has_next=True, cursor="next")),
-            (0, _live_threads([{"isResolved": False, "isOutdated": True}])),
+            (0, _live_threads([{"isResolved": False, "isOutdated": True, "path": "a.py"}])),
         ]
     )
-    assert landing.unresolved_review_threads(run, "o/r", 3) is False
+    unresolved = landing.unresolved_review_threads(run, "o/r", 3)
+    assert [thread["path"] for thread in unresolved] == ["a.py"]
     assert "cursor=next" in run.calls[1]
+    assert "a.py (outdated)" in landing.describe_unresolved_threads(unresolved)
+
+
+def test_review_thread_verification_finds_nothing_when_every_thread_is_resolved() -> None:
+    run = FakeRun([(0, _live_threads([{"isResolved": True, "isOutdated": True}]))])
+    assert landing.unresolved_review_threads(run, "o/r", 3) == []
 
 
 def test_consume_retry_allows_exactly_once_under_concurrency(tmp_path: Path) -> None:

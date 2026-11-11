@@ -886,7 +886,7 @@ def _download(artifact_id: int, archive: Path) -> None:
 
 
 def hosted_refspecs(tag: str | None) -> list[str]:
-    refspecs = ["develop:refs/remotes/origin/develop", "refs/heads/release/*:refs/remotes/origin/release/*"]
+    refspecs = ["refs/heads/develop:refs/remotes/origin/develop", "refs/heads/release/*:refs/remotes/origin/release/*"]
     if tag is not None:
         _require(bool(re.fullmatch(TAG_PATTERN, tag)), "invalid version tag")
         refspecs.append(f"+refs/tags/{tag}:refs/tags/{tag}")

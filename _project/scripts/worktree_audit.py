@@ -39,7 +39,7 @@ CLI_DESCRIPTION = (
     "Usage:\n"
     "    uv run -- python _project/scripts/worktree_audit.py\n"
     "    uv run -- python _project/scripts/worktree_audit.py --format json\n"
-    "    uv run -- python _project/scripts/worktree_audit.py --repo BenchBox-dev/BenchBox\n"
+    "    uv run -- python _project/scripts/worktree_audit.py --repo BenchBox-dev/benchbox\n"
     "\n"
     "Guarantees:\n"
     "- Read-only: never mutates Git state, never prunes, never unlocks, never deletes.\n"
@@ -792,7 +792,7 @@ def evaluate_and_classify_worktree(
 
 def audit_worktrees(
     repo_root: Path,
-    repo_slug: str = "BenchBox-dev/BenchBox",
+    repo_slug: str = "BenchBox-dev/benchbox",
     token: Optional[str] = None,
     initial_collection_errors: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
@@ -1028,8 +1028,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     parser.add_argument(
         "--repo",
-        default=os.environ.get("GITHUB_REPOSITORY", "BenchBox-dev/BenchBox"),
-        help="GitHub repository slug owner/name (default: $GITHUB_REPOSITORY or BenchBox-dev/BenchBox)",
+        default=os.environ.get("GITHUB_REPOSITORY", "BenchBox-dev/benchbox"),
+        help="GitHub repository slug owner/name (default: $GITHUB_REPOSITORY or BenchBox-dev/benchbox)",
     )
     parser.add_argument(
         "--strict",

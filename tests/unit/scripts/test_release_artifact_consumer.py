@@ -322,6 +322,14 @@ def test_real_zip_and_producer_receipt_preserve_all_bytes(tmp_path, distribution
     assert set(receipt["files"]) == {WHEEL, SDIST}
 
 
+def test_a_producer_receipt_written_with_the_mixed_case_repository_still_verifies(distributions, metadata):
+    stored = json.loads((distributions / consumer.PRODUCER_RECEIPT).read_text(encoding="utf-8"))
+    stored["repository"] = "BenchBox-dev/BenchBox"
+    (distributions / consumer.PRODUCER_RECEIPT).write_text(json.dumps(stored), encoding="utf-8")
+    receipt = consumer.verify_producer_receipt(distributions, metadata["run"], metadata["job"])
+    assert receipt["repository"] == "BenchBox-dev/BenchBox"
+
+
 def test_zip_digest_checked_before_archive_parsing(tmp_path):
     archive = tmp_path / "not-a-zip"
     archive.write_bytes(b"tampered archive")

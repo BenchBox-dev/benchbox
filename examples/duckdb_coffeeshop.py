@@ -14,7 +14,7 @@ from benchbox.core.coffeeshop.benchmark import CoffeeShopBenchmark
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run CoffeeShop benchmark queries on DuckDB")
 
-    parser.add_argument("--scale", type=float, default=0.001, help="Scale factor (default: 0.001)")
+    parser.add_argument("--scale", type=float, default=0.01, help="Scale factor (default: 0.01)")
 
     parser.add_argument(
         "--output",

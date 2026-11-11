@@ -258,7 +258,7 @@ time, and refuses otherwise:
    This is an assertion, not evidence: no remote check can see unpushed
    builder work.
 6. The PR has no `no-auto-merge` label, is not draft, targets `develop`, has no
-   requested changes or unresolved threads, and has no failing required check.
+   requested changes or unresolved threads (outdated ones included), and has no failing required check.
    The fast-duration verdict for the exact head must also be present and readable;
    until `core` uploads it the arm refuses.
 7. Labels, draft state, and thread state match the observation stored with the

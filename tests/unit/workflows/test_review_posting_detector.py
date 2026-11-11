@@ -135,7 +135,7 @@ def test_the_detector_is_a_final_job_with_explicit_result_handling(detector: Det
     assert "success()" not in (WORKFLOWS / detector.workflow).read_text(encoding="utf-8")
     assert set(job["env"]["CONTEXTS"].split()) == set(detector.contexts)
     assert job["env"]["POSTER"] == POSTER
-    assert job["env"]["GATED_BASE"] == "develop"
+    assert job["env"]["GATED_BASE"] == "develop,release/*"
 
 
 @DETECTORS
@@ -229,12 +229,13 @@ def test_sweeps_and_comment_runs_post_nothing_for_one_head_and_stay_green(
     "pull",
     [
         {"state": "closed"},
-        {"base": {"ref": "main"}},
-        {"base": {"ref": "release/1.2.x"}},
+        {"base": {"ref": "feature/x"}},
+        {"base": {"ref": "release"}},
+        {"base": {"ref": "release/0.5.x/extra"}},
         {"draft": True},
         {"head": {"sha": OLD_HEAD}},
     ],
-    ids=["closed", "other-base", "release-base", "draft", "head-moved"],
+    ids=["closed", "feature-base", "bare-release", "nested-release", "draft", "head-moved"],
 )
 def test_pull_requests_the_callee_skips_by_design_stay_green(
     detector: Detector, pull: dict[str, Any], tmp_path: Path
@@ -242,6 +243,17 @@ def test_pull_requests_the_callee_skips_by_design_stay_green(
     done = _run(detector, tmp_path, result="skipped", pull=pull)
     assert done.returncode == 0, done.stdout + done.stderr
     assert not (tmp_path / "fake" / "status-reads").exists()
+
+
+@requires_tools
+@DETECTORS
+@pytest.mark.parametrize("base", ["develop", "release/0.5.x"])
+def test_pull_requests_into_a_gated_base_still_require_a_posted_status(
+    detector: Detector, base: str, tmp_path: Path
+) -> None:
+    done = _run(detector, tmp_path, result="success", pull={"base": {"ref": base}})
+    assert done.returncode == 1, done.stdout + done.stderr
+    assert f"no {detector.job} status" in done.stdout
 
 
 @requires_tools

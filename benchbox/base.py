@@ -71,7 +71,7 @@ class BaseBenchmark(BenchmarkResultValidationMixin, VerbosityMixin, ABC):
             raise ValueError(
                 f"Scale factors >= 1 must be whole integers. Got: {scale_factor}. "
                 f"Use values like 1, 2, 10, etc. for large scale factors. "
-                f"Use values like 0.1, 0.01, 0.001, etc. for small scale factors."
+                f"Use values like 0.1, 0.01, etc. for small scale factors."
             )
 
         self.scale_factor = scale_factor

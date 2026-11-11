@@ -22,7 +22,7 @@ import pr_landing
 
 CLI_DESCRIPTION = "Bind, record, arm, withdraw, and re-arm a cloud-built pull request from fetched objects alone."
 
-REPOSITORY = "BenchBox-dev/BenchBox"
+REPOSITORY = "BenchBox-dev/benchbox"
 BASE_BRANCH = "develop"
 STORE_SCHEMA = "remote_closeout_v1"
 STORE_ENV = "BENCHBOX_REVIEWS_DIR"
@@ -481,8 +481,13 @@ def _readiness_refusals(
         reasons.append(f"condition 6: the PR targets {view.get('baseRefName')!r}, not {BASE_BRANCH!r}")
     if view.get("reviewDecision") == "CHANGES_REQUESTED":
         reasons.append("condition 6: a reviewer requested changes")
-    if any(not thread["resolved"] and not thread["outdated"] for thread in observation["threads"]):
-        reasons.append("condition 6: an unresolved, non-outdated review thread is open")
+    unresolved = [
+        {"id": thread["id"], "isOutdated": thread["outdated"]}
+        for thread in observation["threads"]
+        if not thread["resolved"]
+    ]
+    if unresolved:
+        reasons.append(f"condition 6: {pr_landing.describe_unresolved_threads(unresolved)}")
     reasons.extend(f"condition 6: {reason}" for reason in failing_required_checks(verdicts, required, statuses or {}))
     reasons.extend(f"condition 6: {reason}" for reason in hidden_failures)
     return reasons
@@ -491,7 +496,7 @@ def _readiness_refusals(
 def _describe(field: str, value: object) -> str:
     if field != "threads" or not isinstance(value, list):
         return repr(value)
-    open_threads = sum(1 for thread in value if not thread.get("resolved") and not thread.get("outdated"))
+    open_threads = sum(1 for thread in value if not thread.get("resolved"))
     return f"{len(value)} threads, {open_threads} open"
 
 

@@ -3,6 +3,8 @@ name: Soundness Merge Digest
 on:
   schedule:
     - cron: "23 5 * * *"
+  push:
+    branches: ["release/**"]
   workflow_dispatch:
     inputs:
       bootstrap:
@@ -38,9 +40,15 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           BOOTSTRAP: ${{ inputs.bootstrap }}
         run: |
-          set -euo pipefail
-          args=(--repo "${REPOSITORY}" --ref origin/develop --apply)
+          set -uo pipefail
+          status=0
+          args=(--repo "${REPOSITORY}" --branch develop --apply)
           if [[ "${BOOTSTRAP}" == "true" ]]; then
             args+=(--bootstrap)
           fi
-          python3 _project/scripts/soundness_merge_digest.py "${args[@]}"
+          python3 _project/scripts/soundness_merge_digest.py "${args[@]}" || status=1
+          lines="$(git for-each-ref --format='%(refname:strip=3)' 'refs/remotes/origin/release/')" || exit 1
+          for branch in ${lines}; do
+            python3 _project/scripts/soundness_merge_digest.py --repo "${REPOSITORY}" --branch "${branch}" --apply || status=1
+          done
+          exit "${status}"

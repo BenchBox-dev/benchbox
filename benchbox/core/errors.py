@@ -96,6 +96,26 @@ class ScaleFactorNotSupportedError(ValueError):
         super().__init__(f"{benchmark_id} accepts scale_factor in {self.scale_options}; got {scale_factor}")
 
 
+class ScaleFactorOutOfRangeError(ValueError):
+    def __init__(
+        self,
+        benchmark_id: str,
+        scale_factor: float,
+        minimum: float,
+        maximum: float,
+        scale_options: list[float],
+    ):
+        self.benchmark_id = benchmark_id
+        self.scale_factor = scale_factor
+        self.minimum = minimum
+        self.maximum = maximum
+        self.scale_options = list(scale_options)
+        super().__init__(
+            f"{benchmark_id} accepts a finite scale_factor from {minimum:g} to {maximum:g} "
+            f"(whole numbers from 1); got {scale_factor}. Standard values: {self.scale_options}"
+        )
+
+
 __all__ = [
     "PlanCaptureError",
     "SerializationError",
@@ -103,4 +123,5 @@ __all__ = [
     "PlanParseError",
     "FingerprintIntegrityError",
     "ScaleFactorNotSupportedError",
+    "ScaleFactorOutOfRangeError",
 ]

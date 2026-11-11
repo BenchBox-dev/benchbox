@@ -98,7 +98,19 @@ def _write_allowlist(tmp_path: Path, payload: object = ALLOWLIST) -> Path:
     return path
 
 
-def _steps(repo: Path, env: dict[str, str], tmp_path: Path, steps: list[tuple[str, str, int]], allow: Path | None):
+REFERENCE_GUARD_STEPS = [("docs-reference-inventory", "ok", 0), ("project-references", "ok", 0)]
+
+
+def _steps(
+    repo: Path,
+    env: dict[str, str],
+    tmp_path: Path,
+    steps: list[tuple[str, str, int]],
+    allow: Path | None,
+    guards: bool = True,
+):
+    if guards:
+        steps = [*steps, *(guard for guard in REFERENCE_GUARD_STEPS if guard[0] not in {name for name, _, _ in steps})]
     stage = tmp_path / "stage"
     assert _script(repo, env, "begin", "--stage", str(stage), "--base-ref", "origin/develop").returncode == 0
     codes = []
@@ -140,13 +152,13 @@ def test_verify_accepts_a_matching_passing_receipt_and_renders_it(repo, tmp_path
         [("ruff-check", "All checks passed!", 0), ("pytest", "12 passed, 2 skipped in 3.40s", 0)],
         None,
     )
-    assert [done.returncode for done in codes] == [0, 0]
+    assert [done.returncode for done in codes[:2]] == [0, 0]
     assert _finalize(root, env, stage, 0, None).returncode == 0
     receipt = _receipt(root, env, tmp_path)
     assert receipt["status"] == "passed"
     assert receipt["tree"] == _git(root, env, "rev-parse", "HEAD^{tree}")
     assert receipt["steps"][1]["counts"] == {"passed": 12, "skipped": 2}
-    assert [step["exit_code"] for step in receipt["steps"]] == [0, 0]
+    assert [step["exit_code"] for step in receipt["steps"][:2]] == [0, 0]
     summary = tmp_path / "summary.md"
     done = _verify(root, env, None, "--summary-out", str(summary))
     assert done.returncode == 0, done.stderr
@@ -388,6 +400,8 @@ def open_world(tmp_path: Path) -> dict[str, object]:
         "make_timing_shell.sh",
     ):
         shutil.copy(ROOT / "scripts" / name, work / "scripts" / name)
+    (work / "_project" / "scripts").mkdir(parents=True)
+    shutil.copy(ROOT / "_project" / "scripts" / "preflight_targets.py", work / "_project" / "scripts")
     shutil.copy(ROOT / "Makefile", work / "Makefile")
     shutil.copytree(ROOT / "make", work / "make")
     (work / "_project" / "decisions").mkdir(parents=True)
@@ -487,6 +501,59 @@ def test_pr_open_proceeds_on_a_matching_receipt_and_renders_it_into_the_pr_body(
     assert "https://github.com/BenchBox-dev/BenchBox/pull/7" in proc.stdout
 
 
+def _diverge_from_develop(world: dict[str, object], branch_subject: str) -> None:
+    work, env = world["work"], world["env"]
+    _commit(work, env, "shared.txt", "branch\n")
+    _git(work, env, "commit", "-q", "--amend", "-m", branch_subject)
+    _git(work, env, "checkout", "-q", "develop")
+    _commit(work, env, "shared.txt", "develop\n")
+    _git(work, env, "commit", "-q", "--amend", "-m", "fix thing (#5)")
+    _git(work, env, "push", "-q", "origin", "develop")
+    _git(work, env, "checkout", "-q", "feat/receipt")
+
+
+def test_pr_open_names_an_amended_develop_squash_commit_when_the_branch_conflicts_with_develop(open_world) -> None:
+    _diverge_from_develop(open_world, "fix thing (#5)")
+    proc = _pr_open(open_world)
+    assert proc.returncode != 0
+    assert "HEAD conflicts with origin/develop" in proc.stderr
+    assert "fix thing (#5)" in proc.stderr
+    assert "git commit --amend" in proc.stderr
+    assert "feat/receipt" not in _origin_branches(open_world)
+
+
+def test_pr_open_gives_the_plain_conflict_message_when_no_branch_commit_looks_like_a_develop_squash(open_world) -> None:
+    _diverge_from_develop(open_world, "fix thing")
+    proc = _pr_open(open_world)
+    assert proc.returncode != 0
+    assert "HEAD conflicts with origin/develop" in proc.stderr
+    assert "amend" not in proc.stderr
+
+
+def test_pr_open_refuses_a_title_given_only_through_the_pr_open_title_environment_variable(open_world) -> None:
+    _record_receipt(open_world, [("ruff-check", "ok", 0), ("pytest", "3 passed in 0.10s", 0)], 0)
+    open_world["env"]["PR_OPEN_TITLE"] = "fix(x): a title"
+    proc = _pr_open(open_world)
+    assert proc.returncode != 0
+    assert "TITLE" in proc.stderr
+    assert "feat/receipt" not in _origin_branches(open_world)
+
+
+def test_pr_open_accepts_the_title_given_as_a_make_variable(open_world) -> None:
+    _record_receipt(open_world, [("ruff-check", "ok", 0), ("pytest", "3 passed in 0.10s", 0)], 0)
+    proc = subprocess.run(
+        ["make", "-s", "pr-open", "TITLE=fix(x): a title"],
+        cwd=open_world["work"],
+        env=open_world["env"],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=180,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "feat/receipt" in _origin_branches(open_world)
+
+
 def test_pr_open_accepts_an_allowlisted_failure_from_the_committed_allowlist_and_names_it(open_world) -> None:
     work, env, tmp = open_world["work"], open_world["env"], open_world["tmp"]
     (work / ".github").mkdir()
@@ -551,6 +618,49 @@ def test_a_receipt_with_every_required_step_is_accepted(repo, tmp_path: Path) ->
     _note(root, env, stage, python_files=1, test_files=2, linux_files=1)
     assert _finalize(root, env, stage, 0, None).returncode == 0
     assert _verify(root, env, None, "--base-ref", "origin/develop").returncode == 0
+
+
+def test_a_receipt_lacking_a_guard_step_the_changed_paths_require_is_refused(repo, tmp_path: Path) -> None:
+    root, env = repo
+    stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0)], None, guards=False)
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    done = _verify(root, env, None)
+    assert done.returncode == 1
+    assert "lacks required step(s) docs-reference-inventory, project-references" in done.stderr
+
+
+def test_a_receipt_lacks_the_ownership_guard_when_docs_changed_and_is_accepted_with_it(repo, tmp_path: Path) -> None:
+    root, env = repo
+    owned = ROOT / "_project" / "scripts" / "preflight_targets.py"
+    spec = importlib.util.spec_from_file_location("preflight_targets_for_docs_root", owned)
+    assert spec is not None and spec.loader is not None
+    targets = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(targets)
+    (root / targets.DOCS_ROOT).mkdir()
+    _commit(root, env, f"{targets.DOCS_ROOT}x.md", "# x\n")
+    stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0)], None)
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    refused = _verify(root, env, None, "--base-ref", "origin/develop")
+    assert refused.returncode == 1
+    assert "lacks required step(s) docs-ownership" in refused.stderr
+    (tmp_path / "stage").unlink()
+    stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0), ("docs-ownership", "ok", 0)], None)
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    assert _verify(root, env, None, "--base-ref", "origin/develop").returncode == 0
+
+
+def test_a_receipt_written_before_guards_were_recorded_is_refused_with_its_own_message(repo, tmp_path: Path) -> None:
+    root, env = repo
+    stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0)], None)
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    receipt_file = next((tmp_path / "receipts").glob("*.json"))
+    receipt = json.loads(receipt_file.read_text(encoding="utf-8"))
+    receipt["schema"] = 1
+    receipt_file.write_text(json.dumps(receipt), encoding="utf-8")
+    done = _verify(root, env, None)
+    assert done.returncode == 1
+    assert "predates guard-step recording" in done.stderr
+    assert "rerun `make pr-preflight`" in done.stderr
 
 
 def test_a_receipt_without_a_selection_is_refused(repo, tmp_path: Path) -> None:

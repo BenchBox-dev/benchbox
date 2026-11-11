@@ -228,7 +228,7 @@ def test_get_data_source_benchmark_declares_tpcds() -> None:
     assert benchmark.get_data_source_benchmark() == "tpcds"
 
 
-@pytest.mark.parametrize("scale_factor", [0.001, 0.01, 0.1, 1, 10, 100000])
+@pytest.mark.parametrize("scale_factor", [0.01, 0.1, 1, 10, 100000])
 def test_public_api_accepts_the_tpcds_scale_range(tmp_path: Path, scale_factor: float) -> None:
     from benchbox import TPCDSOBT
 

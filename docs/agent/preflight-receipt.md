@@ -16,7 +16,7 @@ can read what ran.
    directory). A failed run still writes a receipt, and it blocks `pr-open`.
 3. `make pr-open` verifies the receipt for the tree of `HEAD` before the review or the push. It refuses when the
    receipt is missing, for another tree, shows a failed step, lacks a step its recorded selection required
-   (`ruff-check`/`ruff-format` for changed Python, `pytest` for mapped tests, `linux-pytest` when selected), or was
+   (`ruff-check`/`ruff-format` for changed Python, each guard step that the changed paths between the receipt's merge base and head require (`verify` recomputes the list itself, so a receipt that skipped a guard is refused, but a recorded guard step proves only that it was run and passed), `pytest` for mapped tests, `linux-pytest` when selected), or was
    selected against a merge base that is not an ancestor-or-equal of the PR's merge base (`BASE=HEAD` never
    passes). Any new content commit, and any
    `pr-refresh` merge that changes the tree, needs a fresh `make pr-preflight`.
