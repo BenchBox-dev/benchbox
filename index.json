@@ -40081,7 +40081,7 @@
         "theseus-gateway-client-first-live-gate-20261102"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Theseus v0.2.5: brief on stdin, mode from rendered size, capacity recalibration and legacy-name removal"
     },
     "theseus-v025-review-convergence-20261107": {

@@ -7,6 +7,7 @@
   ],
   "context": "Renumbered 2026-11-06: v0.2.1 is a test-only fix (test_legacy_transition.py patched stdlib subprocess.run and urlopen, flagged by BenchBox's hosted review of the 0.2.0 promotion, PR #3962), so this cleanup release becomes v0.2.2. Also worth calibrating here: under the coverage rule, many hosted attempts on #3962 ended \"absent (incomplete)\" with 1–7 unseen hunks; measure the rate and consider a stronger retry hint.\n\nRenumbered to v0.2.3 (owner decision D8, 2026-11-06): provider-loss resilience ships first as v0.2.2 (review-provider-loss-resilience-20261106).\n\nRenumbered to v0.2.4 (2026-11-06): v0.2.3 fixes a capacity bypass in v0.2.2's substitution path, found by BenchBox's hosted review of the v0.2.2 promotion (PR #3978).\n\nRenumbered to v0.2.5 (2026-11-07): v0.2.4 is a small patch where the gate job accepts exit 3 (waiting), fixing review-gate-cannot-resolve-pr-number-20261107.\n\n2026-11-08 (owner): folded into the combined Theseus v0.2.5 release tracked by theseus-v025-review-convergence-20261107. This item's acceptance criteria still apply and are verified at that release.",
   "description": "Plan item T-C (local://brief-size-remediation-plan.md §2 e and f, §4.1), folded into the planned legacy-cleanup release:\n- (e) pick the brief mode from the rendered size (split _assemble_prompt into compose and render);\n- (f) send the brief to omp on stdin, add a candidate-check canary for omp bumps, and restate the inline bound in terms of capacity;\n- recalibrate capacity from schema-2 captures;\n- delete legacy.py and all old-name reads and mirroring, once no open BenchBox PR carries old markers.\nThis is the first self-gated Theseus PR, reviewed by theseus-review[bot] under the 0.2.0 rules.",
+  "drop_reason": "Folded into theseus-v025-review-convergence-20261107 (owner decision 2026-11-08); acceptance and needs moved there on 2026-11-11.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
@@ -55,6 +56,14 @@
       "op": "update",
       "op_id": "53625dc6c75543b2abdb186053ff1403",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:23:15Z",
+      "client": "omp-coding-agent",
+      "op": "drop",
+      "op_id": "2732ab09c9d4456d8dbbc27d4f3a80c1",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
