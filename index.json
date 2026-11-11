@@ -36561,13 +36561,18 @@
       "title": "Prune the 36 site-parity allowances for broken links that now resolve"
     },
     "site-primitives-count-docs-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T23:21:34Z",
+        "generation": "3c31fc5e5fc14e70b9d5272519c726dc",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba"
+      },
       "needs": [
         "scale-factor-consistency-umbrella-20261111",
         "primitives-query-count-registry-20261111"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Site docs: write and transaction primitives have 112 and 23 operations"
     },
     "site-publishing-guide-rewrite-20261017": {
