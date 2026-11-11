@@ -4,6 +4,7 @@
     "Verification: a tractable test sets a future not_before, clears it with an empty value, and takes the item immediately.",
     "Done when the fixed release is pinned in BenchBox, or the documentation is corrected and that release is pinned."
   ],
+  "context": "Revalidated 2026-11-11: still required; not fixed in tractable 1.1.0. joeharris76/tractable main is 77812ef (merge of PR #72, tag v1.1.0, 2026-11-07, one day after 1.0.0 was observed to have the bug). The 1.1.0 changelog mentions no not_before change, the tool text in src/tractable/mcp/tools.py:180 and the instructions (mcp/instructions.py:70) still promise that \"\" clears a hold, and service.py:661 and :1657 still tell callers to clear a hold with update_item not_before=\"\". I did not rerun the bug on 1.1.0; the claim rests on the changelog and source. BenchBox's move to 1.1.0 is PR #4122 (open, chore/tractable-1-1-0, worktree BenchBox.wt-tractable-1-1-0 at 10daf6ee9f); pinning 1.1.0 does not satisfy this item. Needs a fix and a new tractable release (for example 1.1.1), then another BenchBox pin bump. The core vendored wheel is still tractable-1.0.0 on origin/develop (_project/scripts/pyproject.toml:19).",
   "description": "Found on 2026-11-11 while delivering retro-navigation-fixes-umbrella-20261111 (or in the retrospective over 25 agent sessions that preceded it) and not addressed there.\n\nCross-repository item (joeharris76/tractable), tracked here because BenchBox drives the tracker.\n\nProblem. The server instructions and the update_item tool description say `not_before=\"\"` clears a hold. On tractable 1.0.0, `update_item {\"id\": <item with waiting_until set>, \"not_before\": \"\"}` returns `E_STATE: operation produced no state change` and the hold stays; sent together with `context_append`, only the context changes. Observed five times on 2026-11-11 on open, unclaimed items. Workaround used: set not_before a few seconds in the future, wait, then take.\n\nChange. Make the empty value clear the hold as documented, or change the documentation and name the supported way.",
   "links": [
     "https://github.com/joeharris76/tractable",
@@ -17,6 +18,14 @@
       "op": "create",
       "op_id": "d22847464bb44f349ac9410895d13c14",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:29:42Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f6b6e17e673d4c57bc63a98082bb3879",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
