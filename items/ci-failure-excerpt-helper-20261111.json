@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Decision gate (prior art): first check make/help.mk, scripts/ and _project/scripts/dev_loop_pr_metrics.py for an existing log reader to extend (make duplicate-check-delta); build new only if none fits.",
+    "Decision gate (untrusted input): log text is untrusted; the tool only prints it, bounded, and never executes or interprets it.",
+    "Verification: unit tests with recorded job and log fixtures cover a pytest failure, a lint aggregator failure that names the inner guard, an in-progress run, and a log with escape sequences.",
+    "Verification: output for one failed job is under 200 lines by default.",
+    "Done when merged, listed in make help, and referenced from docs/agent/merge-authority.md."
+  ],
+  "description": "Source: a retrospective over 25 agent sessions (2026-10-18 to 2026-11-11), followed by an adversarial re-check of each claim against origin/develop 4835f5a537.\n\nProblem. There is no repository tool for reading CI failures. Three sessions pulled failed job logs by hand about 280 times (`gh run view --log-failed`, `gh api .../jobs/<id>/logs`), each with its own grep. Typical failures cost 3 to 5 calls; outputs reached 7 MB; `--log-failed` errors on escape sequences and on runs still in progress; lint aggregator jobs hide the real failing guard. `make pr-status` shows only check conclusions.\n\nOwner decision 2026-11-11: track this, do not build it with the navigation fixes.\n\nProposed change. `make ci-failures PR=<n>` or `RUN=<id>`: list failed jobs (through the jobs API, so in-progress runs work), and for each print the failed step, `##[error]` lines, pytest `FAILED`/`ERROR` ids and a short tail, with escape sequences stripped and output bounded. Document it beside `pr-rerun` in docs/agent/merge-authority.md and in make/help.mk.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly, never git add -A; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission or skipping the test lock; never bypass a required check, ruleset, hold label or review gate, and never post a stand-in; change only the files this item names, and report anything else as noticed-but-not-touched; re-read every cited file on current origin/develop before editing, because the line numbers here are hints from 2026-11-11 (origin/develop 4835f5a537); close at a merged PR (make pr-open, make pr-arm), and finish this item only after the merge is observed.",
+  "links": [
+    "make/pr-landing.mk",
+    "make/help.mk",
+    "docs/agent/merge-authority.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T13:11:29Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "666e6d1bd0344e1a874c1943802e3f97",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    }
+  ]
+}
