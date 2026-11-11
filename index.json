@@ -30527,7 +30527,9 @@
     },
     "pr-landing-surface-unresolved-threads-20261101": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "feature-pr-landing-guards-20261111"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Report unresolved review threads when an armed PR sits blocked with green checks"
