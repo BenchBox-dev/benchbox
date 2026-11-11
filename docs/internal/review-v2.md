@@ -28,6 +28,17 @@ carries that code: module names in the sections below (`cli.py`, `local.py`,
 `src/theseus_reviewer/` in that repository, and their unit and scenario tests
 live there.
 
+The full `_project/scripts/oracle_*` paths in Calibration, Cut-over and Required gate
+from trusted code are the same modules by their former location; none of those
+paths exists in this repository. Cut-over is a record of how the gate was introduced,
+not a current procedure.
+
+`gate_paths` in `.github/review.yml` and `.github/soundness-paths.txt` still list
+`.github/oracle-reviewers.yml`, `.github/oracle-omp-config.yml`,
+`scripts/oracle_local_review.py` and `_project/scripts/oracle_gateway_host.sh`, none of
+which exists. While listed, re-creating one of them is treated as a soundness change.
+They are left in place until the owner decides whether that is wanted.
+
 BenchBox keeps the consumer side:
 
 - `.github/workflows/review-verdict.yml` and `review-gate.yml`: thin callers of
@@ -1616,6 +1627,8 @@ equivalent, written in the pull request body. Tests import the gate and digest s
 module name never runs their mutants.
 
 ## Cut-over
+
+Historical: the paths below are the pre-Theseus locations; see Theseus ownership.
 
 Done: `.github/review.yml` sets `mode: enforce`, and the checker
 (`_project/scripts/oracle_review_check.py`), reported by the required

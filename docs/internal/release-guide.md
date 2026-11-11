@@ -490,6 +490,9 @@ the shard run directories of the newest executed runs into that layout
 (`<run id>-<sha prefix>/stage<N>-<shard>/cells.jsonl` and the rest of the run
 directory) and point the rubric at it:
 
+`fetch-runs` is also the way to get shard evidence for any audit of recent runs (`--branch` selects the branch);
+do not download and unzip the run artifacts by hand.
+
 ```bash
 uv run -- python scripts/trunk_uat.py fetch-runs --output ~/trunk-uat-history --run-limit 30
 uv run -- python scripts/uat_rubric.py --history-dir ~/trunk-uat-history --output-dir ~/trunk-uat-rubric
@@ -769,6 +772,11 @@ against it. That script installs the wheel beside public `sqlglot`, checks that
 separate from the public `sqlglot`, and leaves the public package intact after
 `benchbox` is uninstalled. Dispatch `windows-fast.yml` on a branch to run the same
 script on `windows-latest` before tagging.
+
+The bundled SQLGlot is the wheel zip `benchbox/_vendor/benchbox_sqlglot-<version>-py3-none-any.whl.zip`, described by
+`benchbox/_vendor/sqlglot.json`. Its files are inside the zip, so `benchbox/_vendor/sqlglot/<file>` does not exist on
+disk; read one with `unzip -p benchbox/_vendor/benchbox_sqlglot-*.whl.zip benchbox/_vendor/sqlglot/<file>`
+(for example `dialects/duckdb.py`).
 
 Windows verification of the zip-loaded runtime: the script passed on
 `windows-latest` with Python 3.12 in `windows-fast.yml` run 40504950564

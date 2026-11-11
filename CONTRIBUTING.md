@@ -73,8 +73,8 @@ For example, `CONTRIBUTING.md`, agent instructions and selected internal runbook
 route to code CI.
 
 `.github/path-filters.yml` adds content, skill-integrity, packaging, binary-framing and
-visualization checks. Coverage-impact selection currently runs in shadow mode: it records
-the proposed selection but escalates to the complete medium tier. Selected Windows tests,
+visualization checks. Coverage-impact selection currently runs in shadow mode (`SELECTION_SHADOW` in
+`scripts/coverage_test_selection.py`): it records the proposed selection but escalates to the complete medium tier. Selected Windows tests,
 tuning, SQL-execution evidence, publication/API contracts and Trunk-lane changes have
 additional conditional jobs. Read the `ci-paths` summary and decision artifacts for the
 actual routing of a head rather than assuming every PR runs every job.
@@ -356,6 +356,12 @@ CI jobs install Temurin 21 and invoke the same helpers so PySpark stays active e
 ## Adding a New Benchmark
 
 To add a new benchmark, create a new file in the `benchbox` directory and implement the `BaseBenchmark` interface. See existing benchmarks for examples.
+
+A benchmark's accepted scale factors are enforced in several places, so change them together:
+`benchbox/core/benchmark_registry.yaml`, the generic checks in `benchbox/base.py` and
+`benchbox/core/base_benchmark.py`, `validate_scale_factor` in `benchbox/core/benchmark_registry.py` (called from
+`benchbox/cli/benchmarks.py`), `_SF1_ONLY_BENCHMARKS` in `tests/uat/compatibility.py`, and the scale choice in
+`tests/integration/test_local_platform_benchmark_matrix.py`.
 
 ## Adding DataFrame Platform Support
 

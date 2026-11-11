@@ -107,6 +107,11 @@ make worktree-session-release WORKTREE_PATH="$WORKTREE_PATH"
 BENCHBOX_WORKTREE_TAKEOVER=1 make agent-write-preflight
 ```
 
+Subagents of one harness share the harness pid, so a finished subagent's claim never goes stale and
+the next subagent in the same worktree is refused. The refusal message prints the takeover command;
+a successor subagent runs `BENCHBOX_WORKTREE_TAKEOVER=1 make agent-write-preflight` first, and a parent
+prompt that hands a worktree to a subagent should include it.
+
 The first gives up your claim; the second takes over a worktree whose owner is live but abandoned
 (`BENCHBOX_WORKTREE_TAKEOVER=1 make worktree-session-release` clears another session's claim).
 

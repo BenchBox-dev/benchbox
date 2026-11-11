@@ -103,3 +103,16 @@ ignored materialization is present. The tracker runtime is the tractable wheel
 vendored under `_project/scripts/vendor/` and pinned in
 `_project/scripts/pyproject.toml`; scripts call it with
 `uv run --project _project/scripts --locked -- tractable`.
+
+Upgrading the vendored wheel changes every site that records its version or hash:
+
+- `_project/scripts/pyproject.toml` (the `tractable` path source)
+- `_project/scripts/uv.lock`
+- `EXPECTED_VERSION` in `_project/scripts/todo_state_contract_check.py`
+- `_project/analysis/batch-rollout-evidence.json`
+- the `external` entry for the wheel path in `quality/comment-policy.json`
+- `TRACTABLE_VERSION` and `WHEEL_SHA256` in `tests/integration/worktree/test_batch_skill_delivery.py`
+
+After the upgrade merges, run `uv sync --project _project/scripts --locked` in the primary clone, restart the
+tractable MCP server, and reinstall any globally installed tractable tool with the `[mcp]` extra
+(`tractable[mcp]`, as `_project/scripts/pyproject.toml` requires). Dropping the extra has broken the MCP server for several sessions.
