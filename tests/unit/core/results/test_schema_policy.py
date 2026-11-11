@@ -131,3 +131,5 @@ def test_producer_payload_boundary_redacts_platform_metadata_sentinels() -> None
     for gate in gates:
         assert gate not in text, f"producer payload leaked {gate}"
     assert "o_orderkey" in text
+
+

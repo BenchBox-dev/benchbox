@@ -630,3 +630,5 @@ class TestLakeSailMockedCoverage:
         with patch("polars.from_pandas", return_value=MagicMock()) as mock_fp:
             adapter.to_polars(df)
             mock_fp.assert_called_once()
+
+

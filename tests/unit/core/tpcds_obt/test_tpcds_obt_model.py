@@ -102,3 +102,5 @@ def test_lineage_markdown_renders_the_whole_model_deterministically() -> None:
         assert f"| `{role.name}` | `{role.prefix}` |" in page
     for channel in schema.get_channels().values():
         assert f"| `{channel.name}` | `{channel.sales_table}` |" in page
+
+

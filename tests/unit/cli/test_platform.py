@@ -1412,3 +1412,5 @@ def test_platform_status_orders_stable_platforms_before_experimental_ones() -> N
 
     assert stable_rows and experimental_rows, "fixture assumption changed"
     assert max(stable_rows) < min(experimental_rows)
+
+

@@ -319,3 +319,5 @@ def test_bzip2_handler_decodes_with_requested_encoding(tmp_path: Path) -> None:
 
     with Bzip2Handler().open(path, newline="", encoding="cp1252") as f:
         assert f.read() == "na\u00efve|1\n"
+
+

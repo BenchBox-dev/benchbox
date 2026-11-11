@@ -160,3 +160,5 @@ def test_plan_capture_gate_catches_planted_defect() -> None:
         "plan-capture gate failed for an unexpected reason rather than the dropped "
         f"fingerprint; the negative test is no longer load-bearing.\n{combined}"
     )
+
+

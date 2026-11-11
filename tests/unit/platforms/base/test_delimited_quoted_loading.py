@@ -160,3 +160,5 @@ def test_compression_handlers_translate_line_endings_unless_newline_is_requested
             assert handle.read() == "a\nb\n"
         with handler.open(path, newline="") as handle:
             assert handle.read() == "a\r\nb\r\n"
+
+

@@ -189,3 +189,5 @@ def test_registration_matches_non_ascii_entries_as_stored(tmp_path: Path) -> Non
         check=True,
     )
     assert registration(tmp_path, unicode_entry).endswith("PR #21")
+
+

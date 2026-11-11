@@ -181,3 +181,5 @@ def test_probe_worker_thread_is_daemon() -> None:
 
     probe_statement_overhead(_MockConnection(_SpyCursor()), timeout_seconds=5.0, sample_count=1)
     assert seen.get("daemon") is True
+
+

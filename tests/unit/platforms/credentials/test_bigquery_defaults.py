@@ -354,3 +354,5 @@ class TestBigQueryCredentialDefaults:
 
         calls = mock_prompt_default.call_args_list
         assert calls[4][1]["current_value"] == "existing-bucket"
+
+

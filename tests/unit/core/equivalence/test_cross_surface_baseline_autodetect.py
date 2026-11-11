@@ -278,3 +278,5 @@ def test_refusal_is_never_masked_when_an_unrelated_divergence_rides_along(tmp_pa
     assert outcome.prune_exit_code == 1
 
     assert path.read_text(encoding="utf-8") == before
+
+

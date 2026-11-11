@@ -189,3 +189,5 @@ class TestDatabendConfigBuilder:
         config = self._call(info=info)
         assert config.name == "Databend Cloud"
         assert config.driver_package == "databend-sqlalchemy"
+
+

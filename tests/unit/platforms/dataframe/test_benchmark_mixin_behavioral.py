@@ -618,3 +618,5 @@ class TestAppliedTuningLedgerAttach:
         adapter._attach_applied_tuning_ledger(builder)
 
         assert adapter.writer_calls == [builder]
+
+

@@ -25,3 +25,5 @@ def test_guard_restores_urlopen_after_an_error():
     with pytest.raises(RuntimeError), _network_forbidden():
         raise RuntimeError("boom")
     assert urllib.request.urlopen is original
+
+

@@ -345,3 +345,5 @@ class TestContextIntegration:
 
         assert adapter.get_row_count(adapter.collect(alpha.native)) == 2
         assert adapter.get_row_count(adapter.collect(beta.native)) == 3
+
+

@@ -217,3 +217,5 @@ def test_duckdb_only_cpc_and_req_operations_skip_trino() -> None:
 def test_real_catalog_version_is_pinned() -> None:
     catalog = load_write_primitives_catalog()
     assert catalog.version == 2
+
+

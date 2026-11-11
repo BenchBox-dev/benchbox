@@ -150,3 +150,5 @@ def test_old_minimal_v2_result_without_environment_fields_still_serializes(tmp_p
     assert payload["environment"]["platform_runtime"]["collection_status"] == "unavailable"
     assert payload["platform"]["deployment"]["endpoint_class"] == "unknown"
     assert payload["platform"]["deployment"]["collection_status"] == "unavailable"
+
+

@@ -933,3 +933,5 @@ class TestDryRunDataLoadModes:
         result = executor._get_platform_config(None, system_profile)
 
         assert result == {"data_only": True}
+
+

@@ -566,3 +566,5 @@ def test_manager_create_error_record_captures_context(manager):
     assert rec.record_context == {"row": 42}
     assert rec.error_message == "disk full on /data"
     assert rec.stack_trace is not None
+
+

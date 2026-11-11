@@ -121,3 +121,5 @@ def test_tpch_generation_returns_while_the_flush_is_stalled(tmp_path, blocking_s
     assert generated
     assert elapsed_seconds(start) < PROMPT_SECONDS
     assert "unflushed writes" in caplog.text
+
+

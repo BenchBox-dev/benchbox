@@ -212,3 +212,5 @@ def test_visualize_cli_comparison_chart_requires_two_results(tmp_path):
 
     assert result.exit_code != 0
     assert "require exactly 2 results" in result.output
+
+

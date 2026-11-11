@@ -225,3 +225,5 @@ class TestOverrideDuckDBRoundTrip:
             assert row == (None, None, None, None)
         finally:
             con.close()
+
+

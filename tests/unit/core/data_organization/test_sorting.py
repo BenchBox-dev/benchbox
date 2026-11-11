@@ -484,3 +484,5 @@ class TestSortedParquetWriterOpenTableFormatOptions:
 
         writer.write_sorted_parquet("lineitem", [source], tmp_path)
         assert captured["validate_row_count"] is True
+
+

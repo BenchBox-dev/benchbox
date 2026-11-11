@@ -331,3 +331,5 @@ class TestReportHelp:
         assert "--benchmark" in result.output
         assert "--scale-factor" in result.output
         assert "--metric" in result.output
+
+

@@ -136,3 +136,5 @@ def test_apply_driver_metadata_all_none_leaves_defaults() -> None:
     assert result.driver_version_resolved is None
     assert result.driver_version_actual is None
     assert result.driver_auto_install is False
+
+

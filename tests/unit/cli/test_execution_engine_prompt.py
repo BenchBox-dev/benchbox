@@ -147,3 +147,5 @@ def test_polars_streaming_cli_alias_rejects_conflicting_execution_engine():
     assert result.exit_code == 2
     assert "conflicts with --execution-engine in-memory" in result.output
     prepare.assert_not_called()
+
+

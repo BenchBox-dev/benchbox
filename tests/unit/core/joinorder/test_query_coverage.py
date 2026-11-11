@@ -38,3 +38,5 @@ def test_canonical_queries_parse_with_sqlglot(query_id: str) -> None:
     from benchbox._vendor import sqlglot
 
     sqlglot.parse_one(JoinOrderQueryManager().get_query(query_id), read="postgres")
+
+

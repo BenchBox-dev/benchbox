@@ -87,3 +87,5 @@ def test_clickhouse_overrides_compose_cleanly_with_execution_rewrites():
         assert ("AVG(SUM(" in final) == ("AVG(SUM(" in ch_query), (
             f"Q{query_id}: execution rewrites keep nested aggregates"
         )
+
+

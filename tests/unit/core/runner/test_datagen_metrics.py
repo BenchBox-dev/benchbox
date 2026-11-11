@@ -187,3 +187,5 @@ def test_datagen_phase_has_table_stats_from_v2_manifest(tmp_path: Path):
     assert payload_phase["tables_generated"] == 2
     assert payload_phase["total_rows"] == 14
     assert payload_phase["total_size_bytes"] == 170
+
+

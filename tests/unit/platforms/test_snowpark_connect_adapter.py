@@ -704,3 +704,5 @@ class TestSnowparkConnectAdapterConnectionParams:
         params = adapter._build_connection_parameters()
 
         assert params["authenticator"] == "externalbrowser"
+
+

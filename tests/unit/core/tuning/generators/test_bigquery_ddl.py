@@ -316,3 +316,5 @@ class TestPartitionGranularityEnum:
         assert PartitionGranularity.MONTH.value == "MONTH"
         assert PartitionGranularity.YEAR.value == "YEAR"
         assert PartitionGranularity.HOUR.value == "HOUR"
+
+

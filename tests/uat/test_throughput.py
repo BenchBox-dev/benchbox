@@ -790,3 +790,5 @@ def test_cli_assert_notices_when_the_median_gates(tmp_path: Path, slow_runner, c
     assert main(_assert_argv(glob_pattern, "--evaluate-floor", "--baseline-history", history)) == 0
 
     assert "::notice::5 of 5 required baseline samples" in capsys.readouterr().out
+
+

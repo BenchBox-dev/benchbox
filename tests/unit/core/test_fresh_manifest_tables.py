@@ -80,3 +80,5 @@ def test_fresh_mapping_matches_manifest_reuse(tmp_path: Path, monkeypatch, compr
             contents = gzip.decompress(path.read_bytes()) if compressed else path.read_bytes()
             assert contents == payloads[path]
     assert manifest.manifest_path.read_bytes() == producer_manifest_bytes
+
+

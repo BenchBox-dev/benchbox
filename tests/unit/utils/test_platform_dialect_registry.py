@@ -113,3 +113,5 @@ def test_manifest_rejects_sql_platform_without_dialect():
             "x",
             {"supports_sql": False, "supports_dataframe": True, "default_mode": "dataframe", "sql_dialect": "duckdb"},
         )
+
+

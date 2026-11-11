@@ -782,3 +782,5 @@ class TestFormatTextComparison:
         ]
         _format_geometric_mean_section(lines, queries)
         assert len(lines) > 0
+
+

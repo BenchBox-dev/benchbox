@@ -336,3 +336,5 @@ class TestBenchmarkTypeEnum:
         assert "ssb" in benchmarks
         assert "clickbench" in benchmarks
         assert "custom" in benchmarks
+
+

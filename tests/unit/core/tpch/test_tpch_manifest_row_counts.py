@@ -196,3 +196,5 @@ def test_reused_manifest_preserves_compression_metadata_from_compressed_files(tm
     assert refreshed["compression"] == original_compression
     assert refreshed["row_counts_source"] == "measured"
     assert refreshed["tables"]["lineitem"]["formats"]["tbl"][0]["row_count"] == 6
+
+

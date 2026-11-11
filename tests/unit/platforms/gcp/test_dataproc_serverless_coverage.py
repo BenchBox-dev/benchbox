@@ -70,3 +70,5 @@ def test_apply_tuning_configuration_collects_results() -> None:
     assert result["primary_keys"] == {"pk": 1}
     assert result["foreign_keys"] == {"fk": 1}
     assert result["platform_optimizations"] == {"opt": 1}
+
+

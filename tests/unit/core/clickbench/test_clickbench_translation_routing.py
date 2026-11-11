@@ -116,3 +116,5 @@ def test_singlestore_domain_extraction_avoids_non_capturing_group(tmp_path) -> N
 
     assert "(?:" not in sql
     assert "'^https?://(www\\\\.)?([^/]+)/.*$', '\\\\2'" in sql
+
+

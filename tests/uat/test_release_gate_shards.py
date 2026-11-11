@@ -414,3 +414,5 @@ def test_release_gate_packaging_never_needs_a_public_pseudonym_salt(stage_name: 
     )
     assert result.invocations[0][:3] == ("benchbox", "publish", "run")
     assert "submit" not in result.invocations[0]
+
+

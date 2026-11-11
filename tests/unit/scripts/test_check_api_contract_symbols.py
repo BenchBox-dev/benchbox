@@ -321,3 +321,5 @@ def test_known_failure_with_different_error_fails(fake_env: Path, capsys: pytest
     report = json.loads(capsys.readouterr().out)
     assert any("different error" in failure for failure in report["failures"])
     assert _run(["record", "--python", sys.executable, "--symbols", str(symbols)]) == 1
+
+

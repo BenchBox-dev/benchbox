@@ -133,3 +133,5 @@ class MockBenchmarkInitializationConsolidation:
 
         assert benchmark1._impl.kwargs == {"custom": "param1"}
         assert benchmark2._impl.kwargs == {"custom": "param2"}
+
+

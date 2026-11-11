@@ -432,3 +432,5 @@ def test_core_schema_modules_do_not_import_the_vendored_sqlglot():
         "assert not any(name.startswith('benchbox._vendor.sqlglot') for name in sys.modules)"
     )
     assert subprocess.run([sys.executable, "-c", code], check=False).returncode == 0
+
+

@@ -481,3 +481,5 @@ def test_shared_analyzer_serves_the_polars_spec(tmp_path: Path, monkeypatch: pyt
     assert result["comparison_count"] == len(result["comparisons"])
     assert all(cell["qualified"] for cell in result["cells"])
     assert (output_dir / "polars-version-matrix-comparisons.csv").is_file()
+
+

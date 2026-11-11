@@ -123,3 +123,5 @@ class TestExportFormatParity:
 
     def test_mcp_extra_formats_are_read_modes_not_exports(self):
         assert set(MCP_RESULT_FORMATS) - set(EXPORT_FORMATS) == {"list", "details", "text", "markdown"}
+
+

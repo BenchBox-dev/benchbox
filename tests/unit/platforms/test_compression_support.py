@@ -232,3 +232,5 @@ class TestPlatformCompressionSupport:
 
             compression_ratio = original_size / compressed_size
             assert compression_ratio > 10.0
+
+

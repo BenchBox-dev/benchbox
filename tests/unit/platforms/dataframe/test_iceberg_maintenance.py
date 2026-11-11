@@ -280,3 +280,5 @@ class TestIcebergDictCondition:
         out = table.scan().to_arrow().to_pandas().sort_values("SK_CustomerID").reset_index(drop=True)
         assert out["IsCurrent"].tolist() == [False, True]
         assert str(out["IsCurrent"].dtype) == "bool"
+
+

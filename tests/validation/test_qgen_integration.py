@@ -252,3 +252,5 @@ class TestQGenBinaryIntegration:
             session2_results.append(qgen2.generate(query_id, seed=seed))
 
         assert session1_results == session2_results
+
+

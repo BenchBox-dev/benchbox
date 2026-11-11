@@ -205,3 +205,5 @@ class TestClassConstants:
     def test_instance_sees_override(self):
         adapter = _QuestDBLikeAdapter()
         assert adapter._max_identifier_length == 127
+
+

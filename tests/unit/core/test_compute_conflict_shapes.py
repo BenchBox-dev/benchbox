@@ -58,3 +58,5 @@ def test_kind_str_platform_unchanged() -> None:
 def test_parse_options_size_disagreement_fails() -> None:
     with pytest.raises(PlatformOptionError, match="Keep only one spelling"):
         PlatformHookRegistry.parse_options("firebolt", [("engine_size", "S"), ("compute_size", "M")])
+
+

@@ -210,3 +210,5 @@ def test_wide_tables_get_fewer_threads(monkeypatch: pytest.MonkeyPatch) -> None:
     assert TPCDSOBTTransformer._thread_limit(100_000) == 1
     monkeypatch.setattr("os.cpu_count", lambda: 2)
     assert TPCDSOBTTransformer._thread_limit(715) == 2
+
+

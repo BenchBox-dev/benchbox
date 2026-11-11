@@ -106,3 +106,5 @@ class TestPrestoFromConfig:
             except ImportError:
                 pytest.skip("Presto drivers not installed")
         assert adapter.source == "benchbox"
+
+

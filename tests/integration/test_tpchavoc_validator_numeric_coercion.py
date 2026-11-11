@@ -59,3 +59,5 @@ def test_numeric_equal_treats_nan_and_none_as_missing_only_when_opted_in():
     assert not widened._numeric_values_equal(nan, 0)
     assert not widened._numeric_values_equal(0, nan)
     assert not widened._numeric_values_equal(None, 5.0)
+
+

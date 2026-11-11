@@ -138,3 +138,5 @@ class TestCoffeeShopBenchmarkTableLoadingOrder:
     def test_unknown_table_is_preserved_not_dropped(self, coffeeshop):
         order = coffeeshop.get_table_loading_order(["dim_locations", "some_extra_table"])
         assert "some_extra_table" in order
+
+

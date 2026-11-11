@@ -449,3 +449,5 @@ def test_capture_helpers_propagate_failures(helper, attrs):
 
     with pytest.raises(RuntimeError, match="boom"):
         helper(frame)
+
+

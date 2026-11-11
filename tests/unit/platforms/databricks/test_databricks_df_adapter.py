@@ -429,3 +429,5 @@ class TestDatabricksDataFrameAdapterIntegration:
 
         assert isinstance(adapter, DatabricksDataFrameAdapter)
         assert adapter.catalog == "test_catalog"
+
+

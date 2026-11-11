@@ -408,3 +408,5 @@ class TestStaleCancelEventDoesNotLeakAcrossReusedConfig:
         assert run2_result.stream_results[0].queries_executed == 22
         assert run2_result.stream_results[0].success is True
         assert run2_result.stream_results[0].error is None
+
+

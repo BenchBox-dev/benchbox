@@ -107,3 +107,5 @@ def test_get_queries_renders_at_the_data_scale_factor(fake_tpcds_components, sca
     bench.get_queries(dialect="duckdb")
 
     assert [scale_factor] == RENDERED_SCALE_FACTORS
+
+

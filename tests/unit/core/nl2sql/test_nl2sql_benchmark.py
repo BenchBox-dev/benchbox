@@ -507,3 +507,5 @@ class TestNL2SQLBenchmarkRun:
 
         assert results.completed_at is not None
         assert isinstance(results.query_results, list)
+
+

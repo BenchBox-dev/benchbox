@@ -130,3 +130,5 @@ def test_the_command_exits_nonzero_and_annotates_each_violation(tmp_path: Path) 
     result = _run(tmp_path)
     assert result.returncode == 1
     assert result.stderr.count("::error::") == 3
+
+

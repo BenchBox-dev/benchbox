@@ -143,3 +143,5 @@ class TestTrinoPrestoMixinParity:
         except ImportError:
             pytest.skip("Presto adapter not importable")
         assert issubclass(PrestoAdapter, HiveExternalTableMixin)
+
+

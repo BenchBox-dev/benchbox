@@ -142,3 +142,5 @@ def test_non_clickhouse_q47_q57_q66_are_not_aliased():
 
     assert "v1.d_year AS d_year" not in bench.get_query(47, seed=1, dialect="duckdb")
     assert "SUM(x.jan_sales)" not in bench.get_query(66, seed=1, dialect="duckdb")
+
+

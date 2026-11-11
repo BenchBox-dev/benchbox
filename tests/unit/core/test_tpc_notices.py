@@ -52,3 +52,5 @@ def test_query_catalog_resolves_templates_beside_notices() -> None:
     assert len(list_query_ids("tpcds")) == 99
     assert query_source_path("tpcds", "1") == "_sources/tpc-ds/query_templates/query1.tpl"
     assert "select" in get_sql_render("tpcds", "1").sql.lower()
+
+

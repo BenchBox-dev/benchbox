@@ -94,3 +94,5 @@ class TestHilbertClusterer:
         clusterer = HilbertClusterer(bits=4)
         with pytest.raises(ValueError, match="exactly 2 cluster columns"):
             clusterer.cluster_table(table, ["x"])
+
+

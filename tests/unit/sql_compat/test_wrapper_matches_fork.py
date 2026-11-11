@@ -21,3 +21,5 @@ def test_wrapper_output_equals_the_fork_output(case: WrapperCase):
     if expected.startswith("<") and expected.endswith(">"):
         pytest.skip("the fork reports this construct as unsupported")
     assert outcome(case.current) == expected
+
+

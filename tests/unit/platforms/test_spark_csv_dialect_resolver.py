@@ -122,3 +122,5 @@ def test_spark_csv_reader_sets_null_value_only_when_declared(tmp_path: Path) -> 
     assert ("delimiter", "|") in options
     assert ("header", "false") in options
     assert ("nullValue", "") in options
+
+

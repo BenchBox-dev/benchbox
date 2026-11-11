@@ -169,3 +169,5 @@ class TestExportShapes:
         assert len(result.parquet_files) == 2
         combined = pa.concat_tables([pq.read_table(path) for path in result.parquet_files])
         assert sorted(combined.column("id").to_pylist()) == [1, 2, 3]
+
+

@@ -213,3 +213,5 @@ class TestQueryPlatformCoverage:
         assert AIMLFunctionCategory.SUMMARIZATION in categories_with_queries
         assert AIMLFunctionCategory.COMPLETION in categories_with_queries
         assert AIMLFunctionCategory.EMBEDDING in categories_with_queries
+
+

@@ -647,3 +647,5 @@ class TestParquetPartitioning:
         )
 
         assert result.metadata.get("partitioned") is False
+
+

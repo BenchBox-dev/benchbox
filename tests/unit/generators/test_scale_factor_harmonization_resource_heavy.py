@@ -54,3 +54,5 @@ def test_nyctaxi_benchmark_supports_compressed_generation(tmp_path, monkeypatch)
     manifest = json.loads((tmp_path / "_datagen_manifest.json").read_text())
     assert manifest["compression"]["enabled"] is True
     assert manifest["compression"]["type"] == "zstd"
+
+

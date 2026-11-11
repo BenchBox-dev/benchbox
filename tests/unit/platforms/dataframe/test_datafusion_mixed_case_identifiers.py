@@ -112,3 +112,5 @@ def test_explode_mixed_case_list_column():
     ctx.register_record_batches("t", [pa.table({"Tags": [[1, 2], [3]], "id": [1, 2]}).to_batches()])
     frame = UnifiedLazyFrame(ctx.table("t"), adapter=SimpleNamespace(platform_name="DataFusion"))
     assert [row["Tags"] for row in _rows(frame.explode("Tags"))] == [1, 2, 3]
+
+

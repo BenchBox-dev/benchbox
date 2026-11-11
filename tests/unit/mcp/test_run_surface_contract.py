@@ -200,3 +200,5 @@ class TestMCPImplementationBoundary:
                         offenders.append(f"{path.relative_to(REPO_ROOT)} imports from {module}")
 
         assert offenders == []
+
+

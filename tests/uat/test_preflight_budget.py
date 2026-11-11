@@ -468,3 +468,5 @@ def test_format_memory_headroom_failure_includes_swap_note():
 def test_format_memory_headroom_failure_omits_swap_note_when_unmeasured():
     check = check_memory_headroom(MemorySnapshot(free_gib=0.07, swap_used_percent=None), min_free_gib=2.0)
     assert "swap" not in format_memory_headroom_failure(check)
+
+

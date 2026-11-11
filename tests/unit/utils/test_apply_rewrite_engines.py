@@ -162,3 +162,5 @@ def test_decimal_division_to_double_writes_a_double_zero_beside_the_quotient_in_
         result
         == "SELECT CASE WHEN b > 0 THEN CAST(a AS Nullable(Float64)) / b ELSE CAST(0 AS Nullable(Float64)) END FROM t"
     )
+
+

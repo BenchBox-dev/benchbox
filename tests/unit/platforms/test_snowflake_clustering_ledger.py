@@ -60,3 +60,5 @@ def test_already_present_clustering_key_is_recorded_satisfied_not_dropped():
     assert "CLUSTER BY" in satisfied.intent
     assert satisfied.satisfied_by == SATISFIED_BY_PREEXISTING_STATE
     assert "already present in Snowflake catalog" in satisfied.reason
+
+

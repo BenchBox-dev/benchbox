@@ -177,3 +177,5 @@ class TestImportStructure:
 
         for benchmark in [tpch, tpcds, read_primitives, write_primitives, ssb]:
             assert benchmark.scale_factor > 0, f"{type(benchmark).__name__} should have positive scale_factor"
+
+

@@ -93,3 +93,5 @@ def test_singlestore_h2odb_q9_has_one_sort_key_in_within_group(tmp_path):
     query = H2OBenchmark(scale_factor=0.01, output_dir=tmp_path).get_queries(dialect="singlestore")["Q9"]
     assert "WITHIN GROUP (ORDER BY `fare_amount`)" in query
     assert "CASE WHEN" not in query
+
+

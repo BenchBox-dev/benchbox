@@ -342,3 +342,5 @@ def test_base_comparison_rejects_a_policy_with_a_missing_exception_consumer(tmp_
     )
     (root / "a.py").write_text("import os  # noqa: F401\n", encoding="utf-8")
     assert main(["--root", str(root), "--mode", "strict", "--base", base]) == 2
+
+

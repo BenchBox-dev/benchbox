@@ -834,3 +834,5 @@ class TestApplyTpchFamilySeed:
         benchmark.get_query = MagicMock(side_effect=RuntimeError("qgen missing"))
         with pytest.raises(DryRunQueryExtractionError, match="seeded query rendering failed"):
             self.executor._extract_standard_queries(benchmark, self._config(), None)
+
+

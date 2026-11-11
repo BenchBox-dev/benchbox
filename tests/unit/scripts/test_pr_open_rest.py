@@ -581,3 +581,5 @@ def test_main_embeds_the_receipt_file_and_refuses_one_that_is_not_a_single_block
         receipt.write_text(bad)
         assert pr_open_rest.main([*args, "--receipt-file", str(receipt)], FakeGh([], "")) == 1
     assert pr_open_rest.main([*args, "--receipt-file", str(tmp_path / "missing.md")], FakeGh([], "")) == 1
+
+

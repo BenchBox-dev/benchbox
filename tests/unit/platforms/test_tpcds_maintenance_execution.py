@@ -270,3 +270,5 @@ def test_refusal_without_any_operation_reaches_the_result_as_a_failed_row(_conso
             "test_type": "maintenance",
         }
     ]
+
+

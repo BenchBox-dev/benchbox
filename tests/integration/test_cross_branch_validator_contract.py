@@ -185,3 +185,5 @@ def test_validator_skips_per_bundle_manifest_during_discovery(tmp_path: Path) ->
 
     assert rc == 0, f"Validator must skip explicit-path *.manifest.json files. Output:\n{output}"
     assert "Validated 1 bundle(s)" in output or "1 bundle" in output, output
+
+

@@ -229,3 +229,5 @@ class TestFullCatalog:
         full = exporter.build_docs_data()
         assert _errors(full) == []
         assert exporter.render_json(full) == exporter.render_json(exporter.build_docs_data())
+
+

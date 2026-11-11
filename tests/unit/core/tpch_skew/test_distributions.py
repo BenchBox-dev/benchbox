@@ -265,3 +265,5 @@ class TestDistributionReproducibility:
         samples2 = dist.sample(100, rng2)
 
         assert not np.array_equal(samples1, samples2)
+
+

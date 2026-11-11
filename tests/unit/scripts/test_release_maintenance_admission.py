@@ -709,3 +709,5 @@ def test_a_pull_request_commit_naming_an_older_source_does_not_lower_the_recreat
     fixed = land(root, "0.4.3")
     with pytest.raises(ValueError, match="is older than"):
         consumer.verify_maintenance_line(root, "v0.4.3", fixed, LINE, merged_pulls(merged, fixed))
+
+

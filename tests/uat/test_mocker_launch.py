@@ -317,3 +317,5 @@ def test_launch_reuses_an_existing_named_volume(mocker_cli):
     run = _runner(script)
     assert mocker_launch.launch_stack(spec, "p", env={}, runner=run, sleep=lambda s: None).succeeded
     assert any(call[:3] == ["mocker", "run", "-d"] for call in run.calls)
+
+

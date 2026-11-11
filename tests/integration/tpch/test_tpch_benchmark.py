@@ -268,3 +268,5 @@ class TestCrossComponentIntegration:
             assert "select" in sql_tpch.lower() or "with" in sql_tpch.lower()
             assert len(sql_benchmark) > 50
             assert len(sql_tpch) > 50
+
+

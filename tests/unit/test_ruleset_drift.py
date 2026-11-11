@@ -911,3 +911,5 @@ def test_main_fails_when_a_maintenance_ruleset_is_missing(
 
     assert code == 1
     assert report["blocking_findings"] == [f"{missing}: live ruleset is missing"]
+
+

@@ -153,3 +153,5 @@ def test_runtime_version_exemption_is_limited_to_the_translation_runtime_path() 
 
     assert anonymized["execution"]["translation"]["runtime"]["version"] == "30.25.0.2"
     assert anonymized["platform"]["translation"]["runtime"]["version"] == "[REDACTED]"
+
+

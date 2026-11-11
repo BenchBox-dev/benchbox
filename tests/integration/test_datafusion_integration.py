@@ -330,3 +330,5 @@ class TestDataFusionSmoke:
 
             assert len(result) > 0
             assert int(result[0].column(0)[0]) == 42
+
+

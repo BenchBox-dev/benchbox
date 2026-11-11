@@ -194,3 +194,5 @@ class TestAthenaCtasSqlContent:
             executed_sql = [call.args[0] for call in mock_cursor.execute.call_args_list if call.args]
             ctas_calls = [sql for sql in executed_sql if "CREATE TABLE" in sql]
             assert any("format" in sql.lower() and "parquet" in sql.lower() for sql in ctas_calls)
+
+

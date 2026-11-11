@@ -372,3 +372,5 @@ class TestTPCHStreamsIntegration:
             expected_order = TPCHStreams.PERMUTATION_MATRIX[stream_id]
 
             assert actual_order == expected_order, f"Stream {stream_id} permutation doesn't match specification"
+
+

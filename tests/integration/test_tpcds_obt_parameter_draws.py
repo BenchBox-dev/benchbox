@@ -44,3 +44,5 @@ def test_queries_return_rows_with_dsqgen_parameters(obt_connection) -> None:
         if rows == 0:
             empty.append(query_id)
     assert empty == [], f"queries returned no rows with dsqgen parameters: {empty}"
+
+

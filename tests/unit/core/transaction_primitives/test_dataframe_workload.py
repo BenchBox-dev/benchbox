@@ -466,3 +466,5 @@ class TestIterations:
         results = _run_workload(b, manager, options={"power_iterations": 3})
         atomic_insert_iters = [r["iteration"] for r in results if r["query_id"] == "atomic_insert"]
         assert atomic_insert_iters == [1, 2, 3]
+
+

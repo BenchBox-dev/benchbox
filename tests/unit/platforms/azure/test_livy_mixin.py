@@ -134,3 +134,5 @@ class TestInterfaceContract:
         mixin = LivyStatementMixin()
         with pytest.raises(NotImplementedError):
             mixin._ensure_session()
+
+

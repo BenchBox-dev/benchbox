@@ -73,3 +73,5 @@ def test_summary_reports_repairs_and_regressions(module, tmp_path):
     summary = module.summarize(paths)
     assert "repair: c1->sqlite (exec_error)" in summary
     assert "regression: c0->sqlite (wrong_result)" in summary
+
+

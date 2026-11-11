@@ -182,3 +182,5 @@ def test_pinned_bundle_hashes_match_the_manifest_entries():
     suffix = ".exe" if platform.system() == "Windows" else ""
     expected = {name: entries[f"tpc-ds/{_bundle_platform()}/{name}{suffix}"] for name in ("dsqgen", "dsdgen")}
     assert pinned_bundle_hashes() == expected
+
+

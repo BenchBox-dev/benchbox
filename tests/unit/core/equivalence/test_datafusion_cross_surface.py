@@ -190,3 +190,5 @@ def test_native_datafusion_repeats_catch_changed_results(native_cell, monkeypatc
     output = " ".join(capsys.readouterr().out.split())
     assert "q1_datafusion: diverged in 1 of 3 runs" in output
     assert "FAIL (enforced gate)" in output
+
+

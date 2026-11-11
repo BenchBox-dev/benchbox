@@ -92,3 +92,5 @@ class TestBaseBenchmark:
         assert clickbench_cls(scale_factor=0.01, output_dir=temp_dir)._get_benchmark_name() == "clickbench"
         assert tpchavoc_cls(scale_factor=0.01, output_dir=temp_dir)._get_benchmark_name() == "tpchavoc"
         assert generic_cls(scale_factor=0.01, output_dir=temp_dir)._get_benchmark_name() == "customworkload"
+
+

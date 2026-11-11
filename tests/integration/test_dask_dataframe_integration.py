@@ -329,3 +329,5 @@ class TestDaskTPCHQueryExecution:
 
         assert "revenue" in result.columns
         assert len(result) == 1
+
+

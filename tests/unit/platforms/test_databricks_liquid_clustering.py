@@ -455,3 +455,5 @@ def test_absent_mcp_clustering_options_resolve_to_none(_mock_databricks_sql):
 
     assert adapter._resolve_databricks_clustering_strategy() == "none"
     assert adapter.get_effective_tuning_configuration().platform_optimizations.databricks_clustering_strategy == "none"
+
+

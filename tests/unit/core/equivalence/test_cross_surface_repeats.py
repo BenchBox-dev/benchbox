@@ -142,3 +142,5 @@ def test_update_baseline_refuses_to_write_from_a_flaky_run(monkeypatch, capsys):
 def test_the_command_line_rejects_fewer_than_one_repeat():
     with pytest.raises(SystemExit):
         main(["--benchmark", "ssb", "--repeats", "0"])
+
+

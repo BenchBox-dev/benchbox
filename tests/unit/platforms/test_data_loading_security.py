@@ -162,3 +162,5 @@ class TestSqlInjectionPrevention:
         escaped = escape_sql_string_literal(dangerous_path)
 
         assert escaped == "/path/''; DROP TABLE users;--/file.csv"
+
+

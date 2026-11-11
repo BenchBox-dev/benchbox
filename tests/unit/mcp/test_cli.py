@@ -198,3 +198,5 @@ def test_loopback_rejects_misleading_readiness_evidence(tmp_path: Path) -> None:
 def test_cli_rejects_invalid_http_port(port: str) -> None:
     with pytest.raises(SystemExit):
         parse_args(["--port", port])
+
+

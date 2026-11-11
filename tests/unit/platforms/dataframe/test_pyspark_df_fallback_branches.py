@@ -94,3 +94,5 @@ def test_window_count_star_uses_lit_one(pyspark_test_environment, monkeypatch):
         assert "count(1)" in str(expr)
     finally:
         adapter.close()
+
+

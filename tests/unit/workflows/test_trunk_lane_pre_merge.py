@@ -218,3 +218,5 @@ def test_the_coverage_lane_never_shares_a_concurrency_group_across_pull_requests
     group = _load("trunk-coverage.yml")["concurrency"]["group"]
     assert "inputs.medium-only" in group and "github.ref" in group
     assert _load("trunk-coverage.yml")["concurrency"]["cancel-in-progress"] is True
+
+

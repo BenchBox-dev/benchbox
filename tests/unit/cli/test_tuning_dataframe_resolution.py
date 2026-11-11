@@ -337,3 +337,5 @@ class TestSqlModeSkipsDataFrameProfile:
 
     def test_repo_ships_no_datafusion_profile(self):
         assert not (REPO_ROOT / "examples/tunings/dataframe/datafusion_optimized.yaml").exists()
+
+

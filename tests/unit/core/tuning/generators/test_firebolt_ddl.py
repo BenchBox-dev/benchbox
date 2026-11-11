@@ -67,3 +67,5 @@ def test_firebolt_type_mapping_falls_back_to_original_for_unknown():
     assert generator._map_to_firebolt_type("BOOLEAN") == "BOOLEAN"
     assert generator._map_to_firebolt_type("DECIMAL(10,2)") == "DECIMAL(38, 9)"
     assert generator._map_to_firebolt_type("CUSTOM") == "CUSTOM"
+
+

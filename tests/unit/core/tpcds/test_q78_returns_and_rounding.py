@@ -101,3 +101,5 @@ def test_q78_refuses_unknown_drawn_columns(select_columns):
 
     with pytest.raises(ValueError, match="Q78 select_columns"):
         queries._q78_select_columns({"select_columns": select_columns})
+
+

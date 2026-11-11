@@ -57,3 +57,5 @@ def test_maintenance_phase_models_roundtrip():
 
     assert phase.maintenance_operations[0].table == "lineitem"
     assert phase.query_executions[0].query_id == "Q1"
+
+

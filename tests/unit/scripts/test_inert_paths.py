@@ -409,3 +409,5 @@ def test_inert_rule_kinds_compose_the_vendored_matcher(tmp_path: Path) -> None:
     patterns = tuple(rule.pattern for rule in rules if rule.kind == "except")
     assert inert.matches_exception("docs/agent/review.md", patterns)
     assert not inert.matches_exception("docs/other.md", patterns)
+
+

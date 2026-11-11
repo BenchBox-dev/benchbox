@@ -80,3 +80,5 @@ def test_transaction_primitives_is_setup_on_postgres_does_not_abort_the_transact
 
     assert benchmark.is_setup(connection) is False
     assert connection.aborted is False
+
+

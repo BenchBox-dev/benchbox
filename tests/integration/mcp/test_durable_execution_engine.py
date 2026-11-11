@@ -68,3 +68,5 @@ def test_start_benchmark_carries_the_requested_engine_into_the_bundle(tmp_path: 
     assert receipt["requested"] == "streaming"
     assert receipt["applied"] == "streaming"
     assert bundle["platform"]["variant"] == "polars-df+streaming"
+
+

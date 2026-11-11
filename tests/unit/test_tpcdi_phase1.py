@@ -447,3 +447,5 @@ class TestTPCDIPhase1Complete:
             print(f"  - Generated files: {len(file_paths)}")
             print(f"  - Total data size: {total_size:,} bytes")
             print(f"  - Coverage: {(len(file_paths) / 16) * 100:.1f}%")
+
+

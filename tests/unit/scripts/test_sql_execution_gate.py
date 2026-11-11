@@ -791,3 +791,5 @@ def test_obt_base_equivalence_fails_closed_without_base_rows(base):
     report = gate.evaluate(results, {"candidate": side}, {}, [], ["duckdb"])
     assert not report.passed
     assert [(f.benchmark, f.check) for f in report.unexplained] == [("tpcds_obt", "base-equivalence")]
+
+

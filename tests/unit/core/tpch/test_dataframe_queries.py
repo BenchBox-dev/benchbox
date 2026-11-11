@@ -515,3 +515,5 @@ class TestQueryCategories:
         for query_id in ["Q2", "Q4", "Q11", "Q13", "Q15", "Q16", "Q17", "Q18", "Q20", "Q21", "Q22"]:
             query = get_query(query_id)
             assert QueryCategory.SUBQUERY in query.categories, f"{query_id} should have SUBQUERY"
+
+

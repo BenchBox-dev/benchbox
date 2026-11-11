@@ -118,3 +118,5 @@ class TestTextReportNeverClaimsAnUnearnedSpeedup:
         report = UnifiedBenchmarkSuite()._generate_markdown_report([_failed("duckdb"), _failed("sqlite")])
         assert "1.00x" not in report
         assert "n/a" in report
+
+

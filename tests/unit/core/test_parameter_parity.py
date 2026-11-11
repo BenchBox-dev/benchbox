@@ -300,3 +300,5 @@ class TestSetScaleFactorForBenchmark:
 
         set_scale_factor_for_benchmark("tpcds", 0.1)
         assert get_tpch_parameters(11)["fraction"] == pytest.approx(0.0001)
+
+

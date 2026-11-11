@@ -119,3 +119,5 @@ def test_athena_cost_tracking(monkeypatch, tmp_path):
         assert "total_cost_usd" in cost_summary
     finally:
         adapter.close_connection(connection)
+
+

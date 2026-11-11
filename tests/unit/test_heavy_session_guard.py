@@ -163,3 +163,5 @@ def test_a_marker_expression_is_heavy_only_when_it_selects_a_heavy_marker(expres
     import _benchbox_pytest_xdist_safety as plugin
 
     assert plugin._expression_selects_heavy(expression) is heavy
+
+

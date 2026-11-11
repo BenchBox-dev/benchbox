@@ -120,3 +120,5 @@ class TestTableIsWellFormed:
         handler = create_path_handler("@~/benchbox")
         assert isinstance(handler, CloudStagingPath)
         assert handler.cloud_target == "@~/benchbox"
+
+

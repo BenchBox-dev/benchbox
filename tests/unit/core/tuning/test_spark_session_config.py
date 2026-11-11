@@ -175,3 +175,5 @@ def test_non_empty_spark_reports_session_config_tuning_type():
         {"platform_optimizations": {"spark": {"spark.sql.shuffle.partitions": "200"}}}
     )
     assert "session_config" in _tuning_types_present(tuned.to_dict())
+
+

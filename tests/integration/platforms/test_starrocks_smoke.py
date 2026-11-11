@@ -56,3 +56,5 @@ def test_starrocks_smoke_query_execution(monkeypatch, tmp_path):
         assert isinstance(result["execution_time_seconds"], float)
     finally:
         adapter.close_connection(connection)
+
+

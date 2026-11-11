@@ -214,3 +214,5 @@ def test_parameter_key_coverage_inventory_is_ranked() -> None:
     assert coverage
     assert {"key", "queries", "supported", "risk"} <= set(coverage[0])
     assert coverage == sorted(coverage, key=lambda item: (-item["queries"], item["key"]))
+
+

@@ -51,3 +51,5 @@ def test_sql_survives_yaml_round_trip(package: str) -> None:
         assert reloaded == sql, f"{package}: sql does not survive a block-scalar round-trip"
 
         assert sql.count("{") == sql.count("}"), f"{package}: unbalanced placeholder braces in sql"
+
+

@@ -372,3 +372,5 @@ def test_generate_data_unaffected_by_global_random_state(tmp_path):
     perturbed_content = Path(perturbed_result["customer"]).read_bytes()
 
     assert perturbed_content == baseline_content
+
+

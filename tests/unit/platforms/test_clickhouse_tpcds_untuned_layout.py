@@ -72,3 +72,5 @@ def test_untuned_merge_tree_order_by_follows_the_specification_composite_key(
 def test_untuned_merge_tree_order_by_is_empty_for_a_table_without_a_key(untuned_tpcds_ddl: dict[str, str]) -> None:
     assert _spec_tpcds_keys()["dbgen_version"] == ()
     assert _order_by(untuned_tpcds_ddl["dbgen_version"]) == "tuple()"
+
+

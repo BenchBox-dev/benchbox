@@ -233,3 +233,5 @@ def test_throughput_phase_refresh_fails_before_any_refresh_executes(monkeypatch)
     generated.assert_not_called()
     runner.assert_not_called()
     rf.assert_not_called()
+
+

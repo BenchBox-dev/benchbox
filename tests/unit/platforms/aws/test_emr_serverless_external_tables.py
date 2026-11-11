@@ -96,3 +96,5 @@ class TestCreateExternalTables:
         assert stats == {"orders": 1500}
         assert elapsed >= 0.0
         assert meta == {"table_uris": {"orders": "s3://my-bucket/benchbox-data/orders/"}}
+
+

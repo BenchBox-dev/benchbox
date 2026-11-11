@@ -42,3 +42,5 @@ def test_contributing_does_not_teach_holding_a_finished_pr(contributing_text: st
     lowered = contributing_text.lower()
     for forbidden in ("withhold", "remains held", "stays held", "when the branch is final", "marked final"):
         assert forbidden not in lowered, f"CONTRIBUTING still teaches holding a finished PR: {forbidden!r}"
+
+

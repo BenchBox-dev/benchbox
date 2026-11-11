@@ -1698,3 +1698,5 @@ def test_load_only_tuned_run_recreates_mismatched_tables(tmp_path):
     assert server.tables == {"region": 10, "nation": 10}
     assert server.tuned is True
     assert captured["phases"]["schema_creation"]["status"] == "COMPLETED"
+
+

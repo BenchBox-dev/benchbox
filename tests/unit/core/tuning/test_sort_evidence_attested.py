@@ -188,3 +188,5 @@ class TestCtasSortRecordsLedgerStatement:
         assert receipt.entries[0].reason == "physical sort executed; no catalog footprint"
         assert list(receipt.entries[0].expected_columns) == ["l_shipdate"]
         assert receipt.corroborated is False
+
+

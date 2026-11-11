@@ -142,3 +142,5 @@ def test_normalized_from_sql_vs_df_returns_two_platform_results():
     assert normalized[1].platform == "polars-df"
     assert normalized[0].total_time_ms == 10.0
     assert normalized[1].total_time_ms == 15.0
+
+

@@ -447,3 +447,5 @@ def test_positive_count_subquery_and_common_conjunct_rewrites_preserve_results()
 def test_factor_common_conjuncts_leaves_disjunctions_without_shared_terms_alone():
     sql = "SELECT 1 FROM t WHERE a = 1 AND b = 2 OR c = 3 AND d = 4"
     assert apply_rewrite("factor_common_conjuncts", sql, "duckdb") == sql
+
+

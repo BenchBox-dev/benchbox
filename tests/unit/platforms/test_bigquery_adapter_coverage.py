@@ -2848,3 +2848,5 @@ class TestPrepareExternalTableUris:
 
         assert fmt == "DELTA_LAKE"
         assert uris == ["gs://bucket/lineitem/"]
+
+

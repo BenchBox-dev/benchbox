@@ -581,3 +581,5 @@ def test_exporter_rejects_unsupported_type(tmp_path, caplog) -> None:
         exporter.export_result(LegacyResult(), formats=["json"])
 
     assert any("Failed to export" in record.message or "Error" in record.levelname for record in caplog.records)
+
+

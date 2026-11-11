@@ -125,3 +125,5 @@ def test_registry_summary_counts_dataframe_capability_independent_of_support_sta
         summary = benchmark_registry.get_benchmark_registry_summary()
 
     assert summary["dataframe_supported"] == base_supported + 1
+
+

@@ -207,3 +207,5 @@ def test_firebolt_records_one_request_and_creates_cursor_outside_the_timer():
     assert result["request_count"] == 1
     assert result["result_bytes"] > 0
     cursor.close.assert_called_once()
+
+

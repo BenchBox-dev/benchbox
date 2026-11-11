@@ -868,3 +868,5 @@ def test_batch_pr_listing_fails_closed_on_truncation_and_api_error(monkeypatch: 
     by_branch, err = mod.fetch_prs_for_branches("owner", "repo", {"feat/a"}, expected_repo_id=123, token=None)
     assert by_branch == {}
     assert err == "HTTP Error 502: Bad Gateway"
+
+

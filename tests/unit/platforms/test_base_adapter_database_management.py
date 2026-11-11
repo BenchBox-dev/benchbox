@@ -945,3 +945,5 @@ class TestOncePerRunExistingDatabaseDecision:
             assert adapter._validating_database is True
 
         assert adapter._validating_database is False
+
+

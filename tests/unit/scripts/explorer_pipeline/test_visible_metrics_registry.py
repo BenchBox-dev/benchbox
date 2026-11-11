@@ -141,3 +141,5 @@ class TestHasPlansContract:
         assert "sidecar exists" not in source_field
         assert "captured" in source_field
         assert "errors-only" in source_field
+
+

@@ -208,3 +208,5 @@ class TestDryRunExecutorPlatformIntegration:
 
         result = executor._extract_queries(mock_benchmark, benchmark_config, mock_adapter)
         assert result == {}
+
+

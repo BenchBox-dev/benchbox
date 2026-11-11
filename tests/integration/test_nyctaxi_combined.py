@@ -374,3 +374,5 @@ class TestBenchmarkMultiTypeIntegration:
         assert "full-scan-count" in queries
         assert "green-borough-trips" not in queries
         assert "hvfhv-shared-ride-rate" not in queries
+
+

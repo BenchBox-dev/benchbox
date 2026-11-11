@@ -46,3 +46,5 @@ class TestSuppressWindowExecWarning:
             suppress_window_exec_warning(mock_spark)
 
         assert any("WindowExec warning suppression failed" in msg for msg in caplog.messages)
+
+

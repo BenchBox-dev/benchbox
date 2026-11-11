@@ -168,3 +168,5 @@ class TestOutsideQueryTimerIsSafeWhenNested:
         with outside_query_timer():
             with outside_query_timer():
                 pass
+
+

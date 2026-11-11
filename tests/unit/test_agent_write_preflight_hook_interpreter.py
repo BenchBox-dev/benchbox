@@ -123,3 +123,5 @@ def test_a_non_executable_interpreter_is_still_refused(tmp_path: Path, quote: st
 
     assert result.returncode == 1
     assert "shared pre-commit hook is not usable" in result.stderr
+
+

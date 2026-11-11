@@ -425,3 +425,5 @@ class TestResourceUtilizationEdgeCases:
         assert util.max_value == 50.0
         assert util.avg_value == 50.0
         assert util.std_dev == 0.0
+
+

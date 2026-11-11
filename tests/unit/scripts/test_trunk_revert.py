@@ -1410,3 +1410,5 @@ def test_the_streak_starts_at_the_earliest_red_when_results_arrive_in_reverse_or
     failed = trunk_revert.red_streak_start(ArmRun(runs), trunk_revert.REPOSITORY)
     assert failed is not None
     assert failed["databaseId"] == 701
+
+

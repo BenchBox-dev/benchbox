@@ -36,3 +36,5 @@ def test_dataframe_registry_numbers_queries_q1_to_q22() -> None:
         key=lambda q: int(q.lstrip("Q")),
     )
     assert df_ids == tpch_ids, "skew registry must stay a 1:1 re-registration of TPC-H"
+
+

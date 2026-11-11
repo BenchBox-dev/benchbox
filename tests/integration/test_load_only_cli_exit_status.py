@@ -58,3 +58,5 @@ def test_successful_load_only_run_exits_zero_with_load_summary(
     summary = json.loads(bundles[0].read_text(encoding="utf-8"))["summary"]
     assert summary["data"]["rows_loaded"] > 0
     assert summary["queries"]["total"] == 0
+
+

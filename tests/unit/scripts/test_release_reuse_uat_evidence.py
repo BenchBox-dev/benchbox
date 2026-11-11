@@ -1356,3 +1356,5 @@ def test_a_green_trunk_run_that_fails_a_guarded_input_check_still_allows_the_rel
     reused, outputs, report = rc_world.decide()
     assert "guarded trees changed since the evidence commit" in _failures(report)
     assert any(condition.startswith("release candidate") for condition, _, _ in report.rows)
+
+

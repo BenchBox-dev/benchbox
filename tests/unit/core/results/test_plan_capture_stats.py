@@ -57,3 +57,5 @@ def test_compute_plan_capture_stats_capture_disabled() -> None:
     assert plans_captured == 1
     assert failures == 0
     assert errors == []
+
+

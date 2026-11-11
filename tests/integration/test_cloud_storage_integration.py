@@ -245,3 +245,5 @@ class TestCloudStorageIntegration:
 
         subscale = TPCDSDataGenerator(scale_factor=0.5, output_dir=temp_dir, verbose=False)
         assert subscale.scale_factor == 0.5
+
+

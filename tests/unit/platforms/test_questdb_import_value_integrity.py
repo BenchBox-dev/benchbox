@@ -179,3 +179,5 @@ def test_headered_rest_load_forces_header_detection(tmp_path):
         adapter._load_table_via_rest_api("t", data_file, CsvDialect(",", True, None, False, None))
 
     assert post.call_args.kwargs["params"]["forceHeader"] == "true"
+
+

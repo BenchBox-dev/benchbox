@@ -235,3 +235,5 @@ class TestClickHouseLocalFetchMode:
         assert result["rows_returned"] == 3
         assert result["first_row"] == DENSE_ROWS[0]
         assert seen["q"] == DENSE_ROWS
+
+

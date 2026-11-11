@@ -527,3 +527,5 @@ class TestClickHouseOptionReachesTheAdapter:
         adapter.tuning_enabled = True
         assert adapter.apply_post_load_tunings("lineitem", CONFIG, connection) is True
         assert [s for s in connection.statements if "system." not in s] == ["OPTIMIZE TABLE lineitem FINAL"]
+
+

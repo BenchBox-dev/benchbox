@@ -365,3 +365,5 @@ class TestWhitespacePreservingEvaluator:
         match, _, _ = evaluator.compare_sql_strings(sql1, sql2)
 
         assert match is False
+
+

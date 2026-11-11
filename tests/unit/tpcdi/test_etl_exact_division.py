@@ -60,3 +60,5 @@ def test_etl_queries_have_no_integer_literal_division():
         sql = queries.get_query(query_id)
         assert INTEGER_LITERAL_DIVISION.search(sql) is None, query_id
         assert INTEGER_LITERAL_SUBTRACTION_DIVISION.search(sql) is None, query_id
+
+

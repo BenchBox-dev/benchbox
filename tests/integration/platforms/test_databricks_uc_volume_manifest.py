@@ -164,3 +164,5 @@ def test_manifest_download_and_verify(tmp_path: Path):
     assert remote_manifest["scale_factor"] == local_manifest["scale_factor"]
     assert remote_manifest["tables"] == local_manifest["tables"]
     assert remote_manifest["compression"] == local_manifest["compression"]
+
+

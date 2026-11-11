@@ -123,3 +123,5 @@ def test_relocate_rewrites_graph_for_new_location(tmp_path):
 def test_relocate_rejects_non_table(tmp_path):
     with pytest.raises(ValueError, match="Not an Iceberg table directory"):
         relocate_iceberg_table(tmp_path / "missing", "s3://bucket/prefix", tmp_path / "staging")
+
+

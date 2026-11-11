@@ -435,3 +435,5 @@ class TestGPUBenchmarkExtraCoverage:
 
 
 from unittest.mock import MagicMock
+
+

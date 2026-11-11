@@ -178,3 +178,5 @@ def test_source_directory_path_in_redacted_output_is_rejected(tmp_path: Path, mo
     assert not publish_mod._redacted_output_is_clean(
         redacted, roots=publish_mod._local_roots(source), require_anonymized_marker=True
     )
+
+

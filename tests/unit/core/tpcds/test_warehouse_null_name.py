@@ -147,3 +147,5 @@ def test_none_for_null_converts_only_columns_that_hold_a_null():
     assert list(result["holey"]) == [1.5, None]
     assert list(result["name"]) == ["a", None]
     assert frame["holey"].dtype == "float64"
+
+

@@ -251,3 +251,5 @@ class TestTPCHSubscaleRowCountReference:
 
         with pytest.raises(ValueError):
             loader.load_tpch_subscale_row_counts(0.01)
+
+

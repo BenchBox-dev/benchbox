@@ -22,3 +22,5 @@ def test_corpus_trust_boundary():
     assert "corpus_permit_rejections" in (REPO_ROOT / "scripts/validate_submission.py").read_text()
 
     assert (REPO_ROOT / "scripts/publication/validator_parity.py").is_file()
+
+

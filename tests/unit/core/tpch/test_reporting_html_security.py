@@ -90,3 +90,5 @@ def test_comparison_report_escapes_title(tmp_path):
 
     assert UNTRUSTED_TITLE not in html
     assert html_escape(UNTRUSTED_TITLE, quote=True) in html
+
+

@@ -109,3 +109,5 @@ def test_char_padding_tolerance(canonical, variant, padding_columns, expected_ke
         conn, _benchmark_validating_strictly(), lambda q: "SELECT 1", char_padding_columns=padding_columns
     )
     assert [d.key for d in divergences] == expected_keys
+
+

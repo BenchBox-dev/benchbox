@@ -147,3 +147,5 @@ class TestTypeMapping:
         sql = get_create_tables_sql(dialect="postgres")
         assert "TIMESTAMPTZ" in sql
         assert "DOUBLE PRECISION" in sql
+
+

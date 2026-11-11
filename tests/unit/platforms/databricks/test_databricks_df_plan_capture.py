@@ -293,3 +293,5 @@ def test_captured_spark_plan_has_no_local_paths(monkeypatch):
 
     assert str(Path.home()) not in plan.raw_explain_output
     assert find_public_path_leaks(plan.to_dict()) == []
+
+

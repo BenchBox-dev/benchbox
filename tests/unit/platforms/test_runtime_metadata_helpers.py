@@ -370,3 +370,5 @@ def test_lifecycle_enrichment_skips_adapter_hook_when_result_already_has_adapter
     _enrich_normalized_runtime_metadata(result, adapter=adapter)
 
     assert adapter.calls == 0
+
+

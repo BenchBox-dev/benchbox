@@ -504,3 +504,5 @@ def test_validator_rejects_inverted_line_range(tmp_path: Path) -> None:
     errors = validate_blind_spot.validate_file(path)
 
     assert any("line_start must not exceed line_end" in e for e in errors)
+
+

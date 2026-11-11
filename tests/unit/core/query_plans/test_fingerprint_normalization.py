@@ -352,3 +352,5 @@ class TestCrossModeMixingRegression:
         update_plan_versions(empty, real)
         merged = merge_plan_metadata(empty, real)
         assert merged.plan_fingerprints == real.plan_fingerprints
+
+

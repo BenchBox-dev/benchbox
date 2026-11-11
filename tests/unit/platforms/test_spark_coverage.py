@@ -1124,3 +1124,5 @@ class TestFromConfig:
         assert a.enable_hive is True
         assert a.adaptive_enabled is False
         assert a.shuffle_partitions == 400
+
+

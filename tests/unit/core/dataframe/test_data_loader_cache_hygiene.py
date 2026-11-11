@@ -94,3 +94,5 @@ def test_convert_data_prunes_untracked_cache_leaf_files(tmp_path: Path) -> None:
     assert not stale_leaf.exists()
     assert keep_dir.exists()
     assert (cache_path / "_manifest.json").exists()
+
+

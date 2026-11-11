@@ -320,3 +320,5 @@ class TestNullMarkerIsHonoured:
         )
 
         assert header["columns"].endswith(r"a=nullif(tmp_0,'it\'s\\')")
+
+

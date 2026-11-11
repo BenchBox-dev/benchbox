@@ -1155,3 +1155,5 @@ def test_pg_mooncake_compose_raises_the_duckdb_memory_limit_above_the_4gb_defaul
     compose_text = "\n".join(path.read_text(encoding="utf-8") for path in spec.compose_files)
 
     assert "duckdb.max_memory=10240" in compose_text
+
+

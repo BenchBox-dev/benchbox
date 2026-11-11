@@ -177,3 +177,5 @@ def test_empty_filter_reports_zero_not_null() -> None:
         sql_result = conn.execute(query.sql_equivalent).fetchdf().reset_index(drop=True)
         assert len(pandas_result) == len(sql_result) == 1
         pd.testing.assert_frame_equal(pandas_result, sql_result, check_dtype=False, check_exact=False)
+
+

@@ -100,3 +100,5 @@ def test_q17_spark_expression_client_matches_sql(spark_session, spark_adapter, c
     assert result["rows_returned"] == 1
     assert result["first_row"] == expected
     assert expected == ((10.0,) if case == "nonempty" else (None,))
+
+

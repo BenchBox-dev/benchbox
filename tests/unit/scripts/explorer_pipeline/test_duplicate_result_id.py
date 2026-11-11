@@ -119,3 +119,5 @@ def test_duplicate_result_id_digest_streams_companions_larger_than_one_chunk(tmp
     payload[_DIGEST_CHUNK_BYTES + 100] = ord("b")
     plans.write_bytes(bytes(payload))
     assert _publication_digest(bundle, public_raw) != with_companion
+
+

@@ -683,3 +683,5 @@ class TestGenerateSingleStreamSqlShape:
 
         with pytest.raises(RuntimeError, match="generation failed"):
             stream_manager._generate_single_stream(config)
+
+

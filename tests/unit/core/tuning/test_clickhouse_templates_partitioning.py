@@ -59,3 +59,5 @@ def test_clickhouse_tpch_template_requests_no_partitioning() -> None:
 
         assert all(not tuning.get_columns_by_type(TuningType.PARTITIONING) for tuning in config.table_tunings.values())
         assert {name.upper() for name in config.table_tunings} == {"LINEITEM", "ORDERS"}
+
+

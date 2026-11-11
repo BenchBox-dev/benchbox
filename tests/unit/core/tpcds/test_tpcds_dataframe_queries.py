@@ -310,3 +310,5 @@ class TestQueryIntegration:
 
         for query in TPCDS_DATAFRAME_QUERIES.get_all_queries():
             assert query.query_name, f"{query.query_id} missing query_name"
+
+

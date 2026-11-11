@@ -295,3 +295,5 @@ class TestProtocolMethodChaining:
 
         result = df.group_by("category").agg().select("category")
         assert isinstance(result, ChainableDF)
+
+

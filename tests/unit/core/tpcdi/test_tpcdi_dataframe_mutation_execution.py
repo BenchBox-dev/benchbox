@@ -254,3 +254,5 @@ class TestBackendContracts:
             backend.execute_scd2_expire("DimCustomer", '"IsCurrent" = TRUE; DROP TABLE x', {"IsCurrent": False})
         with pytest.raises(ValueError, match="DML/DDL keywords"):
             backend.execute_scd2_expire("DimCustomer", '"IsCurrent" = TRUE OR UPDATE x', {"IsCurrent": False})
+
+

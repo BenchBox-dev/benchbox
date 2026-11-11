@@ -351,3 +351,5 @@ class TestStatisticalPower:
 
         n = recommend_sample_size(effect_size=0.0)
         assert n == 1000
+
+

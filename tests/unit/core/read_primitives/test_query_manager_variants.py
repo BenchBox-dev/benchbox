@@ -250,3 +250,5 @@ class TestQueryManagerVariantIntegration:
         query2 = manager.get_query(first_query_id)
 
         assert query1 == query2
+
+

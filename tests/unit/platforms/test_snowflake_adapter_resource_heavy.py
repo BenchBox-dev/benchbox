@@ -56,3 +56,5 @@ class TestSnowflakeAddCliArguments:
 
         args = _parse_snowflake_cli_args(["--modify-warehouse-settings"])
         assert args["modify_warehouse_settings"] is True
+
+

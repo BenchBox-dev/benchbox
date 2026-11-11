@@ -233,3 +233,5 @@ class TestReplacementWording:
     )
     def test_cli_flags_are_translated(self, cli_wording: str, mcp_wording: str) -> None:
         assert mcp_replacement(cli_wording) == mcp_wording
+
+

@@ -185,3 +185,5 @@ def test_companion_hash_uses_sanitized_bytes_in_dry_run(tmp_path: Path) -> None:
     assert entry["companion_changes"][0]["old_sha256"] == hashlib.sha256(companion.read_bytes()).hexdigest()
     assert entry["companion_changes"][0]["new_sha256"] != entry["companion_changes"][0]["old_sha256"]
     assert json.loads(manifest.read_text(encoding="utf-8"))["bundle_hash"] == "old-bundle-hash"
+
+

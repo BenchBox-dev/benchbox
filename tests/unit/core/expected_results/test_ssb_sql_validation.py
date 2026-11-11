@@ -86,3 +86,5 @@ def test_ssb_unrecorded_scale_skips_not_fails(validator) -> None:
     assert result.validation_mode == ValidationMode.SKIP
     assert result.expected_row_count is None
     assert result.warning_message is not None
+
+

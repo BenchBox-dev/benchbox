@@ -67,3 +67,5 @@ def test_q16_variants_equivalent_across_complaint_supplier_cardinalities(populat
     assert not unexpected, "Q16 variant(s) diverge across complaint-supplier cardinalities: " + ", ".join(
         f"{d.key} ({d.detail})" for d in divergences if d.key in unexpected
     )
+
+

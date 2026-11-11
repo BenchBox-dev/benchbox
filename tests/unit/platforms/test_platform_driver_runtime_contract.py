@@ -255,3 +255,5 @@ class TestCheckIsolationCapability:
             driver_isolation_capability = DriverIsolationCapability.NOT_FEASIBLE
 
         check_isolation_capability(Adapter, "test", "current-process")
+
+

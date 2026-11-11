@@ -84,3 +84,5 @@ class TestClickHouseIngestionContract:
         assert all(path.suffix == ".parquet" and path.parent == result.output_dir for path in result.parquet_files)
         total = sum(pq.read_table(path).num_rows for path in result.parquet_files)
         assert total == result.row_count == 2
+
+

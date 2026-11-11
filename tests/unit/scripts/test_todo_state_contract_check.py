@@ -48,3 +48,5 @@ def test_contract_rejects_database_runtime(tmp_path: Path) -> None:
 
     with pytest.raises(check.StateContractError, match="retired SQLite"):
         check.validate_contract(repo_root=tmp_path)
+
+

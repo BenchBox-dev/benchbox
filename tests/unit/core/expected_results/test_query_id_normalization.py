@@ -257,3 +257,5 @@ class TestQueryIDNormalization:
         )
         assert isinstance(result.query_id, str)
         assert result.query_id == "15"
+
+

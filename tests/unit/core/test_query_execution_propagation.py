@@ -31,3 +31,5 @@ def test_propagate_query_execution_metadata_ignores_missing_and_none():
     target = {"existing": "val"}
     propagate_query_execution_metadata(source, target)
     assert target == {"existing": "val"}
+
+

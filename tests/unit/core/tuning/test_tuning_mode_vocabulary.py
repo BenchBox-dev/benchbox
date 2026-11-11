@@ -215,3 +215,5 @@ class TestFallbackLabelingEndToEnd:
         assert result.exit_code != 0
         assert "tuned-fallback" in result.output
         orchestrator.return_value.execute_benchmark.assert_not_called()
+
+

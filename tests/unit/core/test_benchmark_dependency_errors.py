@@ -184,3 +184,5 @@ def test_every_declared_benchmark_extra_exists_in_pyproject():
     for class_name, spec in benchbox._BENCHMARK_REGISTRY.items():
         for extra in spec.optional_dependencies:
             assert extra in extras, f"{class_name} declares nonexistent extra {extra!r}"
+
+

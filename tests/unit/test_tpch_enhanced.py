@@ -180,3 +180,5 @@ class TestTPCHBenchmarkEnhanced:
 
         medium_benchmark = TPCHBenchmark(scale_factor=0.1, output_dir=temp_dir)
         assert medium_benchmark.scale_factor == 0.1
+
+

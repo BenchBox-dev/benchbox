@@ -5318,3 +5318,5 @@ def test_date_only_renewal_is_not_effective_without_oracle_review(tmp_path: Path
     renewed = (date.today() + timedelta(days=400)).isoformat()
     registry.write_text(json.dumps(policy(exceptions=[exception(consumer="a.py", expires=renewed)])), encoding="utf-8")
     assert main(args) == 1
+
+

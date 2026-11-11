@@ -320,3 +320,5 @@ def test_tpch_power_uses_platform_refresh_connection_factory_only_for_final_meas
     assert [test.kwargs["refresh_update_set"] for test in power_tests] == [None, update_set]
     assert [test.kwargs["refresh_connection_factory"] is not None for test in power_tests] == [False, True]
     assert (connection, 0.01) in calls
+
+

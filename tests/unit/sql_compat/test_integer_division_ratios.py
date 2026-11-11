@@ -118,3 +118,5 @@ def test_sqlite_untranslated_integer_division_truncates():
 def test_postgres_integer_ratios_cast_the_dividend(name: str):
     translated = translate_sql_query(RATIO_QUERIES[name], "postgres", "duckdb")
     assert "DOUBLE PRECISION" in translated.upper()
+
+

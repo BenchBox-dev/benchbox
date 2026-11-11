@@ -153,3 +153,5 @@ class TestCliEngineResolution:
 
         assert "execution_engine" in _active_non_replayable_options(types.SimpleNamespace(execution_engine="streaming"))
         assert "execution_engine" not in _active_non_replayable_options(types.SimpleNamespace(execution_engine=None))
+
+

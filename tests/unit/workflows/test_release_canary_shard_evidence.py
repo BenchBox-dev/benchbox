@@ -389,3 +389,5 @@ def test_the_real_setup_stamp_step_survives_errexit_without_a_kernel_file(
         assert stamp == "", f"with no kernel file the stamp degrades to empty, got {stamp!r}"
         summary = _summary_json(workspace)
         assert summary["setup_seconds"] == "", "an empty stamp must not invent a duration"
+
+

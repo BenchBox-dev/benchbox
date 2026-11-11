@@ -35,3 +35,5 @@ def test_empty_accuracy_and_validity_checks_report_zero_records() -> None:
             assert result.records_failed == 0
             assert result.actual_value == 0.0
             assert result.failure_rate == 0.0
+
+

@@ -87,3 +87,5 @@ def test_the_message_distinguishes_a_narrow_filter_from_a_missing_source() -> No
     assert "--queries" not in missing
     assert "no DataFrame query source" in missing
     assert "SQL mode" in missing
+
+

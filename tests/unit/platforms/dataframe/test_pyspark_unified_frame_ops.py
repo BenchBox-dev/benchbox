@@ -94,3 +94,5 @@ def test_create_dataframe_with_all_null_column(ctx):
         pytest.skip("LakeSail builds in-memory frames through a different path")
     frame = context.create_dataframe({"ratio": [None]})
     assert frame.native.collect()[0]["ratio"] is None
+
+

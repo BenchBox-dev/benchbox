@@ -207,3 +207,5 @@ class TestLiveDatabricksSpecificFeatures:
 
         finally:
             live_databricks_adapter.close_connection(connection)
+
+

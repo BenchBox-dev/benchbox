@@ -120,3 +120,5 @@ def test_ddl_drift_message_mentions_alias_dict_and_no_regen():
     assert "_DDL_GOVERNANCE_TRANSFORMER_ALIASES" in block
     assert "_DDL_DRIFT_EXEMPTIONS" in block
     assert "make guards-fix" in block
+
+

@@ -235,3 +235,5 @@ def test_tracked_files_decode_smart_quote_names(tmp_path: Path, monkeypatch: pyt
     monkeypatch.setattr(inventory, "ROOT", repo)
     monkeypatch.setattr(inventory, "subprocess", SimpleNamespace(run=_windows_locale_run(subprocess.run)))
     assert quoted in inventory.tracked_files()
+
+

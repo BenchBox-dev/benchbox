@@ -457,3 +457,5 @@ class TestAWSGlueAdapterClose:
             mock_logger.info.assert_called()
             call_args = str(mock_logger.info.call_args)
             assert "DPU-hours" in call_args
+
+

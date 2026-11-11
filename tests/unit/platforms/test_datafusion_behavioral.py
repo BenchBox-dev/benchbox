@@ -404,3 +404,5 @@ class TestMultiFileCsvEmptyPrefixGuard:
         assert "lineitem.csv." in joined and "*" in joined
         assert "UNION ALL" not in joined
         assert "CREATE OR REPLACE VIEW lineitem AS" not in joined
+
+

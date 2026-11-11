@@ -337,3 +337,5 @@ class TestConfiguredOnlySizingDoesNotPublish:
         assert normalized["cost_status"] == "unavailable"
         assert normalized["normalized_cost_usd"] is None
         assert normalized["deployment"]["warehouse_size"] == "MEDIUM"
+
+

@@ -121,3 +121,5 @@ def test_none_for_null_converts_lazily_on_dask():
     rows = queries._none_for_null(frame, ["k", "n"]).compute().to_dict("records")
 
     assert rows == [{"k": "a", "n": 1.0, "i": 1}, {"k": None, "n": None, "i": 2}, {"k": "c", "n": 3.0, "i": 3}]
+
+

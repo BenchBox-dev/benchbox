@@ -207,3 +207,5 @@ class TestGetSmartDefaults:
         config = get_smart_defaults("dask")
         assert config.metadata is not None
         assert config.metadata.generated_by == "benchbox-smart-defaults"
+
+

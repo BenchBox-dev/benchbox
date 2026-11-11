@@ -306,3 +306,5 @@ class TestTPCDSWorkflowIntegration:
         assert len(operations) == 4
         for _op_type, _op_target, op_result in operations:
             assert op_result > 0
+
+

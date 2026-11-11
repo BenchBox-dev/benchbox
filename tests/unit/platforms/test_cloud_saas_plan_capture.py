@@ -350,3 +350,5 @@ class TestSnowflakeGetQueryPlanPassthrough:
     def test_null_row_returns_none(self, monkeypatch):
         adapter = _make_snowflake(monkeypatch)
         assert adapter.get_query_plan(_snowflake_conn_with_cell(None), "SELECT 1") is None
+
+

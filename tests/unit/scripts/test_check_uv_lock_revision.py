@@ -79,3 +79,5 @@ class TestRevisionParsing:
         monkeypatch.setattr(guard, "_committed_lock_text", lambda _root, _ref: None)
         assert guard.main([]) == 0
         assert "nothing to compare" in capsys.readouterr().out
+
+

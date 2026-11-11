@@ -74,3 +74,5 @@ def test_calls_leave_template_tree_unchanged_and_threads_agree_with_serial(dsqge
         )
     assert dict(zip(jobs, results)) == expected
     assert _tree_digest(dsqgen.templates_dir.parent) == before
+
+

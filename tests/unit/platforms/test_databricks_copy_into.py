@@ -131,3 +131,5 @@ def test_copy_into_requires_staging(adapter):
     conn = DummyConnection()
     with pytest.raises(ValueError):
         adapter.load_data(b, conn, Path("/local"))
+
+

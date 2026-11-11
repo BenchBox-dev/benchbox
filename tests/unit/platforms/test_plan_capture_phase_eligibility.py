@@ -28,3 +28,5 @@ def test_registered_adapters_declare_plan_capture_phase_eligibility() -> None:
     ]
 
     assert not missing, "adapters missing explicit plan_capture_phase_eligible declarations: " + ", ".join(missing)
+
+

@@ -174,3 +174,5 @@ def test_pandas_composite_join_does_not_match_null_keys() -> None:
     result = dataframe_queries._run_pandas_query(PandasContext({"movie_companies": frame}), tree)
 
     assert result["first_note"].tolist() == ["matching-key"]
+
+

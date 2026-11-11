@@ -573,3 +573,5 @@ class TestStatusDerivationIgnoresInternalSentinelsAndSparseResults:
 
         assert payload is not None
         assert "validation_status" not in payload
+
+

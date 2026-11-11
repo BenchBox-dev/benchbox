@@ -144,3 +144,5 @@ def test_e2e_validator_status_reaches_cross_scale_check(tmp_path: Path, monkeypa
     assert result.phase_exit_codes["validate"] == 1
     assert result.phase_exit_codes["report"] == 1
     assert validated_paths == [Path(f"/tmp/{plat}_{bench}_{scale}.json") for plat, bench, scale in invocations]
+
+

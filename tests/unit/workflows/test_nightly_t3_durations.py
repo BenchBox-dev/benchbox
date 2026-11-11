@@ -145,3 +145,5 @@ def test_a_failing_verdict_with_a_clean_report_fails(tmp_path: Path, failing_tie
     assert result.returncode != 0, result.stdout + result.stderr
     assert f"{failing_tier} duration sample reported test failures but its JUnit report records none" in result.stdout
     assert "::warning::" not in result.stdout
+
+

@@ -138,3 +138,5 @@ class TestRedshiftConnectionConfig:
         adapter = _make_adapter(host="original.redshift.amazonaws.com")
         params = adapter._get_connection_params(host="override.redshift.amazonaws.com")
         assert params["host"] == "override.redshift.amazonaws.com"
+
+

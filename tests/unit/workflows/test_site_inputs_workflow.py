@@ -117,3 +117,5 @@ def test_publication_build_takes_its_profile_from_the_default() -> None:
     assert "SITE_INPUTS_PROFILE" not in text
     assert "make site-inputs SITE_INPUTS_OUT=site-inputs-bundle" in text
     assert 'SITE_INPUTS_CERTIFIED_BY="$CERTIFIED_BY"' in text
+
+

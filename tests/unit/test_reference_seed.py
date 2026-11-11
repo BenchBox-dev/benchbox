@@ -100,3 +100,5 @@ class TestQgenDefaultsMode:
         data_lines = [line for line in answers.read_text().splitlines()[1:] if line.strip()]
         assert len(data_lines) == answer_rows
         assert qgen.generate(query_id, seed=None) != qgen.generate(query_id, seed=17039360)
+
+

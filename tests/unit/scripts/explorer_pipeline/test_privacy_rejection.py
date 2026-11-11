@@ -107,3 +107,5 @@ def test_privacy_rejection_makes_the_publish_command_exit_non_zero(tmp_path: Pat
     normalized_output = " ".join(result.output.split())
     assert "privacy check failed" in normalized_output
     assert LEAKING_PATH not in result.output
+
+

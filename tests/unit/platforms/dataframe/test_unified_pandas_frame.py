@@ -563,3 +563,5 @@ class TestUnifiedPandasFrameIntegration:
         assert isinstance(result, UnifiedPandasFrame)
         assert "total" in result.columns
         assert len(result) == 2
+
+

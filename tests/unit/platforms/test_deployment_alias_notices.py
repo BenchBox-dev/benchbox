@@ -50,3 +50,5 @@ def test_spec_default_deployment_records_no_notice(tmp_path: Path, platform: str
 
     assert result.exit_code == 0, result.output
     assert run_notices() == ()
+
+

@@ -207,3 +207,5 @@ def test_execute_platform_chunking_prunes_between_chunks_via_reuse_aware_helpers
     lifecycle = (tmp_path / "uat_lifecycle.log").read_text(encoding="utf-8")
     assert "[platform-chunk] prune platform=duckdb via=reuse-aware helpers" in lifecycle
     assert "scope=per-platform-benchmark-scale" in lifecycle
+
+

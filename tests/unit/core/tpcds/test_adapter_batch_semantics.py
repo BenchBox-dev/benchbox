@@ -139,3 +139,5 @@ def test_q12_keeps_a_null_class_group_and_sorts_it_last(family):
 
     assert [row[3] for row in rows] == ["arts", "zoo", None]
     assert [row[5] for row in rows] == [10.0, 30.0, 20.0]
+
+

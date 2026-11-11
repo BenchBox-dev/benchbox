@@ -59,3 +59,5 @@ def test_corpus_flag_parity_with_bundle_validation(tmp_path: Path):
     empty = tmp_path / "corpus.txt"
     empty.write_text("", encoding="utf-8")
     assert main([str(bundle), "--corpus-changed-paths", str(empty), "--require-manifest"]) == 1
+
+

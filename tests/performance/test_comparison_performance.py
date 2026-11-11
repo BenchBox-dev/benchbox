@@ -43,3 +43,5 @@ def test_comparison_runs_within_time_budget() -> None:
     duration = time.perf_counter() - start
 
     assert duration < 1.0
+
+

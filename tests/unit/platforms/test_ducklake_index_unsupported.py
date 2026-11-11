@@ -57,3 +57,5 @@ def test_duckdb_still_creates_the_indexes():
         "idx_lineitem_sort",
         "idx_lineitem_cluster",
     }
+
+

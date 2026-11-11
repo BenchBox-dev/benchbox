@@ -440,3 +440,5 @@ def test_valid_scale_factors(scale_factor: float) -> None:
 
     is_valid, errors = validate_result_structure(result)
     assert is_valid, f"Scale factor {scale_factor} should be valid: {errors}"
+
+

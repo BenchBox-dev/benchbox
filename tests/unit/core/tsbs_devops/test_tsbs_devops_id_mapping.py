@@ -58,3 +58,5 @@ def test_mapping_table_is_exact_and_total() -> None:
     assert sorted(EXPECTED_MAPPING.values()) == sorted(sql_ids)
     for df_id, slug in EXPECTED_MAPPING.items():
         assert bench.get_query_info(slug)["id"] == df_id[1:]
+
+

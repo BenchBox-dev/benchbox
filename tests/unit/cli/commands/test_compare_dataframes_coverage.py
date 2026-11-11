@@ -217,3 +217,5 @@ def test_run_sql_vs_dataframe_markdown(monkeypatch: pytest.MonkeyPatch, tmp_path
 def test_helper_printers() -> None:
     cdf._print_text_summary([_FakeResult("polars-df")], _FakeSummary())
     cdf._print_sql_vs_df_summary(_FakeSQLSummary())
+
+

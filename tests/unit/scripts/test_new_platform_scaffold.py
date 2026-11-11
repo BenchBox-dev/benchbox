@@ -137,3 +137,5 @@ def test_render_prints_the_json_manifest_entry() -> None:
     assert '"execution_engines": {}' in rendered
     assert "class DemoengineDataFrameAdapter(ExpressionFamilyAdapter):" in rendered
     assert "- benchbox/platforms/dataframe/demoengine_df.py" in rendered
+
+

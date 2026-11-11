@@ -178,3 +178,5 @@ class TestTPCDSQueryManagerMinimal:
 
         assert type(queries_a) == type(queries_b)
         assert queries_a.get_query(1) == queries_b.get_query(1)
+
+

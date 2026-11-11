@@ -196,3 +196,5 @@ def test_full_archive_utf8_multibyte_fidelity(archive_conn: Any) -> None:
         for row_id, value in rows:
             digest.update(f"{row_id}\x1f{value}\x1e".encode())
         assert digest.hexdigest() == expected_sha256
+
+

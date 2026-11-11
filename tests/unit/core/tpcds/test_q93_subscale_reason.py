@@ -101,3 +101,5 @@ def test_other_queries_are_untouched_below_sf1(monkeypatch):
     monkeypatch.setattr(c_tools, "SUBSCALE_TEMPLATE_OVERRIDES", {})
     official = {query: DSQGenBinary().generate(query, seed=7, scale_factor=0.1) for query in (1, 9, 85, 92, 94)}
     assert with_override == official
+
+

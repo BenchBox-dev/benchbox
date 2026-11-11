@@ -183,3 +183,5 @@ class TestCoffeeShopPandasImplExecution:
             assert result is not None
         except (ValueError, TypeError):
             pass
+
+

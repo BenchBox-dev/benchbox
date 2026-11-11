@@ -113,3 +113,5 @@ def test_non_mirror_pr_touching_guarded_files_is_rejected_even_without_bot_signa
     )
     assert result.returncode == 1, result.stdout + result.stderr
     assert "::error::" in result.stdout
+
+

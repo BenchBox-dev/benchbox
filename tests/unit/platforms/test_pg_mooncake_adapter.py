@@ -997,3 +997,5 @@ class TestPgMooncakeMirrorOrder:
 
         assert not any(sql.endswith('RENAME TO "orders"') for sql in cursor.executed)
         assert mirrored == {"orders"}
+
+

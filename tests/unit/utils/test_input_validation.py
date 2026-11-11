@@ -372,3 +372,5 @@ class TestSafeFormatTableReference:
     def test_invalid_schema_raises(self):
         with pytest.raises(SQLInjectionError):
             safe_format_table_reference("users", schema_name="schema; DROP")
+
+

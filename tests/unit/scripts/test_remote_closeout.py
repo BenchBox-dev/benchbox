@@ -2124,3 +2124,5 @@ def test_refuses_a_stale_failed_suite_hidden_behind_a_newer_success(
     assert "condition 6: required check 'review' suite 9 failure" in err
     assert "actions/runs/77" in err
     assert ready_pr.arms() == []
+
+

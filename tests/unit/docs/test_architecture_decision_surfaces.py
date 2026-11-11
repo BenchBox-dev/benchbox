@@ -31,3 +31,5 @@ def test_ssb_pilot_stop_is_reflected_in_future_state_surfaces() -> None:
         "Future-state proposal, Tier 2"
         not in contract_index.split("Define benchmark family plugin seam", maxsplit=1)[1].split("\n", maxsplit=1)[0]
     )
+
+

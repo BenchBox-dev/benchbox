@@ -751,3 +751,5 @@ class TestTruncationCaveat:
 
         assert result.similarity.overall_similarity < 1.0
         assert not any("depth-truncated" in reason for reason in _reasons(result))
+
+

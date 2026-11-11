@@ -463,3 +463,5 @@ class TestRunUnifiedComparison:
             results = run_unified_comparison(["duckdb"], platform_type=PlatformType.SQL)
             mock_run.assert_called_once_with(platforms=["duckdb"], data_dir=None)
         assert results is mock_results
+
+

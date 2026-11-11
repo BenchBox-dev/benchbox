@@ -126,3 +126,5 @@ def test_main_rejects_inverted_target_band(capsys: pytest.CaptureFixture[str]) -
     assert shrink_rollup.main(["--target-min", "19000", "--target-max", "12000"]) == 2
 
     assert "--target-min cannot exceed --target-max" in capsys.readouterr().err
+
+

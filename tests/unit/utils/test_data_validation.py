@@ -428,3 +428,5 @@ class TestEmptyManifestIsNotReusable:
 
         assert result.valid is False
         assert any("manifest" in issue.lower() for issue in result.issues), result.issues
+
+

@@ -290,3 +290,5 @@ class TestCloudTranslation:
             "rush-hour-analysis",
         ):
             conn.execute(queries_by_dialect["sqlite"][qid]).fetchall()
+
+

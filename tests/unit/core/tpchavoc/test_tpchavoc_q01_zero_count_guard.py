@@ -11,3 +11,5 @@ def test_union_variant_averages_guard_the_zero_count_branch():
     for numerator in ("sum_qty", "sum_base_price", "sum_disc"):
         assert f"final.{numerator} / nullif(final.count_order, 0)" in sql
     assert "/ final.count_order" not in sql
+
+

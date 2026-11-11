@@ -71,3 +71,5 @@ def test_chdb_tuning_metadata_save_completes_without_hanging(engine_report: dict
     assert engine_report["tunings_loaded"] is True
     assert engine_report["tuned_run_marker_present"] is True
     assert engine_report["metadata_round_trip_seconds"] < SCRIPT_TIMEOUT_SECONDS
+
+

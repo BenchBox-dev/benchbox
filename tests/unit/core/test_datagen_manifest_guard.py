@@ -148,3 +148,5 @@ def test_require_manifest_files_rejects_non_positive_counts(file_count: int, tmp
 
 def test_require_manifest_files_accepts_a_positive_count(tmp_path: Path) -> None:
     require_manifest_files(1, label="Demo", output_dir=tmp_path)
+
+

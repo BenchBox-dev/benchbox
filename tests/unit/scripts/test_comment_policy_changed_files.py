@@ -213,3 +213,5 @@ def test_a_missing_external_provenance_fails_a_pr_that_changes_no_source(tmp_pat
     else:
         (tmp_path / "provenance.txt").unlink()
     assert main(_args(tmp_path, base, staged)) == 2
+
+

@@ -23,3 +23,5 @@ def test_check_platform_connectivity_returns_adapter_result():
 def test_check_platform_connectivity_handles_exceptions():
     with patch("benchbox.platforms.get_platform_adapter", side_effect=RuntimeError("boom")):
         assert check_platform_connectivity("duckdb") is False
+
+

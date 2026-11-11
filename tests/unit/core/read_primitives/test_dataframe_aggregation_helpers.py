@@ -70,3 +70,5 @@ def test_aggregation_groupby_small_pandas_impl_groups_and_aggregates(pandas_ctx)
 
     assert list(result["nation_count"]) == [2, 1]
     assert list(result["last_nation"]) == ["BRAZIL", "CANADA"]
+
+

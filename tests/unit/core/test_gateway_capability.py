@@ -359,3 +359,5 @@ def test_gateway_host_with_credentials_scheme_or_path_is_rejected_at_parse_time(
         PlatformHookRegistry.parse_options("snowflake", [("gateway_host", " gw.example.com ")])["gateway_host"]
         == "gw.example.com"
     )
+
+

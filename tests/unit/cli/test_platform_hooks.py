@@ -558,3 +558,5 @@ def test_plan_capture_options_reject_non_integer():
         PlatformHookRegistry.parse_options("duckdb", [("plan_max_depth", "deep")])
     with pytest.raises(PlatformOptionError):
         PlatformHookRegistry.parse_options("duckdb", [("plan_capture_timeout_seconds", "soon")])
+
+

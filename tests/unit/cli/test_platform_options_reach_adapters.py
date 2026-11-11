@@ -362,3 +362,5 @@ def test_sqlite_error_message_names_an_option_that_works() -> None:
 
     with pytest.raises(ConfigurationError, match="database_path"):
         SQLiteAdapter.from_config({})
+
+

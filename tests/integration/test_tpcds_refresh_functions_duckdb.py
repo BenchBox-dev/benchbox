@@ -410,3 +410,5 @@ def test_df_returns_of_out_of_range_orders_survive_a_key_collision(
         assert after.execute(f"SELECT COUNT(*) FROM {returns}").fetchone()[0] == returns_before - expected_returns
     finally:
         after.close()
+
+

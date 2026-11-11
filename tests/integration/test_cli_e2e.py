@@ -194,3 +194,5 @@ def test_cli_dry_run_requires_database_when_not_data_only(tmp_path: Path):
     assert result.returncode != 0
     assert "Dry run mode requires --platform and --benchmark parameters" in result.stdout
     assert "Use --phases generate" in result.stdout
+
+

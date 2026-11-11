@@ -181,3 +181,5 @@ def test_cli_check_exits_nonzero_and_names_the_newest_commit(history, monkeypatc
     assert releasable.main(["check", "--sha", sha("a")]) == 0
     assert releasable.main(["newest"]) == 0
     assert capsys.readouterr().out.splitlines()[-1] == sha("a")
+
+

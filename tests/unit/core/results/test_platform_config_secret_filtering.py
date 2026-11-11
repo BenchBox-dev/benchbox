@@ -213,3 +213,5 @@ class TestResultsDbMetadataFiltering:
         db.store_result(result)
         raw = (tmp_path / "results.db").read_bytes()
         assert b"DBKEY-SENTINEL" not in raw
+
+

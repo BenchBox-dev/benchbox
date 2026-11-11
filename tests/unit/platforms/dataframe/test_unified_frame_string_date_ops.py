@@ -1198,3 +1198,5 @@ class TestCastDate:
 
         with pytest.raises(pl.exceptions.ComputeError):
             frame.select(expr_factory(pl.col("value")).cast_date().alias("value")).collect()
+
+

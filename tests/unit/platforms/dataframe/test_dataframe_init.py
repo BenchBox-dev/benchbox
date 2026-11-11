@@ -28,3 +28,5 @@ def test_dataframe_package_availability_flags_are_booleans() -> None:
         "DELTA_SPARK_AVAILABLE",
     ):
         assert isinstance(getattr(dataframe_pkg, flag_name), bool)
+
+

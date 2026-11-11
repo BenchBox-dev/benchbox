@@ -172,3 +172,5 @@ class TestLivePgDuckDBS3LakeQueries:
             assert result[0] == expected_rows
         finally:
             live_pg_duckdb_adapter.close_connection(connection)
+
+

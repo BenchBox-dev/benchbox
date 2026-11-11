@@ -194,3 +194,5 @@ def test_all_green_control_arms_exactly_once(tmp_path: Path) -> None:
     assert gate_call[:2] == ["sh", "-c"]
     assert gate_call[-7:] == ["gate", "--repo", "o/r", "--pr", "1", "--head-sha", head]
     assert merge_call[:3] == ["gh", "pr", "merge"]
+
+

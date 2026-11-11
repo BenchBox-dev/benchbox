@@ -60,3 +60,5 @@ def test_an_obt_statement_is_empty_only_where_the_base_statement_is(engines, que
             f"Q{query_id} part {part}: the OBT returns no rows where the base TPC-DS statement returns "
             f"{base_rows} on the same data and parameters"
         )
+
+

@@ -515,3 +515,5 @@ def test_invalid_query_patterns(tmp_path: Path, invalid_queries: str) -> None:
     )
 
     assert result.returncode != 0, f"Should have rejected query pattern: {invalid_queries}"
+
+

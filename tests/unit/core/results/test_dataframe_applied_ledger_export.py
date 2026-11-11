@@ -99,3 +99,5 @@ def test_requested_tuning_that_applied_nothing_reports_noop():
     assert result.tuning_validation_status == "noop"
     assert build_applied_ledger_payload(result) is None
     assert build_result_payload(result)["platform"]["tuning"]["validation_status"] == "noop"
+
+

@@ -153,3 +153,5 @@ def test_generated_expression_queries_match_tiny_duckdb_oracle(
         assert list(actual.columns) == list(expected.columns), query_id
         assert len(actual) == len(expected) == 1, query_id
         assert _null_normalized_row(actual) == _null_normalized_row(expected), query_id
+
+

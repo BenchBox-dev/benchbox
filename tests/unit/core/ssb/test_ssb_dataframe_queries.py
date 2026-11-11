@@ -383,3 +383,5 @@ class TestSSBQueryExecutionBehavior:
 
         pd.testing.assert_frame_equal(expr_result.reset_index(drop=True), expected, check_dtype=False)
         pd.testing.assert_frame_equal(pandas_result.reset_index(drop=True), expected, check_dtype=False)
+
+

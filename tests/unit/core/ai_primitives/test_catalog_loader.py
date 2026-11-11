@@ -196,3 +196,5 @@ class TestCatalogValidation:
             if query.variants:
                 for dialect in query.variants.keys():
                     assert dialect == dialect.lower()
+
+

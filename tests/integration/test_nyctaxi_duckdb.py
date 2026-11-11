@@ -248,3 +248,5 @@ class TestNYCTaxiDataGeneration:
                 assert 0 < dropoff_id <= 265
 
                 float(row[header.index("fare_amount")])
+
+

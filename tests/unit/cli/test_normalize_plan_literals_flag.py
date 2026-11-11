@@ -105,3 +105,5 @@ class TestNormalizePlanLiteralsFingerprintInResults:
         for entry in plans.values():
             assert "fingerprint" in entry
             assert "fingerprint_normalized" not in entry
+
+

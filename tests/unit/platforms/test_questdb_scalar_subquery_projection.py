@@ -101,3 +101,5 @@ def test_full_pipeline_moves_the_subquery_of_a_grouped_select():
         "SELECT k, COUNT(*) AS m, _qs1._qs1_v AS c FROM u CROSS JOIN (SELECT COUNT(*) AS _qs1_v FROM t) AS _qs1 "
         "GROUP BY k"
     )
+
+

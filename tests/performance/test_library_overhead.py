@@ -176,3 +176,5 @@ def test_result_exporter_memory_efficiency(tmp_path: Path) -> None:
         _, peak = tracemalloc.get_traced_memory()
         tracemalloc.stop()
         assert peak < threshold, f"{fmt} export used too much memory: {peak} bytes"
+
+

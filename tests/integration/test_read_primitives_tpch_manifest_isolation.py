@@ -94,3 +94,5 @@ class TestPrimitivesTpchManifestIsolation:
         benchmark = ReadPrimitivesBenchmark(scale_factor=1.0, output_dir=str(custom_path))
 
         assert str(benchmark.output_dir) == str(custom_path)
+
+

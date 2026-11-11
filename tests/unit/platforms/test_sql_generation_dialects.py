@@ -94,3 +94,5 @@ def test_tpcds_translate_always_uses_sqlglot():
     b = TPCDSBenchmark(scale_factor=1.0, output_dir=None)
     sql = b.translate_query_text("SELECT 1", "ansi", "duckdb")
     assert "select" in sql.lower()
+
+

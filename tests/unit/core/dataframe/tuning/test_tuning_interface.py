@@ -254,3 +254,5 @@ class TestTuningMetadata:
         metadata = TuningMetadata.from_dict(data)
         assert metadata.platform == "dask"
         assert metadata.description == "Test"
+
+

@@ -39,3 +39,5 @@ def test_obt_bundle_with_measured_queries_but_no_tables_block_fails():
 
 def test_obt_bundle_without_queries_or_tables_is_not_checked():
     assert _errors({"benchmark": {"id": "tpcds_obt"}}) == []
+
+

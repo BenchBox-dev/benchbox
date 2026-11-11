@@ -740,3 +740,5 @@ class TestPlatformAliases:
         info_underscore = registry.get_platform_info("fabric_dw")
         info_hyphen = registry.get_platform_info("fabric-dw")
         assert info_underscore.display_name == info_hyphen.display_name
+
+

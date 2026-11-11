@@ -193,3 +193,5 @@ def test_excluded_source_roots_are_skipped_and_documented(
     out = capsys.readouterr().out
     assert f"{live}page.md:1 -> missing.md (missing file)" in out
     assert f"{root}old.md" not in out
+
+

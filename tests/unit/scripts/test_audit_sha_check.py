@@ -122,3 +122,5 @@ def test_audit_sha_ancestry_ref_covers_squashed_merge_queue_head(
         audit_sha_check.validate_audit(path, "origin/develop")
     result = audit_sha_check.validate_audit(path, "origin/develop", ancestry_ref="origin/pr-head")
     assert result.measured_at_sha == CHECKED_SHA
+
+

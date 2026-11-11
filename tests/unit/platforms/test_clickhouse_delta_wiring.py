@@ -172,3 +172,5 @@ class TestClickHouseDeltaHandlerLoad:
         inserts = [s for s in connection.statements if s.strip().upper().startswith("INSERT INTO")]
         assert len(inserts) == 1
         assert ".parquet" in inserts[0]
+
+

@@ -345,3 +345,5 @@ class TestPySparkSkipList:
         assert not unexpectedly_working, (
             f"These queries now work on PySpark and should be removed from SKIP_FOR_PYSPARK: {unexpectedly_working}"
         )
+
+

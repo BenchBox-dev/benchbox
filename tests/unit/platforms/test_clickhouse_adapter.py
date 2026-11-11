@@ -1376,3 +1376,5 @@ class TestClickHouseWorkloadCoverage:
         assert result["status"] == "FAILED"
         assert result["error"]
         assert result["error_type"] == "RuntimeError"
+
+

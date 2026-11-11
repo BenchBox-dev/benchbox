@@ -351,3 +351,5 @@ class TestPlatformRegistryNewPlatforms:
         PlatformRegistry._ensure_registered()
         available = PlatformRegistry.get_available_platforms()
         assert "clickhouse-server" in available, "clickhouse-server must be in available platforms"
+
+

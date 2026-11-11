@@ -114,3 +114,5 @@ def test_variant_describe_query_parameters() -> None:
         _describe_query_parameters(SimpleNamespace(name="tpchavoc", options={"seed": 4242}))
         == "qgen -r (4242 + 1000 * stream_id)"
     )
+
+

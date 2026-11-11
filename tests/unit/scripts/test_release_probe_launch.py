@@ -266,3 +266,5 @@ def test_dispatch_through_the_real_gh_wrapper_accepts_plain_text_output(fake_gh,
 def test_api_calls_through_the_real_gh_wrapper_still_parse_json(fake_gh, monkeypatch):
     monkeypatch.setenv("FAKE_GH_STDOUT", '{"workflow_runs": []}')
     assert launch.gh("api", "repos/x/y") == {"workflow_runs": []}
+
+

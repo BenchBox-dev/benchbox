@@ -287,3 +287,5 @@ def test_tuned_with_full_metadata_refusal_unchanged(tmp_path):
     plain = _notuning_adapter(db)
     result = plain._validate_database_tunings(database_path=db)
     assert any(REFUSAL in error for error in result.errors)
+
+

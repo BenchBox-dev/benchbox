@@ -107,3 +107,5 @@ def test_dask_reports_complex_type_introspection_as_unsupported():
 
     with pytest.raises(UnsupportedOperationError):
         dask_manager.execute_complex_type_introspection(dask_frame)
+
+

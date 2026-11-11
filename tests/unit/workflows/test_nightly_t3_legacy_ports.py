@@ -236,3 +236,5 @@ def test_runbook_records_a_disposition_for_every_legacy_job() -> None:
         assert any(
             f"`{job}`" in label and "owner decision 2026-10-27" in disposition for label, disposition in rows.items()
         )
+
+

@@ -137,3 +137,5 @@ class TestFabricLakehouseTimingContract:
 
         assert result["status"] == "FAILED"
         assert "request_count" not in result
+
+

@@ -36,3 +36,5 @@ def test_dbgen_generates_small_table():
         ]
         exists = [p for p in candidates if p.exists() and p.stat().st_size > 0]
         assert exists, "dbgen did not produce expected REGION output"
+
+

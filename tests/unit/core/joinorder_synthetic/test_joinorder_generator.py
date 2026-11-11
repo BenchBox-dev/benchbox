@@ -386,3 +386,5 @@ class TestNewRelationshipTables:
         for table in ("movie_link", "person_info", "complete_cast", "aka_name", "aka_title"):
             assert table in rel, f"{table} missing from relationship tables"
             assert len(rel[table]) > 0, f"{table} has 0 rows"
+
+

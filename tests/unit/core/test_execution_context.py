@@ -309,3 +309,5 @@ class TestExecutionContextStrictValidation:
     def test_unknown_nested_field_rejected(self):
         with pytest.raises(ValueError, match="Extra inputs are not permitted"):
             ExecutionContext(entry_point="cli", invalid_option=True)
+
+

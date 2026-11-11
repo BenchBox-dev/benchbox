@@ -648,3 +648,5 @@ def test_exists_to_derived_join_leaves_non_equality_correlation_untouched():
     assert apply_rewrite("exists_to_derived_join", source, "sqlite") == (
         "SELECT a FROM t WHERE EXISTS(SELECT 1 FROM t AS t2 WHERE t2.v < t.v)"
     )
+
+

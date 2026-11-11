@@ -137,3 +137,5 @@ def test_resource_monitor_shutdown_timeout():
     elapsed = time.time() - start_time
 
     assert elapsed < 10.0
+
+

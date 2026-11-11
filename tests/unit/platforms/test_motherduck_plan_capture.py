@@ -116,3 +116,5 @@ class TestMotherDuckStrictPlanCapture:
 
         assert result["status"] == "FAILED"
         assert "no such table" in result["error"]
+
+

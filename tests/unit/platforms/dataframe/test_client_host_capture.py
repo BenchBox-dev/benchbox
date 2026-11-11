@@ -83,3 +83,5 @@ def test_a_typed_profile_snapshot_is_preserved_and_mapped() -> None:
         "cpu_model": "Snapshot CPU",
         "cpu_identity_provenance": "measured",
     }
+
+

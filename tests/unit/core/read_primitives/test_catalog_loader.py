@@ -594,3 +594,5 @@ queries:
         assert query.skip_on is not None
         assert "sqlite" in query.skip_on
         assert query.description == "Test query with both features"
+
+

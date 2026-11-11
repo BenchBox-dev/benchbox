@@ -78,3 +78,5 @@ def test_hash_changes_when_a_single_flag_flips():
     config.foreign_keys.enabled = False
 
     assert config.get_configuration_hash() != original
+
+

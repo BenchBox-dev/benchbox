@@ -199,3 +199,5 @@ def test_windows_leg_fails_when_a_fast_marked_target_collects_nothing(tmp_path: 
     assert result.returncode == 1
     assert "::error::" in result.stdout
     assert "tests/test_fast_target.py" in (tmp_path / "summary.txt").read_text(encoding="utf-8")
+
+

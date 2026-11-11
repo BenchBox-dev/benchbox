@@ -151,3 +151,5 @@ class TestParadeDBAdapter:
 
 
 from benchbox.platforms.postgresql import PostgreSQLAdapter as PostgreSQLAdapter
+
+

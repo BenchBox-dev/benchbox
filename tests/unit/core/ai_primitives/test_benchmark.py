@@ -374,3 +374,5 @@ class TestAIBenchmarkResult:
         assert result.platform == ""
         assert result.dry_run is False
         assert result.query_results == []
+
+

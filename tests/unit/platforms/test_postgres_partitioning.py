@@ -192,3 +192,5 @@ def test_statements_without_rows_return_no_rows():
 
     cursor.fetchall.assert_not_called()
     assert build.call_args.kwargs["actual_row_count"] == 0
+
+

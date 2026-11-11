@@ -58,3 +58,5 @@ def test_every_recorded_difference_is_classified_and_none_is_a_fork_gap(area: st
         if classify(area, case_id, entry) != {"classification": entry["classification"], "reason": entry["reason"]}
     )
     assert not stale, f"{area}: classification no longer verified by its rule {stale[:5]}"
+
+

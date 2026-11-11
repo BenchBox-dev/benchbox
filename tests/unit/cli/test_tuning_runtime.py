@@ -97,3 +97,5 @@ def test_default_unified_config_disables_unrendered_constraints_on_motherduck() 
     assert config.foreign_keys.enabled is False
     assert config.unique_constraints.enabled is False
     assert config.check_constraints.enabled is False
+
+

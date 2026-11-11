@@ -170,3 +170,5 @@ def test_empty_vs_nonempty_mismatch() -> None:
     report = _compare([], [(1, 2)])
     assert not report.matched
     assert report.divergences[0].row_index == -1
+
+

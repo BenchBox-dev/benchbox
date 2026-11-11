@@ -241,3 +241,5 @@ def test_canary_mixed_drift_does_not_recommend_wipe_based_full_mirror() -> None:
     assert "Mirror it with:" not in script
     assert "union-overlay" in stale_section or "union overlay" in stale_section.lower()
     assert "non-destructive" in stale_section or "without" in stale_section
+
+

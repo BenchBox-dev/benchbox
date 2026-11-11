@@ -592,3 +592,5 @@ class TestCitusPlatformInfo:
         from benchbox.core.platform_registry import PlatformRegistry
 
         assert PlatformRegistry.get_platform_conflicts("citus") == []
+
+

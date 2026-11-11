@@ -203,3 +203,5 @@ class TestTPCDSFileFormatFix:
             assert len(table_paths) == 0, (
                 f"Expected 0 tables (all invalid), found {len(table_paths)}: {list(table_paths.keys())}"
             )
+
+

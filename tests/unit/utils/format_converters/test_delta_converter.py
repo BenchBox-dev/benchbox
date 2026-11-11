@@ -533,3 +533,5 @@ class TestDeltaConversion:
         assert df.num_rows == 2
         data = df.to_pydict()
         assert data["id"] == [2, 3]
+
+

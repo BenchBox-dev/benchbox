@@ -757,3 +757,5 @@ class TestDeclaredConstraints:
             "unique_constraints",
             "check_constraints",
         ]
+
+

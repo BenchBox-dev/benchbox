@@ -77,3 +77,5 @@ def test_report_renders_a_saved_run(tmp_path: Path, capsys: pytest.CaptureFixtur
     source.write_text(json.dumps(payload))
     assert cli.main(["report", str(source)]) == 0
     assert "# Tuning evidence: duckdb tpch SF0.01" in capsys.readouterr().out
+
+

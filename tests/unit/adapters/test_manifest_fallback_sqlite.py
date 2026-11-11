@@ -46,3 +46,5 @@ def test_sqlite_manifest_fallback_loads_data(tmp_path: Path):
 
     rows = conn.execute("SELECT COUNT(*) FROM test").fetchone()[0]
     assert rows == 2
+
+

@@ -85,3 +85,5 @@ def test_questdb_dialect_selects_the_variant_and_other_dialects_keep_the_canonic
     assert joinorder_benchmark.get_query("1a", dialect="questdb") == joinorder_benchmark.translate_query_text(
         JoinOrderQueryManager().get_query("1a"), "questdb"
     )
+
+

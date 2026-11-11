@@ -122,3 +122,5 @@ class TestLivePrestoBulkLoad:
         finally:
             cursor.execute("DROP TABLE IF EXISTS memory.default.presto_smoke_tbl")
             adapter.close_connection(connection)
+
+

@@ -74,3 +74,5 @@ def test_compare_with_uniform_wraps_adapter_failures():
 def test_geometric_mean_handles_empty_and_nonempty_values():
     assert TPCHSkewBenchmark._geometric_mean([]) == 0.0
     assert TPCHSkewBenchmark._geometric_mean([1.0, 4.0]) == pytest.approx(2.0)
+
+

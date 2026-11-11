@@ -1148,3 +1148,5 @@ class TestTPCDSPowerTestPerformance:
             for query_id in ["1", "14a"]:
                 query_result = query_results_dict[query_id]
                 assert query_result["execution_time_seconds"] > 0.05
+
+

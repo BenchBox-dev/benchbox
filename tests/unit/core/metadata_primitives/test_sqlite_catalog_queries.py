@@ -59,3 +59,5 @@ def test_sqlite_variants_execute_and_report_real_catalog_rows(connection) -> Non
     assert ("l_price", "DECIMAL(15,2)", 15, 2) in {
         (row[1], row[2], row[3], row[4]) for row in results["column_numeric_columns"]
     }
+
+

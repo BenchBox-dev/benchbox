@@ -26,3 +26,5 @@ def test_normalize_s3_root():
 def test_idempotent_when_suffix_present():
     path = normalize_output_root("s3://bucket/p/tpch_sf01", "tpch", 0.1)
     assert path == "s3://bucket/p/tpch_sf01"
+
+

@@ -705,3 +705,5 @@ class TestCreateStandardTCOScenarios:
         scenarios = create_standard_tco_scenarios(sample_benchmark_cost, annual_runs=52)
 
         assert scenarios["conservative"].base_annual_cost == 52000.0
+
+

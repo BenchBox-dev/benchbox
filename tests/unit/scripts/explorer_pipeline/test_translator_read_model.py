@@ -152,3 +152,5 @@ def test_the_build_command_selects_the_read_model(tmp_path: Path) -> None:
     assert selected.exit_code == 0, selected.output
     assert "translator_version" in _columns(tmp_path / "a" / "results.duckdb")
     assert "translator_version" not in _columns(tmp_path / "b" / "results.duckdb")
+
+

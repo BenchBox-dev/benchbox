@@ -163,3 +163,5 @@ def test_no_benchmark_bypasses_translation_without_an_allowlisted_reason(
 
     assert unexplained == [], f"queries reach {dialect} for {benchmark_id} without translate_sql_query: {unexplained}"
     assert stale == [], f"allowlist entries no longer bypass translation for {benchmark_id}/{dialect}: {stale}"
+
+

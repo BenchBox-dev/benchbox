@@ -255,3 +255,5 @@ def test_firebolt_job_runs_native_load_verification_against_pinned_image() -> No
     assert re.fullmatch(r"ghcr\.io/firebolt-db/firebolt-core:[\w.-]+@sha256:[0-9a-f]{64}", job["env"]["FIREBOLT_IMAGE"])
     select = next(step for step in workflow["jobs"]["validate-input"]["steps"] if step.get("id") == "select")
     assert "firebolt" in select["run"]
+
+

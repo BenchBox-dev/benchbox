@@ -547,3 +547,5 @@ def test_conftest_warns_when_the_top_level_session_skips_the_lock(
     assert "[benchbox] WARNING: test lock bypass active via BENCHBOX_SKIP_TEST_LOCK" in err
     assert re.search(r"pid=\d+", err) is not None
     assert str(tmp_path) in err
+
+

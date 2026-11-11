@@ -79,3 +79,5 @@ class TestLiveClickHouseQueryExecution:
             assert result is not None
         finally:
             clickhouse_adapter.close_connection(connection)
+
+

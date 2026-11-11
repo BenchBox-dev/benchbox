@@ -543,3 +543,5 @@ def test_memory_meter_reports_footprint_covering_the_memory_a_child_touches(tmp_
     finally:
         proc.kill()
         proc.wait()
+
+

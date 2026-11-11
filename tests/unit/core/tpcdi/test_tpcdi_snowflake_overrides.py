@@ -42,3 +42,5 @@ def test_get_query_snowflake_matches_bulk_variant():
     bench = _bench()
 
     assert bench.get_query("EQ7", dialect="snowflake") == bench.get_queries(dialect="snowflake")["EQ7"]
+
+

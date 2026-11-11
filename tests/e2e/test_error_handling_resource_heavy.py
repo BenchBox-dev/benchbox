@@ -73,3 +73,5 @@ class TestTPCDSConstraints:
 
         assert result.returncode == 0
         assert "UNOFFICIAL SUBSCALE RUN" not in result.stdout
+
+

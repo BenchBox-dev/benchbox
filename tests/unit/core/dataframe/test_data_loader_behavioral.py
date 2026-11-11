@@ -583,3 +583,5 @@ class TestHeaderedCsvConversion:
 
         assert status == ConversionStatus.SUCCESS
         assert rows == 2, "a headerless source must not lose its first row"
+
+

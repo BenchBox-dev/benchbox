@@ -51,3 +51,5 @@ def test_one_decimal_rounding_would_have_exceeded_tolerance() -> None:
 
     assert drift > POWER_REPRODUCTION_TOLERANCE
     assert QUERY_MS_EXPORT_SIGNIFICANT_DIGITS >= 7
+
+

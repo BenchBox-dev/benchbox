@@ -1258,3 +1258,5 @@ def test_the_cli_reports_a_refusal_as_a_failure(world: World, capsys: pytest.Cap
     )
     assert code == 1
     assert "kind" in capsys.readouterr().err
+
+

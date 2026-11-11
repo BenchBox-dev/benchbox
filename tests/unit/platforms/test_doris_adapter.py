@@ -2110,3 +2110,5 @@ class TestDorisHeaderedCsv:
         assert "id|name" not in "\n".join(bodies)
         assert sum(body.count("row") for body in bodies) == 6
         assert all("skip_lines" not in call.kwargs["headers"] for call in mock_requests.put.call_args_list)
+
+

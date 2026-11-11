@@ -670,3 +670,5 @@ def test_shipped_registry_reports_snowflake_campaign_state(benchmark_key, scale_
         evidence_state_for_run(source_file, "Snowflake", benchmark_key, **{**arguments, "platform_compute": None})
         == "unmeasured"
     )
+
+

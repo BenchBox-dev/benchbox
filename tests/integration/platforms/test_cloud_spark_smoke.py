@@ -395,3 +395,5 @@ def test_cloud_spark_config_mixin_benchmark_types(monkeypatch, benchmark_type):
     adapter.configure_for_benchmark(None, benchmark_type)
     assert adapter._benchmark_type == benchmark_type.lower()
     assert isinstance(adapter._spark_config, dict)
+
+

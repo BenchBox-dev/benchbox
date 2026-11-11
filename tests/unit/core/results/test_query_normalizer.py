@@ -473,3 +473,5 @@ class TestQueryResultInput:
         assert result.cost == 0.10
         assert result.run_type == "measurement"
         assert result.row_count_validation == {"status": "PASSED"}
+
+

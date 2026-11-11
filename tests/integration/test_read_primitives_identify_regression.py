@@ -181,3 +181,5 @@ class TestIdentifyTrueIntegrationWithTranslation:
 
                 assert "SELECT" in query.upper()
                 assert "FROM" in query.upper()
+
+

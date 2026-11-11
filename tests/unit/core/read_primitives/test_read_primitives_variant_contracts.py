@@ -209,3 +209,5 @@ def test_summarize_variant_comparability_is_json_serializable():
     assert summary["issue_count"] == 0
     assert summary["comparable"] is True
     assert json.loads(json.dumps(summary)) == summary
+
+

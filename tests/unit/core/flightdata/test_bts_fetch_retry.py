@@ -60,3 +60,5 @@ def test_client_error_fails_at_once(tmp_path, monkeypatch):
     with pytest.raises(urllib.error.HTTPError):
         _make(tmp_path)._fetch_bts_zip("https://example.test/a.zip")
     assert len(calls) == 1
+
+

@@ -439,3 +439,5 @@ class TestOptimizationContracts:
             TableFormatOptimizationOperations,
         )
         assert not isinstance(PolarsMaintenanceOperations(), TableFormatOptimizationOperations)
+
+

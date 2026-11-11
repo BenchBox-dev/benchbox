@@ -203,3 +203,5 @@ def test_duckdb_analyzer_wrapper_writes_outputs_to_requested_directory(tmp_path:
         "median_power_at_size",
     ]
     assert not (root / "duckdb-version-matrix-analysis.json").exists()
+
+

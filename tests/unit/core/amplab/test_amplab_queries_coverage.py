@@ -221,3 +221,5 @@ class TestAMPLabColumnCaseSensitivity:
                     f"Column '{col}' appears in queries but not with correct case - "
                     "platforms without identifier normalization (e.g. DataFusion) will fail"
                 )
+
+

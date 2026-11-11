@@ -129,3 +129,5 @@ def test_variations_validate_and_params_delegate():
     sql = mgr.generate_with_parameters(10, {"X": 1, "Y": 2}, scale_factor=1.0, dialect="ansi")
     assert "SQL 10 with ['X', 'Y']" in sql
     assert any(c[0] == "generate_with_params" for c in mgr.dsqgen.calls)
+
+

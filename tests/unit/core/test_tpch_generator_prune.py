@@ -100,3 +100,5 @@ def test_build_schema_registry_includes_tpch_columns(mock_find_dbgen, tmp_path: 
     assert "lineitem" in schema_registry
     column_names = [column["name"] for column in schema_registry["lineitem"]["columns"]]
     assert "l_shipdate" in column_names
+
+

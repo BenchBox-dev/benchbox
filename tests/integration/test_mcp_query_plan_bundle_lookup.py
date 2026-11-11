@@ -186,3 +186,5 @@ class TestMCPCanonicalPlanRendering:
         assert summary["join_count"] == by_type.get("Join", 0) >= 1
         assert summary["aggregate_count"] == by_type.get("Aggregate", 0) >= 1
         assert tree.count("Scan") == summary["scan_count"]
+
+

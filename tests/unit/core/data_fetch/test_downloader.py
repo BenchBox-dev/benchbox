@@ -209,3 +209,5 @@ def test_download_mismatch_leaves_dest_absent_and_keeps_rejected(tmp_path: Path)
     assert rejected.read_bytes() == body
     assert excinfo.value.path == str(rejected)
     assert not any(p.name.endswith(".part") for p in tmp_path.iterdir())
+
+

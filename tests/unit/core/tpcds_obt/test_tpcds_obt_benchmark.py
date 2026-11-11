@@ -400,3 +400,5 @@ def test_clickhouse_q44_decorrelates_the_product_name_lookups() -> None:
     assert query.count("LEFT JOIN") == 2
     assert "best_obt.item_sk = asceding.item_sk" not in query
     assert "worst_obt.item_sk = descending.item_sk" not in query
+
+

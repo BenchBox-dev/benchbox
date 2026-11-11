@@ -175,3 +175,5 @@ class TestBigQueryTypeMapping:
         result = adapter._translate_create_table("CREATE TABLE t (id INT64, score FLOAT64)")
         assert "INT64" in result
         assert "FLOAT64" in result
+
+

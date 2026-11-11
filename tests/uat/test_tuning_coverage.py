@@ -200,3 +200,5 @@ def test_clickhouse_variants_share_the_curated_template_directory(platform, benc
 
 def test_a_clickhouse_benchmark_without_a_template_stays_basic_constraints():
     assert classify_template("clickhouse-local", "clickbench") == (BASIC_CONSTRAINTS, "-")
+
+

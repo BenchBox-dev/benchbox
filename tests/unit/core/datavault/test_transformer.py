@@ -221,3 +221,5 @@ class TestDataVaultTransformerCompression:
         manifest = json.loads((tmp_path / "_datagen_manifest.json").read_text())
         assert manifest["compression"]["enabled"] is True
         assert manifest["compression"]["type"] == "zstd"
+
+

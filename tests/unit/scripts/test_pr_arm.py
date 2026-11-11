@@ -1385,3 +1385,5 @@ def test_the_trunk_check_in_a_wait_fails_closed(monkeypatch: pytest.MonkeyPatch)
 
     assert "could not be read" in str(pr_arm.trunk_gate_refusal("7", "o/r"))
     assert "current branch" in str(pr_arm.trunk_gate_refusal(None, "o/r", run=lambda cmd: (1, "")))
+
+

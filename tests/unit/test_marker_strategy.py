@@ -255,3 +255,5 @@ def test_starrocks_resource_heavy_smoke_stays_in_integration_smoke_lane():
 
     assert path.exists()
     assert "platform_smoke" in _top_level_marker_names(path)
+
+

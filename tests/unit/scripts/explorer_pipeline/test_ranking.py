@@ -174,3 +174,5 @@ def test_power_score_speedup_references_ignore_non_positive_metric_values() -> N
     assert by_platform["duckdb"].speedup_vs_best == pytest.approx(1.0)
     assert by_platform["sqlite"].speedup_vs_slowest == pytest.approx(1.0)
     assert by_platform["negative"].speedup_vs_slowest is None
+
+

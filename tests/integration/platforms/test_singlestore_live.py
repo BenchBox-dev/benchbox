@@ -279,3 +279,5 @@ class TestLiveSingleStoreTPCHRefreshIngest:
         _check_rf1_bad_row_is_atomic(refresh_connection, tmp_path, _load_sf001_base_singlestore)
 
         assert refresh_connection.execute("SELECT 1").fetchone()[0] == 1
+
+

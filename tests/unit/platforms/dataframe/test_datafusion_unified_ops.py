@@ -94,3 +94,5 @@ def test_map_from_arrays_supports_extract_keys_and_values():
     assert result.column("b_value").to_pylist() == [2.5, None]
     assert result.column("keys").to_pylist() == [["a", "b"], ["c"]]
     assert result.column("values").to_pylist() == [[1.5, 2.5], [3.5]]
+
+

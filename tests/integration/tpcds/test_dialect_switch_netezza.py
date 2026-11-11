@@ -148,3 +148,5 @@ class TestTPCDSDialectSwitch:
 
             mock_dsqgen.generate.assert_called_once_with(1, seed=42, scale_factor=0.1, stream_id=None, dialect="ansi")
             assert sql == "SELECT TOP 100 * FROM test"
+
+

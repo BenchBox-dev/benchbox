@@ -59,3 +59,5 @@ def test_datavault_dataframe_surface_equivalent_to_sql(tmp_path):
     assert not divergences, "Data Vault DataFrame surface diverges from SQL: " + ", ".join(
         f"{d.key} ({d.detail})" for d in divergences
     )
+
+

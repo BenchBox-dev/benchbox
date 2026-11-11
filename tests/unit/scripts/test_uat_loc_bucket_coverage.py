@@ -60,3 +60,5 @@ def test_legacy_allowlist_names_only_existing_unbucketed_modules():
 def test_throughput_baseline_counts_toward_the_throughput_bucket():
     buckets = dict(_load_loc_table().BUCKETS)
     assert "throughput_baseline.py" in buckets["throughput"]
+
+

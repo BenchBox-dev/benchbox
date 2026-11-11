@@ -543,3 +543,5 @@ def test_report_exit_code_clean_when_died_mid_platform_count_zero(tmp_path: Path
     )
     assert summary.exit_code() == 0
     assert "DIED_MID_PLATFORM_CELLS" not in (tmp_path / "matrix_summary.tsv").read_text(encoding="utf-8")
+
+

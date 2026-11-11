@@ -776,3 +776,5 @@ def test_snowflake_template_clustering_a_waived_table_on_a_non_candidate_column_
 
     assert not result.is_valid
     assert [issue.candidate_key for issue in result.issues] == ["tpch.CUSTOMER.C_COMMENT"]
+
+

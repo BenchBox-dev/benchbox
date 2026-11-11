@@ -76,3 +76,5 @@ def test_workflow_has_no_concurrency_cancellation() -> None:
     workflow = _load()
     assert "concurrency" not in workflow
     assert "concurrency" not in _job()
+
+

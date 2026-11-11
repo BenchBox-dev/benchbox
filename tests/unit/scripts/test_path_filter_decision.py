@@ -467,3 +467,5 @@ def test_rules_base_ref_missing_ref_fails_closed(tmp_path: Path, monkeypatch: py
     monkeypatch.chdir(repo)
     with pytest.raises(ValueError, match="cannot read base-ref copy"):
         load_rules_from_base_ref("0" * 40, Path(".github/path-filters.yml"))
+
+

@@ -181,3 +181,5 @@ class TestErrorMessageFormats:
 
         error_msg = str(exc_info.value)
         assert "Query ID must be 1-99, got 200" in error_msg
+
+

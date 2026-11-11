@@ -262,3 +262,5 @@ def test_default_baseline_maintenance_still_reaches_its_existing_refusal_rules(m
     gate, options = calls[0]
     assert gate is cross_surface.get_gate("ssb")
     assert options == {"update_baseline": True, "repeats": 1}
+
+

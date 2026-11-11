@@ -65,3 +65,5 @@ def test_coffeeshop_dataframe_surface_equivalent_to_sql(tmp_path):
     assert not unexpected, "CoffeeShop DataFrame surface diverges from SQL: " + ", ".join(
         f"{d.key} ({d.detail})" for d in divergences if d.key in unexpected
     )
+
+

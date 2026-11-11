@@ -176,3 +176,5 @@ def test_databend_requires_connection_config(monkeypatch):
 
     with pytest.raises(ConfigurationError, match="Databend configuration is incomplete"):
         DatabendAdapter(database="benchbox_smoke")
+
+

@@ -34,3 +34,5 @@ def test_local_adapters_smoke(adapter_factory: Callable[[Path], object], tmp_pat
 
     assert any(count > 0 for count in stats.values())
     assert metadata["platform_name"] in {"DuckDB", "SQLite"}
+
+

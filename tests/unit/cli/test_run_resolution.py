@@ -784,3 +784,5 @@ def test_finalization_propagates_the_wizard_official_choice_into_the_config() ->
     _run_module._finalize_normal_interactive_plan(state)
 
     assert state.benchmark_config.official is True
+
+

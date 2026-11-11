@@ -84,3 +84,5 @@ def test_stub_docker_stages_start_after_the_native_stage_finished(tmp_path, dige
     assert (written[0] / "run" / "uat_lifecycle.log").read_text(encoding="utf-8") == ""
     for path in written[1:]:
         assert "[docker]" in (path / "run" / "uat_lifecycle.log").read_text(encoding="utf-8")
+
+

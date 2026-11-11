@@ -24,3 +24,5 @@ def test_coalesce_mixing_dateadd_and_date_casts_the_date_argument_to_timestamp()
 def test_case_without_dateadd_is_untouched():
     sql = "SELECT CASE WHEN a = 1 THEN CAST(x AS DATE) ELSE CAST(y AS DATE) END FROM t"
     assert rewrite_query(sql) == sql
+
+

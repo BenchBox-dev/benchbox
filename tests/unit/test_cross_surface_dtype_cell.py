@@ -102,3 +102,5 @@ def test_value_divergence_key_is_checked_without_explicit_dtype_waiver(typed_con
 
     assert compared == {"expression": 1}
     assert any("reference string, frame null" in divergence.detail for divergence in divergences)
+
+

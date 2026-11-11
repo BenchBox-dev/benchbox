@@ -94,3 +94,5 @@ def test_cluster_death_records_fail_result_and_does_not_hang():
     assert result.get("success") in (False, None)
     error = result.get("error") or ""
     assert "4 workers died" in error or "resource-envelope" in error
+
+

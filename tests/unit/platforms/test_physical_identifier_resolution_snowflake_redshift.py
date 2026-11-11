@@ -222,3 +222,5 @@ def test_tuning_builders_do_not_case_fold_the_logical_table_name(adapter_file):
     source = (PLATFORMS_DIR / adapter_file).read_text()
     assert "table_tuning.table_name.upper()" not in source
     assert "table_tuning.table_name.lower()" not in source
+
+

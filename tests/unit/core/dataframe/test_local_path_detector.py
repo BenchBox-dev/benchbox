@@ -266,3 +266,5 @@ def test_home_that_prefixes_another_name_is_not_a_false_hit(monkeypatch):
     monkeypatch.setenv("USERPROFILE", "/srv/synthetic-home")
 
     assert find_public_path_leaks({"a": "/srv/synthetic-home-two/x", "b": "/srv/synthetic-homes"}) == []
+
+

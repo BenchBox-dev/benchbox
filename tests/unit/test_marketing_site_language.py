@@ -21,3 +21,5 @@ def test_index_page_describes_dependencies_accurately():
     assert "Run Your Own Benchmarks" in contents
     assert "Python-Only Core" in contents
     assert "optional extras" in contents.lower()
+
+

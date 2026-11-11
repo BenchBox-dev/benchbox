@@ -201,3 +201,5 @@ class TestDataFrameAdapterContext:
         assert ctx is not None
         assert ctx.platform == "Pandas"
         assert ctx.family == "pandas"
+
+

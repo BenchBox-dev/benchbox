@@ -168,3 +168,5 @@ class TestPlanCaptureCLIRealpath:
             plan = qr.get("query_plan")
             assert isinstance(plan, QueryPlanDAG), f"{qr.get('query_id')}: query_plan not rehydrated: {plan!r}"
             assert qr.get("plan_fingerprint"), f"{qr.get('query_id')}: plan_fingerprint missing after reload"
+
+

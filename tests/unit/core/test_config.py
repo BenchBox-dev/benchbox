@@ -268,3 +268,5 @@ class TestDryRunResult:
         assert result.queries == {"q1": "SELECT 1"}
         assert result.warnings == []
         assert isinstance(result.timestamp, datetime)
+
+

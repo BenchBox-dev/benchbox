@@ -546,3 +546,5 @@ class TestMaintenanceMetricsCapture:
 
         delete_result = ops.delete_rows(table_path=table_path, condition="o_custkey = 100")
         assert delete_result.rows_affected == 2
+
+

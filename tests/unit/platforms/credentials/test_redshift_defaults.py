@@ -870,3 +870,5 @@ class TestValidateRedshiftCredentials:
 
         assert ok is False
         assert err is not None
+
+

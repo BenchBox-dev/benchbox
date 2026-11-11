@@ -404,3 +404,5 @@ def test_review_gate_without_the_review_app_binding_is_blocking():
     findings = compare_ruleset(expected, live)
 
     assert "required_status_checks must include review-gate scoped to the review App" in blocking_findings(findings)
+
+

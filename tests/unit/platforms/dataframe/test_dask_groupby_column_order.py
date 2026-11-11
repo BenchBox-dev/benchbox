@@ -62,3 +62,5 @@ def test_nunique_with_as_index_and_composite_key_keeps_key_columns():
     ).compute()
 
     assert {"a", "b", "n_x"} <= set(result.columns)
+
+

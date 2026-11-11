@@ -116,3 +116,5 @@ class TestStreamLoadEmptyAsNull:
 
     def test_pipe_without_null_marker_keeps_empty_literal(self):
         assert treats_empty_as_null("|", None) is False
+
+

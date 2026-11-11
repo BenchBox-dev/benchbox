@@ -254,3 +254,5 @@ class TestTPCPerformanceDuckDB:
 
         finally:
             conn.close()
+
+

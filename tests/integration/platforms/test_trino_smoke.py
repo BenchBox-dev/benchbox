@@ -48,3 +48,5 @@ def test_trino_requires_catalog(monkeypatch):
     )
 
     assert adapter.platform_name == "Trino"
+
+

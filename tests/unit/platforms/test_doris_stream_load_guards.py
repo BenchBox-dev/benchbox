@@ -102,3 +102,5 @@ def test_zstd_data_files_open_without_the_zstd_command(tmp_path, monkeypatch):
 
     with doris_module.DorisAdapter._open_data_file_binary(data_file) as stream:
         assert stream.read() == b"0|AFRICA|\n"
+
+

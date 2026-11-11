@@ -107,3 +107,5 @@ def test_cancel_step_cancels_its_own_run_and_waits(name: str) -> None:
 @pytest.mark.parametrize("name", AGGREGATE_JOBS)
 def test_aggregate_permissions_stay_minimal(name: str) -> None:
     assert _job(name)["permissions"] == {"actions": "write", "contents": "read"}
+
+

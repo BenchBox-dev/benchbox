@@ -208,3 +208,5 @@ class TestCheckPlatformCredentialStatus:
 
         assert exists is True
         assert status == CredentialStatus.NOT_VALIDATED
+
+

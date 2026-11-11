@@ -45,3 +45,5 @@ def test_comment_job_runs_for_pull_request_target_runs() -> None:
     workflow_yaml = yaml.safe_load(WORKFLOW_PATH.read_text(encoding="utf-8"))
     cond = workflow_yaml["jobs"]["comment"].get("if", "")
     assert "pull_request_target" in cond
+
+

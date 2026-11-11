@@ -35,3 +35,5 @@ def test_promoted_snapshot_reopens_from_db_without_wal_sidecar(tmp_path: Path) -
     assert check_snapshot(db_path) == []
     with duckdb.connect(str(db_path), read_only=True) as con:
         assert con.execute("SELECT COUNT(*) FROM results").fetchone()[0] == 1
+
+

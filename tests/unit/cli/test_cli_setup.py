@@ -475,3 +475,5 @@ class TestSetupIntegration:
         status = runner.invoke(cli, ["setup", "--status"])
         assert status.exit_code == 0
         assert "No credentials configured yet" in status.output
+
+

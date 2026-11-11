@@ -672,3 +672,5 @@ def _q64_fixture():
 def test_q64_orders_a_null_product_name_last(monkeypatch):
     spec, sql, params = _q64_fixture()
     _check(monkeypatch, "q64_expression_impl", params, spec, sql, null_key_position="last")
+
+

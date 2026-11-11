@@ -72,3 +72,5 @@ def test_mapping_table_is_exact_and_total() -> None:
     df_ids = {str(q) for q in NYCTAXI_DATAFRAME_QUERIES.get_query_ids()}
     assert set(EXPECTED_MAPPING) == df_ids
     assert sorted(EXPECTED_MAPPING.values()) == sorted(sql_ids)
+
+

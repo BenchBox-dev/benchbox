@@ -192,3 +192,5 @@ class TestDeltaCli:
         err = capsys.readouterr().err
         assert code == 1
         assert "cannot resolve" in err or "error" in err
+
+

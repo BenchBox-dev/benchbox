@@ -90,3 +90,5 @@ class TestStagingPathIsAFaithfulPathProxy:
             staging.mkdir()
             assert staging.exists()
             assert staging.is_dir()
+
+

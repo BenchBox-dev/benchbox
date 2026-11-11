@@ -173,3 +173,5 @@ def _single_table_benchmark(table, path):
 
 def _tbl_dialect():
     return CsvDialect(delimiter="|", has_header=False, null_marker="", normalize_booleans=False, quote=None)
+
+

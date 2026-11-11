@@ -1814,3 +1814,5 @@ class TestDataFusionExpressionPathCoverage:
         else:
             df = result
         assert df is not None
+
+

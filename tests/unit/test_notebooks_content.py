@@ -61,3 +61,5 @@ def test_notebook_has_platform_installs_and_runner_import(nb_name, pkgs):
 
     has_runner_ref = any("benchbox.core.runner" in "".join(c.get("source", [])) for c in code_cells)
     assert has_runner_ref, f"{nb_name} missing benchbox.core.runner usage"
+
+

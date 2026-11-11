@@ -76,3 +76,5 @@ def test_from_import_of_public_name_works_in_fresh_interpreter() -> None:
         text=True,
     )
     assert result.returncode == 0, result.stderr
+
+

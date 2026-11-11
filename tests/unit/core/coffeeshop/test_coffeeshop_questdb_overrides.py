@@ -29,3 +29,5 @@ def test_tm1_questdb_preserves_day_part_categories():
 def test_tm1_base_dialect_keeps_extract():
     q = _bench().get_queries()["TM1"]
     assert "EXTRACT(HOUR FROM ol.order_time)" in q, q
+
+

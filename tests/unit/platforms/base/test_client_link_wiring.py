@@ -366,3 +366,5 @@ def test_collect_client_link_metadata_string_flag_forms() -> None:
 
         adapter._collect_client_link_metadata(conn, {"link_probe": "0"})
         mock_probe.assert_not_called()
+
+

@@ -337,3 +337,5 @@ class TestFormattingIntegration:
             assert isinstance(result, str)
             assert len(result) > 0
             assert "B" in result
+
+

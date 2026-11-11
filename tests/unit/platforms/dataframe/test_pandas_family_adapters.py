@@ -249,3 +249,5 @@ class TestModuleExports:
 
         assert hasattr(dataframe, "DaskDataFrameAdapter")
         assert hasattr(dataframe, "DASK_AVAILABLE")
+
+

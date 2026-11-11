@@ -268,3 +268,5 @@ class TestSQLiteStrictPlanCapture:
 
         assert result["status"] == "FAILED"
         assert result["error"]
+
+

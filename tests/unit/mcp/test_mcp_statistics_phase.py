@@ -126,3 +126,5 @@ class TestStatisticsPhaseResponsePassThrough:
         )
 
         assert "statistics" not in result["phases"]
+
+

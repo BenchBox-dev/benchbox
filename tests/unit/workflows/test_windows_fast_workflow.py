@@ -100,3 +100,5 @@ def test_windows_fast_workflow_pins_every_action_to_the_nightly_pins() -> None:
         assert _PINNED_ACTION.match(step["uses"]), step["uses"]
         action, sha = step["uses"].split("@")
         assert nightly_pins[action] == sha
+
+

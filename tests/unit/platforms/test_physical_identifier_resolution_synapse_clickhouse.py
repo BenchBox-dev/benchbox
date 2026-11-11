@@ -271,3 +271,5 @@ class TestTuningBuildersDoNotFoldCaseByHand:
     @pytest.mark.parametrize("forbidden", ["table_tuning.table_name.upper()", "table_tuning.table_name.lower()"])
     def test_source_has_no_ad_hoc_case_folding_of_the_table_name(self, relative, forbidden):
         assert forbidden not in (REPO_ROOT / relative).read_text()
+
+

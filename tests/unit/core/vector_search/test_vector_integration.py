@@ -416,3 +416,5 @@ class TestRecallAtK:
         for k in (1, 5, 10):
             r = recall_at_k(gt_ids, ann_ids, k=k)
             assert 0.0 <= r <= 1.0, f"recall@{k}={r} out of range"
+
+

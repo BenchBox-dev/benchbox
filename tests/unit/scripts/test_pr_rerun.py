@@ -429,3 +429,5 @@ def test_invalid_gh_json_is_reported() -> None:
 
     with pytest.raises(pr_rerun.RerunError, match="gh pr returned invalid JSON"):
         pr_rerun.rerun(REPO, PR, garbled)
+
+

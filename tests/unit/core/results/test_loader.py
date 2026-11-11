@@ -1229,3 +1229,5 @@ class TestTextPlanRoundTrip:
 
         with pytest.raises(QueryExecutionContractError, match="Unknown legacy query-result fields"):
             query_execution_from_legacy_dict({"query_id": "1", "execution_time_ms": 1.0, "query_plan_rawx": "x"})
+
+

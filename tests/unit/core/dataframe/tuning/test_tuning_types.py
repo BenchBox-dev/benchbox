@@ -92,3 +92,5 @@ class TestGetAllPlatforms:
 
         platforms = get_all_platforms()
         assert isinstance(platforms, list)
+
+

@@ -67,3 +67,5 @@ def test_official_tpcds_run_produces_a_submittable_bundle(tmp_path: Path) -> Non
     assert submit.returncode == 0, submit.stdout + submit.stderr
     assert "Dry-run preview" in submit.stdout
     assert "Submission refused" not in submit.stdout
+
+

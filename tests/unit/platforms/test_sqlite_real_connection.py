@@ -254,3 +254,5 @@ class TestSQLiteScriptExecution:
 
         with pytest.raises(Exception, match="nope"):
             connection.execute("INSERT INTO t VALUES (1)")
+
+

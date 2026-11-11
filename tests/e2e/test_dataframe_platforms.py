@@ -307,3 +307,5 @@ class TestCrossDataFrameE2E:
         }
         polars_result = run_benchmark(polars_config, timeout=300)
         assert polars_result.returncode == 0, f"Polars failed: {polars_result.stdout}"
+
+

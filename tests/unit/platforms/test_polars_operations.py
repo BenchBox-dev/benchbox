@@ -506,3 +506,5 @@ class TestPolarsValidationAndDatabaseOps:
         with tempfile.TemporaryDirectory() as tmpdir:
             adapter = PolarsAdapter(working_dir=tmpdir)
             assert adapter.get_target_dialect() == "dataframe"
+
+

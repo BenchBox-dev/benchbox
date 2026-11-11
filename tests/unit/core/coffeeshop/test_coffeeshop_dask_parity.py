@@ -45,3 +45,5 @@ def test_region_revenue_share_matches_pandas(family):
     rows = result_rows(sa4_pandas_impl(build_context(family, _tables())))
 
     assert rows == [("west", 2, 45.0, 0.75), ("east", 1, 15.0, 0.25)]
+
+

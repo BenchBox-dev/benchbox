@@ -147,3 +147,5 @@ def test_pool_fake_harness_exemptions_are_current() -> None:
             f"{name} is exempted as a harness artifact but its signature no longer fits the kwargs style; "
             "re-investigate instead of keeping a stale exemption."
         )
+
+

@@ -320,3 +320,5 @@ class TestDataStructureInteractions:
         assert result.summary_metrics["success_rate"] == 1 / 3
         assert result.validation_status == "PARTIAL"
         assert error_query.error_message == "Table 'invalid_table' doesn't exist"
+
+

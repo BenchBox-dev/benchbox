@@ -152,3 +152,5 @@ def test_every_manifest_stream_file_resolves_inside_the_candidate_directory() ->
         target = (candidate / stream["file"]).resolve()
         assert target.is_relative_to(candidate), name
         assert target.is_file(), name
+
+

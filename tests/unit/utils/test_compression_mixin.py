@@ -148,3 +148,5 @@ class TestCompressionMixin:
             assert "test" in report
             assert "compression_ratio" in report["test"]
             assert report["test"]["compression_ratio"] > 1.0
+
+

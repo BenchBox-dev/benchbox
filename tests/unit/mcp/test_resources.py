@@ -200,3 +200,5 @@ class TestSystemResources:
         assert "memory" in parsed
         assert parsed["cpu"]["threads"] > 0
         assert parsed["memory"]["total_gb"] > 0
+
+

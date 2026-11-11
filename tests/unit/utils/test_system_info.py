@@ -671,3 +671,5 @@ class TestCpuIdentityCapture:
         keys = get_system_info().to_dict().keys()
         for original in ("cpu_cores", "total_memory_gb", "os_version", "os_type"):
             assert original in keys
+
+

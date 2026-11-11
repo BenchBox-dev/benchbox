@@ -499,3 +499,5 @@ class TestSessionManagerIsActive:
         manager._state = SessionState.DEAD
 
         assert manager.is_active is False
+
+

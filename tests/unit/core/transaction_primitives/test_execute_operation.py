@@ -563,3 +563,5 @@ def test_sqlite_skips_unsupported_isolation_levels(sqlite_staged, operation_id: 
     result = bench.execute_operation(operation_id, conn, platform_key="sqlite", platform_name="sqlite")
     assert result.status == "SKIPPED"
     assert "SERIALIZABLE" in (result.skip_reason or "")
+
+

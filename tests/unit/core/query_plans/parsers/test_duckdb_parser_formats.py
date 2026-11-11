@@ -365,3 +365,5 @@ class TestDuckDBParserEdgeCasesJSON:
             node = node.children[0]
             depth += 1
         assert depth > 10
+
+

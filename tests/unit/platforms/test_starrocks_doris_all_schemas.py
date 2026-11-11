@@ -99,3 +99,5 @@ def test_doris_requests_schema_in_standard_dialect():
     benchmark.get_create_tables_sql.return_value = "CREATE TABLE t (a INT)"
     adapter._create_schema_with_tuning(benchmark)
     assert benchmark.get_create_tables_sql.call_args.kwargs["dialect"] == "standard"
+
+

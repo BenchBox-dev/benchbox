@@ -234,3 +234,5 @@ class TestTPCDSManifestValidation:
         assert manifest["benchmark"] == "tpcds"
         assert isinstance(manifest["tables"], dict)
         assert isinstance(manifest["compression"], dict)
+
+

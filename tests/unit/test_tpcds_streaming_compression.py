@@ -242,3 +242,5 @@ def test_generate_local_prefers_data_organization_over_compression(mock_find_dsd
     mock_compress.assert_not_called()
     mock_validate.assert_not_called()
     mock_manifest.assert_called_once_with(tmp_path, {"customer": [organized]})
+
+

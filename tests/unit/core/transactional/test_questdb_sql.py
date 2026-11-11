@@ -86,3 +86,5 @@ def test_questdb_series_select_uses_generate_series_table_function(tmp_path):
     assert benchmark._rewrite_transactional_sql_for_platform(sql, "questdb") == (
         "INSERT INTO t SELECT n FROM (SELECT generate_series AS n FROM generate_series(1, 100)) t"
     )
+
+

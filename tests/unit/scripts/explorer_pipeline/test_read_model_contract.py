@@ -551,3 +551,5 @@ class TestSelectCanonicalRow:
         result_ab = select_canonical_row([e1, e2])
         result_ba = select_canonical_row([e2, e1])
         assert result_ab is result_ba
+
+

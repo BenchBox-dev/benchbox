@@ -736,3 +736,5 @@ class TestPostgresVariants:
 
         assert "o_comment IS JSON" in simple
         assert "c_comment IS JSON" in nested
+
+

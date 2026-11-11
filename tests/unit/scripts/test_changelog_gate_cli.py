@@ -174,3 +174,5 @@ def test_modified_or_deleted_fragments_do_not_satisfy_when_only_added_files_coun
     added.write_text("changelog.d/new.json\n", encoding="utf-8")
     accepted = subprocess.run(args, capture_output=True, text=True, cwd=root)
     assert accepted.returncode == 0, accepted.stderr
+
+

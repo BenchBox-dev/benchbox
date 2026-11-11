@@ -526,3 +526,5 @@ class TestInfluxDBPlatformOptionParsing:
         parsed = PlatformHookRegistry.parse_options("influxdb", [])
         assert parsed["ssl"] is True
         assert "port" not in parsed
+
+

@@ -131,3 +131,5 @@ def test_singlestore_supports_tpcds_maintenance_and_tpch_refresh():
 
     assert maintenance_unsupported_reason(adapter) is None
     assert SingleStoreAdapter.supports_refresh_functions is True
+
+

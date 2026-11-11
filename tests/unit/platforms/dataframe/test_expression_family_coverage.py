@@ -673,3 +673,5 @@ class TestExecuteQueryProfiledWithMemory:
         )
         result, profile = adapter.execute_query_profiled(ctx, q, track_memory=False, capture_plan=False)
         assert result["status"] == "SUCCESS"
+
+

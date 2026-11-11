@@ -244,3 +244,5 @@ class TestGeneratorExtended:
                 pass
 
         assert generator is not None
+
+

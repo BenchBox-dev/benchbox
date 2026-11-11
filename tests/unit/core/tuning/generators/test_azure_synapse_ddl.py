@@ -75,3 +75,5 @@ def test_column_type_mapping_and_column_list_generation():
     col_list = generator.generate_column_list(columns)
     assert "[flag] BIT NULL DEFAULT 0" in col_list
     assert "[id] BIGINT NOT NULL" in col_list
+
+

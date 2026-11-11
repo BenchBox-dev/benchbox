@@ -356,3 +356,5 @@ def test_replace_table_sql_only_rewrites_plain_create():
     assert replaces_tables_in_place("Databricks") is True
     assert replaces_tables_in_place("snowflake") is False
     assert replaces_tables_in_place(None) is False
+
+

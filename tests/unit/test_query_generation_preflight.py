@@ -112,3 +112,5 @@ def test_tpcds_throughput_preflight_detects_generation_failures(monkeypatch):
         thr.run()
     assert "preflight failed" in str(ei.value).lower()
     assert "q7" in str(ei.value)
+
+

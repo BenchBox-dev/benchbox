@@ -365,3 +365,5 @@ def test_total_time_spans_first_start_to_last_end_and_throughput_uses_it(refresh
     first, last = result["operations"][0], result["operations"][-1]
     assert result["total_time"] == last.end_time - first.start_time == 21.0
     assert result["overall_throughput"] == pytest.approx(11 / 21.0)
+
+

@@ -283,3 +283,5 @@ class TestLiveBigQueryQueryPlanCapture:
             assert first_fingerprint == second_fingerprint
         finally:
             adapter.close_connection(connection)
+
+

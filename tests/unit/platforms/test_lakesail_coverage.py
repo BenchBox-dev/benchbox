@@ -854,3 +854,5 @@ class TestBuildLakeSailConfig:
         assert call_kwargs["platform_type"] == "lakesail"
         assert call_kwargs["credential_key"] == "lakesail"
         assert result is mock_result
+
+

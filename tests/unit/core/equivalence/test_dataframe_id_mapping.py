@@ -97,3 +97,5 @@ def test_dataframe_ids_map_to_sql_ids():
     )
     gateable = rp_df & rp_sql_duckdb
     assert len(gateable) == 148, f"read_primitives gateable count drifted: {len(gateable)} != 148"
+
+

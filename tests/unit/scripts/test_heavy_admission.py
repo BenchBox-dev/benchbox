@@ -494,3 +494,5 @@ def test_macos_reads_sysctl_by_absolute_path() -> None:
 
     rl.read_host_pressure(roots=[], runner=runner, which=lambda name: None, platform="darwin")
     assert seen == ["/usr/sbin/sysctl", "/usr/sbin/sysctl"]
+
+

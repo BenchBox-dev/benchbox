@@ -92,3 +92,5 @@ class TestPolarsExecuteQuery:
         assert result["status"] == "SUCCESS"
         assert result["request_count"] == 1
         assert result["result_bytes"] > 0
+
+

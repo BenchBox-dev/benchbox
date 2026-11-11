@@ -52,3 +52,5 @@ def test_all_template_chart_types_exist_in_registry():
     known = set(ALL_CHART_TYPES)
     for template in list_templates():
         assert set(template.chart_types).issubset(known), template.name
+
+

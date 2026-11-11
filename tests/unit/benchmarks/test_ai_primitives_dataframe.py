@@ -319,3 +319,5 @@ class TestAIOperationType:
             AIOperationType.TOP_K_SIMILARITY,
         ]
         assert len(vector_ops) == 3
+
+

@@ -94,3 +94,5 @@ def test_doc_release_marker_reads_the_whole_version(marker, version):
 
     assert match is not None
     assert match.group("version") == version
+
+

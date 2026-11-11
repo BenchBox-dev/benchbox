@@ -180,3 +180,5 @@ def test_fast_path_falls_back_when_rows_are_not_orderable():
     variant = [(None,), (1,)]
     assert ResultValidator._exact_fast_path_accepts(original, variant, ordered=False) is False
     assert ResultValidator().validate_results_exact(original, variant, 1, 1) is True
+
+

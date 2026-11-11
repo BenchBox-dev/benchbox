@@ -876,3 +876,5 @@ class TestSynapseAdaptiveToggle:
 
             assert adapter._spark_config["spark.sql.adaptive.enabled"] == "false"
             assert adapter._spark_config["spark.sql.adaptive.skewJoin.enabled"] == "false"
+
+

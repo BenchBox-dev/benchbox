@@ -113,3 +113,5 @@ class TestSingleFileDirectoryGuard:
 
         with pytest.raises(DataLoadingError, match="test_table.*data file not found"):
             loader._load_single_file("test_table", missing)
+
+

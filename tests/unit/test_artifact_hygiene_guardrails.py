@@ -157,3 +157,5 @@ def test_audit_local_datagen_reports_existing_local_artifacts(monkeypatch, tmp_p
     assert str(external) in message
 
     assert audit_local_datagen(cwd=worktree, output=str(external), threshold_bytes=8192) is None
+
+

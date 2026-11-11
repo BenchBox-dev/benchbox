@@ -595,3 +595,5 @@ class TestAthenaCredentialStorage:
         assert "S3 staging directory is required" in console_output
 
         mock_manager.save_credentials.assert_not_called()
+
+

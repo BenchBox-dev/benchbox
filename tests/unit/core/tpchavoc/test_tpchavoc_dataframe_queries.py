@@ -895,3 +895,5 @@ class TestQ15MaxRevenueTolerance:
 
         assert result.height == 1
         assert result["s_suppkey"][0] == 2
+
+

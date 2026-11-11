@@ -259,3 +259,5 @@ def test_table_created_in_an_earlier_script_gets_settings_before_its_timed_updat
         assert result.success, result.error
         assert result.write_duration_ms == pytest.approx(10.0)
     assert client.alters == 1
+
+

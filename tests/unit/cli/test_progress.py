@@ -145,3 +145,5 @@ def test_benchmark_progress_monitors_collect_metrics():
     snapshot = monitor.snapshot()
 
     assert len(snapshot.counters) >= 0 or len(snapshot.gauges) >= 0
+
+

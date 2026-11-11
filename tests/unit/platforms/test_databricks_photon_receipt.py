@@ -138,3 +138,5 @@ def test_bundle_leaves_the_applied_engine_empty_when_the_warehouse_cannot_be_rea
     _install_unreadable_sdk(monkeypatch)
 
     assert _present(_bundle()["platform"]["execution_engine"]) == _present(_receipt(None, None, None))
+
+

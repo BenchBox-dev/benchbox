@@ -264,3 +264,5 @@ class TestClusteringConfig:
         config = ClusteringConfig.from_dict(data)
         assert config.bucket_count == 64
         assert len(config.columns) == 1
+
+

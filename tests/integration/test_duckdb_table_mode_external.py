@@ -238,3 +238,5 @@ def test_external_mode_works_on_reused_database(tmp_path):
 
     assert external_result.total_queries >= 1
     assert all(qr["status"] == "SUCCESS" for qr in external_result.query_results)
+
+

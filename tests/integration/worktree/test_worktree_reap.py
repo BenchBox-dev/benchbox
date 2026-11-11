@@ -412,3 +412,5 @@ def test_batch_lookup_reports_identity_and_listing_failures(tmp_path: Path, monk
 
     with pytest.raises(ReapError, match="Invalid repository slug"):
         build_batch_pr_lookup(repo, "no-slash", {"feat/a"})
+
+

@@ -245,3 +245,5 @@ def test_skipped_cells_are_not_observations(tmp_path):
     write_run(tmp_path, "r1", "2026-10-01T00:00:00+00:00", [skipped])
 
     assert _signal(tmp_path, ALL_SCALES)["cells"] == []
+
+

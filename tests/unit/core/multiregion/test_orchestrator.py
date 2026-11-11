@@ -269,3 +269,5 @@ class TestMultiRegionBenchmarkEdgeCases:
 
         for region_result in result.region_results.values():
             assert region_result.queries_executed >= 0
+
+

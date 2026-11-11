@@ -158,3 +158,5 @@ def test_codecs_the_engine_cannot_ingest_are_skipped_without_a_timing(ready_benc
     assert result.write_duration_ms == 0.0
     assert "LOAD DATA" not in " ".join(_executed_statements(raw))
     assert "SingleStore 10.8.1" in result.skip_reason
+
+

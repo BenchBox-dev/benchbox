@@ -360,3 +360,5 @@ class TestPowerTestValidationAfterRefresh:
         assert result.validation["data_state"] == "base"
         assert result.validation["validated_queries"] == [13]
         assert result.validation["skipped_queries"] == []
+
+

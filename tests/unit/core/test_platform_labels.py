@@ -76,3 +76,5 @@ class TestPlatformLabelAgreement:
 
         plotter = ResultPlotter([make_normalized_result(platform="DuckDB")])
         assert plotter.results[0].platform == "DuckDB"
+
+

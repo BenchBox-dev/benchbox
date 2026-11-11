@@ -506,3 +506,5 @@ def test_build_result_payload_counts_skipped_queries_separately() -> None:
 
     assert payload["summary"]["queries"] == {"total": 2, "passed": 1, "failed": 0, "skipped": 1}
     assert "errors" not in payload
+
+

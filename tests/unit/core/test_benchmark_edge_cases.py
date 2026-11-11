@@ -405,3 +405,5 @@ def test_transaction_primitives_execute_operation_and_dataframe_paths(monkeypatc
     assert bench.get_dataframe_operations("delta-lake") == {"platform": "delta-lake"}
     with pytest.raises(ValueError):
         bench.get_dataframe_operations("none")
+
+

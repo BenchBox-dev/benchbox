@@ -863,3 +863,5 @@ def test_the_cap_guard_is_not_defeated_by_same_line_placement(tmp_path: Path) ->
     )
     _, errors = audit(project, CORPUS)
     assert any("restates dependency caps" in error and "duckdb<2" in error for error in errors)
+
+

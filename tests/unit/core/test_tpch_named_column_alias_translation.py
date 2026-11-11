@@ -77,3 +77,5 @@ def test_unaffected_dialect_keeps_derived_table_column_alias_list():
     benchmark = TPCHBenchmark(scale_factor=0.01, output_dir=None)
     translated = benchmark.get_query(13, scale_factor=0.01, dialect="starrocks")
     assert _alias_column_lists(translated, "starrocks")
+
+

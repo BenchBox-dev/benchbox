@@ -45,3 +45,5 @@ def test_checkout_has_full_history_for_the_fix_forward_path_check() -> None:
 
 def test_no_secrets_are_referenced() -> None:
     assert "secrets." not in (ROOT / ".github/workflows/trunk-red-disarm.yml").read_text(encoding="utf-8")
+
+

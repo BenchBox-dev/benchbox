@@ -404,3 +404,5 @@ class TestAdapterBulkLoadWiring:
             adapter.load_data(mock_benchmark, mock_conn, tmp_path)
 
         assert not stage_root.exists()
+
+

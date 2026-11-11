@@ -174,3 +174,5 @@ def test_athena_reports_an_unsupported_store_for_every_spelling():
         assert reason is not None
         assert "Athena" in reason
     assert TuningMetadataManager(_Adapter("synapse")).unsupported_reason() is None
+
+

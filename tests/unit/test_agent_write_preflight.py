@@ -893,3 +893,5 @@ def test_preflight_without_a_session_id_does_not_need_python_or_uv(tmp_path: Pat
 
     assert result.returncode == 0, result.stderr
     assert _recorded_owner(linked) is None
+
+

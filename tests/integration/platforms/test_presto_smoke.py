@@ -48,3 +48,5 @@ def test_presto_requires_catalog(monkeypatch):
     )
 
     assert adapter.platform_name == "Presto"
+
+

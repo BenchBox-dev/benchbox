@@ -376,3 +376,5 @@ class TestCredentialManagerEdgeCases:
         assert "databricks" in platforms
         assert "_internal_key" not in platforms
         assert "_metadata" not in platforms
+
+

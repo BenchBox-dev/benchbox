@@ -174,3 +174,5 @@ def test_visualize_cli_power_bar_renders_query_latency_without_tpc_metric(tmp_pa
     assert "1a" in result.output
     assert "1b" in result.output
     assert "2a" in result.output
+
+

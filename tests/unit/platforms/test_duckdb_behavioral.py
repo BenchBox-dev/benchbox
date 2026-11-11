@@ -309,3 +309,5 @@ class TestExecuteQueryDryRun:
         assert result["status"] == "DRY_RUN"
         assert result["execution_time_seconds"] == 0.0
         assert result["dry_run"] is True
+
+

@@ -131,3 +131,5 @@ def test_scd2_skip_reason_does_not_claim_a_missing_merge(wp):
     _, reason = wp._get_effective_write_sql(wp.get_operation("merge_scd_type2_basic"), platform_key="questdb")
     assert "SCD2" in reason
     assert "no MERGE" not in reason
+
+

@@ -1514,3 +1514,5 @@ def test_unparseable_stream_id_quarantines_instead_of_escaping_as_a_failure(tmp_
     assert contained is not None and contained.state == "unknown" and contained.attempts == 1
     assert contained.error_code == "outstanding_work" and contained.quiesced_at is None
     assert repository.claim("worker-b") is None
+
+

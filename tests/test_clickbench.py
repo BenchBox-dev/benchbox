@@ -496,3 +496,5 @@ class TestClickBenchBenchmarkDirectly(BenchmarkTestMixin):
                 assert data[0][0] == "123"
                 assert data[0][1] == "1"
                 assert data[0][2] == "Title1"
+
+

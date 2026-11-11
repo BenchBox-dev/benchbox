@@ -72,3 +72,5 @@ def test_having_inequality_is_guarded():
 
 def test_qualify_inequality_is_guarded():
     assert "NOT r IS NULL" in rewrite_query("SELECT a, ROW_NUMBER() OVER (ORDER BY a) AS r FROM t QUALIFY r <> b")
+
+

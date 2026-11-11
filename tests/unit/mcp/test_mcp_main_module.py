@@ -82,3 +82,5 @@ def test_mcp_cli_explicit_args_override_env(monkeypatch):
     assert captured["results_dir"] == Path("/tmp/explicit-results")
     assert captured["charts_dir"] == Path("/tmp/explicit-charts")
     assert captured["log_level"] == "DEBUG"
+
+

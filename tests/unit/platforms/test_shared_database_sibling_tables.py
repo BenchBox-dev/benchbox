@@ -197,3 +197,5 @@ def test_a_failing_ownership_lookup_keeps_every_extra_table_foreign(monkeypatch)
         _run_on(adapter, "tpcds_obt", 1.0)
 
     assert adapter.dropped == 0
+
+

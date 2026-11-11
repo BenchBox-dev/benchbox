@@ -49,3 +49,5 @@ class TestBenchmarkCompatibility:
     def test_unknown_platform_is_not_gated(self):
         assert PlatformRegistry.get_unsupported_benchmarks("no_such_platform") == {}
         assert PlatformRegistry.get_benchmark_block_reason("no_such_platform", "tpch") is None
+
+

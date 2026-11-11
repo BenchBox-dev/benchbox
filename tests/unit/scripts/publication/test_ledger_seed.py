@@ -518,3 +518,5 @@ def test_isolated_replay_mirror_only_refuses_without_immutable_main(tmp_path: Pa
     )
     assert result.returncode != 0
     assert "no immutable main SHA" in result.stderr
+
+

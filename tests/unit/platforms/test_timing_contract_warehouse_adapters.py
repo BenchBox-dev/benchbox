@@ -246,3 +246,5 @@ class TestPrestoTrinoTimingContract:
 
         assert result["platform_timing"]["status"] == "unavailable"
         assert result["request_count"] == 1
+
+

@@ -68,3 +68,5 @@ def test_unaffected_queries_pass_through(query_id):
 @pytest.mark.parametrize(("raw", "expected"), [("Q11", "11"), ("q16", "16"), (" 18 ", "18"), (20, "20"), (None, None)])
 def test_normalize_tpch_query_id(raw, expected):
     assert normalize_tpch_query_id(raw) == expected
+
+

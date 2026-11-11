@@ -56,3 +56,5 @@ def test_fixed_dataframe_variant_families_equivalent_to_canonical(populated_envi
     assert not unexpected, "DataFrame variant(s) diverge from canonical TPC-H: " + ", ".join(
         f"{d.key} ({d.detail})" for d in divergences if d.key in unexpected
     )
+
+

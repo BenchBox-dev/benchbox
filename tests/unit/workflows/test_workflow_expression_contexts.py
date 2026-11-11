@@ -92,3 +92,5 @@ def test_detector_flags_the_known_failure_shapes() -> None:
     assert "runner" in _identifiers(" runner.temp ")
     assert _identifiers("github.event_name == 'merge_group' && '600' || '0'") == {"github"}
     assert _identifiers("matrix.python-version") == {"matrix"}
+
+

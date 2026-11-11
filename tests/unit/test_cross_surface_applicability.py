@@ -124,3 +124,5 @@ def test_committed_artifact_is_current(rows):
     assert ARTIFACT.read_text(encoding="utf-8") == render_markdown(rows), (
         "cross-surface applicability artifact is stale; run `make cross-surface-applicability-report` and commit"
     )
+
+

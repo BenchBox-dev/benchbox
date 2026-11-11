@@ -845,3 +845,5 @@ def test_commit_subject_drafting_and_summarizer_are_gone() -> None:
         text = path.read_text(encoding="utf-8")
         for token in forbidden:
             assert token not in text, f"{token} still referenced in {path.name}"
+
+

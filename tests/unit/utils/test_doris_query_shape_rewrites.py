@@ -48,3 +48,5 @@ def test_sourceless_exists_is_inlined_as_its_predicate():
 
     kept = sqlglot.parse_one("SELECT 1 FROM a WHERE EXISTS(SELECT 1 FROM b WHERE b.k = a.k)", read="starrocks")
     assert "EXISTS" in inline_sourceless_exists(kept).sql(dialect="starrocks")
+
+

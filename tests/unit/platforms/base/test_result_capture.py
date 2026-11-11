@@ -282,3 +282,5 @@ def test_maintenance_sql_metadata_does_not_claim_qgen_substitution_parameters():
         {"benchmark_name": "tpch", "seed": 7, "test_execution_type": "maintenance"}
     )
     assert metadata["run_config"]["query_parameters"] == "not applicable (TPC-H refresh functions)"
+
+

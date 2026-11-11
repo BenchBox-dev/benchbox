@@ -630,3 +630,5 @@ def test_native_verify_failure_records_no_success_statements(timescale_stubs, mo
     assert not adapter._applied_tuning_ledger.statements
     assert not adapter._applied_tuning_ledger.satisfied
     assert adapter._applied_tuning_ledger.dropped
+
+

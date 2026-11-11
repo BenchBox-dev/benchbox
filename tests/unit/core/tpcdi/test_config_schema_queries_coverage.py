@@ -152,3 +152,5 @@ def test_lakesail_tpcdi_skip_list_matches_remediation_evidence(tmp_path: Path):
 
     assert set(benchmark.get_platform_skip_queries("lakesail")) == set(LAKESAIL_TPCDI_SKIPS)
     assert benchmark.get_platform_skip_queries("duckdb") == []
+
+

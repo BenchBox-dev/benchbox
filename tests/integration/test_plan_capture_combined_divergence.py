@@ -361,3 +361,5 @@ def test_real_combined_power_maintenance_checkpoint_captures_pre_mutation_plan(t
         )
     finally:
         conn.close()
+
+

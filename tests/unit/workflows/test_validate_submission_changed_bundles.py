@@ -710,3 +710,5 @@ def test_deleted_bundle_with_case_variant_decoy_legacy_manifest_is_rejected(tmp_
     assert result.returncode != 0, result.stdout
     assert "file=results-data/bundles/duckdb/submission-manifest.json" in result.stdout
     assert "also requires deleting its referencing legacy manifest" in result.stdout
+
+

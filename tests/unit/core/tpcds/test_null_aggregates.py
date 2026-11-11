@@ -438,3 +438,5 @@ def test_q75_union_uses_decimal_amount_equality(monkeypatch, family, previous, c
     assert _check(monkeypatch, family, 75, {}, spec, sql, float_money=True) == [
         (2000, 2001, 1, 1, 1, 1, 10, 5, -5, expected_difference)
     ]
+
+

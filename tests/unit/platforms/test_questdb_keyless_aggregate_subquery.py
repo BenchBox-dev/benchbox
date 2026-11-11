@@ -73,3 +73,5 @@ def test_unaliased_items_keep_their_original_output_names():
         'SELECT _ag._ag1 AS "AVG(x)", _ka1._ka1_v AS "(SELECT COUNT(*) FROM t)" '
         "FROM (SELECT AVG(x) AS _ag1 FROM u) AS _ag CROSS JOIN (SELECT COUNT(*) AS _ka1_v FROM t) AS _ka1"
     )
+
+

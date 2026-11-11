@@ -237,3 +237,5 @@ def test_the_module_after_a_leaking_module_sees_the_original_logging_and_quiet_s
     assert "2 passed" in result.stdout
     assert "1 error" in result.stdout
     assert "logger 'benchbox' level changed from NOTSET to ERROR" in result.stdout
+
+

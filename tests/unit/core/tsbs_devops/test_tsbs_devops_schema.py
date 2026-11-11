@@ -193,3 +193,5 @@ class TestTypeMapping:
         assert "BIGINT" in sql
         assert "DOUBLE PRECISION" in sql
         assert "TEXT" in sql
+
+

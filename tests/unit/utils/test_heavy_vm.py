@@ -699,3 +699,5 @@ def test_the_stop_lock_is_released_if_recheck_raises_an_exception(tmp_path: Path
     with pytest.raises(RuntimeError, match="boom during recheck"):
         watch.check()
     assert not host_lock.lock_is_held(path)
+
+

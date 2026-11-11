@@ -422,3 +422,5 @@ def test_result_factory_non_dict_timings_container_degrades_to_zero(base_benchma
 
 if __name__ == "__main__":
     pytest.main(["-v"])
+
+

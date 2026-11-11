@@ -14,3 +14,5 @@ def test_own_edit_target_freshness_rule_is_present() -> None:
     assert "edit target" in text or "own-edit-target" in text
     assert "w0" in text
     assert "Line-number" in text
+
+

@@ -663,3 +663,5 @@ def test_transaction_manager_passes_the_execution_engine_to_polars_maintenance()
 
     assert manager is not None
     assert manager._maintenance_ops.execution_engine == "streaming"
+
+

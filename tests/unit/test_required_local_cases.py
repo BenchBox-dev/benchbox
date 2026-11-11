@@ -247,3 +247,5 @@ def test_rows_match_rejects_vacuous_empty_reference() -> None:
 
 def test_tolerance_is_pinned() -> None:
     assert required.VALUE_TOLERANCE == 1e-10
+
+

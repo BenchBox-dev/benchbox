@@ -553,3 +553,5 @@ class TestJoinOrderGenerator:
 
         for table_name, path in result.items():
             assert path.exists(), f"Missing file for table {table_name}"
+
+

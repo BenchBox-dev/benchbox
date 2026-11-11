@@ -159,3 +159,5 @@ class TestReadOnlyFuzz:
             con.execute(f"ATTACH '{built_db_path}' AS bench (READ_ONLY)")
             rows = con.execute("SELECT COUNT(*) FROM bench.results").fetchall()
             assert rows and rows[0][0] >= 1
+
+

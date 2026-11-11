@@ -103,3 +103,5 @@ def test_certification_rejects_a_result_from_another_platform(tmp_path: Path):
     result.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(CertificationArtifactError, match="platform must be ClickHouse Server"):
         validate_exact_manifest_rows(manifest, result, "tbl")
+
+

@@ -189,3 +189,5 @@ class TestValidationPhaseStatus:
         payload = self._payload(["SUCCESS"] * 3 + ["FAILED"] * 2, row_count_status="SKIPPED")
 
         assert payload["phases"]["validation"]["status"] == "SKIPPED"
+
+

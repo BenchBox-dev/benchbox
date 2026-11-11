@@ -76,3 +76,5 @@ def test_vortex_file_handler_falls_back_to_vortex_open(monkeypatch, tmp_path):
 
     assert row_count == 1
     connection.executemany.assert_called_once()
+
+

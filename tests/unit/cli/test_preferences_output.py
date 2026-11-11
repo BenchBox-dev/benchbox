@@ -97,3 +97,5 @@ class TestOutputParameterPersistence:
         assert loaded is not None
         assert loaded["output"] == "s3://bucket/data"
         assert loaded["table_mode"] == "external"
+
+

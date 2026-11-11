@@ -27,3 +27,5 @@ def test_compressed_shards_under_memory_pressure(tmp_path):
         DataVaultETLTransformer()._load_tpch_tables(conn, tmp_path, tables=["hub_region"])
         assert conn.execute(identity_sql).fetchone() == expected
         assert expected[:2] == (4_400_000, 9_679_997_800_000)
+
+

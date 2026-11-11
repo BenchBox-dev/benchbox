@@ -413,3 +413,5 @@ def test_release_fails_loudly_when_the_record_cannot_be_cleared(worktree, live_p
     assert "released" not in captured.out
     assert "could not lock" in captured.err
     assert _record(worktree)["session"] == "session-a"
+
+

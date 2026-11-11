@@ -68,3 +68,5 @@ def test_run_benchmark_ignore_memory_warning_reaches_execution(monkeypatch: pyte
 
     assert result.validation_status != "FAILED"
     assert adapter.context_created is True
+
+

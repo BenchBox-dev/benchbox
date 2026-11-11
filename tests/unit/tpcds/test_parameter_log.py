@@ -198,3 +198,5 @@ class TestGenerateParameterLog:
     def test_negative_stream_raises(self, dsqgen):
         with pytest.raises(ValueError):
             dsqgen.generate_parameter_log(39, stream_id=-1)
+
+

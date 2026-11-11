@@ -58,3 +58,5 @@ def test_datafusion_skip_list_wiring_and_lakesail_subset():
     assert set(benchmark.get_platform_skip_queries("datafusion")) == set(DATAFUSION_TPCHAVOC_SKIPS)
     assert benchmark.get_platform_skip_queries("duckdb") == []
     assert set(DATAFUSION_TPCHAVOC_SKIPS) <= set(LAKESAIL_TPCHAVOC_SKIPS)
+
+

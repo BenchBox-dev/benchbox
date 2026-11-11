@@ -624,3 +624,5 @@ def test_built_doc_contracts_carry_the_path_privacy_contract_and_pass_the_schema
     assert site_inputs.schema_errors(broken, site_inputs.DOC_CONTRACTS_SCHEMA) != []
     del emitted["path_privacy"]
     assert site_inputs.schema_errors(emitted, site_inputs.DOC_CONTRACTS_SCHEMA) != []
+
+

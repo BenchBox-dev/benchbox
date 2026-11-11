@@ -59,3 +59,5 @@ def test_unknown_generated_name_raises_attribute_error() -> None:
 
     with pytest.raises(AttributeError):
         _ = tpcds.totally_missing_query_impl
+
+

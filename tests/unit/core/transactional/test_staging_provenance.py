@@ -330,3 +330,5 @@ class TestStagingManifestHelpers:
         assert bench._setup_dialect == "bigquery"
         assert bench.setup.call_count == 0
         assert any("`TXN_ORDERS`" in sql for sql in seen_sql), seen_sql
+
+

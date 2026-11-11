@@ -272,3 +272,5 @@ class TestAdapterEntryPoint:
 
         with pytest.raises(RuntimeError, match="UNSUPPORTED"):
             unsupported_adapter.run_throughput_test(benchmark, connection=connection, num_streams=2)
+
+

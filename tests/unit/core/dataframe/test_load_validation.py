@@ -164,3 +164,5 @@ def test_managed_tables_missing_expected_table_fails() -> None:
 def test_managed_tables_without_loaded_evidence_returns_none() -> None:
     assert validate_managed_dataframe_tables(_ManagedBenchmark(None), None, None) is None
     assert validate_managed_dataframe_tables(_Benchmark(["orders"]), None, None) is None
+
+

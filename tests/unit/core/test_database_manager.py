@@ -45,3 +45,5 @@ def test_core_check_connection_delegates_to_adapter():
         mock_cfg.assert_called_once()
         mock_factory.assert_called_once()
         adapter.test_connection.assert_called_once()
+
+

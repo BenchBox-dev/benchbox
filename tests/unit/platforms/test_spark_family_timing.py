@@ -199,3 +199,5 @@ def test_cloud_spark_adapters_declare_query_only_timing(module: str, cls: str) -
 
     assert adapter_class.timing_method == TIMING_METHOD_QUERY_ONLY
     assert adapter_class.platform_timing_source is None
+
+

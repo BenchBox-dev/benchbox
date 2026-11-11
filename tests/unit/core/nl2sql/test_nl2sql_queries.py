@@ -239,3 +239,5 @@ class TestQueryContent:
             sql_upper = query.expected_sql.upper()
             select_count = sql_upper.count("SELECT")
             assert select_count >= 2, f"Query {query.query_id} should have nested SELECT (found {select_count})"
+
+

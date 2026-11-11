@@ -193,3 +193,5 @@ def test_cloud_platform_benchmark_dry_run(tmp_path: Path, platform: str, benchma
 
     assert result.returncode == 0, f"Dry run failed for {platform}/{benchmark_name}: {result.stdout}"
     assert "Dry run completed" in result.stdout
+
+

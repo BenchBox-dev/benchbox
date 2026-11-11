@@ -69,3 +69,5 @@ def test_clickhouse_skip_list_wiring():
     for platform in (*selectors, *first_class_display, *base_display):
         assert set(benchmark.get_platform_skip_queries(platform)) == set(CLICKHOUSE_TPCHAVOC_SKIPS), platform
     assert benchmark.get_platform_skip_queries("duckdb") == []
+
+

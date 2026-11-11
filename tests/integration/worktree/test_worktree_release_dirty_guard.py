@@ -507,3 +507,5 @@ def test_worktree_remove_removes_only_clean_exact_path_and_keeps_branch(tmp_path
     assert "feature/test-removal" in branches
     worktrees = run(["git", "worktree", "list", "--porcelain"], repo).stdout
     assert str(linked) not in worktrees
+
+

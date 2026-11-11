@@ -116,3 +116,5 @@ def test_tiny_fixture_preserves_nulls_and_integer_widths(duckdb_conn: Any) -> No
             type_range = DUCKDB_INTEGER_RANGES[normalized_type]
             assert type_range[0] <= int(min_value)
             assert int(max_value) <= type_range[1]
+
+

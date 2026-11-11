@@ -40,3 +40,5 @@ def test_mcp_run_below_threshold_fails_before_any_write(tool_functions, tmp_path
 
     lifecycle.assert_not_called()
     assert "Low disk space" in str(result)
+
+

@@ -141,3 +141,5 @@ def test_publication_rejects_raw_scalar_translation_fallback(tmp_path: Path) -> 
     assert result.success is False
     assert result.errors == ["Source bundle is not a clean pass: translation_status=fallback"]
     assert not (tmp_path / "published" / source.name).exists()
+
+

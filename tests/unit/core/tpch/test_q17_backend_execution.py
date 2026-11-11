@@ -56,3 +56,5 @@ def test_q17_adapter_matches_sql_null_and_revenue(platform, case):
     assert result["rows_returned"] == 1
     assert result["first_row"] == expected
     assert expected == ((10.0,) if case == "nonempty" else (None,))
+
+

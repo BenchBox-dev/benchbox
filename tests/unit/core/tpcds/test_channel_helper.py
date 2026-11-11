@@ -107,3 +107,5 @@ def test_union_sales_and_returns_channels_pandas():
     returns = union_returns_channels_pandas(ctx, channels=["store"], columns=["item_sk", "return_quantity"])
     assert list(returns.columns) == ["item_sk", "return_quantity", "channel"]
     assert returns.iloc[0]["channel"] == "store"
+
+

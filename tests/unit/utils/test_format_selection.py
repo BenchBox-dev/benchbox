@@ -169,3 +169,5 @@ class TestFormatSelector:
             manifest_data=None,
         )
         assert formats == ["tbl"]
+
+

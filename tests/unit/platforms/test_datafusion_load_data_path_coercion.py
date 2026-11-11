@@ -126,3 +126,5 @@ def test_load_data_still_detects_directory_format_from_string_path(tmp_path):
 
     assert table_stats == {"customer": 7}
     assert load_delta.call_args.args[2] == delta_dir
+
+

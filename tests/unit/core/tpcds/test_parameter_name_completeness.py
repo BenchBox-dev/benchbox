@@ -75,3 +75,5 @@ def test_lint_sees_every_key_the_adapter_returns(draws, query_id):
     returned = ADAPTERS[query_id](draws[query_id][0])
     unseen = sorted(key for key in returned if not _supplies(query_id, key))
     assert not unseen, f"Q{query_id}: the adapter returns {unseen}, which the lint's reading of its source misses"
+
+

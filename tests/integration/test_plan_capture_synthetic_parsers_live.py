@@ -283,3 +283,5 @@ class TestLiveLakeSailDataFramePlanCapture:
         assert plan is not None
         assert plan.verify_fingerprint()
         assert_plan_semantics(plan, shape, ShapeTraits(), ORDERS, CUSTOMERS)
+
+

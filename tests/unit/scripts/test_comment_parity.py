@@ -345,3 +345,5 @@ def test_noqa_reason_stays_bound_to_its_code(directive: str) -> None:
 )
 def test_noqa_words_in_ordinary_prose_are_not_directives(comment: str) -> None:
     assert compare(f"x = 1  {comment}\n", "x = 1\n").clean
+
+

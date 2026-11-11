@@ -234,3 +234,5 @@ def test_every_query_translates_to_sqlite_without_unsupported_interval() -> None
 
     assert queries
     assert not [qid for qid, sql in queries.items() if "does not support" in sql or "INTERVAL" in sql.upper()]
+
+

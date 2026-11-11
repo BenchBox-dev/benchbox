@@ -902,3 +902,5 @@ def test_bootstrap_survives_a_failed_gateway_setup(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stdout + result.stderr
     assert "the review gateway setup reported a problem" in result.stderr
     assert "gateway=unavailable" in result.stdout
+
+

@@ -82,3 +82,5 @@ def test_default_requires_manifest() -> None:
         "REQUIRE_MANIFEST must default to --require-manifest (fail closed); "
         "the waiver only clears it inside the fork+branch guard."
     )
+
+

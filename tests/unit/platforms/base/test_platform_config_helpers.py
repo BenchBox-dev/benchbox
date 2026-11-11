@@ -121,3 +121,5 @@ def test_build_adapter_config_forwards_plan_keys_and_skips_none() -> None:
     assert result["capture_plans"] is False
     assert result["plan_queries"] == "1,6"
     assert "plan_capture_timeout_seconds" not in result
+
+

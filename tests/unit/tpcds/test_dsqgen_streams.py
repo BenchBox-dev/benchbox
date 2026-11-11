@@ -271,3 +271,5 @@ class TestRunDsqgenStreams:
 
         assert result.returncode == 1
         assert calls == 1
+
+

@@ -363,3 +363,5 @@ def test_captured_row_tolerance_reaches_the_rendered_report(left, right, cause):
     assert record["cause"] == cause
     assert f"| Q93 | pandas | divergent | {cause} |" in report
     assert detail in report
+
+

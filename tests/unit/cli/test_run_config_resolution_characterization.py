@@ -214,3 +214,5 @@ class TestResolutionIsPure:
         _prepare(tmp_path, options=options)
 
         assert options == snapshot
+
+

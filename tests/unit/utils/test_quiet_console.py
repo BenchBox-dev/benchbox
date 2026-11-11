@@ -23,3 +23,5 @@ def test_quiet_console_respects_quiet_flag() -> None:
     quiet_console.print("silent")
 
     set_quiet(False)
+
+

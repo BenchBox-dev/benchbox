@@ -157,3 +157,5 @@ class TestLakeSailWorkers:
 
         assert _messages(caplog) == []
         assert adapter.get_platform_info()["connection_mode"] == "distributed"
+
+

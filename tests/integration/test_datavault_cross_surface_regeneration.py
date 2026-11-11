@@ -58,3 +58,5 @@ def test_enforced_gate_forces_regeneration_records_manifest_and_runs_all_cells(t
         assert all(count > 0 for count in counts.values()), f"cell not fully regenerated: {counts}"
     finally:
         data.connection.close()
+
+

@@ -190,3 +190,5 @@ def test_dataframe_filter_registry_silent(platform: str, bmark: str, query_id: s
         dialect=platform,
     )
     assert REGISTRY.resolve(ctx) is None
+
+

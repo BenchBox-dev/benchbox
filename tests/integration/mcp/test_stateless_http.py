@@ -105,3 +105,5 @@ def test_supported_legacy_http_client_does_not_require_sticky_session(tmp_path: 
     assert request_headers
     assert all("mcp-session-id" not in headers for headers in request_headers)
     assert all("mcp-session-id" not in headers for headers in response_headers)
+
+

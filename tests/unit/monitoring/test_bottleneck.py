@@ -423,3 +423,5 @@ class TestQuickBottleneckCheck:
         timeline = ResourceTimeline(samples=samples)
         result = quick_bottleneck_check(timeline)
         assert result == BottleneckType.BALANCED
+
+

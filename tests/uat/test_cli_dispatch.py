@@ -997,3 +997,5 @@ def test_a_dry_run_sweep_and_report_do_not_acquire_but_a_real_sweep_is_refused(t
     assert "[host-lock]" not in dry.stderr and dry.returncode != 75
     assert "[host-lock]" not in report.stderr and report.returncode != 75
     assert heavy.returncode == 75, heavy.stdout + heavy.stderr
+
+

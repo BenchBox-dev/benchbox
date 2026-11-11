@@ -164,3 +164,5 @@ def test_anonymizer_does_not_hash_core_vocabulary_keys() -> None:
     identifier_keys = yaml.safe_load(specs_path.read_text(encoding="utf-8"))["identifier_keys"]
     compact = {re.sub(r"[^a-z0-9]+", "", key) for key in CORE_VOCABULARY_KEYS}
     assert compact.isdisjoint(identifier_keys)
+
+

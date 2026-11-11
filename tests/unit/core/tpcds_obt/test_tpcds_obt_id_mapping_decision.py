@@ -37,3 +37,5 @@ def test_dataframe_ids_never_collide_with_tpcds_numbered_ids() -> None:
     dataframe_ids = {str(query.query_id) for query in get_dataframe_queries()}
     sql_labels = {str(query_id) for query_id in CONVERTIBLE_QUERY_IDS} | {f"Q{n}" for n in CONVERTIBLE_QUERY_IDS}
     assert not dataframe_ids & sql_labels
+
+

@@ -86,3 +86,5 @@ class TestMemoryUtilities:
 
         with patch("benchbox.utils.resource_limits.psutil", mock_psutil):
             assert get_available_memory_mb() == 0.0
+
+

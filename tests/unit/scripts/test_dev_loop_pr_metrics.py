@@ -2180,3 +2180,5 @@ def test_log_download_follows_the_redirect_without_sending_the_token(monkeypatch
     assert seen[0][1]["Authorization"] == "Bearer secret"
     assert seen[1][0] == location
     assert "Authorization" not in seen[1][1]
+
+

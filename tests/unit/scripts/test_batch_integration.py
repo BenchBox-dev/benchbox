@@ -1658,3 +1658,5 @@ def test_cli_recover_prints_the_payload(world: World, capsys: pytest.CaptureFixt
     assert code == 0
     printed = json.loads(capsys.readouterr().out)
     assert printed["arguments"]["new_owner_generation"] == _ledger(integration)["owner_generation"]
+
+

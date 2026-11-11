@@ -253,3 +253,5 @@ class TestInfluxLoadFailsLoudly:
             'tags,hostname=host_0 region="us-east-1",datacenter="dc1",service_version="1.8.21"',
             'tags,hostname=host\\ 1 region="we\\"ird\\\\zone",service_version="2.0"',
         ]
+
+

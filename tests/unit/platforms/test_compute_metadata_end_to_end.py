@@ -245,3 +245,5 @@ def test_redshift_cluster_identifier_is_not_used_as_the_workgroup() -> None:
 
     assert adapter.cluster_identifier == "c1"
     assert adapter.workgroup_name is None
+
+

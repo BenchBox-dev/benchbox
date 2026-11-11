@@ -281,3 +281,5 @@ def test_q18_variants_return_bounded_top_n_on_rank_ties():
         assert len(conn.execute(legacy_rank_top_n).fetchall()) == 101
     finally:
         conn.close()
+
+

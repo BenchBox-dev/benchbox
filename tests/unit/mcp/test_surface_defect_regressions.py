@@ -208,3 +208,5 @@ class TestChartOutputContract:
         assert "Generate ASCII chart output" in description
         assert "non-ASCII formats are rejected" in description
         assert "ANSI colors for terminal display" not in description
+
+

@@ -413,3 +413,5 @@ class TestTPCDIBenchmarkCoverage:
                 tpcdi_benchmark.execute_query("V1", connection)
         finally:
             connection.close()
+
+

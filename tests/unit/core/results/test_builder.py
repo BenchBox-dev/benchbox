@@ -820,3 +820,5 @@ class TestResultFactoryExternalFormat:
         assert config.get("table_format") == "parquet"
         assert config.get("table_format_compression") == "zstd"
         assert config.get("table_format_partition_cols") == ["region"]
+
+

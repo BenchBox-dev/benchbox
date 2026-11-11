@@ -349,3 +349,5 @@ class TestParquetIntegration:
         assert len(data_tuples) == 5
         assert data_tuples[0] == (1, "Customer#1", 100.50)
         assert data_tuples[4] == (5, "Customer#5", 500.50)
+
+

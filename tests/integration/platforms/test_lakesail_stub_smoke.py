@@ -97,3 +97,5 @@ class TestLakeSailStubConnection:
             assert state.endpoint == "sc://custom:9999"
         finally:
             adapter.close_connection(connection)
+
+

@@ -250,3 +250,5 @@ class TestQuerySourcePath:
         rel = query_source_path(benchmark_id, list_query_ids(benchmark_id)[0])
         if rel is not None:
             assert (_REPO_ROOT / rel).is_file()
+
+

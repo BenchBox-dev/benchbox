@@ -116,3 +116,5 @@ def test_qualification_numeric_ties_match_generated_q77_and_reject_wrong_amounts
         reversed_order = compare_rows(reference, list(reversed(candidate)), "77", sql)
         assert reversed_order["status"] == "mismatch"
         assert "ORDER BY" in reversed_order["detail"]
+
+

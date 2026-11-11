@@ -113,3 +113,5 @@ class TestSparkRegistration:
     @pytest.mark.parametrize("dialect", ["spark", "databricks"])
     def test_registered_for_dialect(self, dialect):
         assert isinstance(get_parser_for_platform(dialect), SparkQueryPlanParser)
+
+

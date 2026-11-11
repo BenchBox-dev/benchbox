@@ -82,3 +82,5 @@ def test_allowlist_headroom_applies_only_to_allowlisted_entries() -> None:
         ALLOWLIST[untracked_path] + ALLOWLIST_HEADROOM if untracked_path in ALLOWLIST else MAX_LINES_DEFAULT
     )
     assert effective_limit == MAX_LINES_DEFAULT
+
+

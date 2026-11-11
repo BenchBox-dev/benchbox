@@ -486,3 +486,5 @@ def compare(fail_on_regression):
     assert _cli_surface_digest(source, path) != _cli_surface_digest(
         source.replace('@click.command("compare")', '@click.command("compare", help="changed")'), path
     )
+
+

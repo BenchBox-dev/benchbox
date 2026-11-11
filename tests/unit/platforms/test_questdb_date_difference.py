@@ -62,3 +62,5 @@ def test_epoch_of_a_timestamp_difference_inside_a_comparison_is_rewritten():
 def test_epoch_of_a_timestamp_shifted_by_an_interval_is_left_alone():
     sql = "SELECT EXTRACT(EPOCH FROM (ts - INTERVAL '1 day')) FROM t"
     assert rewrite_query(sql) == sql
+
+

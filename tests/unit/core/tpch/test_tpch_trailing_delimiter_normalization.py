@@ -141,3 +141,5 @@ class TestCRLFFraming:
 
         assert normalize_tbl_trailing_delimiters(path) is True
         assert path.read_bytes() == b"0|AFRICA|comment.\r"
+
+

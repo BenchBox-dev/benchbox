@@ -63,3 +63,5 @@ def test_dbgen_runtime_build_outputs_are_ignored(name: str) -> None:
     _require_git_checkout()
     ignored = _git("check-ignore", "--no-index", "-q", f"{_DBGEN_SOURCE_DIR}/{name}")
     assert ignored.returncode == 0, f"{_DBGEN_SOURCE_DIR}/{name} is written by the auto-compile path but not ignored"
+
+

@@ -418,3 +418,5 @@ class TestRecoveryAndCleanupScenarios:
             for file_handle in opened_files:
                 if not file_handle.closed:
                     assert len([f for f in opened_files if not f.closed]) < 10
+
+

@@ -101,3 +101,5 @@ class TestGetAvailableMemoryWindowsFallback:
         ):
             result = _get_available_memory_gb()
         assert result == 8.0
+
+

@@ -113,3 +113,5 @@ def test_missing_shell_per_test_guard_skips_on_windows(monkeypatch):
 
     with pytest.raises(pytest.skip.Exception, match="no working POSIX shell"):
         posix_shell_module.skip_without_posix_shell()
+
+

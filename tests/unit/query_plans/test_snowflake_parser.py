@@ -171,3 +171,5 @@ class TestSnowflakeJoinConditionSorting:
             "q", self._join_payload(["a.type = b.type", "a.id = b.id"])
         ).plan_fingerprint
         assert first == second
+
+

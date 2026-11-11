@@ -311,3 +311,5 @@ class TestCreateSessionAqeKeys:
 
         assert entries["spark.sql.adaptive.enabled"] == "false"
         assert entries["spark.sql.adaptive.skewJoin.enabled"] == "true"
+
+

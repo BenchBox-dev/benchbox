@@ -548,3 +548,5 @@ def test_kill_worker_tolerates_a_worker_that_already_exited(monkeypatch):
     process = ExitedProcess()
     runner._kill_worker(process)
     assert process.waited
+
+

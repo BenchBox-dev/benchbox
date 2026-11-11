@@ -50,3 +50,5 @@ class TestSingleStorePersistence:
         assert result.exit_code == 0
         assert "--platform" in result.output
         assert "--validate-only" in result.output
+
+

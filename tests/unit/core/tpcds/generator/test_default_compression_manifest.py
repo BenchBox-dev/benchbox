@@ -163,3 +163,5 @@ def test_single_threaded_default_compression_records_every_table(tmp_path: Path,
         assert len(entries) == 1, table
         assert entries[0]["row_count"] == ROWS_PER_CHUNK, (table, entries[0])
         assert (output_dir / entries[0]["path"]).exists()
+
+

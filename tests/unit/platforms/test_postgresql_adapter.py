@@ -1114,3 +1114,5 @@ class TestPostgreSQLStatementTimeoutOption:
         adapter = PostgreSQLAdapter.from_config(config.model_dump())
 
         assert "options" not in adapter._get_connection_params()
+
+

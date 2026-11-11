@@ -564,3 +564,5 @@ class TestRegionAlias:
             )
 
         assert adapter.region == "ap-southeast-1"
+
+

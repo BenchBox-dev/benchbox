@@ -384,3 +384,5 @@ def test_accumulate_transformation_result_materializes_once(tmp_path: Path) -> N
     staged = aggregate["staged_data"]["DimCustomer"]
     assert aggregate["records_processed"] == 3
     assert list(staged["SK_CustomerID"]) == [1, 2, 3]
+
+

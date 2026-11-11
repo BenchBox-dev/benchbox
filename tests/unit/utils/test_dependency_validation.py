@@ -190,3 +190,5 @@ version = "8.2.1"
 
     assert result == 1
     assert "Missing satisfying lock entry for rich>=13.7" in captured.err
+
+

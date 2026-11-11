@@ -116,3 +116,5 @@ def test_hostile_host_and_origin_are_rejected_without_log_egress(
     caplog.set_level(logging.DEBUG)
     assert SENTINEL not in "\n".join(anyio.run(exercise))
     assert SENTINEL not in caplog.text
+
+

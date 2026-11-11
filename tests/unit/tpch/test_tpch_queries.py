@@ -289,3 +289,5 @@ class TestTPCHQueries:
         assert sql.rstrip().endswith("LIMIT 20;") or sql.rstrip().endswith("limit 20;"), (
             f"Query 10 should end with LIMIT 20; Got:\n{sql[-100:]}"
         )
+
+

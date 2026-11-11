@@ -296,3 +296,5 @@ def test_generate_parent_chunk_generic_exception(monkeypatch, tmp_path):
 
     with pytest.raises(RuntimeError, match="disk full"):
         harness._generate_parent_table_chunk_with_children(tmp_path, "web_sales", 1, [])
+
+

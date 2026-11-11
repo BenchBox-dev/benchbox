@@ -897,3 +897,5 @@ class TestLakeSailServerLifecycle:
         mock_proc.terminate.assert_called_once()
         mock_proc.kill.assert_called_once()
         assert adapter._managed_server_process is None
+
+

@@ -167,3 +167,5 @@ class TestAnalyticsHelperFunctions:
         assert _classify_regression_severity(75) == "high"
         assert _classify_regression_severity(30) == "medium"
         assert _classify_regression_severity(15) == "low"
+
+

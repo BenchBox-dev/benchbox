@@ -343,3 +343,5 @@ def test_schema_validator_accepts_null_query_platform_timing():
     bundle = _bundle_2_4()
     bundle["queries"][0]["platform_timing"] = None
     SchemaV2Validator().validate(bundle)
+
+

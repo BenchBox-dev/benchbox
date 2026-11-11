@@ -234,3 +234,5 @@ class TestResultBundleStatisticsAreUnchanged:
         assert stats["p50_ms"] == pytest.approx(expected["p50"])
         assert stats["p95_ms"] == pytest.approx(expected["p95"])
         assert stats["p99_ms"] == pytest.approx(expected["p99"])
+
+

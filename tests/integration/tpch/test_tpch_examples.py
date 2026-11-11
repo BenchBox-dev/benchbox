@@ -224,3 +224,5 @@ class TestTPCHExamples:
             benchmark = TPCHBenchmark(**config)
             sql_benchmark = benchmark.get_query(1)
             assert isinstance(sql_benchmark, str)
+
+

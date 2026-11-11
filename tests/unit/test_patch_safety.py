@@ -21,3 +21,5 @@ def test_no_unsafe_patch_string_calls():
         text=True,
     )
     assert result.returncode == 0, "Unsafe patch() string paths detected.\n\n" + (result.stdout or result.stderr)
+
+

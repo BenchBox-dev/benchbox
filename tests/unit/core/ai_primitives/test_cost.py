@@ -284,3 +284,5 @@ class TestFormatCostWarning:
 
         assert "WARNING" in warning or "Exceeds" in warning
         assert "Over budget" in warning
+
+

@@ -168,3 +168,5 @@ def test_guard_rejection_leaves_a_tracked_stack_untouched(tmp_path):
         "guard rejection must never invoke `compose down -v` against an already-running stack -- "
         f"fake engine log unexpectedly created: {log_file.read_text() if log_file.exists() else ''}"
     )
+
+

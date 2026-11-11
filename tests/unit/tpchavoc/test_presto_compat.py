@@ -101,3 +101,5 @@ def test_presto_rules_cover_each_rewritten_variant(platform):
 
     registered = {key[3] for key, _ in REGISTRY.all_rules() if key[:3] == (Phase.QUERY_ADAPTER, platform, "tpchavoc")}
     assert registered == PRESTO_REWRITTEN_VARIANT_IDS
+
+

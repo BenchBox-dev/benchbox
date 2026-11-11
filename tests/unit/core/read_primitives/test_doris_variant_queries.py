@@ -33,3 +33,5 @@ def test_doris_fulltext_variants_use_match_predicates(doris_queries):
     assert "MATCH_ANY" in doris_queries["fulltext_simple_search"]
     assert "MATCH_ANY" in doris_queries["fulltext_boolean_search"]
     assert "MATCH_PHRASE" in doris_queries["fulltext_phrase_search"]
+
+

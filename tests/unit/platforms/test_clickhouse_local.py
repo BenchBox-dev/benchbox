@@ -316,3 +316,5 @@ class TestClickHouseEmbeddedIntegration:
 
         drop_result = adapter.execute_query(connection, "DROP TABLE IF EXISTS test_table", "drop_test")
         assert drop_result["status"] == "SUCCESS"
+
+

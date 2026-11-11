@@ -70,3 +70,5 @@ def test_query16_derived_table_variant_excludes_every_complaint_supplier():
 
     assert base == [("Brand#12", "STANDARD BRUSHED TIN", 49, 1)]
     assert variant == base
+
+

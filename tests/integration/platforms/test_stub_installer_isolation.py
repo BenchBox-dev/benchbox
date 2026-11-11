@@ -91,3 +91,5 @@ def test_stub_guard_flags_unrestored_chdb_write():
         assert "benchbox.platforms.clickhouse._dependencies.chdb" in find_stub_adapter_attr_leaks(before)
     finally:
         _dependencies.chdb = previous
+
+

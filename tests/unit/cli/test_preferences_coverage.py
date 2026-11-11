@@ -156,3 +156,5 @@ def test_favorites_crud(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None
 
     assert prefs.delete_favorite_config("quick") is True
     assert prefs.delete_favorite_config("missing") is False
+
+

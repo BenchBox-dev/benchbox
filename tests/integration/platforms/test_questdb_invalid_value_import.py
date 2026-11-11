@@ -96,3 +96,5 @@ def test_empty_values_remain_valid_nulls(tmp_path, base_url):
     assert rows == 2
     result = _exec(base_url, f"SELECT count(i), count(d) FROM {TABLE_NAME}")
     assert result["dataset"] == [[1, 1]]
+
+

@@ -415,3 +415,5 @@ class TestDuckDBParserEdgeCases:
 
         plan = parser.parse_explain_output("q16", unicode_output)
         assert plan is None or plan.logical_root is not None
+
+

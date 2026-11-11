@@ -663,3 +663,5 @@ def test_session_isolation_exports_and_restores_the_trace_environment(tmp_path: 
     assert seen["BENCHBOX_HEAVY_RUNS_FILE"] == str(lock.resolve() / hl.RUNS_FILE_NAME)
     ledger = read_events(lock / hl.RUNS_FILE_NAME)
     assert ledger[0]["run_id"] == seen["BENCHBOX_HEAVY_RUN_ID"] and ledger[-1]["event"] == "run_finished"
+
+

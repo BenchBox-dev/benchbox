@@ -1776,3 +1776,5 @@ def test_report_prints_the_order_summary(capsys):
         == 0
     )
     assert "returned order: 1 of 1 cells verified, 0 compared unordered" in capsys.readouterr().out
+
+

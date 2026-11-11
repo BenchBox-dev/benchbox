@@ -118,3 +118,5 @@ def test_collect_junit_durations_derives_nodeid_from_classname_without_file(tmp_
         "tests/unit/test_example.py::TestClass::test_method": 0.2,
         "tests/unit/skipped_module.py": 0.0,
     }
+
+

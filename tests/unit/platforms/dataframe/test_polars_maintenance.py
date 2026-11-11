@@ -431,3 +431,5 @@ class TestPolarsMaintenanceResult:
         assert result.end_time >= result.start_time
         assert result.duration >= 0
         assert result.duration == pytest.approx(result.end_time - result.start_time, abs=0.001)
+
+

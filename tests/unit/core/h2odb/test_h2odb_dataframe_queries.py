@@ -114,3 +114,5 @@ class TestH2ODBBenchmarkRegistry:
         meta = get_benchmark_metadata("h2odb")
         assert meta is not None
         assert meta.get("supports_dataframe") is True
+
+

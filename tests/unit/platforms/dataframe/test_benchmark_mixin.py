@@ -767,3 +767,5 @@ class TestResolveColumnNamesAndDelimiter:
         benchmark = SimpleNamespace(csv_delimiter=";", tables={})
         _, delimiter = adapter._resolve_column_names_and_delimiter(self._config(), benchmark)
         assert delimiter == ";"
+
+

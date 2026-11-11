@@ -274,3 +274,5 @@ class TestSampleTextContent:
         for sample in tech_samples[:5]:
             assert len(sample.text_content) > 0
             assert sample.category == "Technology"
+
+

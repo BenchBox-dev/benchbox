@@ -77,3 +77,5 @@ def test_main_returns_2_on_missing_file(tmp_path) -> None:
     dev.write_text(DEVELOP, encoding="utf-8")
     missing = tmp_path / "nope.yml"
     assert mod.main(["--develop", str(dev), "--published", str(missing)]) == 2
+
+

@@ -396,3 +396,5 @@ class TestEnums:
         assert ColumnEncoding.LZO.value == "lzo"
         assert ColumnEncoding.ZSTD.value == "zstd"
         assert ColumnEncoding.AUTO.value == "AUTO"
+
+

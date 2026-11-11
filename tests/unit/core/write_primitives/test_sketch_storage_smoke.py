@@ -52,3 +52,5 @@ def test_sketch_storage_smoke_covers_catalog_sketch_byte_validations() -> None:
         "scripts/sketch_storage_smoke.sh must emit one TSV row for each catalog sketch_bytes validation. "
         f"Missing labels: {sorted(expected - actual)}. Extra labels: {sorted(actual - expected)}."
     )
+
+

@@ -123,3 +123,5 @@ def test_gateway_host_userinfo_is_rejected_before_any_preview_file_is_written(tm
     assert "gateway_host must be a bare host name" in result.output
     assert "gateway-pw-9e61aa" not in result.output
     assert not preview_dir.exists() or not any(preview_dir.rglob("*"))
+
+

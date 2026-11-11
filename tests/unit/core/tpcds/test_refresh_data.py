@@ -301,3 +301,5 @@ def test_create_staging_tables_replaces_existing_staging_tables_only() -> None:
 
     assert connection.execute("SELECT COUNT(*) FROM s_delete").fetchone()[0] == 0
     assert _warehouse_rows(connection) == [(1,), (2,), (3,)]
+
+

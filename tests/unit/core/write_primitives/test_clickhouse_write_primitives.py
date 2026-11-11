@@ -100,3 +100,5 @@ def test_staging_probe_keeps_limit_one_on_other_dialects(wp, monkeypatch):
     conn = _ProbeConnection({})
     assert wp.is_setup(conn) is True
     assert any(sql.endswith("LIMIT 1") for sql in conn.executed)
+
+

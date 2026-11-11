@@ -308,3 +308,5 @@ def test_expression_load_table_uses_resolver_null_marker_when_data_source_provid
 
     assert adapter.calls, "read_csv was not called"
     assert adapter.calls[0]["null_marker"] == ""
+
+

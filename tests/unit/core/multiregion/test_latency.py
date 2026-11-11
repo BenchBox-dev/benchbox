@@ -192,3 +192,5 @@ class TestEstimateLatencyFromDistance:
         min_lat, typical_lat = estimate_latency_from_distance(0)
         assert min_lat == 0
         assert typical_lat == 0
+
+

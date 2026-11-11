@@ -277,3 +277,5 @@ def test_uc_volume_nonexistent_file_is_skipped(databricks_adapter: DatabricksAda
 
     finally:
         databricks_adapter.close_connection(connection)
+
+

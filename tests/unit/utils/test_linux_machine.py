@@ -390,3 +390,5 @@ def test_a_process_that_cannot_be_read_does_not_abort_the_machine_scan() -> None
         _FakeProcess(None, wrapper),
     ]
     assert lm.read_machine_processes("m", False, iterate=lambda: iter(processes)) == [(7, tuple(wrapper))]
+
+

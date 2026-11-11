@@ -593,3 +593,5 @@ class TestProfileMetricType:
         assert ProfileMetricType.MEMORY.value == "memory"
         assert ProfileMetricType.ROWS.value == "rows"
         assert ProfileMetricType.PLAN.value == "plan"
+
+

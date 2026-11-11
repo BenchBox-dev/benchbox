@@ -263,3 +263,5 @@ def test_convert_arrow_table_uses_arrow_path(monkeypatch):
     ops._convert_to_spark_df(table)
 
     spark.createDataFrame.assert_called_once_with(table)
+
+

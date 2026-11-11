@@ -255,3 +255,5 @@ class TestFingerprintConsistencyAcrossVersions:
 
         assert plan1 is not None and plan2 is not None
         assert plan1.plan_fingerprint != plan2.plan_fingerprint
+
+

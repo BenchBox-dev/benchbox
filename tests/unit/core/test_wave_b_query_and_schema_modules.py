@@ -106,3 +106,5 @@ def test_tpchavoc_query_manager_variants_and_dispatch():
 
     with pytest.raises(ValueError, match="Invalid variant query ID format"):
         qm.get_query("bad_vx")
+
+

@@ -147,3 +147,5 @@ def test_exporter_explicit_config_overrides_env(
     exporter = ResultExporter(output_dir=tmp_path, anonymize=True, anonymization_config=explicit)
     assert exporter.anonymization_manager is not None
     assert exporter.anonymization_manager.config.machine_id_salt == "from-arg"
+
+

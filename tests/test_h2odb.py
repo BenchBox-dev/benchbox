@@ -380,3 +380,5 @@ class TestH2ODBBenchmarkDirectly(BenchmarkTestMixin):
                 assert data[0][0] == "2023-01-01 12:00:00"
                 assert data[0][1] == "2023-01-01 12:30:00"
                 assert data[0][2] == "5.5"
+
+

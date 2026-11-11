@@ -81,3 +81,5 @@ def test_git_provenance_is_read_from_the_repository_that_holds_the_script(monkey
     assert scale_check.repository_dirty() is False
     assert seen == [scale_check.REPOSITORY_ROOT]
     assert (scale_check.REPOSITORY_ROOT / "_project" / "scripts" / "tpchavoc_trino_q1_scale_check.py").is_file()
+
+

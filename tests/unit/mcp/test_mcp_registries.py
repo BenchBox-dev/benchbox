@@ -307,3 +307,5 @@ class TestRegisterAllPrompts:
         result = get_prompt_contents(mcp, "platform_tuning", platform="snowflake")
         assert len(result) == 1
         assert "snowflake" in result[0].text
+
+

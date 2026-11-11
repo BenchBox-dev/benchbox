@@ -601,3 +601,5 @@ def test_snapshot_invariants_reject_a_ranked_throughput_row_without_a_throughput
     errors = check_snapshot(corrupted)
 
     assert any("ranked rows must have a valid primary metric" in error for error in errors)
+
+

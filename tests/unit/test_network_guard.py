@@ -239,3 +239,5 @@ def test_expect_network_block_does_not_excuse_other_targets(tmp_path):
     )
     assert result.returncode != 0
     assert "198.51.100.9" in result.stdout
+
+

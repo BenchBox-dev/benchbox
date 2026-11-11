@@ -472,3 +472,5 @@ class TestBenchmarkDateSync:
         assert params["start_date"] == date.fromisoformat(benchmark._query_start_date)
         assert params["end_date"] == date.fromisoformat(benchmark._query_end_date)
         set_parameter_overrides(None)
+
+

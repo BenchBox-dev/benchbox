@@ -148,3 +148,5 @@ class TestTPCHSkewBenchmarkRegistry:
         meta = get_benchmark_metadata("tpch_skew")
         assert meta is not None
         assert meta.get("supports_dataframe") is True
+
+

@@ -295,3 +295,5 @@ dependencies = ["duckdb>=1.0.0,<1.4.0"]
         assert rc == 0
         assert out.exists()
         assert "pydantic" in out.read_text(encoding="utf-8")
+
+

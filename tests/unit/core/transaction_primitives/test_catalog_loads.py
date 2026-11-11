@@ -30,3 +30,5 @@ class TestCatalogLoads:
             assert op.validation_queries, f"{op_id} has no validation queries"
             for query in op.validation_queries:
                 assert query.sql.strip(), f"{op_id}/{query.id} has empty sql"
+
+

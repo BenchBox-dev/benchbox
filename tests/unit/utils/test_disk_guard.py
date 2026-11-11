@@ -205,3 +205,5 @@ def test_orchestrator_run_below_threshold_returns_failure_without_writes(tmp_pat
         result = orchestrator.execute_benchmark(config, system_profile=None, database_config=None)
     lifecycle.assert_not_called()
     assert "Low disk space" in str(result.__dict__)
+
+

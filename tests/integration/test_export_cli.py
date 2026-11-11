@@ -291,3 +291,5 @@ def test_export_html_format_creates_standalone_file(tmp_path):
     assert "<!DOCTYPE html>" in html_content or "<html" in html_content
     assert "Test Benchmark" in html_content
     assert "TestPlatform" in html_content
+
+

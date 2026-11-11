@@ -637,3 +637,5 @@ class TestExtractCliConfig:
         assert result["storage_bucket"] == "bucket"
         assert result["storage_prefix"] == "prefix"
         assert "extra" not in result
+
+

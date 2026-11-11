@@ -65,3 +65,5 @@ class TestGlueStagingInstruction:
         from benchbox.platforms.aws import AWSGlueAdapter
 
         assert AWSGlueAdapter.external_staging_instruction == "Pass --output s3://bucket/path."
+
+

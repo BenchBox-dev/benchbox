@@ -1296,3 +1296,5 @@ class TestResolveTablePaths:
             assert conn.execute("SELECT COUNT(*) FROM nation").fetchone()[0] == 5
         finally:
             conn.close()
+
+

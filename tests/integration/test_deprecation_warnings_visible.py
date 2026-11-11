@@ -144,3 +144,5 @@ def test_mcp_server_warns_once_per_run(
         assert [entry["option"] for entry in response["deprecations"]] == ["streaming"]
         assert response["deprecations"][0]["replacement"] == "execution_engine='streaming'"
         assert response["deprecations"][0]["removed_in"] == "0.6.0"
+
+

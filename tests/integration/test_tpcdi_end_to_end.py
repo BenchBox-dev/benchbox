@@ -1064,3 +1064,5 @@ class TestTPCDIExtendedScenarios:
 
         adapter = DuckDBAdapter(database_path=str(db_path))
         return adapter.create_connection(database_path=str(db_path))
+
+

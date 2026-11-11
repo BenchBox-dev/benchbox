@@ -744,3 +744,5 @@ class TestGeneratedMetadataWithAcl:
         assert summary["roles"] == 1
         assert summary["grants"] == 1
         assert summary["total"] == 3
+
+

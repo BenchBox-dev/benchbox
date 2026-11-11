@@ -226,3 +226,5 @@ def test_joinorder_validate_query_returns_false_for_invalid_sql(tmp_path: Path) 
 
     with patch.object(benchmark, "get_query", side_effect=RuntimeError("bad query")):
         assert benchmark.validate_query("1a") is False
+
+

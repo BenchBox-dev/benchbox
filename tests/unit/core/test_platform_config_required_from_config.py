@@ -83,3 +83,5 @@ def test_get_platform_config_keeps_non_adapter_options_nested() -> None:
 
     assert produced["options"] == options
     assert not {"type", "name", "connection_string", "custom_setting"} & produced.keys()
+
+

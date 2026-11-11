@@ -1155,3 +1155,5 @@ class TestSynapseTimingContract:
         assert result["request_count"] == 1
         assert result["result_bytes"] == 16
         assert "platform_timing" not in result
+
+

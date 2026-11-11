@@ -36,3 +36,5 @@ def test_collection_command_and_evidence_are_unchanged() -> None:
     assert "--collect-only -q -n 0 --assert=plain" in run
     assert "medium and not (slow or stress or resource_heavy or live_integration)" in run
     assert "--expected-count" in run and "--shard-count 4" in run
+
+

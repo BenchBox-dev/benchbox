@@ -172,3 +172,5 @@ def test_format_preference_inserts_new_format_at_position_zero(tmp_path):
     orchestrator._update_manifest_with_results(manifest, results, target_format="iceberg", output_dir=tmp_path)
 
     assert manifest.format_preference[0] == "iceberg"
+
+

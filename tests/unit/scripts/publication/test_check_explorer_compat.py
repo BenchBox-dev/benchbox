@@ -544,3 +544,5 @@ def test_script_help_examples_name_the_current_version_and_all_run(
         exit_code = checker.main(example)
         captured = capsys.readouterr()
         assert exit_code == 0, f"{example}\n{captured.out}\n{captured.err}"
+
+

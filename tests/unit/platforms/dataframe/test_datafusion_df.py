@@ -961,3 +961,5 @@ class TestDataFusionNotAvailable:
         from benchbox.platforms.dataframe.datafusion_df import DATAFUSION_DF_AVAILABLE
 
         assert isinstance(DATAFUSION_DF_AVAILABLE, bool)
+
+

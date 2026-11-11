@@ -1087,3 +1087,5 @@ def test_doris_rollup_rewrite_preserves_with_clause_and_limit():
     assert translated.startswith("WITH `w` AS")
     assert "`rollup_rows` AS" in translated
     assert translated.rstrip().endswith("LIMIT 5")
+
+

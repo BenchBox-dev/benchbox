@@ -156,3 +156,5 @@ class TestQGenBinary:
 
         assert isinstance(sql, str)
         assert len(sql) > 0
+
+

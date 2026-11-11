@@ -296,3 +296,5 @@ class TestDatabricksCredentialDefaults:
         assert calls[1][1]["current_value"] is None
         assert calls[2][1]["current_value"] is None
         assert calls[2][1]["default_if_none"] == "main"
+
+

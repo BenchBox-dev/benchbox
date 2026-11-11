@@ -237,3 +237,5 @@ def test_non_callable_operation_fails_at_capability_boundary() -> None:
 
     with pytest.raises(CapabilityContractError, match=r"SQL benchmark execution; not callable: run_benchmark"):
         as_sql_benchmark_executor(candidate)
+
+

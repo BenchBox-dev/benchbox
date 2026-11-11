@@ -36,3 +36,5 @@ def test_without_a_null_marker_the_load_statement_is_unchanged():
     assert "NULL DEFINED BY" not in sql
     assert "IS NULL OR" not in sql
     assert "FIELDS TERMINATED BY '|' LINES TERMINATED BY" in sql
+
+

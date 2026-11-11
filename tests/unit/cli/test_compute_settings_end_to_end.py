@@ -299,3 +299,5 @@ def test_lakesail_selector_and_command_line_alias_conflict_fails(tmp_path: Path)
 
     assert "distributed" in output
     assert "local" in output
+
+

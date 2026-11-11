@@ -325,3 +325,5 @@ def test_two_refresh_runs_execute_every_function_per_set_in_order(monkeypatch):
     assert result["total_operations"] == 22
     assert result["insert_operations"] == 14
     assert result["delete_operations"] == 8
+
+

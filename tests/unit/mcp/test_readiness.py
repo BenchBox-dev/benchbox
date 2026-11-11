@@ -71,3 +71,5 @@ def test_digest_or_revision_mismatch_is_rejected(tmp_path: Path) -> None:
         verify_publication_evidence(path, {**env, "BENCHBOX_MCP_READINESS_SHA256": "0" * 64})
     with pytest.raises(ValueError, match="BENCHBOX_BUILD_SHA"):
         verify_publication_evidence(path, {**env, "BENCHBOX_BUILD_SHA": "b" * 40})
+
+

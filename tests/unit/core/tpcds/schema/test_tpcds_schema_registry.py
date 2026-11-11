@@ -41,3 +41,5 @@ def test_get_tunings_includes_expected_fact_and_dimension_tables() -> None:
     assert "WEB_SALES" in names
     assert "CATALOG_SALES" in names
     assert "DATE_DIM" in names
+
+

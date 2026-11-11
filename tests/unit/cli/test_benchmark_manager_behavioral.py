@@ -560,3 +560,5 @@ def test_cli_hides_internal_benchmark_regardless_of_support_status(
 
     future_status_manager.list_available_benchmarks()
     assert "F Internal Beta" not in stream.getvalue()
+
+

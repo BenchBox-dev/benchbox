@@ -118,3 +118,5 @@ def test_regen_without_prune_counts_is_unchanged(tmp_path: Path, capsys: pytest.
     payload = json.loads(capsys.readouterr().out)
     assert payload["total_defined"] == 1
     assert payload["registry_pruned"] == 0
+
+

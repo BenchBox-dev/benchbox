@@ -296,3 +296,5 @@ def test_sql_failed_explain_shared_by_iterations_counts_once():
     assert plans_captured == 21
     assert failures == 1
     assert errors == [{"query_id": "Q1", "error": "EXPLAIN failed"}]
+
+

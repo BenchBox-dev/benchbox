@@ -1155,3 +1155,5 @@ class TestFabricAdditionalCoverage:
         assert elapsed >= 0
         adapter.configure_for_benchmark(conn, benchmark_type="olap")
         assert cur.execute.called
+
+

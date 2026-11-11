@@ -45,3 +45,5 @@ def test_non_overridden_queries_present_in_bigquery_dialect():
     for qid in base:
         assert qid in bigquery, f"{qid} missing from BigQuery queries"
         assert bigquery[qid].strip(), f"{qid} is empty in BigQuery queries"
+
+

@@ -388,3 +388,5 @@ class TestStreamTimeoutIsOnlyWrittenWhenSet:
         summary = ExecutionConfigHelper(config_manager=_make_config_manager(overrides)).get_execution_summary()
 
         assert summary["concurrent_queries"]["estimated_stream_duration_minutes"] == expected
+
+

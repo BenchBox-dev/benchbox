@@ -463,3 +463,5 @@ def test_athena_dry_run(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     assert captured["benchmark_config"].test_execution_type == "power"
     assert captured["database_config"].type == "athena"
     assert captured["output_dir"] == preview_dir
+
+

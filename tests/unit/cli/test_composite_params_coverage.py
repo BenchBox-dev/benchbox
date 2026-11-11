@@ -63,3 +63,5 @@ def test_click_param_types_convert() -> None:
 
     with pytest.raises(click.BadParameter):
         mod.FORCE.convert("bad", None, None)
+
+

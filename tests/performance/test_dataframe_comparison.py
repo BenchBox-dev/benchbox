@@ -578,3 +578,5 @@ class TestSQLVsDataFrameBenchmark:
         assert "DataFrame wins" in report
         assert "Q1" in report
         assert "Q6" in report
+
+

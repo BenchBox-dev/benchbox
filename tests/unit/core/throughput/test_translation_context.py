@@ -164,3 +164,5 @@ def test_outcomes_recorded_from_many_workers_are_all_kept() -> None:
         executor.shutdown(wait=True)
 
     assert len(outcomes) == 200
+
+

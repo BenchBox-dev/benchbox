@@ -48,3 +48,5 @@ def test_file_based_dsdgen_passes_scale_and_terminate_with_the_platform_prefix(m
     assert command[command.index(f"{prefix}SCALE") + 1] == "0.01"
     assert command[command.index(f"{prefix}TERMINATE") + 1] == "n"
     assert not [arg for arg in command[1:] if arg[:1] in "-/" and not arg.startswith(prefix)]
+
+

@@ -72,3 +72,5 @@ def test_execute_example_dry_run_filters_warnings_and_uses_fallback_queries(
     assert result.warnings == ["Skipped benchmark 'tpch'"]
     assert result.queries == {"1": "SELECT 1"}
     assert saved["summary"].name == "summary.txt"
+
+

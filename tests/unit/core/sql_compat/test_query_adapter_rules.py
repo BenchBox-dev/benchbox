@@ -157,3 +157,5 @@ def test_duckdb_has_no_query_adapter_rules():
             dialect="duckdb",
         )
         assert REGISTRY.resolve(ctx) is None
+
+

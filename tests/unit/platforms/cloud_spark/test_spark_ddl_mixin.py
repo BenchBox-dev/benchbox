@@ -198,3 +198,5 @@ class TestMixinNullHandling:
         layout = adapter.generate_table_layout(None)
         assert "partition_by" not in layout
         assert "cluster_by" not in layout
+
+

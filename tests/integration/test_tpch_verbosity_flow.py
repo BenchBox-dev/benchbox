@@ -186,3 +186,5 @@ def test_tpch_generator_quiet_supresses_logs(monkeypatch, tmp_path, caplog, caps
     assert out.out == ""
     assert out.err == ""
     assert not caplog.records
+
+

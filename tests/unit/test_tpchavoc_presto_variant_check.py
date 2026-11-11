@@ -140,3 +140,5 @@ def test_run_statements_reports_success_and_failure():
 
     assert good["ok"] and good["row_count"] == 2 and good["rows_head"] == [[1], [2]]
     assert not bad["ok"] and bad["error_name"] == "NOT_SUPPORTED" and bad["error_message"] == "nope"
+
+

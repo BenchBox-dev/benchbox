@@ -32,3 +32,5 @@ def test_commit_large_override_drops_the_leading_delete(txn):
     assert "DELETE" in operation.write_sql
     assert "DELETE" not in operation.platform_overrides["questdb"]
     assert operation.platform_overrides["questdb"].startswith("BEGIN TRANSACTION;")
+
+

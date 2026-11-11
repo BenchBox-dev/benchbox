@@ -360,3 +360,5 @@ def test_timeout_preserves_receipt_through_actual_adapter_export(adapter, tmp_pa
             assert "unsupported shape" in receipt["errors"][0]
     if has_client_link:
         assert payload["environment"]["client_link"]["collection_status"] == "unavailable"
+
+

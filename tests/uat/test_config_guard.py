@@ -140,3 +140,5 @@ def test_cli_exit_code_reflects_changes(repo, capsys):
 
     assert config_guard.main(["--root", str(repo), "--base", "HEAD"]) == 1
     assert "execute.per_cell_timeout_s: 1200 -> 600" in capsys.readouterr().err
+
+

@@ -1051,3 +1051,5 @@ class TestValidateRedshiftCredentials:
         assert success is True
         output = _console_output(console)
         assert "Retry" in output or "retry" in output
+
+

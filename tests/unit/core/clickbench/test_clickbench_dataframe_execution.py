@@ -160,3 +160,5 @@ class TestClickBenchQueryExecution:
         query = get_clickbench_query("Q5")
         assert _to_pandas_result(query.expression_impl(expr_ctx))["uniq_users"].tolist() == [6]
         assert _to_pandas_result(query.pandas_impl(pandas_ctx))["uniq_users"].tolist() == [6]
+
+

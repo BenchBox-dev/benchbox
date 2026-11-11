@@ -1612,3 +1612,5 @@ class TestResolveCloudDataFiles:
         _, kwargs = mock_cls.call_args
         assert kwargs.get("platform_name") == adapter.platform_name
         assert "table_mode" in kwargs
+
+

@@ -132,3 +132,5 @@ def test_quiet_scope_records_without_logging(caplog: pytest.LogCaptureFixture) -
             assert len(run_notices()) == 1
 
     assert seen == []
+
+

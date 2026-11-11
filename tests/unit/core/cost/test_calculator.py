@@ -312,3 +312,5 @@ class TestBillingUnitContract:
             )
             == "credit"
         )
+
+

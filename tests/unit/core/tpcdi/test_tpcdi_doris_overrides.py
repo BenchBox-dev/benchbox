@@ -64,3 +64,5 @@ def test_non_overridden_queries_present_in_doris_dialect():
     for qid in base:
         assert qid in doris, f"{qid} missing from Doris queries"
         assert doris[qid].strip(), f"{qid} is empty in Doris queries"
+
+

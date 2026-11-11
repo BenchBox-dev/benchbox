@@ -436,3 +436,5 @@ class TestTPCDSPerformance:
 
         print(f"Performance Report: {report['performance_metrics']}")
         print(f"Performance Grade: {report['benchmark_results']['performance_grade']}")
+
+

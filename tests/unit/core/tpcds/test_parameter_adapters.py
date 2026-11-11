@@ -455,3 +455,5 @@ class TestGateBuilderWiring:
         assert gate.registry["39"].pandas_impl is original
         assert gate.data.dataframe_query(str(UNADAPTED)) is not gate.registry[str(UNADAPTED)]
         assert set(gate.data.dataframe_query.bindings) == set(range(1, 100))
+
+

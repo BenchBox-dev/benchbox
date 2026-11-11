@@ -257,3 +257,5 @@ class TestConstructionBoundaryInjection:
         assert Path(str(captured["optional_kwargs"]["output_dir"])) == tmp_path / "custom-root"
         assert Path(str(benchmark.output_dir)) == tmp_path / "custom-root"
         assert benchmark.output_dir is captured["handler_at_construction"]
+
+

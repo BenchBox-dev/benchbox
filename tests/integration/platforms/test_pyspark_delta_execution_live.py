@@ -178,3 +178,5 @@ class TestHistory:
         assert manager.get_table_version(path) == 0
         manager.execute_atomic_delete(table_path=path, condition="id = 1")
         assert manager.get_table_version(path) == 1
+
+

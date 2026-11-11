@@ -154,3 +154,5 @@ def test_checked_in_baseline_file_is_a_fixed_point_of_the_writer() -> None:
     path = Path("benchbox/core/equivalence/cross_surface_baseline.yaml")
     original = path.read_text(encoding="utf-8")
     assert _dump(load_baseline(path)) == original
+
+

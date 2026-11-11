@@ -203,3 +203,5 @@ class TestCapabilitySingleSource:
             StreamConnectionCapability.SHARED_CURSOR,
             True,
         )
+
+

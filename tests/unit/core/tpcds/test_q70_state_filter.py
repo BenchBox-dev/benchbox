@@ -150,3 +150,5 @@ def test_q70_pandas_matches_duckdb_sql(monkeypatch):
         ctx.register_table(name, pd.DataFrame(data))
 
     assert _normalize(materialize_rows(queries.q70_pandas_impl(ctx))) == _reference_rows()
+
+

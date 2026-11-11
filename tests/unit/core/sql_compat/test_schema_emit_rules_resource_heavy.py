@@ -21,3 +21,5 @@ def test_compat_lint_passes():
     assert result.returncode == 0, (
         f"compat_lint exited {result.returncode}.\nstderr: {result.stderr}\nstdout: {result.stdout}"
     )
+
+

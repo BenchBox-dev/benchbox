@@ -51,3 +51,5 @@ def test_apply_platform_optimizations_returns_early_for_falsy_config() -> None:
     adapter.apply_platform_optimizations(None, connection)
 
     connection.execute.assert_not_called()
+
+

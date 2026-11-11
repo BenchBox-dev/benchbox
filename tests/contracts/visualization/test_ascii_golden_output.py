@@ -336,3 +336,5 @@ def test_missing_golden_file_hard_fails_without_writing(tmp_path: Path) -> None:
 
     assert not golden_path.exists(), "Missing-golden-file path must not create the golden file"
     assert list(tmp_path.iterdir()) == [], "Missing-golden-file path must not write anything to the golden dir"
+
+

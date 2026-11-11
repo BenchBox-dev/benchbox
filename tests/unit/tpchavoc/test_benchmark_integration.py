@@ -40,3 +40,5 @@ def test_postgres_family_platform_skips_unsupported_variants(tmp_path):
     assert benchmark.get_platform_skip_queries("duckdb") == []
     assert benchmark.get_platform_skip_queries("sqlite") == ["5_v8"]
     assert benchmark.get_platform_skip_queries("SQLite") == ["5_v8"]
+
+

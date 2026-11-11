@@ -432,3 +432,5 @@ def test_a_timeout_or_kill_without_product_evidence_stays_infrastructure(termina
     )
     assert result is not None
     assert (result.kind, result.signature) == (failure_signature.KIND_INFRASTRUCTURE, signature)
+
+

@@ -84,3 +84,5 @@ class TestBuildFailureResultDict:
     def test_no_rows_returned_key_in_failure(self) -> None:
         result = build_failure_result_dict("Q1", 0.0, "err")
         assert "rows_returned" not in result
+
+

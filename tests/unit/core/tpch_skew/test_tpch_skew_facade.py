@@ -107,3 +107,5 @@ class TestTPCHSkewPropertyDelegation:
         assert "preset" in info
         assert "skew_factor" in info
         assert "distribution_type" in info
+
+

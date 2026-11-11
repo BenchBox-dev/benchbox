@@ -53,3 +53,5 @@ def test_rollup_with_grouping_function_is_left_alone():
     sql = _singlestore("SELECT a, GROUPING(a) AS g, SUM(x) FROM t GROUP BY ROLLUP (a)")
 
     assert "UNION" not in sql
+
+

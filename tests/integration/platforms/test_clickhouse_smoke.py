@@ -47,3 +47,5 @@ def test_clickhouse_requires_valid_mode(monkeypatch):
         ClickHouseAdapter(deployment_mode="invalid_mode")
 
     assert "Invalid ClickHouse deployment mode" in str(excinfo.value)
+
+

@@ -346,3 +346,5 @@ def test_gate_never_builds_downloads_or_publishes():
         alias.name.split(".")[0] for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names
     } | {node.module.split(".")[0] for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) and node.module}
     assert not imported & {"subprocess", "socket", "urllib", "http", "requests", "build", "shutil"}
+
+

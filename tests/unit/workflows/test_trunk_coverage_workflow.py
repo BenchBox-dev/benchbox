@@ -119,3 +119,5 @@ def test_self_fetch_reports_the_producer_identity() -> None:
     assert "payload['run_id']" in runs
     assert "payload['event']" in runs
     assert "payload['artifact']" in runs
+
+

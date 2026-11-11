@@ -290,3 +290,5 @@ def test_cli_rejects_invalid_today_and_invalid_json(tmp_path: Path, capsys: pyte
     valid_path.write_text("{not-json", encoding="utf-8")
     assert main(["--policy", str(valid_path), "--today", "2026-08-31"]) == 1
     assert "could not load policy" in capsys.readouterr().err
+
+

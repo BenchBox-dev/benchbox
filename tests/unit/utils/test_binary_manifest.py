@@ -249,3 +249,5 @@ def test_wheel_rejects_contradictory_directory_types(
     _write_distribution(distribution, files, extra_name=name, extra_type=file_type)
     with pytest.raises(ValueError):
         verify_distribution_binaries(distribution, binary_root)
+
+

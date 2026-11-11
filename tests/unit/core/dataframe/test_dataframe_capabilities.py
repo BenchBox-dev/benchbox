@@ -322,3 +322,5 @@ class TestAllPlatformsHaveCapabilities:
 
         assert caps.notes is not None
         assert len(caps.notes) > 0
+
+

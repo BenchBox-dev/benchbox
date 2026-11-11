@@ -347,3 +347,5 @@ class TestAthenaStdOutCountParsing:
         adapter.execute_query = _borders_only
         with pytest.raises(RuntimeError, match="no parseable integer"):
             adapter._count_external_table_rows(None, "lineitem")
+
+

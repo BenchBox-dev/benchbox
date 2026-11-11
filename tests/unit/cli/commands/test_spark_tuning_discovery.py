@@ -194,3 +194,5 @@ def test_spark_family_adapters_do_not_double_record():
     from benchbox.platforms._spark_helpers import SparkLikeAdapterMixin
 
     assert SparkLikeAdapterMixin.handles_spark_session_config is True
+
+

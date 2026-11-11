@@ -225,3 +225,5 @@ class TestStarRocksDryRunEntryParity:
         assert "DISTRIBUTED BY HASH(l_orderkey) BUCKETS 8" in rendered
         assert rendered.count("DISTRIBUTED BY") == 1
         assert rendered.index("PARTITION BY") < rendered.index("DISTRIBUTED BY") < rendered.index("ORDER BY")
+
+

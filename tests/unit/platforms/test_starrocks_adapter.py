@@ -463,3 +463,5 @@ class TestStarRocksTlsCertValidation:
         adapter = StarRocksAdapter.from_config(config)
         assert adapter.verify_ssl is False
         assert adapter.ca_cert_path == "/etc/ssl/my-ca.crt"
+
+

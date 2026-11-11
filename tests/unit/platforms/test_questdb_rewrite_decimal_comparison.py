@@ -26,3 +26,5 @@ def test_non_decimal_comparisons_are_left_unchanged():
         "SELECT 1 FROM t WHERE CAST(a AS DECIMAL(7, 2)) / b < 0.5",
     ):
         assert rewrite_query(sql) == sql
+
+

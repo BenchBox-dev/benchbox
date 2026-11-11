@@ -486,3 +486,5 @@ class TestCrossPlatformConsistency:
         assert polars_count == pyspark_count, (
             f"Filter row counts differ: Polars={polars_count}, PySpark={pyspark_count}"
         )
+
+

@@ -998,3 +998,5 @@ def test_questdb_staging_tables_use_parameterless_types():
         assert "DECIMAL" not in sql, table_name
 
     assert "DECIMAL(15,2)" in get_create_table_sql("insert_ops_orders", dialect="postgres")
+
+

@@ -656,3 +656,5 @@ def test_populated_tables_matching_current_manifest_reuse_manifest(tmp_path: Pat
 
     assert result == (False, True)
     caller.generate_data.assert_not_called()
+
+

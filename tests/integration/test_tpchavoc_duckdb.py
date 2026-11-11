@@ -216,3 +216,5 @@ class TestTPCHavocDuckDBIntegration:
         assert "DELIM" in plans["11_v1"].upper(), (
             "11_v1's correlated scalar subquery should decorrelate into a delimiter join"
         )
+
+

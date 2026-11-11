@@ -316,3 +316,5 @@ def test_a_newest_cancelled_suite_is_still_failed_and_rerun() -> None:
     assert not evaluation.green
     assert [suite.actions_run_id for suite in evaluation.failed] == [602]
     assert [plan.run_id for plan in check_suites.plan_reruns({"hold": evaluation})] == [602]
+
+

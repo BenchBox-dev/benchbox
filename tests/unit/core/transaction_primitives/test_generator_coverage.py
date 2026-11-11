@@ -335,3 +335,5 @@ def test_generate_special_test_files_creates_expected_outputs(
 
 def test_get_data_source_benchmark(generator: TransactionPrimitivesDataGenerator) -> None:
     assert generator.get_data_source_benchmark() == "tpch"
+
+

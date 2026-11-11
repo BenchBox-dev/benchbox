@@ -65,3 +65,5 @@ def test_default_stage_configs_define_gated_cells():
 
     assert gated
     assert all(scales for scales in gated.values())
+
+

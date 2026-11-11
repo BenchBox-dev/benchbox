@@ -124,3 +124,5 @@ def test_databricks_liquid_tpc_examples_do_not_mix_legacy_layout_fields(filename
     for table_data in raw_config["table_tunings"].values():
         assert "partitioning" not in table_data
         assert "distribution" not in table_data
+
+

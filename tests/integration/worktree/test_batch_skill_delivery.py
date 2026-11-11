@@ -214,3 +214,5 @@ def test_rollout_evidence_records_active_runtime_capability() -> None:
     assert runtime["tool_count"] == 22
     assert set(runtime["registered_batch_tools"]) == REQUIRED_BATCH_TOOLS
     assert evidence["verification"]["active_runtime_blocker"] is None
+
+

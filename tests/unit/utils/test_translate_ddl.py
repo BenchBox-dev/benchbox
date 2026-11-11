@@ -71,3 +71,5 @@ def test_type_map_may_name_a_fork_engine_map():
     assert "DATETIME" in singlestore
     with pytest.raises(ValueError, match="Unknown DDL type map"):
         translate_ddl(TABLE, "starrocks", type_map="nonexistent")
+
+

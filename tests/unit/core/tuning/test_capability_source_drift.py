@@ -522,3 +522,5 @@ def test_adapter_mixin_rendering_mechanisms_are_live_and_nonempty():
     assert offenders == [], "adapter_mixin rendering mechanisms that are dead, empty, or unresolved:\n  " + "\n  ".join(
         offenders
     )
+
+

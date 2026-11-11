@@ -381,3 +381,5 @@ class TestStreamSeedOverrideWarning:
             run_once()
 
         assert len([record for record in caplog.records if "stream-seeded" in record.getMessage()]) == 2
+
+

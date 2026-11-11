@@ -131,3 +131,5 @@ def test_date_item_queries_match_sql_for_null_keys_null_sums_and_ties(query_id, 
     assert rows == expected
     assert expected[0][-1] is None
     assert any(None in row[:-1] for row in expected)
+
+

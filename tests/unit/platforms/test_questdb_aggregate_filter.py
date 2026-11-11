@@ -30,3 +30,5 @@ def test_filtered_average_keeps_the_expression():
 def test_aggregate_without_filter_is_untouched():
     sql = "SELECT SUM(a) FROM t"
     assert rewrite_query(sql) == sql
+
+

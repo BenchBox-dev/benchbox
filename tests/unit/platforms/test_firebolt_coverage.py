@@ -1171,3 +1171,5 @@ class TestConfigureForBenchmark:
     def test_generic_type_accepted(self):
         adapter = _make_core_adapter()
         adapter.configure_for_benchmark(Mock(), "custom_benchmark")
+
+

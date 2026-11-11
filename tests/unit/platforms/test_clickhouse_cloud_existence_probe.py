@@ -91,3 +91,5 @@ def test_second_connection_does_not_drop_again() -> None:
         adapter.handle_existing_database()
 
     assert admin_client.executed == []
+
+

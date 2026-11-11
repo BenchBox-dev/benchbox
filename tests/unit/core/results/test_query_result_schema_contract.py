@@ -161,3 +161,5 @@ def test_missing_or_null_row_count_stays_unset_across_round_trip(row_fields: dic
     assert "rows" not in payload["queries"][0]
     assert reconstructed.query_results[0]["rows_returned"] is None
     assert "rows" not in round_trip["queries"][0]
+
+

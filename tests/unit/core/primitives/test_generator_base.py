@@ -411,3 +411,5 @@ class TestBulkLoadMetadata:
         data = json.loads(metadata_file.read_text())
         assert data["scale_factor"] == 0.01
         assert "generated_at" in data
+
+

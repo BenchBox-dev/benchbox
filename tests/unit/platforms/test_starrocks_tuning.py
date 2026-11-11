@@ -155,3 +155,5 @@ def test_apply_unified_tuning_delegates_to_all_subcomponents() -> None:
     )
     adapter.apply_platform_optimizations.assert_called_once_with(unified_config.platform_optimizations, "conn")
     adapter.apply_table_tunings.assert_called_once_with(unified_config.table_tunings["orders"], "conn")
+
+

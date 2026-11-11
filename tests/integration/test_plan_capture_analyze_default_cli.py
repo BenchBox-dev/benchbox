@@ -72,3 +72,5 @@ def test_duckdb_capture_plans_cli_analyze_flag_controls_operator_timing(
     assert all(timing is None for timing in omitted)
     assert all(timing is None for timing in explicit_off)
     assert any(timing is not None for timing in analyzed)
+
+

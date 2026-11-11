@@ -151,3 +151,5 @@ class TestPublicRequestPlumbing:
         benchmark.generate_data(tables=["DimDate"], seed=11)
         assert benchmark.data_generator.generation_seed == 9
         assert calls["tables"] == ["DimDate"]
+
+

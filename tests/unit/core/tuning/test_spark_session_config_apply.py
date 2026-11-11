@@ -264,3 +264,5 @@ def test_spark_family_platforms_have_no_spark_alias():
         assert platform not in PLATFORM_ALIASES
         assert resolve_platform_key(platform) == platform
         assert not list_packaged_templates(platform).get(platform)
+
+

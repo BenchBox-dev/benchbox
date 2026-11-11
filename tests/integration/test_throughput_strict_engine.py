@@ -396,3 +396,5 @@ class TestTPCDSThroughputOnSQLite:
         assert "table_that_does_not_exist" in failed_query["error"]
         assert [stream.success for stream in failed_streams] == [False]
         assert result.streams_successful == 1
+
+

@@ -632,3 +632,5 @@ class TestDuckDBFingerprintIntegration:
         )
         assert scan_plan is not None and join_plan is not None
         assert scan_plan.plan_fingerprint != join_plan.plan_fingerprint, "A join must change the logical plan shape"
+
+

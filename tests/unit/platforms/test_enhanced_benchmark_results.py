@@ -665,3 +665,5 @@ class TestEnhancedResultsErrorHandling:
         assert failed_loading.error_type == "CONSTRAINT_VIOLATION"
         assert failed_loading.rows_processed == 500
         assert failed_loading.rows_successful == 0
+
+

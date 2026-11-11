@@ -53,3 +53,5 @@ def test_manifest_add_entry_with_relative_root_does_not_duplicate_root(tmp_path:
 
     entry = payload["tables"]["sample"]["formats"]["tbl"][0]
     assert entry["path"] == "sample.tbl"
+
+

@@ -1006,3 +1006,5 @@ class TestSchemaDocMatchesBuiltSchema:
             f"  undocumented projections: {[c for c in actual if c not in documented]}\n"
             f"  documented but absent: {[c for c in documented if c not in actual]}"
         )
+
+

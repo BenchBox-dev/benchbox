@@ -408,3 +408,5 @@ class TestSavedConfigAndCredentialCompat:
         from benchbox.mcp.schemas import validate_platform_options
 
         assert validate_platform_options("clickhouse", {"deployment_mode": "server"}) == {"deployment_mode": "server"}
+
+

@@ -495,3 +495,5 @@ class TestDialectVariants:
         duckdb_query = manager.get_query("schema_list_schemata", dialect="duckdb")
 
         assert base_query == duckdb_query
+
+

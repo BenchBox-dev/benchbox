@@ -64,3 +64,5 @@ def test_subscale_warning_describes_unofficial_power(monkeypatch, benchmark_id, 
         assert expected in printed[0]
         assert "Power@Size is recorded for" in printed[0]
         assert "marked unofficial" in printed[0]
+
+

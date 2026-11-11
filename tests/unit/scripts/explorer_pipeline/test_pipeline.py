@@ -1304,3 +1304,5 @@ class TestStagedOutputGuards:
             ExplorerPipeline().run(data_dir, output)
 
         self._assert_no_staging_leftovers(output)
+
+

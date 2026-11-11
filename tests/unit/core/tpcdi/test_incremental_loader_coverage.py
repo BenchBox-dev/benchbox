@@ -178,3 +178,5 @@ def test_auxiliary_helpers_and_status_paths(monkeypatch: pytest.MonkeyPatch):
     deduped = loader._deduplicate_data(rows, ["id"])
     assert len(deduped) == 2
     assert loader._deduplicate_data(rows, []) == rows
+
+

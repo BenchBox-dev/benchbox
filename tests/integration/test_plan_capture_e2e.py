@@ -206,3 +206,5 @@ class TestPlanCaptureBundlePipeline:
             comparison = compare_query_plans(plans1[query_id][1], plans2[query_id][1])
             assert comparison.fingerprints_match, f"{query_id} reported changed across identical bundles"
             assert comparison.plans_identical, f"{query_id} not identical across identical bundles"
+
+

@@ -126,3 +126,5 @@ def test_tpcdi_metadata_roundtrips(tmp_path: Path) -> None:
         result = _get_first_entry_metadata(loaded, table)
         assert result.get("csv_normalize_booleans") is True, f"Missing csv_normalize_booleans for {table}"
         assert result.get("csv_null_marker") == "", f"Wrong csv_null_marker for {table}"
+
+

@@ -248,3 +248,5 @@ def test_q67_ranks_decimal_sales_ties_before_display_conversion(backend, scenari
     from benchbox.core.equivalence.cross_surface import get_gate
 
     get_gate("tpcds").build_validator().validate_results_exact(expected, actual, "Q67", 0, order_aware=True)
+
+

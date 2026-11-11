@@ -90,3 +90,5 @@ def test_projections_with_a_non_null_empty_default_are_left_alone(projection):
 def test_arithmetic_over_null_on_empty_aggregates_is_rewritten():
     sql = "SELECT l1.k, (SELECT SUM(l2.q) / MAX(l2.q) FROM l AS l2 WHERE l2.k = l1.k) AS r FROM l AS l1"
     assert "LEFT JOIN" in rewrite_query(sql)
+
+

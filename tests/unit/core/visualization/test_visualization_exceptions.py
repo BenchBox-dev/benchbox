@@ -26,3 +26,5 @@ def test_dependency_error_appends_advice_to_message() -> None:
     message = str(error)
     assert "plotly" in message
     assert "Install with: uv add plotly" in message
+
+

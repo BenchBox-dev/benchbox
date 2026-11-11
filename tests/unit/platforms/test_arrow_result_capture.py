@@ -312,3 +312,5 @@ class TestOptionRegistration:
         assert PlatformHookRegistry.parse_options("duckdb", [("fetch_mode", "arrow")])["fetch_mode"] == "arrow"
         with pytest.raises(PlatformOptionError, match="Allowed values"):
             PlatformHookRegistry.parse_options("duckdb", [("fetch_mode", "pandas")])
+
+

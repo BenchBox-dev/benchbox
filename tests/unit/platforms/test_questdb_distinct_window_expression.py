@@ -52,3 +52,5 @@ def test_select_without_distinct_is_left_alone():
 def test_duplicate_expressions_or_output_names_are_left_alone(select_list):
     sql = f"SELECT DISTINCT {select_list} FROM t"
     assert rewrite_query(sql) == sql
+
+

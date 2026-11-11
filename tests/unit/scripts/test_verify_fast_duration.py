@@ -496,3 +496,5 @@ def test_zero_baseline_sum_is_neutral() -> None:
     report = baseline.verify_durations({"tests/a.py::test_a": 0.0}, {"tests/a.py::test_a": 5.0})
 
     assert report["verdict"] == "neutral"
+
+

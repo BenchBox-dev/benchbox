@@ -133,3 +133,5 @@ class TestDataFusionCtasSortIntegration:
         rows = connection.sql("SELECT l_shipdate, l_orderkey FROM lineitem").to_pydict()
         assert rows["l_shipdate"] == ["2024-01-01", "2024-02-01", "2024-03-01"]
         assert rows["l_orderkey"] == [1, 2, 3]
+
+

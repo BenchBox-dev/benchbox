@@ -81,3 +81,5 @@ class TestExpiry:
         monkeypatch.setattr(checker, "SHARD_DIR", tmp_path / "renamed-away")
         assert checker.main([]) == 2
         assert "not found" in capsys.readouterr().err
+
+

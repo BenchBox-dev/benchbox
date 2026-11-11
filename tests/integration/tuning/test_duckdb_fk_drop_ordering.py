@@ -228,3 +228,5 @@ def test_active_caller_transaction_is_preserved_without_nested_begin(tmp_path: P
     assert len(adapter._applied_tuning_ledger.dropped) == 1
     assert "active transaction" in adapter._applied_tuning_ledger.dropped[0].reason
     conn.close()
+
+

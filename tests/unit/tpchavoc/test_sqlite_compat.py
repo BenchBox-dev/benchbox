@@ -52,3 +52,5 @@ def test_sqlite_list_aggregate_variant_matches_duckdb():
     for got_row, want_row in zip(actual, expected, strict=True):
         for got, want in zip(got_row[2:], want_row[2:], strict=True):
             assert float(got) == pytest.approx(float(want), rel=1e-9)
+
+

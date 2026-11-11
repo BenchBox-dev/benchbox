@@ -331,3 +331,5 @@ class TestSparkExternalStagingMessage:
 
         with pytest.raises(ValueError, match=re.escape("Pass --output s3://bucket/path.")):
             Adapter().validate_external_table_requirements()
+
+

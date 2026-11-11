@@ -2824,3 +2824,5 @@ def test_enumerate_prunes_ai_primitives_on_platforms_without_ai_functions():
         ("spark", "ai_primitives"),
     }
     assert all(c.rule_id.endswith(".ai_primitives.benchmark_gate") for c in result.compatibility_pruned)
+
+

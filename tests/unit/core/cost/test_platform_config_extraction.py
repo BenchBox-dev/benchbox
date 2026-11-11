@@ -74,3 +74,5 @@ class TestGenericCloudRegionFallback:
         assert config["warehouse_size"] == "MEDIUM"
         assert config["cloud"] == "aws"
         assert config["region"] == "us-east-1"
+
+

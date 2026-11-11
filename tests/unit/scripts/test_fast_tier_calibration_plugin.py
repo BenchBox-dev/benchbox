@@ -55,3 +55,5 @@ def test_loading_the_plugin_does_not_import_benchbox() -> None:
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
+
+

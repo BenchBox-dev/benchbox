@@ -89,3 +89,5 @@ def test_silence_output_suppresses_emit_calls() -> None:
         assert captured.getvalue() == "", "emit() leaked past silence_output()"
     finally:
         sys.stdout = original_stdout
+
+

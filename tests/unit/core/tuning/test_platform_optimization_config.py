@@ -271,3 +271,5 @@ def test_unified_tuning_from_dict_respects_explicit_none_with_table_clustering()
     )
 
     assert config.platform_optimizations.databricks_clustering_strategy == "none"
+
+

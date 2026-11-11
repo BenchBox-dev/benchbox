@@ -260,3 +260,5 @@ class TestMain:
         assert code == 1
         err = capsys.readouterr().err
         assert "missing-pkg" in err
+
+

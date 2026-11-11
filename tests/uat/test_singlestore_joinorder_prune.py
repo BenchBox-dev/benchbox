@@ -47,3 +47,5 @@ def test_singlestore_joinorder_is_pruned_with_the_oom_evidence():
 def test_other_singlestore_cells_stay_in_the_gate(benchmark_id):
     assert _rule(benchmark_id, 0.01) is None
     assert _rule(benchmark_id, 1.0) is None
+
+

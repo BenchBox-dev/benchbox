@@ -101,3 +101,5 @@ def test_exporter_drops_sdk_spans_with_raw_request_identifiers() -> None:
     spans = delegate.get_finished_spans()
     assert [span.instrumentation_scope.name for span in spans] == ["benchbox.mcp"]
     assert SECRET not in repr(spans)
+
+

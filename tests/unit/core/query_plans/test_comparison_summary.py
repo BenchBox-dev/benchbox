@@ -375,3 +375,5 @@ class TestPerformanceCorrelation:
         assert corr.current_time_ms == 200.0
         assert corr.perf_change_pct == 100.0
         assert corr.is_regression is True
+
+

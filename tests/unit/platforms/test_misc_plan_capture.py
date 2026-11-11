@@ -378,3 +378,5 @@ class TestErrorChannelCleanup:
         plan, _ = adapter.capture_query_plan(conn, "SELECT 1", "q-err-ss")
         assert plan is None
         assert adapter.plan_capture_errors[-1]["reason"] == "explain_failed"
+
+

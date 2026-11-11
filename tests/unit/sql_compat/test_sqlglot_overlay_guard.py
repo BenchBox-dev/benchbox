@@ -139,3 +139,5 @@ def test_guard_flags_overlay(name: str, text: str) -> None:
 )
 def test_guard_allows_isolated_and_unrelated(name: str, text: str) -> None:
     assert find_vacuous_overlays(Path(name), text) == []
+
+

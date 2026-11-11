@@ -154,3 +154,5 @@ def test_plan_lookups_skip_warmup_rows_without_plans():
 
     assert build_execution_map(results)["Q1"]["query_plan"] is rows[1]["query_plan"]
     assert _find_query(results, "Q1")["query_plan"] is rows[1]["query_plan"]
+
+

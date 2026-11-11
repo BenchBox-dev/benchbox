@@ -460,3 +460,5 @@ def test_reading_keys_keeps_the_outer_timer_armed():
         signal.setitimer(signal.ITIMER_REAL, *previous_timer)
         signal.signal(signal.SIGALRM, previous_handler)
     assert 0 < remaining <= 30
+
+

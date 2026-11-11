@@ -62,3 +62,5 @@ def _settings(timeout: float | None) -> object:
     from collections import namedtuple
 
     return namedtuple("Settings", ["timeout"])(timeout)
+
+

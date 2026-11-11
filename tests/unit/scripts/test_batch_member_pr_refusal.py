@@ -85,3 +85,5 @@ def test_ordinary_worktrees_are_not_refused(repos: tuple[Path, Path, Path]) -> N
     _, _, ordinary = repos
     proc = _make(ordinary, "pr-open")
     assert REFUSAL not in proc.stdout + proc.stderr
+
+

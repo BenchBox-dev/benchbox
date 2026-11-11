@@ -370,3 +370,5 @@ def test_metadata_failure_triggers_exact_creation_rollback(tmp_path: Path) -> No
     assert res.returncode != 0
     assert not linked.exists()
     assert run(["git", "branch", "--list", branch], repo).stdout.strip() == ""
+
+

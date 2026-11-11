@@ -109,3 +109,5 @@ class TestSystemProfilerDisplayProfile:
 
         profiler = SystemProfiler()
         assert profiler.console is quiet_console
+
+

@@ -67,3 +67,5 @@ def test_anonymized_export_subprocess_writes_its_salt_only_under_the_given_home(
     assert re.fullmatch(r"[0-9a-f]{64}", salt)
     assert salt not in result.stdout + result.stderr
     assert salt not in "".join(path.read_text(encoding="utf-8") for path in output_dir.glob("*.json"))
+
+

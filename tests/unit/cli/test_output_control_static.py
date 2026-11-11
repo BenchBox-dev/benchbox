@@ -106,3 +106,5 @@ def test_cli_commands_do_not_use_direct_console_singletons() -> None:
         "Direct Console() singleton detected in CLI commands"
         " (import console from benchbox.cli.shared instead):\n" + "\n".join(f"  {f}" for f in sorted(offenders))
     )
+
+

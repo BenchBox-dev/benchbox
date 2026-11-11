@@ -525,3 +525,5 @@ def test_export_variant_queries_invalid_format(tmp_path, monkeypatch) -> None:
 
     with pytest.raises(ValueError, match="Unsupported"):
         bench.export_variant_queries(output_dir=tmp_path, format="xml")
+
+

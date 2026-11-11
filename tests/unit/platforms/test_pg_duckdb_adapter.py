@@ -718,3 +718,5 @@ def test_partitioning_catalog_readback_records_satisfaction(pg_duckdb_stubs):
     assert any("pg_get_partkeydef" in statement for statement in executed[1:])
     satisfied = {entry.intent for entry in adapter._applied_tuning_ledger.satisfied}
     assert satisfied == {"partitioning:lineitem (l_shipdate)"}
+
+

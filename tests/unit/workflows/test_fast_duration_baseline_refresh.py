@@ -200,3 +200,5 @@ def test_medium_pr_supersedes_earlier_open_refresh_prs_after_opening_the_new_one
     assert 'select(.headRefName != \\"$BRANCH\\")' in text
     assert "Superseded by #$NEW_NUMBER" in text
     assert text.count("gh pr close") == 1
+
+

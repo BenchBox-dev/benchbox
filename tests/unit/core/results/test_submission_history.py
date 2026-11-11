@@ -99,3 +99,5 @@ def test_record_hosted_submission_keeps_distinct_idempotency_records(tmp_path: P
     assert first != second
     assert first.name == "tpch_duckdb.prod-key.submission.json"
     assert len(list_hosted_submissions(tmp_path)) == 2
+
+

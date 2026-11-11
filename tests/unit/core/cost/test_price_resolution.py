@@ -194,3 +194,5 @@ def test_known_keys_leave_no_unavailable_marker():
     )
     assert fabric is not None
     assert "price_unavailable" not in fabric.pricing_details
+
+

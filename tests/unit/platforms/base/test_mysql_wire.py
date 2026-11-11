@@ -58,3 +58,5 @@ class TestSplitSqlStatements:
     def test_unclosed_block_comment_ending_in_star_does_not_crash(self):
 
         assert split_sql_statements("/* banner *") == ["/* banner *"]
+
+

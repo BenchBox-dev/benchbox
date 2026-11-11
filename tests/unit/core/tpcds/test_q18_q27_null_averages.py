@@ -160,3 +160,5 @@ def test_q27_runs_on_datafusion_and_sets_the_grouping_flag():
 
     assert {row[2] for row in rows} == {0, 1}
     assert len(rows) == 3
+
+

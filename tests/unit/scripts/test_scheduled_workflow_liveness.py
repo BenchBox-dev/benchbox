@@ -369,3 +369,5 @@ def test_the_nightly_job_runs_the_script_instead_of_an_inline_program() -> None:
 
     assert run_steps == ["python3 scripts/scheduled_workflow_liveness.py | tee liveness.log"]
     assert job["permissions"] == {"actions": "read", "contents": "read"}
+
+

@@ -53,3 +53,5 @@ def test_q78_pandas_keeps_all_null_sums_null(monkeypatch):
     rows = materialize_rows(queries.q78_pandas_impl(ctx))
 
     assert rows == [(2000, 1, 1, 1.0, 5, None, 1.0, 5.0, 4.0, 6.0)]
+
+

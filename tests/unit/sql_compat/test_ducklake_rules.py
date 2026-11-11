@@ -57,3 +57,5 @@ class TestDuckLakeRuleStructure:
         )
         statement = "CREATE TABLE t (\n  id INTEGER PRIMARY KEY\n);"
         assert "PRIMARY KEY" not in adapter._rewrite_schema_statement(statement)
+
+

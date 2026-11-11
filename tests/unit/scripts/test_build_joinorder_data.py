@@ -1020,3 +1020,5 @@ def test_resolve_canonical_parquet_dir_rejects_corrupted_table(monkeypatch: pyte
 
     with pytest.raises(build_joinorder_data.JoinOrderBuildError, match="hash mismatch for title"):
         build_joinorder_data.resolve_canonical_parquet_dir(str(tmp_path))
+
+

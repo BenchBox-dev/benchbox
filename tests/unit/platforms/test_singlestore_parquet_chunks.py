@@ -63,3 +63,5 @@ def test_empty_parquet_loads_nothing(tmp_path):
 
     assert SingleStoreAdapter.__new__(SingleStoreAdapter)._load_parquet_infile(connection, "t", path) == 0
     connection.cursor.assert_not_called()
+
+

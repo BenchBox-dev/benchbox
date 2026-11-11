@@ -13,3 +13,5 @@ pytestmark = [
 def test_public_fabric_spark_import_is_available():
 
     assert FabricSparkAdapter is not None
+
+

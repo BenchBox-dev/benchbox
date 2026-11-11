@@ -285,3 +285,5 @@ class TestTimescaleDBDeploymentRegistry:
         assert cloud_cap.requires_credentials is True
         assert cloud_cap.requires_network is True
         assert cloud_cap.display_name == "TigerData"
+
+

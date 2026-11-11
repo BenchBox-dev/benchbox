@@ -1716,3 +1716,5 @@ class TestZstdToolProbe:
         monkeypatch.setattr(data_loading.shutil, "which", lambda _cmd: None)
         handler = FileFormatRegistry.get_compression_handler(tmp_path / "x.dat.zst")
         assert isinstance(handler, ZstdHandler)
+
+

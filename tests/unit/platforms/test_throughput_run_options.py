@@ -660,3 +660,5 @@ class TestConfigFileValidationAndCompatibility:
 
         assert merged.concurrency is None
         assert "saved run recorded 1 stream, the former default; treated as not set" in merged.compatibility_notes
+
+

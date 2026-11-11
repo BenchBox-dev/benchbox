@@ -241,3 +241,5 @@ def _write_csv(path: Path, header: list[str], rows: list[list[object]]) -> None:
         writer = csv.writer(f)
         writer.writerow(header)
         writer.writerows(rows)
+
+

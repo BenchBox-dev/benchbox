@@ -168,3 +168,5 @@ class TestCrossSurfaceStatisticsEquivalence:
 
         assert float(columns["p95_ms"]) == percentile_ms(SHARED_TIMINGS, 0.95)
         assert json.loads(columns["num_queries"]) == len(SHARED_TIMINGS)
+
+

@@ -88,3 +88,5 @@ class TestCreateExternalTables:
         schema.assert_called_once()
         submit.assert_called_once()
         assert meta == {"table_uris": {"lineitem": "s3://my-bucket/benchbox-data/lineitem/"}}
+
+

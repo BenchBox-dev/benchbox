@@ -350,3 +350,5 @@ def test_tpcds_power_test_resolves_platform_history_after_phase_end(monkeypatch)
 
     assert events == ["query", "finalize", "resolve", "close"]
     assert platform_timing.active_deferred_platform_timing() is None
+
+

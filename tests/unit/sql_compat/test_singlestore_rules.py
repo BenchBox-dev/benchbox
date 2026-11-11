@@ -111,3 +111,5 @@ class TestSingleStoreResolveConflictGuard:
         )
         with pytest.raises(CompatibilityRegistryConflict):
             REGISTRY.resolve(ctx)
+
+

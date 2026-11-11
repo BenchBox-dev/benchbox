@@ -295,3 +295,5 @@ class TestNYCTaxiBenchmarkRegistry:
         meta = get_benchmark_metadata("nyctaxi")
         assert meta is not None
         assert meta.get("supports_dataframe") is True
+
+

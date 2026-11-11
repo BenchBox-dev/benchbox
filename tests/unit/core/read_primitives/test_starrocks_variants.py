@@ -84,3 +84,5 @@ def test_qualify_queries_are_rewritten_to_a_filtered_subquery():
     for query_id in ("qualify_row_number", "qualify_ntile", "window_rank"):
         assert "QUALIFY" not in queries[query_id]
     assert not STARROCKS_SKIPPED_IDS & set(queries)
+
+

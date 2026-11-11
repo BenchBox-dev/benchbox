@@ -277,3 +277,5 @@ def test_all_8_queries_registered_with_callable_impls():
         assert callable(q.pandas_impl), f"{q.query_id} pandas_impl not callable"
         assert q.query_id, "query_id must not be empty"
         assert q.description, f"{q.query_id} description must not be empty"
+
+

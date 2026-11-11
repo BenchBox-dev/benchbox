@@ -450,3 +450,5 @@ def test_bundle_leak_scan_shares_the_single_detector_source() -> None:
         "b": {"c": "/var/folders/ab/cd", "d": "clean"},
     }
     assert sorted(bundle.find_public_path_leaks(sample)) == sorted(anonymization.find_public_path_leaks(sample))
+
+

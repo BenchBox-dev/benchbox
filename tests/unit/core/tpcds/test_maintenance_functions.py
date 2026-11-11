@@ -193,3 +193,5 @@ def test_maintenance_test_source_has_no_per_row_update() -> None:
     source = Path(maintenance_test_module.__file__).read_text(encoding="utf-8")
 
     assert "UPDATE " not in source
+
+

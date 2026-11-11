@@ -400,3 +400,5 @@ def test_run_file_comparison_paths(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
     h = tmp_path / "x.html"
     mod._run_file_comparison((str(b), str(c)), "10%", "html", str(h), True, include_plans=False)
     assert h.exists()
+
+

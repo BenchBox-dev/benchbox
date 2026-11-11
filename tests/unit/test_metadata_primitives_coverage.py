@@ -241,3 +241,5 @@ class TestGetBenchmarkInfo:
 
         mock_impl.get_queries.assert_called_once_with()
         assert info["query_count"] == 10
+
+

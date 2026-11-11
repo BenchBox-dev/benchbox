@@ -137,3 +137,5 @@ class TestCloudStagingDataSourceCache:
         benchmark.get_data_source_benchmark = Mock(return_value="tpch")
 
         assert self._cache_name("read_primitives", benchmark) == "tpch_sf1"
+
+

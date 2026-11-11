@@ -316,3 +316,5 @@ class TestResultSummaryCounts:
         summary = _build_tuning_summary(self._result(None, requested))
 
         assert summary["counts"] == {"tables_tuned": 0, "tuning_types": []}
+
+

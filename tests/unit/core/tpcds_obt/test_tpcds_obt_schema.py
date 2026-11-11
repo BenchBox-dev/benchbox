@@ -55,3 +55,5 @@ def test_column_lineage_exposes_sources() -> None:
 def test_invalid_mode_raises() -> None:
     with pytest.raises(ValueError):
         schema.get_obt_columns("unsupported")
+
+

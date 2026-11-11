@@ -541,3 +541,5 @@ class TestInstallCommandDetection:
 
         with patch("benchbox.utils.dependencies.is_development_install", return_value=False):
             assert get_install_command(platform) == 'uv pip install "benchbox[postgresql]"'
+
+

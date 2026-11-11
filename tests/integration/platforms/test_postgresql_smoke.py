@@ -48,3 +48,5 @@ def test_postgresql_requires_database(monkeypatch):
     )
 
     assert adapter.platform_name == "PostgreSQL"
+
+

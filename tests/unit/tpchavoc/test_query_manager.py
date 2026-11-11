@@ -67,3 +67,5 @@ def test_parameterized_variant_renders_scale_threshold(manager: TPCHavocQueryMan
     sql = manager.get_parameterized_query_variant(11, 1, scale_factor=0.1)
     assert "{q11_fraction}" not in sql
     assert "0.0010000000" in sql
+
+

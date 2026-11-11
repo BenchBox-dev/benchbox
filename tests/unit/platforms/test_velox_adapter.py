@@ -931,3 +931,5 @@ class TestDeploymentContractIsEnumerated:
 
         with pytest.raises(MCPValidationError, match="not authorized"):
             validate_platform_options("velox", {"deployment": "remote"})
+
+

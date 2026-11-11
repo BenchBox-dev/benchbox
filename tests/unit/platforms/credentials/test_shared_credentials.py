@@ -195,3 +195,5 @@ class TestEmptyPathInput:
         assert "default_output_location" not in creds
         console_calls = [str(c) for c in args["console"].print.call_args_list]
         assert any("skip" in c.lower() for c in console_calls)
+
+

@@ -669,3 +669,5 @@ def test_splice_rejects_inline_value_for_body_section():
         patch.setattr(generator, "SECTION_PATHS", {"fabric_cu_prices": (("fabric_cu_prices",), False)})
         with pytest.raises(generator.PricingGeneratorError):
             generator.splice_sections("fabric_cu_prices: {us: 0.1}\nb: 1\n", {"fabric_cu_prices": ["us: 0.18"]})
+
+

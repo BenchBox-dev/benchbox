@@ -199,3 +199,5 @@ class TestTPCHDeterminism:
             assert sql1 == sql2, f"Seed {seed} not deterministic"
             assert isinstance(sql1, str)
             assert len(sql1) > 50
+
+

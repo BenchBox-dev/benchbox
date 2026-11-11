@@ -257,3 +257,5 @@ def test_real_medium_receipts_reject_missing_or_inconsistent_outcomes(tmp_path: 
         path.write_text(json.dumps(payload))
         with pytest.raises(ValueError, match="outcome"):
             verify_medium_shards(damaged, sha)
+
+

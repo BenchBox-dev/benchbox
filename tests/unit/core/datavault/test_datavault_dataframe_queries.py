@@ -606,3 +606,5 @@ class TestQ15MaxSupplier:
         impl = query.expression_impl if family == "expression" else query.pandas_impl
         _, rows = _materialize(impl(ctx))
         assert rows == []
+
+

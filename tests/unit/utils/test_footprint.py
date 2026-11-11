@@ -60,3 +60,5 @@ def test_darwin_reads_through_libproc(child):
     assert lib is not None
     assert footprint._darwin_footprint(lib, child.pid) > 0
     assert any(pid == child.pid for pid, _, _ in footprint.top_processes_by_footprint(100000))
+
+

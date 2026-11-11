@@ -64,3 +64,5 @@ def test_unified_runner_duckdb_dry_run(tmp_path: Path) -> None:
 
     json_files = list(dry_run_dir.glob("*.json"))
     assert json_files, "Expected dry run JSON artifact to be emitted"
+
+

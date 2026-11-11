@@ -318,3 +318,5 @@ def test_packaged_resource_source_maps_to_yaml_legacy_bridge():
     assert _legacy_tuning_source_bridge("packaged_resource", "tpch_tuned.yaml:abc123") == "yaml"
     assert _legacy_tuning_source_bridge("packaged_resource", None) == "yaml"
     assert _legacy_tuning_source_bridge("smart_defaults", None) == "auto"
+
+

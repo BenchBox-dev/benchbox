@@ -39,3 +39,5 @@ class TestExplainFailureHandling:
     def test_empty_returns_none(self, parser):
         assert parser.parse_explain_output("q", "") is None
         assert parser.parse_explain_output("q", "   \n  ") is None
+
+

@@ -171,3 +171,5 @@ class TestGenerateComparisonReport:
         report = generate_comparison_report(baseline, extension)
         assert "postgres" in report
         assert "pg_mooncake" in report
+
+

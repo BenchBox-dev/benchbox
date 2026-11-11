@@ -531,3 +531,5 @@ class TestConfigValidationEdgeCases:
             assert "optional" in requirements, f"Platform {platform} missing 'optional' key"
             assert isinstance(requirements["required"], list), f"Platform {platform} 'required' should be a list"
             assert isinstance(requirements["optional"], list), f"Platform {platform} 'optional' should be a list"
+
+

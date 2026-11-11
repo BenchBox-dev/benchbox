@@ -67,3 +67,5 @@ def test_nightly_uses_the_same_pinned_actions_as_the_pull_request_job() -> None:
 
     ci_pins = pins(CI, "comment-policy")
     assert pins(NIGHTLY, "whole-tree") <= ci_pins
+
+

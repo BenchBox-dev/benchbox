@@ -112,3 +112,5 @@ def test_q66_reads_the_sales_and_net_columns_the_template_drew(family, monkeypat
 def test_q66_rejects_a_column_the_template_cannot_draw(family, monkeypatch, param):
     with pytest.raises(ValueError, match="Q66"):
         _run(family, monkeypatch, **{param: "ws_quantity"})
+
+

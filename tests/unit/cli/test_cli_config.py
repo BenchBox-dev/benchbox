@@ -328,3 +328,5 @@ class TestConfigManagerEdgeCases:
         assert isinstance(config_manager.config, BenchBoxConfig)
         assert len(config_manager.config.system) == 53
         assert len(config_manager.config.benchmarks) == 7
+
+

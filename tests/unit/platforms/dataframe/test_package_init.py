@@ -29,3 +29,5 @@ def test_dataframe_package_optional_exports_are_defined():
         attr = getattr(dataframe_pkg, name, _SENTINEL := object())
         assert attr is not _SENTINEL, f"{name} not exported from dataframe package"
         assert attr is None or callable(attr), f"{name} should be None or a class, got {type(attr)}"
+
+

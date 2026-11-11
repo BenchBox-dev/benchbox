@@ -56,3 +56,5 @@ def test_rate_limit_cannot_be_bypassed_by_alternating_workers(tmp_path: Path) ->
             await worker_a.admit("principal-a")
 
     anyio.run(exercise)
+
+

@@ -219,3 +219,5 @@ class TestScaleFactorHandling:
         expected_counts = [r.expected_row_count for r in results]
         assert len(set(expected_counts)) == 1
         assert expected_counts[0] == 4
+
+

@@ -200,3 +200,5 @@ def test_ledger_records_keep_traps() -> None:
     ]
     missing = [name for name in traps if name not in text]
     assert not missing, f"KEEP traps missing from ledger: {missing}"
+
+

@@ -92,3 +92,5 @@ def test_pandas_floor_is_declared_in_packaging_metadata() -> None:
         spec = SpecifierSet(pin)
         assert spec.contains(Version("3.0.0")), f"pandas{pin} excludes 3.0.0"
         assert not spec.contains(Version("2.9.9")), f"pandas{pin} still allows 2.x"
+
+

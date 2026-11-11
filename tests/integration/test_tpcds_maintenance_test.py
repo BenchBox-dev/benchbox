@@ -124,3 +124,5 @@ def test_benchmark_run_maintenance_test_reports_method_and_function_rows(empty_d
     assert result.maintenance_operations[-1]["error"]
     assert result.test_duration > 0
     assert result.error_details
+
+

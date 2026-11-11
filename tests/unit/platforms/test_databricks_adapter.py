@@ -2497,3 +2497,5 @@ class TestHudiSkipsFoldIntoLedger:
         assert len(ledger.dropped) == len(recorded)
         assert all(dropped.reason.startswith("skipped:") for dropped in ledger.dropped)
         assert ledger.overall_status(tuning_enabled=True, has_config=True) != FAILED
+
+

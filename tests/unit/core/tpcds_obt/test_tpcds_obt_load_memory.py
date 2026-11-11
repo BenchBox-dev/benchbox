@@ -93,3 +93,5 @@ def test_pandas_adapter_materializes_only_the_declared_columns(tmp_path: Path) -
     assert rows == 8
     assert list(loaded.columns) == declared
     assert len(loaded.columns) < len(wide) // 40
+
+

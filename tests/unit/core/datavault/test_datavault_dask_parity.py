@@ -107,3 +107,5 @@ def test_q21_suppliers_who_kept_orders_waiting(family):
     }
 
     assert result_rows(q21_pandas_impl(build_context(family, tables))) == [("S1", 1)]
+
+

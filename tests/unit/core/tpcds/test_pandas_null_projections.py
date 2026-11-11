@@ -135,3 +135,5 @@ def test_q74_preserves_null_customer_names(monkeypatch, family):
         ("C", "First", "Last"),
         ("B", None, "Last"),
     ]
+
+

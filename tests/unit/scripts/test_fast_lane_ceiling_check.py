@@ -272,3 +272,5 @@ def test_policy_file_carries_only_the_guard_fields() -> None:
 
     policy = json.loads((_ROOT / "_project" / "config" / "fast_test_lane_policy.json").read_text(encoding="utf-8"))
     assert set(policy) == {"enabled", "forbidden_marker_expressions", "forbidden_path_substrings"}
+
+

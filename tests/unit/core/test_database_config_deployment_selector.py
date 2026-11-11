@@ -278,3 +278,5 @@ def _profile():
     from benchbox.core.system import SystemProfiler
 
     return SystemProfiler().get_system_profile()
+
+

@@ -103,3 +103,5 @@ class TestAzureSynapseParserErrorHandling:
 class TestAzureSynapseRegistry:
     def test_registry_returns_synapse_parser(self):
         assert isinstance(get_parser_for_platform("azure_synapse"), AzureSynapseQueryPlanParser)
+
+

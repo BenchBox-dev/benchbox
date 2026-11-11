@@ -144,3 +144,5 @@ def test_unregistered_fixture_names_fixture_and_allowlist(tmp_path: Path) -> Non
     assert len(errors) == 1
     assert "_synthetic" in errors[0]
     assert "autouse-fixture-allowlist.json" in errors[0]
+
+

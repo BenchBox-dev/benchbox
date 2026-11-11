@@ -99,3 +99,5 @@ def test_notebook_has_run_benchmark_cell(notebook_name):
                 break
 
     assert has_run_benchmark_cell, f"{notebook_name} is missing run_benchmark cell"
+
+

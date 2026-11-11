@@ -78,3 +78,5 @@ class TestValidationStatusVocabulary:
             assert new in TUNING_STATUS_VOCABULARY
         assert LEGACY_STATUS_MAP["APPLIED"] == APPLIED_UNVERIFIED
         assert LEGACY_STATUS_MAP["FAILED_TO_SAVE"] == APPLIED_UNVERIFIED
+
+

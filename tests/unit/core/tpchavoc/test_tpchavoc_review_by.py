@@ -84,3 +84,5 @@ def test_clickhouse_review_by_worked_example_is_not_yet_due():
     for key, review_by in CLICKHOUSE_KNOWN_DIVERGENCES_REVIEW_BY.items():
         assert key in CLICKHOUSE_KNOWN_DIVERGENCES, f"{key} has a review_by but no matching baseline entry"
         assert review_by >= date.today(), f"{key}'s review_by {review_by} is already past-due"
+
+

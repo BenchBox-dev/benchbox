@@ -467,3 +467,5 @@ def test_explicit_file_scan_ignores_baseline_entries_for_other_files(tmp_path: P
 
     assert whole_tree.stale
     assert explicit.stale == []
+
+

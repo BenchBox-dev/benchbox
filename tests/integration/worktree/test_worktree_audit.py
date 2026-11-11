@@ -600,3 +600,5 @@ def test_fixture_incomplete_collection_error(tmp_path: Path):
     assert cls.state == "unavailable"
     assert cls.item_classification == "API error"
     assert "503" in cls.reason
+
+

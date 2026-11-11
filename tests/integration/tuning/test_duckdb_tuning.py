@@ -221,3 +221,5 @@ class TestTuningConfigIntegration:
         assert config.table_tunings.get("lineitem") is not None
         assert config.table_tunings.get("orders") is not None
         assert config.table_tunings.get("customer") is not None
+
+

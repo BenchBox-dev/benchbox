@@ -38,3 +38,5 @@ def test_coverage_normaliser_keeps_named_queries_that_start_with_q() -> None:
 @pytest.mark.parametrize("raw", [None, 7, "", "   "])
 def test_coverage_normaliser_rejects_non_ids(raw: object) -> None:
     assert _normalize_coverage_query_id(raw) is None
+
+

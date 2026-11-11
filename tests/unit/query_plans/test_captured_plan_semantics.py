@@ -526,3 +526,5 @@ class TestLakeSailCapturedPlans:
         union = _of_type(_parse(_LAKESAIL, "union").logical_root, LogicalOperatorType.UNION)[0]
         assert [_scanned_tables(b) for b in union.children] == [["orders"], ["customers"]]
         assert all(_of_type(b, LogicalOperatorType.FILTER) for b in union.children)
+
+

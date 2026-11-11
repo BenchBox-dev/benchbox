@@ -64,3 +64,5 @@ def test_registry_wrapper_helpers_follow_rebound_singleton(
 
     assert getattr(module, get_name)("QX") is query
     assert any(candidate is query for candidate in getattr(module, list_name)())
+
+

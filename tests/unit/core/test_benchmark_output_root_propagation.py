@@ -255,3 +255,5 @@ def test_generator_output_dir_mixin_forwards_to_impl():
 
     wrapper.output_dir = "/tmp/reassigned"
     assert str(wrapper._impl.output_dir) == "/tmp/reassigned"
+
+

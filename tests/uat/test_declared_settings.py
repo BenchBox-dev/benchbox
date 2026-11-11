@@ -399,3 +399,5 @@ def test_execute_readiness_passes_when_every_declared_setting_was_applied(tmp_pa
     reason, events = _readiness(tmp_path, _probe())
     assert reason is None
     assert ("declared-settings", "ok") in [(event.action, event.status) for event in events]
+
+

@@ -292,3 +292,5 @@ def test_current_branch_falls_back_to_github_head_ref(tmp_path, monkeypatch):
 
     monkeypatch.delenv("GITHUB_HEAD_REF")
     assert gce._current_branch(tmp_path) is None
+
+

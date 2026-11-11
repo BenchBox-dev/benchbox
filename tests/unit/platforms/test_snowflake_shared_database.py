@@ -257,3 +257,5 @@ def test_a_validation_error_after_the_table_check_keeps_the_foreign_tables():
     assert not result.can_reuse
     assert any("row count probe failed" in issue for issue in result.issues)
     assert result.foreign_tables == tuple(sorted(STAGING_TABLES))
+
+

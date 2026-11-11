@@ -98,3 +98,5 @@ def test_pr_ready_still_requires_a_pr_and_a_head(tmp_path: Path) -> None:
     missing_head, _, _ = _make_pr_ready(tmp_path / "b", "PR=7")
     assert missing_pr.returncode == 2 and "PR or URL is required" in missing_pr.stderr
     assert missing_head.returncode == 2 and "HEAD is required" in missing_head.stderr
+
+

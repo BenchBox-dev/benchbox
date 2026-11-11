@@ -117,3 +117,5 @@ def test_setup_prompt_token_is_validated_but_not_persisted(
     manager.update_validation_status.assert_called_once_with("motherduck", CredentialStatus.NOT_VALIDATED)
     manager.save_credentials.assert_called_once_with()
     assert os.environ[MOTHERDUCK_TOKEN_ENV] == "prompt-token"
+
+

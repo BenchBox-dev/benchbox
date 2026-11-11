@@ -117,3 +117,5 @@ def test_parity_script_passes_data_dir_for_velox_too(tmp_path):
     assert up_calls
     for call in up_calls:
         assert _data_dir_arg(call) == custom_data_dir
+
+

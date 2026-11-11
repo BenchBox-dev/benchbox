@@ -192,3 +192,5 @@ class TestLiveSingleStoreQueryPlanCapture:
     @pytest.mark.parametrize("shape", _SHAPES)
     def test_live_plan_semantics(self, adapter, connection, tables, shape):
         assert_live_plan_shape(adapter, connection, shape)
+
+

@@ -259,3 +259,5 @@ def test_spark_family_adapters_share_mixin_execute_query(adapter_cls_name):
     module_name, _, cls_name = adapter_cls_name.rpartition(".")
     adapter_cls = getattr(importlib.import_module(module_name), cls_name)
     assert adapter_cls.execute_query is SparkQueryExecutionMixin.execute_query
+
+

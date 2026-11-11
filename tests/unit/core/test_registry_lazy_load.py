@@ -97,3 +97,5 @@ def test_unknown_attribute_still_raises_attribute_error() -> None:
         _ = r.DOES_NOT_EXIST
     with pytest.raises(AttributeError):
         _ = s.DOES_NOT_EXIST
+
+

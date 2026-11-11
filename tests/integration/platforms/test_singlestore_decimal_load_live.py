@@ -126,3 +126,5 @@ def test_csv_header_row_is_skipped_with_decimal_guard(decimal_table, tmp_path):
     assert _load(adapter, connection, tmp_path, "csv_header", "7.10") == 1
 
     assert _rows(cursor) == [(1, "7.10", "ab")]
+
+

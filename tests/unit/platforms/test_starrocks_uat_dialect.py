@@ -61,3 +61,5 @@ def test_qualify_becomes_a_filtered_subquery():
     )
     assert "QUALIFY" not in sql
     assert "ROW_NUMBER()" in sql
+
+

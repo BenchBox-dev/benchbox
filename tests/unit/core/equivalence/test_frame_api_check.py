@@ -106,3 +106,5 @@ def test_all_registered_query_modules_call_real_frame_methods(frame_api):
         violations.extend(v.describe() for v in check_module_frame_api(path, frame_api=frame_api))
     assert impl_count > 100, f"expected many checked impls, found {impl_count}"
     assert not violations, "query modules call missing UnifiedLazyFrame methods:\n" + "\n".join(violations)
+
+

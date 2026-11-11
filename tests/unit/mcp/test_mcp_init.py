@@ -79,3 +79,5 @@ class TestMcpLazyExports:
 
         with pytest.raises(AttributeError, match="benchbox.mcp"):
             _ = mcp_mod.totally_unknown_name_xyz
+
+

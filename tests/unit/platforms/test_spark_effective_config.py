@@ -422,3 +422,5 @@ def test_builder_conf_failure_does_not_stop_the_capture():
 
     assert payload["snapshots"]["session_created"]["status"] == STATUS_CAPTURED
     assert payload["discrepancies"] == []
+
+

@@ -54,3 +54,5 @@ def test_create_table_sql_disable_pk_or_fk():
     sql_no_fk = t.get_create_table_sql(enable_primary_keys=True, enable_foreign_keys=False)
     assert "PRIMARY KEY (ID)" in sql_no_fk
     assert "FOREIGN KEY" not in sql_no_fk
+
+

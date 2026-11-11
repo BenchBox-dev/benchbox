@@ -63,3 +63,5 @@ class TestPipelineOutputIsMetricFree:
             assert not (output / name).exists(), f"rebuild left {name} in place"
         for name in LEGACY_DIRS:
             assert not (output / name).exists(), f"rebuild left {name}/ in place"
+
+

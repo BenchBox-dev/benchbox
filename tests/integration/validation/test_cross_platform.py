@@ -240,3 +240,5 @@ class TestDuckDBClickHouseLocal:
         )
 
         assert report.matched, f"DuckDB × ClickHouse-local diverged for {query_id}:\n{report.summary()}"
+
+

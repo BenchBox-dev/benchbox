@@ -69,3 +69,5 @@ def test_olap_rollup_analysis_adds_subtotal_rows_with_null_dimensions():
     assert totals[("AFRICA", None, None)] == 30.0
     assert totals[("AFRICA", "ALGERIA", "AUTO")] == 30.0
     assert result[-1]["region"] is None
+
+

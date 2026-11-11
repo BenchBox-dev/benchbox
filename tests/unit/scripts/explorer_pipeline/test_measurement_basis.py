@@ -240,3 +240,5 @@ def test_completely_failed_measurement_query_reported_in_varying_pass_queries() 
     assert avail.measurement_pass_count == 2
     assert avail.query_pass_counts["Q3"] == 0
     assert avail.varying_pass_queries == {"Q3": 0}
+
+

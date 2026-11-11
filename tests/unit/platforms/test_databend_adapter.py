@@ -1118,3 +1118,5 @@ class TestDatabendIntervalLiterals:
         assert "INTERVAL '3' MONTH AND" in sent
         assert "'1 YEAR'" not in sent
         assert "note = 'interval'" in sent
+
+

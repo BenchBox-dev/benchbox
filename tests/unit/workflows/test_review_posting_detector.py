@@ -274,3 +274,5 @@ def test_a_verdict_title_edit_starts_no_review_but_a_retarget_does(tmp_path: Pat
 @requires_tools
 def test_a_gate_title_edit_still_requires_a_gate_status(tmp_path: Path) -> None:
     assert _run(GATE, tmp_path, action="edited").returncode == 1
+
+

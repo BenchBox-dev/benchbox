@@ -235,3 +235,5 @@ def test_fallback_marker_emits_one_warning_per_table() -> None:
     assert normalized_cost.cost_status == "unavailable"
     fallback_warnings = [warning for warning in warnings if "fallback pricing used" in warning]
     assert len(fallback_warnings) == 1
+
+

@@ -76,3 +76,5 @@ def test_misses_step_runs_from_its_sparse_checkout(tmp_path: Path) -> None:
     text = summary.read_text(encoding="utf-8")
     assert "tests/unit/a/test_one.py::test_out" in text
     assert "- tests/unit/a/test_one.py::test_in" not in text
+
+

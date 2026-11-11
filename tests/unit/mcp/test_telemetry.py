@@ -46,3 +46,5 @@ def test_trace_specific_endpoint_takes_precedence_without_rewriting() -> None:
     )
 
     assert settings.endpoint == "https://traces.example/custom"
+
+

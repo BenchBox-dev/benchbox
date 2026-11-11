@@ -111,3 +111,5 @@ def test_a_config_built_from_the_registry_masks_its_saved_credentials(tmp_path, 
     rendered = repr(config) + str(config) + _log_output(config)
     assert PASSWORD not in rendered
     assert "acme" in rendered
+
+

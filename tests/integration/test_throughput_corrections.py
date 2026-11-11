@@ -593,3 +593,5 @@ class TestTimeoutDetectionAndCooperativeCancellation:
         assert elapsed < 3.0
         assert len(executed_queries) < 10
         assert result.success is False
+
+

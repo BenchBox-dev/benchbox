@@ -32,3 +32,5 @@ def test_dataframe_gate_restores_ambient_parameters(monkeypatch: pytest.MonkeyPa
         else:
             assert dataframe_equivalence.find_dataframe_divergences(Mock(), benchmark, Mock(), {}) == []
         assert {query_id: dq.get_tpch_parameters(query_id) for query_id in (3, 11)} == previous
+
+

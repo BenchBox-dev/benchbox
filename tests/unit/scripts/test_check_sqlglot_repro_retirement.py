@@ -281,3 +281,5 @@ def test_questdb_executor_gives_up_after_the_deadline(monkeypatch: pytest.Monkey
     monkeypatch.setattr("scripts.check_sqlglot_repro_retirement.QUESTDB_READY_SECONDS", -1)
     with pytest.raises(RuntimeError, match="endpoint unavailable"):
         _execute_questdb("SELECT 1")
+
+

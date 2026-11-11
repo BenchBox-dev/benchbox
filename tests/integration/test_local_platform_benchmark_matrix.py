@@ -732,3 +732,5 @@ def test_service_local_platform_tpch_matrix(
     _validate_phase_coverage(payload, phases)
     _validate_completion(payload, benchmark_name)
     _validate_against_expected_results(payload, benchmark_name, scale_factor)
+
+

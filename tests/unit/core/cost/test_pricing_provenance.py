@@ -114,3 +114,5 @@ def test_golden_synapse_serverless_regional_rates():
     assert resolve_synapse_serverless_price_per_tb("southeastasia").value == 6.75
     assert resolve_synapse_serverless_price_per_tb("canadacentral").value == 5.5
     assert resolve_synapse_serverless_price_per_tb("brazilsouth").value == 9.0
+
+

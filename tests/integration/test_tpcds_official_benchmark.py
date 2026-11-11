@@ -304,3 +304,5 @@ class TestTPCDSIntegration:
 
         assert hasattr(benchmark, "run_official_benchmark")
         assert callable(benchmark.run_official_benchmark)
+
+

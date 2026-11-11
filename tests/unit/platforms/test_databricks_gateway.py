@@ -177,3 +177,5 @@ def test_from_config_native_still_auto_detects_missing_credentials():
     auto_detect.assert_called_once()
     assert adapter.gateway == "native"
     assert adapter.server_hostname == "native.cloud.databricks.com"
+
+

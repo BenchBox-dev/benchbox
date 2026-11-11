@@ -313,3 +313,5 @@ class TestDatabaseFixtureConsistency:
 
         result = duckdb_database.execute("SELECT * FROM param_test").fetchone()
         assert result[0] == 123
+
+

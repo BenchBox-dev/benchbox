@@ -44,3 +44,5 @@ def test_snowflake_requires_core_settings(monkeypatch):
         SnowflakeAdapter(account="benchbox")
 
     assert "Snowflake configuration" in str(excinfo.value)
+
+

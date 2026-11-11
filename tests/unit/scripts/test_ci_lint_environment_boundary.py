@@ -220,3 +220,5 @@ class TestGateFailsClosed:
                 f"so the guard disappears with nothing recorded in `failed`. Shell said "
                 f"{result.stdout.strip()!r} for block:\n{broken}"
             )
+
+

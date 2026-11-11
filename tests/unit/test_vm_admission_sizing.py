@@ -188,3 +188,5 @@ def test_preflight_keeps_other_failures_failing(tmp_path: Path) -> None:
 
     assert result.returncode == 1
     assert "Linux not verified" not in result.stderr
+
+

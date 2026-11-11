@@ -27,3 +27,5 @@ def test_count_distinct_of_obt_decimal_column_counts_distinct_text():
     assert rewrite_query("SELECT COUNT(DISTINCT obt.list_price) FROM tpcds_obt AS obt") == (
         "SELECT COUNT_DISTINCT(CAST(obt.list_price AS VARCHAR)) FROM tpcds_obt AS obt"
     )
+
+

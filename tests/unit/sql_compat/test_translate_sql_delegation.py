@@ -203,3 +203,5 @@ class TestTranslateSqlDelegatesToWrapper:
         result = a.translate_sql("SELECT 'a;b' AS c", source_dialect="snowflake")
         assert result.count(";") == 2
         assert "'a;b'" in result
+
+

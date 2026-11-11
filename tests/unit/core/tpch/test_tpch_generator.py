@@ -201,3 +201,5 @@ class TestDbgenExeProperty:
         with patch.object(gen, "_find_or_build_dbgen", side_effect=FileNotFoundError("no binary")):
             with pytest.raises(RuntimeError):
                 _ = gen.dbgen_exe
+
+

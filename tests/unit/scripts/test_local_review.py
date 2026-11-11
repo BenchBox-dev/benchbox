@@ -231,3 +231,5 @@ def test_the_environment_does_not_leak_into_the_caller(monkeypatch: pytest.Monke
     theseus_cli.environment()
 
     assert "THESEUS_OMP_CACHE" not in os.environ
+
+

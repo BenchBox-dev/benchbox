@@ -618,3 +618,5 @@ class TestBenchmarkRegistryDataframeFlag:
         from benchbox.core.benchmark_registry import BENCHMARK_METADATA
 
         assert BENCHMARK_METADATA["transaction_primitives"]["num_queries"] == 12
+
+

@@ -181,3 +181,5 @@ def test_restore_columns_includes_sentinel_marker_columns() -> None:
 def test_restore_columns_skips_empty_marker_columns() -> None:
 
     assert resolve_empty_string_restore_columns(["a"], "", ["a"]) == []
+
+

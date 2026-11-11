@@ -42,3 +42,5 @@ def test_tpcds_obt_questdb_date_bounds_are_zero_padded(tmp_path, query_id, seed)
     translated = benchmark.get_query(query_id, seed=seed, scale_factor=0.01, dialect="questdb")
     assert _unpadded_source(source)
     assert _padded(translated)
+
+

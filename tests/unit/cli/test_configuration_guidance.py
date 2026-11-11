@@ -127,3 +127,5 @@ def test_the_two_setup_commands_point_at_each_other() -> None:
 
     assert "platforms setup" in credentials
     assert "benchbox setup" in adapters
+
+

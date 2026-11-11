@@ -59,3 +59,5 @@ def test_datafusion_loads_trailing_delimiter_tbl(tpch_tbl_dir, tmp_path, data_fo
 
     queried = connection.execute("SELECT COUNT(*) FROM lineitem").fetchall()[0][0]
     assert queried == table_stats["lineitem"]
+
+

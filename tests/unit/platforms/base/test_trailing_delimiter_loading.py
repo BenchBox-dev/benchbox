@@ -366,3 +366,5 @@ class TestCLIExitCodeOnFailure:
         runner = CliRunner()
         result = runner.invoke(run, ["--help"])
         assert result.exit_code == 0
+
+

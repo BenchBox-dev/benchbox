@@ -1127,3 +1127,5 @@ class TestPySparkNotAvailable:
 
         with pytest.raises(ImportError, match="PySpark not installed"):
             PySparkDataFrameAdapter()
+
+

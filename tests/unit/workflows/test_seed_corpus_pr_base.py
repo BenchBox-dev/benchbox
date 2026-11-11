@@ -496,3 +496,5 @@ def test_seed_staging_writes_no_manifest_by_default(tmp_path: Path) -> None:
 
     assert process.returncode == 0, process.stderr
     assert not (destination / "bundle.manifest.json").exists()
+
+

@@ -110,3 +110,5 @@ class TestSuitePlanCapture:
         assert result.query_plan is None
         assert events == ["collect", "collect"]
         assert query.execute_calls == 3
+
+

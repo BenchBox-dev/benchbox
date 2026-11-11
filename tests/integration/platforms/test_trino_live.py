@@ -156,3 +156,5 @@ class TestLiveTrinoBulkLoad:
         finally:
             cursor.execute("DROP TABLE IF EXISTS memory.default.trino_bad_tbl")
             adapter.close_connection(connection)
+
+

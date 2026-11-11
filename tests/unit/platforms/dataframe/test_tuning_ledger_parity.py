@@ -627,3 +627,5 @@ class TestLedgerTrustDelegation:
         builder = SimpleNamespace()
         stub._write_applied_tuning_ledger(builder)
         assert calls == [(stub._applied_tuning_ledger, stub._tuning_config, builder)]
+
+

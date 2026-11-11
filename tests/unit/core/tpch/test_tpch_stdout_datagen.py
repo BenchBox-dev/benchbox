@@ -289,3 +289,5 @@ class TestMoneyFormatFix:
                     assert -10000 <= value <= 10000, f"Account balance out of range: {value}"
                 except ValueError:
                     pytest.fail(f"Invalid money value: {acctbal}")
+
+

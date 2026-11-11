@@ -136,3 +136,5 @@ def test_guard_pattern_catches_the_regression_shape() -> None:
     ):
         assert _HARDCODED_PATTERN.search(snippet), snippet
     assert not _HARDCODED_PATTERN.search("output_dir = get_benchmark_runs_datagen_path(name, scale_factor)")
+
+

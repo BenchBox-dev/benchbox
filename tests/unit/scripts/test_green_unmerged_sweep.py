@@ -277,3 +277,5 @@ def test_http_404_scan_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(RuntimeError, match="Pinned issue lookup failed closed"):
         sweep.upsert_pinned_issue(client, "owner", "repo", "digest")
     assert writes == []
+
+

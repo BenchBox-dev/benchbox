@@ -560,3 +560,5 @@ def test_non_scd_update_runs_on_sqlite() -> None:
     assert stats["updated_records"] == 1
     assert raw.execute("SELECT SK_CustomerID, Attr FROM DimCustomer ORDER BY 1").fetchall() == [(10, 6), (20, 7)]
     raw.close()
+
+

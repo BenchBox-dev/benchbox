@@ -509,3 +509,5 @@ class TestNullTuningHandling:
         generator = HiveDDLGenerator()
         clauses = generator.generate_tuning_clauses(None)
         assert "STORED AS PARQUET" in clauses.additional_clauses
+
+

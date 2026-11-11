@@ -114,3 +114,5 @@ def test_coffeeshop_starrocks_has_no_rule(query_id: str):
         dialect="starrocks",
     )
     assert REGISTRY.resolve(ctx) is None, f"Unexpected rule for starrocks/coffeeshop/{query_id}"
+
+

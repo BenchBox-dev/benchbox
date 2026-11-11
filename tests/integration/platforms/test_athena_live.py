@@ -87,3 +87,5 @@ class TestLiveAthenaQueryExecution:
             assert result["status"] == "SUCCESS"
         finally:
             athena_adapter.close_connection(connection)
+
+

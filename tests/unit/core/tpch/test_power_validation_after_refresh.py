@@ -196,3 +196,5 @@ def test_throughput_streams_mark_data_refreshed_only_with_refresh_functions(refr
     assert stream.queries_successful == 1
     assert seen == [refresh]
     assert get_data_refreshed_context() is False
+
+

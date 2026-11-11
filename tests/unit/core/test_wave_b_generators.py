@@ -42,3 +42,5 @@ def test_h2odb_generator_trips_and_manifest_tracking(tmp_path):
     gen._write_manifest(table_paths)
     manifest = tmp_path / "_datagen_manifest.json"
     assert manifest.exists()
+
+

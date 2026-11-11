@@ -304,3 +304,5 @@ class TestValidationRules:
     def test_validate_output_directory_rejects_stage_for_external_snowflake(self):
         with pytest.raises(CloudStorageError, match="requires a cloud URI"):
             ValidationRules.validate_output_directory("@~/benchbox", platform="snowflake", table_mode="external")
+
+

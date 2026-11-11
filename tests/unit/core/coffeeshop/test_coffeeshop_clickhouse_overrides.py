@@ -69,3 +69,5 @@ def test_non_overridden_queries_present_in_clickhouse_dialect():
         if qid not in ("SA4", "TM1"):
             assert qid in clickhouse, f"{qid} missing from ClickHouse queries"
             assert clickhouse[qid].strip(), f"{qid} is empty in ClickHouse queries"
+
+

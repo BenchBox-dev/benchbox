@@ -141,3 +141,5 @@ class TestAMPLabBenchmarkRegistry:
         meta = get_benchmark_metadata("amplab")
         assert meta is not None
         assert meta.get("supports_dataframe") is True
+
+

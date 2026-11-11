@@ -265,3 +265,5 @@ class TestSearchOptimizationEnum:
         assert SearchOptimizationType.EQUALITY.value == "EQUALITY"
         assert SearchOptimizationType.SUBSTRING.value == "SUBSTRING"
         assert SearchOptimizationType.GEO.value == "GEO"
+
+

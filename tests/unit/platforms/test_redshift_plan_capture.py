@@ -170,3 +170,5 @@ class TestRedshiftStrictPlanCapture:
 
         assert result["status"] == "FAILED"
         assert "no such table" in result["error"]
+
+

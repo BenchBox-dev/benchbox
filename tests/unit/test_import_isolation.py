@@ -123,3 +123,5 @@ def test_bare_import_does_not_eagerly_load_nyctaxi() -> None:
     )
     loaded_by_root = json.loads(result.stdout.splitlines()[-1])
     assert not loaded_by_root, f"import benchbox eagerly loaded NYCTaxi: {loaded_by_root}"
+
+

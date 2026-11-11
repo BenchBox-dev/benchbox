@@ -248,3 +248,5 @@ class TestExpressionFamilyCaptureTimingContract:
         modern_adapter = _FastRowAdapter()
         modern_result = modern_adapter.execute_query(modern_adapter.create_context(), query)
         assert modern_result["execution_time_seconds"] < 0.05
+
+

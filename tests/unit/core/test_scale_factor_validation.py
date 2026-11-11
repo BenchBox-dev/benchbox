@@ -90,3 +90,5 @@ def test_float_tolerance_accepts_imperceptible_drift() -> None:
 def test_float_tolerance_rejects_perceptible_drift() -> None:
     with pytest.raises(ScaleFactorNotSupportedError):
         validate_scale_factor("joinorder", 1.0001)
+
+

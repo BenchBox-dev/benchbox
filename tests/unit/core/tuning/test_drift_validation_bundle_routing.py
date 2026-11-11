@@ -109,3 +109,5 @@ class TestDriftCheckAnonymization:
         for dropped in ("errors", "warnings", "configuration_mismatches", "missing_tables", "extra_tables"):
             assert dropped not in drift
         assert "errors" in payload["drift_check"]
+
+

@@ -149,3 +149,5 @@ def test_q24_matches_tpcds_with_parameters_that_return_rows(engines) -> None:
     )
     comparison = compare_parts(obt_parts, base_parts)
     assert comparison.equal, comparison.detail
+
+

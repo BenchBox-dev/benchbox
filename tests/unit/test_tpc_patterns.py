@@ -96,3 +96,5 @@ class TestGenerateOfficialBenchmarkAuditTrail:
 
         assert output_path.parent == tmp_path / "benchmark_results"
         assert output_path.exists()
+
+

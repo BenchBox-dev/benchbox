@@ -336,3 +336,5 @@ class TestSafetyChecks:
         f = tmp_path / "t.tbl"
         f.write_text("1|a|\n\n2|b|\n")
         assert FireboltAdapter._scan_core_upload_file(f) == (2, False, "1|a|")
+
+

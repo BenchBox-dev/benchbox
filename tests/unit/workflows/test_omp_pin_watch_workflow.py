@@ -137,3 +137,5 @@ def test_the_revert_commit_carries_the_author_the_watch_uses_to_recognise_its_ow
     text = run_text(opener_job())
     assert f'git config user.email "{BOT_AUTHOR_EMAIL}"' in text
     assert 'git config user.name "github-actions[bot]"' in text
+
+

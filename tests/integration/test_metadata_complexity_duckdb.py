@@ -442,3 +442,5 @@ class TestComplexityErrorHandling:
             "SELECT COUNT(*) FROM information_schema.tables WHERE table_name LIKE 'benchbox_manual_%'"
         ).fetchone()
         assert result[0] == 0
+
+

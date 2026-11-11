@@ -439,3 +439,5 @@ def test_exported_sql_and_dataframe_bundles_share_cross_mode_contract(tmp_path):
         assert isinstance(payload["run"]["total_duration_ms"], (int, float))
         assert isinstance(payload["run"]["query_time_ms"], (int, float))
         assert isinstance(payload["queries"][0]["ms"], (int, float))
+
+

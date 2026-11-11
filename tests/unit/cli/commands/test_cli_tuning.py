@@ -130,3 +130,5 @@ class TestCommandCategorization:
         assert "tuning" in result.output
         assert "create-sample-tuning" not in result.output
         assert "df-tuning" not in result.output
+
+

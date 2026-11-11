@@ -333,3 +333,5 @@ def test_connection_closes_synchronously_when_no_stream_times_out(tmp_path: Path
 
     assert adapter._post_measurement_contained is False
     assert adapter.closed_connections == 1
+
+

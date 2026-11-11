@@ -68,3 +68,5 @@ def test_partitioned_and_clustered_ddl_is_recorded_and_status_is_not_noop(spark)
     assert ledger.overall_status(tuning_enabled=True, has_config=True) != NOOP
     assert spark.sql("SELECT COUNT(*) FROM plain").collect()[0][0] == 0
     assert {table.name for table in spark.catalog.listTables()} >= {"orders", "lineitem", "plain"}
+
+

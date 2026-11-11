@@ -381,3 +381,5 @@ class TestDuckLakeS3DataPathLive:
             except Exception:
                 pass
             connection.close()
+
+

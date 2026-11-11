@@ -151,3 +151,5 @@ def test_ddl_optimize_baseline_matches_rule_files():
         f"{len(platform_files)} rule files exist in {rule_dir}. "
         "Update baseline_tool._ddl_optimize_records() when adding or removing ddl_optimize rules."
     )
+
+

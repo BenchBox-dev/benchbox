@@ -92,3 +92,5 @@ def test_quickstart_describes_the_rendered_result_columns() -> None:
         assert column in quickstart
     assert "validation outcome" not in quickstart
     assert "query timings" not in quickstart
+
+

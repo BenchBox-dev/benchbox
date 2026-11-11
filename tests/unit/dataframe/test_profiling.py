@@ -374,3 +374,5 @@ class TestCompareExecutionModes:
 
         assert len(results) == 1
         assert any("overhead" in note.lower() for note in results[0].notes)
+
+

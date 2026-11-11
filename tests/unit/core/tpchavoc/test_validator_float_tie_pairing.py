@@ -62,3 +62,5 @@ def test_pairing_handles_values_straddling_decimal_rounding_boundary():
     variant = [(val2, 0), (val1, 1)]
 
     assert ResultValidator().validate_results_exact(original, variant, query_id=1, variant_id=1)
+
+

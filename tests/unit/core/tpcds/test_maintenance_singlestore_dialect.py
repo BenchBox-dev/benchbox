@@ -37,3 +37,5 @@ def test_operations_sql_uses_the_target_dialect() -> None:
     emitted = "\n".join(harness.get_maintenance_operations_sql()["LF_CR"])
     assert "AS SIGNED)" in emitted
     assert "AS INTEGER)" not in emitted.split("INSERT INTO", 1)[1]
+
+

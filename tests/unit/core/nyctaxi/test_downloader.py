@@ -360,3 +360,5 @@ class TestCleanCsvValue:
         assert [row["passenger_count"] for row in by_col] == ["1", "2", "1"]
         assert [row["fare_amount"] for row in by_col] == ["5.5", "7", "9.25"]
         assert by_col[0]["pickup_datetime"] == "2019-01-01 08:00:00"
+
+

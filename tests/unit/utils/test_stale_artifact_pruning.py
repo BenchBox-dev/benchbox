@@ -34,3 +34,5 @@ def test_prune_stale_table_artifacts_escapes_glob_meta_in_table_name(tmp_path: P
 
     assert literal_file in removed
     assert neighbor_file.exists()
+
+

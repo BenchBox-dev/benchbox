@@ -388,3 +388,5 @@ def test_runbook_documents_the_lifecycle() -> None:
     for needle in ("14 days", "reopen", "signature", "no verdict", "skipped", "mirror"):
         assert needle in issues
     assert "## Owner response policy" in text
+
+

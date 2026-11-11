@@ -419,3 +419,5 @@ class TestAthenaTimingContract:
         connection = MagicMock()
         connection.client.get_query_execution.return_value = {"QueryExecution": {"Statistics": {}}}
         assert athena_adapter.fetch_platform_timings(connection, ["exec-1"]) == {}
+
+

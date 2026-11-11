@@ -286,3 +286,5 @@ class TestDatabaseReuseEndToEnd:
 
             with patch.object(tpchavoc, "_check_compatible_tpch_database", return_value=True):
                 tpchavoc._load_data(mock_connection)
+
+

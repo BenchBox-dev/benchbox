@@ -479,3 +479,5 @@ def test_main_records_the_failure_class_for_step_outputs(tmp_path: Path, monkeyp
     monkeypatch.setenv("GITHUB_OUTPUT", str(output))
     assert parent_mod.main(["--core-sha", "not-a-sha", "--repo", "example/repo", "--run-id", "1"]) == 1
     assert output.read_text(encoding="utf-8").splitlines() == ["failure_class=other"]
+
+

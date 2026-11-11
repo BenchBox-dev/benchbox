@@ -77,3 +77,5 @@ def test_translated_counterexamples_gate_verdict(monkeypatch, capsys, trap_trans
     report = json.loads(capsys.readouterr().out)
     assert len(report["translated_counterexamples"]) == 1
     assert bool(report["translated_counterexamples"][0]["matched"]) == (exit_code == 0)
+
+

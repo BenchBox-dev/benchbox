@@ -217,3 +217,5 @@ def test_existing_path_is_refused_with_a_base(sandbox: Sandbox) -> None:
 
     assert created.returncode != 0
     assert "Worktree path already exists" in created.stderr
+
+

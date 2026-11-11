@@ -234,3 +234,5 @@ class TestClickBenchSchemaRanges:
             f"Expected at least one Interests value > {self.SMALLINT_MAX} in 200 records; "
             "got all values ≤ SMALLINT_MAX — the INTEGER widening may be unnecessary"
         )
+
+

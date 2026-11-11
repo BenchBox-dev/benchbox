@@ -372,3 +372,5 @@ def test_source_csv_read_matches_default_engine(tmp_path: Path) -> None:
     frame = TPCDIBenchmark._read_source_csv(str(source))
 
     pd.testing.assert_frame_equal(frame, pd.read_csv(source))
+
+

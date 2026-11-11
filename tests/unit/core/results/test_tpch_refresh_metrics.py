@@ -362,3 +362,5 @@ def test_qphh_accepts_zero_duration_successful_refresh() -> None:
     result = TPCMetricsCalculator.compute_qphh_result(power, throughput, scale_factor=1.0)
     assert result["qphh_at_size"] == 141.4
     assert result["refresh_included"] is True
+
+

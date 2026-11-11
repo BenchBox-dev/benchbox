@@ -157,3 +157,5 @@ def test_merge_emulation_reports_rows_from_every_statement(sqlite_wp):
     result = bench.execute_operation("merge_simple_upsert_small", conn, platform_key="sqlite")
     assert result.status == "SUCCESS"
     assert result.rows_affected == 10
+
+

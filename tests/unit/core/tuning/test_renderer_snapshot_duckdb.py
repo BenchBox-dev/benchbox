@@ -54,3 +54,5 @@ class TestDuckdbPreviewExecutionParity:
         )
 
         assert _preview_sort_clause(table_tuning) is None
+
+

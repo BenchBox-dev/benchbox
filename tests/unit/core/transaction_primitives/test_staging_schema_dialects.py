@@ -90,3 +90,5 @@ def test_other_dialects_keep_parameterized_types():
 
     assert "VARCHAR(" in sql
     assert "DECIMAL(15,2)" in sql
+
+

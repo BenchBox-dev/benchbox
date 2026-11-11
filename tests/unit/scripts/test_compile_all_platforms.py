@@ -39,3 +39,5 @@ def test_auto_selection_requires_healthy_apple_container(tmp_path: Path, contain
     )
 
     assert result.stdout.strip() == expected
+
+

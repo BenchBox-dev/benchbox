@@ -612,3 +612,5 @@ class TestUniqueWithSubset:
 
         result = udf.unique(subset="a")
         assert isinstance(result, ULF)
+
+

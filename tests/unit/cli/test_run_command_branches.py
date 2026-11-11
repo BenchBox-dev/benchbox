@@ -1123,3 +1123,5 @@ class TestPlatformDeploymentSelectorAvailability:
         with patch.object(_platform_module, "console", printed):
             _run_module._check_benchmark_platform_compatibility(s)
         s.ctx.exit.assert_called_once_with(1)
+
+

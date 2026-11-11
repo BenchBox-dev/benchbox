@@ -353,3 +353,5 @@ class TestContentionAnalysisWithErrors:
 
         assert analysis.connection_error_count == 1
         assert analysis.contention_type == "connection"
+
+

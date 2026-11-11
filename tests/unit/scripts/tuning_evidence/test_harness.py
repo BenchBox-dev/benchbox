@@ -569,3 +569,5 @@ def test_markdown_summary_lists_load_trace_and_calibration() -> None:
     assert "## Calibration" in summary
     assert "## Host load per round" in summary
     assert "| A | notuning | notuning |" in summary
+
+

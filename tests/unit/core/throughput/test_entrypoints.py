@@ -120,3 +120,5 @@ class TestRequireAdapter:
         adapter = object()
 
         assert require_adapter("Some.api", adapter) is adapter
+
+

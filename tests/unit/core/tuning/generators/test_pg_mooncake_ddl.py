@@ -102,3 +102,5 @@ def test_generate_partition_children_always_returns_empty_list(table_tuning: Tab
     )
 
     assert children == []
+
+

@@ -914,3 +914,5 @@ def test_cli_refuses_to_admit_when_the_hosted_fetch_fails(monkeypatch, tmp_path)
         consumer.main(argv)
     assert error.value.code == 1
     assert not admitted
+
+

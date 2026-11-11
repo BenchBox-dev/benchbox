@@ -354,3 +354,5 @@ def test_run_scoped_reset_clears_stale_merge_settle_state() -> None:
     assert adapter.base_reset_called is True
     assert adapter._merge_settle_result is None
     assert adapter._merge_settle_timeout_seconds == 0.0
+
+

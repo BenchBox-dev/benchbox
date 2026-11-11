@@ -97,3 +97,5 @@ class TestGenerateReport:
         }
         report = generate_report(result_data)
         assert "Query Execution Time" not in report
+
+

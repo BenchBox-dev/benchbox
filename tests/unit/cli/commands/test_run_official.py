@@ -79,3 +79,5 @@ def test_run_official_quiet_forwards_to_run_and_suppresses_banner(monkeypatch):
     assert lines[-1] == "/tmp/official-result.json"
     assert "TPC Official Mode Benchmark Run" not in result.output
     assert "Concurrency:" not in result.output
+
+

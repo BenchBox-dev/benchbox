@@ -141,3 +141,5 @@ class TestInfluxAdapterCoverage:
         with caplog.at_level(logging.WARNING, logger="InfluxDBAdapter"):
             adapter.drop_table("cpu")
         assert "does not support DROP TABLE" in caplog.text
+
+

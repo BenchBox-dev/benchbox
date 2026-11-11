@@ -184,3 +184,5 @@ def test_throughput_total_time_excludes_refresh_connection_setup() -> None:
 
     assert success is True
     assert result.total_time < 0.1
+
+

@@ -168,3 +168,5 @@ class TestLiveStarburstSpecificFeatures:
             assert len(results) > 0, "Expected rows from tpch.information_schema.tables"
         finally:
             live_starburst_adapter.close_connection(connection)
+
+

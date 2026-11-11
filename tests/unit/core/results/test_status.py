@@ -260,3 +260,5 @@ def test_documented_exclusions_do_not_hide_failed_queries():
     bundle = _obt_bundle("ClickHouse Local", ["41", "44"])
     assert bundle_failed_query_count(bundle) == 2
     assert not bundle_is_clean_pass(bundle)
+
+

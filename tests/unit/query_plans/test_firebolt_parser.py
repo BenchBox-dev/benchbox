@@ -87,3 +87,5 @@ class TestFireboltParserErrorHandling:
 class TestFireboltRegistry:
     def test_registry_returns_firebolt_parser(self):
         assert isinstance(get_parser_for_platform("firebolt"), FireboltQueryPlanParser)
+
+

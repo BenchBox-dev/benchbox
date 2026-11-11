@@ -79,3 +79,5 @@ def test_fork_rewrites_match_the_tpch_reference_row_counts_and_the_unrewritten_q
     assert len(actual) == expected_count
     expected = reference.execute(benchmark.get_query(query_id, dialect="duckdb")).fetchall()
     assert _comparable(actual) == _comparable(expected)
+
+

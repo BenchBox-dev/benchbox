@@ -125,3 +125,5 @@ class TestPlanRawOutputPolicy:
         assert plan.plan_fingerprint == fingerprint_before
         assert plan.logical_root is root_before
         assert plan.verify_fingerprint() is True
+
+

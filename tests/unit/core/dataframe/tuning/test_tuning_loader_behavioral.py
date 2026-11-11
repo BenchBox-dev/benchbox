@@ -360,3 +360,5 @@ class TestModuleLevelFunctions:
         assert loaded.execution.streaming_mode is True
         assert loaded.execution.lazy_evaluation is False
         assert loaded.memory.chunk_size == 100_000
+
+

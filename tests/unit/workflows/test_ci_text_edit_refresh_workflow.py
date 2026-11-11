@@ -79,3 +79,5 @@ def test_the_ci_verdict_job_is_short_and_does_not_poll() -> None:
     assert "ci_text_edit_verdict.py verdict" in command
     assert "--attempts" not in command
     assert "--interval" not in command
+
+

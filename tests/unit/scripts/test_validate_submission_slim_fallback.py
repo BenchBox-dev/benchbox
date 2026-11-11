@@ -110,3 +110,5 @@ def _canonical_version_helper():
 @pytest.mark.parametrize("bundle,expected", VERSION_MATRIX)
 def test_slim_version_helper_matches_canonical(slim_version_helper, bundle, expected) -> None:
     assert slim_version_helper(bundle) == _canonical_version_helper()(bundle) == expected
+
+

@@ -397,3 +397,5 @@ class TestClickHouseCloudAdapter:
             assert result == [(1,)]
 
             client.close()
+
+

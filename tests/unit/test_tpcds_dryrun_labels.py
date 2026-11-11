@@ -73,3 +73,5 @@ def test_maintenance_test_returns_labeled_keys():
         "Op_3_STORE_RETURNS_DELETE",
     }
     assert out["Op_1_CUSTOMER_INSERT"].upper().startswith("INSERT INTO CUSTOMER")
+
+

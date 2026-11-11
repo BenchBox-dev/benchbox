@@ -204,3 +204,5 @@ class TestGenerateData:
         gen = CoffeeShopDataGenerator(scale_factor=0.000001, output_dir=tmp_path)
         result = gen.generate_data(tables=[])
         assert result == {}
+
+

@@ -521,3 +521,5 @@ class TestTPCHStreamRunnerAdditional:
         call_args = mock_run.call_args
         cmd = call_args[0][0] if call_args[0] else call_args.kwargs.get("args", [])
         assert "MACHINE=LINUX" in cmd
+
+

@@ -96,3 +96,5 @@ def test_collect_hits_preserves_tool_result_content_classification(tmp_path: Pat
     assert [(hit.reference, hit.category, hit.line) for hit in hits] == [
         ("references/testing-patterns.md", "tool_result_content", 1)
     ]
+
+

@@ -42,3 +42,5 @@ class TestRunSurfaceRejectsUnknownPhases:
             call_tool(server, "run_benchmark", platform="duckdb", benchmark="tpch", phases="lodad", scale_factor=0.01)
 
         run_impl.assert_not_called()
+
+

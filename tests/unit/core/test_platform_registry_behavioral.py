@@ -695,3 +695,5 @@ raise SystemExit('optional SDKs loaded: ' + ', '.join(loaded) if loaded else 0)
                 for error in validate_platform_surfaces()
             )
         assert not any("POLARS_AVAILABL" in error for error in validate_platform_surfaces())
+
+

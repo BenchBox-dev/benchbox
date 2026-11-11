@@ -502,3 +502,5 @@ class TestQueryRegistry:
 
         registry = QueryRegistry(benchmark="TPC-H")
         assert registry.benchmark == "TPC-H"
+
+

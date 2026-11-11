@@ -53,3 +53,5 @@ class TestFindMatchingParenthesis:
         text = "(a) + (b)"
         assert find_matching_parenthesis(text, 0) == 2
         assert find_matching_parenthesis(text, 6) == 8
+
+

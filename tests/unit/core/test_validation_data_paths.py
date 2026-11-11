@@ -96,3 +96,5 @@ def test_validate_row_counts_connection_error():
     res = dv.validate_row_counts({"t": 1})
     assert res.is_valid is False
     assert any("Failed to retrieve actual row counts" in e for e in res.errors)
+
+

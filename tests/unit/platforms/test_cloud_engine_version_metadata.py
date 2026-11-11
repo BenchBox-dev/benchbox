@@ -102,3 +102,5 @@ class TestCollectEngineVersionMetadata:
         meta = _collect_engine_version_metadata(FakeResult())
         assert meta["engine_version"] == "exec_ver"
         assert meta["engine_version_source"] == "api"
+
+

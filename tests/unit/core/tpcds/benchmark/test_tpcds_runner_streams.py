@@ -262,3 +262,5 @@ class TestSchemaAndSQL:
         sql = tpcds.get_create_tables_sql()
         assert isinstance(sql, str)
         assert "CREATE TABLE" in sql.upper()
+
+

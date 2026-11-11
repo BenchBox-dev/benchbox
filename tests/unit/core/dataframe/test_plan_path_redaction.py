@@ -295,3 +295,5 @@ def test_single_segment_roots_do_not_redact_ordinary_words(single_segment_root):
     redacted = redact_plan_local_paths(plan, [single_segment_root])
 
     assert redacted.plan_text == plan.plan_text
+
+

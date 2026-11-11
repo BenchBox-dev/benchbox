@@ -88,3 +88,5 @@ def test_complete_official_inventory_retains_file_specific_null_pins(inputs):
     assert set(inventory) == set(runner.STATEMENTS)
     assert inventory["64"][0]["null_tokens"] == ["[NULL]"]
     assert inventory["73"][0]["null_tokens"] == ["-"]
+
+

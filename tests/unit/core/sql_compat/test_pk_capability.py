@@ -148,3 +148,5 @@ def test_doris_release_bug_fixed_by_registry():
     assert decision is not None
     assert decision.action != CompatAction.NATIVE
     assert decision.rule_id == "schema_emit.doris.write_primitives.pk_lock_table_unsupported"
+
+

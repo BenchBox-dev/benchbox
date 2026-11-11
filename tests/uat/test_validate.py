@@ -254,3 +254,5 @@ def test_publishable_form_keeps_non_privacy_errors_from_original_bundle(tmp_path
 
     assert not any(error.startswith("Public privacy contract") for error in errors)
     assert "Submission manifest has no bundle_hash field" in errors
+
+

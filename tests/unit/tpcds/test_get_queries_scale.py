@@ -34,3 +34,5 @@ def test_get_queries_is_not_rendered_at_scale_factor_one(benchmark_and_queries, 
     bench, queries = benchmark_and_queries
 
     assert queries[str(query_id)] != bench.get_query(query_id, scale_factor=1.0)
+
+

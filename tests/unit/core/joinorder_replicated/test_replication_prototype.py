@@ -399,3 +399,5 @@ def test_expected_cardinality_scaling_against_oracle():
         for query_id in ("1a", "2a", "6a", "10a", "18a"):
             count = oracle["queries"][query_id]["underlying_row_count"]
             assert expected_row_count(count, scale) == count * scale
+
+

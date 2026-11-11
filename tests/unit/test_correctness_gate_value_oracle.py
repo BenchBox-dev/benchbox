@@ -397,3 +397,5 @@ def test_digest_regeneration_binds_validated_snapshot_seed(
         with pytest.raises(ValueError, match="reference_seed must be an integer or null"):
             regeneration.main()
         assert not captured
+
+

@@ -123,3 +123,5 @@ def test_summarize(service):
     assert summary.passed_validations == 2
     assert summary.failed_validations == 1
     assert summary.warnings_count == 1
+
+

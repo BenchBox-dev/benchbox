@@ -54,3 +54,5 @@ def test_lazy_public_helpers_preserve_package_api() -> None:
         assert getattr(utilities, name) is getattr(test_helpers, name)
     with pytest.raises(AttributeError, match="has no attribute"):
         _ = utilities.unknown_helper
+
+

@@ -372,3 +372,5 @@ class TestResourceUtilizationJoinBounds:
     def test_window_bound_keeps_the_joined_rows(self, sqlite_connection, rendered_sqlite):
         rows = sqlite_connection.execute(rendered_sqlite).fetchall()
         assert rows == [("host_0", 15.0, 40.0)]
+
+

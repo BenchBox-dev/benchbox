@@ -495,3 +495,5 @@ def test_generate_local_tuned_reuse_applies_sorting(tmp_tuned_gen, tmp_path, mon
     assert (tmp_path / "item.parquet").exists()
     manifest = json.loads((tmp_path / "_datagen_manifest.json").read_text())
     assert manifest["tables"]["item"][0]["path"].endswith(".parquet")
+
+

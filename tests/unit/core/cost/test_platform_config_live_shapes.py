@@ -196,3 +196,5 @@ class TestDatabricksNestedShapes:
         config = _extract_platform_config_from_results(_results("Databricks", info))
         assert config["cluster_size_dbu_per_hour"] == 2.0
         assert "cluster_size_dbu_per_hour" in config["_defaulted_fields"]
+
+

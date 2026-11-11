@@ -328,3 +328,5 @@ def test_no_write_token_is_present_while_the_candidate_build_runs() -> None:
 
 def run_text_of(target: dict[str, Any]) -> str:
     return "\n".join(str(step.get("run", "")) for step in target["steps"])
+
+

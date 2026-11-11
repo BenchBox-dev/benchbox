@@ -3929,3 +3929,5 @@ class TestTPCHRefreshPowerConnectionAdapter:
         finally:
             release.set()
             pool.shutdown(wait=True)
+
+

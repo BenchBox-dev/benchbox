@@ -535,3 +535,5 @@ class TestDataFrameAdapterDryRun:
         mock_sql_adapter.assert_called_once_with("duckdb", type="duckdb", dry_run=True)
         mock_dataframe_adapter.assert_not_called()
         assert result.execution_mode == "sql"
+
+

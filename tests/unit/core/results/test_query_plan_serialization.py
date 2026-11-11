@@ -937,3 +937,5 @@ class TestCompanionMaxDepth:
             )
             == DEFAULT_PLAN_MAX_DEPTH
         )
+
+

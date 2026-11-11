@@ -122,3 +122,5 @@ def test_baseline_stream_session_replays_no_planner_settings(psycopg_stubs):
     assert "random_page_cost" not in executed
     assert "enable_hashjoin" not in executed
     assert "work_mem" in executed
+
+

@@ -166,3 +166,5 @@ class TestSqlRoundTrip:
         ).fetchone()[0]
         py_result = hashlib.sha256(b"John|").hexdigest()
         assert sql_result == py_result
+
+

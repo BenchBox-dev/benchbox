@@ -512,3 +512,5 @@ class TestTwoPhaseSelectionFlow:
         assert sorted_benchmarks[0][0] == "clickbench"
         assert sorted_benchmarks[1][0] == "h2odb"
         assert sorted_benchmarks[2][0] == "coffeeshop"
+
+

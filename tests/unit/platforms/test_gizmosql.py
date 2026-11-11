@@ -1282,3 +1282,5 @@ class TestHealthAndCapabilities:
         receipt = make_adapter().resolve_execution_engine("default")
 
         assert receipt.requested == "default"
+
+

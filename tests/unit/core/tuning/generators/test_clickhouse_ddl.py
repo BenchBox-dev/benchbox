@@ -105,3 +105,5 @@ def test_column_mapping_generation_and_post_load_statement():
     assert "`amount` Decimal(18, 2)" in col_list
 
     assert generator.get_post_load_statements("orders", schema="analytics") == ["OPTIMIZE TABLE analytics.orders"]
+
+

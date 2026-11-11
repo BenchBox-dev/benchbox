@@ -248,3 +248,5 @@ def test_expand_rollup_expression_skips_reorder_with_warning_for_unknown_expr_ty
 
     assert len(out) == 2
     assert "cannot read the output name" in caplog.text
+
+

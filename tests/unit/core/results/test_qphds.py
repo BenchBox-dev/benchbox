@@ -513,3 +513,5 @@ class TestSpecOrderBundleValidation:
         del payload["phases"]["maintenance_test_2"]
 
         assert any("recorded together" in item for item in throughput_stream_defects(payload))
+
+

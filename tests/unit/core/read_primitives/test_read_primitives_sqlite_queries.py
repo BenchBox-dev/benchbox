@@ -68,3 +68,5 @@ def test_non_skipped_catalog_query_executes_on_sqlite(adapter_connection, stock_
     contract = load_primitives_catalog().queries[query_id].result_contract
     if contract is not None:
         assert [description[0] for description in cursor.description] == [column.name for column in contract.columns]
+
+

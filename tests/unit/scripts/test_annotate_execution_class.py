@@ -115,3 +115,5 @@ def test_docker_server_engines_are_attested_only_on_an_explicit_maintainer_flag(
     assert manifest["container_runtime"] == "docker"
     assert manifest["container_host_os"] == "macOS"
     assert published_variant_id(json.loads(doris.read_text("utf-8")), "apache-doris", doris) == "apache-doris^container"
+
+

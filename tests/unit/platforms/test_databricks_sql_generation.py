@@ -426,3 +426,5 @@ class TestDatabricksHudiSupport:
         adapter = _make_adapter(table_format="hudi", hudi_precombine_field="L_COMMITDATE")
         result = _convert(adapter, "CREATE TABLE t (l_commitdate DATE)")
         assert "'preCombineField'='l_commitdate'" in result
+
+

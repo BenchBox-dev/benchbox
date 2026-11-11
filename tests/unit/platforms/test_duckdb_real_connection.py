@@ -130,3 +130,5 @@ class TestDuckDBRealConnection:
 
         assert (stats_mode_1, tables_analyzed_1) == (stats_mode_2, tables_analyzed_2) == ("explicit", 1)
         assert plan_1 == plan_2
+
+

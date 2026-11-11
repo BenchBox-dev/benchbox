@@ -259,3 +259,5 @@ def test_timing_analyzer_statistics_outliers_and_comparison():
     baseline = [QueryTiming(query_id="Q1", execution_time=2.0), QueryTiming(query_id="Q2", execution_time=2.0)]
     comparison = analyzer.compare_query_performance(baseline)
     assert "performance_change" in comparison or "error" in comparison
+
+

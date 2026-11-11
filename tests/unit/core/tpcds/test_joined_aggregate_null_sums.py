@@ -128,3 +128,5 @@ def test_q73_count_and_filters_are_unchanged(monkeypatch, family):
         ("Last1", "First", "Mr.", "Y", 10, 1),
         ("Last2", "First", "Mr.", "Y", 20, 1),
     ]
+
+

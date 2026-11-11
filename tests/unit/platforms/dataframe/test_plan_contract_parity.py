@@ -197,3 +197,5 @@ def test_expression_family_captures_plan_after_collect():
     _run(adapter, lambda: _Frame())
 
     assert order == ["collect", "explain"]
+
+

@@ -190,3 +190,5 @@ def test_power_test_phase_status_is_completed_when_real_queries_ran():
 
     phases = _build_phases_block(result)
     assert phases["power_test"]["status"] == "COMPLETED"
+
+

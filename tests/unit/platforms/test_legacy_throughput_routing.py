@@ -247,3 +247,5 @@ class TestMetricsAreWithheldOnFailure:
             pytest.raises(RuntimeError, match="driver exploded"),
         ):
             driver.run_throughput_test(_benchmark(), connection=Mock(), num_streams=2)
+
+

@@ -43,3 +43,5 @@ class TestParseGcsStagingDir:
     def test_bare_slash_raises_configuration_error(self) -> None:
         with pytest.raises(ConfigurationError, match="Must start with gs://"):
             parse_gcs_staging_dir("/my-bucket/path")
+
+

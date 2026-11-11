@@ -1707,3 +1707,5 @@ def test_a_marker_with_no_header_agreeing_with_the_status_verifies(monkeypatch):
     review_ = bare_app_review(body=marked_body("SHIP", "success", header=False), node_id="PRR_1")
     (checked,) = digest.verify_reviews("o/r", [review_])
     assert checked.unverifiable == ""
+
+

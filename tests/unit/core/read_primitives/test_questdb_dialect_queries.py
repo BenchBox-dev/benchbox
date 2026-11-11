@@ -87,3 +87,5 @@ def test_percentile_variant_matches_exact_percentile_cont(catalog):
     for expected_row, actual_row in zip(expected, actual, strict=True):
         assert expected_row[:3] == actual_row[:3]
         assert actual_row[3:] == pytest.approx(expected_row[3:])
+
+

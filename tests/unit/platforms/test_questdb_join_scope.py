@@ -173,3 +173,5 @@ def test_select_star_keeps_the_submitted_join_order():
 def test_qualified_star_keeps_the_submitted_join_order():
     sql = "SELECT o.* FROM customer CROSS JOIN orders AS o WHERE o_custkey = c_custkey AND c_nationkey = 7"
     assert rewrite_query(sql, columns_of) == sql
+
+

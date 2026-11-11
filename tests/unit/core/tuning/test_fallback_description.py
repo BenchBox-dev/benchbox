@@ -58,3 +58,5 @@ def test_runtime_log_classifier_recognizes_every_platforms_fallback_line(platfor
     line = f"Tuning: using {get_fallback_description(platform)} (no optimized template available)"
 
     assert status_from_log_text(line) == BASIC_CONSTRAINTS
+
+

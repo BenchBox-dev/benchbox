@@ -232,3 +232,5 @@ class TestLoadFileBatches:
         statements = self._statements(cursor)
         assert statements[0] == "DESCRIBE s.t"
         assert self._payload(statements[1]) == [["1", "a"]]
+
+

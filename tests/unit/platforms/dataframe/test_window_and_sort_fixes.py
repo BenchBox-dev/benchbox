@@ -92,3 +92,5 @@ def test_window_helpers_reject_mixed_order_directions():
         adapter.window_lag("v", 1, partition_by=["g"], order_by=[("o1", True), ("o2", False)])
     with pytest.raises(ValueError, match="uniform ORDER BY direction"):
         adapter.window_ntile(2, order_by=[("o1", True), ("o2", False)])
+
+

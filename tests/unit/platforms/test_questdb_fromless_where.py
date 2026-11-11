@@ -44,3 +44,5 @@ def test_fromless_select_without_a_filter_is_left_alone():
 def test_exists_over_a_select_that_can_change_the_row_count_is_not_inlined(inner):
     rewritten = rewrite_query(f"SELECT a FROM t WHERE EXISTS({inner})")
     assert "COALESCE" not in rewritten
+
+

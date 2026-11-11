@@ -282,3 +282,5 @@ class TestBenchmarkConfig:
         config = BenchmarkConfig(name="test", display_name="Test")
 
         assert config.options == {}
+
+

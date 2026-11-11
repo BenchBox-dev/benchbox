@@ -600,3 +600,5 @@ def test_completed_producer_job_fails_immediately(metadata):
     with pytest.raises(ValueError, match=r"not running: 1 job\(s\).*status=completed"):
         job()
     assert sleeps == []
+
+

@@ -83,3 +83,5 @@ class TestLiveDatabendQueryExecution:
             assert result is not None
         finally:
             databend_adapter.close_connection(connection)
+
+

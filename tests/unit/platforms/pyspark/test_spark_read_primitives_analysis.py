@@ -31,3 +31,5 @@ def test_list_reduce_variant_analyzes_against_decimal_quantity(tmp_path, pyspark
 
     assert [(row["l_orderkey"], row["total_qty"]) for row in rows] == [(1, Decimal("15.75"))]
     adapter.close()
+
+

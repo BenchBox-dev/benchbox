@@ -356,3 +356,5 @@ def test_statement_queries_are_single_statements_named_like_tpcds() -> None:
 def test_a_statement_letter_beyond_the_query_is_unknown(query_id: str) -> None:
     with pytest.raises(ValueError, match="Unknown query id"):
         TPCDSOBTQueryManager().get_query(query_id)
+
+

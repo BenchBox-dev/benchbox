@@ -651,3 +651,5 @@ def test_uat_bring_up_dry_run_skips_admission(monkeypatch) -> None:
 
     _bring_up_harness(monkeypatch, module, refuse)
     assert module.main(["--platform", "postgresql", "--dry-run"]) == 0
+
+

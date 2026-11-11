@@ -449,3 +449,5 @@ class TestSkipListConsistency:
             for qid, err in failed_queries:
                 msg += f"  - {qid}: {err}\n"
             pytest.fail(msg)
+
+

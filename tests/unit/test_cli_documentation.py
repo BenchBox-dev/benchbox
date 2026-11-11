@@ -233,3 +233,5 @@ class TestCLIDocumentation:
                     break
 
             assert substantial_content, f"Command {command} lacks substantial description"
+
+

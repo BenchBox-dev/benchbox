@@ -150,3 +150,5 @@ def test_a_dataframe_official_bundle_is_not_refused_for_compliance(tmp_path: Pat
     assert not decision.allowed
     assert decision.code == "non_clean"
     assert decision.reason == "validation_status=not_run"
+
+

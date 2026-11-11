@@ -60,3 +60,5 @@ class TestRedshiftErrorCapture:
         assert result["status"] == "FAILED"
         assert result["error"], "error field must never be empty"
         assert result["error_type"] == "EmptyError"
+
+

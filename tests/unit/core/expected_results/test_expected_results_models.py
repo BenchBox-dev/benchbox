@@ -180,3 +180,5 @@ class TestValidationResult:
         assert result.warning_message == "No expected result available"
         assert result.difference is None
         assert result.difference_percent is None
+
+

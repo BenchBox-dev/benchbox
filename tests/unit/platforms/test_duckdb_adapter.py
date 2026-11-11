@@ -1586,3 +1586,5 @@ class TestMCPThreadsReachTheEffectiveSetting:
             adapter.create_connection()
 
         assert not any("SET threads" in str(executed) for executed in connection.execute.call_args_list)
+
+

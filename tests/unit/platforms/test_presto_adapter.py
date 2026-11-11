@@ -823,3 +823,5 @@ class TestPrestoAdapter:
             result = adapter._load_table_data(cursor, "orders", data_file, "hive", "default")
         assert result == (1, 1)
         assert batches.call_args.kwargs["dialect"] is None
+
+

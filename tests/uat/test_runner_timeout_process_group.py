@@ -139,3 +139,5 @@ def test_run_cell_runs_the_child_in_its_own_session(tmp_path, monkeypatch):
             if _alive(pid):
                 with suppress(OSError):
                     os.kill(pid, signal.SIGKILL)
+
+

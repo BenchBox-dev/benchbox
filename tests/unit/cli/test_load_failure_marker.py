@@ -32,3 +32,5 @@ def test_emit_load_failure_marker_is_canonical_json(capsys):
 def test_emit_load_failure_marker_ignores_non_load_failures(capsys):
     _emit_load_failure_marker(SimpleNamespace(validation_details={"error": "query failed"}))
     assert capsys.readouterr().out == ""
+
+

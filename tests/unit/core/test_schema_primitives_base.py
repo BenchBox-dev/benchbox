@@ -180,3 +180,5 @@ class TestGetFkOrderedTableNamesFromColumnSpecs:
     def test_missing_columns_key_is_tolerated(self) -> None:
         tables = {"empty_table": {}}
         assert get_fk_ordered_table_names_from_column_specs(tables) == ["empty_table"]
+
+

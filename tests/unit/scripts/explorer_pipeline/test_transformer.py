@@ -1689,3 +1689,5 @@ class TestTemplateEvidence:
 
         assert transformer.to_manifest_entry(bundle_file).template_evidence is None
         assert transformer.to_detail_result(bundle_file, rid).template_evidence is None
+
+

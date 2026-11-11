@@ -90,3 +90,5 @@ def test_transformer_cleans_empty_cpu_model() -> None:
     cleaned_valid = raw_env_valid["cpu_model"].strip() or None
     assert cleaned_valid == "Apple M1"
     assert normalize_cpu_family(cleaned_valid) == "apple_silicon"
+
+

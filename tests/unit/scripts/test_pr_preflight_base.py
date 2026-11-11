@@ -154,3 +154,5 @@ def test_pr_preflight_light_steps_ignore_an_unrelated_lock_holder(tmp_path: Path
         handle.release()
 
     assert {line.split()[-1] for line in selections} == {"abc1234"}
+
+

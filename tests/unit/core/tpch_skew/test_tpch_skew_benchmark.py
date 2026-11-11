@@ -348,3 +348,5 @@ class TestTPCHSkewCompareWithUniformWrapper:
         wrapper_params = [p for p in wrapper_sig.parameters if p != "self"]
         impl_params = [p for p in impl_sig.parameters if p != "self"]
         assert wrapper_params == impl_params
+
+

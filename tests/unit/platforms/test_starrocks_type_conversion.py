@@ -63,3 +63,5 @@ class TestOptimizeBaseline:
     def test_autoincrement_removed(self, mixin) -> None:
         out = mixin._translate_schema_statement("CREATE TABLE t (id BIGINT AUTOINCREMENT, x INT);")
         assert "AUTOINCREMENT" not in out.upper()
+
+

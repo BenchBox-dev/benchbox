@@ -58,3 +58,5 @@ def test_the_installed_matcher_is_byte_identical_to_the_vendored_copy_and_the_lo
 
     assert installed == vendored
     assert hashlib.sha256(installed).hexdigest() == LOCK["matcher"]["sha256"]
+
+

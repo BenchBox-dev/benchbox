@@ -124,3 +124,5 @@ def test_sql_file_typo_still_fails_next_to_valid_sections(tmp_path):
     path.write_text(yaml.safe_dump({"primary_keys": {"enabled": True}, "writes": {}}), encoding="utf-8")
     with pytest.raises(ValueError, match="writes"):
         ConfigManager().load_unified_tuning_config(path)
+
+

@@ -338,3 +338,5 @@ def test_nyctaxi_manifest_null_marker(tmp_path: Path) -> None:
     benchmark.downloader._table_row_counts = {"trips": 1}
     benchmark._write_manifest()
     _assert_manifest_null_markers(tmp_path, {"trips": data_file}, benchmark)
+
+

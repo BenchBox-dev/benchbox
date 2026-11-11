@@ -281,3 +281,5 @@ class TestSelectDatabaseWithFilter:
         config = db_manager.select_database(style_filter=None)
 
         assert isinstance(config.type, str)
+
+

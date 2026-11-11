@@ -126,3 +126,5 @@ class TestExecuteOperationQueryConnectionAdaptation:
         (seen,) = benchmark.seen_connections
         assert isinstance(seen, PlatformAdapterConnection)
         assert result["status"] == "SUCCESS"
+
+

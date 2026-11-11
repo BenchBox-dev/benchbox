@@ -453,3 +453,5 @@ def test_loader_raises_on_decompression_or_file_errors(tmp_path):
 
     with pytest.raises(data_loading.DataLoadingError, match="widgets"):
         loader._load_single_file("widgets", source)
+
+

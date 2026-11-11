@@ -270,3 +270,5 @@ class TestConfigProviderRegistration:
         }
 
         assert not any(module.startswith("benchbox.cli") for module in imported)
+
+

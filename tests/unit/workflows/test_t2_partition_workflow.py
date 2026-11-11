@@ -284,3 +284,5 @@ def test_every_medium_sharding_command_binds_the_duration_fixture(filename: str)
 
     assert len(commands) >= 2
     assert all("--durations tests/fixtures/medium_shard_durations.json" in command for command in commands)
+
+

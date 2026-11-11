@@ -454,3 +454,5 @@ class TestMergePlanMetadata:
         assert merged.plan_fingerprints["q1"] == "b" * 64
         assert merged.plan_versions["q1"] == 2
         assert merged.platform == "datafusion"
+
+

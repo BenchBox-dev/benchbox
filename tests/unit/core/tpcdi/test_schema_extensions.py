@@ -105,3 +105,5 @@ class TestGetForeignKeyConstraints:
         assert self_ref is not None, "DimBroker should have a self-referencing FK"
         assert self_ref["column"] == "ManagerID"
         assert self_ref["references_column"] == "BrokerID"
+
+

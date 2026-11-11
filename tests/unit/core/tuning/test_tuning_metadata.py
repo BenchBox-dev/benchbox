@@ -1451,3 +1451,5 @@ def test_batch_insert_inline_datetime_has_no_iso_t_separator():
     assert len(connection.executed) == 1
     assert "'2026-10-06 20:56:51'" in connection.executed[0]
     assert "2026-10-06T20:56" not in connection.executed[0]
+
+

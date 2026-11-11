@@ -284,3 +284,5 @@ class TestFireboltDeploymentRegistry:
         cloud_cap = caps.deployment_modes["cloud"]
         assert cloud_cap.requires_credentials is True
         assert cloud_cap.requires_network is True
+
+

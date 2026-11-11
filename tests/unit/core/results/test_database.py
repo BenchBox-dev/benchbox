@@ -1116,3 +1116,5 @@ class TestDataclasses:
         assert config.min_samples == 1
         assert config.lookback_days == 90
         assert config.require_success is True
+
+

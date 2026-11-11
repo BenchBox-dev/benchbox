@@ -389,3 +389,5 @@ def test_q23a_union_sum_preserves_null_and_zero(family, catalog_prices, web_pric
     tables["web_sales"]["ws_list_price"] = web_prices
     assert _reference_rows(tpcds_benchmark, "23a", logged, tables) == [(expected,)]
     assert _dataframe_rows(family, "23a", logged, tables) == [(expected,)]
+
+

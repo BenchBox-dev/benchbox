@@ -244,3 +244,5 @@ def test_duckdb_write_failure_logs_warning(monkeypatch, tmp_path, caplog):
     assert isinstance(ok, bool)
     if not ok:
         assert err is not None
+
+

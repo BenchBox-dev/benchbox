@@ -550,3 +550,5 @@ def test_binary_defect_forces_regeneration_on_reuse_check(generator_binaries, tm
 
     _write(generator_binary_sha256=DEFECTIVE_DBGEN_SHA256[1])
     assert _validate_manifest_if_present(_Benchmark(), config)[::2] == (False, True)
+
+

@@ -488,3 +488,5 @@ class TestDuckDBInsertFromCsv:
 
         with pytest.raises(duckdb.Error):
             duckdb_insert_from_csv(connection, "t", path, 2, trailing_delimiter=True, skip_malformed=False)
+
+

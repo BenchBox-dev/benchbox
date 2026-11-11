@@ -361,3 +361,5 @@ class TestDuckLakeTableRead:
         assert len(df) == 3
         assert list(df["id"]) == [1, 2, 3]
         assert list(df["name"]) == ["Alice", "Bob", "Charlie"]
+
+

@@ -175,3 +175,5 @@ def test_delay_causes_returns_plain_python_row_on_dask(dask_context):
 
     assert list(result.columns)[0] == "carrier_delay_count"
     assert len(result) == 1
+
+

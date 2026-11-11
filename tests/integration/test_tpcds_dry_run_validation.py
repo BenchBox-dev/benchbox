@@ -103,3 +103,5 @@ class TestTPCDSDryRunValidation:
             assert len(queries1) == len(queries2), "Should produce same number of queries"
 
             assert type(queries1) == type(queries2), "Should return same result type"
+
+

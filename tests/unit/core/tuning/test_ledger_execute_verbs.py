@@ -636,3 +636,5 @@ class TestAdapterCreateSchema:
 
         assert len(driver.calls) == 2
         assert [(s.phase, s.status) for s in ledger.statements] == [(PHASE_DDL, EXECUTED)]
+
+

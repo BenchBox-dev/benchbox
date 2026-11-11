@@ -59,3 +59,5 @@ def test_duckdb_inline_keys_are_satisfied_end_to_end(tpch_data, tmp_path):
     assert ledger["receipt"]["corroborated"] is True
     assert {item["intent"] for item in ledger["satisfied"]} == {"primary_keys", "foreign_keys"}
     assert ledger["dropped"] == []
+
+

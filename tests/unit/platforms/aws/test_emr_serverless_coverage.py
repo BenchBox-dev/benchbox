@@ -154,3 +154,5 @@ class TestEMRServerlessCoverage:
         adapter._emr_serverless_client = emr
         status = adapter.create_connection()
         assert status["status"] == "connected"
+
+

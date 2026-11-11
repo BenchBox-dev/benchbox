@@ -46,3 +46,5 @@ def test_generate_series_is_rewritten_to_the_numbers_table_function_on_doris(txn
 def test_other_platforms_keep_begin_transaction(txn):
     sql = "BEGIN TRANSACTION;\nCOMMIT;\n"
     assert txn._rewrite_transactional_sql_for_platform(sql, "mysql") == sql
+
+

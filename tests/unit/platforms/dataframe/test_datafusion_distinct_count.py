@@ -71,3 +71,5 @@ def test_global_and_multi_aggregate_distinct_counts_keep_native_accumulator():
     assert mixed.collect().num_rows == GROUPS + 1
     total = ctx.get_table("facts").select(ctx.col("value").n_unique().alias("n_values")).collect()
     assert total.column("n_values").to_pylist() == [3]
+
+

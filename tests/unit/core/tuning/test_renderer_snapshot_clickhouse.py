@@ -64,3 +64,5 @@ class TestClickHousePreviewExecutionParity:
 
         assert "ORDER BY (l_orderkey)" in rendered
         assert "PARTITION BY" not in rendered
+
+

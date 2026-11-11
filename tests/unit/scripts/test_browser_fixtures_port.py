@@ -78,3 +78,5 @@ def test_generate_builds_a_read_model_with_every_fixture_role(tmp_path: Path) ->
     assert sorted(ids["ids"]) == sorted(browser_fixtures.FIXTURE_ROLES.values())
     assert ids["shortIds"] == {role: short_ids[result_id] for role, result_id in ids["ids"].items()}
     assert browser_fixtures.digest(data / "results.duckdb")["tables"]
+
+

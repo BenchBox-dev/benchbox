@@ -165,3 +165,5 @@ def test_a_conflicting_execution_class_fails_the_pipeline_instead_of_skipping_th
 
     with pytest.raises(ExecutionClassError, match="attests"):
         ExplorerPipeline().run(data_dir=tmp_path / "data", output_dir=tmp_path / "out")
+
+

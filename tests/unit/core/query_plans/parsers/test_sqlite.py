@@ -164,3 +164,5 @@ def test_unrepresentable_rows_raise_parse_error(text):
     with pytest.raises(ValueError):
         parser._parse_impl("Q", text)
     assert parser.parse_explain_output("Q", text) is None
+
+

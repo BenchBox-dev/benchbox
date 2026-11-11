@@ -102,3 +102,5 @@ def test_get_tpch_extracted_parameters_cache(monkeypatch: pytest.MonkeyPatch) ->
 
     assert first == second == third
     assert calls == [(123, 0.1), (123, 0.1)]
+
+

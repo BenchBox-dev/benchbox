@@ -300,3 +300,5 @@ def test_official_inventory_maps_all_103_statements_and_query_98_pages(null_orde
     assert len(answers["98"][0].rows) == 1997
     assert len(answers["98"][1].rows) == 519
     assert sum(len(blocks) if key in multipart else 1 for key, blocks in answers.items()) == 103
+
+

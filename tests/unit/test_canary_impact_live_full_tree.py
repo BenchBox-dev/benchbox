@@ -92,3 +92,5 @@ def test_medium_single_module_diff_selects_subset(live_medium: tuple[list[str], 
     )
     assert selection["whole_suite"] is False
     assert 0 < selection["selected_count"] < selection["total_count"]
+
+

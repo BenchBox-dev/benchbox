@@ -708,3 +708,5 @@ def test_tpch_maintenance_integrity(monkeypatch: pytest.MonkeyPatch):
     maint_broken = TPCHMaintenanceTest(connection_factory=_BrokenMaintenanceConn, scale_factor=1.0, verbose=True)
 
     assert maint_broken.validate_data_integrity() is True
+
+

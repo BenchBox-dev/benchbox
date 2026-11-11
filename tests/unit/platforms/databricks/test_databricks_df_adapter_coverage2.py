@@ -418,3 +418,5 @@ class TestExecuteQuerySQLDispatch:
         assert received["benchmark_type"] == "tpch"
         assert received["scale_factor"] == 0.1
         assert received["stream_id"] == 7
+
+

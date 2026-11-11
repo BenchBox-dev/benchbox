@@ -253,3 +253,5 @@ def test_report_trends_follow_the_latest_runs_variant(tmp_path: Path) -> None:
     assert [(t.sample_count, t.variant) for t in trends] == [
         (1, "deployment=default, execution engine=streaming, gateway=native")
     ]
+
+

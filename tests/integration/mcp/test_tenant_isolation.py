@@ -72,3 +72,5 @@ def test_principal_cannot_list_read_or_export_another_workspace(tmp_path: Path) 
 
     anyio.run(exercise)
     assert not list((tmp_path / "workspaces").rglob("stolen.csv"))
+
+

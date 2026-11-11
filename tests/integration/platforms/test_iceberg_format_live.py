@@ -205,3 +205,5 @@ class TestIcebergSnapshots:
 
         assert len(snapshots) == 2
         assert snapshots[0].snapshot_id != snapshots[1].snapshot_id
+
+

@@ -70,3 +70,5 @@ def test_fallback_and_auto_do_not_request_unrendered_check_constraints(mode, sou
     assert s.loaded_unified_config.check_constraints.enabled is False
     assert s.loaded_unified_config.unique_constraints.enabled is False
     assert s.loaded_unified_config.primary_keys.enabled is True
+
+

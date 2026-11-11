@@ -154,3 +154,5 @@ class TestDataFrameAdapterSafety:
 
         adapter = _get_platform_adapter("pandas-df", benchmark="tpch", scale_factor=0.01)
         assert adapter is not None
+
+

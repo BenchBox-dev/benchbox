@@ -86,3 +86,5 @@ def test_variant_rows_match_pandas_on_dask(query_id, monkeypatch):
     assert actual == expected
     if query_id.startswith("Q21"):
         assert expected
+
+

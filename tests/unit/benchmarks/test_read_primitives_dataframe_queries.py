@@ -233,3 +233,5 @@ class TestQueryImplementationSignatures:
         for query in REGISTRY.get_all_queries():
             impl = query.pandas_impl
             assert callable(impl), f"Query {query.query_id} pandas_impl should be callable"
+
+

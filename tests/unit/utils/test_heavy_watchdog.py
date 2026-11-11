@@ -588,3 +588,5 @@ def test_the_default_cleanup_budget_is_derived_from_the_stop_and_kill_bounds() -
     assert bound({}) == pytest.approx(86.0)
     assert bound({"BENCHBOX_LINUX_STOP_TIMEOUT_SECONDS": "15"}) == pytest.approx(41.0)
     assert bound({"BENCHBOX_LINUX_STOP_TIMEOUT_SECONDS": "x"}) == pytest.approx(86.0)
+
+

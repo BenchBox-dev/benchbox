@@ -325,3 +325,5 @@ class TestAcquireErrorCapture:
         assert attempt.success is False
         assert attempt.error, "attempt.error must never be empty"
         assert "EmptyError" in attempt.error
+
+

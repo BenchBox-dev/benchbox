@@ -226,3 +226,5 @@ def test_compare_totals_pairs_rounds() -> None:
     assert result.ci_high == pytest.approx(0.5)
     with pytest.raises(ValueError):
         stats.compare_totals("N", [1.0], "T", [1.0, 2.0], seed=1)
+
+

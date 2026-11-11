@@ -73,3 +73,5 @@ def test_eq3_counts_source_rows_with_a_single_count():
     query = _bench().get_queries()["EQ3"]
     assert "(SELECT COUNT(*) FROM DimCustomer WHERE BatchID = 1) as source_records" in query
     assert not re.search(r"SELECT\s+COUNT\s*\(\s*\*\s*\)\s+FROM\s+\(\s*(?:--[^\n]*\s*)?SELECT\s+COUNT", query)
+
+

@@ -823,3 +823,5 @@ class TestPySparkParquetLimitations:
         with patch.object(ops, "is_delta_table", return_value=False):
             with pytest.raises(NotImplementedError, match="MERGE requires Delta Lake"):
                 ops._do_merge("/tmp/parquet_table", MagicMock(), "id = id", None, None)
+
+

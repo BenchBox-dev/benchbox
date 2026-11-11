@@ -775,3 +775,5 @@ class TestHudiInsertWithPartitions:
 
         assert result.success is True
         assert result.rows_affected == 10
+
+

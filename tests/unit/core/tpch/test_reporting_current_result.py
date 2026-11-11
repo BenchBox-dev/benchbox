@@ -65,3 +65,5 @@ def test_comparison_uses_power_at_size(tmp_path):
     assert comparison.baseline_power_at_size == 1800.0
     assert comparison.current_power_at_size == 3600.0
     assert comparison.relative_change == pytest.approx(1.0)
+
+

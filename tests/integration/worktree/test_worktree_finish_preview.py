@@ -679,3 +679,5 @@ def test_apply_from_inside_target_worktree_still_deletes_ref(tmp_path: Path, mon
         text=True,
     )
     assert proc.returncode != 0
+
+

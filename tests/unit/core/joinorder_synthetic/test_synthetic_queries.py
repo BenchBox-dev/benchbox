@@ -140,3 +140,5 @@ class TestScalarVacuityGuard:
             legitimately_empty={"1a": "test rationale"},
         )
         assert exit_code == 0
+
+

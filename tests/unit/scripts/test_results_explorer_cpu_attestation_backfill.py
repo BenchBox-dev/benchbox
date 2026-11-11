@@ -60,3 +60,5 @@ def test_existing_attestation_manifest_refuses_sidecar_only_write(tmp_path: Path
         backfill(bundles_dir=tmp_path, write=True, manifest_path=first_manifest)
 
     assert sidecar.read_bytes() == before
+
+

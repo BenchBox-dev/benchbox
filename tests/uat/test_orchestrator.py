@@ -1883,3 +1883,5 @@ def test_cells_jsonl_repeated_query_id_mixed_error_types_never_misattributes(tmp
     failed = _failed_details_for(tmp_path, {"7": "Timeout: slow", "7 ": "Binder Error: bad column"})
 
     assert [f["error"] for f in failed] == ["Binder Error: bad column | Timeout: slow"] * 2
+
+

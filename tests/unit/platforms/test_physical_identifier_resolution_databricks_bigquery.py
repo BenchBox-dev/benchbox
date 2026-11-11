@@ -224,3 +224,5 @@ class TestNoCasingHacksInTuningBuilders:
     @pytest.mark.parametrize("hack", ["table_tuning.table_name.upper()", "table_tuning.table_name.lower()"])
     def test_builders_do_not_fold_the_logical_table_name(self, relative, hack):
         assert hack not in (REPO_ROOT / relative).read_text(encoding="utf-8")
+
+

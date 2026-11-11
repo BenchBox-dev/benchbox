@@ -313,3 +313,5 @@ def test_duckdb_assert_reads_the_downloaded_history_not_the_output_dir() -> None
 def test_baseline_reset_variable_reaches_the_assert_environment() -> None:
     env = _jobs()["throughput"]["env"]
     assert env["THROUGHPUT_BASELINE_MIN_RECORDED_AT"] == "${{ vars.THROUGHPUT_BASELINE_MIN_RECORDED_AT }}"
+
+

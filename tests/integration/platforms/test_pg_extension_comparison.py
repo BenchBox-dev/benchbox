@@ -231,3 +231,5 @@ class TestPgExtensionComparisonReport:
 
         multi_platform_queries = {qid: timings for qid, timings in query_timings.items() if len(timings) >= 2}
         assert len(multi_platform_queries) > 0, "Expected at least one query with results from multiple platforms"
+
+

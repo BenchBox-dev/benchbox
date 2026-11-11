@@ -103,3 +103,5 @@ def test_a_reuse_decision_that_cannot_run_becomes_a_warned_full_uat_run_not_a_fa
     assert "::warning::The reuse decision could not run (exit status 2)" in result.stdout
     assert Path(env["GITHUB_OUTPUT"]).read_text(encoding="utf-8") == "reuse=false\n"
     assert "could not run (exit status 2)" in Path(env["GITHUB_STEP_SUMMARY"]).read_text(encoding="utf-8")
+
+

@@ -181,3 +181,5 @@ def test_having_filters_before_window_functions_run():
     )
     assert rewritten.startswith("SELECT __g0 AS a, RANK() OVER (ORDER BY __a0) AS r FROM (SELECT __g0 AS __g0")
     assert rewritten.endswith("AS __staged_having WHERE __a0 > 1) AS __staged")
+
+

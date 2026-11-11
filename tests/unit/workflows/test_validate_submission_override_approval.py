@@ -122,3 +122,5 @@ def _all_run_text(workflow: Path) -> str:
 def test_seed_corpus_locate_excludes_overrides() -> None:
     raw = SEED_WORKFLOW.read_text(encoding="utf-8")
     assert '! -name "*.override.json"' in raw
+
+

@@ -55,3 +55,5 @@ def test_create_debug_logger_sets_expected_levels() -> None:
 
     assert logger_quiet.level == logging.ERROR
     assert logger_debug.level == logging.DEBUG
+
+

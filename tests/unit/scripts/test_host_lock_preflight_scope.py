@@ -189,3 +189,5 @@ def test_standalone_host_lock_file_runs_without_the_benchbox_package(tmp_path: P
     assert not lock_created
     assert allowed.returncode == 0, allowed.stderr
     assert allowed.stdout.strip() == "make pr-preflight"
+
+

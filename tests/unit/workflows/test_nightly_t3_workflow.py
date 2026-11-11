@@ -1221,3 +1221,5 @@ def test_uat_questdb_compose_pins_the_same_digest_as_the_mirror() -> None:
     assert match is not None
     assert match.group(1) == "10.0.1"
     assert match.group(2) == QUESTDB_DIGEST
+
+

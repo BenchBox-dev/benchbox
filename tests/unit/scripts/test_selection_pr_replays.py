@@ -187,3 +187,5 @@ def test_miss_report_lists_the_replayed_failures_as_caught(
     assert report["missed"] == []
     assert report["would_escalate"] is False
     assert "No misses" in summary.read_text(encoding="utf-8")
+
+

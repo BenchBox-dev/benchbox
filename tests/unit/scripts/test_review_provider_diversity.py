@@ -74,3 +74,5 @@ def test_every_reviewer_survives_the_loss_of_any_one_provider(role: str) -> None
             target for target in candidates if _provider(target) != lost and _window(target) >= INLINE_OVERHEAD
         ]
         assert survivors, f"{role} has no candidate with a {INLINE_OVERHEAD} window once {lost} is lost"
+
+

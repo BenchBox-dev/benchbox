@@ -273,3 +273,5 @@ def test_server_execute_multistatement_query_allocates_separate_statement_ids(mo
     assert len(query_ids) == 3
     assert len(set(query_ids)) == 3
     assert [req["id"] for req in timing["requests"]] == query_ids
+
+

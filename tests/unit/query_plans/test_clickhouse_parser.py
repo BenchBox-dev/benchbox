@@ -118,3 +118,5 @@ class TestClickHouseErrorRecovery:
 class TestClickHouseRegistration:
     def test_registered_for_clickhouse(self):
         assert isinstance(get_parser_for_platform("clickhouse"), ClickHouseQueryPlanParser)
+
+

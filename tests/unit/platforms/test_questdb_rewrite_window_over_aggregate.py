@@ -93,3 +93,5 @@ def test_group_by_projection_alias_is_resolved_before_staging():
     rewritten = rewrite_query("SELECT a + 1 AS k, SUM(x) AS s, RANK() OVER (ORDER BY SUM(x)) AS r FROM t GROUP BY k")
     assert "GROUP BY a + 1" in rewritten
     assert "SELECT k AS" not in rewritten
+
+

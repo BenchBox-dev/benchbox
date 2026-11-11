@@ -166,3 +166,5 @@ def test_run_official_rejects_explicit_streams_one():
 
     assert result.exit_code != 0
     assert "streams must be >= 2" in result.output
+
+

@@ -262,3 +262,5 @@ def test_validate_row_counts_uses_monotonic_elapsed_time():
         result = dv.validate_row_counts({"orders": 10})
 
     assert result.execution_time == pytest.approx(1.75)
+
+

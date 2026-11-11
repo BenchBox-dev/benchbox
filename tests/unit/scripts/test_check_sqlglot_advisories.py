@@ -150,3 +150,5 @@ def test_main_default_root_reads_committed_pin(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(advisories, "query_osv", lambda version: seen.append(version) or [])
     assert main([]) == 0
     assert len(seen[0].split(".")) == 3
+
+

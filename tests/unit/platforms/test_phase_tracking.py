@@ -403,3 +403,5 @@ def test_get_existing_tables_uses_cursor_then_execute_fallback_then_empty_on_fai
     cursor_connection.cursor_obj.close.assert_called_once_with()
     assert adapter._get_existing_tables(execute_connection) == ["part", "supplier"]
     assert adapter._get_existing_tables(failing_connection) == []
+
+

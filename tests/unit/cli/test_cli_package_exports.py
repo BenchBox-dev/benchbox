@@ -56,3 +56,5 @@ def test_benchmarks_submodule_remains_available_as_package_attribute(monkeypatch
 
     assert benchmarks_module is importlib.import_module("benchbox.cli.benchmarks")
     assert cli_module.benchmarks is benchmarks_module
+
+

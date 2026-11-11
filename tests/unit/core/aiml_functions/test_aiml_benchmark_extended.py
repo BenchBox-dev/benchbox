@@ -314,3 +314,5 @@ class TestAIMLFunctionsBenchmarkAdditional:
         if cats:
             result = bm.run_benchmark(conn, platform="snowflake", categories=[cats[0]], setup_data=False)
             assert result is not None
+
+

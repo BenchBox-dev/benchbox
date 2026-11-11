@@ -23,3 +23,5 @@ def test_fare_quantiles_per_passenger_count_match_pandas(family):
     rows = result_rows(q9_pandas_impl(build_context(family, {"trips": trips}, npartitions=3)))
 
     assert rows == [(1, 3.5, 5.5), (2, 20.0, 28.0)]
+
+

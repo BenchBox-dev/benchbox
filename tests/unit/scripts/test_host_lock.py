@@ -899,3 +899,5 @@ def test_blocking_lock_primitives_use_the_same_byte_on_windows(lock_file: Path, 
         (windows_msvcrt.LK_LOCK, hl.LOCK_OFFSET),
         (windows_msvcrt.LK_UNLCK, hl.LOCK_OFFSET),
     ]
+
+

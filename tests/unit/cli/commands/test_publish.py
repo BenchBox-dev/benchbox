@@ -300,3 +300,5 @@ def test_publish_redaction_surfaces_a_salt_store_error_naming_path_and_override(
     assert (published, scratch) == (None, None)
     assert _RecordingExporter.configs == []
     assert any(str(salt_path) in line and "BENCHBOX_MACHINE_ID_SALT" in line for line in printed)
+
+

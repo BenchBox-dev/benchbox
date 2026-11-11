@@ -209,3 +209,5 @@ def test_snowflake_warning_follows_recorded_warehouse_size(warehouse_size, warne
     run_command._print_template_evidence_warning(result, quiet=False)
 
     assert bool(printed) is warned
+
+

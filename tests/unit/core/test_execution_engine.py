@@ -204,3 +204,5 @@ def test_adapter_without_engines_returns_platform_default_receipt() -> None:
 
     with pytest.raises(UnsupportedExecutionEngineError, match="'DuckDB' does not support execution engine 'streaming'"):
         DuckDBAdapter().resolve_execution_engine("streaming")
+
+

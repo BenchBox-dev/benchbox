@@ -15,3 +15,5 @@ def test_lakesail_skips_select_list_correlated_scalar_subquery_variant():
     assert "1_v1" in skipped
     assert set(skipped) == set(LAKESAIL_TPCHAVOC_SKIPS)
     assert "1_v1" in benchmark.get_queries(dialect="spark")
+
+

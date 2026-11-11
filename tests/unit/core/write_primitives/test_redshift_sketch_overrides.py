@@ -58,3 +58,5 @@ def test_redshift_hll_overrides_avoid_hllsketch_key_and_grouping_clauses() -> No
         assert "GROUP BY USER_SKETCH" not in sql
         assert "ORDER BY USER_SKETCH" not in sql
         assert "DISTINCT USER_SKETCH" not in sql
+
+

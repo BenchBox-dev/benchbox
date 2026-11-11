@@ -585,3 +585,5 @@ class TestCliMcpParity:
 
         assert cli_receipt == mcp_receipt
         assert cli_receipt["requested"] == execution_engine
+
+

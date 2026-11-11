@@ -392,3 +392,5 @@ class TestStreamingCompression:
             )
             lines = [line for line in result.stdout.strip().split("\n") if line]
             assert len(lines) == 20, f"Expected 20 rows in zstd, got {len(lines)}"
+
+

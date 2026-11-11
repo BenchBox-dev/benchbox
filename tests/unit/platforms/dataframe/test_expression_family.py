@@ -502,3 +502,5 @@ class TestQueryIntegration:
 
         assert result["status"] == "SUCCESS"
         assert result["rows_returned"] == 75
+
+

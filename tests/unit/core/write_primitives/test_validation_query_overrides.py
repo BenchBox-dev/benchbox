@@ -218,3 +218,5 @@ class TestValidationFallbackResolution:
     def test_no_fallback_keeps_default(self):
         sql, skip = _resolve_validation_sql(self._vq({"duckdb": "SELECT DIALECT"}), "ducklake")
         assert (sql, skip) == ("SELECT DEFAULT", None)
+
+

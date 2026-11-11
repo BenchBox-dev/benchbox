@@ -269,3 +269,5 @@ class TestAIMLFunctionPlatformCoverage:
         assert len(funcs) >= 3
         categories = {f.category for f in funcs}
         assert AIMLFunctionCategory.COMPLETION in categories or AIMLFunctionCategory.SUMMARIZATION in categories
+
+

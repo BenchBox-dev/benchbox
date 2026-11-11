@@ -120,3 +120,5 @@ def test_download_tpcds_failure_returns_exit_code_one(runner: CliRunner) -> None
 
     assert result.exit_code == 1
     assert "TPC-DS answer download failed" in result.output
+
+

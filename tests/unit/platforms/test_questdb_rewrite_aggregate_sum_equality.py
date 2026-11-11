@@ -135,3 +135,5 @@ def test_revenue_in_having_compared_to_max_of_revenue_gets_tolerance_floor():
 def test_max_equality_without_sums_is_left_alone():
     sql = "SELECT a FROM t JOIN (SELECT MAX(b) AS top FROM w) AS m ON t.b = m.top"
     assert "ABS" not in rewrite_query(sql)
+
+

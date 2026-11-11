@@ -71,3 +71,5 @@ def test_export_helper_defaults_to_json_format() -> None:
         )
 
     exporter.export_result.assert_called_once_with(result, ["json"])
+
+

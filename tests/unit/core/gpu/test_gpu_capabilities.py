@@ -285,3 +285,5 @@ class TestGetGPUCapabilities:
         caps = get_gpu_capabilities()
         assert caps.supports_fp16 is False
         assert caps.supports_tensor_cores is False
+
+

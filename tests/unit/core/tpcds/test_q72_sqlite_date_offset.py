@@ -46,3 +46,5 @@ def test_q72_ship_date_predicate_adds_whole_days_in_sqlite():
     expected = _duckdb_rows(SHIPPED_PREDICATE)
     assert expected
     assert _sqlite_rows(translated) == expected
+
+

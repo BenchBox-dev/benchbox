@@ -848,3 +848,5 @@ class TestUATGateReleaseEvidence:
     def test_release_evidence_dir_convention_documented(self):
         readme = (REPO_ROOT / "_project" / "release-evidence" / "README.md").read_text(encoding="utf-8")
         assert "uat-gate-summary.json" in readme
+
+

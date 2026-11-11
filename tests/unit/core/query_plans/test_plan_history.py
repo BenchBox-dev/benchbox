@@ -689,3 +689,5 @@ class TestPlatformPartitionAndVersionAwareMetrics:
             assert result.exit_code == 0, result.output
             assert "Unique plans: 2" in result.output
             assert "Plan changes: 2" in result.output
+
+

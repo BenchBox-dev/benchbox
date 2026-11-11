@@ -195,3 +195,5 @@ def test_slim_no_project_checkout_rejects_false_clean_measurement(tmp_path: Path
 
     assert result.returncode == 1
     assert "contradicts 1 failed measurement query" in result.stdout
+
+

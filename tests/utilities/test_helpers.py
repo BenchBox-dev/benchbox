@@ -407,3 +407,5 @@ def assert_no_sql_injection(query: str) -> None:
 
     if "||" in query or "+" in query:
         warnings.warn("Query contains string concatenation operators", stacklevel=2)
+
+

@@ -199,3 +199,5 @@ def test_backends_satisfy_runtime_checkable_protocol() -> None:
 
     assert isinstance(sql_backend, TPCDIETLBackend)
     assert isinstance(df_backend, TPCDIETLBackend)
+
+

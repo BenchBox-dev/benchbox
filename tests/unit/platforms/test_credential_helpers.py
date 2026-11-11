@@ -177,3 +177,5 @@ class TestPromptSecureField:
 
         assert result == "existing_token"
         mock_ask.assert_called_once_with("Access token [current: ****SET****]", password=True, default="")
+
+

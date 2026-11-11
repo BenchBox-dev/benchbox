@@ -40,3 +40,5 @@ def test_q21_selects_orders_by_key_not_by_position(family):
     rows = result_rows(q21_pandas_impl(ctx))
 
     assert rows == [("Supplier#1", 8)]
+
+

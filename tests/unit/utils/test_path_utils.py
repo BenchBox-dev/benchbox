@@ -471,3 +471,5 @@ class TestWorkTreeAnchoredDefault:
         expected_root = tmp_path / "benchmark_runs"
         assert get_benchmark_runs_datagen_path("tpch", 0.01) == expected_root / "datagen" / "tpch_sf001"
         assert get_benchmark_runs_databases_path("tpch", 0.01) == expected_root / "databases" / "tpch_sf001"
+
+

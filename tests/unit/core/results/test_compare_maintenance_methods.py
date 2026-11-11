@@ -131,3 +131,5 @@ def test_cli_refusal_is_not_bypassed_by_heterogeneous_flag(tmp_path: Path):
 def test_cli_file_comparison_accepts_equal_methods(tmp_path: Path):
     result = CliRunner().invoke(cli, ["compare", _write(tmp_path / "a.json", NEW), _write(tmp_path / "b.json", NEW)])
     assert result.exit_code == 0, result.output
+
+

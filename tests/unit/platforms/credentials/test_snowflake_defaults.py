@@ -811,3 +811,5 @@ class TestValidateSnowflakeCredentials:
 
         assert ok is False
         assert err is not None
+
+

@@ -156,3 +156,5 @@ def test_having_with_empty_group_by_drops_the_group_clause():
 def test_having_with_group_by_modifiers_is_left_alone(group_by):
     sql = f"SELECT a, COUNT(*) AS n FROM t {group_by} HAVING COUNT(*) > 1"
     assert "qdb_having" not in rewrite_query(sql)
+
+

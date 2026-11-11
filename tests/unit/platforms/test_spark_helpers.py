@@ -790,3 +790,5 @@ class TestDefaultSparkDriverMemory:
         heap_gib = int(default_spark_driver_memory("local[*]", int(15.6 * self.GIB)).removesuffix("g"))
 
         assert heap_gib + jvm_non_heap_allowance_gib + python_driver_allowance_gib <= guard_gib
+
+

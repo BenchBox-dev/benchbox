@@ -136,3 +136,5 @@ def test_fact_generators_cover_sequential_parallel_and_chunk_paths(tmp_path: Pat
 
     assert cleanup_calls
     assert gen.generation_stats["records_generated"] > 0
+
+

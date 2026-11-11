@@ -83,3 +83,5 @@ def test_bare_list_expr_in_select_datafusion():
     bare = UnifiedExpr(datafusion.col("arr")).list.sort()
     out = frame.select(bare.alias("sorted")).collect().to_pydict()
     assert out["sorted"] == [[10, 20, 30], [40, 50]]
+
+

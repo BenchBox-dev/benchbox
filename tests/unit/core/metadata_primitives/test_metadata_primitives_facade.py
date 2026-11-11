@@ -141,3 +141,5 @@ class TestMetadataPrimitivesFacadeComplexity:
         obj = MetadataPrimitives()
         cats = obj.get_complexity_categories()
         assert isinstance(cats, list)
+
+

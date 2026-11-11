@@ -185,3 +185,5 @@ class TestAPICompatibility:
         assert "select" in sql_postgres.lower() or "with" in sql_postgres.lower()
         assert len(sql_standard) > 50
         assert "select" in sql_standard.lower() or "with" in sql_standard.lower()
+
+

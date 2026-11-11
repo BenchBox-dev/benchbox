@@ -49,3 +49,5 @@ def test_clickbench_null_marker_distinguishes_empty_string_from_null(tmp_path):
     assert row_count == len(expected)
     assert [(r["id"], r["searchphrase"], r["counter"]) for r in sorted(loaded, key=lambda r: r["id"])] == expected
     assert [r["searchphrase"] for r in sorted(loaded, key=lambda r: r["id"])] == [None, "", "hello", "", None]
+
+

@@ -59,3 +59,5 @@ def test_main_fails_when_a_benchmark_result_is_missing(tmp_path: Path) -> None:
 
     assert smoke.main([str(tmp_path), "--benchmark", "ssb"]) == 0
     assert smoke.main([str(tmp_path), "--benchmark", "ssb", "--benchmark", "tpch"]) == 1
+
+

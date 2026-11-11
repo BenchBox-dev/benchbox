@@ -135,3 +135,5 @@ def test_conflicting_runtime_version_spellings_fail(athena_client) -> None:
             runtime_version="PySpark engine version 3",
             engine_version="PySpark engine version 2",
         )
+
+

@@ -230,3 +230,5 @@ class TestNonEmptyRegression:
             _assert_single_value(expected, 94.0)
         finally:
             conn.close()
+
+

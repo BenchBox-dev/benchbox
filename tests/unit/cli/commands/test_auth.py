@@ -250,3 +250,5 @@ def test_auth_store_delete_handles_missing_via_typed_exception(
 
     store = submit_auth.SubmissionAuthStore(keyring_backend=FakeRacingKeyring())
     assert store.delete_token(submit_auth.DEFAULT_SERVICE_URL) is False
+
+

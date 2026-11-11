@@ -73,3 +73,5 @@ class TestBaselineRoundTrip:
         monkeypatch.setattr(checker, "BASELINE_PATH", tmp_path / "baseline.txt")
         assert checker.main([]) == 1
         assert "regenerate" in capsys.readouterr().out
+
+

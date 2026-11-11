@@ -220,3 +220,5 @@ def test_platform_option_beats_the_credentials_file_for_synapse(
     kwargs = _constructor_kwargs(monkeypatch, tmp_path, "synapse", "server=from-cli.sql.azuresynapse.net")
 
     assert kwargs["server"] == "from-cli.sql.azuresynapse.net"
+
+

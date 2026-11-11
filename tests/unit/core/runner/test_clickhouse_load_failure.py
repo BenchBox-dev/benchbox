@@ -79,3 +79,5 @@ def test_clickhouse_load_failure_result_is_failed_sentinel_without_result_bundle
     assert result.execution_metadata == {"mode": "load_failure"}
     assert result.validation_details["load_failure"]["result_json"] is None
     assert result.validation_details["load_failure"]["rows_attempted"] == 65_536
+
+

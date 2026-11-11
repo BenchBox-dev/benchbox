@@ -796,3 +796,5 @@ class TestDBFSStagingMethods:
         p = self._provider()
         p.delete_path("tables/", recursive=True)
         p._client.dbfs.delete.assert_called_once_with("/benchbox/tables/", recursive=True)
+
+

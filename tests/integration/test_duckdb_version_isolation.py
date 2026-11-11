@@ -180,3 +180,5 @@ def test_isolated_process_transports_runtime_values_without_source_interpolation
         "capture_output": True,
         "text": True,
     }
+
+

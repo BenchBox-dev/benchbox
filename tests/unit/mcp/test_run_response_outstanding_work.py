@@ -110,3 +110,5 @@ def test_an_exported_but_empty_payload_is_not_an_export_failure(tmp_path: Path) 
         response = _build(_result(None), tmp_path)
 
     assert response["mcp_metadata"]["status"] == "completed"
+
+

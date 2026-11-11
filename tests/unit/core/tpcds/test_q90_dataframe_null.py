@@ -41,3 +41,5 @@ def test_q90_ratio_preserves_sql_null_and_nonzero_division(family, hours, expect
         result = queries.q90_pandas_impl(ctx)
 
     assert materialize_rows(result) == [(expected,)]
+
+

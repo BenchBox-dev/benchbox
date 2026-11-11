@@ -216,3 +216,5 @@ def test_anonymized_export_redacts_satisfied_entries():
     redacted = anonymize_applied_tuning_payload(payload)
     assert redacted["satisfied"] == [{"redacted": True}]
     assert payload["satisfied"][0]["intent"].startswith("sorted_ingestion lineitem")
+
+

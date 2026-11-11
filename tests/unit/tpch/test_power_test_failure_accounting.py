@@ -63,3 +63,5 @@ class TestPowerHarnessFailureAccounting:
         assert result.queries_successful == 1
         assert result.success is True
         assert result.errors == []
+
+

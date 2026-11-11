@@ -993,3 +993,5 @@ class TestQuantonAdapterS3Client:
 
             assert client is mock_s3_client
             mock_boto3.Session.assert_called_with(region_name="eu-west-1")
+
+

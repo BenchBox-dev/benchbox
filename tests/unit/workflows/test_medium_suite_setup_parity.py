@@ -103,3 +103,5 @@ def test_provisioning_allowlist_has_no_stale_entries() -> None:
 def test_nightly_core_only_sync_counts_as_provisioned() -> None:
     steps = _provisioning(_job("nightly-v2.yml", "integration"))
     assert "uv sync --project _project/scripts --locked" in steps
+
+

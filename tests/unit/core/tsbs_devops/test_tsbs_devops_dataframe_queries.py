@@ -239,3 +239,5 @@ class TestTSBSDevOpsBenchmarkRegistry:
         meta = get_benchmark_metadata("tsbs_devops")
         assert meta is not None
         assert meta.get("supports_dataframe") is True
+
+

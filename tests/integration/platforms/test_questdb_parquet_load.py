@@ -112,3 +112,5 @@ class TestQuestDBImpTwoChunkImport:
         assert rows[0] == [1, "alpha", pytest.approx(1.1, rel=1e-5)]
         assert rows[1] == [2, "beta", pytest.approx(2.2, rel=1e-5)]
         assert rows[2] == [3, "gamma", pytest.approx(3.3, rel=1e-5)]
+
+

@@ -119,3 +119,5 @@ def test_validator_dispatch_is_trusted_base_with_merge_payload():
         ".github/workflows/validate-submission.yml",
     ]:
         assert f in text
+
+

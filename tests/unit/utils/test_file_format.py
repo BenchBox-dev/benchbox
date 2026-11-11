@@ -540,3 +540,5 @@ class TestHasTrailingDelimiterSurfacesReadFailures:
         path = tmp_path / "blank.tbl"
         path.write_bytes(b"\n\r\n   \n")
         assert has_trailing_delimiter(path, "|", ["a", "b"]) is False
+
+

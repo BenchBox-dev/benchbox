@@ -336,3 +336,5 @@ def test_server_refresh_session_reapplies_the_settings_pack(tmp_path: Path) -> N
 def test_other_seams_leave_the_session_alone(tmp_path: Path) -> None:
     seam = platforms.DuckDBSeam(benchmark="tpch", scale_factor=1.0, work_dir=tmp_path, run_tag="t1")
     assert seam.refresh_session(handle_for(FakeClient())) is None
+
+

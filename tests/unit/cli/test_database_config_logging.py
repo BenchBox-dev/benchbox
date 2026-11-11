@@ -101,3 +101,5 @@ def test_available_databases_is_detected_on_first_access_and_cached(monkeypatch)
     assert duckdb_info["name"]
     if "clickhouse" in detected:
         assert set(detected["clickhouse"]) >= {"supports_server", "supports_embedded"}
+
+

@@ -18,3 +18,5 @@ def test_run_surface_normalizes_public_option_names_before_adapter_use() -> None
 def test_run_surface_rejects_an_option_without_a_contract() -> None:
     with pytest.raises(MCPValidationError, match="not authorized"):
         validate_platform_options("duckdb", {"thread_limit": 4})
+
+

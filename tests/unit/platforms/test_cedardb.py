@@ -343,3 +343,5 @@ class TestCedarDBBaselineSessionLedger:
 
             assert all("random_page_cost" not in entry.statement for entry in ledger.statements)
             assert all(entry.status == "executed" for entry in ledger.statements)
+
+

@@ -62,3 +62,5 @@ class TestLivePostgreSQLPlanCapture:
         plan2, _ = postgresql_adapter.capture_query_plan(connection, query, "pg_b")
         assert plan1 is not None and plan2 is not None
         assert plan1.plan_fingerprint == plan2.plan_fingerprint
+
+

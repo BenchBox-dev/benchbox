@@ -203,3 +203,5 @@ class TestChartDiscoveryContract:
         result = _list_chart_templates_impl()
 
         assert {item["name"] for item in result["templates"]} == {template.name for template in list_templates()}
+
+

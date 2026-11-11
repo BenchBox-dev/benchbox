@@ -96,3 +96,5 @@ class TestLayoutLedgersAlwaysPrune:
 
         assert "applied_layout_operations" not in payload["platform"].get("config", {})
         assert payload["platform"]["raw_config"]["applied_layout_operations"] == operations
+
+

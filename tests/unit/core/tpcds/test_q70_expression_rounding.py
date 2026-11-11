@@ -36,3 +36,5 @@ def test_q70_expression_totals_are_rounded_to_the_decimal_scale(monkeypatch):
     assert totals, "Q70 returned no rows"
     assert all(total == round(total, 2) for total in totals), totals
     assert 0.3 in totals
+
+

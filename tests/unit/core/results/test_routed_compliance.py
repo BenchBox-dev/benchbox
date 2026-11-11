@@ -222,3 +222,5 @@ def test_native_result_built_by_result_builder_keeps_tpc_metrics() -> None:
     native = _built_like_a_real_run(None)
     assert native.power_at_size is not None
     assert native.compliance_class == "official"
+
+

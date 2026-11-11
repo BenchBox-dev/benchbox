@@ -241,3 +241,5 @@ def test_size_record_json_shape():
     record = mod.SizeRecord(benchmark="ssb", total_bytes=5, file_count=1)
     payload = json.dumps({"records": [record.__dict__]})
     assert '"benchmark": "ssb"' in payload
+
+

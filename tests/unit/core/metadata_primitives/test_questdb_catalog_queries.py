@@ -84,3 +84,5 @@ def test_privilege_and_foreign_key_queries_are_skipped_on_questdb(questdb_querie
 def test_questdb_does_not_run_acl_mutations() -> None:
     assert supports_acl("questdb") is False
     assert supports_acl("postgres") is True
+
+

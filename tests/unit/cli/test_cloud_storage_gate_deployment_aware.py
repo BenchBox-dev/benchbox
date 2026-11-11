@@ -93,3 +93,5 @@ class TestNoCategoryGatesRemainOnTheRunPath:
             if isinstance(node, ast.Attribute) and node.attr == "requires_cloud_storage"
         ]
         assert not offenders, f"{source.name} still gates on requires_cloud_storage at lines {offenders}"
+
+

@@ -402,3 +402,5 @@ def test_worktree_audit_uses_exact_branch_name_with_tag_collision(repo: Path) ->
     names = {branch["name"] for branch in audit_mod.get_local_branches(repo)}
     assert "v0.4.0" in names
     assert "heads/v0.4.0" not in names
+
+

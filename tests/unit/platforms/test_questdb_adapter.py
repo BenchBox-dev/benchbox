@@ -1197,3 +1197,5 @@ class TestQuestDBTlsUrls:
         }
         adapter = QuestDBAdapter.from_config(config)
         assert adapter.use_tls is True
+
+

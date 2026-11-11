@@ -220,3 +220,5 @@ class TestEnvironmentSwitch:
         calls = {call.args[0]: call.args[1] for call in manager.create_config.call_args_list}
         assert calls["duckdb"] == {"fetch_mode": "arrow"}
         assert calls["sqlite"] is None
+
+

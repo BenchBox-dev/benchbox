@@ -126,3 +126,5 @@ def test_performance_tracker_trend_and_anomaly_detection() -> None:
                 temp_file.unlink()
         except PermissionError:
             pass
+
+

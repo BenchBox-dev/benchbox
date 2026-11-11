@@ -162,3 +162,5 @@ def test_a_conflicting_attestation_fails_the_pipeline_instead_of_skipping_the_bu
 
     with pytest.raises(TranslatorVersionError, match="conflicts"):
         ExplorerPipeline().run(data_dir=tmp_path / "data", output_dir=tmp_path / "out")
+
+

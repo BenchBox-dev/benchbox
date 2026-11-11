@@ -21,3 +21,5 @@ def test_current_run_benchmark_gate_shape_is_detected():
 
     assert gate_sites
     assert not [err for err in _validate_mandatory_sites(entries) if "benchmark_gate" in err]
+
+

@@ -218,3 +218,5 @@ def test_platform_hook_registry_default_matches_normalizer_default() -> None:
     spec = PlatformHookRegistry.list_option_specs("clickhouse")["deployment_mode"]
 
     assert spec.default in ("server", "local")
+
+

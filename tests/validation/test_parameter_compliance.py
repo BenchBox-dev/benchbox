@@ -223,3 +223,5 @@ class TestTPCHParameterCompliance:
         for _query_id_str, sql in queries.items():
             assert len(sql) > 50
             assert "select" in sql.lower() or "with" in sql.lower()
+
+

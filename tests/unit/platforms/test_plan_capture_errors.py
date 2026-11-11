@@ -461,3 +461,5 @@ def test_get_query_plan_from_cursor_returns_joined_rows_on_success() -> None:
 
     assert result == "row one\nrow two"
     assert cursor.closed is True
+
+

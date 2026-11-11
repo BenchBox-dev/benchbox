@@ -111,3 +111,5 @@ def test_comparison_template_keeps_strict_pairwise_validation() -> None:
 
     assert outcome.validation_error is not None
     assert "require exactly 2 results" in outcome.validation_error.message
+
+

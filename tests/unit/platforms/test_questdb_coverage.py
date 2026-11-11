@@ -1754,3 +1754,5 @@ class TestBenchmarkCompatibilityGateCli:
         s.logger.error.assert_called_once()
         msg = s.logger.error.call_args[0][0]
         assert "vector_search" in msg and "questdb" in msg
+
+

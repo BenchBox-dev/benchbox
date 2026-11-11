@@ -514,3 +514,5 @@ class TestClickHouseConnectionBoundary:
     def test_profile_defaults_to_plaintext_only_when_the_operator_says_so(self, monkeypatch):
         monkeypatch.setenv(MCP_CLICKHOUSE_PROFILE_ENV, json.dumps({"plain": {"port": 9000}}))
         assert resolve_clickhouse_connection_profile("plain") == {"port": 9000, "secure": False}
+
+

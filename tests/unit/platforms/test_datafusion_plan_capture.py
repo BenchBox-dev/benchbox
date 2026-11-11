@@ -168,3 +168,5 @@ class TestDataFusionPlanCapture:
         )
 
         assert len(display_calls) == 1, "display_query_plan_if_enabled must be called exactly once"
+
+

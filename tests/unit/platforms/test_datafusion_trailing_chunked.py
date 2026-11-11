@@ -148,3 +148,5 @@ def test_dataframe_header_bearing_trailing_delimiter_skips_header(tmp_path):
     assert result.num_rows == 2, f"header row leaked into data: got {result.num_rows} rows"
     assert result.column_names == _CUSTOMER_COLUMNS
     assert str(result.column("c_custkey").to_pylist()[0]) == "1"
+
+

@@ -50,3 +50,5 @@ def test_redshift_requires_credentials(monkeypatch):
         RedshiftAdapter(host="example")
 
     assert "Redshift configuration" in str(excinfo.value)
+
+

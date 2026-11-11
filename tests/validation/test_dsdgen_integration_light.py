@@ -20,3 +20,5 @@ def test_dsdgen_generates_small_table_streaming():
         compressed = out / gen.get_compressed_filename("call_center.dat")
         assert compressed.exists(), f"Expected file not found: {compressed}"
         assert compressed.stat().st_size > 0
+
+

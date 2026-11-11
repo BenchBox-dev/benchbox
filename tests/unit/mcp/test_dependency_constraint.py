@@ -66,3 +66,5 @@ def test_every_mcp_dependency_requires_major_version_2() -> None:
         assert not _can_resolve_mcp_major(requirement, 3), (
             f"MCP requirement {requirement!s} can resolve unreviewed SDK 3"
         )
+
+

@@ -190,3 +190,5 @@ class TestFractionalScaleFactors:
             for table_file in files:
                 assert table_file.exists(), f"Generated file {table_file} should exist"
                 assert table_file.stat().st_size > 0, f"Generated file {table_file} should not be empty"
+
+

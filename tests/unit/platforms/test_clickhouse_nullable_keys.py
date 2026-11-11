@@ -188,3 +188,5 @@ def test_very_wide_tables_use_compact_parts() -> None:
     assert "SETTINGS min_bytes_for_wide_part = 10000000000, min_rows_for_wide_part = 100000000" in rendered
     narrow = ClickHouseWorkloadMixin()._translate_schema_statement("CREATE TABLE narrow (a INTEGER)")
     assert "SETTINGS" not in narrow
+
+

@@ -84,3 +84,5 @@ def test_read_primitives_expression_frame_dtypes_match_sql(tmp_path):
     assert not divergences, "Read Primitives expression frame dtypes diverge from SQL: " + ", ".join(
         f"{d.key} ({d.detail})" for d in divergences
     )
+
+

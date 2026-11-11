@@ -3186,3 +3186,5 @@ class TestPreprocessOperationSql:
         )
 
         assert result == "SELECT CAST(n AS STRING)"
+
+

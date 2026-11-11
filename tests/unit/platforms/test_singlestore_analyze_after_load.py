@@ -48,3 +48,5 @@ def test_load_data_with_nothing_loaded_analyzes_nothing():
 
     optimize.assert_not_called()
     analyze.assert_not_called()
+
+

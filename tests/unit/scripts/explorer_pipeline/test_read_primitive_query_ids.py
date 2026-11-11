@@ -117,3 +117,5 @@ class TestQueryIdRepairsAreRecorded:
 
         assert transformer.to_manifest_entry(bundle, result_id=rid).query_id_repairs is None
         assert transformer.to_detail_result(bundle, rid).query_id_repairs is None
+
+

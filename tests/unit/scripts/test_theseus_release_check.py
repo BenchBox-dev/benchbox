@@ -283,3 +283,5 @@ def test_a_locked_commit_with_no_readable_tree_refuses_the_pull_fallback() -> No
     fetch = api(routes(direct=EMPTY, pulls=[pull()], pr_runs=GREEN, locked_tree="", head_tree=""))
 
     assert check.verify(LOCK, fetch) != []
+
+

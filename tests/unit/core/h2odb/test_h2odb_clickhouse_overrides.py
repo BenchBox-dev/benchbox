@@ -62,3 +62,5 @@ def test_h2odb_other_queries_unaffected_by_clickhouse_dialect():
     for qid in [f"Q{i}" for i in range(1, 11) if i != 9]:
         assert qid in clickhouse, f"{qid} missing from ClickHouse queries"
         assert clickhouse[qid].strip(), f"{qid} is empty in ClickHouse queries"
+
+

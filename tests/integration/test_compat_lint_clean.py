@@ -218,3 +218,5 @@ def test_runtime_dispatch_or_governance_only():
             )
     if failures:
         pytest.fail("Dispatch/governance contract violations:\n" + "\n".join(f"  {f}" for f in failures))
+
+

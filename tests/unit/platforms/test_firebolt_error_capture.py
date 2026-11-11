@@ -49,3 +49,5 @@ class TestFireboltErrorCapture:
         msg = _load_error_line(adapter, EmptyError(), caplog)
         tail = msg.split("Failed to load customer: ", 1)[1]
         assert tail, "logged message must include a non-empty error string"
+
+

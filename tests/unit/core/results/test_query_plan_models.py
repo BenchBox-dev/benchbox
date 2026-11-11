@@ -1896,3 +1896,5 @@ class TestPlanDepthTruncation:
 
         assert _first_truncated_depth(2) == 3
         assert _first_truncated_depth(5) == 6
+
+

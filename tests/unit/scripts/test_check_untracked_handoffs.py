@@ -63,3 +63,5 @@ def test_new_tracked_handoff_fails_and_is_named(tmp_path: Path, path: str) -> No
 def test_repository_tracks_no_unlisted_handoff() -> None:
     result = subprocess.run(["sh", str(GUARD)], cwd=REPO_ROOT, capture_output=True, text=True, check=False)
     assert result.returncode == 0, result.stderr
+
+

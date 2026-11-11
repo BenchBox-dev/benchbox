@@ -173,3 +173,5 @@ class TestMaintenanceSeed:
         _run(_official(tmp_path), phases)
 
         assert phases.maintenance.return_value.run.call_args.args[0].seed is None
+
+

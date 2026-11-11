@@ -188,3 +188,5 @@ def test_anonymized_export_scrubs_receipt_and_dropped_free_text(tmp_path) -> Non
     assert sanitized["receipt"]["dropped"] == [{"redacted": True}]
     assert sanitized["receipt"]["corroborated"] is False
     assert sanitized["receipt"]["summary"]["verifiable_total"] == 2
+
+

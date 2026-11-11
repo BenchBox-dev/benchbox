@@ -695,3 +695,5 @@ class TestGenerateChartErrorHandling:
 
         assert result["error"] is True
         assert "VALIDATION_ERROR" in result["error_code"]
+
+

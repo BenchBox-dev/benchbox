@@ -222,3 +222,5 @@ class TestTimeoutError:
     def test_timeout_error_default_operation(self):
         error = TimeoutError(message="Timed out", timeout_seconds=60.0)
         assert error.operation == ""
+
+

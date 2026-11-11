@@ -114,3 +114,5 @@ def test_an_accepted_key_is_not_flagged() -> None:
     allowed = set(PlatformHookRegistry.list_option_specs("postgresql"))
     assert "host" in allowed, "fixture assumption changed"
     assert ("postgresql", "host") not in _advertised_pairs()
+
+

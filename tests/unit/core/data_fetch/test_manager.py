@@ -268,3 +268,5 @@ def test_verify_logical_content_requires_logical_manifest(tmp_path: Path) -> Non
     manifest = load_manifest(legacy_manifest)
     with pytest.raises(DataFetchError, match="logical-mode manifest"):
         verify_logical_content(manifest, tmp_path)
+
+

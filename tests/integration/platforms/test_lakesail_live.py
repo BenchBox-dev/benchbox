@@ -83,3 +83,5 @@ class TestLakeSailDataFrameSmoke:
         ctx = adapter.create_context()
         assert ctx is not None
         assert ctx.platform == "LakeSail"
+
+

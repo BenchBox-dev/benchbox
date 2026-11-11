@@ -272,3 +272,5 @@ class TestDataFusionCursorCompatRows:
         assert cursor.fetchone() is None
         assert cursor.fetchall() == []
         assert cursor.rowcount == 0
+
+

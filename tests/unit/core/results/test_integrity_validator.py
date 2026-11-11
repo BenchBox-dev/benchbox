@@ -471,3 +471,5 @@ class TestVectorSearchExportIntegrity:
         check = next(c for c in report.checks if c.name == "success_rate")
         assert check.status == CheckStatus.FAIL
         assert report.overall_status == CheckStatus.FAIL
+
+

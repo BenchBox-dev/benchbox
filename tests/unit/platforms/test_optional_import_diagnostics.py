@@ -129,3 +129,5 @@ def test_eager_optional_adapter_native_load_failure_returns_none(monkeypatch):
     monkeypatch.setattr(platform_module.importlib, "import_module", fake_import_module)
 
     assert platform_module._load_optional_adapter(".duckdb", "DuckDBAdapter") is None
+
+

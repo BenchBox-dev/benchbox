@@ -51,3 +51,5 @@ def test_only_a_well_formed_maintenance_line_passes_a_ready_pr(base: str) -> Non
 def test_the_base_error_names_the_maintenance_lines() -> None:
     result = _run_guard("fix/parent-branch", draft=False)
     assert "release/X.Y.x" in result.stdout
+
+

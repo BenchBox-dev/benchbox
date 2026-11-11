@@ -317,3 +317,5 @@ def test_invalid_campaign_contract_is_infrastructure_error(
         argv.extend((option, value))
 
     assert generator.main(argv) == 2
+
+

@@ -144,3 +144,5 @@ def test_all_runnable_bundled_binaries_generate_canonical_addresses(table: str) 
         checked.append(directory.name)
     if not checked:
         pytest.skip("no bundled TPC-H binary is executable on this host")
+
+

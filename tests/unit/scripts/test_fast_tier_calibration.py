@@ -43,3 +43,5 @@ def test_record_aggregates_collection_lines_and_tolerates_a_missing_file(
 
     missing = tmp_path / "missing.jsonl"
     assert calibration.build_record(missing)["collection"] == {"processes": 0, "max_seconds": None, "seconds": []}
+
+

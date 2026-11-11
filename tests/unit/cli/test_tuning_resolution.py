@@ -975,3 +975,5 @@ class TestIsDataframeTuningFile:
         candidate = tmp_path / "candidate.yaml"
         candidate.write_text("- just\n- a\n- list\n")
         assert not is_dataframe_tuning_file(candidate)
+
+

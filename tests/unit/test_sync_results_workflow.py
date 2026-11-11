@@ -655,3 +655,5 @@ def test_superseded_mirror_prs_close_only_when_their_commit_is_an_ancestor(tmp_p
     subprocess.run(["bash", "-c", '. "$1"', "bash", str(script)], cwd=repo, env=env, check=True)
 
     assert closed_log.read_text(encoding="utf-8").split() == ["10"]
+
+

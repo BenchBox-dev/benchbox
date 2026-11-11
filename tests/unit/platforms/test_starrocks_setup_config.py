@@ -121,3 +121,5 @@ class TestEnvIsolation:
         adapter = pymysql_stubs.__new__(pymysql_stubs)
         adapter._setup_connection_config({"verify_ssl": False})
         assert adapter.verify_ssl is False
+
+

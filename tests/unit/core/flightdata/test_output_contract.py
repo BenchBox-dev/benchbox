@@ -607,3 +607,5 @@ class TestExpressionEngineParity:
         polars_rows = _materialize(query.get_impl_for_family("expression")(polars_ctx))
         fusion_rows = _materialize(query.get_impl_for_family("expression")(datafusion_ctx))
         assert _cells_equal(fusion_rows, polars_rows)
+
+

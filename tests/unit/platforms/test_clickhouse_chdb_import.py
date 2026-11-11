@@ -38,3 +38,5 @@ def test_import_chdb_returns_the_module_without_binding_the_adapter_module_globa
         assert dependencies.import_chdb() is fake_chdb
 
     assert dependencies.chdb is None
+
+

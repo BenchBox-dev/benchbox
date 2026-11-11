@@ -1617,3 +1617,5 @@ class TestCacheControlReceiptPersistence:
         )
         assert payload["result_cache_enabled"] is True
         assert payload["cache_control"]["cache_disabled"] is False
+
+

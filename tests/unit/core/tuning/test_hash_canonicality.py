@@ -142,3 +142,5 @@ class TestHashTuningTemplateCanonicality:
             "other's is caught here rather than discovered as a rare production collision."
         )
         assert all(c in "0123456789abcdef" for c in digest)
+
+

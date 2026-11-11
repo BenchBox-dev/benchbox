@@ -376,3 +376,5 @@ class TestDuckDBIntegration:
                 assert len(parquet_files) > 0
         finally:
             conn.close()
+
+

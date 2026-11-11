@@ -105,3 +105,5 @@ class TestCatalogQueriesOnDelta:
         spark.sql(op.cleanup_sql)
         remaining = spark.sql("SELECT COUNT(*) AS cnt FROM txn_lineitem").collect()[0]["cnt"]
         assert remaining == 0
+
+

@@ -180,3 +180,5 @@ def test_optimize_table_logs_success_and_failure() -> None:
     harness.optimize_table(failing_connection, "lineitem")
 
     harness.logger.warning.assert_called_once_with("Failed to optimize table lineitem: optimize failed")
+
+

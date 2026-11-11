@@ -165,3 +165,5 @@ def test_close_clears_session_id_when_delete_raises(caplog) -> None:
 
     assert adapter._session_id is None
     assert any("Failed to close session" in r.getMessage() for r in caplog.records)
+
+

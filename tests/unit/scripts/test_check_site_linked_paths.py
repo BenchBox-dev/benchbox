@@ -138,3 +138,5 @@ def test_fetched_inventory_with_missing_path_fails(
 
     assert check.main(["--inventory-url", f"{base}/inventory.json"]) == 1
     assert "gone.py" in capsys.readouterr().err
+
+

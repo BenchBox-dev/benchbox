@@ -51,3 +51,5 @@ def test_fixture_restores_real_snowflake_cli_options_on_teardown() -> None:
         assert args.private_key_path == "/offline/key.pem"
         assert args.modify_warehouse_settings is True
     assert SnowflakeAdapter.__dict__["add_cli_arguments"] is outer
+
+

@@ -578,3 +578,5 @@ def test_unified_lazyframe_datafusion_collect_helpers(monkeypatch):
     assert frame_empty.collect_column_as_list("x") == []
     assert frame_rows.scalar(1, 0) == 2
     assert frame_empty.scalar() is None
+
+

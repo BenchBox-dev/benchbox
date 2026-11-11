@@ -193,3 +193,5 @@ def test_clickhouse_cloud_force_mode_raises_actionable_error():
 
     with pytest.raises(ValueError, match="does not support post-load sorted ingestion"):
         adapter._build_ctas_sort_sql("lineitem", [_make_sort_column("l_shipdate", 1)])
+
+

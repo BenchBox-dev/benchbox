@@ -229,3 +229,5 @@ def test_private_export_preserves_raw_platform_metadata_behind_explicit_option(t
     assert payload["platform"]["raw_config"]["access_token"] == "<redacted>"
 
     assert "super-secret-password" not in json.dumps(payload.get("platform", {}).get("raw_metadata", {}))
+
+

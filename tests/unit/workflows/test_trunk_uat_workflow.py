@@ -180,3 +180,5 @@ def test_evidence_artifact_names_are_recognised_as_executed_cells_by_the_reuse_d
     for name in evidence:
         match = reuse.TRUNK_EXECUTED_ARTIFACT.match(name)
         assert match is not None and match.group(1) == sha
+
+

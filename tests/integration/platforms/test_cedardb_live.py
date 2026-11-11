@@ -141,3 +141,5 @@ class TestLiveCedarDBConstraints:
             except Exception:
                 pass
             live_cedardb_adapter.close_connection(connection)
+
+

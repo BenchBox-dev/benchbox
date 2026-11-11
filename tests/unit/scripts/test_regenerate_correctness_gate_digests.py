@@ -62,3 +62,5 @@ def test_gate_child_receives_only_a_real_explicit_seed(generator, monkeypatch, t
         assert command[command.index("--seed") + 1] == "7"
     assert options["env"][generator.EMIT_RESULT_DIGEST_ENV] == "1"
     assert options["env"]["BENCHBOX_OUTPUT_DIR"] == str(tmp_path / "benchmark_runs")
+
+

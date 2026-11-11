@@ -86,3 +86,5 @@ def test_no_ansi_date_literals_remain_in_any_singlestore_operation(txn):
     for operation_id, operation in txn.operations_manager.get_all_operations().items():
         sql = txn._rewrite_transactional_sql_for_platform(operation.write_sql, "singlestore")
         assert "DATE '" not in sql.upper(), operation_id
+
+

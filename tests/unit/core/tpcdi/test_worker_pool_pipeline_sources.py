@@ -157,3 +157,5 @@ def test_source_generators_basic_and_output_files(tmp_path: Path, monkeypatch):
     gen.enable_parallel = True
     gen.parallel_config = SimpleNamespace(chunk_size=999999)
     assert Path(gen._generate_customer_extract_parallel()).exists()
+
+

@@ -378,3 +378,5 @@ class TestTimingMethodRankings:
         _write(tmp_path, "newer.json", newer)
         outcome = detect_regressions(tmp_path)
         assert outcome["status"] == "insufficient_data"
+
+

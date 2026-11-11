@@ -466,3 +466,5 @@ class TestCloudStorageGeneratorMixin:
 
         assert result == {"orders": "/tmp/cache/orders.tbl"}
         generate.assert_called_once_with(output_dir)
+
+

@@ -495,3 +495,5 @@ def _twin(label: str, pr_number: int, branch: str, head: str, messages: list[tup
 )
 def test_refusal_matches_arm_gate(label: str, number: int, branch: str, messages: list[tuple[str, str]]) -> None:
     _twin(label, number, branch, "a" * 40, messages)
+
+

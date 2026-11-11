@@ -85,3 +85,5 @@ def test_datafusion_matches_polars_row_count_and_columns(datafusion_context, pol
     assert datafusion_rows
     assert datafusion_columns == polars_columns
     assert len(datafusion_rows) == len(polars_rows)
+
+

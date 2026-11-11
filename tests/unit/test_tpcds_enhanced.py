@@ -279,3 +279,5 @@ class TestTPCDSBenchmarkEnhanced:
 
         seeded_benchmark = TPCDSBenchmark(scale_factor=1, output_dir=temp_dir, seed=42)
         assert seeded_benchmark.scale_factor == 1
+
+

@@ -48,3 +48,5 @@ def test_bigquery_requires_project(monkeypatch):
         BigQueryAdapter(project_id=None)
 
     assert "project_id" in str(excinfo.value)
+
+

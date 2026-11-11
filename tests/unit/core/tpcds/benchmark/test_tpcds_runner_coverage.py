@@ -834,3 +834,5 @@ def test_official_run_threads_the_seed_into_the_maintenance_phase(tpcds_benchmar
     tpcds_benchmark.run_official_benchmark(object(), adapter=object(), seed=2468)
 
     assert maintenance.call_args.kwargs["config"].seed == 2468
+
+

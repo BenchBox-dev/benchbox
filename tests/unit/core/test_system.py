@@ -92,3 +92,5 @@ class TestGetCpuModel:
             profile = SystemProfiler().get_system_profile()
         assert profile.cpu_model == "Apple M4"
         assert profile.cpu_identity_provenance == "measured"
+
+

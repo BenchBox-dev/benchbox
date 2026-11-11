@@ -153,3 +153,5 @@ ROW_VALUE_IN_SUBQUERY = re.compile(r"(?<!\w)\(\s*[\w.]+\s*(?:,\s*[\w.]+\s*)+\)\s
 @pytest.mark.parametrize("query", _queries(), ids=lambda query: f"q{query.id}")
 def test_no_query_uses_a_row_value_in_subquery(query: OBTQuery) -> None:
     assert not ROW_VALUE_IN_SUBQUERY.search(query.sql), f"Q{query.id} uses a row-value IN, which DataFusion rejects"
+
+

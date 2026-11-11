@@ -170,3 +170,5 @@ def test_main_requires_expected_identity(tmp_path: Path) -> None:
     with pytest.raises(SystemExit) as refused:
         main(["--wheel", str(wheel), "--sha256", digest(wheel), "--dry-run"])
     assert refused.value.code == 2
+
+

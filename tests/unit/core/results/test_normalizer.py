@@ -318,3 +318,5 @@ class TestGetQueryMap:
         )
         query_map = get_query_map(normalized)
         assert query_map == {}
+
+

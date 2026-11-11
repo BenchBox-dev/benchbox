@@ -400,3 +400,5 @@ def test_schema_rejects_a_malformed_path_privacy_section(contracts: dict[str, An
         broken = copy.deepcopy(contracts)
         mutate(broken)
         assert doc_contracts.validate_contracts(broken) != []
+
+

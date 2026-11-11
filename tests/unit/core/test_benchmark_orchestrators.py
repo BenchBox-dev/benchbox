@@ -873,3 +873,5 @@ class TestMetadataGenerator:
         assert len(exec_log) > 0
 
         gen.teardown(conn, "duckdb", generated)
+
+

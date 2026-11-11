@@ -656,3 +656,5 @@ class TestHorizontalBarChartIntegration:
         summary = generate_post_run_summary(result, color=False)
 
         assert "\u25b8" in summary.query_histogram
+
+

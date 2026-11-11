@@ -177,3 +177,5 @@ class TestCalculateDistance:
         distance = calculate_distance_km(us_east_region, ap_region)
         assert distance is not None
         assert 10000 < distance < 12000
+
+

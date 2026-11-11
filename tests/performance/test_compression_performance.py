@@ -266,3 +266,5 @@ class TestCompressionPerformance:
 
         assert len(results) == 10
         assert set(results) == set(range(10))
+
+

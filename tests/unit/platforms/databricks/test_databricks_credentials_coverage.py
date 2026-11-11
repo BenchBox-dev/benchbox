@@ -536,3 +536,5 @@ class TestPromptDefaultOutputLocation:
 
         mgr.set_platform_credentials.assert_called_once()
         assert creds["default_output_location"] == "s3://other/path"
+
+

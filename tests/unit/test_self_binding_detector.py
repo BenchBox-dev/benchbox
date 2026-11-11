@@ -106,3 +106,5 @@ def test_dml_correlation_qualified_to_target_is_clean(tpch_index):
         "select avg(o2.o_totalprice) from orders o2 where o2.o_custkey = orders.o_custkey)"
     )
     assert find_self_binding_candidates(sql, tpch_index) == []
+
+

@@ -117,3 +117,5 @@ def test_a_raising_vm_reader_never_stops_the_default_reader(monkeypatch: pytest.
     read = hw.default_vm_reader()
     sample = types.SimpleNamespace(members=[types.SimpleNamespace(pid=1)])
     assert read(sample) is None
+
+

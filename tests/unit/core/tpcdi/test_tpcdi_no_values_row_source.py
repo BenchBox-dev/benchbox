@@ -48,3 +48,5 @@ def test_no_source_in_benchbox_uses_a_values_row_source():
         if "_vendor" not in path.parts and VALUES_ROW_SOURCE.search(path.read_text(encoding="utf-8"))
     ]
     assert offenders == []
+
+

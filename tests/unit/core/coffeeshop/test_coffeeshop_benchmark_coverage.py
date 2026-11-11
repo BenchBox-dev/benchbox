@@ -146,3 +146,5 @@ def test_query_manager_rejects_missing_format_parameter_and_accepts_explicit_ove
     query = manager.get_query("SA1", params={"start_date": "2023-02-01"})
     assert "DATE '2023-02-01'" in query
     assert "{start_date}" not in query
+
+

@@ -343,3 +343,5 @@ def test_contributor_reference_matcher_flags_each_pattern(text: str) -> None:
 )
 def test_contributor_reference_matcher_ignores_other_text(text: str) -> None:
     assert _contributor_references(text) == []
+
+

@@ -98,3 +98,5 @@ class TestLiveStarRocksQueryExecution:
             assert result is not None
         finally:
             starrocks_adapter.close_connection(connection)
+
+

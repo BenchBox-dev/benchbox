@@ -648,3 +648,5 @@ class TestAthenaComputeUnification:
         with patch("benchbox.platforms.athena.check_platform_dependencies", return_value=(True, [])):
             adapter = AthenaAdapter.from_config({"s3_staging_dir": "s3://bucket/path", "database": "default"})
         assert adapter.workgroup == "primary"
+
+

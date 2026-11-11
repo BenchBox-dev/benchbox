@@ -327,3 +327,5 @@ class TestEffectiveWriteSqlFallbackKey:
         op = self._op(platform_overrides={"duckdb": "INSERT INTO t VALUES (2)"})
         sql, reason = wp._get_effective_write_sql(op, platform_key="ducklake")
         assert (sql, reason) == ("INSERT INTO t VALUES (1)", None)
+
+

@@ -66,3 +66,5 @@ def test_check_version_consistency_normalizes_versions() -> None:
     result = check_version_consistency()
     values = {src: val for src, val in result.normalized_sources.items() if val}
     assert all(val == benchbox.__version__ for val in values.values())
+
+

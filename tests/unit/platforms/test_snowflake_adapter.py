@@ -3052,3 +3052,5 @@ class TestSnowflakeIdempotentLoad:
         with patch.object(adapter, "_load_table_from_stage", side_effect=RuntimeError("boom")):
             with pytest.raises(RuntimeError, match="boom"):
                 adapter.load_data(mock_benchmark, mock_connection, tmp_path)
+
+

@@ -58,3 +58,5 @@ def test_every_questdb_skip_is_registered_with_an_engine_error_reason(query_id):
 
 def test_other_platforms_are_unaffected():
     assert ReadPrimitivesBenchmark(scale_factor=0.01).get_platform_skip_queries("duckdb") == []
+
+

@@ -202,3 +202,5 @@ def test_duckdb_sqlite_launch_and_info_helpers(monkeypatch: pytest.MonkeyPatch, 
     mod._show_tables_sqlite(cur)
     mod._show_schema_sqlite(cur, None)
     mod._display_database_info_sqlite(_SqlConn(), db)
+
+

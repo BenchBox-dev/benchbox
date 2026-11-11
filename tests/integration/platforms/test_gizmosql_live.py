@@ -523,3 +523,5 @@ class TestCliLive:
         assert payload["summary"]["queries"]["failed"] == 0
         assert payload["summary"]["queries"]["passed"] >= 22
         assert payload["platform"]["name"] == "GizmoSQL"
+
+

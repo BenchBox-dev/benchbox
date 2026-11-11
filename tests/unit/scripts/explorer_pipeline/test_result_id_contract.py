@@ -73,3 +73,5 @@ def test_published_artifact_bytes_recompute_the_result_id(data_dir: Path, tmp_pa
             f"{artifact.name}: filename does not match the ID recomputed from its own bytes; "
             "the publisher is writing bytes other than the ones it hashed"
         )
+
+

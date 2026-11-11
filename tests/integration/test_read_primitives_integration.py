@@ -361,3 +361,5 @@ class TestReadPrimitivesBenchmarkExtended:
             assert query_result["min_time"] == float("inf")
             assert query_result["max_time"] == 0
             assert query_result["avg_time"] == 0
+
+

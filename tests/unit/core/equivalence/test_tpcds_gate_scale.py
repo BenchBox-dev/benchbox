@@ -30,3 +30,5 @@ def test_gate_sql_and_bindings_use_the_generated_data_scale(monkeypatch, tmp_pat
             "STORE.01"
         ]
     )
+
+

@@ -64,3 +64,5 @@ def test_interactive_path(monkeypatch):
         assert is_non_interactive() is False
     finally:
         _restore_pytest(saved_pytest)
+
+

@@ -134,3 +134,5 @@ def test_singlestore_map_variants_cannot_truncate(query_id):
     sql = load_primitives_catalog().queries[query_id].variants["singlestore"].upper()
 
     assert "GROUP_CONCAT" not in sql
+
+

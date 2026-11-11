@@ -42,3 +42,5 @@ def test_measure_elapsed_context() -> None:
     with measure_elapsed() as sw:
         assert isinstance(sw, Stopwatch)
         assert sw.elapsed_seconds() >= 0.0
+
+

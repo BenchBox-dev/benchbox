@@ -261,3 +261,5 @@ class TestOtherWrapperClasses:
         from benchbox.base import BaseBenchmark
 
         assert isinstance(joinorder, BaseBenchmark)
+
+

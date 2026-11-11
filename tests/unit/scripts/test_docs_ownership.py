@@ -287,3 +287,5 @@ def test_cli_handles_completed_contract_relocation(ownership_repo: tuple[Path, d
     write_file(root, transition["sources"][0], "stale source\n")
     git(root, "add", transition["sources"][0])
     assert_failure(run_cli(root, manifest), "is still tracked", transition["sources"][0])
+
+

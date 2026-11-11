@@ -186,3 +186,5 @@ def test_schema_renderer_ledger_owner_prevents_duplicate_capture(tmp_path) -> No
         "CREATE TABLE schema_table (id INTEGER)",
         "APPLY CONSTRAINTS",
     ]
+
+

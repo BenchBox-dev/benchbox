@@ -381,3 +381,5 @@ def test_joined_aggregate_runs_on_dask_and_keeps_a_null_group_last():
         ("y", "c", 5.0),
         ("y", None, 4.0),
     ]
+
+

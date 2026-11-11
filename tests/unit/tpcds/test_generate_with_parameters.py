@@ -91,3 +91,5 @@ def test_a_defined_value_the_template_does_not_use_is_accepted(dsqgen):
 def test_invalid_query_id_is_rejected(dsqgen):
     with pytest.raises(ValueError):
         dsqgen.generate_with_parameters(100, {"YEAR.01": 2001})
+
+

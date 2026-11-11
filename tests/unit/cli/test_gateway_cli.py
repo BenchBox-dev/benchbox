@@ -213,3 +213,5 @@ def test_database_config_projects_gateway_to_adapter_config() -> None:
 
     assert configured.gateway == "espresso"
     assert get_platform_config(configured, None)["gateway"] == "espresso"
+
+

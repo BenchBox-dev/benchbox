@@ -182,3 +182,5 @@ def test_cost_usd_alias_behavior() -> None:
     assert normalized_storage.cost_usd is None
     assert normalized_storage.to_dict()["cost_usd"] is None
     assert local_not_applicable.cost_usd is None
+
+

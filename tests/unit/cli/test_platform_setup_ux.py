@@ -334,3 +334,5 @@ class TestSetupWizardIntegration:
         assert "install" in option_values
         assert "status" in option_values
         assert "done" in option_values
+
+

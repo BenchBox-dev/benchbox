@@ -237,3 +237,5 @@ def test_rehearsal_follows_renames_and_strips_forbidden_content(tool, tmp_path):
     messages = git(clone, "log", "--all", "--format=%B")
     assert "session_zz" not in messages
     assert "Co-authored-by: Pat <pat@example.com>" in messages
+
+

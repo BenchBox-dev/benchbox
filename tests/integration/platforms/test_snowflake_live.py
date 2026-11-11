@@ -274,3 +274,5 @@ class TestLiveSnowflakeQueryPlanCapture:
             assert result["plan_capture_time_ms"] is not None
         finally:
             adapter.close_connection(connection)
+
+

@@ -178,3 +178,5 @@ def test_pytest_run_with_faulthandler_timeout_exits_as_usage_error(tmp_path) -> 
     assert completed.returncode == pytest.ExitCode.USAGE_ERROR, completed.stdout + completed.stderr
     assert "faulthandler_timeout is not supported" in completed.stdout + completed.stderr
     assert "1 passed" not in completed.stdout
+
+

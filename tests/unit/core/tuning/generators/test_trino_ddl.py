@@ -288,3 +288,5 @@ class TestEnums:
         assert FileFormat.PARQUET.value == "PARQUET"
         assert FileFormat.ORC.value == "ORC"
         assert FileFormat.AVRO.value == "AVRO"
+
+

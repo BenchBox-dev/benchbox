@@ -34,3 +34,5 @@ def test_dsqgen_variations_and_validation():
     assert dsq.validate_query_id(14) is True
     assert dsq.validate_query_id("14a") is True
     assert dsq.validate_query_id("not") is False
+
+

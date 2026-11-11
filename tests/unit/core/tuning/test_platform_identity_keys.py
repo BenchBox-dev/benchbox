@@ -295,3 +295,5 @@ class TestMetadataPersistsCanonicalKey:
         manager = TuningMetadataManager(adapter)
         assert "ENGINE = MergeTree()" in manager._get_create_table_sql()
         assert manager._get_create_index_sql() is None
+
+

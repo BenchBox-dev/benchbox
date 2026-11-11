@@ -139,3 +139,5 @@ def test_stacking_rule_is_stated_consistently_in_agent_and_policy_docs() -> None
     allowed = policy.split("## Allowed bases")[1].split("\n## ")[0]
     assert "draft PR in a stack" in allowed
     assert "review" in policy
+
+

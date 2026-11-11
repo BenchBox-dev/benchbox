@@ -773,3 +773,5 @@ class TestInsertBatch:
         adapter._insert_batch(mock_cursor, "[dbo].[t]", [["it's"]])
         sql = str(mock_cursor.execute.call_args[0][0])
         assert "it''s" in sql
+
+

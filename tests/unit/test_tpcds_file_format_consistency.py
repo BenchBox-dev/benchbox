@@ -112,3 +112,5 @@ def test_prune_stale_table_artifacts_removes_compressed_when_uncompressed_mode(t
 
     assert "store_sales.dat.zst" in {p.name for p in removed}
     assert not stale_compressed.exists()
+
+

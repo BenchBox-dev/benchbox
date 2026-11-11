@@ -175,3 +175,5 @@ class TestAdapterRowShapes:
 
         adapter = PrestoAdapter(capture_plans=True)
         assert adapter.get_query_plan(_FakeConn([]), "SELECT 1") == ""
+
+

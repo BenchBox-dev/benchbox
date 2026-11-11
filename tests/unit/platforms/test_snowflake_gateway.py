@@ -521,3 +521,5 @@ def test_greybeam_query_only_real_validation_smoke(
     assert not any(
         sql.startswith(("CREATE ", "DROP ", "TRUNCATE ", "INSERT ", "UPDATE ", "DELETE ")) for sql in statements
     )
+
+

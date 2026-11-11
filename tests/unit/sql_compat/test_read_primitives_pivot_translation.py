@@ -83,3 +83,5 @@ def test_datafusion_pivot_rows_equal_duckdb_rows(read_primitives):
     source = read_primitives.get_queries()["pivot_basic"]
     translated = read_primitives.get_queries(dialect="datafusion")["pivot_basic"]
     assert _normalise(_datafusion_rows(translated)) == _normalise(_duckdb_rows(source))
+
+

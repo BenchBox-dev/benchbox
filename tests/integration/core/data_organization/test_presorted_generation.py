@@ -121,3 +121,5 @@ def test_iceberg_sorted_output_writes_iceberg_layout(tmp_path: Path):
     assert output == tmp_path / "lineitem"
     assert (output / "metadata").exists()
     assert any((output / "metadata").glob("*.json"))
+
+

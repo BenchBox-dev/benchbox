@@ -273,3 +273,5 @@ def test_no_published_bundle_belongs_to_a_platform_whose_modes_changed() -> None
             present.add(path.name)
 
     assert present == set()
+
+

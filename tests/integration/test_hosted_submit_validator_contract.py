@@ -253,3 +253,5 @@ def test_hosted_and_pr_manifest_built_via_dispatch_call_sites(tmp_path: Path, mo
     assert hosted_manifest["submission_path"] == "hosted-service"
     for key in ("bundle_file", "bundle_hash", "benchmark", "platform", "scale_factor"):
         assert pr_manifest[key] == hosted_manifest[key], f"{key} drift via dispatch call sites"
+
+

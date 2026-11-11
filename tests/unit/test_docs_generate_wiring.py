@@ -22,3 +22,5 @@ def test_docs_generate_runs_every_generator() -> None:
     plan = subprocess.run(["make", "-n", "docs-generate"], cwd=REPO_ROOT, capture_output=True, text=True, check=True)
     for marker in GENERATOR_MARKERS:
         assert marker in plan.stdout
+
+

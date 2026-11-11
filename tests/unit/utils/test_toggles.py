@@ -31,3 +31,5 @@ pytestmark = [
 )
 def test_is_probe_requested(value: object, expected: bool) -> None:
     assert is_probe_requested(value) is expected
+
+

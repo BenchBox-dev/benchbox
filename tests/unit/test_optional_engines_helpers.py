@@ -495,3 +495,5 @@ def test_module_guard_probes_when_the_connection_class_only_appears_during_the_m
 
     with pytest.raises(pytest.fail.Exception, match="left a chDB connection open"):
         _run_module_guard(monkeypatch, during_module=load_connection_module_and_leak)
+
+

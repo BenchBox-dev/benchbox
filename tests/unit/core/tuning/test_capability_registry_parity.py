@@ -848,3 +848,5 @@ class TestShippedTemplatesValidateClean:
         config = build_default_unified_config(platform)
         errors, _warnings = config.validate_for_platform_detailed(platform)
         assert errors == [], f"fallback for {platform}: {errors}"
+
+

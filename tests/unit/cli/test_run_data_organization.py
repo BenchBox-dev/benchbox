@@ -72,3 +72,5 @@ def test_resolve_payload_uses_iceberg_output_format():
     payload = _resolve_data_organization_payload("tpch", "iceberg-sorted", None)
     assert payload is not None
     assert payload["output_format"] == "iceberg"
+
+

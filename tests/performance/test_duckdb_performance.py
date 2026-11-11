@@ -448,3 +448,5 @@ class TestDuckDBRegressionDetection:
         else:
             result = conn.execute(query).fetchall()
             return result
+
+

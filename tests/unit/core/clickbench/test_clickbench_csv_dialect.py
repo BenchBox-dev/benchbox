@@ -44,3 +44,5 @@ class TestClickBenchSnowflakeQ29Rewrite:
         q29 = self._q29("bigquery")
         assert "(?:www" + bs * 2 + ".)?" in q29
         assert "'" + bs * 2 + "1'" in q29
+
+

@@ -162,3 +162,5 @@ def test_ssl_context_verifies_certificates_and_hostnames():
     context = tls.ssl_context()
     assert context.verify_mode == ssl.CERT_REQUIRED
     assert context.check_hostname is True
+
+

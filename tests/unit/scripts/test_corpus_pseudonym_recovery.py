@@ -135,3 +135,5 @@ def test_publication_fixed_point_ignores_operator_salt() -> None:
     token = AnonymizationManager()._hash_public_identifier("benchbox", "database")
     salted = AnonymizationManager(AnonymizationConfig(machine_id_salt="deployment-private-test-salt"))
     assert salted._hash_public_identifier(token, "database") == token
+
+

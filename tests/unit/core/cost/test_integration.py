@@ -686,3 +686,5 @@ class TestMultiPlatformIntegration:
         assert normalized_cost["cost_status"] == "unavailable"
         assert normalized_cost["normalized_cost_usd"] is None
         assert any("metadata was defaulted" in record.message for record in caplog.records)
+
+

@@ -223,3 +223,5 @@ def test_manifest_hash_stable():
     assert manifest_hash(first) == manifest_hash(second)
     other = SampledManifest(scale_factor=0.25, kept_title_ids=10, total_title_ids=20)
     assert manifest_hash(first) != manifest_hash(other)
+
+

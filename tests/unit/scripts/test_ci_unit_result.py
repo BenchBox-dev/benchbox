@@ -141,3 +141,5 @@ def test_cli_superseded_exit_code_for_cancelled_upstreams() -> None:
         ).returncode
         == 1
     )
+
+

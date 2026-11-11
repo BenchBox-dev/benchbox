@@ -156,3 +156,5 @@ class TestAppliedLedgerAgainstLiveClickHouse:
 
         order = [s.statement.split()[0].upper() for s in adapter._applied_tuning_ledger.executed_statements]
         assert order == ["CREATE", "OPTIMIZE"]
+
+

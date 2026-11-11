@@ -210,3 +210,5 @@ def test_snowflake_fake_driver_renders_cluster_by_for_fact_tables_only(benchmark
     assert set(rendered) == set(EXPECTED_CLUSTERING[benchmark_id])
     for table, columns in EXPECTED_CLUSTERING[benchmark_id].items():
         assert rendered[table] == f"ALTER TABLE {table} CLUSTER BY ({', '.join(columns)})"
+
+

@@ -214,3 +214,5 @@ def test_metrics_calculations_and_exports(monkeypatch: pytest.MonkeyPatch, capsy
     assert metrics_calc._format_duration(30) == "30.00s"
     assert metrics_calc._format_duration(120) == "2.0m"
     assert metrics_calc._format_duration(7200) == "2.00h"
+
+

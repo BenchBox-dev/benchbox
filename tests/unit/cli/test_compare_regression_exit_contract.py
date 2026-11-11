@@ -413,3 +413,5 @@ class TestMinRegressionDeltaCommand:
             )
 
         platform_comparison.assert_not_called()
+
+

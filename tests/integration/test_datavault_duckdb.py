@@ -1067,3 +1067,5 @@ class TestDataVaultTPCHEquivalence:
         failures = execution_errors + mismatches
         if failures:
             pytest.fail("Data Vault full equivalence failures:\n" + "\n".join(failures))
+
+

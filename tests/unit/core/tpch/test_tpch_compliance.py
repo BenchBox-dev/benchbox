@@ -144,3 +144,5 @@ class TestOfficialFlagReachesTheClassifier:
 
         casual = BenchmarkConfig(name="tpch", display_name="TPC-H", scale_factor=1.0)
         assert dataframe_compliance_class(None, casual) == "unofficial_nonstandard"
+
+

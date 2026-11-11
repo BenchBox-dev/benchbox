@@ -110,3 +110,5 @@ def test_source_data_generator_wrapper_methods(tmp_path: Path, monkeypatch: pyte
 
     fresh = src_mod.SourceDataGenerator(scale_factor=0.01, seed=None)
     assert fresh.get_data_statistics()["status"] == "not_generated"
+
+

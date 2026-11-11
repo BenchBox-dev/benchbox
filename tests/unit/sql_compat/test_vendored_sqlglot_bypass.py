@@ -891,3 +891,5 @@ def test_dot_directories_such_as_virtualenvs_are_not_scanned(tmp_path: Path):
 
 def test_default_scan_roots_cover_scripts_and_project_tools():
     assert {root.name for root in SCAN_ROOTS} == {"benchbox", "scripts", "_project"}
+
+

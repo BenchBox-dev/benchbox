@@ -41,3 +41,5 @@ def test_q51_running_total_repeats_the_total_across_a_null_day():
     totals = _q51_running_total_pandas(base, "item")
     assert totals.isna().tolist() == [True, False, False, False, True, True]
     assert totals.dropna().tolist() == [5.0, 5.0, 7.0]
+
+

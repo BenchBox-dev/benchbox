@@ -742,3 +742,5 @@ class TestRegistryIntegration:
 
         ai_ml = get_benchmarks_by_category("AI/ML")
         assert "vector_search" in ai_ml
+
+

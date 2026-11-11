@@ -346,3 +346,5 @@ def test_non_utf8_base_copy_fails_closed(tmp_path: Path) -> None:
     result = heavy.heavy_needed(_decision(["ordinary.py"]), "HEAD", repo)
     assert result["heavy_needed"] is True
     assert "failed closed" in result["reason"]
+
+

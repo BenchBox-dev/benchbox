@@ -29,3 +29,5 @@ print(json.dumps(sorted(m for m in sys.modules if m.startswith(('adbc_driver', '
         completed = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
 
         assert json.loads(completed.stdout) == []
+
+

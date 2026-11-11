@@ -88,3 +88,5 @@ class TestReceiptAnonymization:
         anonymize_applied_tuning_payload(applied)
 
         assert "statement" in applied["receipt"]["entries"][0]
+
+

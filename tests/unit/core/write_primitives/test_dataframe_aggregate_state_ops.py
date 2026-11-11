@@ -345,3 +345,5 @@ class TestAggregateStateOpStorageValidationPropagation:
         assert result["rows_returned"] == 10
         merge_mock.assert_not_called()
         assert (tmp_path / "_aggregate_state" / "evidence.parquet").exists()
+
+

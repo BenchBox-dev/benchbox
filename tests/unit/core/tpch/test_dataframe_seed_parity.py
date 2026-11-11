@@ -278,3 +278,5 @@ def test_dataframe_power_iterations_all_run_stream_zero(seed: int | None) -> Non
     for iteration in range(1, ITERATIONS + 1):
         order = [int(str(r["query_id"]).lstrip("Qq")) for r in results if r["iteration"] == iteration]
         assert order == TPCHStreams.PERMUTATION_MATRIX[0]
+
+

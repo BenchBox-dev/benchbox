@@ -264,3 +264,5 @@ class TestTPCDSDuckDBDialectIntegration:
         translated = benchmark.translate_query_text(query_with_days_column, "netezza", "duckdb")
         assert "days_since_order" in translated
         assert "'shipped in 30 days'" in translated
+
+

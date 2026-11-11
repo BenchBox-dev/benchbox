@@ -515,3 +515,5 @@ class TestJoinConditionRendering:
         rendered = render_plan(self._join_plan([wrapped]))
         assert "- l_orderkey = o_orderkey" in rendered
         assert "Join Type" not in rendered
+
+

@@ -127,3 +127,5 @@ class TestRunDriverVersionAnnouncement:
         result = _invoke_run(platform="polars", database_config=cfg)
 
         assert "Running tpch on polars at scale 0.01 [driver 1.36.1]" in result.output
+
+

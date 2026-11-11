@@ -492,3 +492,5 @@ def test_non_uat_mocker_project_stays_shared_below_max():
 
     max_report = container_cleanup.reclaim_container_usage(mode="max", apply=False, runner=fake)
     assert "myapp-web-1" in {r.display_name for r in max_report.targets}
+
+

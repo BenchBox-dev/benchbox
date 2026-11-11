@@ -157,3 +157,5 @@ def test_wall_clock_check_never_starts_pytest_collection() -> None:
     text = _SCRIPT.read_text(encoding="utf-8")
     assert "subprocess" not in text
     assert "fast_test_lane_policy" not in text
+
+

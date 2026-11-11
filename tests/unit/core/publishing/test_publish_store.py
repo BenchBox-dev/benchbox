@@ -242,3 +242,5 @@ class TestGeneratePubId:
         id2 = _generate_pub_id("/tmp/b.json")
         assert isinstance(id1, str)
         assert isinstance(id2, str)
+
+

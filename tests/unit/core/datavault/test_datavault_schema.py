@@ -181,3 +181,5 @@ class TestDataTypeHandling:
         ddl = hub.get_create_table_sql(enable_primary_keys=False, enable_foreign_keys=False)
         assert "VARCHAR(64)" in ddl
         assert "VARCHAR(32)" not in ddl
+
+

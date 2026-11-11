@@ -297,3 +297,5 @@ def test_pregenerate_stream_queries_wraps_dsqgen_failure(monkeypatch):
     config = TPCDSThroughputTestConfig(num_streams=1, enable_preflight=True)
     with pytest.raises(RuntimeError, match="dsqgen -STREAMS generation failed"):
         throughput._pregenerate_stream_queries(config)
+
+

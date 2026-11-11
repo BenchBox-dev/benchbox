@@ -3040,3 +3040,5 @@ class TestGatherStatistics:
         assert (stats_mode, tables_analyzed) == ("explicit", 2)
         executed = [c.args[0] for c in connection.cursor.return_value.execute.call_args_list]
         assert executed == ["ANALYZE title", "ANALYZE name"]
+
+

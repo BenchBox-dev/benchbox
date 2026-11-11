@@ -499,3 +499,5 @@ class TestManifestPathHelpers:
             )
 
         mock_emit.assert_called_once_with("🔄 Reusing benchmark data (created 2026-03-25T00:00:00Z; 1 table, 2 files)")
+
+

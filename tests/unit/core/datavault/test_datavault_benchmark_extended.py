@@ -423,3 +423,5 @@ class TestDataVaultManifestDialectMetadata:
             assert is_null is True
         finally:
             conn.close()
+
+

@@ -134,3 +134,5 @@ class TestClickBenchBenchmarkRegistry:
         meta = get_benchmark_metadata("clickbench")
         assert meta is not None
         assert meta.get("supports_dataframe") is True
+
+

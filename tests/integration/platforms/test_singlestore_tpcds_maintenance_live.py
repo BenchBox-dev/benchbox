@@ -133,3 +133,5 @@ def test_delete_function_removes_rows(maintenance_run, function):
     assert set(operation.rows_by_table) == set(_DELETED_FROM[function])
     assert all(delta <= 0 for delta in operation.rows_by_table.values())
     assert operation.rows_affected > 0
+
+

@@ -149,3 +149,5 @@ class TestAdapterDryRunFlag:
         adapter.disable_dry_run(mock_conn)
         assert adapter.dry_run is False
         assert mock_conn._default_job_config.dry_run is False
+
+

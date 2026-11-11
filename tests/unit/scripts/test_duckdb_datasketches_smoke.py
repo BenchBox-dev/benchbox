@@ -29,3 +29,5 @@ def test_known_upstream_drift_requires_missing_function_error() -> None:
     message = "Catalog Error: binder failed while planning datasketch_theta"
 
     assert not smoke._is_known_upstream_drift("2e38607", "theta", message)
+
+

@@ -28,3 +28,5 @@ def test_core_very_verbose_logs_debug(caplog):
         b.generate_data()
 
         assert b.verbose_level == 2
+
+

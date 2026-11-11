@@ -130,3 +130,5 @@ def test_non_overridden_queries_present_in_clickhouse_dialect():
     for qid in base:
         assert qid in clickhouse, f"{qid} missing from ClickHouse queries"
         assert clickhouse[qid].strip(), f"{qid} is empty in ClickHouse queries"
+
+

@@ -59,3 +59,5 @@ def test_query64_translated_final_projection_gets_unique_names():
 def test_unaliased_duplicate_columns_are_left_to_the_engine_which_deduplicates_them():
     sql = "SELECT inv1.w_warehouse_sk, inv1.d_moy, inv2.w_warehouse_sk, inv2.d_moy FROM inv AS inv1 JOIN inv AS inv2 ON inv1.k = inv2.k"
     assert rewrite_query(sql) == sql
+
+

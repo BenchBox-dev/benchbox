@@ -257,3 +257,5 @@ def _paths_containing(node: Any, needle: str, path: str = "$") -> list[str]:
     if isinstance(node, list):
         return [hit for index, child in enumerate(node) for hit in _paths_containing(child, needle, f"{path}[{index}]")]
     return [path] if needle in str(node) else []
+
+

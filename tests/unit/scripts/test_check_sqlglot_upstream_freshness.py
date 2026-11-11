@@ -95,3 +95,5 @@ def test_main_exit_status_reflects_the_gate(tmp_path: Path, monkeypatch: pytest.
     assert main(["--root", str(tmp_path)]) == 1
     monkeypatch.setattr("scripts.check_sqlglot_upstream_freshness.list_upstream_tags", lambda: {"v30.23.0": PINNED})
     assert main(["--root", str(tmp_path)]) == 0
+
+

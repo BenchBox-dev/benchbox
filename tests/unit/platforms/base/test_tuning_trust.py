@@ -434,3 +434,5 @@ def test_apply_step_never_reconciles() -> None:
     start = source.index("    def _setup_fresh_database_phases(")
     end = source.index("\n    def ", start + 1)
     assert "reconcile" not in source[start:end]
+
+

@@ -482,3 +482,5 @@ def test_cross_layer_sentinel_gate_is_green() -> None:
     combined = uri + mcp + tuning
     for gate in (_SWEEP_URI_GATE, _SWEEP_MCP_GATE, _SWEEP_TABLE_GATE, _SWEEP_COLUMN_GATE):
         assert gate not in combined, f"cross-layer gate leaked {gate}"
+
+

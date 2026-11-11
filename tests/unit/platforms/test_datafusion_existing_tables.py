@@ -20,3 +20,5 @@ def test_existing_tables_exclude_information_schema(tmp_path):
     ctx.sql("CREATE TABLE Hits (a INT)").collect()
 
     assert adapter._get_existing_tables(ctx) == ["hits"]
+
+

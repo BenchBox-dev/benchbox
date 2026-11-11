@@ -457,3 +457,5 @@ class TestDDLGeneratorProtocol:
         assert callable(generator.supports_tuning_type)
 
         assert generator.platform_name == "mock"
+
+

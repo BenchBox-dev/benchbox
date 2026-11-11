@@ -127,3 +127,5 @@ class TestResolverMarkerFeedsCoverageParser:
 
         status = status_from_log_text(_resolution_log_text(resolution))
         assert status is None
+
+

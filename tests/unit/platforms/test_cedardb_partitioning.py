@@ -152,3 +152,5 @@ def test_any_other_partition_key_is_not_claimed(adapter, monkeypatch, definition
 
     assert adapter._applied_tuning_ledger.satisfied == []
     assert reason in adapter._applied_tuning_ledger.dropped[0].reason
+
+

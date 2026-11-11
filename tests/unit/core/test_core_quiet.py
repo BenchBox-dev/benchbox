@@ -22,3 +22,5 @@ def test_core_quiet_suppresses_logs_and_output(caplog, capsys):
 
     captured = capsys.readouterr()
     assert captured.out == ""
+
+

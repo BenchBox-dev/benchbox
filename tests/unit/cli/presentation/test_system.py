@@ -49,3 +49,5 @@ def test_display_system_recommendations_covers_resource_bands(profile, expected_
     rendered = " ".join(str(call.args[0]) for call in mock_print.call_args_list if call.args)
     for message in expected_messages:
         assert message in rendered
+
+

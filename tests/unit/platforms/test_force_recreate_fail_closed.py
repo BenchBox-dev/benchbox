@@ -197,3 +197,5 @@ def test_motherduck_connects_normally_without_force_recreate(monkeypatch):
 
     assert isinstance(adapter.create_connection(), _FakeConnection)
     assert any("SELECT 1" in sql for sql in executed)
+
+

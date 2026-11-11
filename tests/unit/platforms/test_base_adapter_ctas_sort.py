@@ -437,3 +437,5 @@ class TestConstraintPreservingCtasSort:
         connection.commit.assert_not_called()
         assert len(adapter._applied_tuning_ledger.dropped) == 1
         assert "foreign-key dependents" in adapter._applied_tuning_ledger.dropped[0].reason
+
+

@@ -31,3 +31,5 @@ def test_default_label_is_valid(tmp_path):
 def test_publish_bundle_rejects_invalid_label_without_traceback(tmp_path):
     result = publish_bundle(tmp_path / "does-not-exist.json", label="bogus", quiet=True)
     assert result is None
+
+

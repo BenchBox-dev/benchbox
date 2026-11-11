@@ -82,3 +82,5 @@ class TestTransformWriteSql:
         result = transform_write_sql("bulk_load_fallback", "bulk_load", sql)
 
         assert result.strip() == "INSERT INTO bulk_load_ops_target SELECT 1"
+
+

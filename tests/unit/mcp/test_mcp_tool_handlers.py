@@ -910,3 +910,5 @@ class TestPhasesMapping:
         mock_get_adapter.assert_called_once()
         call_kwargs = mock_get_adapter.call_args[1]
         assert call_kwargs.get("mode") == "dataframe"
+
+

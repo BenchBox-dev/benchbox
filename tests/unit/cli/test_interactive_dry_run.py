@@ -1395,3 +1395,5 @@ class TestRunCommandImportIntegrity:
                     self_imports.append(f"line {node.lineno}: from {node.module} import ...")
 
         assert not self_imports, f"Self-referential imports found: {self_imports}"
+
+

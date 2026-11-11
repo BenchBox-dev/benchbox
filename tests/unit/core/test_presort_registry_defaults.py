@@ -99,3 +99,5 @@ class TestPresortPayloadResolution:
 
         assert payload["output_format"] == "delta"
         assert payload["table_configs"] == {"custom": []}
+
+

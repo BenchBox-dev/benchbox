@@ -85,3 +85,5 @@ def test_table_loading_order_used_by_the_loader_is_fk_safe(tpch_fk_enforced_duck
     assert position["supplier"] < position["lineitem"]
     assert position["part"] < position["partsupp"]
     assert position["supplier"] < position["partsupp"]
+
+

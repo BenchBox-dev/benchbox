@@ -137,3 +137,5 @@ class TestTpcdsObtSymbolColumns:
     def test_other_tables_keep_their_static_symbol_columns(self, questdb_stubs) -> None:
         assert QuestDBAdapter._symbol_columns_for_table("nation") == ["n_name"]
         assert QuestDBAdapter._symbol_columns_for_table("unknown_table") == []
+
+

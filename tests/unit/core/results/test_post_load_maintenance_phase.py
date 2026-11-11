@@ -90,3 +90,5 @@ def test_phase_is_ordered_between_data_loading_and_validation() -> None:
     order = list(payload["phases"])
 
     assert order.index("data_loading") < order.index("post_load_maintenance") < order.index("validation")
+
+

@@ -632,3 +632,5 @@ class TestLoadBenchmarkIntoContextGuard:
         adapter = MockPandasAdapter()
         with pytest.raises(ValueError, match="manages its own DataFrame loading"):
             adapter.load_benchmark_into_context(ManagedBenchmark(), tmp_path)
+
+

@@ -138,3 +138,5 @@ def test_anonymize_plans_payload_redacts_errors_mapping_and_string(monkeypatch):
     assert CUSTOM_HOME not in str(mapping["errors"]) + str(text["errors"])
     assert anonymize_plans_payload({"queries": {}, "errors": None})["errors"] is None
     assert anonymize_plans_payload({"queries": {}, "errors": 5})["errors"] == 5
+
+

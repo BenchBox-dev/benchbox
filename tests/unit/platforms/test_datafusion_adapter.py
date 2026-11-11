@@ -1415,3 +1415,5 @@ class TestGetBenchmarkSchemaOBTTable:
 
         assert "dimcustomer" in schemas
         assert "DimCustomer" not in schemas
+
+

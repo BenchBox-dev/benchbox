@@ -443,3 +443,5 @@ class TestQueryIdRepairsColumn:
         row = self._published(_make_entry(), "SELECT query_id_repairs FROM results WHERE result_id = ?")
 
         assert row == (None,)
+
+

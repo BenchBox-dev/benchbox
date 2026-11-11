@@ -384,3 +384,5 @@ class TestErrorRecoveryManager:
         with patch.object(manager, "get_error_statistics", return_value={"message": "No errors recorded"}):
             success = manager.export_error_report("/nonexistent/path/report.json")
         assert success is False
+
+

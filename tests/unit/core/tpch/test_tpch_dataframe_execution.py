@@ -516,3 +516,5 @@ class TestTPCHQueryResultValues:
         result = _collect_result(query.expression_impl(tpch_context))
         assert len(result) == 1
         assert result["promo_revenue"][0] is not None
+
+

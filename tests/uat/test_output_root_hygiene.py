@@ -69,3 +69,5 @@ def test_default_local_run_is_not_blocked(monkeypatch, tmp_path):
 
     assert configured_external_root(cwd=worktree) is None
     assert audit_local_datagen(cwd=worktree) is None
+
+

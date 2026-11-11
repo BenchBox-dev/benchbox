@@ -210,3 +210,5 @@ def test_query_subset_of_a_split_query_selects_every_statement():
     assert list(adapter._filter_queries(queries, ReadPrimitivesBenchmark(), "tpcds", {"query_subset": ["14b"]})) == [
         "14b"
     ]
+
+

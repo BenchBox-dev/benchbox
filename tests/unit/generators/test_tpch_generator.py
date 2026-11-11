@@ -1041,3 +1041,5 @@ def test_existing_distributions_file_in_work_dir_is_kept(tmp_path):
     _stage_distributions(tmp_path / "missing" / "dists.dss", work_dir)
 
     assert (work_dir / "dists.dss").read_text(encoding="utf-8") == "local"
+
+

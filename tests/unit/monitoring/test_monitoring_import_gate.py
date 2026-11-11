@@ -129,3 +129,5 @@ class TestProgressMonitoringGate:
             progress = BenchmarkProgress(console, enable_monitoring=False)
 
         assert progress.monitor is None
+
+

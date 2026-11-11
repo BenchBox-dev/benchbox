@@ -62,3 +62,5 @@ def test_ssb_dataframe_surface_equivalent_to_sql_and_reference_row_counts_match(
         "the SSB gate must carry no legitimately_empty classification once the data is fixed"
     )
     assert actual == SSB_EXPECTED_ROW_COUNTS[EQUIVALENCE_SCALE]
+
+

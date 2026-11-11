@@ -335,3 +335,5 @@ def test_other_benchmarks_keep_the_measured_power_duration_in_combined_runs() ->
 
 def test_tpcds_without_query_timestamps_records_a_zero_power_duration() -> None:
     assert _phases_for("tpcds", [{}]).duration_ms == 0
+
+

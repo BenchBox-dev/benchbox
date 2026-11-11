@@ -153,3 +153,5 @@ class TestTpcdsSupport:
         gen = DorisDDLGenerator(benchmark_type="tpcds")
         clauses = gen.generate_tuning_clauses(TableTuning(table_name="store_sales"))
         assert "ss_sold_date_sk" in clauses.sort_by
+
+

@@ -162,3 +162,5 @@ class TestLiveFireboltSpecificFeatures:
                 pass
         finally:
             live_firebolt_adapter.close_connection(connection)
+
+

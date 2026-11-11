@@ -315,3 +315,5 @@ class TestParquetCsvParity:
             new = [normalize(name, row[column]) for row in new_rows[1:]]
             assert old == new, name
             assert hashlib.sha256(repr(old).encode()).digest() == hashlib.sha256(repr(new).encode()).digest()
+
+

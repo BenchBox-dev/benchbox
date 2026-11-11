@@ -74,3 +74,5 @@ def test_missing_message_file_is_a_usage_error(tmp_path: Path) -> None:
         text=True,
     )
     assert result.returncode == 2
+
+

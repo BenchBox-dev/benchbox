@@ -495,3 +495,5 @@ class TestAIMLBenchmarkExtraCoverage:
         assert "platform" in d
         assert "total_queries" in d
         assert "query_results" in d
+
+

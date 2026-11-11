@@ -1245,3 +1245,5 @@ class TestAthenaConfigBuilder:
             )
 
         assert config.region == "us-west-2"
+
+

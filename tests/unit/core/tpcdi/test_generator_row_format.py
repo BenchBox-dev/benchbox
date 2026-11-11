@@ -38,3 +38,5 @@ def test_pipe_row_writer_emits_plain_decimals(tmp_path):
         writer.writerow([1, "a", 7e-05, 0.15])
         writer.writerows([[2, "b", 1e-05, 2.5]])
     assert path.read_bytes() == b"1|a|0.00007|0.15\r\n2|b|0.00001|2.5\r\n"
+
+

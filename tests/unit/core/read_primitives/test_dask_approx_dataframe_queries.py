@@ -62,3 +62,5 @@ def test_approx_count_distinct_simple_uses_dask_hll(monkeypatch: pytest.MonkeyPa
     assert calls["count"] == 1
     assert list(result.columns) == ["unique_customers"]
     assert result.loc[0, "unique_customers"] == pytest.approx(2, rel=0.01)
+
+

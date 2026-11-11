@@ -75,3 +75,5 @@ def test_required_runtime_contract_helper_returns_true_for_conforming_loader_ben
 
     benchmark = _instantiate_loader_benchmark(benchmark_id)
     assert has_runtime_contract(benchmark)
+
+

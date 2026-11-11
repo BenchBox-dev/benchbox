@@ -67,3 +67,5 @@ def test_selector_conflicting_with_an_alias_option_is_rejected() -> None:
 def test_selection_reports_the_manifest_default_deployment() -> None:
     assert resolve_run_selection("duckdb", "default", {}).deployment == "local"
     assert resolve_run_selection("clickhouse", "default", {}).deployment == "local"
+
+

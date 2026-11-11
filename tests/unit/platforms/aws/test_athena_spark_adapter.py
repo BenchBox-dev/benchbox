@@ -495,3 +495,5 @@ class TestAthenaSparkAdapterClose:
 
             mock_athena_client.terminate_session.assert_called_once_with(SessionId="session-456")
             assert adapter._session_id is None
+
+

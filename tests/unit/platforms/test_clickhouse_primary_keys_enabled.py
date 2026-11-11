@@ -110,3 +110,5 @@ class TestDateFirstSortKey:
             tuned_statement = next(s for s in tuned if re.match(rf"\s*CREATE TABLE {table}\b", s))
             assert tuned_statement == baseline_statement
             assert "ORDER BY tuple()" not in tuned_statement
+
+

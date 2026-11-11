@@ -199,3 +199,5 @@ def test_a_docker_server_engine_on_a_mac_is_labelled_a_linux_container_on_macOS(
     assert entry.variant_label == "Apache Doris (Linux container on macOS)"
     validator_ids, explorer_ids = _identities(tmp_path)
     assert validator_ids == explorer_ids == {"apache-doris^container"}
+
+

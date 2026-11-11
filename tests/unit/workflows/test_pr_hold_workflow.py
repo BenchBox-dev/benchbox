@@ -146,3 +146,5 @@ def test_hold_step_fails_closed_when_the_label_lookup_fails(tmp_path: Path) -> N
     result, _ = _hold_step(tmp_path, "echo boom >&2\nexit 1\n", [])
     assert result.returncode != 0
     assert "No durable hold label." not in result.stdout
+
+

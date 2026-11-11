@@ -29,3 +29,5 @@ def test_supported_benchmarks_are_not_blocked(unsupported):
 def test_dataframe_pyspark_platform_is_not_gated():
     caps = PlatformRegistry.get_platform_capabilities("pyspark-df")
     assert caps is None or "write_primitives" not in caps.unsupported_benchmarks
+
+

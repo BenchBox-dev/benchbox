@@ -64,3 +64,5 @@ def test_ruleset_drift_runs_trusted_develop_code_with_the_token() -> None:
     checkout = next(step for step in job["steps"] if str(step.get("uses", "")).startswith("actions/checkout@"))
     assert checkout["with"]["ref"] == "develop"
     assert checkout["with"]["persist-credentials"] is False
+
+

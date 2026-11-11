@@ -364,3 +364,5 @@ def test_append_lifecycle_log_writes_offset_aware_timestamp(tmp_path: Path):
     parsed = _dt.datetime.fromisoformat(timestamp_token)
 
     assert parsed.tzinfo is not None
+
+

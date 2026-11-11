@@ -46,3 +46,5 @@ def test_ci_profile_includes_full_instrumentation():
 
     required_plugins = {line.strip() for line in section["required_plugins"].splitlines() if line.strip()}
     assert any("pytest-cov" in plugin for plugin in required_plugins)
+
+

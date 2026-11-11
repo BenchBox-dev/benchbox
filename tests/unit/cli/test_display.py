@@ -75,3 +75,5 @@ def test_show_system_profile_marks_missing_cpu_as_not_recorded() -> None:
     StandardDisplays(console).show_system_profile(profile)
 
     assert "Not recorded" in output.getvalue()
+
+

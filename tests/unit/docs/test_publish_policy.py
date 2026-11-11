@@ -66,3 +66,5 @@ def test_excluded_directories_are_top_level_and_excluded_files_are_catalogued() 
     assert set(EXCLUSIONS) >= REQUIRED_EXCLUSIONS
     assert all("/" not in root for root in EXCLUDED_ROOTS)
     assert EXCLUDED_FILES <= CATALOGUED_PAGES
+
+

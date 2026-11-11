@@ -192,3 +192,5 @@ def test_cross_surface_csv_path_sql_dataframe_parity(
     sql_values = _sql_phrase_values(csv_path, null_marker)
     dataframe_values = _load_phrase_values(cheap_csv_adapter, csv_path, null_marker)
     assert dataframe_values == sql_values
+
+

@@ -105,3 +105,5 @@ def test_real_joinorder_synthetic_shapes() -> None:
     for ddl, (name, sql_type) in shapes.items():
         assert column_name(ddl) == name
         assert column_sql_type(ddl) == sql_type
+
+

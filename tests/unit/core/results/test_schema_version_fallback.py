@@ -74,3 +74,5 @@ def test_load_missing_all_version_keys_raises(tmp_path: Path) -> None:
 
     with pytest.raises(UnsupportedSchemaError):
         load_result_file(_write_bundle(tmp_path, data))
+
+

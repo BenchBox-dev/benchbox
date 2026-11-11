@@ -2408,3 +2408,5 @@ def test_singlestore_scalar_validation_queries_select_from_dual(fast_bench, oper
 
     assert resolved
     assert all(sql.lstrip().upper().startswith("SELECT 1 FROM DUAL WHERE") for sql in resolved)
+
+

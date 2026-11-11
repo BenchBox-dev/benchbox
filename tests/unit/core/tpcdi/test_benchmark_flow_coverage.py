@@ -399,3 +399,5 @@ def test_generated_finwire_records_match_the_parser_layout(tmp_path: Path):
     security = next(record for record in records if isinstance(record, SecurityMasterRecord))
     assert security.symbol == "SEC0001"
     assert security.shares_outstanding == 1000000
+
+

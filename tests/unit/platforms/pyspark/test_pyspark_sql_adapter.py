@@ -118,3 +118,5 @@ def test_close_clears_reference(monkeypatch: pytest.MonkeyPatch, mock_pyspark_en
     adapter.close()
 
     assert released["value"] is True
+
+

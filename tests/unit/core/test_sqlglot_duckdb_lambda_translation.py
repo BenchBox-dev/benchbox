@@ -43,3 +43,5 @@ def test_generated_duckdb_lambda_sql_runs_with_the_same_results(connection, name
 
     assert "LAMBDA " in translated
     assert connection.execute(translated).fetchall() == connection.execute(source).fetchall()
+
+

@@ -38,3 +38,5 @@ class TestSupportsTuningTypeDisplayNamePath:
         host = _NamedHost()
         assert host.supports_tuning_type(TuningType.PARTITIONING) is True
         assert host.supports_tuning_type(TuningType.CLUSTERING) is False
+
+

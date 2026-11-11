@@ -153,3 +153,5 @@ class TestUnparseableSql:
     def test_unparseable_query_fails_before_reaching_the_engine(self):
         with pytest.raises(ParseError):
             rewrite_query_for_clickhouse("SELECT SR_FEE / ((( FROM")
+
+

@@ -151,3 +151,5 @@ def test_plan_capture_error_survives_export_load_reexport_round_trip() -> None:
 
     round_trip_entry = next(q for q in round_trip["queries"] if q["id"] == "1")
     assert round_trip_entry["plan_capture_error"] == "TypeError: unsupported operand"
+
+

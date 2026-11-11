@@ -202,3 +202,5 @@ class TestPlatformNormalization:
         config = DataFrameTuningConfiguration()
         issues = validate_dataframe_tuning(config, "POLARS")
         assert not any(i.level == ValidationLevel.ERROR for i in issues)
+
+

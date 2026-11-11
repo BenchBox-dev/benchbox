@@ -167,3 +167,5 @@ def test_stored_timing_method_defaults_to_legacy():
     assert stored_timing_method({}) == 1
     assert stored_timing_method({"timing_method": 2}) == 2
     assert stored_timing_method({"timing_method": "2"}) == 1
+
+

@@ -137,3 +137,5 @@ def test_create_maintenance_phase_marks_failed_operation():
     assert phase.success is False
     assert phase.maintenance_operations[0].status == "FAILED"
     assert phase.maintenance_operations[0].error_message == "boom"
+
+

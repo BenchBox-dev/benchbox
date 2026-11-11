@@ -663,3 +663,5 @@ class TestClientLinkLocalityOptions:
         assert captured_config.client_cloud is None
         assert captured_config.link_probe is True
         assert captured_config.options.get("link_probe") is True
+
+

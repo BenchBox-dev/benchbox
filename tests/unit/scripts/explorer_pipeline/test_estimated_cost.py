@@ -284,3 +284,5 @@ def test_published_estimate_satisfies_the_submission_validator(bundle: dict) -> 
     result = ValidationResult("estimate")
     _validate_normalized_cost_block(cost.to_dict(), result)
     assert result.errors == []
+
+

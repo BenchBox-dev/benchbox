@@ -26,3 +26,5 @@ class TestCUDACapabilitiesErrorCapture:
 
         assert available is True
         assert any("Failed to parse CUDA version file" in r.message for r in caplog.records)
+
+

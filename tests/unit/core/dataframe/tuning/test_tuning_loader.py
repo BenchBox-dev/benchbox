@@ -200,3 +200,5 @@ class TestConfigWithMetadata:
 
         assert loaded.metadata is not None
         assert loaded.metadata.platform == "dask"
+
+

@@ -549,3 +549,5 @@ def test_refresh_stream_stops_before_next_update_set_after_cancellation(monkeypa
     assert applied == [("RF1", 3), ("RF2", 3)]
     assert result.status == "FAILED"
     assert "cancelled" in result.error
+
+

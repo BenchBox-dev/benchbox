@@ -117,3 +117,5 @@ class TestGetTableLoadingOrder:
         position = {name: i for i, name in enumerate(order)}
         assert position["dim_locations"] < position["order_lines"]
         assert position["dim_products"] < position["order_lines"]
+
+

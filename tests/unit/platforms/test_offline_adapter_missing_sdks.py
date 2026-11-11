@@ -82,3 +82,5 @@ def test_child_refuses_to_run_with_assertions_disabled() -> None:
     assert result.returncode != 0
     assert "assertions are disabled" in result.stderr
     assert SUCCESS_MESSAGE not in result.stdout
+
+

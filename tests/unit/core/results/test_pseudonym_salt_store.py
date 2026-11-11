@@ -280,3 +280,5 @@ def test_public_pipeline_sources_stay_unsalted(relative_path: str) -> None:
         PUBLIC_PSEUDONYM_SALT_ENV,
     ):
         assert forbidden not in text
+
+

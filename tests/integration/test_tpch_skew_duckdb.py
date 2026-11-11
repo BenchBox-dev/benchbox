@@ -284,3 +284,5 @@ class TestTPCHSkewQueryExecution:
             WHERE s.s_suppkey IS NULL
         """).fetchone()[0]
         assert orphan_supplier == 0, "All partsupp should reference valid suppliers"
+
+

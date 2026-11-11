@@ -1121,3 +1121,5 @@ class TestDatabasePathAndExists:
         db_path = str(tmp_path / "nonexistent.duckdb")
         adapter = DuckDBAdapter(database_path=db_path, memory_limit="128MB")
         assert adapter.check_database_exists() is False
+
+

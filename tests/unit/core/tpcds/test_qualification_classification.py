@@ -501,3 +501,5 @@ def test_worker_fails_a_required_statement_with_an_empty_result(tmp_path, monkey
     required = tmp_path / "required.jsonl"
     assert runner.worker(job, "polars", required, data_dir) == 1
     assert _last_result(required)["gate"]["failures"] == ["empty_at_sf1"]
+
+

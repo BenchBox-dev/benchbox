@@ -298,3 +298,5 @@ class TestEstimateDataSizeExtended:
         bm = self._make_benchmark(0.1)
         result = self.executor._estimate_data_size(bm, "joinorder")
         assert result > 0
+
+

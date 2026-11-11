@@ -147,3 +147,5 @@ def test_power_stream_mismatch_keeps_generation_warning():
     assert outcome["status"] == "incompatible"
     assert "different data generations" in outcome["warning"]
     assert "power-stream policies" in outcome["warning"]
+
+

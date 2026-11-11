@@ -107,3 +107,5 @@ def test_partial_waiver_missing_base_fails_closed() -> None:
 def test_community_message_string_still_requires_passed() -> None:
     bundle = (REPO_ROOT / "benchbox" / "validation" / "bundle.py").read_text(encoding="utf-8")
     assert "must be 'passed' for public submissions" in bundle
+
+

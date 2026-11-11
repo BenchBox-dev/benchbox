@@ -35,3 +35,5 @@ def test_closed_blocking_issue_does_not_block():
 def test_malformed_issue_record_is_refused():
     with pytest.raises(ValueError, match="malformed"):
         blockers.blocking_issues([{"number": 1, "state": "open", "labels": "release-blocking"}])
+
+

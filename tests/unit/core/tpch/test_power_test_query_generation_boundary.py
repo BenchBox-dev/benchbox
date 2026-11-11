@@ -182,3 +182,5 @@ class _TimerWatchFree:
         benchmark = Mock()
         benchmark.get_query.side_effect = lambda query_id, **kwargs: f"SELECT {query_id}"
         return benchmark
+
+

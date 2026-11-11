@@ -392,3 +392,5 @@ class TestSnowflakeNestedEditionShape:
         normalized = (results.cost_summary or {})["normalized_cost"]
         assert normalized["cost_status"] == "normalized"
         assert normalized["deployment"]["warehouse_size"] == "Large"
+
+

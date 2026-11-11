@@ -646,3 +646,5 @@ class TestMotherDuckCoverageW15:
         )
         assert adapter.token == "my_token"
         assert adapter.database == "my_db"
+
+

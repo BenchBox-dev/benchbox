@@ -225,3 +225,5 @@ def test_stream_reader_yields_plain_schema():
 
     assert reader.schema.field("a").metadata is None
     assert reader.read_all().num_rows == 1
+
+

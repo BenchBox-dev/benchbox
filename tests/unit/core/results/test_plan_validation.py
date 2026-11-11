@@ -267,3 +267,5 @@ class TestDescribeTree:
         description = describe_tree(current, max_depth=3)
 
         assert "truncated" in description.lower()
+
+

@@ -222,3 +222,5 @@ def test_decimal_cast_only_rewrites_write_statements():
     assert rewrite_query("INSERT INTO t SELECT CAST(a AS DECIMAL(15,2)) FROM s") == (
         "INSERT INTO t SELECT CAST(a AS DOUBLE) FROM s"
     )
+
+

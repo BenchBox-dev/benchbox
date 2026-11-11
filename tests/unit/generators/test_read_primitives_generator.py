@@ -128,3 +128,5 @@ class TestReadPrimitivesDataGenerator:
         assert captured["output_dir"] == expected_root
         assert callable(captured["local_generate_func"])
         assert paths["region"] == "s3://bucket/primitives/region.tbl.zst"
+
+

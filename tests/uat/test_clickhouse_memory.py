@@ -466,3 +466,5 @@ def test_read_trace_rejects_unknown_schema(tmp_path: Path):
     output.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(ValueError, match="unsupported ClickHouse memory trace schema"):
         clickhouse_memory.read_trace(output)
+
+

@@ -81,3 +81,5 @@ def test_load_data_creates_schema_and_loads_known_tables(tmp_path: Path, monkeyp
     assert conn.commits == 2
     assert any(sql.startswith("CREATE TABLE a") for sql, _ in conn.executed)
     assert any(sql.startswith("CREATE TABLE b") for sql, _ in conn.executed)
+
+

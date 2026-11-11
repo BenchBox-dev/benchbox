@@ -55,3 +55,5 @@ def test_get_queries_with_dialect_translates_each_query(
 
     assert translated == {query_id: f"duckdb::{query_text}" for query_id, query_text in base_queries.items()}
     assert calls == [(query_text, "duckdb") for query_text in base_queries.values()]
+
+

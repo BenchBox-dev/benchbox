@@ -760,3 +760,5 @@ def test_get_table_row_count_uses_spark_sql_not_cursor() -> None:
     spark.sql.assert_called_once()
     assert "orders" in spark.sql.call_args[0][0]
     spark.cursor.assert_not_called()
+
+

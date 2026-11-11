@@ -454,3 +454,5 @@ def test_apply_tuning_configuration_sets_scale_factor() -> None:
 def test_get_target_dialect_returns_spark() -> None:
     adapter = _adapter()
     assert adapter.get_target_dialect() == "spark"
+
+

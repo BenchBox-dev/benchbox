@@ -497,3 +497,5 @@ class TestErrorHandling:
                 assert result is False
             finally:
                 gen1._release_bulk_load_lock()
+
+

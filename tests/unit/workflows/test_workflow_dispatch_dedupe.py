@@ -83,3 +83,5 @@ def test_pull_request_workflows_cancel_superseded_runs_per_pull_request_or_ref()
         if not any(key in group for key in ("github.ref", "pull_request.number")):
             offenders.append(path.name)
     assert offenders == []
+
+

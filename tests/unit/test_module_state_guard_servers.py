@@ -31,3 +31,5 @@ def test_module_building_servers_inside_tests_passes_the_guard() -> None:
 
     assert result.returncode == 0, result.stdout[-3000:]
     assert "process-wide state" not in result.stdout
+
+

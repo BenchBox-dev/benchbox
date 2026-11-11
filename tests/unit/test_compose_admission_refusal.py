@@ -33,3 +33,5 @@ def test_an_already_tracked_stack_skips_admission_and_is_not_torn_down(tmp_path)
     calls = _calls(tmp_path)
     assert len(calls) == 1 and calls[0].startswith("compose -p benchbox-postgresql-test-tracked ")
     assert (state / "postgresql.project").exists()
+
+

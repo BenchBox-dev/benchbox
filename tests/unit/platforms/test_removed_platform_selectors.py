@@ -34,3 +34,5 @@ def test_reject_removed_platform_noop_for_supported_platform() -> None:
     reject_removed_platform("duckdb")
     reject_removed_platform("pandas-df")
     reject_removed_platform("dask-df")
+
+

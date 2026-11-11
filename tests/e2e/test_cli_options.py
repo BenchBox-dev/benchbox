@@ -698,3 +698,5 @@ def test_validation_modes(tmp_path: Path, validation_mode: str) -> None:
     )
 
     assert result.returncode == 0, f"Failed for validation mode {validation_mode}: {result.stdout}"
+
+

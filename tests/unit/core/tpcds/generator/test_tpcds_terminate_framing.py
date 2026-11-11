@@ -58,3 +58,5 @@ def test_every_terminate_flag_is_n(source: Path) -> None:
 def test_dsdgen_options_use_the_platform_prefix(source: Path) -> None:
     raw = _RAW_OPTION.findall(source.read_text(encoding="utf-8"))
     assert not raw, f"{source.name}: pass dsdgen options through tpcds_option(), not raw literals {raw}"
+
+

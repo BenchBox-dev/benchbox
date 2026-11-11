@@ -65,3 +65,5 @@ class TestNormalizedCostAllowsDirectTotal:
 
         assert _normalized_cost_allows_direct_total("normalized") is False
         assert _normalized_cost_allows_direct_total(42) is False
+
+

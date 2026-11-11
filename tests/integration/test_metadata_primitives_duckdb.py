@@ -321,3 +321,5 @@ class TestBenchmarkLoaderIntegration:
 
         benchmark = benchmark_class()
         assert benchmark._name == "Metadata Primitives Benchmark"
+
+

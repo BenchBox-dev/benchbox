@@ -432,3 +432,5 @@ class TestHarnessRecording:
         conn = _FakeConnection()
 
         assert harness_connection(conn) is conn
+
+

@@ -372,3 +372,5 @@ class TestGeneratorExtended:
         metadata = manifest["tables"]["hits"]["formats"]["tbl"][0]["metadata"]
         assert metadata["csv_delimiter"] == "|"
         assert metadata["csv_null_marker"] == "__NULL__"
+
+

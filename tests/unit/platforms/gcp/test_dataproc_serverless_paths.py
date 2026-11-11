@@ -343,3 +343,5 @@ def test_uploaded_driver_runs_arguments_and_preserves_failure_order(monkeypatch,
     assert [args[0][0] for args in spark.sql.call_args_list] == [database_query, query]
     builder.appName.assert_called_once_with("BenchBox Query")
     builder.enableHiveSupport.assert_called_once_with()
+
+

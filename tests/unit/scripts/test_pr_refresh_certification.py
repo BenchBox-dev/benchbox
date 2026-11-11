@@ -529,3 +529,5 @@ def test_request_copy_does_not_share_mutable_eligible_state() -> None:
     second = copy.deepcopy(first)
     first["action"] = "opened"
     assert classify(request_from_mapping(second)).decision == DECISION_SHADOW
+
+

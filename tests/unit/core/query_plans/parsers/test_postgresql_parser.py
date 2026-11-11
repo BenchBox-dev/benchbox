@@ -380,3 +380,5 @@ class TestPostgreSQLParser:
         assert restored.query_id == plan.query_id
         assert restored.platform == plan.platform
         assert restored.plan_fingerprint == plan.plan_fingerprint
+
+

@@ -309,3 +309,5 @@ class TestGenerateRealisticTaxRates:
     def test_rates_are_in_valid_range(self):
         for _, _, rate in generate_realistic_tax_rates():
             assert 0.0 <= rate <= 1.0
+
+

@@ -212,3 +212,5 @@ def test_export_output_is_salted_with_the_file_salt(monkeypatch: pytest.MonkeyPa
     assert payload["platform"]["config"]["endpoint"] == salted
     assert salted != unsalted
     assert salt not in exported.read_text(encoding="utf-8")
+
+

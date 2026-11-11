@@ -22,3 +22,5 @@ def test_render_query_row_uses_execution_time_seconds_when_ms_missing(tmp_path) 
     )
 
     assert "1250.0" in row
+
+

@@ -514,3 +514,5 @@ class TestTPCDSRegression:
         assert regression_results["concurrent_access"], "Concurrent access regression"
 
         print(f"Regression test results: {regression_results}")
+
+

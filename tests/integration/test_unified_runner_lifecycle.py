@@ -84,3 +84,5 @@ def test_primitives_lifecycle_end_to_end(tmp_path):
     assert result.failed_queries == 0
     assert result.successful_queries == result.total_queries
     assert result.query_results, "Expected at least one query result entry"
+
+

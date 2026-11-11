@@ -117,3 +117,5 @@ def test_concurrent_fetch_downloads_once_and_reuses(tmp_path: Path) -> None:
     assert call_count[0] == 1
     assert results["a"] == out_dir
     assert results["b"] == out_dir
+
+

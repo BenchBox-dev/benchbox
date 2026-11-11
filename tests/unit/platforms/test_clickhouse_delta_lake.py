@@ -342,3 +342,5 @@ class TestResolveDeltaReader:
     def test_unknown_location_raises(self) -> None:
         with pytest.raises(ValueError, match="Unrecognized Delta location"):
             resolve_delta_reader("hdfs://namenode/table", native_available=True)
+
+

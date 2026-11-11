@@ -128,3 +128,5 @@ class TestDatabricksPlanCapture:
         assert result["status"] == "SUCCESS"
         assert result["query_plan"] is not None
         assert result["plan_fingerprint"] is not None
+
+

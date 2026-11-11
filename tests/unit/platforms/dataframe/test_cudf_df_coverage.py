@@ -185,3 +185,5 @@ def test_platform_info_merge_groupby_pandas_conversions_and_gpu_usage(monkeypatc
         SimpleNamespace(cuda=SimpleNamespace(Device=lambda _i: (_ for _ in ()).throw(RuntimeError()))),
     )
     assert adapter.get_gpu_memory_usage() == {"free_gb": 0.0, "total_gb": 0.0, "used_gb": 0.0}
+
+

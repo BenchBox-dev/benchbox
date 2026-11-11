@@ -431,3 +431,5 @@ class TestAMPLabBenchmarkDirectly(BenchmarkTestMixin):
                 assert len(data) == 2
                 assert data[0] == ["url1", "1", "100"]
                 assert data[1] == ["url2", "2", "200"]
+
+

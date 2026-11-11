@@ -612,3 +612,5 @@ def test_spark_keeps_local_prompt_deployment_when_registry_modes_are_missing(gen
     spark = next(platform for platform in browser_catalog["platforms"] if platform["id"] == "spark")
     assert spark["deployments"] == ["local", "self-hosted"]
     assert spark["credential_deployments"] == ["self-hosted"]
+
+

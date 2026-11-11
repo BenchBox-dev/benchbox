@@ -108,3 +108,5 @@ def test_char_padding_normalization_is_opt_in(havoc_benchmark):
     )
 
     assert divergences == []
+
+

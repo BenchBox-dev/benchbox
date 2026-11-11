@@ -660,3 +660,5 @@ def test_shipped_manifest_loads_and_classifies_paths_through_the_real_loader() -
     assert not cf.matches_manifest(".github/workflows/ci.yml", shipped)
     assert cf.decide_required("fix: repair", ["benchbox/core/runner.py"], shipped).required
     assert not cf.decide_required("fix: repair", ["docs/a.md"], shipped).required
+
+

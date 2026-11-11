@@ -608,3 +608,5 @@ class TestSupportsTuningType:
     def test_case_insensitive(self):
         mixin = StubSparkDDL()
         assert mixin.supports_tuning_type("PARTITIONING") is True
+
+

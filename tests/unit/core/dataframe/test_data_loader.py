@@ -1506,3 +1506,5 @@ class TestDataFrameDataLoaderWithWriteConfig:
                 loader.prepare_benchmark_data(benchmark, scale_factor=1.0, write_config=DataFrameWriteConfiguration())
 
             assert loader.applied_write_layout is None
+
+

@@ -71,3 +71,5 @@ def test_estimate_serialized_size_matches_json_length() -> None:
     actual = len(json.dumps(plan.to_dict(), indent=None))
 
     assert estimated == actual
+
+

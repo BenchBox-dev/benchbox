@@ -193,3 +193,5 @@ def test_cli_corpus_gate_runs_without_bundle_paths(tmp_path, monkeypatch, capsys
 
     assert rc == 1
     assert "disallowed corpus path" in capsys.readouterr().out
+
+

@@ -125,3 +125,5 @@ class TestBigQueryParserErrorHandling:
 class TestBigQueryRegistry:
     def test_registry_returns_bigquery_parser(self):
         assert isinstance(get_parser_for_platform("bigquery"), BigQueryQueryPlanParser)
+
+

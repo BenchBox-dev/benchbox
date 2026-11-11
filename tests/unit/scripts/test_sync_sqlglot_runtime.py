@@ -168,3 +168,5 @@ def test_public_sqlglot_runtime_import_is_banned() -> None:
     )
     assert result.returncode == 1
     assert any(finding["code"] == "TID251" for finding in json.loads(result.stdout))
+
+

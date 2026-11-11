@@ -343,3 +343,5 @@ def test_cross_surface_enforced_distinguishes_registered_from_verified_green(row
             assert r["cross_surface_enforced"] is None, (
                 f"{r['benchmark']} has no cross-surface gate but carries an enforcement flag"
             )
+
+

@@ -139,3 +139,5 @@ class TestCoffeeShopBenchmarkRegistry:
         meta = get_benchmark_metadata("coffeeshop")
         assert meta is not None
         assert meta.get("supports_dataframe") is True
+
+

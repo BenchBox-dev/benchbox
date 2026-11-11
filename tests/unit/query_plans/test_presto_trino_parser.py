@@ -167,3 +167,5 @@ class TestPrestoTrinoConcretePlatform:
         dag = parser.parse_explain_output("q1", _load("trino_explain_sample.json"))
         assert dag is not None
         assert dag.platform == platform
+
+

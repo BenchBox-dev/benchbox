@@ -241,3 +241,5 @@ class TestReferentialIntegrity:
         checks = validate_referential_integrity(tmp_path)
 
         assert checks.get("sat_region→hub_region") is False
+
+

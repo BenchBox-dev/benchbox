@@ -36,3 +36,5 @@ def test_ssb_generator_writes_manifest_and_no_raw_when_compressed(tmp_path: Path
     assert int(first.get("size_bytes", 0)) > 0
 
     assert int(first.get("row_count", 0)) >= 1
+
+

@@ -24,3 +24,5 @@ def test_query_without_double_precision_is_left_alone():
 def test_decimal_cast_keeps_its_type_next_to_a_rewritten_cast():
     sql = "SELECT CAST(b AS DECIMAL(10, 2)), CAST(c AS DOUBLE PRECISION) FROM t"
     assert rewrite_query(sql) == "SELECT CAST(b AS DECIMAL(10, 2)), CAST(c AS DOUBLE) FROM t"
+
+

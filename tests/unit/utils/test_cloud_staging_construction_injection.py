@@ -118,3 +118,5 @@ class TestBenchmarkConstructorsPreserveHandlers:
         staging = DatabricksPath("/tmp/cache", "dbfs:/Volumes/c/s/v")
         benchmark = DataVaultBenchmark(scale_factor=0.01, output_dir=staging)
         assert benchmark.output_dir.dbfs_target == "dbfs:/Volumes/c/s/v"
+
+

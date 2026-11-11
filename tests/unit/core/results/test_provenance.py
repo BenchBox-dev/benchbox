@@ -155,3 +155,5 @@ class TestPublishLabelIntegration:
     def test_workflow_only_labels_remain(self) -> None:
         for label in ("ci", "local", "unofficial-research"):
             assert label in VALID_LABELS
+
+

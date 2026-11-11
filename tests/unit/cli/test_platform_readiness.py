@@ -135,3 +135,5 @@ def test_lakesail_reachable_endpoint_is_ready(monkeypatch):
     assert all(result.ready for result in results)
     assert results[1].check == "spark_connect_endpoint"
     assert results[1].endpoint == "sc://sail-host:50052"
+
+

@@ -135,3 +135,5 @@ class TestNaturalQuerySortKey:
         from benchbox.core.visualization.result_plotter import ResultPlotter
 
         assert ResultPlotter._natural_sort_key("Q10") == natural_query_sort_key("Q10")
+
+

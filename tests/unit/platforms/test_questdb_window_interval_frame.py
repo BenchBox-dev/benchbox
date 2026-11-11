@@ -49,3 +49,5 @@ def test_window_moving_frame_questdb_variant_orders_outside_the_range_window():
 
     assert "RANGE BETWEEN '30' day PRECEDING AND CURRENT ROW" in rewritten
     assert rewritten.index("LIMIT 9223372036854775807") < rewritten.rindex("ORDER BY o_orderdate")
+
+

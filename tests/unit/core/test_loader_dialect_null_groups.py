@@ -135,3 +135,5 @@ class TestPopulatedTablesAuxiliaryHeal:
         assert result == (False, False)
         dummy.generate_data.assert_not_called()
         hook.assert_called_once_with()
+
+

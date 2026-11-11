@@ -110,3 +110,5 @@ class TestDeltaSqlDdlDml:
         )
         rows = {row["id"]: row["v"] for row in spark.sql("SELECT id, v FROM delta_merge").collect()}
         assert rows == {1: "b", 2: "c"}
+
+

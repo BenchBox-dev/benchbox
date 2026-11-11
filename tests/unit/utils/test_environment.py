@@ -36,3 +36,5 @@ def test_windows_cpu_does_not_promote_platform_processor_to_measured() -> None:
 
     assert model is None
     assert vendor is None
+
+

@@ -61,3 +61,5 @@ def test_schema_creation_and_loading(tmp_path, pyspark_test_environment):
     result = adapter.execute_query(conn, "SELECT COUNT(*) AS c FROM nation", query_id="Q1", benchmark_type="tpch")
     assert result["rows_returned"] == 1
     adapter.close()
+
+

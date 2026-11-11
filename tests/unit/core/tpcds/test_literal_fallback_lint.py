@@ -286,3 +286,5 @@ def test_structural_declarations_are_still_needed():
     stale = sorted(set(STRUCTURAL_KEYS) - needed)
     assert not stale, f"declared structural but no longer a fallback the adapter lacks: {stale}"
     assert all(STRUCTURAL_KEYS.values()), "every structural declaration needs a reason"
+
+

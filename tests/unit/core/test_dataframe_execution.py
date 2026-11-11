@@ -679,3 +679,5 @@ class TestDataVaultQ5Execution:
         expr_result = _to_pandas(query.expression_impl(self.expr_ctx))
         pandas_result = _to_pandas(query.pandas_impl(self.pandas_ctx))
         _compare_results(expr_result, pandas_result)
+
+

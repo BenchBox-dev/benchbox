@@ -601,3 +601,5 @@ class TestDuckDBNameResolution:
         recording_connection(con, ledger, PHASE_DDL).execute("CREATE TABLE t (a INTEGER PRIMARY KEY)")
         receipt = corroborate(ledger, DuckDBTuningIntrospector().introspect(con, ledger))
         assert receipt.corroborated is True
+
+

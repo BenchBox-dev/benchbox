@@ -36,3 +36,5 @@ def test_velox_rollup_uses_output_aliases_in_order_by():
     sql = ReadPrimitivesBenchmark(scale_factor=0.01).get_queries(dialect="spark")["olap_rollup_analysis"]
     assert "ORDER BY region" in sql
     assert "r.r_name NULLS" not in sql
+
+

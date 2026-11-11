@@ -278,3 +278,5 @@ def test_the_readiness_job_is_isolated_from_the_repository_and_prepared_artifact
     assert "needs" not in readiness
     assert not used(readiness)
     assert "app-token" not in job_text("readiness")
+
+

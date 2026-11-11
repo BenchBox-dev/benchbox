@@ -707,3 +707,5 @@ def test_guard_selection_reaches_the_cli_through_a_git_diff(repo: Path, capsys: 
 
     assert pt.main(["guards", "--repo-root", str(repo)]) == 0
     assert capsys.readouterr().out.split() == ["docs-reference-inventory", "project-references", "docs-ownership"]
+
+

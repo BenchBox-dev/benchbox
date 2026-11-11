@@ -200,3 +200,5 @@ def test_doris_smoke_config_validation(monkeypatch):
             port=9030,
             database="'; DROP TABLE --",
         )
+
+

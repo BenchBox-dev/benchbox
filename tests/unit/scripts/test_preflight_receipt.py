@@ -604,3 +604,5 @@ def test_pr_open_resolves_the_pushed_commit_once_before_the_receipt_check() -> N
     assert recipe.index(resolved) < recipe.index("preflight_receipt.py verify")
     assert '--head "$$REVIEWED"' in recipe
     assert recipe.index("preflight_receipt.py verify") < recipe.index('git push origin "$$REVIEWED:')
+
+

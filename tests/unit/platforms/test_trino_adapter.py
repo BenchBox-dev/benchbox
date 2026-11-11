@@ -1457,3 +1457,5 @@ class TestTrinoTuningSupport:
         assert "WITH" in result
         assert "partitioning" in result
         assert "l_shipdate" in result
+
+

@@ -88,3 +88,5 @@ def test_runner_fallback_looks_up_adapter_when_none_is_supplied() -> None:
     factory.assert_called_once_with("duckdb", database_path=":memory:")
     assert configured is adapter
     assert is_dataframe is False
+
+

@@ -263,3 +263,5 @@ def test_gateway_row_is_excluded_with_reason() -> None:
     assert by_result["result-native"].rank == 1
     assert by_result["result-gateway"].rank is None
     assert by_result["result-gateway"].ranking_exclusion_reason == "gateway_routed"
+
+

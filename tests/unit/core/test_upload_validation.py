@@ -532,3 +532,5 @@ def test_databricks_adapter_passes_verbose_flag():
     finally:
         if local_manifest_path.exists():
             local_manifest_path.unlink()
+
+

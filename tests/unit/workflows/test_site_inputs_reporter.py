@@ -247,3 +247,5 @@ def test_reporter_case_arms_match_the_classifier_vocabulary() -> None:
     match = re.search(r"^\s*([\w|-]+)\) CLASS=\"\$FAILURE_CLASS\"", _step("report-failure"), re.MULTILINE)
     assert match is not None
     assert set(match.group(1).split("|")) == set(module.FAILURE_CLASSES)
+
+

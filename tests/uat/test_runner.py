@@ -1019,3 +1019,5 @@ def test_run_cell_logs_memory_limit_and_skips_diagnostic_rerun(tmp_path: Path):
     log_text = result.log_path.read_text(encoding="utf-8")
     assert "# UAT_MEMORY_LIMIT limit_gib=1.5 peak_gib=2.00 exit_code=137" in log_text
     assert "# UAT_PEAK_RSS_GIB=2.00" in log_text
+
+

@@ -194,3 +194,5 @@ def test_a_container_matched_by_name_but_not_by_port_is_not_marked_as_serving_th
 
     assert result["platform_runtime"]["collection_status"] == "available"
     assert result["container"]["host_port_matched"] is False
+
+

@@ -613,3 +613,5 @@ def test_the_sentinel_records_its_pid_for_heavy_status_and_removes_it_on_exit(
     sentinel.wait(timeout=20)
     assert not pid_path.exists()
     assert not heavy_status.read_sentinel_state(env).running
+
+

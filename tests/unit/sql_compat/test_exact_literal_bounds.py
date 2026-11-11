@@ -50,3 +50,5 @@ def test_exact_literal_bounds_rule_scope_and_transformer(platform, benchmark_nam
     query = "SELECT * FROM sat_lineitem WHERE l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01"
     rewritten = apply_rewrite(decision.payload.transformer_id, query, platform)
     assert rewritten == "SELECT * FROM sat_lineitem WHERE l_discount BETWEEN 0.05 AND 0.07"
+
+

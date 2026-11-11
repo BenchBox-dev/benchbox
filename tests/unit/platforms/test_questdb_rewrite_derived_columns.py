@@ -31,3 +31,5 @@ def test_derived_table_with_star_projection_is_left_alone():
 def test_derived_table_with_mismatched_column_count_is_left_alone():
     sql = "SELECT a FROM (SELECT x, y FROM t) AS d(a)"
     assert rewrite_query(sql) == sql
+
+

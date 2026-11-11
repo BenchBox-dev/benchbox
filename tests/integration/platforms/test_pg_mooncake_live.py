@@ -156,3 +156,5 @@ class TestLivePgMooncakeWALReplication:
             except Exception:
                 pass
             live_pg_mooncake_adapter.close_connection(connection)
+
+

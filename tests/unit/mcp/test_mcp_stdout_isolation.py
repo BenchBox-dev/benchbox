@@ -156,3 +156,5 @@ class TestServerModuleImport:
             "assert before == after, (before, after)\n"
         )
         subprocess.run([sys.executable, "-c", probe], check=True, capture_output=True, text=True)
+
+

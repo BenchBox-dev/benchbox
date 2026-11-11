@@ -80,3 +80,5 @@ def test_generate_series_is_rewritten_to_the_table_function_on_starrocks(txn):
 def test_write_sql_without_series_or_transaction_is_left_untouched_on_starrocks(txn):
     sql = "UPDATE t SET a = 1 WHERE b = 2"
     assert txn._rewrite_transactional_sql_for_platform(sql, "starrocks") == sql
+
+

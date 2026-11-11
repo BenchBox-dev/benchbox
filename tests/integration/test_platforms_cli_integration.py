@@ -211,3 +211,5 @@ def test_platforms_status_unknown_platform():
     result = run_cli_command(["platforms", "status", "nonexistent-platform"])
 
     assert "Unknown platform" in result.stdout or "not found" in result.stdout.lower() or result.returncode != 0
+
+

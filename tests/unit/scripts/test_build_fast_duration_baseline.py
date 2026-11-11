@@ -578,3 +578,5 @@ def test_refreshed_medium_file_loads_in_every_consumer(tmp_path: Path) -> None:
         "tests/test_sample.py::TestSample::test_alpha": 1.0,
         "tests/test_sample.py::TestSample::test_beta": 2.0,
     }
+
+

@@ -86,3 +86,5 @@ class TestFabricWarehouseParserErrorHandling:
 class TestFabricWarehouseRegistry:
     def test_registry_returns_fabric_parser(self):
         assert isinstance(get_parser_for_platform("fabric_warehouse"), FabricWarehouseQueryPlanParser)
+
+

@@ -335,3 +335,5 @@ def test_a_leak_by_the_last_test_is_still_detected_next_to_a_module_fixture(tmp_
     assert "env[LEAKY_PROBE]" in result.stdout
     assert "env[MODULE_PROBE]" not in result.stdout
     assert "secret-value" not in result.stdout
+
+

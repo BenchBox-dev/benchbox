@@ -236,3 +236,5 @@ class TestPostgreSQLSubclassInheritance:
             )
         except (ImportError, AttributeError):
             pytest.skip(f"Could not import {adapter_class_path}")
+
+

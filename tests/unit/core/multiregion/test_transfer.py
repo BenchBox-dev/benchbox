@@ -208,3 +208,5 @@ class TestTransferCostEstimate:
             by_direction={TransferDirection.INTERNET_EGRESS: 15.50},
         )
         assert estimate.total_cost_usd == 15.50
+
+

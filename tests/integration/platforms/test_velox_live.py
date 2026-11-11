@@ -108,3 +108,5 @@ class TestVeloxSQLSmoke:
         assert isinstance(plan, str)
         assert len(plan) > 0
         assert "Velox native execution" in plan
+
+

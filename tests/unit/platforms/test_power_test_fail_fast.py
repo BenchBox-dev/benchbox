@@ -549,3 +549,5 @@ class TestDetermineBenchmarkStatusZeroQueries:
         status, color = ConsoleResultFormatter._determine_benchmark_status(result)
         assert status == "FAILED"
         assert color == "red"
+
+

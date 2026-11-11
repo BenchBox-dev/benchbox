@@ -572,3 +572,5 @@ class TestDataGenerationBenchmarkComparison:
             "catalog_page": Path("/tmp/catalog_page.csv"),
             "web_page": Path("/tmp/web_page.csv"),
         }
+
+

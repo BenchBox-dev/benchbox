@@ -466,3 +466,5 @@ class TestTPCTestIntegration:
 
             assert [r["query_id"] for r in result] == ["DF_SS", "DF_I", "LF_SS", "LF_I"]
             assert [r["operation_type"] for r in result] == ["DELETE", "DELETE", "INSERT", "INSERT"]
+
+

@@ -122,3 +122,5 @@ def test_reset_marks_schema_for_replacement(adapter):
     with patch.object(adapter, "_create_admin_connection", return_value=connection):
         adapter.reset_database_in_place(catalog="cat", schema="sch")
     assert adapter._schema_reset_in_place is True
+
+

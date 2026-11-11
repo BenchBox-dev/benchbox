@@ -252,3 +252,5 @@ def test_non_interactive_compare_without_platforms_is_not_locked(
     result = CliRunner().invoke(cli, ["compare", "--non-interactive"])
     assert result.exit_code != hl.EXIT_REFUSED
     assert "holder-cmd" not in result.output
+
+

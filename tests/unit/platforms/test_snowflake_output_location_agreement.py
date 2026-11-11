@@ -102,3 +102,5 @@ class TestOutputDirectoryConfigKeyIsGone:
 
         assert manager.config.output["directory"] == "./benchmark_runs/results"
         assert manager.config.database["preferred"] == "duckdb"
+
+

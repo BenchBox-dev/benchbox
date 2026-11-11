@@ -81,3 +81,5 @@ class TestLiveInfluxDBQueryExecution:
             assert result["fetch_mode"] == influxdb_adapter.fetch_mode
         finally:
             influxdb_adapter.close_connection(connection)
+
+

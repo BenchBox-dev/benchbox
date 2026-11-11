@@ -528,3 +528,5 @@ class TestStarburstFromConfig:
 
         assert adapter.schema is not None
         assert len(adapter.schema) > 0
+
+

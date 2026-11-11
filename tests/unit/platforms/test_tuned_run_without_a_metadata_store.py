@@ -101,3 +101,5 @@ def test_the_failure_to_write_a_marker_where_a_store_exists_still_aborts_the_run
 
     with pytest.raises(RuntimeError, match="tuned-run marker"):
         _run_fresh_setup(adapter, tmp_path)
+
+

@@ -51,3 +51,5 @@ def test_plan_ladder_returns_remaining_after_one_observation():
     next_rungs, pruned = ladder.plan_ladder([0.01, 0.1, 1.0], obs)
     assert next_rungs == [0.1, 1.0]
     assert pruned == []
+
+

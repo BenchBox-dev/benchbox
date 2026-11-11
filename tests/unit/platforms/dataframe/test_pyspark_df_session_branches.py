@@ -97,3 +97,5 @@ class TestPySparkSessionBranches:
         from benchbox.platforms.pyspark import PYSPARK_VERSION
 
         assert adapter.get_platform_info()["version"] == PYSPARK_VERSION
+
+

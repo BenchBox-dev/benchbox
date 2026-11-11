@@ -41,3 +41,5 @@ def test_rewritten_day_difference_keeps_sign_for_date_operands_on_questdb(questd
         "SELECT EXTRACT(EPOCH FROM (CAST('2024-01-01' AS DATE) - CAST('2024-01-03' AS DATE))) / 86400"
     )
     assert _scalar(questdb_http_url, rewritten) == -2.0
+
+

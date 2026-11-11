@@ -43,3 +43,5 @@ def test_by_all_inside_a_subquery_is_expanded():
 def test_union_all_and_explicit_keys_are_untouched():
     sql = "SELECT a FROM t UNION ALL SELECT a FROM u ORDER BY a"
     assert rewrite_query(sql) == sql
+
+

@@ -36,3 +36,5 @@ def test_staging_repoints_a_link_left_by_another_checkout(tmp_path: Path) -> Non
     review_mutation.stage(root, target, SETTINGS)
     assert (target / "src").resolve() == (root / "src").resolve()
     assert (target / "tests").resolve() == (root / "tests").resolve()
+
+

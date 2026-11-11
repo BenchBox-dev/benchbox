@@ -911,3 +911,5 @@ class TestRedshiftValidation:
         ok, err = rs.validate_redshift_credentials(mgr, console=None)
 
         assert "Missing required fields" not in (err or "")
+
+

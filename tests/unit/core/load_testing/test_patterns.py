@@ -395,3 +395,5 @@ class TestMultiWriterPattern:
             MultiWriterPattern(writers=1, readers=0, duration_seconds=10)
         with pytest.raises(ValueError):
             MultiWriterPattern(writers=1, readers=1, duration_seconds=0)
+
+

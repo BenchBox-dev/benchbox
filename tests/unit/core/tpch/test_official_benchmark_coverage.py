@@ -382,3 +382,5 @@ def test_refresh_update_sets_are_sequenced_across_power_throughput_and_maintenan
     assert phases.throughput.call_args.args[2]["tpch_refresh_first_set"] == 8
     assert phases.maintenance.call_args.kwargs["first_set"] == 11
     assert result.success is True
+
+

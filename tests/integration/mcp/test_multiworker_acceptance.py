@@ -162,3 +162,5 @@ def test_remote_contract_survives_alternating_workers(tmp_path: Path, monkeypatc
                 runtime_a.store.release(first_lease)
 
     anyio.run(exercise)
+
+

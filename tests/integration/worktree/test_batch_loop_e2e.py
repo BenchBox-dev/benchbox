@@ -709,3 +709,5 @@ def test_start_refuses_one_member_and_members_are_held_to_their_frozen_scope(wor
         },
     )
     assert loop.check("m1", "tests/test_m1.py")["member"] == m1
+
+

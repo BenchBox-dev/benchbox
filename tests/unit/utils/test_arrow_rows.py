@@ -81,3 +81,5 @@ def test_exception_in_block_does_not_flush_partial_batch():
             writer.writerow([1, "a"])
             raise RuntimeError("boom")
     assert sink.getvalue() == b""
+
+

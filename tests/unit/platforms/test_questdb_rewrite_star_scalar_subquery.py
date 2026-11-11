@@ -24,3 +24,5 @@ def test_star_over_multi_column_cte_is_left_unchanged():
         'CROSS JOIN (SELECT * FROM m AS m) AS _u_0 WHERE b > _u_0."*"'
     )
     assert rewrite_query(sql) == sql
+
+

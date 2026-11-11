@@ -305,3 +305,5 @@ def test_tpcdi_dataframe_workload_passes_adapter_engine_to_maintenance(
 
     assert created
     assert {operations.execution_engine for operations in created} == {"streaming"}
+
+

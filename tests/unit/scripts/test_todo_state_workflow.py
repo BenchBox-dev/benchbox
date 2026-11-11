@@ -23,3 +23,5 @@ def test_workflow_validates_the_git_state_without_database_credentials() -> None
         "restore.sqlite",
     ):
         assert forbidden not in text
+
+

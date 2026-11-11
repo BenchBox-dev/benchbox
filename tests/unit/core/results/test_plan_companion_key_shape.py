@@ -110,3 +110,5 @@ def test_loader_still_reads_legacy_companion_keys_without_a_test_type():
     rows = _reconstruct_query_results(compact, [], legacy)
 
     assert rows[0]["query_plan"].logical_root.table_name == "t"
+
+

@@ -1106,3 +1106,5 @@ class TestFrameAggIdiomsPySpark:
 
     def test_nonempty_set_selects_value(self, sframe):
         assert self._avg_yearly(sframe, lambda col, lit: col("x") > lit(0.0)) == pytest.approx([30.0 / 7.0])
+
+

@@ -106,3 +106,5 @@ def test_no_cleanup_statement_reaches_singlestore_with_a_typed_date_literal(benc
         cleanup = overrides["singlestore"] if "singlestore" in overrides else operation.cleanup_sql
         if cleanup:
             assert not re.search(r"\b(DATE|TIMESTAMP)\s+'", cleanup), operation_id
+
+

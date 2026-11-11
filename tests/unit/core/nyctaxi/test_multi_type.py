@@ -622,3 +622,5 @@ class TestQueryManagerMultiType:
         green_cat_queries = qm.get_queries_by_category("green-geographic")
         assert len(green_cat_queries) > 0
         assert all(qid.startswith("green-") for qid in green_cat_queries)
+
+

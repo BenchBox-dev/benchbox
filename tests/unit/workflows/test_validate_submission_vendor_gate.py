@@ -138,3 +138,5 @@ def test_vendor_waiver_accepts_exact_bot_created_same_repo_mirror() -> None:
         )
         == "true"
     )
+
+

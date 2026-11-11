@@ -497,3 +497,5 @@ def test_get_platform_info_and_error_tolerance():
     )
     info2 = adapter.get_platform_info()
     assert info2["platform"] == "Dask"
+
+

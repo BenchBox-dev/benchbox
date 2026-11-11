@@ -25,3 +25,5 @@ def test_no_modules_leaves_the_query_alone():
 def test_unknown_module_name_is_rejected():
     with pytest.raises(ValueError, match="no_such_module"):
         rewrite_with_modules(SQL, "no_such_module")
+
+

@@ -252,3 +252,5 @@ class TestMetadataConsistency:
         assert not orphaned, (
             f"Platforms registered but missing metadata: {orphaned}. Add metadata in _build_platform_metadata()."
         )
+
+

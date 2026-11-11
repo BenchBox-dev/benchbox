@@ -107,3 +107,5 @@ class TestLiveDorisQueryExecution:
             assert isinstance(result, dict)
         finally:
             doris_adapter.close_connection(connection)
+
+

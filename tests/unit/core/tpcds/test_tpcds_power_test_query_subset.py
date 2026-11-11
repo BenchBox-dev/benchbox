@@ -35,3 +35,5 @@ def test_build_queries_resolves_q_prefixed_subset():
     test.config = TPCDSPowerTestConfig(query_subset=["Q10", "7"])
     test.logger = logging.getLogger(__name__)
     assert test._build_queries_to_execute([10]) == [(10, None), (7, None)]
+
+

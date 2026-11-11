@@ -174,3 +174,5 @@ class TestAdapterValidationConsistency:
         assert result["rows_returned"] == 100
 
         assert "row_count_validation" not in result
+
+

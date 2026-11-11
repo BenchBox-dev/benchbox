@@ -425,3 +425,5 @@ def test_cli_cloud_only_keeps_matching_observed_region() -> None:
         "client_cloud": "aws",
         "source": "cli_option",
     }
+
+

@@ -478,3 +478,5 @@ class TestOutcomeDistinction:
 
         assert result is None
         assert outcome is LoadOutcome.PROVIDER_FAILED
+
+

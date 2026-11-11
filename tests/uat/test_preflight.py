@@ -582,3 +582,5 @@ def test_preflight_warns_when_container_data_root_is_not_host_visible(tmp_path: 
         docker_manage_platforms=True,
     )
     assert not any("container data root" in warning for warning in visible.warnings)
+
+

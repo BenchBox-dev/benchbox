@@ -285,3 +285,5 @@ def test_nyctaxi_registry_returns_variant(platform: str, query_id: str):
     decision = REGISTRY.resolve(ctx)
     assert decision is not None, f"No rule for {platform}/nyctaxi/{query_id}"
     assert decision.action is CompatAction.SELECT_VARIANT
+
+

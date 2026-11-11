@@ -127,3 +127,5 @@ class TestRunnerNoLongerMisreadsDatabricksOutput:
             result = _run_manifest_validation(benchmark, BenchmarkConfig(name="tpch", display_name="TPC-H"))
 
             assert result.is_valid, result.errors
+
+

@@ -60,3 +60,5 @@ def test_builder_totals_exclude_reused_tables():
     assert phase.total_rows_loaded == 3
     assert phase.tables_loaded == 1
     assert phase.per_table_stats["alpha"].status == "REUSED"
+
+

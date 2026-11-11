@@ -268,3 +268,5 @@ class TestPublicWrapper:
         assert "flightdata" in BENCHMARK_METADATA
         assert "flightdata" in BENCHMARK_CLASS_NAMES
         assert BENCHMARK_CLASS_NAMES["flightdata"] == "FlightData"
+
+

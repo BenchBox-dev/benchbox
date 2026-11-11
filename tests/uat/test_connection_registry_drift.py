@@ -143,3 +143,5 @@ def test_uat_databend_connects_to_the_published_self_hosted_endpoint():
     assert "port=8000" in opts
     assert "password=benchbox" in opts
     assert "deployment_mode=self-hosted" in opts
+
+

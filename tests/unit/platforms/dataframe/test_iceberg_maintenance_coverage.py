@@ -429,3 +429,5 @@ class TestIcebergMaintenanceCoverage:
         assert ops._catalog is cat
 
         assert ops.catalog is cat
+
+

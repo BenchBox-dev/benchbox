@@ -88,3 +88,5 @@ def test_worktree_create_succeeds_when_invoked_from_a_linked_worktree(tmp_path: 
     assert inherited.returncode != 0
     assert _git(repo, "config", "--get", "benchbox.shared-sentinel", env=env) == "keep"
     assert _git(second, "config", "--worktree", "--get", "benchbox.worktree.branch", env=env) == "fix/revert-1"
+
+

@@ -100,3 +100,5 @@ def test_corpus_allowlist_step_passes_for_only_supported_data(tmp_path: Path) ->
         f"allowlist gate over-rejected supported data; rc={run.returncode}\n"
         f"stdout:\n{run.stdout}\nstderr:\n{run.stderr}"
     )
+
+

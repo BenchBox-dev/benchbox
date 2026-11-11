@@ -82,3 +82,5 @@ def test_core_checkout_includes_the_verify_script_inputs() -> None:
         "tests/fixtures/fast_tier_baseline/",
     ):
         assert path in sparse
+
+

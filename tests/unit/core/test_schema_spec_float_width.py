@@ -78,3 +78,5 @@ def test_guard_rejects_bare_float(text: str):
 )
 def test_guard_accepts_explicit_width(text: str):
     assert _bare_float_values({"type": text}) == []
+
+

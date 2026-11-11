@@ -321,3 +321,5 @@ class TestMetaLeaderboardTieHandling:
         assert duckdb_rank == 1
         assert sqlite_rank == 1
         assert polars_rank == 3
+
+

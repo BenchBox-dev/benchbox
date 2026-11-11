@@ -146,3 +146,5 @@ def test_all_load_paths_share_one_skip_helper():
     assert data_loading_module.is_data_loading_skipped is loaded_tables.is_data_loading_skipped
     assert adapter_module.is_data_loading_skipped is loaded_tables.is_data_loading_skipped
     assert spark_mixin.is_data_loading_skipped is loaded_tables.is_data_loading_skipped
+
+

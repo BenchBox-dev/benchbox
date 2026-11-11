@@ -399,3 +399,5 @@ def test_stream_count_comes_from_the_throughput_phase_not_distinct_row_streams()
 
     assert result["num_streams"] == 2
     assert result["throughput_at_size"] == pytest.approx(22 * 2)
+
+

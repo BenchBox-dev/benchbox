@@ -234,3 +234,5 @@ def test_run_benchmark_tracks_success_and_error_iterations(tmp_path: Path, monke
     assert out["total_queries"] == 1
     assert len(q["iterations"]) == 2
     assert any(not item["success"] for item in q["iterations"])
+
+

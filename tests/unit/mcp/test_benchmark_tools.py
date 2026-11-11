@@ -920,3 +920,5 @@ class TestBenchmarkTiming:
         assert response["mcp_metadata"]["execution_time_seconds"] == 3.21
         assert response["data_generation"]["data_path"] == str(tenant_data)
         assert response["data_generation"]["files"] == ["lineitem.parquet"]
+
+

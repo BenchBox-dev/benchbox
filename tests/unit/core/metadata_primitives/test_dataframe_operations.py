@@ -1417,3 +1417,5 @@ class TestComplexityStressFixtures:
             benchmark_config=SimpleNamespace(options={}),
         )
         assert "stress_wide" not in captured["keys"]
+
+

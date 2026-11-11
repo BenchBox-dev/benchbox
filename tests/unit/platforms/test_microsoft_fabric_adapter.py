@@ -513,3 +513,5 @@ class TestFabricWarehouseTimingContract:
         assert result["request_count"] == 1
         assert result["result_bytes"] == 24
         assert "platform_timing" not in result
+
+

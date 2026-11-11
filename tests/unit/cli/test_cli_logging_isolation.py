@@ -32,3 +32,5 @@ def test_cli_invocation_does_not_leak_logging_configuration(caplog: pytest.LogCa
     with caplog.at_level(logging.WARNING):
         logging.getLogger("benchbox.core.example").warning("still captured")
     assert "still captured" in caplog.text
+
+

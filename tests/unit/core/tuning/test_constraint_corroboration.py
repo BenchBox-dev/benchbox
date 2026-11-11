@@ -508,3 +508,5 @@ class TestConstraintTables:
         ledger.record("CREATE INDEX i ON other (a)", PHASE_DDL)
         ledger.record("CREATE TABLE plain (a INTEGER NOT NULL)", PHASE_DDL)
         assert constraint_tables(ledger) == {"my t", 'q"t'}
+
+

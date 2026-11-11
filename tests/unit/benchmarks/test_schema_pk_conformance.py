@@ -256,3 +256,5 @@ def test_tpcds_rows_sharing_an_order_number_but_not_an_item_are_distinct(table: 
             connection.execute(f"INSERT INTO {table} ({names}) VALUES ({', '.join('1' for _ in keys)})")
     finally:
         connection.close()
+
+

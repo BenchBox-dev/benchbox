@@ -327,3 +327,5 @@ class TestRegionalPricingAccuracy:
         resolution = resolve_snowflake_credit_price("standard", "aws", "unknown-future-region")
         assert resolution.value == SNOWFLAKE_CREDIT_PRICES["standard"]["aws"]["other"]
         assert resolution.fallback_used is False
+
+

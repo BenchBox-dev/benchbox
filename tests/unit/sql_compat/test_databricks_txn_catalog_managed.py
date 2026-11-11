@@ -54,3 +54,5 @@ def test_rule_carries_non_empty_description_and_reason():
 
     assert decision.payload.description
     assert decision.reason
+
+

@@ -177,3 +177,5 @@ class TestExecuteSchemaStatements:
         cursor.execute.side_effect = [RuntimeError("Already Exists"), None, None]
         self._run(["CREATE TABLE t (x INT)"], cursor, extract=lambda s: "t")
         assert cursor.execute.call_count == 3
+
+

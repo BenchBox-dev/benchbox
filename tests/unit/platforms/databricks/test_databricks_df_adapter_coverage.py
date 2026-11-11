@@ -254,3 +254,5 @@ def test_expression_helpers(monkeypatch: pytest.MonkeyPatch):
     assert adapter.count_col(None) == ("count", ("lit", 1))
     assert adapter.min_col("c") == ("min", ("col", "c"))
     assert adapter.max_col("c") == ("max", ("col", "c"))
+
+

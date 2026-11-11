@@ -255,3 +255,5 @@ class TestCheckDepsIntegration:
         assert result.exit_code == 0
         assert "Installation Recommendations:" in result.output
         assert "Installation Guide" in result.output
+
+

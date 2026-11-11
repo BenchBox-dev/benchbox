@@ -194,3 +194,5 @@ def test_normal_mode_does_not_double_print_filepath():
     result = _invoke_run_quiet_with_export(quiet=False)
     assert result.exit_code == 0, result.output
     assert result.output.count("/tmp/result.json") == 1
+
+

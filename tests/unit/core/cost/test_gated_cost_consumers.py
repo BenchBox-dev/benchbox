@@ -289,3 +289,5 @@ class TestOptimizerSuppressesFallbackPrices:
         )
 
         assert any(rec.id == "redshift-region-optimization" for rec in report.recommendations)
+
+

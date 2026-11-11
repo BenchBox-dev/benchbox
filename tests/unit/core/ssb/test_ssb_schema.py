@@ -94,3 +94,5 @@ class TestLoOrderdateNonNullable:
         )
 
         assert "ORDER BY (lo_orderdate, lo_orderkey, lo_linenumber)" in rendered
+
+

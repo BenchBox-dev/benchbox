@@ -25,3 +25,5 @@ def test_influxdb_is_available_when_the_driver_module_is_importable(monkeypatch)
 
     monkeypatch.setattr(PlatformRegistry, "_detect_library", staticmethod(fake_detect))
     assert PlatformRegistry._probe_platform_availability("influxdb") is True
+
+

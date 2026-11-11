@@ -131,3 +131,5 @@ def test_durable_data_only_surface_delegates_to_execute_run(tmp_path):
     assert request["database_config"] is None
     assert request["phases_to_run"] == ["generate"]
     assert response["data_generation"]["data_path"].startswith(str(tmp_path / "datagen"))
+
+

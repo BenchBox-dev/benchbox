@@ -274,3 +274,5 @@ def test_gate_output_is_byte_stable_across_two_in_process_runs(tmp_path: Any) ->
     first = run_once(tmp_path / "run1")
     second = run_once(tmp_path / "run2")
     assert first == second, f"ssb gate output not byte-stable across runs: {first!r} != {second!r}"
+
+

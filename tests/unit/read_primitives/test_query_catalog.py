@@ -71,3 +71,5 @@ queries:
 
     with pytest.raises(PrimitivesCatalogError, match="Duplicate query id"):
         load_primitives_catalog()
+
+

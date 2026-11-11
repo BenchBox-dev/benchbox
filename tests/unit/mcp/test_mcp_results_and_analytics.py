@@ -1295,3 +1295,5 @@ class TestCanonicalPlanRendering:
 
         assert "truncated_at_depth" not in response
         assert "truncated" not in response["plan_tree"]
+
+

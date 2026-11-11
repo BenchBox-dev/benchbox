@@ -84,3 +84,5 @@ def test_asymmetric_between_is_plain_range():
     assert rewrite_query("SELECT 1 FROM t WHERE x BETWEEN ASYMMETRIC 1 AND 5") == (
         "SELECT 1 FROM t WHERE (x >= 1 AND x <= 5)"
     )
+
+

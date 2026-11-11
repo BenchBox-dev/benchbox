@@ -163,3 +163,5 @@ class TestZstdCompressor:
             decompressed_file = self.compressor.decompress_file(compressed_file)
             assert decompressed_file.exists()
             assert decompressed_file.read_text() == test_data
+
+

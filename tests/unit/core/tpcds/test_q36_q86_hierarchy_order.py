@@ -162,3 +162,5 @@ def test_q36_matches_sql_row_order(backend, monkeypatch):
     monkeypatch.setattr(queries, "get_parameters", lambda _query_id: {"year": 2000, "states": ["TN"]})
     implementation = queries.q36_pandas_impl if backend == "pandas" else queries.q36_expression_impl
     assert _run(implementation, backend) == _reference(_Q36_SQL)
+
+

@@ -194,3 +194,5 @@ def test_temp_file_cleaned_up_after_exception(tmp_path: Path) -> None:
 
     assert tmp_file_path is not None
     assert not tmp_file_path.exists()
+
+

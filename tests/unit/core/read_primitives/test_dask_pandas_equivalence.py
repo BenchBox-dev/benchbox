@@ -258,3 +258,5 @@ def test_head_on_a_sorted_dask_frame_returns_global_top_rows() -> None:
         assert head.compute()["v"].tolist() == [360, 320, 280, 240, 200, 160, 120]
     finally:
         adapter.close()
+
+

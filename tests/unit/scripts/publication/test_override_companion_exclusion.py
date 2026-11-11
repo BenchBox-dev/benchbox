@@ -99,3 +99,5 @@ def test_parity_override_only_change_still_yields_bundle(tmp_path: Path, monkeyp
     merge = _git(repo, "rev-parse", "HEAD")
     monkeypatch.setattr(parity, "CHECKOUT_ROOT", repo)
     assert parity._discover_changed_bundles(base, merge) == [BUNDLE]
+
+

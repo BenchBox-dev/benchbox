@@ -498,3 +498,5 @@ def test_workflow_has_least_privilege_and_a_schedule() -> None:
     steps = workflow["jobs"]["trend"]["steps"]
     assert steps[-1]["run"] == "python3 scripts/trunk_duration_trend.py"
     assert steps[-1]["env"] == {"GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}"}
+
+

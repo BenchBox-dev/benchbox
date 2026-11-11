@@ -499,3 +499,5 @@ class TestBenchmarkOptionShellCompletion:
         items = self._completer().shell_complete(self._ctx("no_such_bench"), None, "")
 
         assert items == []
+
+

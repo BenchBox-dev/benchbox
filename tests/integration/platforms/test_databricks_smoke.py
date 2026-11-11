@@ -44,3 +44,5 @@ def test_databricks_requires_credentials(monkeypatch):
         DatabricksAdapter(server_hostname="example", http_path="/warehouse")
 
     assert "Databricks configuration" in str(excinfo.value)
+
+

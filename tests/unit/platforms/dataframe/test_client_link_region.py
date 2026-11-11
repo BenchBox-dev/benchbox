@@ -54,3 +54,5 @@ def test_options_map_carries_cli_overrides() -> None:
     assert mock_discover.call_args[0][0]["client_region"] == "us-east-1"
     assert block is not None
     assert block["collection_status"] == "partial"
+
+

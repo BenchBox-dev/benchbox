@@ -51,3 +51,5 @@ def test_a_hook_environment_cannot_redirect_scratch_git_commands(tmp_path: Path,
     )
     assert outer_name.stdout.strip() == ""
     assert (tmp_path / "scratch" / ".git").is_dir()
+
+

@@ -258,3 +258,5 @@ class TestSSBBenchmarkCoverage(BenchmarkTestMixin):
 
                 assert result["benchmark"] == "Star Schema Benchmark"
                 assert any(q["query_id"] == "Q1.1" for q in result["query_results"])
+
+

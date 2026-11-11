@@ -282,3 +282,5 @@ class TestDisplayPlatformGuidance:
         _display_platform_guidance("Databricks")
 
         assert mock_console.print.called
+
+

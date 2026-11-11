@@ -180,3 +180,5 @@ def test_status_matrix(run_root: Path, platform: str, benchmark_name: str, mode:
     tuning = _tuning(bundle)
     assert tuning.get("validation_status") == EXPECTED_STATUS[(platform, benchmark_name, mode)], tuning
     assert "mismatch" not in _receipt_verdicts(bundle)
+
+

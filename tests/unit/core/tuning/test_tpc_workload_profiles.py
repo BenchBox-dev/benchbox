@@ -127,3 +127,5 @@ def test_tpc_profile_ssb_extension() -> None:
     assert ("LINEORDER", "LO_PARTKEY") in required
     assert ("DATE", "D_DATEKEY") in required
     assert ("SUPPLIER", "S_SUPPKEY") in required
+
+

@@ -109,3 +109,5 @@ class TestCreateExternalTables:
         assert elapsed >= 0.0
         create.assert_called_once_with("lineitem", "parquet", "s3://my-bucket/benchbox-data/lineitem/", replace=True)
         assert meta == {"table_uris": {"lineitem": "s3://my-bucket/benchbox-data/lineitem/"}}
+
+

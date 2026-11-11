@@ -167,3 +167,5 @@ def test_never_writes_identity_into_the_common_config(fixture_repo) -> None:
     assert AGENT_EMAIL not in after
     for line in set(after.splitlines()) - set(before.splitlines()):
         assert "user" not in line.lower() or "worktreeconfig" in line.lower()
+
+

@@ -119,3 +119,5 @@ def test_benchmark_specs_wrong_type_rejected() -> None:
     bad["benchmark_specs"][first]["min_success_rate"] = "1.0"
     with pytest.raises(ValidationError):
         BenchmarkSpecsCatalog.model_validate(bad)
+
+

@@ -93,3 +93,5 @@ def test_trigger_matcher_follows_github_glob_semantics() -> None:
     assert not _covered("make", ["make/*.mk"])
     assert not _covered("scripts/pr_landing.py", ["scripts/*/pr_landing.py"])
     assert not _covered("scripts/pr_landing.py", ["scripts/pr_landing.pyc"])
+
+

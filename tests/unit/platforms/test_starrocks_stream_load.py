@@ -200,3 +200,5 @@ class TestHandlers:
         fake = fake_requests()
         assert StarRocksParquetHandler(TARGET).load_table("t", path, _Connection([]), None, LOGGER) == 0
         assert fake.calls == []
+
+

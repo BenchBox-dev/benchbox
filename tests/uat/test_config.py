@@ -889,3 +889,5 @@ def test_execute_memory_limit_defaults_off_and_parses():
 def test_execute_memory_limit_rejects_negative():
     with pytest.raises(config.ConfigError, match="per_cell_memory_limit_gib"):
         config.validate_config({"name": "smoke", "execute": {"per_cell_memory_limit_gib": -1}})
+
+

@@ -23,3 +23,5 @@ def test_site_inputs_queues_every_run_so_an_older_commit_never_displaces_a_newer
     concurrency = _concurrency()
     assert concurrency["queue"] == "max"
     assert concurrency["cancel-in-progress"] is False
+
+

@@ -878,3 +878,5 @@ def test_the_lock_baseline_is_the_newest_older_final_tag_even_when_newer_minors_
         git(tmp_path, "tag", "-a", tag, "-m", tag)
 
     assert release_flow.latest_release_tag(tmp_path, before_version=version) == expected
+
+

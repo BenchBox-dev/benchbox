@@ -560,3 +560,5 @@ class TestIterSitePackages:
         result = list(_iter_site_packages(tmp_path))
         assert unix_sp in result
         assert win_sp in result
+
+

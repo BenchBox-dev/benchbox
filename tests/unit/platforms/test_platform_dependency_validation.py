@@ -180,3 +180,5 @@ class TestDependencyIntegration:
         for dep_name, available in result.items():
             assert isinstance(dep_name, str)
             assert isinstance(available, bool)
+
+

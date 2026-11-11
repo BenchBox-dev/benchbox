@@ -57,3 +57,5 @@ def test_q39_returns_the_key_columns_of_both_months(family, monkeypatch):
     assert row[3] == pytest.approx(34.0)
     assert row[8] == pytest.approx(34.0)
     assert row[4] == pytest.approx(row[9])
+
+

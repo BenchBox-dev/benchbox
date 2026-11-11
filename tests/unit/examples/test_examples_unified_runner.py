@@ -768,3 +768,5 @@ class TestUnifiedRunnerIntegration:
         assert result.returncode == 0
         assert "Available platforms:" in result.stdout
         assert "duckdb:" in result.stdout
+
+

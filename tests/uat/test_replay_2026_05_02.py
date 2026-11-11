@@ -36,3 +36,5 @@ def test_replay_config_has_expected_shape():
     assert raw["execute"]["early_stop_after_s"] == 180
     assert raw["package"]["submit_terminal_state"] == "local-stage"
     assert raw["report"]["cross_scale_coverage_min_pairs"] is None
+
+

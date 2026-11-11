@@ -23,3 +23,5 @@ def test_supports_dataframe_flags(benchmark_name: str, expected: bool) -> None:
     metadata = get_benchmark_metadata(benchmark_name)
     assert metadata is not None
     assert metadata.get("supports_dataframe") is expected
+
+

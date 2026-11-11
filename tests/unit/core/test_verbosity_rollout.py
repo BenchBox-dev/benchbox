@@ -38,3 +38,5 @@ def test_verbose_and_quiet_propagation(bench_cls, kwargs, gen_attr):
     gen = getattr(b, gen_attr)
     assert hasattr(gen, "verbose_level")
     assert hasattr(gen, "quiet")
+
+

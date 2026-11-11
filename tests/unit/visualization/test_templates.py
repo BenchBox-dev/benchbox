@@ -94,3 +94,5 @@ class TestChartTemplate:
             chart_types=("performance_bar",),
         )
         assert template.formats == ("ascii",)
+
+

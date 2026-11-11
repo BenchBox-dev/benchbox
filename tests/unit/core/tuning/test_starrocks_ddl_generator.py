@@ -214,3 +214,5 @@ class TestInlineClausesContract:
         )
         inline = gen.generate_tuning_clauses(tt).get_inline_clauses()
         assert inline.index("PARTITION BY (l_shipdate)") < inline.index("DISTRIBUTED BY HASH(`l_orderkey`) BUCKETS 8")
+
+

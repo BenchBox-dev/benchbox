@@ -240,3 +240,5 @@ class TestGenericPowerTest:
         assert mock_adapter._get_dialect_queries.call_count == 1
         for call in mock_adapter._execute_all_queries.call_args_list:
             assert call.args[3] is resolved
+
+

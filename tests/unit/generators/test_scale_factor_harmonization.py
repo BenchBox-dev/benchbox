@@ -176,3 +176,5 @@ def test_nyctaxi_no_warning_below_saturation(caplog):
         NYCTaxiDataDownloader(scale_factor=1, output_dir="/tmp/test_nyc_nowarn")
 
     assert not any("saturated" in r.message for r in caplog.records)
+
+

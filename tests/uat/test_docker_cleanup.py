@@ -298,3 +298,5 @@ def test_recover_apply_removes_mocker_volumes_via_the_resolved_binary(monkeypatc
     assert ("mocker", "volume", "rm", "benchbox-uat-smoke-postgresql_pgdata") in calls
     assert all(command.status == "ok" for command in report.cleanup_commands)
     assert "developer-scratch" not in " ".join(" ".join(c) for c in calls if c[:2] == ("mocker", "volume"))
+
+

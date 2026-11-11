@@ -83,3 +83,5 @@ def test_cli_run_unknown_platform_reports_unavailable_and_exits_one(selector: st
     assert result.exit_code == 1
     assert f"Platform '{selector}' is not available (missing dependencies)" in result.output
     assert f"uv sync --extra {selector}" in result.output
+
+

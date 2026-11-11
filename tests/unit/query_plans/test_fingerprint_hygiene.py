@@ -303,3 +303,5 @@ class TestStripHelpers:
         out = strip_estimates("FilterExec: arr = [], metrics=[output_rows=5]")
         assert "arr = []" in out
         assert "output_rows" not in out and "metrics=" not in out
+
+

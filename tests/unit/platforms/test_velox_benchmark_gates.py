@@ -24,3 +24,5 @@ def test_row_level_dml_benchmarks_are_not_blocked_by_the_registry(unsupported, b
 def test_supported_benchmarks_are_not_blocked(unsupported):
     for benchmark in ("tpch", "read_primitives", "tpchavoc"):
         assert benchmark not in unsupported
+
+

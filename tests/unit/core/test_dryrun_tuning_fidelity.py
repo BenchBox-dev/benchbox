@@ -123,3 +123,5 @@ def test_athena_preview_has_no_placeholder_comment():
 
     assert "-- Note:" not in ddl
     assert "PARTITIONED BY" not in ddl
+
+

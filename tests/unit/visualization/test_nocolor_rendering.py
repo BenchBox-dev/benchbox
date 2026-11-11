@@ -440,3 +440,5 @@ class TestASCIIOnlyNoColor:
         assert "┬" not in output
         assert "┼" not in output
         assert "│" not in output
+
+

@@ -243,3 +243,5 @@ def test_benchmark_api_import_boundary_excludes_platform_adapter_imports() -> No
                     )
 
     assert violations == []
+
+

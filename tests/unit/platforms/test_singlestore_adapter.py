@@ -1294,3 +1294,5 @@ class TestSingleStoreDDLTransformation:
         (result,) = self._statements("CREATE TABLE vectors (id BIGINT, embedding VECTOR(128, F32))")
         assert "VECTOR(128, F32)" in result
         assert "SHARD KEY ()" in result
+
+

@@ -60,3 +60,5 @@ class TestProvenanceBlock:
 
         payload = build_result_payload(_result(funding="", result_source=None))
         assert "provenance" not in payload
+
+

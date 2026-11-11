@@ -113,3 +113,5 @@ class TestTPCHDuckDBIntegration:
             has_standard_sql = any(feature in upper_sql for feature in duckdb_compatible_features)
             if not has_standard_sql and "WHERE" not in upper_sql:
                 assert len(query_sql.strip()) > 20, f"Query {query_id} seems too simple: {query_sql[:100]}"
+
+

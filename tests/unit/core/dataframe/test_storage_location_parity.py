@@ -96,3 +96,5 @@ class TestGlobalCacheOption:
         global_dir = Path.home() / ".benchbox" / "datagen"
         project_local = get_benchmark_runs_dataframe_path()
         assert global_dir != project_local
+
+

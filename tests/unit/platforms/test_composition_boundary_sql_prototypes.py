@@ -161,3 +161,5 @@ def test_sql_prototypes_characterize_validation_logging_and_digest() -> None:
     assert not any("PASSED" in message or "FAILED" in message for message in platform_hooks.messages)
     assert "result_digest" not in core_result
     assert platform_result.get("result_digest") == "digest"
+
+

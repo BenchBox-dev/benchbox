@@ -138,3 +138,5 @@ def test_quote_ident_rejects_injection() -> None:
 
 def test_version_tag_is_stable() -> None:
     assert LOGICAL_CONTENT_VERSION == "joinorder-logical-content-v1"
+
+

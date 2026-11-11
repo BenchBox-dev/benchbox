@@ -51,3 +51,5 @@ class TestMapSqlTypeWithFallback:
 
     def test_whitespace_only(self):
         assert map_sql_type_with_fallback("   ", _SAMPLE_MAPPING) == "   "
+
+

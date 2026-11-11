@@ -444,3 +444,5 @@ def _optimize_ledger_for(table: str) -> AppliedTuningLedger:
     ledger = AppliedTuningLedger()
     ledger.record(f"OPTIMIZE TABLE {table}", PHASE_DDL)
     return ledger
+
+

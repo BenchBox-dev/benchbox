@@ -268,3 +268,5 @@ class TestMinimumVersionEnforcement:
 
         assert status.available is True
         assert status.error is None
+
+

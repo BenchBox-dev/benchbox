@@ -430,3 +430,5 @@ def test_bigquery_array_unnest_variant_retained_with_contract(read_primitives_co
     assert "UNNEST" in sql.upper()
     contract = read_primitives_contracts["array_unnest"]
     assert set(contract.row_identity) == {"ps_suppkey", "part_key"}
+
+

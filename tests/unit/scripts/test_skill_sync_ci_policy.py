@@ -102,3 +102,5 @@ def test_comments_or_non_rev_config_edits_are_structural() -> None:
 
     assert decision.narrow_eligible is False
     assert decision.reason == "manifest_structural_change"
+
+

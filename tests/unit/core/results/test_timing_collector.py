@@ -26,3 +26,5 @@ def test_time_query_records_wall_clock_timestamp() -> None:
     timestamp = completed[0].timestamp
     assert timestamp.year >= 2000
     assert before <= timestamp <= after
+
+

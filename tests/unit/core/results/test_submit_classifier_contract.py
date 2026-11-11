@@ -172,3 +172,5 @@ def test_submit_classifier_contract_cli_refusal_tracks_state(tmp_path: Path, mon
                     assert "never executed" in result.output or "was skipped" in result.output, label
             else:
                 assert "not a clean pass" in result.output, label
+
+

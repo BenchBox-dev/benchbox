@@ -325,3 +325,5 @@ class TestPlatformInfoIntegration:
         assert "platform_name" in platform_info
         assert "connection_mode" in platform_info
         assert "configuration" in platform_info
+
+

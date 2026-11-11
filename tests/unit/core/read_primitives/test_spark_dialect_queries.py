@@ -49,3 +49,5 @@ def test_spark_variants_satisfy_the_variant_contract_check(catalog):
     issues = [issue for issue in collect_variant_contract_issues(catalog) if issue.dialect == "spark"]
 
     assert issues == []
+
+

@@ -243,3 +243,5 @@ def test_core_tpcds_validate_c_tools_warns_for_missing_templates_and_runtime_err
     message = warn_tools.call_args.args[0]
     assert "TPC-DS tools unavailable: boom" in message
     assert "make dsqgen" in message
+
+

@@ -1765,3 +1765,5 @@ def test_restore_modules_drops_modules_that_hold_fakes(ledger):
     assert sys.modules.get("pyodbc") is before.get("pyodbc")
     assert sys.modules["sqlite3"] is before["sqlite3"]
     del sys.modules["benchbox._plain_probe"]
+
+

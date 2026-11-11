@@ -130,3 +130,5 @@ def test_write_primitives_backcompat_helper_shims_stay_callable() -> None:
     assert write_loader._parse_validation_platform_overrides(
         "op1", "v1", {"platform_overrides": {" duckdb ": "SELECT 1", "redshift": None}}
     ) == {"duckdb": "SELECT 1", "redshift": None}
+
+

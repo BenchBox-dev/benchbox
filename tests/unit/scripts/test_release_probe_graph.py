@@ -223,3 +223,5 @@ def test_the_main_command_fails_on_a_broken_workflow(tmp_path, live, capsys):
     assert graph.main(["--workflow", str(path)]) == 1
     assert "publish is skipped after green" in capsys.readouterr().err
     assert graph.main([]) == 0
+
+

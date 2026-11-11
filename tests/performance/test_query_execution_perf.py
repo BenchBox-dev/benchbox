@@ -925,3 +925,5 @@ class TestQueryExecutionThroughput:
         except Exception as e:
             print(f"Query execution failed: {e}")
             return None
+
+

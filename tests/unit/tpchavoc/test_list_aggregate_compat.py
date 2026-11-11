@@ -165,3 +165,5 @@ def test_list_aggregate_skip_reasons_name_a_platform_without_a_translation():
         assert dialect not in LIST_AGGREGATE_DIALECTS
         assert reason
         assert "1_v7" in benchmark.get_platform_skip_queries(platform)
+
+

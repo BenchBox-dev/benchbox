@@ -178,3 +178,5 @@ def _name_type_for(dialect: str) -> str:
         "clickhouse": "String",
         "databricks": "STRING",
     }.get(dialect, "VARCHAR(255)")
+
+

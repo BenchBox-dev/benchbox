@@ -102,3 +102,5 @@ class TestGetBenchmarkCompatibility:
     def test_handles_unknown_platform(self):
         compat = get_benchmark_compatibility("clickhouse")
         assert isinstance(compat, dict)
+
+

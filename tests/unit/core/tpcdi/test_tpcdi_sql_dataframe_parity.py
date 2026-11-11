@@ -88,3 +88,5 @@ def test_sql_and_dataframe_share_stage_execution_outputs(tmp_path: Path, monkeyp
     assert inc_load.total_records_processed == df_stages["TDI_INCREMENTAL"]["first_row"]["records_processed"]
     assert scd_load.total_records_processed == df_stages["TDI_SCD"]["first_row"]["records_processed"]
     assert sql_result.total_execution_time > 0.0
+
+

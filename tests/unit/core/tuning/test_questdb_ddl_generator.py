@@ -120,3 +120,5 @@ class TestAllTpchTablesParametrized:
     def test_generate_tuning_clauses_does_not_raise(self, gen, table):
         clauses = gen.generate_tuning_clauses(TableTuning(table_name=table))
         assert clauses is not None
+
+

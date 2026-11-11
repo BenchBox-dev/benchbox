@@ -176,3 +176,5 @@ def test_cli_rejects_missing_review_review(tmp_path: Path) -> None:
     missing_review.write_text(json.dumps(rules), encoding="utf-8")
 
     assert rre.main(["--rules-file", str(missing_review)]) == 1
+
+

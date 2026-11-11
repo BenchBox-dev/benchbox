@@ -486,3 +486,5 @@ class TestRunSqlComparisonError:
         assert len(results) == 1
         assert results[0].query_results[0].status == "ERROR"
         assert "connection failed" in (results[0].query_results[0].error_message or "")
+
+

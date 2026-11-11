@@ -152,3 +152,5 @@ def test_normalize_value_scalar_mappings() -> None:
     assert math.isnan(_normalize_value(float("nan")))
     assert _normalize_value("abc") == "abc"
     assert _normalize_value(5) == 5
+
+

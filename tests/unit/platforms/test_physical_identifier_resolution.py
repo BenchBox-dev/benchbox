@@ -189,3 +189,5 @@ def test_clickhouse_fixture_requests_sort_and_partition_without_constraints():
     assert [column.name for column in orders.get_columns_by_type(TuningType.SORTING)] == ["O_ORDERKEY", "O_ORDERDATE"]
     assert not config.primary_keys.enabled
     assert not config.foreign_keys.enabled
+
+

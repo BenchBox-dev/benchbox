@@ -87,3 +87,5 @@ def test_clickhouse_table_filter_escapes_backslash_and_quote():
     ClickHouseTuningIntrospector().introspect(connection, ledger)
 
     assert "IN ('a\\\\b''c')" in connection.queries[0]
+
+

@@ -59,3 +59,5 @@ def test_missing_machine_warns_with_setup_steps_and_succeeds(tmp_path: Path) -> 
     assert result.returncode == 0
     assert "Linux not verified" in result.stderr
     assert "container machine create" in result.stderr
+
+

@@ -17,3 +17,5 @@ def test_cli_version_flag_displays_version_report():
     assert "BenchBox Version:" in result.output
     assert "Version Consistency:" in result.output
     assert "Python Version:" in result.output
+
+

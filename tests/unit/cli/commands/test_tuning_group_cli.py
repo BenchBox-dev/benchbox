@@ -515,3 +515,5 @@ class TestTuningShow:
             )
         assert result.exit_code == 0
         mock_show.assert_called_once()
+
+

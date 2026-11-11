@@ -309,3 +309,5 @@ class TestTimescaleDBStreamHook:
         assert adapter._apply_stream_session_state(connection) is None
         connection.cursor.assert_not_called()
         connection.execute.assert_not_called()
+
+

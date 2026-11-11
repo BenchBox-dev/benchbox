@@ -71,3 +71,5 @@ def test_joinorder_null_mask_applies_to_dask_series(frames):
     dask_result = _pandas_sql_compare(ddf["a"], ddf["b"], operator.ne)
 
     assert list(dask_result.compute()) == list(pandas_result) == [True, False, False]
+
+

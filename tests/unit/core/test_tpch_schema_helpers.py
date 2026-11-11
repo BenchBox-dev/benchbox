@@ -130,3 +130,5 @@ def test_get_fk_ordered_table_names_handles_cycles_without_raising():
     ]
     result = get_fk_ordered_table_names(cyclic)
     assert set(result) == {"t1", "t2"}
+
+

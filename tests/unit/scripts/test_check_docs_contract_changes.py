@@ -283,3 +283,5 @@ def test_main_without_base_sha_exits_zero(monkeypatch: pytest.MonkeyPatch, capsy
     monkeypatch.delenv("EVENT_BASE_SHA", raising=False)
     assert check.main([]) == 0
     assert "no base commit" in capsys.readouterr().out
+
+

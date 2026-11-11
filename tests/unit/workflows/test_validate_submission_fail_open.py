@@ -90,3 +90,5 @@ def test_corpus_inventory_step_is_gated_on_the_validate_outcome() -> None:
         "steps.validate.outcome == 'success'",
         "steps.validate.outcome == 'success' || steps.changed.outputs.has_bundles == 'corpus-only'",
     )
+
+

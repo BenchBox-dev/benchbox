@@ -384,3 +384,5 @@ def test_arrow_fetch_digest_matches_collect(
     arrow_rows = host.built["materialized_rows"]
     assert compute_result_digest(arrow_rows) == compute_result_digest(collected)
     assert [tuple(row) for row in arrow_rows] == [tuple(row) for row in collected]
+
+

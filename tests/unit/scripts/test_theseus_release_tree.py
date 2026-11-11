@@ -57,3 +57,5 @@ def test_policy_without_lock_still_fails(tmp_path: Path, capsys: pytest.CaptureF
     assert theseus_release_check.main(["x", str(root)], down) == 1
     assert _run_cli(root) != 0
     assert "release tree" not in capsys.readouterr().err
+
+

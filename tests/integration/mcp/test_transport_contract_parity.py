@@ -114,3 +114,5 @@ def test_stdio_and_streamable_http_publish_identical_contracts(tmp_path: Path) -
     assert len(http_inventory["resources"]) == 4
     assert len(http_inventory["resource_templates"]) == 2
     assert len(http_inventory["prompts"]) == 7
+
+

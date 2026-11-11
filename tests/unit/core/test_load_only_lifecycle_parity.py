@@ -198,3 +198,5 @@ class TestLoadOnlyLifecycleParity:
                 validation_opts=ValidationOptions(),
                 table_mode="native",
             )
+
+

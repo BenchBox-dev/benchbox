@@ -69,3 +69,5 @@ def test_datafusion_partitioned_ranks_match_translated_sql_with_nulls_and_ties(
     table = frame.with_columns(ranking.alias("ranking")).select("id", column, "ranking").sort("id").collect()
     actual = list(zip(*(column.to_pylist() for column in table.columns)))
     assert actual == expected
+
+

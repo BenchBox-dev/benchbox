@@ -2127,3 +2127,5 @@ def test_a_tracker_outage_during_discovery_refuses_readiness(tmp_path: Path) -> 
     failures = _mode_failures(tmp_path, _mode_evidence(), outage)
 
     assert failures == ["authoritative tracker batch discovery failed: tracker unreachable"]
+
+

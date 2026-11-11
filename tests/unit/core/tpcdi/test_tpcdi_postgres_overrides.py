@@ -72,3 +72,5 @@ def test_get_query_datafusion_matches_bulk_variant(query_id: str) -> None:
     bench = _bench()
 
     assert bench.get_query(query_id, dialect="datafusion") == bench.get_queries(dialect="datafusion")[query_id]
+
+

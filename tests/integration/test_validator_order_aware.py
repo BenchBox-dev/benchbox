@@ -171,3 +171,5 @@ def test_mixed_type_column_does_not_raise_typeerror():
     validator = _validator()
     rows = [(1, "x"), (2, 7)]
     assert validator.validate_results_exact(rows, list(reversed(rows)), 3, 1)
+
+

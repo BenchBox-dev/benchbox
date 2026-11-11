@@ -260,3 +260,5 @@ class TestLiveRedshiftQueryPlanCapture:
             assert plan1.plan_fingerprint == plan2.plan_fingerprint
         finally:
             capture_adapter.close_connection(connection)
+
+

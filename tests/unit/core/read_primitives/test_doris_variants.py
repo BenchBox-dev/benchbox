@@ -83,3 +83,5 @@ def test_doris_array_of_struct_orders_the_collected_structs_explicitly():
 
     assert "ARRAY_SORTBY" in sql
     assert "ORDER BY O_ORDERKEY, L_LINENUMBER" not in sql
+
+

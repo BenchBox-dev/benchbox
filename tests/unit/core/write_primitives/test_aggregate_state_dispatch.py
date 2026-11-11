@@ -270,3 +270,5 @@ def test_resolve_aggregate_source_path_short_circuits_on_cached_dir(
     assert resolved == cache_dir
 
     assert (cache_dir / "data.parquet").read_bytes() == b"PAR1\x00\x00"
+
+

@@ -239,3 +239,5 @@ def test_fsync_opens_file_with_platform_required_access(tmp_path: Path, platform
     ):
         _fsync_path(target)
     opening.assert_called_once_with(target, flags)
+
+

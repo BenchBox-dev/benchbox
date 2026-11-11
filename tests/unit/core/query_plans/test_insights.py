@@ -300,3 +300,5 @@ class TestComplexityLevels:
 
         assert score.complexity_level in ("medium", "high", "very_high")
         assert score.overall_score >= 20
+
+

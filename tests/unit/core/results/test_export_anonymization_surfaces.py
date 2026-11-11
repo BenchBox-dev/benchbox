@@ -91,3 +91,5 @@ class TestScrubFreeTextHelper:
         exporter = ResultExporter(output_dir=tmp_path, anonymize=True)
         assert exporter._anonymize_free_text("") == ""
         assert exporter._anonymize_free_text(None) is None
+
+

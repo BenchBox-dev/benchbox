@@ -61,3 +61,5 @@ def test_partitions_are_left_to_the_server() -> None:
     clauses = generator.generate_tuning_clauses(tuning)
 
     assert generator.generate_partition_children("orders", [], clauses, table_tuning=tuning) == []
+
+

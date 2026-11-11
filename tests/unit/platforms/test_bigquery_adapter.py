@@ -3551,3 +3551,5 @@ class TestBigQueryTableResolution:
 
         with pytest.raises(Forbidden):
             adapter._resolve_target_table(conn, "customer")
+
+

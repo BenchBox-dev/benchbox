@@ -54,3 +54,5 @@ def test_skipped_variants_are_excluded_never_marked_equivalent(postgres_divergen
     assert reported.isdisjoint(set(POSTGRES_TPCHAVOC_SKIPS)), (
         "Un-executable (skip-list) variants must be excluded, not evaluated"
     )
+
+

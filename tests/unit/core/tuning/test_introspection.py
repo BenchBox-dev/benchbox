@@ -469,3 +469,5 @@ class TestClusterKeyClassification:
     def test_other_alter_table_still_blocks(self):
         receipt = corroborate(self._ledger("ALTER TABLE lineitem ADD COLUMN c INT"), self._state())
         assert receipt.entries[0].verdict == UNVERIFIABLE
+
+

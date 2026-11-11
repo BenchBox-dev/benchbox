@@ -185,3 +185,5 @@ class TestVacuumAnalyzeConnectionIsolation:
         maint_execute_calls = [str(c) for c in maint_cursor.execute.call_args_list]
         assert not any("VACUUM" in c for c in maint_execute_calls)
         assert any("ANALYZE" in c for c in maint_execute_calls)
+
+

@@ -470,3 +470,5 @@ def test_the_exit_status_matches_the_reported_result(fin: Finished, capsys: pyte
     assert json.loads(capsys.readouterr().out)["ok"] is True and accepted == 0
     executed = bi.main(["--worktree", str(fin.integration), "finish", "--execute"])
     assert json.loads(capsys.readouterr().out)["ok"] is True and executed == 0
+
+

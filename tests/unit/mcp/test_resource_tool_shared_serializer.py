@@ -163,3 +163,5 @@ class TestCredentialTableDerivation:
         names = [row["name"] for row in credential_platforms()]
 
         assert names == sorted(names)
+
+

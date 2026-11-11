@@ -110,3 +110,5 @@ def test_copy_to_cloud_uses_documented_account_key_when_available(tmp_path, monk
 
     assert captured["credential"] == ("account", "account-key")
     assert captured["account_url"] == "https://account.dfs.core.windows.net"
+
+

@@ -329,3 +329,5 @@ class TestWindowFunctionDescriptors:
         assert result["op"] == "window_sum"
         assert result["column"] == "amount"
         assert result["partition_by"] == ["region"]
+
+

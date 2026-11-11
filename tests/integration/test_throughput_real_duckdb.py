@@ -231,3 +231,5 @@ class TestTPCDSThroughputRealDuckDB:
         assert any(count > 1 for count in result_counts), (
             "expected at least one TPC-DS query to report a genuinely multi-row result"
         )
+
+

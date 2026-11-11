@@ -93,3 +93,5 @@ def test_default_layouts_other_than_partitioning_still_come_only_from_the_duckdb
     config.enable_platform_optimization(TuningType.CLUSTERING, benchmark="tpch")
 
     assert config.table_tunings == {}
+
+

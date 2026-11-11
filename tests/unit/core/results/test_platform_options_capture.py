@@ -746,3 +746,5 @@ def test_lifecycle_run_config_explicit_false_show_query_plans_overrides_adapter(
     )
 
     assert run_config.show_query_plans is False
+
+

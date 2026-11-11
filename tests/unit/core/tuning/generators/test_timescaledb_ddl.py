@@ -212,3 +212,5 @@ class TestCreateTableDDL:
 
         assert "timescaledb.compress" in tuning.post_create_statements[1]
         assert "add_compression_policy" in tuning.post_create_statements[2]
+
+

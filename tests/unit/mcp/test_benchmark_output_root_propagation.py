@@ -83,3 +83,5 @@ def test_mcp_registry_construction_honors_env_output_root(benchmark_id, tmp_path
         gen_dir = Path(str(generator.output_dir))
         assert gen_dir.is_relative_to(root), (benchmark_id, attr, gen_dir)
         assert Path.cwd() not in gen_dir.parents, (benchmark_id, attr, gen_dir)
+
+

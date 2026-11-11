@@ -78,3 +78,5 @@ def test_starrocks_overrides_replace_the_syntax_starrocks_cannot_parse(write, op
     assert "CASE WHEN" not in sql
     if operation_id == "delete_all_truncate_comparison":
         assert "WHERE 1 = 1" in sql
+
+

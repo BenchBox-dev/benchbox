@@ -72,3 +72,5 @@ def test_gate_dtype_comparison_collects_every_frame_with_the_requested_engine(tm
     assert compared["expression"] == 13
     assert len(engines) == 13
     assert set(engines) == {"streaming"}
+
+

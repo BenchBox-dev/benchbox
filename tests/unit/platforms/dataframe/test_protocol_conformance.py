@@ -48,3 +48,5 @@ def test_protocol_accepts_minimal_duck() -> None:
             return ["x", "y"]
 
     assert isinstance(_Duck(), LazyFrameLike)
+
+

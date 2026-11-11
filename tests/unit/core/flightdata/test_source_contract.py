@@ -402,3 +402,5 @@ def test_prefetch_starts_only_when_a_month_is_downloaded(monkeypatch, tmp_path):
 
     assert fetched == []
     assert downloader._prefetcher is None
+
+

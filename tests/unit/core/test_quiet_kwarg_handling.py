@@ -198,3 +198,5 @@ class TestQuietKwargHandling:
         assert benchmark.quiet is True
         assert benchmark.verbose_level == 0
         assert benchmark.parallel == 1
+
+

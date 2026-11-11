@@ -157,3 +157,5 @@ class TestQueryVariants:
         sql_base = manager.get_query("generative_complete_simple")
 
         assert "placeholder" in sql_base.lower()
+
+

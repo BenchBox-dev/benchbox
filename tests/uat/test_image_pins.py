@@ -116,3 +116,5 @@ def test_cli_exit_codes_follow_the_check(tmp_path, capsys):
 
     _compose(tmp_path, "docker/a/docker-compose.yml", f"services:\n  a:\n    image: repo/a:latest@{DIGEST}\n")
     assert image_pins.main(["--root", str(tmp_path)]) == 0
+
+

@@ -168,3 +168,5 @@ def test_main_fails_closed_on_bad_job_result(tmp_path: Path) -> None:
         ]
     )
     assert rc == 1
+
+

@@ -144,3 +144,5 @@ def test_welcome_prints_logo_before_panel() -> None:
     assert isinstance(printed[0], Text)
     assert printed[0].plain == LOGO
     assert isinstance(printed[-1], Panel)
+
+

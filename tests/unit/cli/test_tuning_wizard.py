@@ -403,3 +403,5 @@ def test_run_dataframe_write_wizard_paths(monkeypatch: pytest.MonkeyPatch) -> No
     assert cfg.row_group_size == 1000
 
     t._show_dataframe_write_summary(cfg, "duckdb")
+
+

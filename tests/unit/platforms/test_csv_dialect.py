@@ -335,3 +335,5 @@ def test_migrated_adapter_load_paths_do_not_use_legacy_csv_heuristics() -> None:
                 offenders.append(f"{rel_path}:{lineno}: {line.strip()}")
 
     assert not offenders, "Migrated adapters reintroduced legacy CSV heuristics:\n" + "\n".join(offenders)
+
+

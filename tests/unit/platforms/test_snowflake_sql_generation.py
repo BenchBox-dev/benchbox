@@ -141,3 +141,5 @@ class TestSnowflakeGetTargetDialect:
     def test_returns_snowflake(self):
         adapter = _make_adapter()
         assert adapter.get_target_dialect() == "snowflake"
+
+

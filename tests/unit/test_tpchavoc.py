@@ -467,3 +467,5 @@ class TestDelegationMethods:
         havoc.load_data_to_database("duckdb:///:memory:")
 
         havoc._impl.load_data_to_database.assert_called_once()
+
+

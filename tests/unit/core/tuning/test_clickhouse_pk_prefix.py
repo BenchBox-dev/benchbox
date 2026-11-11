@@ -369,3 +369,5 @@ class TestUntunedDdlSnapshot:
         expected = json.loads(SNAPSHOT_PATH.read_text())[snapshot_key]
 
         assert self._render_untuned(primary_keys_enabled) == expected
+
+

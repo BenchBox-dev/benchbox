@@ -212,3 +212,5 @@ class TestSplitLeadingSqlComments:
         prefix, body = split_leading_sql_comments(chunk)
         assert body == "CREATE TABLE orders_stage (id INT)"
         assert prefix == "/* header */ /* second */\n"
+
+

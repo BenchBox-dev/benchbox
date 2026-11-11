@@ -201,3 +201,5 @@ class TestExistingBehaviourUnchanged:
     def test_unknown_scheme_still_classifies_as_local(self):
         assert not is_cloud_path("ftp://host/path")
         assert create_path_handler("ftp://host/path") == Path("ftp://host/path")
+
+

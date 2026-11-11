@@ -77,3 +77,5 @@ def build_sql(dialect: str) -> str:
     )
     assert result.returncode == 1
     assert "example_benchmark/schema.py:2" in result.stderr.replace("\\", "/")
+
+

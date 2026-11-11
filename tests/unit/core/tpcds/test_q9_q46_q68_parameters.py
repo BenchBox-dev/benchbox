@@ -150,3 +150,5 @@ def test_q68_filters_on_the_drawn_year_households_and_cities(family):
     assert _run(family, 68, {}, _household_tables(1998)) == []
     default_households = _run(family, 68, {"year": 1998}, _household_tables(1998))
     assert default_households == [("Smith", "Ann", "Oak", "Midway", 2, 20.0, 0.75, 21.0)]
+
+

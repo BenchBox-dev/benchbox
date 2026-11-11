@@ -479,3 +479,5 @@ class TestLoadDataRequestedFormat:
 
         sql = submit.call_args[0][0]
         assert "USING DELTA" in sql
+
+

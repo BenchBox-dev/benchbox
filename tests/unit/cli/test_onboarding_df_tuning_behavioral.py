@@ -246,3 +246,5 @@ class TestCreateProfileConfigHelper:
 
         assert config.gpu.enabled is True
         assert any("GPU profile is only applicable to cuDF" in str(call) for call in mock_print.call_args_list)
+
+

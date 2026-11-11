@@ -976,3 +976,5 @@ class TestDateColumnArrowCast:
         assert df["l_receiptdate"].tolist() == [date(1996, 3, 22), date(1996, 4, 20)]
         assert df["l_extendedprice"].tolist() == [24386.67, 58958.28]
         assert df["l_comment"].isna().tolist() == [False, True]
+
+

@@ -375,3 +375,5 @@ class TestMirrorFallback:
         inventory = script.generate_inventory(tmp_path)
 
         assert [entry["benchmark"] for entry in inventory["bundles"]] == ["joinorder"]
+
+

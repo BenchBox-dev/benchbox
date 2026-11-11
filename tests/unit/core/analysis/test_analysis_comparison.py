@@ -528,3 +528,5 @@ class TestComparisonReportSerialization:
         assert "winner" in result
         assert "rankings" in result
         assert "query_comparisons" in result
+
+

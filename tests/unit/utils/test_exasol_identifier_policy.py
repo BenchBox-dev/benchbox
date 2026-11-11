@@ -107,3 +107,5 @@ class TestExasolIdentifierPolicy:
 
         query = "SELECT l_orderkey FROM lineitem"
         assert translate_sql_query(query, target_dialect=target) == self._UNCHANGED_TARGET_EXPECTATIONS[target]
+
+

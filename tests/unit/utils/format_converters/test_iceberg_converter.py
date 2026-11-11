@@ -649,3 +649,5 @@ class TestIcebergPartitioning:
         )
 
         assert result.metadata.get("partitioned") is False
+
+

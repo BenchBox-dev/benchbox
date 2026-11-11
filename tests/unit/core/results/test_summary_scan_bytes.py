@@ -100,3 +100,5 @@ class TestAggregateScanBytes:
 
         assert payload["summary"]["cost"] == {"total_bytes_scanned": 512}
         assert "cost" not in payload
+
+

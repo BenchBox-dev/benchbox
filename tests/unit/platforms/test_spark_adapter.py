@@ -1644,3 +1644,5 @@ class TestJavaCompatibility:
             )
 
         assert config.options.get("java_home") == "/opt/jdk17"
+
+

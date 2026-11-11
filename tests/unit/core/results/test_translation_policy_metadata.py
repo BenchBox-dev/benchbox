@@ -215,3 +215,5 @@ def test_unavailable_runtime_pin_leaves_the_runtime_unrecorded(monkeypatch: pyte
 
     assert enriched.execution_metadata["translation"]["status"] == "success"
     assert "runtime" not in enriched.execution_metadata["translation"]
+
+

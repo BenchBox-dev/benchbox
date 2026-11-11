@@ -179,3 +179,5 @@ class TestOfficialFlagReachesTheClassifier:
 
         wrapper = TPCDSOfficialBenchmark(scale_factor=1.0)
         assert wrapper.benchmark.compliance_class is TpcdsComplianceClass.OFFICIAL
+
+

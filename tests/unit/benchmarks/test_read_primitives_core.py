@@ -256,3 +256,5 @@ class TestReadPrimitivesBenchmark:
         benchmark = ReadPrimitivesBenchmark(scale_factor=1.0, output_dir=custom_path)
 
         assert str(benchmark.output_dir) == custom_path
+
+

@@ -503,3 +503,5 @@ class TestDatabaseNamingIntegration:
         built_spark_a = build_adapter_config(config_a, platform="spark", generated_key="database")
         built_spark_b = build_adapter_config(config_b, platform="spark", generated_key="database")
         assert built_spark_a["database"] == built_spark_b["database"]
+
+

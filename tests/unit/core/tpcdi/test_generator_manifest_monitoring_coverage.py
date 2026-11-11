@@ -116,3 +116,5 @@ def test_monitoring_mixin_paths(monkeypatch: pytest.MonkeyPatch) -> None:
     assert harness._estimate_records_for_table("FactTrade") == int(harness.base_trades * harness.scale_factor)
     assert harness._estimate_memory_requirements() > 0
     assert harness._estimate_disk_requirements() > 0
+
+

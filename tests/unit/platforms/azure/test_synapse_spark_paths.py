@@ -347,3 +347,5 @@ class TestImportFallback:
             sys.modules.pop("requests", None)
             sys.modules.update(saved)
             self._reload()
+
+

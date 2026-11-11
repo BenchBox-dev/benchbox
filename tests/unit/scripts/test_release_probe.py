@@ -421,3 +421,5 @@ def test_the_probe_json_receipt_names_the_synthetic_tag_only(tmp_path, admitted_
     receipt = json.loads(_read(output / "admission-receipt.json"))
     assert receipt["tag"] == probe.PROBE_TAG
     assert receipt["version"] == probe.PROBE_VERSION
+
+

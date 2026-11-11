@@ -166,3 +166,5 @@ def test_multi_writer_pattern_drives_duckdb_writers_and_readers(tmp_path: Path) 
         assert row is not None
         (rows,) = row
     assert rows == next_id > 0
+
+

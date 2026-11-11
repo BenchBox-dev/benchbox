@@ -211,3 +211,5 @@ class TestHeaderRow:
 
         assert loaded == 2
         assert connection.execute("SELECT COUNT(*), MIN(zone_id) FROM zones").fetchone() == (2, 1)
+
+

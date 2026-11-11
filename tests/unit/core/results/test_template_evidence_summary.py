@@ -233,3 +233,5 @@ def test_template_evidence_uses_recorded_warehouse_size_for_managed_cloud_run():
 
     assert measured["platform"]["tuning"]["template_evidence"] == "measured-benefit"
     assert multi_cluster["platform"]["tuning"]["template_evidence"] == "unmeasured"
+
+

@@ -327,3 +327,5 @@ class TestGeneratorExtended:
             assert len(zst_files) == 0, (
                 f"Found compressed files when compression was disabled: {[f.name for f in zst_files]}"
             )
+
+

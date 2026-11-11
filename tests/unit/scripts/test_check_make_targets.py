@@ -163,3 +163,5 @@ def test_a_symlinked_makefile_still_finds_its_modules(tmp_path: Path) -> None:
 
     assert result.returncode == 0, result.stderr
     assert "duplicate-check-delta" in result.stdout
+
+

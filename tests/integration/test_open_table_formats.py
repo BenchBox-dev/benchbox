@@ -952,3 +952,5 @@ class TestDuckLakeDataLoadingHandlers:
         loaded_count = conn.execute("SELECT COUNT(*) FROM customer").fetchone()[0]
         assert loaded_count == 5
         conn.close()
+
+

@@ -280,3 +280,5 @@ def test_package_local_states_stage_through_the_maintainer_publish_command(tmp_p
         warn=lambda _msg: None,
     )
     assert result.invocations[0][:3] == ("benchbox", "publish", "run")
+
+

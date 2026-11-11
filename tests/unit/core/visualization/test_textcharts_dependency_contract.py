@@ -26,3 +26,5 @@ def test_textcharts_remains_a_core_manifest_dependency() -> None:
 
     dependencies = manifest["project"]["dependencies"]
     assert any(Requirement(str(requirement)).name.lower() == "textcharts" for requirement in dependencies)
+
+

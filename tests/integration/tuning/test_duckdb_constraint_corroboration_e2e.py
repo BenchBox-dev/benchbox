@@ -64,3 +64,5 @@ def test_shipped_tpch_template_reaches_applied_verified(tuned_tpch_result):
     _config, result = tuned_tpch_result
     assert result.applied_tuning_ledger["receipt"]["corroborated"] is True
     assert result.tuning_validation_status == APPLIED_VERIFIED
+
+

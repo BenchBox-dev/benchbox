@@ -132,3 +132,5 @@ def test_duckdb_has_no_txn_pk_rule():
         dialect="duckdb",
     )
     assert REGISTRY.resolve(ctx) is None
+
+

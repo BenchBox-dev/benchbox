@@ -234,3 +234,5 @@ class TestPartitionStrategyEnum:
         assert PartitionStrategy.RANGE.value == "RANGE"
         assert PartitionStrategy.LIST.value == "LIST"
         assert PartitionStrategy.HASH.value == "HASH"
+
+

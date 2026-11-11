@@ -45,3 +45,5 @@ def test_plan_cli_suite_that_stubs_loader_has_real_path_test(filename: str, stub
         f"through the real loader/store on a tmp-file bundle so fake-shape drift "
         f"(e.g. a fabricated '.phases' attribute) is actually caught. See qpc-11 / F8.1."
     )
+
+

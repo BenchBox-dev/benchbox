@@ -1607,3 +1607,5 @@ class TestRunCommandValidation:
             )
         assert "Platform options require a --platform selection" not in result.output
         assert result.exit_code != 2
+
+

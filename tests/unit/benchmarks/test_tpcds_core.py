@@ -377,3 +377,5 @@ class TestTPCDSIntegration:
 
         assert hasattr(benchmark, "generate_table_data")
         assert callable(benchmark.generate_table_data)
+
+

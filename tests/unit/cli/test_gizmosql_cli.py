@@ -109,3 +109,5 @@ def test_insecure_options_require_the_explicit_development_flag(tmp_path: Path):
 
     payload = json.loads(next(tmp_path.glob("tpch_gizmosql_2*.json")).read_text(encoding="utf-8"))
     assert any("allow_insecure_connection" in warning for warning in payload["warnings"]) or result.exit_code != 0
+
+

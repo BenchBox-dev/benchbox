@@ -179,3 +179,5 @@ class TestRuffConfiguration:
         assert format_config["quote-style"] == "double"
         assert format_config["indent-style"] == "space"
         assert format_config["line-ending"] == "auto"
+
+

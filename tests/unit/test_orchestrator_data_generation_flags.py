@@ -106,3 +106,5 @@ def test_force_regenerate_flag_passed_to_benchmark():
     assert lifecycle_calls, "Lifecycle not invoked"
     passed_config = lifecycle_calls[0]["benchmark_config"]
     assert passed_config.options.get("force_regenerate") is True
+
+

@@ -655,3 +655,5 @@ class TestShimImports:
 
         assert ChartOptions is not None
         assert ColorMode is not None
+
+

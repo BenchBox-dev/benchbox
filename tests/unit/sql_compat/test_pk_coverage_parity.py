@@ -127,3 +127,5 @@ def test_informational_dialects_bypass_pk_lock(dialect: str):
         f"Dialect '{dialect}' resolves to NATIVE but is classified INFORMATIONAL in the audit. "
         "The lock bypass will not fire, leaving a potential silent-corruption window."
     )
+
+

@@ -895,3 +895,5 @@ def test_datafusion_division_over_aggregate_operands():
     assert result.equals(expected)
     assert grouped.schema.equals(grouped_expected.schema)
     assert grouped.equals(grouped_expected)
+
+

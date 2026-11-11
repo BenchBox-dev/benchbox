@@ -431,3 +431,5 @@ def test_transaction_primitives_wrapper_proxies_setup_and_execution(tmp_path: Pa
     assert benchmark.is_setup("conn") is True
     assert benchmark.execute_operation("txn_commit_small", "conn") == {"status": "executed"}
     assert benchmark.run_benchmark("conn", ["txn_commit_small"], ["commit"]) == [{"status": "ok"}]
+
+

@@ -259,3 +259,5 @@ class TestQueriesFlagHelp:
         assert result.exit_code == 0
         assert "--queries" in result.output
         assert "power" in result.output.lower() or "standard" in result.output.lower()
+
+

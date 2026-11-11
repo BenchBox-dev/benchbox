@@ -377,3 +377,5 @@ def test_default_receipt_keeps_its_null_applied_fields_in_the_bundle():
     assert anonymized["platform"]["execution_engine"] == payload["platform"]["execution_engine"]
     loaded = reconstruct_benchmark_results(payload)
     assert loaded.execution_engine == payload["platform"]["execution_engine"]
+
+

@@ -144,3 +144,5 @@ def test_app_main_invokes_click_group() -> None:
         app_main()
 
     cli_entry.assert_called_once_with()
+
+

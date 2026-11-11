@@ -223,3 +223,5 @@ class TestGPUMemoryTracker:
         assert summary["start_memory_mb"] == 4000
         assert summary["peak_memory_mb"] == 8000
         assert "allocations" in summary
+
+

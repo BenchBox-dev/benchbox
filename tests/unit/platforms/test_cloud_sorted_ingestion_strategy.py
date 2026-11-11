@@ -74,3 +74,5 @@ def test_snowflake_force_mode_dry_run_captures_sorted_ingestion_sql():
     assert adapter.apply_ctas_sort("lineitem", tuning_config, connection) is True
     captured_sql = [entry["sql"] for entry in adapter.captured_sql]
     assert captured_sql == ["CREATE OR REPLACE TABLE lineitem AS SELECT * FROM lineitem ORDER BY l_shipdate"]
+
+

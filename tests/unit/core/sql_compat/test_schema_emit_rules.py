@@ -165,3 +165,5 @@ def test_other_platforms_no_schema_emit_rule(platform: str, bmark: str):
         dialect=platform,
     )
     assert REGISTRY.resolve(ctx) is None, f"Unexpected SCHEMA_EMIT rule for {platform}/{bmark}"
+
+

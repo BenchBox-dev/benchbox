@@ -532,3 +532,5 @@ class TestPolarsAdapterRegistration:
 
         req = get_platform_requirements("polars")
         assert "polars" in req.lower()
+
+

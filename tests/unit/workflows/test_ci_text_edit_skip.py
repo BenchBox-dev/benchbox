@@ -403,3 +403,5 @@ def test_checks_catch_regressions(change: Any, check: str) -> None:
 def test_a_skipped_job_publishes_its_name_expression_without_the_delimiters() -> None:
     assert skipped_check_name("${{ matrix.unit }}") == "matrix.unit"
     assert skipped_check_name("core") == "core"
+
+

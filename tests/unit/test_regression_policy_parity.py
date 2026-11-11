@@ -227,3 +227,5 @@ class TestReportThresholdIsNoLongerInert:
                 trend = self._trend(change, is_regression_flag=change > 10)
                 selected = bool(self._detect(tmp_path, trend, threshold=threshold))
                 assert selected is superseded(change, threshold), (change, threshold)
+
+

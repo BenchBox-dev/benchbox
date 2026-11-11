@@ -77,3 +77,5 @@ def test_a_webhook_without_a_workflow_event_is_rejected() -> None:
 @pytest.mark.parametrize("on", ["push", ["push", "workflow_dispatch"], {"pull_request": {"types": ["opened"]}}])
 def test_valid_event_shapes_are_accepted(on: Any) -> None:
     assert _invalid_events({"on": on}) == set()
+
+

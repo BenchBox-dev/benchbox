@@ -194,3 +194,5 @@ def test_influxdb_get_tables(monkeypatch, tmp_path):
         assert "mem" in tables
     finally:
         adapter.close_connection(connection)
+
+

@@ -39,3 +39,5 @@ def test_override_keeps_filelock_inside_the_verified_major() -> None:
     overrides = _load("pyproject.toml")["tool"]["uv"]["override-dependencies"]
     assert "filelock>=4.2.1,<5" in overrides
     assert {"name": "filelock", "specifier": ">=4.2.1,<5"} in _load("uv.lock")["manifest"]["overrides"]
+
+

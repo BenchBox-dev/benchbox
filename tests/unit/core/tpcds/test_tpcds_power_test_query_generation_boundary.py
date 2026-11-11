@@ -204,3 +204,5 @@ def test_generation_failure_aborts_before_any_timer_or_execution(monkeypatch):
 
     assert executed == []
     assert watch.depth == 1
+
+

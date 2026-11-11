@@ -295,3 +295,5 @@ def test_output_html_helpers() -> None:
     results = SimpleNamespace(run_id="run")
     html2 = cp._output_html(comparisons, single_query=False, results1=results, results2=results)
     assert "Query Plan Comparison" in html2
+
+

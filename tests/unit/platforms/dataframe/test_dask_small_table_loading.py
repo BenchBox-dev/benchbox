@@ -64,3 +64,5 @@ def test_compressed_table_is_sized_by_its_expanded_bytes(tmp_path, monkeypatch):
 
     assert plain.npartitions == 1
     assert compressed.npartitions == 5
+
+

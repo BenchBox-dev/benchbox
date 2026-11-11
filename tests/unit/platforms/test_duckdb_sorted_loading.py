@@ -183,3 +183,5 @@ class TestCtasSortIntegration:
         rows = conn.execute("SELECT l_shipdate FROM lineitem").fetchall()
         dates = [r[0] for r in rows]
         assert dates == sorted(dates), f"Expected sorted dates, got: {dates}"
+
+

@@ -445,3 +445,5 @@ class TestEdgeCases:
         assert isinstance(cost_upper, QueryCost)
         assert isinstance(cost_mixed, QueryCost)
         assert cost_lower.compute_cost == cost_upper.compute_cost == cost_mixed.compute_cost
+
+

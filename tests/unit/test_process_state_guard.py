@@ -48,3 +48,5 @@ def test_non_linux_probe_never_reports_a_leak(monkeypatch):
     monkeypatch.setattr(process_state_guard, "IS_LINUX", False)
 
     assert process_state_guard.is_child_subreaper() is False
+
+

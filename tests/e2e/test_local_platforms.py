@@ -314,3 +314,5 @@ def test_dry_run_parametrized(tmp_path: Path, platform: str, benchmark_name: str
     artifacts = list(output_dir.glob("*"))
     assert artifacts, f"No artifacts generated for {platform}/{benchmark_name}"
     assert list(output_dir.glob("*.json")) or list(output_dir.glob("*.yaml"))
+
+

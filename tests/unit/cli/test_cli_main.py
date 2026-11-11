@@ -588,3 +588,5 @@ class TestCLICompressionOptions:
         result = runner.invoke(cli, ["run", "--compression", "zstd:invalid"])
         assert result.exit_code != 0
         assert "Invalid compression level" in result.output
+
+

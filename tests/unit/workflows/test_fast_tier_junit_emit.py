@@ -93,3 +93,5 @@ def test_calibration_step_records_into_the_uploaded_directory(workflow: str, job
     assert calibration["continue-on-error"] is True
     assert calibration["if"] == "always()"
     assert steps.index(calibration) < steps.index(_step(steps, "Upload fast-tier junit"))
+
+

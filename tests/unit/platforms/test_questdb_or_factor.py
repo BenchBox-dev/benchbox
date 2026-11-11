@@ -54,3 +54,5 @@ def test_nested_where_inside_a_rewritten_outer_where_is_factored_too():
     )
     rewritten = rewrite_query(sql)
     assert "c.x = d.x AND (c.y = 1 OR c.y = 2)" in rewritten
+
+

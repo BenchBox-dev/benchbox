@@ -297,3 +297,5 @@ def test_ensure_database_verifies_tls_against_the_benchbox_ca_bundle(monkeypatch
     connection = InfluxDBConnection(host="127.0.0.1", token="secret", database="bench", port=9, ssl=True)
     with pytest.raises(ConnectionError, match="missing-bundle.pem|No such file"):
         connection.ensure_database(timeout_s=1)
+
+

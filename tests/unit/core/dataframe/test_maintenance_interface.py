@@ -378,3 +378,5 @@ class TestGetMaintenanceOperationsForPlatform:
         result1 = get_maintenance_operations_for_platform("Polars-DF")
         result2 = get_maintenance_operations_for_platform("POLARS-DF")
         assert type(result1) == type(result2)
+
+

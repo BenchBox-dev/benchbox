@@ -155,3 +155,5 @@ def test_defaulted_metadata_resolves_to_unavailable_end_to_end():
     )
     assert normalized_cost.cost_status == "unavailable"
     assert normalized_cost.normalized_cost_usd is None
+
+

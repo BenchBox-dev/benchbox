@@ -374,3 +374,5 @@ def test_the_check_command_takes_the_release_line_from_the_tag(history, tmp_path
     assert canary.main([*arguments, "--tag", "v0.6.0"]) == 1
     assert canary.main(arguments) == 1
     capsys.readouterr()
+
+

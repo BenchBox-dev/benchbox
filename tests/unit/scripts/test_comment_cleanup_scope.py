@@ -1686,3 +1686,5 @@ def test_head_blob_rejects_a_directory_or_unreadable_path_as_a_policy_error(tmp_
             scope.head_blob(root, "src/a.py", False)
     finally:
         target.chmod(0o644)
+
+

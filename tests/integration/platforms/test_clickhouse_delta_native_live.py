@@ -106,3 +106,5 @@ class TestPublicS3DeltaEndToEnd:
         finally:
             connection.execute("DROP TABLE IF EXISTS hits_delta_e2e")
             clickhouse_adapter.close_connection(connection)
+
+

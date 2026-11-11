@@ -275,3 +275,5 @@ class TestVerboseLoggingCoverage:
         assert settings2.verbose_enabled is False
         assert logger3 is not None
         assert settings3.verbose_enabled is True
+
+

@@ -72,3 +72,5 @@ def test_get_handler_for_iceberg_directory(tmp_path):
     assert handler is not None, "Expected a file format handler for Iceberg directory"
     assert isinstance(handler, IcebergFileHandler)
     assert handler.get_delimiter() == ""
+
+

@@ -25,3 +25,5 @@ class TestGPUMetricsErrorCapture:
         messages = [r.message for r in caplog.records]
         assert any("cupy memory probe failed" in m for m in messages)
         assert any("nvidia-smi memory fallback failed" in m for m in messages)
+
+

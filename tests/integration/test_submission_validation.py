@@ -241,3 +241,5 @@ def test_validator_rejects_translation_fallback_public_submission(tmp_path: Path
 
     assert proc.returncode != 0, proc.stdout + proc.stderr
     assert "execution.translation.status='fallback'" in proc.stdout
+
+

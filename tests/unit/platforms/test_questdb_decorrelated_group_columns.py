@@ -68,3 +68,5 @@ def test_decorrelated_column_in_having_is_wrapped():
     assert rewrite_query(sql) == (
         f"SELECT l1.k AS k, COUNT(*) AS n FROM l AS l1 {DERIVED} GROUP BY l1.k HAVING COUNT(*) > MAX(_u_0._col_0)"
     )
+
+

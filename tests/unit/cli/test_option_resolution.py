@@ -223,3 +223,5 @@ def test_explicit_layer_keeps_only_supplied_keys() -> None:
     assert layer == {"host": "localhost"}
     assert PlatformHookRegistry.explicit_option_layer({"host": "localhost"}, ()) == {}
     assert PlatformHookRegistry.explicit_option_layer({"host": "localhost"}) == {"host": "localhost"}
+
+

@@ -88,3 +88,5 @@ class TestClickHouseExecuteQueryCapture:
         )
         assert result["status"] == "SUCCESS"
         assert "query_plan" not in result or result.get("query_plan") is None
+
+

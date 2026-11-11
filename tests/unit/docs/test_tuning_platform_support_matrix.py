@@ -36,3 +36,5 @@ def test_only_introspected_platforms_can_reach_applied_verified():
             verifiable.add(platform)
 
     assert verifiable == {"clickhouse", "duckdb", "snowflake"}
+
+

@@ -592,3 +592,5 @@ def test_warning_only_row_count_validation_without_expected_count_normalizes_to_
         "actual": 42,
         "warning": "Verification skipped: reference results unavailable",
     }
+
+

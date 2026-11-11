@@ -247,3 +247,5 @@ def test_mixed_logical_mode_rejected(tmp_path: Path) -> None:
     with pytest.raises(ManifestValidationError, match="present on some tables but missing"):
         load_manifest(p)
     assert partial
+
+

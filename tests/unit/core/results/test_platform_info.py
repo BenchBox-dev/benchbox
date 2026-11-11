@@ -237,3 +237,5 @@ class TestMergePlatformInfo:
 
         assert result.name == "DuckDB"
         assert result.config == {"threads": 4}
+
+

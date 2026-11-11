@@ -552,3 +552,5 @@ def test_lint_guard_summary_accepts_only_success() -> None:
     assert "skipped" not in run
     assert 'echo "FAILED: $id ($outcome)"' in run
     assert "All lint guards passed." in run
+
+

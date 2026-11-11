@@ -252,3 +252,5 @@ class TestTPCHQueryGeneration:
         sql_after = tpch.get_query(1, seed=11111)
         assert isinstance(sql_after, str)
         assert sql_before == sql_after
+
+

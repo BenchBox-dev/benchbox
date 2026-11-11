@@ -162,3 +162,5 @@ def test_persistent_windows_cities_overrun_for_a_single_query_stops_at_the_cap(t
         dsq.generate(46, seed=1, scale_factor=1.0, dialect="netezza")
 
     assert calls == 3
+
+

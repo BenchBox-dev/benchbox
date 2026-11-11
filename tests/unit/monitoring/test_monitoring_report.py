@@ -369,3 +369,5 @@ class TestReportIntegration:
         summary = reporter.generate_summary_line(timeline)
         assert len(summary) < 200
         assert "CPU" in summary
+
+

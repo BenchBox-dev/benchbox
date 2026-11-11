@@ -244,3 +244,5 @@ def test_render_shows_a_git_flood_warning_with_the_top_processes() -> None:
     assert "WARNING git flood: 3 git processes >= 2" in text
     assert "pid 102 0.75 GiB cwd /work/BenchBox.wt-a cmd git status" in text
     assert "unmeasured" in hs.render(collect(git_flood_reader=lambda: None))
+
+

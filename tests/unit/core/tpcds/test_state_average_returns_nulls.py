@@ -51,3 +51,5 @@ def test_state_average_ignores_null_totals_and_keeps_null_customer_groups(family
     monkeypatch.setattr(queries, "get_parameters", lambda _: {"year": 1998, "state": "IL"})
 
     assert materialize_rows(impl(ctx, spec)) == []
+
+

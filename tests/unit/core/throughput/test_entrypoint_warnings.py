@@ -161,3 +161,5 @@ def test_official_run_without_throughput_still_warns(tmp_path):
     deprecations = _deprecations(caught)
     assert len(deprecations) == 1
     assert deprecations[0].filename == __file__
+
+

@@ -422,3 +422,5 @@ class TestDataprocAdapterClose:
             adapter.close()
 
             mock_logger.info.assert_called()
+
+

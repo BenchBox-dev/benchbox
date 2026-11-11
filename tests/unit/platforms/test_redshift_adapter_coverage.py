@@ -3375,3 +3375,5 @@ class TestCacheControlReceiptPersistence:
         payload = RedshiftAdapter._redshift_compute_metadata({"result_cache_enabled": True}, {}, cache_control=receipt)
         assert payload["result_cache_enabled"] is True
         assert payload["cache_control"]["cache_disabled"] is False
+
+

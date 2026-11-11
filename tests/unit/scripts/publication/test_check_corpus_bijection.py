@@ -85,3 +85,5 @@ def test_main_recorded_source_passes_path_stage(capsys: pytest.CaptureFixture[st
         ]
     )
     assert rc == 0, capsys.readouterr().out
+
+

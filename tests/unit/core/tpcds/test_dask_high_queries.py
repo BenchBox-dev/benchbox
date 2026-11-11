@@ -149,3 +149,5 @@ def test_groupby_size_without_index_returns_a_frame(family):
         result = result.compute()
 
     assert sorted(result.rename(columns={"size": "n"}).itertuples(index=False)) == [("a", 2), ("b", 1)]
+
+

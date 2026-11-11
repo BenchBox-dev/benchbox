@@ -135,3 +135,5 @@ def test_facade_passes_dialect_through(tmp_path) -> None:
     assert facade.get_queries() == job_benchmark.get_queries()
     assert facade.get_queries(dialect="spark") == job_benchmark.get_queries(dialect="spark")
     assert facade.get_query("1a", dialect="spark") == job_benchmark.get_query("1a", dialect="spark")
+
+

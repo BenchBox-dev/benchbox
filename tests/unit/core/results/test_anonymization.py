@@ -1445,3 +1445,5 @@ class TestIdentifierPrefixDependsOnParentKeys:
         for _ in range(2):
             assert manager._identifier_prefix_for_key_path(path) == expected
             assert manager._identifier_prefix_for_key_path(("unrelated",) + path) == expected
+
+

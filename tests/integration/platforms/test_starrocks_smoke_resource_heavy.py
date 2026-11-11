@@ -34,3 +34,5 @@ def test_starrocks_smoke_full_workflow(monkeypatch, tmp_path):
     assert stream_load.url == f"http://{state.host}:{state.http_port}/api/benchbox_smoke/lineitem/_stream_load"
     assert stream_load.body == b"1,alpha\n2,beta\n"
     assert table_stats["lineitem"] == stream_load.rows == 2
+
+

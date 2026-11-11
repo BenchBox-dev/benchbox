@@ -137,3 +137,5 @@ def test_refresh_ingest_uses_the_same_guard_expression_as_the_bulk_paths(tmp_pat
     )
 
     assert cursor.execute.call_args.args[0].endswith(f"(`id`, @price, `note`) SET {GUARD}")
+
+

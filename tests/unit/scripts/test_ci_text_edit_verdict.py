@@ -302,3 +302,5 @@ def test_refresh_stops_waiting_after_a_bounded_number_of_polls(
     assert main(REFRESH_ARGS) == 0
     assert len(sleeps) == verdict.UNFINISHED_POLLS
     assert commands == []
+
+

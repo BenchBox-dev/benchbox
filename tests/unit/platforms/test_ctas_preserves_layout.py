@@ -96,3 +96,5 @@ def test_replace_style_ctas_builders_stay_unreachable(platform):
         f"the validator now accepts sorting on {platform}; its CREATE OR REPLACE ... ORDER BY CTAS "
         "builder would discard clustering, properties and constraints, so make it preserve them first"
     )
+
+

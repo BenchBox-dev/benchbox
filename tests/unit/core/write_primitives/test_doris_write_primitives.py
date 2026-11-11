@@ -50,3 +50,5 @@ def test_doris_overrides_replace_the_syntax_doris_cannot_parse(write, operation_
     assert "WHEN NOT MATCHED THEN INSERT\n" not in sql
     assert "RENAME COLUMN old_name TO" not in sql
     assert "CASE WHEN" not in sql
+
+

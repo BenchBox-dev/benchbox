@@ -127,3 +127,5 @@ def test_q75_qualification_year_matches_the_official_answer_years(document):
     assert block.columns[:2] == ("PREV_YEAR", "YEAR")
     assert {row[:2] for row in block.rows} == {(str(year - 1), str(year))}
     assert year == 2002
+
+

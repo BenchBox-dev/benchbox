@@ -100,3 +100,5 @@ def test_cloud_client_names_the_file_columns():
     client.insert_stream("t", "Parquet", iter([b"x"]), {}, ["id", "name"])
 
     assert client._client.raw_insert.call_args.kwargs["column_names"] == ["id", "name"]
+
+

@@ -296,3 +296,5 @@ def test_production_refresh_connections_carry_the_platform_adapter() -> None:
 
     assert isinstance(wrapper, PlatformAdapterConnection)
     assert wrapper.platform_adapter is host
+
+

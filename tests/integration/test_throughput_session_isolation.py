@@ -490,3 +490,5 @@ class TestMySQLWireIndependentConnections:
                 cursor.close()
         finally:
             shared_connection.close()
+
+

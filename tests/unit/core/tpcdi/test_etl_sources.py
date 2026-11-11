@@ -341,3 +341,5 @@ class TestSourceDataGenerator:
             assert "registered_formats" in stats
             assert len(stats["registered_formats"]) == 4
             assert "file_formats" in stats
+
+

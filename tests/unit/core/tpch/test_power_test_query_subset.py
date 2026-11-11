@@ -22,3 +22,5 @@ def test_parse_accepts_bare_and_q_prefixed_ids(raw, expected):
 def test_parse_rejects_invalid_ids(raw):
     with pytest.raises(ValueError, match="Invalid TPC-H query id"):
         _parse_tpch_query_id(raw)
+
+

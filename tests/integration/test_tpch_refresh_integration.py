@@ -153,3 +153,5 @@ def test_qphh_metric_uses_24_power_terms_and_rounds_to_one_decimal_place() -> No
     assert len(power_terms) == 24
     assert power == pytest.approx(3600.0 / 4.0 ** (1.0 / 24.0))
     assert qphh == round((power * throughput) ** 0.5, 1)
+
+

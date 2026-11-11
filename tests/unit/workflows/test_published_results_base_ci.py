@@ -164,3 +164,5 @@ def test_published_results_base_mirror_run_is_red_unless_validation_passed() -> 
     assert "!= 'success'" in condition, (
         f"failure gate is {condition!r}; a run that could not determine the verdict would still be green"
     )
+
+

@@ -688,3 +688,5 @@ def test_redacted_publish_preserves_statistics_phase_details(tmp_path):
     finally:
         if scratch is not None:
             scratch.cleanup()
+
+

@@ -161,3 +161,5 @@ def test_no_padding_when_rows_returned_equals_one_with_first_row(caplog):
     assert [r for r in caplog.records if r.levelno == logging.WARNING] == []
     assert cursor._has_placeholder_padding is False
     assert cursor._warned_placeholder_materialization is False
+
+

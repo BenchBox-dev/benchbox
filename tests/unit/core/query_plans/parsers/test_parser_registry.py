@@ -296,3 +296,5 @@ class TestParserRegistryVersionSelection:
         parser = registry.get_parser("testdb", "2")
         assert parser is not None
         assert parser.version == "v2"
+
+

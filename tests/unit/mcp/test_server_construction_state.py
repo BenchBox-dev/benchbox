@@ -59,3 +59,5 @@ def test_building_a_server_leaves_the_global_tracer_provider_unconfigured(tmp_pa
     env = {**os.environ, "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT": "http://127.0.0.1:9/v1/traces"}
 
     subprocess.run([sys.executable, "-c", probe, str(tmp_path)], check=True, capture_output=True, text=True, env=env)
+
+

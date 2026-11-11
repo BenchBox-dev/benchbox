@@ -159,3 +159,5 @@ class TestSynapseGetTargetDialect:
         adapter = _make_adapter()
         dialect = adapter.get_target_dialect()
         assert dialect.lower() in ("tsql", "synapse", "azure_synapse")
+
+

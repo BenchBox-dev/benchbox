@@ -159,3 +159,5 @@ def test_show_plan_load_error_and_verbose_exception(monkeypatch: pytest.MonkeyPa
     res = CliRunner().invoke(mod.show_plan, ["--run", str(p), "--query-id", "q1"], obj={"verbose": True})
     assert res.exit_code == 1
     assert isinstance(res.exception, RuntimeError)
+
+

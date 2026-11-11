@@ -559,3 +559,5 @@ def test_benchmark_capacity_tool_is_tenant_scoped(tmp_path: Path, monkeypatch: p
             assert "tenant-a" not in json.dumps(other)
 
     anyio.run(exercise)
+
+

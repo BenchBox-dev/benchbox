@@ -158,3 +158,5 @@ def test_plan_history_real_history_store_end_to_end(tmp_path: Path) -> None:
     assert "run0" in result.output
     assert "run2" in result.output
     assert "Unique plans: 2" in result.output
+
+

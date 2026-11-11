@@ -232,3 +232,5 @@ def test_q65_all_null_revenue_is_excluded_while_mixed_zero_and_negative_sums_rem
     mutated = [(*actual[0][:2], actual[0][2] + 1.0, *actual[0][3:]), *actual[1:]]
     with pytest.raises(ValidationError):
         validator.validate_results_exact(expected, mutated, 65, 0, order_aware=True, order_by=[0, 1])
+
+

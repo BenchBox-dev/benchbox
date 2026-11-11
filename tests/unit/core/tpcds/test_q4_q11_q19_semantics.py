@@ -145,3 +145,5 @@ def test_q19_drops_a_row_whose_customer_zip_is_null(monkeypatch, family):
         if family == "pandas"
         else queries.q19_expression_impl(_context(family, tables))
     ) == [(10, "brand1", 100, "m1", 5.0)]
+
+

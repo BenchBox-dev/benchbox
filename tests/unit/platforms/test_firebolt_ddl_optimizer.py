@@ -67,3 +67,5 @@ class TestTranslateSchemaDdlBranches:
         assert "TEXT" in out
         assert "NUMERIC(15, 2)" in out
         assert "PRIMARY KEY" not in out.upper()
+
+

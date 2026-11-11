@@ -61,3 +61,5 @@ def test_explorer_build_contract_command_matches_script_click_path() -> None:
 
 def test_explorer_publisher_does_not_register_legacy_comparison_builder() -> None:
     assert "build-comparison" not in explorer_module.explorer_publish.commands
+
+

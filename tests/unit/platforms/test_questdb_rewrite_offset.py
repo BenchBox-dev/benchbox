@@ -39,3 +39,5 @@ def test_non_literal_offset_is_left_alone():
 def test_limit_without_offset_is_left_alone():
     sql = "SELECT a FROM t LIMIT 3"
     assert rewrite_query(sql) == sql
+
+

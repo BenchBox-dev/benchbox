@@ -130,3 +130,5 @@ class TestDataFrameOptionReachesConfig:
         options = call.args[1]
         assert platform_key == "datafusion"
         assert options.get("target_partitions") == 4
+
+

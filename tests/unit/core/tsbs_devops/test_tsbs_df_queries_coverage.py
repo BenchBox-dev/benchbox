@@ -230,3 +230,5 @@ def test_all_pandas_query_impls_execute(monkeypatch: pytest.MonkeyPatch, i: int)
     fn = getattr(qmod, f"q{i}_pandas_impl")
     out = fn(ctx)
     assert isinstance(out, pd.DataFrame)
+
+

@@ -94,3 +94,5 @@ def test_reload_without_pyspark():
         _unstage(staged, saved)
         _reload_adapter()
     assert mod.PYSPARK_AVAILABLE is True
+
+

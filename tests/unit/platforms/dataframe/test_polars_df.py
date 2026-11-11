@@ -877,3 +877,5 @@ class TestPolarsNotAvailable:
         from benchbox.platforms.dataframe.polars_df import POLARS_AVAILABLE
 
         assert isinstance(POLARS_AVAILABLE, bool)
+
+

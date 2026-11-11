@@ -1399,3 +1399,5 @@ class TestDuckLakeRegistration:
         import benchbox.platforms as platforms_module
 
         assert platforms_module.DuckLakeAdapter is DuckLakeAdapter
+
+

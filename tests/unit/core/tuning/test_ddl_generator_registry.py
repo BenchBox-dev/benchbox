@@ -270,3 +270,5 @@ class TestDataframeBaseSetsMatchDeclarations:
             f"extras: {sorted(set(expected) ^ set(ddl_generator_module._DATAFRAME_PREFIX_BASES))}. "
             "Update the set with a reason when extras change."
         )
+
+

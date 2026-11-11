@@ -35,3 +35,5 @@ def test_refuses_a_tag_moved_to_another_commit():
 def test_refuses_malformed_objects():
     with pytest.raises(ValueError, match="not a SHA"):
         recheck.verify_tag_objects("not-a-sha", SHA, TAG_OBJECT, SHA)
+
+

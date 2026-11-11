@@ -1716,3 +1716,5 @@ def test_partial_final_iteration_is_not_back_filled(tmp_path: Path) -> None:
 
     assert validator._power_score(payload) is None
     assert BundleTransformer().to_manifest_entry(path, result_id="r").power_score is None
+
+

@@ -170,3 +170,5 @@ def test_datafusion_cumulative_windows_reject_missing_order(operation):
     ctx = DataFusionDataFrameAdapter().create_context()
     with pytest.raises(ValueError, match="explicit order_by"):
         getattr(ctx.col("value"), f"cum_{operation}")().over("item")
+
+

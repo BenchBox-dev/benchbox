@@ -215,3 +215,5 @@ def test_blank_null_text_matches_per_field_reference(tmp_path: Path, monkeypatch
         data_file, dialect=_dialect(), strip_trailing_delim=False, blank_null_text=True
     ) as out:
         assert out.read_bytes() == b"\n".join(expected) + b"\n"
+
+

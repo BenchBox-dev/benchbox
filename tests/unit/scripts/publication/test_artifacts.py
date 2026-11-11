@@ -276,3 +276,5 @@ def test_main_require_artifact_missing_exits_nonzero(tmp_path: Path) -> None:
         ]
     )
     assert rc != 0
+
+

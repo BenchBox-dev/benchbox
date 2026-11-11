@@ -211,3 +211,5 @@ class TestNotImplementedErrorResolution:
             finally:
                 with contextlib.suppress(Exception):
                     Path(tmp_db.name).unlink()
+
+

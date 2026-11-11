@@ -58,3 +58,5 @@ def test_conformance_baseline_assumptions_are_guarded(tmp_path: Path, mode: str)
             assert capabilities.tools.list_changed is False
 
     anyio.run(exercise)
+
+

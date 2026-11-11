@@ -131,3 +131,5 @@ def test_create_debug_logger_and_helper_functions_cover_debug_utilities() -> Non
 
     log_import_debug(mock_logger, "polars")
     mock_logger.debug.assert_any_call("Successfully imported polars")
+
+

@@ -203,3 +203,5 @@ class TestSnowflakeCorroboration:
         conn = _FakeSnowflakeConnection([("LINEITEM", "LINEAR(L_SHIPDATE, L_ORDERKEY)")])
         receipt = corroborate(ledger, SnowflakeTuningIntrospector().introspect(conn, ledger))
         assert receipt.corroborated is False
+
+

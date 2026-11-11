@@ -358,3 +358,5 @@ def test_cli_missing_ledger_head_sha_is_fatal(tmp_path: Path) -> None:
     )
     assert result.returncode != 0
     assert "not be empty" in result.stdout
+
+

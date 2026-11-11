@@ -424,3 +424,5 @@ class TestDuckDBSupportsTuningType:
 
     def test_external_tables_supported(self):
         assert DuckDBAdapter.supports_external_tables is True
+
+

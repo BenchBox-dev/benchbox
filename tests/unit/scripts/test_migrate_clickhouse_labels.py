@@ -181,3 +181,5 @@ def test_label_only_rewrite_is_atomic_and_keeps_companions(tmp_path: Path) -> No
     assert json.loads(old.read_text(encoding="utf-8"))["platform"]["name"] == "ClickHouse Server"
     assert companion.is_file()
     assert list(tmp_path.glob(".*.tmp-*")) == []
+
+

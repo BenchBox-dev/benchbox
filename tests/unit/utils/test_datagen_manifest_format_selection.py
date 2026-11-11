@@ -173,3 +173,5 @@ class TestGetTableFilesV1Manifest:
             },
         }
         assert get_table_files(manifest, "nonexistent") == []
+
+

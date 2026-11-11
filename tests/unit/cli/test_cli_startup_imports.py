@@ -99,3 +99,5 @@ def test_importing_cli_does_not_load_bundled_sqlglot() -> None:
     )
 
     assert result.returncode == 0, result.stderr
+
+

@@ -126,3 +126,5 @@ def test_tpch_benchmark_translates_bigquery_q13(fake_tpch_components):
     """
     translated = bench.translate_query_text(raw_q13, "netezza", "bigquery")
     assert "(c_custkey, c_count)" not in translated
+
+

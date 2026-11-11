@@ -100,3 +100,5 @@ def test_both_lanes_list_changed_paths_without_rename_detection() -> None:
     for run in (_step()["run"], edit["run"]):
         assert "--name-only --no-renames --diff-filter=ACDMRT" in run
         assert "--name-only --diff-filter=A " in run
+
+

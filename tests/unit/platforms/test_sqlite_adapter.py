@@ -816,3 +816,5 @@ class TestSQLiteDataVaultHelperIndexes:
 
         assert applied["benchmark_name"] == "Data Vault"
         assert applied["statements"] == statements
+
+

@@ -20,3 +20,5 @@ def test_official_mode_disclaimer_is_generic_for_unknown_benchmarks(benchmark_id
     text = official_mode_disclaimer(benchmark_id)
     assert "TPC-H" not in text
     assert "do not comply with the TPC Specification" in text
+
+

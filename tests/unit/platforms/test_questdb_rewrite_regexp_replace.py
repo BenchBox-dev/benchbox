@@ -27,3 +27,5 @@ def test_other_flag_sets_are_left_unchanged():
     for flags in ("i", "gi", "ig"):
         sql = rf"SELECT REGEXP_REPLACE(a, '(x)', '\1', '{flags}') FROM t"
         assert rewrite_query(sql) == sql
+
+

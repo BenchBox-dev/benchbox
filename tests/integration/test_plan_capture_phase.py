@@ -323,3 +323,5 @@ class TestCanonicalCaptureContract:
         bc = BenchmarkConfig(name="tpch", display_name="x", capture_plans=True, analyze_plans=False)
         rc = RunConfig(benchmark="tpch", capture_plans=True, analyze_plans=bc.analyze_plans)
         assert rc.analyze_plans is False
+
+

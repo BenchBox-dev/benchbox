@@ -3114,3 +3114,5 @@ def test_manifest_class_attestation_must_match_the_recorded_bundle(tmp_path, env
     manifest = {"execution_class": "container", "execution_class_evidence": "owner attestation"}
     _validate_manifest_provenance(manifest, bundle, vr)
     assert vr.ok is ok
+
+

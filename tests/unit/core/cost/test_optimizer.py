@@ -748,3 +748,5 @@ class TestImplementationEffortLevels:
         region_recs = report.get_by_category(OptimizationCategory.REGION)
         if region_recs:
             assert region_recs[0].effort == ImplementationEffort.HIGH
+
+

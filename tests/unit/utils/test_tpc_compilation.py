@@ -820,3 +820,5 @@ class TestDiscoverTPCPaths:
         paths1 = _discover_tpc_paths()
         paths2 = _discover_tpc_paths()
         assert paths1 is paths2
+
+

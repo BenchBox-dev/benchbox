@@ -493,3 +493,5 @@ def test_platform_is_reachable_still_caches():
         assert matrix.platform_is_reachable("postgresql") is False
         assert matrix.platform_is_reachable("postgresql") is False
     assert probe.call_count == 1
+
+

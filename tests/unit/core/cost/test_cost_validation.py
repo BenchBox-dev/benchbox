@@ -226,3 +226,5 @@ class TestValidationEdgeCases:
 
         for platform in expected_platforms:
             assert platform in RESOURCE_USAGE_SCHEMA, f"Platform '{platform}' missing from validation schema"
+
+

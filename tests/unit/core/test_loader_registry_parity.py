@@ -279,3 +279,5 @@ def test_loader_forwards_force_regenerate_to_any_accepting_benchmark(monkeypatch
     get_benchmark_instance(config, system_profile=None)
 
     assert captured == {"force_regenerate": True}
+
+

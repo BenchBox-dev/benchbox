@@ -208,3 +208,5 @@ def test_regression_alert_to_dict() -> None:
     assert alert_dict["baseline"] == 1.0
     assert alert_dict["current"] == 2.0
     assert alert_dict["change_percent"] == 100.0
+
+
