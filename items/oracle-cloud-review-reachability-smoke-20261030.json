@@ -3,6 +3,7 @@
     "Live cloud session: make pr-open completes a local review; output recorded."
   ],
   "description": "Waived by owner 2026-10-30 at merge of oracle-cloud-review-reachability-20261027 (unit and loopback-proxy evidence recorded there). Remaining observation: in a Claude cloud session, make cloud-bootstrap reports gateway=reachable with gateway_proxy= in cloud-gateway status, and make pr-open completes a local review through the oracle-cloud client.",
+  "drop_reason": "Duplicate of oracle-gateway-cloud-builder-smoke-20261031; owner asked on 2026-11-11 to clean up duplicates. Its evidence was appended to oracle-gateway-cloud-builder-smoke-20261031's context.",
   "not_before": "2026-11-06T00:00:00Z",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "op": "create",
       "op_id": "7960a63c1eb54d189694691f41d57b07",
       "session_id": "adb1518a186a49b6a5f244d6ebc0f7ca"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:22:41Z",
+      "client": "omp-coding-agent",
+      "op": "drop",
+      "op_id": "d5c148996b404969b0e4ba4ff4e5ad4e",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }

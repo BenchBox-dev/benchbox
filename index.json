@@ -28046,7 +28046,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Observe the cloud-session local oracle review through the tailnet proxy"
     },
     "oracle-codex-sandbox-bwrap-ci-20261009": {
