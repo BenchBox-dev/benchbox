@@ -1,0 +1,155 @@
+name: review-verdict
+
+run-name: review-verdict (${{ github.event_name }} pr=${{ github.event.pull_request.number || github.event.issue.number || inputs.pr || 'sweep' }}${{ (github.event.pull_request.head.sha || inputs.head) && format(' head={0}', github.event.pull_request.head.sha || inputs.head) || '' }})
+
+on:
+  push:
+    branches: [develop]
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number to review
+        required: true
+        type: string
+      head:
+        description: Head commit the dispatch targets; a different current head skips the run
+        required: false
+        type: string
+      reason:
+        description: Why this dispatch was requested
+        required: false
+        type: string
+  schedule:
+    - cron: '23 * * * *'
+
+permissions: {}
+
+concurrency:
+  group: review-verdict-${{ ((github.event_name == 'schedule' || github.event_name == 'push') && 'sweep') || (((github.event_name == 'pull_request_target' && (github.event.action != 'edited' || github.event.changes.base)) || (github.event_name == 'issue_comment' && github.event.issue.pull_request && (startsWith(github.event.comment.body, '/review') || startsWith(github.event.comment.body, 'Review adjudication:')) && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) || github.event_name == 'workflow_dispatch') && format('pr-{0}', github.event.pull_request.number || github.event.issue.number || inputs.pr) || format('run-{0}', github.run_id)) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
+
+jobs:
+  verdict:
+    permissions:
+      actions: write
+      contents: read
+      pull-requests: read
+    uses: joeharris76/theseus/.github/workflows/review.yml@370c10c412c49f4b3ec69471513a1b1c7718918f
+    with:
+      environment: oracle
+      theseus_ref: 370c10c412c49f4b3ec69471513a1b1c7718918f
+      gated_base: "develop,release/*"
+      policy_path: .github/review.yml
+      tailscale_tag: tag:oracle-ci
+    secrets:
+      REVIEW_APP_ID: ${{ secrets.ORACLE_APP_ID }}
+      REVIEW_APP_PRIVATE_KEY: ${{ secrets.ORACLE_APP_PRIVATE_KEY }}
+      REVIEW_GATEWAY_TOKEN: ${{ secrets.ORACLE_GATEWAY_TOKEN }}
+      REVIEW_GATEWAY_URL: ${{ secrets.ORACLE_GATEWAY_URL }}
+      TS_OAUTH_CI_CLIENT_ID: ${{ secrets.TS_OAUTH_CI_CLIENT_ID }}
+      TS_OAUTH_CI_SECRET: ${{ secrets.TS_OAUTH_CI_SECRET }}
+      TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+  posting-check:
+    name: verdict posting check
+    needs: [verdict]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+      statuses: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      EVENT_NAME: ${{ github.event_name }}
+      EVENT_ACTION: ${{ github.event.action }}
+      BASE_CHANGED: ${{ github.event.changes.base && 'true' || 'false' }}
+      EVENT_PR: ${{ github.event.pull_request.number }}
+      EVENT_HEAD: ${{ github.event.pull_request.head.sha }}
+      INPUT_PR: ${{ inputs.pr }}
+      INPUT_HEAD: ${{ inputs.head }}
+      JOB_RESULT: ${{ needs.verdict.result }}
+      GATED_BASE: "develop,release/*"
+      POSTER: benchbox-oracle[bot]
+      CONTEXTS: review-verdict
+    steps:
+      - name: Fail when no verdict status was posted for the handled head
+        run: |
+          set -euo pipefail
+          case "$JOB_RESULT" in
+            success | failure | cancelled | skipped) ;;
+            *)
+              echo "::error::the verdict job ended with the unrecognised result '$JOB_RESULT'"
+              exit 1
+              ;;
+          esac
+          case "$EVENT_NAME" in
+            pull_request_target)
+              if [ "$EVENT_ACTION" = edited ] && [ "$BASE_CHANGED" != true ]; then
+                echo "A title or body edit starts no review; nothing to check."
+                exit 0
+              fi
+              pr="$EVENT_PR"
+              handled="$EVENT_HEAD"
+              ;;
+            workflow_dispatch)
+              pr="$INPUT_PR"
+              handled="$INPUT_HEAD"
+              ;;
+            *)
+              echo "$EVENT_NAME runs post no verdict for one head; nothing to check."
+              exit 0
+              ;;
+          esac
+          pull="$(gh api "repos/$REPO/pulls/$pr")"
+          state="$(jq -r '.state' <<<"$pull")"
+          base="$(jq -r '.base.ref' <<<"$pull")"
+          draft="$(jq -r '.draft' <<<"$pull")"
+          head="$(jq -r '.head.sha' <<<"$pull")"
+          if [ "$state" != open ]; then
+            echo "#$pr is $state; the review skips it by design."
+            exit 0
+          fi
+          gated=false
+          set -f
+          for pattern in $(printf '%s' "$GATED_BASE" | tr ',' ' '); do
+            case "$pattern" in
+              */\*)
+                rest="${base#"${pattern%/\*}"/}"
+                if [ "$rest" != "$base" ] && [[ "$rest" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then gated=true; fi
+                ;;
+              *)
+                if [ "$base" = "$pattern" ]; then gated=true; fi
+                ;;
+            esac
+          done
+          set +f
+          if [ "$gated" != true ]; then
+            echo "#$pr targets $base, not one of $GATED_BASE; the review skips it by design."
+            exit 0
+          fi
+          if [ "$draft" = true ]; then
+            echo "#$pr is a draft; the review skips it by design."
+            exit 0
+          fi
+          if [ -n "$handled" ] && [ "$handled" != "$head" ]; then
+            echo "#$pr moved from $handled to $head; the run for the current head covers it."
+            exit 0
+          fi
+          posted="$(gh api --paginate "repos/$REPO/commits/$head/statuses?per_page=100" | jq -s --arg poster "$POSTER" --arg contexts "$CONTEXTS" '[.[][] | select(.creator.login == $poster and (.context as $context | ($contexts | split(" ") | index($context)) != null))] | length')"
+          if [ "$posted" -eq 0 ]; then
+            echo "::error::no verdict status ($CONTEXTS) from $POSTER exists for head $head of #$pr; the verdict job ended '$JOB_RESULT' without posting one"
+            exit 1
+          fi
+          echo "Head $head of #$pr carries $posted verdict status(es) from $POSTER."
+          if [ "$JOB_RESULT" = failure ] || [ "$JOB_RESULT" = cancelled ]; then
+            echo "::error::the verdict job ended '$JOB_RESULT'"
+            exit 1
+          fi

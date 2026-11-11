@@ -29,7 +29,7 @@ from typing import Any
 
 LOCK_PATH = ".github/theseus-lock.json"
 CACHE_ENV = "THESEUS_INSTALL_CACHE"
-MIRROR_ENV = "ORACLE_PROMOTION_MIRROR"
+MIRROR_ENV = "REVIEW_PROMOTION_MIRROR"
 SCHEMA = 1
 KEY_VERSION = 1
 MAX_BYTES = 64 << 20
@@ -600,16 +600,25 @@ def _retained(cache: Path, sha256: str) -> Path:
     return cache / "artifacts" / f"{sha256}.whl"
 
 
+def _read_retained(retained: Path) -> bytes:
+    try:
+        return retained.read_bytes()
+    except OSError:
+        return b""
+
+
 def _load_artifact(
     cache: Path, label: str, urls: Sequence[str], sha256: str, fetch: Fetch, *, verify_all: bool
 ) -> bytes:
     retained = _retained(cache, sha256)
-    if retained.is_file() and not verify_all:
-        cached = retained.read_bytes()
+    if not verify_all:
+        cached = _read_retained(retained)
         if sha256_hex(cached) == sha256:
             return cached
     raw = fetch_verified(label, urls, sha256, fetch, verify_all=verify_all)
     with _file_lock(retained.parent / f".lock-{sha256}"):
+        if sha256_hex(_read_retained(retained)) == sha256:
+            return raw
         staged = retained.with_name(f".{retained.name}.{os.getpid()}.{secrets.token_hex(4)}")
         try:
             staged.write_bytes(raw)

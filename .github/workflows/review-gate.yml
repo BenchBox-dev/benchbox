@@ -1,0 +1,140 @@
+name: review-gate
+
+run-name: review-gate (${{ github.event_name }} ${{ (github.event.pull_request.number || github.event.issue.number || inputs.pr) && format('pr={0}', github.event.pull_request.number || github.event.issue.number || inputs.pr) || github.event.workflow_run.head_sha && format('sha={0}', github.event.workflow_run.head_sha) || 'sweep' }})
+
+on:
+  push:
+    branches: [develop]
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+  issue_comment:
+    types: [created, edited, deleted]
+  workflow_run:
+    workflows: [review-request]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number to gate
+        required: true
+        type: string
+      head_sha:
+        description: Head commit the gate falls back to when the pull request cannot be read
+        required: false
+        type: string
+  schedule:
+    - cron: '41 * * * *'
+
+permissions: {}
+
+concurrency:
+  group: "review-gate-${{ (github.event_name == 'push' && 'push-sweep') || (github.event_name == 'issue_comment' && !((startsWith(github.event.comment.body, 'Stand-in review: APPROVE')) || contains(github.event.comment.body, 'Omp candidate check: ') || (startsWith(github.event.comment.body, 'Review adjudication: ')) || (github.event.action == 'deleted' && (contains(github.event.comment.body, 'Stand-in review: APPROVE') || contains(github.event.comment.body, 'Review adjudication: '))) || (github.event.action == 'edited' && ((contains(github.event.changes.body.from, 'Stand-in review: APPROVE')) || contains(github.event.changes.body.from, 'Omp candidate check: ') || (contains(github.event.changes.body.from, 'Review adjudication: '))))) && format('ignored-{0}', github.run_id)) || (github.event_name == 'workflow_run' && format('bridge-{0}', github.event.workflow_run.head_sha)) || github.event.pull_request.number || github.event.issue.number || inputs.pr || format('run-{0}', github.run_id) }}"
+  cancel-in-progress: ${{ github.event_name != 'push' }}
+
+jobs:
+  gate:
+    permissions:
+      actions: write
+      contents: read
+      pull-requests: read
+    uses: joeharris76/theseus/.github/workflows/gate.yml@370c10c412c49f4b3ec69471513a1b1c7718918f
+    with:
+      environment: oracle
+      theseus_ref: 370c10c412c49f4b3ec69471513a1b1c7718918f
+      gated_base: "develop,release/*"
+      policy_path: .github/review.yml
+    secrets:
+      REVIEW_APP_ID: ${{ secrets.ORACLE_APP_ID }}
+      REVIEW_APP_PRIVATE_KEY: ${{ secrets.ORACLE_APP_PRIVATE_KEY }}
+
+  posting-check:
+    name: gate posting check
+    needs: [gate]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+      statuses: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      EVENT_NAME: ${{ github.event_name }}
+      EVENT_PR: ${{ github.event.pull_request.number }}
+      EVENT_HEAD: ${{ github.event.pull_request.head.sha }}
+      INPUT_PR: ${{ inputs.pr }}
+      JOB_RESULT: ${{ needs.gate.result }}
+      GATED_BASE: "develop,release/*"
+      POSTER: benchbox-oracle[bot]
+      CONTEXTS: review-gate
+    steps:
+      - name: Fail when no gate status was posted for the handled head
+        run: |
+          set -euo pipefail
+          case "$JOB_RESULT" in
+            success | failure | cancelled | skipped) ;;
+            *)
+              echo "::error::the gate job ended with the unrecognised result '$JOB_RESULT'"
+              exit 1
+              ;;
+          esac
+          case "$EVENT_NAME" in
+            pull_request_target)
+              pr="$EVENT_PR"
+              handled="$EVENT_HEAD"
+              ;;
+            workflow_dispatch)
+              pr="$INPUT_PR"
+              handled=""
+              ;;
+            *)
+              echo "$EVENT_NAME runs post no gate for one head; nothing to check."
+              exit 0
+              ;;
+          esac
+          pull="$(gh api "repos/$REPO/pulls/$pr")"
+          state="$(jq -r '.state' <<<"$pull")"
+          base="$(jq -r '.base.ref' <<<"$pull")"
+          draft="$(jq -r '.draft' <<<"$pull")"
+          head="$(jq -r '.head.sha' <<<"$pull")"
+          if [ "$state" != open ]; then
+            echo "#$pr is $state; the gate skips it by design."
+            exit 0
+          fi
+          gated=false
+          set -f
+          for pattern in $(printf '%s' "$GATED_BASE" | tr ',' ' '); do
+            case "$pattern" in
+              */\*)
+                rest="${base#"${pattern%/\*}"/}"
+                if [ "$rest" != "$base" ] && [[ "$rest" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then gated=true; fi
+                ;;
+              *)
+                if [ "$base" = "$pattern" ]; then gated=true; fi
+                ;;
+            esac
+          done
+          set +f
+          if [ "$gated" != true ]; then
+            echo "#$pr targets $base, not one of $GATED_BASE; the gate skips it by design."
+            exit 0
+          fi
+          if [ "$draft" = true ]; then
+            echo "#$pr is a draft; the gate skips it by design."
+            exit 0
+          fi
+          if [ -n "$handled" ] && [ "$handled" != "$head" ]; then
+            echo "#$pr moved from $handled to $head; the run for the current head covers it."
+            exit 0
+          fi
+          posted="$(gh api --paginate "repos/$REPO/commits/$head/statuses?per_page=100" | jq -s --arg poster "$POSTER" --arg contexts "$CONTEXTS" '[.[][] | select(.creator.login == $poster and (.context as $context | ($contexts | split(" ") | index($context)) != null))] | length')"
+          if [ "$posted" -eq 0 ]; then
+            echo "::error::no gate status ($CONTEXTS) from $POSTER exists for head $head of #$pr; the gate job ended '$JOB_RESULT' without posting one"
+            exit 1
+          fi
+          echo "Head $head of #$pr carries $posted gate status(es) from $POSTER."
+          if [ "$JOB_RESULT" = failure ] || [ "$JOB_RESULT" = cancelled ]; then
+            echo "::error::the gate job ended '$JOB_RESULT'"
+            exit 1
+          fi
