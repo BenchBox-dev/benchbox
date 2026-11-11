@@ -4,7 +4,7 @@
     "A replaced MCP session of the same worker can re-adopt its own live claim with `take` (or the documented recovery is a single step), demonstrated once.",
     "No change weakens the one-claim-per-worker rule for a single worker."
   ],
-  "context": "DECISION GATE: changes to todo-db itself belong in the todo-db repository; this item covers the BenchBox-side configuration and guidance unless the owner directs otherwise.",
+  "context": "DECISION GATE: changes to todo-db itself belong in the todo-db repository; this item covers the BenchBox-side configuration and guidance unless the owner directs otherwise.\n\n2026-11-11: merged duplicate todo-db-parallel-batch-leaders-share-claim-slot-20261106 into this item. Batch-leader case: on 2026-11-04 and 2026-11-06 four batch leaders on one MCP server shared one worker identity, so a leader's take/prepare was refused while a sibling held a claim and audit records could not tell leaders apart. Options from that item: start each leader with its own TRACTABLE_ACTOR/--actor, or have tractable scope claims per batch owner generation; record the choice in docs/agent/batch-feature-delivery.md.",
   "description": "Observed repeatedly 2026-10-30 to 2026-11-01 while running tracker items in parallel subagents. All subagents share one todo-db worker identity, so only one can hold a claim: the others got E_MULTIPLE_CLAIMS and worked unclaimed, finishing only after merge. When a subagent's MCP session was replaced mid-run, its `finish` returned E_CLAIM_STALE and `take` returned E_CONFLICT for a claim still held under the same identity, so the parent had to `takeover` to close sqlglot-fork-refresh-v30-26-0 and public-pseudonym-salt-automatic. The repository guide says separate servers with distinct --actor values are needed for concurrent workers, but the agent harness starts subagents on the parent's server.",
   "sessions": [
     {
@@ -14,6 +14,14 @@
       "op": "create",
       "op_id": "11d18ba50dee4eecb5fe5d507661a76b",
       "session_id": "a36a04b6bc394082b5008f654e1bf00b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:22:17Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b4fb884438c642238a8455970af72fd0",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
