@@ -1,0 +1,9 @@
+{
+  "bundle_file": "tpcds_obt_sf001_duckdb_sql_20261111_105936_37e7cc9b.json",
+  "bundle_hash": "3d85d617491d7fe29a87133d28eeef76b119306b81665d17feb83fb5709e6e43",
+  "companion_hashes": {},
+  "funding": "unspecified",
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer"
+}
