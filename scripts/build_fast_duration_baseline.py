@@ -22,6 +22,8 @@ GATE_SUM_TOLERANCE = 0.10
 GATE_COVERAGE_MINIMUM = 0.95
 MEDIUM_SKEW_THRESHOLD = 0.20
 MEDIUM_STALE_LIST_LIMIT = 50
+MEDIUM_MIN_DELTA_SECONDS = 0.1
+MEDIUM_MIN_RELATIVE_DELTA = 0.20
 MEDIUM_SHARD_COUNT = 4
 TEST_SHARD_COUNT = 8
 
@@ -396,6 +398,57 @@ def build_medium_durations(runs: list[dict[str, dict[str, float]]], generated_at
     }
 
 
+def _moved_enough(old: float, new: float) -> bool:
+    delta = round(abs(new - old), 9)
+    return delta >= MEDIUM_MIN_DELTA_SECONDS and delta >= round(old * MEDIUM_MIN_RELATIVE_DELTA, 9)
+
+
+def apply_medium_hysteresis(previous: dict[str, Any] | None, fresh: dict[str, Any]) -> dict[str, Any]:
+    records = previous.get("tests") if isinstance(previous, dict) else None
+    if not isinstance(records, dict):
+        return fresh
+    tests: dict[str, Any] = {}
+    for nodeid, record in fresh["tests"].items():
+        old_record = records.get(nodeid)
+        old = old_record.get("p95_seconds") if isinstance(old_record, dict) else None
+        usable = not isinstance(old, bool) and isinstance(old, (int, float)) and math.isfinite(old) and old >= 0
+        if usable and not _moved_enough(float(old), record["p95_seconds"]):
+            tests[nodeid] = {"p95_seconds": old}
+        else:
+            tests[nodeid] = record
+    default = fresh["default_seconds"]
+    old_default = previous.get("default_seconds")
+    if (
+        not isinstance(old_default, bool)
+        and isinstance(old_default, (int, float))
+        and math.isfinite(old_default)
+        and old_default > 0
+        and round(abs(default - old_default), 9) < round(old_default * MEDIUM_MIN_RELATIVE_DELTA, 9)
+    ):
+        default = old_default
+    return {**fresh, "default_seconds": default, "tests": tests}
+
+
+def render_medium_durations(payload: dict[str, Any]) -> str:
+    header = {key: value for key, value in payload.items() if key != "tests"}
+    lines = ["{"]
+    lines.extend(f"  {json.dumps(key)}: {json.dumps(value)}," for key, value in header.items())
+    lines.append('  "tests": {')
+    rows = [f"    {json.dumps(nodeid)}: {json.dumps(payload['tests'][nodeid])}" for nodeid in sorted(payload["tests"])]
+    if rows:
+        lines.append(",\n".join(rows))
+    lines.extend(["  }", "}"])
+    return "\n".join(lines) + "\n"
+
+
+def read_previous_medium(path: Path) -> dict[str, Any] | None:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
 def read_collected_ids(path: Path) -> set[str]:
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
@@ -418,8 +471,16 @@ def medium_refresh_command(args: argparse.Namespace) -> int:
         if not any(any(run.values()) for run in runs):
             raise BaselineError("no measured test is listed in the collected node ids")
     generated_at = args.generated_at or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    payload = build_medium_durations(runs, generated_at, args.source)
-    Path(args.output).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    output = Path(args.output)
+    previous = read_previous_medium(output)
+    payload = apply_medium_hysteresis(previous, build_medium_durations(runs, generated_at, args.source))
+    if (
+        previous is not None
+        and previous.get("tests") == payload["tests"]
+        and previous.get("default_seconds") == payload["default_seconds"]
+    ):
+        return 0
+    output.write_text(render_medium_durations(payload), encoding="utf-8")
     return 0
 
 
