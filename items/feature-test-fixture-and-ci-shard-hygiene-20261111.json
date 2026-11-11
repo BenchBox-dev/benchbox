@@ -4,7 +4,7 @@
     "Each member's own acceptance criteria are met or its unmet part is recorded on that member with the reason",
     "Each member is finished after the merge is observed on origin/develop"
   ],
-  "context": "2026-11-11: PR #4115 opened for the duplicate fixture, branch test/fixture-and-shard-hygiene, worktree /Users/joe/Developer/BenchBox.wt-test-fixture-and-shard-hygiene. The cancelled-shard member turned out to be a recurring hang and was detached from this feature with its findings recorded on it; this feature now has one member. Next: CI and hosted review, arm, observe merge, finish the member then this item.",
+  "context": "2026-11-11: PR #4115 opened for the duplicate fixture, branch test/fixture-and-shard-hygiene, worktree /Users/joe/Developer/BenchBox.wt-test-fixture-and-shard-hygiene. The cancelled-shard member turned out to be a recurring hang and was detached from this feature with its findings recorded on it; this feature now has one member. Next: CI and hosted review, arm, observe merge, finish the member then this item.\n\n2026-11-11: delivered in PR #4115, merged to develop as f4e7c689d2 (verified an ancestor of origin/develop): the unreachable duplicate scale-factor fixtures were removed. The cancelled-shard investigation is recorded on ci-medium-shard-cancelled-without-cause-20261111, which stays open as a recurring hang.",
   "description": "Delivery: one feature branch and one pull request for the members below, built by one delegated session; the coordinating session opens no second PR, arms the PR, observes the merge and closes the tracker items. This is the feature-branch form of serial mode. A registered batch is not used because its members must be separate top-level sessions, and the owner asked for delegation to subagents. The members list this item in their needs so nobody claims them separately. Branch test/fixture-and-shard-hygiene. The shard member is an investigation first: if the cause is not a repository defect, it closes with the finding recorded and no code change. Members: duplicate-small-scale-factor-fixture-20261111, ci-medium-shard-cancelled-without-cause-20261111.",
   "sessions": [
     {
@@ -30,6 +30,14 @@
       "generation": "c0feb534f1da4c328a314a4691369a98",
       "op": "take",
       "op_id": "9653db4319734247bab7823e5b56d002",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T18:00:58Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7d6cb8523f9a456cba0ebd8471010feb",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
