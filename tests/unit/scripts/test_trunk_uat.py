@@ -311,7 +311,7 @@ def test_an_in_progress_probe_dispatch_does_not_defer(releasable):
 def test_a_tag_push_release_in_progress_defers_even_with_probe_runs_beside_it(releasable):
     github = Github()
     probe = github.release_run("in_progress", event="workflow_dispatch", run_attempt=1)
-    github.jobs[probe] = [{"name": "publish dry run", "status": "queued", "conclusion": None}]
+    github.jobs[probe] = [{"name": "publish dry run", "status": "in_progress", "conclusion": None}]
     release = github.release_run("in_progress", event="push", head_branch="v0.5.0", run_attempt=1)
     decision = decide(github, History({sha("a"): set()}), event="schedule")
     assert decision.reason == f"deferred: release-v2 run {release} in progress"
@@ -323,6 +323,8 @@ def test_a_tag_push_release_in_progress_defers_even_with_probe_runs_beside_it(re
         [],
         [{"name": "admit", "status": "in_progress", "conclusion": None}],
         [{"name": "probe UAT stub evidence", "status": "completed", "conclusion": "skipped"}],
+        [{"name": "probe UAT stub evidence", "status": "queued", "conclusion": None}],
+        [{"name": "publish dry run", "status": "waiting", "conclusion": None}],
     ],
 )
 def test_a_dispatch_run_not_proven_to_be_a_probe_defers(releasable, jobs):
