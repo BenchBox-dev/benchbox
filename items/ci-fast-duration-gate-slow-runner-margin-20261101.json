@@ -5,6 +5,7 @@
   ],
   "context": "Report recorded when ci-fast-duration-gate-false-block-review-20261027 was closed on 2026-10-31 (59 verdicts from merged PRs 3760-3853). Recommendation then: keep both thresholds, do not roll back to report mode.\n\n2026-11-07 observed block: PR https://github.com/BenchBox-dev/benchbox/pull/4002 (deletes tests only) got would-block, summed ratio 1.313 / delta +442.6 s, median per-test ratio 1.010. make pr-rerun re-runs only failed jobs, so the core aggregate re-judged the same fast-junit artifact and reproduced 1.313 exactly; fresh timings needed a full gh run rerun of the CI run.",
   "description": "Of 59 measured post-flip verdicts none blocked, but 15 ran on runners with a speed factor of 1.5 or more (up to 1.95), and 8 had a sum ratio above 1.20 (max 1.282 against the 1.30 limit). 7 of 59 exceeded the 360 s delta term alone, all slow-runner noise that the ratio term absorbed. A real slowdown on a slow runner could land just under the limit, and normal noise on a slow runner could land just over it.",
+  "drop_reason": "Duplicate of fast-duration-gate-calibration-skew-20261028; owner asked on 2026-11-11 to clean up duplicates. Its evidence was appended to fast-duration-gate-calibration-skew-20261028's context.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:96cfd54c7d2180daa76d178f",
@@ -21,6 +22,14 @@
       "op": "update",
       "op_id": "a13297c57a4047e18a5c698234c8c7e6",
       "session_id": "2f41579dd2194a049659596cdd9a4f3d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:22:34Z",
+      "client": "omp-coding-agent",
+      "op": "drop",
+      "op_id": "a54e715db7754481bc9cb7711d3e4899",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }

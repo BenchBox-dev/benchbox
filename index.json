@@ -14107,7 +14107,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "The duration gate passes slow-runner runs within 0.02 of its ratio limit"
     },
     "ci-fast-test-slowdown-20261016": {
