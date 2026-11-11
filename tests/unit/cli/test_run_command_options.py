@@ -355,6 +355,68 @@ class TestDryRunValidation:
         assert result.exit_code == 1
         assert "joinorder accepts scale_factor in [1.0]; got 0.01" in result.output
 
+    @pytest.mark.parametrize("scale", ["0.001", "0.01", "0.1", "1", "10", "100000"])
+    def test_dry_run_tpcds_obt_accepts_tpcds_scale_range(self, tmp_path, scale):
+        runner = CliRunner()
+
+        with patch("benchbox.cli.dryrun.DryRunExecutor") as dry_run_executor:
+            dry_run_executor.return_value.execute_dry_run.return_value = MagicMock()
+            dry_run_executor.return_value.save_dry_run_results.return_value = {}
+
+            result = runner.invoke(
+                run,
+                [
+                    "--dry-run",
+                    str(tmp_path / "drytest"),
+                    "--platform",
+                    "duckdb",
+                    "--benchmark",
+                    "tpcds_obt",
+                    "--phases",
+                    "generate",
+                    "--scale",
+                    scale,
+                    "--non-interactive",
+                ],
+                obj=_run_obj(),
+            )
+
+        assert result.exit_code == 0, result.output
+        benchmark_config = dry_run_executor.return_value.execute_dry_run.call_args.args[0]
+        assert benchmark_config.name == "tpcds_obt"
+        assert benchmark_config.scale_factor == float(scale)
+
+    @pytest.mark.parametrize(
+        ("scale", "message"),
+        [
+            ("0.0005", "below the minimum subscale"),
+            ("100001", "exceeds maximum (100000)"),
+            ("2.5", "must be whole integers"),
+        ],
+    )
+    def test_dry_run_tpcds_obt_rejects_scale_outside_tpcds_range(self, tmp_path, scale, message):
+        runner = CliRunner()
+        result = runner.invoke(
+            run,
+            [
+                "--dry-run",
+                str(tmp_path / "drytest"),
+                "--platform",
+                "duckdb",
+                "--benchmark",
+                "tpcds_obt",
+                "--phases",
+                "generate",
+                "--scale",
+                scale,
+                "--non-interactive",
+            ],
+            obj=_run_obj(),
+        )
+
+        assert result.exit_code == 1
+        assert message in result.output
+
     def test_dry_run_unknown_benchmark_rejected(self):
         runner = CliRunner()
         result = runner.invoke(

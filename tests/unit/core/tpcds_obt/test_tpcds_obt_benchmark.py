@@ -228,6 +228,26 @@ def test_get_data_source_benchmark_declares_tpcds() -> None:
     assert benchmark.get_data_source_benchmark() == "tpcds"
 
 
+@pytest.mark.parametrize("scale_factor", [0.001, 0.01, 0.1, 1, 10, 100000])
+def test_public_api_accepts_the_tpcds_scale_range(tmp_path: Path, scale_factor: float) -> None:
+    from benchbox import TPCDSOBT
+
+    benchmark = TPCDSOBT(scale_factor=scale_factor, output_dir=tmp_path)
+
+    assert benchmark.scale_factor == scale_factor
+
+
+@pytest.mark.parametrize(
+    ("scale_factor", "message"),
+    [(0.0005, "below the minimum subscale"), (100001, "exceeds maximum"), (2.5, "whole integers")],
+)
+def test_public_api_rejects_scales_the_cli_rejects(tmp_path: Path, scale_factor: float, message: str) -> None:
+    from benchbox import TPCDSOBT
+
+    with pytest.raises(ValueError, match=message):
+        TPCDSOBT(scale_factor=scale_factor, output_dir=tmp_path)
+
+
 def test_get_create_tables_sql_includes_source_tables() -> None:
     benchmark = TPCDSOBTBenchmark(scale_factor=1.0)
 

@@ -344,7 +344,7 @@ def test_tpcds_wrapper_proxies_helper_methods_and_validates_inputs(tmp_path: Pat
         benchmark.get_query(1, seed="bad")
 
 
-def test_tpcds_obt_wrapper_proxies_public_methods_and_enforces_scale(tmp_path: Path) -> None:
+def test_tpcds_obt_wrapper_proxies_public_methods(tmp_path: Path) -> None:
     impl = MagicMock()
     impl.generate_data.return_value = {"store_sales_obt": tmp_path / "store_sales_obt.parquet"}
     impl.get_queries.return_value = {"Q1": "SELECT 1"}
@@ -362,9 +362,6 @@ def test_tpcds_obt_wrapper_proxies_public_methods_and_enforces_scale(tmp_path: P
     impl.get_query.assert_called_once_with("Q1", ignored=True)
     assert benchmark.get_schema() == {"store_sales_obt": {}}
     assert benchmark.get_create_tables_sql() == "CREATE TABLE store_sales_obt (id INT)"
-
-    with pytest.raises(ValueError, match="requires scale_factor >= 1.0"):
-        TPCDSOBT(scale_factor=0.5, output_dir=tmp_path)
 
 
 def test_datavault_wrapper_proxies_metadata_and_validates_query_ids(tmp_path: Path) -> None:

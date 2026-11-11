@@ -188,7 +188,6 @@ under `BENCHBOX_OUTPUT_DIR=<checkout-parent>/benchmark_runs` and `/tmp`.
 
 This exclusion is represented by
 `uat.compat.sqlite.tpcds_obt.release_gate_runtime_envelope`. It prunes the
-requested `0.01`, `0.1`, and `1.0` ladder entries before the existing TPC-DS OBT
-minimum-scale fallback can substitute `1.0`; it is not a blanket skip or a
-timeout increase. A future atomic SQLite bulk-loader optimization must replace
+requested `0.01`, `0.1`, and `1.0` ladder entries; it is not a blanket skip or
+a timeout increase. A future atomic SQLite bulk-loader optimization must replace
 the rule only after a bounded native measurement fits the same contract.

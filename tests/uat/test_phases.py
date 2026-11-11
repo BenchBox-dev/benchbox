@@ -432,7 +432,7 @@ def test_enumerate_keeps_sqlite_tpcds_obt_without_release_gate_runtime_envelopes
     result = enum_phase.enumerate_cells_with_pruning(_cfg(raw))
 
     assert [(cell.platform, cell.benchmark, cell.scale) for cell in result.cells] == [
-        ("sqlite", "tpcds_obt", 1.0),
+        ("sqlite", "tpcds_obt", 0.01),
     ]
     assert result.compatibility_pruned == ()
 
