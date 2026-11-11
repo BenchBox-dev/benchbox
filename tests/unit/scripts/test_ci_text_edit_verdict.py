@@ -256,19 +256,11 @@ def test_refresh_reruns_only_the_failed_jobs_of_every_failed_text_edit_run(
     ]
     seen: dict[str, Any] = {}
     monkeypatch.setattr(verdict, "_fetch_runs", lambda repo, sha, token: seen.update(sha=sha) or runs)
-    commands: list[list[str]] = []
-
-    def fake_run(command: list[str], **_: Any) -> Any:
-        commands.append(command)
-        return type("Done", (), {"returncode": 0})()
-
-    monkeypatch.setattr(verdict.subprocess, "run", fake_run)
+    reruns: list[tuple[str, int]] = []
+    monkeypatch.setattr(verdict, "_rerun_failed_jobs", lambda repo, run_id: reruns.append((repo, run_id)) or 0)
     assert main(REFRESH_ARGS) == 0
     assert seen["sha"] == "abc"
-    assert commands == [
-        ["gh", "run", "rerun", "10", "--failed", "--repo", "o/r"],
-        ["gh", "run", "rerun", "30", "--failed", "--repo", "o/r"],
-    ]
+    assert reruns == [("o/r", 10), ("o/r", 30)]
 
 
 def test_refresh_fails_when_any_rerun_fails_but_still_tries_the_rest(
@@ -279,15 +271,12 @@ def test_refresh_fails_when_any_rerun_fails_but_still_tries_the_rest(
         run(30, title=TEXT_EDIT_RUN_NAME, conclusion="failure"),
     ]
     monkeypatch.setattr(verdict, "_fetch_runs", lambda repo, sha, token: runs)
-    commands: list[list[str]] = []
-
-    def fake_run(command: list[str], **_: Any) -> Any:
-        commands.append(command)
-        return type("Done", (), {"returncode": 1 if command[3] == "10" else 0})()
-
-    monkeypatch.setattr(verdict.subprocess, "run", fake_run)
+    reruns: list[int] = []
+    monkeypatch.setattr(
+        verdict, "_rerun_failed_jobs", lambda repo, run_id: reruns.append(run_id) or (1 if run_id == 10 else 0)
+    )
     assert main(REFRESH_ARGS) == 1
-    assert [command[3] for command in commands] == ["10", "30"]
+    assert reruns == [10, 30]
 
 
 def test_refresh_does_nothing_when_no_run_failed(monkeypatch: pytest.MonkeyPatch, sleeps: list[float]) -> None:

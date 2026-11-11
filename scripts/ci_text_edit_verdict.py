@@ -141,6 +141,10 @@ def _verdict(args: argparse.Namespace) -> int:
     return 0 if outcome == PASS else 1
 
 
+def _rerun_failed_jobs(repo: str, run_id: int) -> int:
+    return subprocess.run(["gh", "run", "rerun", str(run_id), "--failed", "--repo", repo], check=False).returncode
+
+
 def _refresh(args: argparse.Namespace) -> int:
     token = os.environ["GH_TOKEN"]
     try:
@@ -161,9 +165,7 @@ def _refresh(args: argparse.Namespace) -> int:
     status = 0
     for run_id in run_ids:
         print(f"re-running failed jobs of {TEXT_EDIT_RUN_NAME!r} run {run_id}", flush=True)
-        code = subprocess.run(
-            ["gh", "run", "rerun", str(run_id), "--failed", "--repo", args.repo], check=False
-        ).returncode
+        code = _rerun_failed_jobs(args.repo, run_id)
         status = status or code
     return status
 
