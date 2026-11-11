@@ -6,7 +6,7 @@
     "Each proposed change has its data, expected first-pass gain, and risk; DECISION GATE: owner approves or rejects each via the choice dialog before any threshold or timeout is edited",
     "Approved changes land with tests; rejected ones are recorded on this item"
   ],
-  "context": "Serial item (not in the batch). Owner decision 2026-11-05: investigate only; every gate threshold or timeout change needs owner approval. GUARDRAILS: no change to thresholds, timeouts, retries or required checks without that approval; re-running jobs to collect data is fine. No PR merges while develop is frozen for 0.5.0 (dlv2-52 owner decision 1) or during a G13 release window; the investigation report itself may proceed at any time. Rollback for any approved change: revert its commit.\n\n2026-11-06 observed: tests/unit/test_heavy_choke_points.py failed the ubuntu py3.14 fast leg 5 times on PR #3982. Tests using the default stub machine name `m` race under pytest-xdist: the cleanup helper sees sibling tests' wrapper processes and leaves the machine running (reproduced locally with -n 4). Likely introduced by #3972. Candidate fix: a unique STUB_MACHINE per test, as lines 333 and 424 of that file already do.",
+  "context": "Serial item (not in the batch). Owner decision 2026-11-05: investigate only; every gate threshold or timeout change needs owner approval. GUARDRAILS: no change to thresholds, timeouts, retries or required checks without that approval; re-running jobs to collect data is fine. No PR merges while develop is frozen for 0.5.0 (dlv2-52 owner decision 1) or during a G13 release window; the investigation report itself may proceed at any time. Rollback for any approved change: revert its commit.\n\n2026-11-06 observed: tests/unit/test_heavy_choke_points.py failed the ubuntu py3.14 fast leg 5 times on PR #3982. Tests using the default stub machine name `m` race under pytest-xdist: the cleanup helper sees sibling tests' wrapper processes and leaves the machine running (reproduced locally with -n 4). Likely introduced by #3972. Candidate fix: a unique STUB_MACHINE per test, as lines 333 and 424 of that file already do.\n\nRevalidated 2026-11-11: still required (investigation report not written; owner approval gate unchanged; no threshold or timeout change has landed on develop). Updates: (1) The test_heavy_choke_points.py xdist race noted on 2026-11-06 is fixed on origin/develop: the stub machine name is now per test (STUB_MACHINE set from _machine_name(tmp_path), tests/unit/test_heavy_choke_points.py:212; the helper arrived with #4022), so that candidate fix is delivered and should not be re-proposed. (2) Current first-pass rate, latest 100 pull_request ci.yml runs (2026-11-10 17:14Z to 2026-11-11 20:07Z): 40 succeeded on attempt 1, 13 failed on attempt 1, 14 cancelled, 26 needed 2 or more attempts, 6 still running; first-pass among non-cancelled completed runs is roughly 53% (40 of about 76), consistent with the ~47% baseline here. This sample covers only about 1.5 days, so it does not meet the 14-day acceptance. (3) The fast-duration gate false-positive cause is tracked in fast-duration-gate-calibration-skew-20261028 and the rerun remedy in pr-rerun-cannot-clear-duration-would-block-20261107; the report should cross-reference both. Priority unchanged.",
   "description": "CI first-pass green fell from the 70.4% baseline to about 47% (n=100 ci.yml runs since 2026-11-01). Observed drivers: the fast-tier duration gate tripping on runner variance (for example #3946: summed ratio 1.354 against 1.30, +504 s, with no slow tests from the PR) and macOS TPC-H binary framing hitting its 15-minute limit under queue load on many PRs. The owner chose 'investigate only' on 2026-11-05, so this item gathers the data and proposes changes; any threshold or timeout change needs explicit owner approval before it is implemented.",
   "links": [
     ".github/workflows/ci.yml",
@@ -36,6 +36,14 @@
       "op": "update",
       "op_id": "ce4aed7b2dca400a98318c5bd8a5d1b4",
       "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:31:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "2cd6b8d1373a4e7a8718d786d78ac1fc",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
