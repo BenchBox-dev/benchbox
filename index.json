@@ -24144,12 +24144,17 @@
       "title": "Remove the dead merge_group branch from heavy_tier_needed.py and its tests and docs"
     },
     "heavy-work-guard-doc-admission-wait-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T17:56:54Z",
+        "generation": "bdac2b8aaf8d43dc96da2923454b78cd",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549"
+      },
       "needs": [
         "feature-agent-docs-operational-facts-20261111"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Document the admission wait in the operations heavy-work page"
     },
     "history-retention-adr-stale-doc-references": {
