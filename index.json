@@ -15896,12 +15896,17 @@
       "title": "Remove comments and docstrings from Microsoft cloud adapters"
     },
     "comment-cleanup-missing-count-decision": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T23:40:56Z",
+        "generation": "a7c904edea8f4ed4bd7c6ca3fd5d217c",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66"
+      },
       "needs": [
         "comment-cleanup-scope-policy"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Decide fail-closed policy for missing expected query counts"
     },
     "comment-cleanup-monitoring": {
