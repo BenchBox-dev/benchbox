@@ -30396,7 +30396,9 @@
     },
     "pr-arm-placeholder-refresh-gap-misread-as-hidden-failure-20261111": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "feature-pr-landing-guards-20261111"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "make pr-arm reads the gap before a text-edit placeholder re-runs as a hidden failure and tells the user to re-run CI"
