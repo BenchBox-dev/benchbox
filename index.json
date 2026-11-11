@@ -30300,6 +30300,15 @@
       "status": "open",
       "title": "make pr-arm reads stale remote head right after push and refuses"
     },
+    "pr-arm-wait-mode-20261111": {
+      "claim": null,
+      "needs": [
+        "retro-docs-stale-corrections-20261111"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Add a bounded wait mode to make pr-arm so agents stop writing polling loops"
+    },
     "pr-arm-waits-fast-duration-verdict-20261026": {
       "claim": null,
       "needs": [],
