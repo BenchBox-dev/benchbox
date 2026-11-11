@@ -1,0 +1,31 @@
+{
+  "acceptance": [
+    "Decision gate (3): ask the owner whether the deleted paths are kept on purpose; if yes, leave them and say so in docs/internal/review-v2.md; if no, remove them (soundness paths, needs review).",
+    "Decision gate (1, 2): prefer moving cut-over history out of review-v2.md, or marking sections historical, over editing each path; ADRs are historical records, so add a one-line 'superseded' note rather than rewrite.",
+    "Decision gate (4): delete only with the owner's agreement; otherwise leave it.",
+    "Verification: each of the six points is either corrected, marked historical, or dismissed here with a reason.",
+    "Verification: make docs-validate, make docs-reference-inventory-check and make pr-preflight pass.",
+    "Done when merged."
+  ],
+  "description": "Found on 2026-11-11 while delivering retro-navigation-fixes-umbrella-20261111 (or in the retrospective over 25 agent sessions that preceded it) and not addressed there.\n\nProblem. These were found and deliberately left out of #4099 as lower value. Each is still present on origin/develop 5bd2c19cc4.\n1. docs/internal/review-v2.md gives full paths `_project/scripts/oracle_reviewers/absence.py`, `_project/scripts/oracle_review_check.py` and `_project/scripts/oracle_gate.py` in its Calibration, Cut-over and 'Required gate from trusted code' sections. The ownership note at the top says module names now refer to Theseus, but these are concrete paths that no longer exist, in a 1,900-line file that mixes current procedure with cut-over history.\n2. docs/internal/adr/adr-dev-loop-v2.md names `STANDIN_ATTESTERS` in `_project/scripts/oracle_review_check.py` and the old marker `Stand-in oracle review: APPROVE`; attesters are in `.github/review.yml` and the marker is `Stand-in review: APPROVE <sha>`.\n3. `.github/review.yml` gate_paths and `.github/soundness-paths.txt` list four deleted files (`.github/oracle-reviewers.yml`, `.github/oracle-omp-config.yml`, `scripts/oracle_local_review.py`, `_project/scripts/oracle_gateway_host.sh`). This may be deliberate, so that re-creating one triggers review.\n4. docs/internal/hosted-credentials.md is marked historical but still describes Turso, `TODO_DB_*` and `todo-db doctor`.\n5. The coverage-selection shadow mode is restated in CONTRIBUTING.md, tests/README.md and docs/internal/merge-queue-governance.md; flipping `SELECTION_SHADOW` will make all three wrong at once.\n6. `.github/workflows/nightly-v2.yml` says cron 07:30 UTC; scheduled runs were observed starting between 14:00 and 18:00 UTC, which broke one ETA given to the owner.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read every cited file on current origin/develop first, because line numbers and commits here are from 2026-11-11 (origin/develop 5bd2c19cc4); close at a merged PR and finish only after the merge is observed.",
+  "links": [
+    "docs/internal/review-v2.md",
+    "docs/internal/adr/adr-dev-loop-v2.md",
+    ".github/review.yml",
+    ".github/soundness-paths.txt",
+    "docs/internal/hosted-credentials.md",
+    "CONTRIBUTING.md",
+    "tests/README.md",
+    ".github/workflows/nightly-v2.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T16:38:49Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c1b3bbe3e0aa4837baf7c1208cb752d7",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    }
+  ]
+}

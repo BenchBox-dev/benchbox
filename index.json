@@ -38854,6 +38854,13 @@
       "status": "done",
       "title": "Find and correct durable copies of the stale 'git config user.email noreply@anthropic.com' instruction"
     },
+    "stale-docs-remaining-after-retro-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Correct or retire the stale documentation the retrospective left in place"
+    },
     "standalone-todo-db-renew-verb": {
       "claim": null,
       "needs": [],
