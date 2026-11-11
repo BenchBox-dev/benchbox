@@ -12668,7 +12668,7 @@
       ],
       "priority": "high",
       "status": "open",
-      "title": "BenchBox: promote the Theseus lock to review-format release B"
+      "title": "BenchBox: promote the Theseus lock to review-format release B (Theseus v0.2.11)"
     },
     "benchbox-mcp-server-implementation": {
       "claim": null,
