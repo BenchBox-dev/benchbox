@@ -43183,7 +43183,7 @@
         "uat-clickhouse-server-compose-memory-admission"
       ],
       "priority": "high",
-      "status": "blocked",
+      "status": "dropped",
       "title": "Certify ClickHouse SF1 streaming load and result correctness"
     },
     "uat-clickhouse-server-streaming-loader": {
