@@ -100,6 +100,7 @@ def test_tpcds_official_points_are_standard() -> None:
     assert validate_scale_factor("tpcds", 300) is True
     assert validate_scale_factor("tpcds", 1000) is True
     assert validate_scale_factor("tpcds", 2) is False
+    assert validate_scale_factor("tpcds", 30) is False
 
 
 def test_tpcds_obt_does_not_inherit_official_points() -> None:

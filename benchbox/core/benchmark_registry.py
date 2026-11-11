@@ -402,13 +402,13 @@ def get_scale_factor_rule(benchmark_id: str) -> ScaleFactorRule:
     if meta.get("scale_policy") == "fixed":
         return ScaleFactorRule(minimum=options[0], maximum=options[-1], standard=options, exact=True)
 
-    if benchmark_id.lower() == "tpcds":
-        options = tuple(sorted({*options, *(float(opt) for opt in _registry().tpc_official_scale_options)}))
     min_scale = meta.get("min_scale")
     if benchmark_id.lower() in ("tpcds", "tpcds_obt"):
-        from benchbox.core.tpcds.compliance import TPCDS_MIN_SUBSCALE
+        from benchbox.core.tpcds.compliance import OFFICIAL_SCALE_POINTS, TPCDS_MIN_SUBSCALE
 
         min_scale = TPCDS_MIN_SUBSCALE
+        if benchmark_id.lower() == "tpcds":
+            options = tuple(sorted({*options, *OFFICIAL_SCALE_POINTS}))
     elif min_scale is None and options:
         min_scale = options[0]
     return ScaleFactorRule(
