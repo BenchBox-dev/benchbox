@@ -1,6 +1,6 @@
 {
   "schema_version": "2.3",
-  "generated_at": "2026-10-28T20:04:17.274530+00:00",
+  "generated_at": "2026-11-11T16:19:39.763814+00:00",
   "bundles": [
     {
       "file": "amplab_sf01_bigquery_sql_20260920_000055_35490af7.json",
@@ -4343,6 +4343,34 @@
       "bundle_sha256": "5293ac3a9592b7576566668f098fa8353bbef464d5b1c20dc33bf6f788bab8f5"
     },
     {
+      "file": "tpcds_obt_sf001_doris_sql_20261111_110147_93ab6464.json",
+      "benchmark": "tpcds_obt",
+      "benchmark_name": "TPC-DS One Big Table",
+      "platform": "Apache Doris",
+      "platform_version": "4.0.3-rc03",
+      "scale_factor": 0.01,
+      "phase": "power",
+      "timestamp": "2026-11-11T11:01:47.341521",
+      "query_count": 279,
+      "trust_label": "maintainer-run",
+      "funding": "unspecified",
+      "bundle_sha256": "04f9bd0bffb63540562740d8fe60489cf3014d575b88af09fe995a269985738b"
+    },
+    {
+      "file": "tpcds_obt_sf01_doris_sql_20261111_110240_9315b4c2.json",
+      "benchmark": "tpcds_obt",
+      "benchmark_name": "TPC-DS One Big Table",
+      "platform": "Apache Doris",
+      "platform_version": "4.0.3-rc03",
+      "scale_factor": 0.1,
+      "phase": "power",
+      "timestamp": "2026-11-11T11:02:40.721584",
+      "query_count": 279,
+      "trust_label": "maintainer-run",
+      "funding": "unspecified",
+      "bundle_sha256": "799a3c3248a6da80153d12a545f8769afca3f21cec044940bf12654c2a1c53b9"
+    },
+    {
       "file": "tpcds_obt_sf1_bigquery_sql_20260923_152357_480ffcea.json",
       "benchmark": "tpcds_obt",
       "benchmark_name": "TPC-DS One Big Table",
@@ -4383,6 +4411,34 @@
       "trust_label": "maintainer-run",
       "funding": "unspecified",
       "bundle_sha256": "e899de37f91a2f6edc4063c8610643d5352cc039350bcdd9e25d41bedcbea6d6"
+    },
+    {
+      "file": "tpcds_obt_sf001_datafusion_sql_20261111_110035_78695483.json",
+      "benchmark": "tpcds_obt",
+      "benchmark_name": "TPC-DS One Big Table",
+      "platform": "DataFusion",
+      "platform_version": "54.0.0",
+      "scale_factor": 0.01,
+      "phase": "power",
+      "timestamp": "2026-11-11T11:00:35.159666",
+      "query_count": 279,
+      "trust_label": "maintainer-run",
+      "funding": "unspecified",
+      "bundle_sha256": "1db5dde7b3961176b7e72e0baa2c009e01a1515d35b8c38e1aaaf38e2e9acb76"
+    },
+    {
+      "file": "tpcds_obt_sf01_datafusion_sql_20261111_110045_4a0d3139.json",
+      "benchmark": "tpcds_obt",
+      "benchmark_name": "TPC-DS One Big Table",
+      "platform": "DataFusion",
+      "platform_version": "54.0.0",
+      "scale_factor": 0.1,
+      "phase": "power",
+      "timestamp": "2026-11-11T11:00:45.271244",
+      "query_count": 279,
+      "trust_label": "maintainer-run",
+      "funding": "unspecified",
+      "bundle_sha256": "975ae9de2c3dc3414e6b4523eab64c8717603a2a019263406b5c2e7d2a3aa699"
     },
     {
       "file": "tpcds_obt_sf1_datafusion_sql_20260826_164619_4e6d3fff.json",
@@ -4427,6 +4483,34 @@
       "bundle_sha256": "6a5eb592e6e491a720bdad6ab9c0daa117fc76f5db2624de0131856b60256ebc"
     },
     {
+      "file": "tpcds_obt_sf001_duckdb_sql_20261111_105936_37e7cc9b.json",
+      "benchmark": "tpcds_obt",
+      "benchmark_name": "TPC-DS One Big Table",
+      "platform": "DuckDB",
+      "platform_version": "1.5.5",
+      "scale_factor": 0.01,
+      "phase": "power",
+      "timestamp": "2026-11-11T10:59:36.247987",
+      "query_count": 279,
+      "trust_label": "maintainer-run",
+      "funding": "unspecified",
+      "bundle_sha256": "3d85d617491d7fe29a87133d28eeef76b119306b81665d17feb83fb5709e6e43"
+    },
+    {
+      "file": "tpcds_obt_sf01_duckdb_sql_20261111_110025_688df8f3.json",
+      "benchmark": "tpcds_obt",
+      "benchmark_name": "TPC-DS One Big Table",
+      "platform": "DuckDB",
+      "platform_version": "1.5.5",
+      "scale_factor": 0.1,
+      "phase": "power",
+      "timestamp": "2026-11-11T11:00:17.174161",
+      "query_count": 279,
+      "trust_label": "maintainer-run",
+      "funding": "unspecified",
+      "bundle_sha256": "e51d0e3ac88055f7a684dadcbd8462c64b7b7ea4226efe8723fdf7d9b88f98e4"
+    },
+    {
       "file": "tpcds_obt_sf1_duckdb_sql_20260826_162433_2a6932b1.json",
       "benchmark": "tpcds_obt",
       "benchmark_name": "TPC-DS One Big Table",
@@ -4453,6 +4537,20 @@
       "trust_label": "maintainer-run",
       "funding": "unspecified",
       "bundle_sha256": "bb6279ad3bc72769a22da3ed54a77a312a5bbae13bfe053efb91ba542fdc1a78"
+    },
+    {
+      "file": "tpcds_obt_sf001_lakesail_sql_20261111_110322_a1896614.json",
+      "benchmark": "tpcds_obt",
+      "benchmark_name": "TPC-DS One Big Table",
+      "platform": "LakeSail",
+      "platform_version": "4.2.0",
+      "scale_factor": 0.01,
+      "phase": "power",
+      "timestamp": "2026-11-11T11:03:22.490225",
+      "query_count": 279,
+      "trust_label": "maintainer-run",
+      "funding": "unspecified",
+      "bundle_sha256": "afd5024329a0768cdad6db690cd69565428cc841db8a5001ca7d68246b905097"
     },
     {
       "file": "tpcds_obt_sf1_snowflake_sql_20261001_173028_d35974f6.json",
@@ -7071,6 +7169,17 @@
       "Snowflake v10.35.101",
       "Spark v4.1.1"
     ],
+    "tpcds_obt@sf0.01": [
+      "Apache Doris v4.0.3-rc03",
+      "DataFusion v54.0.0",
+      "DuckDB v1.5.5",
+      "LakeSail v4.2.0"
+    ],
+    "tpcds_obt@sf0.1": [
+      "Apache Doris v4.0.3-rc03",
+      "DataFusion v54.0.0",
+      "DuckDB v1.5.5"
+    ],
     "tpcds_obt@sf1.0": [
       "BigQuery",
       "ClickHouse Local",
@@ -7254,7 +7363,7 @@
     ]
   },
   "summary": {
-    "total_bundles": 480,
+    "total_bundles": 487,
     "by_benchmark": {
       "amplab": 25,
       "clickbench": 25,
@@ -7269,7 +7378,7 @@
       "ssb": 47,
       "tpcdi": 24,
       "tpcds": 37,
-      "tpcds_obt": 9,
+      "tpcds_obt": 16,
       "tpch": 77,
       "tpch_skew": 33,
       "tpchavoc": 24,
@@ -7278,16 +7387,16 @@
       "write_primitives": 9
     },
     "by_platform": {
-      "Apache Doris": 1,
+      "Apache Doris": 3,
       "BigQuery": 51,
       "CedarDB": 1,
       "ClickHouse Local": 68,
       "ClickHouse Server": 1,
-      "DataFusion": 73,
+      "DataFusion": 75,
       "Databricks": 50,
-      "DuckDB": 91,
+      "DuckDB": 93,
       "DuckLake": 1,
-      "LakeSail": 1,
+      "LakeSail": 2,
       "Pandas": 17,
       "Polars": 30,
       "PySpark": 2,
@@ -7297,13 +7406,13 @@
       "StarRocks": 1
     },
     "by_trust_label": {
-      "maintainer-run": 480
+      "maintainer-run": 487
     },
     "by_funding": {
-      "unspecified": 480
+      "unspecified": 487
     },
     "by_phase": {
-      "power": 477,
+      "power": 484,
       "throughput": 3
     }
   }

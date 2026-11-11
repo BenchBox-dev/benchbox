@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "The published results corpus adds TPC-DS OBT cohorts at SF 0.01 (DuckDB, DataFusion, Apache Doris and LakeSail) and SF 0.1 (DuckDB, DataFusion and Apache Doris). Every bundle ran all 93 statements without failures, and each cohort meets the three-platform ranking floor.",
+      "platforms": ["duckdb", "datafusion", "doris", "lakesail"],
+      "benchmarks": ["tpcds_obt"]
+    }
+  ]
+}
