@@ -283,6 +283,107 @@ def test_run_admit_end_to_end_refuses_with_exit_76_and_reports_the_need(
     assert "need 7.5 GiB" in capsys.readouterr().err
 
 
+class AdmissionScript:
+    def __init__(self, lock_file: Path, monkeypatch: pytest.MonkeyPatch, refusals: int | None) -> None:
+        self.lock_file = lock_file
+        self.refusals = refusals
+        self.checks = 0
+        self.now = 5000.0
+        self.sleeps: list[float] = []
+        self.lock_held_while_waiting: list[bool] = []
+        monkeypatch.setattr(hl, "check_admission", self.check)
+        monkeypatch.setattr(hl, "_now", lambda: self.now)
+        monkeypatch.setattr(hl, "_sleep", self.sleep)
+
+    def check(self, **_kwargs: object) -> str:
+        self.checks += 1
+        if self.refusals is None or self.checks <= self.refusals:
+            raise hl.AdmissionRefused(f"report-{self.checks}")
+        return "admitted"
+
+    def sleep(self, seconds: float) -> None:
+        self.lock_held_while_waiting.append(hl.lock_is_held(self.lock_file))
+        self.sleeps.append(seconds)
+        self.now += seconds
+
+
+def _marker_command(marker: Path) -> list[str]:
+    return [sys.executable, "-c", f"open({str(marker)!r}, 'a').write('x')"]
+
+
+def test_an_admission_wait_runs_the_command_once_the_host_admits(
+    lock_file: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    script = AdmissionScript(lock_file, monkeypatch, refusals=2)
+    marker = tmp_path / "ran"
+
+    code = hl.run_command(_marker_command(marker), admit=True, admit_wait_seconds=600.0)
+
+    assert code == 0
+    assert marker.read_text(encoding="utf-8") == "x"
+    assert script.checks == 3
+    assert script.sleeps == [hl.ADMIT_RETRY_SECONDS, hl.ADMIT_RETRY_SECONDS]
+    assert script.lock_held_while_waiting == [False, False]
+    assert not hl.lock_is_held(lock_file)
+
+
+def test_an_admission_wait_that_runs_out_exits_76_with_the_last_report(
+    lock_file: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    script = AdmissionScript(lock_file, monkeypatch, refusals=None)
+    marker = tmp_path / "ran"
+
+    code = hl.run_command(_marker_command(marker), admit=True, admit_wait_seconds=150.0)
+
+    assert code == hl.EXIT_ADMISSION
+    assert not marker.exists()
+    assert script.sleeps == [60.0, 60.0, 30.0]
+    assert script.checks == 4
+    assert script.lock_held_while_waiting == [False, False, False]
+    err = capsys.readouterr().err
+    assert "REFUSED" in err
+    assert err.rstrip().endswith("report-4")
+
+
+def test_without_an_admission_wait_a_refusal_is_checked_once(
+    lock_file: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    script = AdmissionScript(lock_file, monkeypatch, refusals=None)
+
+    assert hl.run_command(_marker_command(tmp_path / "ran"), admit=True) == hl.EXIT_ADMISSION
+    assert script.checks == 1
+    assert script.sleeps == []
+
+
+def test_the_admission_wait_option_reaches_run_through_the_command_line(
+    lock_file: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    script = AdmissionScript(lock_file, monkeypatch, refusals=1)
+    marker = tmp_path / "ran"
+
+    code = hl.main(["run", "--admit", "--admit-wait-minutes", "2", "--", *_marker_command(marker)])
+
+    assert code == 0
+    assert marker.exists()
+    assert script.sleeps == [60.0]
+
+
+@pytest.mark.parametrize("value", ["0", "61", "1.5", "abc", "-3", "+5", ""])
+def test_an_invalid_admission_wait_is_a_usage_error_before_any_check(
+    lock_file: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str], value: str
+) -> None:
+    script = AdmissionScript(lock_file, monkeypatch, refusals=0)
+    marker = tmp_path / "ran"
+
+    with pytest.raises(SystemExit) as raised:
+        hl.main(["run", "--admit", f"--admit-wait-minutes={value}", "--", *_marker_command(marker)])
+
+    assert raised.value.code == hl.EXIT_USAGE
+    assert "whole number of minutes from 1 to 60" in capsys.readouterr().err
+    assert script.checks == 0
+    assert not marker.exists()
+
+
 def test_forced_admit_prints_the_report_once(
     clock: FakeClock, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

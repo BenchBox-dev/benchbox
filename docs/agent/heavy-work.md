@@ -59,7 +59,8 @@ refuses to start it while the host is already under pressure.
 |---|---|
 | `make heavy-status` | Read-only report; never takes the lock; each external command is cut off at 5 s and shown as `unmeasured` |
 | `make heavy-run CMD='...'` | Admission check, then the command under the host lock and watchdog; make exits 2 and prints `Error 75` (lock refused), `Error 76` (admission refused), `Error 78` (ownership error) or `Error 79` (watchdog stopped the tree) |
-| `uv run -- python -m benchbox.utils.host_lock run --admit --guard -- sh -c '...'` | The same without make; exits with the raw code 2 (wrapped `make pr-preflight` refused before the lock), 75, 76, 78 or 79 |
+| `make heavy-run CMD='...' HEAVY_ADMIT_WAIT=<minutes>` | The same, but a refused admission is checked again every 60 s for up to that many minutes (1 to 60) with the lock released in between; when the wait runs out it ends as `Error 76` with the last report |
+| `uv run -- python -m benchbox.utils.host_lock run --admit --guard -- sh -c '...'` | The same without make; exits with the raw code 2 (wrapped `make pr-preflight` refused before the lock), 75, 76, 78 or 79; `--admit-wait-minutes N` is the wait |
 | `python -m benchbox.utils.host_lock admit` | Admission check only |
 | `make heavy-sentinel` | Foreground sentinel; `SENTINEL_ARGS='--duration 30 --log /tmp/s.log'` bounds it and redirects the log |
 | `make heavy-sentinel-install` / `make heavy-sentinel-uninstall` | Write or remove the per-user LaunchAgent `~/Library/LaunchAgents/dev.benchbox.sentinel.plist` and load or unload it with `launchctl bootstrap/bootout gui/$UID`; changes host state, owner approval required |
@@ -71,6 +72,9 @@ the top 10 processes by physical footprint, and orphans: server processes
 directory is inside a BenchBox worktree. It never signals or modifies a
 process, VM, or the lock file. Stopping an orphan is the owner's call or the
 task that started it.
+
+On `Error 76`, run the command again with `HEAVY_ADMIT_WAIT`; do not write a
+retry loop, and never set `BENCHBOX_HEAVY_ADMIT=force` to get past it.
 
 ## Sentinel
 
