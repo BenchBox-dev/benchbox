@@ -1,13 +1,11 @@
 {
   "acceptance": [
-    "Each proposal has executable scenarios: the cap and step-back keep every open finding; delta-first follow-ups still count unchanged hunks for coverage; pre-existing advisory applies only when the diff agrees; Critical/High never become advisory; the intent block cannot inject instructions; the guidance file is read from the base only and refused when oversized.",
-    "The eval corpus seeds each session incident with an expected finding: the substitute capacity bypass, the test weakenings on #3962, and the stdlib patching on #3962. The CI subset is deterministic.",
-    "Released as v0.2.5 through Theseus's own review gate, after independent review, with assets verified.",
-    "Re-measured 4 weeks after the BenchBox re-lock with the same method. Targets: one-round pass ≥75%, PRs needing 5+ rounds ≤2%, already-seen late findings ≤25%, incomplete ≤5%.",
-    "(stdin/legacy scope) Tests for (e) and (f); candidate row 13 (stdin canary) green.",
-    "(stdin/legacy scope) The first self-gated Theseus PR passes (plan §5.6).",
-    "(stdin/legacy scope) BenchBox re-locked to 0.2.1 with no config change; the owner drops the legacy oracle-gate requirement from ruleset 15611785 before this ships.",
-    "(stdin/legacy scope) `git grep -i oracle` on Theseus main returns nothing except the docs migration section."
+    "Each proposal has executable scenarios: the cap and step-back keep every open finding; delta-first follow-ups still count unchanged hunks for coverage; Critical/High never become advisory (pre-existing handling itself is now owned by theseus-known-defects-pre-existing-20261109); the intent block cannot inject instructions; the guidance file is read from the base only and refused when oversized (guidance reader not yet implemented in Theseus).",
+    "The eval corpus seeds each session incident with an expected finding: the substitute capacity bypass, the test weakenings on #3962, and the stdlib patching on #3962 (delivered in Theseus evals/cases; first released in v0.2.7). The CI subset is deterministic.",
+    "The convergence features are released in Theseus (round discipline, threadless disputes, intent and evals first in v0.2.7; guidance support in the release that carries it) through Theseus's own review gate, after independent review, with assets verified.",
+    "Re-measured 4 weeks after the BenchBox adoption (benchbox-adopt-theseus-v025-review-guidance-20261107) with the same method. Targets: one-round pass ≥75%, PRs needing 5+ rounds ≤2%, already-seen late findings ≤25%, incomplete ≤5%.",
+    "(stdin/legacy scope) Tests for (e) and (f); candidate row 13 (stdin canary) green. Delivered by Theseus #47 (v0.2.7).",
+    "(stdin/legacy scope) `git grep -i oracle` on Theseus main returns nothing except the docs migration section (tracked in theseus-remove-oracle-vocabulary-20261105; 10 files still match)."
   ],
   "context": "Revalidated 2026-11-11: The 'one release v0.2.5' plan (D12) split across releases. On Theseus origin/main: #47 stdin brief and legacy-name removal, #45 round discipline, threadless disputes, pre-existing mode and PR intent, and the review-quality eval (a00d46d, tools/review_eval.py with cases v022-substitute-capacity-bypass, pr3962-test-weakenings, legacy-transition-stdlib-patching, control-private-helper-rename, pr41-forced-fixed-dispute) are all first contained in v0.2.7; v0.2.5 contained only the #46 and #41 fixes. Policy keys protocol.max_finding_rounds and brief.include_intent exist (policy.py:126,132). D4 is superseded: #54 made every finding block and pre-existing handling is now tracked in theseus-known-defects-pre-existing-20261109. NOT delivered: D3, the consumer review_guidance file; Theseus src has no guidance reader, and BenchBox PR #4118's own verification says a consumer.review_guidance key is refused. BenchBox adoption PR #4118 (open) adds max_finding_rounds: 4, include_intent, the classifier fallback and size floor, and .github/review-guidance.md registered in gate_paths. Stdin/legacy acceptance: the stdin canary and BenchBox re-lock are long done, but `git grep -i oracle` on Theseus main still matches 10 files (docs migration section, src/theseus_reviewer/legacy.py old-name reads, tests, tools/classifier_agreement.py, eval fixtures quoting BenchBox PR #3962), tracked under theseus-remove-oracle-vocabulary-20261105. Remaining: D3 Theseus-side guidance support or an owner decision to drop it, the oracle residue, and the 4-week re-measurement after BenchBox adopts the policy.",
   "deferrals": [
@@ -216,6 +214,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "e077992736d8472698c3fd721cb065aa",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:40:45Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ba3d01c8a8da45cf904ccd7044e218fc",
       "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
