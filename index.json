@@ -17892,10 +17892,15 @@
       "title": "Correct the cutover record: stale must-preserve and the vacuous quiescence rung"
     },
     "dask-df-uat-failures-20261030": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T02:31:53Z",
+        "generation": "37ab9d0e78e04618b88e2efaa24e785a",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7bc97e5b905b990114418f4a"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Dask DataFrame: 27 failed and 8 timed-out release UAT cells"
     },
     "dask-lakesail-recorded-options-and-docs-20261014": {
