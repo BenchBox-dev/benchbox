@@ -32389,10 +32389,15 @@
       "title": "QuestDB cannot run TPC-DS Q16/Q94/Q95: correlated EXISTS, HAVING and IN (subquery) unsupported"
     },
     "questdb-uat-failures-20261030": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T02:32:33Z",
+        "generation": "3ab82880097f4baca078dc5dda6dac6f",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7bc97e5b905b990114418f4a"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "QuestDB: TIME columns fail DDL and most benchmarks fail queries in release UAT"
     },
     "questdb-unpadded-date-cast-null-20261025": {
