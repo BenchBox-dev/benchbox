@@ -156,6 +156,8 @@ def test_windows_leg_executes_target_file_and_preserves_pytest_result(tmp_path: 
     args = json.loads(called.read_text(encoding="utf-8"))
     assert args[-count:] == targets
     assert "--timeout=120" in args
+    assert args[args.index("-n") + 1] == "auto"
+    assert "--dist" not in args
     summary = tmp_path / "summary.txt"
     if status == 5:
         assert "::notice::" in result.stdout
