@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Each of SSB, TPC-DI and the three primitives has a recorded SF 100 result: completed with time and size, or the largest practical scale with the reason.",
+    "Any proposal to change a maximum is recorded as a separate item."
+  ],
+  "context": "Created 2026-11-11 to re-home the large-scale validation that was narrowed out of scale-factor-registry-caps-vs-docs-20261013.",
+  "description": "## Problem\nThe scale-factor rule now accepts any value up to 100000 with a note, but no run shows that the pure-Python generators finish at large scales. `scale-factor-registry-caps-vs-docs-20261013` originally required generator validation at the new scales; that part moved here when the owner chose the range rule on 2026-11-11.\n\n## Change\nRun data generation at SF 100 for SSB and TPC-DI, and a read, write and transaction primitives run at SF 100, through `make heavy-run`. Record time, row counts and output size. If a generator cannot finish in a practical time, record the largest practical scale and propose either a faster generator or a lower registry maximum.\n\n## Guardrails\n- Heavy runs only through `make heavy-run`, with the memory budget the owner approves for the run.\n- No registry change in this item; a lower maximum is a separate decision.",
+  "links": [
+    "benchbox/core/ssb/generator.py",
+    "benchbox/core/tpcdi/generator",
+    "benchbox/core/benchmark_registry.yaml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba",
+      "at": "2026-11-11T20:16:09Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e54b285b9446444da993b14d93445bf4",
+      "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    }
+  ]
+}

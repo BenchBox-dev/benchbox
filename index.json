@@ -23579,6 +23579,15 @@
       "status": "done",
       "title": "Generate seed corpus of benchmark results for the results explorer"
     },
+    "generator-validation-large-scales-20261111": {
+      "claim": null,
+      "needs": [
+        "scale-factor-registry-caps-vs-docs-20261013"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Validate the SSB, TPC-DI and primitives generators at SF 100"
+    },
     "geospatial-primitives-benchmark": {
       "claim": null,
       "needs": [],
