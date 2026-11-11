@@ -18,6 +18,7 @@ from benchbox.core.benchmark_registry import (
     get_all_benchmarks,
     get_benchmark_surface,
     get_public_benchmark_class,
+    nonstandard_scale_note,
 )
 from benchbox.core.constants import VALID_PHASES
 from benchbox.core.deprecation_notices import begin_run
@@ -134,15 +135,28 @@ def register_benchmark_tools(
             response["status"] = "failed"
             return attach_deprecations(response)
 
-        if validate_only:
-            return attach_deprecations(
-                _validate_config_impl(selection, benchmark, scale_factor, mode, normalized_platform_options)
-            )
-
-        if dry_run:
-            return attach_deprecations(
-                _dry_run_impl(selection, benchmark, scale_factor, queries, mode, normalized_platform_options)
-            )
+        if validate_only or dry_run:
+            scale_note, scale_message = _check_scale_factor(benchmark, scale_factor)
+            if validate_only:
+                response = _validate_config_impl(selection, benchmark, scale_factor, mode, normalized_platform_options)
+                if scale_message:
+                    response["valid"] = False
+                    response["errors"].append(scale_message)
+                elif scale_note:
+                    response["warnings"].append(scale_note)
+                return attach_deprecations(response)
+            if scale_message:
+                response = make_error(
+                    ErrorCode.VALIDATION_INVALID_SCALE_FACTOR,
+                    scale_message,
+                    details={"benchmark": benchmark, "scale_factor": scale_factor},
+                )
+                response["status"] = "error"
+                return attach_deprecations(response)
+            response = _dry_run_impl(selection, benchmark, scale_factor, queries, mode, normalized_platform_options)
+            if scale_note and response.get("status") != "error":
+                response.setdefault("warnings", []).append(scale_note)
+            return attach_deprecations(response)
 
         if not allow_synchronous_execution:
             response = make_error(
@@ -698,6 +712,16 @@ def _preview_dry_run(
             return error_response
 
     return result
+
+
+def _check_scale_factor(benchmark: str, scale_factor: float) -> tuple[str | None, str | None]:
+    benchmark_lower = benchmark.lower()
+    if benchmark_lower not in get_all_benchmarks():
+        return None, None
+    try:
+        return nonstandard_scale_note(benchmark_lower, scale_factor), None
+    except ValueError as exc:
+        return None, str(exc)
 
 
 def _validate_config_impl(

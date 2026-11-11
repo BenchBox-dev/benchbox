@@ -456,17 +456,55 @@ def test_get_recommended_scale_returns_value_in_options(manager: BenchmarkManage
     assert recommended in benchmark_info["scale_options"]
 
 
-def test_validate_scale_choice_rejects_below_minimum(monkeypatch: pytest.MonkeyPatch, manager: BenchmarkManager):
+def test_validate_scale_choice_rejects_through_core_validator(
+    monkeypatch: pytest.MonkeyPatch, manager: BenchmarkManager
+):
     console, stream = _capture_console()
     monkeypatch.setattr(bench_mod, "console", console)
 
-    benchmark_info = dict(manager.benchmarks["tpch"])
-    benchmark_info["min_scale"] = 1.0
+    with pytest.raises(ValueError, match="accepts a finite scale_factor from 0.01 to 100000"):
+        manager._validate_scale_choice(1.5, "ssb", manager.benchmarks["tpch"], {"memory_gb": 32})
 
-    with pytest.raises(ValueError, match="below minimum"):
-        manager._validate_scale_choice(0.1, "tpch", benchmark_info, {"memory_gb": 32})
+    output = stream.getvalue()
+    assert "from 0.01 to 100000" in output
+    assert "native data generator crashes" not in output
 
-    assert "requires scale_factor >= 1.0" in stream.getvalue()
+
+def test_validate_scale_choice_prints_note_for_nonstandard_value(
+    monkeypatch: pytest.MonkeyPatch, manager: BenchmarkManager
+):
+    console, stream = _capture_console()
+    monkeypatch.setattr(bench_mod, "console", console)
+
+    manager._validate_scale_choice(2.0, "tpch", manager.benchmarks["tpch"], {"memory_gb": 64})
+
+    assert "not a standard scale for tpch" in stream.getvalue()
+
+
+def test_validate_scale_choice_prints_no_note_for_standard_value(
+    monkeypatch: pytest.MonkeyPatch, manager: BenchmarkManager
+):
+    console, stream = _capture_console()
+    monkeypatch.setattr(bench_mod, "console", console)
+
+    manager._validate_scale_choice(1.0, "tpch", manager.benchmarks["tpch"], {"memory_gb": 64})
+
+    assert "not a standard scale" not in stream.getvalue()
+
+
+def test_validate_scale_factor_prints_note_only_for_nonstandard_value(
+    monkeypatch: pytest.MonkeyPatch, manager: BenchmarkManager
+):
+    console, stream = _capture_console()
+    monkeypatch.setattr(bench_mod, "console", console)
+
+    manager.validate_scale_factor("tpch", 1)
+    manager.validate_scale_factor("tpcds", 300)
+    assert stream.getvalue() == ""
+
+    manager.validate_scale_factor("tpch", 2)
+    assert "not a standard scale for tpch" in stream.getvalue()
+    assert "results are not comparable" in stream.getvalue()
 
 
 def test_validate_scale_choice_requires_confirmation_for_risky_memory(

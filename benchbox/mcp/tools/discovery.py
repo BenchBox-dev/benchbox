@@ -16,6 +16,7 @@ from benchbox.core.benchmark_registry import (
     get_benchmark_metadata,
     get_benchmark_surface,
     get_public_benchmark_class,
+    get_scale_factor_rule,
     list_public_benchmark_ids,
 )
 from benchbox.mcp.errors import ErrorCode, make_error
@@ -83,6 +84,7 @@ def build_benchmark_payload(benchmark: str) -> dict[str, Any]:
             "available": list_public_benchmark_ids(),
         }
 
+    rule = get_scale_factor_rule(benchmark_lower)
     queries, tables = _collect_benchmark_queries_and_tables(benchmark_lower)
     query_ids = [q["id"] for q in queries]
 
@@ -99,7 +101,9 @@ def build_benchmark_payload(benchmark: str) -> dict[str, Any]:
         "scale_factors": {
             "default": meta.get("default_scale", 0.01),
             "options": meta.get("scale_options", [0.01, 0.1, 1, 10]),
-            "minimum": meta.get("min_scale", 0.01),
+            "minimum": rule.minimum,
+            "maximum": rule.maximum,
+            "options_exact": rule.exact,
         },
         "complexity": meta.get("complexity", "Medium"),
         "estimated_time_minutes": meta.get("estimated_time_range", (1, 5)),

@@ -405,7 +405,11 @@ def get_scale_factor_rule(benchmark_id: str) -> ScaleFactorRule:
     if benchmark_id.lower() == "tpcds":
         options = tuple(sorted({*options, *(float(opt) for opt in _registry().tpc_official_scale_options)}))
     min_scale = meta.get("min_scale")
-    if min_scale is None and options:
+    if benchmark_id.lower() in ("tpcds", "tpcds_obt"):
+        from benchbox.core.tpcds.compliance import TPCDS_MIN_SUBSCALE
+
+        min_scale = TPCDS_MIN_SUBSCALE
+    elif min_scale is None and options:
         min_scale = options[0]
     return ScaleFactorRule(
         minimum=float(min_scale if min_scale is not None else 0.01),
