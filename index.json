@@ -36649,15 +36649,10 @@
       "title": "Update the canonical skills for the batch loop and sync them into BenchBox and todo-db"
     },
     "skill-catalog-release-freeze-and-tpc-specs-20261111": {
-      "claim": {
-        "expires_at": "2026-11-12T14:04:15Z",
-        "generation": "ce0fce15b31d4953bf8de757071755df",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Skill catalog: drop the stale release-freeze line and name the bundled TPC specs"
     },
     "skill-integrity-ci-lane-live-validation": {
