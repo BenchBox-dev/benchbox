@@ -63,16 +63,6 @@ def scale_factor(request) -> float:
     return SCALE_FACTORS[request.param]
 
 
-@pytest.fixture(params=["small"])
-def small_scale_factor(request) -> float:
-    return SCALE_FACTORS["small"]
-
-
-@pytest.fixture(params=["medium"])
-def medium_scale_factor(request) -> float:
-    return SCALE_FACTORS["medium"]
-
-
 @pytest.fixture
 def benchmark_factory(tmp_path: Path):
 

@@ -1377,6 +1377,8 @@ jobs:
 
       - name: Run the selected and changed test files on Windows
         shell: bash
+        env:
+          BENCHBOX_MAX_XDIST_WORKERS: "4"
         run: |
           set -euo pipefail
           if [ ! -s coverage-selection/windows-test-files.txt ]; then

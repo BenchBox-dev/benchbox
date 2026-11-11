@@ -1358,14 +1358,17 @@ def test_an_invalid_wait_is_refused_before_any_check(
 
 def test_main_waits_only_when_wait_is_given(monkeypatch: pytest.MonkeyPatch) -> None:
     waits: list[int] = []
-    monkeypatch.setattr(pr_arm, "arm", lambda pr, head, repo: 0)
+    options: list[dict] = []
+    monkeypatch.setattr(pr_arm, "arm", lambda pr, head, repo, **kwargs: options.append(kwargs) or 0)
     monkeypatch.setattr(pr_arm, "arm_waiting", lambda attempt, gate, minutes: waits.append(minutes) or attempt())
 
     assert pr_arm.main([], env={}) == 0
     assert pr_arm.main([], env={"PR_ARM_WAIT": "", "PR_ARM_WAIT_SET": "1"}) == 0
     assert waits == []
+    assert options == [{}, {}]
     assert pr_arm.main([], env={"PR_ARM_WAIT": "15", "PR_ARM_WAIT_SET": "1"}) == 0
     assert waits == [15]
+    assert options[-1] == {"wait_on_pending_review": True}
 
 
 def test_the_trunk_check_in_a_wait_uses_the_pr_or_the_current_branch(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1385,3 +1388,86 @@ def test_the_trunk_check_in_a_wait_fails_closed(monkeypatch: pytest.MonkeyPatch)
 
     assert "could not be read" in str(pr_arm.trunk_gate_refusal("7", "o/r"))
     assert "current branch" in str(pr_arm.trunk_gate_refusal(None, "o/r", run=lambda cmd: (1, "")))
+
+
+PENDING_VERDICT = (
+    f"a fresh review-gate evaluation of {HEAD[:9]} does not pass: review: waiting for the review's verdict on "
+    f"{HEAD}, or a stand-in attestation 'Stand-in review: APPROVE {HEAD}' from a listed attester"
+)
+OPEN_FINDINGS = f"a fresh review-gate evaluation of {HEAD[:9]} does not pass: review: SHIP WITH FIXES on {HEAD}"
+OWNER_ACTION = (
+    f"a fresh review-gate evaluation of {HEAD[:9]} does not pass: Waiting for review-verdict: the owner must post "
+    f"'Stand-in review: APPROVE {HEAD}'"
+)
+OTHER_HEAD = PENDING_VERDICT.replace(HEAD, "b" * 40)
+GATE_ERROR = f"a fresh review-gate evaluation of {HEAD[:9]} failed (exit 1): review: waiting for the review's verdict"
+
+
+def _arm_with_gate(gate_reasons: list[str], *, wait: bool, threads: bool = False, gh: FakeGh | None = None) -> int:
+    return pr_arm.arm(
+        "7",
+        None,
+        run=gh or FakeGh(),
+        unpublished=lambda _checkout: [],
+        threads=lambda _run, _repo, _number: threads,
+        suites=lambda _run, _repo, _base, _head: [],
+        gate=lambda _run, _repo, _number, _head: list(gate_reasons),
+        wait_on_pending_review=wait,
+    )
+
+
+def test_a_pending_review_verdict_is_refused_without_a_wait(capsys: pytest.CaptureFixture[str]) -> None:
+    assert _arm_with_gate([PENDING_VERDICT], wait=False) == 2
+    assert _last_outcome_line(capsys).startswith("pr-arm: outcome: refused: ")
+
+
+def test_a_pending_review_verdict_counts_as_waiting_inside_a_wait(capsys: pytest.CaptureFixture[str]) -> None:
+    gh = FakeGh()
+
+    assert _arm_with_gate([PENDING_VERDICT], wait=True, gh=gh) == 2
+    assert _last_outcome_line(capsys).startswith("pr-arm: outcome: waiting: ")
+    assert gh.merged() == []
+
+
+@pytest.mark.parametrize("reason", [OPEN_FINDINGS, OWNER_ACTION, OTHER_HEAD, GATE_ERROR])
+def test_only_a_pending_verdict_for_this_head_counts_as_waiting(
+    reason: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert _arm_with_gate([reason], wait=True) == 2
+    assert _last_outcome_line(capsys).startswith("pr-arm: outcome: refused: ")
+
+
+def test_a_pending_verdict_beside_a_real_refusal_is_still_refused(capsys: pytest.CaptureFixture[str]) -> None:
+    assert _arm_with_gate([PENDING_VERDICT], wait=True, threads=True) == 2
+    assert _last_outcome_line(capsys).startswith("pr-arm: outcome: refused: ")
+
+
+def test_a_wait_arms_once_the_pending_verdict_passes() -> None:
+    time = WaitClock()
+    gh = FakeGh()
+    gate_reasons = [PENDING_VERDICT]
+    time.on_sleep.append(gate_reasons.clear)
+
+    code = pr_arm.arm_waiting(
+        lambda: _arm_with_gate(gate_reasons, wait=True, gh=gh), lambda: None, 30, clock=time.clock, sleep=time.sleep
+    )
+
+    assert code == 0
+    assert time.sleeps == [pr_arm.WAIT_INTERVAL_SECONDS]
+    assert len(gh.merged()) == 1
+
+
+def test_a_wait_ends_when_the_pending_verdict_turns_into_open_findings(capsys: pytest.CaptureFixture[str]) -> None:
+    time = WaitClock()
+    gh = FakeGh()
+    gate_reasons = [PENDING_VERDICT]
+    time.on_sleep.append(lambda: gate_reasons.__setitem__(0, OPEN_FINDINGS))
+
+    code = pr_arm.arm_waiting(
+        lambda: _arm_with_gate(gate_reasons, wait=True, gh=gh), lambda: None, 30, clock=time.clock, sleep=time.sleep
+    )
+
+    assert code == 2
+    assert time.sleeps == [pr_arm.WAIT_INTERVAL_SECONDS]
+    assert gh.merged() == []
+    assert _last_outcome_line(capsys).startswith("pr-arm: outcome: refused: ")

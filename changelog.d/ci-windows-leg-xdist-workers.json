@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "Give the Windows pull-request test leg four pytest-xdist workers, matching the Linux fast tier, instead of the two the default cap allows on a four-vCPU runner."}

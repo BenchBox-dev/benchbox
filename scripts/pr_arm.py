@@ -352,6 +352,22 @@ def _refused(reason: str, code: int) -> int:
     return _outcome(f"refused: {reason}", code)
 
 
+GATE_NOT_PASSING = " does not pass: "
+
+
+def _review_verdict_pending(reason: str, head: str) -> bool:
+    if not reason.startswith("a fresh review-gate evaluation of ") or GATE_NOT_PASSING not in reason:
+        return False
+    detail = reason.split(GATE_NOT_PASSING, 1)[1]
+    return pr_landing.review_gate_waiting(detail, head) and not detail.startswith(pr_landing.REVIEW_GATE_WAITING_PREFIX)
+
+
+def _is_waiting(reason: str, head: str, wait_on_pending_review: bool) -> bool:
+    if any(marker in reason for marker in WAITING_MARKERS):
+        return True
+    return wait_on_pending_review and _review_verdict_pending(reason, head)
+
+
 def arm(
     pr: str | None,
     head: str | None,
@@ -367,6 +383,7 @@ def arm(
     batch: Callable[..., list[str]] = batch_refusals,
     require_batch: bool = False,
     discover: Callable[..., tuple[str | None, str]] | None = None,
+    wait_on_pending_review: bool = False,
 ) -> int:
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         return _refused(f"--repo must be owner/name, got {repo!r}", 2)
@@ -406,7 +423,7 @@ def arm(
         if reasons:
             for reason in reasons:
                 print(f"pr-arm: refusing to arm PR #{view['number']}: {reason}", file=sys.stderr)
-            if all(any(marker in reason for marker in WAITING_MARKERS) for reason in reasons):
+            if all(_is_waiting(reason, local_head, wait_on_pending_review) for reason in reasons):
                 return _outcome(f"waiting: PR #{view['number']} is not armed yet: {' | '.join(reasons)}", 2)
             return _outcome(f"refused: PR #{view['number']} was not armed: {' | '.join(reasons)}", 2)
         code, out = run(
@@ -524,9 +541,12 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
         return _refused(str(exc), 2)
 
     def attempt() -> int:
+        options: dict[str, bool] = {}
         if args.require_batch:
-            return arm(args.pr, args.head, args.repo, require_batch=True)
-        return arm(args.pr, args.head, args.repo)
+            options["require_batch"] = True
+        if minutes is not None:
+            options["wait_on_pending_review"] = True
+        return arm(args.pr, args.head, args.repo, **options)
 
     if minutes is None:
         return attempt()

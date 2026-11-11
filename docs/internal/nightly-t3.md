@@ -2,8 +2,9 @@
 
 **Audience:** maintainers who own a failing nightly domain, and release managers
 checking whether open nightly failures block a release.
-**Workflow:** `.github/workflows/nightly-v2.yml` (runs daily at 07:30 UTC and on
-`workflow_dispatch`).
+**Workflow:** `.github/workflows/nightly-v2.yml` (scheduled for 07:30 UTC daily and on
+`workflow_dispatch`). GitHub starts scheduled runs late: those from 2026-11-01 to 2026-11-11 started between 14:14 and 17:41 UTC,
+so do not quote 07:30 UTC as a completion time.
 
 Tier 3 covers checks that are too slow, too broad, or too environment-specific
 for pull requests. The workflow runs each check family as its own job, so one
