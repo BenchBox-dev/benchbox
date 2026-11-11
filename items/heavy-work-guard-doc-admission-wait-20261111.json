@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Verification: `git grep -n HEAVY_ADMIT_WAIT docs/operations/heavy-work-guard.md` matches; both pages state that lock queueing counts against the wait.",
+    "Verification: make docs-validate and make pr-preflight pass.",
+    "Done when merged."
+  ],
+  "description": "Found on 2026-11-11 while delivering retro-navigation-fixes-umbrella-20261111 (or in the retrospective over 25 agent sessions that preceded it) and not addressed there.\n\nProblem. PR #4101 added `HEAVY_ADMIT_WAIT` / `--admit-wait-minutes` and documented it in docs/agent/heavy-work.md and make help. docs/operations/heavy-work-guard.md, which describes exit code 76 and the BENCHBOX_HEAVY_* settings, does not mention it. Two behaviours are stated only in the PR body: time spent queued for the host lock counts against the admission wait, and targets that call the host lock without going through heavy-run do not read the variable.\n\nChange. Add the option and those two facts to docs/operations/heavy-work-guard.md, and the queueing fact to docs/agent/heavy-work.md.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read every cited file on current origin/develop first, because line numbers and commits here are from 2026-11-11 (origin/develop 5bd2c19cc4); close at a merged PR and finish only after the merge is observed.",
+  "links": [
+    "docs/operations/heavy-work-guard.md",
+    "docs/agent/heavy-work.md",
+    "https://github.com/BenchBox-dev/benchbox/pull/4101"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T16:38:25Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "031f812ed8af48699881a10a6e3ff6b1",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    }
+  ]
+}

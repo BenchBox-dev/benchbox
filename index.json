@@ -24092,6 +24092,13 @@
       "status": "done",
       "title": "Remove the dead merge_group branch from heavy_tier_needed.py and its tests and docs"
     },
+    "heavy-work-guard-doc-admission-wait-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Document the admission wait in the operations heavy-work page"
+    },
     "history-retention-adr-stale-doc-references": {
       "claim": null,
       "needs": [],
