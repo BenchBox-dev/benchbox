@@ -21024,6 +21024,13 @@
       "status": "done",
       "title": "Fix DuckDB TPC-DS loader regression: trailing delimiter detection and CLI exit code"
     },
+    "duckdb-tpch-sf1-official-export-row-count-contract-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "DuckDB TPC-H SF 1 --official --seed 42 fails at export on a PASSED row-count record with unequal counts"
+    },
     "duckdb-tuned-template-ablation-20261008": {
       "claim": null,
       "needs": [

@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "The command above writes a bundle with summary.validation passed, or fails with a message naming the query and counts",
+    "A test covers the seeded SF 1 row-count validation path that produced PASSED with unequal counts",
+    "The seed-corpus TPC-H SF 1 DuckDB cell is confirmed green on the fixed code"
+  ],
+  "description": "Found 2026-11-11 on develop c7b75c80bc (macOS arm64, DuckDB 1.5.5). `benchbox run --platform duckdb --benchmark tpch --scale 1 --official --seed 42 --phases generate,load,power --compression zstd:9 --non-interactive` runs the workload, then export raises `ResultExportError: Failed to export json: PASSED row_count_validation requires equal integer expected and actual counts` (benchbox/core/results/query_execution.py:380) and no bundle is written. It fails the same way with and without `--capture-plans`, so plan capture is not the cause. Some measured row carries row_count_validation status PASSED with expected != actual, which the export contract rejects. This is the exact command of the seed-corpus matrix cell for TPC-H SF 1 (`official: true`); the last scheduled seed-corpus run succeeded on 2026-11-01, so either the regression is newer or it is host-specific. The same run at SF 0.1 without a seed exports cleanly. Not yet known: which query, and whether Linux CI reproduces.",
+  "links": [
+    "BenchBox-dev/BenchBox: benchbox/core/results/query_execution.py",
+    "BenchBox-dev/BenchBox: .github/workflows/seed-corpus.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ce763d5976f477ecde9610ed",
+      "at": "2026-11-11T20:49:23Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "33dbcfcbae2c4a53b822837b97f12f5c",
+      "session_id": "2aa9edd3163b4d51b2004989f5bf7f8d"
+    }
+  ]
+}
