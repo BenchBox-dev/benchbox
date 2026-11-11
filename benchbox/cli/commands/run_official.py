@@ -60,7 +60,7 @@ def run_official(
         console.print("Use --seed <N> for reproducible results")
 
     try:
-        validate_stream_count(streams, phases)
+        validate_stream_count(streams, phases, benchmark=benchmark, scale_factor=scale)
     except ValueError as exc:
         console.print(f"[red]Error: {exc}[/red]")
         sys.exit(1)

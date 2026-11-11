@@ -58,6 +58,19 @@ except ImportError:
     MIN_THROUGHPUT_STREAMS = 2
 
 
+def _load_vendor_terms_module():
+    helper_path = Path(__file__).resolve().parents[1] / "core" / "results" / "vendor_terms.py"
+    spec = importlib.util.spec_from_file_location("_benchbox_vendor_terms", helper_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load vendor publication conditions from {helper_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+evaluate_vendor_conditions = _load_vendor_terms_module().evaluate_vendor_conditions
+
+
 def _load_query_status_module():
     helper_path = Path(__file__).resolve().parents[1] / "core" / "results" / "query_status.py"
     spec = importlib.util.spec_from_file_location("_benchbox_query_status", helper_path)
@@ -3048,6 +3061,12 @@ def _validate_manifest_provenance(manifest: dict[str, Any], primary_path: Path, 
                 "under a maintainer-controlled results-data/bundles/vendor/ path; a "
                 "community submission cannot self-assert the vendor-supplied label."
             )
+
+    vendor_errors, vendor_warnings = evaluate_vendor_conditions(manifest)
+    for message in vendor_errors:
+        vr.error(message)
+    for message in vendor_warnings:
+        vr.warn(message)
 
     _validate_execution_class_fields(manifest, "manifest", vr)
     if manifest.get("execution_class") is not None:

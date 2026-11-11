@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
+from benchbox.core.tpc_disclaimer import derived_results_disclaimer
 from benchbox.utils.printing import emit
 
 from .etl import ETLResult
@@ -200,15 +201,16 @@ class TPCDIMetrics:
 
     def print_official_results(self, metrics: BenchmarkMetrics) -> None:
         emit("\n" + "=" * 80)
-        emit("OFFICIAL TPC-DI BENCHMARK RESULTS")
+        emit("TPC-DI DERIVED BENCHMARK RESULTS")
         emit("=" * 80)
+        emit(derived_results_disclaimer("TPC-DI"))
 
         emit(f"Scale Factor: {metrics.scale_factor}")
         emit(f"Total Execution Time: {self._format_duration(metrics.total_execution_time)}")
-        emit(f"TPC-DI Compliant: {'YES' if metrics.tpc_di_compliant else 'NO'}")
+        emit(f"Internal Validation Checks Passed: {'YES' if metrics.tpc_di_compliant else 'NO'}")
         emit(f"Benchmark Date: {metrics.benchmark_date.strftime('%Y-%m-%d %H:%M:%S')}")
 
-        emit("\nOFFICIAL TPC-DI METRICS:")
+        emit("\nDERIVED TPC-DI METRICS:")
         emit("-" * 40)
         emit(f"ETL Throughput: {metrics.etl_throughput:,.2f} records/second")
         emit(f"Data Quality Score: {metrics.data_quality_score:.1%}")
@@ -240,9 +242,9 @@ class TPCDIMetrics:
         emit(f"Data Integrity Score: {metrics.data_integrity_score:.1%}")
 
         if not metrics.tpc_di_compliant:
-            emit("\nCOMPLIANCE ISSUES:")
+            emit("\nVALIDATION ISSUES:")
             emit("-" * 40)
-            emit("⚠️️  Benchmark does not meet all TPC-DI compliance requirements")
+            emit("⚠️️  Benchmark did not pass all internal validation checks")
             if metrics.data_quality_score < 1.0:
                 emit(f"   - Data quality issues: {(1.0 - metrics.data_quality_score) * 100:.1f}% validation failures")
 

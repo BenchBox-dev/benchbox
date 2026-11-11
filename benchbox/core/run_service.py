@@ -50,7 +50,13 @@ def validate_tpc_scale_factor(scale: float) -> None:
         )
 
 
-def validate_stream_count(streams: int | None, phases: str | None = None) -> None:
+def validate_stream_count(
+    streams: int | None,
+    phases: str | None = None,
+    *,
+    benchmark: str | None = None,
+    scale_factor: float | None = None,
+) -> None:
     phase_set: set[str] = set()
     if phases:
         phase_set = {p.strip().lower() for p in phases.split(",")}
@@ -59,6 +65,13 @@ def validate_stream_count(streams: int | None, phases: str | None = None) -> Non
         raise ValueError("--streams is required for throughput test")
     if streams is not None and streams < 2 and "throughput" in phase_set:
         raise ValueError(f"--streams must be >= 2 (TPC throughput minimum); got: {streams}")
+    if streams is not None and "throughput" in phase_set and benchmark and scale_factor is not None:
+        minimum = min_streams_for_scale(benchmark, scale_factor)
+        if minimum is not None and streams < minimum:
+            raise ValueError(
+                f"--streams must be >= {minimum} for {benchmark.upper()} scale factor {scale_factor:g} "
+                f"(TPC throughput minimum); got: {streams}"
+            )
 
 
 _DATAFRAME_THROUGHPUT_UNSUPPORTED = (
@@ -84,6 +97,7 @@ from benchbox.core.runner.runner import (
     run_benchmark_lifecycle,
 )
 from benchbox.core.schemas import reject_single_stream_throughput
+from benchbox.core.tpc_spec import min_streams_for_scale, refresh_functions_enabled, require_full_spec
 from benchbox.utils.disk_guard import ensure_run_output_space
 from benchbox.utils.toggles import is_probe_requested
 
@@ -260,6 +274,17 @@ def execute_run(
     execution_context: ExecutionContext | None = None,
 ) -> BenchmarkResults:
     reject_single_stream_throughput(getattr(config, "concurrency", None), phases_to_run)
+    if getattr(config, "official", False) and (phases_to_run is None or set(QUERY_PHASES).intersection(phases_to_run)):
+        config_options = getattr(config, "options", None) or {}
+        require_full_spec(
+            config.name,
+            config.scale_factor,
+            seed=config_options.get("seed"),
+            phases=phases_to_run,
+            streams=getattr(config, "concurrency", None),
+            query_subset=getattr(config, "queries", None),
+            refresh_functions=refresh_functions_enabled(config_options, benchmark_instance),
+        )
     stamp_requested_phases(config, phases_to_run)
 
     phases = resolve_lifecycle_phases(phases_to_run)

@@ -45,6 +45,29 @@ class TestManifestProvenance:
         assert not vr.ok
         assert any("funding" in e for e in vr.errors)
 
+    def test_free_tier_without_permission_rejected(self):
+        vr = self._run({"platform": "databricks", "plan_tier": "free"})
+        assert not vr.ok
+        assert any("written permission" in e for e in vr.errors)
+
+    def test_preview_with_permission_ok(self):
+        vr = self._run(
+            {
+                "platform": "snowflake",
+                "plan_tier": "paid",
+                "preview_features": ["hybrid tables"],
+                "vendor_permission": "approval 2026-11-01",
+                "vendor_notice": {"sent_on": "2026-11-01", "reference": "ticket"},
+            }
+        )
+        assert vr.ok
+        assert vr.warnings == []
+
+    def test_vendor_platform_without_notice_warns(self):
+        vr = self._run({"platform": "snowflake", "plan_tier": "paid"})
+        assert vr.ok
+        assert any("vendor_notice" in w for w in vr.warnings)
+
     def test_notes_too_long_rejected(self):
         vr = self._run({"submission_notes": "x" * (SUBMISSION_NOTES_MAX_LEN + 1)})
         assert not vr.ok
