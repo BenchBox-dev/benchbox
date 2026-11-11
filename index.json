@@ -30579,17 +30579,12 @@
       "title": "pr_landing refuses soundness PRs on an approval that can never be given; defer to the required oracle-review check"
     },
     "pr-landing-surface-unresolved-threads-20261101": {
-      "claim": {
-        "expires_at": "2026-11-12T22:32:21Z",
-        "generation": "36e1d9be6fa04b0aade5d448fadda22d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549"
-      },
+      "claim": null,
       "needs": [
         "feature-pr-landing-guards-20261111"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Report unresolved review threads when an armed PR sits blocked with green checks"
     },
     "pr-local-validation-singleflight": {
