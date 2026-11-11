@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "A deliberately failing UAT cell leaves the benchmark's own error message in its log without a second run.",
+    "A passing sweep's console output is unchanged."
+  ],
+  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.",
+  "description": "## Problem\nWhen a UAT cell fails, the harness has run `benchbox run` with `--quiet`, and the original error is not in the cell's log. On 2026-11-11 a LakeSail TPC-DS-OBT cell failed after about 20 minutes with no recorded cause; the only evidence came from a separate diagnostic re-run, which showed a different, later symptom (connection refused). A 20-minute failure had to be reproduced to learn anything.\n\n## Change\nKeep the benchmark's error output for a failed cell: either capture stderr and the final error from the quiet run into the cell log, or re-run without `--quiet` is replaced by always writing a full log file beside the cell's result. Confirm what the existing diagnostic re-run captures and whether it can be dropped once the first run keeps its output.\n\n## Guardrails\n- Passing cells stay quiet; the sweep summary must not grow.\n- No credentials or connection strings in the captured output.",
+  "links": [
+    "tests/uat",
+    "tests/uat/docker_assets.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba",
+      "at": "2026-11-11T23:47:27Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "28a50b520baf42c29df08b41e64c368b",
+      "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    }
+  ]
+}

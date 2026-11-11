@@ -43636,6 +43636,13 @@
       "status": "done",
       "title": "UAT: preflight disk report + headroom gate sized to the largest configured scale"
     },
+    "uat-quiet-hides-first-failure-output-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "UAT runs benchmarks with --quiet, so the first failure's error text is lost"
+    },
     "uat-regression-doris-clickbench-mooncake-flightdata": {
       "claim": null,
       "needs": [],
