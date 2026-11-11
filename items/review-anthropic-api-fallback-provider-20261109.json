@@ -7,6 +7,7 @@
   ],
   "context": "Options recorded by the investigating agent: (1) upstream OMP change so auth-gateway serves allow-listed API-key providers from the gateway HOME, then pin bump, Theseus gateway-clients and reviewer-HOME changes, host script models.yml placement; (2) store the key in the broker as `anthropic` and drop the subscription pin (not recommended: may spend the key first, key usable by any client token); (3) local-only use via ~/.omp/agent/models.yml (does not cover hosted or gateway-routed reviews). The current promotional credits expire 2026-11-19. Owner chose to log this for follow-up. Never print, log or commit the API key; never read ~/.omp/agent/models.yml directly.",
   "description": "Owner request 2026-11-09: add `anthropic-api` as a fallback after the subscription `anthropic/...` model in every Claude chain (never primary). Verified on a throwaway pinned-18.16.0 broker and gateway: the gateway serves only broker-backed built-in providers; it ignores custom providers from the gateway HOME's models.yml, and client account pins never use stored API keys. Theseus-generated reviewer HOMEs also carry no metadata for a non-built-in provider. So it cannot work with the current gateway.",
+  "drop_reason": "Duplicate of theseus-api-key-providers-local-cloud-github-20261110; owner asked on 2026-11-11 to clean up duplicates. Its evidence was appended to theseus-api-key-providers-local-cloud-github-20261110's context.",
   "links": [
     "theseus-v025-review-convergence-20261107"
   ],
@@ -18,6 +19,14 @@
       "op": "create",
       "op_id": "ca8f49358de94c0089fb6c4192af8506",
       "session_id": "ff599f834923406da7e6bd54d0a05e94"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:22:27Z",
+      "client": "omp-coding-agent",
+      "op": "drop",
+      "op_id": "e171f88aac0a481582a59129d9860d30",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }

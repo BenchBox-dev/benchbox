@@ -35041,7 +35041,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "Let reviews fall back to Anthropic API credits when the Claude subscription hits its limit"
     },
     "review-dependency-upper-bounds-quarterly": {
