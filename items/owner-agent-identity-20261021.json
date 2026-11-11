@@ -3,8 +3,8 @@
     "Agent sessions authenticate as the separate identity (gh api user)",
     "A stand-in posted by that identity is rejected by the gate"
   ],
-  "context": "Owner-only: needs a GitHub App or fine-grained token created by the repository owner.",
-  "description": "Agents run gh with the owner's token (scopes admin:org, gist, repo, workflow), and oracle_review_check STANDIN_ATTESTERS={'joeharris76'} checks only the login, so any agent can post a stand-in attestation. Create a GitHub App or fine-grained PAT for agents without admin or workflow scope and not in STANDIN_ATTESTERS; switch agent gh auth to it; keep stand-in attestation to a human-only identity.",
+  "context": "Owner-only: needs a GitHub App or fine-grained token created by the repository owner.\n\nRevalidated 2026-11-11: still required; blocked on the owner creating the agent identity (GitHub App or fine-grained token) and switching agent `gh auth` to it. Evidence: `gh auth status` and `gh api user` today show login joeharris76 with scopes admin:org, gist, repo, workflow, write:packages; origin/develop .github/review.yml lists attesters [joeharris76]. The description's file reference was updated from the removed STANDIN_ATTESTERS to review.yml. A fine-grained PAT cannot carry admin:org, and the same identity would also let agents run `gh repo delete` (human-action-required needs delete_repo for two probe repos). Once the identity exists, the acceptance checks apply unchanged.",
+  "description": "Agents run gh with the owner's token (login joeharris76; scopes admin:org, gist, repo, workflow, write:packages, checked 2026-11-11), and the stand-in attestation check recognises an attester by login only: `consumer.attesters: [joeharris76]` in .github/review.yml (the former STANDIN_ATTESTERS constant in oracle_review_check.py no longer exists), applied by Theseus and by _project/scripts/soundness_merge_digest.py (login in attesters and user_type == \"User\"). Any agent using the owner's token therefore posts as an attester. Create a GitHub App or fine-grained PAT (or a separate machine user) for agents without admin or workflow scope and not listed in `consumer.attesters`; switch agent gh auth to it; keep stand-in attestation to the human-only identity.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
@@ -21,6 +21,14 @@
       "op": "update",
       "op_id": "ad85fe5370cb462cb9281ff3a234e8ce",
       "session_id": "a9046e3fb7d74eefb823245a0b359b69"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:28:35Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f08937bf9d5044c5a9271900f6519da5",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
