@@ -34798,6 +34798,13 @@
       "status": "done",
       "title": "Update remaining statements that present the retired compat generator and site-owned rollback facts as current"
     },
+    "retro-docs-stale-corrections-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Correct stale agent and maintainer docs that sent sessions to wrong or missing information"
+    },
     "review-anthropic-api-fallback-provider-20261109": {
       "claim": null,
       "needs": [],
