@@ -34978,6 +34978,13 @@
       "status": "done",
       "title": "Archive BenchBox review captures and attempt artifacts before they expire"
     },
+    "review-format-proposal-only-in-session-storage-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Commit the review output format proposal that 16 tracker items cite from a session folder"
+    },
     "review-gate-cannot-resolve-pr-number-20261107": {
       "claim": null,
       "needs": [],

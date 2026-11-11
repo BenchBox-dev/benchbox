@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Decision gate: the owner chooses the repository and whether the document is public (`_project/` is tracked and public); check it for private content before committing.",
+    "Decision gate: updating `links` on a prepared batch member invalidates its receipt; check each item's batch state first and use context_append instead where that applies.",
+    "Verification: the document is on the chosen repository's default branch, and no open tracker item links to the session folder (`list_items text:'review-comment-format-proposal'` shows only repository paths).",
+    "Done when merged and the links are updated."
+  ],
+  "description": "Found on 2026-11-11 while delivering retro-navigation-fixes-umbrella-20261111 (or in the retrospective over 25 agent sessions that preceded it) and not addressed there.\n\nProblem. The design document for the review output format redesign exists only as `~/.omp/agent/sessions/-Developer-BenchBox/2026-11-02T02-04-38-450Z_01a19a00-60b2-70a6-b56d-6f666415a725/local/review-comment-format-proposal.md` (64,495 bytes, last written 2026-11-10). The `*review-format*` tracker items link to that absolute path and cite its sections. It is in neither BenchBox nor Theseus (`git grep review-comment-format-proposal origin/develop` returns nothing). Another machine, a cloud session, or a pruned session folder loses the specification those items depend on.\n\nChange. Commit the document under `_project/design/` (or in the Theseus repository if it belongs there) and update the links on the items that cite it.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read every cited file on current origin/develop first, because line numbers and commits here are from 2026-11-11 (origin/develop 5bd2c19cc4); close at a merged PR and finish only after the merge is observed.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T16:39:06Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "503e685794f34e6d85e5c72ea5324fa5",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    }
+  ]
+}
