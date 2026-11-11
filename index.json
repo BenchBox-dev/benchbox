@@ -12871,15 +12871,10 @@
       "title": "Unify BenchBox site header across landing, docs/blog, and Results Explorer"
     },
     "benchbox-submit-does-not-pseudonymize-20261025": {
-      "claim": {
-        "expires_at": "2026-11-12T20:41:40Z",
-        "generation": "29443a4a743548a7a70ebea06c15bd6b",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "benchbox submit does not pseudonymize, contrary to docs/contributing-results.md"
     },
     "benchbox-todo-db-0-12-0-runtime-20261031": {
