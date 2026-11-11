@@ -7,7 +7,7 @@ from typing import Any
 TIMING_FIELDS_SCHEMA_VERSION = (2, 4)
 QUERY_TIMING_FIELDS = ("request_count", "result_bytes", "platform_timing")
 RUN_TIMING_FIELDS = ("timing_method", "net_estimate_status", "platform_timing")
-CLIENT_LINK_TIMING_FIELDS = ("probed_at",)
+CLIENT_LINK_TIMING_FIELDS = ("probed_at", "platform_timing")
 
 KNOWN_TIMING_METHODS = frozenset({1, 2})
 NET_ESTIMATE_MIN_TIMING_METHOD = 2
@@ -162,6 +162,46 @@ def net_estimate_problems(payload: Mapping[str, Any]) -> list[str]:
     return problems
 
 
+def client_link_timing_problems(client_link: Any) -> list[str]:
+    if not isinstance(client_link, Mapping):
+        return []
+    problems: list[str] = []
+    probed_at = client_link.get("probed_at")
+    if probed_at is not None and not _non_empty_string(probed_at):
+        problems.append("probed_at must be a non-empty string")
+    platform_timing = client_link.get("platform_timing")
+    if platform_timing is not None:
+        problems.extend(f"platform_timing {problem}" for problem in platform_timing_problems(platform_timing))
+    return problems
+
+
+def _requires_request_fields(query: Mapping[str, Any]) -> bool:
+    return query.get("status") == "SUCCESS" and query.get("test_type") != "maintenance"
+
+
+def required_timing_problems(payload: Mapping[str, Any]) -> list[str]:
+    problems: list[str] = []
+    run = payload.get("run")
+    run = run if isinstance(run, Mapping) else {}
+    timing_method = run.get("timing_method")
+    if timing_method is None:
+        problems.append("run.timing_method is required in schema 2.4")
+    if run.get("net_estimate_status") is None:
+        problems.append("run.net_estimate_status is required in schema 2.4")
+    queries = payload.get("queries")
+    queries = [query for query in queries if isinstance(query, Mapping)] if isinstance(queries, list) else []
+    if type(timing_method) is int and timing_method >= NET_ESTIMATE_MIN_TIMING_METHOD:
+        for index, query in enumerate(queries):
+            if not _requires_request_fields(query):
+                continue
+            for key in ("request_count", "result_bytes"):
+                if query.get(key) is None:
+                    problems.append(f"queries[{index}].{key} is required when run.timing_method is {timing_method}")
+    if any(query.get("platform_timing") is not None for query in queries) and run.get("platform_timing") is None:
+        problems.append("run.platform_timing is required when queries carry platform_timing")
+    return problems
+
+
 def bundle_timing_field_paths(payload: Mapping[str, Any]) -> list[str]:
     paths: list[str] = []
     run = payload.get("run")
@@ -186,6 +226,8 @@ def supports_timing_fields(version_tuple: tuple[int, ...] | None) -> bool:
 __all__ = [
     "CLIENT_LINK_TIMING_FIELDS",
     "KNOWN_TIMING_METHODS",
+    "NETWORKED_ENDPOINT_CLASSES",
+    "NET_ESTIMATE_MIN_TIMING_METHOD",
     "NET_ESTIMATE_STATUSES",
     "PLATFORM_TIMING_DEFINITIONS",
     "PLATFORM_TIMING_STATUSES",
@@ -193,8 +235,10 @@ __all__ = [
     "RUN_TIMING_FIELDS",
     "TIMING_FIELDS_SCHEMA_VERSION",
     "bundle_timing_field_paths",
+    "client_link_timing_problems",
     "net_estimate_problems",
     "platform_timing_problems",
+    "required_timing_problems",
     "run_timing_problems",
     "supports_timing_fields",
 ]

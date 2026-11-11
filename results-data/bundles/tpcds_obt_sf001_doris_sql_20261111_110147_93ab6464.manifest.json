@@ -1,0 +1,9 @@
+{
+  "bundle_file": "tpcds_obt_sf001_doris_sql_20261111_110147_93ab6464.json",
+  "bundle_hash": "04f9bd0bffb63540562740d8fe60489cf3014d575b88af09fe995a269985738b",
+  "companion_hashes": {},
+  "funding": "unspecified",
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer"
+}
