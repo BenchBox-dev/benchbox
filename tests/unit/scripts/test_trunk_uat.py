@@ -81,9 +81,9 @@ class Github:
     def fetch(self, artifact_id: int) -> bytes:
         return self.records[artifact_id]
 
-    def release_run(self, status: str) -> int:
+    def release_run(self, status: str, **fields) -> int:
         self._next += 1
-        self.release_runs.append({"id": self._next, "status": status})
+        self.release_runs.append({"id": self._next, "status": status, **fields})
         return self._next
 
     def __call__(self, path: str) -> dict:
@@ -296,6 +296,49 @@ def test_nothing_starts_while_a_release_run_is_in_progress(releasable, status, e
     decision = decide(github, History({sha("a"): set()}), event=event)
     assert decision.action == "defer"
     assert decision.reason == f"deferred: release-v2 run {active} in progress"
+
+
+def test_an_in_progress_probe_dispatch_does_not_defer(releasable):
+    github = Github()
+    probe = github.release_run("in_progress", event="workflow_dispatch", head_branch="fix/x", run_attempt=1)
+    github.jobs[probe] = [
+        {"name": "admit", "status": "completed", "conclusion": "success"},
+        {"name": "probe UAT stub evidence", "status": "in_progress", "conclusion": None},
+    ]
+    assert decide(github, History({sha("a"): set()}), event="workflow_dispatch").action == "run"
+
+
+def test_a_tag_push_release_in_progress_defers_even_with_probe_runs_beside_it(releasable):
+    github = Github()
+    probe = github.release_run("in_progress", event="workflow_dispatch", run_attempt=1)
+    github.jobs[probe] = [{"name": "publish dry run", "status": "queued", "conclusion": None}]
+    release = github.release_run("in_progress", event="push", head_branch="v0.5.0", run_attempt=1)
+    decision = decide(github, History({sha("a"): set()}), event="schedule")
+    assert decision.reason == f"deferred: release-v2 run {release} in progress"
+
+
+@pytest.mark.parametrize(
+    "jobs",
+    [
+        [],
+        [{"name": "admit", "status": "in_progress", "conclusion": None}],
+        [{"name": "probe UAT stub evidence", "status": "completed", "conclusion": "skipped"}],
+    ],
+)
+def test_a_dispatch_run_not_proven_to_be_a_probe_defers(releasable, jobs):
+    github = Github()
+    run = github.release_run("in_progress", event="workflow_dispatch", run_attempt=1)
+    github.jobs[run] = jobs
+    decision = decide(github, History({sha("a"): set()}), event="schedule")
+    assert decision.reason == f"deferred: release-v2 run {run} in progress"
+
+
+def test_a_run_with_no_event_defers(releasable):
+    github = Github()
+    run = github.release_run("in_progress")
+    assert decide(github, History({sha("a"): set()}), event="schedule").reason == (
+        f"deferred: release-v2 run {run} in progress"
+    )
 
 
 def test_completed_release_runs_do_not_defer(releasable):
