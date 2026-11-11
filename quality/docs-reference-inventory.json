@@ -1757,6 +1757,22 @@
   {
    "disposition": "wiring-updated",
    "kinds": {
+    "root": 1
+   },
+   "occurrences": 1,
+   "path": "_project/scripts/preflight_targets.py",
+   "rule": "project-tooling",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "root",
+     "target": "docs/"
+    }
+   ]
+  },
+  {
+   "disposition": "wiring-updated",
+   "kinds": {
     "unresolved": 3
    },
    "occurrences": 3,
@@ -2164,6 +2180,22 @@
     {
      "kind": "extra",
      "target": "scripts/check_public_contract_drift.py"
+    }
+   ]
+  },
+  {
+   "disposition": "wiring-updated",
+   "kinds": {
+    "extra": 1
+   },
+   "occurrences": 1,
+   "path": "make/pr-landing.mk",
+   "rule": "build-and-ignore-wiring",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "extra",
+     "target": "scripts/check_docs_ownership.py"
     }
    ]
   },
@@ -3955,16 +3987,24 @@
   {
    "disposition": "fixture-data",
    "kinds": {
-    "unresolved": 1
+    "unresolved": 3
    },
-   "occurrences": 3,
+   "occurrences": 8,
    "path": "tests/unit/scripts/test_preflight_targets.py",
    "rule": "test-sample-data",
-   "target_count": 1,
+   "target_count": 3,
    "targets": [
     {
      "kind": "unresolved",
      "target": "docs/guide.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/internal/new.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/operations/table.tsv"
     }
    ]
   },
@@ -4291,20 +4331,20 @@
    "lock-test": 4,
    "prose-link-pinned": 12,
    "site-pipeline-cutover": 4,
-   "wiring-updated": 31
+   "wiring-updated": 33
   },
-  "files": 227,
+  "files": 229,
   "kinds": {
    "built-url": 29037,
    "dir": 163,
-   "extra": 37,
+   "extra": 38,
    "file": 1378,
    "generated": 3,
    "pattern": 333,
-   "root": 200,
-   "unresolved": 2072
+   "root": 201,
+   "unresolved": 2077
   },
-  "references": 33223,
+  "references": 33230,
   "unclassified": 0
  }
 }
