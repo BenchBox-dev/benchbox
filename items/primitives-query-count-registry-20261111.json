@@ -7,6 +7,7 @@
     "`make pr-preflight` passes on the branch head, and the pull request carries a `changelog.d/` fragment.",
     "After merge, the site-inputs bundle for the merge commit carries the two new counts in `doc-contracts.json`."
   ],
+  "context": "Delivered in BenchBox#4125, merged 2026-11-11 as 52e2de6e0c. Registry reports 112 and 23; new test tests/unit/core/test_primitives_registry_query_counts.py; the test that pinned 12 was deleted. Verified: doc_contracts export shows the two counts; pr-preflight passed on the rebased tree; hosted review SHIP; bundle site-inputs-e3ae25de1d carries the counts and the site docs check passed against it. The item's claim about benchbox/core/write_primitives/README.md was wrong (that heading lists DataFusion-skipped DDL operations), so the README is unchanged.",
   "description": "## Problem\n`benchbox/core/benchmark_registry.yaml` gives `write_primitives` and `transaction_primitives` 12 queries each. The code has 112 write operations in six categories (insert 12, update 15, delete 14, bulk_load 36, merge 23, ddl 12) and 23 transaction operations. Published bundles hold 112 and 23 distinct ids. The write description also lists a TRANSACTION category that does not exist. The command line prints the wrong total ('N of 12 (subset)', 'The benchmark has 12 queries'), MCP reports it, and the site's contract check forces `support-status.md` to repeat it.\n\n## Change\n1. `write_primitives`: `num_queries: 112`; `query_description: 112 write operations (INSERT, UPDATE, DELETE, BULK_LOAD, MERGE, DDL)`.\n2. `transaction_primitives`: `num_queries: 23`; `query_description: 23 transaction operations`.\n3. `tests/unit/core/transaction_primitives/test_dataframe_operations.py` asserts `num_queries == 12`; update it to 23. `benchbox/core/write_primitives/README.md` says DDL has 8 operations; the code has 12.\n4. Regenerate or update any generated artifact, snapshot or fixture in this repository that carries these numbers, using the repository's own target for it.\n5. Add one unit test, in its own new test file, that compares `num_queries` with `len(get_queries())` for these two benchmarks.\n\n## Decision gates\n- Before editing, re-count on current `origin/develop`: construct each benchmark at SF 0.01 and assert `len(get_queries())` is 112 and 23. If either differs, stop and report the real number.\n- Find every consumer with `rg -n 'num_queries' benchbox scripts tests docs` and list the files that hold the old numbers.\n- **Merge gate (leader):** this pull request merges only after the scale-rule pull request is merged and its site-inputs bundle is certified, and after the benchbox-site branch for `site-primitives-count-docs-20261111` is committed and pushed. The site's blocking docs check fails from this merge until the site change merges, and the site change cannot merge before the scale rule has.\n\n## Guardrails\n- Work only in the feature worktree, never the primary clone. Run `make agent-write-preflight` first.\n- Touch only the files this item names. Report anything adjacent as noticed, not changed.\n- No explanatory comments or docstrings in first-party code (`make comment-policy-check`).\n- No edit to `CHANGELOG.md`; the feature carries one `changelog.d/` fragment.\n- No full test tier, benchmark or data generation outside `make heavy-run` or a lock-taking target.\n- Subagents make no tracker write, push nothing and open no pull request.\n- Do not add a general registry-versus-code count test for every benchmark: `tpcds_obt` intentionally records 90 queries for 93 statements.\n- No change to the write or transaction operation catalogs.\n",
   "links": [
     "benchbox/core/benchmark_registry.yaml",
@@ -40,6 +41,14 @@
       "generation": "9728fe1f2079487a94e6892df5ebad65",
       "op": "take",
       "op_id": "516037f224d14f9e88bee309db347b20",
+      "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba",
+      "at": "2026-11-11T23:20:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "fb94a27ff9314283a802f5a2b43cecc6",
       "session_id": "84d81f109eb348759fdc1c024f00b55b"
     }
   ]
