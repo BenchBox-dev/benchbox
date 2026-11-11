@@ -24162,6 +24162,13 @@
       "status": "done",
       "title": "Add an opt-in admission wait to make heavy-run"
     },
+    "heavy-run-cmd-dollar-expansion-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "make heavy-run CMD='...' lets make expand $ in the command, so $HOME becomes OME"
+    },
     "heavy-tier-merge-group-dead-code-20261009": {
       "claim": null,
       "needs": [],

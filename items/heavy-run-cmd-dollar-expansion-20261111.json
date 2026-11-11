@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "make heavy-run CMD='echo $HOME' prints the home directory",
+    "A test or documented example covers a command containing a shell variable"
+  ],
+  "description": "Found 2026-11-11. `make heavy-run CMD='BENCHBOX_OUTPUT_DIR=$HOME/Developer/benchmark_runs/x uv run -- benchbox run ... > $HOME/.../run.log 2>&1'` records and would run `BENCHBOX_OUTPUT_DIR=OME/Developer/...`: make expands `$H` (empty) in the command-line variable before the recipe exports it. The lock record in `make heavy-status` showed the mangled command. The attempts here were refused by admission before running, so nothing was written, but an admitted run would have written benchmark output and the log to a relative `OME/` directory inside the checkout. make/tests.mk uses `$$CMD` in the recipe but does not protect the value. Other targets already use `override X := $(value X)` (make/pr-landing.mk) for this.",
+  "links": [
+    "BenchBox-dev/BenchBox: make/tests.mk",
+    "BenchBox-dev/BenchBox: docs/agent/heavy-work.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ce763d5976f477ecde9610ed",
+      "at": "2026-11-11T20:49:44Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "23b446b2c5bf4687a7dbcd09313bfe65",
+      "session_id": "2aa9edd3163b4d51b2004989f5bf7f8d"
+    }
+  ]
+}
