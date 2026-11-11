@@ -16,11 +16,11 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 DELIVERY_CATALOG_REV = "cdb35df85accfe280100d60cb17d018a68c3b142"
-SOURCE_REV = "ccfefb409d4c071d9c97a2e2dae5a17363ec6cab"
-TRACTABLE_VERSION = "1.0.0"
+SOURCE_REV = "77812efc15a83938ac9922ed52cccc7ae7270f84"
+TRACTABLE_VERSION = "1.1.0"
 SCRIPTS_PROJECT = ROOT / "_project/scripts"
 WHEEL = SCRIPTS_PROJECT / f"vendor/tractable-{TRACTABLE_VERSION}-py3-none-any.whl"
-WHEEL_SHA256 = "b90c68cde0ed6d0c10bc6f040837385b20b6661cf404295f8331c28f6160b8b8"
+WHEEL_SHA256 = "b47d2795284aca8b076e8170907c654ad0301a86fc32586fe69f6da885af0a9e"
 REQUIRED_BATCH_TOOLS = {"register_batch", "prepare", "bind_batch_pr", "abort_batch"}
 
 
@@ -100,7 +100,7 @@ def _skip_unless_scripts_project_resolves_offline() -> None:
             "--",
             "python",
             "-c",
-            "import todo_db",
+            "import tractable",
         ],
         cwd=ROOT,
         capture_output=True,
