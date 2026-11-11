@@ -225,7 +225,7 @@ environment is an owner action, and an agent never takes it.
 1. Create a GitHub App owned by the repository owner with **Commit statuses:
    write** and **Pull requests: write**, installed on this repository only.
 2. Before the workflow first runs, create the `oracle` environment with
-   deployment branches limited to `develop`; GitHub creates a missing
+   deployment branches limited to `develop` and `release/*`; GitHub creates a missing
    environment with no protection rules. The branch rule does not keep PR
    runs from the secrets: for `pull_request_target` it is evaluated against
    the default branch, so those runs reach them.

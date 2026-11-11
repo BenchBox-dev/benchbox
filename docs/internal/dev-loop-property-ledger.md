@@ -166,7 +166,7 @@ with maintainer and release-manager escalation as described in
 | `todo-state-validate.yml` | tooling | Tracker state validation |
 | `trunk-coverage.yml` | product-safety | Scheduled (six a day) and dispatched instrumented four-shard medium tier, v2 coverage map combine, published-map self-fetch, and a map-staleness issue on its own daily cron; never consulted by arming |
 | `trunk.yml` | product-safety | Develop-push fast lane, uninstrumented four-shard medium tier, correctness gate, required-local-cases, whole-tree comment-policy scan and verified release artifact; every develop push has its own run, which a later push never cancels or replaces |
-| `trunk-uat.yml` | product-safety | Nightly (02:00 UTC) and dispatched release-gate UAT matrix: the release-v2 shard jobs run against the trunk dist of the newest releasable develop commit; scheduled runs skip when no guarded path changed since the last green executed run, defer while a release-v2 run is in progress (a real release's full-UAT fallback cancels an in-progress run), and fail when zero cells executed; 90-day shard evidence, gate summary and per-cell history bound to the source commit and dist digest |
+| `trunk-uat.yml` | product-safety | Nightly (02:00 UTC) and dispatched release-gate UAT matrix: the release-v2 shard jobs run against the trunk dist of the newest releasable develop commit; scheduled runs skip when no guarded path changed since the last green executed run, defer while a release-v2 run other than a probe is in progress (a real release's full-UAT fallback cancels an in-progress run), and fail when zero cells executed; 90-day shard evidence, gate summary and per-cell history bound to the source commit and dist digest |
 | `trunk-red-disarm.yml` | product-safety | Completed develop Trunk run disables auto-merge on armed PRs the arm gate would refuse |
 | `upload-answers.yml` | product-safety | Answer file publication |
 | `trunk-duration-trend.yml` | tooling | Daily comparison of Trunk job p50 durations with the prior week; opens or closes one issue assigned to the repository owner; read-only actions access plus issue writes |
@@ -402,7 +402,7 @@ with maintainer and release-manager escalation as described in
 | `todo_state_contract_check.py` | tooling | Tracker state contract |
 | `check_uv_lock_revision.py` | tooling | Lockfile hygiene |
 | `pr_review_followups.py` | pure-process | PR-loop mechanics |
-| `preflight_targets.py` | pure-process | Changed-file lint and test selection for the local preflight, including the ledger coverage test for every ledger-governed path |
+| `preflight_targets.py` | pure-process | Changed-file lint, test and guard selection for the local preflight, including the ledger coverage test for every ledger-governed path and the reader tests of a changed document |
 | `dev_loop_pr_metrics.py` | pure-process | Program baseline metrics mechanics |
 | Remaining project scripts (ledger-catch-all: _project/scripts/) | product-safety | Sweep, corpus, and validation product code; reclassify individually before any deletion |
 | `_project/scripts/explorer_pipeline/browser_fixtures.py` | product-safety | Browser fixture queries for the site-inputs bundle |

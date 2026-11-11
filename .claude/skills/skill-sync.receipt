@@ -3,12 +3,12 @@
 # carries no hashes and attests nothing about the current contents.
 
 source = https://github.com/joeharris76/skill-sync-skills.git
-rev = 9d13c5885566899e2a23ddd3991f94b45b6b447d
+rev = cdb35df85accfe280100d60cb17d018a68c3b142
 dir = skills
 skill = benchbox
 
 source = https://github.com/joeharris76/skill-sync-skills.git
-rev = cc8adf58ed39893418cbfa9d209d367a784819de
+rev = cdb35df85accfe280100d60cb17d018a68c3b142
 dir = skills
 skill = blog
 skill = code

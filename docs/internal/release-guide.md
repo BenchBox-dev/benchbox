@@ -288,8 +288,8 @@ report checklist.
 `trunk-uat.yml` runs the same three stages and the same shard jobs every night
 at 02:00 UTC against the trunk dist of the newest releasable `develop` commit,
 skips a scheduled run when nothing the release UAT depends on changed since the
-last run that executed shards, and defers while a `release-v2` run is in
-progress. Change a platform's shard in `release-v2.yml` and `trunk-uat.yml`
+last run that executed shards, and defers while a `release-v2` run that is not a
+probe is in progress. Change a platform's shard in `release-v2.yml` and `trunk-uat.yml`
 together; `tests/unit/workflows/test_trunk_uat_workflow.py` fails when their
 matrices differ. Its evidence is kept 90 days, and each run appends per-cell
 results (terminal state, elapsed time, peak memory, failure signature, attempt)
@@ -396,7 +396,7 @@ summary and the job outputs.
 
 | Decision | Summary text | When |
 | --- | --- | --- |
-| defer | `deferred: release-v2 run <id> in progress` | Any `release-v2.yml` run is not completed, for a scheduled or a dispatched run. |
+| defer | `deferred: release-v2 run <id> in progress` | A `release-v2.yml` run that is not a probe is not completed, for a scheduled or a dispatched run. A dispatched run counts as a probe once one of its probe-only jobs has started; a run that cannot be classified defers. |
 | skip | `skipped: unchanged since <sha>` | Scheduled only: no path in the skip path set changed between the skip baseline and the source commit. |
 | run | `run: <reason>` | Everything else: dispatch, no baseline, a baseline that was not green, an unreachable baseline commit, or a changed skip path. |
 
@@ -509,7 +509,7 @@ uv run -- python scripts/uat_rubric.py --history-dir ~/trunk-uat-history --outpu
 
 ### Interaction with `release-v2`
 
-A `release-v2.yml` run that is not completed defers trunk UAT (above). When a
+A `release-v2.yml` run that is not completed and is not a probe defers trunk UAT (above). When a
 real release (not a probe) falls back to the full three-stage UAT because no
 trunk evidence qualifies for reuse, the `cancel in-progress trunk UAT` job runs
 before the UAT stages start and cancels every unfinished `trunk-uat.yml` run, so

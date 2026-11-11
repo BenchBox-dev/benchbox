@@ -120,14 +120,15 @@ def _run_preflight(
 def test_pr_preflight_selects_against_base_without_fetching_develop(tmp_path: Path) -> None:
     selections, fetches = _run_preflight(tmp_path, "abc1234")
 
-    assert [line.split()[-1] for line in selections] == ["abc1234"] * 2
+    assert {line.split()[-1] for line in selections} == {"abc1234"}
+    assert {line.split()[-3] for line in selections} == {"python", "tests", "guards"}
     assert fetches == ""
 
 
 def test_pr_preflight_defaults_to_a_fetched_origin_develop(tmp_path: Path) -> None:
     selections, fetches = _run_preflight(tmp_path, None)
 
-    assert [line.split()[-1] for line in selections] == ["origin/develop"] * 2
+    assert {line.split()[-1] for line in selections} == {"origin/develop"}
     assert fetches.split() == ["fetch", "origin", "develop", "--quiet"]
 
 
@@ -152,4 +153,4 @@ def test_pr_preflight_light_steps_ignore_an_unrelated_lock_holder(tmp_path: Path
     finally:
         handle.release()
 
-    assert [line.split()[-1] for line in selections] == ["abc1234"] * 2
+    assert {line.split()[-1] for line in selections} == {"abc1234"}

@@ -585,3 +585,125 @@ def test_the_cli_selects_the_ledger_coverage_test_for_a_new_workflow(
 
 def test_the_ledger_coverage_test_exists() -> None:
     assert (SCRIPT.parents[2] / pt.LEDGER_COVERAGE_TEST).is_file()
+
+
+READERS_INDEX_TEST_FILE = "tests/unit/scripts/test_inert_paths.py"
+READER_SOURCE = (
+    "from pathlib import Path\n\nROOT = Path(__file__).resolve().parents[2]\n\n\n"
+    'def test_reads() -> None:\n    assert (ROOT / "AGENTS.md").read_text(encoding="utf-8")\n'
+)
+
+
+def _with_reader_index(repo: Path, index: str) -> None:
+    _git(repo, "checkout", "main")
+    _write(repo, "AGENTS.md", "# agents\n")
+    _write(repo, "tests/unit/test_reader.py", READER_SOURCE)
+    _write(repo, READERS_INDEX_TEST_FILE)
+    _write(repo, "_project/inert-doc-readers.json", index)
+    _commit_all(repo, "readers")
+    _git(repo, "update-ref", "refs/remotes/origin/develop", "HEAD")
+    _git(repo, "checkout", "feature")
+    _git(repo, "reset", "--hard", "main")
+
+
+INDEX = '{"AGENTS.md": ["tests/unit/test_reader.py", "tests/unit/test_gone.py"]}\n'
+
+
+def _preflight_tests(repo: Path) -> list[str]:
+    return pt.map_tests(repo, pt.changed_paths(repo, "origin/develop"), doc_readers=True)
+
+
+def test_a_changed_doc_selects_the_tests_that_read_it(repo: Path) -> None:
+    _with_reader_index(repo, INDEX)
+    _write(repo, "AGENTS.md", "# agents, edited\n")
+    _commit_all(repo)
+
+    paths = pt.changed_paths(repo, "origin/develop")
+
+    assert pt.map_tests(repo, paths, doc_readers=True) == ["tests/unit/test_reader.py"]
+    assert pt.map_tests(repo, paths) == []
+
+
+def test_a_doc_with_no_recorded_reader_selects_nothing(repo: Path) -> None:
+    _with_reader_index(repo, INDEX)
+    _write(repo, "docs/guide.md", "# guide, edited\n")
+    _commit_all(repo)
+
+    assert _preflight_tests(repo) == []
+
+
+@pytest.mark.parametrize("index", [None, "not json\n", "[]\n"])
+def test_a_missing_or_malformed_reader_index_warns_and_selects_as_before(
+    repo: Path, capsys: pytest.CaptureFixture[str], index: str | None
+) -> None:
+    if index is not None:
+        _write(repo, "_project/inert-doc-readers.json", index)
+    _write(repo, "docs/guide.md", "# guide, edited\n")
+    _write(repo, "tests/unit/test_unrelated.py", "y = 2\n")
+    _commit_all(repo)
+
+    assert _preflight_tests(repo) == ["tests/unit/test_unrelated.py"]
+    assert "_project/inert-doc-readers.json" in capsys.readouterr().err
+
+
+def test_an_unusable_reader_index_selects_the_reader_index_check(repo: Path) -> None:
+    _with_reader_index(repo, "not json\n")
+    _write(repo, "tests/unit/test_unrelated.py", "y = 2\n")
+    _commit_all(repo)
+
+    assert _preflight_tests(repo) == sorted([pt.READERS_INDEX_TEST, "tests/unit/test_unrelated.py"])
+    assert pt.map_tests(repo, [], doc_readers=True) == []
+
+
+def test_a_test_that_stops_reading_a_doc_selects_the_reader_index_check(repo: Path) -> None:
+    _with_reader_index(repo, INDEX)
+    _write(repo, "tests/unit/test_reader.py", "def test_reads() -> None:\n    assert True\n")
+    _commit_all(repo)
+
+    selected = _preflight_tests(repo)
+
+    assert pt.READERS_INDEX_TEST in selected
+
+
+def test_a_test_that_starts_reading_a_doc_selects_the_reader_index_check(repo: Path) -> None:
+    _with_reader_index(repo, INDEX)
+    _write(repo, "tests/unit/test_unrelated.py", READER_SOURCE)
+    _commit_all(repo)
+
+    assert pt.READERS_INDEX_TEST in _preflight_tests(repo)
+
+
+def test_a_test_change_that_keeps_its_doc_reads_skips_the_reader_index_check(repo: Path) -> None:
+    _with_reader_index(repo, INDEX)
+    _write(repo, "tests/unit/test_reader.py", READER_SOURCE + "\n\nVALUE = 2\n")
+    _write(repo, "tests/unit/test_unrelated.py", "y = 2\n")
+    _commit_all(repo)
+
+    assert _preflight_tests(repo) == [
+        "tests/unit/test_reader.py",
+        "tests/unit/test_unrelated.py",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("paths", "expected"),
+    [
+        (["benchbox/core/engine.py"], ["docs-reference-inventory", "project-references"]),
+        (["AGENTS.md"], ["docs-reference-inventory", "project-references"]),
+        (["Makefile"], ["docs-reference-inventory", "project-references"]),
+        (["benchbox/_vendor/archive.whl.zip"], ["docs-reference-inventory", "project-references"]),
+        (["docs/internal/new.md"], ["docs-reference-inventory", "project-references", "docs-ownership"]),
+        (["docs/operations/table.tsv"], ["docs-reference-inventory", "project-references", "docs-ownership"]),
+        ([], []),
+    ],
+)
+def test_guards_follow_the_kind_of_changed_path(paths: list[str], expected: list[str]) -> None:
+    assert pt.guards(paths) == expected
+
+
+def test_guard_selection_reaches_the_cli_through_a_git_diff(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    _write(repo, "docs/internal/new.md", "# new\n")
+    _commit_all(repo)
+
+    assert pt.main(["guards", "--repo-root", str(repo)]) == 0
+    assert capsys.readouterr().out.split() == ["docs-reference-inventory", "project-references", "docs-ownership"]

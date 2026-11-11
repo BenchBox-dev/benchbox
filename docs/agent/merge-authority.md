@@ -96,6 +96,10 @@ config and say `degraded: <provider>`; the gate is unchanged. A stand-in
 applies only when no reviewer can run at all (every provider lost), in which
 case the review stays pending and the owner names the PR and head. See
 [`review-gateway-host.md`](../internal/review-gateway-host.md#losing-or-removing-a-provider).
+When reviewers come back absent, diagnose with that runbook's
+[Troubleshooting](../internal/review-gateway-host.md#troubleshooting) section.
+Never edit the OMP credential store (`~/.omp/agent/agent.db`) or re-enable a
+provider the owner disabled; the owner's `disabled-providers` file decides.
 
 ## Owner adjudication
 

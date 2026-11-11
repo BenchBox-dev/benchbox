@@ -39,8 +39,8 @@ heavy-sentinel-uninstall:
 
 .PHONY: heavy-run
 heavy-run:
-	@test -n "$$CMD" || { echo "usage: make heavy-run CMD='<command>'"; exit 2; }
-	@uv run -- python -m benchbox.utils.host_lock run --admit --guard -- sh -c "$$CMD"
+	@test -n "$$CMD" || { echo "usage: make heavy-run CMD='<command>' [HEAVY_ADMIT_WAIT=<minutes>]"; exit 2; }
+	@uv run -- python -m benchbox.utils.host_lock run --admit --guard $${HEAVY_ADMIT_WAIT:+--admit-wait-minutes "$$HEAVY_ADMIT_WAIT"} -- sh -c "$$CMD"
 
 .PHONY: test-medium
 test-medium:

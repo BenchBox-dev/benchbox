@@ -117,7 +117,7 @@ review-separated, or approval-separated work. Related items go on one feature
 branch and one PR per feature. Feature delivery mode is opt-in: use it only when
 the owner names the batch, it has two or more members, and the installed,
 compatible registered-batch capability and its prerequisites have been verified
-against the active todo-db MCP server. Prerequisite runtime, catalog pin, and
+against the active tractable MCP server. Prerequisite runtime, catalog pin, and
 workflow rollout changes remain serial: changes enabling the loop cannot certify
 themselves. An unavailable capability is an owned blocker and keeps work in
 serial mode.

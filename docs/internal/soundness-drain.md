@@ -2,6 +2,9 @@
 
 # Soundness-PR drain digest
 
+Post-merge `soundness-review-gap` issues, and how to close one, are covered in
+[section 6 of `merge-queue-governance.md`](merge-queue-governance.md#6-post-merge-soundness-digest).
+
 ## The signal, and what it is not
 
 Soundness-path PRs (paths in `.github/soundness-paths.txt`) merge only after

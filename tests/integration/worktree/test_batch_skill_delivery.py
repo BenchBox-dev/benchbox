@@ -15,7 +15,7 @@ pytestmark = [pytest.mark.integration, pytest.mark.medium]
 ROOT = Path(__file__).resolve().parents[3]
 
 
-DELIVERY_CATALOG_REV = "cc8adf58ed39893418cbfa9d209d367a784819de"
+DELIVERY_CATALOG_REV = "cdb35df85accfe280100d60cb17d018a68c3b142"
 SOURCE_REV = "ccfefb409d4c071d9c97a2e2dae5a17363ec6cab"
 TRACTABLE_VERSION = "1.0.0"
 SCRIPTS_PROJECT = ROOT / "_project/scripts"

@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "Added an opt-in admission wait to the host lock: `python -m benchbox.utils.host_lock run --admit --admit-wait-minutes N` (and `make heavy-run HEAVY_ADMIT_WAIT=N`) re-checks a refused admission every minute for up to N minutes with the lock released in between."
+    }
+  ]
+}
