@@ -25227,6 +25227,13 @@
       "status": "done",
       "title": "Add LakeSail Sail platform support for SQL and DataFrame benchmarking"
     },
+    "lakesail-tpcds-obt-sf01-uat-failure-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "LakeSail TPC-DS-OBT at SF 0.1 failed in UAT after about 20 minutes; the cause was never found"
+    },
     "lakesail-uat-failures-20261030": {
       "claim": null,
       "needs": [],

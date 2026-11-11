@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "The cause of the SF 0.1 failure is recorded with the server and client output.",
+    "Either LakeSail completes TPC-DS-OBT at SF 0.1 and the bundle is published, or the limit is registered with the reason."
+  ],
+  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.",
+  "description": "## Problem\nIn the UAT sweep of 2026-11-11 that produced the published TPC-DS-OBT results, LakeSail passed SF 0.01 and failed SF 0.1 after about 20 minutes. The original error was not recorded because the harness runs the benchmark with `--quiet`. A diagnostic re-run reported 'Cannot connect to LakeSail Sail at sc://localhost:50051', which may be a consequence (the server had gone) rather than the cause. As a result the published SF 0.1 cohort has three platforms and no LakeSail result. Versions: PySail 0.7.1, PySpark client 4.2.0. Local run outputs for that sweep have been deleted.\n\n## Change\nRe-run LakeSail TPC-DS-OBT at SF 0.1 through the UAT entry point with output kept, and determine whether the server crashed (memory, timeout) or the load or a query failed. Fix or register the limit. If it then passes all 93 statements, stage and publish the bundle so the SF 0.1 cohort has four platforms.\n\n## Guardrails\n- Heavy work only through the UAT entry point or `make heavy-run`.\n- Publish only a run with zero failed statements and validation passed, staged with `make corpus-stage-local`.",
+  "links": [
+    "tests/uat",
+    "results-data/CORPUS_NOTES.md",
+    "benchbox/platforms"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba",
+      "at": "2026-11-11T23:47:21Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "99e30bd1d4894b43b77a91f40a3ed9eb",
+      "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    }
+  ]
+}
