@@ -35838,12 +35838,17 @@
       "title": "Tell users when a run uses a non-standard scale factor (CLI and MCP)"
     },
     "scale-factor-registry-caps-vs-docs-20261013": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T23:20:27Z",
+        "generation": "04f1a2abb59a4eb7a860720713be549b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba"
+      },
       "needs": [
         "scale-factor-consistency-umbrella-20261111"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Accept any in-range scale factor and keep scale lists as the recommended set"
     },
     "scd2-basic-idempotency-and-cleanup-scoping": {
