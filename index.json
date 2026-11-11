@@ -30317,7 +30317,9 @@
     "pr-arm-wait-mode-20261111": {
       "claim": null,
       "needs": [
-        "retro-docs-stale-corrections-20261111"
+        "retro-docs-stale-corrections-20261111",
+        "preflight-runs-docs-inventory-and-project-reference-guards-20261110",
+        "heavy-run-admission-wait-20261111"
       ],
       "priority": "medium-high",
       "status": "open",
