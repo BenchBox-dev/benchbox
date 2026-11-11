@@ -3,7 +3,7 @@
     "A UAT ai_primitives cell on a runner without a provider no longer produces a validator error.",
     "A run where every query is skipped is not reported as passed."
   ],
-  "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), artifact release-uat-v0.5.0rc2-stage1-duckdb: cells.jsonl, uat_gate_summary.json, validator_rollup.tsv, uat_lifecycle.log and per-cell logs. The artifacts do not keep result JSON, so query-level causes need a local rerun of the named cells.",
+  "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), artifact release-uat-v0.5.0rc2-stage1-duckdb: cells.jsonl, uat_gate_summary.json, validator_rollup.tsv, uat_lifecycle.log and per-cell logs. The artifacts do not keep result JSON, so query-level causes need a local rerun of the named cells.\n\nClosed 2026-11-11 against current evidence: PR #3747: execution.py raises \"executed no queries\" for standard/power runs with no results (test_base_adapter.py:565), and UAT prunes ai_primitives on platforms without AI functions with a recorded reason (compatibility.py). Trunk UAT 42718296767 (52615914) shows ai_primitives pruned on DuckDB/SQLite/Spark/QuestDB; no validator errors; scheduled 42789483182 (ce39d768) green.",
   "description": "DuckDB ai_primitives at SF 0.01, 0.1 and 1 passed in release UAT but every result failed validation with 'summary.queries.total must be greater than 0 for a public result' (benchbox/validation/bundle.py:1316). With no model provider on the runner every query is skipped, yet the run exits 0 and writes a result. Decide the contract: the run should fail or be classified as skipped when no query can execute, or UAT should prune ai_primitives on runners without a provider.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/actions/runs/40971306663"
@@ -24,6 +24,14 @@
       "generation": "a7c091440b2543f2baaf7b07423c3479",
       "op": "take",
       "op_id": "1e102889dd2949a3baf41b223dc78b42",
+      "session_id": "9c850cdf96994544b99810e1605fa398"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7bc97e5b905b990114418f4a",
+      "at": "2026-11-11T02:31:46Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4abe35c076da4cc48a7ea1fab5bfc552",
       "session_id": "9c850cdf96994544b99810e1605fa398"
     }
   ]
