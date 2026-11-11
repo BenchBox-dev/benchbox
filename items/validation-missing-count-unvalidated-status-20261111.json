@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Tests cover: lookup miss fails; intended absence is unvalidated and not counted as passed; known expectation match passes; mismatch fails; classified failure and timeout unchanged.",
+    "Bundle summaries and the submission validator show unvalidated queries distinctly.",
+    "Merged with a SHIP review."
+  ],
+  "description": "Owner decision 2026-11-11 on comment-cleanup-missing-count-decision: benchbox/core/validation/query_validation.py (about :277-294 and :323-337) returns is_valid=True when no expected count exists, so a lookup miss (typo, missing variant key) and an intended absence of a reference answer both pass silently and count as validated in published bundles.\n\nChange. Distinguish the two. A lookup miss for a benchmark/query that has reference answers fails validation with a named error. An intended absence (benchmark or scale with no reference answers) is recorded as 'unvalidated': not counted as passed, labelled in result bundles and summaries, and visible to the bundle validator. Classified loader failures, timeouts and single-flight publication keep their current behaviour. This is a soundness path: needs the soundness review.\n\nGuardrails: linked worktree; no explanatory comments; changelog fragment; heavy runs through make heavy-run.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T23:40:26Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "41d41495284f46b5907c763b70ec9e27",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
+    }
+  ]
+}
