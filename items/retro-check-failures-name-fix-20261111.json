@@ -21,7 +21,7 @@
     "scripts/comment_syntax.py",
     "docs/internal/comment-policy.md"
   ],
-  "not_before": "2026-11-11T17:45:00Z",
+  "not_before": "2026-11-11T15:47:25Z",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
@@ -87,6 +87,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "8a1d32cf51444005b52dd746feaeb901",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T15:47:05Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "58265aa611494c4cb5e29e3e5a773028",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
