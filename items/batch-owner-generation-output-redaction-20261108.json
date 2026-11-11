@@ -4,7 +4,7 @@
     "Routine progress, command diagnostics and tool summaries omit or redact owner generations, while the authorized private ledger and recovery flow continue working.",
     "If a reusable output surface is responsible, add a regression case that asserts a synthetic generation never appears in routine output; if caller-only, amend the applicable procedure instead of inventing a tool defect."
   ],
-  "context": "Disclosure reported by the batch leader. No finding of public disclosure or unauthorized use. Do not copy the historical generation into the tracker or attempt to reuse completed-batch credentials.",
+  "context": "Disclosure reported by the batch leader. No finding of public disclosure or unauthorized use. Do not copy the historical generation into the tracker or attempt to reuse completed-batch credentials.\n\nRevalidated 2026-11-11: still required; origin not yet established by the item. On origin/develop (c7b75c80bc) scripts/batch_integration.py deliberately prints the generation: `batch start` builds the register_batch payload with `owner_generation` (lines 521-560), `recover` mints a new generation and prints `new_owner_generation` plus `expected_owner_generation` (lines 1965-1995), and the advance payload prints it (line 1499); tests assert the generation is not written to the tool-call log (tests/unit/scripts/test_batch_integration.py:1591) but nothing asserts it is absent from printed output. docs/agent/batch-feature-delivery.md:140 says \"no tool serves the generation back\", which these printed payloads contradict, so either the payloads should omit or mask the value (leader pastes it from the ledger) or the doc should state that the payloads carry it. The linked PR #4041 is \"fix(plans): redact local paths in DataFrame plans companions\", unrelated to batches; the intended batch PR is probably #4042 (b19dec0d03) and the link should be corrected when the item is worked.",
   "description": "The publication batch leader reported that its private batch owner generation appeared once in session output. It did not appear in a public note, and the batch is complete; no active credential value is included here. Inspect the actual output path to establish whether a tool prints the generation or a caller logged a credential-bearing payload, then prevent recurrence without removing private recovery material.",
   "links": [
     "docs/agent/batch-feature-delivery.md",
@@ -18,6 +18,14 @@
       "op": "create",
       "op_id": "f1c55f6b716747799c8d19a51d4ceed4",
       "session_id": "dc59872de7f0484eafa9032416c81607"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:36:55Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7e4a788fc10c4518b6ff625d5fac224c",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
