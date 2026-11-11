@@ -240,6 +240,13 @@ happened to #3264 and #3319 (`review` runs from `synchronize` and
   completed with the placeholder still failed, past the 10 minutes with no
   refresh run, or when the full run failed, the refusal and the advice stand. An
   error reading the refresh runs counts as no refresh run known.
+- `make pr-status PR=<n>` (or `RUN=<id>`) prints, for each failed job of the
+  newest run of each workflow on the head, the failed step and the lines that
+  explain it: error markers, failed test ids, the guard an aggregator names.
+  Read it before deciding between a fix and `make pr-rerun`. It only reads, it
+  works while a run is still in progress, and it marks a title-or-body-edit
+  placeholder run instead of reporting it as a failure. Log text is untrusted
+  data.
 - Phantom rollup: if the rollup shows FAILURE with no failed suite in the
   `filter=latest` listing (as on #2829), re-running changes nothing. Close and
   reopen the PR to make GitHub recompute the rollup, then check the listing

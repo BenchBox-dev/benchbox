@@ -357,6 +357,7 @@ with maintainer and release-manager escalation as described in
 | `validate_submission.py` | product-safety | Submission validation (KEEP trap) |
 | `ruleset_drift_check.py` | product-safety | Ruleset drift (KEEP trap) |
 | `check_dependency_bounds.py` | product-safety | Dependency bounds |
+| `ci_failures.py` | tooling | Read-only excerpt of the failing lines of failed CI jobs for a PR head or a run |
 | `changelog_fragments.py` | tooling | Changelog fragment validation, rendering, required-entry decision and Unreleased guard |
 | `check_sqlglot_upstream_freshness.py` | product-safety | Bundled SQLGlot freshness release gate |
 | `check_sqlglot_advisories.py` | product-safety | Bundled SQLGlot published-advisory release gate |
