@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "`uv run -- benchbox run --dry-run <tmp> --platform duckdb --benchmark tpch --scale 2 --non-interactive` exits 0 and its output contains the note naming tpch and the standard values; with `--scale 1` the note is absent.",
+    "`uv run -- benchbox datagen --benchmark ssb --scale 0.02 --output <tmp>` (run through `make heavy-run`) generates data and prints the note.",
+    "`rg -n 'native data generator crashes' benchbox` finds nothing.",
+    "The MCP discovery payload for tpch reports minimum 0.01, maximum 100000 and a non-exact list; for joinorder it reports an exact list (unit test).",
+    "An MCP dry run at tpch scale 2 succeeds and carries the note; at scale 1 it carries none (unit test).",
+    "`make pr-preflight` passes on the feature branch head."
+  ],
+  "description": "## Problem\nOnce off-list scale factors run, the user needs to know the result is not at a standard scale. Separately, the interactive scale prompt in `benchbox/cli/benchmarks.py` (`_validate_scale_choice`) tells every benchmark's user that 'The native data generator crashes with fractional scale factors', which is false. MCP discovery (`benchbox/mcp/tools/discovery.py`) reports `options` and `minimum` but not the accepted range.\n\n## Change\n1. `benchbox/cli/benchmarks.py`, `BenchmarkManager.validate_scale_factor`: when the value is accepted but not listed, print one line through the existing console: the scale is not a standard one for this benchmark, the standard values are listed, and results are not comparable with published results. `run` and `datagen` both call this method, so one place covers both. Nothing is printed for a listed value, and `--quiet` behaviour follows the console already in use.\n2. `_validate_scale_choice`: replace the false sentence with one that states the minimum only.\n3. `benchbox/mcp/tools/discovery.py`: beside `options` and `minimum`, report the maximum (100000, or the single value for a fixed benchmark) and whether the list is exact. Update the MCP schema or reference text that describes this payload if one exists in the repository.\n4. MCP run path (`benchbox/mcp/tools/benchmark.py`): when a run, dry run or validation is requested at an accepted off-list scale, include the same note in the response through the structure the tool already uses for warnings or messages. If the tool has no such structure, stop and report rather than inventing one.\n5. Tests for the note (printed for tpch 2, absent for tpch 1), the corrected prompt text, and the discovery payload.\n\n## Decision gates\n- Before editing, confirm how `datagen` reaches scale validation and that it goes through `BenchmarkManager.validate_scale_factor`. If it does not, make it print the same note through the same helper and say so in the report.\n- If the MCP reference is contract-checked by the site (`doc-contracts`), list the exported fields that change and stop for the leader to add them to the site feature.\n\n## Guardrails\n- Work only in the feature worktree, never the primary clone. Run `make agent-write-preflight` first.\n- Touch only the files this item names. Report anything adjacent as noticed, not changed.\n- No explanatory comments or docstrings in first-party code (`make comment-policy-check`).\n- No edit to `CHANGELOG.md`; the feature carries one `changelog.d/` fragment.\n- No full test tier, benchmark or data generation outside `make heavy-run` or a lock-taking target.\n- Subagents make no tracker write, push nothing and open no pull request.\n- The note is informational. It never blocks, prompts or changes an exit code.\n- No row-count or duration estimate is added to the note.\n- No change to the picker's listed options or to `tests/uat`.\n",
+  "links": [
+    "benchbox/cli/benchmarks.py",
+    "benchbox/mcp/tools/discovery.py",
+    "benchbox/mcp/tools/benchmark.py",
+    "benchbox/cli/commands/run.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba",
+      "at": "2026-11-11T20:15:49Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "cd731238e64b473c93e49fc5036cf09b",
+      "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    }
+  ]
+}
