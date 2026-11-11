@@ -1,14 +1,14 @@
 {
   "acceptance": [
-    "Start check and #4062 state recorded.",
-    "Lock values independently recomputed and matching the release record; both wheel URLs hash to the recorded sha256.",
-    "Status-text consumer inventory recorded in the PR body (none, or migrated with tests).",
-    "docs/internal/review-v2.md :364-368 (a no-verdict review is posted once per head and cause) and :744-749 (absent-attempt line format) updated to release-A behaviour.",
+    "Start check recorded: #4062 merged as f6dec33547 on 2026-11-11; no other open PR changes .github/theseus-lock.json except the v0.2.10 promotion PR #4123.",
+    "Lock values (version 0.2.10, source_commit, workflow_sha, source_sha256, delta_sha256 against the v0.2.9 lock, artifact sha256, both wheel URLs) independently recomputed and matching the v0.2.10 release record; both wheel URLs hash to the recorded sha256; the same SHA in `uses:` and `with.theseus_ref` of review-gate.yml and review-verdict.yml.",
+    "Status-text consumer inventory recorded in the PR body (none, or migrated with tests); scripts/pr_landing.py waiting-description parsing covered by the dual-read change.",
+    "docs/internal/review-v2.md (a no-verdict review is posted once per head and cause; absent-attempt line format) updated to release-A behaviour; re-find the current line numbers, the old :364-368 and :744-749 refs may have moved.",
     "Promotion and workflow contract tests pass via make heavy-run; comment-policy 0; make pr-preflight passes.",
     "Merged to develop with hosted SHIP and green required checks; merge SHA recorded here.",
-    "After merge, the first BenchBox PR reviewed under release A shows the new status descriptions (link recorded)."
+    "After merge, the first BenchBox PR reviewed under v0.2.10 shows the new status descriptions (link recorded)."
   ],
-  "context": "Part of theseus-review-output-format-20261110.\n\n2026-11-10: now needs benchbox-review-format-dual-read-20261110 because release A changes the review-gate waiting description that scripts/pr_landing.py:695 parses; without the dual-read a waiting gate would be treated as a hard failure and block arming.",
+  "context": "Part of theseus-review-output-format-20261110.\n\n2026-11-10: now needs benchbox-review-format-dual-read-20261110 because release A changes the review-gate waiting description that scripts/pr_landing.py:695 parses; without the dual-read a waiting gate would be treated as a hard failure and block arming.\n\nRevalidated 2026-11-11: Release A is Theseus v0.2.10, not v0.2.8/v0.2.9. v0.2.9 (tag 2026-11-11, PR #68) shipped as v0.2.8 + #58 + #63 only, so it does not carry the reader/status/not-reviewed changes; v0.2.10 (PR #70, release 2026-11-11T19:26Z) re-lands #59, #60 and #62 plus #69 (shared thread allowance). BenchBox .github/theseus-lock.json on origin/develop (c7b75c80bc) is still v0.2.9 (source_commit 370c10c4). The start check is met: #4062 merged as f6dec33547 (2026-11-11T16:47Z), so the oracle-gate cutover is on develop and the live ruleset 15611785 requires review-gate (integration 5201041), not oracle-gate. The promotion is open as BenchBox PR #4123 'promote Theseus v0.2.10' (not draft); its body records independent recomputation of the wheel sha256 (d618fc31...) and the status-text consumer inventory. Remaining: land #4123 with hosted SHIP and green checks, record the merge SHA, and link the first PR reviewed under v0.2.10. Dual-read item benchbox-review-format-dual-read-20261110 is done, so that need is met. Other open PRs #4118 and #4119 touch .github/review.yml and the review callers; check for conflicts with #4123 before arming.",
   "description": "Lock-only promotion of BenchBox to Theseus release A, following the existing promotion procedure (as for v0.2.8: .github/theseus-lock.json version, source_commit, workflow_sha, source_sha256, delta_sha256 from the then-current lock, artifact sha256 and both URLs; the same SHA in `uses:` and `with.theseus_ref` of .github/workflows/review-gate.yml and review-verdict.yml; changelog fragment).\nStart check (recorded here before work): no other open BenchBox PR changes .github/theseus-lock.json or the review callers (the adoption PR for benchbox-adopt-theseus-v025-review-guidance-20261107 changes review-verdict.yml); PR #4062 is merged or closed (state recorded). If #4062 has not merged, this promotion must carry its oracle-gate cutover (ruleset, ruleset_review_enforcement.py, caller CONTEXTS, repo-admin-settings.md), and oracle-gate is removed from the live ruleset first with before/after captures (settings authority granted to the coordinator).\nBefore promoting, confirm BenchBox does not parse any review-verdict or review-gate status description text that release A changed (rg across scripts/, _project/scripts/, tools/, make/, .github/); if one does, migrate it in this PR with tests.\nGuardrails: BenchBox AGENTS.md write workflow; recompute and verify every lock value independently (download both wheels and hash them); never weaken a required check; hosted SHIP on the final head; arm via make pr-arm; no live model calls.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4062",
@@ -38,6 +38,14 @@
       "op": "update",
       "op_id": "74ae04e067654be4b5d69357bffe55ab",
       "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:26:26Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "dc0d9053cd374819aaa1be4d6efdada2",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
