@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Decision gate (owner action): applying to the global loader folders changes files in the owner's home directory; do it only when the owner asks, and never resolve the conflicts in the owner's clone without being asked.",
+    "Verification: the catalog's test suite passes on the PR; after apply, `skill-sync verify` and `check` pass and `~/.claude/skills/benchbox/references/release.md` has no 'frozen for infrastructure' line.",
+    "Done when the template PR is merged and the global targets are applied, or the owner declines."
+  ],
+  "description": "Found on 2026-11-11 while delivering retro-navigation-fixes-umbrella-20261111 (or in the retrospective over 25 agent sessions that preceded it) and not addressed there.\n\nCross-repository item (joeharris76/skill-sync-skills and the owner's home directory).\n\nProblem. Catalog commit cdb35df85accfe280100d60cb17d018a68c3b142 removed the stale 'develop is frozen' release line and added the bundled TPC spec paths, and BenchBox's tracked mirror is pinned to it (PR #4102). The global deployment template `deployment/global/skill-sync.conf` still pins the group that holds `benchbox` at d1b14f9f, so `~/.claude/skills`, `~/.codex/skills` and `~/.agents/skills` still serve the old text to sessions that load the global copy. Separately, the local catalog clone `~/Developer/skill-sync-skills` has unresolved merge conflicts in README.md and deployment/global/skill-sync.conf and is behind origin/main; those are the owner's working state and were not touched.\n\nChange. Bump the template pin through a catalog PR, then copy the rev into `~/.skill-sync-deployment/skill-sync.conf` and run preview, apply, verify and check as the catalog README describes.",
+  "links": [
+    "https://github.com/joeharris76/skill-sync-skills/pull/114",
+    "https://github.com/BenchBox-dev/benchbox/pull/4102"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T16:38:32Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "efc1d194064f41bb88ad7efde9158ef8",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    }
+  ]
+}
