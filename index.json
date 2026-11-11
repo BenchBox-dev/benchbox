@@ -34831,10 +34831,15 @@
       "title": "Make three check failures name their fix instead of sending agents into checker source"
     },
     "retro-docs-stale-corrections-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T13:41:50Z",
+        "generation": "c4963968cb924fa5b3b4d9379d9e82c4",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Correct stale agent and maintainer docs that sent sessions to wrong or missing information"
     },
     "retro-navigation-fixes-umbrella-20261111": {
