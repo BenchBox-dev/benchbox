@@ -39552,7 +39552,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "blocked",
+      "status": "open",
       "title": "Investigate the hosted TPC-H slowdown after the execution-variants schema change"
     },
     "table-format-integration-ci-coverage": {
