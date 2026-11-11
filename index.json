@@ -31246,6 +31246,13 @@
       "status": "done",
       "title": "Publication Pages deploy never reaches terminal success; live bytes and durable journal head diverge"
     },
+    "publish-tpcds-obt-subscale-results-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Publish TPC-DS OBT SF 0.01 and SF 0.1 results to the corpus and Explorer"
+    },
     "published-history-retention-premise-predates-oracle": {
       "claim": null,
       "needs": [

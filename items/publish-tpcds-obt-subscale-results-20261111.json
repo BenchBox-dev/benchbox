@@ -1,0 +1,28 @@
+{
+  "acceptance": [
+    "Each platform runs `tpcds_obt` at SF 0.01 and 0.1 from a clean checkout containing beab5557ef, and only runs where every query succeeds with `summary.validation == passed` are staged.",
+    "A cohort is admitted only if at least 3 platforms complete; failures are reported, not hidden.",
+    "Staged bundles are anonymized with internal manifests, the inventory is regenerated, and `results-data/validate_corpus.py` and `scripts/validate_submission.py --trust-internal-source --require-manifest` pass.",
+    "CORPUS_NOTES.md records the runs and REGENERATION.md no longer says OBT is SF >= 1 only.",
+    "The develop PR merges, the published-results mirror PR merges, and the site-inputs bundle that carries the bundles is reported."
+  ],
+  "description": "TPC-DS OBT now accepts scales below 1 (PR #4088, beab5557ef), but the corpus and Explorer only have SF 1 OBT cohorts. Publish SF 0.01 and SF 0.1 cohorts from fresh local runs on the merged code. Each new cohort needs at least 3 rankable comparison identities (`results-data/validate_corpus.py`). Owner choice (2026-11-11): DuckDB, DataFusion, Apache Doris and LakeSail; SF 10 is not published.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4088",
+    "results-data/validate_corpus.py",
+    "results-data/REGENERATION.md",
+    "results-data/CORPUS_NOTES.md",
+    "docs/agent/maintainer-bundles.md",
+    "docs/internal/results-phase-2-runbook.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba",
+      "at": "2026-11-11T15:43:43Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "94c1a17c4aef41d3a430e5049e4d01f4",
+      "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    }
+  ]
+}
