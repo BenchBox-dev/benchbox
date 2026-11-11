@@ -327,6 +327,7 @@ benchmark_metadata:
     scale_options:
     - 1.0
     min_scale: 1.0
+    scale_policy: fixed
     complexity: Low
     estimated_time_range:
     - 1
@@ -389,6 +390,7 @@ benchmark_metadata:
     scale_options:
     - 1.0
     min_scale: 1.0
+    scale_policy: fixed
     complexity: High
     estimated_time_range:
     - 30

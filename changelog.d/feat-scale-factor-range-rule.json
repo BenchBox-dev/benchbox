@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "Every benchmark now accepts any scale factor from its minimum up to 100000 (whole numbers from 1), not only the values in its scale list; JoinOrder and the metadata primitives still accept only SF 1.",
+      "details": ["Values outside the range are rejected with a message that states the accepted range and the standard values."]
+    },
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "A scale factor that is accepted but not a standard value for the benchmark now prints a one-line note that results are not comparable with published results, on the command line (run, datagen and the interactive prompt) and in MCP dry-run and validate-only responses. MCP benchmark discovery also reports the accepted maximum and whether the listed scales are exact."
+    },
+    {
+      "category": "before-you-upgrade",
+      "breaking": true,
+      "lead": "Minimum scale factor is 0.01",
+      "text": "The minimum scale factor is now 0.01 for every benchmark. TPC-DS, TPC-DS-OBT, CoffeeShop and JoinOrder Synthetic no longer accept 0.001, and the CoffeeShop default scale changed from 0.001 to 0.01."
+    }
+  ]
+}

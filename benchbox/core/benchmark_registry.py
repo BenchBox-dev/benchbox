@@ -380,48 +380,91 @@ def get_categories() -> list[str]:
     return result
 
 
-def validate_scale_factor(
-    benchmark_id: str,
-    scale_factor: float,
-) -> None:
-    from benchbox.core.errors import ScaleFactorNotSupportedError
+MAX_SCALE_FACTOR: float = 100000.0
+_SCALE_MATCH_TOLERANCE = 1e-9
 
-    if benchmark_id in ("tpcds", "tpcds_obt"):
-        from benchbox.core.tpcds.compliance import validate_tpcds_scale
 
-        validate_tpcds_scale(scale_factor)
-        return
+@dataclass(frozen=True)
+class ScaleFactorRule:
+    minimum: float
+    maximum: float
+    standard: tuple[float, ...]
+    exact: bool
 
+
+def get_scale_factor_rule(benchmark_id: str) -> ScaleFactorRule:
     meta = get_benchmark_metadata(benchmark_id)
     if meta is None:
         available = ", ".join(list_benchmark_ids())
         raise ValueError(f"Unknown benchmark '{benchmark_id}'. Available: {available}")
 
-    if benchmark_id == "clickbench":
-        try:
-            sf = float(scale_factor)
-        except (TypeError, ValueError) as exc:
-            raise ValueError(f"CLICKBENCH requires a finite scale_factor (got {scale_factor}).") from exc
-        if not math.isfinite(sf):
-            raise ValueError(f"CLICKBENCH requires a finite scale_factor (got {scale_factor}).")
-        min_scale = meta.get("min_scale")
-        if min_scale is not None and sf < min_scale:
-            raise ValueError(f"{benchmark_id.upper()} requires scale_factor >= {min_scale} (got {scale_factor}).")
-        return
+    options = tuple(sorted(float(opt) for opt in meta.get("scale_options") or ()))
+    if meta.get("scale_policy") == "fixed":
+        return ScaleFactorRule(minimum=options[0], maximum=options[-1], standard=options, exact=True)
 
-    scale_options = meta.get("scale_options")
-    if scale_options:
-        try:
-            sf = float(scale_factor)
-        except (TypeError, ValueError) as exc:
-            raise ScaleFactorNotSupportedError(benchmark_id, scale_factor, scale_options) from exc
-        if not any(abs(sf - float(opt)) < 1e-9 for opt in scale_options):
-            raise ScaleFactorNotSupportedError(benchmark_id, scale_factor, scale_options)
-        return
-
+    if benchmark_id.lower() == "tpcds":
+        options = tuple(sorted({*options, *(float(opt) for opt in _registry().tpc_official_scale_options)}))
     min_scale = meta.get("min_scale")
-    if min_scale is not None and scale_factor < min_scale:
-        raise ValueError(f"{benchmark_id.upper()} requires scale_factor >= {min_scale} (got {scale_factor}).")
+    if min_scale is None and options:
+        min_scale = options[0]
+    return ScaleFactorRule(
+        minimum=float(min_scale if min_scale is not None else 0.01),
+        maximum=MAX_SCALE_FACTOR,
+        standard=options,
+        exact=False,
+    )
+
+
+def _is_standard_scale(rule: ScaleFactorRule, scale_factor: float) -> bool:
+    return any(abs(scale_factor - opt) < _SCALE_MATCH_TOLERANCE for opt in rule.standard)
+
+
+def validate_scale_factor(
+    benchmark_id: str,
+    scale_factor: float,
+) -> bool:
+    from benchbox.core.errors import ScaleFactorNotSupportedError, ScaleFactorOutOfRangeError
+
+    rule = get_scale_factor_rule(benchmark_id)
+
+    if benchmark_id.lower() in ("tpcds", "tpcds_obt"):
+        from benchbox.core.tpcds.compliance import validate_tpcds_scale
+
+        if isinstance(scale_factor, float) and not math.isfinite(scale_factor):
+            raise ScaleFactorOutOfRangeError(
+                benchmark_id, scale_factor, rule.minimum, rule.maximum, list(rule.standard)
+            )
+        validate_tpcds_scale(scale_factor)
+        return _is_standard_scale(rule, float(scale_factor))
+
+    try:
+        sf = float(scale_factor)
+    except (TypeError, ValueError) as exc:
+        if rule.exact:
+            raise ScaleFactorNotSupportedError(benchmark_id, scale_factor, list(rule.standard)) from exc
+        raise ScaleFactorOutOfRangeError(
+            benchmark_id, scale_factor, rule.minimum, rule.maximum, list(rule.standard)
+        ) from exc
+
+    if rule.exact:
+        if not _is_standard_scale(rule, sf):
+            raise ScaleFactorNotSupportedError(benchmark_id, scale_factor, list(rule.standard))
+        return True
+
+    in_range = math.isfinite(sf) and rule.minimum <= sf <= rule.maximum
+    if not in_range or (sf >= 1 and sf != math.floor(sf)):
+        raise ScaleFactorOutOfRangeError(benchmark_id, scale_factor, rule.minimum, rule.maximum, list(rule.standard))
+    return _is_standard_scale(rule, sf)
+
+
+def nonstandard_scale_note(benchmark_id: str, scale_factor: float) -> str | None:
+    if validate_scale_factor(benchmark_id, scale_factor):
+        return None
+    standard = ", ".join(f"{opt:g}" for opt in get_scale_factor_rule(benchmark_id).standard)
+    return (
+        f"Scale factor {scale_factor:g} is not a standard scale for {benchmark_id} "
+        f"(standard: {standard}); results are not comparable with published results."
+    )
 
 
 def get_presort_table_configs(benchmark_id: str) -> dict[str, Any] | None:
@@ -502,5 +545,9 @@ __all__ = sorted(
         "list_loader_benchmark_ids",
         "list_public_benchmark_ids",
         "validate_scale_factor",
+        "get_scale_factor_rule",
+        "nonstandard_scale_note",
+        "ScaleFactorRule",
+        "MAX_SCALE_FACTOR",
     ]
 )
