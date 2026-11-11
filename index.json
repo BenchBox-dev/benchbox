@@ -35974,6 +35974,13 @@
       "status": "done",
       "title": "Strip applied tuning statements when staging seed corpus bundles"
     },
+    "seeded-dataframe-tpch-validation-uncertain-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Decide whether a seeded DataFrame TPC-H run should stay unstageable while the same seeded SQL run passes"
+    },
     "seek-formal-legal-review-of-imdb-dataverse-terms": {
       "claim": null,
       "needs": [],

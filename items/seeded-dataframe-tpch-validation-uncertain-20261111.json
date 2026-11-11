@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The intended validation status for a seeded DataFrame TPC-H run with skipped parameter-sensitive counts is decided and recorded",
+    "SQL and DataFrame paths either agree or the difference is documented where maintainers stage bundles"
+  ],
+  "description": "Found 2026-11-11. With `--seed 42` at SF 0.01, DuckDB (SQL) and Polars DataFrame both skip the 8 parameter-sensitive row counts (Q2, Q9, Q11, Q13, Q16, Q18, Q20, Q21). The SQL bundle records summary.validation `passed`; the DataFrame bundle records `uncertain` (benchbox/core/dataframe/query_validation.py: any skipped row gives UNCERTAIN), so corpus staging skips it as validation_not_clean. At SF 1 a seeded DataFrame run has no reference at all, and `--official` requires a seed, so no DataFrame TPC-H bundle can be both official and stageable. The live corpus shows the effect: every Polars TPC-H result is unranked. Without a seed the Polars SF 0.1 run validates 22 of 22 and stages. Decide whether the stricter DataFrame rule is intended; if so document that DataFrame corpus runs must use default parameters, and if not align the two paths.",
+  "links": [
+    "BenchBox-dev/BenchBox: benchbox/core/dataframe/query_validation.py",
+    "BenchBox-dev/BenchBox: results-data/SEED_CORPUS_SPEC.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ce763d5976f477ecde9610ed",
+      "at": "2026-11-11T20:49:49Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "242e24d5d7494f3290cb40902445adb2",
+      "session_id": "2aa9edd3163b4d51b2004989f5bf7f8d"
+    }
+  ]
+}
