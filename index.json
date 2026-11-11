@@ -27369,10 +27369,15 @@
       "title": "Find why scheduled-workflow-liveness reports stale runs and harden its lookup"
     },
     "nightly-liveness-success-semantics-review-20261010": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T20:41:11Z",
+        "generation": "2f7f79d6af864257bc845ccb3590100b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Make scheduled-workflow liveness and execution-success signals distinct"
     },
     "nightly-macos-dataframe-insufficient-memory-flake": {
