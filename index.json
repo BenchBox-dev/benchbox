@@ -39641,10 +39641,15 @@
       "title": "Theseus: collapse superseded bot verdict reviews as outdated after a new verdict posts"
     },
     "theseus-review-not-reviewed-output-20261110": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T00:15:18Z",
+        "generation": "1dc1e65862f04d96aa9e047a80de8a9f",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Theseus: replace raw provider errors in not-reviewed output with human reasons, posted once per head and cause"
     },
     "theseus-review-output-format-20261110": {
