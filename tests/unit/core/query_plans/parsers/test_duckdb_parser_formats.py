@@ -365,3 +365,95 @@ class TestDuckDBParserEdgeCasesJSON:
             node = node.children[0]
             depth += 1
         assert depth > 10
+
+
+def _scan(table: str) -> dict:
+    return {"name": "SEQ_SCAN", "extra_info": {"Table": table}, "children": []}
+
+
+def _parse(node: dict):
+    import json
+
+    plan = DuckDBQueryPlanParser().parse_explain_output("q", json.dumps([node]))
+    assert plan is not None
+    return plan
+
+
+def _parse_root(node: dict):
+    return _parse(node).logical_root
+
+
+@pytest.mark.parametrize(
+    ("declared", "expected"),
+    [
+        ("INNER", "inner"),
+        ("LEFT", "left"),
+        ("RIGHT", "right"),
+        ("OUTER", "full"),
+        ("SEMI", "semi"),
+        ("RIGHT_SEMI", "semi"),
+        ("ANTI", "anti"),
+        ("RIGHT_ANTI", "anti"),
+        ("MARK", "mark"),
+        ("SINGLE", "single"),
+    ],
+)
+def test_json_join_type_follows_the_declared_join_type(declared: str, expected: str) -> None:
+    root = _parse_root(
+        {
+            "name": "HASH_JOIN",
+            "extra_info": {"Join Type": declared, "Conditions": "o_custkey = c_custkey"},
+            "children": [_scan("orders"), _scan("customer")],
+        }
+    )
+
+    assert root.to_dict()["join_type"] == expected
+
+
+def test_json_join_types_that_differ_get_different_fingerprints() -> None:
+    def fingerprint(declared: str) -> str:
+        node = {
+            "name": "HASH_JOIN",
+            "extra_info": {"Join Type": declared},
+            "children": [_scan("orders"), _scan("customer")],
+        }
+        return _parse(node).plan_fingerprint
+
+    assert fingerprint("INNER") != fingerprint("SEMI")
+    assert fingerprint("SEMI") != fingerprint("ANTI")
+
+
+def test_json_join_without_a_declared_type_uses_the_operator_name() -> None:
+    root = _parse_root({"name": "CROSS_PRODUCT_JOIN", "extra_info": "", "children": [_scan("a"), _scan("b")]})
+
+    assert root.to_dict()["join_type"] == "cross"
+
+
+def test_json_sort_keys_are_split_with_their_own_direction() -> None:
+    root = _parse_root(
+        {
+            "name": "ORDER_BY",
+            "extra_info": {"Order By": ["count_star() DESC", "c_orders.c_count DESC NULLS LAST", "n_name ASC"]},
+            "children": [_scan("orders")],
+        }
+    )
+
+    assert root.sort_keys == [
+        {"expr": "count_star()", "direction": "DESC"},
+        {"expr": "c_orders.c_count", "direction": "DESC"},
+        {"expr": "n_name", "direction": "ASC"},
+    ]
+    assert root.limit_count is None
+
+
+def test_json_top_n_records_a_single_descending_key_and_its_limit() -> None:
+    root = _parse_root(
+        {
+            "name": "TOP_N",
+            "extra_info": {"Top": "20", "Order By": "sum((l_extendedprice * (1 - l_discount))) DESC"},
+            "children": [_scan("lineitem")],
+        }
+    )
+
+    assert root.sort_keys == [{"expr": "sum((l_extendedprice * (1 - l_discount)))", "direction": "DESC"}]
+    assert root.limit_count == 20
