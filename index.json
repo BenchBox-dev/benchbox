@@ -40597,7 +40597,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Parallel batch leaders on one todo-db MCP server share one worker identity and serialize on its single claim slot"
     },
     "todo-db-runtime-schema3-batch-capability": {
