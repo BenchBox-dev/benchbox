@@ -5,6 +5,7 @@
     "Soundness review passes if the changed files are soundness paths.",
     "Done when merged."
   ],
+  "context": "2026-11-11: delivered in PR #4120, merged to develop as 591c21ba5e (verified an ancestor of origin/develop). Receipt schema 2: `verify` derives the required guard steps itself from the paths changed since the merge base; an older receipt is refused with a message that says to rerun make pr-preflight.",
   "description": "Found on 2026-11-11 while delivering retro-navigation-fixes-umbrella-20261111 (or in the retrospective over 25 agent sessions that preceded it) and not addressed there.\n\nProblem. PR #4098 made `make pr-preflight` run the docs-reference-inventory, project-references and docs-ownership guards as recorded steps. `scripts/preflight_receipt.py verify` requires ruff, pytest and linux-pytest steps according to the recorded selection, but not the guard steps, so a receipt written by an older recipe, or by a recipe edited to skip them, still satisfies `make pr-open`.\n\nChange. Record the guard selection in the receipt and require the matching steps at verify.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read every cited file on current origin/develop first, because line numbers and commits here are from 2026-11-11 (origin/develop 5bd2c19cc4); close at a merged PR and finish only after the merge is observed.",
   "links": [
     "scripts/preflight_receipt.py",
@@ -35,6 +36,14 @@
       "generation": "bad8376c19bc45c1984d280d647fa6d6",
       "op": "take",
       "op_id": "e13c45d7d2a04b49af77206d7a94c5b4",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T22:32:45Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "327637b6404c464cb28bf85662fff377",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
