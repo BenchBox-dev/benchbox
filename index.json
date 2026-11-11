@@ -36510,6 +36510,13 @@
       "status": "dropped",
       "title": "Check that site docs links to core directories resolve against every ancestor directory, as repo-files.json now lists them"
     },
+    "site-deploy-validator-parity-range-refusal-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Site deploy refused a core bundle because its validator_parity range did not start at the deployed commit"
+    },
     "site-docs-automatic-pseudonym-salt": {
       "claim": null,
       "needs": [
