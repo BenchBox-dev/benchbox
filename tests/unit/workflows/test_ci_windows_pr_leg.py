@@ -67,6 +67,7 @@ def test_windows_leg_runs_the_files_published_by_ci_paths() -> None:
     assert upload["with"]["name"] == download["with"]["name"]
     assert "coverage-selection/windows-test-files.txt" in run["run"]
     assert run["shell"] == "bash"
+    assert run["env"]["BENCHBOX_MAX_XDIST_WORKERS"] == "4"
     assert jobs["ci-paths"]["outputs"]["windows-leg-needed"] == "${{ steps.windows-select.outputs.windows-leg-needed }}"
 
 
