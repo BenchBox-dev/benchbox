@@ -3,7 +3,7 @@
     "One recorded tuned run per platform (Redshift, Databricks, ClickHouse server, ClickHouse cloud) with the post_load statements, phases.post_load_maintenance and receipt verdict, and the exact command, runtime and log path noted in the item.",
     "Any defect found is fixed or filed as its own item."
   ],
-  "context": "Source: PR #2677 close-out (W2 PR C), 2026-10-05. Gap: fake-driver-only verification of the post-load hooks. Related: snowflake-tuned-live-certification-20261001, cloud-executor-live-verification, databricks-liquid-clustering-tuning-review-20260526.",
+  "context": "Source: PR #2677 close-out (W2 PR C), 2026-10-05. Gap: fake-driver-only verification of the post-load hooks. Related: snowflake-tuned-live-certification-20261001, cloud-executor-live-verification, databricks-liquid-clustering-tuning-review-20260526.\n\nRevalidated 2026-11-11: still required; no live certification has run and live cloud runs are not approved. The Snowflake sibling snowflake-tuned-live-certification-20261001 is done, so only Redshift, Databricks and ClickHouse server/cloud remain. Current call sites: base seam benchbox/platforms/base/tuning.py:82 (run_post_load_tunings) and base/data_loading.py:2037; Redshift redshift.py:1337 and :1408; Databricks databricks/adapter.py:2220; ClickHouse clickhouse_cloud.py:727 with the optimize_after_load option registered for clickhouse-local, -server and -cloud (platforms/__init__.py:681-683, clickhouse/tuning.py:262). Other adapters with the call site (Athena, Azure Synapse, DataFusion, MotherDuck, PostgreSQL) remain fake-driver verified only. ClickHouse server needs a reachable server; Docker is not installed locally, so a Docker-based server cannot be used on this machine.",
   "description": "## Problem\nThe post-load seam (PR #2677, merge 4cfa94006b6d563946aacb68f64cb15be0c4a98b) moved maintenance out of apply_unified_tuning and into per-table hooks: ClickHouse OPTIMIZE (opt-in `optimize_after_load`), Redshift ANALYZE (only when `auto_analyze` is off), Databricks Delta OPTIMIZE + ANALYZE, Snowflake RESUME RECLUSTER. It was verified only with fake drivers (all platforms except ClickHouse local) and with chDB 3.6.0 on ClickHouse local. Nothing ran against a live Redshift, Databricks, ClickHouse server or ClickHouse cloud. Synapse and the other adapters that gained the `run_post_load_tunings` call site are also fake-driver only. Snowflake has its own item: snowflake-tuned-live-certification-20261001.\n\n## Change\nFor each platform, run one tuned scale-factor-0.01 TPC-H run through the real CLI and record: statements executed per table in the `post_load` phase, no maintenance during `apply_unified_tuning`, `phases.post_load_maintenance` present with sensible duration and status, `data_loading` excluding it, verdict (`applied_verified` where an introspector exists), and that a refused statement turns the phase FAILED without breaking the run.\n- Redshift: confirm the isolated VACUUM/ANALYZE pass and the hook do not both run with default settings.\n- Databricks: confirm one OPTIMIZE per tuned Delta table and the layout-operation records.\n- ClickHouse server and cloud: confirm `optimize_after_load` is honoured and the curated templates create tables.\n\n## Guardrails (must preserve)\n- No live cloud run without explicit owner approval naming the command, maximum runtime, log path and stop condition.\n- Never relax an assertion to pass.",
   "links": [
     "benchbox/platforms/base/tuning.py",
@@ -19,6 +19,14 @@
       "op": "create",
       "op_id": "a250aed57b7f4e3e9b2b44a1d76f1a8b",
       "session_id": "796d606672604f3d869b9c79926d482c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:34:41Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "54e404037bda40b9a01157bffafc0f5f",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
