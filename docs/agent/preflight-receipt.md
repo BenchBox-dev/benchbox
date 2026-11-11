@@ -9,7 +9,8 @@ can read what ran.
 1. Commit. The receipt is keyed by `git rev-parse HEAD^{tree}`; a dirty working tree, or a tree that changes
    during the run, produces no receipt.
 2. `make pr-preflight` (never wrapped in `make heavy-run`, see `heavy-work.md`). Each step (`changelog-check`,
-   `ruff-check`, `ruff-format`, `pytest`, `linux-pytest`) is recorded with its command, exit code, outcome
+   `ruff-check`, `ruff-format`, the guards `docs-reference-inventory`, `project-references` and
+   `docs-ownership`, `pytest`, `linux-pytest`) is recorded with its command, exit code, outcome
    (`passed`, `failed`, `unverified`, `known-failure`), pytest counts, duration and the last 40 output
    lines, in `~/.cache/benchbox/preflight/<tree>.json` (`BENCHBOX_PREFLIGHT_RECEIPT_DIR` overrides the
    directory). A failed run still writes a receipt, and it blocks `pr-open`.
