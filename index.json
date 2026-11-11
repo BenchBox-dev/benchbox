@@ -25833,6 +25833,13 @@
       "status": "done",
       "title": "Agent and maintainer guidance for the automatic pseudonym salt: staging target, maintainer-bundles doc, guard-refusal rule"
     },
+    "maintainer-plans-bundle-path-docs-and-publish-refusal-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Document the maintainer path for bundles with plans companions and fix the publish refusal text for subscale TPC-H"
+    },
     "maintainer-review-g4-uncertain-deferrals": {
       "claim": null,
       "needs": [],

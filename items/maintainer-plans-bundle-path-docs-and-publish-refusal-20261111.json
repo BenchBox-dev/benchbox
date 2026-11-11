@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "maintainer-bundles.md and results-data/README.md give the exact command sequence for a run with --capture-plans, including the validator flag",
+    "The publish refusal names the actual benchmark and prints the compliance class once",
+    "The intended label for sanitizing a subscale maintainer bundle is decided and documented"
+  ],
+  "description": "Found 2026-11-11. Four gaps made the first plan-capture publication guesswork. (1) `make corpus-stage-local` refuses a raw plans companion (unanonymized raw_explain_output and operator platform_metadata) by design (tests/unit/workflows/test_seed_corpus_pr_base.py::test_seed_staging_refuses_plans_with_raw_explain_output), but docs/agent/maintainer-bundles.md and results-data/README.md do not say the companion must first be sanitized with `benchbox publish run --target <dir>`; the working order is run, publish run to a local dir, corpus-stage-local on the published bundle. (2) The documented check `validate_submission.py --require-manifest <bundle>` rejects every subscale maintainer bundle (`only compliance_class=official may be submitted`); it passes only with `--trust-internal-source`, which neither document mentions. (3) `benchbox publish run` refuses an unofficial_subscale TPC-H result under the default label with `Publish refused: compliance_class=compliance_class=unofficial_subscale ... produced with an unofficial TPC-DS configuration ... See _sources/tpcds-subscale-contract.md`: the prefix is doubled and the text names TPC-DS for a TPC-H run. It also means the sanitize step needs `--label unofficial-research` for bundles the corpus admits and ranks as subscale; decide whether that is intended. (4) results-data/README.md says `benchbox submit` packages raw bytes, while submit.py now anonymizes companions. Consider instead letting corpus-stage-local sanitize plans companions itself with anonymize_plans_payload, which would remove step (1).",
+  "links": [
+    "BenchBox-dev/BenchBox: docs/agent/maintainer-bundles.md",
+    "BenchBox-dev/BenchBox: results-data/README.md",
+    "BenchBox-dev/BenchBox: benchbox/cli/commands/publish.py",
+    "BenchBox-dev/BenchBox: scripts/stage_seed_corpus_bundle.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ce763d5976f477ecde9610ed",
+      "at": "2026-11-11T20:49:39Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "83c6bcaef9614909956f0ff2fb873c1c",
+      "session_id": "2aa9edd3163b4d51b2004989f5bf7f8d"
+    }
+  ]
+}
