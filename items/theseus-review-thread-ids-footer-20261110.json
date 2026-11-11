@@ -7,7 +7,7 @@
     "Goldens regenerated with a rendering-only diff.",
     "Merged to Theseus main with hosted SHIP + green checks + independent review SHIP on the final head (recorded here)."
   ],
-  "context": "Part of theseus-review-output-format-20261110. Ships in release B.",
+  "context": "Part of theseus-review-output-format-20261110. Ships in release B.\n\nRevalidated 2026-11-11: Release A is now Theseus v0.2.10 (published 2026-11-11), so this item's need is met and the 'v0.2.8' thread fixture should be a thread from any release before this change. Implementation is Theseus PR #66 'Lead review bodies with the decision and show finding ids in threads' (open, not draft, head 8d63d1d2, no review decision yet), which carries both this item and theseus-review-verdict-body-redesign-20261110. Ships in v0.2.11 (release B). Remaining: PR #66 merged with hosted SHIP, green checks and independent review SHIP recorded here; confirm the BenchBox digest reads the new thread fixture (dual-read item is done).",
   "description": "Finding ids (D<n>) exist only in a hidden marker today, yet summaries list 'fixed: D11' and the dispute grammar needs `D<n>`. Change the inline thread renderer (proposal section 8.4, step 1 only) to:\n`<mark> **<Severity>** · D<n> · <title>` as the first line, the unchanged detail, then `<sub>Blocks merge · to contest, reply starting <code>Dispute:</code> with file:line evidence</sub>`, then the unchanged `<!-- review-defect: c<cycle>-D<n> -->` and `<!-- review-finding: <16hex> -->` markers.\nOut of scope: structured Problem/Impact/Fix detail (reviewer-brief change, theseus-review-structured-findings-20261110) and suggestion blocks.\nGuardrails: the fingerprint hashes the same full title as today, so existing threads dedupe across the format change (test with a thread posted by v0.2.8 and a new finding with the same title); threads are never edited; release-A dedup reads both forms; BenchBox digest must already read the new form before a BenchBox lock installs it; no live model calls; Theseus merge rule plus independent review (dedup and dispute parsing).",
   "links": [
     "~/.omp/agent/sessions/-Developer-BenchBox/2026-11-02T02-04-38-450Z_01a19a00-60b2-70a6-b56d-6f666415a725/local/review-comment-format-proposal.md (section 8.4)"
@@ -28,6 +28,14 @@
       "op": "update",
       "op_id": "76d468b39a2b43c1862088b859d2cdd0",
       "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:29:36Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "013ecdfced0a412491fc3123071f95d0",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
