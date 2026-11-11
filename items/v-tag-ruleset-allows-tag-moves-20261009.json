@@ -4,7 +4,7 @@
     "scripts/ruleset_drift_check.py plus _project/scripts/ruleset_review_enforcement.py reject a creation-only tag ruleset (fixture test fails before, passes after)",
     "docs/internal/adr/adr-dev-loop-v2.md and docs/internal/release-artifacts.md describe the tag protection as it actually is, including the shared-account limit"
   ],
-  "context": "Updated 2026-10-17. The workflow half is implemented under dlv2-51; this item tracks the owner ruleset change plus the drift predicate. Close only when the acceptance evidence exists; the agent must not change rulesets itself (original task constraint: owner settings change).",
+  "context": "Updated 2026-10-17. The workflow half is implemented under dlv2-51; this item tracks the owner ruleset change plus the drift predicate. Close only when the acceptance evidence exists; the agent must not change rulesets itself (original task constraint: owner settings change).\n\nRevalidated 2026-11-11: DONE. Live `gh api repos/BenchBox-dev/BenchBox/rulesets/18774756` (read 2026-11-11, updated_at 2026-10-20) shows v-tag-restricted active on refs/tags/v* with rules [creation, deletion, update] and one bypass actor (user 57046, always). (1) Owner ruleset change is made. (2) _project/scripts/ruleset_review_enforcement.py tag_protection_findings (lines 119-160) now requires creation, update and deletion and fails a creation-only ruleset; the shared predicate is used by scripts/ruleset_drift_check.py (tag_creation_findings, line 431). (3) docs/internal/adr/adr-dev-loop-v2.md:205 says the ruleset \"restricts creation, update and deletion\", and docs/internal/release-artifacts.md:124 matches. Not verified here: a fixture test for the creation-only case and the docs' mention of the shared-account bypass limit. Closing evidence: live ruleset 18774756 has creation/update/deletion; predicate at ruleset_review_enforcement.py:143.",
   "description": "The live ruleset v-tag-restricted (18774756) has only a creation rule (verified 2026-10-17 via gh api). It does not block update or deletion of refs/tags/v*. docs/internal/adr/adr-dev-loop-v2.md:192 says it prevents creation or mutation, and docs/internal/release-artifacts.md says the tag ruleset is what forbids moves. A moved tag would point a release at a different commit than the one that was tested.\n\nResolution (2026-10-17 adversarial review, both reviewers): do both halves; neither alone is sufficient.\n- Owner settings change: add update and delete rules to v-tag-restricted. This is an owner action; agents share the owner account (ADR D4) and the ruleset bypass actor is that same user, so record honestly that this binds other collaborators and future automation, not the agent account itself (claude NEW-3).\n- Workflow control (the machine gate that actually binds): release-v2 re-checks the tag object and peeled commit in the publishing job after approval (owned by dlv2-51). This item does not close on the ruleset change alone.\n- Drift recording: extend the shared predicate in _project/scripts/ruleset_review_enforcement.py (tag_protection_findings currently accepts creation-only at :135-147) so creation-only fixtures fail, and record the chosen rule set in scripts/ruleset_drift_check.py so drift is caught (codex F9(2)).",
   "sessions": [
     {
@@ -22,6 +22,14 @@
       "op": "update",
       "op_id": "6f073030248942f78d2a8058f5191dab",
       "session_id": "b88f90bbf0854ed0a599432bfe5fd099"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:28:22Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "528c20b3fcef4dd69584ff77ab0fe0e2",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
