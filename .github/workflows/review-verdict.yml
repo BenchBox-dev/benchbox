@@ -42,7 +42,7 @@ jobs:
     with:
       environment: oracle
       theseus_ref: 370c10c412c49f4b3ec69471513a1b1c7718918f
-      gated_base: develop
+      gated_base: "develop,release/*"
       policy_path: .github/review.yml
       tailscale_tag: tag:oracle-ci
     secrets:
@@ -76,7 +76,7 @@ jobs:
       INPUT_PR: ${{ inputs.pr }}
       INPUT_HEAD: ${{ inputs.head }}
       JOB_RESULT: ${{ needs.verdict.result }}
-      GATED_BASE: develop
+      GATED_BASE: "develop,release/*"
       POSTER: benchbox-oracle[bot]
       CONTEXTS: review-verdict
     steps:
@@ -117,8 +117,22 @@ jobs:
             echo "#$pr is $state; the review skips it by design."
             exit 0
           fi
-          if [ "$base" != "$GATED_BASE" ]; then
-            echo "#$pr targets $base, not $GATED_BASE; the review skips it by design."
+          gated=false
+          set -f
+          for pattern in $(printf '%s' "$GATED_BASE" | tr ',' ' '); do
+            case "$pattern" in
+              */\*)
+                rest="${base#"${pattern%/\*}"/}"
+                if [ "$rest" != "$base" ] && [[ "$rest" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then gated=true; fi
+                ;;
+              *)
+                if [ "$base" = "$pattern" ]; then gated=true; fi
+                ;;
+            esac
+          done
+          set +f
+          if [ "$gated" != true ]; then
+            echo "#$pr targets $base, not one of $GATED_BASE; the review skips it by design."
             exit 0
           fi
           if [ "$draft" = true ]; then

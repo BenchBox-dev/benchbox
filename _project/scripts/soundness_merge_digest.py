@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import importlib.util
 import json
 import re
 import subprocess
@@ -15,6 +16,7 @@ from datetime import datetime
 from pathlib import Path
 from types import ModuleType
 from typing import Any
+from urllib.parse import quote
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 POLICY_PATH = ".github/review.yml"
@@ -42,7 +44,10 @@ PREDICATE_DRIVER = (
 )
 DEFAULT_REPO = "BenchBox-dev/BenchBox"
 BASE_BRANCH = "develop"
+LINE_STATE_LABEL = "soundness-merge-digest-line"
 STATE_LABEL = "soundness-merge-digest"
+RELEASE_LINE_PATTERN = re.compile(r"release/[A-Za-z0-9][A-Za-z0-9._-]*")
+BRANCH_MARKER = "<!-- soundness-digest-branch: {branch} -->"
 GAP_LABEL = "soundness-review-gap"
 CHECKPOINT_PATTERN = re.compile(r"<!-- soundness-digest-checkpoint: ([0-9a-f]{40}) -->")
 GAP_MARKER = re.compile(r"<!-- soundness-gap:([0-9a-f]{40}) -->")
@@ -125,6 +130,22 @@ class Engine:
 
 
 _ENGINE: Engine | None = None
+_BRANCH: str = BASE_BRANCH
+
+
+def set_branch(branch: str) -> None:
+    global _BRANCH
+    if branch != BASE_BRANCH and RELEASE_LINE_PATTERN.fullmatch(branch) is None:
+        raise ReadError(f"{branch!r} is not develop or a release/X.Y.x line; the digest audits only those branches")
+    _BRANCH = branch
+
+
+def state_label() -> str:
+    return STATE_LABEL if _BRANCH == BASE_BRANCH else LINE_STATE_LABEL
+
+
+def branch_header() -> str:
+    return "" if _BRANCH == BASE_BRANCH else BRANCH_MARKER.format(branch=_BRANCH) + "\n"
 
 
 def engine() -> Engine:
@@ -742,7 +763,7 @@ def classify(sha: str, subject: str, files: Sequence[str], pull: PullEvidence | 
 
 
 def render(entries: Sequence[Entry], *, since: str, until: str) -> str:
-    lines = [f"Soundness-path commits on develop from {since[:9]} to {until[:9]}: {len(entries)}.", ""]
+    lines = [f"Soundness-path commits on {_BRANCH} from {since[:9]} to {until[:9]}: {len(entries)}.", ""]
     if not entries:
         return "\n".join(lines + ["None."])
     lines += ["| Commit | Pull request | Review signal | Attention |", "|---|---|---|---|"]
@@ -759,7 +780,7 @@ def gap_issue_body(entry: Entry) -> str:
     files = "\n".join(f"- `{path}`" for path in entry.files)
     return (
         f"<!-- soundness-gap:{entry.sha} -->\n"
-        f"Commit `{entry.sha}` ({pull}) changed paths on the soundness list and merged to develop.\n\n"
+        f"Commit `{entry.sha}` ({pull}) changed paths on the soundness list and merged to {_BRANCH}.\n\n"
         f"Why it is listed: {'; '.join(entry.reasons)}.\n\n"
         f"Reason class: {'; '.join(entry.reason_classes)}.\n\n"
         f"Soundness-path files:\n{files}\n\n"
@@ -1042,9 +1063,7 @@ def merged_pull_number(repo: str, sha: str) -> int | None:
     candidates = [
         pr
         for pr in gh_pages(f"repos/{repo}/commits/{sha}/pulls")
-        if pr.get("merge_commit_sha") == sha
-        and pr.get("merged_at")
-        and (pr.get("base") or {}).get("ref") == BASE_BRANCH
+        if pr.get("merge_commit_sha") == sha and pr.get("merged_at") and (pr.get("base") or {}).get("ref") == _BRANCH
     ]
     if len(candidates) > 1:
         raise ReadError(f"{sha[:9]} is the merge commit of {len(candidates)} pull requests")
@@ -1230,7 +1249,7 @@ def fetch_trunk_runs(repo: str) -> list[dict[str, Any]]:
         batch = gh_json(
             "api",
             f"repos/{repo}/actions/workflows/{TRUNK_WORKFLOW}/runs"
-            f"?branch={BASE_BRANCH}&event=push&status=completed&per_page=100&page={page}",
+            f"?branch={quote(_BRANCH, safe='')}&event=push&status=completed&per_page=100&page={page}",
         )["workflow_runs"]
         runs.extend(batch)
         if len(batch) < 100:
@@ -1260,8 +1279,8 @@ def trunk_run_state(repo: str, run: Mapping[str, Any], armed_at: str) -> tuple[b
 
 def unknown_trunk_reason(trunk_runs: Sequence[Mapping[str, Any]], armed_at: str) -> str:
     if not any((run.get("created_at") or "") <= armed_at for run in trunk_runs):
-        return "no trunk.yml push run on develop existed yet"
-    return "no completed trunk.yml push run on develop finished before the arming"
+        return f"no trunk.yml push run on {_BRANCH} existed yet"
+    return f"no completed trunk.yml push run on {_BRANCH} finished before the arming"
 
 
 def red_armings(
@@ -1320,13 +1339,13 @@ def render_red_armings(armings: Sequence[RedArming], unknowns: Sequence[UnknownA
     lines = [
         "",
         "Armed while Trunk was red: PRs with auto-merge enabled while the newest completed "
-        "trunk.yml push run on develop was red.",
+        f"trunk.yml push run on {_BRANCH} was red.",
     ]
     if not armings and not unknowns:
         return "\n".join(lines + ["None."])
     for arming in armings:
         lines.append(
-            f"- #{arming.number} armed at {arming.armed_at}; the newest completed trunk.yml push run on develop "
+            f"- #{arming.number} armed at {arming.armed_at}; the newest completed trunk.yml push run on {_BRANCH} "
             f"was {arming.conclusion} (run {arming.run_id}, `{arming.run_head}`, completed {arming.completed_at})."
         )
     for item in unknowns:
@@ -1410,9 +1429,13 @@ def render_unclassifiable(pulls: Sequence[PullEvidence]) -> str:
 
 
 def find_state_issue(repo: str) -> dict[str, Any] | None:
-    issues = gh_pages(f"repos/{repo}/issues?labels={STATE_LABEL}&state=all&per_page=100")
+    label = state_label()
+    issues = gh_pages(f"repos/{repo}/issues?labels={label}&state=all&per_page=100")
+    if _BRANCH != BASE_BRANCH:
+        marker = BRANCH_MARKER.format(branch=_BRANCH)
+        issues = [issue for issue in issues if (issue.get("body") or "").startswith(marker + "\n")]
     if len(issues) > 1:
-        raise ReadError(f"{len(issues)} issues carry the {STATE_LABEL} label; keep exactly one")
+        raise ReadError(f"{len(issues)} issues carry the {label} label for {_BRANCH}; keep exactly one")
     return issues[0] if issues else None
 
 
@@ -1427,10 +1450,12 @@ def read_checkpoint(repo: str) -> str | None:
 
 
 def write_checkpoint(repo: str, sha: str, report: str) -> None:
-    body = f"<!-- soundness-digest-checkpoint: {sha} -->\n\n{report}\n"
+    body = f"{branch_header()}<!-- soundness-digest-checkpoint: {sha} -->\n\n{report}\n"
     issue = find_state_issue(repo)
     if issue is None:
-        run(["gh", "label", "create", STATE_LABEL, "--repo", repo, "--force", "--color", "0e8a16"])
+        label = state_label()
+        run(["gh", "label", "create", label, "--repo", repo, "--force", "--color", "0e8a16"])
+        title = "Soundness merge digest" if _BRANCH == BASE_BRANCH else f"Soundness merge digest: {_BRANCH}"
         run(
             [
                 "gh",
@@ -1439,15 +1464,36 @@ def write_checkpoint(repo: str, sha: str, report: str) -> None:
                 "--repo",
                 repo,
                 "--title",
-                "Soundness merge digest",
+                title,
                 "--label",
-                STATE_LABEL,
+                label,
                 "--body",
                 body,
             ]
         )
     else:
         run(["gh", "issue", "edit", str(issue["number"]), "--repo", repo, "--body", body])
+
+
+def line_origin(repo: str, until: str) -> str:
+    base = run(["git", "merge-base", f"origin/{BASE_BRANCH}", until]).strip()
+    first_parent = run(["git", "rev-list", "--first-parent", "--reverse", f"{base}..{until}"]).split()
+    if first_parent and merged_pull_number(repo, first_parent[0]) is None:
+        return first_parent[0]
+    return base
+
+
+def verify_new_line(until: str) -> None:
+    path = REPO_ROOT / "scripts" / "release_artifact_consumer.py"
+    spec = importlib.util.spec_from_file_location("_digest_release_consumer", path)
+    if spec is None or spec.loader is None:
+        raise ReadError(f"{path} cannot be loaded")
+    consumer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(consumer)
+    try:
+        consumer.verify_line(REPO_ROOT, _BRANCH, until, consumer.github_json_list)
+    except (ValueError, OSError, subprocess.SubprocessError) as exc:
+        raise ReadError(f"{_BRANCH} failed line verification before its first audit: {exc}") from exc
 
 
 def list_gap_issues(repo: str) -> list[dict[str, Any]]:
@@ -1576,19 +1622,24 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         description="List soundness-path commits that reached develop and the review each had"
     )
     parser.add_argument("--repo", default=DEFAULT_REPO)
-    parser.add_argument("--ref", default="origin/develop")
+    parser.add_argument("--branch", default=BASE_BRANCH, help="develop or a release/X.Y.x line")
+    parser.add_argument("--ref", help="defaults to origin/<branch>")
     parser.add_argument("--since", help="start after this commit; defaults to the stored checkpoint")
     parser.add_argument("--apply", action="store_true", help="open gap issues and advance the checkpoint")
     parser.add_argument(
         "--bootstrap", action="store_true", help="with --apply, record the current head as the first checkpoint"
     )
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.ref is None:
+        args.ref = f"origin/{args.branch}"
+    return args
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     global _ENGINE
     args = _parse_args(argv)
     try:
+        set_branch(args.branch)
         until = run(["git", "rev-parse", args.ref]).strip()
         if args.bootstrap:
             if not args.apply:
@@ -1600,8 +1651,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             write_checkpoint(args.repo, until, "Checkpoint recorded; the next run reports commits after it.")
             print(f"Recorded checkpoint {until[:9]}.")
             return 0
-        _ENGINE = load_engine(REPO_ROOT, args.ref)
+        _ENGINE = load_engine(REPO_ROOT, args.ref if _BRANCH == BASE_BRANCH else f"origin/{BASE_BRANCH}")
         since = args.since or read_checkpoint(args.repo)
+        if since is None and _BRANCH != BASE_BRANCH:
+            verify_new_line(until)
+            since = line_origin(args.repo, until)
         if since is None:
             print("No checkpoint stored; pass --since, or run once with --apply --bootstrap.", file=sys.stderr)
             return 2

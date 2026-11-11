@@ -4,7 +4,9 @@ status_context: review-verdict
 findings_delivery: review
 bot_login: benchbox-oracle
 consumer:
-  gated_base: develop
+  gated_base:
+    - develop
+    - release/*
   attesters:
     - joeharris76
   soundness_manifest: .github/soundness-paths.txt

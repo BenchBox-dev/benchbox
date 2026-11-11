@@ -372,9 +372,12 @@ and its refresh cost.
 
 ## 6. Post-Merge Soundness Digest
 
-`.github/workflows/soundness-merge-digest.yml` runs daily and on demand. It
-runs `_project/scripts/soundness_merge_digest.py`, which reads the
-first-parent commits on `develop` since a stored checkpoint and keeps those
+`.github/workflows/soundness-merge-digest.yml` runs daily, on demand and on pushes to
+`release/**`. It runs `_project/scripts/soundness_merge_digest.py` once for
+`develop` and once for every `origin/release/*` branch (`--branch`). The script
+accepts only `develop` and `release/` plus one path segment and refuses any
+other branch, so the run fails on a nested or unknown release name. For each
+branch it reads the first-parent commits since that branch's stored checkpoint and keeps those
 that change a path in `.github/soundness-paths.txt`, counting both sides of a
 rename. Each commit
 is judged by the manifest and predicate (`_project/scripts/soundness_paths.py`)
@@ -459,9 +462,23 @@ Two things close an issue, and nothing else does:
 A closed issue is never reopened or edited. A run without `--apply` lists the
 issues it would close.
 
-The checkpoint lives in the body of the one issue labelled
-`soundness-merge-digest` and must be on the first-parent history of
-`develop`. The run fails on a missing issue, a second labelled issue, a body
+The `develop` checkpoint lives in the body of the one issue labelled
+`soundness-merge-digest`. Each release line has its own issue labelled
+`soundness-merge-digest-line`, titled `Soundness merge digest: release/X.Y.x`
+and carrying a `soundness-digest-branch` marker for that branch, so a line's
+merges are never measured against the `develop` checkpoint and a release merge
+never moves it. A line with no stored checkpoint is first verified with the
+same line check as `release_artifact_consumer.py verify-line` (every first-parent
+commit is a merged pull request or a verified creation commit, so the unaudited
+creation commit carries `develop`'s reviewer files). It then starts after its first
+first-parent commit past the merge-base with `develop` when that commit is a
+verified creation commit (not a merged pull request), and at the merge-base
+otherwise, never at the start of history; a line that fails verification is not audited or
+checkpointed and the run fails. Attesters, the bot login and the pinned Theseus
+install always come from `origin/develop`, never from a line's own policy. Pull
+requests and trunk runs are matched against the audited branch. A checkpoint must be on
+the first-parent history of its
+branch. The run fails on a missing issue, a second labelled issue, a body
 without the checkpoint marker, or a checkpoint off that history, so a damaged
 checkpoint cannot silently skip commits. A failed or incomplete read also
 fails the run and leaves the checkpoint unchanged. To record the first

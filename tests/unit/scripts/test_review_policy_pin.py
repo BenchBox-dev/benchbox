@@ -36,7 +36,7 @@ def test_the_live_policy_enforces_and_posts_where_the_gate_reads() -> None:
 def test_the_gated_base_and_attesters_are_pinned() -> None:
     consumer = POLICY["consumer"]
 
-    assert consumer["gated_base"] == "develop"
+    assert consumer["gated_base"] == ["develop", "release/*"]
     assert consumer["attesters"] == ["joeharris76"]
     assert consumer["soundness_manifest"] == ".github/soundness-paths.txt"
     assert consumer["inert_manifest"] == ".github/inert-paths.txt"
