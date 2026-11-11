@@ -30382,12 +30382,17 @@
       "title": "Add a bounded wait mode to make pr-arm so agents stop writing polling loops"
     },
     "pr-arm-wait-review-pending-classification-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T16:39:47Z",
+        "generation": "66418a8df7ed4261b8e81c8f34b35dbb",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549"
+      },
       "needs": [
         "pr-arm-wait-mode-20261111"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Decide whether make pr-arm WAIT should also wait on a pending review verdict and placeholder check failures"
     },
     "pr-arm-waits-fast-duration-verdict-20261026": {
