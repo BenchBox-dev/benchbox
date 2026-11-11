@@ -1,11 +1,4 @@
 {
   "schema": 1,
-  "waivers": [
-    {
-      "tag": "v30.31.0",
-      "reason": "Upstream SQLGlot v30.31.0 is not yet adopted into the benchbox-sqlglot fork. The 0.5.1 release preparation ships the bundled 30.30.0.1 runtime, and the fork refresh adoption onto v30.31.0 removes this waiver.",
-      "approved": "2026-11-11",
-      "expires": "2026-12-11"
-    }
-  ]
+  "waivers": []
 }

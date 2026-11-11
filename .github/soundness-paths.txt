@@ -102,6 +102,7 @@ file	.github/workflows/review-gate.yml
 file	_project/scripts/check_soundness_review.py
 file	.github/review.yml
 file	.github/review-omp-config.yml
+file	.github/review-guidance.md
 file	.github/oracle-reviewers.yml
 file	.github/oracle-omp-config.yml
 file	scripts/oracle_local_review.py
