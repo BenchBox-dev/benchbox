@@ -26329,6 +26329,13 @@
       "status": "done",
       "title": "MCP Server Comprehensive Improvements"
     },
+    "mcp-start-benchmark-nonstandard-scale-note-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "MCP start_benchmark returns no note for a non-standard scale factor"
+    },
     "mcp-stateless-external-deployment-acceptance-v2": {
       "claim": null,
       "needs": [],

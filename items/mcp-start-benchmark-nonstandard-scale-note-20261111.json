@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "`start_benchmark` at tpch scale 2 returns the note and at scale 1 returns none (unit test).",
+    "`start_benchmark` at tpcds scale 0.001 returns a validation error naming 0.01 without creating a job (unit test)."
+  ],
+  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.",
+  "description": "## Problem\nSince BenchBox#4126 a scale factor that is accepted but not a standard value for the benchmark produces a one-line note. MCP `run_benchmark` returns it as a warning for `dry_run`, `validate_only` and synchronous runs (`benchbox/mcp/tools/benchmark.py`, `_check_scale_factor`). The asynchronous path, `start_benchmark`, starts a job and returns no note, so a remote caller is not told the run is at a non-standard scale. The value is still validated by the runner.\n\n## Change\nReturn the same note from `start_benchmark`, through the warning structure the job-start response already has, using `nonstandard_scale_note`. Reject an out-of-range value before the job is created rather than inside it.\n\n## Guardrails\n- No change to the note text or to `benchbox/mcp/security.py`.\n- If the job-start response has no warnings field, report the schema options rather than adding an undeclared key.",
+  "links": [
+    "benchbox/mcp/tools/benchmark.py",
+    "benchbox/mcp/jobs.py",
+    "benchbox/core/benchmark_registry.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba",
+      "at": "2026-11-11T23:46:35Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8ff8cdddcafd4f9c89fbb807dafbe177",
+      "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    }
+  ]
+}
