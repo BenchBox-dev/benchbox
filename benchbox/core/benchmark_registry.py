@@ -431,16 +431,6 @@ def validate_scale_factor(
 
     rule = get_scale_factor_rule(benchmark_id)
 
-    if benchmark_id.lower() in ("tpcds", "tpcds_obt"):
-        from benchbox.core.tpcds.compliance import validate_tpcds_scale
-
-        if isinstance(scale_factor, float) and not math.isfinite(scale_factor):
-            raise ScaleFactorOutOfRangeError(
-                benchmark_id, scale_factor, rule.minimum, rule.maximum, list(rule.standard)
-            )
-        validate_tpcds_scale(scale_factor)
-        return _is_standard_scale(rule, float(scale_factor))
-
     try:
         sf = float(scale_factor)
     except (TypeError, ValueError) as exc:
@@ -458,6 +448,10 @@ def validate_scale_factor(
     in_range = math.isfinite(sf) and rule.minimum <= sf <= rule.maximum
     if not in_range or (sf >= 1 and sf != math.floor(sf)):
         raise ScaleFactorOutOfRangeError(benchmark_id, scale_factor, rule.minimum, rule.maximum, list(rule.standard))
+    if benchmark_id.lower() in ("tpcds", "tpcds_obt"):
+        from benchbox.core.tpcds.compliance import validate_tpcds_scale
+
+        validate_tpcds_scale(sf)
     return _is_standard_scale(rule, sf)
 
 

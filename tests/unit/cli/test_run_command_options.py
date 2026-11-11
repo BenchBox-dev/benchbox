@@ -389,8 +389,8 @@ class TestDryRunValidation:
     @pytest.mark.parametrize(
         ("scale", "message"),
         [
-            ("0.0005", "below the minimum subscale"),
-            ("100001", "exceeds maximum (100000)"),
+            ("0.0005", "from 0.01"),
+            ("100001", "to 100000"),
             ("2.5", "must be whole integers"),
         ],
     )

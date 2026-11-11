@@ -41,7 +41,16 @@ def test_in_range_values_are_accepted(benchmark_id: str, sf: float) -> None:
 
 @pytest.mark.parametrize(
     ("benchmark_id", "sf"),
-    [("ssb", 1.5), ("clickbench", 1.5), ("tpch", 200000), ("tpch", 0.001), ("tpch", 0), ("tpch", -1)],
+    [
+        ("ssb", 1.5),
+        ("clickbench", 1.5),
+        ("tpcds", 1.5),
+        ("tpcds_obt", 2.5),
+        ("tpch", 200000),
+        ("tpch", 0.001),
+        ("tpch", 0),
+        ("tpch", -1),
+    ],
 )
 def test_out_of_range_values_name_the_range(benchmark_id: str, sf: float) -> None:
     with pytest.raises(ScaleFactorOutOfRangeError, match="from .* to 100000") as excinfo:
