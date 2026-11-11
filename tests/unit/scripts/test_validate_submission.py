@@ -997,6 +997,29 @@ class TestValidateBundle:
         assert not vr.ok
         assert any("cannot accompany cost_status 'unavailable'" in e for e in vr.errors)
 
+    def test_cost_total_with_gateway_not_comparable_cost_fails(self):
+        data = _minimal_bundle()
+        data["normalized_cost"] = _normalized_cost_block(cost=None, status="not_comparable_gateway")
+        data["cost"] = {"total_usd": 1, "model": "estimated"}
+
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+
+        assert not vr.ok
+        assert any("cannot accompany cost_status 'not_comparable_gateway'" in e for e in vr.errors)
+
+    def test_gateway_not_comparable_cost_without_total_passes_and_rejects_a_value(self):
+        data = _minimal_bundle()
+        data["normalized_cost"] = _normalized_cost_block(cost=None, status="not_comparable_gateway")
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+        assert vr.ok
+
+        data["normalized_cost"] = _normalized_cost_block(cost="1.25", status="not_comparable_gateway")
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+        assert any("'not_comparable_gateway' must not include normalized_cost_usd" in e for e in vr.errors)
+
     def test_local_zero_cost_total_with_not_applicable_provenance_passes(self):
         data = _minimal_bundle()
         data["normalized_cost"] = _normalized_cost_block(cost="0", status="not_applicable_local")

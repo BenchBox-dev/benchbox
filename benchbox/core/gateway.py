@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_GATEWAY = "native"
 GATEWAY_ROUTED_PLATFORMS = frozenset({"snowflake"})
 INSECURE_GATEWAY_ENV = "BENCHBOX_ALLOW_INSECURE_GATEWAY"
+UNKNOWN_GATEWAY_ENGINE = "unknown"
 GREYBEAM_GATEWAY = "greybeam"
 GREYBEAM_LOAD_ENV = "BENCHBOX_I_UNDERSTAND_GREYBEAM_LOAD"
 GREYBEAM_INLINE_LOAD_OPTION = "allow_greybeam_inline_load"
@@ -238,6 +239,7 @@ __all__ = [
     "GatewayConfigurationError",
     "GatewayEndpoint",
     "GatewayNotImplementedError",
+    "UNKNOWN_GATEWAY_ENGINE",
     "UnsupportedGatewayError",
     "is_loopback_host",
     "register_gateway_connection_specs",
