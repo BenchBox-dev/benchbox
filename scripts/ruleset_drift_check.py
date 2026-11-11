@@ -66,6 +66,7 @@ class ExpectedRuleset:
     non_fast_forward: bool
     deletion: bool
     bypass_actors_none: bool
+    do_not_enforce_on_create: bool = False
 
 
 def environment_protection_findings(live: dict[str, Any]) -> list[str]:
@@ -239,6 +240,7 @@ def parse_expected_rulesets(runbook_text: str) -> dict[str, ExpectedRuleset]:
             non_fast_forward=_bool_from_text(props["non_fast_forward"]),
             deletion=props["deletion"].lower() == "blocked",
             bypass_actors_none=props["bypass_actors"].lower() == "(none)",
+            do_not_enforce_on_create=_bool_from_text(props["do_not_enforce_on_create"]),
         )
     return expected
 
@@ -266,6 +268,13 @@ def _strict_required_status_checks_policy(ruleset: dict[str, Any]) -> bool | Non
     if not rule:
         return None
     return rule.get("parameters", {}).get("strict_required_status_checks_policy")
+
+
+def _do_not_enforce_on_create(ruleset: dict[str, Any]) -> bool:
+    rule = _rule_by_type(ruleset, "required_status_checks")
+    if not rule:
+        return False
+    return bool(rule.get("parameters", {}).get("do_not_enforce_on_create", False))
 
 
 def _ref_includes(ruleset: dict[str, Any]) -> tuple[str, ...]:
@@ -296,6 +305,12 @@ def compare_ruleset(
         findings.append(
             f"{expected.name}: strict_required_status_checks_policy is {live_strict!r}, "
             f"expected {expected.strict_required_status_checks_policy!r}"
+        )
+    live_on_create = _do_not_enforce_on_create(live)
+    if live_on_create != expected.do_not_enforce_on_create:
+        findings.append(
+            f"{expected.name}: do_not_enforce_on_create is {live_on_create!r}, "
+            f"expected {expected.do_not_enforce_on_create!r}"
         )
 
     for rule_type, expected_present in [
