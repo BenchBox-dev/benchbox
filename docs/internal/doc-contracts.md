@@ -87,7 +87,9 @@ references a site-owned path: files named by `quality/docs-ownership.json`, gene
 output directories, transition sources, and the extra core inputs listed in
 `quality/docs-reference-rules.json`. References are found mechanically: `docs/...`
 tokens and `"docs" / "a" / "b"` or `Path("docs", "a")` segment chains. Public URLs and
-nested directories such as `other/docs/` are not references.
+nested directories such as `other/docs/` are not references. A regex-escaped path in code
+(`docs/internal/page\.md`) is recorded as an unresolved reference; write the plain path and
+escape it at the point of use.
 
 Each file is classified by the first matching rule in `quality/docs-reference-rules.json`.
 In rule patterns `*` matches within one path segment and `**` crosses directories, so a
@@ -118,3 +120,6 @@ make docs-reference-inventory-check
 ```
 
 `docs-reference-inventory` rewrites `quality/docs-reference-inventory.json`; the `-check` target fails when that file is stale.
+`make pr-preflight` runs the `-check` target and the `_project` reference check when a change touches code, tests or
+docs, runs the ownership check when it touches `docs/`, and selects the tests that read a changed document from
+`_project/inert-doc-readers.json`.

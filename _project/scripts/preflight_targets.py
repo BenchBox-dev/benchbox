@@ -8,6 +8,12 @@ import subprocess
 import sys
 from pathlib import Path, PurePosixPath
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from _project.scripts import inert_paths
+
 SOURCE_ROOTS = ("benchbox/", "scripts/", "_project/scripts/")
 TESTS_ROOT = "tests"
 PLATFORMS_ROOT = "benchbox/platforms/"
@@ -295,6 +301,64 @@ EXTRA_TEST_MAP: dict[str, list[str]] = {
     },
 }
 
+READERS_INDEX = "_project/inert-doc-readers.json"
+READERS_INDEX_TEST = "tests/unit/scripts/test_inert_paths.py::test_checked_in_readers_match_the_rebuilt_index"
+REFERENCE_GUARDS = ("docs-reference-inventory", "project-references")
+OWNERSHIP_GUARD = "docs-ownership"
+DOCS_ROOT = "docs/"
+REFERENCE_SUFFIXES = (".py", ".md", ".mk", ".sh", ".yml", ".yaml", ".toml", ".json", ".txt")
+
+
+def _doc_readers(repo: Path) -> dict[str, list[str]]:
+    readers = inert_paths.load_readers(repo)
+    if not readers:
+        print(
+            f"preflight_targets: {READERS_INDEX} is missing, unreadable or empty; doc reader tests are not selected",
+            file=sys.stderr,
+        )
+    return readers
+
+
+def _reads_differ_from_index(
+    repo: Path, path: str, readers: dict[str, list[str]], tracked: set[str], basenames: dict[str, list[str]]
+) -> bool:
+    recorded = {doc for doc, tests in readers.items() if path in tests}
+    try:
+        source = (repo / path).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return bool(recorded)
+    hits = inert_paths.to_tracked(inert_paths.file_candidates(source, str(repo / path), str(repo)), tracked, basenames)
+    hits.discard(path)
+    return recorded != {hit for hit in hits if inert_paths.is_machine_read_doc(hit)}
+
+
+def _reader_tests(repo: Path, paths: list[str], test_files: list[str]) -> set[str]:
+    readers = _doc_readers(repo)
+    if not readers:
+        return set()
+    known = set(test_files)
+    selected = {test for path in paths for test in readers.get(path, ()) if test in known}
+    changed_tests = [path for path in paths if _is_test_file(path)]
+    if READERS_INDEX in paths:
+        selected.add(READERS_INDEX_TEST)
+    elif changed_tests:
+        tracked = inert_paths.tracked_files(repo)
+        basenames = inert_paths.basename_index(tracked)
+        if any(_reads_differ_from_index(repo, path, readers, tracked, basenames) for path in changed_tests):
+            selected.add(READERS_INDEX_TEST)
+    if READERS_INDEX_TEST.split("::", 1)[0] not in known:
+        selected.discard(READERS_INDEX_TEST)
+    return selected
+
+
+def guards(paths: list[str]) -> list[str]:
+    selected: list[str] = []
+    if any(path.startswith(DOCS_ROOT) or path.endswith(REFERENCE_SUFFIXES) for path in paths):
+        selected.extend(REFERENCE_GUARDS)
+    if any(path.startswith(DOCS_ROOT) for path in paths):
+        selected.append(OWNERSHIP_GUARD)
+    return selected
+
 
 def map_tests(repo: Path, paths: list[str]) -> list[str]:
     test_files = _test_files(repo)
@@ -332,6 +396,7 @@ def map_tests(repo: Path, paths: list[str]) -> list[str]:
                 selected.update(index.get(f"test_{module}.py", ()))
             selected.update(_platform_smoke_tests(path, test_files))
             selected.update(_guard_tests(path, test_files))
+    selected.update(_reader_tests(repo, paths, test_files))
     selected.update(_helper_importers(repo, helpers, test_files))
     selected.update(_source_dependents(repo, sources, test_files))
     return sorted(selected)
@@ -356,7 +421,7 @@ def linux_tests(repo: Path, paths: list[str]) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("kind", choices=("python", "tests", "linux"))
+    parser.add_argument("kind", choices=("python", "tests", "linux", "guards"))
     parser.add_argument("--base-ref", default="origin/develop")
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
     args = parser.parse_args(argv)
@@ -367,6 +432,8 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if args.kind == "python":
         selected = changed_python(args.repo_root, paths)
+    elif args.kind == "guards":
+        selected = guards(paths)
     elif args.kind == "linux":
         selected = linux_tests(args.repo_root, paths)
     else:

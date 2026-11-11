@@ -27,9 +27,10 @@ pr-preflight:
 	PY_LIST=$$(mktemp); \
 	TEST_LIST=$$(mktemp); \
 	LINUX_LIST=$$(mktemp); \
+	GUARD_LIST=$$(mktemp); \
 	STAGE=$$(mktemp); \
 	ALLOW=$$(mktemp); \
-	trap 'RC=$$?; python3 scripts/preflight_receipt.py finalize --stage "$$STAGE" --exit-status "$$RC" --allowlist "$$ALLOW" || true; rm -f "$$PY_LIST" "$$TEST_LIST" "$$LINUX_LIST" "$$STAGE" "$$ALLOW"; exit "$$RC"' EXIT; \
+	trap 'RC=$$?; python3 scripts/preflight_receipt.py finalize --stage "$$STAGE" --exit-status "$$RC" --allowlist "$$ALLOW" || true; rm -f "$$PY_LIST" "$$TEST_LIST" "$$LINUX_LIST" "$$GUARD_LIST" "$$STAGE" "$$ALLOW"; exit "$$RC"' EXIT; \
 	git show HEAD:.github/preflight-known-failures.json > "$$ALLOW" 2>/dev/null || rm -f "$$ALLOW"; \
 	python3 scripts/preflight_receipt.py begin --stage "$$STAGE" --base-ref "$$PREFLIGHT_BASE"; \
 	RECORD="python3 scripts/preflight_receipt.py step --stage $$STAGE --allowlist $$ALLOW"; \
@@ -37,6 +38,7 @@ pr-preflight:
 	$$RECORD --name changelog-check -- $(MAKE) -s changelog-check; \
 	uv run -- python _project/scripts/preflight_targets.py python --base-ref "$$PREFLIGHT_BASE" > "$$PY_LIST"; \
 	uv run -- python _project/scripts/preflight_targets.py tests --base-ref "$$PREFLIGHT_BASE" > "$$TEST_LIST"; \
+	uv run -- python _project/scripts/preflight_targets.py guards --base-ref "$$PREFLIGHT_BASE" > "$$GUARD_LIST"; \
 	$$NOTE python_files="$$(grep -c . "$$PY_LIST" || true)"; \
 	$$NOTE test_files="$$(grep -c . "$$TEST_LIST" || true)"; \
 	if [ -s "$$PY_LIST" ]; then \
@@ -46,6 +48,15 @@ pr-preflight:
 	else \
 		echo "No Python files changed; skipping ruff."; \
 	fi; \
+	for GUARD in $$(cat "$$GUARD_LIST"); do \
+		echo "==> guard: $$GUARD"; \
+		case "$$GUARD" in \
+			docs-reference-inventory) $$RECORD --name docs-reference-inventory -- $(MAKE) -s docs-reference-inventory-check ;; \
+			project-references) $$RECORD --name project-references -- uv run -- python _project/scripts/check_project_references.py ;; \
+			docs-ownership) $$RECORD --name docs-ownership -- uv run -- python scripts/check_docs_ownership.py ;; \
+			*) echo "pr-preflight: unknown guard $$GUARD" >&2; exit 2 ;; \
+		esac; \
+	done; \
 	if [ ! -s "$$TEST_LIST" ]; then \
 		echo "No test files map to the changed paths; CI runs the fast lane."; \
 		exit 0; \
