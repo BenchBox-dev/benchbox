@@ -35771,10 +35771,12 @@
     },
     "scale-factor-registry-caps-vs-docs-20261013": {
       "claim": null,
-      "needs": [],
-      "priority": "medium",
+      "needs": [
+        "scale-factor-consistency-umbrella-20261111"
+      ],
+      "priority": "medium-high",
       "status": "open",
-      "title": "Decide whether registry scale lists are hard limits, and align code, docs and tests"
+      "title": "Accept any in-range scale factor and keep scale lists as the recommended set"
     },
     "scd2-basic-idempotency-and-cleanup-scoping": {
       "claim": null,
