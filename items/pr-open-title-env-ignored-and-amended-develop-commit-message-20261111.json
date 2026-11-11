@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Decision gate (1): refusing is safer than honouring the environment value, because the make wrapper treats TITLE as a literal on purpose; do not weaken that.",
+    "Verification: tests show `PR_OPEN_TITLE=x make pr-open` without TITLE is refused with a message naming TITLE, and that TITLE=x still works.",
+    "Verification: a test builds a branch whose first commit is an amended develop squash commit and asserts the new message.",
+    "Soundness review passes (make/ is a soundness path).",
+    "Done when merged."
+  ],
+  "description": "Found on 2026-11-11 while delivering retro-navigation-fixes-umbrella-20261111 (or in the retrospective over 25 agent sessions that preceded it) and not addressed there.\n\nProblem. (1) `make pr-open` sets `export PR_OPEN_TITLE := $(TITLE)` in make/pr-landing.mk, so a `PR_OPEN_TITLE=...` given in the environment is silently replaced by an empty value and the title falls back to the first commit subject. Three delegated prompts in the reviewed sessions used that form; it went unnoticed because the subjects happened to match. `PR_BODY_FILE` does work from the environment, which makes the difference easy to miss. (2) In two of five reviewed write sessions a pre-commit hook rejected a commit and the agent then ran `git commit --amend`, which amended the develop squash commit under it. `make pr-open` then refused with a generic 'HEAD conflicts with origin/develop', and each agent spent several calls on rebase, abort and reflog before finding the cause.\n\nChange. (1) Refuse when PR_OPEN_TITLE is set in the environment without TITLE, naming TITLE. (2) Before the merge-tree check, detect a branch commit whose subject ends '(#N)' and is not on origin/develop, and say that a develop commit was amended and how to recover.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read every cited file on current origin/develop first, because line numbers and commits here are from 2026-11-11 (origin/develop 5bd2c19cc4); close at a merged PR and finish only after the merge is observed.",
+  "links": [
+    "make/pr-landing.mk",
+    "make/help.mk"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T16:38:53Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "7fbb7b0c812b4ef39504e1a8f70fb0e9",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    }
+  ]
+}
