@@ -1,5 +1,5 @@
 {
-  "context": "Use the UAT framework entrypoint and the selected compose memory, preserve the result-path contract, record all cell/log/artifact paths, and run the release preflight only after every prior gate is green. Never retry by switching to RowBatchProcessor or a 1,000-row batch.",
+  "context": "Use the UAT framework entrypoint and the selected compose memory, preserve the result-path contract, record all cell/log/artifact paths, and run the release preflight only after every prior gate is green. Never retry by switching to RowBatchProcessor or a 1,000-row batch.\n\nRevalidated 2026-11-11 (develop c7b75c80bc): this item's text (8/10 GiB then 5.25 GiB policy, host-blocked, LakeSail endpoint defect #1875) is August-era and stale. Its dependency uat-clickhouse-server-compose-memory-admission is done, the manifest/loader defects it was waiting on were resolved (PR #1718 per the dismissed deferral), and ClickHouse server now runs in the hosted release/trunk UAT stage 2 shard (trunk-uat.yml:202, tests/uat/configs/release-gate-02-docker-nonoltp.yaml, scales 0.01/0.1/1.0) on ubuntu-latest, which is not an operator-host dependency. Trunk UAT run 42718296767 (709/710, the single failure being pandas-df) included the clickhouse-server shard, and scheduled runs 42789483182 and 42990393684 concluded success; trunk UAT run 42536258036 failed 8 cells, none attributed to clickhouse-server in the notes recorded on sibling items. I did not download the cells.jsonl (GitHub returned 502 for the artifact), so per-cell SF1 load/power rows are not independently re-read. Recommendation: the final certification this item asked for is now a routine hosted gate; close it as superseded by the trunk UAT/release-gate-02 coverage, or have the owner confirm the strict-gate lines (exact manifest rows, no failure sidecar, valid power result JSON) in a clickhouse-server cells.jsonl from run 42990393684.",
   "description": "Run the final ClickHouse server certification in strict gates: SF0.01 exact manifest rows and nonzero stats with one streaming insert per table; SF1 load with sampled telemetry, selected memory envelope, responsive server, exact row counts, and no failure sidecar; then SF1 power with valid result JSON and metadata. Route loader failures to the loader artifact TODO, resource/timeouts to calibration/admission, and query failures to the existing query-compatibility pending retest.\n\nRECONCILED 2026-08-23 after PR #1835 merged as 4f8c580f7: selected ClickHouse policy is now 5.25 GiB. Current host still cannot admit the managed server cell: 5.40 GiB available versus 6.89 GiB required including the 2.00 GiB reserve, with 67.9% swap. The prior 8 GiB/10 GiB blocker is superseded; SF1 w2 remains operator-host blocked.\n\nCURRENT 2026-08-24: merged request-only smoke exposed the LakeSail endpoint-option registration defect; PR #1875 fixes it. Do not treat the managed release-gate chain as runnable until #1875 merges and a host sustains ClickHouse's measured 5.25 GiB request.",
   "legacy": {
     "deferrals": [
@@ -151,5 +151,15 @@
         "wid": "w4"
       }
     ]
-  }
+  },
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:38:47Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "36c2b34ff6a0480a91c9fce506cd8089",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
+    }
+  ]
 }
