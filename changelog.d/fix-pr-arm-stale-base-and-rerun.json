@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Landing tooling: make pr-arm refuses and refreshes CI when develop changed related files after the PR was tested, merges an already-mergeable PR itself, and make pr-rerun re-runs the whole CI run for a would-block duration verdict"
+}

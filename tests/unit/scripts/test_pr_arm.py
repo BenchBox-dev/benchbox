@@ -39,6 +39,11 @@ pr_arm = _load()
 LandingError = pr_arm.pr_landing.LandingError
 
 
+@pytest.fixture(autouse=True)
+def _no_stale_base(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(pr_arm.pr_stale_base, "stale_base_refusals", lambda *_args, **_kwargs: [])
+
+
 def _view(**overrides) -> dict:
     view = {
         "number": 7,
@@ -58,6 +63,7 @@ class FakeGh:
         self.view = _view() if view is None else view
         self.listed = [7] if listed is None else listed
         self.merge_code = kwargs.get("merge_code", 0)
+        self.merge_results = list(kwargs.get("merge_results", []))
         self.view_code = kwargs.get("view_code", 0)
         self.local_head = kwargs.get("local_head", HEAD)
         self.gate_state = kwargs.get("gate_state", "success")
@@ -112,7 +118,7 @@ class FakeGh:
             body = self.view if isinstance(self.view, str) else json.dumps(self.view)
             return self.view_code, body
         if cmd[:3] == ["gh", "pr", "merge"]:
-            return self.merge_code, "queued"
+            return self.merge_results.pop(0) if self.merge_results else (self.merge_code, "queued")
         if cmd[:2] == ["gh", "api"] and cmd[-1] == f"repos/{pr_arm.REPOSITORY}/commits/{self.local_head}/status":
             return self.status_code, self.gate_state + "\n" if self.status_code == 0 else "gh: HTTP 502"
         if cmd[:2] == ["gh", "api"] and f"repos/{pr_arm.REPOSITORY}/commits/{self.local_head}/statuses?" in cmd[-1]:
@@ -369,6 +375,71 @@ def test_passes_through_a_failing_merge() -> None:
     gh = FakeGh(merge_code=1)
     assert _arm(gh) == 1
     assert len(gh.merged()) == 1
+
+
+CLEAN_REFUSAL = "GraphQL: Pull request is in clean status (enablePullRequestAutoMerge)"
+
+
+def test_a_clean_pull_request_is_merged_at_the_checked_head_after_auto_merge_is_refused(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    gh = FakeGh(merge_results=[(1, CLEAN_REFUSAL), (0, "merged")])
+    assert _arm(gh) == 0
+    assert gh.merged() == [
+        ["gh", "pr", "merge", "7", "--repo", pr_arm.REPOSITORY, "--squash", "--auto", "--match-head-commit", HEAD],
+        ["gh", "pr", "merge", "7", "--repo", pr_arm.REPOSITORY, "--squash", "--match-head-commit", HEAD],
+    ]
+    assert f"outcome: merged: PR #7 was already mergeable and merged at head {HEAD}" in capsys.readouterr().out
+
+
+def test_a_clean_pull_request_whose_direct_merge_fails_is_refused(capsys: pytest.CaptureFixture[str]) -> None:
+    gh = FakeGh(merge_results=[(1, CLEAN_REFUSAL), (1, "head changed")])
+    assert _arm(gh) == 1
+    assert len(gh.merged()) == 2
+    assert "outcome: refused: gh pr merge exited 1" in capsys.readouterr().out
+
+
+def test_other_auto_merge_refusals_never_fall_back_to_a_direct_merge() -> None:
+    gh = FakeGh(merge_results=[(1, "GraphQL: auto merge is not allowed for this repository")])
+    assert _arm(gh) == 1
+    assert len(gh.merged()) == 1
+
+
+def test_a_related_develop_change_after_the_tested_base_refuses_and_is_never_armed(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    gh = FakeGh()
+    seen: list[tuple] = []
+
+    def stale(run, repo, number, head, base, checkout):
+        seen.append((number, head, base))
+        return [
+            "develop changed files related to this PR; started CI on a fresh merge ref, waiting for full CI run on it"
+        ]
+
+    code = pr_arm.arm(
+        "7",
+        None,
+        run=gh,
+        unpublished=lambda _c: [],
+        threads=lambda *_a: [],
+        suites=lambda *_a: [],
+        gate=lambda *_a: [],
+        stale_base=stale,
+    )
+    assert code == 2
+    assert gh.merged() == []
+    assert seen == [(7, HEAD, "develop")]
+    assert "outcome: waiting: PR #7 is not armed yet:" in capsys.readouterr().out
+
+
+def test_a_would_block_refusal_names_the_full_rerun_remedy() -> None:
+    gh = FakeGh(verdict=WOULD_BLOCK)
+    reasons = pr_arm.duration_verdict_refusals(gh, pr_arm.REPOSITORY, 7, HEAD)
+    assert len(reasons) == 1
+    assert "make pr-rerun PR=7" in reasons[0]
+    assert "re-runs the whole CI run" in reasons[0]
+    assert "regenerate" in reasons[0]
 
 
 def test_makefile_exposes_pr_arm_through_the_helper_and_declares_it_phony() -> None:
@@ -1634,3 +1705,38 @@ def test_a_wait_ends_when_the_pending_verdict_turns_into_open_findings(capsys: p
     assert time.sleeps == [pr_arm.WAIT_INTERVAL_SECONDS]
     assert gh.merged() == []
     assert _last_outcome_line(capsys).startswith("pr-arm: outcome: refused: ")
+
+
+def _arm_with_default_stale_guard(gh: FakeGh) -> int:
+    return pr_arm.arm(
+        "7",
+        None,
+        run=gh,
+        unpublished=lambda _c: [],
+        threads=lambda *_a: [],
+        suites=lambda *_a: [],
+        gate=lambda *_a: [],
+    )
+
+
+def test_the_default_stale_base_guard_refuses_before_any_merge(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(pr_arm.pr_stale_base, "stale_base_refusals", lambda *_a, **_k: ["develop moved"])
+    gh = FakeGh()
+    assert _arm_with_default_stale_guard(gh) == 2
+    assert gh.merged() == []
+    assert "outcome: refused: PR #7 is not armed yet: develop moved" in capsys.readouterr().out
+
+
+def test_an_unreadable_stale_base_listing_refuses_with_the_unverified_outcome(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def broken(*_a, **_k):
+        raise LandingError("cannot list the develop commits: HTTP 502")
+
+    monkeypatch.setattr(pr_arm.pr_stale_base, "stale_base_refusals", broken)
+    gh = FakeGh()
+    assert _arm_with_default_stale_guard(gh) == 1
+    assert gh.merged() == []
+    assert "outcome: refused: live state could not be verified" in capsys.readouterr().out

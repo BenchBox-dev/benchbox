@@ -5,6 +5,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
 from pathlib import Path
@@ -20,9 +21,12 @@ USAGE = "usage: make pr-rerun [PR=<number>] [REPO=<owner/name>]"
 WORKFLOW_PATH = ".github/workflows/ci.yml"
 PATHS_JOB = "ci-paths"
 BASE_BRANCH = "develop"
+VERDICT_ARTIFACT_PREFIX = "fast-duration-verdict"
+VERDICT_FILE = "fast-duration-verdict.json"
+WOULD_BLOCK_MAX_ATTEMPTS = 3
 RUN_FILTER = (
     ".workflow_runs[] | {id, path, event, head_branch, head_sha,"
-    " head_repository: .head_repository.full_name, status, conclusion, created_at}"
+    " head_repository: .head_repository.full_name, status, conclusion, created_at, run_attempt}"
 )
 FULL_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 REPOSITORY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*$")
@@ -201,7 +205,31 @@ def is_text_edit_run(jobs: Sequence[Mapping[str, Any]]) -> bool:
     return any(job.get("name") == PATHS_JOB and job.get("conclusion") == "skipped" for job in jobs)
 
 
-def rerun_arguments(run: Mapping[str, Any], jobs: Sequence[Mapping[str, Any]], repo: str) -> list[str] | None:
+def _would_block_verdict(runner: Runner, repo: str, pr: int, head: str, run_id: int) -> bool:
+    name = f"{VERDICT_ARTIFACT_PREFIX}-{pr}-{head}"
+    try:
+        found = _invoke(
+            runner,
+            [
+                "api",
+                "--jq",
+                f"[.artifacts[] | select((.expired | not) and .workflow_run.id == {run_id})][0].id // empty",
+                f"repos/{repo}/actions/artifacts?name={name}&per_page=20",
+            ],
+        )
+        if not found.stdout.strip():
+            return False
+        with tempfile.TemporaryDirectory(prefix="pr-rerun-verdict-") as scratch:
+            _invoke(runner, ["run", "download", str(run_id), "--repo", repo, "-n", name, "-D", scratch])
+            report = json.loads((Path(scratch) / VERDICT_FILE).read_text(encoding="utf-8"))
+    except (RerunError, OSError, ValueError):
+        return False
+    return isinstance(report, dict) and report.get("verdict") == "would-block"
+
+
+def rerun_arguments(
+    run: Mapping[str, Any], jobs: Sequence[Mapping[str, Any]], repo: str, would_block: bool = False
+) -> list[str] | None:
     status = run.get("status")
     conclusion = run.get("conclusion")
     run_id = str(run.get("id"))
@@ -216,6 +244,15 @@ def rerun_arguments(run: Mapping[str, Any], jobs: Sequence[Mapping[str, Any]], r
     if conclusion == "cancelled" or any(job.get("conclusion") == "cancelled" for job in jobs):
         return ["run", "rerun", run_id, "--repo", repo]
     if conclusion == "failure":
+        if would_block:
+            attempt = run.get("run_attempt")
+            if isinstance(attempt, int) and attempt >= WOULD_BLOCK_MAX_ATTEMPTS:
+                raise RerunError(
+                    f"CI run {run_id} reported a would-block duration verdict on {attempt} attempts, each timed "
+                    "afresh; that is a real slowdown, not runner noise. Remove the slowdown or regenerate the "
+                    "baseline instead of re-running"
+                )
+            return ["run", "rerun", run_id, "--repo", repo]
         return ["run", "rerun", run_id, "--repo", repo, "--failed"]
     raise RerunError(f"CI run {run_id} ended {conclusion!r}; re-running it is not supported here")
 
@@ -289,10 +326,14 @@ def rerun(repo: str, pr: int, runner: Runner = _subprocess_runner) -> str:
     if chosen is not None:
         run, jobs = chosen
         created.append(_time(run.get("created_at")))
-        arguments = rerun_arguments(run, jobs, repo)
+        would_block = run.get("conclusion") == "failure" and _would_block_verdict(
+            runner, repo, pr, head, int(run["id"])
+        )
+        arguments = rerun_arguments(run, jobs, repo, would_block)
         if arguments is not None:
             scope = "failed jobs of" if "--failed" in arguments else "all jobs of"
-            commands.append((arguments, f"{scope} CI run {run['id']}"))
+            fresh = " (would-block duration verdict, fresh timings)" if would_block else ""
+            commands.append((arguments, f"{scope} CI run {run['id']}{fresh}"))
     covered = {arguments[2] for arguments, _ in commands}
     for item in suite_reruns:
         if str(item.run_id) in covered:
