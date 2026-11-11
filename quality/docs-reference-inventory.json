@@ -314,16 +314,33 @@
   {
    "disposition": "governance-stays",
    "kinds": {
-    "pattern": 1
+    "file": 3,
+    "pattern": 2
    },
-   "occurrences": 1,
+   "occurrences": 5,
    "path": ".github/review.yml",
    "rule": "oracle-exposure-exemptions",
-   "target_count": 1,
+   "target_count": 5,
    "targets": [
     {
      "kind": "pattern",
      "target": "docs/*.md"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/benchmarks/queries/*"
+    },
+    {
+     "kind": "file",
+     "target": "docs/compat/capability-matrix.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/compat/skip-reference.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/reference/tuning-platform-support.md"
     }
    ]
   },
@@ -4354,13 +4371,13 @@
    "built-url": 29037,
    "dir": 163,
    "extra": 39,
-   "file": 1378,
+   "file": 1381,
    "generated": 3,
-   "pattern": 333,
+   "pattern": 334,
    "root": 202,
    "unresolved": 2079
   },
-  "references": 33234,
+  "references": 33238,
   "unclassified": 0
  }
 }
