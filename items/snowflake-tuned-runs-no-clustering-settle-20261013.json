@@ -3,7 +3,7 @@
     "Snowflake tuned runs either wait for a stable clustering depth (recorded settle phase with timeout) or load pre-sorted data; the bundle records average depth and clustering credits.",
     "Unit tests cover settled and timed-out paths with a fake driver."
   ],
-  "context": "Found 2026-10-13 by an adversarial review of Snowflake tuning at origin/develop 77048bfb9. The Snowflake trial-exit tuned campaign works around this with an external settle step.\n\n2026-11-06 owner: live-cloud spend for this item was asked about and declined for now (\"Not now\"). Ask again before any live run.",
+  "context": "Found 2026-10-13 by an adversarial review of Snowflake tuning at origin/develop 77048bfb9. The Snowflake trial-exit tuned campaign works around this with an external settle step.\n\n2026-11-06 owner: live-cloud spend for this item was asked about and declined for now (\"Not now\"). Ask again before any live run.\n\nRevalidated 2026-11-11 against origin/develop c7b75c80bc: problem still present and no settle or sorted-load change has landed. Current locations replacing the cited lines: RESUME RECLUSTER now runs from the post-load hook (snowflake.py:1850-1863 apply_post_load_tunings, invoked from snowflake.py:921 and base/data_loading.py:2037), after the empty-table ALTER TABLE ... CLUSTER BY at snowflake.py:1914-1943, which queues the table for the hook only when there are at most 4 clustering columns. build_merge_settle_phase returns None at benchbox/platforms/base/tuning.py:139. SYSTEM$CLUSTERING_INFORMATION is only built as SQL in core/tuning/generators/snowflake.py:136 and never executed. The auto-clustering flag check at snowflake.py:1905-1911 still accepts True/ON/TRUE/1 against INFORMATION_SCHEMA.TABLES.AUTO_CLUSTERING_ON. Precedent for a settle phase: ClickHouse records a merge-settle wait (#2878). snowflake-tuned-live-certification-20261001 and tuning-ctas-rewrite-safety-20261001 are done. Owner declined live spend on 2026-11-06; the unit-test acceptance with a fake driver does not need it.",
   "description": "## Problem\nFor Snowflake tuned runs, the order is: CREATE TABLE, then `ALTER TABLE … CLUSTER BY` on the empty table, then COPY, then `RESUME RECLUSTER` (`benchbox/platforms/base/adapter.py:935-971`, `benchbox/platforms/snowflake.py:1635-1650`).\n- Nothing waits for automatic clustering. `build_merge_settle_phase` returns None for Snowflake (`benchbox/platforms/base/tuning.py:138`), and no code calls `SYSTEM$CLUSTERING_INFORMATION`.\n- At sf10 and above, reclustering takes minutes to hours, so tuned timings depend on when the queries happen to run.\n- Reclustering credits never appear in the bundle.\n- `RESUME RECLUSTER` is redundant, because defining a clustering key already enables automatic clustering.\n- The auto-clustering flag check accepts ON/TRUE/1 (`snowflake.py:1688-1692`), while INFORMATION_SCHEMA likely returns YES/NO.\n\n## Change\nPick one approach, then record the result:\n- **Settle phase:** add a Snowflake settle phase that polls `SYSTEM$CLUSTERING_INFORMATION` until average depth is stable across 3 polls, with a recorded timeout and unsettled flag.\n- **Sorted load:** load the data already sorted (`CREATE TABLE … CLUSTER BY (…) AS SELECT … ORDER BY …`) while preserving keys and constraints. Coordinate with `tuning-ctas-rewrite-safety-20261001`.\n\nIn either case, record clustering depth and automatic-clustering credits in the result. The measurement-harness item `cloud-tuned-benefit-measurement-20261008` covers its own harness only; this item covers ordinary `benchbox run` tuned runs.",
   "links": [
     "benchbox/platforms/snowflake.py",
@@ -26,6 +26,14 @@
       "op": "update",
       "op_id": "c014d8465c7149b0907bc23d93f2557f",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:33:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "03afd62f64fa4541929d952d80446682",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
