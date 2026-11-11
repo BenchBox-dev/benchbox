@@ -36610,7 +36610,12 @@
       "title": "Decide the site repo's runner pool from a month of deploy receipts"
     },
     "site-scale-factor-docs-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T23:21:24Z",
+        "generation": "94c28ceedf6347c3950a421c78a3a90d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba"
+      },
       "needs": [
         "scale-factor-consistency-umbrella-20261111",
         "scale-factor-registry-caps-vs-docs-20261013",
@@ -36618,7 +36623,7 @@
         "scale-factor-nonstandard-note-surfaces-20261111"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Site docs: state the real scale-factor range and remove SF 0.001"
     },
     "site-sphinx-fallback-exposure": {
