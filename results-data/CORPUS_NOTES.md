@@ -5,8 +5,8 @@
 TPC-DS OBT has accepted scales below 1 since 2026-11-11 (#4088), so these are
 its first cohorts below SF1. Seven bundles (`result_source: internal`) come from
 one UAT sweep of the code that made that change. All of them ran on the Darwin
-Apple M4 host (10 CPUs, 16 GB RAM) with no tuning, phases `generate`, `load` and
-`power`, and 3 iterations:
+Apple M4 host (10 CPUs, 16 GB RAM) with BenchBox tuning off (`tuning_source:
+baseline`), phases `generate`, `load` and `power`, and 3 iterations:
 
 | Platform | SF 0.01 | SF 0.1 |
 |---|---|---|
@@ -27,6 +27,15 @@ containers under mocker (Apple container VMs) on the same Mac. The bundles
 record the native client host. `scripts/annotate_execution_class.py` makes no
 attestation for them because the client class is measured, so their manifests
 carry no container execution class.
+
+The engines did not run with equal parallelism. DuckDB ran with 8 threads and
+an 8 GB memory limit, and DataFusion with 10 target partitions and a 12 GB
+limit. Doris ran with `parallel_pipeline_task_num=1`, which the UAT harness sets
+for every local Doris cell (`tests/uat/docker_assets.py`) so that queries fit
+the 4 GiB container; it limits each Doris query fragment to one pipeline task.
+Both Doris bundles record the setting in `config.platform_options`. Read the
+Doris timings in these cohorts as single-task Doris in a 4 GiB container, not
+as Doris at full parallelism.
 
 LakeSail SF 0.1 is not admitted. Its run failed after about 20 minutes, and the
 verbose diagnostic re-run could not connect to the LakeSail server at
