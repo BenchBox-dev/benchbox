@@ -2,7 +2,7 @@
   "acceptance": [
     "make pr-arm and the landing status name unresolved review threads on the PR; a test covers an armed PR blocked only by one."
   ],
-  "context": "2026-11-11 further evidence: on PR #4098, `make pr-arm` printed `outcome: armed` while two review threads from the first head were unresolved and outdated (both findings already fixed). pr-arm's thread check ignores outdated threads ('an unresolved, non-outdated review thread is open'), but the ruleset's required conversation resolution counts them, so the armed PR sat BLOCKED with every check green until each thread was answered and resolved by hand. Either pr-arm should refuse or warn on unresolved outdated threads, or the blocked state should be reported.",
+  "context": "2026-11-11 further evidence: on PR #4098, `make pr-arm` printed `outcome: armed` while two review threads from the first head were unresolved and outdated (both findings already fixed). pr-arm's thread check ignores outdated threads ('an unresolved, non-outdated review thread is open'), but the ruleset's required conversation resolution counts them, so the armed PR sat BLOCKED with every check green until each thread was answered and resolved by hand. Either pr-arm should refuse or warn on unresolved outdated threads, or the blocked state should be reported.\n\n2026-11-11: delivered in PR #4120, merged to develop as 591c21ba5e (verified an ancestor of origin/develop). Unresolved review threads block arming whether or not they are outdated, in pr-arm, pr-landing-ready, enqueue and pr-arm-remote, and pr-arm names them. Proven live on #4120: the new rule refused arming for two unresolved threads on its own PR until they were fixed and resolved.",
   "description": "#3839 sat armed and BLOCKED for about 90 minutes with every required check green and oracle SHIP, because one oracle thread was left unresolved after a Dispute: reply (the ruleset requires conversation resolution). Nothing in pr-arm or the landing tools reported it. pr-arm should refuse or warn on unresolved threads, and the landing status should name them.",
   "sessions": [
     {
@@ -36,6 +36,14 @@
       "generation": "36e1d9be6fa04b0aade5d448fadda22d",
       "op": "take",
       "op_id": "6fab5839e69540349742f5a895af689e",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T22:32:24Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c15dd10d1eef4d84ba5fcf5570266161",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
