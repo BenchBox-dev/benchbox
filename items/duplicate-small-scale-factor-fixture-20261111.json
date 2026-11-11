@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Decision gate: prove reachability first (collect with `--fixtures`, or grep for imports of tests.fixtures.benchmark_fixtures); if the fixture is in use anywhere, rename instead of delete.",
+    "Verification: `git grep -n 'def small_scale_factor' tests` returns one definition, and the fast tier passes through make pr-preflight-fast-tests or CI.",
+    "Done when merged."
+  ],
+  "description": "Found on 2026-11-11 while delivering retro-navigation-fixes-umbrella-20261111 (or in the retrospective over 25 agent sessions that preceded it) and not addressed there.\n\nProblem. `small_scale_factor` is defined twice: tests/fixtures/utility_fixtures.py (returns 1.0; loaded through `pytest_plugins` in tests/conftest.py) and tests/fixtures/benchmark_fixtures.py (parametrized over `SCALE_FACTORS`). In one reviewed session an agent diagnosing a slow H2ODB data generation read the second file, reported it as the cause, and had to retract that after a reviewer showed the first is the one in use. Whether the second is dead was inferred from the plugin list and not executed.\n\nChange. Confirm which fixtures in benchmark_fixtures.py are reachable; delete the unreachable ones, or rename one of the two so the name is unique.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read every cited file on current origin/develop first, because line numbers and commits here are from 2026-11-11 (origin/develop 5bd2c19cc4); close at a merged PR and finish only after the merge is observed.",
+  "links": [
+    "tests/fixtures/benchmark_fixtures.py",
+    "tests/fixtures/utility_fixtures.py",
+    "tests/conftest.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T16:39:00Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "cb0db524840841b1ac2d14f653563a99",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    }
+  ]
+}

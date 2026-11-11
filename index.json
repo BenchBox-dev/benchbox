@@ -21113,6 +21113,13 @@
       "status": "done",
       "title": "Follow-up duplicate-code triage and consolidation from AST clone report"
     },
+    "duplicate-small-scale-factor-fixture-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Remove or rename the duplicate small_scale_factor fixture"
+    },
     "duration-refresh-workflow-closes-superseded-prs-20261110": {
       "claim": null,
       "needs": [],
