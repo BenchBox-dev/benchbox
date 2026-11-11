@@ -236,8 +236,12 @@ environment is an owner action, and an agent never takes it.
      invalid attempt), the three disk scans and the redaction step.
    - `OPENAI_API_KEY`: optional; the classify step (the OpenAI Decisions
      fallback, `classifier.fallback`, when TypeSafe is unavailable), the three
-     disk scans and the redaction step. Without it the fallback ends at
-     `classifier.unavailable_bucket` and the step summary warns.
+     disk scans and the redaction step. It must be a newly minted key scoped to
+     Decisions classification only, and the provider key the gateway decision
+     retired must be deleted and rotated before the caller mapping is enabled
+     ([amendment](../../_project/decisions/oracle-reviewer-gateway-2026-10-22.md#amendment-a-classification-only-openai-key)).
+     Without it the fallback ends at `classifier.unavailable_bucket` and the
+     step summary warns.
    - `ORACLE_GATEWAY_TOKEN`, `ORACLE_GATEWAY_URL`: the reviewer's client token
      for the credential gateway and the gateway's HTTPS URL, held by the attempt
      loop and the redaction step. No provider key, broker URL, broker token or
@@ -281,13 +285,15 @@ these are the settings BenchBox sets and what each one does at its limit.
   `TYPESAFE_API_KEY` except the invalid-attempt recovery steps: prepare, the
   three disk scans and the verdict redaction. It never reaches the attempt
   loop, where the unconfined reviewer runs, so the rule that the reviewer
-  holds no provider credential still holds for the reviewer itself. The key is
-  a classification-only credential for the Decisions API. The owner confirmed
-  it is a new key, distinct from the provider key the 2026-10-22 gateway
-  decision retired. It is scanned for
-  and redacted like the other secrets. This accepts that the prepare and scan
-  steps hold one more third-party key. Removing the caller mapping and the
-  environment secret withdraws it.
+  holds no provider credential still holds for the reviewer itself. The key
+  must be a newly minted, Decisions-scoped credential, never the retired
+  provider key: that key has to be deleted and rotated before the mapping is
+  enabled. The owner confirmed on 2026-11-11 that the environment's key is
+  such a replacement
+  ([amendment](../../_project/decisions/oracle-reviewer-gateway-2026-10-22.md#amendment-a-classification-only-openai-key)).
+  It is scanned for and redacted like the other secrets. This accepts that the
+  prepare and scan steps hold one more third-party key. Removing the caller
+  mapping and the environment secret withdraws it.
 - `.github/review-guidance.md` holds BenchBox conventions for reviewers. The
   pinned Theseus release does not load it into briefs and refuses a
   `consumer.review_guidance` policy key, so today nothing reads it at review
