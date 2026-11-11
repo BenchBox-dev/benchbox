@@ -839,7 +839,7 @@ def test_hosted_fetch_uses_the_fixed_url_and_forces_the_tag(monkeypatch, tmp_pat
         "fetch",
         "--no-tags",
         "https://github.com/BenchBox-dev/BenchBox.git",
-        "develop:refs/remotes/origin/develop",
+        "refs/heads/develop:refs/remotes/origin/develop",
         "refs/heads/release/*:refs/remotes/origin/release/*",
         "+refs/tags/v0.4.2:refs/tags/v0.4.2",
     )
