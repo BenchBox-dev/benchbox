@@ -1084,6 +1084,8 @@ class Wired:
             ("git", "rev-parse", "--verify", f"{OLD}^{{commit}}"): OLD + "\n",
             ("git", "rev-list", "--first-parent", HEAD): f"{HEAD}\n{SINCE}\n",
             ("git", "rev-list", "--first-parent", MERGED): f"{MERGED}\n{OLD}\n",
+            ("git", "cat-file", "-e", f"{SINCE}:{digest.MANIFEST_PATH}"): "",
+            ("git", "cat-file", "-e", f"{OLD}:{digest.MANIFEST_PATH}"): "",
         }
         self.checkpoint = SINCE
         self.entries = [classified("d" * 40, "unreviewed", pull=evidence(number=8))]

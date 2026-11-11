@@ -39,6 +39,12 @@ not a current procedure.
 which exists. While listed, re-creating one of them is treated as a soundness change.
 They are left in place until the owner decides whether that is wanted.
 
+To read the pinned engine's source, run
+`uv run -- python scripts/theseus_cli.py --trusted-ref HEAD path`. It prints
+`<install>/bin/theseus`; the source is `<install>/site/theseus_reviewer`. Do not
+pick a directory under `~/.cache/theseus/installs` by hand: it holds every
+past version.
+
 BenchBox keeps the consumer side:
 
 - `.github/workflows/review-verdict.yml` and `review-gate.yml`: thin callers of
@@ -671,8 +677,8 @@ with no preceding `Owner instruction` comment. `review-gate` never parses
 findings.
 
 The reviewer never resolves a thread: a follow-up lists defects it verified fixed,
-and the author resolves those. Each new thread carries a hidden `oracle-defect:
-c<cycle>-D<n>` marker before its `oracle-finding` fingerprint, which stays last.
+and the author resolves those. Each new thread carries a hidden `review-defect:
+c<cycle>-D<n>` marker before its `review-finding` fingerprint, which stays last.
 
 After three DO NOT SHIP decisions on distinct patches of one PR, the reviewer
 posts a refusal (`failure`, `Decision: **REFUSED**.`) once per head and reviews
