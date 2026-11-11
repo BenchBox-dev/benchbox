@@ -22695,9 +22695,9 @@
     },
     "feature-agent-docs-operational-facts-20261111": {
       "claim": {
-        "expires_at": "2026-11-12T17:55:40Z",
-        "generation": "88642f7a9b0c4dac850644853ace1af0",
-        "renewals": 0,
+        "expires_at": "2026-11-12T17:55:55Z",
+        "generation": "aa2243d86658404aa01b1451c314acd3",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549"
       },
       "needs": [],
