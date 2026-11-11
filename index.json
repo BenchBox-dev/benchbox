@@ -14210,10 +14210,15 @@
       "title": "medium-collect spends about 108 s collecting because it starts with a cold assertion-rewrite cache"
     },
     "ci-medium-shard-cancelled-without-cause-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T18:57:53Z",
+        "generation": "67a6c0338753442f9cdc2001d61c10b0",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "medium-test shard 2 hangs near the end and is cancelled by the 25-minute job timeout, at least 17 times in four days"
     },
     "ci-medium-shard-hangs-after-last-test-20261110": {
