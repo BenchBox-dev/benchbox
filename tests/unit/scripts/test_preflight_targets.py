@@ -639,6 +639,17 @@ def test_a_missing_or_malformed_reader_index_warns_and_selects_as_before(
     assert "_project/inert-doc-readers.json" in capsys.readouterr().err
 
 
+def test_an_unusable_reader_index_selects_the_reader_index_check(repo: Path) -> None:
+    _with_reader_index(repo, "not json\n")
+    _write(repo, "tests/unit/test_unrelated.py", "y = 2\n")
+    _commit_all(repo)
+
+    assert pt.map_tests(repo, pt.changed_paths(repo, "origin/develop")) == sorted(
+        [pt.READERS_INDEX_TEST, "tests/unit/test_unrelated.py"]
+    )
+    assert pt.map_tests(repo, []) == []
+
+
 def test_a_test_that_stops_reading_a_doc_selects_the_reader_index_check(repo: Path) -> None:
     _with_reader_index(repo, INDEX)
     _write(repo, "tests/unit/test_reader.py", "def test_reads() -> None:\n    assert True\n")
@@ -673,11 +684,11 @@ def test_a_test_change_that_keeps_its_doc_reads_skips_the_reader_index_check(rep
     ("paths", "expected"),
     [
         (["benchbox/core/engine.py"], ["docs-reference-inventory", "project-references"]),
-        (["tests/unit/test_tool.py"], ["docs-reference-inventory", "project-references"]),
         (["AGENTS.md"], ["docs-reference-inventory", "project-references"]),
+        (["Makefile"], ["docs-reference-inventory", "project-references"]),
+        (["benchbox/_vendor/archive.whl.zip"], ["docs-reference-inventory", "project-references"]),
         (["docs/internal/new.md"], ["docs-reference-inventory", "project-references", "docs-ownership"]),
         (["docs/operations/table.tsv"], ["docs-reference-inventory", "project-references", "docs-ownership"]),
-        (["uv.lock", "benchbox/_vendor/archive.whl.zip"], []),
         ([], []),
     ],
 )

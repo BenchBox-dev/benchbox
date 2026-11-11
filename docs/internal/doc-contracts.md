@@ -120,6 +120,6 @@ make docs-reference-inventory-check
 ```
 
 `docs-reference-inventory` rewrites `quality/docs-reference-inventory.json`; the `-check` target fails when that file is stale.
-`make pr-preflight` runs the `-check` target and the `_project` reference check when a change touches code, tests or
-docs, runs the ownership check when it touches `docs/`, and selects the tests that read a changed document from
+`make pr-preflight` runs the `-check` target and the `_project` reference check for every change, runs the
+ownership check when the change touches `docs/`, and selects the tests that read a changed document from
 `_project/inert-doc-readers.json`.

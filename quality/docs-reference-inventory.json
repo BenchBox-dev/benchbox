@@ -2122,6 +2122,22 @@
   {
    "disposition": "wiring-updated",
    "kinds": {
+    "root": 1
+   },
+   "occurrences": 1,
+   "path": "make/help.mk",
+   "rule": "build-and-ignore-wiring",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "root",
+     "target": "docs/"
+    }
+   ]
+  },
+  {
+   "disposition": "wiring-updated",
+   "kinds": {
     "built-url": 2,
     "extra": 1,
     "file": 1,
@@ -4331,9 +4347,9 @@
    "lock-test": 4,
    "prose-link-pinned": 12,
    "site-pipeline-cutover": 4,
-   "wiring-updated": 33
+   "wiring-updated": 34
   },
-  "files": 229,
+  "files": 230,
   "kinds": {
    "built-url": 29037,
    "dir": 163,
@@ -4341,10 +4357,10 @@
    "file": 1378,
    "generated": 3,
    "pattern": 333,
-   "root": 201,
+   "root": 202,
    "unresolved": 2077
   },
-  "references": 33230,
+  "references": 33231,
   "unclassified": 0
  }
 }

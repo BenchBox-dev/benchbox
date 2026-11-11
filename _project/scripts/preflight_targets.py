@@ -306,14 +306,14 @@ READERS_INDEX_TEST = "tests/unit/scripts/test_inert_paths.py::test_checked_in_re
 REFERENCE_GUARDS = ("docs-reference-inventory", "project-references")
 OWNERSHIP_GUARD = "docs-ownership"
 DOCS_ROOT = "docs/"
-REFERENCE_SUFFIXES = (".py", ".md", ".mk", ".sh", ".yml", ".yaml", ".toml", ".json", ".txt")
 
 
 def _doc_readers(repo: Path) -> dict[str, list[str]]:
     readers = inert_paths.load_readers(repo)
     if not readers:
         print(
-            f"preflight_targets: {READERS_INDEX} is missing, unreadable or empty; doc reader tests are not selected",
+            f"preflight_targets: {READERS_INDEX} is missing, unreadable or empty; "
+            "selecting the reader index check instead of doc reader tests",
             file=sys.stderr,
         )
     return readers
@@ -333,27 +333,26 @@ def _reads_differ_from_index(
 
 
 def _reader_tests(repo: Path, paths: list[str], test_files: list[str]) -> set[str]:
-    readers = _doc_readers(repo)
-    if not readers:
+    if not paths:
         return set()
     known = set(test_files)
+    index_check = {READERS_INDEX_TEST} if READERS_INDEX_TEST.split("::", 1)[0] in known else set()
+    readers = _doc_readers(repo)
+    if not readers:
+        return index_check
     selected = {test for path in paths for test in readers.get(path, ()) if test in known}
     changed_tests = [path for path in paths if _is_test_file(path)]
-    if READERS_INDEX in paths:
-        selected.add(READERS_INDEX_TEST)
-    elif changed_tests:
+    stale = READERS_INDEX in paths
+    if not stale and changed_tests:
         tracked = inert_paths.tracked_files(repo)
         basenames = inert_paths.basename_index(tracked)
-        if any(_reads_differ_from_index(repo, path, readers, tracked, basenames) for path in changed_tests):
-            selected.add(READERS_INDEX_TEST)
-    if READERS_INDEX_TEST.split("::", 1)[0] not in known:
-        selected.discard(READERS_INDEX_TEST)
-    return selected
+        stale = any(_reads_differ_from_index(repo, path, readers, tracked, basenames) for path in changed_tests)
+    return selected | index_check if stale else selected
 
 
 def guards(paths: list[str]) -> list[str]:
     selected: list[str] = []
-    if any(path.startswith(DOCS_ROOT) or path.endswith(REFERENCE_SUFFIXES) for path in paths):
+    if paths:
         selected.extend(REFERENCE_GUARDS)
     if any(path.startswith(DOCS_ROOT) for path in paths):
         selected.append(OWNERSHIP_GUARD)
