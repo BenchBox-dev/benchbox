@@ -23385,15 +23385,10 @@
       "title": "`--force datagen` does not regenerate TPC-H data"
     },
     "foreign-table-guard-blocks-shared-database-20261030": {
-      "claim": {
-        "expires_at": "2026-11-12T02:31:07Z",
-        "generation": "25f9a73ded6647eb82f11104f4bfb3ab",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7bc97e5b905b990114418f4a"
-      },
+      "claim": null,
       "needs": [],
       "priority": "critical",
-      "status": "active",
+      "status": "done",
       "title": "Foreign-table guard refuses to reset databases that sibling benchmarks share in one sweep"
     },
     "formalize-mcp-internal-apis": {
