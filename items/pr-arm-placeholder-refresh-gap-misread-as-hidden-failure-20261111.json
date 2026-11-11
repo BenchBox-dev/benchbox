@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "A required-check failure whose run is a text-edit placeholder is classified as waiting, not as a hidden failure, while the placeholder run is queued or in progress, and for a bounded time after the newest full CI run completed if the placeholder has not been re-run since",
+    "After that bound, or when the full run itself failed, the existing refusal and advice are unchanged",
+    "The waiting reason says the placeholder re-runs on its own and does not mention make pr-rerun",
+    "Unit tests cover: placeholder re-run queued; full run completed seconds ago and placeholder not yet re-run; bound exceeded; full run failed",
+    "docs/agent/merge-authority.md describes the state in the outcome list"
+  ],
+  "description": "When a pull request's title or body is edited, CI starts a 'CI (text edit)' placeholder run whose required checks fail until the full CI run for the head completes; the ci-text-edit-refresh workflow then re-runs the placeholder. scripts/pr_arm.py `_waiting_full_run` treats a placeholder failure as waiting only while a full run is still in progress. Between the full run completing and the placeholder's re-run finishing, it falls through to the hidden-failure reason: \"required check 'core' suite ... failure is hidden behind a newer success; the merge rollup still counts it, so run make pr-rerun\". That ends `make pr-arm WAIT=<minutes>` as refused and gives wrong advice. Evidence, 2026-11-11: PR #4112 head 2f7dbf22a: full run 43065466899 completed 17:34:39Z; the wait refused at 17:36:26Z; placeholder run 43065467973 began attempt 2 on its own at 17:36:57Z. PR #4110 head d7b6335ca hit the same refusal at 17:24Z; following the advice, `make pr-rerun PR=4110` re-ran every job of the full CI run, costing a whole CI cycle for nothing. Every `make pr-open` edits the body, so every PR passes through this gap. This is the unreproduced anomaly noted on pr-arm-wait-review-pending-classification-20261111.",
+  "links": [
+    "scripts/pr_arm.py",
+    ".github/workflows/ci-text-edit-refresh.yml",
+    "scripts/ci_text_edit_verdict.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T17:39:16Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "83b6dab2179c417b94dd641e303ece0d",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    }
+  ]
+}
