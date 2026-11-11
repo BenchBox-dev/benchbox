@@ -1,9 +1,20 @@
 {
+  "context": "2026-11-11: merged duplicate evaluate-mutation-testing-on-dialect-result-model-core into this item. Start the evaluation on the dialect and result-model core, where correctness lanes now exist.",
   "description": "Promoted from deferral #183 of fix-coverage-theater.\nDeferred: Add mutation testing to detect tests that never fail\nReason deferred: mutmut or cosmic-ray can find tests that pass regardless of code changes. Useful as a second pass after fixing known theater, but expensive to run.",
   "legacy": {
     "item_meta": {
       "created_at": "2026-07-19T12:34:24Z",
       "worktree": "main"
     }
-  }
+  },
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:22:52Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6f281fd3fc1e4c54b2b57c62380ae724",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
+    }
+  ]
 }
