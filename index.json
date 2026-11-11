@@ -31394,7 +31394,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "dropped",
       "title": "Decouple site publication from the develop merge queue and trigger it on release"
     },
     "publication-ledger-reproducible-inputs": {
