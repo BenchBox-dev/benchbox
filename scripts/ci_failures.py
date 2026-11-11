@@ -191,7 +191,9 @@ def report_run(runner: Runner, repo: str, run: Run, limit: int) -> tuple[list[st
         return [f"{header}: placeholder for a title or body edit; the full CI run decides"], 0
     jobs = failed_jobs(runner, repo, run.run_id)
     if not jobs:
-        return [], 0
+        if run.conclusion not in FAILED_CONCLUSIONS:
+            return [], 0
+        return [header, f"  the run ended {run.conclusion} with no failed job recorded; open the run to see why"], 1
     out = [header]
     for job in jobs:
         steps = ", ".join(plain(step) for step in job.steps) or "no failed step recorded"
