@@ -4,6 +4,7 @@
     "RF1/RF2 (and the TPC-DS data maintenance functions) run as the specification requires, or any remaining deviation is recorded in the result and the docs",
     "compliance classification depends on the enforced conditions, with tests for each refusal"
   ],
+  "context": "Revalidated 2026-11-11 against origin/develop c7b75c80bc: still required, nothing delivered. Current locations: --official fallback refusal benchbox/cli/commands/run.py:115-125; scale-point check and the missing-seed warning (still only a warning) run.py:589-611; flat stream minimum run_service.py:52-61 (validate_stream_count, only enforced when the throughput phase is requested) and core/schemas.py:14-26 (MIN_THROUGHPUT_STREAMS = 2); compliance classification core/tpc_patterns.py:51-61 (classify_official_scale_run, still only official flag plus scale point). TPC-DS QphDS has its own minimum (QPHDS_MIN_STREAMS = 4, even count) in core/results/metrics.py:19-125, which --official does not enforce at run time. Progress since the item was written that touches the RF/DM acceptance criterion: PR #3004 (f.. 960c616744, 2026-10-16) put TPC-H refresh functions inside the power and throughput tests; PR #4015 (4b15ef769c, 2026-11-07) runs TPC-DS data maintenance from dsdgen refresh sets. Re-read both before deciding what deviation from the spec remains. The user docs that the description cites (docs/benchmarks/tpc-h.md etc.) no longer live in this repository; they are in BenchBox-dev/benchbox-site under docs/. The mode is still called --official; the rename to full-spec has not happened.",
   "description": "The mode now called --official only checks that the scale factor is a TPC scale point and refuses tuned-fallback (benchbox/cli/commands/run.py ~540-562, ~112-122); a missing seed only warns (run.py ~554). The throughput stream minimum is a flat 2 (benchbox/core/run_service.py ~29, core/schemas.py ~23) instead of the spec's per-scale-factor minimum. compliance_class \"official\" means only flag set and SF is a scale point (core/tpc_patterns.py ~48-57), independent of phases, query subset or streams. RF1/RF2 run in a maintenance phase after the throughput test, not concurrently (docs/benchmarks/tpc-h.md ~121-127). Owner decision 2026-10-08: enforce the full specification before the mode is renamed to \"full-spec\".",
   "links": [
     "benchbox/cli/commands/run.py",
@@ -21,6 +22,14 @@
       "op": "create",
       "op_id": "a34d904b7ca74f6a9d2da4412ae38a95",
       "session_id": "bcebd139f88a4c38a6dc9549b9b03523"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:27:31Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e1c8b214e9bb4a96979d5e86ecaea1f2",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
