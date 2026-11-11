@@ -33217,7 +33217,7 @@
     "release-uat-java-25-breaks-pyspark-20261030": {
       "claim": null,
       "needs": [],
-      "priority": "critical",
+      "priority": "medium",
       "status": "open",
       "title": "Release UAT runs PySpark on Java 25, which PySpark 4 refuses"
     },
