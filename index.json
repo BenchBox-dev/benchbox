@@ -22720,10 +22720,15 @@
       "title": "Agent docs: record the operational facts sessions kept rediscovering"
     },
     "feature-pr-landing-guards-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T22:32:02Z",
+        "generation": "f5f0a55220c44f2fb549719110cece99",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "PR landing: close the gaps between what the local commands accept and what GitHub and CI require"
     },
     "feature-review-tooling-source-path-and-digest-20261111": {
