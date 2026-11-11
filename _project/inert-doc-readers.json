@@ -12,6 +12,9 @@
   ".github/PULL_REQUEST_TEMPLATE.md": [
     "tests/unit/test_release_infrastructure.py"
   ],
+  ".github/review-guidance.md": [
+    "tests/unit/scripts/test_review_policy_pin.py"
+  ],
   "AGENTS.md": [
     "tests/unit/workflows/test_stacked_pr_base_guard.py"
   ],

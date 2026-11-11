@@ -15,6 +15,9 @@ max_attempts: 5
 protocol:
   max_defects: 10
   max_do_not_ship: 3
+  max_finding_rounds: 4
+brief:
+  include_intent: true
 retry:
   daily_budget: 6
   backoff_start_minutes: 60
@@ -108,9 +111,28 @@ buckets:
   max: max
 classifier:
   unavailable_bucket: max
+  fallback: decisions
+  fallback_min_bucket: large
+  size_floor:
+    min_lines: 1500
+    exclude:
+      - "*uv.lock"
+      - "*theseus-lock.json"
+      - "_project/todo-db-export/*"
+      - "tests/uat/configs/generated-rerun-shards/*"
+      - "docs/benchmarks/queries/*"
+      - "docs/compat/capability-matrix.md"
+      - "docs/compat/skip-reference.md"
+      - "docs/reference/tuning-platform-support.md"
+      - "tests/fixtures/fast_tier_baseline/*"
+      - "*baseline*.json"
+      - "*baseline*.jsonl"
+      - "*baseline*.yaml"
+      - "*baseline*.txt"
   gate_paths:
     - .github/review.yml
     - .github/review-omp-config.yml
+    - .github/review-guidance.md
     - .github/oracle-reviewers.yml
     - .github/oracle-omp-config.yml
     - scripts/oracle_local_review.py

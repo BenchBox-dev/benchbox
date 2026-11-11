@@ -56,6 +56,39 @@ def test_the_policy_carries_no_theseus_owned_review_size_or_bootstrap_keys() -> 
     assert not [key for key in POLICY["promotion"] if key.startswith("bootstrap_")]
 
 
+def test_the_adopted_review_settings_are_pinned() -> None:
+    classifier = POLICY["classifier"]
+
+    assert POLICY["protocol"]["max_finding_rounds"] == 4
+    assert "pre_existing" not in POLICY["protocol"]
+    assert POLICY["brief"] == {"include_intent": True}
+    assert classifier["unavailable_bucket"] == "max"
+    assert classifier["fallback"] == "decisions"
+    assert classifier["fallback_min_bucket"] == "large"
+    assert classifier["size_floor"]["min_lines"] == 1500
+    assert not [pattern for pattern in classifier["size_floor"]["exclude"] if pattern.endswith((".py", ".sh"))]
+
+
+def test_the_review_guidance_is_a_gate_path_and_a_soundness_path() -> None:
+    guidance = ".github/review-guidance.md"
+    manifest = (ROOT / ".github" / "soundness-paths.txt").read_text(encoding="utf-8").splitlines()
+
+    assert (ROOT / guidance).is_file()
+    assert guidance in POLICY["classifier"]["gate_paths"]
+    assert f"file\t{guidance}" in manifest
+
+
+def test_the_do_not_flag_list_never_names_a_gate_soundness_or_data_input() -> None:
+    text = (ROOT / ".github" / "review-guidance.md").read_text(encoding="utf-8")
+    exemptions = text.split("## Do not flag", 1)[1]
+    manifest = (ROOT / ".github" / "soundness-paths.txt").read_text(encoding="utf-8").splitlines()
+    soundness = [line.split("\t", 1)[1] for line in manifest if line.startswith(("file\t", "prefix\t"))]
+    data = [pattern.rstrip("*") for pattern in POLICY["classifier"]["data_paths"] if not pattern.startswith("*")]
+    inputs = (*POLICY["classifier"]["gate_paths"], *soundness, *data, "theseus-lock.json", "baseline")
+
+    assert not [path for path in inputs if path in exemptions]
+
+
 def test_live_reviewers_match_buckets_one_to_one() -> None:
     assert set(POLICY["reviewers"]) == set(BUCKETS)
     assert set(POLICY["buckets"]) == set(BUCKETS)
@@ -114,6 +147,19 @@ def test_the_gate_paths_cover_the_theseus_wiring() -> None:
         "tests/unit/scripts/test_review_policy_pin.py",
     ):
         assert path in gate_paths
+
+
+def test_the_pinned_engine_loads_the_adopted_policy(theseus_engine) -> None:
+    import importlib
+
+    policy = importlib.import_module("theseus_reviewer.policy").load_policy(POLICY_PATH)
+
+    assert policy.protocol.max_finding_rounds == 4
+    assert policy.protocol.pre_existing == "block"
+    assert policy.brief.include_intent is True
+    assert (policy.classifier.fallback, policy.classifier.fallback_min_bucket) == ("decisions", "large")
+    assert policy.classifier.size_floor_min_lines == 1500
+    assert ".github/review-guidance.md" in policy.classifier.gate_paths
 
 
 def test_the_pinned_engine_recognises_the_review_named_revert_subject(theseus_engine) -> None:
