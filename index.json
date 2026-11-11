@@ -29233,6 +29233,13 @@
       "status": "open",
       "title": "Pass the read set to every withdrawal_cited caller"
     },
+    "origin-remote-and-default-repo-slug-case-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Use the canonical lowercase repository slug in the remote and in script defaults"
+    },
     "orphan-detector-freeze-branch-residual-20260804": {
       "claim": null,
       "needs": [],

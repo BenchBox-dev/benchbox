@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Decision gate (owner action): changing the primary clone's origin URL is the owner's change; this item changes tracked defaults only and reports the remote.",
+    "Decision gate: several of these files are soundness paths and some tests pin the mixed-case slug; change them together, and keep any comparison that must accept both cases.",
+    "Verification: `git grep -n 'BenchBox-dev/BenchBox' -- scripts make _project/scripts` returns only entries the PR lists as deliberate.",
+    "Verification: tests for pr_arm, pr_landing and remote_closeout pass; soundness review passes.",
+    "Done when merged."
+  ],
+  "description": "Found on 2026-11-11 while delivering retro-navigation-fixes-umbrella-20261111 (or in the retrospective over 25 agent sessions that preceded it) and not addressed there.\n\nProblem. The repository was renamed to `BenchBox-dev/benchbox`. The primary clone's origin is still `https://github.com/BenchBox-dev/BenchBox.git`, so every push prints 'This repository moved', and several scripts and make targets default REPO to `BenchBox-dev/BenchBox` (for example `scripts/pr_arm.py` REPOSITORY and make/pr-landing.mk). The API accepts either case, but case-sensitive matches do not: in one reviewed session `gh attestation verify --signer-workflow BenchBox-dev/BenchBox/...` failed until the lowercase slug was used, which looked like a failed publication check.\n\nChange. Switch defaults to the lowercase slug and compare slugs case-insensitively where they are compared.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read every cited file on current origin/develop first, because line numbers and commits here are from 2026-11-11 (origin/develop 5bd2c19cc4); close at a merged PR and finish only after the merge is observed.",
+  "links": [
+    "scripts/pr_arm.py",
+    "make/pr-landing.mk",
+    "docs/internal/release-artifacts.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T16:39:03Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "cbc87f1e43b74eaab95bf6a716301540",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    }
+  ]
+}
