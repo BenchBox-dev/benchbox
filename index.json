@@ -23845,12 +23845,17 @@
       "title": "Gateway docs, UAT runbook, G3 gate, PR close-out"
     },
     "gw-greybeam-lifecycle": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T20:40:50Z",
+        "generation": "f43e89499970450398247d81a1240b76",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66"
+      },
       "needs": [
         "gw-snowflake-conn"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Greybeam CDC lifecycle runtime guardrails"
     },
     "gw-metadata-guards": {
