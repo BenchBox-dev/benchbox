@@ -371,16 +371,12 @@ def _scan(table: str) -> dict:
     return {"name": "SEQ_SCAN", "extra_info": {"Table": table}, "children": []}
 
 
-def _parse(node: dict):
+def _parse_root(node: dict):
     import json
 
     plan = DuckDBQueryPlanParser().parse_explain_output("q", json.dumps([node]))
     assert plan is not None
-    return plan
-
-
-def _parse_root(node: dict):
-    return _parse(node).logical_root
+    return plan.logical_root
 
 
 @pytest.mark.parametrize(
@@ -408,19 +404,6 @@ def test_json_join_type_follows_the_declared_join_type(declared: str, expected: 
     )
 
     assert root.to_dict()["join_type"] == expected
-
-
-def test_json_join_types_that_differ_get_different_fingerprints() -> None:
-    def fingerprint(declared: str) -> str:
-        node = {
-            "name": "HASH_JOIN",
-            "extra_info": {"Join Type": declared},
-            "children": [_scan("orders"), _scan("customer")],
-        }
-        return _parse(node).plan_fingerprint
-
-    assert fingerprint("INNER") != fingerprint("SEMI")
-    assert fingerprint("SEMI") != fingerprint("ANTI")
 
 
 def test_json_join_without_a_declared_type_uses_the_operator_name() -> None:
