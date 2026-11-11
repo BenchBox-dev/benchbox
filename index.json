@@ -34798,6 +34798,13 @@
       "status": "done",
       "title": "Update remaining statements that present the retired compat generator and site-owned rollback facts as current"
     },
+    "retro-check-failures-name-fix-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Make three check failures name their fix instead of sending agents into checker source"
+    },
     "retro-docs-stale-corrections-20261111": {
       "claim": null,
       "needs": [],
