@@ -4,6 +4,7 @@
     "Per adapter: a 2.4 bundle with request_count, result_bytes and platform_timing by statement ID, passing SchemaV2Validator, recorded.",
     "Conformance outcome recorded per adapter; NET_ESTIMATE_CONFORMANCE updated only where the rule passes."
   ],
+  "context": "Revalidated 2026-11-11 against origin/develop c7b75c80bc: still required, no owner approval for live runs yet. Corrections to the description: (1) Only these adapters implement fetch_platform_timings/probe_statement_id: Snowflake (snowflake.py:1570-1625, INFORMATION_SCHEMA.QUERY_HISTORY), BigQuery (bigquery.py:1550-1561, jobs), Databricks (databricks/adapter.py:2569-2578, query history API), Athena (athena.py:976-994, get_query_execution), Redshift (redshift.py:1922-1960, sys_query_history for serverless and STL SQL otherwise, statement ID from the last query id), Presto/Trino (presto_trino_adapter_base.py:812-816, system.runtime.queries) and ClickHouse (clickhouse/timing.py). (2) Synapse, Fabric and MotherDuck have no platform timing source at all, so they cannot be verified live; they would need an implementation or an explicit unavailable declaration first. Databricks's dataframe adapter sets platform_timing_source = None. Presto/Trino were not in the original list and are also unverified live. (3) NET_ESTIMATE_CONFORMANCE is still the empty mapping at core/results/platform_timing.py:25. Scope for the live pass: Snowflake, BigQuery, Databricks, Athena, Redshift (serverless and provisioned), Presto/Trino where a cluster is available.",
   "description": "PR #4080 shipped the 2.4 producer. Only ClickHouse server was run live (TPC-H SF0.01, system.query_log by statement ID). Unverified against real services: Snowflake (QUERY_HISTORY with the widened window), BigQuery, Databricks, Athena, Redshift (serverless sys_query_history; provisioned/unknown stl_query + stl_wlm_query, so statement IDs from pg_last_query_id may not match), Synapse, Fabric, MotherDuck. NET_ESTIMATE_CONFORMANCE is empty, so no adapter can reach net_estimate_status eligible. Redshift STL columns (queue/exec from stl_wlm_query) and the deferred-lookup path in power tests were unit-tested with fakes only.\n\nChange. With owner approval, run TPC-H SF0.01 per adapter, check statement-ID capture, valid/suspect/unavailable status and coverage, and run the ADR conformance rule to decide eligibility. Fix defects at their cause.\n\nGuardrails: linked worktree; no explanatory comments; changelog fragment if user-facing; no live cloud without owner approval quoted in context; heavy runs through make heavy-run.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/4080"
@@ -15,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "000f00abe6da4672ae6c608266e34598",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:32:45Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "68762ac5f98f41af82fb7a89363a8d70",
       "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
