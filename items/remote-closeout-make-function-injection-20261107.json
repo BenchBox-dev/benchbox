@@ -3,6 +3,7 @@
     "Either pass remote close-out values through files or environment instead of make arguments, or unexport the REMOTE_CLOSEOUT_VARIABLES names and export the raw $(value) text, without changing other targets that use the same names.",
     "A test proves a $(shell ...) value in PR, OWNER_EXPLAINED and ACTION never executes and arrives byte-for-byte."
   ],
+  "context": "Revalidated 2026-11-11: still required, unchanged. make/pr-landing.mk on origin/develop (c7b75c80bc) still has REMOTE_CLOSEOUT_VARIABLES (line 347) and line 350 `export REMOTE_CLOSEOUT_$(name) := $$($(name))`, which expands the command-line value at parse time; no `unexport` exists in make/. tests/unit/scripts/test_remote_closeout.py:1043 still only covers shell metacharacters (`; touch`, backticks, `$(touch ...)` inside OWNER_EXPLAINED), not `$(shell ...)` make functions. #4103 (44e39a0495) touched the file after the item was filed but did not change these lines.",
   "description": "make pr-arm-remote and the pr-landing-remote targets promise to hand values over untouched; tests/unit/scripts/test_remote_closeout.py::test_the_make_wrapper_hands_values_over_untouched_and_runs_no_shell_metacharacters proves shell metacharacters do not run. Make-function syntax does: `make pr-arm-remote 'PR=$(shell touch /tmp/x)'` creates /tmp/x (reproduced 2026-11-07 on develop for PR, ACTION and OWNER_EXPLAINED). Two mechanisms: GNU Make exports command-line variables into every recipe environment and expands them on export (a two-line Makefile with no reference reproduces it; only `unexport X` prevents it), and make/pr-landing.mk exports REMOTE_CLOSEOUT_<name> with `:= $$($(name))`, which expands the command-line value at parse time. Values that contain `$` are also altered (PR=7$5 arrives as 7). The risk is real only if an agent builds the command line from untrusted text, for example an owner statement copied into OWNER_EXPLAINED.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "op": "create",
       "op_id": "54dae9d4819a44f0a274d29514c735d4",
       "session_id": "c925cef22c8f4d6fa75a3c3995e6df7d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:28:15Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d3041c22e0a749c996120ef304c286b0",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
