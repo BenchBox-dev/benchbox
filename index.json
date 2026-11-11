@@ -12618,17 +12618,12 @@
       "title": "Measure required-gate duration versus develop merge interarrival"
     },
     "benchbox-adopt-theseus-v025-review-guidance-20261107": {
-      "claim": {
-        "expires_at": "2026-11-12T21:31:38Z",
-        "generation": "24e14fd33e6741a08d62c3358fb87582",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57133450e487c312386efb7b"
-      },
+      "claim": null,
       "needs": [
         "theseus-v025-review-convergence-20261107"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "BenchBox: adopt Theseus review guidance and round cap (PR #4118)"
     },
     "benchbox-cli-query-exclude-option": {
