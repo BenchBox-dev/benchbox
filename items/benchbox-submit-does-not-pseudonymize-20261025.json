@@ -5,6 +5,7 @@
     "If docs-only: docs describe the real behaviour and point contributors to the working path.",
     "make pr-preflight passes; PR merged."
   ],
+  "context": "Revalidated 2026-11-11: DONE (the anonymize-before-validate option was implemented). #3603 (e57a21d735, \"pseudonymize the bundle and companions before validation\") changed benchbox/cli/commands/submit.py: submit resolves a salt (_resolve_submission_salt, line 183), builds `AnonymizationManager(AnonymizationConfig(machine_id_salt=salt))` (line 768), stages anonymized bundle and companions (_stage_submission_bundle, line 250; _anonymize_bundle_payload, 208; _anonymize_companion_file, 228) and runs _validate_submission_bundle on the staged copy (lines 774-778) before packaging. Official-only compliance refusal is still applied first (lines 748-758). docs/contributing-results.md no longer exists on origin/develop, so the docs half is moot. Not re-executed here: an end-to-end raw DuckDB TPC-H SF1 run through `benchbox submit` and the redaction tests were not run in this pass. Closing evidence: #3603 / e57a21d735 (submit.py:183-278, 768-778).",
   "description": "Found while fixing local bundle validation (#3483, history://BundleValidation). docs/contributing-results.md says `benchbox submit` pseudonymizes the bundle, but benchbox/cli/commands/submit.py only checks that a salt is set and then validates and packages the raw bytes. A raw local run therefore can never pass submission validation through the community path (absolute paths, harness tuning diagnostics). The maintainer path is scripts/stage_seed_corpus_bundle.py --internal-manifest.\nDECISION GATE: (G1) make submit anonymize before validating (recommended: same anonymiser as stage_seed_corpus_bundle.py, salt from the documented variable), or correct the docs to the actual behaviour. Owner decides.\nGUARDRAILS: never relax validate_submission checks; never commit a salt; external submissions keep the official-only compliance rule.",
   "sessions": [
     {
@@ -14,6 +15,14 @@
       "op": "create",
       "op_id": "9f4361e7ed124a15b8c24b73fae9d292",
       "session_id": "346ab30aded748589ff1183f3938406d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:36:13Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "10e430d93b1547ed9657f72af25324f9",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
