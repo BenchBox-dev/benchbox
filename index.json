@@ -35738,6 +35738,13 @@
       "status": "done",
       "title": "Confirm the scheduled drift and nightly runs after the 2026-10-26 fixes"
     },
+    "schema-24-platform-timing-cloud-adapters-unverified-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Schema 2.4 platform timing is verified live only on ClickHouse server; cloud adapters and net-estimate conformance are unverified"
+    },
     "schema-evolution-backward-compatibility-management": {
       "claim": null,
       "needs": [],
