@@ -32986,10 +32986,15 @@
       "title": "Release UAT polars-df, pandas-df and datafusion-df runners are shut down mid-sweep"
     },
     "release-uat-evidence-keeps-failure-detail-20261030": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T02:32:43Z",
+        "generation": "68c4eddf10a148e4bf674981f4c7eb3d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7bc97e5b905b990114418f4a"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Release UAT artifacts keep only the result path for failed cells, not the failed queries"
     },
     "release-uat-fixes-unverified-on-real-runner-20261101": {
