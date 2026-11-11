@@ -38,10 +38,10 @@ jobs:
       actions: write
       contents: read
       pull-requests: read
-    uses: joeharris76/theseus/.github/workflows/review.yml@360ceadad137c0b42d174624b5f268b084033490
+    uses: joeharris76/theseus/.github/workflows/review.yml@370c10c412c49f4b3ec69471513a1b1c7718918f
     with:
       environment: oracle
-      theseus_ref: 360ceadad137c0b42d174624b5f268b084033490
+      theseus_ref: 370c10c412c49f4b3ec69471513a1b1c7718918f
       gated_base: develop
       policy_path: .github/review.yml
       tailscale_tag: tag:oracle-ci
