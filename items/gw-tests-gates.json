@@ -6,7 +6,7 @@
     "test_advertised_platform_options passes; platform-manifest-check + compat-docs-check pass; the only manifest changes are the gateways declarations for Snowflake and Databricks; no new platform keys; the vocabulary parity test passes",
     "Zero live cloud calls in the suite; mock tokens only"
   ],
-  "context": "Plan v2 I1-I6, layered on core-exec-gateway-capability (ADR docs/development/adr/adr-core-execution-variants.md D9). Depends on gw-snowflake-conn, gw-databricks, gw-snowflake-querytag, gw-metadata-guards, gw-cache-discipline, gw-greybeam-lifecycle. Decision gates G1 (mock-gateway connection behavior) and G2 (checks pass; no new platform keys; manifest changes limited to the gateways declarations) are evaluated by this item. Guardrails: loopback-only mocks, ephemeral ports.",
+  "context": "Plan v2 I1-I6, layered on core-exec-gateway-capability (ADR docs/development/adr/adr-core-execution-variants.md D9). Depends on gw-snowflake-conn, gw-databricks, gw-snowflake-querytag, gw-metadata-guards, gw-cache-discipline, gw-greybeam-lifecycle. Decision gates G1 (mock-gateway connection behavior) and G2 (checks pass; no new platform keys; manifest changes limited to the gateways declarations) are evaluated by this item. Guardrails: loopback-only mocks, ephemeral ports.\n\nRevalidated 2026-11-11 (origin/develop c7b75c80bc): still required; unmet needs reduce to gw-metadata-guards and gw-cache-discipline (gw-greybeam-lifecycle is delivered by PR #3476 and will be closed). Stale paths: the Databricks test file is tests/unit/platforms/test_databricks_gateway.py (not tests/unit/platforms/databricks/); the Snowflake file tests/unit/platforms/test_snowflake_gateway.py exists. The Greybeam lifecycle tests are in tests/unit/core/test_greybeam_lifecycle.py, and core gateway capability tests in tests/unit/core/test_gateway_capability.py and tests/unit/cli/test_gateway_cli.py. Already covered by existing files: defaults, host-required, insecure/http env gates, connection mapping, CA/OCSP, userinfo rejection, query-tag symmetry, routed platform_info, greybeam load raise and maintenance fail-fast, Databricks gateway forwarding, OAuth-env raise, PAT/explicit-credential requirement. Still missing: baseline exclusion through variants_comparable for each adapter, cost suppression, probe degradation, receipt parsing (all depend on gw-metadata-guards). The manifest gateways declaration for greybeam is present (benchbox/core/platform_manifest.py ~1285); gates G1 and G2 have not been evaluated.",
   "description": "CI-safe mock-only gateway test suite for both adapters plus drift/manifest verification: new test files, loopback-bound fixtures, advertised-options/manifest/compat checks green, with the manifest gateways declarations for Snowflake and Databricks (added by core-exec-gateway-capability) as the only manifest change. Gates G1 and G2.",
   "sessions": [
     {
@@ -24,6 +24,14 @@
       "op": "update",
       "op_id": "2669ff7a85934df7aeef6d3ec4f9b2a4",
       "session_id": "ece27cd7b1e84cfdb901409d637eabe8"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:30:32Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "fa31adb8d0564cf089441fbf0d7a2a0e",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
