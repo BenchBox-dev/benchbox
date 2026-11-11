@@ -3,7 +3,7 @@
     "Each listed cell passes on a supported JDK, or is pruned with a documented reason.",
     "Fixed query failures have regression tests."
   ],
-  "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), artifact release-uat-v0.5.0rc2-stage1-spark. The artifact does not keep result JSON, so query-level causes need a local rerun of the named cells.\n\nHosted trunk UAT run https://github.com/BenchBox-dev/BenchBox/actions/runs/42536258036 completed with failure at source 2d796acd59be06ab4b4a1742dda84cff419202b9. Spark SQL: all 43 selected cells passed. No selected current Spark SQL cell failed or timed out. Counts cover the selected current matrix only; no historical issue is closed by this note. The full run is still red (702/710 passed), so this is not release certification.",
+  "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), artifact release-uat-v0.5.0rc2-stage1-spark. The artifact does not keep result JSON, so query-level causes need a local rerun of the named cells.\n\nHosted trunk UAT run https://github.com/BenchBox-dev/BenchBox/actions/runs/42536258036 completed with failure at source 2d796acd59be06ab4b4a1742dda84cff419202b9. Spark SQL: all 43 selected cells passed. No selected current Spark SQL cell failed or timed out. Counts cover the selected current matrix only; no historical issue is closed by this note. The full run is still red (702/710 passed), so this is not release certification.\n\nClosed 2026-11-11 against current evidence: Trunk UAT 42718296767 (52615914): Spark 43/43 on the pinned JDK 21 (PR #3750), including read_primitives, tpchavoc 0.01/0.1, nyctaxi/flightdata SF1. write/transaction/metadata_primitives pruned by benchmark gates; tpchavoc SF1, joinorder, datavault SF1 (#3944), tpcds_obt pruned as timeout envelopes. Fixes #3766 (test_spark_dialect_queries.py), #3768, #3782, #3993, #3977. Scheduled 42789483182 (ce39d768) green.",
   "description": "Stage 1 spark shard, run 40971306663, on Java 25 (see release-uat-java-25-breaks-pyspark-20261030; rerun after the JDK pin). Query failures: read_primitives 0.01 and 0.1; write_primitives and transaction_primitives at all scales; metadata_primitives SF1; tpchavoc at all scales (SF1 blockDoesNotExistError). joinorder SF1: 'java.lang.OutOfMemoryError: Java heap space'. datavault SF1: RejectedExecutionException with shuffle index errors. Timeouts at SF1: tpcds_obt (still, after #3683), nyctaxi and flightdata with temp_shuffle file errors.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/actions/runs/40971306663"
@@ -32,6 +32,14 @@
       "generation": "47b03a58b22d48dfbd4cad00cbdf1e1a",
       "op": "take",
       "op_id": "89771678544744999f8247a04279c734",
+      "session_id": "9c850cdf96994544b99810e1605fa398"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7bc97e5b905b990114418f4a",
+      "at": "2026-11-11T02:32:06Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e0715f7a52fb4dbcb73061ec82c54bd3",
       "session_id": "9c850cdf96994544b99810e1605fa398"
     }
   ]
