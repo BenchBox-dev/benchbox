@@ -311,6 +311,7 @@ pr-arm-auto-merge:
 PR_ARM_PR_SET := $(if $(filter undefined,$(origin PR)),,1)
 PR_ARM_HEAD_SET := $(if $(filter undefined,$(origin HEAD)),,1)
 PR_ARM_REPO_SET := $(if $(filter undefined,$(origin REPO)),,1)
+PR_ARM_WAIT_SET := $(if $(filter undefined,$(origin WAIT)),,1)
 .PHONY: pr-rerun
 pr-rerun: override PR := $(value PR)
 pr-rerun: override REPO := $(value REPO)
@@ -323,12 +324,15 @@ pr-rerun:
 pr-arm: override PR := $(value PR)
 pr-arm: override HEAD := $(value HEAD)
 pr-arm: override REPO := $(value REPO)
+pr-arm: override WAIT := $(value WAIT)
 pr-arm: export PR_ARM_PR := $(PR)
 pr-arm: export PR_ARM_PR_SET := $(PR_ARM_PR_SET)
 pr-arm: export PR_ARM_HEAD := $(HEAD)
 pr-arm: export PR_ARM_HEAD_SET := $(PR_ARM_HEAD_SET)
 pr-arm: export PR_ARM_REPO := $(REPO)
 pr-arm: export PR_ARM_REPO_SET := $(PR_ARM_REPO_SET)
+pr-arm: export PR_ARM_WAIT := $(WAIT)
+pr-arm: export PR_ARM_WAIT_SET := $(PR_ARM_WAIT_SET)
 pr-arm: export PR_ARM_REQUIRE_BATCH := $(if $(BATCH),1,0)
 pr-arm:
 	@set -eu; \

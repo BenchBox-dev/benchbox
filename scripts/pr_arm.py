@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ci_text_edit_verdict
 import pr_landing
 import theseus_cli
+import trunk_revert
 
 CLI_DESCRIPTION = "Arm a pull request for its exact head after a live check that nothing holds it."
 
@@ -31,6 +33,10 @@ VERDICT_FILE = "fast-duration-verdict.json"
 PROCEEDING_VERDICTS = frozenset({"pass", "neutral", "not-applicable"})
 PRODUCER_CHECK = "core"
 WAITING_MARKERS = ("waiting for full CI run", "has not finished for")
+WAIT_INTERVAL_SECONDS = 180.0
+WAIT_MAX_MINUTES = 120
+
+_last_outcome = ""
 
 Runner = Callable[[list[str]], tuple[int, str]]
 
@@ -334,6 +340,8 @@ def batch_refusals(
 
 
 def _outcome(line: str, code: int) -> int:
+    global _last_outcome
+    _last_outcome = line
     sys.stderr.flush()
     print(f"pr-arm: outcome: {line}", flush=True)
     return code
@@ -424,11 +432,70 @@ def arm(
         return _outcome(f"refused: live state could not be verified: {exc}", 1)
 
 
+def _mono_time() -> float:
+    try:
+        from benchbox.utils.clock import mono_time
+    except ImportError:
+        from time import monotonic as mono_time
+    return mono_time()
+
+
+def wait_minutes(raw: str | None) -> int | None:
+    if raw is None or raw == "":
+        return None
+    if not re.fullmatch(r"[1-9][0-9]*", raw) or int(raw) > WAIT_MAX_MINUTES:
+        raise ValueError(f"WAIT must be a whole number of minutes from 1 to {WAIT_MAX_MINUTES}, got {raw!r}")
+    return int(raw)
+
+
+def trunk_gate_refusal(
+    pr: str | None, repo: str, run: Runner = pr_landing.live_run, trunk_run: Runner = trunk_revert.live_run
+) -> str | None:
+    try:
+        ref = pr
+        if not ref:
+            code, out = run(["git", "branch", "--show-current"])
+            ref = out.strip()
+            if code != 0 or not ref:
+                return "the current branch could not be read for the trunk check"
+        return trunk_revert.arm_gate(ref, trunk_run, repo)
+    except (trunk_revert.TrunkError, subprocess.SubprocessError, OSError, ValueError) as exc:
+        return f"the trunk state could not be read: {exc}"
+
+
+def arm_waiting(
+    attempt: Callable[[], int],
+    trunk_gate: Callable[[], str | None],
+    minutes: int,
+    clock: Callable[[], float] = _mono_time,
+    sleep: Callable[[float], None] = time.sleep,
+) -> int:
+    deadline = clock() + minutes * 60.0
+    while True:
+        code = attempt()
+        if not _last_outcome.startswith("waiting:"):
+            return code
+        remaining = deadline - clock()
+        if remaining <= 0:
+            return _outcome(f"{_last_outcome} (WAIT={minutes} expired)", code)
+        pause = min(WAIT_INTERVAL_SECONDS, remaining)
+        print(
+            f"pr-arm: waiting {pause:.0f}s before checking again ({remaining / 60:.0f} min of WAIT={minutes} left)",
+            file=sys.stderr,
+            flush=True,
+        )
+        sleep(pause)
+        refusal = trunk_gate()
+        if refusal:
+            return _refused(f"stopped waiting, the trunk check refuses: {refusal}", 2)
+
+
 def _environment_selection(env: Mapping[str, str]) -> dict[str, Any]:
     return {
         "pr": env.get("PR_ARM_PR") if env.get("PR_ARM_PR_SET") == "1" else None,
         "head": env.get("PR_ARM_HEAD") if env.get("PR_ARM_HEAD_SET") == "1" else None,
         "repo": env.get("PR_ARM_REPO") if env.get("PR_ARM_REPO_SET") == "1" else None,
+        "wait": env.get("PR_ARM_WAIT") if env.get("PR_ARM_WAIT_SET") == "1" else None,
         "require_batch": env.get("PR_ARM_REQUIRE_BATCH") == "1",
     }
 
@@ -440,15 +507,30 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
     parser.add_argument("--head", default=selected["head"], help="expected head SHA; refused unless it is local HEAD")
     parser.add_argument("--repo", default=selected["repo"] if selected["repo"] is not None else REPOSITORY)
     parser.add_argument(
+        "--wait-minutes",
+        default=selected["wait"],
+        help=f"keep checking while the outcome is waiting, for up to this many minutes (1-{WAIT_MAX_MINUTES})",
+    )
+    parser.add_argument(
         "--require-batch",
         action="store_true",
         default=selected["require_batch"],
         help="assert that the PR is a registered batch PR",
     )
     args = parser.parse_args(argv)
-    if args.require_batch:
-        return arm(args.pr, args.head, args.repo, require_batch=True)
-    return arm(args.pr, args.head, args.repo)
+    try:
+        minutes = wait_minutes(args.wait_minutes)
+    except ValueError as exc:
+        return _refused(str(exc), 2)
+
+    def attempt() -> int:
+        if args.require_batch:
+            return arm(args.pr, args.head, args.repo, require_batch=True)
+        return arm(args.pr, args.head, args.repo)
+
+    if minutes is None:
+        return attempt()
+    return arm_waiting(attempt, lambda: trunk_gate_refusal(args.pr, args.repo), minutes)
 
 
 if __name__ == "__main__":

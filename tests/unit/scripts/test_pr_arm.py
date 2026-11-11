@@ -351,7 +351,9 @@ def _make_pr_arm(tmp_path: Path, *assignments: str) -> tuple[list[str], dict[str
         encoding="utf-8",
     )
     shim.chmod(0o755)
-    env = {k: v for k, v in os.environ.items() if k not in {"PR", "HEAD", "REPO"} and not k.startswith("PR_ARM_")}
+    env = {
+        k: v for k, v in os.environ.items() if k not in {"PR", "HEAD", "REPO", "WAIT"} and not k.startswith("PR_ARM_")
+    }
     env.update({"PATH": f"{tmp_path}{os.pathsep}{env['PATH']}", "RECORD": str(tmp_path)})
     result = subprocess.run(
         ["make", "--no-print-directory", "pr-arm", *assignments],
@@ -392,7 +394,7 @@ def test_the_make_wrapper_hands_a_value_over_as_one_untouched_environment_value(
     assert env[f"PR_ARM_{name}_SET"] == "1"
 
 
-@pytest.mark.parametrize("name", ["PR", "HEAD", "REPO"])
+@pytest.mark.parametrize("name", ["PR", "HEAD", "REPO", "WAIT"])
 @skip_on_windows
 def test_the_make_wrapper_does_not_run_shell_metacharacters_in_a_value(tmp_path: Path, name: str) -> None:
     marker = tmp_path / "ran"
@@ -433,7 +435,7 @@ def test_making_pr_arm_literal_does_not_change_how_other_targets_see_a_value(
     assert result.returncode != 0
 
 
-@pytest.mark.parametrize("name", ["PR", "HEAD", "REPO"])
+@pytest.mark.parametrize("name", ["PR", "HEAD", "REPO", "WAIT"])
 @skip_on_windows
 def test_the_make_wrapper_tells_an_omitted_variable_from_an_empty_one(tmp_path: Path, name: str) -> None:
     _, omitted = _make_pr_arm(tmp_path)
@@ -1200,3 +1202,186 @@ def test_a_worktree_config_read_failure_with_the_extension_enabled_still_fails_c
 
     assert code == 1
     assert gh.merged() == []
+
+
+class WaitClock:
+    def __init__(self) -> None:
+        self.now = 100.0
+        self.sleeps: list[float] = []
+        self.on_sleep: list = []
+
+    def clock(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        self.now += seconds
+        for action in self.on_sleep:
+            action()
+
+
+def _scripted(outcomes: list[tuple[str, int]]) -> tuple[list[int], object]:
+    attempts: list[int] = []
+
+    def attempt() -> int:
+        line, code = outcomes[min(len(attempts), len(outcomes) - 1)]
+        attempts.append(code)
+        return pr_arm._outcome(line, code)
+
+    return attempts, attempt
+
+
+WAITING = ("waiting: PR #7 is not armed yet: the core job that records it has not finished for aaaaaaaaa", 2)
+ARMED = (f"armed: PR #7 at head {HEAD}", 0)
+REFUSED = ("refused: PR #7 was not armed: an unresolved, non-outdated review thread is open", 2)
+
+
+def _last_outcome_line(capsys: pytest.CaptureFixture[str]) -> str:
+    return [line for line in capsys.readouterr().out.splitlines() if line.startswith("pr-arm: outcome: ")][-1]
+
+
+def test_a_wait_arms_once_the_outcome_stops_being_waiting(capsys: pytest.CaptureFixture[str]) -> None:
+    time = WaitClock()
+    gates: list[int] = []
+    attempts, attempt = _scripted([WAITING, WAITING, ARMED])
+
+    code = pr_arm.arm_waiting(attempt, lambda: gates.append(1), 60, clock=time.clock, sleep=time.sleep)
+
+    assert code == 0
+    assert len(attempts) == 3
+    assert time.sleeps == [pr_arm.WAIT_INTERVAL_SECONDS] * 2
+    assert len(gates) == 2
+    assert _last_outcome_line(capsys).startswith("pr-arm: outcome: armed: ")
+
+
+def test_a_wait_stops_at_the_first_refusal(capsys: pytest.CaptureFixture[str]) -> None:
+    time = WaitClock()
+    attempts, attempt = _scripted([WAITING, REFUSED, ARMED])
+
+    assert pr_arm.arm_waiting(attempt, lambda: None, 60, clock=time.clock, sleep=time.sleep) == 2
+    assert len(attempts) == 2
+    assert _last_outcome_line(capsys).startswith("pr-arm: outcome: refused: ")
+
+
+def test_a_refusal_on_the_first_check_never_waits() -> None:
+    time = WaitClock()
+    gates: list[int] = []
+    attempts, attempt = _scripted([REFUSED])
+
+    assert pr_arm.arm_waiting(attempt, lambda: gates.append(1), 60, clock=time.clock, sleep=time.sleep) == 2
+    assert (len(attempts), time.sleeps, gates) == (1, [], [])
+
+
+def test_a_wait_that_runs_out_reports_the_last_waiting_outcome_as_expired(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    time = WaitClock()
+    attempts, attempt = _scripted([WAITING])
+
+    assert pr_arm.arm_waiting(attempt, lambda: None, 7, clock=time.clock, sleep=time.sleep) == 2
+    assert time.sleeps == [180.0, 180.0, 60.0]
+    assert len(attempts) == 4
+    last = _last_outcome_line(capsys)
+    assert last.startswith("pr-arm: outcome: waiting: ")
+    assert last.endswith("(WAIT=7 expired)")
+
+
+def test_a_trunk_that_turns_red_while_waiting_ends_the_wait_without_arming(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    time = WaitClock()
+    attempts, attempt = _scripted([WAITING, ARMED])
+
+    code = pr_arm.arm_waiting(attempt, lambda: "develop is red: culprit #9", 60, clock=time.clock, sleep=time.sleep)
+
+    assert code == 2
+    assert len(attempts) == 1
+    last = _last_outcome_line(capsys)
+    assert last.startswith("pr-arm: outcome: refused: ")
+    assert "develop is red: culprit #9" in last
+
+
+def test_a_wait_over_the_real_checks_arms_when_the_verdict_arrives() -> None:
+    time = WaitClock()
+    gh = FakeGh(verdict=None, core=("in_progress", None))
+    time.on_sleep.append(lambda: setattr(gh, "verdict", {"verdict": "pass"}))
+
+    code = pr_arm.arm_waiting(lambda: _arm(gh), lambda: None, 30, clock=time.clock, sleep=time.sleep)
+
+    assert code == 0
+    assert time.sleeps == [pr_arm.WAIT_INTERVAL_SECONDS]
+    assert len(gh.merged()) == 1
+
+
+@pytest.mark.parametrize(
+    ("source", "kwargs"),
+    [
+        ("a hold label", {"view": _view(labels=[{"name": pr_arm.HOLD_LABEL}])}),
+        ("a draft", {"view": _view(isDraft=True)}),
+        ("a failed required check", {"core": ("completed", "failure"), "verdict": None}),
+    ],
+)
+def test_a_wait_over_the_real_checks_ends_at_once_on_a_refusal(source: str, kwargs: dict) -> None:
+    time = WaitClock()
+    gh = FakeGh(**kwargs)
+
+    assert pr_arm.arm_waiting(lambda: _arm(gh), lambda: None, 30, clock=time.clock, sleep=time.sleep) != 0
+    assert time.sleeps == [], source
+    assert gh.merged() == []
+
+
+def test_a_wait_over_the_real_checks_ends_at_once_on_an_open_review_thread() -> None:
+    time = WaitClock()
+    gh = FakeGh()
+
+    assert pr_arm.arm_waiting(lambda: _arm(gh, threads=True), lambda: None, 30, clock=time.clock, sleep=time.sleep) == 2
+    assert time.sleeps == []
+    assert gh.merged() == []
+
+
+@pytest.mark.parametrize(("raw", "expected"), [(None, None), ("", None), ("1", 1), ("120", 120)])
+def test_wait_minutes_accepts_whole_minutes_in_range(raw: str | None, expected: int | None) -> None:
+    assert pr_arm.wait_minutes(raw) == expected
+
+
+@pytest.mark.parametrize("raw", ["0", "121", "1.5", "abc", "-1", " 5", "05", "5m", "5; touch x"])
+def test_an_invalid_wait_is_refused_before_any_check(
+    raw: str, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    called: list[int] = []
+    monkeypatch.setattr(pr_arm, "arm", lambda *a, **k: called.append(1) or 0)
+
+    assert pr_arm.main([], env={"PR_ARM_WAIT": raw, "PR_ARM_WAIT_SET": "1"}) == 2
+    assert called == []
+    assert "whole number of minutes from 1 to 120" in capsys.readouterr().out
+
+
+def test_main_waits_only_when_wait_is_given(monkeypatch: pytest.MonkeyPatch) -> None:
+    waits: list[int] = []
+    monkeypatch.setattr(pr_arm, "arm", lambda pr, head, repo: 0)
+    monkeypatch.setattr(pr_arm, "arm_waiting", lambda attempt, gate, minutes: waits.append(minutes) or attempt())
+
+    assert pr_arm.main([], env={}) == 0
+    assert pr_arm.main([], env={"PR_ARM_WAIT": "", "PR_ARM_WAIT_SET": "1"}) == 0
+    assert waits == []
+    assert pr_arm.main([], env={"PR_ARM_WAIT": "15", "PR_ARM_WAIT_SET": "1"}) == 0
+    assert waits == [15]
+
+
+def test_the_trunk_check_in_a_wait_uses_the_pr_or_the_current_branch(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[tuple[str, str]] = []
+    monkeypatch.setattr(pr_arm.trunk_revert, "arm_gate", lambda ref, run, repo: seen.append((ref, repo)))
+
+    assert pr_arm.trunk_gate_refusal("7", "o/r", run=lambda cmd: (0, "")) is None
+    assert pr_arm.trunk_gate_refusal(None, "o/r", run=lambda cmd: (0, "fix/thing\n")) is None
+    assert seen == [("7", "o/r"), ("fix/thing", "o/r")]
+
+
+def test_the_trunk_check_in_a_wait_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    def broken(ref: str, run: object, repo: str) -> None:
+        raise pr_arm.trunk_revert.TrunkError("gh: HTTP 502")
+
+    monkeypatch.setattr(pr_arm.trunk_revert, "arm_gate", broken)
+
+    assert "could not be read" in str(pr_arm.trunk_gate_refusal("7", "o/r"))
+    assert "current branch" in str(pr_arm.trunk_gate_refusal(None, "o/r", run=lambda cmd: (1, "")))
