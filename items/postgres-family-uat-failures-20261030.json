@@ -4,7 +4,7 @@
     "The pg_mooncake disk check measures the filesystem the database writes to.",
     "Each other listed cell passes or is pruned with a documented reason."
   ],
-  "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), artifact release-uat-v0.5.0rc2-stage3-postgres-family. The artifact does not keep result JSON, so query-level causes need a local rerun of the named cells.\n\nHosted trunk UAT run https://github.com/BenchBox-dev/BenchBox/actions/runs/42536258036 completed with failure at source 2d796acd59be06ab4b4a1742dda84cff419202b9. pg_duckdb: all 17 selected cells passed. pg_mooncake: all 15 selected cells passed. This does not certify historical cells that are absent from the current matrix. Counts cover the selected current matrix only; no historical issue is closed by this note. The full run is still red (702/710 passed), so this is not release certification.",
+  "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), artifact release-uat-v0.5.0rc2-stage3-postgres-family. The artifact does not keep result JSON, so query-level causes need a local rerun of the named cells.\n\nHosted trunk UAT run https://github.com/BenchBox-dev/BenchBox/actions/runs/42536258036 completed with failure at source 2d796acd59be06ab4b4a1742dda84cff419202b9. pg_duckdb: all 17 selected cells passed. pg_mooncake: all 15 selected cells passed. This does not certify historical cells that are absent from the current matrix. Counts cover the selected current matrix only; no historical issue is closed by this note. The full run is still red (702/710 passed), so this is not release certification.\n\nReview 2026-11-11: pg_duckdb datavault 0.01 loads and write_primitives pass; pg-mooncake joinorder 1.0 passed. Open line: the pg_mooncake disk check still measures run-output paths only (benchbox/utils/disk_guard.py via run_service.py:269; UAT per-cell watch in orchestrator.py:156-221), not the filesystem the database writes to.",
   "description": "Stage 3 postgres-family shard, run 40971306663. pg_duckdb: datavault 0.01 load 'value too long for type character(15)' on sat_order; write_primitives 0.01 query failure; tpcds_obt SF1 and joinorder SF1 timeouts. pg_mooncake: joinorder SF1 'Low disk space' although the runner reported over 69 GiB free, so the check may measure the wrong filesystem. transaction_primitives and pg_mooncake tpcds_obt are covered by foreign-table-guard-blocks-shared-database-20261030. The shard's execute phase exited 2 and it has no validate, package or report phase codes.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/actions/runs/40971306663"
@@ -25,6 +25,14 @@
       "op": "update",
       "op_id": "6f41fc1a02ea4e96a5ca15d71d9dbb6b",
       "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7bc97e5b905b990114418f4a",
+      "at": "2026-11-11T02:33:30Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "64ea0461fc714a1d81c7055fc9a41a82",
+      "session_id": "9c850cdf96994544b99810e1605fa398"
     }
   ]
 }
