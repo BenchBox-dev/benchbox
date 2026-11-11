@@ -286,6 +286,14 @@ these are the settings BenchBox sets and what each one does at its limit.
   and redacted like the other secrets. This accepts that the prepare and scan
   steps hold one more third-party key. Removing the caller mapping and the
   environment secret withdraws it.
+- `.github/review-guidance.md` holds BenchBox conventions for reviewers. The
+  pinned Theseus release does not load it into briefs and refuses a
+  `consumer.review_guidance` policy key, so today nothing reads it at review
+  time. It is a gate path and a soundness path, so any edit to it needs the
+  exact-head review and the owner's merge, and a test pins that its
+  do-not-flag list never names a gate, soundness or data input. Its entries
+  take effect only once a Theseus release reads the file from the trusted
+  base.
 
 ### Credential gateway
 
@@ -338,7 +346,8 @@ a manual dispatch, a `pull_request_target` event other than a plain edit, and a
 
 1. Refuse a dispatch from a ref other than `develop`, and check out trusted
    `develop` into `trusted`.
-2. **Prepare** (`drive prepare`; job token and the classification key only)
+2. **Prepare** (`drive prepare`; job token and the classification keys only,
+   `TYPESAFE_API_KEY` and the optional `OPENAI_API_KEY`)
    resolves the PR and head through the API, refuses closed, draft and
    non-`develop` PRs, applies the rerun rules and writes a 0600 brief. A fork's
    change outside the inert paths gets a pending `fork: owner review` status and
