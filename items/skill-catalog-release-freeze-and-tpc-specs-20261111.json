@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "Decision gate (repository rules): read the catalog's instructions and CI before editing; if they require an owner-only step (release, tag, settings), stop at an open PR and report it.",
+    "Decision gate (freshness): confirm on origin/main that the freeze line and the missing spec paths are still present; confirm in BenchBox origin/develop that both spec files and tpc-measured-intervals.md exist.",
+    "Verification: `git grep -n 'frozen for infrastructure' origin/main -- skills` returns nothing after merge; compliance.md names both spec paths.",
+    "Verification: the catalog's own test or validation command passes on the PR head.",
+    "Done when the catalog PR is merged; record the merged revision in this item's context for the pin bump."
+  ],
+  "description": "Source: a retrospective over 25 agent sessions (2026-10-18 to 2026-11-11), followed by an adversarial re-check of each claim against origin/develop 4835f5a537.\n\nCross-repository item, tracked here because it serves BenchBox. Repository: joeharris76/skill-sync-skills (local clone ~/Developer/skill-sync-skills, whose working tree has unresolved conflicts that belong to the owner: do not touch it; create a linked worktree from origin/main).\n\nProblem. (1) skills/benchbox/references/release.md still says 'develop is frozen for infrastructure changes until the release publishes'. The owner dropped the freeze on 2026-11-06 and docs/internal/release-guide.md has no freeze. (2) skills/benchbox/references/compliance.md says to use spec evidence but not where the specs are. A session concluded the repository had no defined timing boundary, reported a wrong root cause, and downloaded PDFs from tpc.org, while the specs were bundled.\n\nChange. Delete the freeze bullet. Add to compliance.md the bundled paths `_sources/tpc-h/specification.pdf` (3.0.1) and `_sources/tpc-ds/specification/specification_4.0.0.pdf`, that TPC-DI is not bundled, and that timer sites and clauses are in docs/internal/tpc-measured-intervals.md.\n\nGuardrails: follow that repository's own agent instructions and checks; work in a linked worktree of the catalog, never its primary working tree; stage paths explicitly; change only the two files named plus anything that repository's checks require (version, changelog); never bypass its checks; merge through its normal PR flow. Owner authorized opening and merging this catalog PR on 2026-11-11.",
+  "links": [
+    "https://github.com/joeharris76/skill-sync-skills",
+    "_sources/tpc-h/specification.pdf",
+    "_sources/tpc-ds/specification/specification_4.0.0.pdf",
+    "docs/internal/tpc-measured-intervals.md",
+    "docs/internal/release-guide.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T13:11:23Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5067105791be4dd7b9c73275c79fdffe",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    }
+  ]
+}
