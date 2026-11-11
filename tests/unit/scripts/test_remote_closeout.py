@@ -246,7 +246,7 @@ class FakeGitHub:
         gate = self._gate(cmd)
         if gate is not None:
             return gate
-        if cmd[:3] == ["gh", "api", "--paginate"] and "/actions/workflows/ci.yml/runs?" in cmd[-1]:
+        if cmd[:3] == ["gh", "api", "--paginate"] and "/actions/workflows/" in cmd[-1] and "/runs?" in cmd[-1]:
             return 0, ""
         if cmd[:2] == ["gh", "api"] and "/rules/branches/" in cmd[-1]:
             return 0, "\n".join([*pr_landing.REQUIRED_CONTEXTS, "hold", "review-gate", "review"])
