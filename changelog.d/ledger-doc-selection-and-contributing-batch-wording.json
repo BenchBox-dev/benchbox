@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "Local preflight selects the dev-loop ledger coverage test when the ledger document itself changes, and CONTRIBUTING describes feature batches as owner opt-in with one feature branch per feature by default"
-}

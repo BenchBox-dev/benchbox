@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "make pr-arm reports a required check that failed inside a CI run still in progress as waiting for that run, and advises make pr-rerun only after the run completes, so it no longer contradicts make pr-rerun's refusal."
-}
