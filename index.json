@@ -40087,8 +40087,9 @@
     "theseus-v025-review-convergence-20261107": {
       "claim": null,
       "needs": [
-        "theseus-v021-stdin-rendered-mode-20261105",
-        "theseus-body-only-finding-cannot-be-adjudicated-20261106"
+        "theseus-body-only-finding-cannot-be-adjudicated-20261106",
+        "theseus-remove-oracle-vocabulary-20261105",
+        "theseus-gateway-client-first-live-gate-20261102"
       ],
       "priority": "high",
       "status": "open",
