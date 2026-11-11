@@ -14216,12 +14216,10 @@
     },
     "ci-medium-shard-cancelled-without-cause-20261111": {
       "claim": null,
-      "needs": [
-        "feature-test-fixture-and-ci-shard-hygiene-20261111"
-      ],
-      "priority": "low",
+      "needs": [],
+      "priority": "medium",
       "status": "open",
-      "title": "Find why a PR medium-test shard was cancelled after 25 minutes"
+      "title": "medium-test shard 2 hangs near the end and is cancelled by the 25-minute job timeout, at least 17 times in four days"
     },
     "ci-medium-shard-hangs-after-last-test-20261110": {
       "claim": null,

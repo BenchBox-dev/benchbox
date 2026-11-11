@@ -4,6 +4,7 @@
     "Verification: the cause is stated with the log line or setting that proves it.",
     "Done when the cause is fixed and merged, or the item is closed as not recurring."
   ],
+  "context": "2026-11-11 investigation (read-only). It recurs, so the 'close as not recurring' gate does not apply and this item is no longer part of feature-test-fixture-and-ci-shard-hygiene-20261111. `medium-test (shard 2)` was cancelled at about 25.3 minutes (the job's timeout-minutes) in at least 16 other runs between 2026-11-08 and 2026-11-10, including 42431461560, 42516417430, 42529875736, 42536578036, 42536595566, 42639754221, 42737669789, 42742663123, 42748075993, 42830090786, 42832274025, 42836892175, 42844094574, 42845777079; two were the trunk-lane-plain variant. Only shard 2 is affected. The scan went back to 2026-11-05 and hit its time limit, so there may be more. In run 43041683685 the shard progressed to about 98 percent and then the workers sat idle until the timeout; the other runs' logs were not opened. A normal shard takes 8 minutes or less, so raising the timeout would only delay the cancellation: the likely cause is a test or teardown that hangs in shard 2's slice. Next step: compare shard 2's assigned test ids across two of these runs, find the test that never finishes, and reproduce that slice locally with verbose output (heavy work: use the lock-taking entry point). Each failure costs a 25-minute wait plus a rerun.",
   "description": "Found on 2026-11-11 while delivering retro-navigation-fixes-umbrella-20261111 (or in the retrospective over 25 agent sessions that preceded it) and not addressed there.\n\nProblem. On PR #4100 head 87096f7e, `medium-test (shard 2)` of CI run 43041683685 ran from 14:49:02Z to 15:14:19Z and ended `cancelled`; the other three shards succeeded and `core` then failed because of it. Nothing cancelled it by hand. `make pr-rerun` re-ran the run and the shard passed. One observation, so the cause is unknown: a job timeout, a runner loss, or concurrency cancellation.\n\nChange. Establish the cause from the job log and the workflow's timeout and concurrency settings. If it is a timeout near the shard's normal duration, raise the margin or rebalance; if it is concurrency, fix the group.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read every cited file on current origin/develop first, because line numbers and commits here are from 2026-11-11 (origin/develop 5bd2c19cc4); close at a merged PR and finish only after the merge is observed.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/actions/runs/43041683685",
@@ -24,6 +25,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "77cf182d8c584132a0e230d5bc13fe62",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T17:39:28Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "2b516e010135490ead3377771dac4270",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
