@@ -21035,9 +21035,7 @@
     },
     "duckdb-tuned-template-ablation-20261008": {
       "claim": null,
-      "needs": [
-        "tuning-evidence-benefit-rule-20261008"
-      ],
+      "needs": [],
       "priority": "medium-high",
       "status": "open",
       "title": "Measure the DuckDB tuned templates at SF1 and SF10, separating constraints from sort order and counting load time"
