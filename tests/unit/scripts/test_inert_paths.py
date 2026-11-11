@@ -198,7 +198,10 @@ def test_guard_resolves_the_joined_path_consumers(inert_scan: dict[str, list[str
 
 
 def test_checked_in_readers_match_the_rebuilt_index(inert_scan: dict[str, list[str]]) -> None:
-    assert json.loads(READERS_FILE.read_text(encoding="utf-8")) == inert.doc_reader_index(ROOT, inert_scan)
+    assert json.loads(READERS_FILE.read_text(encoding="utf-8")) == inert.doc_reader_index(ROOT, inert_scan), (
+        "_project/inert-doc-readers.json is stale; regenerate it with "
+        "`uv run -- python _project/scripts/inert_paths.py --regenerate-readers`"
+    )
 
 
 def test_no_tracked_symlinks_point_into_inert_paths() -> None:

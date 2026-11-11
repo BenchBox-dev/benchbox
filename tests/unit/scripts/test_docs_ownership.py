@@ -106,7 +106,7 @@ def test_cli_accepts_complete_manifest_and_reports_measured_counts(
     "case,fragments",
     [
         ("missing", ("missing, untracked or unsafe source", "docs/internal/kept.md")),
-        ("stale", ("coverage mismatch", "docs/internal/kept.md")),
+        ("stale", ("coverage mismatch", "docs/internal/kept.md", "quality/docs-ownership.json", "core-only")),
         ("owner", ("unknown owner", "docs/guides/moved.md")),
         ("generated", ("ownership mismatch", "expected 'core-generated'")),
         ("landing-widened", ("is still tracked", "docs/README.md")),
@@ -129,6 +129,14 @@ def test_cli_rejects_incomplete_or_misclassified_ownership(
     else:
         files["docs/README.md"] = "site-owned"
     assert_failure(run_cli(root, manifest), *fragments)
+
+
+def test_cli_names_a_custom_manifest_when_a_tracked_doc_is_unregistered(
+    ownership_repo: tuple[Path, dict[str, Any]],
+) -> None:
+    root, manifest = ownership_repo
+    del manifest["files"]["docs/internal/kept.md"]
+    assert_failure(run_cli(root, manifest, custom_path=True), "docs/internal/kept.md", "quality/custom.json")
 
 
 def test_cli_rejects_site_owned_page_left_in_the_tree(ownership_repo: tuple[Path, dict[str, Any]]) -> None:

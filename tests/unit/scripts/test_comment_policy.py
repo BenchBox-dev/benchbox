@@ -298,6 +298,35 @@ def test_base_comparison_reads_worktree_and_staged_content(tmp_path: Path) -> No
     assert main([*args, "--staged"]) == 1
 
 
+def test_a_digest_payload_error_prints_the_fixture_payload_and_the_policy_doc(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    base = git_repo(tmp_path, "x = 1\n")
+    source = "code = input()\nexec(code)\n"
+    (tmp_path / "a.py").write_text(source, encoding="utf-8")
+    capsys.readouterr()
+
+    assert main(["--root", str(tmp_path), "--mode", "strict", "--base", base]) == 1
+
+    output = capsys.readouterr().out
+    payload = next(f.payload for f in python_findings("a.py", source) if f.kind == "payload-error")
+    assert payload.startswith("sha256:")
+    assert "CP payload-error" in output
+    assert payload in output
+    assert "docs/internal/comment-policy.md" in output
+
+
+@pytest.mark.parametrize(
+    "finding",
+    [
+        Finding("a.py", 1, "payload-error", "unterminated comment", "", "select 1 /*"),
+        Finding("a.py", 1, "comment", "# note", "", "sha256:" + "0" * 64),
+    ],
+)
+def test_only_a_digest_payload_error_gets_the_fixture_hint(finding: Finding) -> None:
+    assert check_comment_policy.fixture_hint(finding) == ""
+
+
 def launcher_source(files: tuple[str, ...] = ("scripts/comment_syntax.py",)) -> str:
     return f"TRUSTED_FILES = {files!r}\n"
 

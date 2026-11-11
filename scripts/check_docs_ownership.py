@@ -178,9 +178,11 @@ def validate(root: Path, manifest_path: Path) -> dict[str, int]:
     tracked_docs = {path for path in tracked if path.startswith("docs/")}
     retained = {path for path, owner in files.items() if owner == "core-only"}
     if retained != tracked_docs:
+        named = manifest_path.relative_to(root) if manifest_path.is_relative_to(root) else manifest_path
         raise ValueError(
             f"tracked docs coverage mismatch: missing={sorted(tracked_docs - retained)!r}, "
-            f"stale={sorted(retained - tracked_docs)!r}"
+            f"stale={sorted(retained - tracked_docs)!r}; in {named.as_posix()} register each missing file "
+            'as "core-only" and remove each stale entry'
         )
     counts = Counter(files.values())
     return {owner: counts[owner] for owner in sorted(OWNERS)}

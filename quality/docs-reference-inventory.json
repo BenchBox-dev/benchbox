@@ -3747,7 +3747,7 @@
     "root": 1,
     "unresolved": 9
    },
-   "occurrences": 34,
+   "occurrences": 37,
    "path": "tests/unit/scripts/test_docs_ownership.py",
    "rule": "site-input-pipeline",
    "target_count": 16,
@@ -4353,14 +4353,14 @@
   "kinds": {
    "built-url": 29037,
    "dir": 163,
-   "extra": 38,
+   "extra": 39,
    "file": 1378,
    "generated": 3,
    "pattern": 333,
    "root": 202,
-   "unresolved": 2077
+   "unresolved": 2079
   },
-  "references": 33231,
+  "references": 33234,
   "unclassified": 0
  }
 }

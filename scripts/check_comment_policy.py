@@ -441,6 +441,15 @@ def validate_consumers(root: Path, policy: dict, staged: bool = False) -> None:
             raise ValueError(f"external wheel missing: {entry['path']}")
 
 
+def fixture_hint(finding: Finding) -> str:
+    if finding.kind != "payload-error" or not finding.payload.startswith("sha256:"):
+        return ""
+    return (
+        f" [fixture payload {finding.payload}; see docs/internal/comment-policy.md, Exceptions: "
+        "only the commit hook accepts a fixture registered in the same commit]"
+    )
+
+
 def plain_text(value: str) -> str:
     text = "".join(f"\\x{ord(char):02x}" if ord(char) < 32 or ord(char) == 127 else char for char in value)
     text = text.replace("##[", "\\x23#[")
@@ -583,7 +592,7 @@ def main(argv: list[str] | None = None) -> int:
             )
         for finding in failed[:100]:
             excerpt = finding.text.splitlines()[0][:160] if finding.text else ""
-            print(plain_text(f"{finding.path}:{finding.line}: CP {finding.kind}: {excerpt}"))
+            print(plain_text(f"{finding.path}:{finding.line}: CP {finding.kind}: {excerpt}{fixture_hint(finding)}"))
         for warning in warnings:
             print(
                 f"::warning::{warning}"
