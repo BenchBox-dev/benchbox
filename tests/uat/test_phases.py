@@ -288,14 +288,17 @@ def test_enumerate_records_pg_family_release_gate_compatibility_pruning():
         ("pg-duckdb", "tpch"),
         ("pg-duckdb", "datavault"),
         ("pg-duckdb", "tpcds"),
+        ("pg-duckdb", "tpcds_obt"),
         ("pg-mooncake", "tpch"),
         ("pg-mooncake", "datavault"),
         ("pg-mooncake", "joinorder"),
+        ("pg-mooncake", "tpcds_obt"),
         ("timescaledb", "tpch"),
         ("timescaledb", "tpcds"),
         ("timescaledb", "datavault"),
+        ("timescaledb", "tpcds_obt"),
     }
-    assert len(result.compatibility_pruned) == 15
+    assert len(result.compatibility_pruned) == 12
     pruned = {(c.platform, c.benchmark): c for c in result.compatibility_pruned}
     assert pruned[("pg-mooncake", "tpcds")].rule_id == "uat.compat.pg-mooncake.tpcds.benchmark_gate"
     for platform in ("pg-duckdb", "pg-mooncake", "timescaledb"):
@@ -308,16 +311,13 @@ def test_enumerate_records_pg_family_release_gate_compatibility_pruning():
             f"uat.compat.{platform}.read_primitives.benchmark_gate"
         )
         assert pruned[(platform, "vector_search")].rule_id == f"uat.compat.{platform}.vector_search.benchmark_gate"
-    for platform, benchmark in (("pg-duckdb", "joinorder"), ("pg-duckdb", "tpcds_obt"), ("pg-mooncake", "tpcds_obt")):
-        assert pruned[(platform, benchmark)].rule_id == (
-            f"uat.compat.{platform}.{benchmark}.release_gate_runtime_envelope"
-        )
+    assert pruned[("pg-duckdb", "joinorder")].rule_id == "uat.compat.pg-duckdb.joinorder.release_gate_runtime_envelope"
     timescaledb_caps = PlatformRegistry.get_platform_capabilities("timescaledb")
     assert timescaledb_caps is not None
     assert "datavault" not in timescaledb_caps.unsupported_benchmarks
 
 
-def test_enumerate_prunes_sqlite_tpcds_obt_release_gate_scale_ladder():
+def test_enumerate_prunes_sqlite_tpcds_obt_release_gate_scales_that_timed_out():
     raw = {
         "platforms": {"include": ["sqlite"]},
         "benchmarks": {"include": ["tpcds_obt"]},
@@ -327,18 +327,17 @@ def test_enumerate_prunes_sqlite_tpcds_obt_release_gate_scale_ladder():
 
     result = enum_phase.enumerate_cells_with_pruning(_cfg(raw))
 
-    assert result.cells == ()
-    assert [(cell.platform, cell.benchmark, cell.scale) for cell in result.compatibility_pruned] == [
-        ("sqlite", "tpcds_obt", 0.01),
-        ("sqlite", "tpcds_obt", 0.1),
-        ("sqlite", "tpcds_obt", 1.0),
-    ]
-    for cell in result.compatibility_pruned:
-        assert cell.rule_id == "uat.compat.sqlite.tpcds_obt.release_gate_runtime_envelope"
+    assert [(cell.platform, cell.benchmark, cell.scale) for cell in result.cells] == [("sqlite", "tpcds_obt", 0.01)]
+    pruned = {cell.scale: cell for cell in result.compatibility_pruned}
+    assert sorted(pruned) == [0.1, 1.0]
+    assert pruned[0.1].rule_id == "uat.compat.sqlite.tpcds_obt.sf0.1.release_gate_runtime_envelope"
+    assert pruned[1.0].rule_id == "uat.compat.sqlite.tpcds_obt.sf1.release_gate_runtime_envelope"
+    for cell in pruned.values():
         assert cell.status == "blocked"
         assert "1200s" in cell.reason
-        assert "518-column" in cell.reason
-        assert "PR #1904" in cell.evidence
+    assert "query 35" in pruned[0.1].reason
+    assert "518-column" in pruned[1.0].reason
+    assert "PR #1904" in pruned[1.0].evidence
 
 
 def test_enumerate_prunes_sqlite_tpcds_release_gate_scale_ladder():

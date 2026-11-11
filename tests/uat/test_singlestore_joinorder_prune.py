@@ -29,13 +29,6 @@ def test_singlestore_joinorder_is_pruned_with_the_oom_evidence():
     assert "oom-kill" in rule.evidence
 
 
-def test_singlestore_tpcds_obt_keeps_the_generic_timeout_reason():
-    rule = _rule("tpcds_obt", 1.0)
-
-    assert rule is not None
-    assert rule.reason == compatibility._sf1_timeout_reason("singlestore")
-
-
 @pytest.mark.parametrize(
     "benchmark_id",
     [
@@ -48,6 +41,7 @@ def test_singlestore_tpcds_obt_keeps_the_generic_timeout_reason():
         "nyctaxi",
         "vector_search",
         "metadata_primitives",
+        "tpcds_obt",
     ],
 )
 def test_other_singlestore_cells_stay_in_the_gate(benchmark_id):
