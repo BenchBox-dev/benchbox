@@ -164,7 +164,8 @@ checks are not part of a bump.
 A bump branch cannot run the new pin. The `oracle` environment deploys only from
 `develop` and `release/*` (`repo-admin-settings.md`; `scripts/ruleset_drift_check.py` fails
 if the policy widens or narrows), the callee guard refuses a `workflow_dispatch` that is not
-on the gated base, so `gh workflow run review-verdict.yml` accepts `--ref develop` only, and
+on a gated base (`develop` or `release/*`), so `gh workflow run review-verdict.yml` accepts
+`--ref develop` or a `release/X.Y.x` ref only, and
 a pull request run uses the callers on `develop`. Until the callers on `develop` carry the
 new pin, the reviewer and gate that judge the bump are the old ones. The first run of the new
 pin is therefore a run on `develop`.
