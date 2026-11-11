@@ -452,3 +452,129 @@ def test_verify_threshold_and_mode_defaults() -> None:
     assert baseline.VERIFY_RATIO_THRESHOLD == 0.30
     assert baseline.VERIFY_DELTA_SECONDS == 360.0
     assert baseline.VERIFY_NEW_TEST_ALLOWANCE_SECONDS == 0.5
+
+
+def medium_payload(tests: dict[str, float], default: float = 1.0) -> dict[str, object]:
+    return {
+        "schema_version": 1,
+        "generated_at": GENERATED_AT,
+        "source": "old",
+        "default_seconds": default,
+        "tests": {nodeid: {"p95_seconds": value} for nodeid, value in tests.items()},
+    }
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "kept"),
+    [
+        (10.0, 11.9, True),
+        (10.0, 12.1, False),
+        (10.0, 8.1, True),
+        (10.0, 7.9, False),
+        (0.5, 0.59, True),
+        (0.5, 0.61, False),
+        (0.2, 0.29, True),
+        (0.2, 0.31, False),
+        (0.5, 0.7, False),
+        (0.5, 0.4, False),
+    ],
+)
+def test_medium_hysteresis_keeps_old_value_unless_both_thresholds_are_met(old: float, new: float, kept: bool) -> None:
+    result = baseline.apply_medium_hysteresis(medium_payload({"t": old}), medium_payload({"t": new}))
+
+    assert result["tests"]["t"]["p95_seconds"] == (old if kept else new)
+
+
+def test_medium_hysteresis_applies_both_thresholds_independently() -> None:
+    small_relative = baseline.apply_medium_hysteresis(medium_payload({"t": 100.0}), medium_payload({"t": 105.0}))
+    small_absolute = baseline.apply_medium_hysteresis(medium_payload({"t": 0.05}), medium_payload({"t": 0.09}))
+    assert small_relative["tests"]["t"]["p95_seconds"] == 100.0
+    assert small_absolute["tests"]["t"]["p95_seconds"] == 0.05
+
+
+def test_medium_hysteresis_keeps_additions_and_removals_exact() -> None:
+    previous = medium_payload({"kept": 1.0, "removed": 2.0})
+    fresh = medium_payload({"kept": 1.01, "added": 0.0123})
+
+    result = baseline.apply_medium_hysteresis(previous, fresh)
+
+    assert result["tests"] == {"kept": {"p95_seconds": 1.0}, "added": {"p95_seconds": 0.0123}}
+
+
+def test_medium_hysteresis_keeps_default_unless_it_moves_twenty_percent() -> None:
+    previous = medium_payload({"t": 1.0}, default=1.0)
+    assert (
+        baseline.apply_medium_hysteresis(previous, medium_payload({"t": 1.0}, default=1.19))["default_seconds"] == 1.0
+    )
+    assert (
+        baseline.apply_medium_hysteresis(previous, medium_payload({"t": 1.0}, default=1.21))["default_seconds"] == 1.21
+    )
+
+
+def test_medium_hysteresis_without_previous_returns_fresh() -> None:
+    fresh = medium_payload({"t": 1.0})
+    assert baseline.apply_medium_hysteresis(None, fresh) is fresh
+
+
+def test_medium_render_matches_the_committed_layout_byte_for_byte() -> None:
+    fixture = Path(__file__).resolve().parents[2] / "fixtures" / "medium_shard_durations.json"
+    text = fixture.read_text(encoding="utf-8")
+
+    assert baseline.render_medium_durations(json.loads(text)) == text
+
+
+def _write_medium_run(tmp_path: Path, name: str, cases: dict[str, float]) -> Path:
+    shard_dir = tmp_path / name / "t2-medium-shard-0-abc"
+    shard_dir.mkdir(parents=True)
+    body = "".join(
+        f'<testcase classname="tests.test_sample.TestSample" file="tests/test_sample.py" name="{case}" time="{value}"/>'
+        for case, value in cases.items()
+    )
+    (shard_dir / "shard-0-junit.xml").write_text(f"<testsuite>{body}</testsuite>", encoding="utf-8")
+    return tmp_path / name
+
+
+def test_medium_refresh_leaves_the_file_untouched_when_only_jitter_moved(tmp_path: Path) -> None:
+    output = tmp_path / "durations.json"
+    first = _write_medium_run(tmp_path, "run0", {"test_alpha": 1.0, "test_beta": 2.0})
+    assert baseline.main(["medium-refresh", "--output", str(output), "--source", "a", "--run-dir", str(first)]) == 0
+    before = output.read_text(encoding="utf-8")
+    second = _write_medium_run(tmp_path, "run1", {"test_alpha": 1.05, "test_beta": 2.02})
+
+    argv = ["medium-refresh", "--output", str(output), "--source", "b", "--run-dir", str(second)]
+    assert baseline.main([*argv, "--generated-at", "2027-01-01T00:00:00Z"]) == 0
+
+    assert output.read_text(encoding="utf-8") == before
+
+
+def test_medium_refresh_rewrites_header_and_moved_tests_only(tmp_path: Path) -> None:
+    output = tmp_path / "durations.json"
+    first = _write_medium_run(tmp_path, "run0", {"test_alpha": 1.0, "test_beta": 2.0})
+    assert baseline.main(["medium-refresh", "--output", str(output), "--source", "a", "--run-dir", str(first)]) == 0
+    second = _write_medium_run(tmp_path, "run1", {"test_alpha": 1.05, "test_beta": 4.0, "test_gamma": 0.5})
+
+    assert baseline.main(["medium-refresh", "--output", str(output), "--source", "b", "--run-dir", str(second)]) == 0
+
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["source"] == "b"
+    assert payload["tests"] == {
+        "tests/test_sample.py::TestSample::test_alpha": {"p95_seconds": 1.0},
+        "tests/test_sample.py::TestSample::test_beta": {"p95_seconds": 4.0},
+        "tests/test_sample.py::TestSample::test_gamma": {"p95_seconds": 0.5},
+    }
+
+
+def test_refreshed_medium_file_loads_in_every_consumer(tmp_path: Path) -> None:
+    from scripts.release_canary_sharding import load_durations
+
+    output = tmp_path / "durations.json"
+    run = _write_medium_run(tmp_path, "run0", {"test_alpha": 1.0, "test_beta": 2.0})
+    assert baseline.main(["medium-refresh", "--output", str(output), "--source", "a", "--run-dir", str(run)]) == 0
+
+    durations = load_durations(output)
+
+    assert durations.weight("tests/test_sample.py::TestSample::test_beta") == 2.0
+    assert baseline.read_medium_recorded(output) == {
+        "tests/test_sample.py::TestSample::test_alpha": 1.0,
+        "tests/test_sample.py::TestSample::test_beta": 2.0,
+    }
