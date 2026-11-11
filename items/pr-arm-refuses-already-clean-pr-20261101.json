@@ -2,6 +2,7 @@
   "acceptance": [
     "A CLEAN PR that passes every pr-arm gate merges through make pr-arm at the checked head; a unit test covers the clean-state path."
   ],
+  "context": "Revalidated 2026-11-11: still required and accurate. On origin/develop (c7b75c80bc) scripts/pr_arm.py (lines ~428-441) always runs `gh pr merge <n> --squash --auto --match-head-commit <head>` and treats a non-zero exit as `refused`; there is no branch for a PR whose mergeStateStatus is already CLEAN. Repo settings unchanged: allow_auto_merge is true and the develop ruleset (develop-squash-only, id 15611785) allows squash only with no merge queue, so a direct `gh pr merge --squash --match-head-commit` after the same gates is accepted by GitHub. docs/agent/merge-authority.md is the place to state the clean-PR path. Open PR #4120 edits pr_arm.py (placeholder-refresh waiting) but does not add this path; implement after it merges.",
   "description": "On #3734, make pr-arm passed every gate but could not enable auto-merge because GitHub reported the PR already CLEAN (auto-merge cannot be enabled on a PR that is mergeable now). The closer fell back to a raw `gh pr merge --match-head-commit`, which the merge-authority rules forbid. pr-arm should handle this state itself, for example by merging with --match-head-commit after the same gates pass.",
   "sessions": [
     {
@@ -27,6 +28,14 @@
       "op": "update",
       "op_id": "890e4872daa9484ca164a62c80eb1d23",
       "session_id": "02c14526fd7648f49c893339d8cfcf9e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:29:09Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3fa3f1048da24ecab2b578f6508e52d3",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
