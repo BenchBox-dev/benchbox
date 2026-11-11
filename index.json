@@ -25352,6 +25352,13 @@
       "status": "done",
       "title": "Select the ledger test for ledger edits and align CONTRIBUTING with opt-in batches"
     },
+    "ledger-seed-recut-after-published-results-advance-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "publication/ledger-seed.json still records published-results at 33e5eeb after the branch advanced"
+    },
     "ledger-tables-alter-targets-and-truncation-bound-20260801": {
       "claim": null,
       "needs": [],

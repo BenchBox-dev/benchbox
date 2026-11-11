@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "`publication/ledger-seed.json` `source` equals the current `origin/published-results` commit.",
+    "The `test_ledger_seed` medium test passes on the branch."
+  ],
+  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.",
+  "description": "## Problem\n`publication/ledger-seed.json` on `develop` has `source: 33e5eeb167da...` with `source_ref: origin/published-results`. On 2026-11-11 mirror PR #4114 merged to `published-results` as 4331a43a54, carrying the corpus changes made on `develop` since 2026-10-28 (about 137 files), so the seed no longer describes the archive branch's tip. Recutting the seed against a new archive tip is a separate, reviewed step in the corpus-refresh flow and was not done.\n\n## Change\nFollow `docs/internal/corpus-refresh.md`: recut the seed with `make ledger-seed-recut` against the current `origin/published-results`, review the diff in the union and overlay counts, and land it with the required checks.\n\n## Guardrails\n- Do not hand-edit the seed.\n- If the recut changes the legacy overlay or drops entries, stop and report before committing.",
+  "links": [
+    "publication/ledger-seed.json",
+    "docs/internal/corpus-refresh.md",
+    "https://github.com/BenchBox-dev/benchbox/pull/4114"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba",
+      "at": "2026-11-11T23:47:40Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "7805616a60364926847a5134b38d0c56",
+      "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    }
+  ]
+}
