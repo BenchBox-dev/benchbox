@@ -5,6 +5,7 @@
     "The fingerprint version policy for the change is decided and applied",
     "Published DuckDB plan companions are regenerated or flagged"
   ],
+  "context": "2026-11-11: fix on branch fix/duckdb-plan-join-type-sort-direction (commit f09bd6afd0). join_type now comes from DuckDB's Join Type detail (RIGHT_SEMI to semi, RIGHT_ANTI to anti; JoinType gains mark and single); Order By is split per key with its direction; TOP_N records limit_count. Decision: fingerprint_version is not bumped because the signature algorithm is unchanged and no published bundle carries a DuckDB plans companion. Correction to the description: fingerprints already distinguished join kinds through join_conditions, which holds the raw Join Type; they still change with this fix. Note found while verifying: stored raw_explain_output is cut near 16 KiB, so 9 of 22 TPC-H plans cannot be re-parsed from a raw companion.",
   "description": "Found 2026-11-11 by the local review of PR 4127 and confirmed in results-data/bundles/tpch_sf01_duckdb_sql_20261111_154211_a31c24ca.plans.json (TPC-H SF 0.1, DuckDB 1.5.5, estimated EXPLAIN, JSON parse path). Structured join_type against the raw \"Join Type\" kept in join_conditions, over 76 join nodes: 56 INNER correct; recorded as inner: 3 RIGHT, 1 LEFT, 3 SEMI, 2 RIGHT_SEMI, 1 ANTI, 1 RIGHT_ANTI, 2 MARK; recorded as left: 1 ANTI, 1 SEMI; recorded as right: 1 RIGHT_SEMI, 1 RIGHT_ANTI. Examples: Q13 outer join, Q4/Q18/Q20 semi joins, Q21 anti joins, Q16 mark joins, Q22 right anti join. Cause: DuckDBQueryPlanParser._extract_join_type_from_operator (benchbox/core/query_plans/parsers/duckdb.py:451) reads the type from the physical operator name (HASH_JOIN) and falls back to inner; it never reads the Join Type detail. Sort: all 18 sort keys have direction ASC, and 10 of them carry an expr ending in DESC (Q2, Q3, Q5, Q9, Q10, Q11, Q13, Q16, Q18, Q21). Cause: the JSON path at duckdb.py:152 hard-codes direction ASC and stores the whole ORDER BY list as one key; the text path already parses per-key directions. Impact: the Explorer plan viewer prints the wrong Join and sort direction beside the raw detail that contradicts it, and both fields feed the structural signature (query_plan_models.py _structural_signature_obj), so plan fingerprints do not distinguish an inner from a semi or anti hash join and will change when this is fixed. A fix needs a fingerprint_version decision and regenerated companions for any published DuckDB plan bundle.",
   "links": [
     "BenchBox-dev/BenchBox: benchbox/core/query_plans/parsers/duckdb.py",
@@ -27,6 +28,14 @@
       "generation": "a3ae4fa7654a4287965707db4d45d84f",
       "op": "take",
       "op_id": "f0b9d18e03714be386fb725d1fd48cce",
+      "session_id": "2aa9edd3163b4d51b2004989f5bf7f8d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ce763d5976f477ecde9610ed",
+      "at": "2026-11-11T23:45:47Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7f1cd95dccf845f3bf0949a9d1a5f316",
       "session_id": "2aa9edd3163b4d51b2004989f5bf7f8d"
     }
   ]
