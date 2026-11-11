@@ -166,9 +166,9 @@ A bump branch cannot run the new pin. The `oracle` environment deploys only from
 if the policy widens or narrows), the callee guard refuses a `workflow_dispatch` that is not
 on a gated base (`develop` or `release/*`), so `gh workflow run review-verdict.yml` accepts
 `--ref develop` or a `release/X.Y.x` ref only, and
-a pull request run uses the callers on `develop`. Until the callers on `develop` carry the
+a pull request run uses the callers on its base branch. Until the callers on `develop` carry the
 new pin, the reviewer and gate that judge the bump are the old ones. The first run of the new
-pin is therefore a run on `develop`.
+pin is therefore a run on `develop`. A release line keeps the callers it was created with.
 
 ### Checks after the merge
 

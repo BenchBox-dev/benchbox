@@ -91,8 +91,8 @@ protected line the tagged commit is on, and accepts only a canary run on that
 same line: a `release/X.Y.x` canary never satisfies a `develop` tag or a tag on
 another line, and a `develop` canary never satisfies a maintenance tag.
 
-`review-gate` and the review gate `develop` and every `release/*` line, so a
-pull request into a maintenance line reports `review-gate` like one into
+The review policy and both review callers gate `develop` and every `release/*`
+line, so a pull request into a maintenance line reports `review-gate` like one into
 `develop`. See the gate coverage note in
 [repo-admin-settings.md](repo-admin-settings.md).
 

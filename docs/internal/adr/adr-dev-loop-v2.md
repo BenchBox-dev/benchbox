@@ -302,8 +302,8 @@ Owner decisions after the dev-loop v2 retrospective:
    `develop`. This amends D1: the release lines are `develop` and those branches. The
    owner applied the `release-branches` and `release-branch-lifecycle` rulesets on
    2026-11-07, and the maintenance procedure is in `docs/internal/release-guide.md`.
-   Three capabilities are not yet available for these lines: a `trunk.yml` run on pushes
-   to `release/**`, review-gate support for a base other than `develop`, and a release
+   Review-gate support for `release/*` bases is available. Two capabilities are not yet
+   available for these lines: a `trunk.yml` run on pushes to `release/**` and a release
    canary that tests a release line. A maintenance release needs them first.
 9. **A release also requires a fresh green release canary** (at most 48 hours old) on an
    ancestor commit of the release commit. `release-v2.yml` enforces it in `admit` for
