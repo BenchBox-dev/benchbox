@@ -4003,12 +4003,13 @@
   {
    "disposition": "fixture-data",
    "kinds": {
-    "unresolved": 3
+    "pattern": 1,
+    "unresolved": 4
    },
-   "occurrences": 8,
+   "occurrences": 10,
    "path": "tests/unit/scripts/test_preflight_targets.py",
    "rule": "test-sample-data",
-   "target_count": 3,
+   "target_count": 5,
    "targets": [
     {
      "kind": "unresolved",
@@ -4017,6 +4018,14 @@
     {
      "kind": "unresolved",
      "target": "docs/internal/new.md"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/notes/*.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/notes/a.md"
     },
     {
      "kind": "unresolved",
@@ -4356,11 +4365,11 @@
    "extra": 39,
    "file": 1378,
    "generated": 3,
-   "pattern": 333,
+   "pattern": 334,
    "root": 202,
-   "unresolved": 2079
+   "unresolved": 2080
   },
-  "references": 33234,
+  "references": 33236,
   "unclassified": 0
  }
 }

@@ -631,8 +631,13 @@ def test_a_receipt_lacking_a_guard_step_the_changed_paths_require_is_refused(rep
 
 def test_a_receipt_lacks_the_ownership_guard_when_docs_changed_and_is_accepted_with_it(repo, tmp_path: Path) -> None:
     root, env = repo
-    (root / "docs").mkdir()
-    _commit(root, env, "docs/x.md", "# x\n")
+    owned = ROOT / "_project" / "scripts" / "preflight_targets.py"
+    spec = importlib.util.spec_from_file_location("preflight_targets_for_docs_root", owned)
+    assert spec is not None and spec.loader is not None
+    targets = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(targets)
+    (root / targets.DOCS_ROOT).mkdir()
+    _commit(root, env, f"{targets.DOCS_ROOT}x.md", "# x\n")
     stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0)], None)
     assert _finalize(root, env, stage, 0, None).returncode == 0
     refused = _verify(root, env, None, "--base-ref", "origin/develop")
