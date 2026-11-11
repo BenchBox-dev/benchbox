@@ -729,7 +729,16 @@ def test_refuses_an_unresolved_review_thread(
     world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str]
 ) -> None:
     ready_pr.threads = [{"id": "T1", "isResolved": False, "isOutdated": False}]
-    assert "condition 6: an unresolved, non-outdated review thread is open" in _refusal(world, ready_pr, capsys)
+    assert "condition 6: 1 unresolved review thread(s) block the merge" in _refusal(world, ready_pr, capsys)
+
+
+def test_refuses_an_unresolved_outdated_review_thread_and_names_it(
+    world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str]
+) -> None:
+    ready_pr.threads = [{"id": "T7", "isResolved": False, "isOutdated": True}]
+    refusal = _refusal(world, ready_pr, capsys)
+    assert "condition 6: 1 unresolved review thread(s) block the merge" in refusal
+    assert "T7 (outdated)" in refusal
 
 
 @pytest.mark.parametrize(("conclusion", "refused"), [("failure", True), ("cancelled", True), (None, False)])

@@ -98,7 +98,19 @@ def _write_allowlist(tmp_path: Path, payload: object = ALLOWLIST) -> Path:
     return path
 
 
-def _steps(repo: Path, env: dict[str, str], tmp_path: Path, steps: list[tuple[str, str, int]], allow: Path | None):
+REFERENCE_GUARD_STEPS = [("docs-reference-inventory", "ok", 0), ("project-references", "ok", 0)]
+
+
+def _steps(
+    repo: Path,
+    env: dict[str, str],
+    tmp_path: Path,
+    steps: list[tuple[str, str, int]],
+    allow: Path | None,
+    guards: bool = True,
+):
+    if guards:
+        steps = [*steps, *(guard for guard in REFERENCE_GUARD_STEPS if guard[0] not in {name for name, _, _ in steps})]
     stage = tmp_path / "stage"
     assert _script(repo, env, "begin", "--stage", str(stage), "--base-ref", "origin/develop").returncode == 0
     codes = []
@@ -140,13 +152,13 @@ def test_verify_accepts_a_matching_passing_receipt_and_renders_it(repo, tmp_path
         [("ruff-check", "All checks passed!", 0), ("pytest", "12 passed, 2 skipped in 3.40s", 0)],
         None,
     )
-    assert [done.returncode for done in codes] == [0, 0]
+    assert [done.returncode for done in codes[:2]] == [0, 0]
     assert _finalize(root, env, stage, 0, None).returncode == 0
     receipt = _receipt(root, env, tmp_path)
     assert receipt["status"] == "passed"
     assert receipt["tree"] == _git(root, env, "rev-parse", "HEAD^{tree}")
     assert receipt["steps"][1]["counts"] == {"passed": 12, "skipped": 2}
-    assert [step["exit_code"] for step in receipt["steps"]] == [0, 0]
+    assert [step["exit_code"] for step in receipt["steps"][:2]] == [0, 0]
     summary = tmp_path / "summary.md"
     done = _verify(root, env, None, "--summary-out", str(summary))
     assert done.returncode == 0, done.stderr
@@ -388,6 +400,8 @@ def open_world(tmp_path: Path) -> dict[str, object]:
         "make_timing_shell.sh",
     ):
         shutil.copy(ROOT / "scripts" / name, work / "scripts" / name)
+    (work / "_project" / "scripts").mkdir(parents=True)
+    shutil.copy(ROOT / "_project" / "scripts" / "preflight_targets.py", work / "_project" / "scripts")
     shutil.copy(ROOT / "Makefile", work / "Makefile")
     shutil.copytree(ROOT / "make", work / "make")
     (work / "_project" / "decisions").mkdir(parents=True)
@@ -606,45 +620,42 @@ def test_a_receipt_with_every_required_step_is_accepted(repo, tmp_path: Path) ->
     assert _verify(root, env, None, "--base-ref", "origin/develop").returncode == 0
 
 
-def test_a_receipt_whose_selection_names_a_guard_but_lacks_its_step_is_refused(repo, tmp_path: Path) -> None:
+def test_a_receipt_lacking_a_guard_step_the_changed_paths_require_is_refused(repo, tmp_path: Path) -> None:
     root, env = repo
-    stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0), ("project-references", "ok", 0)], None)
-    _note(root, env, stage, **{"project-references": 1, "docs-ownership": 1})
+    stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0)], None, guards=False)
     assert _finalize(root, env, stage, 0, None).returncode == 0
     done = _verify(root, env, None)
     assert done.returncode == 1
-    assert "lacks required step(s) docs-ownership" in done.stderr
-    assert "project-references" not in done.stderr.split("lacks required step(s)")[1]
+    assert "lacks required step(s) docs-reference-inventory, project-references" in done.stderr
 
 
-def test_a_receipt_whose_selection_names_a_guard_with_its_step_is_accepted(repo, tmp_path: Path) -> None:
+def test_a_receipt_lacks_the_ownership_guard_when_docs_changed_and_is_accepted_with_it(repo, tmp_path: Path) -> None:
     root, env = repo
-    steps = [(name, "ok", 0) for name in ("changelog-check", "docs-reference-inventory", "docs-ownership")]
-    stage, _ = _steps(root, env, tmp_path, steps, None)
-    _note(root, env, stage, **{"docs-reference-inventory": 1, "docs-ownership": 1})
+    (root / "docs").mkdir()
+    _commit(root, env, "docs/x.md", "# x\n")
+    stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0)], None)
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    refused = _verify(root, env, None, "--base-ref", "origin/develop")
+    assert refused.returncode == 1
+    assert "lacks required step(s) docs-ownership" in refused.stderr
+    (tmp_path / "stage").unlink()
+    stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0), ("docs-ownership", "ok", 0)], None)
     assert _finalize(root, env, stage, 0, None).returncode == 0
     assert _verify(root, env, None, "--base-ref", "origin/develop").returncode == 0
 
 
-def test_a_receipt_written_before_guards_were_recorded_is_refused_as_an_older_schema(repo, tmp_path: Path) -> None:
+def test_a_receipt_written_before_guards_were_recorded_is_refused_with_its_own_message(repo, tmp_path: Path) -> None:
     root, env = repo
     stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0)], None)
     assert _finalize(root, env, stage, 0, None).returncode == 0
     receipt_file = next((tmp_path / "receipts").glob("*.json"))
     receipt = json.loads(receipt_file.read_text(encoding="utf-8"))
     receipt["schema"] = 1
-    for guard in preflight_receipt.GUARD_STEPS:
-        del receipt["selection"][guard]
     receipt_file.write_text(json.dumps(receipt), encoding="utf-8")
     done = _verify(root, env, None)
     assert done.returncode == 1
+    assert "predates guard-step recording" in done.stderr
     assert "rerun `make pr-preflight`" in done.stderr
-
-
-def test_a_note_for_an_unknown_guard_is_refused(repo, tmp_path: Path) -> None:
-    root, env = repo
-    stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0)], None)
-    assert _script(root, env, "note", "--stage", str(stage), "docs-unknown=1").returncode == 2
 
 
 def test_a_receipt_without_a_selection_is_refused(repo, tmp_path: Path) -> None:

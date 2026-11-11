@@ -839,7 +839,7 @@ def test_a_placeholder_core_failure_just_after_the_full_run_succeeded_waits_for_
 ) -> None:
     assert _arm_live(_placeholder_gap("success", full_age=20, placeholder_age=900)) == 2
     captured = capsys.readouterr()
-    assert "waiting for the placeholder re-run" in captured.err
+    assert "waiting for the placeholder re-run after full CI run 91 completed" in captured.err
     assert "pr-rerun" not in captured.err
     assert "completed with conclusion" not in captured.err
     assert "outcome: waiting" in captured.out

@@ -307,14 +307,43 @@ def test_a_path_outside_every_sparse_checkout_selects_no_workflow_tests(repo: Pa
     assert pt.map_tests(repo, ["scripts/unlisted.py"]) == []
 
 
-def test_a_new_import_in_a_sparse_checkout_file_selects_the_guarding_tests_through_the_cli(
+def test_changing_an_unlisted_module_that_a_sparse_checkout_file_imports_selects_the_guarding_tests_through_the_cli(
     repo: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     _sparse_workflow(repo)
     _write(repo, "scripts/listed.py", "import helper_mod\nimport unlisted\n")
-    _commit_all(repo, "new import")
+    _commit_all(repo, "listed file imports the unlisted module")
+    _git(repo, "update-ref", "refs/remotes/origin/develop", "HEAD")
+    _write(repo, "scripts/unlisted.py", "y = 3\n")
+    _commit_all(repo, "change only the unlisted module")
     assert pt.main(["tests", "--repo-root", str(repo)]) == 0
     assert capsys.readouterr().out.split() == SPARSE_SELECTION
+
+
+@pytest.mark.parametrize("path", ["data/fixtures/one.json", "data/fixtures/nested/two.json", "docs/notes/a.md"])
+def test_a_directory_or_glob_entry_in_a_sparse_checkout_list_selects_the_guarding_tests(repo: Path, path: str) -> None:
+    _sparse_workflow(repo)
+    workflow = repo / ".github/workflows/ci.yml"
+    workflow.write_text(
+        workflow.read_text(encoding="utf-8").replace(
+            "            data/table.json\n",
+            "            data/table.json\n            data/fixtures/\n            docs/notes/*.md\n",
+        ),
+        encoding="utf-8",
+    )
+    assert pt.map_tests(repo, [path]) == SPARSE_SELECTION
+
+
+def test_a_path_beside_a_sparse_checkout_directory_entry_is_not_selected(repo: Path) -> None:
+    _sparse_workflow(repo)
+    workflow = repo / ".github/workflows/ci.yml"
+    workflow.write_text(
+        workflow.read_text(encoding="utf-8").replace(
+            "            data/table.json\n", "            data/table.json\n            data/fixtures/\n"
+        ),
+        encoding="utf-8",
+    )
+    assert pt.map_tests(repo, ["data/fixtures_other/one.json"]) == []
 
 
 def test_composite_action_change_selects_workflow_tests_and_tests_naming_the_action(repo: Path) -> None:

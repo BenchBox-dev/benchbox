@@ -50,7 +50,6 @@ pr-preflight:
 	fi; \
 	for GUARD in $$(cat "$$GUARD_LIST"); do \
 		echo "==> guard: $$GUARD"; \
-		$$NOTE "$$GUARD=1"; \
 		case "$$GUARD" in \
 			docs-reference-inventory) $$RECORD --name docs-reference-inventory -- $(MAKE) -s docs-reference-inventory-check ;; \
 			project-references) $$RECORD --name project-references -- uv run -- python _project/scripts/check_project_references.py ;; \

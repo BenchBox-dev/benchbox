@@ -61,6 +61,7 @@ class Wait(NamedTuple):
 FULL_RUN = "full"
 PLACEHOLDER_BEHIND_FULL_RUN = "placeholder-behind-full"
 PLACEHOLDER_REFRESH = "placeholder-refresh"
+PLACEHOLDER_RERUNNING = "placeholder-rerunning"
 
 
 def _now() -> datetime:
@@ -123,7 +124,7 @@ def _waiting_full_run(runs: Sequence[CiRun], url: str, now: datetime) -> Wait | 
         return Wait(full_open.id, PLACEHOLDER_BEHIND_FULL_RUN)
     rerunning = next((item for item in placeholders if item.status != "completed"), None)
     if rerunning is not None:
-        return Wait(rerunning.id, PLACEHOLDER_REFRESH)
+        return Wait(rerunning.id, PLACEHOLDER_RERUNNING)
     return _placeholder_refresh_pending(failed, full_runs, now)
 
 
@@ -133,10 +134,15 @@ def _waiting_reason(name: str, run_id: int, kind: str) -> str:
             f"waiting for full CI run {run_id}: the required {name!r} check is a placeholder failure that re-runs "
             f"on its own when that run completes; arm again after it completes"
         )
-    if kind == PLACEHOLDER_REFRESH:
+    if kind == PLACEHOLDER_RERUNNING:
         return (
             f"waiting for the placeholder re-run of CI run {run_id}: the required {name!r} check is a placeholder "
-            f"failure that the ci-text-edit-refresh workflow re-runs on its own once the full run completes; "
+            f"failure that is being re-run on its own; arm again in a few minutes"
+        )
+    if kind == PLACEHOLDER_REFRESH:
+        return (
+            f"waiting for the placeholder re-run after full CI run {run_id} completed: the required {name!r} check "
+            f"is a placeholder failure that the ci-text-edit-refresh workflow re-runs on its own; "
             f"arm again in a few minutes"
         )
     return (

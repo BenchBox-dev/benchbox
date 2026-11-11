@@ -23,7 +23,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import quote
 
-REPOSITORY = "BenchBox-dev/benchbox"
+REPOSITORY = "BenchBox-dev/BenchBox"
 WORKFLOW = ".github/workflows/trunk.yml"
 PRODUCER_BRANCH = "develop"
 MAINTENANCE_BRANCH = re.compile(r"release/[0-9]+\.[0-9]+\.x")

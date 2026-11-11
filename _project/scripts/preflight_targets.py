@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import fnmatch
 import re
 import subprocess
 import sys
@@ -302,6 +303,24 @@ def _sparse_checkout_lists(repo: Path) -> dict[str, set[str]]:
     return lists
 
 
+def _sparse_entry_matches(entry: str, path: str) -> bool:
+    pattern = entry.lstrip("/")
+    if pattern.endswith("/"):
+        return path.startswith(pattern)
+    if any(char in pattern for char in "*?["):
+        return fnmatch.fnmatchcase(path, pattern)
+    return path == pattern
+
+
+def _sparse_python_files(repo: Path, entry: str) -> list[str]:
+    pattern = entry.lstrip("/")
+    if pattern.endswith("/"):
+        return [str(item.relative_to(repo)) for item in (repo / pattern).rglob("*.py")]
+    if any(char in pattern for char in "*?["):
+        return [str(item.relative_to(repo)) for item in repo.glob(pattern) if item.suffix == ".py"]
+    return [pattern] if pattern.endswith(".py") else []
+
+
 def _sparse_checkout_tests(
     repo: Path,
     path: str,
@@ -314,12 +333,13 @@ def _sparse_checkout_tests(
     dotted = {_module_name(path)} if pure.suffix == ".py" else set()
     selected: list[str] = []
     for workflow, listed in lists.items():
-        if path in listed or any(
-            entry.endswith(".py")
-            and _imported_modules(repo, entry, cache)
-            & (dotted | ({pure.stem} if pure.suffix == ".py" and PurePosixPath(entry).parent == pure.parent else set()))
+        imported = pure.suffix == ".py" and any(
+            _imported_modules(repo, member, cache)
+            & (dotted | ({pure.stem} if PurePosixPath(member).parent == pure.parent else set()))
             for entry in listed
-        ):
+            for member in _sparse_python_files(repo, entry)
+        )
+        if imported or any(_sparse_entry_matches(entry, path) for entry in listed):
             selected.extend(_workflow_tests(repo, workflow, test_files, texts))
     return selected
 

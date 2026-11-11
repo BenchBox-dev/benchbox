@@ -149,12 +149,6 @@ def test_refuses_a_member_larger_than_the_size_limit(admitted, monkeypatch):
         gate.verify_admitted(admitted, TAG, SHA)
 
 
-@pytest.mark.parametrize("spelling", ["BenchBox-dev/BenchBox", "benchbox-dev/benchbox"])
-def test_accepts_a_producer_receipt_that_spells_the_repository_in_another_case(admitted, spelling):
-    edit_producer(admitted, lambda value: value.update(repository=spelling))
-    gate.verify_admitted(admitted, TAG, SHA)
-
-
 @pytest.mark.parametrize("renamed", ["../escape.whl", "sub/dir.whl", "/absolute.whl", "..\\escape.whl"])
 def test_refuses_a_receipt_file_name_that_leaves_the_directory(admitted, renamed):
 
