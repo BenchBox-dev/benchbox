@@ -879,3 +879,5 @@ ignore_rules = [
 
     { function_names = ["quote_literal", "quote_identifier"], path_contains = ["benchbox/platforms/clickhouse/delta_lake.py"] },
 ]
+
+# proof

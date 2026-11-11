@@ -218,3 +218,5 @@ def test_show_cli_reports_invalid_json(cli_runner, tmp_path, monkeypatch):
     result = cli_runner.invoke(results, ["show-cli", str(result_file)])
     assert result.exit_code == 0
     assert "Invalid JSON file" in result.output
+
+
