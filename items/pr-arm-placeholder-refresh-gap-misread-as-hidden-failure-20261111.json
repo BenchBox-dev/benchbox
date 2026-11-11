@@ -6,6 +6,7 @@
     "Unit tests cover: placeholder re-run queued; full run completed seconds ago and placeholder not yet re-run; bound exceeded; full run failed",
     "docs/agent/merge-authority.md describes the state in the outcome list"
   ],
+  "context": "2026-11-11 further evidence from #4110, which separates two cases. (a) One placeholder run on the head (#4112): the refresh workflow re-runs it about two minutes after the full run completes; the refusal in between is transient and `make pr-rerun` is not needed. (b) Two or more placeholder runs on the head (#4110, whose body was edited twice): scripts/ci_text_edit_verdict.py `refresh` re-runs only the newest failed text-edit run, so the older placeholder suite stays failed and the rollup counts it; `make pr-rerun` is then genuinely required, and it works only after the full run has completed (at 17:26Z it was run while the full run was in progress, the placeholder jobs failed again, and it also re-ran every job of the full run; at 17:48Z, after the full run completed, it re-ran only the stale suite and `make pr-arm` armed the PR 20 seconds later). So the fix has two parts to weigh: classify case (a) as waiting for a bounded time, and for case (b) either make `refresh` re-run every failed text-edit run on the head, or keep the pr-rerun advice but only once the newest text-edit run has been refreshed. Note tests/unit/scripts/test_pr_arm.py::test_a_placeholder_core_failure_after_the_full_run_completed_advises_the_rerun pins today's behaviour deliberately; read its history before changing it.",
   "description": "When a pull request's title or body is edited, CI starts a 'CI (text edit)' placeholder run whose required checks fail until the full CI run for the head completes; the ci-text-edit-refresh workflow then re-runs the placeholder. scripts/pr_arm.py `_waiting_full_run` treats a placeholder failure as waiting only while a full run is still in progress. Between the full run completing and the placeholder's re-run finishing, it falls through to the hidden-failure reason: \"required check 'core' suite ... failure is hidden behind a newer success; the merge rollup still counts it, so run make pr-rerun\". That ends `make pr-arm WAIT=<minutes>` as refused and gives wrong advice. Evidence, 2026-11-11: PR #4112 head 2f7dbf22a: full run 43065466899 completed 17:34:39Z; the wait refused at 17:36:26Z; placeholder run 43065467973 began attempt 2 on its own at 17:36:57Z. PR #4110 head d7b6335ca hit the same refusal at 17:24Z; following the advice, `make pr-rerun PR=4110` re-ran every job of the full CI run, costing a whole CI cycle for nothing. Every `make pr-open` edits the body, so every PR passes through this gap. This is the unreproduced anomaly noted on pr-arm-wait-review-pending-classification-20261111.",
   "links": [
     "scripts/pr_arm.py",
@@ -27,6 +28,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "33b6fc7a629940c1b6101ef34d14997d",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T17:48:52Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0b4d22d0f8a348f99ce1b3fc3a0eaebc",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
