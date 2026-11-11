@@ -4,6 +4,7 @@
     "test_query_catalog determinism passes for tsbs_devops repeatedly.",
     "Executed rows equal before/after for fixed parameters; sql-execution-gate PASS; affected bundles listed in the PR body."
   ],
+  "context": "Revalidated 2026-11-11: DONE. benchbox/core/tsbs_devops/queries.py now derives parameters per query: `np.random.default_rng([self.seed, zlib.crc32(query_id)])` (lines 53-55), the same scheme as NYCTaxi (benchbox/core/nyctaxi/queries.py:70). Landed in #3562 (88015b5519, \"derive query parameters independently of render order\") and #3575 (6d25b0e2df). Tests exist: tests/unit/core/tsbs_devops/test_tsbs_devops_queries.py::TestTSBSDevOpsQueryManager::test_rendering_is_independent_of_call_order[None|0|42] and tests/unit/core/test_query_catalog.py::TestDeterminism::test_repeated_renders_are_identical[tsbs_devops]. Not verified here: whether the affected-bundle list appeared in a PR body. Closing evidence: #3562 and #3575 (per-query rng in tsbs_devops/queries.py:53; call-order test present).",
   "description": "Found while fixing the trunk failure at #3544. NYCTaxiQueryManager drew query parameters from one shared stateful RNG, so renders depended on call order (fixed in #3554 by deriving parameters per query from (instance seed, query id)). TSBSDevOpsQueryManager uses the same pattern, so repeated renders of one instance can differ and TSBS DevOps bundles may have used different windows across runs.\nGUARDRAILS: same per-query derivation as #3554; do not weaken determinism tests; executed comparison on DuckDB/DataFusion must show identical rows for fixed parameters; list affected published TSBS bundles (values not wrong; no flag unless recorded rows were wrong).",
   "sessions": [
     {
@@ -13,6 +14,14 @@
       "op": "create",
       "op_id": "0751b6d44cfb4060a7ecedce08f0503e",
       "session_id": "346ab30aded748589ff1183f3938406d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:35:55Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7d3eb5db381a4fbb8029c0d4952d930f",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
