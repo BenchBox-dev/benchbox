@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "The forward-version contract is stated in the validator's tests and docs.",
+    "tests/integration/test_submission_validation.py passes locally through make heavy-run.",
+    "The next scheduled Release Canary run is green and issue #4106 is closed by it."
+  ],
+  "description": "Issue #4106 (opened 2026-11-11, run 43051915343 on develop 5bd2c19cc): tests/integration/test_submission_validation.py::test_validator_accepts_forward_numeric_schema_v2_family fails. The test writes a bundle from the 2.3-era fixture and sets version \"2.99\" to prove the validator accepts a forward numeric 2.x version. PR #4080 (d1e0891b83) added _validate_required_timing_fields in benchbox/validation/bundle.py, which applies required_timing_problems to every version where supports_timing_fields is true, so the forward-version fixture now fails on missing timing_method/platform timing fields. The test is in the credential-free non-fast tier, so PR CI did not run it.\n\nChange. Decide the contract: a forward minor version must still carry every field required by the newest known version (update the fixture to a 2.4-complete bundle), or forward versions beyond KNOWN_SCHEMA_V2_VERSIONS are accepted with only the known-version checks. Fix the fixture or the validator accordingly, and confirm the next scheduled Release Canary is green so #4106 closes.\n\nGuardrails: linked worktree; no explanatory comments; no CI skips.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/issues/4106",
+    "https://github.com/BenchBox-dev/BenchBox/pull/4080"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:40:08Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "4cfc9e3c27ab4952bf799c3a2ed17e91",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
+    }
+  ]
+}

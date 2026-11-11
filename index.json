@@ -13421,6 +13421,13 @@
       "status": "done",
       "title": "Verify malformed reusable FlightData shards are rejected"
     },
+    "canary-forward-schema-v2-required-timing-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Release canary red: the validator requires schema 2.4 timing fields from a forward 2.99 bundle that predates them"
+    },
     "canary-green-for-v0-4-1": {
       "claim": null,
       "needs": [
