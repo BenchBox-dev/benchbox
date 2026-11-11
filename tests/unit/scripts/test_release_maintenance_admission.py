@@ -8,7 +8,7 @@ from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
-from scripts import release_artifact_consumer as consumer
+from scripts import release_artifact_consumer as consumer, release_line_create
 from tests.unit.scripts.test_release_artifact_consumer import SHA, distributions as distributions, metadata as metadata
 from tests.unit.scripts.test_release_artifact_execution import bind_admission_fixture, git
 
@@ -515,3 +515,183 @@ def test_the_hosted_fetch_succeeds_when_no_maintenance_branch_exists(tmp_path):
         ).returncode
         != 0
     )
+
+
+def no_fetch(root, tag, **options):
+    return None
+
+
+def create_with_script(root: Path, tag: str = "v0.4.1") -> str:
+    branch, commit = release_line_create.create_line(root, tag, fetch=no_fetch)
+    assert branch == LINE
+    return commit
+
+
+def test_a_created_line_is_verified_from_develop_without_any_tag(created_line):
+    creation = create(created_line, fixture_sha(created_line, "tip"))
+    consumer.verify_line(created_line, LINE, creation, merged_pulls())
+    fixed = land(created_line, "0.4.2")
+    consumer.verify_line(created_line, LINE, fixed, merged_pulls(fixed))
+
+
+@pytest.mark.parametrize(
+    ("source", "policy", "expected"),
+    [
+        (None, "reviewed policy\n", "must name one full develop commit in a Develop-Source trailer"),
+        ("tip", "unreviewed policy\n", r"sets \.github/review\.yml, which differs from develop at"),
+        ("before_tag", "weak policy\n", "is not a first-parent develop commit newer than the line's tag"),
+    ],
+)
+def test_verify_line_refuses_a_bad_creation_commit_before_any_tag_exists(created_line, source, policy, expected):
+    creation = create(created_line, fixture_sha(created_line, source) if source else None, policy=policy)
+    with pytest.raises(ValueError, match=expected):
+        consumer.verify_line(created_line, LINE, creation, merged_pulls())
+
+
+def test_verify_line_still_refuses_a_commit_that_is_neither_merged_nor_a_creation(created_line):
+    creation = create(created_line, fixture_sha(created_line, "tip"))
+    stray = commit_version(created_line, "0.4.2")
+    with pytest.raises(ValueError, match=f"commit {stray} is neither a pull request merged into it"):
+        consumer.verify_line(created_line, LINE, stray, merged_pulls(creation))
+
+
+def test_verify_line_refuses_a_line_that_does_not_start_from_a_final_tag(tmp_path):
+    root = tmp_path / "untagged"
+    root.mkdir()
+    git(root, "init", "-b", "develop")
+    git(root, "config", "user.name", "Test Fixture")
+    git(root, "config", "user.email", "fixture@example.invalid")
+    commit_version(root, "0.4.1rc1")
+    tag(root, "v0.4.1rc1")
+    git(root, "update-ref", "refs/remotes/origin/develop", "HEAD")
+    git(root, "checkout", "-q", "-b", LINE)
+    tip = commit_version(root, "0.4.2")
+    with pytest.raises(ValueError, match="does not start from a final release tag of its minor"):
+        consumer.verify_line(root, LINE, tip, merged_pulls(tip))
+
+
+def test_the_verify_line_command_fetches_and_checks_the_hosted_tip(created_line, monkeypatch, capsys):
+    create(created_line, fixture_sha(created_line, "tip"))
+    fixed = land(created_line, "0.4.2")
+    fetched = []
+    monkeypatch.setattr(consumer, "fetch_hosted_refs", lambda source, tag, **options: fetched.append((tag, options)))
+    monkeypatch.setattr(consumer, "github_json_list", merged_pulls(fixed))
+    assert consumer.main(["verify-line", "--source", str(created_line), "--branch", LINE]) == 0
+    assert capsys.readouterr().out.strip() == f"{LINE} {fixed} verified"
+    assert fetched == [(None, {"prune": True})]
+
+
+def test_the_verify_line_command_exits_nonzero_for_a_bad_creation_commit(created_line, monkeypatch, capsys):
+    create(created_line, None)
+    fixed = land(created_line, "0.4.2")
+    monkeypatch.setattr(consumer, "fetch_hosted_refs", lambda source, tag, **options: None)
+    monkeypatch.setattr(consumer, "github_json_list", merged_pulls(fixed))
+    with pytest.raises(SystemExit) as exit_info:
+        consumer.main(["verify-line", "--source", str(created_line), "--branch", LINE])
+    assert exit_info.value.code == 1
+    assert "Develop-Source trailer" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("branch", "tip", "message"),
+    [
+        ("release/0.4", None, "invalid maintenance branch"),
+        (LINE, None, "does not exist on the hosted repository"),
+        (LINE, "abc", "must be a full commit SHA"),
+        (LINE, "0" * 40, "is not a commit in the checkout"),
+    ],
+)
+def test_the_line_tip_must_name_a_commit_of_a_maintenance_branch(created_line, branch, tip, message):
+    with pytest.raises(ValueError, match=message):
+        consumer.resolve_line_tip(created_line, branch, tip)
+
+
+def test_the_creation_script_builds_a_commit_that_verify_line_accepts(created_line):
+    commit = create_with_script(created_line)
+    consumer.verify_line(created_line, LINE, commit, merged_pulls())
+    develop = fixture_sha(created_line, "tip")
+    assert git(created_line, "log", "-1", "--format=%(trailers:key=Develop-Source,valueonly)", commit) == develop
+    assert git(created_line, "rev-parse", f"{commit}^") == fixture_sha(created_line, "released")
+    for path in consumer.creation_review_paths(created_line, commit, develop):
+        assert git(created_line, "ls-tree", commit, "--", path) == git(created_line, "ls-tree", develop, "--", path)
+
+
+def test_the_creation_script_leaves_the_checkout_and_index_untouched(created_line):
+    before = git(created_line, "rev-parse", "HEAD")
+    create_with_script(created_line)
+    assert git(created_line, "rev-parse", "HEAD") == before
+    assert git(created_line, "status", "--porcelain", "--untracked-files=all") == ""
+
+
+def test_the_creation_script_uses_the_source_from_the_fetched_develop(created_line):
+    def advance(root, tag, **options):
+        write(root, "advanced.txt", "later\n")
+        git(root, "add", "advanced.txt")
+        git(root, "commit", "-q", "-m", "Later develop work")
+        git(root, "update-ref", "refs/remotes/origin/develop", "HEAD")
+        git(root, "checkout", "-q", LINE)
+
+    git(created_line, "checkout", "-q", "develop")
+    _, commit = release_line_create.create_line(created_line, "v0.4.1", fetch=advance)
+    fresh = git(created_line, "rev-parse", "refs/remotes/origin/develop")
+    assert fresh != fixture_sha(created_line, "tip")
+    assert git(created_line, "log", "-1", "--format=%(trailers:key=Develop-Source,valueonly)", commit) == fresh
+
+
+@pytest.mark.parametrize(
+    ("tag_name", "message"),
+    [("v0.4.1rc1", "is not a final release"), ("0.4.1", "invalid version tag")],
+)
+def test_the_creation_script_needs_a_final_tag(created_line, tag_name, message):
+    with pytest.raises(ValueError, match=message):
+        release_line_create.create_line(created_line, tag_name, fetch=no_fetch)
+
+
+def test_the_creation_script_refuses_a_line_that_already_exists(created_line):
+    git(created_line, "update-ref", f"refs/remotes/origin/{LINE}", "HEAD")
+    with pytest.raises(ValueError, match=f"{LINE} already exists"):
+        release_line_create.create_line(created_line, "v0.4.1", fetch=no_fetch)
+
+
+def test_the_creation_script_refuses_a_develop_that_has_not_moved_past_the_tag(created_line):
+    git(created_line, "update-ref", "refs/remotes/origin/develop", fixture_sha(created_line, "released"))
+    with pytest.raises(ValueError, match="is not a first-parent develop commit newer than the line's tag"):
+        release_line_create.create_line(created_line, "v0.4.1", fetch=no_fetch)
+
+
+def test_the_creation_script_pushes_only_when_asked(created_line, tmp_path):
+    remote = tmp_path / "remote.git"
+    git(tmp_path, "init", "--bare", str(remote))
+    git(created_line, "remote", "add", "origin", str(remote))
+    assert release_line_create.main(["--source", str(created_line), "--tag", "v0.4.1"], no_fetch) == 0
+    assert git(remote, "branch", "--list") == ""
+    assert release_line_create.main(["--source", str(created_line), "--tag", "v0.4.1", "--push"], no_fetch) == 0
+    assert git(remote, "rev-parse", f"refs/heads/{LINE}")
+
+
+def test_a_line_recreated_from_a_patch_tag_cannot_roll_back_to_an_older_develop_source(created_line):
+    old_fixed, fixed = recreate_on_patch_tag(created_line, fixture_sha(created_line, "reviewed"))
+    previous = fixture_sha(created_line, "tip")
+    older = fixture_sha(created_line, "reviewed")
+    with pytest.raises(ValueError, match=f"creation source {older} is older than {previous}"):
+        consumer.verify_maintenance_line(created_line, "v0.4.3", fixed, LINE, merged_pulls(old_fixed, fixed))
+
+
+def test_a_line_recreated_from_a_newer_develop_source_is_admitted(created_line):
+    root = created_line
+    create(root, fixture_sha(root, "reviewed"))
+    old_fixed = land(root, "0.4.2")
+    tag(root, "v0.4.2")
+    git(root, "update-ref", "-d", f"refs/remotes/origin/{LINE}")
+    git(root, "checkout", "-q", "-B", LINE, old_fixed)
+    git(root, "commit", "-q", "--allow-empty", "-m", f"Recreate the line\n\nDevelop-Source: {fixture_sha(root, 'tip')}")
+    fixed = land(root, "0.4.3")
+    consumer.verify_maintenance_line(root, "v0.4.3", fixed, LINE, merged_pulls(old_fixed, fixed))
+
+
+def test_the_guide_scripts_creation_instead_of_listing_the_reviewer_files():
+    guide = (Path(__file__).resolve().parents[3] / "docs/internal/release-guide.md").read_text(encoding="utf-8")
+    assert "scripts/release_line_create.py" in guide
+    assert "verify-line" in guide
+    for path in consumer.CREATION_REVIEW_PATHS:
+        assert path not in guide

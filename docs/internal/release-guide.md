@@ -103,28 +103,40 @@ The procedure:
    legacy `release` branch and its rulesets are gone; Git cannot hold `release`
    and `release/X.Y.x` together, so none may be recreated.
 2. The owner creates the branch as one commit on top of the `vX.Y.0` tag commit
-   (or the newest `vX.Y.Z` tag of that minor). Because the `oracle` and review
-   environments admit `release/*`, that commit must replace the tag's reviewer
-   files with `develop`'s before any workflow can run on the branch: a tag that
-   predates the pinned callers must not leave older reviewer code able to run
-   with the App secrets. From a detached worktree at the tag:
+   (or the newest `vX.Y.Z` tag of that minor). Because the `oracle` environment
+   admits `release/*`, that commit must replace the tag's reviewer files with
+   `develop`'s before any workflow can run on the branch: a tag that predates
+   the pinned callers must not leave older reviewer code able to run with the
+   App secrets. The script fetches `develop`, the release lines and the tag,
+   builds the commit from the freshly fetched `develop` tip, records it in a
+   `Develop-Source` trailer, and runs the line check on the result before
+   anything is pushed:
 
    ```bash
-   source="$(git rev-parse origin/develop)"
-   git rm -q --ignore-unmatch -- .github/workflows/oracle-verdict.yml \
-     .github/workflows/oracle-gate.yml .github/workflows/oracle-review.yml \
-     .github/oracle-reviewers.yml .github/oracle-omp-config.yml
-   git checkout "$source" -- \
-     .github/workflows/review-verdict.yml .github/workflows/review-gate.yml \
-     .github/workflows/review-request.yml .github/review.yml \
-     .github/review-omp-config.yml .github/theseus-lock.json \
-     .github/soundness-paths.txt .github/inert-paths.txt \
-     scripts/theseus_cli.py scripts/theseus_release_check.py \
-     _project/scripts/theseus_bootstrap.py
-   git commit -m "chore(release): carry develop's reviewer files onto release/X.Y.x" \
-     -m "Develop-Source: $source"
-   git push origin "HEAD:refs/heads/release/X.Y.x"
+   uv run -- python scripts/release_line_create.py --tag vX.Y.Z
+   uv run -- python scripts/release_line_create.py --tag vX.Y.Z --push
    ```
+
+   The first command only verifies; `--push` creates `release/X.Y.x`. The
+   reviewer file set comes from `CREATION_REVIEW_PATHS` and the `review-*` and
+   `oracle-*` workflows in `scripts/release_artifact_consumer.py`, the same
+   constants admission checks, so the two cannot drift. Creation commits are
+   immutable, so check the line again from `develop` after the push, and any
+   time before a tag, without a tag in hand:
+
+   ```bash
+   uv run -- python scripts/release_artifact_consumer.py verify-line \
+     --source . --branch release/X.Y.x
+   ```
+
+   `verify-line` fetches the hosted refs, applies the creation rules to every
+   creation commit on the line, and requires every other commit to be a merged
+   pull request; it skips only the rules that need the tag (the tagged commit
+   being a merged pull request and the base tag being older than the release).
+   When a line is recreated from a patch tag of its earlier copy, the new
+   `Develop-Source` must be the earlier creation's source or a descendant of
+   it, so the reviewer files cannot move back past what the earlier copy
+   carried.
 
    `release-branches` accepts this push because it does not enforce status
    checks or linear history on creation (see
