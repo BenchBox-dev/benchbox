@@ -36657,6 +36657,15 @@
       "status": "done",
       "title": "Route pure skill-sync diffs through a required skill-integrity CI lane"
     },
+    "skill-pin-reland-member-review-optional-20261111": {
+      "claim": null,
+      "needs": [
+        "skill-catalog-release-freeze-and-tpc-specs-20261111"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Re-land the skill catalog pin so the mirrored skills match the batch tooling"
+    },
     "skill-sync-git-source-subdir": {
       "claim": null,
       "needs": [],

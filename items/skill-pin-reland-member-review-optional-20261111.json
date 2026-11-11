@@ -1,0 +1,31 @@
+{
+  "acceptance": [
+    "Decision gate (root cause first): do not open the PR until the failing test from run 42528704141 is named and either reproduced locally on a branch with the pin bump or shown by its log to be unrelated to the mirrors. If it cannot be determined, stop and report; do not re-land on a guess.",
+    "Decision gate (pin scope): the bump changes every skill pinned at the old revision. Read the full mirror diff; if it brings in a behavioural change beyond the member-review wording, the freeze line and the TPC spec paths, list each one in the PR body, and stop for the owner if any contradicts AGENTS.md or docs/agent.",
+    "Decision gate (generated files): mirrors change only through make skill-sync; scripts/check_untracked_skill_mirrors.sh and `skill-sync verify` (or the repository's mirror check) pass.",
+    "Verification: `git grep -n 'local review' .claude/skills/todo/references/batch.md .claude/skills/shared-review-protocol/SKILL.md` shows no sentence saying members run a local review; `git grep -n 'frozen for infrastructure' .claude/skills` returns nothing; .claude/skills/benchbox/references/compliance.md names the bundled spec paths.",
+    "Verification: the test that failed on trunk passes locally at the PR head (run through make heavy-run if it is a medium-tier test), and make pr-preflight passes.",
+    "Verification: after merge, the trunk.yml run for the merge commit completes without that failure; if it fails for the same reason, revert and reopen this item.",
+    "Done when the PR is merged and the post-merge trunk run is observed green or failing only for an unrelated, named reason."
+  ],
+  "description": "Source: a retrospective over 25 agent sessions (2026-10-18 to 2026-11-11), followed by an adversarial re-check of each claim against origin/develop 4835f5a537.\n\nProblem. The tracked mirrors (.claude/skills/todo/references/batch.md 'Member closeout', .claude/skills/shared-review-protocol/SKILL.md) say batch members run a local review. docs/agent/batch-feature-delivery.md and `make batch-member-check` say they do not; the leader reviews at landing. PR #4053 fixed the mirrors by bumping the catalog pin; PR #4061 reverted it because trunk.yml run 42528704141 failed in 'medium-test (shard 1)' on the merge commit 1bf490a1b3. The policy did not change.\n\nOwner decision 2026-11-11: members do not review; find why trunk failed and re-land the pin with that fixed.\n\nChange. Diagnose the trunk failure. Bump the pins in skill-sync.conf to the catalog revision recorded by skill-catalog-release-freeze-and-tpc-specs-20261111 (which also carries the member-review wording), regenerate mirrors with `make skill-sync` in the worktree, and fix whatever in BenchBox the failing test showed (for example a test or inventory that reads the mirrored text).\n\nNon-goals. No hand edits to any mirror. No change to batch tooling or to docs/agent/batch-feature-delivery.md.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly, never git add -A; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission or skipping the test lock; never bypass a required check, ruleset, hold label or review gate, and never post a stand-in; change only the files this item names, and report anything else as noticed-but-not-touched; re-read every cited file on current origin/develop before editing, because the line numbers here are hints from 2026-11-11 (origin/develop 4835f5a537); close at a merged PR (make pr-open, make pr-arm), and finish this item only after the merge is observed.",
+  "links": [
+    "skill-sync.conf",
+    ".claude/skills/todo/references/batch.md",
+    ".claude/skills/shared-review-protocol/SKILL.md",
+    "docs/agent/batch-feature-delivery.md",
+    "https://github.com/BenchBox-dev/benchbox/pull/4053",
+    "https://github.com/BenchBox-dev/benchbox/pull/4061",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/42528704141"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T13:11:26Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f545f9e4e7ac4640830a25538c781855",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    }
+  ]
+}
