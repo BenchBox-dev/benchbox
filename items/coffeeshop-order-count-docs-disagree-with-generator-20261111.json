@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "`rg -n '50_000_000' benchbox/core/coffeeshop` finds nothing, or the remaining use is shown to be correct.",
+    "benchbox-site `docs/usage/data-generation.md` gives the generator's order count per SF and agrees with `docs/benchmarks/coffeeshop.md`.",
+    "The numbers written are backed by a generation run at a stated scale."
+  ],
+  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.",
+  "description": "## Problem\n`benchbox/core/coffeeshop/generator.py` sets `SF1_ORDER_COUNT = 8_500_000`. Two places state 50,000,000 orders per scale-factor unit:\n- `benchbox/core/coffeeshop/schema_specs.yaml`, `row_count_formula: 50_000_000 * scale_factor * 1.5` on the order-lines table.\n- benchbox-site `docs/usage/data-generation.md`: `order_count = 50_000_000 * scale_factor` and a table giving 50,000,000 orders and about 5 GB at SF 1.\nThe site benchmark page `docs/benchmarks/coffeeshop.md` gives about 8.5M orders per SF, which matches the generator. A reader sizing a run from the usage page over-estimates by about six times.\n\n## Change\nConfirm the generated order and order-line counts at one small scale, then correct the schema spec string and the site usage page (formula, table and sizes) to the generator's numbers. Check whether anything reads `row_count_formula` from the CoffeeShop spec before changing it.\n\n## Guardrails\n- The generator is the source of truth; do not change it.\n- The site edit is a pull request in benchbox-site, checked with `npm run lint:docs` and `npm run docs:check`.",
+  "links": [
+    "benchbox/core/coffeeshop/generator.py",
+    "benchbox/core/coffeeshop/schema_specs.yaml",
+    "https://github.com/BenchBox-dev/benchbox-site/blob/main/docs/usage/data-generation.md",
+    "https://github.com/BenchBox-dev/benchbox-site/blob/main/docs/benchmarks/coffeeshop.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba",
+      "at": "2026-11-11T23:46:56Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "72ae933195374e24a00ec3531e8f1f78",
+      "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    }
+  ]
+}
