@@ -157,6 +157,7 @@ def test_validator_accepts_forward_numeric_schema_v2_family(tmp_path: Path) -> N
     bundle = _write_bundle(source_dir, "tpch_sf001_duckdb_future_v2", "future-v2")
     payload = json.loads(bundle.read_text(encoding="utf-8"))
     payload["version"] = "2.99"
+    payload["run"] = {**payload["run"], "timing_method": 1, "net_estimate_status": "embedded"}
     bundle.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
     proc = _run_validator([bundle])
