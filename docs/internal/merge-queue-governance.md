@@ -470,9 +470,10 @@ merges are never measured against the `develop` checkpoint and a release merge
 never moves it. A line with no stored checkpoint is first verified with the
 same line check as `release_artifact_consumer.py verify-line` (every first-parent
 commit is a merged pull request or a verified creation commit, so the unaudited
-creation commit carries `develop`'s reviewer files). It then starts at its first
-first-parent commit after the merge-base with `develop` (the creation commit),
-not at the start of history; a line that fails verification is not audited or
+creation commit carries `develop`'s reviewer files). It then starts after its first
+first-parent commit past the merge-base with `develop` when that commit is a
+verified creation commit (not a merged pull request), and at the merge-base
+otherwise, never at the start of history; a line that fails verification is not audited or
 checkpointed and the run fails. Attesters, the bot login and the pinned Theseus
 install always come from `origin/develop`, never from a line's own policy. Pull
 requests and trunk runs are matched against the audited branch. A checkpoint must be on

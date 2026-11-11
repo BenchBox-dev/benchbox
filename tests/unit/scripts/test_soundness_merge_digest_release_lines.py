@@ -179,18 +179,35 @@ def test_develop_and_release_lines_are_accepted(branch):
     assert branch == digest._BRANCH
 
 
-def test_the_first_commit_after_the_fork_point_is_where_a_new_line_starts(shell):
+def test_a_creation_commit_after_the_fork_point_is_where_a_new_line_starts(shell, monkeypatch):
     shell.replies[("git", "merge-base", "origin/develop", LINE_HEAD)] = FORK_POINT + "\n"
     shell.replies[("git", "rev-list", "--first-parent", "--reverse", f"{FORK_POINT}..{LINE_HEAD}")] = (
         f"{CREATION}\n{MERGED}\n{LINE_HEAD}\n"
     )
-    assert digest.line_origin(LINE_HEAD) == CREATION
+    monkeypatch.setattr(digest, "merged_pull_number", lambda repo, sha: None)
+    assert digest.line_origin("o/r", LINE_HEAD) == CREATION
+
+
+def test_a_first_commit_that_is_a_merged_pull_request_is_audited_from_the_fork_point(shell, monkeypatch):
+    shell.replies[("git", "merge-base", "origin/develop", LINE_HEAD)] = FORK_POINT + "\n"
+    shell.replies[("git", "rev-list", "--first-parent", "--reverse", f"{FORK_POINT}..{LINE_HEAD}")] = (
+        f"{CREATION}\n{LINE_HEAD}\n"
+    )
+    monkeypatch.setattr(digest, "merged_pull_number", lambda repo, sha: 7)
+    assert digest.line_origin("o/r", LINE_HEAD) == FORK_POINT
 
 
 def test_a_line_with_no_commits_of_its_own_starts_at_the_fork_point(shell):
     shell.replies[("git", "merge-base", "origin/develop", FORK_POINT)] = FORK_POINT + "\n"
     shell.replies[("git", "rev-list", "--first-parent", "--reverse", f"{FORK_POINT}..{FORK_POINT}")] = ""
-    assert digest.line_origin(FORK_POINT) == FORK_POINT
+    assert digest.line_origin("o/r", FORK_POINT) == FORK_POINT
+
+
+def test_a_state_issue_that_only_quotes_the_branch_marker_is_not_the_lines_issue(shell):
+    quoted = {"number": 5, "body": f"report\n{line_marker(LINE)}\n<!-- soundness-digest-checkpoint: {'9' * 40} -->"}
+    pages(shell, "soundness-merge-digest-line", quoted)
+    digest.set_branch(LINE)
+    assert digest.read_checkpoint("o/r") is None
 
 
 class Wired:
@@ -225,6 +242,7 @@ class Wired:
         monkeypatch.setattr(digest, "gap_closures", lambda repo, entries: [])
         monkeypatch.setattr(digest, "open_gap_issues", lambda repo, entries: [])
         monkeypatch.setattr(digest, "close_gap_issues", lambda repo, closures: None)
+        monkeypatch.setattr(digest, "merged_pull_number", lambda repo, sha: None)
 
     def run(self, args, **_):
         key = tuple(args)

@@ -1433,7 +1433,7 @@ def find_state_issue(repo: str) -> dict[str, Any] | None:
     issues = gh_pages(f"repos/{repo}/issues?labels={label}&state=all&per_page=100")
     if _BRANCH != BASE_BRANCH:
         marker = BRANCH_MARKER.format(branch=_BRANCH)
-        issues = [issue for issue in issues if marker in (issue.get("body") or "")]
+        issues = [issue for issue in issues if (issue.get("body") or "").startswith(marker + "\n")]
     if len(issues) > 1:
         raise ReadError(f"{len(issues)} issues carry the {label} label for {_BRANCH}; keep exactly one")
     return issues[0] if issues else None
@@ -1475,10 +1475,12 @@ def write_checkpoint(repo: str, sha: str, report: str) -> None:
         run(["gh", "issue", "edit", str(issue["number"]), "--repo", repo, "--body", body])
 
 
-def line_origin(until: str) -> str:
+def line_origin(repo: str, until: str) -> str:
     base = run(["git", "merge-base", f"origin/{BASE_BRANCH}", until]).strip()
     first_parent = run(["git", "rev-list", "--first-parent", "--reverse", f"{base}..{until}"]).split()
-    return first_parent[0] if first_parent else base
+    if first_parent and merged_pull_number(repo, first_parent[0]) is None:
+        return first_parent[0]
+    return base
 
 
 def verify_new_line(until: str) -> None:
@@ -1653,7 +1655,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         since = args.since or read_checkpoint(args.repo)
         if since is None and _BRANCH != BASE_BRANCH:
             verify_new_line(until)
-            since = line_origin(until)
+            since = line_origin(args.repo, until)
         if since is None:
             print("No checkpoint stored; pass --since, or run once with --apply --bootstrap.", file=sys.stderr)
             return 2
