@@ -2,7 +2,7 @@
   "acceptance": [
     "Owner chooses an option; it is in place and a test or live observation shows a PR green on a stale base cannot land a combination that fails on develop."
   ],
-  "context": "Consolidated duplicate item premerge-composed-tree-gap-red-trunk-20261101 (two individually green PRs breaking develop when merged without testing their composed tree).\n\nRevalidated 2026-11-11: still required; waiting on an owner choice among (a), (b), (c). Current settings via gh api: develop ruleset develop-squash-only (id 15611785) still has strict_required_status_checks_policy false and no merge_queue rule (rules: pull_request, required_status_checks [core, explorer, results-data, docs, tooling, hold, review-gate, release-v2 probe], linear history, non-fast-forward, deletion); allow_auto_merge true; allow_update_branch false; no classic branch protection. scripts/pr_arm.py on origin/develop has no merge-tree or composed-tree check. Option (c) stays blind to merges after arming; (a) and (b) close the gap fully but interact with ci-queue-throughput-delays-arming-20261101, because every rebase restarts a CI wait (on 2026-11-11 evening: 19 runs queued, 21 in progress).",
+  "context": "Consolidated duplicate item premerge-composed-tree-gap-red-trunk-20261101 (two individually green PRs breaking develop when merged without testing their composed tree).\n\nRevalidated 2026-11-11: still required; waiting on an owner choice among (a), (b), (c). Current settings via gh api: develop ruleset develop-squash-only (id 15611785) still has strict_required_status_checks_policy false and no merge_queue rule (rules: pull_request, required_status_checks [core, explorer, results-data, docs, tooling, hold, review-gate, release-v2 probe], linear history, non-fast-forward, deletion); allow_auto_merge true; allow_update_branch false; no classic branch protection. scripts/pr_arm.py on origin/develop has no merge-tree or composed-tree check. Option (c) stays blind to merges after arming; (a) and (b) close the gap fully but interact with ci-queue-throughput-delays-arming-20261101, because every rebase restarts a CI wait (on 2026-11-11 evening: 19 runs queued, 21 in progress).\n\nOwner decision 2026-11-11 (choice dialog): pr-arm refuses when develop changed files related to the PR (files it changes or that its tests import) after the PR's tested CI base, and reruns CI on a fresh merge ref. Trunk auto-revert stays as the backstop. No ruleset change and no merge queue.",
   "description": "Three times in three days two PRs, each green on its own base, merged within minutes of each other and broke trunk together: #3679 (omp pin) against goldens; #3836 against #3734 (trunk run 41166847029, test_redaction_scenarios); #3837 against #3899 (trunk run 41273143829, test_same_head_rerun.py: #3899 read plan run_uuid, #3837 removed it). The develop ruleset has strict_required_status_checks_policy false, auto-merge lands on checks from the old base, and make pr-arm checks only that trunk is green and the head has SHIP. An agent instruction to test a merge-tree with current develop before arming was not followed (#3837 armed at 04:26:26Z from a 03:54Z rebase, 14 minutes after #3899 merged) and would have run only touched tests.\n\nOptions for the owner: (a) GitHub merge queue on develop; (b) require branches to be up to date; (c) make pr-arm build a merge-tree with origin/develop and run tests/integration/oracle plus oracle unit tests, refusing on failure (oracle paths only; blind to merges after arming).",
   "sessions": [
     {
@@ -27,6 +27,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "85020bd81065474b86d23f517530dcc0",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T23:39:41Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e40d3344dac74bb09d1b800b0fe4e898",
       "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
