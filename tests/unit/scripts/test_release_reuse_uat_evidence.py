@@ -575,6 +575,11 @@ def test_verify_gate_rejects_an_unreadable_cell_row(tmp_path):
     assert _verify_gate(tmp_path, evidence) == 1
 
 
+ATTEMPT_START = "2026-11-05T05:00:00Z"
+BEFORE_ATTEMPT = "2026-11-05T02:10:00Z"
+AFTER_ATTEMPT = "2026-11-05T05:00:05Z"
+
+
 def trunk_jobs(attempt: int = 1, **conclusions: str) -> list[dict]:
     names = {
         "plan": "plan",
@@ -586,7 +591,12 @@ def trunk_jobs(attempt: int = 1, **conclusions: str) -> list[dict]:
         "record": "trunk UAT record",
     }
     return [
-        {"name": name, "conclusion": conclusions.get(key, "success"), "run_attempt": attempt}
+        {
+            "name": name,
+            "conclusion": conclusions.get(key, "success"),
+            "run_attempt": attempt,
+            "started_at": AFTER_ATTEMPT if attempt > 1 else BEFORE_ATTEMPT,
+        }
         for key, name in names.items()
     ]
 
@@ -664,6 +674,7 @@ class FakeGitHub:
                 "created_at": created,
                 "head_sha": head_sha or sha,
                 "run_attempt": attempt,
+                "run_started_at": ATTEMPT_START if attempt > 1 else created,
             }
         )
         self.jobs[run_id] = jobs if jobs is not None else trunk_jobs(attempt)
@@ -977,6 +988,28 @@ def test_evidence_kept_from_an_earlier_attempt_cannot_qualify_a_later_attempt(wo
     reused, _, report = world.decide()
     assert not reused
     assert "ran in attempt 1, not the run's latest attempt 2" in _failures(report)
+
+
+def test_a_partially_rerun_trunk_run_is_refused_and_names_the_rerun_jobs(world):
+    jobs = trunk_jobs(2)
+    for kept in jobs:
+        if kept["name"] in ("UAT stage 2 starrocks", "UAT stage 3 olap"):
+            kept["started_at"] = BEFORE_ATTEMPT
+    world.fake.trunk_run(201, world.candidate, world.trunk_dist, created="2026-11-05T02:00:00Z", attempt=2, jobs=jobs)
+    reused, outputs, report = world.decide()
+    assert not reused and outputs == {}
+    failure = _failures(report)
+    assert "trunk run 201: attempt: the run was partially re-run in attempt 2" in failure
+    assert "re-run jobs UAT stage 1 sqlite, trunk UAT gate, trunk UAT record" in failure
+    assert "UAT stage 2 starrocks, UAT stage 3 olap" in failure
+
+
+def test_a_rerun_attempt_without_a_run_start_time_is_refused(world):
+    world.fake.trunk_run(201, world.candidate, world.trunk_dist, created="2026-11-05T02:00:00Z", attempt=2)
+    del world.fake.runs[TRUNK_RUNS][0]["run_started_at"]
+    reused, _, report = world.decide()
+    assert not reused
+    assert "records no usable run_started_at" in _failures(report)
 
 
 def test_a_trunk_run_whose_every_job_ran_in_the_latest_attempt_is_reused(world):
