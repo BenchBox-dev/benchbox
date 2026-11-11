@@ -1,4 +1,5 @@
 {
+  "context": "Revalidated 2026-11-11: still required and not started. origin/develop has no Altinity code (no altinity references under benchbox/ or pyproject.toml); the ClickHouse adapters are clickhouse_server.py, clickhouse_cloud.py and clickhouse_local.py. The spike needs an Altinity Cloud trial account and credentials from the owner; it is a live vendor service. Docs for new platforms moved to the benchbox-site repo (docs/development/adding-new-platforms.md).",
   "description": "Evaluate Altinity Cloud as a BenchBox platform target and record driver, SQL, and connection-limit facts.\n\nProvision a trial Altinity Cloud cluster. Confirm clickhouse-connect over HTTPS :8443 and clickhouse-driver over native TCP :9440 against the trial endpoints. Record SELECT version() output, Altinity Stable Build version, auth model (user/password), and any DDL/DML deviation from open-source ClickHouse. Test Altinity Shield on/off behavior and record the added hop latency effect qualitatively. Confirm standard ClickHouse settings behavior (no gateway-style query rewriting).\n\nGuardrails: trial credentials stay in env only, never committed; no benchmark data beyond SF 0.01 probe tables; read-only recon where possible.",
   "sessions": [
     {
@@ -8,6 +9,14 @@
       "op": "create",
       "op_id": "66c036e16c82444884fb7f58fe05f80f",
       "session_id": "9fa4e20e143f42bbb2c28661a4ed3181"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:35:25Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ecc0fb9fd1f7485b8ad25e6cc7910e4f",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
