@@ -25563,6 +25563,13 @@
       "status": "open",
       "title": "Make the local pre-PR review findable without reading review-v2.md"
     },
+    "local-review-rebuttal-needs-same-head-and-preflight-kill-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "pr-open friction: keyed rebuttals only work for the head that was reviewed, and pr-preflight is killed under host memory pressure"
+    },
     "local-tpcdi-bundles-regenerate-current-generator": {
       "claim": null,
       "needs": [],

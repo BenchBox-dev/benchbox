@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "A rebuttal is accepted on a new head when the cited hunk is unchanged, with a test.",
+    "A watchdog kill reports the stage reached and a rerun skips completed stages."
+  ],
+  "description": "(1) After a fix commit changes the head, `make pr-open REBUTTALS_FILE=...` refuses with 'no local review of this patch exists to dispute', so a rebuttal written for the previous head is wasted and a full preflight plus review round is repeated for a Medium finding. (2) `make pr-preflight` exited 2 / Terminated (Error 79 from the heavy-work watchdog, or SIGTERM) several times on 2026-11-10 when swap was above 90% with parallel sessions, losing 6 to 25 minutes each time with no resume.\n\nChange. (1) Let pr-open re-use a rebuttal for a finding id whose cited file and lines are unchanged in the new head, or print the finding ids that need a new rebuttal. (2) Make preflight resumable per stage, or report which stage the watchdog killed. Related: pr-preflight-linux-vm-env-failures-20261102.\n\nGuardrails: linked worktree; no explanatory comments; changelog fragment if user-facing; no live cloud without owner approval quoted in context; heavy runs through make heavy-run.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T17:06:32Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "aa81cfcdde2e4acf9704fabfa818c4bc",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
+    }
+  ]
+}
