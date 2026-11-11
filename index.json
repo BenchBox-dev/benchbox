@@ -14053,15 +14053,10 @@
       "title": "Baseline CI-failure metrics in dev-loop-metrics before landing the reduction workstreams"
     },
     "ci-failure-excerpt-helper-20261111": {
-      "claim": {
-        "expires_at": "2026-11-12T16:51:30Z",
-        "generation": "7dcffd59a51242cf9e7581077ff35eb8",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Add a make target that prints the failing lines of a PR's or run's CI jobs"
     },
     "ci-fast-baseline-refresh-pr-not-self-sufficient-20261028": {
