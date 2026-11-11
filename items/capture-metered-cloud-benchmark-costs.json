@@ -5,6 +5,7 @@
     "Normalized cost distinguishes measured billed cost from timing-derived estimates in result exports and Results Explorer.",
     "Documentation defines how shared startup, idle, minimum-billing and concurrent-query costs are allocated across benchmark runs."
   ],
+  "context": "Revalidated 2026-11-11: still required. On origin/develop, benchbox/core/cost/ can price from a caller-supplied resource_usage (credits_used, dbu_consumed; cost_specs.yaml, calculator.py) and Snowflake falls back to a runtime-and-size estimate (dd20aed2d5, flagged via credits_used_estimated in core/cost/integration.py), but no adapter fetches metered usage (no WAREHOUSE_METERING_HISTORY or Databricks billing-usage lookup exists in benchbox/), so receipts carry no billed credits, DBUs, billable window or region provenance. The acceptance items are unchanged. Verifying the capture needs a live Snowflake and Databricks run, which the owner has not approved.",
   "description": "Persist actual per-run Snowflake credit consumption and Databricks DBU consumption with warehouse/runtime identifiers, billable window, billing region, price basis, and applicable contracted rate when available. Historical Results Explorer estimates derived from observed query timings and public list rates are model outputs, not billed costs; replace or qualify them with metered data when this capture exists.",
   "links": [
     "https://benchbox.dev/results/compare?sf=10"
@@ -17,6 +18,14 @@
       "op": "create",
       "op_id": "eba5b14c2bf04dcf8e63414f5b9f46d3",
       "session_id": "10feecf2fe1c46c0adbfccf0f2d545c3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:33:16Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "840c0b1ce8ba471e8ee96b4fd4748b42",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
