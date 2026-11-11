@@ -14219,7 +14219,7 @@
       "needs": [],
       "priority": "medium",
       "status": "active",
-      "title": "medium-test shard 2 hangs near the end and is cancelled by the 25-minute job timeout, at least 17 times in four days"
+      "title": "medium-test shard 2 hangs until its timeout after a watchdog test kills its own pytest-xdist worker"
     },
     "ci-medium-shard-hangs-after-last-test-20261110": {
       "claim": null,
