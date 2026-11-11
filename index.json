@@ -35173,7 +35173,8 @@
       "claim": null,
       "needs": [
         "rv2r-09-trunk-dist-every-commit",
-        "rv2r-16-release-branch-review-gating"
+        "rv2r-16-release-branch-review-gating",
+        "rv2r-13-verify-next-release-under-new-model"
       ],
       "priority": "high",
       "status": "blocked",
