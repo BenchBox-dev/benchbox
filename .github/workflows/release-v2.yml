@@ -300,6 +300,33 @@ jobs:
             --github-output "$GITHUB_OUTPUT" \
             --source-run "$GITHUB_RUN_ID"
 
+  cancel-trunk-uat:
+    name: cancel in-progress trunk UAT
+    needs: [admit, uat-reuse]
+    if: ${{ !cancelled() && needs.admit.result == 'success' && needs.uat-reuse.outputs.reuse != 'true' && (github.event_name == 'push' || inputs.probe == 'none') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ needs.admit.outputs.head_sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Cancel in-progress trunk UAT runs before the full UAT fallback
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 scripts/trunk_uat.py cancel \
+            --reason "release-v2 run $GITHUB_RUN_ID full UAT fallback" \
+            --summary "$GITHUB_STEP_SUMMARY"
+
   install-matrix:
     name: install ${{ matrix.python-version }} ${{ matrix.os }}
     needs: admit
@@ -346,7 +373,7 @@ jobs:
 
   uat-stage1:
     name: UAT stage 1 ${{ matrix.shard }}
-    needs: [admit, uat-reuse]
+    needs: [admit, uat-reuse, cancel-trunk-uat]
     if: ${{ !cancelled() && needs.admit.result == 'success' && needs.uat-reuse.outputs.reuse != 'true' && (github.event_name == 'push' || inputs.probe == 'none') }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
@@ -431,7 +458,7 @@ jobs:
 
   uat-stage2:
     name: UAT stage 2 ${{ matrix.shard }}
-    needs: [admit, uat-reuse]
+    needs: [admit, uat-reuse, cancel-trunk-uat]
     if: ${{ !cancelled() && needs.admit.result == 'success' && needs.uat-reuse.outputs.reuse != 'true' && (github.event_name == 'push' || inputs.probe == 'none') }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
@@ -504,7 +531,7 @@ jobs:
 
   uat-stage3:
     name: UAT stage 3 ${{ matrix.shard }}
-    needs: [admit, uat-reuse]
+    needs: [admit, uat-reuse, cancel-trunk-uat]
     if: ${{ !cancelled() && needs.admit.result == 'success' && needs.uat-reuse.outputs.reuse != 'true' && (github.event_name == 'push' || inputs.probe == 'none') }}
     runs-on: ubuntu-latest
     timeout-minutes: 360

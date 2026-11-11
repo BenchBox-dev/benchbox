@@ -497,20 +497,22 @@ uv run -- python scripts/uat_rubric.py --history-dir ~/trunk-uat-history --outpu
 
 ### Interaction with `release-v2`
 
-A `release-v2.yml` run that is not completed defers trunk UAT (above). The
-release workflow does not cancel a trunk UAT run that is already executing:
-its full-UAT fallback and a running trunk UAT run proceed side by side, and
-`release-v2.yml` holds no `actions: write` permission. An operator who wants to
-stop an in-progress trunk UAT run, for example to free runners before a
-release, runs the command by hand with a token that has `actions: write`:
+A `release-v2.yml` run that is not completed defers trunk UAT (above). When a
+real release (not a probe) falls back to the full three-stage UAT because no
+trunk evidence qualifies for reuse, the `cancel in-progress trunk UAT` job runs
+before the UAT stages start and cancels every unfinished `trunk-uat.yml` run, so
+the two never contend for runners. It is the only `release-v2.yml` job with
+`actions: write`, probe runs never cancel, and a failed cancellation does not
+block the stages. The same command can be run by hand with a token that has
+`actions: write`:
 
 ```bash
 uv run -- python scripts/trunk_uat.py cancel --reason "release-v2 run <id> full UAT fallback" \
   --summary "$GITHUB_STEP_SUMMARY"
 ```
 
-The command cancels every unfinished `trunk-uat.yml` run and records the run
-ids in the summary. The cancelled run's `record` job still runs and records
+The command records the cancelled run ids in the job summary. The cancelled
+run's `record` job still runs and records
 `cancelled: release-v2 run <id> in progress (full UAT fallback)`; a cancelled run
 is never a skip baseline.
 
