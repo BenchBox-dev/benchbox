@@ -39877,19 +39877,14 @@
       "title": "Decide on the lower-ranked review output surfaces: dashboard comment, suggestion blocks, check-run mirror"
     },
     "theseus-review-format-release-a-20261110": {
-      "claim": {
-        "expires_at": "2026-11-12T19:26:54Z",
-        "generation": "914f94fc011244b3af2a61e7bfda60b1",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57133450e487c312386efb7b"
-      },
+      "claim": null,
       "needs": [
         "theseus-review-markers-dual-read-20261110",
         "theseus-review-status-descriptions-20261110",
         "theseus-review-not-reviewed-output-20261110"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Publish Theseus review-format release A (marker dual-read, status descriptions, not-reviewed output)"
     },
     "theseus-review-format-release-b-20261110": {
