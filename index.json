@@ -35740,6 +35740,16 @@
       "status": "open",
       "title": "Umbrella: make scale-factor rules, registry counts and site docs agree"
     },
+    "scale-factor-floor-0-01-20261111": {
+      "claim": null,
+      "needs": [
+        "scale-factor-consistency-umbrella-20261111",
+        "scale-factor-registry-caps-vs-docs-20261013"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Raise the minimum scale factor to 0.01 for every benchmark"
+    },
     "scale-factor-registry-caps-vs-docs-20261013": {
       "claim": null,
       "needs": [],
