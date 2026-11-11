@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "A recorded test shows what `validate_submission` and `validate_corpus` do today with a non-standard-scale bundle.",
+    "The chosen policy is documented in `results-data/CORPUS_NOTES.md` or the submission guide and enforced by a test."
+  ],
+  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.",
+  "description": "## Problem\nSince BenchBox#4126 a run at any in-range scale factor completes and writes a result bundle, with a note that it is not comparable with published results. A search of `results-data/validate_corpus.py` found no check on the scale factor itself; ranked cohorts are protected only by the rule that a cohort needs three platforms. A bundle at, say, TPC-H SF 2 could therefore be submitted, and three such bundles would form a ranked cohort at a scale the project does not treat as standard. This was observed, not tested: no such bundle was staged.\n\n## Change\nConfirm the behaviour by validating a staged non-standard-scale bundle in a scratch directory. Then decide: reject non-standard scales at submission, accept them unranked with a recorded exclusion reason, or accept them as ordinary cohorts. Record the decision and pin it with a validator test.\n\n## Guardrails\n- Do not add a bundle to `results-data/bundles` to test this.\n- 'Standard' must come from the registry (`get_scale_factor_rule`), not from a second list.",
+  "links": [
+    "results-data/validate_corpus.py",
+    "benchbox/core/benchmark_registry.py",
+    "results-data/CORPUS_NOTES.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba",
+      "at": "2026-11-11T23:48:06Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "3f96429b41fe464a9af0476b66618846",
+      "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    }
+  ]
+}
