@@ -44463,6 +44463,13 @@
       "status": "done",
       "title": "Commit hooks leave an untracked .build/ directory in every worktree"
     },
+    "worktree-claim-subagent-shared-pid-doc-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Say that a subagent's worktree claim never goes stale"
+    },
     "worktree-concurrent-session-ownership-guard-20261028": {
       "claim": null,
       "needs": [],
