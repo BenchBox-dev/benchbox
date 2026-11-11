@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "`rg -n 'MIN_SCALE_FACTOR|MAX_SCALE_FACTOR' benchbox/mcp/schemas.py` finds nothing, and `ValidationRules` has no `validate_scale_factor`.",
+    "`rg -n 'test_validate_scale_choice_rejects_below_minimum' tests` finds nothing.",
+    "`make pr-preflight` passes."
+  ],
+  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.",
+  "description": "## Problem\nThree leftovers contradict or outlive the scale-factor rule from BenchBox#4126:\n- `benchbox/cli/exceptions.py`, `ValidationRules.validate_scale_factor`: rejects values above 100 with 'very large'. No production code calls it; only its own unit tests do.\n- `benchbox/mcp/schemas.py`: `MIN_SCALE_FACTOR = 0.001`, `MAX_SCALE_FACTOR = 10000` and `validate_scale_factor`. No caller outside tests. The minimum contradicts the 0.01 floor, and the maximum is not the limit MCP enforces (that is `max_scale_factor` in `benchbox/mcp/security.py`).\n- `tests/fixtures/fast_tier_baseline/tests-02.json` still names `test_validate_scale_choice_rejects_below_minimum`, which was replaced.\n\n## Change\nConfirm with a references search that the two validators have no production caller, then delete them and their tests. Regenerate the fast-tier baseline with the repository's own target rather than editing it by hand.\n\n## Guardrails\n- `ValidationRules` has other methods that are used (`validate_output_directory`, `validate_dry_run_output_dir`, `validate_benchmark_name`); remove only the scale method.\n- If either validator turns out to be part of a documented public surface, stop and report.",
+  "links": [
+    "benchbox/cli/exceptions.py",
+    "benchbox/mcp/schemas.py",
+    "tests/fixtures/fast_tier_baseline/tests-02.json",
+    "tests/unit/cli/test_exceptions.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba",
+      "at": "2026-11-11T23:47:58Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "69beb0518d444d09908518b98ec178fe",
+      "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    }
+  ]
+}
