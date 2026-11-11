@@ -29326,12 +29326,17 @@
       "title": "Pass the read set to every withdrawal_cited caller"
     },
     "origin-remote-and-default-repo-slug-case-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T22:33:00Z",
+        "generation": "870e67ea295c455dbcc07e06bc9a282a",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549"
+      },
       "needs": [
         "feature-pr-landing-guards-20261111"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Use the canonical lowercase repository slug in the remote and in script defaults"
     },
     "orphan-detector-freeze-branch-residual-20260804": {
