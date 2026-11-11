@@ -4,7 +4,7 @@
     "Trial clocks (Fabric 60d, Redshift 90d) started only when ready to run densely",
     "No full campaign launched from this item"
   ],
-  "context": "Found during 2026-10-06 platform-priority review: no run-and-publish items exist for Athena SQL, Redshift, or Fabric DW, and none has ever run live end to end from this machine. Redshift reachability is owned by approx-survey-remaining-legs; Athena probe by athena-sql-live-credential-probe-20261006; Fabric needs workspace, capacity, and Entra setup by the operator.",
+  "context": "Found during 2026-10-06 platform-priority review: no run-and-publish items exist for Athena SQL, Redshift, or Fabric DW, and none has ever run live end to end from this machine. Redshift reachability is owned by approx-survey-remaining-legs; Athena probe by athena-sql-live-credential-probe-20261006; Fabric needs workspace, capacity, and Entra setup by the operator.\n\nRevalidated 2026-11-11: still required; no live smoke has run and live cloud runs are not approved by the owner. Code-side state on origin/develop (c7b75c80bc): AthenaAdapter (benchbox/platforms/athena.py), RedshiftAdapter (redshift.py) and FabricWarehouseAdapter (fabric_warehouse.py) are registered in benchbox/platforms/__init__.py. The tuned-run metadata-store blocker (tuned-run-marker-aborts-athena-synapse-bigquery-20261013, tuning-portable-metadata-store-20261001) is done, but this item is notuning so it does not matter here. Athena and Redshift adapters implement platform timing capture (schema 2.4); Fabric DW does not. Prerequisite items are still open: athena-sql-live-credential-probe-20261006, approx-survey-remaining-legs (Redshift reachability), and operator-side Fabric workspace/capacity/Entra setup. Docker is not installed locally, which does not affect these managed services.",
   "description": "Run one TPC-H SF 0.01 notuning smoke per new platform that is set up (Athena SQL, Redshift once reachable, Fabric DW) inside the campaign limits (6h per cell, BigQuery-style spend discipline); anything outside needs approval stating command, maximum runtime, log path, and stop condition. 100% query pass, validate_submission.py 0 errors, result_source=internal.",
   "sessions": [
     {
@@ -14,6 +14,14 @@
       "op": "create",
       "op_id": "97853c7793c042ad95cfd8fd7ef6fb51",
       "session_id": "508606d004364578b5da477b03baf36a"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:28:54Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f841c6fe6977491cb4748493885bd5b9",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
