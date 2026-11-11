@@ -1,4 +1,5 @@
 {
+  "context": "Revalidated 2026-11-11: still required and not started. origin/develop has no Tinybird code. The spike needs a Tinybird workspace and token from the owner and uses a live vendor service. Docs for new platforms moved to the benchbox-site repo (docs/development/adding-new-platforms.md).",
   "description": "Validate the four Tinybird unknowns before any adapter code: (1) query path via clickhouse-connect against clickhouse.<region>.tinybird.co:443 with workspace name + token; (2) ingest path: create a Data Source from BenchBox .tbl data via the Data Source API and measure import latency; (3) schema translation: BenchBox DDL to Tinybird-inferred schema, including TPC-H trailing delimiters and null markers; (4) namespace reality: queries must target the workspace database, only 4 databases visible, subset of system tables.\n\nDECISION GATE: end of item records go/no-go for the adapter. Go requires all four unknowns resolved with evidence. No-go records the blocking fact and defers the adapter, same as the GizmoSQL pattern of documenting negatives.\n\nGuardrails: tokens in env only, never committed; no production workspace writes; read-only query probing plus one scratch Data Source for ingest.",
   "sessions": [
     {
@@ -8,6 +9,14 @@
       "op": "create",
       "op_id": "4a8393d2830f42458aa50ca18c1ea096",
       "session_id": "9fa4e20e143f42bbb2c28661a4ed3181"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:37:01Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e49b2c559da54c68b40449f71cde5af6",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
