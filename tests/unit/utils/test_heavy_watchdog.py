@@ -502,7 +502,7 @@ def wrapper_subtree(*wrappers: subprocess.Popen) -> pt.TreeSample:
 
 def kill_with_watchdog(sample: pt.TreeSample, **overrides: object) -> str:
     out = io.StringIO()
-    dog = hw.Watchdog(policy(mode="kill", grace_seconds=0.5, **overrides), out=out)
+    dog = hw.Watchdog(policy(0.0, mode="kill", grace_seconds=0.5, **overrides), out=out)
     dog._kill_tree(sample)
     return out.getvalue()
 
