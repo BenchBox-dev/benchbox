@@ -5,6 +5,7 @@
     "`docs/benchmarks/tpc-di.md` names every table that `facts.py` caps, with the cap values in the generator (four tables on 2026-11-11).",
     "`npm run docs:check` passes for these three pages (no new violation attributed to them)."
   ],
+  "context": "Delivered in benchbox-site#138, merged 2026-11-11 as 9b699fe916. ClickBench table rebuilt from 1M rows per scale-factor unit with the measured SF 1 size; TPC-DS-OBT table replaced with the four measured rows and a sentence on what the calibrated SF 1 figure measures; TPC-DI names the four capped fact tables. The unsourced ClickBench timing column was removed. Verified: site ci passed; live ClickBench page shows the new text.",
   "description": "## Problem\nThree benchbox-site tables give sizes the code does not produce:\n- `docs/benchmarks/clickbench.md`, Scale Factor Guidelines: says SF 1 is about 100M rows and 10 GB. The generator writes `int(1_000_000 * scale_factor)` rows (`benchbox/core/clickbench/generator.py`); SF 0.01 produced 10,000 rows, and the calibrated SF 1 size is 552,136,075 bytes (`docs/benchmarks/sf1-calibrated-sizes.md`).\n- `docs/benchmarks/tpc-ds-obt.md`, Scale Factors: lists SF 1, 10, 100 and 1000 with estimated sizes. Measured on DuckDB (Parquet): SF 0.01 50,335 rows, 14.5 MB; SF 0.1 503,753 rows, 117 MB; SF 1 5,041,336 rows, 1.38 GB; SF 10 50,399,818 rows, 18.2 GB.\n- `docs/benchmarks/tpc-di.md`, Scale Factor Guidelines: implies every table keeps growing. Four fact tables are capped in `benchbox/core/tpcdi/generator/facts.py`: FactCashBalances 100,000 rows, FactHoldings 50,000, FactMarketHistory 100,000 and FactWatches 25,000.\n\n## Change\n1. ClickBench: rebuild the table from 1M rows per scale-factor unit; state sizes only where measured (SF 1 about 0.55 GB) or mark the others as proportional estimates; say the data is synthetic.\n2. TPC-DS-OBT: replace the table with the four measured rows and label the size column as Parquet on disk, measured with DuckDB. The contract's SF 1 figure for tpcds_obt (2,406,484,046 bytes) is the uncompressed size; if the page states both, label each.\n3. TPC-DI: add one sentence naming the capped tables and their caps, read from the generator at the time of editing.\n\n## Decision gates\n- Before editing, re-read the three tables on current `origin/main` and re-read the two generator files on current core `origin/develop` to confirm the constants.\n- If a `doc-contracts` SF 1 size check parses a number on these pages, keep the contract value for that parsed token and report it. A differently labelled measure (Parquet on disk) is not a disagreement.\n\n## Guardrails\n- Repository: `BenchBox-dev/benchbox-site`. Work on branch `docs/benchmark-scale-and-count-fixes` in a linked worktree; never commit to `main`.\n- Edit only pages under `docs/benchmarks/` named here. No Explorer, deploy, gate or `docs-contracts/` code.\n- Commit identity Joe Harris <joeharris76@gmail.com>; no agent or co-author trailer; stage by explicit path.\n- Commit and pull request text give the durable reason only: no tracker ids, plan references or CI counts.\n- Every number written into a page comes from the core code or a measurement named in this item, not from memory.\n- Subagents make no tracker write, push nothing and open no pull request.\n- No timing claims ('Seconds', 'Minutes', 'Hours') are added; remove the ClickBench timing column if it cannot be sourced.\n",
   "links": [
     "https://github.com/BenchBox-dev/benchbox-site/blob/main/docs/benchmarks/clickbench.md",
@@ -37,6 +38,14 @@
       "generation": "583799c5b4a848ecaf23aaf6ff062519",
       "op": "take",
       "op_id": "78a95f9e443941f3b1cce0a2dfb9590e",
+      "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba",
+      "at": "2026-11-11T23:21:07Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "fa29bdafc6e040229b8fda838a2efa7b",
       "session_id": "84d81f109eb348759fdc1c024f00b55b"
     }
   ]
