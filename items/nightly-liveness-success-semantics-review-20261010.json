@@ -4,7 +4,7 @@
     "Verify that nightly-v2 reports a failed scheduled run as an execution failure independently of the alive liveness result; add or update a behavior test covering that distinction.",
     "Update docs/internal/nightly-t3.md and issue #2570 with the verified contract and evidence, or create a linked implementation TODO if the failure is not independently visible."
   ],
-  "context": "Merged PR #3444: the liveness check only proves a scheduled run was created inside its cadence window (success line now says run conclusions are not assessed); docs/internal/nightly-t3.md 'Liveness versus success' states the exact guarantee: the report job (if: always() && !cancelled()) opens/updates a t3:<domain> issue on a `failure` result (timeout-minutes surfaces as failure), closes it on `success`, only comments on `cancelled`; a cancelled workflow skips the report job. Tests pin both contracts. Remaining: acceptance asks for the verified contract and evidence on issue #2570 (not posted); the workflow's own comment string still says 'cancelled or timed out' (left untouched to keep the soundness-path diff minimal); timeout-as-failure was not verified against a real run.",
+  "context": "Merged PR #3444: the liveness check only proves a scheduled run was created inside its cadence window (success line now says run conclusions are not assessed); docs/internal/nightly-t3.md 'Liveness versus success' states the exact guarantee: the report job (if: always() && !cancelled()) opens/updates a t3:<domain> issue on a `failure` result (timeout-minutes surfaces as failure), closes it on `success`, only comments on `cancelled`; a cancelled workflow skips the report job. Tests pin both contracts. Remaining: acceptance asks for the verified contract and evidence on issue #2570 (not posted); the workflow's own comment string still says 'cancelled or timed out' (left untouched to keep the soundness-path diff minimal); timeout-as-failure was not verified against a real run.\n\nRevalidated 2026-11-11: delivered; recommend closing. Evidence: #3444 (012fb7ddcc) separated liveness from execution success; docs/internal/nightly-t3.md on origin/develop has the t3:liveness row (line 27: 'measures cadence only: a recent scheduled run counts as alive whatever its conclusion') and the section 'Liveness versus success' (line 121); tests/unit/scripts/test_scheduled_workflow_liveness.py pins the liveness side. Execution failures are visible independently: the nightly-v2 scheduled run of 2026-11-11 15:28Z concluded failure and the report job opened issue #4109 'Nightly T3 integration-smoke failing' (2026-11-11 16:31Z), alongside other per-domain failure issues (#3930, #2964, #2471). The workflow's remaining 'cancelled or timed out' string (nightly-v2.yml:1638) is the no-verdict comment and is accurate, so it needs no change. Issue #2570 is already CLOSED, so posting evidence there is unnecessary.",
   "description": "The adversarial review noted that the liveness check proves recent scheduled-run creation, not successful execution; by design, a recent failed scheduled run still counts as alive. That distinction is valid for schedule liveness but can mislead if the nightly report presents it as overall workflow health. Verify the consumer-facing nightly-v2 report exposes run success/failure independently, then document and test the contract. If failures are not visible independently, create an implementation follow-up to make them distinct without changing the liveness meaning.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/issues/2570"
@@ -25,6 +25,14 @@
       "op": "update",
       "op_id": "087ba4cfce04472eb6d1c5f61259db3b",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:32:20Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0a85940d490b47f0ac5b34c0d730ea2c",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
