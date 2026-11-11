@@ -6,7 +6,7 @@
     "SHOW WAREHOUSES/CURRENT_REGION probes degrade gracefully (metadata_degraded:true, never IndexError) on empty/truncated/synthetic gateway rows",
     "Cost suppression: cost_estimated null + cost_status not_comparable_gateway in both Snowflake and Databricks normalized metadata when gateway active"
   ],
-  "context": "Plan v2 C1-C5, layered on core-exec-gateway-capability (ADR docs/development/adr/adr-core-execution-variants.md D9). Depends on gw-snowflake-conn, gw-databricks, gw-snowflake-querytag. Run make duplicate-check-delta before adding helpers; reuse the core variants_comparable instead of adding is_native_run. Guardrails: never blend native/gateway numbers; tpc_compliant:false unconditional; sanitize userinfo.",
+  "context": "Plan v2 C1-C5, layered on core-exec-gateway-capability (ADR docs/development/adr/adr-core-execution-variants.md D9). Depends on gw-snowflake-conn, gw-databricks, gw-snowflake-querytag. Run make duplicate-check-delta before adding helpers; reuse the core variants_comparable instead of adding is_native_run. Guardrails: never blend native/gateway numbers; tpc_compliant:false unconditional; sanitize userinfo.\n\nRevalidated 2026-11-11 (origin/develop c7b75c80bc): still required, partly delivered; all three needs (gw-databricks, gw-snowflake-conn, gw-snowflake-querytag) are done. Delivered: platform_info[\"gateway\"] = {name, routed} for Snowflake (benchbox/platforms/snowflake.py:351-352) and Databricks (platforms/databricks/adapter.py:774-775); tpc_compliant=false (core/results/schema.py:311); the core variants_comparable guard is wired into analytics (core/results/analytics.py:148) and defined in core/results/execution_variant.py:288, with a gateway field in the variant key. Not delivered: (a) per-query queries[].execution_engine/receipt_source routing payload with the unknown default for gateway runs (core/results/query_execution.py has the execution_engine field, but neither adapter fills it from the gateway manifest routes_to names); Snowflake get_platform_info adds no ExecutionEngineReceipt, sanitized host/port/protocol, or cache_control slot; (b) probe hardening: the get_platform_info probes (snowflake.py:360-405) already length-guard the SHOW WAREHOUSES row and fall back to _unavailable_warehouse_metadata, but the second probe at snowflake.py:1695-1740 indexes wh_info[12..17] and result rows unguarded, and no metadata_degraded flag exists anywhere in benchbox/; (c) cost suppression: no cost_status not_comparable_gateway or gateway handling in core/cost/ or either adapter (cost_status values today: not_applicable_local, unavailable, normalized, estimated); (d) tests proving a gateway run from each adapter is excluded from a native baseline set, and cost suppression and probe degradation tests, are absent from tests/unit/platforms/test_snowflake_gateway.py and test_databricks_gateway.py. Re-check core/results/execution_variant.py before adding anything: the item's own guardrail says reuse variants_comparable, and compare/regression wiring should be confirmed with grep before claiming it.",
   "description": "Gateway-aware run metadata for both adapters: platform-info gateway block, per-query routing payload with unknown default, wired baseline guard (is_native_run in compare/regression/analytics), hardened metadata probes, wired cost suppression in normalized metadata.",
   "sessions": [
     {
@@ -32,6 +32,14 @@
       "op": "update",
       "op_id": "47407922fbd249279d2503f9287e4e76",
       "session_id": "ece27cd7b1e84cfdb901409d637eabe8"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:30:08Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "67c053e98efd4886a0eb7ce4f8242239",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
