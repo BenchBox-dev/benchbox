@@ -5,7 +5,7 @@
     "Verdict and thread goldens on the release commit are identical to v0.2.8's except where status descriptions or not-reviewed content changed (diff reviewed and summarised here).",
     "Recorded here: release commit, tag, wheel/sdist sha256, SHA256SUMS sha256, and the exact BenchBox lock field values (version, source_commit, workflow_sha, source_sha256, delta_sha256 from BenchBox's then-current lock, artifact sha256 and URLs)."
   ],
-  "context": "Part of theseus-review-output-format-20261110.\n\n2026-11-10 review fix: before cutting, list every commit on main since v0.2.8. If main contains merged changes outside the three release-A items that alter goldens or body output (for example theseus-known-defects-pre-existing-20261109), stop and record the owner's include/defer decision here. Governance: the coordinator confirms every diff since v0.2.8 merged under G7 (umbrella) before tagging.",
+  "context": "Part of theseus-review-output-format-20261110.\n\n2026-11-10 review fix: before cutting, list every commit on main since v0.2.8. If main contains merged changes outside the three release-A items that alter goldens or body output (for example theseus-known-defects-pre-existing-20261109), stop and record the owner's include/defer decision here. Governance: the coordinator confirms every diff since v0.2.8 merged under G7 (umbrella) before tagging.\n\nOwner decisions 2026-11-11:\n- v0.2.9 = v0.2.8 + #63 only (D10 per-location findings, D9 old-name reads) + #58 docs. It is cut from main with forward commits: one PR reverts #62, #59 and #60 and bumps to 0.2.9. No maintenance branch, so the tag stays on a head of main per RELEASING.md. Release PR #67 (the full-main 0.2.9) was closed unmerged.\n- All other Theseus merges are frozen until BenchBox #4062 lands on v0.2.9.\n- After #4062: one PR re-lands #59, #60 and #62, and v0.2.10 is cut from main and locked in BenchBox. Then release B (#64, #65, #66) becomes v0.2.11, locked in BenchBox and in Theseus itself. This keeps one release of reader overlap.\n- Stop rule: any new hosted or independent finding of any severity on the revert/release PR or on #4062 stops work and goes to the owner. If #4062 is not reviewed (outage or incomplete read), post /review once, then escalate.\n- The #4085 dry run may be evidenced by a run through a throwaway retry/cache/pacing wrapper around the unchanged digest code.\n- OMP 18.16.0: revert the pin if there is no releasable result by the end of 2026-11-12.\n- The BenchBox adoption PR opens right after #4062 merges.",
   "description": "Cut the next unused Theseus patch release (expected v0.2.9; confirm with `gh release list` and `git ls-remote --tags`) from main once all three release-A items have merged. Follow the repository's release procedure exactly as v0.2.8 did (release PR #57: pyproject.toml, uv.lock, PROVENANCE.md frozen source hash; annotated tag; wheel, retained wheel, sdist, SHA256SUMS).\nRelease A must NOT change the verdict body or thread format (the writer change is release B); it gives consumers one release in which readers accept both formats.\nGuardrails: release PR goes through hosted SHIP + green required checks (independent review only if it touches workflows, policy or lock); no owner-only actions; no live model calls.",
   "links": [
     "https://github.com/joeharris76/theseus/pull/57",
@@ -26,6 +26,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "619303eead8c40a18725bd7d70b666c5",
+      "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a",
+      "at": "2026-11-11T02:48:11Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "51709c554f4d4dd09783547a0ece7f26",
       "session_id": "977a65f4969143f4981bb9d49ff293b0"
     }
   ]
