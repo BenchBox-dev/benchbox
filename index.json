@@ -22707,6 +22707,13 @@
       "status": "open",
       "title": "Agent docs: record the operational facts sessions kept rediscovering"
     },
+    "feature-pr-landing-guards-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "PR landing: close the gaps between what the local commands accept and what GitHub and CI require"
+    },
     "feature-review-tooling-source-path-and-digest-20261111": {
       "claim": null,
       "needs": [],
