@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "A decision is recorded with the scale at which each cap first applies.",
+    "If the caps are removed: row counts at SF 10 scale with the factor (test), and the corpus impact is listed."
+  ],
+  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.",
+  "description": "## Problem\n`benchbox/core/tpcdi/generator/facts.py` caps four fact tables with `min(..., N)`: FactCashBalances at 100,000 rows, FactHoldings at 50,000, FactMarketHistory at 100,000 and FactWatches at 25,000. Above the scale at which each cap is reached the table stops growing, so a TPC-DI run at SF 10 or more does not have proportionally more fact data. FactMarketHistory also uses `min(252, int(252 * scale_factor))` days. The site page now states the caps, but the behaviour is unchanged, and the command line accepts TPC-DI up to SF 100000 since BenchBox#4126.\n\n## Change\nDecide whether the caps are intended (a bounded synthetic generator) or a leftover. If intended, record why and consider a lower accepted maximum for `tpcdi`. If not, remove the caps, check generation time and memory at SF 10, and check the effect on published TPC-DI results, which would no longer be comparable.\n\n## Guardrails\n- Removing a cap changes generated data: published TPC-DI bundles at affected scales need a supersede decision before the change lands.\n- Related: `local-tpcdi-bundles-regenerate-current-generator`.",
+  "links": [
+    "benchbox/core/tpcdi/generator/facts.py",
+    "https://github.com/BenchBox-dev/benchbox-site/blob/main/docs/benchmarks/tpc-di.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba",
+      "at": "2026-11-11T23:47:49Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "3bb15926ff304d6892f0d3e1ae89d492",
+      "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    }
+  ]
+}
