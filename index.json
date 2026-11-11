@@ -21121,12 +21121,17 @@
       "title": "Follow-up duplicate-code triage and consolidation from AST clone report"
     },
     "duplicate-small-scale-factor-fixture-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T18:01:24Z",
+        "generation": "65061d7340f34adb8cb7a9490528555d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549"
+      },
       "needs": [
         "feature-test-fixture-and-ci-shard-hygiene-20261111"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Remove or rename the duplicate small_scale_factor fixture"
     },
     "duration-refresh-workflow-closes-superseded-prs-20261110": {
