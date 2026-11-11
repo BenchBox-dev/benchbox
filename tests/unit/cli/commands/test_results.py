@@ -176,7 +176,7 @@ def test_show_cli_reconstructs_legacy_command(cli_runner, tmp_path, monkeypatch)
 
     from rich.console import Console
 
-    monkeypatch.setattr(printing, "_STD_CONSOLE", Console(width=200))
+    monkeypatch.setattr(printing, "_STD_CONSOLE", Console(width=40))
     monkeypatch.setattr(printing, "_QUIET", False)
 
     result_file = tmp_path / "result.json"
@@ -193,8 +193,7 @@ def test_show_cli_reconstructs_legacy_command(cli_runner, tmp_path, monkeypatch)
 
     result = cli_runner.invoke(results, ["show-cli", str(result_file)])
     assert result.exit_code == 0
-    assert "benchbox run --platform duckdb --benchmark tpch --scale 0.01" in result.output
-    assert "--queries Q1,Q2" in result.output
+    assert "benchbox run --platform duckdb --benchmark tpch --scale 0.01 --queries Q1,Q2" in result.output
 
 
 def test_show_cli_reports_missing_fields(cli_runner, tmp_path, monkeypatch):

@@ -4,7 +4,6 @@ from typing import Any
 
 import click
 from pydantic import ValidationError
-from rich.panel import Panel
 from rich.table import Table
 
 from benchbox.cli.output import ResultExporter
@@ -189,7 +188,7 @@ def show_cli(result_file: str, full: bool) -> None:
         full_cmd = _reconstruct_cli_command(data, platform, benchmark_name, scale_factor, execution_context)
 
         console.print("\n[bold]Reconstructed CLI Command:[/bold]")
-        console.print(Panel(full_cmd, style="green"))
+        console.print(full_cmd, style="green", soft_wrap=True, markup=False, highlight=False)
 
         _display_provenance_info(execution_context)
 
