@@ -37212,12 +37212,17 @@
       "title": "Inventory oracle findings marked deferred on merged soundness PRs and track each"
     },
     "soundness-digest-since-floor-and-api-retry-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T19:13:24Z",
+        "generation": "b2e79649ffc1496cafc8d116b3b06c99",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549"
+      },
       "needs": [
         "feature-review-tooling-source-path-and-digest-20261111"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Soundness digest: document the --since floor and survive one API error"
     },
     "soundness-drain-all-ruleset-required-checks-20260806": {
