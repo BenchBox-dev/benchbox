@@ -8,6 +8,16 @@
     "Follow-up items exist for the deferred ideas."
   ],
   "context": "Created from the owner-approved proposal. Execution order and decisions are recorded on the member items.\n\n2026-11-10 review of the item set (FormatTodoReview, reviewer agent): verdict 'gaps'; fixes applied the same day. Owner decisions: (1) G7 governs Theseus, superseding CONTRIBUTING.md:5,7 and RELEASING.md:13; theseus-governance-docs-owner-merge-rule-20261110 records it in those files. (2) theseus-lock-self-review-format-release-b-20261110 promotes Theseus's own lock (it pins v0.2.4 for its own reviews). (3) The scratch-repo probe ran as the user only, by owner choice; App-token behaviour and webhook side effects are verified in the minimise implementation item.\nG7 restated: Theseus merges need current-head hosted SHIP from theseus-review[bot] and green required checks; an independent review (a fresh-context agent session that did not author the change, of the exact final head SHA; reviewer, head and verdict recorded on the item) is also required for gate, receipt, dedup, posting, workflow, policy or lock changes. Releases: the coordinator confirms every diff since the previous tag went through this rule before tagging. BenchBox merges: AGENTS.md workflow through make pr-arm.\nContract freeze: `<!-- review-verdict: v2 <state> <40hex> -->`, `<!-- review-unavailable: v1 <40hex> <cause-key> -->`, and both thread-title forms as written in theseus-review-markers-dual-read-20261110. Any change during Theseus review updates benchbox-review-format-dual-read-20261110 before release B.\nL2 contracts outside markdown: BenchBox make/pr-landing.mk parses the local `availability: ` prefix (theseus local.py:101); the digest's KNOWN_CLOSED_SECTIONS title `**Reviewers not available**` (soundness_merge_digest.py:80).\nExecution mode: serial (two repositories, two releases). Cross-repository items may run in parallel; the coordinator takes each item's claim when landing it.",
+  "deferrals": [
+    {
+      "created_at": "2026-11-11T12:25:03Z",
+      "from_item": "theseus-review-output-format-20261110",
+      "id": 1,
+      "reason": "Independent review of Theseus #68 (v0.2.9) found this non-blocking P3 at report.py:112-117,139-143,549. The same code is on main via #63. The owner chose to ship v0.2.9 as reviewed and fix it on main in the re-land PR. The gate is unaffected: both findings still count.",
+      "resolution": "open",
+      "summary": "Fix in the v0.2.10 re-land PR: split and _threads_to_open use separate open_counts rooms; one unmarked thread can hide a carried same-title location."
+    }
+  ],
   "description": "Owner request (2026-11-10): replace the 'wall of text' Theseus review output with a cleaner, scannable format that shows each finding's importance visually. Audit and proposal (read-only research, mockups rendered via GitHub's Markdown API): ~/.omp/agent/sessions/-Developer-BenchBox/2026-11-02T02-04-38-450Z_01a19a00-60b2-70a6-b56d-6f666415a725/local/review-comment-format-proposal.md.\nMeasured today vs proposed visible text: SHIP WITH FIXES 6 findings 6,001 -> 861 chars; 1 finding 2,793 -> 505; SHIP 2,891 -> 224; not reviewed 573 (posted twice) -> 197 (once).\nDelivery sequence (serial: two repositories and two releases; a registered batch cannot span them):\n1. benchbox-review-format-dual-read-20261110 (BenchBox readers accept both formats; closes a fail-open before it can occur)\n2. theseus-review-markers-dual-read-20261110, theseus-review-status-descriptions-20261110, theseus-review-not-reviewed-output-20261110 -> theseus-review-format-release-a-20261110\n3. benchbox-lock-theseus-review-format-release-a-20261110 (after the v0.2.8 lock and adoption PR)\n4. review-minimize-superseded-probe-20261110 (decision gate) -> theseus-review-minimize-superseded-20261110 (or dropped)\n5. theseus-review-verdict-body-redesign-20261110, theseus-review-thread-ids-footer-20261110 -> theseus-review-format-release-b-20261110\n6. benchbox-lock-theseus-review-format-release-b-20261110\nFollow-ups outside the delivery: review-gate-pending-while-waiting-decision-20261110, theseus-review-structured-findings-20261110, theseus-review-format-optional-surfaces-20261110.\nCross-cutting guardrails (each item repeats the ones it needs):\nG1 Markers are the API, prose is presentation: never change the review-protocol record, review-defect or review-finding markers; verdict reviews and threads are never edited after posting.\nG2 Reader before writer: no release changes a body or thread format until the previous release and BenchBox already read it.\nG3 Never weaken a gate: unclassifiable text fails closed; parsed status tokens kept as shared constants; statuses <= 140 chars by test.\nG4 Accessibility: every emoji is followed by its bold word; Unicode, not shortcodes; no emoji in commit statuses; severity order most severe first; 'blocks merge' stated in words.\nG5 Model text in collapsibles neutralises <details, </details>, <!-- and -->.\nG6 No live model or API spend without owner approval; no owner-only actions (stand-ins, adjudications, owner instructions, backoff resets).\nG7 Theseus merges: current-head hosted SHIP + green required checks; independent review for gate/receipt/dedup/posting changes and for workflows, policy or lock. BenchBox merges: AGENTS.md write workflow through make pr-arm.",
   "links": [
     "~/.omp/agent/sessions/-Developer-BenchBox/2026-11-02T02-04-38-450Z_01a19a00-60b2-70a6-b56d-6f666415a725/local/review-comment-format-proposal.md"
@@ -27,6 +37,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "365f3df6222245738805b53eca64c9ce",
+      "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42114c31cc2dc5361f206a9a",
+      "at": "2026-11-11T12:25:03Z",
+      "client": "omp-coding-agent",
+      "op": "defer",
+      "op_id": "fc428acd355b43738c948ab58d056f80",
       "session_id": "977a65f4969143f4981bb9d49ff293b0"
     }
   ]
