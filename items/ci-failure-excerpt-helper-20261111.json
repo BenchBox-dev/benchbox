@@ -8,7 +8,7 @@
     "Verification: each new test file under tests/unit/scripts has a row in docs/internal/dev-loop-property-ledger.md and test_ledger_coverage.py passes.",
     "Done when merged, listed in make help, and referenced from docs/agent/merge-authority.md."
   ],
-  "context": "2026-11-11 owner decision, in reply to the explanation of the open items: 'proceed'. Build it now, as its own PR.",
+  "context": "2026-11-11 owner decision, in reply to the explanation of the open items: 'proceed'. Build it now, as its own PR.\n\n2026-11-11 implementation checkpoint. Branch feat/ci-failures-helper, worktree /Users/joe/Developer/BenchBox.wt-feat-ci-failures. Prior-art gate: no existing log reader (only one metrics fetch in _project/scripts/dev_loop_pr_metrics.py), so a new script, scripts/ci_failures.py. Deviation from the item text: no `make ci-failures` target. tests/unit/scripts/test_check_make_targets.py caps make targets at 190 (TARGET_CEILING) and says to consolidate rather than add, or to raise the ceiling only with the owner's agreement; the first version tripped it at 191. The reader is reached through the existing target instead: `make pr-status PR=<n>` or `RUN=<id>` (with REPO and LINES), and `make pr-status` alone is unchanged. Also learned: a test file under tests/unit/scripts must not get a ledger row unless it is in tests/unit/ledger_cutover_files.txt, so only the script has a row. In pull-request mode only the newest non-placeholder run of each workflow is read, so superseded cancelled runs (for example an earlier review-gate run) are not reported. Verified so far: 24 unit cases; a live run against 43033085594 named the stale inventory in lint and example-validation and the failing test id, in about 6 seconds.",
   "description": "Source: a retrospective over 25 agent sessions (2026-10-18 to 2026-11-11), followed by an adversarial re-check of each claim against origin/develop 4835f5a537.\n\nProblem. There is no repository tool for reading CI failures. Three sessions pulled failed job logs by hand about 280 times (`gh run view --log-failed`, `gh api .../jobs/<id>/logs`), each with its own grep. Typical failures cost 3 to 5 calls; outputs reached 7 MB; `--log-failed` errors on escape sequences and on runs still in progress; lint aggregator jobs hide the real failing guard. `make pr-status` shows only check conclusions.\n\nOwner decision 2026-11-11: track this, do not build it with the navigation fixes.\n\nProposed change. `make ci-failures PR=<n>` or `RUN=<id>`: list failed jobs (through the jobs API, so in-progress runs work), and for each print the failed step, `##[error]` lines, pytest `FAILED`/`ERROR` ids and a short tail, with escape sequences stripped and output bounded. Document it beside `pr-rerun` in docs/agent/merge-authority.md and in make/help.mk.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly, never git add -A; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission or skipping the test lock; never bypass a required check, ruleset, hold label or review gate, and never post a stand-in; change only the files this item names, and report anything else as noticed-but-not-touched; re-read every cited file on current origin/develop before editing, because the line numbers here are hints from 2026-11-11 (origin/develop 4835f5a537); close at a merged PR (make pr-open, make pr-arm), and finish this item only after the merge is observed.",
   "links": [
     "make/pr-landing.mk",
@@ -47,6 +47,14 @@
       "generation": "7dcffd59a51242cf9e7581077ff35eb8",
       "op": "take",
       "op_id": "89d0de1648d44a49aa81ab57283bcf84",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T16:57:55Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e9c5bf0b238449398c68403c4c3aaed8",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
