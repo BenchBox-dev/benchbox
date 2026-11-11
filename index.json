@@ -34824,10 +34824,15 @@
       "title": "Update remaining statements that present the retired compat generator and site-owned rollback facts as current"
     },
     "retro-check-failures-name-fix-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T13:45:53Z",
+        "generation": "4440fb80a5a643fda4f3e1b471cc4fe2",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Make three check failures name their fix instead of sending agents into checker source"
     },
     "retro-docs-stale-corrections-20261111": {
