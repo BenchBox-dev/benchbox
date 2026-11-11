@@ -120,7 +120,14 @@ def _is_probe(api: Api, run: dict[str, Any]) -> bool:
         jobs = run_jobs(api, run["id"], attempt if isinstance(attempt, int) and attempt > 0 else 1)
     except (OSError, ValueError, subprocess.SubprocessError):
         return False
-    return any(job.get("name") in PROBE_ONLY_JOBS and job.get("conclusion") != "skipped" for job in jobs)
+    return any(
+        job.get("name") in PROBE_ONLY_JOBS
+        and (
+            job.get("status") == "in_progress"
+            or (job.get("status") == "completed" and job.get("conclusion") != "skipped")
+        )
+        for job in jobs
+    )
 
 
 def active_release_runs(api: Api) -> list[dict[str, Any]]:
