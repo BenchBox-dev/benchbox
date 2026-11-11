@@ -251,6 +251,14 @@ environment is an owner action, and an agent never takes it.
    - `TYPESAFE_API_KEY`: only the classify step (TypeSafe's Jev model classifies
      the change), the recovery steps between loop steps (Jev classifies an
      invalid attempt), the three disk scans and the redaction step.
+   - `OPENAI_API_KEY`: optional; the classify step (the OpenAI Decisions
+     fallback, `classifier.fallback`, when TypeSafe is unavailable), the three
+     disk scans and the redaction step. It must be a newly minted key scoped to
+     Decisions classification only, and the provider key the gateway decision
+     retired must be deleted and rotated before the caller mapping is enabled
+     ([amendment](../../_project/decisions/oracle-reviewer-gateway-2026-10-22.md#amendment-a-classification-only-openai-key)).
+     Without it the fallback ends at `classifier.unavailable_bucket` and the
+     step summary warns.
    - `ORACLE_GATEWAY_TOKEN`, `ORACLE_GATEWAY_URL`: the reviewer's client token
      for the credential gateway and the gateway's HTTPS URL, held by the attempt
      loop and the redaction step. No provider key, broker URL, broker token or
@@ -263,6 +271,54 @@ environment is an owner action, and an agent never takes it.
 
 The `review` job installs the pinned OMP build for its platform once and checks
 its SHA-256 before running it.
+
+### Adopted review settings
+
+Behavior lives in the pinned Theseus release (`docs/consumer-policy.md` there);
+these are the settings BenchBox sets and what each one does at its limit.
+
+- `protocol.max_finding_rounds: 4` fails closed. After four consecutive rounds
+  with findings, the next push gets one full-scope re-review that keeps every
+  finding id, carry and dispute, so no open defect is dropped; it asks the
+  reviewer for every remaining location of each class. Nothing ships without a
+  clearing verdict, and later rounds are ordinary again.
+- `brief.include_intent: true` puts the pull request title, the first 2000
+  characters of the description and up to three linked same-repository issues
+  at the top of the fenced change data, for gate reviews too. The text is
+  untrusted data: links, mentions and credentials are removed, markers and
+  HTML comments are stripped, and it is never part of a template slot. The
+  template only asks whether the change does what the statement says. A local
+  review uses the branch's commit messages.
+- `classifier.fallback: decisions` runs only when TypeSafe is in outage (not
+  when its key is missing or it answers a 4xx). Its answers follow the same
+  rules as TypeSafe's: a size answer under 0.60 probability steps down one
+  bucket, and gate paths force the `gate` template and at least `large`.
+  `fallback_min_bucket: large` lifts a Decisions size to at least `large`, so
+  the fallback can never select a reviewer below `large`; the `max` bucket
+  still applies when no classifier answers at all. `classifier.size_floor`
+  (1500 changed lines outside data and excluded files) likewise raises a large
+  change to `large` on any backend.
+- `OPENAI_API_KEY` is optional and reaches the same steps as
+  `TYPESAFE_API_KEY` except the invalid-attempt recovery steps: prepare, the
+  three disk scans and the verdict redaction. It never reaches the attempt
+  loop, where the unconfined reviewer runs, so the rule that the reviewer
+  holds no provider credential still holds for the reviewer itself. The key
+  must be a newly minted, Decisions-scoped credential, never the retired
+  provider key: that key has to be deleted and rotated before the mapping is
+  enabled. The owner confirmed on 2026-11-11 that the environment's key is
+  such a replacement
+  ([amendment](../../_project/decisions/oracle-reviewer-gateway-2026-10-22.md#amendment-a-classification-only-openai-key)).
+  It is scanned for and redacted like the other secrets. This accepts that the
+  prepare and scan steps hold one more third-party key. Removing the caller
+  mapping and the environment secret withdraws it.
+- `.github/review-guidance.md` holds BenchBox conventions for reviewers. The
+  pinned Theseus release does not load it into briefs and refuses a
+  `consumer.review_guidance` policy key, so today nothing reads it at review
+  time. It is a gate path and a soundness path, so any edit to it needs the
+  exact-head review and the owner's merge, and a test pins that its
+  do-not-flag list never names a gate, soundness or data input. Its entries
+  take effect only once a Theseus release reads the file from the trusted
+  base.
 
 ### Credential gateway
 
@@ -315,7 +371,8 @@ a manual dispatch, a `pull_request_target` event other than a plain edit, and a
 
 1. Refuse a dispatch from a ref other than `develop`, and check out trusted
    `develop` into `trusted`.
-2. **Prepare** (`drive prepare`; job token and the classification key only)
+2. **Prepare** (`drive prepare`; job token and the classification keys only,
+   `TYPESAFE_API_KEY` and the optional `OPENAI_API_KEY`)
    resolves the PR and head through the API, refuses closed, draft and
    non-`develop` PRs, applies the rerun rules and writes a 0600 brief. A fork's
    change outside the inert paths gets a pending `fork: owner review` status and
@@ -327,10 +384,19 @@ a manual dispatch, a `pull_request_target` event other than a plain edit, and a
    classification failure (an unreachable or failing classifier, not a missing
    key) does not fail the step: when `classifier.unavailable_bucket` is set in
    the policy, as it is here (`max`), the change is reviewed from that
-   bucket instead (the higher of it and the `large` gate floor, so never weaker than the classifier would have chosen), with the
+   bucket instead (the higher of it and the `large` gate floor), with the
    `deep` capability, the `gate` template when gate paths are touched and
    `deep` otherwise, and the summary says classification was unavailable;
-   without the policy key the attempts stay pending. The bucket names the first reviewer in `.github/review.yml`;
+   without the policy key the attempts stay pending. Before that bucket
+   applies, `classifier.fallback: decisions` asks the OpenAI Decisions API the
+   same questions and raises its size to at least `classifier.fallback_min_bucket`
+   (`large`). `classifier.size_floor` raises any backend's size to `large` when
+   at least `min_lines` (1500) changed lines remain after `data_paths` and the
+   `exclude` globs, which cover lockfiles, generated pages and baseline data.
+   With the fallback enabled, an outage that Decisions answers selects `large`
+   or above (`huge` and `max` stay possible); only when Decisions fails too is
+   the `max` bucket used.
+   The bucket names the first reviewer in `.github/review.yml`;
    later slots reuse the classification and can move up the chain (see
    Rounds). Review-machinery changes always get the `gate` template and at
    least the `large` bucket. Selection skips disabled reviewers,

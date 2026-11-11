@@ -112,3 +112,23 @@ scope or the reviewer's reach grows.
 
 Rollback is reverting this change. It is safe until the old secrets are
 deleted in step 3, so keep them until the canary has passed.
+
+## Amendment: A classification-only OpenAI key
+
+Date: 2026-11-11
+Status: Decided. Narrows step 3 of the rollout above for the `OPENAI_API_KEY`
+name only.
+
+The classifier fallback (`classifier.fallback: decisions`) needs an OpenAI key
+in the `oracle` environment. The owner confirmed that the `OPENAI_API_KEY`
+held there was replaced by a newly minted key scoped to Decisions
+classification only, and that the provider key retired by step 3 is no longer
+present in the environment.
+
+The name is reused on purpose, but the credential is not. The new key is
+passed only to the prepare, disk-scan and verdict-redaction steps of the
+review job, never to the attempt loop where the unconfined reviewer runs, so
+the rule that the reviewer holds no provider credential is unchanged.
+Enabling the `OPENAI_API_KEY` mapping in `.github/workflows/review-verdict.yml`
+requires a key minted for that scope and the earlier provider key deleted and
+rotated first. Removing the mapping and the environment secret withdraws it.
