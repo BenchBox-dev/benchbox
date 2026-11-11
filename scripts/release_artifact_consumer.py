@@ -509,6 +509,17 @@ def _merged_into(commit: str, branch: str, pulls: ListApi) -> bool:
 
 
 CREATION_SOURCE_TRAILER = "Develop-Source"
+CREATION_REVIEW_PATHS = (
+    ".github/review.yml",
+    ".github/review-omp-config.yml",
+    ".github/theseus-lock.json",
+    ".github/soundness-paths.txt",
+    ".github/inert-paths.txt",
+    "scripts/theseus_cli.py",
+    "scripts/theseus_release_check.py",
+    "_project/scripts/theseus_bootstrap.py",
+)
+CREATION_REVIEW_WORKFLOW = re.compile(r"\.github/workflows/(review|oracle)-[^/]+")
 
 
 def _creation_source(root: Path, creation: str, base: str, branch: str) -> str:
@@ -533,6 +544,14 @@ def _creation_source(root: Path, creation: str, base: str, branch: str) -> str:
 
 def _state_at(root: Path, revision: str, path: str) -> str:
     return _run_git(root, "ls-tree", "-z", revision, "--", path, stdout=subprocess.PIPE, text=True, timeout=60).stdout
+
+
+def _review_paths(root: Path, *revisions: str) -> set[str]:
+    paths = set(CREATION_REVIEW_PATHS)
+    for revision in revisions:
+        listing = _git_text(root, "ls-tree", "-r", "-z", "--name-only", revision, "--", ".github/workflows")
+        paths.update(path for path in listing.split("\0") if CREATION_REVIEW_WORKFLOW.fullmatch(path))
+    return paths
 
 
 def _creation_changes(root: Path, parent: str, creation: str) -> list[tuple[str, str, str, str]]:
@@ -574,6 +593,11 @@ def verify_maintenance_line(root: Path, tag: str, commit: str, branch: str, pull
             _state_at(root, source, path) == expected,
             f"{branch} creation {'deletes' if status == 'D' else 'sets'} {path}, "
             f"which differs from {PRODUCER_BRANCH} at {source}",
+        )
+    for path in sorted(_review_paths(root, creation, source)):
+        _require(
+            _state_at(root, creation, path) == _state_at(root, source, path),
+            f"{branch} creation does not carry {path} as {PRODUCER_BRANCH} has it at {source}",
         )
 
 

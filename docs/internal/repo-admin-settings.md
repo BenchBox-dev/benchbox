@@ -546,7 +546,13 @@ instead and refuses a tag on a maintenance line unless:
   history after the line's tag, and every path the creation commit changes or
   deletes has exactly that commit's mode and content, or is absent there. A
   single snapshot newer than the tag means no reviewer file can be rolled back
-  to a state older than the tag's own.
+  to a state older than the tag's own. The creation commit must also match that
+  snapshot on every reviewer file, whether or not it changed it: the review
+  policy and its omp config, the Theseus lock, the soundness and inert path
+  manifests, `scripts/theseus_cli.py`, `scripts/theseus_release_check.py`,
+  `_project/scripts/theseus_bootstrap.py`, and every `review-*` or `oracle-*`
+  workflow in either tree. A line therefore cannot keep the tag's older reviewer
+  workflows or carry only some of develop's.
 
 Admission runs from the tagged tree, so this guards against mistakes and
 unreviewed content in the creation commit, not against a creator who also

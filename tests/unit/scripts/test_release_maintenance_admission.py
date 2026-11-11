@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
@@ -263,13 +264,15 @@ def created_line(tmp_path):
     git(root, "commit", "-q", "-m", "Early reviewer policy")
     shas = {"before_tag": git(root, "rev-parse", "HEAD")}
     write(root, ".github/oracle.yml", "legacy\n")
+    write(root, ".github/workflows/oracle-gate.yml", "legacy gate\n")
     write(root, ".github/review.yml", "tag policy\n")
     git(root, "add", ".github")
     shas["released"] = commit_version(root, "0.4.1")
     tag(root, "v0.4.1")
-    git(root, "rm", "-q", ".github/oracle.yml")
+    git(root, "rm", "-q", ".github/oracle.yml", ".github/workflows/oracle-gate.yml")
     write(root, ".github/review.yml", "reviewed policy\n")
-    git(root, "add", ".github/review.yml")
+    write(root, ".github/workflows/review-gate.yml", "reviewed gate\n")
+    git(root, "add", ".github")
     git(root, "commit", "-q", "-m", "Rename the reviewer policy")
     shas["reviewed"] = git(root, "rev-parse", "HEAD")
     git(root, "checkout", "-q", "-b", "side")
@@ -291,10 +294,17 @@ def fixture_sha(root: Path, name: str) -> str:
     return git(root, "rev-parse", f"refs/fixture/{name}")
 
 
-def create(root: Path, source: str | None, *, policy: str = "reviewed policy\n", edit=None) -> str:
+def create(
+    root: Path, source: str | None, *, policy: str | None = "reviewed policy\n", workflows: bool = True, edit=None
+) -> str:
     git(root, "rm", "-q", ".github/oracle.yml")
-    write(root, ".github/review.yml", policy)
-    git(root, "add", ".github/review.yml")
+    if policy is not None:
+        write(root, ".github/review.yml", policy)
+        git(root, "add", ".github/review.yml")
+    if workflows:
+        git(root, "rm", "-q", ".github/workflows/oracle-gate.yml")
+        write(root, ".github/workflows/review-gate.yml", "reviewed gate\n")
+        git(root, "add", ".github/workflows/review-gate.yml")
     if edit:
         edit(root)
     message = "Carry develop's reviewer files"
@@ -348,6 +358,29 @@ def test_a_creation_commit_that_departs_from_its_develop_snapshot_is_refused(cre
     create(created_line, fixture_sha(created_line, "tip"), policy=policy, edit=edit)
     fixed = land(created_line, "0.4.2")
     with pytest.raises(ValueError, match=expected):
+        consumer.verify_maintenance_line(created_line, "v0.4.2", fixed, LINE, merged_pulls(fixed))
+
+
+@pytest.mark.parametrize(
+    ("policy", "workflows", "edit", "missing"),
+    [
+        (None, True, None, ".github/review.yml"),
+        ("reviewed policy\n", False, None, ".github/workflows/oracle-gate.yml"),
+        (
+            "reviewed policy\n",
+            False,
+            lambda root: git(root, "rm", "-q", ".github/workflows/oracle-gate.yml"),
+            ".github/workflows/review-gate.yml",
+        ),
+    ],
+    ids=["policy-not-carried", "legacy-workflow-kept", "review-workflow-missing"],
+)
+def test_a_creation_commit_that_carries_only_part_of_the_reviewer_files_is_refused(
+    created_line, policy, workflows, edit, missing
+):
+    create(created_line, fixture_sha(created_line, "tip"), policy=policy, workflows=workflows, edit=edit)
+    fixed = land(created_line, "0.4.2")
+    with pytest.raises(ValueError, match=f"creation does not carry {re.escape(missing)} as develop has it"):
         consumer.verify_maintenance_line(created_line, "v0.4.2", fixed, LINE, merged_pulls(fixed))
 
 
