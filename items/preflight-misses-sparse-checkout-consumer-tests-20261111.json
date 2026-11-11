@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Decision gate: prefer reusing `_workflow_tests` (it already maps workflow references to tests) over new logic; if the sparse-checkout lists are few, an explicit map entry is acceptable and should say why.",
+    "Verification: on a branch that adds a module-level import of a non-sparse file to `_project/scripts/preflight_targets.py`, `make pr-preflight` selects and fails test_ci_shadow_miss_step.py.",
+    "Verification: tests/unit/scripts/test_preflight_targets.py has a case for the selection.",
+    "Soundness review passes (preflight_targets.py is a soundness path).",
+    "Done when merged."
+  ],
+  "description": "Found on 2026-11-11 while delivering retro-navigation-fixes-umbrella-20261111 (or in the retrospective over 25 agent sessions that preceded it) and not addressed there.\n\nProblem. PR #4098 changed `_project/scripts/preflight_targets.py`. `make pr-preflight` selected 176 tests and passed, then CI failed `tests/unit/workflows/test_ci_shadow_miss_step.py::test_misses_step_runs_from_its_sparse_checkout`: `scripts/coverage_test_selection.py` imports preflight_targets at module import, and a CI step runs it from a sparse checkout listed in `.github/workflows/ci.yml`. A new module-level import in preflight_targets broke that step. The test that guards it was not selected locally, so the break cost a CI cycle and a new review head.\n\nChange. Have preflight selection include the workflow tests that exercise a sparse checkout when a changed path is named in a workflow's `sparse-checkout` list or is imported by a file that is.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read every cited file on current origin/develop first, because line numbers and commits here are from 2026-11-11 (origin/develop 5bd2c19cc4); close at a merged PR and finish only after the merge is observed.",
+  "links": [
+    "_project/scripts/preflight_targets.py",
+    "scripts/coverage_test_selection.py",
+    "tests/unit/workflows/test_ci_shadow_miss_step.py",
+    "https://github.com/BenchBox-dev/benchbox/pull/4098"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T16:38:17Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f05cf9aa5db349728cbc90946b355255",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    }
+  ]
+}

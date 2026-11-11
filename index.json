@@ -30692,6 +30692,13 @@
       "status": "done",
       "title": "Address pre-existing issues surfaced by complexity batch 8-10 review"
     },
+    "preflight-misses-sparse-checkout-consumer-tests-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Select tests of scripts that import a changed module from a sparse checkout"
+    },
     "preflight-runs-docs-inventory-and-project-reference-guards-20261110": {
       "claim": null,
       "needs": [],
