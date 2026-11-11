@@ -36594,6 +36594,13 @@
       "status": "done",
       "title": "Rewrite the site's blog publishing guide for the split repos"
     },
+    "site-python-api-scale-factor-range-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Site Python API pages say only 'Must be positive' for scale_factor"
+    },
     "site-release-pinned-docs-20261017": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Every page under `docs/reference/python-api/benchmarks/` either states the run-time range or links to the Scale factors section.",
+    "`npm run docs:check` and `npm run lint:docs` pass."
+  ],
+  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.",
+  "description": "## Problem\nSeventeen pages under benchbox-site `docs/reference/python-api/benchmarks/` describe the constructor's `scale_factor` as 'Must be positive'. Constructing a benchmark class directly does accept any positive value for most benchmarks, but every supported run path (command line, runner, MCP) applies the range rule from BenchBox#4126: 0.01 to 100000, whole numbers from 1, and a fixed value for `joinorder` and `metadata_primitives`. The pages do not say that a value the constructor accepts can still be refused when the benchmark is run.\n\nThis is site-only work. It is filed here because the session that found it was bound to the core tracker; move it to the benchbox-site tracker if preferred.\n\n## Change\nOn each page, state the constructor's own check accurately and add one sentence, or a link to the Scale factors section of `docs/benchmarks/index.md`, giving the range that applies when the benchmark is run. For TPC-DS and TPC-DS-OBT the constructor itself enforces 0.01; those two pages are already correct.\n\n## Guardrails\n- Verify each page's statement against the class constructor on current core `develop`; do not copy one sentence to all pages unchecked.\n- The Python API headings are contract-checked; keep headings unchanged.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-site/tree/main/docs/reference/python-api/benchmarks",
+    "https://github.com/BenchBox-dev/benchbox-site/blob/main/docs/benchmarks/index.md",
+    "benchbox/core/benchmark_registry.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba",
+      "at": "2026-11-11T23:47:05Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5bc0e9f3db4e46a59c122cf688e8eb7d",
+      "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    }
+  ]
+}
