@@ -5,7 +5,7 @@
     "The reason the SF 1 bundle passed validation with a wrong Q15 count is recorded",
     "validate_corpus.py and the Explorer agree on the outcome"
   ],
-  "context": "2026-11-01 prioritization (SQL translation and query correctness ranking): priority raised to high. Published DataFusion TPC-H bundles carry a wrong Q15 answer (0 rows, correct is 1) still marked validation=passed.",
+  "context": "2026-11-01 prioritization (SQL translation and query correctness ranking): priority raised to high. Published DataFusion TPC-H bundles carry a wrong Q15 answer (0 rows, correct is 1) still marked validation=passed.\n\nRevalidated 2026-11-11: still required, text still accurate. The root-cause item datafusion-tpch-money-columns-double-20261017 is now done, so `needs` is satisfied and nothing blocks this. On origin/develop (c7b75c80bc) all three bundles are still published under results-data/bundles/ (tpch_sf1_datafusion_sql_20260825_172912_1d62bd4f, tpch_sf001_datafusion_sql_20260826_110608_e8a7d048, tpch_sf01_datafusion_sql_20260824_082755_adcfb35e) and their manifests carry only known_defects [\"defective-macdbgen-addresses\"]; none is flagged for the wrong Q15. They appear in the CORPUS_NOTES \"changed DF-4\" row (timing-only rewrites), which does not mention Q15. A DataFusion 54 SF1 rerun, tpch_sf1_datafusion_sql_20261026_113613_5ef63e23, was added by #3678; the SF0.01 and SF0.1 DataFusion 54 reruns were not checked here. Q15 row counts in the three old bundles were not re-measured. Remaining work: list every TPC-H bundle with a Q15 measurement of 0 rows across results-data/bundles, apply the corpus admission policy to each (relabel, override with a reason, or withdraw), record why SF1 passed validation, and confirm validate_corpus.py and the Explorer agree.",
   "description": "Defect: some published DataFusion TPC-H bundles contain measurement Q15 rows with 0 rows (the correct answer is 1) and still carry summary.validation=passed, so a wrong answer is in the published corpus marked clean. Found 2026-10-16 by scanning results-data bundles for Q15 counts: results-data/bundles/tpch_sf1_datafusion_sql_20260825_172912_1d62bd4f.json (SF 1, Q15 0/SUCCESS and 1/SUCCESS, validation passed), tpch_sf001_datafusion_sql_20260826_110608_e8a7d048.json and tpch_sf01_datafusion_sql_20260824_082755_adcfb35e.json (Q15 [0,1]). Root cause is datafusion-tpch-money-columns-double-20261017. The SF 1 case should already fail the answer-file check, so also find out why it passed (likely validation was not enforced when recorded).",
   "sessions": [
     {
@@ -23,6 +23,14 @@
       "op": "update",
       "op_id": "a17a9fa67e3a4bbba30e64346fcbb333",
       "session_id": "a36a04b6bc394082b5008f654e1bf00b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:27:46Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9127ab8153d449499abaa7734e84fa23",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
