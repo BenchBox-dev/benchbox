@@ -21328,7 +21328,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "Evaluate mutation testing on dialect/result-model core"
     },
     "evaluate-results-data-repo-extraction-checkpoint": {

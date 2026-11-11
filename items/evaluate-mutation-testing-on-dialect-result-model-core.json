@@ -1,9 +1,20 @@
 {
   "description": "Promoted from deferral #491 of testing-approach-correctness-gates.\nDeferred: Evaluate mutation testing on dialect/result-model core\nReason deferred: Useful after correctness lanes exist; not a prerequisite for closing the current CI routing gap.",
+  "drop_reason": "Duplicate of add-mutation-testing-to-detect-tests-that-never-fail; owner asked on 2026-11-11 to clean up duplicates. Its evidence was appended to add-mutation-testing-to-detect-tests-that-never-fail's context.",
   "legacy": {
     "item_meta": {
       "created_at": "2026-07-19T12:36:32Z",
       "worktree": "main"
     }
-  }
+  },
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:22:55Z",
+      "client": "omp-coding-agent",
+      "op": "drop",
+      "op_id": "3eb6f910be094e5c854628dedb2e0c97",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
+    }
+  ]
 }
