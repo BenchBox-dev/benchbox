@@ -20957,10 +20957,15 @@
       "title": "Harden DuckDB MERGE INTO token gate and reconcile its dead REGISTRY/comments"
     },
     "duckdb-plan-parser-join-type-and-sort-direction-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T23:41:51Z",
+        "generation": "a3ae4fa7654a4287965707db4d45d84f",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ce763d5976f477ecde9610ed"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "DuckDB plan parser records semi, anti, mark and some outer joins as inner and every sort key as ASC"
     },
     "duckdb-set-statement-interpolation-hardening": {
