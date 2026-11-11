@@ -6,6 +6,7 @@
     "Soundness review passes (preflight_targets.py is a soundness path).",
     "Done when merged."
   ],
+  "context": "2026-11-11: delivered in PR #4120, merged to develop as 591c21ba5e (verified an ancestor of origin/develop). A changed path listed in a workflow sparse-checkout (exact, directory or glob entry), or imported by a listed file, selects that workflow's tests.",
   "description": "Found on 2026-11-11 while delivering retro-navigation-fixes-umbrella-20261111 (or in the retrospective over 25 agent sessions that preceded it) and not addressed there.\n\nProblem. PR #4098 changed `_project/scripts/preflight_targets.py`. `make pr-preflight` selected 176 tests and passed, then CI failed `tests/unit/workflows/test_ci_shadow_miss_step.py::test_misses_step_runs_from_its_sparse_checkout`: `scripts/coverage_test_selection.py` imports preflight_targets at module import, and a CI step runs it from a sparse checkout listed in `.github/workflows/ci.yml`. A new module-level import in preflight_targets broke that step. The test that guards it was not selected locally, so the break cost a CI cycle and a new review head.\n\nChange. Have preflight selection include the workflow tests that exercise a sparse checkout when a changed path is named in a workflow's `sparse-checkout` list or is imported by a file that is.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read every cited file on current origin/develop first, because line numbers and commits here are from 2026-11-11 (origin/develop 5bd2c19cc4); close at a merged PR and finish only after the merge is observed.",
   "links": [
     "_project/scripts/preflight_targets.py",
@@ -37,6 +38,14 @@
       "generation": "9196e11c3c0b48cd8a95a661e1b6f6ef",
       "op": "take",
       "op_id": "a8948ab9faee4c05a9543384e32323fc",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T22:32:34Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "83ff5850c3e74f8990a52cc646935ba4",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
