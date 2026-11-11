@@ -2,6 +2,7 @@
   "acceptance": [
     "The gate verdict does not depend on one run's calibration outlier, or the normalization limits are documented with a worked example."
   ],
+  "context": "2026-11-11: merged duplicate ci-fast-duration-gate-slow-runner-margin-20261101 into this item. Slow-runner evidence from that item: of 59 post-flip verdicts, 15 ran with a runner speed factor >= 1.5 (up to 1.95) and 8 had a summed ratio above 1.20 (max 1.282 vs the 1.30 limit); 7 of 59 exceeded the 360 s delta term alone. #4002 (deleting tests only) got would-block at 1.313 / +442.6 s with a median per-test ratio of 1.010. Acceptance should cover both a false would-block on a slow runner and a real slowdown hidden by a slow runner.",
   "description": "For core PR 3562 the fast-tier verdict was would-block with a normalized summed ratio of 1.156 although the PR's own tests added 0.08s. The run's calibration factor was 1.84, most excess was first-in-worker import cost spread over unrelated tests, and an offline verify of the old head's artifact against a freshly built baseline raised the ratio to 1.196. The baseline was regenerated to lift the refusal, which hides the cause.",
   "sessions": [
     {
@@ -11,6 +12,14 @@
       "op": "create",
       "op_id": "cdf44b11fb3147af9f7055c8ac900f14",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:22:31Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "071cfc53975241b0a433080cc9035987",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
