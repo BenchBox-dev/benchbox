@@ -3,7 +3,7 @@
     "The rendered 1_v8 for presto, trino and athena has an ORDER BY on the outermost SELECT with the original sort keys, covered by a unit test that fails on the current rendering",
     "1_v8 returns rows in the canonical order on a native PrestoDB or Trino run, recorded as durable evidence"
   ],
-  "context": "Evidence: _project/audits/tpchavoc-prestodb-variants-2026-10-26.md (added by PR 3577; ORDER_DIFFERS in all 5 runs; rendered text verified independently of the harness). Suspected location: the QUALIFY elimination in the fork BenchBox-dev/benchbox-sqlglot (Presto generator) which keeps the ORDER BY with the inner select; fix there, then sync with scripts/sync_sqlglot_runtime.py --wheel, and update tests/unit/sql_compat/golden_corpus/recorded/area_variants.json if it records this variant. Not traced: why the ORDER BY stays inside the derived table, and whether Trino/Athena behave the same. Created at owner request 2026-10-27.\n\nMoved from the todo-db tracker on 2026-10-28; the item was filed there by mistake.",
+  "context": "Evidence: _project/audits/tpchavoc-prestodb-variants-2026-10-26.md (added by PR 3577; ORDER_DIFFERS in all 5 runs; rendered text verified independently of the harness). Suspected location: the QUALIFY elimination in the fork BenchBox-dev/benchbox-sqlglot (Presto generator) which keeps the ORDER BY with the inner select; fix there, then sync with scripts/sync_sqlglot_runtime.py --wheel, and update tests/unit/sql_compat/golden_corpus/recorded/area_variants.json if it records this variant. Not traced: why the ORDER BY stays inside the derived table, and whether Trino/Athena behave the same. Created at owner request 2026-10-27.\n\nMoved from the todo-db tracker on 2026-10-28; the item was filed there by mistake.\n\nRevalidated 2026-11-11: still required, no fix found. PR #3577 (afacac1cf7) merged and added _project/audits/tpchavoc-prestodb-variants-2026-10-26.md, which still records the 1_v8 ORDER BY loss as an unfixed rewrite defect (and that Trino/Athena were not run). BenchBox now vendors benchbox-sqlglot 30.30.0.1 (benchbox/_vendor/sqlglot.json); no commit since mentions a 1_v8 or QUALIFY order fix. The wheel is now adopted through the vendored-wheel flow, so check current SQLGlot adoption docs instead of scripts/sync_sqlglot_runtime.py before the fork change. Not re-executed on a live engine (no Docker or native Presto available).",
   "description": "On PrestoDB 0.298.1 the rendered 1_v8 returns the correct rows in a different order than the canonical query in every run. The QUALIFY elimination renders SELECT ... FROM (SELECT DISTINCT ..., COUNT(*) OVER (...) AS \"_w\" FROM \"lineitem\" WHERE ... ORDER BY \"l_returnflag\",\"l_linestatus\") AS \"_t\" WHERE \"_w\" > 0. The ORDER BY sits only inside the derived table, so the result order is undefined and the variant no longer matches the canonical Q1 ordering. Trino and Athena use the same Presto-family generator and probably show the same defect; neither was run.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3577"
@@ -16,6 +16,14 @@
       "op": "create",
       "op_id": "7c741829327f4a188fbe27ef38448c00",
       "session_id": "8dd2786d2f544912829f10b74985f086"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:35:28Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "90cba4f14ec04814a3c769b4730c5e8f",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
