@@ -90,7 +90,7 @@ def test_the_caller_passes_the_environment_the_develop_base_and_the_policy_path_
     assert _job()["with"] == {
         "environment": "oracle",
         "theseus_ref": _job()["with"]["theseus_ref"],
-        "gated_base": "develop",
+        "gated_base": "develop,release/*",
         "policy_path": ".github/review.yml",
     }
 

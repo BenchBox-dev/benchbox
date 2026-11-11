@@ -596,10 +596,8 @@ and `release-v2 probe` to the GitHub Actions App (`integration_id` 15368),
 as on `develop`; the drift check requires the two required-check lists to be
 identical. The `oracle` environment already admits `release/*`, and `trunk.yml`
 runs on pushes to `release/**`. The gate workflow, the review workflow and the
-reviewer policy (`.github/review.yml`) still name `develop` as the only gated
-base until the pinned Theseus callers accept release lines, so a pull request
-into `release/X.Y.x` cannot report `review-gate` and cannot merge before that
-pin lands.
+reviewer policy (`.github/review.yml`) gate `develop` and `release/*`, so a pull
+request into `release/X.Y.x` reports `review-gate` from the base tip's policy.
 
 Other ruleset properties to preserve:
 

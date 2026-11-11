@@ -96,7 +96,7 @@ def test_the_caller_passes_the_environment_base_policy_path_and_tailscale_tag_an
     assert _job()["with"] == {
         "environment": "oracle",
         "theseus_ref": _job()["with"]["theseus_ref"],
-        "gated_base": "develop",
+        "gated_base": "develop,release/*",
         "policy_path": ".github/review.yml",
         "tailscale_tag": "tag:oracle-ci",
     }
