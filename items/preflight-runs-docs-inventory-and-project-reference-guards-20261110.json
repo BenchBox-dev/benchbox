@@ -9,7 +9,8 @@
     "On a branch that adds an unregistered file under docs/internal, make pr-preflight fails and names the docs-ownership check.",
     "Decision gate (index is data): the reader index is read as data at selection time; a missing or malformed index falls back to today's behaviour with a printed warning, never a crash, and a test covers it.",
     "Decision gate (soundness): _project/scripts/preflight_targets.py is a soundness path; arm only on the reviewer's success verdict for the current head.",
-    "Done when the PR is merged to develop."
+    "Done when the PR is merged to develop.",
+    "Decision gate (no second map): CI already selects reader tests for changed docs in scripts/coverage_test_selection.py (`_classify_files`). Reuse that selection or its index loader from preflight_targets; do not write a second doc-to-reader mapping. If reuse is impossible, stop and record why before writing new logic."
   ],
   "description": "Problem. On #4039, make pr-preflight passed at a head that CI then failed twice.\n(1) tests/unit/scripts/test_doc_reference_inventory.py::test_committed_inventory_is_current_and_fully_dispositioned failed. A test added the sample path docs/guide.md, and code named docs/internal/dev-loop-property-ledger\\.md as a regex-escaped literal. The inventory scanner records both as references (the escaped one as unresolved), so quality/docs-reference-inventory.json went stale. A plain literal resolves and needs no inventory change.\n(2) The lint job's guard-project-references (_project/scripts/check_project_references.py) failed on a new test sample path, _project/scripts/data/table.json, which does not exist.\n_project/scripts/preflight_targets.py selects neither test for the changed paths, and pr-preflight does not run either guard. Both are only seen after push.\n\nChange. Have pr-preflight run make docs-reference-inventory-check and _project/scripts/check_project_references.py (both take a few seconds) whenever a changed path is code, a test or a doc. Alternatively, have preflight_targets select test_doc_reference_inventory.py and test_check_project_references.py for those paths. Add one line to the inventory's documentation noting that a regex-escaped path in code is recorded as an unresolved reference.\n\nAdded 2026-11-11 (retrospective over 25 sessions). A third instance of the same gap: a docs-only PR (#3925) passed `make pr-preflight` in 1.3 seconds ('No test files map to the changed paths') and then failed CI three times, because tests read doc prose. `_project/inert-doc-readers.json` maps each machine-read doc to the tests that read it, but `map_tests()` in `_project/scripts/preflight_targets.py` never consults it for non-Python paths. Extend the change: for a changed path listed in that index, select its reader tests; and when a changed test file adds or removes a doc read, run tests/unit/scripts/test_inert_paths.py so a stale index fails locally. New files under docs/ must also be registered in quality/docs-ownership.json; run that check for added docs.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read cited files on current origin/develop first.",
   "links": [
@@ -37,6 +38,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "282f572f84f64744873ac387f2d2e92b",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T13:21:24Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "fbf0c7c8112242ccb7a6ae855df974c2",
       "session_id": "b652d5f8dbf843caae487a77902578ba"
     }
   ]
