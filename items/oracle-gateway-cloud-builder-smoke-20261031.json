@@ -2,6 +2,7 @@
   "acceptance": [
     "Cloud-session outputs for each check above recorded in context."
   ],
+  "context": "2026-11-11: merged duplicate oracle-cloud-review-reachability-smoke-20261030 into this item. That item asked for the same cloud-session observation: make cloud-bootstrap reports gateway=reachable with gateway_proxy set in cloud-gateway status, and make pr-open completes a local review through the cloud client. Both checks are in this item's steps.",
   "description": "The owner waived the live cloud smoke for cloud-builder gateway access on 2026-10-30 so the code (#3830, 800fcc09ca) could land. In an owner-launched Claude cloud session: make cloud-bootstrap reports gateway=reachable; make pr-open on a clean branch runs the review through oracle-cloud and opens a PR (closed as a smoke artifact); a connection to any other tailnet host or port is refused. Record outputs.",
   "not_before": "2026-11-06T00:00:00Z",
   "sessions": [
@@ -12,6 +13,14 @@
       "op": "create",
       "op_id": "f44e30fcb5d9459ab673e3dd7e709a86",
       "session_id": "adb1518a186a49b6a5f244d6ebc0f7ca"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:22:37Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "24fbeef7dc124073a2732f5db98ac5ae",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
