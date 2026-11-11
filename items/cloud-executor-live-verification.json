@@ -5,7 +5,7 @@
     "The narrower Databricks no-ANSI-mode comment claim confirmed live or softened",
     "make pr-preflight passes on the final tree"
   ],
-  "context": "Adversarial review (codex gpt-6-sol) refuted unit-tests-plus-PR as sufficient: cloud behavior, atomicity, and the Databricks ANSI-mode comment claim need warehouse evidence. APPROVAL GATE: live cloud tests require explicit user approval per repository policy; do not run them until the user approves in the implementing session, stating command, maximum runtime, log path, and stop condition. UAT/stress output goes to BENCHBOX_OUTPUT_DIR=~/Developer/benchmark_runs, never committed. Needs the five fix items first so live runs test the final code.",
+  "context": "Adversarial review (codex gpt-6-sol) refuted unit-tests-plus-PR as sufficient: cloud behavior, atomicity, and the Databricks ANSI-mode comment claim need warehouse evidence. APPROVAL GATE: live cloud tests require explicit user approval per repository policy; do not run them until the user approves in the implementing session, stating command, maximum runtime, log path, and stop condition. UAT/stress output goes to BENCHBOX_OUTPUT_DIR=~/Developer/benchmark_runs, never committed. Needs the five fix items first so live runs test the final code.\n\nRevalidated 2026-11-11: still required; all five needs items are done, so the live runs can test the final code once the owner approves them (not approved yet). Path updates: the BigQuery CREATE conversion named in cloud-executor-bq-create-semantics (_convert_to_bigquery_table) no longer exists; CREATE TABLE now goes through translate_ddl (cc25f967b5, #3327), and the in-place replace helper is benchbox/core/primitives_benchmark_utils.py:55-60 (replace_table_sql, replaces_tables_in_place for Databricks). Staging-reuse, SCD2 close-then-insert and multi-statement checks must therefore exercise that path. The original loader/executor work is PR #2353. Snowflake transaction handling is at benchbox/platforms/snowflake.py:1366-1377. The docs cited in sibling items now live in the benchbox-site repo (docs/development/), not in docs/ here.",
   "description": "Verify the landed cloud-executor fixes against live BigQuery, Databricks, and Snowflake warehouses after user approval, and record per-platform evidence. Covers staging reuse without data loss, SCD2 atomicity, multi-statement qualification, and the Databricks dialect paths.",
   "sessions": [
     {
@@ -15,6 +15,14 @@
       "op": "create",
       "op_id": "6520ef27f5eb4cb498757fba4f53f669",
       "session_id": "33885da5f36043978d40a3e943ccc33b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-11T20:33:29Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9a835002b28f42669ebe5c2c6675c3c4",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
