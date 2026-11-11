@@ -36513,6 +36513,17 @@
       "status": "dropped",
       "title": "Decide the site repo's runner pool from a month of deploy receipts"
     },
+    "site-scale-factor-docs-20261111": {
+      "claim": null,
+      "needs": [
+        "scale-factor-consistency-umbrella-20261111",
+        "scale-factor-registry-caps-vs-docs-20261013",
+        "scale-factor-floor-0-01-20261111"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Site docs: state the real scale-factor range and remove SF 0.001"
+    },
     "site-sphinx-fallback-exposure": {
       "claim": null,
       "needs": [],

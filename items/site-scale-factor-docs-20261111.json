@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "`git grep -n '0\\.001' -- docs/benchmarks/index.md docs/benchmarks/tpc-havoc.md docs/benchmarks/coffeeshop.md docs/benchmarks/read-primitives.md docs/benchmarks/clickbench.md` finds no scale-factor claim.",
+    "`git grep -n -e 'SF1 only' -e 'Single-scale' -- docs/benchmarks/support-status.md` finds nothing.",
+    "`docs/benchmarks/index.md` states the accepted range, the note and the two fixed benchmarks in one paragraph.",
+    "`npm run docs:check` and the repository `ci` checks pass on the pull request head against a bundle that contains the core scale-rule merge."
+  ],
+  "description": "## Problem\nbenchbox-site pages state scale-factor limits that the command line does not have, before or after the core rule change:\n- `docs/benchmarks/index.md`: TPC-H '0.001 to 1000+', TPC-DS '0.001 to 100+', SSB '1 to 1000+'.\n- `docs/benchmarks/tpc-havoc.md`: 'Same scale factors (0.001 to 1000+)'.\n- `docs/benchmarks/coffeeshop.md`: lists SF 0.001 and recommends 0.001 to 0.01 for development.\n- `docs/benchmarks/read-primitives.md`: a '0.001 (micro)' table row and a `ReadPrimitives(scale_factor=0.001, ...)` example.\n- `docs/benchmarks/clickbench.md`: a 0.001 table row.\n- `docs/benchmarks/support-status.md`: `tpcds_obt` described as 'SF1 only' and 'Single-scale subset'.\n\n## Change\nAfter the core rule ships, every benchmark accepts 0.01 to 100000 (whole numbers from 1), except `joinorder` and `metadata_primitives`, which accept 1 only. Listed values are the standard set and other values run with a note.\n1. Replace each range claim above with the real one.\n2. Remove every SF 0.001 row, bullet and example from the pages above; use 0.01 as the smallest value.\n3. Fix the `tpcds_obt` row in `support-status.md` (keep its '90-query' wording, which the contract check parses).\n4. Add one short paragraph to `docs/benchmarks/index.md` that states the rule once: standard values per benchmark, any value from 0.01 to 100000 accepted with a note that results are not comparable with published results, whole numbers from 1, and the two fixed benchmarks.\n\n## Decision gates\n- Before editing, re-read each quoted line on current `origin/main`; line numbers in the audit are not durable.\n- **Merge gate (leader):** the core scale-rule feature is merged, so the pages describe shipped behaviour.\n- If `npm run docs:check` reports a check that parses one of the edited lines, keep the parsed token intact and report it.\n\n## Guardrails\n- Repository: `BenchBox-dev/benchbox-site`. Work on branch `docs/benchmark-scale-and-count-fixes` in a linked worktree; never commit to `main`.\n- Edit only pages under `docs/benchmarks/` named here. No Explorer, deploy, gate or `docs-contracts/` code.\n- Commit identity Joe Harris <joeharris76@gmail.com>; no agent or co-author trailer; stage by explicit path.\n- Commit and pull request text give the durable reason only: no tracker ids, plan references or CI counts.\n- Every number written into a page comes from the core code or a measurement named in this item, not from memory.\n- Subagents make no tracker write, push nothing and open no pull request.\n- Do not trim the large-scale rows in the SSB, H2ODB, AMPLab, TSBS or TPC-DI tables: those values are accepted after the core change.\n",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-site/blob/main/docs/benchmarks/index.md",
+    "https://github.com/BenchBox-dev/benchbox-site/blob/main/docs/benchmarks/support-status.md",
+    "https://github.com/BenchBox-dev/benchbox-site/blob/main/docs/benchmarks/tpc-havoc.md",
+    "https://github.com/BenchBox-dev/benchbox-site/blob/main/docs/benchmarks/coffeeshop.md",
+    "https://github.com/BenchBox-dev/benchbox-site/blob/main/docs/benchmarks/read-primitives.md",
+    "https://github.com/BenchBox-dev/benchbox-site/blob/main/docs/benchmarks/clickbench.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba",
+      "at": "2026-11-11T20:15:55Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0264ceec71404f2992762b66c6c85f9d",
+      "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    }
+  ]
+}
