@@ -11178,10 +11178,15 @@
       "title": "AI/ML SQL Function Performance Testing"
     },
     "ai-primitives-zero-query-public-result-20261030": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T02:31:43Z",
+        "generation": "a7c091440b2543f2baaf7b07423c3479",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7bc97e5b905b990114418f4a"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "AI Primitives runs without a model provider write a public result with zero queries"
     },
     "align-benchbox-with-textcharts-de-benchboxing": {
