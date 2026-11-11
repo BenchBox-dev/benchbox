@@ -13387,10 +13387,15 @@
       "title": "Fix (not just pin) calculate_checksum's separator/dtype collisions with an escaped, type-tagged rendering plus same-change digest regen"
     },
     "canary-3893-green-run-not-yet-confirmed-20261101": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T20:42:31Z",
+        "generation": "40ccf50b673a4bb8964e93de139db7f9",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Confirm the release canary is green after the flightdata and compat-lint fix; the heavy-test disk floor blocks local repro"
     },
     "canary-chdb-leak-source-20261009": {
