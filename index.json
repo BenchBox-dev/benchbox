@@ -31063,12 +31063,17 @@
       "title": "Find who writes to the primary clone and stop them now that the dirty guard blocks commits"
     },
     "primitives-query-count-registry-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-12T23:20:46Z",
+        "generation": "9728fe1f2079487a94e6892df5ebad65",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba"
+      },
       "needs": [
         "scale-factor-consistency-umbrella-20261111"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Correct the registry query counts for write and transaction primitives"
     },
     "process-spend-versus-product-spend-decision": {
