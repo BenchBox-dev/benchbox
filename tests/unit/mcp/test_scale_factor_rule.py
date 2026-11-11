@@ -77,6 +77,20 @@ def test_standard_value_carries_no_note(server, flag) -> None:
     assert _notes(response) == []
 
 
+@pytest.mark.parametrize(("scale_factor", "expected_notes"), [(2, 1), (1, 0)])
+def test_synchronous_run_carries_note_only_for_nonstandard_value(
+    server, monkeypatch, scale_factor, expected_notes
+) -> None:
+    from benchbox.mcp.tools import benchmark as benchmark_tools
+
+    monkeypatch.setattr(benchmark_tools, "_run_benchmark_impl", lambda *args, **kwargs: {"status": "completed"})
+
+    response = _run(server, benchmark="tpch", scale_factor=scale_factor)
+
+    assert response["status"] == "completed"
+    assert len(_notes(response)) == expected_notes
+
+
 def test_fixed_benchmark_rejects_other_values(server) -> None:
     response = _run(server, benchmark="joinorder", scale_factor=2, dry_run=True)
 
