@@ -30706,6 +30706,13 @@
       "status": "open",
       "title": "Select tests of scripts that import a changed module from a sparse checkout"
     },
+    "preflight-receipt-does-not-require-guard-steps-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Make pr-open require the preflight guard steps in the receipt"
+    },
     "preflight-runs-docs-inventory-and-project-reference-guards-20261110": {
       "claim": null,
       "needs": [],

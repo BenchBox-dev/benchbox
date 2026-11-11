@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Decision gate: adding a selection key changes the receipt schema. Either bump the schema so older receipts are refused with a 'rerun make pr-preflight' message, or treat a missing key as 'not selected' for one release; choose one and say which in the PR.",
+    "Verification: tests in the receipt test file show a receipt whose selection names a guard but lacks its step is refused, and one with the step passes.",
+    "Soundness review passes if the changed files are soundness paths.",
+    "Done when merged."
+  ],
+  "description": "Found on 2026-11-11 while delivering retro-navigation-fixes-umbrella-20261111 (or in the retrospective over 25 agent sessions that preceded it) and not addressed there.\n\nProblem. PR #4098 made `make pr-preflight` run the docs-reference-inventory, project-references and docs-ownership guards as recorded steps. `scripts/preflight_receipt.py verify` requires ruff, pytest and linux-pytest steps according to the recorded selection, but not the guard steps, so a receipt written by an older recipe, or by a recipe edited to skip them, still satisfies `make pr-open`.\n\nChange. Record the guard selection in the receipt and require the matching steps at verify.\n\nGuardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone, and pass absolute worktree paths to every file tool; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read every cited file on current origin/develop first, because line numbers and commits here are from 2026-11-11 (origin/develop 5bd2c19cc4); close at a merged PR and finish only after the merge is observed.",
+  "links": [
+    "scripts/preflight_receipt.py",
+    "make/pr-landing.mk",
+    "docs/agent/preflight-receipt.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1d057fcb6948c59d94e34549",
+      "at": "2026-11-11T16:38:29Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "60794365da7a4471906db999647d14f7",
+      "session_id": "b652d5f8dbf843caae487a77902578ba"
+    }
+  ]
+}
