@@ -424,7 +424,7 @@ The soundness gate, as operated:
   (`gh api repos/BenchBox-dev/benchbox/statuses/<head> -f context=review-gate -f state=success`)
   and confirm `gh pr view <n> --json mergeStateStatus` stays `BLOCKED` and the
   merge box still lists `review-gate` as required; then close the pull
-  request. The daily soundness merge digest runs from `develop` and flags a
+  request. The soundness merge digest runs daily from `develop`, audits `develop` and every `release/X.Y.x` line against its own checkpoint, and flags a
   soundness-path commit that merged without a success review or
   another review signal. The develop review check
   (`review_enforcement_findings`) fails unless `review-gate` is required with
