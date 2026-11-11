@@ -41110,6 +41110,13 @@
       "status": "done",
       "title": "TPC-DS generate with default compression writes only chunk 1 of 10, records an empty manifest, and loads zero rows"
     },
+    "tpcds-dsqgen-q9-timeout-sf10000-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "TPC-DS and TPC-DS-OBT accept SF 10000 and above, where dsqgen times out on Q9"
+    },
     "tpcds-expression-q41-row-count-differs-from-sql": {
       "claim": null,
       "needs": [],

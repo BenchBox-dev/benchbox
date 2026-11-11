@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "A recorded reproduction states whether dsqgen Q9 at SF 10000 times out for `tpcds`, `tpcds_obt` or both, and why.",
+    "Either query generation succeeds at SF 10000, or the accepted maximum is lowered and a unit test pins the new bound."
+  ],
+  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.",
+  "description": "## Problem\nDuring the TPC-DS-OBT scale runs of 2026-11-10 query generation at SF 10000 and above failed: dsqgen timed out on Q9. The validator accepts values up to 100000 for `tpcds` and `tpcds_obt`, so the command line accepts scale factors at which query generation is known to fail. Whether plain `tpcds` fails the same way was not tested; it uses the same dsqgen.\n\n## Change\nReproduce with dsqgen alone at SF 10000 for Q9, for both benchmarks, and find the cause (the timeout value, or a real hang). Then either fix query generation at that scale or lower the accepted maximum for the two benchmarks and say so in the error message and docs.\n\n## Guardrails\n- Query generation only; no data generation at these scales is needed to reproduce.\n- A lower maximum is a user-visible change and needs a changelog fragment and the matching site docs edit.",
+  "links": [
+    "benchbox/core/tpcds/compliance.py",
+    "benchbox/core/tpcds/c_tools.py",
+    "benchbox/core/tpcds_obt/benchmark.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba",
+      "at": "2026-11-11T23:46:46Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0391b16f84e34406b57bc7bec6af1573",
+      "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    }
+  ]
+}
