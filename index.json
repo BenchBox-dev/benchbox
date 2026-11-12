@@ -19151,6 +19151,13 @@
       "status": "done",
       "title": "make trunk-revert unusable from inside a managed linked worktree"
     },
+    "df-distinct-remediation-umbrella-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Coordinate the DataFrame distinct-count remediation batch (df-distinct-remediation)"
+    },
     "df-parity-id-mapping-builders": {
       "claim": null,
       "needs": [],

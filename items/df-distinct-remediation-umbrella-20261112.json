@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "All three members are `done` and the batch's one final PR to `develop` is merged.",
+    "Every timing gate (two in each member item) has a recorded outcome with engine versions, load averages, and the best-time table in the member's context.",
+    "One comment is posted on BenchBox-dev/benchbox-site PR #143 stating that the DataFusion self-join branch was dead code in every release, with the file and line evidence.",
+    "This item's context holds the final per-member row: tracker state, PR, head, verification run, and any blocker."
+  ],
+  "context": "Batch not yet registered. Sequence: create items, review them, `make batch-start`, `register_batch`, attach batch metadata, dispatch members, timing gates on an idle machine, land, publish, evidence, arm, finish.",
+  "description": "Notes item for the registered feature batch `df-distinct-remediation`. It is never a batch member and carries no code change.\n\nWhy the batch exists: a remeasurement for a blog post (benchbox-site PR #143) found that TPC-DS DataFrame Q16/Q94/Q95 detect multi-warehouse orders with patterns that are slower than a min/max comparison. Reading the code then showed three further facts: (1) the DataFusion self-join branches compare `ctx.platform` with \"datafusion\" while the adapter reports \"DataFusion\", so they have been dead code since v0.1.1; (2) `UnifiedExpr.n_unique()` counts NULL as a value on Polars but not on PySpark or DataFusion, across about 50 call sites in 11 benchmarks; (3) the pandas-family Q94/Q95 helper counts an order with warehouses {1, NULL} as multi-warehouse.\n\nMembers, all independent (no implementation edges, disjoint scopes):\n- `tpcds-df-multi-warehouse-min-max`\n- `df-n-unique-null-semantics`\n- `df-q21-multi-supplier-min-max`\n\nOwner decisions recorded 2026-11-12:\n- Three members as above; the Q21 member lands its query change only if its timing gate passes.\n- Timing gates wait for an idle machine; the final PR is not armed before every timing gate has a recorded outcome.\n- The shared `n_unique()` method is fixed, not only TPC-DS.\n- Members run as subagents of the leader session for this batch. This overrides the rule in docs/agent/batch-feature-delivery.md that a member never runs as a subagent of its leader; members are told to make no tracker call.\n- If the batch-v2 capability is missing or `make batch-start` refuses, deliver the same three items on one feature branch and one PR (serial feature-branch mode) without asking again.\n- Post one comment on benchbox-site PR #143: BenchBox never ran the DataFusion self-join, so the draft's claim needs rewording.\n- The DuckDB `<2.0.0` cap is lifted on its own pull request, outside this batch.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-site/pull/143",
+    "docs/agent/batch-feature-delivery.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-12T13:33:20Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8a5a9e627fa640038efbd425224109f1",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}
