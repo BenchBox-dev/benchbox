@@ -57,6 +57,11 @@ EOF
 fi
 
 sh "$(dirname "$0")/check_primary_clone_clean.sh" snapshot
+if [ "${BENCHBOX_PREFLIGHT_FROM_COMMIT_HOOK:-}" = "1" ]; then
+  sh "$(dirname "$0")/check_primary_clone_clean.sh" report
+else
+  sh "$(dirname "$0")/check_primary_clone_clean.sh" enforce
+fi
 
 if [ "${BENCHBOX_ALLOW_AGENT_GIT_IDENTITY:-}" != "1" ]; then
   author_ident=$(git -C "$top_abs" var GIT_AUTHOR_IDENT 2>/dev/null || true)

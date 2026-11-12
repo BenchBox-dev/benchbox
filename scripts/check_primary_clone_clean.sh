@@ -16,6 +16,10 @@ primary_clone=${BENCHBOX_AGENT_PRIMARY_CLONE:-$(dirname "$common_abs")}
 top_abs=$(realpath "$top")
 primary_abs=$(realpath "$primary_clone")
 snapshot="$git_dir_abs/primary-clone-snapshot"
+session_id=${PI_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CLAUDE_SESSION_ID:-${CODEX_SESSION_ID:-${AGENT_SESSION_ID:-}}}}}
+if [ -n "$session_id" ]; then
+  snapshot="$snapshot.$(printf '%s' "$session_id" | git hash-object --stdin)"
+fi
 
 if [ "${BENCHBOX_ALLOW_MAIN_CLONE_WRITE:-${ALLOW_MAIN_CLONE_WRITE:-}}" = "1" ] || [ "${BENCHBOX_EPHEMERAL_CLONE:-}" = "1" ]; then
   exit 0
@@ -49,32 +53,51 @@ case "$mode" in
     current_state > "$tmp"
     mv "$tmp" "$snapshot"
     ;;
-  report)
+  report | enforce)
     if [ ! -f "$snapshot" ]; then
-      printf 'No primary-clone snapshot at %s; run make agent-write-preflight first. Skipping primary-clone change report.\n' "$snapshot" >&2
+      printf 'No primary-clone snapshot at %s; run make agent-write-preflight first. Skipping primary-clone change check.\n' "$snapshot" >&2
       exit 0
     fi
     changed=$(current_state | grep -vxFf "$snapshot" | cut -f2 || true)
     if [ -z "$changed" ]; then
       exit 0
     fi
+    if [ "$mode" = enforce ] && [ -z "$session_id" ]; then
+      mode=report
+    fi
+    if [ "$mode" = enforce ]; then
+      heading="ERROR: tracked files in the primary clone changed after this worktree's snapshot."
+    else
+      heading="WARNING: tracked files in the primary clone changed since this worktree's write preflight."
+    fi
     cat >&2 <<EOM
-WARNING: tracked files in the primary clone changed since this worktree's
-write preflight. The primary clone is read-only for agent work; these edits may
-be a stray write from a relative path, or the owner's concurrent work.
+$heading
+The primary clone is read-only for agent work; these edits are probably a stray
+write through a relative path (file tools resolve it against the session
+directory, the primary clone), or the owner's concurrent work.
 
   primary clone: $primary_abs
   changed paths:
 $(printf '%s\n' "$changed" | sed 's/^/    /')
 
-Do NOT revert, restore, or checkout them. Nothing was changed. If a write of
-yours landed there, re-apply it inside your worktree at its absolute path
-($top_abs/...) and tell the owner. Inspect with:
-  git -C "$primary_abs" status --short
+Do NOT revert, restore, or checkout them. Nothing was changed: other sessions'
+edits must not be lost.
+Recovery:
+  1. Inspect: git -C "$primary_abs" diff -- <path>
+  2. If a write of yours landed there, move it into this worktree as a patch:
+       git -C "$primary_abs" diff -- <path> | git -C "$top_abs" apply
+     and use absolute paths under $top_abs/ from now on.
+  3. Report the paths to the owner; the owner decides what happens to the
+     primary clone's copy.
+  4. Accept the primary's current state and continue:
+       BENCHBOX_PRIMARY_SNAPSHOT_REFRESH=1 make agent-write-preflight
 EOM
+    if [ "$mode" = enforce ]; then
+      exit 1
+    fi
     ;;
   *)
-    echo "usage: check_primary_clone_clean.sh [snapshot|report]" >&2
+    echo "usage: check_primary_clone_clean.sh [snapshot|report|enforce]" >&2
     exit 2
     ;;
 esac

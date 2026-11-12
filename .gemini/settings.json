@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "BeforeTool": [
+      {
+        "matcher": "write_file|replace",
+        "hooks": [
+          {
+            "type": "command",
+            "name": "primary-clone-write-guard",
+            "command": "p=\"$GEMINI_PROJECT_DIR/scripts/primary_clone_write_guard.py\"; [ -f \"$p\" ] || exit 0; exec python3 \"$p\""
+          }
+        ]
+      }
+    ]
+  }
+}
