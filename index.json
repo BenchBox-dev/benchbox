@@ -40263,6 +40263,13 @@
       "status": "done",
       "title": "Theseus v0.1.7: hunk coverage, git-built diffs, rename-aware executed-surface promotions, capacity sizing, compaction fail-closed, preflight"
     },
+    "theseus-review-format-deferral-triage-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Triage the five open deferrals on the review-format umbrella so it can close"
+    },
     "theseus-review-format-optional-surfaces-20261110": {
       "claim": null,
       "needs": [

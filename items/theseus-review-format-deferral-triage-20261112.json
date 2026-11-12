@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "The thread-edit question is answered with file:line evidence, recorded here.",
+    "list_deferrals for theseus-review-output-format-20261110 shows no open deferrals.",
+    "Every resolution (promote or dismiss) carries a reason; at most one new hardening item exists."
+  ],
+  "context": "Origin: 2026-11-12 adversarial review; the earlier claim that the thread-text gap is the same class as D7/D8 was unverified.",
+  "description": "The umbrella theseus-review-output-format-20261110 has open deferrals 1-5, and finish refuses while any is open. Owner decision 2026-11-12: decide them with one read-only check, not a blanket promotion.\nStep 1 (read-only, on Theseus main): does a checkbox ticked or text edited in a bot review THREAD comment change anything the gate, verdict, dedup or digest reads? Check edit detection (edits.py, protocol.py history, review_check receipt check) and the thread readers. Record the files and lines that answer it.\nStep 2:\n- If thread edits are read (or a ticked thread checkbox can change gate state): promote deferral 3 (headings in list items, entity-escaping shown_path, unneutralised thread titles and details, reference-style and inline links) into one Theseus hardening item, with the evidence and severity.\n- If not: dismiss deferral 3 with the evidence; the remaining thread-text risk is cosmetic.\n- Deferral 1 (shared-room P3): dismiss as fixed in #69.\n- Deferral 2 (test gap): dismiss as fixed in #66.\n- Deferral 4 (dispute-evidence test; `_` in _BLOCK_START): promote into the same hardening item if one is created; otherwise dismiss with the reason that the paths are covered by the existing neutralize tests (cite them).\n- Deferral 5 (consumer-policy.md wording for the marker-limit body): dismiss if a later Theseus PR fixed it, otherwise fold into the hardening item or dismiss as cosmetic.\nGuardrails: read-only on code; no new items other than at most one hardening item; every dismissal states its evidence.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b89414e427d02d5b37262d82",
+      "at": "2026-11-12T14:12:05Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "03803e3dff1848f28b097de32ba787de",
+      "session_id": "88f192edfe954a75a195b192ece667bc"
+    }
+  ]
+}
