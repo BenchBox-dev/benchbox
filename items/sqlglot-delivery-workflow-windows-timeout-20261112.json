@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The cause of the slow `node.EXE` start is identified from CI logs (cold start, antivirus scan, missing cache, or other) and written in this item.",
+    "Twenty consecutive Windows CI runs of these tests pass without a re-run."
+  ],
+  "context": "The classification as unrelated came from the delegated agent's reading of the failure; the logs were not re-read by the session leader.",
+  "description": "Flaky test. On PR #4175 (head bc7139178d) the Windows job failed on two `test_sqlglot_delivery_workflow` tests that timed out after 20 seconds on `node.EXE`; the change under test did not touch that area and the jobs were re-run. A required-path failure that is cleared by re-running hides real failures and costs a CI round (over an hour on 2026-11-12).\n\nExpected: the tests pass reliably on Windows runners, or the timeout reflects measured start-up time there.\n\nGuardrails: do not mark the tests skipped on Windows without the owner's decision; do not add a blanket retry.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4175"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-12T22:24:05Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6e73608735b348859ea5e46cb213537b",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}

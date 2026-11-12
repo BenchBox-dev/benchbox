@@ -38820,6 +38820,13 @@
       "status": "open",
       "title": "SQLGlot delivery workflow starts a run for every CI and review completion on every branch"
     },
+    "sqlglot-delivery-workflow-windows-timeout-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "`test_sqlglot_delivery_workflow` times out on Windows CI waiting 20 seconds for `node.EXE`"
+    },
     "sqlglot-dialect-translation-code-review-implementation": {
       "claim": null,
       "needs": [],
