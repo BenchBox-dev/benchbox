@@ -5464,7 +5464,7 @@
         }
       },
       "integration_branch": "feat/plan-capture-followups",
-      "integration_head": "40211767a4f84e5f2fb29865931450937c3676f5",
+      "integration_head": "588da4a603b1e938afd47a2d2b599381759f2697",
       "integration_log": [
         {
           "at": "2026-11-12T14:50:36Z",
@@ -5507,6 +5507,20 @@
           "op_id": "6c430bec7f434ec3a5281188caeaf655",
           "previous_head": "589b86d820b38c0c1ff6e00710faa6c916c56d92",
           "seq": 4
+        },
+        {
+          "at": "2026-11-12T15:23:28Z",
+          "changed_files": [
+            "docs/agent/heavy-work.md"
+          ],
+          "head": "588da4a603b1e938afd47a2d2b599381759f2697",
+          "kind": "fix",
+          "op_id": "efcb942fa4c34bd69de7d5cc5b8037c4",
+          "previous_head": "40211767a4f84e5f2fb29865931450937c3676f5",
+          "requires_acceptance": [
+            "heavy-run-cmd-dollar-expansion-20261111"
+          ],
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-capture-followups",
