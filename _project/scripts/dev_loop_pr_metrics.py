@@ -25,7 +25,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_REPO = "BenchBox-dev/benchbox"
 FAST_LANE_POLICY_PATH = "_project/config/fast_test_lane_policy.json"
 REQUIRED_LANE_WORKFLOW_NAMES = ("CI", "Develop PR")
-FAST_TEST_JOB_NAME = "test (ubuntu-latest, 3.12)"
+FAST_TEST_JOB_PREFIX = "test (ubuntu-latest, "
 MEDIUM_TEST_JOB_NAME = "medium-test"
 MEDIUM_SHARD_JOB_NAMES = tuple(f"medium-test (shard {index})" for index in range(4))
 API_RETRY_ATTEMPTS = 3
@@ -90,9 +90,9 @@ CLI_DESCRIPTION = (
     "    required lane went green without a fix-forward push. Uses per-branch\n"
     "    Actions run history (event=pull_request), not the always-green head-SHA\n"
     "    check runs.\n"
-    '  - fast_test_job_seconds: wall time of the "test (ubuntu-latest, 3.12)" job\n'
-    '    within that first "Develop PR" run (used to compute the window\'s average\n'
-    "    / p95 fast-test job wall time).\n"
+    '  - fast_test_job_seconds: wall time of the "test (ubuntu-latest, <python>)"\n'
+    "    job within that first required-lane run (used to compute the window's\n"
+    "    average / p95 fast-test job wall time).\n"
     "\n"
     "Runtime data source, in order of preference: the `gh` CLI (`gh api ...`) when\n"
     "on PATH; otherwise a raw GitHub REST call via `urllib` authenticated with\n"
@@ -107,7 +107,15 @@ CLI_DESCRIPTION = (
     "    uv run -- python _project/scripts/dev_loop_pr_metrics.py --validate-lifecycle-baseline LIFECYCLE --process-baseline PROCESS\n"
     "    uv run -- python _project/scripts/dev_loop_pr_metrics.py --validate-refresh-audit AUDIT --baseline LIFECYCLE\n"
     "    uv run -- python _project/scripts/dev_loop_pr_metrics.py --validate-process-acceptance ACCEPTANCE --process-baseline PROCESS\n"
+    "    uv run -- python _project/scripts/dev_loop_pr_metrics.py --comparison --days 30\n"
     "    make ci-usage-report CI_USAGE_SINCE=2026-10-10 CI_USAGE_UNTIL=2026-10-24\n"
+    "\n"
+    "--comparison reports the dev-loop comparison metrics for a window (--days, or\n"
+    "--since/--until): T1 fast-test job p95 and T2 medium-tier p95 over successful\n"
+    "first-attempt ci.yml pull_request runs, the PR CI run-level retry rate, red\n"
+    "trunk.yml incidents on develop, and merged develop PRs per day. It lists only\n"
+    "those two workflows and fetches jobs only for the timed runs, so a 30-day\n"
+    "window stays within one hour of API budget. Gaps mark it INCOMPLETE and exit 3.\n"
     "\n"
     "--collect-durations is a separate, local-machine-only mode: it runs the fast\n"
     "test lane under `pytest --durations=20` and prints the slowest tests. It does\n"
@@ -506,6 +514,10 @@ def _partitioned_medium_seconds(jobs: list[dict]) -> float | None:
         return None
 
 
+def is_fast_test_job(name: object) -> bool:
+    return str(name or "").startswith(FAST_TEST_JOB_PREFIX)
+
+
 def first_pass_green_and_job_seconds(
     client: GitHubClient, head_ref: str
 ) -> tuple[bool | None, float | None, float | None]:
@@ -519,23 +531,20 @@ def first_pass_green_and_job_seconds(
     first_run = min(candidates, key=lambda r: _iso_to_dt(r["created_at"]))
     green = first_run.get("conclusion") == "success"
 
-    seconds_by_job: dict[str, float] = {}
+    fast_seconds: float | None = None
+    medium_seconds: float | None = None
     jobs = client.get_paginated(f"/repos/{client.repo}/actions/runs/{first_run['id']}/jobs", item_key="jobs")
     for job in jobs:
+        if job.get("conclusion") != "success":
+            continue
         name = job.get("name")
-        if (
-            name in (FAST_TEST_JOB_NAME, MEDIUM_TEST_JOB_NAME)
-            and job.get("conclusion") == "success"
-            and job.get("started_at")
-            and job.get("completed_at")
-        ):
-            started = _iso_to_dt(job["started_at"])
-            completed = _iso_to_dt(job["completed_at"])
-            seconds_by_job.setdefault(name, (completed - started).total_seconds())
-    medium_seconds = seconds_by_job.get(MEDIUM_TEST_JOB_NAME)
+        if is_fast_test_job(name) and fast_seconds is None:
+            fast_seconds = _elapsed_seconds(job.get("started_at"), job.get("completed_at"))
+        elif name == MEDIUM_TEST_JOB_NAME and medium_seconds is None:
+            medium_seconds = _elapsed_seconds(job.get("started_at"), job.get("completed_at"))
     if any(str(job.get("name")).startswith("medium-test (") or job.get("name") == "medium-collect" for job in jobs):
         medium_seconds = _partitioned_medium_seconds(jobs)
-    return green, seconds_by_job.get(FAST_TEST_JOB_NAME), medium_seconds
+    return green, fast_seconds, medium_seconds
 
 
 def event_fanout_for_pr(client: GitHubClient, pr: dict) -> dict:
@@ -1959,6 +1968,8 @@ GREEN_CHECK_CONCLUSIONS = frozenset({"success", "neutral", "skipped"})
 TRUNK_MISSING_GRACE = timedelta(minutes=30)
 TEXT_EDIT_DISPLAY_TITLE = "CI (text edit)"
 CI_WORKFLOW = "ci.yml"
+TRUNK_WORKFLOW = "trunk.yml"
+COMPARISON_SCHEMA = "dev_loop_comparison_v1"
 
 
 def format_api_timestamp(value: datetime) -> str:
@@ -2122,13 +2133,22 @@ def fetch_required_contexts(client: GitHubClient, branch: str, now: datetime) ->
 
 
 def collect_runs(client: GitHubClient, collection: UsageCollection) -> None:
+    collection.runs = list_runs(client, collection, f"/repos/{client.repo}/actions/runs")
+    collection.stats["runs_collected"] = len(collection.runs)
+
+
+def list_runs(
+    client: GitHubClient, collection: UsageCollection, listing: str, query: str = "", workflow: str | None = None
+) -> list[dict]:
     runs: dict[int, dict] = {}
     pending = [(collection.since, collection.until)]
     while pending:
         low, high = pending.pop()
-        base = f"/repos/{client.repo}/actions/runs?created={format_api_timestamp(low)}..{format_api_timestamp(high)}"
+        base = f"{listing}?created={format_api_timestamp(low)}..{format_api_timestamp(high)}{query}"
         first = client.get(f"{base}&per_page={RUN_PAGE_SIZE}&page=1")
         window = {"from": format_api_timestamp(low), "to": format_api_timestamp(high)}
+        if workflow is not None:
+            window["workflow"] = workflow
         if not isinstance(first, dict) or not isinstance(first.get("total_count"), int):
             collection.gap("run_partition", "partition request failed; runs in this interval are missing", **window)
             continue
@@ -2168,8 +2188,7 @@ def collect_runs(client: GitHubClient, collection: UsageCollection) -> None:
             collection.gap(
                 "run_partition", f"retrieved {len(seen_here)} of {total} runs reported for the interval", **window
             )
-    collection.runs = [runs[key] for key in sorted(runs)]
-    collection.stats["runs_collected"] = len(collection.runs)
+    return [runs[key] for key in sorted(runs)]
 
 
 def _fetch_run_jobs(client: GitHubClient, run_id: int) -> list[dict]:
@@ -2198,7 +2217,15 @@ def _collect_one_run(
         else:
             if immutable:
                 cache.put(jobs_key, jobs)
+    attempts, attempt_errors = _fetch_attempts(client, cache, run_id, latest)
+    return jobs, attempts, errors + attempt_errors
+
+
+def _fetch_attempts(
+    client: GitHubClient, cache: DiskCache, run_id: int, latest: int
+) -> tuple[dict[int, dict], list[str]]:
     attempts: dict[int, dict] = {}
+    errors: list[str] = []
     for number in range(1, latest):
         key = f"attempt:{client.repo}:{run_id}:{number}"
         cached = cache.get(key)
@@ -2211,7 +2238,7 @@ def _collect_one_run(
             continue
         attempts[number] = data
         cache.put(key, data)
-    return jobs, attempts, errors
+    return attempts, errors
 
 
 def collect_run_details(client: GitHubClient, collection: UsageCollection, cache: DiskCache, workers: int) -> None:
@@ -3437,6 +3464,168 @@ def render_usage_report(report: dict) -> str:
     return "\n".join(lines)
 
 
+def _attempt_one_jobs(client: GitHubClient, cache: DiskCache, run_id: int) -> list[dict]:
+    key = f"attempt-jobs:{client.repo}:{run_id}:1"
+    cached = cache.get(key)
+    if isinstance(cached, list):
+        return cached
+    jobs, total = _get_object_pages(client, f"/repos/{client.repo}/actions/runs/{run_id}/attempts/1/jobs", "jobs")
+    unique = {job["id"]: job for job in jobs if isinstance(job, dict) and "id" in job}
+    if total is not None and len(unique) < total:
+        raise ApiFailure(f"run {run_id}: retrieved {len(unique)} of {total} attempt-1 jobs")
+    result = list(unique.values())
+    cache.put(key, result)
+    return result
+
+
+def ci_job_timings(jobs: list[dict]) -> tuple[float | None, float | None]:
+    fast = [job for job in jobs if is_fast_test_job(job.get("name")) and job.get("conclusion") == "success"]
+    t1 = _elapsed_seconds(fast[0].get("started_at"), fast[0].get("completed_at")) if len(fast) == 1 else None
+    return t1, _partitioned_medium_seconds(jobs)
+
+
+def _timing_summary(values: list[float], excluded: int) -> dict:
+    return {"n": len(values), "p95_seconds": _pct(values, 95), "excluded_runs": excluded}
+
+
+def collect_comparison(
+    client: GitHubClient, *, since: datetime, until: datetime, now: datetime, cache: DiskCache, workers: int
+) -> dict:
+    from concurrent.futures import ThreadPoolExecutor
+
+    collection = UsageCollection(repo=client.repo, since=since, until=until, collected_at=now)
+    workflows = f"/repos/{client.repo}/actions/workflows"
+    ci_runs = list_runs(client, collection, f"{workflows}/{CI_WORKFLOW}/runs", "&event=pull_request", CI_WORKFLOW)
+    trunk_runs = list_runs(
+        client, collection, f"{workflows}/{TRUNK_WORKFLOW}/runs", "&event=push&branch=develop", TRUNK_WORKFLOW
+    )
+
+    timed = [run for run in ci_runs if run.get("conclusion") == "success" and int(run.get("run_attempt") or 1) == 1]
+
+    def timing(run: dict) -> tuple[int, tuple[float | None, float | None] | None, str | None]:
+        try:
+            return int(run["id"]), ci_job_timings(_attempt_one_jobs(client, cache, int(run["id"]))), None
+        except ApiFailure as exc:
+            return int(run["id"]), None, str(exc)
+
+    t1: list[float] = []
+    t2: list[float] = []
+    t1_excluded = t2_excluded = 0
+    with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+        for run_id, timings, error in pool.map(timing, timed):
+            if timings is None:
+                collection.gap("ci_jobs", error or "attempt-1 jobs unavailable", run_id=run_id)
+                continue
+            fast, medium = timings
+            if fast is None:
+                t1_excluded += 1
+            else:
+                t1.append(fast)
+            if medium is None:
+                t2_excluded += 1
+            else:
+                t2.append(medium)
+
+    facts: list[dict] = []
+    for run in trunk_runs:
+        attempts, errors = _fetch_attempts(client, cache, int(run["id"]), int(run.get("run_attempt") or 1))
+        for error in errors:
+            collection.gap("trunk_attempt", error, run_id=run["id"])
+        facts.append(run_facts(run, [], attempts))
+    reference = min(until, now)
+    results = [entry for entry in _trunk_outcomes(facts)["results"] if since <= entry[0] <= until]
+    incidents = _trunk_incidents(results, None, reference)
+
+    try:
+        merged = [pr for pr in fetch_merged_prs(client, since) if _iso_to_dt(pr["merged_at"]) <= until]
+    except ApiFailure as exc:
+        collection.gap("merged_prs", str(exc))
+        merged = []
+    days = (until - since).total_seconds() / 86400
+    reruns = sum(1 for run in ci_runs if int(run.get("run_attempt") or 1) > 1)
+    return {
+        "schema": COMPARISON_SCHEMA,
+        "repo": client.repo,
+        "window": {"since": format_api_timestamp(since), "until": format_api_timestamp(until), "days": round(days, 3)},
+        "collected_at": format_api_timestamp(now),
+        "ci_runs": len(ci_runs),
+        "timed_runs": len(timed),
+        "t1_fast_test_job": _timing_summary(t1, t1_excluded),
+        "t2_medium_tier": _timing_summary(t2, t2_excluded),
+        "retry": {
+            "rerun_runs": reruns,
+            "runs": len(ci_runs),
+            "rate": round(reruns / len(ci_runs), 4) if ci_runs else None,
+        },
+        "trunk": {
+            "runs": len(trunk_runs),
+            "attempt_results": len(results),
+            "incident_count": len(incidents),
+            "incidents": incidents,
+        },
+        "merges": {"count": len(merged), "per_day": round(len(merged) / days, 2) if days > 0 else None},
+        "completeness": {"status": "incomplete" if collection.gaps else "complete", "gaps": collection.gaps},
+        "stats": {
+            "api_calls": getattr(client, "calls", 0),
+            "rate_limit_wait_seconds": int(getattr(client, "waited_seconds", 0)),
+            "cache_hits": cache.hits,
+        },
+    }
+
+
+def render_comparison(report: dict) -> str:
+    window = report["window"]
+    t1, t2, retry = report["t1_fast_test_job"], report["t2_medium_tier"], report["retry"]
+    trunk, merges, completeness = report["trunk"], report["merges"], report["completeness"]
+    lines = [
+        f"Dev-loop comparison for {report['repo']}: {window['since']} .. {window['until']} ({window['days']} days)",
+        f"  status: {completeness['status'].upper()} ({len(completeness['gaps'])} gaps)",
+        f"  T1 fast-test job p95: {_minutes_text(t1['p95_seconds'])} (n={t1['n']}, excluded {t1['excluded_runs']})",
+        f"  T2 medium tier p95: {_minutes_text(t2['p95_seconds'])} (n={t2['n']}, excluded {t2['excluded_runs']})",
+        f"  PR CI run-level retry rate: {_rate_text(retry['rate'])} ({retry['rerun_runs']} of {retry['runs']} runs)",
+        f"  red trunk incidents: {trunk['incident_count']} ({trunk['attempt_results']} attempt results)",
+        f"  merged develop PRs: {merges['count']} ({merges['per_day']} per day)",
+    ]
+    for incident in trunk["incidents"]:
+        lines.append(
+            f"    incident from run {incident['first_red_run']}: {incident['opened_at']} -> "
+            f"{incident['recovered_at'] or 'ongoing'}"
+        )
+    for gap in completeness["gaps"][:20]:
+        lines.append(f"  gap [{gap['scope']}]: {gap['detail']}")
+    return "\n".join(lines)
+
+
+def run_comparison(args: argparse.Namespace) -> int:
+    now = datetime.now(timezone.utc)
+    if bool(args.since) != bool(args.until):
+        print("ERROR: --comparison takes both --since and --until, or neither (then --days applies).")
+        return 2
+    try:
+        since, until = (
+            parse_report_window(args.since, args.until, now) if args.since else (now - timedelta(days=args.days), now)
+        )
+    except ValueError as exc:
+        print(f"ERROR: {exc}")
+        return 2
+    client = make_client(args.repo)
+    if client is None:
+        print(
+            "ERROR: --comparison needs GitHub API access (`gh` CLI or GITHUB_TOKEN/GH_TOKEN); no report was produced."
+        )
+        return 2
+    client.attempts = USAGE_API_ATTEMPTS
+    client.rate_reserve = args.rate_limit_reserve
+    cache = DiskCache(Path(args.cache_dir) if args.cache_dir else None)
+    report = collect_comparison(client, since=since, until=until, now=now, cache=cache, workers=args.workers)
+    if args.output:
+        output = Path(args.output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
+    print(json.dumps(report, indent=2, sort_keys=True) if args.json else render_comparison(report))
+    return 0 if report["completeness"]["status"] == "complete" else 3
+
+
 def _parse_effective_from(entries: list[str]) -> dict[str, datetime]:
     parsed: dict[str, datetime] = {}
     for entry in entries:
@@ -3569,6 +3758,14 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--comparison",
+        action="store_true",
+        help=(
+            f"produce the {COMPARISON_SCHEMA} dev-loop comparison (T1/T2 p95, retry rate, red trunk incidents, "
+            "merges per day) for --days or --since/--until. Exits 3 when any retrieval gap makes it incomplete."
+        ),
+    )
+    parser.add_argument(
         "--usage-report",
         action="store_true",
         help=(
@@ -3578,15 +3775,13 @@ def main(argv: list[str] | None = None) -> int:
             "retrieval gap makes the report incomplete."
         ),
     )
-    parser.add_argument(
-        "--since", default=None, help="usage report window start: YYYY-MM-DD (UTC midnight) or ISO-8601"
-    )
+    parser.add_argument("--since", default=None, help="report window start: YYYY-MM-DD (UTC midnight) or ISO-8601")
     parser.add_argument(
         "--until",
         default=None,
-        help="usage report window end, inclusive: YYYY-MM-DD (end of that UTC day) or ISO-8601; capped at now",
+        help="report window end, inclusive: YYYY-MM-DD (end of that UTC day) or ISO-8601; capped at now",
     )
-    parser.add_argument("--output", default=None, help="write the full usage report JSON to this path")
+    parser.add_argument("--output", default=None, help="write the full report JSON to this path")
     parser.add_argument(
         "--cache-dir",
         default=str(REPO_ROOT / ".cache" / "ci-usage-report"),
@@ -3632,6 +3827,9 @@ def main(argv: list[str] | None = None) -> int:
             print("ERROR: --validate-refresh-audit and --baseline must be given together.")
             return 2
         return run_validate_refresh_audit(args.validate_refresh_audit, args.baseline)
+
+    if args.comparison:
+        return run_comparison(args)
 
     if args.usage_report:
         return run_usage_report(args)

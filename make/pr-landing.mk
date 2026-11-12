@@ -517,7 +517,7 @@ pr-review-followups:
 
 .PHONY: dev-loop-metrics
 dev-loop-metrics:
-	uv run -- python _project/scripts/dev_loop_pr_metrics.py --days "$(DEV_LOOP_METRICS_DAYS)"
+	uv run -- python _project/scripts/dev_loop_pr_metrics.py --comparison --days "$(DEV_LOOP_METRICS_DAYS)" $(DEV_LOOP_METRICS_ARGS)
 
 CI_USAGE_OUTPUT ?= .cache/ci-usage-report/report-$(CI_USAGE_SINCE)_$(CI_USAGE_UNTIL).json
 

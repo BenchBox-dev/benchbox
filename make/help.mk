@@ -109,7 +109,7 @@ help:
 	@echo "  make pr-status PR=n|RUN=id [REPO=owner/repo] [LINES=40]  Print the failing lines of each failed CI job of the PR head (or of one run): failed step, error lines, failed test ids; read-only, works while a run is in progress"
 	@echo "  make pr-review-followups-list        List un-actioned bot/agent review comments on merged PRs"
 	@echo "  make pr-review-followups             Action each comment, reply with marker, submit PR"
-	@echo "  make dev-loop-metrics  Summarize merged-PR CI metrics (DEV_LOOP_METRICS_DAYS=$(DEV_LOOP_METRICS_DAYS))"
+	@echo "  make dev-loop-metrics  Dev-loop comparison: T1/T2 p95, retry rate, red trunk incidents, merges/day (DEV_LOOP_METRICS_DAYS=$(DEV_LOOP_METRICS_DAYS), or DEV_LOOP_METRICS_ARGS='--since ... --until ...')"
 	@echo "  make ci-usage-report   CI queue time, time-to-green, runner minutes and post-merge signal for a window (CI_USAGE_SINCE=YYYY-MM-DD CI_USAGE_UNTIL=YYYY-MM-DD)"
 	@echo "Disposable worktree lifecycle:"
 	@echo "  make worktree-create BRANCH=name WORKTREE_PATH=path [BASE=ref]  Create from BASE (default origin/develop); verify local/remote branch collisions"
