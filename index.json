@@ -12538,6 +12538,15 @@
       "status": "open",
       "title": "Allow subagent batch members and make every statement of the member-identity rule agree"
     },
+    "batch-member-subagent-skill-text-20261112": {
+      "claim": null,
+      "needs": [
+        "batch-member-subagent-rule-20261112"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Correct the todo skill's batch member-identity rule in the catalog and bump the global pin"
+    },
     "batch-mode-opt-in-policy-docs-20261107": {
       "claim": null,
       "needs": [],

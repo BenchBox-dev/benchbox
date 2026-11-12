@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "`rg -n \"must not use the leader\" skills` prints nothing on catalog `main`.",
+    "Both todo passages state: the refusal needs a distinct identity; a shared-identity member is not refused and must be told to make no tracker writes; allowing it is repository policy.",
+    "The catalog's local test suite and its pull-request CI pass for the text change, and the pull request is merged; the merge commit SHA is recorded on the umbrella item.",
+    "`deployment/global/skill-sync.conf` on `main` pins the group containing `todo` to that merge commit; other `rev` lines are unchanged; that pull request's CI passed and it is merged.",
+    "No file under the home loader folders or `~/.skill-sync-deployment` was modified."
+  ],
+  "description": "Repository: joeharris76/skill-sync-skills (local checkout `~/Developer/skill-sync-skills`). `skills/todo/SKILL.md` (Role boundaries in a batch) and `skills/todo/references/batch.md` (Roles) say a member must not use the leader's server instance or actor. That contradicts the BenchBox decision to allow a member to run as a subagent of its own leader.\n\nChange. In both files replace the prohibition with the fact and the duty: the owner-only refusal holds only for a distinct identity; a member that shares the leader's server instance or actor, such as a subagent, is not refused, so it must be dispatched with an instruction to make no tracker writes; whether a shared-identity member is allowed is repository policy. Keep the surrounding statements that the leader is the only tracker writer and that members never call tracker writes. After that pull request merges, open a second one that sets the catalog `rev` for the group containing `todo` in `deployment/global/skill-sync.conf` to the merge commit.\n\nDecision gates.\n- Before editing, re-read both passages on `origin/main`; if the text has already changed, adapt to the current wording and record the difference.\n- If the catalog requires a skill version bump or a regenerated file (for example `skill.yaml`, a dependency-closure document, or a test fixture), make it; the catalog's own tests decide.\n- If `git diff <current BenchBox pin>..<merge commit> -- skills` lists any file other than the two todo files, stop and report before any consumer pin moves.\n- Stop if the catalog CI fails for a reason unrelated to this change.\n\nGuardrails. Work on a branch in a separate worktree of the catalog, never on `main` directly. The catalog text stays repository-neutral: it does not name BenchBox paths or policy. Do not copy the new rev into `~/.skill-sync-deployment/skill-sync.conf` and do not run `skill-sync apply` against the home directory. The umbrella's guardrails also apply.",
+  "links": [
+    "https://github.com/joeharris76/skill-sync-skills",
+    "skills/todo/SKILL.md",
+    "skills/todo/references/batch.md",
+    "deployment/global/skill-sync.conf"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-12T14:13:33Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "07aa0e1baca24eceb46ca72c9504ea44",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    }
+  ]
+}
