@@ -15320,15 +15320,10 @@
       "title": "Plan a supported macOS ClickHouse installation path after Homebrew cask deprecation"
     },
     "clickhouse-map-access-missing-key-returns-zero": {
-      "claim": {
-        "expires_at": "2026-11-13T19:57:58Z",
-        "generation": "4f223711afac4588b4a6cc76be17e92c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9dde2030f0b654b7eae6a730"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "ClickHouse map_access returns 0 for a missing key where DuckDB returns NULL"
     },
     "clickhouse-multicolumn-partition-corroboration-20260801": {
