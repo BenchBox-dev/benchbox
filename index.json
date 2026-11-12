@@ -39684,6 +39684,13 @@
       "status": "done",
       "title": "Correct or retire the stale documentation the retrospective left in place"
     },
+    "stale-primary-clone-runs-old-tracker-and-hooks-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Nothing warns when the primary clone is behind develop, so sessions run an old tracker server and miss new hooks"
+    },
     "standalone-todo-db-renew-verb": {
       "claim": null,
       "needs": [],

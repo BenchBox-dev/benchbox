@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "A session-start or preflight check reports when the primary clone is behind origin/develop on paths that sessions load from it (hook files, agent settings, the _project/scripts lock), and names the commands to update.",
+    "The check also reports when the running tracker server version differs from the version pinned on develop.",
+    "The update procedure (pull, uv sync --project _project/scripts --locked, restart sessions) is written in one place in docs/agent, and the rule about who may run it is stated."
+  ],
+  "description": "Agent sessions start in the primary clone. They launch the tracker MCP server from its _project/scripts environment and load agent hooks from its checked-out files. Agents may not update that clone, and it is not kept current. On 2026-11-12 it was 19 commits behind origin/develop a day after two fixes merged: the tracker runtime was still tractable 1.1.0 although develop pinned 1.1.1 (PR #4144), and the primary-clone write guard (PR #4143) did not exist there, so it protected nothing. Nothing told the owner or the sessions. A merged fix to session tooling therefore has no effect until someone happens to pull, sync and restart.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4143",
+    "https://github.com/BenchBox-dev/benchbox/pull/4144"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a250daff95b91a4eb6cd2504",
+      "at": "2026-11-12T16:50:59Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "eed614c7101e499ebedfa8f529dd4be3",
+      "session_id": "8e07c6e3a10b49bb94ae7e31664ce4b9"
+    }
+  ]
+}
