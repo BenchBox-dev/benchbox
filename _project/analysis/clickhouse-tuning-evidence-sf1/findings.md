@@ -33,8 +33,10 @@ is no named loser. The three queries the probe asked about:
 | Q18 | 1.179 (0.877 to 1.437) | 1.248 (0.935 to 1.687) | 1.94 | 1.18 / 0.99 |
 
 Q3 is not slower under the tuned layout at this tier. The earlier 1.43x came from a different cell and
-does not reproduce here. Q5 is the one query that is slower with an interval above 1.0 (under `T` only),
-and Q16 under `T` (1.485, interval 1.097 to 2.064) is close to the bound; neither is a rule violation.
+does not reproduce here. Two queries are slower under `T` with an interval lower bound above 1.0: Q5
+(1.390, interval 1.085 to 1.741) and Q16 (1.485, interval 1.097 to 2.064). Both are under the 1.5x
+bound, so neither is a named loser or a rule violation. Q16 reads the same rows and has no plan
+evidence here; its cause is unproven.
 
 ## Plans for Q3, Q5 and Q18 (`tpch-plans/`)
 
@@ -77,9 +79,9 @@ The logical plan is identical to `N`; only the indexes differ. The date predicat
 granules in every arm because its `lineitem` side has no predicate. Join algorithm, join build and probe
 rows, and peak memory are equal. The only structural change is a narrower read: one read side starts
 5 `MergeTreeSelect` streams instead of 8 (`Resize 5 → 8`). The time ratio for Q3 is 0.95 to 0.97, so there
-is nothing to explain. For Q5, user CPU is higher on fewer rows (probe cell 1.02 s and 0.72 s against
-0.81 s), in line with the earlier observation, but the intervals are wide and the repeated probe cells
-disagree on the size of the effect. The cause of the Q5 ratio of about 1.4 is unproven. Ruled out:
+is nothing to explain. For Q5, user CPU in the probe cell is higher under `S` (1.02 s against 0.81 s)
+and lower under `T` (0.72 s), so there is no consistent CPU effect, while the time ratio is about 1.4
+under both in the full cell. The cause of the Q5 ratio is unproven. Ruled out:
 join algorithm, plan shape, join sizes, peak memory, rows read (fewer, not more) and the tuned session
 settings (`S` and `T` have the same plan).
 
