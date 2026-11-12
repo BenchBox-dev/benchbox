@@ -40503,6 +40503,13 @@
       "status": "done",
       "title": "PlatformHookRegistry.build_database_config loads the user's real saved credentials when called from tests and probes"
     },
+    "theseus-77-pin-fix-and-attest-gap-2807-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Pin the Theseus release that fixes joeharris76/theseus#77, then close soundness gap #2807"
+    },
     "theseus-adr-inventory-baseline-20261102": {
       "claim": null,
       "needs": [

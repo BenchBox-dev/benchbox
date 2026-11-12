@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    ".github/theseus-lock.json pins a Theseus release that contains the theseus#77 fix",
+    "A listed attester comment on #2807 passes is_attested_review and the digest closes the issue"
+  ],
+  "context": "Filed after the external reviews of the seven open soundness gap issues on 2026-11-12: six closed clean, #2807 kept its Medium finding.",
+  "description": "## Problem\nSoundness gap issue BenchBox-dev/benchbox#2807 (commit 9c005a17a, PR #2769) stays open on one live Medium finding. The external review posted on the issue traced the retarget timing race from the pre-extraction oracle into the pinned Theseus package: theseus_reviewer/github.py:292-299 (_pull_request_target_trusted) trusts a pull_request_target run's state artifact when the pull request's last base change precedes run.created_at, without proof of which branch's workflow ran. The run path carries no source ref. The fix is tracked upstream as joeharris76/theseus#77. The owner chose to track it there rather than fix it now.\n\n## Change\nAfter a Theseus release contains the fix for #77, promote .github/theseus-lock.json to that release through the normal lock-bump flow. Then run an external review (codex, muse or agy) of the fixed trust check and the #2807 threads, and have a listed attester post the clean result on #2807 so the soundness digest closes it.\n\n## Guardrails\n- Do not post an attestation while the race is still present in the pinned version.\n- An alternative is an owner decision to accept the race explicitly; that is the owner's call, not an agent's.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/issues/2807",
+    "https://github.com/joeharris76/theseus/issues/77"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e5d016c94a8f4c507bfd7f06",
+      "at": "2026-11-12T16:55:57Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "64fc09d2b3cc48ec9cf1e5ed4ae25007",
+      "session_id": "3eed397749064ec1bd2dfc32be3ed6a1"
+    }
+  ]
+}
