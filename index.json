@@ -2726,6 +2726,65 @@
       "start_head": "205cae77675c7cb7236fcaa1a5873fe23420795d",
       "terminal_outcome": "deliver"
     },
+    "df-distinct-remediation": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/df-distinct-remediation",
+      "integration_head": "0eeec0d5bd194ad0b811911ea73004586ed51469",
+      "integration_log": [
+        {
+          "at": "2026-11-12T13:36:05Z",
+          "head": "0eeec0d5bd194ad0b811911ea73004586ed51469",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-df-distinct-remediation",
+      "lifecycle": "active",
+      "members": [
+        "tpcds-df-multi-warehouse-min-max",
+        "df-n-unique-null-semantics",
+        "df-q21-multi-supplier-min-max"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "owner_epoch": 0,
+      "owner_generation": "7203b6cbebad08772944d4ec45e41007",
+      "project_id": "benchbox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "df-n-unique-null-semantics": [
+          "benchbox/platforms/dataframe/unified_frame.py",
+          "tests/unit/platforms/dataframe/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "df-q21-multi-supplier-min-max": [
+          "benchbox/core/tpch/dataframe_queries.py",
+          "benchbox/core/datavault/dataframe_queries/queries.py",
+          "benchbox/core/tpchavoc/dataframe_queries/q21.py",
+          "tests/unit/core/tpch/*",
+          "tests/unit/core/datavault/*",
+          "tests/unit/core/tpchavoc/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "tpcds-df-multi-warehouse-min-max": [
+          "benchbox/core/tpcds/dataframe_queries/queries.py",
+          "benchbox/core/tpcds/dataframe_queries/helper_query_specs.yaml",
+          "tests/unit/core/tpcds/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ]
+      },
+      "scope_hash": "c023026163695aa3b4b767b5085c5f33deb87a9533937ebad23112ebedf5f013",
+      "start_head": "0eeec0d5bd194ad0b811911ea73004586ed51469",
+      "terminal_outcome": "deliver"
+    },
     "hold-label-and-batch-e2e-20261106": {
       "accepted_members": {},
       "batch_schema": 2,
