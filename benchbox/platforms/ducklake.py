@@ -311,6 +311,7 @@ class DuckLakeAdapter(DuckDBAdapter):
             "gcs_secret",
             "azure_connection_string",
             "azure_account_name",
+            "allow_third_party_extensions",
         ):
             value = _resolve_option(key)
             if value is not None:

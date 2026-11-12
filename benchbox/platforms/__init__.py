@@ -573,6 +573,7 @@ ducklake|gcs_key_id|GCS HMAC access ID for gs:// DATA_PATH (both HMAC keys requi
 ducklake|gcs_secret|GCS HMAC secret for gs:// DATA_PATH (both HMAC keys required)|{}
 ducklake|azure_connection_string|Azure connection string for az:// DATA_PATH (wins over account-name auth)|{}
 ducklake|azure_account_name|Azure storage account name for az:// DATA_PATH ambient credential_chain auth|{}
+ducklake|allow_third_party_extensions|Allow SKETCH operations on DuckDB 2.x to install the datasketches extension from the third-party Query.Farm repository (https://duckdb-extensions.query.farm); without it they are skipped|{'parser': 'parse_bool', 'default': False}
 pg-mooncake|host|PostgreSQL server hostname (with pg_mooncake installed)|{'default': 'localhost'}
 pg-mooncake|port|PostgreSQL server port|{'parser': 'int', 'default': 5432}
 pg-mooncake|database|PostgreSQL database name (auto-generated if not specified)|{}
@@ -747,6 +748,7 @@ clickhouse-server|http_port|ClickHouse HTTP port used for bulk inserts (default 
 duckdb|memory_limit|DuckDB memory limit (e.g. '4GB').|{'default': '8GB'}
 duckdb|threads|Thread pool size for DuckDB (None uses auto detection).|{'parser': 'int'}
 duckdb|temp_directory|Temporary directory for DuckDB spill files.|{}
+duckdb|allow_third_party_extensions|Allow SKETCH operations on DuckDB 2.x to install the datasketches extension from the third-party Query.Farm repository (https://duckdb-extensions.query.farm); without it they are skipped|{'parser': 'parse_bool', 'default': False}
 sqlite|database_name|Base filename for SQLite database files.|{'default': 'benchbox'}
 sqlite|database_path|Path to the SQLite database file (auto-generated from --benchmark/--scale when omitted)|{}
 sqlite|timeout|SQLite connection timeout in seconds|{'parser': 'float', 'default': '30.0'}

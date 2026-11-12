@@ -9,7 +9,7 @@
     {
       "category": "changed",
       "breaking": false,
-      "text": "On DuckDB 2.x the SKETCH write-primitive operations install the datasketches extension from the third-party Query.Farm repository (https://duckdb-extensions.query.farm), because it is no longer available from the DuckDB community repository. This enables a non-DuckDB extension repository for the session and loads native code from it; DuckDB 1.x keeps installing from the community repository.",
+      "text": "On DuckDB 2.x the SKETCH write-primitive operations are skipped unless you pass --platform-option allow_third_party_extensions=true (duckdb and ducklake). The datasketches extension is no longer available from the DuckDB community repository for 2.x, so with the option BenchBox enables extension repositories, contacts the third-party Query.Farm repository (https://duckdb-extensions.query.farm) and loads native code from it. DuckDB 1.x keeps installing from the community repository with no option needed.",
       "platforms": [
         "duckdb"
       ]

@@ -19,7 +19,9 @@ depends on.
 The DuckDB community `datasketches` extension is loaded on demand via
 `INSTALL datasketches FROM community` on DuckDB 1.x; on DuckDB 2.x
 it is installed from the Query.Farm repository through
-`benchbox.utils.duckdb_extensions`. Blind-spot
+`benchbox.utils.duckdb_extensions` only when the user passes
+`--platform-option allow_third_party_extensions=true`; otherwise the
+sketch operations are skipped. Blind-spot
 `2026-05-02-155524` recorded that the extension build silently dropped
 the `theta` and `frequent_items` families between PR #114 morning and an
 audit later that day -- both families are referenced by four ops in

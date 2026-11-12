@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
+THIRD_PARTY_EXTENSION_OPTION = "allow_third_party_extensions"
+QUERY_FARM_HOST = "duckdb-extensions.query.farm"
+
 DATASKETCHES_COMMUNITY_STATEMENTS: tuple[str, ...] = (
     "INSTALL datasketches FROM community",
     "LOAD datasketches",
@@ -9,7 +12,7 @@ DATASKETCHES_COMMUNITY_STATEMENTS: tuple[str, ...] = (
 
 DATASKETCHES_QUERY_FARM_STATEMENTS: tuple[str, ...] = (
     "SET allow_extension_repositories = 'allowed'",
-    "CREATE EXTENSION REPOSITORY IF NOT EXISTS query_farm WITH PREFIX 'https://duckdb-extensions.query.farm'",
+    f"CREATE EXTENSION REPOSITORY IF NOT EXISTS query_farm WITH PREFIX 'https://{QUERY_FARM_HOST}'",
     "INSTALL datasketches FROM query_farm",
     "LOAD datasketches FROM query_farm",
 )
@@ -44,3 +47,16 @@ def rewrite_datasketches_install_sql(sql: str, version: str | None = None) -> st
     if statements is DATASKETCHES_COMMUNITY_STATEMENTS:
         return sql
     return sql.replace(community, ";\n".join(statements) + ";")
+
+
+def datasketches_skip_reason(sql: str, allow_third_party: bool, version: str | None = None) -> str | None:
+    community = ";\n".join(DATASKETCHES_COMMUNITY_STATEMENTS) + ";"
+    if allow_third_party or community not in sql:
+        return None
+    if datasketches_install_statements(version) is DATASKETCHES_COMMUNITY_STATEMENTS:
+        return None
+    return (
+        "the datasketches extension for DuckDB 2.x is only available from the third-party Query.Farm repository "
+        f"(https://{QUERY_FARM_HOST}); set --platform-option {THIRD_PARTY_EXTENSION_OPTION}=true to allow "
+        "BenchBox to contact that host and load the extension"
+    )

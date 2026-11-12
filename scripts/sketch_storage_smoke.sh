@@ -2,6 +2,14 @@
 
 set -euo pipefail
 
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+  echo "usage: sketch_storage_smoke.sh [OUTPUT_FILE]"
+  echo "Measures sketch storage sizes. On DuckDB 2.x this tool opts in to the third-party Query.Farm extension"
+  echo "repository (https://duckdb-extensions.query.farm) itself; BenchBox runs require"
+  echo "--platform-option allow_third_party_extensions=true instead."
+  exit 0
+fi
+
 OUT="${1:-/dev/stdout}"
 
 uv run -- python - <<'PY' >"${OUT}"

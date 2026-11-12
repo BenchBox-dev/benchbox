@@ -6,6 +6,7 @@ from benchbox.utils.duckdb_extensions import (
     DATASKETCHES_COMMUNITY_STATEMENTS,
     DATASKETCHES_QUERY_FARM_STATEMENTS,
     datasketches_install_statements,
+    datasketches_skip_reason,
     duckdb_major_version,
     install_datasketches,
     rewrite_datasketches_install_sql,
@@ -71,3 +72,19 @@ def test_sql_rewrite_only_changes_install_prelude_on_2x():
     assert "INSTALL datasketches FROM query_farm;" in rewritten
     assert rewritten.endswith("DROP TABLE IF EXISTS t;\n")
     assert rewrite_datasketches_install_sql("SELECT 1", "2.0.0") == "SELECT 1"
+
+
+@pytest.mark.parametrize(
+    ("version", "allow", "skipped"),
+    [("2.0.0", False, True), ("2.0.0", True, False), ("1.5.5", False, False), ("3.0.0", False, True)],
+)
+def test_skip_reason_requires_opt_in_only_on_2x(version, allow, skipped):
+    reason = datasketches_skip_reason(CATALOG_SQL, allow, version)
+    assert (reason is not None) is skipped
+    if skipped:
+        assert "allow_third_party_extensions=true" in reason
+        assert "duckdb-extensions.query.farm" in reason
+
+
+def test_skip_reason_ignores_sql_without_the_install_prelude():
+    assert datasketches_skip_reason("SELECT 1", False, "2.0.0") is None

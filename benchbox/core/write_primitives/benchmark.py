@@ -58,7 +58,7 @@ from benchbox.sql_compat.rules.execution_filter.starrocks_write_primitives impor
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.cloud_storage import normalize_output_dir
 from benchbox.utils.dialect_utils import split_sql_statements
-from benchbox.utils.duckdb_extensions import rewrite_datasketches_install_sql
+from benchbox.utils.duckdb_extensions import datasketches_skip_reason, rewrite_datasketches_install_sql
 from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
 
 _POSTGRES_OPERATION_SKIP_DIALECTS = frozenset({"postgres", "postgresql"})
@@ -921,6 +921,25 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                     status="SKIPPED",
                     skip_reason=skip_reason,
                 )
+
+            if effective_sql is not None and (platform_key or "").lower() in {"duckdb", "ducklake"}:
+                skip_reason = datasketches_skip_reason(effective_sql, bool(kwargs.get("allow_third_party_extensions")))
+                if skip_reason is not None:
+                    skip_reason = f"Operation '{operation_id}' is skipped: {skip_reason}"
+                    self.log_verbose(skip_reason)
+                    return OperationResult(
+                        operation_id=operation_id,
+                        success=True,
+                        write_duration_ms=0.0,
+                        rows_affected=0,
+                        validation_duration_ms=0.0,
+                        validation_passed=True,
+                        validation_results=[],
+                        cleanup_duration_ms=0.0,
+                        cleanup_success=True,
+                        status="SKIPPED",
+                        skip_reason=skip_reason,
+                    )
 
             self.log_verbose(f"Executing write operation: {operation_id}")
             if effective_sql is None:

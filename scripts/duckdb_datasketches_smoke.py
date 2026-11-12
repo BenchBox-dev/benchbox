@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import sys
 
 import duckdb
@@ -43,7 +44,19 @@ def _is_known_upstream_drift(version: str, family: str, message: str) -> bool:
     return family in missing_families and all(hint.lower() in message.lower() for hint in MISSING_FUNCTION_HINTS)
 
 
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Probe every required DuckDB datasketches family. On DuckDB 2.x this tool opts in to the third-party "
+            "Query.Farm extension repository (https://duckdb-extensions.query.farm) itself; BenchBox runs require "
+            "--platform-option allow_third_party_extensions=true instead."
+        )
+    )
+    return parser.parse_args(argv)
+
+
 def main() -> int:
+    parse_args()
     con = duckdb.connect(":memory:")
 
     try:

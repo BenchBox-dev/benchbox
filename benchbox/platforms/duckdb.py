@@ -35,6 +35,18 @@ _DUCKDB_MEMORY_SIZE_PATTERN = (
     r"\s*[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?\s*"
     r"(?:B|bytes?|K|KB|kilobytes?|M|MB|megabytes?|G|GB|gigabytes?|T|TB|terabytes?|KiB|MiB|GiB|TiB)\s*"
 )
+
+
+def _as_bool(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, bool):
+        return value
+    from benchbox.core.hooks.platform_hooks import parse_bool
+
+    return parse_bool(str(value))
+
+
 _MEMORY_LIMIT_PATTERN = re.compile(
     rf"^{_DUCKDB_MEMORY_SIZE_PATTERN}$",
     re.IGNORECASE,
@@ -650,6 +662,11 @@ class DuckDBAdapter(PlatformAdapter):
         ]:
             if key in config:
                 adapter_config[key] = config[key]
+        third_party = config.get("allow_third_party_extensions")
+        if third_party is None:
+            third_party = (config.get("options") or {}).get("allow_third_party_extensions")
+        if third_party is not None:
+            adapter_config["allow_third_party_extensions"] = third_party
         from benchbox.platforms.base.config_utils import FETCH_FORWARD_KEYS, PLAN_FORWARD_KEYS
 
         for key in (*PLAN_FORWARD_KEYS, *FETCH_FORWARD_KEYS):
@@ -697,6 +714,8 @@ class DuckDBAdapter(PlatformAdapter):
                 "result_cache_enabled": False,
             },
         }
+        if self.allow_third_party_extensions:
+            platform_info["configuration"]["allow_third_party_extensions"] = True
         if self.temp_directory:
             platform_info["configuration"]["temp_directory"] = self.temp_directory
 
@@ -758,6 +777,7 @@ class DuckDBAdapter(PlatformAdapter):
                 raise ValueError("thread_limit must be an integer") from exc
         self.thread_limit = raw_threads
         self.enable_progress_bar = config.get("progress_bar", False)
+        self.allow_third_party_extensions = _as_bool(config.get("allow_third_party_extensions"))
 
     def _initialize_duckdb_runtime(self, config: dict[str, Any]):
         global duckdb

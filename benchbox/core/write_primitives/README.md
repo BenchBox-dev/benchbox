@@ -119,12 +119,14 @@ sketch columns, not on one-shot aggregate latency).
 
 **DuckDB extension source.** On DuckDB 1.x the operations run
 `INSTALL datasketches FROM community`. On DuckDB 2.x the extension is no
-longer published to the community repository, so BenchBox sets
-`allow_extension_repositories = 'allowed'`, registers the third-party
-Query.Farm repository (`https://duckdb-extensions.query.farm`) and installs
-`datasketches` from it. This downloads and loads native code from a
-repository outside the DuckDB project; run these operations only if you
-trust that source.
+longer published to the community repository. Those operations are
+skipped unless you opt in with
+`--platform-option allow_third_party_extensions=true` (DuckDB and DuckLake).
+With the option, BenchBox sets `allow_extension_repositories = 'allowed'`,
+registers the third-party Query.Farm repository
+(`https://duckdb-extensions.query.farm`) and installs `datasketches` from
+it. This contacts that host and loads native code from a repository outside
+the DuckDB project; enable it only if you trust that source.
 
 **Core lifecycle (8 ops)** — Theta / KLL / Top-K families at default parameters:
 
