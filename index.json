@@ -23911,7 +23911,12 @@
       "title": "Symmetric gateway query-tag helper (execute + stats lookup)"
     },
     "gw-tests-gates": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T02:24:28Z",
+        "generation": "c455371344d544ee8e7fd45bf55aa917",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66"
+      },
       "needs": [
         "gw-cache-discipline",
         "gw-databricks",
@@ -23921,7 +23926,7 @@
         "gw-snowflake-querytag"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Gateway test suite + G1/G2 verification gates"
     },
     "harden-auto-merge-on-open-stranding": {
