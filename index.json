@@ -19426,6 +19426,13 @@
       "status": "done",
       "title": "Baseline CI-failure metrics in dev-loop-metrics before landing the reduction workstreams"
     },
+    "dev-loop-metrics-collectors-time-out-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "make dev-loop-metrics and make ci-usage-report time out before producing a 30-day snapshot"
+    },
     "dev-loop-queue-acceptance-criteria-from-blind-spots": {
       "claim": null,
       "needs": [

@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "make dev-loop-metrics DEV_LOOP_METRICS_DAYS=30 writes a snapshot inside the heavy-work time limit",
+    "make ci-usage-report over a 30-day window completes and reports every run in the window",
+    "The fast-job selector matches the job names CI uses today, with a test",
+    "Finished before 2026-12-08 so dlv2-30day-metrics can use it"
+  ],
+  "context": "Found while preparing the dev-loop v2 final audit (#4034): both collectors timed out at 3600 s and the audit used a one-day bounded cohort instead.",
+  "description": "## Problem\nBoth collectors behind the 30-day dev-loop comparison timed out at 3,600 seconds without writing a result, as recorded in docs/internal/dev-loop-retirement-audit.md (\"Full-cohort collection limits\"):\n- `make dev-loop-metrics` (_project/scripts/dev_loop_pr_metrics.py --days 30) produced no snapshot.\n- `make ci-usage-report` (the same script with --usage-report) had processed 3,000 of 36,479 runs when it stopped.\n\ndlv2-30day-metrics becomes claimable on 2026-12-08T16:16:11Z and needs T1/T2 p95, red-trunk incidents, retry rate and merges/day over the full 30-day cohort. With the collectors as they are, that comparison cannot be produced and would fall back to a bounded sample again.\n\n## Change\nProfile one run of each collector. Find where the time goes (per-run job and attempt requests, pagination, rate-limit waits). Make each finish a 30-day window inside the heavy-work time limit, for example by restricting the run set to the workflows the metrics need, reusing the resumable response cache, or batching requests. Also check the audit's note that the legacy collector's fast-job selector still names Python 3.12 against the current fast job names.\n\n## Guardrails\n- Do not change metric definitions or thresholds; the comparison must stay same-method with the baseline in _project/archive/dev-loop-v2/baseline.md.\n- Run collectors through make heavy-run.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e5d016c94a8f4c507bfd7f06",
+      "at": "2026-11-12T16:55:51Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "31d54b823b024f1bbe7116ba83abf55d",
+      "session_id": "3eed397749064ec1bd2dfc32be3ed6a1"
+    }
+  ]
+}
