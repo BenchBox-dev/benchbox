@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "TPC-DI FactCashBalances, FactHoldings, FactMarketHistory and FactWatches now grow linearly with the scale factor, as the TPC-DI specification describes, instead of stopping at fixed row caps (100,000, 50,000, 100,000 and 25,000 rows). At SF 1 they hold 3,000,000, 1,000,000, 2,520,000 and 250,000 rows. Cached TPC-DI data regenerates once, and TPC-DI results from earlier versions are not comparable with new ones."
+    }
+  ]
+}
