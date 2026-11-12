@@ -38165,6 +38165,13 @@
       "status": "done",
       "title": "External review of soundness-gap commit 48c44cf73 (issue 3126) and attestation if clean"
     },
+    "soundness-gap-issues-have-no-owner-or-deadline-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Soundness gap issues have no owner, deadline or escalation, so review debt sits for weeks"
+    },
     "soundness-gaps-closeout-20261022": {
       "claim": null,
       "needs": [

@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "The governance doc names who responds to a gap issue and by when",
+    "An overdue gap issue produces a visible signal without manual checking",
+    "The release path either blocks on or reports open gap issues, as the owner decides"
+  ],
+  "context": "Found while answering which processes ensure soundness gap issues get addressed, then reviewing the seven open ones on 2026-11-12.",
+  "description": "## Problem\nThe soundness merge digest (_project/scripts/soundness_merge_digest.py, daily) opens a soundness-review-gap issue for each merged soundness-path commit without an accountable review, and closes it only on an attester's clean external review or a fix. Nothing assigns the issue, sets a deadline, or escalates it, and the label blocks nothing: scripts/release_blocker_check.py reads only release-blocking. On 2026-11-12, seven gap issues were open, the oldest from 2026-10-09, all with zero comments. Reviewing them found one live Medium defect (#2807) that had been carried into the current review gate in the meantime.\n\n## Change\nDecide and implement a response policy for gap issues, in proportion to the risk. Options to weigh: an owner and a response window stated in docs/internal/merge-queue-governance.md; a reminder or escalation when a gap issue passes that window; listing open gap issues in the release readiness check, as a warning or a block; running the external review automatically when the digest opens the issue.\n\n## Guardrails\n- Keep closure rules unchanged: only an attester's clean review or the missing-signal re-evaluation closes an issue.\n- Owner decision on whether open gap issues may block a release.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e5d016c94a8f4c507bfd7f06",
+      "at": "2026-11-12T16:56:01Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e171d99b24554107b30314672cda44cb",
+      "session_id": "3eed397749064ec1bd2dfc32be3ed6a1"
+    }
+  ]
+}
