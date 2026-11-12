@@ -12,7 +12,8 @@ from tests.utilities.posix_shell import run_posix_shell, skip_without_posix_shel
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
+    pytest.mark.skipif(os.name == "nt", reason="the guard is exercised through a POSIX shebang and symlinks"),
 ]
 
 GUARD = REPO_ROOT / "scripts" / "primary_clone_write_guard.py"

@@ -625,15 +625,13 @@ def audit_handback_wording(project: Path) -> list[str]:
 def _has_unapproved_hooks(hooks: object) -> bool:
     if not hooks:
         return False
-    if not isinstance(hooks, dict) or set(hooks) != {"PreToolUse"}:
-        return True
-    found = []
-    for group in hooks["PreToolUse"]:
-        entries = group.get("hooks") if isinstance(group, dict) else None
-        if not isinstance(entries, list) or len(entries) != 1 or not isinstance(entries[0], dict):
-            return True
-        found.append((group.get("matcher"), entries[0].get("type"), entries[0].get("command")))
-    return found != [(matcher, "command", command) for matcher, command in APPROVED_PRETOOL_HOOKS]
+    approved = {
+        "PreToolUse": [
+            {"matcher": matcher, "hooks": [{"type": "command", "command": command}]}
+            for matcher, command in APPROVED_PRETOOL_HOOKS
+        ]
+    }
+    return hooks != approved
 
 
 def audit(project: Path, corpus: dict[str, Any]) -> tuple[Metrics, list[str]]:

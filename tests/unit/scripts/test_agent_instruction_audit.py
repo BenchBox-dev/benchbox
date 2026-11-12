@@ -377,6 +377,8 @@ def test_primary_clone_write_guard_hook_is_allowed_and_any_variation_fails(tmp_p
         {"PreToolUse": [{**group, "matcher": "*"}]},
         {"PreToolUse": [group, group]},
         {"PreToolUse": [group], "PostToolUse": [group]},
+        {"PreToolUse": [{**group, "hooks": [{**group["hooks"][0], "timeout": 1}]}]},
+        {"PreToolUse": [{**group, "async": True}]},
     ]
     for variant in variants:
         data["hooks"] = variant
