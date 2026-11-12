@@ -41792,6 +41792,13 @@
       "status": "open",
       "title": "Find why TPC-DI SF1 analytic queries slowed after linear fact scaling, and restore Spark and DataFusion tpcdi 1.0 to the release gate"
     },
+    "tpcdi-sf10-generation-unmeasured-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Measure TPC-DI generation at SF 10; the four secondary fact tables are written single-threaded"
+    },
     "tpcds-can-never-be-published-official-flag-not-wired": {
       "claim": null,
       "needs": [],
