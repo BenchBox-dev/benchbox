@@ -35334,10 +35334,15 @@
       "title": "Archive BenchBox review captures and attempt artifacts before they expire"
     },
     "review-format-proposal-only-in-session-storage-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T14:06:25Z",
+        "generation": "1cf35fc42cd14c98adb073adc31655c9",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a250daff95b91a4eb6cd2504"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Commit the review output format proposal that 16 tracker items cite from a session folder"
     },
     "review-gate-cannot-resolve-pr-number-20261107": {
