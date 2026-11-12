@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "The next pull request with a failed placeholder run is cleared with make pr-rerun and the run link is recorded here, or the failure is reproduced on a throwaway pull request.",
+    "For each of the six tolerant cells, repeated gate runs on Linux (make ci-linux) show whether its result actually varies; cells that never vary go back to an exact comparison.",
+    "The finding for each cell is recorded where the classification is defined."
+  ],
+  "description": "Two changes merged on the strength of unit tests alone. (1) PR #4142 makes make pr-rerun re-run a failed ci-text-edit-refresh placeholder run. It has not been watched against a real pull request, and a head with two placeholder runs has not occurred since PR #4120. (2) PR #4146 lets the cross-surface correctness gate accept either outcome for cells classed as inherently approximate sketches, provided the cell ran. The reported defect concerned two approximate-quantile cells; the tolerance was applied to all six cells sharing that classification. Whether the other four ever disagree between runs was not measured, so the gate may now accept a real regression in them.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4142",
+    "https://github.com/BenchBox-dev/benchbox/pull/4146",
+    "https://github.com/BenchBox-dev/benchbox/pull/4120"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a250daff95b91a4eb6cd2504",
+      "at": "2026-11-12T16:51:03Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "7d3a4d354ac84079b1af4e6fb5877718",
+      "session_id": "8e07c6e3a10b49bb94ae7e31664ce4b9"
+    }
+  ]
+}

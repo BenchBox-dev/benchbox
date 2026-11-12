@@ -44901,6 +44901,13 @@
       "status": "done",
       "title": "Run the Docker PostgreSQL integration tests after the PG-family baseline fix"
     },
+    "verify-placeholder-rerun-and-sketch-tolerance-live-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Two merged fixes were shown only by unit tests: the placeholder re-run and the approximate-sketch tolerance"
+    },
     "verify-rungs-contend-on-the-test-lock-20260805": {
       "claim": null,
       "needs": [],
