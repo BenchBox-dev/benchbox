@@ -21,6 +21,21 @@ class TestPlatformKey:
     def test_normalizes(self, raw, expected):
         assert vendor_platform_key(raw) == expected
 
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            ("Databricks DataFrame", "databricks"),
+            ("databricks-df", "databricks"),
+            ("Athena Spark", "athena"),
+            ("athena-spark", "athena"),
+            ("Amazon Redshift", "redshift"),
+            ("Google BigQuery", "bigquery"),
+            ("Snowflake Snowpark", "snowflake"),
+        ],
+    )
+    def test_matches_variant_names(self, raw, expected):
+        assert vendor_platform_key(raw) == expected
+
     def test_local_clickhouse_is_not_cloud(self):
         assert vendor_platform_key("clickhouse-local") == "clickhouse-local"
 

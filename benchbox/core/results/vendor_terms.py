@@ -30,9 +30,23 @@ SELF_RUN_PLATFORMS: Mapping[str, str] = {
 _DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
+_VENDOR_KEYWORDS: tuple[tuple[str, str], ...] = (
+    ("snowflake", "snowflake"),
+    ("redshift", "redshift"),
+    ("athena", "athena"),
+    ("motherduck", "motherduck"),
+    ("databricks", "databricks"),
+    ("bigquery", "bigquery"),
+)
+
+
 def vendor_platform_key(platform: object) -> str:
     token = re.sub(r"[\s_]+", "-", str(platform or "").strip().lower())
-    if token.startswith("clickhouse") and "cloud" in token:
+    squashed = token.replace("-", "")
+    for keyword, key in _VENDOR_KEYWORDS:
+        if keyword in squashed:
+            return key
+    if "clickhouse" in squashed and "cloud" in squashed:
         return "clickhouse-cloud"
     return token
 

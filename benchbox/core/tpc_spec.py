@@ -16,17 +16,7 @@ TPCH_MIN_STREAMS: Mapping[float, int] = {
     100000.0: 11,
 }
 
-TPCDS_MIN_STREAMS: Mapping[float, int] = {
-    100.0: 3,
-    300.0: 5,
-    1000.0: 7,
-    3000.0: 8,
-    10000.0: 9,
-    30000.0: 10,
-    100000.0: 11,
-}
-
-TPCDS_FLOOR_STREAMS = 4
+TPCDS_MIN_STREAMS = 4
 
 FULL_SPEC_BENCHMARKS = frozenset({"tpch", "tpcds"})
 
@@ -44,8 +34,7 @@ def min_streams_for_scale(benchmark: str, scale_factor: float) -> int | None:
     if name == "tpch":
         return TPCH_MIN_STREAMS.get(scale)
     if name == "tpcds":
-        base = max(TPCDS_MIN_STREAMS.get(scale, 0), TPCDS_FLOOR_STREAMS)
-        return base + base % 2
+        return TPCDS_MIN_STREAMS
     return None
 
 

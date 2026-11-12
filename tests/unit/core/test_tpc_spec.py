@@ -5,7 +5,6 @@ import pytest
 from benchbox.core.run_service import execute_run, validate_stream_count
 from benchbox.core.schemas import BenchmarkConfig
 from benchbox.core.tpc_spec import (
-    TPCDS_MIN_STREAMS,
     TPCH_MIN_STREAMS,
     full_spec_violations,
     min_streams_for_scale,
@@ -42,15 +41,9 @@ class TestMinimumStreams:
     def test_tpch_table(self, scale, expected):
         assert min_streams_for_scale("tpch", scale) == expected
 
-    @pytest.mark.parametrize("scale", sorted(TPCDS_MIN_STREAMS))
-    def test_tpcds_minimum_is_even_and_covers_table(self, scale):
-        minimum = min_streams_for_scale("tpcds", scale)
-        assert minimum >= TPCDS_MIN_STREAMS[scale]
-        assert minimum % 2 == 0
-        assert minimum >= 4
-
-    def test_tpcds_small_scale_uses_floor(self):
-        assert min_streams_for_scale("tpcds", 1.0) == 4
+    @pytest.mark.parametrize("scale", [1.0, 100.0, 1000.0, 100000.0])
+    def test_tpcds_minimum_is_four_at_every_scale(self, scale):
+        assert min_streams_for_scale("tpcds", scale) == 4
 
     def test_other_benchmark_has_no_minimum(self):
         assert min_streams_for_scale("ssb", 1.0) is None

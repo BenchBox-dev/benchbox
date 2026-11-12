@@ -97,6 +97,7 @@ def run_official(
             validation=ValidationConfig.parse("full") if validate_results else None,
             platform_option_pairs=platform_option_pairs,
             concurrency=streams,
+            benchmark_option_pairs=(("tpch_refresh_functions", "true"),) if benchmark.lower() == "tpch" else (),
         )
     except Exception as e:
         console.print(f"[red]Benchmark execution failed: {e}[/red]")
