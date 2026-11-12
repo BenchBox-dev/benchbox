@@ -81,6 +81,17 @@ class TestFileChunks:
         path.write_bytes(payload)
         assert b"".join(file_chunks(path)) == payload
 
+    def test_crlf_line_endings_are_normalized_to_lf(self, tmp_path):
+        path = tmp_path / "t.tbl"
+        path.write_bytes(b"1|a\r\n2|b\r\n")
+        assert b"".join(file_chunks(path)) == b"1|a\n2|b\n"
+
+    def test_crlf_split_across_read_chunks_is_normalized(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("benchbox.platforms.starrocks.stream_load._CHUNK_BYTES", 4)
+        path = tmp_path / "t.tbl"
+        path.write_bytes(b"1|ab\r\n2|b\r\n3|c\r")
+        assert b"".join(file_chunks(path)) == b"1|ab\n2|b\n3|c\r"
+
     def test_gzip_file_is_decompressed_without_parsing_rows(self, tmp_path):
         path = tmp_path / "t.tbl.gz"
         path.write_bytes(gzip.compress(b"1|a|\n"))
