@@ -24525,10 +24525,15 @@
       "title": "Add an opt-in admission wait to make heavy-run"
     },
     "heavy-run-cmd-dollar-expansion-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T14:59:07Z",
+        "generation": "346d54ad9df44663814e6746190d098b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:eb741106bc3418ce287ca405"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "make heavy-run CMD='...' lets make expand $ in the command, so $HOME becomes OME"
     },
     "heavy-tier-merge-group-dead-code-20261009": {
