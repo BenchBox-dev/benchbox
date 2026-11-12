@@ -23,7 +23,7 @@ How does Polars 2.0.0 perform against earlier 1.x releases on the four BenchBox 
 
 The default engine differs by version: 1.x collects in memory; 2.0.0 collects with the streaming engine. Setup B on 2.0.0 is therefore compared with 1.44.2 setup A (both in-memory). 1.35.2 is not in setup C. In the preliminary probe, the TPC-DS cross-surface check at scale factor 0.01 (BenchBox's Polars DataFrame queries against DuckDB SQL) failed for 1.35.2 on the streaming engine, in the first run and in a repeat: queries 5, 14 and 27 returned NULL in an ORDER BY key column near the end of the result, and query 67 returned NULL in four columns of its first row, where the SQL result has values. The probe did not determine whether Polars or the BenchBox DataFrame query code causes this. The same version passed the check with the default and in-memory engines. Versions 1.0.0, 1.12.0 and 1.22.0 were dropped after the probe: 1.0.0 has no `engine` argument and panicked, 1.12.0 returned a mismatching TPC-DS query 51, and 1.22.0 failed TPC-DS queries 51 and 87. Polars 1.35 and later load their native code from a separate runtime package; the package and its version are recorded in each result bundle.
 
-The committed 2026-10-09 bundles were recorded under the earlier Polars `engine` option name and map to the same requested values (`default`, `in-memory`, and `streaming`).
+The 2026-10-09 result bundles were recorded under the earlier Polars `engine` option name and map to the same requested values (`default`, `in-memory`, and `streaming`).
 
 ## Timing
 
@@ -37,16 +37,23 @@ Baselines: the reference version 1.44.2 in the same setup (and, for setup B, in 
 
 A run is reported only when all of these hold: the installed Polars version, requested engine and `rechunk` setting recorded in the result match the cell; the run's own validation passed, or it was inconclusive and the preliminary qualification evidence for that version, setup and benchmark is clean; no measured query failed; the measured query set equals the reference set; and every query's row count equals the DuckDB SQL reference recorded for the scale factor (TPC-DS query 41 is the one known exception, with 10 rows on Polars against 12 on DuckDB on every version tested; it stays in full-suite totals and is excluded from the common-query totals, with the 10-row count still required). A cell is reported only when all three rounds satisfy the rule. Value-level agreement was checked at scale factor 0.1 per version and setup; at scale factor 10 only row counts were checked.
 
-## Abort rule
+## Resource rules
 
-A run is stopped, and the cell marked `resource-policy-exceeded`, when resident memory exceeds 14 GiB, host swap-out growth exceeds 1 GiB, or the host safety monitor trips (memory pressure at the critical level for three samples, or swap growth beyond 6 GiB). A run that exceeds 1800 s is stopped. Runs that exit with an error are `execution-failure`. All of these cells are listed rather than imputed.
+Three rules mark a cell `resource-policy-exceeded`. They are described here as the runner at `ecd08a9f0` applied them.
+
+- Host safety monitor. This is the only rule that stops a run. It trips when memory pressure is at the critical level on three consecutive checks, or when host swap-out growth passes 6 GiB. The runner checks on every fifth 1-second sample, so a run can pass the limit before it is stopped: the largest swap growth recorded was 10.4 GiB.
+- Swap limit, 1 GiB. Applied after the run ends. Swap growth is the change in the `Swapouts` counter of `vm_stat`, which counts the whole host, so swap caused by any other process counts against the cell.
+- Memory limit, 14 GiB. Applied after the run ends, to the peak of resident set size summed over the process tree and sampled once a second. Resident set size on macOS leaves out pages that have been swapped out or compressed. The largest reading was 8.431 GiB, in a cell whose runs swapped out up to 10.4 GiB, so this limit was never exceeded and did not constrain any run.
+
+A run that exceeds 1800 s is stopped. Runs that exit with an error are `execution-failure`. All of these cells are listed rather than imputed.
 
 ## Controls
 
 - The host was quiet before the matrix started: 1-minute load average below 2.0 on three samples one minute apart, no other process above 50% CPU, and normal memory pressure.
 - Data generation and the Parquet conversion ran once before the first measured run. Generator binary hashes and datagen manifest hashes are recorded in the run manifest and were identical across runs.
 - Installed package pins were checked after every run.
-- Free disk, peak resident memory, swap growth, peak spill and memory pressure were recorded per run. No run spilled to disk.
+- Free disk, peak resident memory, swap growth and memory pressure were recorded per run.
+- Spilling to disk was not measured. The runner set `POLARS_TEMP_DIR` to a per-cell directory and recorded its size, which was 0.0 GiB in all 120 runs. Polars 2.0.0 enables out-of-core execution by default and writes spill files under the process temporary directory (`{TMPDIR}/polars-{USER}/spill` on macOS), which the runner did not set or sample. A check on 2026-11-12 confirmed this: a streaming sort on 2.0.0, limited with `POLARS_OOC_MEMORY_BUDGET_MB=200`, wrote 1.12 GB under `TMPDIR` and nothing under `POLARS_TEMP_DIR`.
 
 ## Limits
 
