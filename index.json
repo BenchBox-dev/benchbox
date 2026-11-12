@@ -40373,8 +40373,7 @@
     "theseus-review-minimize-superseded-20261110": {
       "claim": null,
       "needs": [
-        "review-minimize-superseded-probe-20261110",
-        "theseus-review-format-release-a-20261110"
+        "theseus-v0211-rehearsal-first-reviewed-pr-20261112"
       ],
       "priority": "medium",
       "status": "open",
