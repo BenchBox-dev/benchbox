@@ -31621,15 +31621,10 @@
       "title": "Presto and Trino Platform Documentation"
     },
     "presto-trino-release-uat-coverage": {
-      "claim": {
-        "expires_at": "2026-11-13T22:06:35Z",
-        "generation": "3d44847645f643fcad78d575caae1c86",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9dde2030f0b654b7eae6a730"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Restore Presto and Trino to the release UAT gate"
     },
     "pricing-config-validation-coverage": {
