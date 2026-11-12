@@ -40146,7 +40146,7 @@
       "needs": [
         "theseus-review-format-release-b-20261110"
       ],
-      "priority": "medium",
+      "priority": "high",
       "status": "open",
       "title": "Theseus: promote its own reviewer lock to review-format release B"
     },

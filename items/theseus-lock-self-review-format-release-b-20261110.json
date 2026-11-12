@@ -1,12 +1,12 @@
 {
   "acceptance": [
-    "Lock values independently recomputed and verified (both wheel URLs hashed).",
-    "Required-context and caller-input check recorded (ruleset id, contexts, inputs).",
-    "Merged to Theseus main with hosted SHIP + green checks + independent review SHIP on the final head (recorded).",
-    "The next Theseus PR after the merge shows the new verdict body and thread format and its review-gate passes on SHIP (link recorded).",
-    "Minimise-flag decision for Theseus's own policy recorded (if applicable)."
+    "Lock values independently recomputed and verified (both wheel URLs downloaded and hashed; source_sha256 matches the frozen hash in PROVENANCE.md; delta_sha256 computed from the current v0.2.4 lock).",
+    "Required-context and caller-input check recorded: ruleset id and required contexts before/after (no ruleset change unless needed, with captures), and every input and secret the v0.2.11 reusable workflows declare as required is passed by both callers.",
+    ".github/review.yml sets `minimize_superseded: true` in this same PR (owner decision 2026-11-12), and `theseus plan`/load_policy under v0.2.11 accepts the policy without a model call (command and output recorded).",
+    "Merged to Theseus main with hosted SHIP + green checks + independent review SHIP on the exact final head (recorded).",
+    "End-to-end evidence comes from theseus-v0211-rehearsal-first-reviewed-pr-20261112."
   ],
-  "context": "Part of theseus-review-output-format-20261110. Added on the owner's decision of 2026-11-10.",
+  "context": "Part of theseus-review-output-format-20261110. Added on the owner's decision of 2026-11-10.\n\nOwner decisions 2026-11-12 (choice dialog): this lock lands FIRST, as the rehearsal for BenchBox, with minimize_superseded: true in the same PR (resolves the description's decision gate; no separate policy PR). It may be prepared in parallel with the BenchBox lock PR. Rollback: if the rehearsal shows a broken gate, revert this PR (the revert is reviewed by the v0.2.11 reviewer, so an owner stand-in may be needed; report it).",
   "description": "Theseus reviews its own pull requests with a pinned release: .github/theseus-lock.json is v0.2.4 and both callers (.github/workflows/review-verdict.yml, review-gate.yml) use @8635dc7. Theseus PRs will not show the new output until this lock is promoted. Promote it to release B with the same lock procedure BenchBox uses (version, source_commit, workflow_sha, source_sha256, delta_sha256 from the current v0.2.4 lock, artifact sha256 and URLs; same SHA in both callers' `uses:` and `with.theseus_ref`).\nThe jump from v0.2.4 brings every intervening change (classifier, protocol, evals, cleanup and legacy removal, v0.2.7 multi-base gating, oracle mirror removal): check the Theseus main ruleset still requires only contexts the new release posts (review-gate from App 5620429) and that the callers pass every input/secret the release's reusable workflows declare as required.\nDecision gate: if theseus-review-minimize-superseded-20261110 shipped, the owner decides whether Theseus's own policy enables minimising after this lock merges (separate policy PR).\nGuardrails: lock and caller change, so G7 applies in full: hosted SHIP + green checks + independent review of the exact final head; no ruleset change without recording before/after captures; no live model calls.",
   "links": [
     "https://github.com/joeharris76/theseus/blob/main/.github/theseus-lock.json"
@@ -19,6 +19,14 @@
       "op": "create",
       "op_id": "c19ed5f3d4884bcca7c204fbaf234284",
       "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b89414e427d02d5b37262d82",
+      "at": "2026-11-12T14:12:34Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "2a7fab38ddca4f2fa80a99b25c20c691",
+      "session_id": "88f192edfe954a75a195b192ece667bc"
     }
   ]
 }
