@@ -12550,10 +12550,15 @@
       "title": "Stop the batch-land tracker-write refusal from telling leaders to give each member its own identity"
     },
     "batch-member-subagent-rule-20261112": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T14:14:58Z",
+        "generation": "694ff65cf3d84edaada6e2e89320e2d0",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Allow subagent batch members and make every statement of the member-identity rule agree"
     },
     "batch-member-subagent-skill-pin-20261112": {
