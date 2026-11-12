@@ -12,8 +12,8 @@ pytestmark = pytest.mark.medium
 
 PROJECT = "benchbox-uat-doris"
 HEALTHY_PROBE = (
-    "cgroup_memory=4294967296\n"
-    "mem_total_kb=4194304\n"
+    "cgroup_memory=6442450944\n"
+    "mem_total_kb=6291456\n"
     "ulimit_n_soft=1048576\n"
     "ulimit_n_hard=1048576\n"
     "arch=x86_64\n"
@@ -63,7 +63,7 @@ def test_doris_translation_carries_memory_entrypoint_ports_and_labels(mocker_cli
     (service,) = mocker_launch.build_services(spec, PROJECT, env={})
     argv = mocker_launch.run_command(service, PROJECT)
     assert argv[:5] == ["mocker", "run", "-d", "--name", f"{PROJECT}-doris-1"]
-    assert _flag_values(argv, "-m") == ["4g"]
+    assert _flag_values(argv, "-m") == ["6g"]
     assert _flag_values(argv, "--entrypoint") == ["bash"]
     assert _flag_values(argv, "-p") == ["19031:9030", "18030:8030", "18040:8040"]
     assert "SKIP_CHECK_ULIMIT=true" in _flag_values(argv, "-e")
@@ -183,7 +183,7 @@ def test_probe_falls_back_to_compose_exec_under_docker(monkeypatch):
 
 def test_declared_settings_cover_the_mocker_launched_stacks(mocker_cli):
     doris = managed_runtime.compose_declared_settings(docker_assets.docker_platform_spec("doris"), env={})["doris"]
-    assert doris.entrypoint and doris.memory_bytes == 4 * 1024**3
+    assert doris.entrypoint and doris.memory_bytes == 6 * 1024**3
     singlestore = managed_runtime.compose_declared_settings(docker_assets.docker_platform_spec("singlestore"), env={})[
         "singlestore"
     ]
@@ -272,10 +272,10 @@ def test_bring_up_uses_mocker_run_and_verifies_declared_settings(mocker_cli, mon
 
 
 def test_bring_up_still_fails_loudly_when_the_launched_container_lacks_a_setting(mocker_cli, monkeypatch, capsys):
-    module, _ = _bring_up(monkeypatch, HEALTHY_PROBE.replace("4294967296", "1112000000").replace("4194304", "1086000"))
+    module, _ = _bring_up(monkeypatch, HEALTHY_PROBE.replace("6442450944", "1112000000").replace("6291456", "1086000"))
     assert module.main(["--platform", "doris"]) == 1
     err = capsys.readouterr().err
-    assert "UAT bring-up failed for doris" in err and "memory: declared 4.00 GiB" in err
+    assert "UAT bring-up failed for doris" in err and "memory: declared 6.00 GiB" in err
 
 
 def test_bring_down_removes_the_launched_container(mocker_cli, monkeypatch, capsys):

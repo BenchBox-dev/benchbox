@@ -1035,6 +1035,20 @@ def test_velox_warehouse_is_off_the_tmpfs():
     )
 
 
+def test_doris_compose_defaults_to_six_gib_and_sizes_be_memory_for_it():
+    spec = docker_assets.docker_platform_spec("doris")
+    compose = yaml.safe_load(spec.compose_files[0].read_text(encoding="utf-8"))
+    service = compose["services"]["doris"]
+    assert service["mem_limit"] == "${DORIS_MEMORY_LIMIT:-6g}"
+    script = service["entrypoint"][2]
+    assert "-lt $$((5 * gib))" in script and "-lt $$((8 * gib))" in script
+    six_gib_tier = script.split("-lt $$((5 * gib))", 1)[1].split("-lt $$((8 * gib))", 1)[1].split("elif", 1)[0]
+    assert 'be_mem="4400m"' in six_gib_tier
+    assert docker_assets.parse_memory_bytes("4400m") + docker_assets.parse_memory_bytes("512m") < (
+        docker_assets.parse_memory_bytes("6g")
+    )
+
+
 def test_presto_compose_mounts_jvm_config_with_bounded_heap():
     spec = docker_assets.docker_platform_spec("presto")
     compose = yaml.safe_load(spec.compose_files[0].read_text(encoding="utf-8"))
