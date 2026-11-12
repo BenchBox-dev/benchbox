@@ -6,7 +6,7 @@
   "context": "Follow-up from theseus-review-output-format-20261110; proposal ranks 8-10. Not part of the delivery batch.\n\n2026-11-10 review fix: suggestion blocks additionally require that the reviewer supplies the replacement code in a new optional field; the renderer never derives code from prose. A dashboard comment also needs the webhook check from the minimise item (edits trigger BenchBox's issue_comment gate workflow).",
   "description": "The format proposal ranked three further ideas below the delivered work (sections 8.4 step 3, 8.6 option 3, 8.8):\n- Sticky dashboard comment edited in place (links each finding to its thread). Costs: every edit triggers BenchBox's issue_comment-driven gate workflow; must never start with a command prefix; a second, non-authoritative source of truth; changes the documented 'a run with no verdict still posts a review' contract.\n- Suggestion blocks for mechanical fixes. Trust risk: one-click commit of model-written code co-authored by the App; must be opt-in, never on gate/soundness paths, fence-safe, exact line span.\n- Check-run mirror of threadless findings as annotations. Needs a new `checks: write` App permission every consumer must approve; annotations cannot be replied to.\nDecision gate: after release B has been live on BenchBox for at least a week, the owner decides for each whether the timeline still feels heavy enough to justify it. Each 'yes' becomes its own implementation item with fail-closed acceptance; each 'no' is recorded with the reason.",
   "links": [
-    "~/.omp/agent/sessions/-Developer-BenchBox/2026-11-02T02-04-38-450Z_01a19a00-60b2-70a6-b56d-6f666415a725/local/review-comment-format-proposal.md (sections 8.4, 8.6, 8.8, 9)"
+    "https://github.com/joeharris76/theseus/blob/main/docs/review-comment-format-proposal.md (sections 8.4, 8.6, 8.8, 9)"
   ],
   "sessions": [
     {
@@ -24,6 +24,14 @@
       "op": "update",
       "op_id": "26f8c7f5d221404ab62bf36cfa1d4ae8",
       "session_id": "977a65f4969143f4981bb9d49ff293b0"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a250daff95b91a4eb6cd2504",
+      "at": "2026-11-12T14:06:11Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "176f94fa5c6743fe859da83ea4e9b27e",
+      "session_id": "8e07c6e3a10b49bb94ae7e31664ce4b9"
     }
   ]
 }
