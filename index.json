@@ -40230,12 +40230,17 @@
       "title": "Theseus: show the severity mark and finding id in each review thread, with a dispute footer"
     },
     "theseus-review-verdict-body-redesign-20261110": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T13:28:21Z",
+        "generation": "58f7bdbd0a334accb6ae6ab0e9a363b2",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b89414e427d02d5b37262d82"
+      },
       "needs": [
         "theseus-review-format-release-a-20261110"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Theseus: render verdict-first review bodies with severity marks, counts and collapsed detail"
     },
     "theseus-test-isolation-gaps-20261106": {
