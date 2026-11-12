@@ -19305,6 +19305,13 @@
       "status": "open",
       "title": "Add pre-commit or tooling guard for dependency-audit-raw.md drift when pyproject.toml changes"
     },
+    "dependency-bounds-policy-undocumented-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "The dependency upper-bound policy exists only in `scripts/check_dependency_bounds.py`"
+    },
     "dependency-migration-psycopg3": {
       "claim": null,
       "needs": [],

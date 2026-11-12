@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "A page under `docs/` describes the bound policy and the lift procedure, including every lock file that embeds the project's extras.",
+    "`scripts/check_dependency_bounds.py --help` or its error output points to that page.",
+    "The agent-instruction audit still passes."
+  ],
+  "description": "Gap. When the DuckDB cap was lifted on 2026-11-12 the new bound (`<3.0.0`, current major plus one) had to be inferred from the checker script, including its `ceiling-minus-one` warning and `--fail-on=cap-reached` mode. No page under `docs/` states the policy; a test fixture mentions `docs/development/dependency-compatibility.md`, which does not exist. Contributors and agents changing a bound have no written rule for when to cap, how far, and what to do when a dependency reaches its ceiling.\n\nExpected: one short page stating the rule the script enforces, where caps are declared, and the steps for lifting one (which lock files to regenerate, which checks to run). The DuckDB lift needed `uv.lock`, `_project/scripts/uv.lock` and `_project/sql-translation-ml/uv.lock`; missing the last two failed CI.\n\nGuardrails: the page describes the script; it must not restate individual caps, which the agent-instruction audit rejects as drift. Decide whether it is user-facing before adding it to `docs/publish-allowlist.txt`.",
+  "links": [
+    "scripts/check_dependency_bounds.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-12T22:24:14Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "68d2d4c0709a459fbcf948eaeafae8cd",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}
