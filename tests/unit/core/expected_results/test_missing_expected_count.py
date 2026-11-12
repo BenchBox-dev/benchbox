@@ -218,3 +218,22 @@ def test_tpcds_known_query_ids_need_no_answer_files(monkeypatch):
     known = tpcds_results.tpcds_known_query_ids()
 
     assert {"24a", "39b", "14", "99"} <= known
+
+
+def test_tpch_query_with_a_missing_answer_file_is_unvalidated_not_a_lookup_failure(monkeypatch):
+    from benchbox.core.expected_results import tpch_results
+
+    original = tpch_results.load_tpch_expected_results
+    monkeypatch.setattr(
+        tpch_results,
+        "load_tpch_expected_results",
+        lambda scale_factor=1.0: {k: v for k, v in original(scale_factor).items() if k != "5"},
+    )
+    validator = _validator_with(tpch_results.get_tpch_expected_results)
+
+    missing = validator.validate_query_result("demo", "5", 5, 1.0)
+    typo = validator.validate_query_result("demo", "99", 5, 1.0)
+
+    assert missing.is_valid
+    assert missing.unvalidated
+    assert not typo.is_valid

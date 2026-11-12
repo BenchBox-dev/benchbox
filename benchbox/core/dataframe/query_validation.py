@@ -80,9 +80,10 @@ def validate_dataframe_query_results(
         evidence["provider"] = "ssb_expected_row_counts"
     if benchmark_id == "tpcds" and tpcds_subscale_expected_row_counts(scale_factor) is not None:
         evidence["provider"] = "tpcds_subscale_expected_row_counts"
+
     reason = _reference_unavailable_reason(benchmark_id, scale_factor, seed)
     if reason:
-        reference_absent = benchmark_id == "ssb" and ssb_expected_row_counts(scale_factor) is None
+        reference_absent = _reference_absent(benchmark_id, scale_factor)
         for row in successful_rows:
             _attach_skipped_validation(row, reason, "UNVALIDATED" if reference_absent else "SKIPPED")
         evidence["skipped"] = len(successful_rows) + selected_skips
@@ -137,6 +138,16 @@ def _reference_unavailable_reason(benchmark_id: str, scale_factor: float, seed: 
             "parameters (no seed)"
         )
     return None
+
+
+def _reference_absent(benchmark_id: str, scale_factor: float) -> bool:
+    if benchmark_id == "ssb":
+        return ssb_expected_row_counts(scale_factor) is None
+    if benchmark_id == "tpcds":
+        return scale_factor != 1.0 and tpcds_subscale_expected_row_counts(scale_factor) is None
+    from benchbox.core.tpch.benchmark import has_row_count_reference
+
+    return benchmark_id == "tpch" and not has_row_count_reference(scale_factor)
 
 
 def _apply_reference_row_counts(
