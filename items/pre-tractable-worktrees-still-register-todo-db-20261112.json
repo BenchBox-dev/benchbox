@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "A scan of /Users/joe/Developer/BenchBox.wt-*/.mcp.json finds no `todo-db` registration, or each remaining one is listed with the owner's reason to keep it."
+  ],
+  "description": "Cleanup gap from the tractable switch (#4013, merged 2026-11-07). On 2026-11-11, 42 BenchBox.wt-* worktrees were still on branches cut before #4013: their .mcp.json registers `todo-db` through their pinned todo-db runtime and their copy of the todo skill tells agents to run bare `todo-db` CLI commands (bootstrap, validate, list). The global todo-db tool was uninstalled on 2026-11-11, so those bare commands now fail with command not found; the MCP server still works through each worktree's own pinned wheel. Work resumed in such a worktree also runs an old tracker version against the live store (schema 4 is compatible, but claim rules differ from 1.1.x). Each needs merging origin/develop if still live, or retiring through make worktree-finish. Related: worktree-reap-leaves-malformed-and-closed-pr-worktrees-20261112, which covers why the reaper cannot remove some of them.",
+  "sessions": [
+    {
+      "actor": "joe-tractable-followups",
+      "at": "2026-11-12T16:54:23Z",
+      "client": "mcp",
+      "op": "create",
+      "op_id": "e9b7574a9cc64a0d94ca725320740377",
+      "session_id": "f2d490b3e67f4a799a2cdcae340365d1"
+    }
+  ]
+}
