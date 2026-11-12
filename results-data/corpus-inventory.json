@@ -1,6 +1,6 @@
 {
   "schema_version": "2.3",
-  "generated_at": "2026-11-11T16:19:39.763814+00:00",
+  "generated_at": "2026-11-12T02:30:54.143856+00:00",
   "bundles": [
     {
       "file": "amplab_sf01_bigquery_sql_20260920_000055_35490af7.json",
@@ -5085,6 +5085,20 @@
       "bundle_sha256": "c28dcfb77b600c28d7f5f4cf1ea666d46df1bd7ab32224ffed0a4fb4dc991edb"
     },
     {
+      "file": "tpch_sf01_duckdb_sql_20261111_213030_d24969ea.json",
+      "benchmark": "tpch",
+      "benchmark_name": "TPC-H",
+      "platform": "DuckDB",
+      "platform_version": "1.5.5",
+      "scale_factor": 0.1,
+      "phase": "power",
+      "timestamp": "2026-11-11T21:30:30.666424",
+      "query_count": 66,
+      "trust_label": "maintainer-run",
+      "funding": "unspecified",
+      "bundle_sha256": "d8b0b97f09a3606542876666837e5337f148f364eedb636904203f083f83ab15"
+    },
+    {
       "file": "tpch_sf1_duckdb_sql_20260826_162117_67e59fb6.json",
       "benchmark": "tpch",
       "benchmark_name": "TPC-H",
@@ -5391,6 +5405,20 @@
       "trust_label": "maintainer-run",
       "funding": "unspecified",
       "bundle_sha256": "1eaa5467e018087972766e7192bb0a5b79b4a09cca9187a7b94042ab96acf811"
+    },
+    {
+      "file": "tpch_sf01_polars_df_20261111_154204_3d7d3e84.json",
+      "benchmark": "tpch",
+      "benchmark_name": "TPC-H",
+      "platform": "Polars",
+      "platform_version": "1.44.2",
+      "scale_factor": 0.1,
+      "phase": "power",
+      "timestamp": "2026-11-11T15:41:59.132206",
+      "query_count": 66,
+      "trust_label": "maintainer-run",
+      "funding": "unspecified",
+      "bundle_sha256": "275610374b760d9feac9b056dd98c1b43e6273f37669dc737eaba38f2cc3e3e5"
     },
     {
       "file": "tpch_sf1_polars_df_20260824_193005_54a9e53f.json",
@@ -7216,6 +7244,7 @@
       "DuckDB v1.5.5",
       "Pandas v2.3.3",
       "Polars v1.40.0",
+      "Polars v1.44.2",
       "SQLite v3.53.1",
       "Snowflake v10.35.101",
       "Spark v4.1.1"
@@ -7363,7 +7392,7 @@
     ]
   },
   "summary": {
-    "total_bundles": 487,
+    "total_bundles": 489,
     "by_benchmark": {
       "amplab": 25,
       "clickbench": 25,
@@ -7379,7 +7408,7 @@
       "tpcdi": 24,
       "tpcds": 37,
       "tpcds_obt": 16,
-      "tpch": 77,
+      "tpch": 79,
       "tpch_skew": 33,
       "tpchavoc": 24,
       "transaction_primitives": 9,
@@ -7394,11 +7423,11 @@
       "ClickHouse Server": 1,
       "DataFusion": 75,
       "Databricks": 50,
-      "DuckDB": 93,
+      "DuckDB": 94,
       "DuckLake": 1,
       "LakeSail": 2,
       "Pandas": 17,
-      "Polars": 30,
+      "Polars": 31,
       "PySpark": 2,
       "SQLite": 35,
       "Snowflake": 50,
@@ -7406,13 +7435,13 @@
       "StarRocks": 1
     },
     "by_trust_label": {
-      "maintainer-run": 487
+      "maintainer-run": 489
     },
     "by_funding": {
-      "unspecified": 487
+      "unspecified": 489
     },
     "by_phase": {
-      "power": 484,
+      "power": 486,
       "throughput": 3
     }
   }
