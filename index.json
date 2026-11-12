@@ -14075,10 +14075,15 @@
       "title": "Add CedarDB rewrites and restore its 15 pruned cells to the release gate"
     },
     "cedardb-release-uat-coverage": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T17:42:54Z",
+        "generation": "de182c82d7f84f07bb389215aaab2f03",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9dde2030f0b654b7eae6a730"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Restore CedarDB to the release UAT gate"
     },
     "centralize-ddl-translation-phase": {
