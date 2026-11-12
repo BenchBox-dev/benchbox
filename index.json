@@ -30830,10 +30830,15 @@
       "title": "Make make pr-rerun refresh CI against current develop instead of re-running the old merge commit"
     },
     "pr-rerun-skips-single-failed-text-edit-placeholder-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T06:59:24Z",
+        "generation": "21ccfcac9fa141399aa306e2bc22f653",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1319a3225e6eeb104ec2240b"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "make pr-rerun says 'nothing to re-run' for a failed text-edit placeholder run after the full CI run succeeded"
     },
     "pr-review-followups-2026-08-20": {
