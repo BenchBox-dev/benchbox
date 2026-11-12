@@ -9,7 +9,7 @@ from typing import Any
 import psutil
 
 from benchbox.core.tpcdi.financial_data import FinancialDataPatterns
-from benchbox.core.tpcdi.scaling import ROWS_PER_SCALE_FACTOR
+from benchbox.core.tpcdi.scaling import ROWS_PER_SCALE_FACTOR, scaled_rows
 from benchbox.utils.cloud_storage import CloudStorageGeneratorMixin, create_path_handler
 from benchbox.utils.compression_mixin import CompressionMixin
 
@@ -265,11 +265,11 @@ class TPCDIDataGenerator(
             "memory_threshold": self.memory_threshold,
             "enable_progress": self.enable_progress,
             "estimated_records": {
-                "DimCompany": int(self.base_companies * self.scale_factor),
-                "DimSecurity": int(self.base_securities * self.scale_factor),
-                "DimCustomer": int(self.base_customers * self.scale_factor),
-                "DimAccount": int(self.base_accounts * self.scale_factor),
-                "FactTrade": int(self.base_trades * self.scale_factor),
+                "DimCompany": scaled_rows(self.base_companies, self.scale_factor),
+                "DimSecurity": scaled_rows(self.base_securities, self.scale_factor),
+                "DimCustomer": scaled_rows(self.base_customers, self.scale_factor),
+                "DimAccount": scaled_rows(self.base_accounts, self.scale_factor),
+                "FactTrade": scaled_rows(self.base_trades, self.scale_factor),
                 **self._secondary_fact_row_counts(),
             },
             "estimated_memory_gb": self._estimate_memory_requirements(),

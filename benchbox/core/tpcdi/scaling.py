@@ -12,4 +12,9 @@ def _load_rows_per_scale_factor() -> dict[str, int]:
 
 ROWS_PER_SCALE_FACTOR = _load_rows_per_scale_factor()
 
-__all__ = ["ROWS_PER_SCALE_FACTOR"]
+
+def scaled_rows(rows_per_scale_factor: float, scale_factor: float) -> int:
+    return max(1, int(rows_per_scale_factor * scale_factor))
+
+
+__all__ = ["ROWS_PER_SCALE_FACTOR", "scaled_rows"]

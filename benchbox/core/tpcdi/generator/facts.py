@@ -5,6 +5,7 @@ import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+from benchbox.core.tpcdi.scaling import scaled_rows
 from benchbox.utils.printing import emit
 
 from .rows import PipeRowWriter
@@ -20,11 +21,11 @@ def _trade_record_rng(generation_seed: int, trade_id: int) -> random.Random:
 class FactGenerationMixin:
     def _generate_facttrade_data(self) -> str:
         file_path = self.output_dir / "FactTrade.tbl"
-        num_trades = int(self.base_trades * self.scale_factor)
-        num_accounts = int(self.base_accounts * self.scale_factor)
-        num_securities = int(self.base_securities * self.scale_factor)
-        num_customers = int(self.base_customers * self.scale_factor)
-        num_companies = int(self.base_companies * self.scale_factor)
+        num_trades = scaled_rows(self.base_trades, self.scale_factor)
+        num_accounts = scaled_rows(self.base_accounts, self.scale_factor)
+        num_securities = scaled_rows(self.base_securities, self.scale_factor)
+        num_customers = scaled_rows(self.base_customers, self.scale_factor)
+        num_companies = scaled_rows(self.base_companies, self.scale_factor)
 
         if num_trades > 100000 and self.max_workers > 1:
             return self._generate_facttrade_parallel(
@@ -197,16 +198,16 @@ class FactGenerationMixin:
 
     def _secondary_fact_row_counts(self) -> dict[str, int]:
         return {
-            "FactCashBalances": int(self.base_cash_balances * self.scale_factor),
-            "FactHoldings": int(self.base_holdings * self.scale_factor),
-            "FactMarketHistory": int(self.base_market_history * self.scale_factor),
-            "FactWatches": int(self.base_watches * self.scale_factor),
+            "FactCashBalances": scaled_rows(self.base_cash_balances, self.scale_factor),
+            "FactHoldings": scaled_rows(self.base_holdings, self.scale_factor),
+            "FactMarketHistory": scaled_rows(self.base_market_history, self.scale_factor),
+            "FactWatches": scaled_rows(self.base_watches, self.scale_factor),
         }
 
     def _generate_factcashbalances_data(self) -> str:
         file_path = self.output_dir / "FactCashBalances.tbl"
-        num_customers = int(self.base_customers * self.scale_factor)
-        num_accounts = int(self.base_accounts * self.scale_factor)
+        num_customers = scaled_rows(self.base_customers, self.scale_factor)
+        num_accounts = scaled_rows(self.base_accounts, self.scale_factor)
 
         num_records = self._secondary_fact_row_counts()["FactCashBalances"]
 
@@ -241,10 +242,10 @@ class FactGenerationMixin:
 
     def _generate_factholdings_data(self) -> str:
         file_path = self.output_dir / "FactHoldings.tbl"
-        num_customers = int(self.base_customers * self.scale_factor)
-        num_accounts = int(self.base_accounts * self.scale_factor)
-        num_securities = int(self.base_securities * self.scale_factor)
-        num_companies = int(self.base_companies * self.scale_factor)
+        num_customers = scaled_rows(self.base_customers, self.scale_factor)
+        num_accounts = scaled_rows(self.base_accounts, self.scale_factor)
+        num_securities = scaled_rows(self.base_securities, self.scale_factor)
+        num_companies = scaled_rows(self.base_companies, self.scale_factor)
 
         num_records = self._secondary_fact_row_counts()["FactHoldings"]
 
@@ -283,8 +284,8 @@ class FactGenerationMixin:
 
     def _generate_factmarkethistory_data(self) -> str:
         file_path = self.output_dir / "FactMarketHistory.tbl"
-        num_securities = int(self.base_securities * self.scale_factor)
-        num_companies = int(self.base_companies * self.scale_factor)
+        num_securities = scaled_rows(self.base_securities, self.scale_factor)
+        num_companies = scaled_rows(self.base_companies, self.scale_factor)
 
         num_records = self._secondary_fact_row_counts()["FactMarketHistory"]
 
@@ -345,8 +346,8 @@ class FactGenerationMixin:
 
     def _generate_factwatches_data(self) -> str:
         file_path = self.output_dir / "FactWatches.tbl"
-        num_customers = int(self.base_customers * self.scale_factor)
-        num_securities = int(self.base_securities * self.scale_factor)
+        num_customers = scaled_rows(self.base_customers, self.scale_factor)
+        num_securities = scaled_rows(self.base_securities, self.scale_factor)
 
         num_records = self._secondary_fact_row_counts()["FactWatches"]
 

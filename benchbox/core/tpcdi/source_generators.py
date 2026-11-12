@@ -15,7 +15,7 @@ from typing import Any, Optional
 
 import pandas as pd
 
-from benchbox.core.tpcdi.scaling import ROWS_PER_SCALE_FACTOR
+from benchbox.core.tpcdi.scaling import ROWS_PER_SCALE_FACTOR, scaled_rows
 
 
 def _lines(values: str) -> list[str]:
@@ -240,7 +240,7 @@ class TPCDISourceDataGenerator:
 
     def _generate_customer_extract(self) -> str:
         file_path = self.output_dir / "oltp_customer_extract.csv"
-        num_customers = int(self.base_customers * self.scale_factor)
+        num_customers = scaled_rows(self.base_customers, self.scale_factor)
 
         data = []
         for i in range(1, num_customers + 1):
@@ -353,8 +353,8 @@ class TPCDISourceDataGenerator:
 
     def _generate_account_extract(self) -> str:
         file_path = self.output_dir / "oltp_account_extract.csv"
-        num_accounts = int(self.base_accounts * self.scale_factor)
-        num_customers = int(self.base_customers * self.scale_factor)
+        num_accounts = scaled_rows(self.base_accounts, self.scale_factor)
+        num_customers = scaled_rows(self.base_customers, self.scale_factor)
 
         data = []
         for i in range(1, num_accounts + 1):
@@ -414,9 +414,9 @@ class TPCDISourceDataGenerator:
 
     def _generate_trade_extract(self) -> str:
         file_path = self.output_dir / "oltp_trade_extract.txt"
-        num_trades = int(self.base_trades * self.scale_factor)
-        num_accounts = int(self.base_accounts * self.scale_factor)
-        num_securities = int(self.base_securities * self.scale_factor)
+        num_trades = scaled_rows(self.base_trades, self.scale_factor)
+        num_accounts = scaled_rows(self.base_accounts, self.scale_factor)
+        num_securities = scaled_rows(self.base_securities, self.scale_factor)
 
         with open(file_path, "w", encoding="utf-8") as f:
             for i in range(1, num_trades + 1):
@@ -456,7 +456,7 @@ class TPCDISourceDataGenerator:
 
     def _generate_employee_xml(self) -> str:
         file_path = self.output_dir / "hr_employees.xml"
-        num_brokers = int(self.base_brokers * self.scale_factor)
+        num_brokers = scaled_rows(self.base_brokers, self.scale_factor)
 
         root = ET.Element("employees")
         root.set("export_date", datetime.now().strftime("%Y-%m-%d"))
@@ -507,7 +507,7 @@ class TPCDISourceDataGenerator:
 
     def _generate_customer_relationships_json(self) -> str:
         file_path = self.output_dir / "crm_customer_relationships.json"
-        num_customers = int(self.base_customers * self.scale_factor * 0.7)
+        num_customers = scaled_rows(self.base_customers * 0.7, self.scale_factor)
 
         data = []
         for i in range(1, num_customers + 1):
@@ -592,8 +592,8 @@ class TPCDISourceDataGenerator:
 
     def _generate_market_prices(self) -> str:
         file_path = self.output_dir / "external_market_prices.csv"
-        num_securities = int(self.base_securities * self.scale_factor)
-        num_prices = int(self.base_market_prices * self.scale_factor)
+        num_securities = scaled_rows(self.base_securities, self.scale_factor)
+        num_prices = scaled_rows(self.base_market_prices, self.scale_factor)
 
         symbols = [f"SYM{i:04d}" for i in range(1, num_securities + 1)]
 
@@ -681,7 +681,7 @@ class TPCDISourceDataGenerator:
 
     def _generate_company_data_xml(self) -> str:
         file_path = self.output_dir / "external_company_data.xml"
-        num_companies = int(self.base_companies * self.scale_factor)
+        num_companies = scaled_rows(self.base_companies, self.scale_factor)
 
         company_data = []
         for i in range(1, num_companies + 1):
@@ -813,7 +813,7 @@ class TPCDISourceDataGenerator:
 
     def _generate_customer_extract_parallel(self) -> str:
         file_path = self.output_dir / "oltp_customer_extract.csv"
-        num_customers = int(self.base_customers * self.scale_factor)
+        num_customers = scaled_rows(self.base_customers, self.scale_factor)
 
         if self.enable_parallel and num_customers > self.parallel_config.chunk_size:
             return self._generate_customer_extract_chunked(file_path, num_customers)

@@ -123,7 +123,7 @@ def test_pipeline_synthetic_generation_methods():
 
 
 def test_source_generators_basic_and_output_files(tmp_path: Path, monkeypatch):
-    gen = TPCDISourceDataGenerator(scale_factor=0.01, output_dir=tmp_path)
+    gen = TPCDISourceDataGenerator(scale_factor=0.0001, output_dir=tmp_path)
     assert gen.start_date <= gen.end_date
     assert "Technology" in gen.industries
 

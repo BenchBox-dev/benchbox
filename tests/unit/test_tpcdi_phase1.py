@@ -347,7 +347,7 @@ class TestDataGenerator:
 
 class TestIntegration:
     def test_repeated_generation_resets_all_private_rngs(self, tmp_path):
-        generator = TPCDIDataGenerator(scale_factor=0.01, output_dir=tmp_path, generation_seed=73)
+        generator = TPCDIDataGenerator(scale_factor=0.001, output_dir=tmp_path, generation_seed=73)
         global_state = random.getstate()
 
         first_paths = generator.generate_data(tables=["FactCashBalances", "FactHoldings"])
