@@ -1016,7 +1016,7 @@ class UnifiedExpr(_DataFusionDeferredOperations):
             from datafusion import functions as df_f
 
             return UnifiedExpr(df_f.count(self._expr, distinct=True))
-        return UnifiedExpr(self._expr.n_unique())
+        return UnifiedExpr(self._expr.drop_nulls().n_unique())
 
     def approx_n_unique(self) -> UnifiedExpr:
         if self._is_pyspark:
