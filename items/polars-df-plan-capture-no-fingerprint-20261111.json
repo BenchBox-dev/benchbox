@@ -4,6 +4,11 @@
     "A plan that differs between iterations of one query sets fingerprint_varied in the companion",
     "A test covers both"
   ],
+  "batch": {
+    "batch_id": "plan-capture-followups",
+    "implementation_dependencies": [],
+    "member_id": "polars-df-plan-capture-no-fingerprint-20261111"
+  },
   "description": "Found 2026-11-11 while publishing the first plan-capture bundles. `benchbox run --platform polars-df --benchmark tpch --scale 0.1 --capture-plans` writes a plans companion with 22 entries whose `plan` is a dict of plan_text, plan_data, plan_type, optimization_hints and platform, with `plan_format: text` and no `fingerprint`. `_structure_dataframe_plan` (benchbox/platforms/dataframe/benchmark_mixin.py) asks the parser registry for `polars`, gets none, and returns the raw captured plan; `_apply_plan_fingerprints` only fingerprints a QueryPlanDAG. As a result `fingerprint_varied` and `fingerprint_variants` can never appear for Polars even though each query is captured on every iteration, and the Explorer stability warning cannot show for it. The published bundle tpch_sf01_polars_df_20261111_154204_3d7d3e84 shows this state (0 of 22 fingerprints). Decide between a Polars plan parser that yields a DAG and a text-plan fingerprint.",
   "links": [
     "BenchBox-dev/BenchBox: benchbox/platforms/dataframe/benchmark_mixin.py",
@@ -17,6 +22,14 @@
       "op": "create",
       "op_id": "983bc83690ef443fbe9b244f9fb6bcf1",
       "session_id": "2aa9edd3163b4d51b2004989f5bf7f8d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:eb741106bc3418ce287ca405",
+      "at": "2026-11-12T14:50:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5701ba0183f34bd9b9c4cd301cd6ff3c",
+      "session_id": "32e4db9816694cfb9be59807549223c7"
     }
   ]
 }
