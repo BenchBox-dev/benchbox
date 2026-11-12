@@ -1180,31 +1180,37 @@ class TestClickHouseWorkloadCoverage:
         statement = connection.execute.call_args_list[0].args[0]
         assert "join_algorithm" not in statement
 
+    @pytest.mark.parametrize("tuning_enabled", [True, False])
     @pytest.mark.parametrize("query_id", ["21", "Q21"])
-    def test_tuned_server_tpch_q21_uses_statement_level_hash_join(self, query_id):
+    def test_server_tpch_q21_hash_join_is_a_recorded_harness_requirement_in_every_mode(self, query_id, tuning_enabled):
+        from benchbox.core.tuning.applied_ledger import HARNESS_DEFAULT, AppliedTuningLedger
+
         adapter = self._adapter(deployment_mode="server")
-        adapter.tuning_enabled = True
+        adapter.tuning_enabled = tuning_enabled
+        adapter._applied_tuning_ledger = AppliedTuningLedger()
         connection = Mock()
         connection.execute.return_value = [(1,)]
 
         adapter.execute_query(connection, "SELECT 1", query_id, benchmark_type="tpch", validate_row_count=False)
+        adapter.execute_query(connection, "SELECT 1", query_id, benchmark_type="tpch", validate_row_count=False)
 
         assert "join_algorithm = 'hash'" in connection.execute.call_args_list[0].args[0]
+        recorded = adapter._applied_tuning_ledger.statements
+        assert len(recorded) == 1
+        assert recorded[0].status == HARNESS_DEFAULT
+        assert recorded[0].mechanism == "harness_required"
+        assert "join_algorithm = 'hash'" in recorded[0].statement
 
     @pytest.mark.parametrize(
-        ("deployment_mode", "tuning_enabled", "benchmark_type", "query_id"),
+        ("deployment_mode", "benchmark_type", "query_id"),
         [
-            ("server", False, "tpch", "21"),
-            ("server", True, "tpch", "20"),
-            ("server", True, "tpcds", "21"),
-            ("local", True, "tpch", "21"),
+            ("server", "tpch", "20"),
+            ("server", "tpcds", "21"),
+            ("local", "tpch", "21"),
         ],
     )
-    def test_statement_level_hash_join_is_limited_to_tuned_server_tpch_q21(
-        self, deployment_mode, tuning_enabled, benchmark_type, query_id
-    ):
+    def test_statement_level_hash_join_is_limited_to_server_tpch_q21(self, deployment_mode, benchmark_type, query_id):
         adapter = self._adapter(deployment_mode=deployment_mode)
-        adapter.tuning_enabled = tuning_enabled
         connection = Mock()
         connection.execute.return_value = [(1,)]
 

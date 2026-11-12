@@ -18,6 +18,7 @@ from benchbox.utils.sql_parsing import find_matching_parenthesis
 
 from .merge_settle import wait_for_merges_to_settle
 from .query_rewrites import rewrite_query_for_clickhouse
+from .statement_settings import record_harness_statement_settings, required_statement_settings
 from .statements import prepare_clickhouse_statements
 
 if TYPE_CHECKING:
@@ -750,26 +751,11 @@ class ClickHouseWorkloadMixin:
         start_time = mono_time()
 
         try:
-            additional_settings: dict[str, str | int] = {}
-            if (
-                self.deployment_mode == "local"
-                and (benchmark_type or "").lower() == "tpchavoc"
-                and str(query_id).lower() in {"5_v7", "5_v8"}
-            ):
-                additional_settings = {"join_algorithm": "grace_hash", "grace_hash_join_initial_buckets": 8}
-            elif (
-                self.deployment_mode == "server"
-                and getattr(self, "tuning_enabled", False)
-                and (benchmark_type or "").lower() == "tpch"
-                and str(query_id).lower().removeprefix("q") == "21"
-            ):
-                additional_settings = {"join_algorithm": "hash"}
-            elif (
-                self.deployment_mode == "server"
-                and (benchmark_type or "").lower() in {"datavault", "data_vault"}
-                and str(query_id).lower().removeprefix("q") in {"5", "21"}
-            ):
-                additional_settings = {"join_algorithm": "grace_hash", "grace_hash_join_initial_buckets": 8}
+            additional_settings = required_statement_settings(benchmark_type, query_id, self.deployment_mode)
+            if additional_settings:
+                record_harness_statement_settings(
+                    getattr(self, "_applied_tuning_ledger", None), benchmark_type, query_id, additional_settings
+                )
             transformed_query = rewrite_query_for_clickhouse(query, additional_settings)
             statements = prepare_clickhouse_statements(transformed_query) or [transformed_query]
             ledger = RequestLedger()
