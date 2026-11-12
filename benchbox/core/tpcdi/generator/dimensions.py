@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime, time, timedelta
 
+from benchbox.core.tpcdi.scaling import scaled_rows
+
 from ..financial_data import generate_realistic_tax_rates
 from .rows import PipeRowWriter
 
@@ -122,7 +124,7 @@ class DimensionGenerationMixin:
 
     def _generate_dimcompany_data(self) -> str:
         file_path = self.output_dir / "DimCompany.tbl"
-        num_companies = int(self.base_companies * self.scale_factor)
+        num_companies = scaled_rows(self.base_companies, self.scale_factor)
 
         with PipeRowWriter(file_path) as writer:
             for chunk_start in range(1, num_companies + 1, self.chunk_size):
@@ -202,8 +204,8 @@ class DimensionGenerationMixin:
 
     def _generate_dimsecurity_data(self) -> str:
         file_path = self.output_dir / "DimSecurity.tbl"
-        num_securities = int(self.base_securities * self.scale_factor)
-        num_companies = int(self.base_companies * self.scale_factor)
+        num_securities = scaled_rows(self.base_securities, self.scale_factor)
+        num_companies = scaled_rows(self.base_companies, self.scale_factor)
 
         with PipeRowWriter(file_path) as writer:
             for i in range(1, num_securities + 1):
@@ -253,7 +255,7 @@ class DimensionGenerationMixin:
 
     def _generate_dimcustomer_data(self) -> str:
         file_path = self.output_dir / "DimCustomer.tbl"
-        num_customers = int(self.base_customers * self.scale_factor)
+        num_customers = scaled_rows(self.base_customers, self.scale_factor)
 
         with PipeRowWriter(file_path) as writer:
             for i in range(1, num_customers + 1):
@@ -343,8 +345,8 @@ class DimensionGenerationMixin:
 
     def _generate_dimaccount_data(self) -> str:
         file_path = self.output_dir / "DimAccount.tbl"
-        num_accounts = int(self.base_accounts * self.scale_factor)
-        num_customers = int(self.base_customers * self.scale_factor)
+        num_accounts = scaled_rows(self.base_accounts, self.scale_factor)
+        num_customers = scaled_rows(self.base_customers, self.scale_factor)
 
         with PipeRowWriter(file_path) as writer:
             for i in range(1, num_accounts + 1):

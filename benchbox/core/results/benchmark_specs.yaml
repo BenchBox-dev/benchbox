@@ -637,18 +637,18 @@ benchmark_specs:
     high_failure_expected: false
     requires_tables_object: true
     sf1_row_counts:
-      DimAccount: 100000
+      DimAccount: 5000
       DimBroker: 100
-      DimCompany: 1000
-      DimCustomer: 50000
+      DimCompany: 500
+      DimCustomer: 5000
       DimDate: 5844
-      DimSecurity: 10000
+      DimSecurity: 800
       DimTime: 288
-      FactCashBalances: 3000000
-      FactHoldings: 1000000
-      FactMarketHistory: 2520000
-      FactTrade: 1000000
-      FactWatches: 250000
+      FactCashBalances: 120300
+      FactHoldings: 120470
+      FactMarketHistory: 541550
+      FactTrade: 130000
+      FactWatches: 300000
       Industry: 12
       StatusType: 4
       TaxRate: 10

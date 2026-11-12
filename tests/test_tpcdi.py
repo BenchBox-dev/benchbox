@@ -19,7 +19,7 @@ pytestmark = [
     pytest.mark.medium,
 ]
 
-TPCDI_PARALLEL_FACT_TRADE_SCALE_FACTOR = 0.11
+TPCDI_PARALLEL_FACT_TRADE_SCALE_FACTOR = 0.8
 
 
 class TestTPCDI:
@@ -33,11 +33,11 @@ class TestTPCDI:
 
         expected_total_tables = 16
         expected_row_counts = {
-            "DimCompany": int(1_000 * TPCDI_PARALLEL_FACT_TRADE_SCALE_FACTOR),
-            "DimSecurity": int(10_000 * TPCDI_PARALLEL_FACT_TRADE_SCALE_FACTOR),
-            "DimCustomer": int(50_000 * TPCDI_PARALLEL_FACT_TRADE_SCALE_FACTOR),
-            "DimAccount": int(100_000 * TPCDI_PARALLEL_FACT_TRADE_SCALE_FACTOR),
-            "FactTrade": int(1_000_000 * TPCDI_PARALLEL_FACT_TRADE_SCALE_FACTOR),
+            "DimCompany": int(500 * TPCDI_PARALLEL_FACT_TRADE_SCALE_FACTOR),
+            "DimSecurity": int(800 * TPCDI_PARALLEL_FACT_TRADE_SCALE_FACTOR),
+            "DimCustomer": int(5_000 * TPCDI_PARALLEL_FACT_TRADE_SCALE_FACTOR),
+            "DimAccount": int(5_000 * TPCDI_PARALLEL_FACT_TRADE_SCALE_FACTOR),
+            "FactTrade": int(130_000 * TPCDI_PARALLEL_FACT_TRADE_SCALE_FACTOR),
         }
 
         assert isinstance(data_paths, list), "generate_data should return a list per BaseBenchmark interface"

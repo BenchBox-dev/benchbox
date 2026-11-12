@@ -4,6 +4,8 @@ import gc
 
 import psutil
 
+from benchbox.core.tpcdi.scaling import scaled_rows
+
 
 class ResourceMonitoringMixin:
     def _log_simple_progress(self, current: int, total: int, table_name: str) -> None:
@@ -52,7 +54,6 @@ class ResourceMonitoringMixin:
         return int(base_count * self.scale_factor)
 
     def _estimate_memory_requirements(self) -> float:
-        int(self.base_trades * self.scale_factor)
         avg_record_size = 200
         chunk_memory = (self.chunk_size * avg_record_size) / (1024**3)
         return chunk_memory * 2
@@ -61,11 +62,11 @@ class ResourceMonitoringMixin:
         total_records = (
             5844
             + 288
-            + int(self.base_companies * self.scale_factor)
-            + int(self.base_securities * self.scale_factor)
-            + int(self.base_customers * self.scale_factor)
-            + int(self.base_accounts * self.scale_factor)
-            + int(self.base_trades * self.scale_factor)
+            + scaled_rows(self.base_companies, self.scale_factor)
+            + scaled_rows(self.base_securities, self.scale_factor)
+            + scaled_rows(self.base_customers, self.scale_factor)
+            + scaled_rows(self.base_accounts, self.scale_factor)
+            + scaled_rows(self.base_trades, self.scale_factor)
             + sum(self._secondary_fact_row_counts().values())
         )
 

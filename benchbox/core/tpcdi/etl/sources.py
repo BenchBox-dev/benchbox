@@ -12,6 +12,7 @@ from typing import Any, Optional
 
 import pandas as pd
 
+from benchbox.core.tpcdi.scaling import ROWS_PER_SCALE_FACTOR
 from benchbox.core.tpcdi.source_generators import TPCDISourceDataGenerator
 
 
@@ -49,7 +50,7 @@ class CSVSourceFormat(SourceDataFormat):
         self._generator: Optional[TPCDISourceDataGenerator] = None
 
     def generate_data(self, table_name: str, record_count: int, **kwargs: Any) -> str:
-        return self._run_generator("_generate_oltp_data", record_count, 50000, **kwargs)
+        return self._run_generator("_generate_oltp_data", record_count, ROWS_PER_SCALE_FACTOR["customers"], **kwargs)
 
     def write_to_file(self, data: pd.DataFrame, file_path: Path) -> None:
         data.to_csv(
@@ -86,7 +87,9 @@ class FixedWidthSourceFormat(SourceDataFormat):
         self._generator: Optional[TPCDISourceDataGenerator] = None
 
     def generate_data(self, table_name: str, record_count: int, **kwargs: Any) -> str:
-        return self._run_generator("_generate_external_data", record_count, 50000, **kwargs)
+        return self._run_generator(
+            "_generate_external_data", record_count, ROWS_PER_SCALE_FACTOR["customers"], **kwargs
+        )
 
     def write_to_file(self, data: pd.DataFrame, file_path: Path) -> None:
         with open(file_path, "w", encoding="utf-8") as f:
@@ -107,7 +110,7 @@ class PipeDelimitedSourceFormat(SourceDataFormat):
         self._generator: Optional[TPCDISourceDataGenerator] = None
 
     def generate_data(self, table_name: str, record_count: int, **kwargs: Any) -> str:
-        scale_factor = kwargs.get("scale_factor", record_count / 50000)
+        scale_factor = kwargs.get("scale_factor", record_count / ROWS_PER_SCALE_FACTOR["customers"])
         output_dir = kwargs.get("output_dir", Path.cwd() / "tpcdi_source_data")
 
         if self._generator is None:

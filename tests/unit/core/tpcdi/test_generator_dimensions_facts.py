@@ -28,6 +28,10 @@ def _make_small_generator(tmp_path: Path) -> TPCDIDataGenerator:
     gen.base_securities = 15
     gen.base_accounts = 20
     gen.base_trades = 50
+    gen.base_cash_balances = 60
+    gen.base_holdings = 40
+    gen.base_market_history = 90
+    gen.base_watches = 30
 
     gen.compress_existing_file = lambda path, remove_original=True: path
     return gen
@@ -143,10 +147,10 @@ def test_secondary_fact_row_counts_scale_linearly(tmp_path: Path, scale_factor: 
     gen = TPCDIDataGenerator(scale_factor=scale_factor, output_dir=tmp_path, enable_progress=False, compression="none")
 
     assert gen._secondary_fact_row_counts() == {
-        "FactCashBalances": round(3_000_000 * scale_factor),
-        "FactHoldings": round(1_000_000 * scale_factor),
-        "FactMarketHistory": round(2_520_000 * scale_factor),
-        "FactWatches": round(250_000 * scale_factor),
+        "FactCashBalances": int(120_300 * scale_factor),
+        "FactHoldings": int(120_470 * scale_factor),
+        "FactMarketHistory": int(541_550 * scale_factor),
+        "FactWatches": int(300_000 * scale_factor),
     }
 
 
@@ -162,4 +166,4 @@ def test_secondary_fact_files_contain_the_computed_row_counts(tmp_path: Path):
     }
 
     rows = {table: len(Path(path).read_text(encoding="utf-8").splitlines()) for table, path in written.items()}
-    assert rows == {"FactCashBalances": 600, "FactHoldings": 200, "FactMarketHistory": 3780, "FactWatches": 60}
+    assert rows == {"FactCashBalances": 60, "FactHoldings": 40, "FactMarketHistory": 90, "FactWatches": 30}
