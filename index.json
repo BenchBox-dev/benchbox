@@ -45579,6 +45579,13 @@
       "status": "done",
       "title": "When the BenchBox wrapper gains the update verb, move it out of standalone_only_commands"
     },
+    "write-guard-unproven-outside-omp-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Prove the primary-clone write guard blocks writes in Claude Code, Codex and Gemini"
+    },
     "write-primitives-adversarial-code-review-and-hardening": {
       "claim": null,
       "needs": [],
