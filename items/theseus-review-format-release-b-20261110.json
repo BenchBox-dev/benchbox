@@ -6,7 +6,7 @@
     "If main contains merged changes outside the release-B items that alter goldens or body output, the owner's include/defer decision is recorded here.",
     "Recorded here: release commit, tag, hashes and the exact BenchBox and Theseus lock values."
   ],
-  "context": "Part of theseus-review-output-format-20261110.\n\n2026-11-11: release B also includes the gate-pending C1 change (owner decision on review-gate-pending-while-waiting-decision-20261110).\n\nRevalidated 2026-11-11: Release B is Theseus v0.2.11 (owner decision 2026-11-11). Tags published so far: v0.2.9 and v0.2.10 (2026-11-11); package version on Theseus main is 0.2.10. Merged on main for v0.2.11: #64 (minimise superseded, c677b79) and #65 (review-gate pending while a head has no verdict, a3f39b3, the gate-pending need). Open: #66 (verdict-first body and thread ids, head 8d63d1d2); #61 (dependabot ruff) is held until after the tag per the owner. The need benchbox-lock-theseus-review-format-release-a-20261110 is the BenchBox v0.2.10 lock (PR #4123, open). theseus-review-minimize-superseded-20261110 stays open only for its App-token observation, which cannot happen before BenchBox is locked to v0.2.11, so it should be read as 'implementation merged' for this gate; owner to confirm.\n\nOwner decision 2026-11-11 (choice dialog): the merged minimise implementation (Theseus #64) satisfies this item's dependency on theseus-review-minimize-superseded-20261110; the App-token observation happens after BenchBox locks to v0.2.11.",
+  "context": "Part of theseus-review-output-format-20261110.\n\n2026-11-11: release B also includes the gate-pending C1 change (owner decision on review-gate-pending-while-waiting-decision-20261110).\n\nRevalidated 2026-11-11: Release B is Theseus v0.2.11 (owner decision 2026-11-11). Tags published so far: v0.2.9 and v0.2.10 (2026-11-11); package version on Theseus main is 0.2.10. Merged on main for v0.2.11: #64 (minimise superseded, c677b79) and #65 (review-gate pending while a head has no verdict, a3f39b3, the gate-pending need). Open: #66 (verdict-first body and thread ids, head 8d63d1d2); #61 (dependabot ruff) is held until after the tag per the owner. The need benchbox-lock-theseus-review-format-release-a-20261110 is the BenchBox v0.2.10 lock (PR #4123, open). theseus-review-minimize-superseded-20261110 stays open only for its App-token observation, which cannot happen before BenchBox is locked to v0.2.11, so it should be read as 'implementation merged' for this gate; owner to confirm.\n\nOwner decision 2026-11-11 (choice dialog): the merged minimise implementation (Theseus #64) satisfies this item's dependency on theseus-review-minimize-superseded-20261110; the App-token observation happens after BenchBox locks to v0.2.11.\n\nOwner decision 2026-11-12: INCLUDE Theseus #71 ('Read a consumer review guidance file from the base branch into the reviewer brief', merged be9b9e7 by the owner) in v0.2.11. It is outside the release-B items and changes the templates, render.py and goldens. Also enable the matching guidance policy key in the BenchBox v0.2.11 lock PR, so BenchBox reviewers read .github/review-guidance.md. #66 has merged #71; the independent review at ad024718 confirms guidance text reaches only the reviewer brief and never the posted body.",
   "description": "Cut the next unused Theseus patch release after release A, once the verdict-body and thread-id items have merged AND theseus-review-minimize-superseded-20261110 is either done or dropped (on probe NO-GO). Same release procedure as release A.\nDecision gate: release B changes the body and thread writer. It may be published only after (1) release A is published and BenchBox is locked to it (one release of reader overlap), and (2) benchbox-review-format-dual-read-20261110 has merged, because BenchBox's merge digest otherwise fails open on overridden High findings.\nGuardrails: release PR via hosted SHIP + green checks (independent review if it touches workflows, policy or lock); no owner-only actions; no live model calls.",
   "links": [
     "https://github.com/joeharris76/theseus/releases"
@@ -51,6 +51,14 @@
       "op": "update",
       "op_id": "f2e5396ec69b412088b5da56d410a94f",
       "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57133450e487c312386efb7b",
+      "at": "2026-11-12T01:57:47Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a9f42cfa4dbf4e37bf3e558155eb0b53",
+      "session_id": "ac7352d3450d445aa9132af1db2251b7"
     }
   ]
 }
