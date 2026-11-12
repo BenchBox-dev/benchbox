@@ -354,6 +354,18 @@ def test_server_failed_query_reapplies_the_session_for_the_next_query(tmp_path: 
     assert any(query == "SET join_use_nulls = 1" for query, _ in client.calls)
 
 
+def test_server_failed_session_reapply_keeps_the_query_outcome(tmp_path: Path) -> None:
+    class BrokenSessionAdapter(FailableSessionAdapter):
+        def configure_for_benchmark(self, connection: Any, benchmark_type: str) -> None:
+            raise ConnectionError("server gone")
+
+    adapter = BrokenSessionAdapter("FAILED")
+    connection = platforms.TaggedClient(FakeClient())
+    handle = ArmHandle(spec=ArmSpec("N"), connection=connection, database="db", load_seconds=1.0, adapter=adapter)
+    outcome = server_seam(tmp_path).run_query(handle, connection, "21", "select", 10.0)
+    assert not outcome.ok and "Code: 241" in (outcome.error or "")
+
+
 def test_server_successful_query_leaves_the_session_alone(tmp_path: Path) -> None:
     adapter = FailableSessionAdapter("SUCCESS")
     client = FakeClient()

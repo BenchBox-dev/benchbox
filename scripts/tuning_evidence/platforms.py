@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import platform as host_platform
 import re
@@ -15,6 +16,8 @@ from typing import Any
 
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from scripts.tuning_evidence.harness import ArmHandle, ArmSpec, QueryOutcome, SettleRecord, classify_error
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_MAX_CHECKSUM_ROWS = 1_000_000
 SESSION_BENCHMARK_TYPE = "olap"
@@ -668,7 +671,10 @@ class ClickHouseServerSeam(ClickHouseSeam):
     ) -> QueryOutcome:
         outcome = super().run_query(handle, connection, query_id, sql, timeout_seconds)
         if not outcome.ok:
-            self.configure_session(handle, connection)
+            try:
+                self.configure_session(handle, connection)
+            except Exception as exc:
+                logger.warning("session re-apply after failed query %s failed: %s", query_id, exc)
         return outcome
 
     def wrap(self, connection: Any) -> Any:
