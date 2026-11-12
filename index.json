@@ -30546,15 +30546,10 @@
       "title": "Add a bounded wait mode to make pr-arm so agents stop writing polling loops"
     },
     "pr-arm-wait-refuses-current-pending-verdict-wording-20261112": {
-      "claim": {
-        "expires_at": "2026-11-13T06:46:19Z",
-        "generation": "e4395b0887834a82a1cbcc068889b007",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1319a3225e6eeb104ec2240b"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "make pr-arm WAIT ends at once on the reviewer's current pending-verdict wording"
     },
     "pr-arm-wait-review-pending-classification-20261111": {
