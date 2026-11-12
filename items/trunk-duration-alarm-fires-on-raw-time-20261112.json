@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The alarm no longer fires when the calibrated metric is within threshold, or the reason for using raw time is documented",
+    "The issue body states which metric triggered the alarm"
+  ],
+  "context": "Found while reviewing open GitHub issues on 2026-11-12.",
+  "description": "## Problem\nThe trunk duration trend alarm (GitHub issue BenchBox-dev/benchbox#3511) sets status alarm from the raw \"fast-junit summed test time\" metric. On 2026-11-12 that rose 21.6% while the same metric divided by runner calibration fell 2.0%, and the earlier alarm showed raw +56.9% against calibration-normalised -14%. The alarm therefore reports runner-speed variation as a test-time regression, and the issue stays open without an actionable cause.\n\n## Change\nDecide which metric should trigger the alarm. If calibration is trustworthy, alarm on the calibrated metric and keep the raw one as context; otherwise state why the raw value is the signal. Note the 1-day window samples only 3 junit runs, so a minimum sample size may also be needed.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/issues/3511"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e5d016c94a8f4c507bfd7f06",
+      "at": "2026-11-12T16:56:16Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "3ec3d6e529da4be0a1074c2a8ca22c46",
+      "session_id": "3eed397749064ec1bd2dfc32be3ed6a1"
+    }
+  ]
+}

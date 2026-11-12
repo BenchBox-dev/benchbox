@@ -42940,6 +42940,13 @@
       "status": "done",
       "title": "Trunk's dist-artifact producer check fails intermittently with 'producer job is not unique and running'"
     },
+    "trunk-duration-alarm-fires-on-raw-time-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Trunk duration trend alarm fires on raw fast-junit time even when the calibrated value is flat"
+    },
     "trunk-failed-shard-timing-evidence-20261025": {
       "claim": null,
       "needs": [],
