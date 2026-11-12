@@ -6,6 +6,8 @@ import sys
 
 import duckdb
 
+from benchbox.utils.duckdb_extensions import install_datasketches
+
 REQUIRED_FAMILIES: dict[str, str] = {
     "theta": "SELECT datasketch_theta(v) FROM (VALUES (1::INTEGER)) t(v)",
     "frequent_items": "SELECT datasketch_frequent_items(8, v) FROM (VALUES ('x')) t(v)",
@@ -45,8 +47,7 @@ def main() -> int:
     con = duckdb.connect(":memory:")
 
     try:
-        con.execute("INSTALL datasketches FROM community")
-        con.execute("LOAD datasketches")
+        install_datasketches(con)
     except duckdb.Error as exc:
         message = str(exc)
         if _is_network_error(message):

@@ -11,6 +11,8 @@ from dataclasses import dataclass
 
 import duckdb
 
+from benchbox.utils.duckdb_extensions import install_datasketches
+
 
 @dataclass(frozen=True)
 class DuckDbProbe:
@@ -171,8 +173,7 @@ con.execute("LOAD tpch")
 con.execute("CALL dbgen(sf=0.01)")
 
 try:
-    con.execute("INSTALL datasketches FROM community")
-    con.execute("LOAD datasketches")
+    install_datasketches(con)
     datasketches_ok = True
 except duckdb.Error:
     datasketches_ok = False

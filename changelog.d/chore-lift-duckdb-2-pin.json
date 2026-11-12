@@ -5,6 +5,14 @@
       "category": "changed",
       "breaking": false,
       "text": "DuckDB 2.x is now supported: the duckdb dependency bound moves from <2.0.0 to <3.0.0 across the core, duckdb, ducklake, mcp, explorer and dev extras. Database files written by DuckDB 2.x use a storage format that DuckDB 1.x cannot open; the Results Explorer snapshot is still written in the 1.0-compatible format."
+    },
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "On DuckDB 2.x the SKETCH write-primitive operations install the datasketches extension from the third-party Query.Farm repository (https://duckdb-extensions.query.farm), because it is no longer available from the DuckDB community repository. This enables a non-DuckDB extension repository for the session and loads native code from it; DuckDB 1.x keeps installing from the community repository.",
+      "platforms": [
+        "duckdb"
+      ]
     }
   ]
 }

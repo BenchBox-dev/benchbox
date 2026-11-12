@@ -58,6 +58,7 @@ from benchbox.sql_compat.rules.execution_filter.starrocks_write_primitives impor
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.cloud_storage import normalize_output_dir
 from benchbox.utils.dialect_utils import split_sql_statements
+from benchbox.utils.duckdb_extensions import rewrite_datasketches_install_sql
 from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
 
 _POSTGRES_OPERATION_SKIP_DIALECTS = frozenset({"postgres", "postgresql"})
@@ -925,6 +926,8 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
             if effective_sql is None:
                 raise RuntimeError(f"No executable SQL resolved for operation '{operation_id}'")
             effective_sql = self._rewrite_transactional_sql_for_platform(effective_sql, platform_key)
+            if (platform_key or "").lower() in {"duckdb", "ducklake"}:
+                effective_sql = rewrite_datasketches_install_sql(effective_sql)
             write_sql = self._replace_placeholders(effective_sql)
             summed_statements = (
                 split_sql_statements(write_sql, "sqlite")
