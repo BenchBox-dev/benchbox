@@ -41132,15 +41132,10 @@
       "title": "Resolve the TPC-DI enhanced parallel surface against the canonical ETL path"
     },
     "tpcdi-fact-table-row-caps-20261111": {
-      "claim": {
-        "expires_at": "2026-11-13T03:08:20Z",
-        "generation": "d63ac3666e2941e3abbcbba545a059a9",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "TPC-DI fact tables stop growing at fixed row caps, so data size does not follow the scale factor"
     },
     "tpcdi-generator-ratios-and-speed-vs-spec-20261111": {
