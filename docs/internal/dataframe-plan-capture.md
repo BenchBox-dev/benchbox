@@ -8,12 +8,12 @@
 | PySpark | `dag` | `df.explain(extended=True)` text, parsed by the Spark parser (`pyspark` resolves to it) | same as DataFusion | `dag` |
 | LakeSail | `dag` | PySpark capture over Spark Connect, Spark parser | same as DataFusion | `dag` |
 | Databricks (DataFrame mode) | `dag` | PySpark capture on the Databricks Connect result frame, Spark parser | same as DataFusion | `dag` |
-| Polars | `raw_text` | `LazyFrame.explain()` optimized and unoptimized text | `query_plan` (raw `QueryPlan`), `plan_capture_time_ms`; no fingerprint | `text` |
+| Polars | `raw_text` | `LazyFrame.explain()` optimized and unoptimized text | `query_plan` (raw `QueryPlan`), `plan_fingerprint` (text hash), `plan_capture_time_ms` | `text` |
 | Pandas, Dask, cuDF | `unsupported` | none: eager engines build no plan | `plan_capture_error`; counted in `capture_failures` with reason text | none |
 
 `plan_fingerprint_normalized` is added to DAG rows when `--normalize-plan-literals` is set.
 
-Polars has no parser, so its plan stays raw text: no DAG, no fingerprint and no plan comparison. `benchbox show-plan` prints the stored text and `compare --include-plans` skips it. Strict plan capture raises `PlanCaptureError` with reason `unsupported` on Pandas, Dask and cuDF.
+Polars has no parser, so its plan stays raw text: no DAG and no plan comparison. `benchbox show-plan` prints the stored text and `compare --include-plans` skips it. Strict plan capture raises `PlanCaptureError` with reason `unsupported` on Pandas, Dask and cuDF.
 
 Expression-family engines (Polars, DataFusion, PySpark, LakeSail) capture after the query is collected, so planning work that the engine caches on the frame (Spark analysis and optimization) is paid by the measured collect and not moved into `plan_capture_time_ms`. Capture time is reported in `plan_capture_time_ms` and subtracted from the measured execution time. Strict capture therefore raises after one execution of the query. SDK imports stay lazy: LakeSail and Databricks reuse the PySpark helper and import nothing from their client packages during capture.
 
@@ -23,6 +23,16 @@ Plan text is redacted at capture time, before any plan is parsed or fingerprinte
 
 Accepted limit: the private-path detector matches only its known roots (`~`, `/Users`, `/home`, `/root`, `/private`, `/var/folders`, `/var/run`, `/Volumes`, `/tmp`, `/mnt`, `/opt`), Windows drive letters, UNC paths, the current home directory (`$HOME`, read the same way redaction reads it; `/`, empty and neutral placeholder homes are ignored) and any configured roots. An absolute path elsewhere, such as `/srv/...`, is flagged and redacted only when its directory is configured as a root. The known root list and the detector are deliberately not widened to every absolute path. The configured-roots mechanism is the `roots` argument of `find_public_path_leaks`, `anonymize_plans_payload` and `redact_plan_local_paths`: capture passes the loaded data directories, and `benchbox publish` passes the source bundle's directory. Add the directory that holds your data or outputs there when it lies outside the known roots. `anonymize_plans_payload` redacts top-level `errors` text the same way as plan text.
 
+## Text fingerprints
+
+A captured plan that cannot be structured into a `QueryPlanDAG` (Polars, or any DataFrame engine without a parser) but has non-empty plan text gets `plan_fingerprint` set to the SHA-256 hex digest of the UTF-8 plan text. The text is hashed after local-path redaction, so the digest does not depend on a machine path. The companion entry records `fingerprint_kind: "text"` whenever an entry has a fingerprint and its plan is stored as text; structural fingerprints carry `fingerprint_version` and no `fingerprint_kind`. A text entry has no `fingerprint_version`, so a reader must not compare it with a structural fingerprint.
+
+Limits:
+
+- The text is hashed verbatim. Polars `LazyFrame.explain()` output was identical across repeated explains of the same query in one process and across processes, including the `__POLARS_CSER_0x...` temporary column ids (they are assigned by position within the plan), so nothing is normalised. Any wording change a Polars upgrade makes to the plan text changes the digest.
+- No literal normalisation: `plan_fingerprint_normalized` is not set for text plans, even with `--normalize-plan-literals`.
+- Text-fingerprinted rows are not `QueryPlanDAG` objects, so plan history and `compare --include-plans` still skip them; the fingerprint only feeds `fingerprint`, `fingerprint_varied` and `fingerprint_variants` in the companion.
+
 When the executions that share one companion entry captured different plan fingerprints, the entry also carries two optional fields:
 
 | Field | Type | Meaning |
@@ -30,7 +40,7 @@ When the executions that share one companion entry captured different plan finge
 | `fingerprint_varied` | `true` | Present only when at least two distinct `plan_fingerprint` values were captured for that entry |
 | `fingerprint_variants` | list of `{fingerprint, iteration, run_type}` | One item per distinct fingerprint, in capture order, naming the first execution that produced it; `iteration` and `run_type` are omitted when the row has none |
 
-Both fields are absent when every execution produced the same fingerprint, and executions without a fingerprint (for example Polars text plans) are not counted. The stored `plan`, `fingerprint`, `iteration` and `run_type` always describe the last captured execution, so the variants list is the only record of the earlier plans' fingerprints; the earlier plan bodies are not stored.
+Both fields are absent when every execution produced the same fingerprint, and executions without a fingerprint are not counted. The stored `plan`, `fingerprint`, `iteration` and `run_type` always describe the last captured execution, so the variants list is the only record of the earlier plans' fingerprints; the earlier plan bodies are not stored.
 
 Databricks DataFrame mode runs inside the plan-capture phase: while a measured workload is active it only records the result frame per query and stream, and the explain round trips run after measurement, for successful rows only, with the same accounting as SQL capture.
 

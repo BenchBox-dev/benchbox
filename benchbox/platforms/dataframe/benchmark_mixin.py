@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import inspect
 import logging
 from abc import abstractmethod
@@ -1218,6 +1219,9 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
 
     def _apply_plan_fingerprints(self, row: dict[str, Any], plan: Any) -> None:
         if not isinstance(plan, QueryPlanDAG):
+            plan_text = getattr(plan, "plan_text", None)
+            if isinstance(plan_text, str) and plan_text.strip():
+                row["plan_fingerprint"] = hashlib.sha256(plan_text.encode("utf-8")).hexdigest()
             return
         row["plan_fingerprint"] = plan.plan_fingerprint
         if getattr(self, "normalize_plan_literals", False):
