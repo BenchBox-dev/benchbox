@@ -23846,12 +23846,17 @@
       "title": "Confirm the guards-fix skill-sync containment on the machine with the real CLI"
     },
     "gw-cache-discipline": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T02:24:18Z",
+        "generation": "87a73f017984479cbed9d0ceb544a7e5",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66"
+      },
       "needs": [
         "gw-metadata-guards"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Gateway cache discipline + honest unverified reporting"
     },
     "gw-databricks": {
