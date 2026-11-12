@@ -840,7 +840,13 @@ class ClickHouseWorkloadMixin:
                 row_count_validation = {
                     "expected": validation_result.expected_row_count,
                     "actual": actual_row_count,
-                    "status": "UNVALIDATED" if validation_result.unvalidated else "PASSED",
+                    "status": (
+                        "UNVALIDATED"
+                        if validation_result.unvalidated
+                        else "SKIPPED"
+                        if validation_result.validation_mode == "skip"
+                        else "PASSED"
+                    ),
                 }
                 if validation_result.warning_message:
                     row_count_validation["warning"] = validation_result.warning_message

@@ -131,3 +131,33 @@ def test_other_dialects_are_not_rewritten():
     rendered = translate_sql_query(sql, "postgres", source_dialect="duckdb")
 
     assert sqlglot.parse_one(rendered, read="postgres").args.get("order") is None
+
+
+def test_qualified_order_by_resolves_by_source_not_by_bare_name():
+    sql = translate_sql_query(
+        "SELECT l.a AS x, r.a FROM l JOIN r ON l.k = r.k "
+        "QUALIFY ROW_NUMBER() OVER (PARTITION BY l.k ORDER BY r.a) = 1 ORDER BY l.a",
+        "trino",
+        source_dialect="duckdb",
+    )
+
+    assert _outer_order_names(sql, "trino") == ["x"]
+
+
+def test_qualified_order_by_does_not_bind_to_an_alias_holding_another_column():
+    sql = "SELECT b AS a, c FROM t QUALIFY ROW_NUMBER() OVER (PARTITION BY c ORDER BY b) = 1 ORDER BY t.a"
+
+    rendered = translate_sql_query(sql, "trino", source_dialect="duckdb")
+
+    assert sqlglot.parse_one(rendered, read="trino").args.get("order") is None
+
+
+@pytest.mark.parametrize("key", ["COUNT(*) OVER (PARTITION BY a)", "SUM(a)"])
+def test_aggregate_and_window_sort_keys_are_not_hoisted(key, caplog):
+    sql = f"SELECT a, b FROM t QUALIFY ROW_NUMBER() OVER (PARTITION BY a ORDER BY b) = 1 ORDER BY {key}"
+
+    with caplog.at_level(logging.WARNING, logger="benchbox.utils.dialect_utils"):
+        rendered = translate_sql_query(sql, "trino", source_dialect="duckdb")
+
+    assert "cannot hoist" in caplog.text
+    assert sqlglot.parse_one(rendered, read="trino").args.get("order") is None

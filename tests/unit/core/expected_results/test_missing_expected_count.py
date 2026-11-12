@@ -197,3 +197,24 @@ def test_classified_timeout_is_unchanged(monkeypatch):
     assert not result.unvalidated
     assert result.validation_mode == ValidationMode.SKIP
     assert "Timed out" in (result.error_message or "")
+
+
+@pytest.mark.parametrize("query_id", ["24a", "24b", "39a", "39b", "24", "39"])
+def test_tpcds_sf1_multi_part_queries_do_not_fail_the_lookup(query_id):
+    result = QueryValidator().validate_query_result("tpcds", query_id, 5, 1.0)
+
+    assert result.is_valid
+    assert not (result.error_message or "")
+
+
+def test_tpcds_known_query_ids_need_no_answer_files(monkeypatch):
+    from benchbox.core.expected_results import tpcds_results
+
+    def boom(*args, **kwargs):
+        raise AssertionError("answer files must not be loaded")
+
+    monkeypatch.setattr(tpcds_results, "load_tpcds_expected_results", boom)
+
+    known = tpcds_results.tpcds_known_query_ids()
+
+    assert {"24a", "39b", "14", "99"} <= known

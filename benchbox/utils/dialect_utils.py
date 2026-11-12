@@ -751,13 +751,18 @@ def _outer_order_key(key, outputs: Sequence[tuple[object, object]], exp):
     if isinstance(key, exp.Literal) and not key.is_string:
         return key.copy()
     if isinstance(key, exp.Column):
-        for _, projection in outputs:
-            if projection.name.lower() == key.name.lower():
+        if not key.table:
+            for _, projection in outputs:
+                if projection.name.lower() == key.name.lower():
+                    return projection.copy()
+        for source, projection in outputs:
+            if source == key:
                 return projection.copy()
+        return None
     for source, projection in outputs:
         if source == key:
             return projection.copy()
-    if isinstance(key, exp.Column):
+    if key.find(exp.Window, exp.AggFunc) is not None:
         return None
     resolved = key.copy()
     for column in list(resolved.find_all(exp.Column)):
