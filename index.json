@@ -33480,15 +33480,10 @@
       "title": "Add a Codex reviewer that produces remote close-out review records"
     },
     "remote-closeout-make-function-injection-20261107": {
-      "claim": {
-        "expires_at": "2026-11-13T05:56:09Z",
-        "generation": "491b0c21d67a4ad2be6c4e5672654071",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Remote close-out make wrapper executes make functions in values, so text from a PR must never reach its command line"
     },
     "remote-review-claude-fallback-20261019": {
