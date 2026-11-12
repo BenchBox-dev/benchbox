@@ -103,6 +103,19 @@ def has_failed_query_validation(query_rows: Any) -> bool:
     )
 
 
+def unvalidated_measurement_query_ids(query_rows: Any) -> list[str]:
+    if not isinstance(query_rows, list):
+        return []
+    return [
+        str(query.get("query_id") or query.get("id"))
+        for query in query_rows
+        if isinstance(query, dict)
+        and str(query.get("run_type") or "measurement").strip().lower() == "measurement"
+        and isinstance(evidence := query.get("row_count_validation"), dict)
+        and str(evidence.get("status") or "").strip().upper() == "UNVALIDATED"
+    ]
+
+
 def _query_row_failed(query: Any) -> bool:
     if not isinstance(query, dict):
         return False
