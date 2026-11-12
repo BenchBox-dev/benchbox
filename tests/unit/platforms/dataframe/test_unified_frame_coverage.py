@@ -364,6 +364,9 @@ class _DefaultNativeExpr:
     def is_in(self, values):
         return _DefaultNativeExpr(("is_in", self.value, tuple(values)))
 
+    def drop_nulls(self):
+        return _DefaultNativeExpr(("drop_nulls", self.value))
+
     def n_unique(self):
         return _DefaultNativeExpr(("n_unique", self.value))
 
