@@ -41994,10 +41994,15 @@
       "title": "tractable expect_store accepts a prefix-named repository, so the wrong-tracker gate can pass for the wrong project"
     },
     "tractable-not-before-empty-does-not-clear-hold-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T04:46:46Z",
+        "generation": "f4e4eb47ec74487d8a26fbf34b01ba07",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1319a3225e6eeb104ec2240b"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "tractable: update_item with not_before=\"\" does not clear a hold"
     },
     "trailing-delimiter-probe-swallows-read-errors": {
