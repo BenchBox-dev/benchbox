@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The chosen rule is written in BenchBox's comment-policy or batch-tracker docs and, if (b), in tractable's release-gates.md.",
+    "If (a), the ratchet refuses a vendored tractable wheel whose version and hash PyPI does not serve, with a unit test."
+  ],
+  "description": "Process gap. tractable's docs/operations/release-gates.md says consumer rollout waits until the opt-in PyPI run's distribution-verify passes. PR #4144 moved BenchBox to tractable 1.1.1 and merged at 2026-11-12T04:46Z, while 1.1.1's PyPI publication only completed at about 12:55Z (run https://github.com/joeharris76/tractable/actions/runs/43133361734). No harm resulted: BenchBox vendors the wheel from the GitHub release, scripts/check_comment_cleanup_scope.py verifies its hash against the release SHA256SUMS, and the wheel BenchBox pins (sha256 c09ba584...a5f4) is identical to the one PyPI serves. But nothing in BenchBox checks the documented ordering, and the two repositories disagree on whether it applies to a vendored wheel. Decide one: (a) the comment-policy wheel ratchet also requires the version to be on PyPI with matching hashes, or (b) vendored bumps depend only on the GitHub release, and tractable's release-gates.md is amended to say so.",
+  "sessions": [
+    {
+      "actor": "joe-tractable-followups",
+      "at": "2026-11-12T16:54:13Z",
+      "client": "mcp",
+      "op": "create",
+      "op_id": "594d4233b674483cb749888281a5d4a0",
+      "session_id": "f2d490b3e67f4a799a2cdcae340365d1"
+    }
+  ]
+}
