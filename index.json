@@ -13606,6 +13606,13 @@
       "status": "done",
       "title": "Make develop the GitHub default branch (Decision A of the branching-strategy review)"
     },
+    "branch-prune-merged-exhausts-github-quota-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "make branch-prune-merged spends one GitHub request per branch and deletes nothing if any request fails"
+    },
     "break-root-import-cycle": {
       "claim": null,
       "needs": [],
