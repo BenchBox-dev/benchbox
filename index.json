@@ -42027,10 +42027,15 @@
       "title": "Record the SQLGlot runtime for runs whose SQL SQLGlot rewrites without logging a translation"
     },
     "triage-stalled-batch-evidence-draft-4037-20261110": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T00:56:11Z",
+        "generation": "744778d1657c4f49921670360e199789",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1319a3225e6eeb104ec2240b"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Close or rebase stalled draft #4037 now that #4048 landed develop-deleted path dropping"
     },
     "trial-capacity-disclosure-bundles-20261006": {
