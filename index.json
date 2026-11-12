@@ -24124,6 +24124,13 @@
       "status": "open",
       "title": "Validate the SSB, TPC-DI and primitives generators at SF 100"
     },
+    "generator-volume-changes-pass-pr-ci-unchecked-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "A generator change that multiplies data volume passes PR CI: the SF 1 size baseline is not enforced and no run exercises the new volume"
+    },
     "geospatial-primitives-benchmark": {
       "claim": null,
       "needs": [],
