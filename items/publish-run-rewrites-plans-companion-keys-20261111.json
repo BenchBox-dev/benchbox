@@ -14,6 +14,61 @@
     "BenchBox-dev/BenchBox: benchbox/cli/commands/publish.py",
     "BenchBox-dev/BenchBox: benchbox/core/results/schema.py"
   ],
+  "prepared": {
+    "accepted_head": "3d3eb8386765579918e437d83dde3bb1936efb70",
+    "batch_id": "plan-capture-followups",
+    "changed_files": [
+      "benchbox/cli/commands/publish.py",
+      "changelog.d/fix-publish-run-preserves-plan-keys.json",
+      "tests/unit/cli/commands/test_publish_plans_boundary.py"
+    ],
+    "integration_head": "dde64141c583e00f6777f7280deac3662128bf41",
+    "integration_seq": 2,
+    "member_id": "publish-run-rewrites-plans-companion-keys-20261111",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "bc4403bf19ce19fe3e7c5755e5613287957d25d87d8c22b4e1bbba1b02397661",
+    "source_base": "434deb53594c472ce46f86a3888da9ae7491b959",
+    "source_revision": "3d3eb8386765579918e437d83dde3bb1936efb70",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-pcf-pubkeys",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/test_publish_cli.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_e2e_integration.py",
+        "tests/uat/test_no_cli_surface_drift.py",
+        "tests/unit/cli/commands/test_publish.py",
+        "tests/unit/cli/commands/test_publish_plans_boundary.py",
+        "tests/unit/cli/test_run_command_branches.py",
+        "tests/unit/core/publishing/test_bundle_publisher_label.py",
+        "tests/unit/core/results/test_local_result_diagnosability.py"
+      ],
+      "review": {
+        "base_sha": "434deb53594c472ce46f86a3888da9ae7491b959",
+        "head_sha": "3d3eb8386765579918e437d83dde3bb1936efb70",
+        "head_tree": "e03fe6195788a2a52ea1a66eef1411c09c02abf2",
+        "outcome": "clear",
+        "patch_digest": "cb4a003eddaa43486442995e66bc649a",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "4f5cfba46877b9887ab5fbd68bee5938e2b1fce2"
+      },
+      "revision": "3d3eb8386765579918e437d83dde3bb1936efb70",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ce763d5976f477ecde9610ed",
@@ -38,6 +93,15 @@
       "generation": "417ea0078dd74c90a2b71cbb13c6ef7f",
       "op": "take",
       "op_id": "c14d67fc45b6454f8cc2d58fadfdd5fd",
+      "session_id": "32e4db9816694cfb9be59807549223c7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:eb741106bc3418ce287ca405",
+      "at": "2026-11-12T15:01:36Z",
+      "client": "omp-coding-agent",
+      "generation": "417ea0078dd74c90a2b71cbb13c6ef7f",
+      "op": "prepare",
+      "op_id": "e0740937a9654f909862cf97ccc635f3",
       "session_id": "32e4db9816694cfb9be59807549223c7"
     }
   ]

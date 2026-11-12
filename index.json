@@ -5403,7 +5403,8 @@
     },
     "plan-capture-followups": {
       "accepted_members": {
-        "heavy-run-cmd-dollar-expansion-20261111": "0dda5876404ca0dbb421e6aaa08f4b1bc627654c"
+        "heavy-run-cmd-dollar-expansion-20261111": "0dda5876404ca0dbb421e6aaa08f4b1bc627654c",
+        "publish-run-rewrites-plans-companion-keys-20261111": "3d3eb8386765579918e437d83dde3bb1936efb70"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -5420,10 +5421,20 @@
           ],
           "integration_head": "434deb53594c472ce46f86a3888da9ae7491b959",
           "integration_seq": 1
+        },
+        "publish-run-rewrites-plans-companion-keys-20261111": {
+          "accepted_head": "3d3eb8386765579918e437d83dde3bb1936efb70",
+          "changed_files": [
+            "benchbox/cli/commands/publish.py",
+            "changelog.d/fix-publish-run-preserves-plan-keys.json",
+            "tests/unit/cli/commands/test_publish_plans_boundary.py"
+          ],
+          "integration_head": "dde64141c583e00f6777f7280deac3662128bf41",
+          "integration_seq": 2
         }
       },
       "integration_branch": "feat/plan-capture-followups",
-      "integration_head": "434deb53594c472ce46f86a3888da9ae7491b959",
+      "integration_head": "dde64141c583e00f6777f7280deac3662128bf41",
       "integration_log": [
         {
           "at": "2026-11-12T14:50:36Z",
@@ -5439,6 +5450,15 @@
           "op_id": "1869461f25634031ae834f3962a59a3b",
           "previous_head": "4f5cfba46877b9887ab5fbd68bee5938e2b1fce2",
           "seq": 1
+        },
+        {
+          "at": "2026-11-12T15:01:36Z",
+          "head": "dde64141c583e00f6777f7280deac3662128bf41",
+          "kind": "prepare",
+          "member": "publish-run-rewrites-plans-companion-keys-20261111",
+          "op_id": "e0740937a9654f909862cf97ccc635f3",
+          "previous_head": "434deb53594c472ce46f86a3888da9ae7491b959",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-capture-followups",
@@ -31899,15 +31919,10 @@
       "title": "Publish the first query-plan capture bundles to the Results Explorer (PR 4153 awaits the owner lifting its hold)"
     },
     "publish-run-rewrites-plans-companion-keys-20261111": {
-      "claim": {
-        "expires_at": "2026-11-13T15:01:30Z",
-        "generation": "417ea0078dd74c90a2b71cbb13c6ef7f",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:eb741106bc3418ce287ca405"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "benchbox publish run rewrites plans companion keys from Q<id>#<stream>:<test_type> to the bare query id"
     },
     "publish-tpcds-obt-subscale-results-20261111": {
