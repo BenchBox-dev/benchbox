@@ -92,7 +92,7 @@ Rules that hold for the whole batch:
 
 | Target | Run by | Does |
 |---|---|---|
-| `make batch-start BATCH= MEMBERS= SCOPE_JSON= PROJECT_ID= [WORKTREE_PATH=] [DEPENDENCIES=member=dep1+dep2,...] [CONFIRM_CUTOVER=1]` | Leader, any worktree | Refuses fewer than two members (one member is serial work). Appends `changelog.d/*` and `docs/internal/dev-loop-property-ledger.md` to every member's scope before hashing it. Creates `feat/<batch>` and its worktree from `refs/remotes/origin/develop`, writes the ledger and owner generation, and prints the `register_batch` arguments and an `after_register` block of `update_item` steps |
+| `make batch-start BATCH= MEMBERS= SCOPE_JSON= PROJECT_ID= [WORKTREE_PATH=] [DEPENDENCIES=member=dep1+dep2,...] [CONFIRM_CUTOVER=1]` | Leader, any worktree | Refuses fewer than two members (one member is serial work). Appends `changelog.d/*` and `docs/internal/dev-loop-property-ledger.md` to every member's scope before hashing it. Creates `feat/<batch>` and its worktree from `refs/remotes/origin/develop`, writes the ledger and owner generation, and prints the `register_batch` arguments (the owner generation is a placeholder; see the `owner-generation` command below) and an `after_register` block of `update_item` steps |
 | `make batch-member-create MEMBER= [WORKTREE_PATH=]` | Leader, integration worktree | Creates `feat/<batch>--<member>` at the current integration head; refuses an existing branch, and refuses while the primary clone has uncommitted tracked changes (the files are named) |
 | `make batch-member-check [TESTS=a,b]` | Member | Requires a clean branch that contains the integration head and has changes, no uncommitted tracked change anywhere in the primary clone, and no change there under the member's frozen scope (the files are named); refuses a changed path outside the member's frozen scope (the paths are named), with the message `batch-land` uses; runs `make pr-preflight` against that head (or the command given as `PREFLIGHT_CMD`, which is recorded and warned about at landing) and the changelog check, then executes the union of the mapped and named tests and records success only if that command passes and the checkout stays clean at the same head; runs no review: the leader reviews the exact patch at landing |
 | `make batch-land MEMBER= [ACCEPT_WRITES=op_id,...]` | Leader | Merges a checked member with `--no-ff` and prints the `take`/`prepare` payload (`prepare` only for a dependent member, which must already be taken); the member's implementation dependencies are read from its registered tracker metadata |
@@ -137,8 +137,13 @@ one message and block only the members they affect.
    store below schema 4, metadata attached before registration is refused
    (`E_SCHEMA`). A new item takes the same `batch` through `create_item`.
 
-The owner generation is a credential that no tool serves back. It lives only in
-the leader's ledger.
+The owner generation is a credential that no tracker tool serves back. It lives
+only in the leader's ledger. No `batch-*` payload, progress line or status
+report prints it: `owner_generation` and `new_owner_generation` appear as
+placeholders. When a tracker call needs it (`register_batch`,
+`advance_batch_head`, `recover_batch_owner`), the leader runs
+`uv run -- python scripts/batch_integration.py owner-generation`, which prints only that value, and pastes it into
+the call. Never copy it into notes, items, commit messages or PR text.
 
 ### 2. Dispatch and implement (members)
 
@@ -319,7 +324,8 @@ landed members only.
 - **Dead leader.** From a clean checkout on the integration branch at the
   recorded integration head, run `make batch-recover EXPECTED_OWNER=<worker>
   EXPECTED_OWNER_GENERATION=<gen> REASON=<why>`. It writes a fresh generation to
-  the local ledger first, then prints the `recover_batch_owner` payload. It needs
+  the local ledger first, then prints the `recover_batch_owner` payload with
+  placeholders for both generations (`uv run -- python scripts/batch_integration.py owner-generation` prints the new one). It needs
   no live member claim and keeps valid receipts. It also takes over the session
   ownership of the integration worktree and every member worktree that still
   exists, so the successor commits there without `BENCHBOX_WORKTREE_TAKEOVER`;

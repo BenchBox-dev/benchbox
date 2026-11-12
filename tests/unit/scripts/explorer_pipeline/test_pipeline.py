@@ -22,12 +22,14 @@ from _project.scripts.explorer_pipeline.pipeline import (
 )
 from _project.scripts.explorer_pipeline.transformer import BundleTransformer
 from _project.scripts.results_explorer_snapshot_invariants import check_snapshot
-from benchbox.core.results.anonymization import AnonymizationManager
+from benchbox.core.results.anonymization import AnonymizationConfig, AnonymizationManager
 from benchbox.core.results.canonical_json import canonical_json_bytes
 from benchbox.validation.bundle import COMPANION_SUFFIXES
 from tests.unit.scripts.explorer_pipeline.conftest import MINIMAL_BUNDLE
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
+
+_CORPUS_PSEUDONYMIZER = AnonymizationManager(AnonymizationConfig(machine_id_salt="test-corpus-salt"))
 
 
 class TestBuildShortIds:
@@ -436,7 +438,11 @@ class TestExplorerPipelineRun:
         source = bundles_dir / "with_receipt.json"
         source.write_text(json.dumps(MINIMAL_BUNDLE), encoding="utf-8")
         source.with_name("with_receipt.applied.json").write_text(
-            json.dumps({"receipt": {"entries": [{"statement": "SET path=/Users/alice/private"}]}}),
+            json.dumps(
+                _CORPUS_PSEUDONYMIZER.anonymize_result_payload(
+                    {"receipt": {"entries": [{"statement": "SET path=/Users/alice/private"}]}}
+                )
+            ),
             encoding="utf-8",
         )
 
@@ -537,7 +543,9 @@ class TestExplorerPipelineRun:
         bundle["platform"]["tuning"] = {
             "tuning_source": "explicit_file",
             "source_file": "examples/tunings/duckdb/tpch_tuned.yaml",
-            "requested": {"table_tunings": {"table_abc123": {"table_name": "table_abc123"}}},
+            "requested": _CORPUS_PSEUDONYMIZER.anonymize_tuning_payload(
+                {"requested": {"table_tunings": {"lineitem": {"table_name": "lineitem"}}}}
+            )["requested"],
         }
         bundle_path.write_text(json.dumps(bundle), encoding="utf-8")
 
@@ -558,12 +566,14 @@ class TestExplorerPipelineRun:
         bundle_path.write_text(json.dumps(MINIMAL_BUNDLE), encoding="utf-8")
         bundle_path.with_name("legacy_tuning.tuning.json").write_text(
             json.dumps(
-                {
-                    "version": "2.1",
-                    "run_id": "test-exec-001",
-                    "source_file": "/Users/alice/private/tuning.yaml",
-                    "requested": {"table_tunings": {"lineitem": {"table_name": "lineitem"}}},
-                }
+                _CORPUS_PSEUDONYMIZER.anonymize_tuning_payload(
+                    {
+                        "version": "2.1",
+                        "run_id": "test-exec-001",
+                        "source_file": "/Users/alice/private/tuning.yaml",
+                        "requested": {"table_tunings": {"lineitem": {"table_name": "lineitem"}}},
+                    }
+                )
             ),
             encoding="utf-8",
         )
@@ -1304,3 +1314,22 @@ class TestStagedOutputGuards:
             ExplorerPipeline().run(data_dir, output)
 
         self._assert_no_staging_leftovers(output)
+
+
+class TestPublicOnlyAnonymization:
+    def test_a_bundle_that_is_not_already_pseudonymized_fails_the_build(self, tmp_path: Path) -> None:
+        raw = json.loads(json.dumps(MINIMAL_BUNDLE))
+        raw.setdefault("platform", {})["options"] = {"bucket": "private-bucket"}
+        bundles = tmp_path / "data" / "bundles"
+        bundles.mkdir(parents=True)
+        bundle = bundles / "raw.json"
+        bundle.write_bytes(canonical_json_bytes(raw))
+
+        with pytest.raises(pipeline_module.PrivacyRejectionError, match="not already pseudonymized"):
+            ExplorerPipeline().run(tmp_path / "data", tmp_path / "out")
+
+        out = tmp_path / "out"
+        assert not out.exists() or not any(out.rglob("*"))
+        assert not any(
+            b"private-bucket" in path.read_bytes() for path in tmp_path.rglob("*") if path.is_file() and path != bundle
+        )

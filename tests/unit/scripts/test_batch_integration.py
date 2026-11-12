@@ -51,7 +51,12 @@ def test_start_creates_a_role_integration_worktree_and_a_registrable_payload(wor
     assert arguments["develop_ref"] == "refs/remotes/origin/develop"
     assert arguments["start_head"] == git(world.primary, "rev-parse", "refs/remotes/origin/develop")
     assert arguments["integration_worktree"] == str(worktree) and arguments["project_id"] == "proj"
-    assert arguments["repository"] == str(world.origin) and len(arguments["owner_generation"]) == 32
+    assert (
+        arguments["repository"] == str(world.origin)
+        and arguments["owner_generation"] == bi.OWNER_GENERATION_PLACEHOLDER
+    )
+    generation = bi.read_owner_generation(worktree)
+    assert len(generation) == 32 and generation not in json.dumps(world.payload)
     assert (worktree / ".todo-batch" / BATCH / "ledger.json").is_file()
     assert bi._is_clean(worktree)
 
@@ -428,7 +433,8 @@ def test_recover_takes_over_the_batch_worktrees_and_records_the_handoff(
     handoffs = _ledger(integration)["handoffs"]
     assert len(handoffs) == 1
     assert handoffs[0]["expected_owner"] == "leader" and handoffs[0]["reason"] == "leader died"
-    assert handoffs[0]["new_owner_generation"] == payload["arguments"]["new_owner_generation"]
+    assert handoffs[0]["new_owner_generation"] == bi.read_owner_generation(integration)
+    assert payload["arguments"]["new_owner_generation"] == bi.OWNER_GENERATION_PLACEHOLDER
     assert handoffs[0]["worktrees"] == payload["worktree_takeover"]
 
 
@@ -1122,7 +1128,7 @@ def test_a_fix_reruns_only_the_earlier_members_whose_files_it_touches(world: Wor
         "tool": "advance_batch_head",
         "arguments": {
             "batch_id": BATCH,
-            "owner_generation": world.payload["arguments"]["owner_generation"],
+            "owner_generation": bi.OWNER_GENERATION_PLACEHOLDER,
             "expected_head": expected,
             "head": fix_head,
             "reason": "fix",
@@ -1575,16 +1581,17 @@ def test_recover_mints_a_generation_into_the_ledger_and_marks_the_checkout_befor
     git(integration, "config", "--worktree", "--unset", "benchbox.batch.id")
     payload = bi.recover_owner(integration, **_recover_args())
     arguments = payload["arguments"]
-    generation = arguments["new_owner_generation"]
+    generation = bi.read_owner_generation(integration)
     assert len(generation) == 32 and int(generation, 16) >= 0 and generation != old_generation
     assert payload["tool"] == "recover_batch_owner"
     assert arguments == {
         "batch_id": BATCH,
         "expected_owner": "leader",
-        "expected_owner_generation": "g" * 32,
-        "new_owner_generation": generation,
+        "expected_owner_generation": bi.EXPECTED_OWNER_GENERATION_PLACEHOLDER,
+        "new_owner_generation": bi.OWNER_GENERATION_PLACEHOLDER,
         "reason": "leader died",
     }
+    assert generation not in json.dumps(payload) and "g" * 32 not in json.dumps(payload)
     ledger = _ledger(integration)
     assert ledger["owner_generation"] == generation and ledger["members"] == MEMBERS
     assert bi.role_of(integration) == "integration" and bi.require_role(integration, "integration") == BATCH
@@ -1607,7 +1614,7 @@ def test_recover_with_relocation_prints_the_expected_and_new_worktree_and_head(w
     assert arguments["expected_integration_head"] == world.tracker.head
     assert arguments["integration_worktree"] == str(target.resolve())
     ledger = json.loads((target / ".todo-batch" / BATCH / "ledger.json").read_text(encoding="utf-8"))
-    assert ledger["owner_generation"] == arguments["new_owner_generation"]
+    assert ledger["owner_generation"] == bi.read_owner_generation(target)
     assert ledger["integration_worktree"] == str(target.resolve())
     assert bi.require_role(target, "integration") == BATCH
 
@@ -1656,5 +1663,20 @@ def test_cli_recover_prints_the_payload(world: World, capsys: pytest.CaptureFixt
         ]
     )
     assert code == 0
-    printed = json.loads(capsys.readouterr().out)
-    assert printed["arguments"]["new_owner_generation"] == _ledger(integration)["owner_generation"]
+    out = capsys.readouterr().out
+    assert json.loads(out)["arguments"]["new_owner_generation"] == bi.OWNER_GENERATION_PLACEHOLDER
+    generation = _ledger(integration)["owner_generation"]
+    assert generation not in out and "g" * 32 not in out
+    assert bi.main(["--worktree", str(integration), "status"]) == 0
+    assert generation not in capsys.readouterr().out
+    assert bi.main(["--worktree", str(integration), "owner-generation"]) == 0
+    assert capsys.readouterr().out.strip() == generation
+
+
+def test_owner_generation_refuses_a_ledger_without_one(world: World) -> None:
+    integration = world.start()
+    ledger = _ledger(integration)
+    ledger["owner_generation"] = None
+    bi.save_ledger(integration, ledger)
+    with _raises("make batch-recover"):
+        bi.read_owner_generation(integration)

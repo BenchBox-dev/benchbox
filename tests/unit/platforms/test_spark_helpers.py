@@ -588,7 +588,7 @@ class TestSparkLikeAdapterMixin:
 
         adapter = _StubAdapter("Spark")
         adapter.tuning_enabled = True
-        adapter.unified_tuning_configuration = _real_spark_config({"foo.bar": "baz"})
+        adapter.unified_tuning_configuration = _real_spark_config({"sql.shuffle.partitions": "8"})
         session = _StoreSession()
         session.conf.set = MagicMock(side_effect=RuntimeError("rejected"))
         with caplog.at_level(logging.WARNING, logger=__name__):

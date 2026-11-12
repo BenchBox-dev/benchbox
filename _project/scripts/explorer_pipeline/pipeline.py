@@ -41,7 +41,11 @@ from _project.scripts.explorer_pipeline.transformer import (
     _sanitize_applied_receipt,
 )
 from _project.scripts.results_explorer_snapshot_invariants import check_snapshot
-from benchbox.core.results.anonymization import AnonymizationManager, find_public_path_leaks
+from benchbox.core.results.anonymization import (
+    AnonymizationManager,
+    UnpseudonymizedPublicValueError,
+    find_public_path_leaks,
+)
 from benchbox.core.results.canonical_json import canonical_json_bytes
 from benchbox.core.results.provenance import SOURCE_TO_TRUST_LABEL
 from benchbox.validation.bundle import COMPANION_SUFFIXES, discover_bundles
@@ -206,6 +210,17 @@ def _public_override_display(
 
 
 def _public_bundle_data(
+    bundle_path: Path,
+    bundle_data: dict[str, Any],
+    anonymizer: AnonymizationManager,
+) -> tuple[dict[str, Any], str | None]:
+    try:
+        return _public_bundle_data_checked(bundle_path, bundle_data, anonymizer)
+    except UnpseudonymizedPublicValueError as exc:
+        raise PrivacyRejectionError(f"{bundle_path}: bundle is not already pseudonymized: {exc}") from exc
+
+
+def _public_bundle_data_checked(
     bundle_path: Path,
     bundle_data: dict[str, Any],
     anonymizer: AnonymizationManager,
@@ -561,7 +576,7 @@ class ExplorerPipeline:
         output_dir.parent.mkdir(parents=True, exist_ok=True)
         staging_dir = Path(tempfile.mkdtemp(prefix=f".{output_dir.name}.", dir=output_dir.parent))
         try:
-            public_anonymizer = AnonymizationManager()
+            public_anonymizer = AnonymizationManager.for_public_only_bundles()
 
             out_bundles_dir = staging_dir / "bundles"
             out_bundles_dir.mkdir(parents=True)
@@ -670,7 +685,7 @@ class ExplorerPipeline:
                     for suffix in PUBLISHED_COMPANION_SUFFIXES:
                         try:
                             public_companion = _public_companion_bytes(bundle_path, suffix, public_anonymizer)
-                        except CompanionPrivacyError as exc:
+                        except (CompanionPrivacyError, UnpseudonymizedPublicValueError) as exc:
                             raise PrivacyRejectionError(f"{bundle_path} ({suffix} companion): {exc}") from exc
                         if public_companion is None:
                             continue

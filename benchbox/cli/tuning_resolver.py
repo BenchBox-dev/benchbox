@@ -476,8 +476,12 @@ def spark_session_config_table(spark_map: Mapping[str, Any] | None) -> Table | N
     table = Table(title="Spark Session Config", show_header=True, header_style="bold blue")
     table.add_column("Property", style="cyan")
     table.add_column("Value", style="yellow")
+    from benchbox.core.tuning.interface import is_known_spark_session_key
+    from benchbox.platforms.spark_effective_config import redact_spark_conf_value
+
     for key, value in sorted(spark_map.items()):
-        table.add_row(str(key), str(value))
+        shown = str(value) if is_known_spark_session_key(str(key)) else redact_spark_conf_value(str(key), str(value))
+        table.add_row(str(key), shown)
     return table
 
 
