@@ -47,6 +47,8 @@ def _as_bool(value: Any) -> bool:
     return parse_bool(str(value))
 
 
+_RELATION_QUERY_PATTERN = re.compile(r"\s*\(*\s*(?:SELECT|WITH)\b", re.IGNORECASE)
+
 _MEMORY_LIMIT_PATTERN = re.compile(
     rf"^{_DUCKDB_MEMORY_SIZE_PATTERN}$",
     re.IGNORECASE,
@@ -1075,6 +1077,15 @@ class DuckDBAdapter(PlatformAdapter):
         if self.show_query_plans and not self.capture_plans:
             connection.execute("SET enable_profiling = 'query_tree'")
 
+    def _open_result(self, connection: Any, query: str) -> Any:
+        if self.fetch_mode == FETCH_MODE_ARROW and _RELATION_QUERY_PATTERN.match(query):
+            relation_factory = getattr(connection, "sql", None)
+            if callable(relation_factory):
+                relation = relation_factory(query)
+                if relation is not None:
+                    return relation
+        return connection.execute(query)
+
     def execute_query(
         self,
         connection: Any,
@@ -1113,7 +1124,7 @@ class DuckDBAdapter(PlatformAdapter):
 
             start_time = mono_time()
             ledger.add_request()
-            result = connection.execute(query)
+            result = self._open_result(connection, query)
             fetched = fetch_result(
                 self.fetch_mode,
                 fetch_rows=result.fetchall,

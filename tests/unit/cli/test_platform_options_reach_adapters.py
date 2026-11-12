@@ -93,6 +93,7 @@ OPTION_CASES: dict[str, dict[str, tuple[str, str, Any]]] = {
         "threads": ("3", "thread_limit", 3),
         "temp_directory": ("/var/tmp/duckdb-spill", "temp_directory", "/var/tmp/duckdb-spill"),
         "fetch_mode": ("rows", "fetch_mode", "rows"),
+        "allow_third_party_extensions": ("true", "allow_third_party_extensions", True),
     },
     "sqlite": {
         "database_path": ("/var/tmp/options.db", "database_path", "/var/tmp/options.db"),
