@@ -317,18 +317,36 @@ def test_configure_benchmark_builds_config_from_prompted_values(
     assert config.options["recommended_scale"] == 0.1
 
 
-def test_prompt_scale_single_option_skips_prompt(monkeypatch: pytest.MonkeyPatch, manager: BenchmarkManager):
+@pytest.mark.parametrize("benchmark_id", ["metadata_primitives", "joinorder"])
+def test_prompt_scale_fixed_benchmark_skips_prompt(
+    monkeypatch: pytest.MonkeyPatch, manager: BenchmarkManager, benchmark_id: str
+):
     console, stream = _capture_console()
     monkeypatch.setattr(bench_mod, "console", console)
 
     scale = manager._prompt_scale(
-        "metadata_primitives",
-        manager.benchmarks["metadata_primitives"],
+        benchmark_id,
+        manager.benchmarks[benchmark_id],
         {"memory_gb": 8, "cpu_cores": 4},
     )
 
     assert scale == 1.0
     assert "fixed for this benchmark" in stream.getvalue()
+
+
+def test_prompt_scale_single_standard_value_still_prompts(monkeypatch: pytest.MonkeyPatch, manager: BenchmarkManager):
+    console, stream = _capture_console()
+    monkeypatch.setattr(bench_mod, "console", console)
+    monkeypatch.setattr(bench_mod.FloatPrompt, "ask", lambda *_args, **_kwargs: 0.1)
+    benchmark_info = {**manager.benchmarks["clickbench"], "scale_options": [1.0], "default_scale": 1.0}
+
+    scale = manager._prompt_scale("clickbench", benchmark_info, {"memory_gb": 64, "cpu_cores": 4})
+
+    output = stream.getvalue()
+    assert scale == 0.1
+    assert "fixed for this benchmark" not in output
+    assert "Standard values: 1" in output
+    assert "0.01 to 100000" in output
 
 
 def test_prompt_scale_retries_after_validation_failure(monkeypatch: pytest.MonkeyPatch, manager: BenchmarkManager):

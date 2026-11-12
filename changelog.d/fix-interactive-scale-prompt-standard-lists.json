@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed the interactive scale prompt treating a benchmark with one standard scale factor as fixed: ClickBench now prompts for a scale instead of forcing 1.0. The prompt and benchmark preview label the listed values as standard and state the accepted range."
+    }
+  ]
+}
