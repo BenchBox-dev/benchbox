@@ -2774,7 +2774,7 @@
         }
       },
       "integration_branch": "feat/df-distinct-remediation",
-      "integration_head": "f933e864081b5554a6f75a7aa54bcb17d35f58e6",
+      "integration_head": "1e4ac18b3e18b35f7e1707585cd3f6ede6b374d7",
       "integration_log": [
         {
           "at": "2026-11-12T13:36:05Z",
@@ -2808,6 +2808,22 @@
           "op_id": "01c81b8956914394957bdb0c87610d3d",
           "previous_head": "f5d0829cfba821c5be868b39b8da42e082d7286c",
           "seq": 3
+        },
+        {
+          "at": "2026-11-12T14:38:00Z",
+          "changed_files": [
+            "benchbox/core/tpcds/dataframe_queries/queries.py",
+            "changelog.d/feat-df-distinct-remediation--tpcds-df-multi-warehouse-min-max.json",
+            "tests/unit/core/tpcds/test_multi_warehouse_orders.py"
+          ],
+          "head": "1e4ac18b3e18b35f7e1707585cd3f6ede6b374d7",
+          "kind": "fix",
+          "op_id": "93a625a337ab408c99afc639a5948820",
+          "previous_head": "f933e864081b5554a6f75a7aa54bcb17d35f58e6",
+          "requires_acceptance": [
+            "tpcds-df-multi-warehouse-min-max"
+          ],
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-df-distinct-remediation",
