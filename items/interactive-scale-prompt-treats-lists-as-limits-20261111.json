@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "The interactive prompt asks for a scale for ClickBench and accepts 0.1 (unit test of `_prompt_scale`).",
+    "For `joinorder` it still skips the prompt and says the scale is fixed (unit test).",
+    "`rg -n 'Supported Scale Factors|Available options' benchbox/cli/benchmarks.py` finds nothing."
+  ],
+  "context": "Found 2026-11-11 while verifying the merged scale-factor work (BenchBox#4126, benchbox-site#138) against the original audit findings.",
+  "description": "## Problem\n`benchbox/cli/benchmarks.py` was only partly updated for the range rule from BenchBox#4126:\n- `_prompt_scale` treats any benchmark with one listed value as fixed: it skips the prompt and prints 'Scale factor: 1.0 (fixed for this benchmark)'. ClickBench lists only 1.0 but is not fixed (`scale_policy` is unset and the validator accepts 0.01 to 100000), so the interactive path cannot choose another ClickBench scale and tells the user something false. `joinorder` and `metadata_primitives` are the only fixed benchmarks.\n- The preview labels the list 'Supported Scale Factors' and the prompt says 'Available options', although other in-range values are accepted with a note.\n\n## Change\nDecide 'fixed' from `get_scale_factor_rule(benchmark_id).exact`, not from the list length. Relabel the list as the standard values and say that other values in the accepted range run with a note.\n\n## Guardrails\n- Do not change `scale_options` values or the validator.\n- Keep the recommended-scale logic choosing from the standard values.",
+  "links": [
+    "benchbox/cli/benchmarks.py",
+    "benchbox/core/benchmark_registry.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba",
+      "at": "2026-11-12T00:54:17Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5d479b6af5524ae7b4ad787c1291e401",
+      "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    }
+  ]
+}
