@@ -1,0 +1,42 @@
+CreatingSets (Create sets before main query execution)
+  Expression (Project names)
+    Limit (preliminary LIMIT (without OFFSET))
+      Sorting (Sorting for ORDER BY)
+        Expression ((Before ORDER BY + Projection))
+          Aggregating
+            Expression ((Before GROUP BY + ))
+              Expression
+                Join
+                  Expression
+                    Expression
+                      Join
+                        Expression (Change column names to column identifiers)
+                          ReadFromMergeTree (te_20261112203725_t.customer)
+                          Indexes:
+                            PrimaryKey
+                              Condition: true
+                              Parts: 5/5
+                              Granules: 19/19
+                              Ranges: 5
+                        Expression ((WHERE + Change column names to column identifiers))
+                          ReadFromMergeTree (te_20261112203725_t.orders)
+                          Indexes:
+                            PrimaryKey
+                              Keys:
+                                o_orderkey
+                              Condition: (o_orderkey in 57-element set)
+                              Parts: 5/5
+                              Granules: 186/186
+                              Search Algorithm: generic exclusion search
+                              Ranges: 5
+                  Expression ((WHERE + Change column names to column identifiers))
+                    ReadFromMergeTree (te_20261112203725_t.lineitem)
+                    Indexes:
+                      PrimaryKey
+                        Keys:
+                          l_orderkey
+                        Condition: (l_orderkey in 57-element set)
+                        Parts: 5/5
+                        Granules: 740/740
+                        Search Algorithm: generic exclusion search
+                        Ranges: 5

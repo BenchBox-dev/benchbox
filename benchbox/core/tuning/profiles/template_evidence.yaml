@@ -1,10 +1,40 @@
 clickhouse:
   tpch:
-    measurements: []
+    measurements:
+      - state: measured-benefit
+        scale_factor: 1.0
+        memory:
+          basis: container_limit
+          value: 5637144576
+        engine_version: "25.8.33.6"
+        measured_on: "2026-11-12"
+        evidence: >-
+          scripts.tuning_evidence on a ClickHouse server in a Mocker 0.7.2 container, 9 shuffled
+          rounds, seed 42, 22 queries, no answer mismatches, A/A passed (G 1.0066, 95% CI
+          0.9592-1.0464); Q21 fails in every arm at this memory rung, so G covers 21 queries: full
+          tuned template G 0.8230 (0.7803-0.8777) with load plus settle 14.4 s against 10.5 s
+          notuning, layout only G 0.8226 (0.7598-0.8807) with 13.9 s; no query exceeds the 1.5x
+          bound with an interval above 1.0 (Q5 1.39, Q16 1.49 under the full template, causes
+          unproven); plans and rows read for Q3, Q5 and Q18 are in
+          _project/analysis/clickhouse-tuning-evidence-sf1; SF1 only, 5.25 GiB container
   tpcds:
     measurements: []
   ssb:
-    measurements: []
+    measurements:
+      - state: measured-benefit
+        scale_factor: 1.0
+        memory:
+          basis: container_limit
+          value: 5637144576
+        engine_version: "25.8.33.6"
+        measured_on: "2026-11-12"
+        evidence: >-
+          scripts.tuning_evidence on a ClickHouse server in a Mocker 0.7.2 container, 15 shuffled
+          rounds, seed 42, 13 queries, no failures or answer mismatches; the 9-round cell failed
+          its A/A (G 1.0539) and was repeated at 15 rounds, where A/A passed (G 1.0070, 95% CI
+          0.9654-1.0614): full tuned template G 0.7484 (0.7258-0.7881) with load plus settle
+          14.6 s against 11.8 s notuning, layout only G 0.8046 (0.7658-0.8396) with 14.0 s; no
+          query exceeds the 1.5x bound; SF1 only, 5.25 GiB container
 databricks:
   tpch:
     measurements: []

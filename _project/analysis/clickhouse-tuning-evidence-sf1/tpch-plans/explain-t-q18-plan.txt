@@ -1,0 +1,18 @@
+CreatingSets (Create sets before main query execution)
+  Expression (Project names)
+    Limit (preliminary LIMIT (without OFFSET))
+      Sorting (Sorting for ORDER BY)
+        Expression ((Before ORDER BY + Projection))
+          Aggregating
+            Expression ((Before GROUP BY + ))
+              Expression
+                Join
+                  Expression
+                    Expression
+                      Join
+                        Expression (Change column names to column identifiers)
+                          ReadFromMergeTree (te_20261112203725_t.customer)
+                        Expression ((WHERE + Change column names to column identifiers))
+                          ReadFromMergeTree (te_20261112203725_t.orders)
+                  Expression ((WHERE + Change column names to column identifiers))
+                    ReadFromMergeTree (te_20261112203725_t.lineitem)
