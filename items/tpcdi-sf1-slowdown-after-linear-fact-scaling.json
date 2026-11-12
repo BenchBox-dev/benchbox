@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Root cause of the AQ slowdowns identified, including the DataFusion AQ5 stall: query shape, join fan-out, or engine issue",
+    "A fix (query, generator multiplier or engine settings) chosen by the owner and landed, with measured cell durations",
+    "Spark and DataFusion tpcdi 1.0 prunes removed, and both cells green in a trunk UAT"
+  ],
+  "description": "#4149 (25a271c1) made FactCashBalances, FactHoldings, FactMarketHistory and FactWatches scale linearly (SF1 facts went from 275k to 6.77M rows, matching benchmark_specs.yaml). In trunk UAT 43154678095, spark tpcdi 1.0 went from 311 s to the 1200 s timeout, datafusion tpcdi 1.0 from 62 s to two timeouts, clickhouse-local 1.0 from 33 s to 255 s, and spark 0.1 from 199 s to 411 s. The join-heavy analytic queries AQ2, AQ4-AQ7 and AQ10 take 11-21 s each locally on DataFusion, and one local run stalled more than 20 minutes on AQ5 in the second pass (undiagnosed, shared machine). Spark and DataFusion tpcdi 1.0 are compatibility-pruned in the release gate until this is fixed.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a4419e6ace05ac5a296d594b",
+      "at": "2026-11-12T12:52:49Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0164e2e43c0a4c478c17e3896f82a230",
+      "session_id": "7f2d8583a7d94300804da984b061b91c"
+    }
+  ]
+}
