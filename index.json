@@ -35752,6 +35752,13 @@
       "status": "open",
       "title": "Review the soundness-path merge ceremony for proportionality and agent-workflow fit"
     },
+    "review-verdict-prepare-fails-on-transient-503-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "The hosted review job fails outright when GitHub returns a 503 while it prepares the review"
+    },
     "revisit-extras-naming-topology-e-g-dataframe-pandas-vs-panda": {
       "claim": null,
       "needs": [],
