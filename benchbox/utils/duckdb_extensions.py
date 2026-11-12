@@ -4,6 +4,8 @@ from typing import Any
 
 THIRD_PARTY_EXTENSION_OPTION = "allow_third_party_extensions"
 QUERY_FARM_HOST = "duckdb-extensions.query.farm"
+THIRD_PARTY_ENABLE_HINT = f"set --platform-option {THIRD_PARTY_EXTENSION_OPTION}=true to allow BenchBox to contact that host and load the extension"
+DATAFRAME_ENABLE_HINT = f"DataFrame platforms have no {THIRD_PARTY_EXTENSION_OPTION} option to enable it"
 SINGLE_ARROW_LAMBDA_STATEMENT = "SET lambda_syntax = 'ENABLE_SINGLE_ARROW'"
 SINGLE_ARROW_LAMBDA_SETTING = "lambda_syntax=ENABLE_SINGLE_ARROW"
 SINGLE_ARROW_REJECTED_FROM_MAJOR = 2
@@ -60,8 +62,7 @@ def datasketches_skip_reason(sql: str, allow_third_party: bool, version: str | N
         return None
     return (
         "the datasketches extension for DuckDB 2.x is only available from the third-party Query.Farm repository "
-        f"(https://{QUERY_FARM_HOST}); set --platform-option {THIRD_PARTY_EXTENSION_OPTION}=true to allow "
-        "BenchBox to contact that host and load the extension"
+        f"(https://{QUERY_FARM_HOST}); {THIRD_PARTY_ENABLE_HINT}"
     )
 
 

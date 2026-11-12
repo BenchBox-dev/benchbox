@@ -58,7 +58,12 @@ from benchbox.sql_compat.rules.execution_filter.starrocks_write_primitives impor
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.cloud_storage import normalize_output_dir
 from benchbox.utils.dialect_utils import split_sql_statements
-from benchbox.utils.duckdb_extensions import datasketches_skip_reason, rewrite_datasketches_install_sql
+from benchbox.utils.duckdb_extensions import (
+    DATAFRAME_ENABLE_HINT,
+    THIRD_PARTY_ENABLE_HINT,
+    datasketches_skip_reason,
+    rewrite_datasketches_install_sql,
+)
 from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
 
 _POSTGRES_OPERATION_SKIP_DIALECTS = frozenset({"postgres", "postgresql"})
@@ -1267,11 +1272,7 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                             "status": "SKIPPED",
                             "execution_time_seconds": 0.0,
                             "rows_returned": 0,
-                            "error": (
-                                f"Operation '{op_id}' is skipped in the DataFrame SQL-parity reference run: the "
-                                "datasketches extension for DuckDB 2.x needs a third-party extension repository, "
-                                "and DataFrame platforms have no allow_third_party_extensions option to enable it"
-                            ),
+                            "error": op_result.skip_reason.replace(THIRD_PARTY_ENABLE_HINT, DATAFRAME_ENABLE_HINT),
                         }
                     )
                     continue

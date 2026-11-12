@@ -12,6 +12,7 @@ from benchbox.core.write_primitives.benchmark import (
     _check_validation_query,
     _resolve_validation_sql,
 )
+from benchbox.utils.duckdb_extensions import DATAFRAME_ENABLE_HINT, THIRD_PARTY_ENABLE_HINT
 
 pytestmark = [
     pytest.mark.unit,
@@ -400,15 +401,21 @@ class TestDataFrameParityDialect:
         assert calls == [{"platform_key": "duckdb", "allow_third_party_extensions": False}]
         assert wp.dataframe_loaded_tables(ctx=None, adapter=None)[0]["lineitem"] == 5
 
-    def test_parity_workload_reports_skipped_operations_with_a_reason_true_for_dataframe_platforms(
-        self, wp, monkeypatch
-    ):
+    @pytest.mark.parametrize(
+        ("skip_reason", "expected"),
+        [
+            ("required bulk-load files are missing: x.csv", "required bulk-load files are missing: x.csv"),
+            (
+                f"needs the extension; {THIRD_PARTY_ENABLE_HINT}",
+                f"needs the extension; {DATAFRAME_ENABLE_HINT}",
+            ),
+        ],
+    )
+    def test_parity_workload_keeps_the_real_skip_reason(self, wp, monkeypatch, skip_reason, expected):
         duckdb_adapter = MagicMock()
         duckdb_adapter.create_connection.return_value = MagicMock()
         monkeypatch.setattr("benchbox.platforms.duckdb.DuckDBAdapter", lambda **_kw: duckdb_adapter)
-        monkeypatch.setattr(
-            wp, "_select_dataframe_operation_ids", lambda query_filter=None: ["sketch_ddl_create_persistent_table"]
-        )
+        monkeypatch.setattr(wp, "_select_dataframe_operation_ids", lambda query_filter=None: ["insert_single_row"])
         monkeypatch.setattr(wp, "_dataframe_loaded_table_counts", {}, raising=False)
         seen = []
 
@@ -421,7 +428,7 @@ class TestDataFrameParityDialect:
                 write_duration_ms=0.0,
                 rows_affected=0,
                 status="SKIPPED",
-                skip_reason="set --platform-option allow_third_party_extensions=true",
+                skip_reason=skip_reason,
             )
 
         monkeypatch.setattr(wp, "execute_operation", fake_execute)
@@ -431,15 +438,13 @@ class TestDataFrameParityDialect:
         assert seen == [False]
         assert rows == [
             {
-                "query_id": "sketch_ddl_create_persistent_table",
+                "query_id": "insert_single_row",
                 "status": "SKIPPED",
                 "execution_time_seconds": 0.0,
                 "rows_returned": 0,
-                "error": rows[0]["error"],
+                "error": expected,
             }
         ]
-        assert "have no allow_third_party_extensions option" in rows[0]["error"]
-        assert "--platform-option" not in rows[0]["error"]
 
 
 class TestGetPopulationSql:
