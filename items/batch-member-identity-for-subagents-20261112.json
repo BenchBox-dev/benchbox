@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "A member dispatched as a subagent that attempts `take` on its batch item is refused, shown by a test or a recorded live attempt.",
+    "`docs/agent/batch-feature-delivery.md` describes the supported dispatch path; the override used on 2026-11-12 is no longer needed or is documented as policy."
+  ],
+  "description": "Gap. `docs/agent/batch-feature-delivery.md` says a member never runs as a subagent of its leader, because tractable derives a worker's identity from its MCP server process and subagents share the leader's server, so the tracker cannot tell a member's write from the leader's. The batch `df-distinct-remediation` (PR #4169) ran three members as subagents under an explicit owner override; the members were instructed to make no tracker call and made none, but the `E_BATCH_OWNER` guard and the landing-time tracker-write check gave no protection. The only compliant alternative is the owner starting one top-level session per member, which defeats unattended delivery.\n\nExpected: a supported way for one leader session to dispatch members with distinct tracker identities (for example a per-subagent `TRACTABLE_ACTOR`, or a read-only tracker binding for members), or a documented statement that the override is the accepted practice and what it gives up.\n\nGuardrails: changes to the batch loop are delivered serially and cannot use a batch to certify themselves. Do not weaken `E_BATCH_OWNER` for distinct identities.",
+  "links": [
+    "docs/agent/batch-feature-delivery.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-12T16:53:05Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "df2165b60d62442cb765532e88a4c042",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}
