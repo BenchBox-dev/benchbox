@@ -21621,6 +21621,13 @@
       "status": "open",
       "title": "Measure the DuckDB tuned templates at SF1 and SF10, separating constraints from sort order and counting load time"
     },
+    "duckdb-version-isolation-0-9-2-untested-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "The DuckDB 0.9.2 case in the version-isolation test skips silently when its runtime cannot be built"
+    },
     "ducklake-beta-blocker-scale-runs-all-deployment-modes": {
       "claim": null,
       "needs": [],
