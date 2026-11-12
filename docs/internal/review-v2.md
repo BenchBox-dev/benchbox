@@ -312,14 +312,15 @@ these are the settings BenchBox sets and what each one does at its limit.
   It is scanned for and redacted like the other secrets. This accepts that the
   prepare and scan steps hold one more third-party key. Removing the caller
   mapping and the environment secret withdraws it.
-- `.github/review-guidance.md` holds BenchBox conventions for reviewers. The
-  pinned Theseus release does not load it into briefs and refuses a
-  `consumer.review_guidance` policy key, so today nothing reads it at review
-  time. It is a gate path and a soundness path, so any edit to it needs the
-  exact-head review and the owner's merge, and a test pins that its
-  do-not-flag list never names a gate, soundness or data input. Its entries
-  take effect only once a Theseus release reads the file from the trusted
-  base.
+- `.github/review-guidance.md` holds BenchBox conventions for reviewers. From
+  Theseus v0.2.11, `consumer.review_guidance` in `.github/review.yml` names it,
+  and the copy on the gated base goes into every reviewer brief as trusted
+  consumer guidance. A missing, empty, symlinked, non-UTF-8 or over-16384-byte
+  file makes the plan and the gate fail closed for every pull request. It is a
+  gate path and a soundness path, so any edit to it needs the exact-head review
+  and the owner's merge, and that review runs under the base's copy of the file.
+  A test pins that its do-not-flag list never names a gate, soundness or data
+  input; edits to the do-not-flag entries deserve owner scrutiny.
 
 ### Credential gateway
 
