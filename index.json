@@ -41077,10 +41077,15 @@
       "title": "Rename the TPC run mode to full-spec with deprecated official aliases"
     },
     "tpc-full-spec-enforcement": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T12:55:00Z",
+        "generation": "87c3875e5c9043cf9438418378c60ef4",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9dde2030f0b654b7eae6a730"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Make the TPC spec-following run mode enforce the full specification"
     },
     "tpc-full-spec-result-schema": {
