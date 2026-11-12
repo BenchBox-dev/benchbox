@@ -48,7 +48,9 @@ duckdb:
           mismatches, A/A passed (G 0.9899, 95% CI 0.9706-1.0125): full tuned template G 1.0202
           (0.9972-1.0542) with load 75.9 s against 5.6 s notuning, sort only G 1.0258
           (1.0084-1.0654) with load 48.9 s, constraints only G 0.9763 (0.9626-1.0076) with load
-          13.0 s; SF1 only, SF10 not measured
+          13.0 s; the full tuned query-time interval includes 1.0, so the regression verdict comes
+          from the benefit rule's load clause (load plus settle above 1.5x notuning with no
+          query-time benefit); SF1 only, SF10 not measured
   ssb:
     measurements:
       - state: measured-benefit
