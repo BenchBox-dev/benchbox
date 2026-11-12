@@ -667,7 +667,7 @@ class DuckLakeAdapter(DuckDBAdapter):
                 "DuckLake requires DuckDB >= 1.3 (the 'ducklake' extension is not "
                 f"available on earlier releases). Detected DuckDB version: "
                 f"{live_version or 'unknown'}. Use a duckdb>=1.3 environment "
-                "(e.g. `uv add 'duckdb>=1.3,<2.0'` or --platform-option driver_version=1.3.2)."
+                "(e.g. `uv add 'duckdb>=1.3,<3.0'` or --platform-option driver_version=1.3.2)."
             )
 
         if self.catalog in ("duckdb", "sqlite"):

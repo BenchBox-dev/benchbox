@@ -646,7 +646,7 @@ class TestBetaReleaseSurface:
 
         optional_deps = config["project"]["optional-dependencies"]
         dependency_groups = config["dependency-groups"]
-        expected = "duckdb>=1.5.0,<2.0.0"
+        expected = "duckdb>=1.5.0,<3.0.0"
         assert optional_deps["duckdb"] == [expected]
         assert expected in optional_deps["dev"]
         assert expected in optional_deps["mcp"]
