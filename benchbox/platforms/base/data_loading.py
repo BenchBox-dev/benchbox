@@ -12,7 +12,6 @@ import logging
 import os
 import re
 import shutil
-import signal
 import subprocess
 import tempfile
 import uuid
@@ -1745,7 +1744,6 @@ class FileFormatRegistry:
 
 
 _REWRITE_CHUNK_BYTES = 1 << 20
-_ZSTD_CONSUMER_CLOSED_RETURNCODES = (0, -signal.SIGPIPE) if hasattr(signal, "SIGPIPE") else (0,)
 _CR_RE = re.compile(rb"\r\n?")
 _BLANK_LINES_RE = re.compile(rb"\n{2,}")
 
@@ -1761,12 +1759,14 @@ def _open_binary_stream(file_path: Path, compression_handler: CompressionHandler
     elif isinstance(compression_handler, ZstdHandler):
         _require_zstd_cli(file_path)
         with subprocess.Popen(["zstd", "-d", str(file_path), "-c"], stdout=subprocess.PIPE) as proc:
+            consumed_to_eof = False
             try:
                 yield proc.stdout
+                consumed_to_eof = not proc.stdout.read(1)
             finally:
                 proc.stdout.close()
             returncode = proc.wait()
-            if returncode not in _ZSTD_CONSUMER_CLOSED_RETURNCODES:
+            if consumed_to_eof and returncode != 0:
                 raise subprocess.CalledProcessError(returncode, proc.args)
     else:
         with open(file_path, "rb") as f:
