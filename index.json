@@ -21493,6 +21493,13 @@
       "status": "done",
       "title": "Fix DuckDB sort/cluster index DDL identifier binding so indexes corroborate (false 'mismatch' on every run)"
     },
+    "duckdb-lambda-arrow-syntax-migration-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Move DuckDB lambda SQL off the deprecated `x -> expr` form before DuckDB removes the compatibility setting"
+    },
     "duckdb-merge-skip-reason-stale-20261107": {
       "claim": null,
       "needs": [],
