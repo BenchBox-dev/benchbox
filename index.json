@@ -30921,6 +30921,13 @@
       "status": "done",
       "title": "Address pre-existing issues surfaced by complexity batch 8-10 review"
     },
+    "preflight-misses-source-scanning-guard-tests-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "make pr-preflight does not select tests that scan benchbox/ source by path, such as the raw print() ratchet"
+    },
     "preflight-misses-sparse-checkout-consumer-tests-20261111": {
       "claim": null,
       "needs": [

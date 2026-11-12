@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "A change under benchbox/ selects tests/unit/cli/test_output_control_static.py in make pr-preflight",
+    "Other tests that scan benchbox/ source by path are listed and either mapped or recorded as too slow for preflight",
+    "A test covers the new mapping"
+  ],
+  "description": "On PR #4146 a change to benchbox/core/equivalence/cross_surface.py added four raw print() calls. `make pr-preflight` passed; CI's medium tier failed in tests/unit/cli/test_output_control_static.py::test_no_new_raw_print_in_benchbox_runtime ('found 22, pinned to 18'), costing one CI cycle. The test scans source files by path and never imports the changed module, so the import-based selection in _project/scripts/preflight_targets.py (_source_dependents) cannot reach it, and SOURCE_GUARD_TESTS maps the benchbox/ prefix only to tests/system/test_module_size_thresholds.py.",
+  "links": [
+    "_project/scripts/preflight_targets.py",
+    "tests/unit/cli/test_output_control_static.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1319a3225e6eeb104ec2240b",
+      "at": "2026-11-12T06:25:03Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "3ab899a5a06346b484f8b53800d89ea8",
+      "session_id": "c16189175abd4e878b3c9ce4c03812e3"
+    }
+  ]
+}
