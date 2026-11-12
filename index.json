@@ -31710,6 +31710,13 @@
       "status": "done",
       "title": "Find who writes to the primary clone and stop them now that the dirty guard blocks commits"
     },
+    "primary-scripts-venv-not-exact-to-lock-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Keep the _project/scripts venv exact to its lock so retired packages do not linger"
+    },
     "primitives-query-count-registry-20261111": {
       "claim": null,
       "needs": [

@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "After a runtime move lands and sessions restart, the primary _project/scripts venv contains only what uv.lock resolves (checked by `uv pip list` against the lock).",
+    "The chosen mechanism does not remove packages from a venv that a running tracker server is using, or the docs say when to run it."
+  ],
+  "description": "Gap. Every tracker entry point runs `uv run --project _project/scripts --locked -- ...`, which installs what the lock needs but never removes extras. On 2026-11-12 the primary clone's _project/scripts/.venv still held todo_db 0.15.0 next to tractable 1.1.1, months of runtime moves after it was last needed. The venv therefore does not match uv.lock: a stale import of a retired package succeeds locally while failing in CI and in fresh worktrees, and checks that probe the installed runtime can pass for the wrong reason. Making entry points exact (`uv run --exact`, or an exact `uv sync` at a safe point) would fix it, but an exact sync removes packages from under running MCP servers, so it must happen at a point that does not break live sessions.",
+  "sessions": [
+    {
+      "actor": "joe-tractable-followups",
+      "at": "2026-11-12T16:54:19Z",
+      "client": "mcp",
+      "op": "create",
+      "op_id": "d7f52e6e88ae48e48dcfd46885f5230b",
+      "session_id": "f2d490b3e67f4a799a2cdcae340365d1"
+    }
+  ]
+}
