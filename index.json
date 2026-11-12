@@ -40210,7 +40210,7 @@
         "theseus-trusted-candidate-evaluator-20261109"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "Prove a known defect exists at the base by reproducing it in a trusted isolated runner"
     },
     "theseus-known-defects-pre-existing-20261109": {

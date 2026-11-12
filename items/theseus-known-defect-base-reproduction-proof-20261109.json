@@ -4,6 +4,7 @@
     "A disguised new defect whose trigger is outside the cited lines is detected and blocks.",
     "Activation is a reviewed owner decision."
   ],
+  "context": "Parked 2026-11-12 (owner decision): no base-branch reproduction design for now. Findings are model judgements, so reproducing one on the base means a second paid review compared against the first, and the need is unmeasured. Acceptance suspended until theseus-known-defects-pre-existing-20261109 reaches its reopen trigger (three owner adjudications of findings that were only pre-existing) and the owner reopens the design.",
   "description": "Owner chose reviewer judgement plus mechanical checks as the proof that a finding is pre-existing (theseus-known-defects-pre-existing-20261109). That accepts that uncited triggers (a new caller, input or config change, a guard removed elsewhere, a doc change) can pass as known. A stronger proof is to reproduce the defect against the base commit, which needs the same trusted isolated, secret-free runner as theseus-trusted-candidate-evaluator-20261109.",
   "links": [
     "theseus-known-defects-pre-existing-20261109"
@@ -16,6 +17,14 @@
       "op": "create",
       "op_id": "96d48942fca34f0387a10f894a9c4503",
       "session_id": "ff599f834923406da7e6bd54d0a05e94"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b89414e427d02d5b37262d82",
+      "at": "2026-11-12T14:20:12Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "dc460fa8449f4f07a0b19130cc62dea1",
+      "session_id": "88f192edfe954a75a195b192ece667bc"
     }
   ]
 }
