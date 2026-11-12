@@ -19085,15 +19085,10 @@
       "title": "Three integration tests fail on unmodified develop under `make test-pytest`"
     },
     "develop-parallel-merge-semantic-conflict-guard-20261101": {
-      "claim": {
-        "expires_at": "2026-11-13T03:21:32Z",
-        "generation": "a6c8a4c3f05a424f95f40a872831092f",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Stop PRs tested on a stale base from turning develop red"
     },
     "develop-post-merge-lint-red-since-1494": {
