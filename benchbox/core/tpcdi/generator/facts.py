@@ -5,11 +5,21 @@ import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+import yaml
+
 from benchbox.utils.printing import emit
 
 from .rows import PipeRowWriter
 
 FACT_TRADE_GENERATION_ALGORITHM_VERSION = 1
+
+
+def _load_fact_row_multipliers() -> dict[str, int]:
+    with (Path(__file__).parent.with_name("generator_specs.yaml")).open(encoding="utf-8") as handle:
+        return yaml.safe_load(handle)["fact_row_multipliers"]
+
+
+_FACT_ROW_MULTIPLIERS = _load_fact_row_multipliers()
 
 
 def _trade_record_rng(generation_seed: int, trade_id: int) -> random.Random:
@@ -195,12 +205,23 @@ class FactGenerationMixin:
             batch_id,
         ]
 
+    def _secondary_fact_row_counts(self) -> dict[str, int]:
+        num_accounts = int(self.base_accounts * self.scale_factor)
+        num_securities = int(self.base_securities * self.scale_factor)
+        num_customers = int(self.base_customers * self.scale_factor)
+        return {
+            "FactCashBalances": num_accounts * _FACT_ROW_MULTIPLIERS["cash_balances_per_account"],
+            "FactHoldings": num_accounts * _FACT_ROW_MULTIPLIERS["holdings_per_account"],
+            "FactMarketHistory": num_securities * _FACT_ROW_MULTIPLIERS["market_history_days_per_security"],
+            "FactWatches": num_customers * _FACT_ROW_MULTIPLIERS["watches_per_customer"],
+        }
+
     def _generate_factcashbalances_data(self) -> str:
         file_path = self.output_dir / "FactCashBalances.tbl"
         num_customers = int(self.base_customers * self.scale_factor)
         num_accounts = int(self.base_accounts * self.scale_factor)
 
-        num_records = min(num_accounts * 30, 100000)
+        num_records = self._secondary_fact_row_counts()["FactCashBalances"]
 
         with PipeRowWriter(file_path) as writer:
             for _i in range(num_records):
@@ -238,7 +259,7 @@ class FactGenerationMixin:
         num_securities = int(self.base_securities * self.scale_factor)
         num_companies = int(self.base_companies * self.scale_factor)
 
-        num_records = min(num_accounts * 10, 50000)
+        num_records = self._secondary_fact_row_counts()["FactHoldings"]
 
         with PipeRowWriter(file_path) as writer:
             for _i in range(num_records):
@@ -278,8 +299,7 @@ class FactGenerationMixin:
         num_securities = int(self.base_securities * self.scale_factor)
         num_companies = int(self.base_companies * self.scale_factor)
 
-        days_of_data = min(252, int(252 * self.scale_factor))
-        num_records = min(num_securities * days_of_data, 100000)
+        num_records = self._secondary_fact_row_counts()["FactMarketHistory"]
 
         with PipeRowWriter(file_path) as writer:
             security_prices = {}
@@ -341,7 +361,7 @@ class FactGenerationMixin:
         num_customers = int(self.base_customers * self.scale_factor)
         num_securities = int(self.base_securities * self.scale_factor)
 
-        num_records = min(int(num_customers * 5 * self.scale_factor), 25000)
+        num_records = self._secondary_fact_row_counts()["FactWatches"]
 
         with PipeRowWriter(file_path) as writer:
             for _i in range(num_records):

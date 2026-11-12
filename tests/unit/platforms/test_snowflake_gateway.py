@@ -521,3 +521,383 @@ def test_greybeam_query_only_real_validation_smoke(
     assert not any(
         sql.startswith(("CREATE ", "DROP ", "TRUNCATE ", "INSERT ", "UPDATE ", "DELETE ")) for sql in statements
     )
+
+
+class _Cursor:
+    def __init__(self, answers: dict[str, object], fail: set[str] | None = None) -> None:
+        self.answers = answers
+        self.fail = fail or set()
+        self.current: object = None
+        self.statements: list[str] = []
+
+    def execute(self, sql: str, *args):
+        self.statements.append(sql)
+        for needle in self.fail:
+            if needle in sql:
+                raise RuntimeError("synthetic gateway failure")
+        self.current = next((value for key, value in self.answers.items() if key in sql), None)
+        return self
+
+    def fetchone(self):
+        rows = self.current if isinstance(self.current, list) else []
+        return rows[0] if rows else None
+
+    def fetchall(self):
+        return self.current if isinstance(self.current, list) else []
+
+    def close(self) -> None:
+        pass
+
+
+def _connection(answers: dict[str, object], fail: set[str] | None = None) -> Mock:
+    connection = Mock()
+    connection.cursor.return_value = _Cursor(answers, fail)
+    return connection
+
+
+FULL_WAREHOUSE_ROW = tuple(f"c{i}" for i in range(28))
+HEALTHY_ANSWERS = {
+    "current_version()": [("8.1",)],
+    "CURRENT_REGION()": [("AWS_US_EAST_1",)],
+    "SHOW WAREHOUSES": [FULL_WAREHOUSE_ROW],
+    "current_account_name()": [("acct", "org")],
+}
+
+
+def _gateway_bundle(adapter: SnowflakeAdapter) -> dict:
+    from benchbox.core.results.execution_variant import platform_info_bundle
+
+    return platform_info_bundle("Snowflake", adapter.get_platform_info())
+
+
+def test_gateway_platform_info_records_connection_without_remote_host() -> None:
+    info = _adapter(gateway="custom", gateway_host="gw.example.com", gateway_port=8443).get_platform_info()
+    assert info["configuration"]["gateway_connection"] == {"protocol": "https", "port": 8443}
+    assert "gw.example.com" not in repr(info)
+
+
+def test_loopback_gateway_host_is_recorded() -> None:
+    info = _adapter(
+        gateway="custom", gateway_host="127.0.0.1", gateway_port=8443, gateway_protocol="http"
+    ).get_platform_info()
+    assert info["configuration"]["gateway_connection"] == {"protocol": "http", "port": 8443, "host": "127.0.0.1"}
+
+
+def test_gateway_platform_info_carries_default_engine_receipt() -> None:
+    info = _gateway_adapter().get_platform_info()
+    receipt = info["execution_engine"]
+    assert receipt["requested"] == "default"
+    assert receipt["applied"] is None
+    assert receipt["resolution"] == "platform_default"
+    assert receipt["observed"] == "not_captured"
+    assert receipt["observed_source"] == "none"
+
+
+def test_native_platform_info_has_no_gateway_adjuncts() -> None:
+    info = _adapter().get_platform_info()
+    assert "gateway_connection" not in info["configuration"]
+    assert "cache_control" not in info["configuration"]
+
+
+def test_gateway_query_result_defaults_engine_to_unknown_and_native_does_not() -> None:
+    for adapter, expected in ((_gateway_adapter(), "unknown"), (_adapter(), None)):
+        connection = Mock()
+        cursor = connection.cursor.return_value
+        cursor.sfqid = "sf-id-1"
+        cursor.fetchone.return_value = ("sf-id-1", 10, 9, 1, 100, 5, 0.1, "MEDIUM", 1)
+        cursor.fetchall.return_value = [(1,)]
+        result = adapter.execute_query(connection, "SELECT 1", "Q1")
+        assert result["status"] == "SUCCESS"
+        assert result.get("execution_engine") == expected
+
+
+def test_gateway_run_is_excluded_from_native_baseline_set() -> None:
+    from benchbox.core.results.execution_variant import variants_comparable
+
+    native = _gateway_bundle(_adapter())
+    gateway = _gateway_bundle(_gateway_adapter())
+    other_gateway = _gateway_bundle(_adapter(gateway="espresso", gateway_host="gw.example.com"))
+    assert variants_comparable(native, native)
+    assert variants_comparable(gateway, gateway)
+    assert not variants_comparable(native, gateway)
+    assert not variants_comparable(gateway, native)
+    assert not variants_comparable(gateway, other_gateway)
+
+
+def test_gateway_run_is_excluded_from_regression_baseline(tmp_path: Path) -> None:
+    import json
+
+    from benchbox.core.results.analytics import _load_regression_runs
+
+    def write(name: str, adapter: SnowflakeAdapter, stamp: str) -> Path:
+        info = adapter.get_platform_info()
+        bundle = _gateway_bundle(adapter)
+        bundle["platform"]["gateway"] = info.get("gateway", {})
+        bundle["run"] = {"timestamp": stamp}
+        bundle["benchmark"] = {"id": "tpch", "scale_factor": 0.01}
+        bundle["queries"] = [{"run_type": "measurement", "id": "Q1", "ms": 100.0}]
+        path = tmp_path / name
+        path.write_text(json.dumps(bundle))
+        return path
+
+    paths = [
+        write("a_native.json", _adapter(), "2026-10-10T10:00:00Z"),
+        write("b_gateway.json", _gateway_adapter(), "2026-10-11T10:00:00Z"),
+        write("c_native.json", _adapter(), "2026-10-12T10:00:00Z"),
+    ]
+    runs, other = _load_regression_runs(paths, None, None, 5)
+    assert [run["file"] for run in runs] == ["a_native.json", "c_native.json"]
+    assert other == ["b_gateway.json"]
+
+
+def test_gateway_cost_is_not_comparable_and_native_cost_is_unaffected(monkeypatch) -> None:
+    from benchbox.core.cost.integration import add_cost_estimation_to_results
+    from tests.fixtures.result_dict_fixtures import make_benchmark_results
+
+    monkeypatch.setattr("benchbox.core.cost.calculator.get_pricing_age_days", lambda table=None: 1)
+
+    def priced(adapter: SnowflakeAdapter):
+        info = adapter.get_platform_info()
+        info.update({"platform_type": "snowflake", "edition": "standard", "region": "us-east-1"})
+        results = make_benchmark_results(
+            benchmark_name="TPC-H",
+            platform="snowflake",
+            scale_factor=1,
+            platform_info=info,
+            query_results=[{"query_id": "Q1", "execution_time": 1.5, "resource_usage": {"credits_used": 0.5}}],
+        )
+        return add_cost_estimation_to_results(results)
+
+    gateway = priced(_gateway_adapter())
+    assert gateway.cost_summary["normalized_cost"]["cost_status"] == "not_comparable_gateway"
+    assert gateway.cost_summary["normalized_cost"]["normalized_cost_usd"] is None
+    assert gateway.cost_summary["normalized_cost"]["cost_usd"] is None
+    assert gateway.query_results[0].get("cost") is None
+
+    native = priced(_adapter())
+    assert native.cost_summary["normalized_cost"]["cost_status"] != "not_comparable_gateway"
+
+
+def test_gateway_get_platform_info_degrades_on_empty_and_truncated_rows() -> None:
+    adapter = _gateway_adapter()
+    healthy = adapter.get_platform_info(_connection(HEALTHY_ANSWERS))
+    assert "metadata_degraded" not in healthy
+    assert healthy["cloud_region"] == "AWS_US_EAST_1"
+
+    for answers in (
+        {**HEALTHY_ANSWERS, "SHOW WAREHOUSES": [("WH", "STARTED")]},
+        {**HEALTHY_ANSWERS, "SHOW WAREHOUSES": []},
+        {**HEALTHY_ANSWERS, "CURRENT_REGION()": []},
+        {**HEALTHY_ANSWERS, "CURRENT_REGION()": [()]},
+        {**HEALTHY_ANSWERS, "current_account_name()": [("acct",)]},
+        {**HEALTHY_ANSWERS, "current_version()": [()]},
+    ):
+        info = adapter.get_platform_info(_connection(answers))
+        assert info["metadata_degraded"] is True
+        assert info["gateway"] == {"name": "custom", "routed": True}
+
+
+def test_gateway_get_platform_info_degrades_when_probe_raises() -> None:
+    info = _gateway_adapter().get_platform_info(_connection(HEALTHY_ANSWERS, fail={"SHOW WAREHOUSES"}))
+    assert info["metadata_degraded"] is True
+    assert info["compute_configuration"]["metadata_collection_status"] == "unavailable"
+
+
+@pytest.mark.parametrize(
+    "answers",
+    [
+        {"CURRENT_VERSION()": [()]},
+        {"CURRENT_VERSION()": [("8.1",)], "CURRENT_USER()": [("u", "r")]},
+        {"CURRENT_VERSION()": [("8.1",)], "CURRENT_USER()": [tuple("abcdefg")], "SHOW WAREHOUSES": [("WH",)]},
+        {
+            "CURRENT_VERSION()": [("8.1",)],
+            "CURRENT_USER()": [tuple("abcdefg")],
+            "SHOW WAREHOUSES": [tuple(f"c{i}" for i in range(23))],
+            "INFORMATION_SCHEMA.TABLES": [("T1", 1)],
+        },
+    ],
+)
+def test_platform_metadata_probe_never_raises_on_truncated_rows(answers: dict) -> None:
+    metadata = _gateway_adapter()._get_platform_metadata(_connection(answers))
+    assert metadata["metadata_degraded"] is True
+    assert "metadata_error" not in metadata
+
+
+def test_platform_metadata_probe_healthy_rows_are_not_degraded() -> None:
+    answers = {
+        "CURRENT_VERSION()": [("8.1",)],
+        "CURRENT_USER()": [tuple("abcdefg")],
+        "SHOW WAREHOUSES": [tuple(f"c{i}" for i in range(26))],
+        "INFORMATION_SCHEMA.TABLES": [("T1", 1, 2, 3, None, None, None)],
+    }
+    metadata = _adapter()._get_platform_metadata(_connection(answers))
+    assert "metadata_degraded" not in metadata
+    assert metadata["warehouse_info"]["name"] == "c0"
+    assert metadata["warehouse_info"]["scaling_policy"] == "c25"
+    assert metadata["tables"][0]["table_name"] == "T1"
+
+
+def test_platform_metadata_probe_failure_is_degraded() -> None:
+    metadata = _gateway_adapter()._get_platform_metadata(_connection({}, fail={"CURRENT_VERSION"}))
+    assert metadata["metadata_degraded"] is True
+    assert "metadata_error" in metadata
+
+
+def test_gateway_normalized_metadata_reports_unverified_gateway_cache() -> None:
+    adapter = _gateway_adapter()
+    adapter._cache_control_receipt = {
+        "validated": True,
+        "cache_disabled": True,
+        "settings": {"USE_CACHED_RESULT": "FALSE"},
+        "warnings": [],
+        "errors": [],
+    }
+    cache = adapter.get_normalized_result_metadata()["platform_compute"]["cache_control"]
+    assert cache["snowflake_result_cache"] == "disabled"
+    assert cache["gateway_cache"] == "unverified"
+    assert cache["warm_run_metrics"] == "cache_unverified"
+    assert cache["validated"] is True
+    assert cache["cache_disabled"] is True
+
+
+def test_gateway_cache_receipt_without_validation_stays_unvalidated() -> None:
+    cache = _gateway_adapter().get_normalized_result_metadata()["platform_compute"]["cache_control"]
+    assert cache["snowflake_result_cache"] == "unvalidated"
+    assert cache["validated"] is False
+    assert cache["gateway_cache"] == "unverified"
+
+
+def test_native_normalized_metadata_has_no_gateway_cache_field() -> None:
+    adapter = _adapter()
+    adapter._cache_control_receipt = {"validated": True, "cache_disabled": True, "settings": {}}
+    cache = adapter.get_normalized_result_metadata()["platform_compute"]["cache_control"]
+    assert "gateway_cache" not in cache
+
+
+class _LoopbackGateway:
+    def __init__(self) -> None:
+        import socketserver
+        import threading
+
+        self.handshakes: list[dict] = []
+        self.statements: list[str] = []
+        outer = self
+
+        class Handler(socketserver.StreamRequestHandler):
+            def handle(self) -> None:
+                import json
+
+                for line in self.rfile:
+                    message = json.loads(line)
+                    if message["op"] == "hello":
+                        outer.handshakes.append(message["params"])
+                        reply = {"ok": True}
+                    else:
+                        outer.statements.append(message["sql"])
+                        reply = {"rows": outer.rows_for(message["sql"])}
+                    self.wfile.write((json.dumps(reply) + "\n").encode())
+
+        self.server = socketserver.ThreadingTCPServer(("127.0.0.1", 0), Handler)
+        self.server.daemon_threads = True
+        self.port = self.server.server_address[1]
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+
+    @staticmethod
+    def rows_for(sql: str) -> list:
+        if "SHOW PARAMETERS LIKE 'USE_CACHED_RESULT'" in sql:
+            return [["USE_CACHED_RESULT", "FALSE"]]
+        return [[1]]
+
+    def close(self) -> None:
+        self.server.shutdown()
+        self.server.server_close()
+
+
+class _GatewayCursor:
+    sfqid = "sf-loopback-1"
+
+    def __init__(self, stream) -> None:
+        self.stream = stream
+        self.rows: list = []
+
+    def _call(self, payload: dict) -> dict:
+        import json
+
+        self.stream.write((json.dumps(payload) + "\n").encode())
+        self.stream.flush()
+        return json.loads(self.stream.readline())
+
+    def execute(self, sql: str, *args):
+        self.rows = self._call({"op": "sql", "sql": sql})["rows"]
+        return self
+
+    def fetchone(self):
+        return tuple(self.rows[0]) if self.rows else None
+
+    def fetchall(self):
+        return [tuple(row) for row in self.rows]
+
+    def close(self) -> None:
+        pass
+
+
+@pytest.fixture
+def loopback_gateway():
+    gateway = _LoopbackGateway()
+    yield gateway
+    gateway.close()
+
+
+def _dial(params: dict):
+    import json
+    import socket
+
+    sock = socket.create_connection((params["host"], params["port"]), timeout=5)
+    stream = sock.makefile("rwb")
+    stream.write((json.dumps({"op": "hello", "params": {"host": params["host"]}}) + "\n").encode())
+    stream.flush()
+    stream.readline()
+    connection = Mock()
+    connection.cursor.side_effect = lambda: _GatewayCursor(stream)
+    connection.close = sock.close
+    return connection
+
+
+def test_mock_gateway_handshake_tag_preservation_and_receipt_parsing(snowflake_dependencies, loopback_gateway) -> None:
+    snowflake_dependencies.connector.connect.side_effect = lambda **params: _dial(params)
+    adapter = _adapter(
+        gateway="custom",
+        gateway_host="127.0.0.1",
+        gateway_port=loopback_gateway.port,
+        gateway_protocol="http",
+    )
+
+    connection = adapter._create_admin_connection()
+    try:
+        assert loopback_gateway.handshakes == [{"host": "127.0.0.1"}]
+        connect_kwargs = snowflake_dependencies.connector.connect.call_args[1]
+        assert connect_kwargs["port"] == loopback_gateway.port
+        assert connect_kwargs["protocol"] == "http"
+
+        tag = adapter._format_query_tag("Q1")
+        adapter.execute_query(connection, "SELECT 1", "Q1", validate_row_count=False)
+        assert f"ALTER SESSION SET QUERY_TAG = '{tag}'" in loopback_gateway.statements
+        assert "SELECT 1" in loopback_gateway.statements
+
+        receipt = adapter.validate_session_cache_control(connection)
+        assert receipt["validated"] is True
+        assert receipt["cache_disabled"] is True
+        assert receipt["settings"] == {"USE_CACHED_RESULT": "FALSE"}
+
+        adapter._cache_control_receipt = receipt
+        cache = adapter.get_normalized_result_metadata()["platform_compute"]["cache_control"]
+        assert cache["snowflake_result_cache"] == "disabled"
+        assert cache["gateway_cache"] == "unverified"
+    finally:
+        connection.close()
+
+
+def test_mock_gateway_fixture_binds_loopback_only(loopback_gateway) -> None:
+    assert loopback_gateway.server.server_address[0] == "127.0.0.1"
+    assert loopback_gateway.port > 0

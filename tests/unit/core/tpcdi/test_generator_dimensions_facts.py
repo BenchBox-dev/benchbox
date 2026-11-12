@@ -136,3 +136,30 @@ def test_fact_generators_cover_sequential_parallel_and_chunk_paths(tmp_path: Pat
 
     assert cleanup_calls
     assert gen.generation_stats["records_generated"] > 0
+
+
+@pytest.mark.parametrize("scale_factor", [0.01, 1.0, 10.0])
+def test_secondary_fact_row_counts_scale_linearly(tmp_path: Path, scale_factor: float):
+    gen = TPCDIDataGenerator(scale_factor=scale_factor, output_dir=tmp_path, enable_progress=False, compression="none")
+
+    assert gen._secondary_fact_row_counts() == {
+        "FactCashBalances": round(3_000_000 * scale_factor),
+        "FactHoldings": round(1_000_000 * scale_factor),
+        "FactMarketHistory": round(2_520_000 * scale_factor),
+        "FactWatches": round(250_000 * scale_factor),
+    }
+
+
+def test_secondary_fact_files_contain_the_computed_row_counts(tmp_path: Path):
+    gen = _make_small_generator(tmp_path)
+    gen.enable_progress = False
+
+    written = {
+        "FactCashBalances": gen._generate_factcashbalances_data(),
+        "FactHoldings": gen._generate_factholdings_data(),
+        "FactMarketHistory": gen._generate_factmarkethistory_data(),
+        "FactWatches": gen._generate_factwatches_data(),
+    }
+
+    rows = {table: len(Path(path).read_text(encoding="utf-8").splitlines()) for table, path in written.items()}
+    assert rows == {"FactCashBalances": 600, "FactHoldings": 200, "FactMarketHistory": 3780, "FactWatches": 60}

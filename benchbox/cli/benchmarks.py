@@ -14,6 +14,7 @@ from benchbox.core.benchmark_registry import (
     CATEGORY_ORDER,
     get_all_benchmarks,
     get_benchmark_surface,
+    get_scale_factor_rule,
     nonstandard_scale_note,
 )
 from benchbox.core.constants import VALID_PHASES
@@ -202,7 +203,7 @@ class BenchmarkManager:
             preview_text.append("Workload: ", style="cyan")
             preview_text.append(f"{benchmark_info['query_description']}\n", style="white")
 
-        preview_text.append("Supported Scale Factors: ", style="cyan")
+        preview_text.append("Standard Scale Factors: ", style="cyan")
         scale_str = ", ".join(str(s) for s in benchmark_info["scale_options"])
         preview_text.append(f"{scale_str}\n", style="white")
 
@@ -518,27 +519,34 @@ class BenchmarkManager:
         benchmark_info: dict[str, Any],
         system_profile: dict[str, Any],
     ) -> float:
+        rule = get_scale_factor_rule(benchmark_id)
+        if rule.exact:
+            scale_factor = rule.standard[0]
+            console.print(f"Scale factor: {scale_factor} (fixed for this benchmark)")
+            return scale_factor
+
         scale_options = benchmark_info["scale_options"]
         recommended_scale = self._get_recommended_scale(benchmark_info, system_profile)
+        standard = ", ".join(f"{opt:g}" for opt in scale_options)
 
-        if len(scale_options) > 1:
-            while True:
-                console.print("\n[bold cyan]Scale Factor Selection[/bold cyan]")
-                console.print(f"Available options: {scale_options}")
-                console.print(f"• [green]Recommended for your system: {recommended_scale}[/green]")
+        while True:
+            console.print("\n[bold cyan]Scale Factor Selection[/bold cyan]")
+            console.print(f"Standard values: {standard}")
+            console.print(
+                f"[dim]Other values from {rule.minimum:g} to {rule.maximum:g} (whole numbers from 1) run with a "
+                "note that results are not comparable with published results.[/dim]"
+            )
+            console.print(f"• [green]Recommended for your system: {recommended_scale}[/green]")
 
-                self._display_scale_estimates(benchmark_id, benchmark_info, scale_options, system_profile)
+            self._display_scale_estimates(benchmark_id, benchmark_info, scale_options, system_profile)
 
-                scale_factor = FloatPrompt.ask("Scale factor", default=recommended_scale)
+            scale_factor = FloatPrompt.ask("Scale factor", default=recommended_scale)
 
-                try:
-                    self._validate_scale_choice(scale_factor, benchmark_id, benchmark_info, system_profile)
-                    break
-                except ValueError:
-                    continue
-        else:
-            scale_factor = scale_options[0]
-            console.print(f"Scale factor: {scale_factor} (fixed for this benchmark)")
+            try:
+                self._validate_scale_choice(scale_factor, benchmark_id, benchmark_info, system_profile)
+                break
+            except ValueError:
+                continue
 
         return scale_factor
 

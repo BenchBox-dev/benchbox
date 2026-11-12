@@ -319,3 +319,38 @@ def test_bzip2_handler_decodes_with_requested_encoding(tmp_path: Path) -> None:
 
     with Bzip2Handler().open(path, newline="", encoding="cp1252") as f:
         assert f.read() == "na\u00efve|1\n"
+
+
+def test_zstd_stream_closed_after_header_read_is_not_an_error(tmp_path: Path) -> None:
+    import shutil
+    import subprocess
+
+    from benchbox.platforms.base.data_loading import FileFormatRegistry, _open_binary_stream
+
+    if shutil.which("zstd") is None:
+        pytest.skip("zstd CLI not available")
+    csv_path = tmp_path / "t.csv"
+    csv_path.write_bytes(b"a,b\n" + b"1,2\n" * 2_000_000)
+    subprocess.run(["zstd", "-q", str(csv_path)], check=True)
+    zst_path = tmp_path / "t.csv.zst"
+
+    with _open_binary_stream(zst_path, FileFormatRegistry.get_compression_handler(zst_path)) as source:
+        assert source.readline() == b"a,b\n"
+
+
+def test_zstd_stream_still_raises_on_corrupt_input(tmp_path: Path) -> None:
+    import shutil
+    import subprocess
+
+    from benchbox.platforms.base.data_loading import FileFormatRegistry, _open_binary_stream
+
+    if shutil.which("zstd") is None:
+        pytest.skip("zstd CLI not available")
+    zst_path = tmp_path / "bad.csv.zst"
+    zst_path.write_bytes(b"not zstd data")
+
+    with (
+        pytest.raises(subprocess.CalledProcessError),
+        _open_binary_stream(zst_path, FileFormatRegistry.get_compression_handler(zst_path)) as source,
+    ):
+        source.read()
