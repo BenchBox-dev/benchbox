@@ -42687,6 +42687,13 @@
       "status": "open",
       "title": "Tracker mutations sometimes outlast the 30-second MCP client timeout and return an unknown outcome"
     },
+    "tractable-mcp-request-timeouts-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "tractable MCP calls time out at 30 seconds with an unknown outcome while the host is loaded"
+    },
     "tractable-not-before-empty-does-not-clear-hold-20261111": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "A timed-out mutation can be reconciled without reading the whole item: the response or a follow-up read by operation ID says whether it applied.",
+    "Retrying the same `context_append` with the same operation ID does not append twice.",
+    "The cause of the slow calls under load (Git fetch or push to the state branch, lock contention, or other) is identified and written in this item."
+  ],
+  "description": "Reliability gap, three occurrences on 2026-11-12 under heavy host load (load average 8-37, swap above 90%): `list_items(text=\"duckdb 2\")`, one `update_item(context_append=...)`, and a second `update_item` inside a scripted sequence each failed with `Request timeout after 30000ms ... the request outcome is unknown`. Both writes had in fact landed, found by re-reading the item. A caller that retried blindly would have appended the note twice; a caller that assumed failure would have lost track of a write.\n\nExpected: either mutations finish within the client timeout under load, or the timeout response carries the operation ID so the caller can reconcile as it does for `E_UNKNOWN`, and `context_append` retries are idempotent for the same operation ID.\n\nGuardrails: a change in the tractable product or in the client timeout configuration, not a BenchBox wrapper. Do not raise the timeout so far that a hung server blocks a session.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-12T16:52:53Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "cf45c41ca39b46659958e9591168fc82",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}
