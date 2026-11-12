@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "With WAIT set, a rate-limit refusal (HTTP 403 with a reset time, or 429) or a 5xx on any read is reported as waiting and retried, sleeping at least until the reset time when one is given, until WAIT runs out.",
+    "Without WAIT, and when WAIT runs out, the command still refuses and exits non-zero; no path arms a head whose trunk or review-gate state could not be read.",
+    "Unit tests cover a 403 rate limit followed by success, a 503 followed by success, and a failure that outlasts WAIT.",
+    "The number of REST calls one wait cycle makes is measured and recorded, and reduced if a cheaper read gives the same answer."
+  ],
+  "description": "Observed three times on 2026-11-12 while arming PR #4170 with `make pr-arm PR=4170 WAIT=60..110`:\n- twice the wait loop ended with `pr-arm: refusing: stopped waiting, the trunk check refuses: the trunk state could not be read: gh run list failed: HTTP 403: API rate limit exceeded`, with 56 and 77 minutes of WAIT left;\n- once it ended with `review-gate: error: cannot read #4170 after 3 attempts: GitHub returned HTTP 503`.\nEach time the pull request was healthy and the only recovery was to wait for the limit to reset and run the same command again. The repository rule is to wait with `make pr-arm WAIT=<min>` and never a hand-written loop, so a wait that exits on a transient read failure pushes agents toward exactly that loop.\n\nContributing cause: the core REST limit (5000 per hour) is shared by every local session under one user, and was exhausted twice within an hour. The wait loop's own polling every 3 minutes adds to it.\n\nGuardrail: an unreadable trunk or gate state must still never arm. The change is to keep waiting inside the WAIT budget, not to treat an unreadable state as passing.",
+  "links": [
+    "make/pr-landing.mk",
+    "scripts/pr_landing.py",
+    "docs/agent/merge-authority.md",
+    "https://github.com/BenchBox-dev/benchbox/pull/4170"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-12T16:51:42Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d4ea4f30d9234db0b0a50f7e63394584",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    }
+  ]
+}

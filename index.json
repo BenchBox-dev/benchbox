@@ -31036,6 +31036,13 @@
       "status": "done",
       "title": "Decide whether make pr-arm WAIT should also wait on a pending review verdict and placeholder check failures"
     },
+    "pr-arm-wait-stops-on-transient-github-errors-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "make pr-arm WAIT gives up on a GitHub rate limit or 503 instead of waiting it out"
+    },
     "pr-arm-waits-fast-duration-verdict-20261026": {
       "claim": null,
       "needs": [],
