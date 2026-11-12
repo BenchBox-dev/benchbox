@@ -40333,7 +40333,9 @@
       "needs": [
         "benchbox-lock-theseus-review-format-release-b-20261110",
         "theseus-lock-self-review-format-release-b-20261110",
-        "theseus-governance-docs-owner-merge-rule-20261110"
+        "theseus-governance-docs-owner-merge-rule-20261110",
+        "theseus-v0211-rehearsal-first-reviewed-pr-20261112",
+        "theseus-review-format-deferral-triage-20261112"
       ],
       "priority": "high",
       "status": "open",
