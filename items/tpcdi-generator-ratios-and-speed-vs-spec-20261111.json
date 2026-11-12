@@ -3,7 +3,7 @@
     "A recorded decision on the scale unit and ratios, with the site page stating the difference if it is kept.",
     "A measured SF 10 generation time through `make heavy-run`."
   ],
-  "context": "Filed 2026-11-11 while removing the TPC-DI fact-table row caps: identified during that work and not addressed.",
+  "context": "Filed 2026-11-11 while removing the TPC-DI fact-table row caps: identified during that work and not addressed.\n\n2026-11-12 decision (owner): align with the specification. Merged as BenchBox-dev/benchbox#4171 (644f19d27a): one SF unit is 5,000 customers; 5,000 accounts, 500 companies, 800 securities; fact tables use the historical-load source-file row factors (130,000 trades, 120,300 cash, 120,470 holdings, 541,550 market history, 300,000 watches). Verified with DuckDB generate/load/power runs at SF 0.01 and SF 1: 152 of 152 queries succeeded at each. Generation at SF 1: 13.7 s, 76,020,843 bytes. Kept different and documented on the site page (benchbox-site#148): brokers, date and time dimensions, reference tables, one account per customer, warehouse tables carry source-file row counts. SF 10 generation was NOT measured: two attempts through make heavy-run were stopped by the watchdog at host memory pressure level 4 caused by other sessions; projected about 140 s and 760 MB from the SF 1 run. Parallelising the four secondary fact tables was not needed at these sizes.",
   "description": "## Problem\nAfter the secondary fact tables were made linear, two differences from the TPC-DI specification and one cost remain:\n- The specification defines the scale factor as 5,000 unique customers per unit; BenchBox uses 50,000 customers per unit, so BenchBox SF 1 corresponds to specification SF 10.\n- Rows per customer differ from the design paper's Table 3 (Poess et al., VLDB 2014): BenchBox generates 60 cash-balance, 20 holding, 50.4 market-history and 5 watch rows per customer; the paper's source-file factors imply roughly 24, 24, 108 and 60. BenchBox writes warehouse fact tables directly, not the DIGen source files, so the two are not the same quantity.\n- FactCashBalances, FactHoldings, FactMarketHistory and FactWatches are written by single-threaded Python loops. Full SF 0.1 generation took 9.7 s; SF 10 is projected at about 16 minutes and was not measured.\n\n## Change\nDecide whether BenchBox TPC-DI should match the specification's scale unit and per-table ratios (a data change for every published bundle), or document the difference. Separately, measure SF 10 generation and parallelise the four tables the way FactTrade is if the time is impractical.\n\n## Guardrails\n- Any ratio change alters generated data: update `benchbox/core/tpcdi/generator_specs.yaml` so cached data regenerates, and treat published bundles as superseded.\n- Parallel generation must stay deterministic for a given seed, as FactTrade is.",
   "links": [
     "benchbox/core/tpcdi/generator_specs.yaml",
@@ -26,6 +26,14 @@
       "generation": "3d557d05d776459b83f4ab3809d54c42",
       "op": "take",
       "op_id": "9093d7256d364c0181dd3a97a891ffe9",
+      "session_id": "3f84b7b72a6a4389855a4c2d913fb7f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:eb0e48032edcab785e018919",
+      "at": "2026-11-12T16:12:32Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6b4b210ffc194d99a30c31d2469c74ac",
       "session_id": "3f84b7b72a6a4389855a4c2d913fb7f9"
     }
   ]
