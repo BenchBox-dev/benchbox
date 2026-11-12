@@ -725,7 +725,7 @@ NORMALIZED_COST_REQUIRED_KEYS = {
     "pricing_region",
 }
 NORMALIZED_COST_SCOPES = {"compute_only", "compute_plus_storage"}
-NORMALIZED_COST_STATUSES = {"normalized", "not_applicable_local", "unavailable", "estimated"}
+NORMALIZED_COST_STATUSES = {"normalized", "not_applicable_local", "unavailable", "estimated", "not_comparable_gateway"}
 
 NORMALIZED_COST_BILLING_UNITS = frozenset(
     {
@@ -742,6 +742,140 @@ NORMALIZED_COST_BILLING_UNITS = frozenset(
 )
 DIRECT_COST_TOTAL_KEYS = ("total_usd", "total_cost")
 TOP_LEVEL_DIRECT_COST_KEYS = ("cost_usd",)
+
+
+PLAN_TIERS: tuple[str, ...] = ("paid", "free", "trial", "unspecified")
+
+VENDOR_NOTICE_PLATFORMS: Mapping[str, str] = {
+    "snowflake": "Snowflake Acceptable Use Policy section IV: share the results with Snowflake reasonably in advance of publishing",
+    "redshift": "AWS Service Terms section 1.8: send the replication information to AWS",
+    "athena": "AWS Service Terms section 1.8: send the replication information to AWS",
+    "clickhouse-cloud": "ClickHouse Acceptable Use Policy section 2: send the replication information to ClickHouse",
+    "motherduck": "MotherDuck MSA section 1.5: send the replication information to MotherDuck",
+}
+
+TIERED_PLATFORMS: Mapping[str, str] = {
+    "snowflake": "Beta or Preview features need Snowflake's approval",
+    "redshift": "Beta or Preview features need AWS's approval",
+    "athena": "Beta or Preview features need AWS's approval",
+    "clickhouse-cloud": "Beta or Preview features need ClickHouse's approval",
+    "databricks": "Databricks Free Edition needs express permission; Beta or Preview features need Databricks' approval",
+    "motherduck": "Free or trial use needs MotherDuck's permission",
+}
+
+SELF_RUN_PLATFORMS: Mapping[str, str] = {
+    "bigquery": "BigQuery terms: publish only tests you ran yourself, not on behalf of a hyperscale cloud provider",
+}
+
+_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+_VENDOR_KEYWORDS: tuple[tuple[str, str], ...] = (
+    ("snowflake", "snowflake"),
+    ("redshift", "redshift"),
+    ("athena", "athena"),
+    ("motherduck", "motherduck"),
+    ("databricks", "databricks"),
+    ("bigquery", "bigquery"),
+)
+
+
+def vendor_platform_key(platform: object) -> str:
+    token = re.sub(r"[\s_]+", "-", str(platform or "").strip().lower())
+    squashed = token.replace("-", "")
+    for keyword, key in _VENDOR_KEYWORDS:
+        if keyword in squashed:
+            return key
+    if "clickhouse" in squashed and "cloud" in squashed:
+        return "clickhouse-cloud"
+    return token
+
+
+def _nonempty_string(value: object) -> bool:
+    return isinstance(value, str) and bool(value.strip())
+
+
+def _notice_errors_and_warnings(manifest: Mapping[str, Any], platform: str) -> tuple[list[str], list[str]]:
+    notice = manifest.get("vendor_notice")
+    if platform not in VENDOR_NOTICE_PLATFORMS:
+        if notice is not None and not isinstance(notice, Mapping):
+            return ["Manifest vendor_notice must be an object with sent_on (YYYY-MM-DD) and a reference"], []
+        return [], []
+    if notice is None:
+        return [], [f"Manifest has no vendor_notice for {platform}: {VENDOR_NOTICE_PLATFORMS[platform]}"]
+    if (
+        not isinstance(notice, Mapping)
+        or not _nonempty_string(notice.get("reference"))
+        or not isinstance(notice.get("sent_on"), str)
+        or not _DATE_PATTERN.match(notice["sent_on"])
+    ):
+        return ["Manifest vendor_notice must be an object with sent_on (YYYY-MM-DD) and a non-empty reference"], []
+    return [], []
+
+
+def _self_run_errors_and_warnings(manifest: Mapping[str, Any], platform: str) -> tuple[list[str], list[str]]:
+    self_run = manifest.get("self_run")
+    if platform in SELF_RUN_PLATFORMS:
+        if self_run is False:
+            return [f"Manifest self_run is false: {SELF_RUN_PLATFORMS[platform]}"], []
+        if self_run is not True:
+            return [], [f"Manifest does not attest self_run for {platform}: {SELF_RUN_PLATFORMS[platform]}"]
+    elif self_run is not None and not isinstance(self_run, bool):
+        return ["Manifest self_run must be a boolean"], []
+    return [], []
+
+
+def evaluate_vendor_conditions(manifest: Mapping[str, Any]) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    platform = vendor_platform_key(manifest.get("platform"))
+
+    tier = manifest.get("plan_tier")
+    if tier is not None and tier not in PLAN_TIERS:
+        errors.append(f"Invalid manifest plan_tier {tier!r}: must be one of {sorted(PLAN_TIERS)}")
+        tier = None
+
+    features = manifest.get("preview_features")
+    feature_list: list[str] = []
+    if features is not None:
+        if not isinstance(features, list) or any(not _nonempty_string(item) for item in features):
+            errors.append("Manifest preview_features must be a list of non-empty feature name strings")
+        else:
+            feature_list = [str(item).strip() for item in features]
+
+    if manifest.get("funding") == "free-trial" and tier not in {"free", "trial"}:
+        tier = "trial"
+
+    permission = manifest.get("vendor_permission")
+    if permission is not None and not _nonempty_string(permission):
+        errors.append("Manifest vendor_permission must be a non-empty string naming the vendor's written permission")
+        permission = None
+
+    restricted = tier in {"free", "trial"} or bool(feature_list)
+    if restricted and not permission:
+        parts = []
+        if tier in {"free", "trial"}:
+            parts.append(f"{tier} plan tier")
+        if feature_list:
+            parts.append(f"preview features ({', '.join(feature_list)})")
+        hint = TIERED_PLATFORMS.get(platform, "vendor terms restrict publishing results from these")
+        errors.append(
+            f"Results from {' and '.join(parts)} cannot be published without the vendor's written permission "
+            f"(record it in vendor_permission): {hint}"
+        )
+
+    if platform in TIERED_PLATFORMS and tier in (None, "unspecified"):
+        warnings.append(
+            f"Manifest does not declare plan_tier for {platform}; free, trial and preview results cannot be "
+            f"screened ({TIERED_PLATFORMS[platform]})"
+        )
+
+    for check in (_notice_errors_and_warnings, _self_run_errors_and_warnings):
+        check_errors, check_warnings = check(manifest, platform)
+        errors.extend(check_errors)
+        warnings.extend(check_warnings)
+
+    return errors, warnings
 
 
 class ValidationResult:
@@ -1434,8 +1568,7 @@ def _validate_compliance_section(
     if not isinstance(benchmark, dict):
         return
     compliance = benchmark.get("compliance_class")
-    gateway = platform.get("gateway") if isinstance(platform, dict) else None
-    if isinstance(gateway, dict) and gateway.get("name") and gateway.get("routed") is True:
+    if _is_gateway_routed(platform):
         compliance = "unofficial_nonstandard"
     if compliance is None:
         return
@@ -2049,8 +2182,8 @@ def _validate_normalized_cost_block(
         vr.error("normalized_cost.cost_status 'normalized' requires normalized_cost_usd")
     if cost_status == "not_applicable_local" and cost_value != Decimal("0"):
         vr.error("normalized_cost.cost_status 'not_applicable_local' requires normalized_cost_usd of 0")
-    if cost_status == "unavailable" and cost_value is not None:
-        vr.error("normalized_cost.cost_status 'unavailable' must not include normalized_cost_usd")
+    if cost_status in {"unavailable", "not_comparable_gateway"} and cost_value is not None:
+        vr.error(f"normalized_cost.cost_status '{cost_status}' must not include normalized_cost_usd")
     _validate_estimated_cost_fields(raw, cost_value, estimated_value, cost_status, vr)
     if cost_status == "normalized" and billing_unit not in NORMALIZED_COST_BILLING_UNITS:
         vr.error(
@@ -2093,7 +2226,26 @@ def _direct_cost_total_fields(data: dict[str, Any]) -> list[tuple[str, Any]]:
     return direct_fields
 
 
+def _is_gateway_routed(platform: Any) -> bool:
+    gateway = platform.get("gateway") if isinstance(platform, dict) else None
+    return isinstance(gateway, dict) and bool(gateway.get("name")) and gateway.get("routed") is True
+
+
+def _validate_gateway_cost(data: dict[str, Any], vr: ValidationResult) -> None:
+    if not _is_gateway_routed(data.get("platform")):
+        return
+    raw_normalized = _raw_normalized_cost_block(data)
+    status = raw_normalized.get("cost_status") if isinstance(raw_normalized, dict) else None
+    if status != "not_comparable_gateway":
+        vr.error(
+            f"gateway-routed results must declare normalized_cost.cost_status 'not_comparable_gateway'; got {status!r}"
+        )
+    for field_path, _value in _direct_cost_total_fields(data):
+        vr.error(f"gateway-routed results must not carry a cost total: {field_path}")
+
+
 def _validate_public_cost_section(data: dict[str, Any], vr: ValidationResult) -> None:
+    _validate_gateway_cost(data, vr)
     direct_fields = _direct_cost_total_fields(data)
     raw_normalized = _raw_normalized_cost_block(data)
 
@@ -2117,7 +2269,7 @@ def _validate_public_cost_section(data: dict[str, Any], vr: ValidationResult) ->
         )
         return
 
-    if cost_status == "unavailable" or normalized_value is None:
+    if cost_status in {"unavailable", "not_comparable_gateway"} or normalized_value is None:
         vr.error(
             "Public leaderboard cost totals require normalized cost availability: "
             f"{field_names} cannot accompany cost_status {cost_status!r}"
@@ -3026,6 +3178,25 @@ def _validate_manifest_translator_version(manifest: dict[str, Any], primary_path
         vr.error(str(exc))
 
 
+def _manifest_with_bundle_identity(manifest: dict[str, Any], primary_path: Path) -> dict[str, Any]:
+    merged = dict(manifest)
+    try:
+        bundle = json.loads(primary_path.read_text(encoding="utf-8")) if primary_path.is_file() else {}
+    except (OSError, ValueError):
+        return merged
+    if not isinstance(bundle, dict):
+        return merged
+    platform = bundle.get("platform")
+    platform_name = platform.get("name") if isinstance(platform, dict) else None
+    if isinstance(platform_name, str) and platform_name.strip():
+        merged["platform"] = platform_name
+    provenance = bundle.get("provenance")
+    bundle_funding = provenance.get("funding") if isinstance(provenance, dict) else None
+    if bundle_funding == "free-trial":
+        merged["funding"] = "free-trial"
+    return merged
+
+
 def _validate_manifest_provenance(manifest: dict[str, Any], primary_path: Path, vr: ValidationResult) -> None:
     funding = manifest.get("funding")
     if funding is not None and funding not in FUNDING_SOURCES:
@@ -3048,6 +3219,12 @@ def _validate_manifest_provenance(manifest: dict[str, Any], primary_path: Path, 
                 "under a maintainer-controlled results-data/bundles/vendor/ path; a "
                 "community submission cannot self-assert the vendor-supplied label."
             )
+
+    vendor_errors, vendor_warnings = evaluate_vendor_conditions(_manifest_with_bundle_identity(manifest, primary_path))
+    for message in vendor_errors:
+        vr.error(message)
+    for message in vendor_warnings:
+        vr.warn(message)
 
     _validate_execution_class_fields(manifest, "manifest", vr)
     if manifest.get("execution_class") is not None:
