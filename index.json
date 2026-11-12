@@ -15259,7 +15259,12 @@
       "title": "Move ClickHouse OPTIMIZE to the post-load seam with the physical (lowercase) table name"
     },
     "clickhouse-per-query-settings-declared-20261008": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T15:03:06Z",
+        "generation": "00b6e0dbb91146f6b1225004d9f6a06d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9dde2030f0b654b7eae6a730"
+      },
       "needs": [
         "tuning-evidence-tuned-mode-promise-20261008",
         "tuning-evidence-measurement-harness-20261008",
@@ -15267,7 +15272,7 @@
         "harness-reapply-clickhouse-session-settings-20261010"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Declare and record ClickHouse per-query statement settings, and classify the tpchavoc override as harness or tuning"
     },
     "clickhouse-pk-prefix-sort-key-20261001": {
