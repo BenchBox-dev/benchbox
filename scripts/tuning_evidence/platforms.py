@@ -67,6 +67,7 @@ PACKS: dict[str, dict[str, Any]] = {
     },
     "mbj": {"max_bytes_in_join": 4294967296},
     "hash": {"join_algorithm": "hash"},
+    "auto": {"join_algorithm": "auto"},
     "cand": {**_OLAP_PACK, "join_algorithm": "hash"},
     "pack": dict(_OLAP_PACK),
 }
@@ -661,6 +662,14 @@ class ClickHouseServerSeam(ClickHouseSeam):
 
     def refresh_session(self, handle: ArmHandle) -> None:
         self.configure_session(handle, handle.connection)
+
+    def run_query(
+        self, handle: ArmHandle, connection: Any, query_id: str, sql: str, timeout_seconds: float
+    ) -> QueryOutcome:
+        outcome = super().run_query(handle, connection, query_id, sql, timeout_seconds)
+        if not outcome.ok:
+            self.configure_session(handle, connection)
+        return outcome
 
     def wrap(self, connection: Any) -> Any:
         return connection if isinstance(connection, TaggedClient) else TaggedClient(connection)

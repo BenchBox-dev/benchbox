@@ -68,6 +68,7 @@ def test_packs_and_layouts_are_ported() -> None:
     }
     assert platforms.PACKS["olap"]["join_algorithm"] == "grace_hash"
     assert platforms.PACKS["cand"]["join_algorithm"] == "hash"
+    assert platforms.PACKS["auto"] == {"join_algorithm": "auto"}
     assert "join_algorithm" not in platforms.PACKS["pack"]
     assert platforms.format_setting("hash") == "'hash'"
     assert platforms.format_setting(8) == "8"
@@ -331,6 +332,36 @@ def test_server_refresh_session_reapplies_the_settings_pack(tmp_path: Path) -> N
     )
     server_seam(tmp_path).refresh_session(handle)
     assert ("SET max_bytes_in_join = 4294967296", {}) in client.calls
+
+
+class FailableSessionAdapter(SessionAdapter):
+    def __init__(self, status: str) -> None:
+        super().__init__()
+        self.status = status
+
+    def execute_query(self, connection: Any, sql: str, query_id: str, **kwargs: Any) -> dict[str, Any]:
+        return {"query_id": query_id, "status": self.status, "execution_time_seconds": 0.1, "error": "Code: 241"}
+
+
+def test_server_failed_query_reapplies_the_session_for_the_next_query(tmp_path: Path) -> None:
+    adapter = FailableSessionAdapter("FAILED")
+    client = FakeClient()
+    connection = platforms.TaggedClient(client)
+    handle = ArmHandle(spec=ArmSpec("N"), connection=connection, database="db", load_seconds=1.0, adapter=adapter)
+    outcome = server_seam(tmp_path).run_query(handle, connection, "21", "select", 10.0)
+    assert not outcome.ok
+    assert adapter.configured == ["olap"]
+    assert any(query == "SET join_use_nulls = 1" for query, _ in client.calls)
+
+
+def test_server_successful_query_leaves_the_session_alone(tmp_path: Path) -> None:
+    adapter = FailableSessionAdapter("SUCCESS")
+    client = FakeClient()
+    connection = platforms.TaggedClient(client)
+    handle = ArmHandle(spec=ArmSpec("N"), connection=connection, database="db", load_seconds=1.0, adapter=adapter)
+    outcome = server_seam(tmp_path).run_query(handle, connection, "1", "select", 10.0)
+    assert outcome.ok
+    assert adapter.configured == []
 
 
 def test_other_seams_leave_the_session_alone(tmp_path: Path) -> None:
