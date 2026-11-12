@@ -8,6 +8,7 @@
     "implementation_dependencies": [],
     "member_id": "heavy-run-cmd-dollar-expansion-20261111"
   },
+  "context": "2026-11-11 recurrence: a `for spec in ...; do b=${spec%%:*} ...` loop passed as CMD lost its variables and ran `benchbox run --benchmark --scale` three times, exiting 0 from make. Workaround used: put the commands in a script file and pass `CMD='bash /tmp/script.sh'`.",
   "description": "Found 2026-11-11. `make heavy-run CMD='BENCHBOX_OUTPUT_DIR=$HOME/Developer/benchmark_runs/x uv run -- benchbox run ... > $HOME/.../run.log 2>&1'` records and would run `BENCHBOX_OUTPUT_DIR=OME/Developer/...`: make expands `$H` (empty) in the command-line variable before the recipe exports it. The lock record in `make heavy-status` showed the mangled command. The attempts here were refused by admission before running, so nothing was written, but an admitted run would have written benchmark output and the log to a relative `OME/` directory inside the checkout. make/tests.mk uses `$$CMD` in the recipe but does not protect the value. Other targets already use `override X := $(value X)` (make/pr-landing.mk) for this.",
   "links": [
     "BenchBox-dev/BenchBox: make/tests.mk",
@@ -98,6 +99,14 @@
       "op": "prepare",
       "op_id": "1869461f25634031ae834f3962a59a3b",
       "session_id": "32e4db9816694cfb9be59807549223c7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:eb0e48032edcab785e018919",
+      "at": "2026-11-12T16:53:24Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "887ab0af6d384b2a91693cfa78b3a075",
+      "session_id": "3f84b7b72a6a4389855a4c2d913fb7f9"
     }
   ]
 }
