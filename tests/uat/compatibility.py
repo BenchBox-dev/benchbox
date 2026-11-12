@@ -219,6 +219,26 @@ _SINGLESTORE_JOINORDER_RUNTIME_ENVELOPE_REASON = (
     "query fails with 1735/1777. JoinOrder is fixed at the IMDb data set, so no smaller scale exists."
 )
 
+_CEDARDB_TPCDS_OBT_SF1_DISK_ENVELOPE_REASON = (
+    "cedardb TPC-DS OBT SF1 cannot be loaded within the release-host disk: the 5,041,336-row, 715-column table "
+    "exhausted the 144 GiB runner disk in release UAT dry runs 3 and 4. A local SF1 Parquet COPY with the pinned "
+    "image and an 8 GiB memory limit grew the data directory to 17.6 GB at 1,048,577 rows and kept growing, so the "
+    "full load needs well over 80 GB. SF0.01 and SF0.1 stay in the gate."
+)
+
+_CEDARDB_RUNTIME_ENVELOPE_REASON = (
+    "cedardb {benchmark} cannot meet the 1200s release-gate cell contract: the cell timed out at 1200s at SF0.01 "
+    "and SF0.1 on the 8 GiB container stack on the 4 vCPU / 16 GB release runner (release UAT dry run 5, run "
+    "41309974530), so every scale is out of the envelope."
+)
+
+_MEMORY_CATALOG_JOINORDER_RUNTIME_ENVELOPE_REASON = (
+    "{engine} JoinOrder cannot meet the 1200s release-gate cell contract on the memory catalog, the only data "
+    "catalog in the release UAT stack: the IMDb data set is about 74M rows at every scale factor, beyond the "
+    "connector's per-node data cap, and row-wise inserts cannot finish within 1200s. A Hive or Iceberg catalog "
+    "is not blocked."
+)
+
 _SF1_TIMEOUT_PRUNED_CELLS = (
     (
         "dask-df",
@@ -316,6 +336,15 @@ _RELEASE_GATE_RUNTIME_ENVELOPES = (
         ("sqlite", "tpcds"): _SQLITE_TPCDS_RUNTIME_ENVELOPE_REASON,
         ("sqlite", "tpcds_obt", 0.1): _SQLITE_TPCDS_OBT_SF01_RUNTIME_ENVELOPE_REASON,
         ("sqlite", "tpcds_obt", 1.0): _SQLITE_TPCDS_OBT_RUNTIME_ENVELOPE_REASON,
+        ("cedardb", "tpcds_obt", 1.0): _CEDARDB_TPCDS_OBT_SF1_DISK_ENVELOPE_REASON,
+        **{
+            ("cedardb", benchmark): _CEDARDB_RUNTIME_ENVELOPE_REASON.format(benchmark=label)
+            for benchmark, label in (("tpchavoc", "TPC-Havoc"), ("tpch_skew", "TPC-H Skew"))
+        },
+        **{
+            (platform, "joinorder"): _MEMORY_CATALOG_JOINORDER_RUNTIME_ENVELOPE_REASON.format(engine=engine)
+            for platform, engine in (("presto", "Presto"), ("trino", "Trino"))
+        },
         ("singlestore", "joinorder"): _SINGLESTORE_JOINORDER_RUNTIME_ENVELOPE_REASON,
         ("pyspark-df", "tpchavoc", 0.1): _PYSPARK_DF_TPCHAVOC_SF01_RUNTIME_ENVELOPE_REASON,
     }
@@ -352,6 +381,21 @@ _RELEASE_GATE_RUNTIME_ENVELOPE_EVIDENCE = (
             "tpchavoc",
             0.1,
         ): "release-v2 run 41842316367 for v0.5.0rc4 and a release UAT dry run: terminal=timeout at 1200s",
+        (
+            "cedardb",
+            "tpcds_obt",
+            1.0,
+        ): "release UAT dry runs 3 (run 41243890531) and 4 (run 41255388284): runner disk exhausted; local SF1 Parquet COPY reproduction: 17.6 GB at 1,048,577 rows",
+        ("cedardb", "tpchavoc"): "release UAT dry run 5 (run 41309974530) stage 2 cedardb: terminal=timeout at 1200s",
+        ("cedardb", "tpch_skew"): "release UAT dry run 5 (run 41309974530) stage 2 cedardb: terminal=timeout at 1200s",
+        (
+            "presto",
+            "joinorder",
+        ): "release UAT dry runs 2 (run 41163626947) and 3 (run 41243890531); local Presto 0.298.1 load profile 2026-11-01",
+        (
+            "trino",
+            "joinorder",
+        ): "release UAT dry runs 2 (run 41163626947) and 3 (run 41243890531); local Trino 484 load profile 2026-11-01",
     }
 )
 
