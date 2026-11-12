@@ -12789,17 +12789,12 @@
       "title": "Add batch-start, batch-member-create and batch-member-check, and refuse pr-open and pr-fanout in member worktrees"
     },
     "batch-member-subagent-doc-rule-20261112": {
-      "claim": {
-        "expires_at": "2026-11-13T15:59:33Z",
-        "generation": "b5a4de24d7244f168bfcd490e1759bd3",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785"
-      },
+      "claim": null,
       "needs": [
         "batch-member-subagent-rule-20261112"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Rewrite the batch member-identity rule in batch-feature-delivery.md to allow subagent members"
     },
     "batch-member-subagent-land-message-20261112": {
