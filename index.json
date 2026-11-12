@@ -42289,15 +42289,10 @@
       "title": "125 existing items trip the new rung-falsifiability lint with no sweep planned"
     },
     "tractable-expect-store-substring-matches-prefix-repo-20261109": {
-      "claim": {
-        "expires_at": "2026-11-13T14:28:13Z",
-        "generation": "11766be18f0344e488a5907288061c59",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9dde2030f0b654b7eae6a730"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "tractable expect_store accepts a prefix-named repository, so the wrong-tracker gate can pass for the wrong project"
     },
     "tractable-not-before-empty-does-not-clear-hold-20261111": {
