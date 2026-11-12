@@ -39,6 +39,18 @@ def sanitize_cache_control_receipt(receipt: Any) -> dict[str, Any] | None:
     return clean
 
 
+def gateway_cache_control_receipt(receipt: Any, result_cache_key: str | None = None) -> dict[str, Any]:
+    clean = sanitize_cache_control_receipt(receipt) or empty_cache_control_receipt()
+    if result_cache_key:
+        if clean["validated"]:
+            clean[result_cache_key] = "disabled" if clean["cache_disabled"] else "enabled"
+        else:
+            clean[result_cache_key] = "unvalidated"
+    clean["gateway_cache"] = "unverified"
+    clean["warm_run_metrics"] = "cache_unverified"
+    return clean
+
+
 def explicit_cache_enabled_receipt(setting_key: str, enabled_value: str) -> dict[str, Any]:
     receipt = empty_cache_control_receipt()
     receipt["validated"] = True

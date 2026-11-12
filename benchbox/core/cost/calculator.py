@@ -195,6 +195,20 @@ class CostCalculator:
         billing_unit = self._billing_unit(platform_lower, platform_config)
         deployment = self._deployment_metadata(platform_lower, platform_config)
         pricing_region = self._pricing_region(platform_lower, platform_config)
+        if platform_config.get("gateway_routed") is True:
+            return (
+                NormalizedCost(
+                    normalized_cost_usd=None,
+                    cost_model_version=PRICING_VERSION,
+                    cost_model_source=_COST_MODEL_SOURCE,
+                    cost_scope="compute_only",
+                    cost_status="not_comparable_gateway",
+                    billing_unit=billing_unit or "unknown",
+                    pricing_region=pricing_region or "unknown",
+                    deployment=deployment,
+                ),
+                [],
+            )
         warnings = self._normalized_cost_warnings(
             platform_lower,
             benchmark_cost,
