@@ -65,11 +65,22 @@ leader's worktree carries `benchbox.batch.role=integration`, a member's
 worktree's `benchbox.*` keys are never inherited).
 
 The owner check works only when identities differ. tractable derives a worker's
-identity from its MCP server process, and subagents share their parent's
-server. So each leader runs as its own top-level session (or sets its own
-`TRACTABLE_ACTOR`), and a member never runs as a subagent of its leader's session
-or of another leader's. Parallel leaders that share one identity also share its
-single live-claim slot and block each other's `take`.
+identity from its MCP server process, and a subagent shares its parent's server,
+so the tracker does not refuse a subagent of the leader: it sees the leader.
+
+A member may run as a subagent of its own leader or as a separate session. It
+never runs under another leader's session. When a member is a subagent, the
+leader's dispatch prompt must tell it to make no tracker write and to pass an
+absolute path under the member worktree to every file tool. `batch-land` still
+refuses every other tracker write on the member item before its first landing
+(Land, step 1). The remaining risk is a claim operation: a `take`, `release`,
+`renew` or `recover` from a member that shares the leader's identity, or a
+`prepare` the tracker records in the batch's integration log, cannot be told
+apart from the leader's own and is not detected.
+
+Each leader runs as its own top-level session (or sets its own
+`TRACTABLE_ACTOR`). Leaders that share one identity can claim each other's
+members, and their tracker writes cannot be told apart.
 
 Rules that hold for the whole batch:
 
@@ -148,10 +159,11 @@ the call. Never copy it into notes, items, commit messages or PR text.
 ### 2. Dispatch and implement (members)
 
 The leader runs `make batch-member-create` for each member that may start and
-hands over the item, the scope, and the member rules below. Members run in
-parallel. Independence is declared by the frozen scopes and the registered
-implementation edges, not discovered at merge time. A dependent member is
-dispatched from an integration head that already contains its dependency.
+hands over the item, the scope, and the member rules below, to a subagent of
+its own session or to a separate session. Members run in parallel. Independence
+is declared by the frozen scopes and the registered implementation edges, not
+discovered at merge time. A dependent member is dispatched from an integration
+head that already contains its dependency.
 
 A member:
 
@@ -193,7 +205,8 @@ A member:
    landing's closing check saw, are never counted, so leader writes in the
    same second as either boundary do not block a landing. A `take` from a
    member that shares the leader's identity cannot be told apart from the
-   leader's own, which is why identities must differ.
+   leader's own, which is why a subagent member is told to make no tracker
+   write.
 2. The leader runs the trusted local reviewer for the exact captured base and
    head, with the reviewer code and policy pinned to the same trusted
    `origin/develop` commit (which must not predate the batch start). Only an
