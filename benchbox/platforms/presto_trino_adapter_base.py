@@ -667,6 +667,9 @@ class PrestoTrinoAdapterBase(CursorValidationQueryExecutionMixin, HiveExternalTa
         finally:
             cursor.close()
 
+    def _make_power_connection_adapter(self, connection: Any, benchmark_id: str, scale_factor: float) -> Any:
+        return self._make_direct_power_connection_adapter(connection, benchmark_id, scale_factor)
+
     def supports_tuning_type(self, tuning_type: Any) -> bool:
         try:
             from benchbox.core.tuning.interface import TuningType
