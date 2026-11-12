@@ -725,7 +725,7 @@ NORMALIZED_COST_REQUIRED_KEYS = {
     "pricing_region",
 }
 NORMALIZED_COST_SCOPES = {"compute_only", "compute_plus_storage"}
-NORMALIZED_COST_STATUSES = {"normalized", "not_applicable_local", "unavailable", "estimated"}
+NORMALIZED_COST_STATUSES = {"normalized", "not_applicable_local", "unavailable", "estimated", "not_comparable_gateway"}
 
 NORMALIZED_COST_BILLING_UNITS = frozenset(
     {
@@ -1434,8 +1434,7 @@ def _validate_compliance_section(
     if not isinstance(benchmark, dict):
         return
     compliance = benchmark.get("compliance_class")
-    gateway = platform.get("gateway") if isinstance(platform, dict) else None
-    if isinstance(gateway, dict) and gateway.get("name") and gateway.get("routed") is True:
+    if _is_gateway_routed(platform):
         compliance = "unofficial_nonstandard"
     if compliance is None:
         return
@@ -2049,8 +2048,8 @@ def _validate_normalized_cost_block(
         vr.error("normalized_cost.cost_status 'normalized' requires normalized_cost_usd")
     if cost_status == "not_applicable_local" and cost_value != Decimal("0"):
         vr.error("normalized_cost.cost_status 'not_applicable_local' requires normalized_cost_usd of 0")
-    if cost_status == "unavailable" and cost_value is not None:
-        vr.error("normalized_cost.cost_status 'unavailable' must not include normalized_cost_usd")
+    if cost_status in {"unavailable", "not_comparable_gateway"} and cost_value is not None:
+        vr.error(f"normalized_cost.cost_status '{cost_status}' must not include normalized_cost_usd")
     _validate_estimated_cost_fields(raw, cost_value, estimated_value, cost_status, vr)
     if cost_status == "normalized" and billing_unit not in NORMALIZED_COST_BILLING_UNITS:
         vr.error(
@@ -2093,7 +2092,26 @@ def _direct_cost_total_fields(data: dict[str, Any]) -> list[tuple[str, Any]]:
     return direct_fields
 
 
+def _is_gateway_routed(platform: Any) -> bool:
+    gateway = platform.get("gateway") if isinstance(platform, dict) else None
+    return isinstance(gateway, dict) and bool(gateway.get("name")) and gateway.get("routed") is True
+
+
+def _validate_gateway_cost(data: dict[str, Any], vr: ValidationResult) -> None:
+    if not _is_gateway_routed(data.get("platform")):
+        return
+    raw_normalized = _raw_normalized_cost_block(data)
+    status = raw_normalized.get("cost_status") if isinstance(raw_normalized, dict) else None
+    if status != "not_comparable_gateway":
+        vr.error(
+            f"gateway-routed results must declare normalized_cost.cost_status 'not_comparable_gateway'; got {status!r}"
+        )
+    for field_path, _value in _direct_cost_total_fields(data):
+        vr.error(f"gateway-routed results must not carry a cost total: {field_path}")
+
+
 def _validate_public_cost_section(data: dict[str, Any], vr: ValidationResult) -> None:
+    _validate_gateway_cost(data, vr)
     direct_fields = _direct_cost_total_fields(data)
     raw_normalized = _raw_normalized_cost_block(data)
 
@@ -2117,7 +2135,7 @@ def _validate_public_cost_section(data: dict[str, Any], vr: ValidationResult) ->
         )
         return
 
-    if cost_status == "unavailable" or normalized_value is None:
+    if cost_status in {"unavailable", "not_comparable_gateway"} or normalized_value is None:
         vr.error(
             "Public leaderboard cost totals require normalized cost availability: "
             f"{field_names} cannot accompany cost_status {cost_status!r}"

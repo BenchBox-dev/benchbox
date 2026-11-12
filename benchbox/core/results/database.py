@@ -356,7 +356,7 @@ class ResultDatabase:
             platform_version = result.platform_info.get("platform_version")
 
         total_cost = published_total_cost(result.cost_summary)
-        persist_per_query_costs = cost_status_of(result.cost_summary) != "unavailable"
+        persist_per_query_costs = cost_status_of(result.cost_summary) not in {"unavailable", "not_comparable_gateway"}
 
         metadata: dict[str, Any] = {
             "system_profile": result.system_profile,

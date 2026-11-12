@@ -141,7 +141,7 @@ def test_a_real_release_keeps_the_full_install_matrix_and_every_uat_shard():
     outputs = {"uat-reuse": {"reuse": "false"}, "admit": {"target": "pypi"}}
     runs = graph.simulate(workflow, graph.Scenario("push", {}, outputs))
     assert runs["install-matrix"].cells == 12
-    assert (runs["uat-stage1"].cells, runs["uat-stage2"].cells, runs["uat-stage3"].cells) == (9, 3, 4)
+    assert (runs["uat-stage1"].cells, runs["uat-stage2"].cells, runs["uat-stage3"].cells) == (9, 4, 6)
     assert runs["publish"].result == "success"
     assert runs["publish-probe"].result == "skipped"
     assert runs["probe-uat-stub"].result == "skipped"

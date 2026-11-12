@@ -44,8 +44,15 @@ def null_mapped_columns_header(columns: list[str], *, text_tokens: bool) -> str:
 def file_chunks(file_path: Path) -> Iterator[bytes]:
     handler = FileFormatRegistry.get_compression_handler(file_path)
     with _open_binary_stream(file_path, handler) as source:
+        pending_cr = b""
         while chunk := source.read(_CHUNK_BYTES):
-            yield chunk
+            data = pending_cr + chunk
+            pending_cr = b"\r" if data.endswith(b"\r") else b""
+            data = data[: len(data) - len(pending_cr)].replace(b"\r\n", b"\n")
+            if data:
+                yield data
+        if pending_cr:
+            yield pending_cr
 
 
 def parquet_csv_chunks(file_path: Path, batch_rows: int = 65_536) -> Iterator[bytes]:

@@ -284,7 +284,9 @@ _PASS_STATUSES = {"SUCCESS", "PASS", "pass", "success"}
 _ALLOWED_EXECUTION_RUN_TYPES: frozenset[str] = frozenset({"measurement", "warmup"})
 _COST_MODEL_SOURCE = "benchbox.core.cost.pricing"
 _COST_SCOPES: frozenset[str] = frozenset({"compute_only", "compute_plus_storage"})
-_COST_STATUSES: frozenset[str] = frozenset({"normalized", "not_applicable_local", "unavailable", "estimated"})
+_COST_STATUSES: frozenset[str] = frozenset(
+    {"normalized", "not_applicable_local", "unavailable", "estimated", "not_comparable_gateway"}
+)
 _KNOWN_LOGICAL_QUERY_COUNTS: dict[str, int] = {
     "tpch": 22,
     "tpch_skew": 22,
@@ -848,6 +850,23 @@ def _translation_uncertain(data: dict[str, Any], validation_status: str | None) 
     return bool(reason and reason.startswith("translation_status="))
 
 
+def _bundle_gateway_routed(bundle: BundleDocument) -> bool:
+    gateway = getattr(bundle.platform, "gateway", None)
+    return isinstance(gateway, Mapping) and bool(gateway.get("name")) and gateway.get("routed") is True
+
+
+def _gateway_not_comparable_cost() -> NormalizedCost:
+    return NormalizedCost(
+        normalized_cost_usd=None,
+        cost_model_version=PRICING_VERSION,
+        cost_model_source=_COST_MODEL_SOURCE,
+        cost_scope="compute_only",
+        cost_status="not_comparable_gateway",
+        billing_unit="unknown",
+        pricing_region="unknown",
+    )
+
+
 def _unavailable_normalized_cost() -> NormalizedCost:
     return NormalizedCost(
         normalized_cost_usd=None,
@@ -1221,6 +1240,11 @@ def _estimated_normalized_cost(bundle: BundleDocument) -> NormalizedCost | None:
 
 def _normalized_cost(bundle: BundleDocument) -> NormalizedCost:
     raw = _raw_normalized_cost_block(bundle)
+    if _bundle_gateway_routed(bundle):
+        recorded = _normalized_cost_from_block(raw) if raw is not None else None
+        if recorded is not None and recorded.cost_status == "not_comparable_gateway":
+            return recorded
+        return _gateway_not_comparable_cost()
     prior_reasons: tuple[str, ...] = ()
     if raw is not None:
         normalized = _normalized_cost_from_block(raw)

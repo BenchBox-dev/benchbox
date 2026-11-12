@@ -49,8 +49,9 @@ primary clone, the primary-clone `uv run` command may provision the environment;
 linked-worktree preflight never installs or repairs shared hooks.
 
 `make agent-write-preflight` records a snapshot of the primary clone's tracked
-changes, and `make pr-preflight` warns, naming the paths, when tracked files
-there changed since the snapshot; see `docs/agent/primary-clone-guard.md`.
+changes and fails, naming the paths, when tracked files there changed since the
+snapshot; `make pr-preflight` also warns. Tool hooks refuse file-tool writes
+into the primary clone before they happen. See `docs/agent/primary-clone-guard.md`.
 
 The branch must start with a Conventional Commit type and a slug:
 `feat/`, `fix/`, `docs/`, `style/`, `refactor/`, `perf/`, `test/`, `build/`,

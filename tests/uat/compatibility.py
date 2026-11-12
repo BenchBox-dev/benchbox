@@ -139,6 +139,26 @@ _SQLITE_TPCDS_OBT_RUNTIME_ENVELOPE_REASON = (
     "issue. Keep it pruned until a bounded atomic bulk loader fits the declared budget."
 )
 
+_QUESTDB_TPCDS_OBT_SF001_REASON = (
+    "QuestDB TPC-DS OBT SF0.01 fails 17 of 93 queries (1, 10, 16, 23a, 23b, 30, 32, 33, 35, 41, 44, 58, 81, 83, 92, 94, "
+    "95) on QuestDB subquery limits: correlated subqueries and EXISTS beside explicit JOINs report 'Invalid table name "
+    "or alias', a scalar subquery inside arithmetic reports 'DOUBLE * CURSOR', and an IN subquery that reuses the outer "
+    "alias reports 'cannot compare ... with type CURSOR'. Keep it pruned until the QuestDB rewrites cover these shapes."
+)
+
+_POSTGRES_TPCDS_OBT_SF001_REASON = (
+    "{platform} TPC-DS OBT SF0.01 timed out at 1200s on both attempts of trunk UAT run 43117035812 without finishing "
+    "the cell. Keep it pruned until the OBT load and queries fit the release-gate cell budget on {platform}."
+)
+
+_PG_MOONCAKE_TPCDS_OBT_SF001_REASON = (
+    "pg-mooncake TPC-DS OBT SF0.01 fails queries 4, 11, 14b, 23a, 23b and 74 with 'Catalog Error: Table Function with "
+    "name mooncake_scan does not exist' on the pg_duckdb plan path. Keep it pruned until those queries plan on "
+    "pg-mooncake."
+)
+
+_TPCDS_OBT_SF001_EVIDENCE = "trunk UAT run 43117035812 on 90f2c8714ef4fd52f9afe54d0288f18ea487cc76 (tpcds_obt SF0.01)"
+
 _SQLITE_TPCDS_OBT_SF01_RUNTIME_ENVELOPE_REASON = (
     "SQLite TPC-DS OBT SF0.1 cannot meet the 1200s release-gate cell contract on the native UAT host. "
     "The 2026-11-11 run loaded 503,753 rows in 103.7s, then query 35 was still running when the cell reached "
@@ -217,6 +237,26 @@ _SINGLESTORE_JOINORDER_RUNTIME_ENVELOPE_REASON = (
     "SingleStore 10.9.0 stack the 74.19M-row load now completes in about 7.5 minutes, but query 7c's join "
     "exceeds the container memory limit and the kernel OOM-kills memsqld (anon-rss 2.87 GB), so every later "
     "query fails with 1735/1777. JoinOrder is fixed at the IMDb data set, so no smaller scale exists."
+)
+
+_CEDARDB_TPCDS_OBT_SF1_DISK_ENVELOPE_REASON = (
+    "cedardb TPC-DS OBT SF1 cannot be loaded within the release-host disk: the 5,041,336-row, 715-column table "
+    "exhausted the 144 GiB runner disk in release UAT dry runs 3 and 4. A local SF1 Parquet COPY with the pinned "
+    "image and an 8 GiB memory limit grew the data directory to 17.6 GB at 1,048,577 rows and kept growing, so the "
+    "full load needs well over 80 GB. SF0.01 and SF0.1 stay in the gate."
+)
+
+_CEDARDB_RUNTIME_ENVELOPE_REASON = (
+    "cedardb {benchmark} cannot meet the 1200s release-gate cell contract: the cell timed out at 1200s at SF0.01 "
+    "and SF0.1 on the 8 GiB container stack on the 4 vCPU / 16 GB release runner (release UAT dry run 5, run "
+    "41309974530), so every scale is out of the envelope."
+)
+
+_MEMORY_CATALOG_JOINORDER_RUNTIME_ENVELOPE_REASON = (
+    "{engine} JoinOrder cannot meet the 1200s release-gate cell contract on the memory catalog, the only data "
+    "catalog in the release UAT stack: the IMDb data set is about 74M rows at every scale factor, beyond the "
+    "connector's per-node data cap, and row-wise inserts cannot finish within 1200s. A Hive or Iceberg catalog "
+    "is not blocked."
 )
 
 _SF1_TIMEOUT_PRUNED_CELLS = (
@@ -316,6 +356,19 @@ _RELEASE_GATE_RUNTIME_ENVELOPES = (
         ("sqlite", "tpcds"): _SQLITE_TPCDS_RUNTIME_ENVELOPE_REASON,
         ("sqlite", "tpcds_obt", 0.1): _SQLITE_TPCDS_OBT_SF01_RUNTIME_ENVELOPE_REASON,
         ("sqlite", "tpcds_obt", 1.0): _SQLITE_TPCDS_OBT_RUNTIME_ENVELOPE_REASON,
+        ("cedardb", "tpcds_obt", 1.0): _CEDARDB_TPCDS_OBT_SF1_DISK_ENVELOPE_REASON,
+        **{
+            ("cedardb", benchmark): _CEDARDB_RUNTIME_ENVELOPE_REASON.format(benchmark=label)
+            for benchmark, label in (("tpchavoc", "TPC-Havoc"), ("tpch_skew", "TPC-H Skew"))
+        },
+        **{
+            (platform, "joinorder"): _MEMORY_CATALOG_JOINORDER_RUNTIME_ENVELOPE_REASON.format(engine=engine)
+            for platform, engine in (("presto", "Presto"), ("trino", "Trino"))
+        },
+        ("questdb", "tpcds_obt", 0.01): _QUESTDB_TPCDS_OBT_SF001_REASON,
+        ("postgresql", "tpcds_obt", 0.01): _POSTGRES_TPCDS_OBT_SF001_REASON.format(platform="PostgreSQL"),
+        ("timescaledb", "tpcds_obt", 0.01): _POSTGRES_TPCDS_OBT_SF001_REASON.format(platform="TimescaleDB"),
+        ("pg-mooncake", "tpcds_obt", 0.01): _PG_MOONCAKE_TPCDS_OBT_SF001_REASON,
         ("singlestore", "joinorder"): _SINGLESTORE_JOINORDER_RUNTIME_ENVELOPE_REASON,
         ("pyspark-df", "tpchavoc", 0.1): _PYSPARK_DF_TPCHAVOC_SF01_RUNTIME_ENVELOPE_REASON,
     }
@@ -333,6 +386,10 @@ _RELEASE_GATE_RUNTIME_ENVELOPE_EVIDENCE = (
         ("sqlite", "tpcds"): "docs/internal/uat-release-campaign.md: SQLite TPC-DS (2026-08-25)",
         ("sqlite", "tpcds_obt", 0.1): "docs/internal/uat-release-campaign.md: SQLite TPC-DS OBT (2026-11-11)",
         ("sqlite", "tpcds_obt", 1.0): "PR #1904; docs/internal/uat-release-campaign.md: SQLite TPC-DS OBT (2026-08-25)",
+        ("questdb", "tpcds_obt", 0.01): _TPCDS_OBT_SF001_EVIDENCE,
+        ("postgresql", "tpcds_obt", 0.01): _TPCDS_OBT_SF001_EVIDENCE,
+        ("timescaledb", "tpcds_obt", 0.01): _TPCDS_OBT_SF001_EVIDENCE,
+        ("pg-mooncake", "tpcds_obt", 0.01): _TPCDS_OBT_SF001_EVIDENCE,
         (
             "singlestore",
             "joinorder",
@@ -352,6 +409,21 @@ _RELEASE_GATE_RUNTIME_ENVELOPE_EVIDENCE = (
             "tpchavoc",
             0.1,
         ): "release-v2 run 41842316367 for v0.5.0rc4 and a release UAT dry run: terminal=timeout at 1200s",
+        (
+            "cedardb",
+            "tpcds_obt",
+            1.0,
+        ): "release UAT dry runs 3 (run 41243890531) and 4 (run 41255388284): runner disk exhausted; local SF1 Parquet COPY reproduction: 17.6 GB at 1,048,577 rows",
+        ("cedardb", "tpchavoc"): "release UAT dry run 5 (run 41309974530) stage 2 cedardb: terminal=timeout at 1200s",
+        ("cedardb", "tpch_skew"): "release UAT dry run 5 (run 41309974530) stage 2 cedardb: terminal=timeout at 1200s",
+        (
+            "presto",
+            "joinorder",
+        ): "release UAT dry runs 2 (run 41163626947) and 3 (run 41243890531); local Presto 0.298.1 load profile 2026-11-01",
+        (
+            "trino",
+            "joinorder",
+        ): "release UAT dry runs 2 (run 41163626947) and 3 (run 41243890531); local Trino 484 load profile 2026-11-01",
     }
 )
 

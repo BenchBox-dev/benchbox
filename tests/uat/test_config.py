@@ -498,6 +498,13 @@ _DOCKER_SF1_TIMEOUT_PRUNED_CELLS = {
             ("starrocks", "joinorder", 1.0),
             ("starrocks", "tpcds_obt", 1.0),
             ("starrocks", "write_primitives", 1.0),
+            ("cedardb", "tpcds_obt", 1.0),
+            ("cedardb", "tpchavoc", 0.01),
+            ("cedardb", "tpchavoc", 0.1),
+            ("cedardb", "tpchavoc", 1.0),
+            ("cedardb", "tpch_skew", 0.01),
+            ("cedardb", "tpch_skew", 0.1),
+            ("cedardb", "tpch_skew", 1.0),
         }
     ),
     "release-gate-03-docker-oltp.yaml": frozenset(
@@ -508,9 +515,25 @@ _DOCKER_SF1_TIMEOUT_PRUNED_CELLS = {
             ("questdb", "joinorder", 0.01),
             ("timescaledb", "joinorder", 0.01),
             ("velox", "joinorder", 0.01),
+            ("presto", "joinorder", 0.01),
+            ("trino", "joinorder", 0.01),
+            ("questdb", "tpcds_obt", 0.01),
+            ("postgresql", "tpcds_obt", 0.01),
+            ("timescaledb", "tpcds_obt", 0.01),
+            ("pg-mooncake", "tpcds_obt", 0.01),
         }
     ),
 }
+
+_DOCKER_NON_TIMEOUT_ENVELOPE_CELLS = frozenset(
+    {
+        ("cedardb", "tpcds_obt", 1.0),
+        ("presto", "joinorder", 0.01),
+        ("trino", "joinorder", 0.01),
+        ("questdb", "tpcds_obt", 0.01),
+        ("pg-mooncake", "tpcds_obt", 0.01),
+    }
+)
 
 
 @pytest.mark.parametrize("config_name", sorted(_DOCKER_SF1_TIMEOUT_PRUNED_CELLS))
@@ -531,21 +554,29 @@ def test_release_gate_docker_stages_prune_sf1_timeouts_measured_in_dry_run_2(con
     assert cells.isdisjoint(expected)
     for cell in result.compatibility_pruned:
         if (cell.platform, cell.benchmark, cell.scale) in expected:
-            assert "timed out at 1200s" in cell.reason
+            if (cell.platform, cell.benchmark, cell.scale) not in _DOCKER_NON_TIMEOUT_ENVELOPE_CELLS:
+                assert "timed out at 1200s" in cell.reason
 
 
 def test_release_gate_stages_exclude_platforms_tracked_for_follow_up():
     stage2 = config.load_config(_RELEASE_GATE_CONFIGS_DIR / "release-gate-02-docker-nonoltp.yaml")
     stage3 = config.load_config(_RELEASE_GATE_CONFIGS_DIR / "release-gate-03-docker-oltp.yaml")
-    assert stage2.platforms.exclude == ("cedardb",)
-    assert stage3.platforms.exclude == ("influxdb", "presto", "trino", "databend")
-    assert "cedardb-release-uat-coverage" in stage2.description
+    assert stage2.platforms.exclude == ()
+    assert stage3.platforms.exclude == ("influxdb", "databend")
     assert "influxdb-general-loader-uat" in stage3.description
-    assert "presto-trino-release-uat-coverage" in stage3.description
     assert "databend-release-uat-coverage" in stage3.description
     for stage in (stage2, stage3):
         resolved = matrix.resolve_platforms(groups=stage.platforms.groups or (), exclude=stage.platforms.exclude)
         assert set(stage.platforms.exclude).isdisjoint(resolved)
+
+
+def test_release_gate_stages_include_cedardb_presto_and_trino():
+    stage2 = config.load_config(_RELEASE_GATE_CONFIGS_DIR / "release-gate-02-docker-nonoltp.yaml")
+    stage3 = config.load_config(_RELEASE_GATE_CONFIGS_DIR / "release-gate-03-docker-oltp.yaml")
+    assert "cedardb" in matrix.resolve_platforms(groups=stage2.platforms.groups or (), exclude=stage2.platforms.exclude)
+    resolved3 = matrix.resolve_platforms(groups=stage3.platforms.groups or (), exclude=stage3.platforms.exclude)
+    assert {"presto", "trino"} <= set(resolved3)
+    assert stage3.scales.rungs == (0.01,)
 
 
 def test_release_gate_stage1_prunes_measured_runtime_envelopes():

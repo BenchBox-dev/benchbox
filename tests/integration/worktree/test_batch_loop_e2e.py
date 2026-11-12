@@ -205,7 +205,7 @@ def test_members_land_bind_rebind_and_finish(world: World, leader: McpServer, ou
     fixed = world.make_json(loop.integration, "batch-advance", REASON="fix")
     assert sorted(fixed["requires_acceptance"]) == [m1, m3]
     assert set(fixed["reruns"].values()) == {"passed"}
-    leader.ok("advance_batch_head", **fixed["payload"]["arguments"])
+    leader.ok("advance_batch_head", **{**fixed["payload"]["arguments"], "owner_generation": loop.generation})
     fix_head = loop.head()
     assert "not bound at the integration head" in world.refused(loop.integration, "batch-evidence")
     leader.refused(

@@ -176,6 +176,10 @@ class MissingPublicPseudonymSaltError(ValueError):
     pass
 
 
+class UnpseudonymizedPublicValueError(Exception):
+    pass
+
+
 def resolve_public_pseudonym_salt(
     *,
     explicit: Optional[str] = None,
@@ -320,6 +324,7 @@ def ensure_public_pseudonym_salt(
 @dataclass
 class AnonymizationConfig:
     machine_id_salt: Optional[str] = field(default=None, repr=False)
+    public_only: bool = False
 
     pii_patterns: list[str] = field(
         default_factory=lambda: [
@@ -344,11 +349,19 @@ class AnonymizationConfig:
             salt = resolve_public_pseudonym_salt(environ=environ)
         return cls(machine_id_salt=salt)
 
+    @classmethod
+    def public_only_unsalted(cls) -> "AnonymizationConfig":
+        return cls(machine_id_salt=None, public_only=True)
+
 
 class AnonymizationManager:
     def __init__(self, config: Optional[AnonymizationConfig] = None):
         self.config = config or AnonymizationConfig()
         self._machine_id_cache: Optional[str] = None
+
+    @classmethod
+    def for_public_only_bundles(cls) -> "AnonymizationManager":
+        return cls(AnonymizationConfig.public_only_unsalted())
 
     def _get_macos_platform_uuid(self) -> Optional[str]:
         try:
@@ -744,6 +757,11 @@ class AnonymizationManager:
     def _hash_public_identifier(self, value: str, prefix: str) -> str:
         if _is_public_pseudonym(value, prefix):
             return value
+        if self.config.public_only:
+            raise UnpseudonymizedPublicValueError(
+                f"a {prefix} value is not already pseudonymized; public-only anonymization refuses to hash "
+                "raw identifiers without the public pseudonym salt"
+            )
         salt = self.config.machine_id_salt or ""
         digest = hashlib.sha256(f"{salt}|{prefix}|{value}".encode()).hexdigest()[:_PUBLIC_HASH_WIDTH]
         return f"{prefix}_{digest}"

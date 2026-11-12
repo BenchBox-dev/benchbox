@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed StarRocks loads of CRLF-terminated tables (TPC-DI, SSB and Vector Search) failing with filtered rows or null array elements because Stream Load kept the carriage return in the last column."
+    }
+  ]
+}

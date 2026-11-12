@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "Snowflake and Databricks runs routed through a gateway now record an unknown per-query execution engine, flag degraded metadata probes, report the gateway cache as unverified, and mark cost as not comparable, so gateway results never blend with native baselines."
+    }
+  ]
+}

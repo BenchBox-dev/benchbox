@@ -177,3 +177,121 @@ def test_from_config_native_still_auto_detects_missing_credentials():
     auto_detect.assert_called_once()
     assert adapter.gateway == "native"
     assert adapter.server_hostname == "native.cloud.databricks.com"
+
+
+def _full_info(adapter):
+    info = _platform_info(adapter)
+    info.update({"platform_type": "databricks", "region": "us-east-1"})
+    return info
+
+
+@pytest.mark.parametrize("gateway", ["espresso", "custom"])
+def test_gateway_run_is_excluded_from_native_baseline_set(gateway):
+    from benchbox.core.results.execution_variant import platform_info_bundle, variants_comparable
+
+    native = platform_info_bundle("Databricks", _full_info(DatabricksAdapter(**_config())))
+    routed = platform_info_bundle("Databricks", _full_info(DatabricksAdapter(**_config(gateway=gateway))))
+
+    assert variants_comparable(native, native)
+    assert variants_comparable(routed, routed)
+    assert not variants_comparable(native, routed)
+    assert not variants_comparable(routed, native)
+
+
+def test_gateway_run_is_excluded_from_regression_baseline(tmp_path):
+    import json
+
+    from benchbox.core.results.analytics import _load_regression_runs
+    from benchbox.core.results.execution_variant import platform_info_bundle
+
+    def write(name, adapter, stamp):
+        info = _full_info(adapter)
+        bundle = platform_info_bundle("Databricks", info)
+        bundle["platform"]["gateway"] = info.get("gateway", {})
+        bundle["run"] = {"timestamp": stamp}
+        bundle["benchmark"] = {"id": "tpch", "scale_factor": 0.01}
+        bundle["queries"] = [{"run_type": "measurement", "id": "Q1", "ms": 100.0}]
+        path = tmp_path / name
+        path.write_text(json.dumps(bundle))
+        return path
+
+    paths = [
+        write("a_native.json", DatabricksAdapter(**_config()), "2026-10-10T10:00:00Z"),
+        write("b_gateway.json", DatabricksAdapter(**_config(gateway="espresso")), "2026-10-11T10:00:00Z"),
+        write("c_native.json", DatabricksAdapter(**_config()), "2026-10-12T10:00:00Z"),
+    ]
+    runs, other = _load_regression_runs(paths, None, None, 5)
+
+    assert [run["file"] for run in runs] == ["a_native.json", "c_native.json"]
+    assert other == ["b_gateway.json"]
+
+
+@pytest.mark.parametrize("gateway", ["espresso", "custom"])
+def test_gateway_cost_is_not_comparable(monkeypatch, gateway):
+    from benchbox.core.cost.integration import add_cost_estimation_to_results
+    from tests.fixtures.result_dict_fixtures import make_benchmark_results
+
+    monkeypatch.setattr("benchbox.core.cost.calculator.get_pricing_age_days", lambda table=None: 1)
+
+    def priced(adapter):
+        results = make_benchmark_results(
+            benchmark_name="TPC-H",
+            platform="databricks",
+            scale_factor=1,
+            platform_info=_full_info(adapter),
+            query_results=[{"query_id": "Q1", "execution_time": 1.5, "resource_usage": {"dbu_used": 0.5}}],
+        )
+        return add_cost_estimation_to_results(results)
+
+    routed = priced(DatabricksAdapter(**_config(gateway=gateway)))
+    normalized = routed.cost_summary["normalized_cost"]
+    assert normalized["cost_status"] == "not_comparable_gateway"
+    assert normalized["normalized_cost_usd"] is None
+    assert routed.query_results[0].get("cost") is None
+
+    native = priced(DatabricksAdapter(**_config()))
+    assert native.cost_summary["normalized_cost"]["cost_status"] != "not_comparable_gateway"
+
+
+def test_gateway_platform_info_records_unverified_gateway_cache():
+    info = _platform_info(DatabricksAdapter(**_config(gateway="espresso")))
+    cache = info["configuration"]["cache_control"]
+    assert cache["gateway_cache"] == "unverified"
+    assert cache["warm_run_metrics"] == "cache_unverified"
+    assert "cache_control" not in _platform_info(DatabricksAdapter(**_config()))["configuration"]
+
+
+def test_gateway_normalized_metadata_reports_unverified_gateway_cache():
+    adapter = DatabricksAdapter(**_config(gateway="espresso"))
+    adapter._cache_control_receipt = {
+        "validated": True,
+        "cache_disabled": True,
+        "settings": {"use_cached_result": "false"},
+        "warnings": [],
+        "errors": [],
+    }
+    with (
+        patch.object(DatabricksAdapter, "_warehouse_id_from_http_path", return_value=None),
+        patch.object(DatabricksAdapter, "_detect_databricks_region", return_value=None),
+    ):
+        cache = adapter.get_normalized_result_metadata()["platform_compute"]["cache_control"]
+    assert cache["validated"] is True
+    assert cache["cache_disabled"] is True
+    assert cache["gateway_cache"] == "unverified"
+
+
+def test_gateway_query_result_defaults_engine_to_unknown():
+    from unittest.mock import MagicMock
+
+    for gateway, expected in (("espresso", "unknown"), ("native", None)):
+        adapter = DatabricksAdapter(**_config(gateway=gateway))
+        connection = MagicMock()
+        cursor = connection.cursor.return_value
+        cursor.fetchall.return_value = [(1,)]
+        with (
+            patch.object(DatabricksAdapter, "_ensure_session_cache_disabled"),
+            patch.object(DatabricksAdapter, "_merge_plan_capture_into_result"),
+        ):
+            result = adapter.execute_query(connection, "SELECT 1", "Q1", validate_row_count=False)
+        assert result["status"] == "SUCCESS"
+        assert result.get("execution_engine") == expected

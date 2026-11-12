@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from _project.scripts.results_explorer_cpu_attestation_backfill import backfill
+from benchbox.core.results.anonymization import UnpseudonymizedPublicValueError
 from benchbox.core.results.canonical_json import canonical_json_bytes
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -60,3 +61,16 @@ def test_existing_attestation_manifest_refuses_sidecar_only_write(tmp_path: Path
         backfill(bundles_dir=tmp_path, write=True, manifest_path=first_manifest)
 
     assert sidecar.read_bytes() == before
+
+
+def test_backfill_refuses_a_bundle_that_is_not_already_pseudonymized(tmp_path: Path) -> None:
+    raw = _bundle()
+    raw["platform"] = {"name": "DuckDB", "version": "1.2.3", "options": {"bucket": "private-bucket"}}
+    bundle = tmp_path / "run.json"
+    original = canonical_json_bytes(raw)
+    bundle.write_bytes(original)
+
+    with pytest.raises(UnpseudonymizedPublicValueError):
+        backfill(bundles_dir=tmp_path, write=True, manifest_path=tmp_path / "attestation.json")
+
+    assert bundle.read_bytes() == original

@@ -11,12 +11,28 @@ from benchbox.core.query_plans.parsers.base import (
     strip_estimates,
 )
 from benchbox.core.results.query_plan_models import (
+    JoinType,
     LogicalOperator,
     LogicalOperatorType,
     QueryPlanDAG,
 )
 
 logger = logging.getLogger(__name__)
+
+_DECLARED_JOIN_TYPES: dict[str, JoinType] = {
+    "INNER": JoinType.INNER,
+    "LEFT": JoinType.LEFT,
+    "RIGHT": JoinType.RIGHT,
+    "OUTER": JoinType.FULL,
+    "FULL": JoinType.FULL,
+    "SEMI": JoinType.SEMI,
+    "RIGHT_SEMI": JoinType.SEMI,
+    "ANTI": JoinType.ANTI,
+    "RIGHT_ANTI": JoinType.ANTI,
+    "MARK": JoinType.MARK,
+    "SINGLE": JoinType.SINGLE,
+}
+_SORT_KEY_RE = re.compile(r"^(?P<expr>.*?)\s+(?P<direction>ASC|DESC)(?:\s+NULLS\s+(?:FIRST|LAST))?$", re.DOTALL)
 
 
 class DuckDBQueryPlanParser(QueryPlanParser):
@@ -139,7 +155,9 @@ class DuckDBQueryPlanParser(QueryPlanParser):
                 kwargs["filter_expressions"] = [logical_extra]
 
         elif operator_type == LogicalOperatorType.JOIN:
-            kwargs["join_type"] = self._extract_join_type_from_operator(operator_name)
+            kwargs["join_type"] = self._declared_join_type(raw_extra) or self._extract_join_type_from_operator(
+                operator_name
+            )
             if logical_extra:
                 kwargs["join_conditions"] = [logical_extra]
 
@@ -148,7 +166,13 @@ class DuckDBQueryPlanParser(QueryPlanParser):
                 kwargs["aggregation_functions"] = [logical_extra]
 
         elif operator_type == LogicalOperatorType.SORT:
-            if logical_extra:
+            sort_keys = self._declared_sort_keys(raw_extra)
+            if sort_keys:
+                kwargs["sort_keys"] = sort_keys
+                limit_count = self._declared_top(raw_extra)
+                if limit_count is not None:
+                    kwargs["limit_count"] = limit_count
+            elif logical_extra:
                 kwargs["sort_keys"] = [{"expr": logical_extra, "direction": "ASC"}]
 
         _timing = node.get("timing")
@@ -172,6 +196,47 @@ class DuckDBQueryPlanParser(QueryPlanParser):
             physical_operator=physical_op,
             **kwargs,
         )
+
+    @staticmethod
+    def _declared_join_type(raw_extra: Any) -> JoinType | str | None:
+        if not isinstance(raw_extra, dict):
+            return None
+        declared = raw_extra.get("Join Type")
+        if not isinstance(declared, str) or not declared.strip():
+            return None
+        normalized = declared.strip().upper().replace(" ", "_")
+        return _DECLARED_JOIN_TYPES.get(normalized, normalized.lower())
+
+    @staticmethod
+    def _declared_sort_keys(raw_extra: Any) -> list[dict[str, str]]:
+        if not isinstance(raw_extra, dict):
+            return []
+        declared = raw_extra.get("Order By")
+        entries = [declared] if isinstance(declared, str) else declared
+        if not isinstance(entries, list):
+            return []
+        sort_keys = []
+        for entry in entries:
+            if not isinstance(entry, str):
+                continue
+            for line in entry.splitlines():
+                key = line.strip()
+                if not key:
+                    continue
+                match = _SORT_KEY_RE.match(key)
+                if match:
+                    sort_keys.append({"expr": match.group("expr").strip(), "direction": match.group("direction")})
+                else:
+                    sort_keys.append({"expr": key, "direction": "ASC"})
+        return sort_keys
+
+    @staticmethod
+    def _declared_top(raw_extra: Any) -> int | None:
+        declared = raw_extra.get("Top") if isinstance(raw_extra, dict) else None
+        try:
+            return int(declared) if declared is not None else None
+        except (TypeError, ValueError):
+            return None
 
     def _extract_table_from_extra_info(self, extra_info: str) -> str | None:
         if not extra_info:
@@ -363,14 +428,6 @@ class DuckDBQueryPlanParser(QueryPlanParser):
                     sort_keys.append({"expr": expr, "direction": direction})
             if sort_keys:
                 kwargs["sort_keys"] = sort_keys
-
-        elif logical_type == LogicalOperatorType.JOIN:
-            join_type = self._extract_join_type_from_operator(operator_type_str)
-            kwargs["join_type"] = join_type
-
-            join_conds = [d for d in details if "=" in d or "ON" in d]
-            if join_conds:
-                kwargs["join_conditions"] = join_conds
 
         physical_op = self._create_physical_operator(
             operator_type_str,
