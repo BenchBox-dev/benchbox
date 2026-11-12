@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "`rg -n \"own tractable identity|own session\" scripts/batch_integration.py` prints nothing.",
+    "`git diff origin/develop -- scripts/batch_integration.py` is a single hunk inside the `_check_member_writes` error message.",
+    "The refusal still names each unexplained write as `op op_id at time by actor` and still mentions `ACCEPT_WRITES`.",
+    "`tests/unit/scripts/test_batch_integration.py` passes, run through the repository's lock-aware entry point, and `make comment-policy-check` reports nothing for the file."
+  ],
+  "description": "File: `scripts/batch_integration.py`, the `BatchError` raised in `_check_member_writes`. Its text says 'run each member in its own session with its own tractable identity', which contradicts the rule that a member may be a subagent of its leader.\n\nChange. Reword that one message: members never write to the tracker; inspect each listed write with `show_item`; land again with `ACCEPT_WRITES=<op_id,...>` to record reviewed writes. No identity instruction.\n\nDecision gates.\n- If a test asserts the old wording, update the assertion to the behaviour it protects (a refusal that names the op ids), not to the new sentence.\n- If any behavioural test in `tests/unit/scripts/test_batch_integration.py` fails after the edit, stop: the edit touched logic and must be redone.\n- Changelog: add a fragment only if `make changelog-check` or `make pr-preflight` asks for one; `scripts/` is not a shipped path.\n\nGuardrails. One string literal changes. `LEADER_MEMBER_OPS`, `member_tracker_writes`, the window bounds, the accepted-write handling and every other refusal stay byte-identical. No new comment or docstring (comment policy). The umbrella's guardrails also apply.",
+  "links": [
+    "scripts/batch_integration.py",
+    "tests/unit/scripts/test_batch_integration.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-12T14:13:44Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1ccd43861c4d40e88d714b93a12007eb",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    }
+  ]
+}

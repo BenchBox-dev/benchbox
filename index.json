@@ -12540,6 +12540,15 @@
       "status": "open",
       "title": "Rewrite the batch member-identity rule in batch-feature-delivery.md to allow subagent members"
     },
+    "batch-member-subagent-land-message-20261112": {
+      "claim": null,
+      "needs": [
+        "batch-member-subagent-rule-20261112"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Stop the batch-land tracker-write refusal from telling leaders to give each member its own identity"
+    },
     "batch-member-subagent-rule-20261112": {
       "claim": null,
       "needs": [],
