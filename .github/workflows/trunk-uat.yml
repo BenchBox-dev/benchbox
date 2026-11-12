@@ -202,6 +202,8 @@ jobs:
             platforms: clickhouse-server
           - shard: starrocks
             platforms: starrocks
+          - shard: cedardb
+            platforms: cedardb
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
@@ -274,6 +276,10 @@ jobs:
             platforms: postgresql,pg-duckdb,pg-mooncake,timescaledb
           - shard: query-engines
             platforms: velox
+          - shard: presto
+            platforms: presto
+          - shard: trino
+            platforms: trino
           - shard: olap
             platforms: doris,singlestore
           - shard: timeseries
