@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "`pr-arm WAIT=<n>` survives a rate-limit response and resumes after the reset when it falls inside the wait (test with a stubbed API).",
+    "`pr-open` reports the reset time when it refuses for a rate limit."
+  ],
+  "context": "Filed 2026-11-12 from the scale-factor follow-up and TPC-DI generator work of 2026-11-11 and 2026-11-12: identified during that work and not addressed.",
+  "description": "## Problem\nSeveral agent sessions share one GitHub user's 5,000 requests per hour. On 2026-11-12 the limit was exhausted twice in an hour:\n- `make pr-open` refused with 'the local review is unavailable: the open pull request for this branch could not be read ... API rate limit exceeded' and pushed nothing, although the review had not run.\n- `make pr-arm WAIT=60` exited with 'live state could not be verified: cannot read tracker index ... API rate limit exceeded' 24 minutes into its wait, although the reset was minutes away. A separate run ended on a GitHub HTTP 503 after three attempts.\nThe caller had to poll `gh api rate_limit` by hand and re-run. The messages do not name the reset time.\n\n## Change\nTreat a rate-limit response as a wait: read the reset time, say it, and resume, at least inside `pr-arm WAIT`. Reduce request volume in the polling paths (conditional requests or longer intervals), and consider a shared budget across sessions.\n\n## Guardrails\n- Never treat an unreadable state as a pass; waiting is the only relaxation.\n- Keep the wait bounded by `WAIT`.",
+  "links": [
+    "make/pr-landing.mk"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:eb0e48032edcab785e018919",
+      "at": "2026-11-12T16:53:09Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "281574ea6ead4a9bbb97db25ab86958b",
+      "session_id": "3f84b7b72a6a4389855a4c2d913fb7f9"
+    }
+  ]
+}

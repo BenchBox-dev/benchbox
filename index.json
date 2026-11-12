@@ -31209,6 +31209,13 @@
       "status": "done",
       "title": "Serialize local validation and report exact gate evidence without duplicate runs"
     },
+    "pr-open-and-pr-arm-fail-on-github-rate-limit-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "pr-open and pr-arm fail outright when the shared GitHub API rate limit is exhausted"
+    },
     "pr-open-auto-merge-partial-stack-race-20260804": {
       "claim": null,
       "needs": [],
