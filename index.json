@@ -42589,6 +42589,13 @@
       "status": "done",
       "title": "tractable expect_store accepts a prefix-named repository, so the wrong-tracker gate can pass for the wrong project"
     },
+    "tractable-mcp-mutation-exceeds-client-timeout-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Tracker mutations sometimes outlast the 30-second MCP client timeout and return an unknown outcome"
+    },
     "tractable-not-before-empty-does-not-clear-hold-20261111": {
       "claim": null,
       "needs": [],

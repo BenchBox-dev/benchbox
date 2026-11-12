@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Mutation latency against the project store is measured over at least 30 writes and the slow phase is identified from server logs.",
+    "Either the MCP client timeout for the tractable server is raised above the measured worst case, or an upstream tractable issue is linked, with the reason recorded here.",
+    "The todo skill or `docs/agent/` states the recovery for a timed-out mutation: read `sessions` or the field first, re-adopt with `take` for a lost generation, and never blindly repeat a `context_append`."
+  ],
+  "description": "On 2026-11-12, in one omp session bound to the project store, two of roughly twenty tracker mutations timed out at the client: a `take` (14:14:58Z, inside a cell with a 30 s deadline) and an `update_item` with `context_append` (`Request timeout after 30000ms ... the request outcome is unknown`). Both had committed. The `take` response, which carries the claim generation, was lost and had to be recovered by calling `take` again to re-adopt. A retried `context_append` after such a timeout would append the note twice. Other mutations in the same session returned in a few seconds.\n\nNot yet known: whether the time goes to the push to the state remote, to GitHub latency, or to contention with other sessions writing the same branch. The session saw GitHub rate limiting and a 503 within the same two hours.\n\nDecision gate: measure before changing anything. If the cause is remote latency, the fix may be a longer client timeout in the harness configuration; if it is contention or retries inside tractable, it belongs upstream.",
+  "links": [
+    "docs/agent/batch-tracker-contract.md",
+    ".mcp.json"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-12T16:51:58Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f1e177b9be77441795299b466120f671",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    }
+  ]
+}
