@@ -514,11 +514,30 @@ _TRUNK_UAT_PRUNES = {
     ),
 }
 
+_TPCDS_TRUNK_UAT_RUN = "trunk UAT run 43229090202 (source 01a15152)"
+
+_TPCDS_SF001_PRUNES = {
+    ("trino", "tpcds", 0.01): (
+        "Trino TPC-DS SF0.01 fails queries 16, 32, 58, 72, 83, 92, 94 and 95 with TYPE_MISMATCH: date literals and "
+        "date arithmetic reach Trino as varchar ('Cannot check if date is BETWEEN varchar(9) and date', 'Cannot "
+        "apply operator: date = varchar(10)', 'Cannot apply operator: date + integer') and the IN list in query 83 "
+        "has no common type between date and varchar(10) (trunk UAT run 43229090202)."
+    ),
+    ("presto", "tpcds", 0.01): (
+        "Presto TPC-DS SF0.01 fails queries 16, 32, 58, 72, 83, 92, 94 and 95 with SYNTAX_ERROR: date literals and "
+        "date arithmetic reach Presto as varchar ('Cannot check if date is BETWEEN varchar(9) and date', ''=' "
+        "cannot be applied to date, varchar(10)', ''+' cannot be applied to date, integer', 'IN value and list "
+        "items must be the same type: date'), and query 14a fails with QUERY_HAS_TOO_MANY_STAGES (102 stages, "
+        "server maximum 100; trunk UAT run 43229090202)."
+    ),
+}
+
 _RELEASE_GATE_RUNTIME_ENVELOPES = (
     _SF1_TIMEOUT_RUNTIME_ENVELOPES
     | _PANDAS_DF_SF1_MEMORY_RUNTIME_ENVELOPES
     | _LATER_SF1_TIMEOUT_RUNTIME_ENVELOPES
     | _TRUNK_UAT_PRUNES
+    | _TPCDS_SF001_PRUNES
     | {
         ("sqlite", "datavault", 1.0): _SQLITE_DATAVAULT_SF1_RUNTIME_ENVELOPE_REASON,
         ("sqlite", "tpchavoc", 1.0): _SQLITE_TPCHAVOC_SF1_RUNTIME_ENVELOPE_REASON,
@@ -548,6 +567,7 @@ _RELEASE_GATE_RUNTIME_ENVELOPE_EVIDENCE = (
     _SF1_TIMEOUT_RUNTIME_ENVELOPE_EVIDENCE
     | _LATER_SF1_TIMEOUT_CELL_EVIDENCE
     | dict.fromkeys(_TRUNK_UAT_PRUNES, _TRUNK_UAT_RUN)
+    | dict.fromkeys(_TPCDS_SF001_PRUNES, _TPCDS_TRUNK_UAT_RUN)
     | dict.fromkeys(
         _PANDAS_DF_SF1_MEMORY_RUNTIME_ENVELOPES,
         "release UAT dry run 2 (run 41163626947) SF1 memory: UAT_MEMORY_LIMIT limit_gib=13 peak_gib=13.09 / 13.22",
