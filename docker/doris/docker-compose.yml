@@ -1,7 +1,7 @@
 services:
   doris:
     image: apache/doris:4.0.3-all-slim@sha256:3237bfb73471da7482c6575cecc1632c96dec09509cd2e60bcb798e2c5342823
-    mem_limit: ${DORIS_MEMORY_LIMIT:-4g}
+    mem_limit: ${DORIS_MEMORY_LIMIT:-6g}
     entrypoint:
       - bash
       - -c
@@ -55,10 +55,14 @@ services:
           ''|*[!0-9]*) limit_bytes=0 ;;
         esac
         gib=1073741824
-        if [ "$$limit_bytes" -gt 0 ] && [ "$$limit_bytes" -lt $$((8 * gib)) ]; then
+        if [ "$$limit_bytes" -gt 0 ] && [ "$$limit_bytes" -lt $$((5 * gib)) ]; then
           fe_xmx="384m"
           fe_xms="128m"
           be_mem="3000m"
+        elif [ "$$limit_bytes" -gt 0 ] && [ "$$limit_bytes" -lt $$((8 * gib)) ]; then
+          fe_xmx="512m"
+          fe_xms="256m"
+          be_mem="4400m"
         elif [ "$$limit_bytes" -gt 0 ] && [ "$$limit_bytes" -lt $$((16 * gib)) ]; then
           fe_xmx="1536m"
           fe_xms="512m"
