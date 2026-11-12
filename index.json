@@ -33329,10 +33329,15 @@
       "title": "Release UAT timeseries shard runs InfluxDB without the influxdb extra installed"
     },
     "release-uat-java-25-breaks-pyspark-20261030": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T01:34:57Z",
+        "generation": "1ea24b60b4854070b8e5f4ffe8b17911",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Release UAT runs PySpark on Java 25, which PySpark 4 refuses"
     },
     "release-uat-package-salt-unset-20261030": {
