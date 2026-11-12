@@ -152,6 +152,15 @@
       "op": "update",
       "op_id": "a1657b63b02447589a269fed98b6ebb5",
       "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-12T16:10:58Z",
+      "client": "omp-coding-agent",
+      "generation": "04cb4206a08e43ada15ad8bdd8e1139b",
+      "op": "take",
+      "op_id": "efecba5f054b4753b1888f15777babfe",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
     }
   ]
 }
