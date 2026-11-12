@@ -56,9 +56,14 @@ the call when the script is absent from the checkout the session started in.
 | Codex | `.codex/hooks.json` `PreToolUse`, matcher `apply_patch\|Edit\|Write` | Wired, not proven: not exercised live. The project layer must be trusted and each hook reviewed with `/hooks`; open upstream reports claim deny is not enforced for `apply_patch` on some builds (openai/codex#27833). |
 | Gemini CLI | `.gemini/settings.json` `hooks.BeforeTool`, matcher `write_file\|replace` | Wired, not proven: not exercised live. The workspace must be trusted and project hooks are fingerprinted. Antigravity CLI is not covered. |
 
-Nothing audits the `.codex`, `.gemini` and `.omp` hook files: only
-`.claude/settings.json` is checked, by the instruction audit, which accepts
-exactly the one approved hook. Edits to the other three files go unnoticed.
+The instruction audit (`_project/scripts/agent_instruction_audit.py`) pins all
+four surfaces. `.claude/settings.json`, `.codex/hooks.json` and
+`.gemini/settings.json` must equal the one approved hook structurally, so any
+other hook, event, key or changed command fails. The omp module must match a
+pinned sha256, so editing it means updating the digest in the audit in the same
+reviewed change. Any other file under `.codex/`, `.gemini/`, `.omp/hooks/` or
+`.omp/extensions/` fails. All four paths run code CI through
+`.github/path-filters.yml`.
 
 Gaps: shell commands (`bash`, `sed -i`, `cat >`) are not inspected; a hook only
 runs from a checkout that already contains it, so a primary clone behind

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -210,6 +211,44 @@ APPROVED_PRETOOL_HOOKS = (
         'p="$CLAUDE_PROJECT_DIR/scripts/primary_clone_write_guard.py"; [ -f "$p" ] || exit 0; exec python3 "$p"',
     ),
 )
+APPROVED_GUARD_COMMAND_CODEX = (
+    'p="$(git rev-parse --show-toplevel)/scripts/primary_clone_write_guard.py"; '
+    '[ -f "$p" ] || exit 0; exec python3 "$p"'
+)
+APPROVED_GUARD_COMMAND_GEMINI = (
+    'p="$GEMINI_PROJECT_DIR/scripts/primary_clone_write_guard.py"; [ -f "$p" ] || exit 0; exec python3 "$p"'
+)
+APPROVED_HARNESS_HOOK_FILES = {
+    ".codex/hooks.json": {
+        "hooks": {
+            "PreToolUse": [
+                {
+                    "matcher": "apply_patch|Edit|Write",
+                    "hooks": [{"type": "command", "command": APPROVED_GUARD_COMMAND_CODEX}],
+                }
+            ]
+        }
+    },
+    ".gemini/settings.json": {
+        "hooks": {
+            "BeforeTool": [
+                {
+                    "matcher": "write_file|replace",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "name": "primary-clone-write-guard",
+                            "command": APPROVED_GUARD_COMMAND_GEMINI,
+                        }
+                    ],
+                }
+            ]
+        }
+    },
+}
+APPROVED_OMP_HOOK = ".omp/hooks/pre/primary-clone-write-guard.ts"
+APPROVED_OMP_HOOK_SHA256 = "e9d2e44371fe4fae9e99ae776d06a5f9f6205354e9912175c0b2dc10ecea52a0"
+HARNESS_HOOK_DIRS = (".codex", ".gemini", ".omp/hooks", ".omp/extensions")
 RETIRED_REVIEW_DOCS = (
     LEGACY_REVIEW_DOC,
     "docs/development/review-protocol.md",
@@ -634,6 +673,38 @@ def _has_unapproved_hooks(hooks: object) -> bool:
     return hooks != approved
 
 
+def audit_harness_hooks(project: Path) -> list[str]:
+    errors: list[str] = []
+    approved_files = {*APPROVED_HARNESS_HOOK_FILES, APPROVED_OMP_HOOK}
+    for directory in HARNESS_HOOK_DIRS:
+        root = project / directory
+        if not root.is_dir():
+            continue
+        for path in sorted(root.rglob("*")):
+            relative = path.relative_to(project).as_posix()
+            if path.is_file() and relative not in approved_files:
+                errors.append(
+                    f"{relative} is an unapproved agent hook surface; only the approved write guard is allowed"
+                )
+    for relative, approved in APPROVED_HARNESS_HOOK_FILES.items():
+        path = project / relative
+        if not path.is_file():
+            continue
+        try:
+            document = json.loads(path.read_text(encoding="utf-8"))
+        except ValueError:
+            errors.append(f"{relative} is not valid JSON; it must be the approved agent hook file")
+            continue
+        if document != approved:
+            errors.append(f"{relative} differs from the approved write-guard hook; use explicit gates")
+    omp = project / APPROVED_OMP_HOOK
+    if omp.is_file() and hashlib.sha256(omp.read_bytes()).hexdigest() != APPROVED_OMP_HOOK_SHA256:
+        errors.append(
+            f"{APPROVED_OMP_HOOK} differs from the approved hook; update the pinned sha256 in a reviewed change"
+        )
+    return errors
+
+
 def audit(project: Path, corpus: dict[str, Any]) -> tuple[Metrics, list[str]]:
     errors: list[str] = []
     metrics = collect_metrics(project)
@@ -666,6 +737,7 @@ def audit(project: Path, corpus: dict[str, Any]) -> tuple[Metrics, list[str]]:
     settings = json.loads(_read(project, ".claude/settings.json"))
     if _has_unapproved_hooks(settings.get("hooks")):
         surface_errors.append(".claude/settings.json contains executable hooks; use explicit gates")
+    surface_errors.extend(audit_harness_hooks(project))
     forbidden_active = {
         "imposed Claude co-author": "Co-Authored-By: Claude",
         "imposed Claude author": "author Claude",
