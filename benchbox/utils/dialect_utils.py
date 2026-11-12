@@ -747,11 +747,11 @@ def positive_count_subquery_to_exists(expression, *, copy: bool = True):
     return tree
 
 
-def _outer_order_key(key, outputs: Sequence[tuple[object, object]], exp):
+def _outer_order_key(key, outputs: Sequence[tuple[object, object]], exp, *, nested: bool = False):
     if isinstance(key, exp.Literal) and not key.is_string:
         return key.copy()
     if isinstance(key, exp.Column):
-        if not key.table:
+        if not key.table and not nested:
             for _, projection in outputs:
                 if projection.name.lower() == key.name.lower():
                     return projection.copy()
@@ -766,7 +766,7 @@ def _outer_order_key(key, outputs: Sequence[tuple[object, object]], exp):
         return None
     resolved = key.copy()
     for column in list(resolved.find_all(exp.Column)):
-        replacement = _outer_order_key(column, outputs, exp)
+        replacement = _outer_order_key(column, outputs, exp, nested=True)
         if replacement is None:
             return None
         column.replace(replacement)

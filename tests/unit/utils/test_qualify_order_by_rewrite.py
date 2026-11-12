@@ -161,3 +161,12 @@ def test_aggregate_and_window_sort_keys_are_not_hoisted(key, caplog):
 
     assert "cannot hoist" in caplog.text
     assert sqlglot.parse_one(rendered, read="trino").args.get("order") is None
+
+
+def test_columns_inside_an_order_by_expression_bind_to_input_columns_not_aliases():
+    sql = "SELECT a AS b, b AS c FROM t QUALIFY ROW_NUMBER() OVER (PARTITION BY a ORDER BY b) = 1 ORDER BY b + 0"
+
+    rendered = translate_sql_query(sql, "trino", source_dialect="duckdb")
+
+    order = sqlglot.parse_one(rendered, read="trino").args["order"]
+    assert order.expressions[0].this.sql() == '"c" + 0'
