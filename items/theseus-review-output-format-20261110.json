@@ -40,7 +40,9 @@
       "from_item": "theseus-review-output-format-20261110",
       "id": 4,
       "reason": "Non-blocking P3s from the independent review of Theseus #66 at be9e6df1 (SHIP). The owner capped #66 at its final authorised round, so they are tracked here for the next Theseus PR. Both are display-only or test coverage.",
-      "resolution": "open",
+      "resolution": "promoted",
+      "resolved_at": "2026-11-12T14:23:40Z",
+      "resolved_item": "theseus-review-thread-text-hardening-20261112",
       "summary": "Add a dispute-evidence inertness test (report.py:687) and '_' in layout._BLOCK_START so a '___' bullet detail cannot render an <hr>."
     },
     {
@@ -159,6 +161,14 @@
       "client": "omp-coding-agent",
       "op": "promote",
       "op_id": "4498770219b7476cab07225a4ff87ec2",
+      "session_id": "88f192edfe954a75a195b192ece667bc"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b89414e427d02d5b37262d82",
+      "at": "2026-11-12T14:23:43Z",
+      "client": "omp-coding-agent",
+      "op": "promote",
+      "op_id": "90e200344ef441fbbd917b43a1575f3a",
       "session_id": "88f192edfe954a75a195b192ece667bc"
     }
   ]
