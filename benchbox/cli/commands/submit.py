@@ -50,12 +50,13 @@ from benchbox.core.results.submit_classification import (
     classify_loaded_result,
 )
 from benchbox.core.results.subscale_policy import result_compliance_class
-from benchbox.core.results.vendor_terms import PLAN_TIERS, evaluate_vendor_conditions
 from benchbox.validation.bundle import (
     COMPANION_SUFFIXES,
+    PLAN_TIERS,
     SUBMISSION_NOTES_MAX_LEN,
     _hash_bytes,
     _hash_file,
+    evaluate_vendor_conditions,
     export_anonymized_errors,
     find_public_path_leaks,
     format_summary,

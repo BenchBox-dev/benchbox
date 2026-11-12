@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from benchbox.core.results.vendor_terms import evaluate_vendor_conditions, vendor_platform_key
+from benchbox.validation.bundle import evaluate_vendor_conditions, vendor_platform_key
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
