@@ -73,14 +73,15 @@ directory, the primary clone), or the owner's concurrent work.
   changed paths:
 $(printf '%s\n' "$changed" | sed 's/^/    /')
 
-Nothing was reverted, stashed, or cleaned: other sessions' edits must not be lost.
+Do NOT revert, restore, or checkout them. Nothing was changed: other sessions'
+edits must not be lost.
 Recovery:
   1. Inspect: git -C "$primary_abs" diff -- <path>
   2. If a write of yours landed there, move it into this worktree as a patch:
        git -C "$primary_abs" diff -- <path> | git -C "$top_abs" apply
      and use absolute paths under $top_abs/ from now on.
-  3. Undo it in the primary only for a patch you are certain is yours, with
-     git apply -R of that exact diff; otherwise report the paths to the owner.
+  3. Report the paths to the owner; the owner decides what happens to the
+     primary clone's copy.
   4. Accept the primary's current state and continue:
        BENCHBOX_PRIMARY_SNAPSHOT_REFRESH=1 make agent-write-preflight
 EOM

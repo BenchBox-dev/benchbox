@@ -314,6 +314,7 @@ def test_report_names_new_and_further_modified_tracked_paths(tmp_path: Path) -> 
     assert result.returncode == 0
     assert "notes.txt" in result.stderr
     assert "README.md" in result.stderr
+    assert "Do NOT revert" in result.stderr
     assert (primary / "notes.txt").read_text(encoding="utf-8") == "stray write\n"
 
 
@@ -376,6 +377,7 @@ def test_write_preflight_fails_when_primary_gains_tracked_changes_after_snapshot
     assert "README.md" in result.stderr
     assert str(primary) in result.stderr
     assert str(linked) in result.stderr
+    assert "Do NOT revert" in result.stderr
     assert (primary / "README.md").read_text(encoding="utf-8") == "stray write\n"
 
 

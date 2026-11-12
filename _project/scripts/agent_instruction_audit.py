@@ -204,7 +204,12 @@ EVALUATION_BOOLEAN_FIELDS = {
 }
 EVALUATION_FIELDS = {"action", "git_identity", *EVALUATION_BOOLEAN_FIELDS}
 LEGACY_REVIEW_DOC = "docs/agent/review-protocol-legacy.md"
-APPROVED_HOOK_SCRIPT = "scripts/primary_clone_write_guard.py"
+APPROVED_PRETOOL_HOOKS = (
+    (
+        "Write|Edit|MultiEdit|NotebookEdit",
+        'p="$CLAUDE_PROJECT_DIR/scripts/primary_clone_write_guard.py"; [ -f "$p" ] || exit 0; exec python3 "$p"',
+    ),
+)
 RETIRED_REVIEW_DOCS = (
     LEGACY_REVIEW_DOC,
     "docs/development/review-protocol.md",
@@ -622,12 +627,13 @@ def _has_unapproved_hooks(hooks: object) -> bool:
         return False
     if not isinstance(hooks, dict) or set(hooks) != {"PreToolUse"}:
         return True
+    found = []
     for group in hooks["PreToolUse"]:
-        for hook in group.get("hooks", []) if isinstance(group, dict) else [group]:
-            command = hook.get("command") if isinstance(hook, dict) else None
-            if not isinstance(command, str) or APPROVED_HOOK_SCRIPT not in command:
-                return True
-    return False
+        entries = group.get("hooks") if isinstance(group, dict) else None
+        if not isinstance(entries, list) or len(entries) != 1 or not isinstance(entries[0], dict):
+            return True
+        found.append((group.get("matcher"), entries[0].get("type"), entries[0].get("command")))
+    return found != [(matcher, "command", command) for matcher, command in APPROVED_PRETOOL_HOOKS]
 
 
 def audit(project: Path, corpus: dict[str, Any]) -> tuple[Metrics, list[str]]:
