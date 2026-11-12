@@ -1,5 +1,51 @@
 # Corpus Generation Notes - 2026-04-03
 
+## ClickHouse Local Read Primitives reruns after the `map_access` fix (2026-11-12)
+
+Two replacement bundles (`result_source: internal`) rerun Read Primitives on
+ClickHouse Local (chDB 4.1.6) with the corrected `map_access` variant, which
+guards each lookup with `mapContains` so a missing key is NULL as on DuckDB:
+
+| Scale | Bundle |
+|---|---|
+| SF 0.01 | `read_primitives_sf001_clickhouse_local_sql_20261112_160015_8c2401a3` |
+| SF 0.1 | `read_primitives_sf01_clickhouse_local_sql_20261112_160115_f3180de4` |
+
+Both ran in the `benchbox-agent` Linux machine on the Apple silicon host (Linux
+6.18.15, 4 CPUs, 5.9 GB; recorded as an inferred container execution class
+with macOS as the container host), because the chDB engine wheel does not load
+on the host's macOS 27.0.1 (`dlopen` rejects `_chdb.abi3.so` with a
+mis-aligned LINKEDIT string pool). They used `--phases generate,load,power
+--tuning notuning --seed 42`, 3 iterations and the corrected catalog, with a
+fresh output directory so the data was generated and loaded by the run itself
+(the run log shows generation in 11.8 s at SF 0.01 and 32.2 s at SF 0.1 and the
+bundles record a load of 834 ms and 1,460 ms; the `data_generation` phase
+records 0 ms). Each ran
+all 147 queries three times with no failures and `summary.validation` is
+`passed`; `map_access` returns 10 rows on both. They record timing method 2.
+The earlier bundles record no timing method (method 1).
+
+The four earlier ClickHouse Local bundles (`3465d4f3`, `9f79ff77`, `c1aeca88`,
+`3f5c94e9`) ran the defective text and keep their flags (`3465d4f3` and
+`c1aeca88` carry `defective-macdbgen-addresses`; `9f79ff77` and `3f5c94e9` carry
+`defective-variant-or-loader-wrong-result`); they stay excluded from rankings.
+
+The validator counts two rankable identities in each Read Primitives cohort
+now (ClickHouse Local in a container and DataFusion), still below the
+three-identity floor, so the `DOCUMENTED_SHALLOW_COHORTS` entries for both
+scales name both. The Results Explorer applies one more rule: a row ranks only
+when its query set equals the cohort's canonical set, the set shared by a strict
+majority of eligible rows. ClickHouse Local runs 147 queries and DataFusion 138,
+so with two eligible rows neither set has a majority and the explorer marks both
+`mismatched_query_set` and ranks neither. Before these bundles DataFusion was
+the only eligible row and ranked alone. Ranking returns only when a majority of
+eligible rows share one query set.
+
+The bundles record `client_link` as unavailable
+(`AttributeError: statement overhead probe failed`): the post-benchmark
+statement overhead probe raised on ChDB, so they carry no client-link
+overhead measurement.
+
 ## First bundles with captured query plans (2026-11-11)
 
 Two TPC-H SF 0.1 bundles (`result_source: internal`) are the first in the
