@@ -23726,10 +23726,15 @@
       "title": "Re-evaluate can_approve_pull_request_reviews once review enforcement is live"
     },
     "global-skill-deployment-pin-benchbox-refs-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T00:59:58Z",
+        "generation": "5a40b41f333d4b31a69e99bb4e247fcc",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1319a3225e6eeb104ec2240b"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Bump the global skill deployment pin so the benchbox skill fixes reach the global loaders"
     },
     "glue-credential-options-registration-contract-20261108": {
