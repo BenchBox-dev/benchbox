@@ -12650,18 +12650,13 @@
       "title": "Implement comprehensive BenchBox light/dark theming across public site and Results Explorer"
     },
     "benchbox-lock-theseus-review-format-release-a-20261110": {
-      "claim": {
-        "expires_at": "2026-11-13T00:57:27Z",
-        "generation": "163ba8a319414454bd45e8209615f354",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57133450e487c312386efb7b"
-      },
+      "claim": null,
       "needs": [
         "theseus-review-format-release-a-20261110",
         "benchbox-review-format-dual-read-20261110"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "BenchBox: promote the Theseus lock to review-format release A (Theseus v0.2.10)"
     },
     "benchbox-lock-theseus-review-format-release-b-20261110": {
