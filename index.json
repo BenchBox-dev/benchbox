@@ -39207,6 +39207,13 @@
       "status": "done",
       "title": "Teach the standalone todo-db CLI and its compat adapter the renew verb"
     },
+    "standard-scale-lists-vs-docs-tables-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Decide which documented scale factors count as standard, so documented use cases do not print the non-standard note"
+    },
     "standardize-benchmark-constraint-parameter-apis": {
       "claim": null,
       "needs": [],
