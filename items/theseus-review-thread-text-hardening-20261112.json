@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "A thread detail or title containing `- [ ] x`, `<b>`, a line-start fence or a heading renders inert (tests over the thread renderer).",
+    "Fingerprints and dedup of existing threads are unchanged (test with a thread posted by v0.2.11).",
+    "Items 2-6 of the scope each have a test or a doc change, linked here.",
+    "Merged to Theseus main under G7 with independent review; shipped in a release and the consumer lock promoted."
+  ],
+  "context": "Created by theseus-review-format-deferral-triage-20261112 from umbrella deferrals 3, 4 and 5 (theseus-review-output-format-20261110). Severity Medium: no gate bypass, but a ticked thread checkbox silently removes a finding's severity from the soundness merge digest and lets a duplicate thread post.",
+  "description": "Evidence (Theseus main 51501be, read-only check 2026-11-12): a bot review thread whose first comment is edited (including, [INFERENCE] untested, ticking a task-list checkbox) is marked edited (github.py:78,134,144). Edited threads are then skipped by dedup (dedup.py:59,77: a duplicate thread can be posted), by threaded-finding carry (cli.py:1155: the defect counts as threadless) and by dispute handling (cli.py:251: disputes under it are ignored). The BenchBox merge digest marks such a thread unverifiable and drops its severity (soundness_merge_digest.py:914-917,1046,1052,538-539,616-638,1401). The gate itself is unaffected (review_check.py:137-141,381-399; protocol.py:378-382 read only review edit state).\nThreads expose this because report.py:431-439 writes layout.thread_title(...) and raw finding.detail; sanitize (verdict.py:166) has no task-mark handling, unlike layout.neutralize for the body.\nScope:\n1. Neutralise thread titles and details with the body's rules (task marks as code spans, `<` escaped, line-start fences and headings escaped).\n2. Headings inside list items (layout.py:37 _BLOCK_START and neutralize_inline :113 only handle the start of a flattened line); add `_` to _BLOCK_START.\n3. Entity-escape * _ \\ ` ~ [ in shown_path (layout.py:128-130 is only html.escape).\n4. Reference-style and inline <a> links in model text.\n5. A dedicated dispute-evidence inertness test (report.py:687).\n6. docs/consumer-policy.md:107 wording: the marker-limit NOT REVIEWED body has 'Run details' (report.py:750-761,918); reword the doc or pass pending for that case.\nFirst step: confirm with a scratch thread whether ticking a checkbox sets lastEditedAt (owner approval needed for any live GitHub probe).\nGuardrails: never change review-defect / review-finding markers or the fingerprint input; threads are never edited after posting; dedup must still match threads posted by earlier releases (test); G7 merge rule plus independent review (posting and dedup change); no live model calls.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b89414e427d02d5b37262d82",
+      "at": "2026-11-12T14:23:20Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b9bd04f79f414b7a808e6d0f5b55376f",
+      "session_id": "88f192edfe954a75a195b192ece667bc"
+    }
+  ]
+}

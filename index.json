@@ -40461,6 +40461,13 @@
       "status": "done",
       "title": "Theseus: show the severity mark and finding id in each review thread, with a dispute footer"
     },
+    "theseus-review-thread-text-hardening-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Theseus: neutralise model text in review threads so a ticked checkbox cannot drop a finding from dedup or the merge digest"
+    },
     "theseus-review-verdict-body-redesign-20261110": {
       "claim": null,
       "needs": [
