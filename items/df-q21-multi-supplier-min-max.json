@@ -7,6 +7,11 @@
     "`make batch-member-check TESTS=<the new test file>` passes on the member head; `make comment-policy-check` reports no finding for the touched files.",
     "A `changelog.d/` fragment exists and describes what actually landed (query change, or test only)."
   ],
+  "batch": {
+    "batch_id": "df-distinct-remediation",
+    "implementation_dependencies": [],
+    "member_id": "df-q21-multi-supplier-min-max"
+  },
   "context": "Timing method: compare the batch start head (base) with the member head on the locked engine versions (record `polars`, `datafusion`, `pyspark` versions). Run base and member alternately, one warm-up then five timed runs each, and compare the best time per cell. A cell is one query on one platform at one scale factor. Scale factors SF1 and SF10; platforms polars-df, datafusion-df, pyspark-df unless stated otherwise.\n\nNo Q21 timing exists yet. The TPC-DS evidence that motivates this item is in `tpcds-df-multi-warehouse-min-max`.\n\nTPC-Havoc intent is recorded in `_DESCRIPTIONS` at the top of `tpchavoc/dataframe_queries/q21.py`. Variant 1 delegates to the TPC-H Q21 implementation, so a TPC-H change alters it without an edit here; treat it as changed. Variant 2 (inner join plus unique) and variant 3 (anti-join against other late suppliers) name their form in the description and are the likeliest to be kept.",
   "description": "Problem. Q21 keeps orders with more than one supplier where exactly one supplier was late (SQL: `EXISTS` another supplier on the order, `NOT EXISTS` another late supplier). The DataFrame code counts distinct suppliers per order twice and filters `num_suppliers > 1` and `num_late_suppliers == 1`: `benchbox/core/tpch/dataframe_queries.py` (`q21_expression_impl`), `benchbox/core/datavault/dataframe_queries/queries.py` (`q21_expression_impl`), and the variants in `benchbox/core/tpchavoc/dataframe_queries/q21.py`. This is the same shape as the TPC-DS multi-warehouse step, where `min != max` measured faster than a distinct count. There is no defect here: TPC-H data has no NULL keys. The only possible gain is speed, and it has not been measured on Q21.\n\nChange, conditional. Replace `n_unique() > 1` with `min(suppkey) != max(suppkey)` and `n_unique() == 1` with `min(suppkey) == max(suppkey)` on the expression family.\n\nDecision gate 1 (TPC-Havoc intent, decided by the member before editing): TPC-Havoc variants exist to express one query in different forms. Read each Q21 variant's stated transformation. Change a variant only if the distinct count is not the form that variant is meant to exercise; list every variant as changed or kept, with the reason, in the landing report. If the intent of a variant is unclear, keep it.\n\nDecision gate 2 (land the query change or not, decided by the timing gate, by the leader):\n- PASS: no cell is more than 10% slower than base, and at SF10 at least one platform is at least 10% faster on TPC-H Q21 -> land the query change.\n- FAIL: otherwise -> land no query change. The member then lands only its Q21 semantics test (first acceptance row) and this item records the timing table and the decision. Do not abort the batch.\n\nFrozen scope: `benchbox/core/tpch/dataframe_queries.py`, `benchbox/core/datavault/dataframe_queries/queries.py`, `benchbox/core/tpchavoc/dataframe_queries/q21.py`, `tests/unit/core/tpch/**`, `tests/unit/core/datavault/**`, `tests/unit/core/tpchavoc/**`.\n\nGuardrails (all members of batch df-distinct-remediation):\n- Stay inside the frozen scope listed below; a path outside it is refused at landing.\n- No platform-name branch may select a query pattern. One rule for every platform.\n- Do not edit SQL query text, reference answers, expected-result fixtures, or equivalence baselines to make a check pass. A changed answer is a defect in the change.\n- No explanatory comments or docstrings (COMMENT-POLICY-001). No new helper before `make duplicate-check-delta` shows no equivalent.\n- Members make no tracker call of any kind, open no PR, and do not run the fast tier. They use absolute paths under their own worktree and stop at a landing report.\n- Timing runs only through `make heavy-run CMD='...'` after `make heavy-status`, on an idle machine: 1-minute load average at or below 3.0 before every pass. A pass that starts or ends above that is discarded, not averaged in.\n- Timing harness scripts are throwaway and are not committed; results go under ~/Developer/benchmark_runs/df-distinct-remediation/ and are summarised in this item's context.\n- Touch only Q21 code in the three modules. Leave the pandas implementations unless they share the exact pattern and the same gate passes for them.\n- The member commits the test first and the query change as a separate commit, so a failed gate can drop the second commit without rework.",
   "links": [
@@ -29,6 +34,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "a5b4daf294d84e60a4fd3049546104bc",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-12T13:36:27Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d4735443fa8c4397ba5bced4935cbda8",
       "session_id": "512d9ad0b25247538901b68a758a6fbb"
     }
   ]
