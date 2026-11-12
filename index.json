@@ -40473,12 +40473,17 @@
       "title": "Prepare pinned local review and gateway-host tooling and track every upstream port"
     },
     "theseus-lock-self-review-format-release-b-20261110": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T15:25:07Z",
+        "generation": "c2966f106d7346c9913fabb68f8e2bfa",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b89414e427d02d5b37262d82"
+      },
       "needs": [
         "theseus-review-format-release-b-20261110"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Theseus: promote its own reviewer lock to review-format release B"
     },
     "theseus-observation-disposition-20261102": {
