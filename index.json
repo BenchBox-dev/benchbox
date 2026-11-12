@@ -41026,6 +41026,13 @@
       "status": "done",
       "title": "Theseus: render verdict-first review bodies with severity marks, counts and collapsed detail"
     },
+    "theseus-stale-worktrees-no-reaper-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "About thirty Theseus worktrees have accumulated and the Theseus repository has no reaper"
+    },
     "theseus-test-isolation-gaps-20261106": {
       "claim": null,
       "needs": [],
