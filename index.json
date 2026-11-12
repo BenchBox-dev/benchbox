@@ -19556,19 +19556,14 @@
       "title": "make trunk-revert unusable from inside a managed linked worktree"
     },
     "df-distinct-remediation-umbrella-20261112": {
-      "claim": {
-        "expires_at": "2026-11-13T16:13:15Z",
-        "generation": "248b997ec0ff4ea5b9db148d774f24e8",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287"
-      },
+      "claim": null,
       "needs": [
         "tpcds-df-multi-warehouse-min-max",
         "df-n-unique-null-semantics",
         "df-q21-multi-supplier-min-max"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Coordinate the DataFrame distinct-count remediation batch (df-distinct-remediation)"
     },
     "df-distinct-timing-confirmation": {
