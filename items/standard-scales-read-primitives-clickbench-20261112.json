@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Each of the three values has a recorded passing DuckDB run, or a recorded reason it stays outside the standard set.",
+    "`tests/unit/core/test_scale_factor_validation.py` covers any value added, and the site tables agree with the registry."
+  ],
+  "context": "Filed 2026-11-12 from the scale-factor follow-up and TPC-DI generator work of 2026-11-11 and 2026-11-12: identified during that work and not addressed.",
+  "description": "## Problem\n`read_primitives` lists 0.01 and 0.1 as standard while its siblings `write_primitives` and `transaction_primitives` list 1.0 on the same TPC-H data. `clickbench` lists only 1.0. The site tables present `read_primitives` 1.0 and `clickbench` 0.01 and 0.1 as ordinary use cases, so following the docs prints the note that results are not comparable with published results. The site now marks those rows as outside the standard set (benchbox-site#142), but the lists were not widened: both DuckDB attempts on 2026-11-11 were stopped by the heavy-work watchdog under host memory pressure, so no passing run exists.\n\n## Change\nRun `read_primitives` at SF 1 and `clickbench` at SF 0.01 and 0.1 on DuckDB through `make heavy-run`. If they pass, add the values to `scale_options` in `benchbox/core/benchmark_registry.yaml` and remove the three site notes.\n\n## Guardrails\n- A new standard value joins the interactive options and the UAT matrix filter (`tests/uat/matrix.py` `filter_scales_by_registry`); check the UAT time budget.\n- Site edits go through a benchbox-site pull request.",
+  "links": [
+    "benchbox/core/benchmark_registry.yaml",
+    "tests/uat/matrix.py",
+    "https://github.com/BenchBox-dev/benchbox-site/pull/142"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:eb0e48032edcab785e018919",
+      "at": "2026-11-12T16:52:18Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "555c39512c164f55bb19c9a3de018b6d",
+      "session_id": "3f84b7b72a6a4389855a4c2d913fb7f9"
+    }
+  ]
+}

@@ -39761,6 +39761,13 @@
       "status": "done",
       "title": "Decide which documented scale factors count as standard, so documented use cases do not print the non-standard note"
     },
+    "standard-scales-read-primitives-clickbench-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Add read_primitives SF 1 and ClickBench SF 0.01 and 0.1 to the standard scale lists after passing runs"
+    },
     "standardize-benchmark-constraint-parameter-apis": {
       "claim": null,
       "needs": [],
