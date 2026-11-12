@@ -394,7 +394,7 @@ class TestHalfAwayRounding:
         from benchbox.core.flightdata.dataframe_queries import _pandas_round_half_away
 
         duckdb = pytest.importorskip("duckdb")
-        (sql_value,) = duckdb.query(f"SELECT ROUND(CAST({value} AS DOUBLE), {digits})").fetchone()
+        (sql_value,) = duckdb.query(f"SELECT ROUND(CAST({value} AS DOUBLE), {digits})").fetchall()[0]
         assert float(sql_value) == pytest.approx(expected)
         assert float(_pandas_round_half_away(pd.Series([value]), digits).iloc[0]) == pytest.approx(expected)
 
