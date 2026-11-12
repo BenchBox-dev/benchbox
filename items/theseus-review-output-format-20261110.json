@@ -24,7 +24,9 @@
       "from_item": "theseus-review-output-format-20261110",
       "id": 2,
       "reason": "Non-blocking P3 test gap from the independent review of Theseus #69 at bd07af24 (SHIP). The code is correct, and a mutation of the widen condition goes undetected. Folding it into the next Theseus PR avoids another hosted review cycle on #69.",
-      "resolution": "open",
+      "resolution": "dismissed",
+      "resolved_at": "2026-11-12T14:24:06Z",
+      "resolved_reason": "Fixed in Theseus #66 (78a3be96): tests/unit/reviewer/test_review_body_layout.py covers neutralize for task marks, collapsible tags, comments, headings (setext and ATX), fences and paths: test_neutralize_turns_task_list_items_into_code, test_no_raw_html_or_live_task_item_survives_whatever_the_prefix, test_model_text_cannot_break_the_layout_forge_a_receipt_or_add_a_checkbox, test_hostile_text_in_every_other_body_stays_inert.",
       "summary": "Strengthen test_comment_delivery_does_not_call_a_same_line_re_report_an_open_thread: set plan['threaded']=[] instead of deleting it, so it covers the delivery=='review' check."
     },
     {
@@ -189,6 +191,14 @@
       "client": "omp-coding-agent",
       "op": "dismiss",
       "op_id": "ffe6c542d7734e1e9e8f199a15784627",
+      "session_id": "88f192edfe954a75a195b192ece667bc"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b89414e427d02d5b37262d82",
+      "at": "2026-11-12T14:24:07Z",
+      "client": "omp-coding-agent",
+      "op": "dismiss",
+      "op_id": "4184c5b3697a4a50b064ef51037c6d2d",
       "session_id": "88f192edfe954a75a195b192ece667bc"
     }
   ]
