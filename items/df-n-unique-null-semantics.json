@@ -18,6 +18,81 @@
     "benchbox/platforms/dataframe/unified_frame.py",
     "tests/unit/platforms/dataframe/test_datafusion_distinct_count.py"
   ],
+  "prepared": {
+    "accepted_head": "0c08f85dbee66a6e4184bb43660425e3c3b7551a",
+    "batch_id": "df-distinct-remediation",
+    "changed_files": [
+      "benchbox/platforms/dataframe/unified_frame.py",
+      "changelog.d/feat-df-distinct-remediation--df-n-unique-null-semantics.json",
+      "tests/unit/platforms/dataframe/test_distinct_count_null_parity.py",
+      "tests/unit/platforms/dataframe/test_unified_frame_coverage.py"
+    ],
+    "integration_head": "02d1a93bc7ba5155946a67089dab07f16f3c1437",
+    "integration_seq": 1,
+    "member_id": "df-n-unique-null-semantics",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "c023026163695aa3b4b767b5085c5f33deb87a9533937ebad23112ebedf5f013",
+    "source_base": "0eeec0d5bd194ad0b811911ea73004586ed51469",
+    "source_revision": "0c08f85dbee66a6e4184bb43660425e3c3b7551a",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-df-distinct-remediation--df-n-unique-null-semantics",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/test_dataframe_adapter_smoke.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_connection_registry_drift.py",
+        "tests/unit/benchmarks/test_read_primitives_polars_execution.py",
+        "tests/unit/benchmarks/test_read_primitives_pyspark_execution.py",
+        "tests/unit/core/equivalence/test_frame_api_check.py",
+        "tests/unit/core/read_primitives/test_read_primitives_dataframe.py",
+        "tests/unit/core/ssb/test_ssb_dataframe_queries.py",
+        "tests/unit/core/test_dataframe_execution.py",
+        "tests/unit/core/tpcds_obt/test_tpcds_obt_dataframe_queries.py",
+        "tests/unit/core/tpchavoc/test_tpchavoc_dataframe_queries.py",
+        "tests/unit/platforms/dataframe/test_datafusion_df.py",
+        "tests/unit/platforms/dataframe/test_datafusion_mixed_case_identifiers.py",
+        "tests/unit/platforms/dataframe/test_df_timing_contract.py",
+        "tests/unit/platforms/dataframe/test_distinct_count_null_parity.py",
+        "tests/unit/platforms/dataframe/test_expression_family.py",
+        "tests/unit/platforms/dataframe/test_expression_family_behavioral.py",
+        "tests/unit/platforms/dataframe/test_expression_family_coverage.py",
+        "tests/unit/platforms/dataframe/test_polars_execution_engine.py",
+        "tests/unit/platforms/dataframe/test_pyspark_df.py",
+        "tests/unit/platforms/dataframe/test_pyspark_unified_frame_ops.py",
+        "tests/unit/platforms/dataframe/test_unified_frame.py",
+        "tests/unit/platforms/dataframe/test_unified_frame_coverage.py",
+        "tests/unit/platforms/dataframe/test_unified_frame_datafusion_real.py",
+        "tests/unit/platforms/dataframe/test_unified_frame_operations.py",
+        "tests/unit/platforms/dataframe/test_unified_frame_string_date_ops.py",
+        "tests/unit/platforms/dataframe/test_unified_list_expr_native.py",
+        "tests/unit/platforms/dataframe/test_window_and_sort_fixes.py"
+      ],
+      "review": {
+        "base_sha": "0eeec0d5bd194ad0b811911ea73004586ed51469",
+        "head_sha": "0c08f85dbee66a6e4184bb43660425e3c3b7551a",
+        "head_tree": "c0446c5376f4db318e5019352932f9575161e502",
+        "outcome": "clear",
+        "patch_digest": "ef2c553a712474bebcaf2bbf8d3a2c55",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "0eeec0d5bd194ad0b811911ea73004586ed51469"
+      },
+      "revision": "0c08f85dbee66a6e4184bb43660425e3c3b7551a",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
@@ -59,6 +134,15 @@
       "generation": "56814f64bc6b44be83c130efa9634edd",
       "op": "take",
       "op_id": "39abf132a4f24c4e9a584fe1d1a50824",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-12T13:51:43Z",
+      "client": "omp-coding-agent",
+      "generation": "56814f64bc6b44be83c130efa9634edd",
+      "op": "prepare",
+      "op_id": "0f2fa8e1d106442ba924cc0ae2263350",
       "session_id": "512d9ad0b25247538901b68a758a6fbb"
     }
   ]
