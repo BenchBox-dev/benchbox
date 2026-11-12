@@ -7,7 +7,9 @@ import yaml
 
 from benchbox.core.cost.calculator import CostCalculator
 from benchbox.core.cost.models import PhaseCost
+from benchbox.core.results.execution_variant import gateway_payload
 from benchbox.core.results.models import BenchmarkResults
+from benchbox.core.results.subscale_policy import platform_info_gateway
 
 logger = logging.getLogger(__name__)
 
@@ -66,13 +68,17 @@ def add_cost_estimation_to_results(
         if platform_config is None:
             platform_config = _extract_platform_config_from_results(results)
 
+        gateway_routed = bool(gateway_payload(platform_info_gateway(results.platform_info)))
+        if gateway_routed:
+            platform_config = {**platform_config, "gateway_routed": True}
+
         _validate_and_warn_platform_config(platform, platform_config)
 
         calculator = CostCalculator()
 
         for query_result in results.query_results or []:
             resource_usage = _resource_usage_of(query_result)
-            if resource_usage:
+            if resource_usage and not gateway_routed:
                 query_cost = calculator.calculate_query_cost(
                     platform=platform,
                     resource_usage=resource_usage,

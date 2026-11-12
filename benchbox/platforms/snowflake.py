@@ -6,6 +6,7 @@ import re
 import time
 import uuid
 from collections.abc import Mapping, Sequence
+from dataclasses import asdict
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -29,7 +30,14 @@ if TYPE_CHECKING:
     )
 
 from ..core.exceptions import ConfigurationError
-from ..core.gateway import GatewayEndpoint, enforce_greybeam_lifecycle, resolve_gateway_endpoint
+from ..core.execution_engine import DEFAULT_EXECUTION_ENGINE, platform_default_receipt
+from ..core.gateway import (
+    UNKNOWN_GATEWAY_ENGINE,
+    GatewayEndpoint,
+    enforce_greybeam_lifecycle,
+    is_loopback_host,
+    resolve_gateway_endpoint,
+)
 from ..utils.cloud_storage import get_cloud_path_info, snowflake_stage_mode_error
 from ..utils.dependencies import check_platform_dependencies, get_dependency_error_message
 from ..utils.sql_identifier import is_valid_sql_identifier
@@ -44,6 +52,7 @@ from .base.data_loading import (
 )
 from .base.runtime_metadata import build_default_normalized_result_metadata, with_canonical_compute
 from .base.tuning import make_informational_constraint_applier
+from .cloud_shared import gateway_cache_control_receipt
 from .presto_trino_utils import normalize_existing_files
 
 try:
@@ -350,6 +359,8 @@ class SnowflakeAdapter(PlatformAdapter):
         }
         if self.gateway_endpoint is not None:
             platform_info["gateway"] = {"name": self.gateway_endpoint.name, "routed": True}
+            platform_info["configuration"].update(self._gateway_configuration())
+            platform_info["execution_engine"] = asdict(platform_default_receipt("snowflake", DEFAULT_EXECUTION_ENGINE))
 
         try:
             import snowflake.connector
@@ -360,23 +371,29 @@ class SnowflakeAdapter(PlatformAdapter):
 
         if connection:
             cursor = None
+            degraded = False
             try:
                 cursor = connection.cursor()
 
                 result = cursor.execute("SELECT current_version()").fetchone()
-                platform_info["platform_version"] = result[0] if result else None
+                platform_info["platform_version"] = self._row_value(result, 0)
+                degraded = degraded or platform_info["platform_version"] is None
                 platform_info["engine_version"] = platform_info["platform_version"]
                 platform_info["engine_version_source"] = "sql_query"
 
                 try:
                     result = cursor.execute("SELECT CURRENT_REGION()").fetchone()
-                    if result and result[0]:
-                        region = str(result[0])
+                    region_value = self._row_value(result, 0)
+                    if region_value:
+                        region = str(region_value)
                         platform_info["cloud_region"] = region
                         provider = region.split("_", 1)[0].upper()
                         if provider in ("AWS", "AZURE", "GCP"):
                             platform_info["cloud_provider"] = provider
+                    else:
+                        degraded = True
                 except Exception as e:
+                    degraded = True
                     self.logger.debug(f"Could not query Snowflake region: {e}")
 
                 if self.warehouse:
@@ -386,23 +403,28 @@ class SnowflakeAdapter(PlatformAdapter):
 
                         if result:
                             platform_info["compute_configuration"] = {
-                                "warehouse_name": result[0] if len(result) > 0 else None,
-                                "warehouse_state": result[1] if len(result) > 1 else None,
-                                "warehouse_type": result[2] if len(result) > 2 else None,
-                                "warehouse_size": result[3] if len(result) > 3 else None,
-                                "min_cluster_count": result[4] if len(result) > 4 else None,
-                                "max_cluster_count": result[5] if len(result) > 5 else None,
-                                "auto_suspend": result[11] if len(result) > 11 else None,
-                                "auto_resume": result[12] if len(result) > 12 else None,
-                                "enable_query_acceleration": result[21] if len(result) > 21 else None,
-                                "query_acceleration_max_scale_factor": result[22] if len(result) > 22 else None,
-                                "scaling_policy": result[27] if len(result) > 27 else None,
+                                "warehouse_name": self._row_value(result, 0),
+                                "warehouse_state": self._row_value(result, 1),
+                                "warehouse_type": self._row_value(result, 2),
+                                "warehouse_size": self._row_value(result, 3),
+                                "min_cluster_count": self._row_value(result, 4),
+                                "max_cluster_count": self._row_value(result, 5),
+                                "auto_suspend": self._row_value(result, 11),
+                                "auto_resume": self._row_value(result, 12),
+                                "enable_query_acceleration": self._row_value(result, 21),
+                                "query_acceleration_max_scale_factor": self._row_value(result, 22),
+                                "scaling_policy": self._row_value(result, 27),
                             }
+                            if len(result) <= 27:
+                                degraded = True
 
                             self.logger.debug(
                                 f"Successfully captured Snowflake warehouse metadata for {self.warehouse}"
                             )
+                        else:
+                            degraded = True
                     except Exception as e:
+                        degraded = True
                         platform_info["compute_configuration"] = self._unavailable_warehouse_metadata(e)
                         self.logger.debug(
                             f"Could not fetch Snowflake warehouse metadata (insufficient permissions or warehouse not found): {e}"
@@ -410,23 +432,73 @@ class SnowflakeAdapter(PlatformAdapter):
 
                 try:
                     result = cursor.execute("SELECT current_account_name(), current_organization_name()").fetchone()
-                    if result:
+                    if result and len(result) >= 2:
                         platform_info["configuration"]["account_name"] = result[0]
                         platform_info["configuration"]["organization_name"] = result[1]
+                    else:
+                        degraded = True
                 except Exception as e:
+                    degraded = True
                     self.logger.debug(f"Could not query Snowflake account metadata: {e}")
 
             except Exception as e:
+                degraded = True
                 self.logger.debug(f"Error collecting Snowflake platform info: {e}")
                 if platform_info.get("platform_version") is None:
                     platform_info["platform_version"] = None
             finally:
                 if cursor:
                     cursor.close()
+            if degraded:
+                platform_info["metadata_degraded"] = True
         else:
             platform_info["platform_version"] = None
 
         return platform_info
+
+    @staticmethod
+    def _row_value(row: Any, index: int) -> Any:
+        try:
+            return row[index]
+        except (IndexError, KeyError, TypeError):
+            return None
+
+    @staticmethod
+    def _iso_timestamp(value: Any) -> str | None:
+        if not value:
+            return None
+        isoformat = getattr(value, "isoformat", None)
+        return isoformat() if callable(isoformat) else str(value)
+
+    @classmethod
+    def _table_metadata_row(cls, row: Any) -> dict[str, Any]:
+        created = cls._row_value(row, 4)
+        last_altered = cls._row_value(row, 5)
+        return {
+            "table_name": cls._row_value(row, 0),
+            "row_count": cls._row_value(row, 1),
+            "bytes": cls._row_value(row, 2),
+            "retention_time": cls._row_value(row, 3),
+            "created": cls._iso_timestamp(created),
+            "last_altered": cls._iso_timestamp(last_altered),
+            "clustering_key": cls._row_value(row, 6),
+        }
+
+    def _gateway_configuration(self) -> dict[str, Any]:
+        endpoint = self.gateway_endpoint
+        if endpoint is None:
+            return {}
+        connection: dict[str, Any] = {"protocol": endpoint.protocol}
+        if endpoint.port is not None:
+            connection["port"] = endpoint.port
+        if is_loopback_host(endpoint.host):
+            connection["host"] = endpoint.host
+        return {
+            "gateway_connection": connection,
+            "cache_control": gateway_cache_control_receipt(
+                self._cache_control_receipt, result_cache_key="snowflake_result_cache"
+            ),
+        }
 
     def get_normalized_result_metadata(
         self,
@@ -438,14 +510,17 @@ class SnowflakeAdapter(PlatformAdapter):
         metadata = build_default_normalized_result_metadata(self, connection=connection, platform_info=info)
         config = info.get("configuration") if isinstance(info.get("configuration"), Mapping) else {}
         compute = info.get("compute_configuration") if isinstance(info.get("compute_configuration"), Mapping) else {}
+        cache_control = (
+            self._gateway_configuration()["cache_control"]
+            if self.gateway_endpoint is not None
+            else getattr(self, "_cache_control_receipt", None)
+        )
 
         metadata["platform_deployment"] = self._snowflake_deployment_metadata(config)
         metadata["platform_cloud"] = self._snowflake_cloud_metadata(info, config)
         metadata["platform_compute"] = with_canonical_compute(
             metadata.get("platform_compute"),
-            self._snowflake_compute_metadata(
-                config, compute, cache_control=getattr(self, "_cache_control_receipt", None)
-            ),
+            self._snowflake_compute_metadata(config, compute, cache_control=cache_control),
         )
         metadata["platform_storage"] = self._snowflake_storage_metadata(config)
         return metadata
@@ -1440,6 +1515,8 @@ class SnowflakeAdapter(PlatformAdapter):
             )
 
             result_dict["translated_query"] = None
+            if self.gateway_endpoint is not None:
+                result_dict["execution_engine"] = UNKNOWN_GATEWAY_ENGINE
             result_dict["query_statistics"] = query_stats
             if isinstance(query_stats, dict):
                 query_stats = {**query_stats, "execution_time_seconds": execution_time}
@@ -1688,11 +1765,14 @@ class SnowflakeAdapter(PlatformAdapter):
         }
 
         cursor = connection.cursor()
+        degraded = False
 
         try:
             cursor.execute("SELECT CURRENT_VERSION()")
             result = cursor.fetchone()
-            metadata["snowflake_version"] = result[0] if result else "unknown"
+            version = self._row_value(result, 0)
+            metadata["snowflake_version"] = version if version is not None else "unknown"
+            degraded = degraded or version is None
 
             cursor.execute("""
                 SELECT
@@ -1706,15 +1786,19 @@ class SnowflakeAdapter(PlatformAdapter):
             """)
             result = cursor.fetchone()
             if result:
-                metadata["session_info"] = {
-                    "current_user": result[0],
-                    "current_role": result[1],
-                    "current_warehouse": result[2],
-                    "current_database": result[3],
-                    "current_schema": result[4],
-                    "current_region": result[5],
-                    "current_account": result[6],
-                }
+                session_keys = (
+                    "current_user",
+                    "current_role",
+                    "current_warehouse",
+                    "current_database",
+                    "current_schema",
+                    "current_region",
+                    "current_account",
+                )
+                metadata["session_info"] = {key: self._row_value(result, i) for i, key in enumerate(session_keys)}
+                degraded = degraded or len(result) < len(session_keys)
+            else:
+                degraded = True
 
             cursor.execute(f"""
                 SHOW WAREHOUSES LIKE '{self.warehouse}'
@@ -1722,29 +1806,38 @@ class SnowflakeAdapter(PlatformAdapter):
             wh_result = cursor.fetchall()
             if wh_result:
                 wh_info = wh_result[0]
+                warehouse_keys = (
+                    "name",
+                    "state",
+                    "type",
+                    "size",
+                    "min_cluster_count",
+                    "max_cluster_count",
+                    "started_clusters",
+                    "running",
+                    "queued",
+                    None,
+                    None,
+                    None,
+                    "auto_suspend",
+                    "auto_resume",
+                    "available",
+                    "provisioning",
+                    "quiescing",
+                    "other",
+                    "created_on",
+                    "resumed_on",
+                    "updated_on",
+                    "owner",
+                    "comment",
+                )
                 metadata["warehouse_info"] = {
-                    "name": wh_info[0],
-                    "state": wh_info[1],
-                    "type": wh_info[2],
-                    "size": wh_info[3],
-                    "min_cluster_count": wh_info[4],
-                    "max_cluster_count": wh_info[5],
-                    "started_clusters": wh_info[6],
-                    "running": wh_info[7],
-                    "queued": wh_info[8],
-                    "auto_suspend": wh_info[12],
-                    "auto_resume": wh_info[13],
-                    "available": wh_info[14],
-                    "provisioning": wh_info[15],
-                    "quiescing": wh_info[16],
-                    "other": wh_info[17],
-                    "created_on": wh_info[18],
-                    "resumed_on": wh_info[19],
-                    "updated_on": wh_info[20],
-                    "owner": wh_info[21],
-                    "comment": wh_info[22],
-                    "scaling_policy": wh_info[25] if len(wh_info) > 25 else None,
+                    key: self._row_value(wh_info, i) for i, key in enumerate(warehouse_keys) if key is not None
                 }
+                metadata["warehouse_info"]["scaling_policy"] = self._row_value(wh_info, 25)
+                degraded = degraded or len(wh_info) <= 25
+            else:
+                degraded = True
 
             from benchbox.platforms.snowflake_introspection import normalize_snowflake_schema
 
@@ -1765,24 +1858,17 @@ class SnowflakeAdapter(PlatformAdapter):
                 (normalize_snowflake_schema(self.schema),),
             )
             tables = cursor.fetchall()
-            metadata["tables"] = [
-                {
-                    "table_name": row[0],
-                    "row_count": row[1],
-                    "bytes": row[2],
-                    "retention_time": row[3],
-                    "created": row[4].isoformat() if row[4] else None,
-                    "last_altered": row[5].isoformat() if row[5] else None,
-                    "clustering_key": row[6],
-                }
-                for row in tables
-            ]
+            metadata["tables"] = [self._table_metadata_row(row) for row in tables]
+            degraded = degraded or any(len(row) < 7 for row in tables)
 
         except Exception as e:
             metadata["metadata_error"] = str(e)
+            degraded = True
         finally:
             cursor.close()
 
+        if degraded:
+            metadata["metadata_degraded"] = True
         return metadata
 
     def analyze_table(self, connection: Any, table_name: str) -> None:

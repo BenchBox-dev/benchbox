@@ -4,7 +4,7 @@ from decimal import Decimal
 from typing import Any, Literal, Optional
 
 CostScope = Literal["compute_only", "compute_plus_storage"]
-CostStatus = Literal["normalized", "not_applicable_local", "unavailable", "estimated"]
+CostStatus = Literal["normalized", "not_applicable_local", "unavailable", "estimated", "not_comparable_gateway"]
 
 
 COST_UNAVAILABLE_WARNING_PREFIX = "normalized cost unavailable"
@@ -109,6 +109,8 @@ class NormalizedCost:
             raise ValueError("local not-applicable cost must carry explicit zero normalized_cost_usd")
         if self.cost_status == "unavailable" and self.normalized_cost_usd is not None:
             raise ValueError("unavailable cost must not carry normalized_cost_usd")
+        if self.cost_status == "not_comparable_gateway" and self.normalized_cost_usd is not None:
+            raise ValueError("gateway-routed cost must not carry normalized_cost_usd")
         if self.cost_status == "estimated":
             if self.normalized_cost_usd is not None:
                 raise ValueError("estimated cost must not carry normalized_cost_usd")
