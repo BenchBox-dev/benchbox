@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Every dialect that uses QUALIFY elimination is listed with a test covering ORDER BY, DISTINCT and LIMIT placement",
+    "Any dialect that loses ordering or changes row sets is fixed",
+    "tpchavoc 1_v8 passes in order on each locally runnable affected engine"
+  ],
+  "description": "PR #4154 fixed QUALIFY elimination for presto, trino and athena so ORDER BY stays on the outermost select (tpchavoc 1_v8). Other dialects routed through the same elimination in benchbox/utils/dialect_utils.py likely still drop the outer ORDER BY, and DISTINCT and LIMIT still stay inside the derived table, which changes results when they must apply after the QUALIFY filter.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/4154"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9dde2030f0b654b7eae6a730",
+      "at": "2026-11-12T18:49:02Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5009c583e9ec419eb422ae0b5cb55809",
+      "session_id": "4fc38207b51b48f682c92ef4be5cc6b0"
+    }
+  ]
+}

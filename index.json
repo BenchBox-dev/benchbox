@@ -32683,6 +32683,13 @@
       "status": "done",
       "title": "The TPC-DS QphDS@Size sequence (load, power, two throughput tests, two maintenance runs) has never been run end to end on a real platform"
     },
+    "qualify-elimination-outer-order-by-other-dialects-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Check other dialects' QUALIFY elimination for lost outer ORDER BY, DISTINCT and LIMIT"
+    },
     "quality-add-cross-platform-result-validation": {
       "claim": null,
       "needs": [],
