@@ -4,7 +4,7 @@
     "Fix in the harness, or a minimal upstream engine reproducer filed and the cell recorded as a known engine defect with that link",
     "duckdb and sqlite write_primitives SF1 pass in a trunk UAT shard"
   ],
-  "context": "2026-11-12: Root cause (harness, not engine): _write_staging_file in benchbox/core/primitives/generator_base.py read SF1 staging rows through an Arrow CSV streaming reader over a zstd Python stream, stopped at the 1M-row limit while the reader's background thread was still reading, and closed the stream under it, corrupting the native heap (backtrace: zstandard backend_c <- PyObject_CallMethod <- arrow::py::PyReadableFile::Read). Fix in PR #4185: line-by-line staging copy with identical output, plus a regression test that the stream is read only from the calling thread and never after close. Linux: old code 300-iteration reproducer segfaults (139), fixed exits 0; duckdb write_primitives SF1 exit 0. SQLite SF1 local run killed 6x by the host memory watchdog; confirm on the next trunk UAT.",
+  "context": "2026-11-12: Root cause (harness, not engine): _write_staging_file in benchbox/core/primitives/generator_base.py read SF1 staging rows through an Arrow CSV streaming reader over a zstd Python stream, stopped at the 1M-row limit while the reader's background thread was still reading, and closed the stream under it, corrupting the native heap (backtrace: zstandard backend_c <- PyObject_CallMethod <- arrow::py::PyReadableFile::Read). Fix in PR #4185: line-by-line staging copy with identical output, plus a regression test that the stream is read only from the calling thread and never after close. Linux: old code 300-iteration reproducer segfaults (139), fixed exits 0; duckdb write_primitives SF1 exit 0. SQLite SF1 local run killed 6x by the host memory watchdog; confirm on the next trunk UAT.\n\n2026-11-12: PR #4185 merged (50539f3239, 2026-11-12) with the staging-copy fix and regression test (tests/unit/core/primitives/test_generator_base.py:120); hosted review SHIP. Remaining acceptance: duckdb and sqlite write_primitives SF1 green in a trunk UAT shard on a commit containing 50539f3239; close then.",
   "description": "Trunk UAT run 43229090202 (01a15152ba, 2026-11-12): duckdb write_primitives SF1.0 exited 134 with 'malloc(): unsorted double linked list corrupted' (peak RSS 1.35 GiB) after SF0.01 and SF0.1 passed. Scheduled run 43190522005 (f4ffb30ea): sqlite write_primitives SF1 exited 139 (segfault). Two in-process engines crashing natively on the same benchmark at the same scale suggests a shared cause in the write_primitives harness path (threads sharing a connection, freed buffers, or an Arrow/driver interaction), not two engine bugs. Pruning the cells would hide a crash that a user would also hit.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/actions/runs/43229090202",
@@ -25,6 +25,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "ce9f970d46544f678f573459c51dd9f5",
+      "session_id": "4fc38207b51b48f682c92ef4be5cc6b0"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9dde2030f0b654b7eae6a730",
+      "at": "2026-11-12T20:47:45Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1bdc9e1506584f8c938c568395671965",
       "session_id": "4fc38207b51b48f682c92ef4be5cc6b0"
     }
   ]
