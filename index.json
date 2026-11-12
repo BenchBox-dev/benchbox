@@ -44831,10 +44831,15 @@
       "title": "✅ Universal Validation Mode System - Architectural Refactor"
     },
     "unsalted-anonymization-manager-in-corpus-scripts-20261029": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T19:28:18Z",
+        "generation": "b2e40339e84346b8b7a86132d5e09d0b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9dde2030f0b654b7eae6a730"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Check that no corpus-producing script builds AnonymizationManager without the public pseudonym salt"
     },
     "untrack-todo-db-archive-sqlite": {
