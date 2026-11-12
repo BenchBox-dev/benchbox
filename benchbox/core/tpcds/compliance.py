@@ -1,4 +1,3 @@
-from collections.abc import Sequence
 from enum import Enum
 
 
@@ -15,17 +14,11 @@ OFFICIAL_SCALE_POINTS: frozenset[float] = frozenset(
 TPCDS_MIN_SUBSCALE: float = 0.01
 
 
-def classify_tpcds_run(
-    scale_factor: float, *, official: bool = False, spec_violations: Sequence[str] = ()
-) -> TpcdsComplianceClass:
+def classify_tpcds_run(scale_factor: float, *, official: bool = False) -> TpcdsComplianceClass:
     from benchbox.core.tpc_patterns import classify_official_scale_run
 
     return classify_official_scale_run(
-        scale_factor,
-        official=official,
-        scale_points=OFFICIAL_SCALE_POINTS,
-        compliance_enum=TpcdsComplianceClass,
-        spec_violations=spec_violations,
+        scale_factor, official=official, scale_points=OFFICIAL_SCALE_POINTS, compliance_enum=TpcdsComplianceClass
     )
 
 

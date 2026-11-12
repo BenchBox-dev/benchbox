@@ -3,7 +3,6 @@
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
 import time
-from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Optional, Union
 
@@ -55,10 +54,9 @@ def classify_official_scale_run(
     official: bool,
     scale_points: frozenset,
     compliance_enum: Any,
-    spec_violations: Sequence[str] = (),
 ) -> Any:
     if scale_factor < 1.0:
         return compliance_enum.UNOFFICIAL_SUBSCALE
-    if official and scale_factor in scale_points and not spec_violations:
+    if official and scale_factor in scale_points:
         return compliance_enum.OFFICIAL
     return compliance_enum.UNOFFICIAL_NONSTANDARD

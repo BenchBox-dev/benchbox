@@ -41,6 +41,36 @@ def _nonempty_string(value: object) -> bool:
     return isinstance(value, str) and bool(value.strip())
 
 
+def _notice_errors_and_warnings(manifest: Mapping[str, Any], platform: str) -> tuple[list[str], list[str]]:
+    notice = manifest.get("vendor_notice")
+    if platform not in VENDOR_NOTICE_PLATFORMS:
+        if notice is not None and not isinstance(notice, Mapping):
+            return ["Manifest vendor_notice must be an object with sent_on (YYYY-MM-DD) and a reference"], []
+        return [], []
+    if notice is None:
+        return [], [f"Manifest has no vendor_notice for {platform}: {VENDOR_NOTICE_PLATFORMS[platform]}"]
+    if (
+        not isinstance(notice, Mapping)
+        or not _nonempty_string(notice.get("reference"))
+        or not isinstance(notice.get("sent_on"), str)
+        or not _DATE_PATTERN.match(notice["sent_on"])
+    ):
+        return ["Manifest vendor_notice must be an object with sent_on (YYYY-MM-DD) and a non-empty reference"], []
+    return [], []
+
+
+def _self_run_errors_and_warnings(manifest: Mapping[str, Any], platform: str) -> tuple[list[str], list[str]]:
+    self_run = manifest.get("self_run")
+    if platform in SELF_RUN_PLATFORMS:
+        if self_run is False:
+            return [f"Manifest self_run is false: {SELF_RUN_PLATFORMS[platform]}"], []
+        if self_run is not True:
+            return [], [f"Manifest does not attest self_run for {platform}: {SELF_RUN_PLATFORMS[platform]}"]
+    elif self_run is not None and not isinstance(self_run, bool):
+        return ["Manifest self_run must be a boolean"], []
+    return [], []
+
+
 def evaluate_vendor_conditions(manifest: Mapping[str, Any]) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
@@ -58,6 +88,9 @@ def evaluate_vendor_conditions(manifest: Mapping[str, Any]) -> tuple[list[str], 
             errors.append("Manifest preview_features must be a list of non-empty feature name strings")
         else:
             feature_list = [str(item).strip() for item in features]
+
+    if manifest.get("funding") == "free-trial" and tier not in {"free", "trial"}:
+        tier = "trial"
 
     permission = manifest.get("vendor_permission")
     if permission is not None and not _nonempty_string(permission):
@@ -83,31 +116,9 @@ def evaluate_vendor_conditions(manifest: Mapping[str, Any]) -> tuple[list[str], 
             f"screened ({TIERED_PLATFORMS[platform]})"
         )
 
-    if platform in VENDOR_NOTICE_PLATFORMS:
-        notice = manifest.get("vendor_notice")
-        if notice is None:
-            warnings.append(f"Manifest has no vendor_notice for {platform}: {VENDOR_NOTICE_PLATFORMS[platform]}")
-        elif (
-            not isinstance(notice, Mapping)
-            or not _nonempty_string(notice.get("reference"))
-            or not isinstance(notice.get("sent_on"), str)
-            or not _DATE_PATTERN.match(notice["sent_on"])
-        ):
-            errors.append(
-                "Manifest vendor_notice must be an object with sent_on (YYYY-MM-DD) and a non-empty reference"
-            )
-    elif manifest.get("vendor_notice") is not None:
-        notice = manifest["vendor_notice"]
-        if not isinstance(notice, Mapping):
-            errors.append("Manifest vendor_notice must be an object with sent_on (YYYY-MM-DD) and a reference")
-
-    if platform in SELF_RUN_PLATFORMS:
-        self_run = manifest.get("self_run")
-        if self_run is False:
-            errors.append(f"Manifest self_run is false: {SELF_RUN_PLATFORMS[platform]}")
-        elif self_run is not True:
-            warnings.append(f"Manifest does not attest self_run for {platform}: {SELF_RUN_PLATFORMS[platform]}")
-    elif manifest.get("self_run") is not None and not isinstance(manifest.get("self_run"), bool):
-        errors.append("Manifest self_run must be a boolean")
+    for check in (_notice_errors_and_warnings, _self_run_errors_and_warnings):
+        check_errors, check_warnings = check(manifest, platform)
+        errors.extend(check_errors)
+        warnings.extend(check_warnings)
 
     return errors, warnings

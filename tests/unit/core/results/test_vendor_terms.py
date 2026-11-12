@@ -37,6 +37,16 @@ class TestTierAndPreview:
         )
         assert errors == []
 
+    def test_free_trial_funding_treated_as_trial_tier(self):
+        errors, _ = evaluate_vendor_conditions({"platform": "duckdb", "funding": "free-trial", "plan_tier": "paid"})
+        assert any("written permission" in e and "trial" in e for e in errors)
+
+    def test_free_trial_funding_with_permission_accepted(self):
+        errors, _ = evaluate_vendor_conditions(
+            {"platform": "duckdb", "funding": "free-trial", "vendor_permission": "email 2026-10-30"}
+        )
+        assert errors == []
+
     def test_preview_feature_refused_without_permission(self):
         errors, _ = evaluate_vendor_conditions(
             {"platform": "snowflake", "plan_tier": "paid", "preview_features": ["x"], "vendor_notice": NOTICE}

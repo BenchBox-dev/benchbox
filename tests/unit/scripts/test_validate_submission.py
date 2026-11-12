@@ -38,7 +38,11 @@ class TestManifestProvenance:
         assert self._run({"bundle_file": "x", "bundle_hash": "y"}).ok
 
     def test_valid_funding_ok(self):
-        assert self._run({"funding": "free-trial"}).ok
+        assert self._run({"funding": "employer"}).ok
+
+    def test_free_trial_funding_needs_vendor_permission(self):
+        assert not self._run({"funding": "free-trial"}).ok
+        assert self._run({"funding": "free-trial", "vendor_permission": "approval 2026-11-01"}).ok
 
     def test_invalid_funding_rejected(self):
         vr = self._run({"funding": "crowdfunded"})

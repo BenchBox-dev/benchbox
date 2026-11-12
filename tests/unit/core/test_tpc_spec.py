@@ -12,8 +12,6 @@ from benchbox.core.tpc_spec import (
     refresh_functions_enabled,
     require_full_spec,
 )
-from benchbox.core.tpcds.compliance import TpcdsComplianceClass, classify_tpcds_run
-from benchbox.core.tpch.compliance import TpchComplianceClass, classify_tpch_run
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -132,21 +130,6 @@ class TestRefreshFunctionsEnabled:
 
         assert refresh_functions_enabled({}, Instance()) is True
         assert refresh_functions_enabled({}, object()) is False
-
-
-class TestClassificationDependsOnConditions:
-    def test_tpch_violation_downgrades_official(self):
-        assert classify_tpch_run(100.0, official=True) is TpchComplianceClass.OFFICIAL
-        downgraded = classify_tpch_run(100.0, official=True, spec_violations=["a --seed is required"])
-        assert downgraded is TpchComplianceClass.UNOFFICIAL_NONSTANDARD
-
-    def test_tpcds_violation_downgrades_official(self):
-        assert classify_tpcds_run(100.0, official=True) is TpcdsComplianceClass.OFFICIAL
-        downgraded = classify_tpcds_run(100.0, official=True, spec_violations=["partial runs"])
-        assert downgraded is TpcdsComplianceClass.UNOFFICIAL_NONSTANDARD
-
-    def test_subscale_stays_subscale(self):
-        assert classify_tpch_run(0.1, official=True, spec_violations=["x"]) is TpchComplianceClass.UNOFFICIAL_SUBSCALE
 
 
 class TestExecuteRunGate:

@@ -154,7 +154,8 @@ class TPCDIMetrics:
             "etl_throughput": f"{metrics.etl_throughput:,.2f} rec/sec",
             "data_quality_score": f"{metrics.data_quality_score:.1%}",
             "overall_performance": f"{metrics.overall_performance:.2f}",
-            "tpc_di_compliant": "YES" if metrics.tpc_di_compliant else "NO",
+            "internal_validation_checks_passed": "YES" if metrics.tpc_di_compliant else "NO",
+            "disclaimer": derived_results_disclaimer("TPC-DI"),
             "benchmark_date": metrics.benchmark_date.strftime("%Y-%m-%d %H:%M:%S"),
         }
 
@@ -256,7 +257,8 @@ class TPCDIMetrics:
                 "type": "TPC-DI",
                 "scale_factor": metrics.scale_factor,
                 "benchmark_date": metrics.benchmark_date.isoformat(),
-                "tpc_di_compliant": metrics.tpc_di_compliant,
+                "internal_validation_checks_passed": metrics.tpc_di_compliant,
+                "disclaimer": derived_results_disclaimer("TPC-DI"),
             },
             "primary_metrics": {
                 "etl_throughput": metrics.etl_throughput,
