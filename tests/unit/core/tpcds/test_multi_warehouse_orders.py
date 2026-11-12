@@ -7,18 +7,19 @@ import pytest
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 FAMILIES = ["polars", "datafusion", "pandas"]
-WAREHOUSES = [1, 2, 1, None, None, None]
-ORDERS = [1, 1, 2, 2, 3, 3]
+WAREHOUSES = [1, 2, 1, None, None, None, 1, 2, None]
+ORDERS = [1, 1, 2, 2, 3, 3, 4, 4, 4]
+EXPECTED = {16: [(2, 2002.0, 6006.0)], 94: [(2, 2002.0, 6006.0)], 95: [(2, 3002.0, 9006.0)]}
 
 
 def _sales(prefix, extra):
     sales = {
         f"{prefix}_order_number": ORDERS,
         f"{prefix}_warehouse_sk": WAREHOUSES,
-        f"{prefix}_ship_date_sk": [1] * 6,
-        f"{prefix}_ship_addr_sk": [1] * 6,
-        f"{prefix}_ext_ship_cost": [1.0, 1.0, 10.0, 10.0, 100.0, 100.0],
-        f"{prefix}_net_profit": [3.0, 3.0, 30.0, 30.0, 300.0, 300.0],
+        f"{prefix}_ship_date_sk": [1] * 9,
+        f"{prefix}_ship_addr_sk": [1] * 9,
+        f"{prefix}_ext_ship_cost": [1.0, 1.0, 10.0, 10.0, 100.0, 100.0, 1000.0, 1000.0, 1000.0],
+        f"{prefix}_net_profit": [3.0, 3.0, 30.0, 30.0, 300.0, 300.0, 3000.0, 3000.0, 3000.0],
     }
     sales.update(extra)
     return sales
@@ -31,10 +32,10 @@ def _tables(returned):
     }
     return {
         **common,
-        "web_sales": _sales("ws", {"ws_web_site_sk": [1] * 6}),
+        "web_sales": _sales("ws", {"ws_web_site_sk": [1] * 9}),
         "web_returns": {"wr_order_number": returned},
         "web_site": {"web_site_sk": [1], "web_company_name": ["pri"]},
-        "catalog_sales": _sales("cs", {"cs_call_center_sk": [1] * 6}),
+        "catalog_sales": _sales("cs", {"cs_call_center_sk": [1] * 9}),
         "catalog_returns": {"cr_order_number": [999]},
         "call_center": {"cc_call_center_sk": [1], "cc_county": ["Walker County"]},
     }
@@ -85,7 +86,7 @@ def _run(family, number):
     impl_family = "pandas" if family == "pandas" else "expression"
     with parameter_overrides({number: parameters[number]}):
         result = getattr(queries, f"q{number}_{impl_family}_impl")(
-            _context(family, _tables([1, 2, 3] if number == 95 else [999]))
+            _context(family, _tables([1, 2, 3, 4] if number == 95 else [999]))
         )
     if family == "datafusion":
         table = result.collect()
@@ -95,5 +96,5 @@ def _run(family, number):
 
 @pytest.mark.parametrize("family", FAMILIES)
 @pytest.mark.parametrize("number", [16, 94, 95])
-def test_only_orders_with_two_distinct_warehouses_are_multi_warehouse(family, number):
-    assert _run(family, number) == [(1, 2.0, 6.0)]
+def test_null_warehouses_follow_sql_semantics(family, number):
+    assert _run(family, number) == EXPECTED[number]

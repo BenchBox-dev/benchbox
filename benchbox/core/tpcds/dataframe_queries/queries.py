@@ -1354,8 +1354,9 @@ def _web_multi_warehouse_expression(
     else:
         returned_orders = web_returns.select(["wr_order_number"]).unique()
 
+    outer_sales = web_sales.filter(col("ws_warehouse_sk").is_not_null()) if return_mode == "anti" else web_sales
     result = (
-        web_sales.join(date_filtered, left_on="ws_ship_date_sk", right_on="d_date_sk")
+        outer_sales.join(date_filtered, left_on="ws_ship_date_sk", right_on="d_date_sk")
         .join(ca_filtered, left_on="ws_ship_addr_sk", right_on="ca_address_sk")
         .join(ws_filtered, left_on="ws_web_site_sk", right_on="web_site_sk")
         .join(multi_warehouse_orders, on="ws_order_number", how="semi")
@@ -1403,7 +1404,8 @@ def _web_multi_warehouse_pandas(
 
     multi_warehouse_orders = _multi_warehouse_orders_pandas(ctx, web_sales, "ws_order_number", "ws_warehouse_sk")
 
-    result = web_sales.merge(date_filtered, left_on="ws_ship_date_sk", right_on="d_date_sk")
+    outer_sales = web_sales[web_sales["ws_warehouse_sk"].notnull()] if return_mode == "anti" else web_sales
+    result = outer_sales.merge(date_filtered, left_on="ws_ship_date_sk", right_on="d_date_sk")
     result = result.merge(ca_filtered[["ca_address_sk"]], left_on="ws_ship_addr_sk", right_on="ca_address_sk")
     result = result.merge(ws_filtered[["web_site_sk"]], left_on="ws_web_site_sk", right_on="web_site_sk")
     result = result.merge(multi_warehouse_orders, on="ws_order_number")
