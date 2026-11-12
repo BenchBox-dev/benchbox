@@ -40,7 +40,7 @@ def _plans_payload() -> dict:
     }
 
 
-def _source(tmp_path: Path, plans: dict | None) -> Path:
+def _source(tmp_path: Path, plans: dict | None, test_type: str | None = None) -> Path:
     result = make_benchmark_results(
         benchmark_name="TPC-H",
         platform="duckdb",
@@ -49,7 +49,15 @@ def _source(tmp_path: Path, plans: dict | None) -> Path:
         duration_seconds=3.0,
         total_queries=1,
         successful_queries=1,
-        query_results=[{"query_id": "Q1", "execution_time": 1.0, "status": "SUCCESS", "rows_returned": 4}],
+        query_results=[
+            {
+                "query_id": "Q1",
+                "execution_time": 1.0,
+                "status": "SUCCESS",
+                "rows_returned": 4,
+                **({"test_type": test_type, "stream_id": 0} if test_type else {}),
+            }
+        ],
         validation_status="PASSED",
         validation_details={},
     )
@@ -178,3 +186,66 @@ def test_source_directory_path_in_redacted_output_is_rejected(tmp_path: Path, mo
     assert not publish_mod._redacted_output_is_clean(
         redacted, roots=publish_mod._local_roots(source), require_anonymized_marker=True
     )
+
+
+def _keyed_plans_payload() -> dict:
+    variants = [
+        {"plan_fingerprint": "a" * 16, "iterations": [0]},
+        {"plan_fingerprint": "b" * 16, "iterations": [1]},
+    ]
+    entry = {
+        "plan": {
+            "query_id": "Q1",
+            "platform": "duckdb",
+            "plan_text": LEAK_TEXT,
+            "raw_explain_output": LEAK_RAW,
+            "logical_root": None,
+            "plan_fingerprint": "a" * 16,
+        },
+        "plan_fingerprint": "a" * 16,
+        "fingerprint_varied": True,
+        "fingerprint_variants": variants,
+    }
+    return {
+        "plans_captured": 1,
+        "capture_failures": 0,
+        "queries": {"Q1#0:power": entry},
+    }
+
+
+def test_stream_keyed_plans_companion_keeps_keys_and_variation_fields(tmp_path: Path) -> None:
+    plans = _keyed_plans_payload()
+    source = _source(tmp_path, plans, "power")
+    target = tmp_path / "published"
+
+    assert publish_bundle(source, target=str(target), label="local", quiet=True) is not None
+
+    published = json.loads((target / (source.stem + ".plans.json")).read_text(encoding="utf-8"))
+    assert set(published["queries"]) == {"Q1#0:power"}
+    entry = published["queries"]["Q1#0:power"]
+    assert entry["fingerprint_varied"] is True
+    assert entry["fingerprint_variants"] == plans["queries"]["Q1#0:power"]["fingerprint_variants"]
+
+
+def test_stream_keyed_plans_companion_is_still_sanitized(tmp_path: Path) -> None:
+    source = _source(tmp_path, _keyed_plans_payload(), "power")
+    target = tmp_path / "published"
+
+    assert publish_bundle(source, target=str(target), label="local", quiet=True) is not None
+
+    text = (target / (source.stem + ".plans.json")).read_text(encoding="utf-8")
+    assert "synthetic" not in text
+    entry = json.loads(text)["queries"]["Q1#0:power"]
+    assert entry["plan"]["raw_explain_output"] is None
+    assert find_public_path_leaks(json.loads(text)) == []
+
+
+def test_stream_keyed_plans_companion_with_unremovable_leak_refuses(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = _source(tmp_path, _keyed_plans_payload(), "power")
+    monkeypatch.setattr(publish_mod, "anonymize_plans_payload", lambda payload, roots=(): payload)
+    target = tmp_path / "published"
+
+    assert publish_bundle(source, target=str(target), label="local", quiet=True) is None
+    assert not target.exists() or list(target.iterdir()) == []
