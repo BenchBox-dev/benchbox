@@ -4,11 +4,13 @@
     "A stopped review, open findings, a pending message for another head and a gate error are still refused",
     "Unit tests cover each"
   ],
+  "context": "2026-11-12: PR #4155 open (head 0ba4fe3d31, branch fix/pr-arm-wait-pending-verdict-new-format, worktree /Users/joe/Developer/BenchBox.wt-fix-pr-arm-wait-new-format). Its own wait kept waiting on the current wording through eight polls, then hit a slow-runner would-block; re-measured with make pr-rerun. Claim released while CI runs; same session resumes.",
   "description": "`make pr-arm WAIT=<minutes>` (PR #4110) keeps waiting on a pending review verdict, but `_review_verdict_pending` in scripts/pr_arm.py excluded any gate message starting 'Waiting for review-verdict', assuming that wording meant an owner action. The pinned reviewer now posts exactly that for the ordinary no-verdict-yet state (status_text.gate_waiting: \"Waiting for review-verdict · owner bypass: 'Stand-in review: APPROVE <head>'\"), so a wait started before the verdict arrives is refused immediately. Seen 2026-11-12 on #4146 and #4144. The state that needs a person is a different message (GATE_NOT_REVIEWED: 'Waiting · not reviewed yet · see the review-verdict status · owner may post a stand-in'), posted when the reviewer stopped; it is cleared with a `/review` comment.",
   "links": [
     "scripts/pr_arm.py",
     "scripts/pr_landing.py"
   ],
+  "not_before": "2026-11-12T08:51:36Z",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1319a3225e6eeb104ec2240b",
@@ -25,6 +27,14 @@
       "generation": "40764265589647608be3d61b3931c2bc",
       "op": "take",
       "op_id": "1b32917167d14484b5be27dab13b90f9",
+      "session_id": "c16189175abd4e878b3c9ce4c03812e3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1319a3225e6eeb104ec2240b",
+      "at": "2026-11-12T06:37:08Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e05f3155b2714011b4270a6f18be6bfd",
       "session_id": "c16189175abd4e878b3c9ce4c03812e3"
     }
   ]
