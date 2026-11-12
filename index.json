@@ -40347,10 +40347,15 @@
       "title": "Investigate the hosted TPC-H slowdown after the execution-variants schema change"
     },
     "t3-perf-nightly-failure-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T19:28:10Z",
+        "generation": "f1527e9b3ce744f5a0ad604a352b4435",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9dde2030f0b654b7eae6a730"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Find why nightly-v2 t3:perf failed on 2026-11-11 (run 43048718870)"
     },
     "table-format-integration-ci-coverage": {
