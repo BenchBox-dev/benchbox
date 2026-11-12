@@ -31181,6 +31181,13 @@
       "status": "open",
       "title": "Detect PRs opened without make pr-open's local review"
     },
+    "pr-open-conflict-warning-untouched-files-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "make pr-open warned of a textual conflict in files the pull request does not touch"
+    },
     "pr-open-fill-branch-name-title-20261017": {
       "claim": null,
       "needs": [],

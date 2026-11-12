@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "The code path that prints the warning is identified and the reason it fired for a pull request that did not touch the named files is recorded.",
+    "The warning fires only when the two pull requests change an overlapping file, or its text says plainly that the other pull request conflicts with `develop`, proven by a unit test."
+  ],
+  "description": "`make pr-open` for PR #4170 printed: `textual conflict with PR #3916 (chore/seed-corpus-20261101-3095) in publication/ledger-seed.json, results-data/corpus-inventory.json — coordinate before landing`. PR #4170 changed nine files, none of them those two, and merged without conflict. The cause was not investigated: the warning may compare the other pull request against `develop` rather than against this branch, in which case it is noise on every `pr-open` while #3916 is open.",
+  "links": [
+    "make/pr-landing.mk",
+    "https://github.com/BenchBox-dev/benchbox/pull/4170",
+    "https://github.com/BenchBox-dev/benchbox/pull/3916"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-12T16:52:14Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "cb9dd0075a2041c08bf9ada669ec3618",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    }
+  ]
+}
