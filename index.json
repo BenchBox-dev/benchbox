@@ -12456,15 +12456,10 @@
       "title": "Deliver the batch opt-in remediation: docs and ledger batch plus serial tooling PR"
     },
     "batch-owner-generation-output-redaction-20261108": {
-      "claim": {
-        "expires_at": "2026-11-13T05:56:02Z",
-        "generation": "f03b9effeb7e47f38081b835ca8baf0b",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Keep batch owner generations out of routine tool and session output"
     },
     "batch-prepared-delivery-tracker-and-skill": {
