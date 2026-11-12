@@ -5404,6 +5404,7 @@
     "plan-capture-followups": {
       "accepted_members": {
         "heavy-run-cmd-dollar-expansion-20261111": "0dda5876404ca0dbb421e6aaa08f4b1bc627654c",
+        "maintainer-plans-bundle-path-docs-and-publish-refusal-20261111": "0014fe168eb9243099d6da982171206fceb845b3",
         "publish-run-rewrites-plans-companion-keys-20261111": "3d3eb8386765579918e437d83dde3bb1936efb70"
       },
       "batch_schema": 2,
@@ -5422,6 +5423,21 @@
           "integration_head": "434deb53594c472ce46f86a3888da9ae7491b959",
           "integration_seq": 1
         },
+        "maintainer-plans-bundle-path-docs-and-publish-refusal-20261111": {
+          "accepted_head": "0014fe168eb9243099d6da982171206fceb845b3",
+          "changed_files": [
+            "benchbox/cli/commands/publish.py",
+            "benchbox/core/publishing/admission.py",
+            "changelog.d/fix-plan-capture-staging-and-publish-refusal.json",
+            "docs/agent/maintainer-bundles.md",
+            "results-data/README.md",
+            "scripts/stage_seed_corpus_bundle.py",
+            "tests/unit/cli/commands/test_publish.py",
+            "tests/unit/workflows/test_seed_corpus_pr_base.py"
+          ],
+          "integration_head": "589b86d820b38c0c1ff6e00710faa6c916c56d92",
+          "integration_seq": 3
+        },
         "publish-run-rewrites-plans-companion-keys-20261111": {
           "accepted_head": "3d3eb8386765579918e437d83dde3bb1936efb70",
           "changed_files": [
@@ -5434,7 +5450,7 @@
         }
       },
       "integration_branch": "feat/plan-capture-followups",
-      "integration_head": "dde64141c583e00f6777f7280deac3662128bf41",
+      "integration_head": "589b86d820b38c0c1ff6e00710faa6c916c56d92",
       "integration_log": [
         {
           "at": "2026-11-12T14:50:36Z",
@@ -5459,6 +5475,15 @@
           "op_id": "e0740937a9654f909862cf97ccc635f3",
           "previous_head": "434deb53594c472ce46f86a3888da9ae7491b959",
           "seq": 2
+        },
+        {
+          "at": "2026-11-12T15:05:44Z",
+          "head": "589b86d820b38c0c1ff6e00710faa6c916c56d92",
+          "kind": "prepare",
+          "member": "maintainer-plans-bundle-path-docs-and-publish-refusal-20261111",
+          "op_id": "6c21684510ab48b097e78ab1c0149813",
+          "previous_head": "dde64141c583e00f6777f7280deac3662128bf41",
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-capture-followups",
@@ -26267,15 +26292,10 @@
       "title": "Agent and maintainer guidance for the automatic pseudonym salt: staging target, maintainer-bundles doc, guard-refusal rule"
     },
     "maintainer-plans-bundle-path-docs-and-publish-refusal-20261111": {
-      "claim": {
-        "expires_at": "2026-11-13T15:05:38Z",
-        "generation": "3c2577befcc6455ab5dc2456019f9c87",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:eb741106bc3418ce287ca405"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Document the maintainer path for bundles with plans companions and fix the publish refusal text for subscale TPC-H"
     },
     "maintainer-review-g4-uncertain-deferrals": {

@@ -16,6 +16,78 @@
     "BenchBox-dev/BenchBox: benchbox/cli/commands/publish.py",
     "BenchBox-dev/BenchBox: scripts/stage_seed_corpus_bundle.py"
   ],
+  "prepared": {
+    "accepted_head": "0014fe168eb9243099d6da982171206fceb845b3",
+    "batch_id": "plan-capture-followups",
+    "changed_files": [
+      "benchbox/cli/commands/publish.py",
+      "benchbox/core/publishing/admission.py",
+      "changelog.d/fix-plan-capture-staging-and-publish-refusal.json",
+      "docs/agent/maintainer-bundles.md",
+      "results-data/README.md",
+      "scripts/stage_seed_corpus_bundle.py",
+      "tests/unit/cli/commands/test_publish.py",
+      "tests/unit/workflows/test_seed_corpus_pr_base.py"
+    ],
+    "integration_head": "589b86d820b38c0c1ff6e00710faa6c916c56d92",
+    "integration_seq": 3,
+    "member_id": "maintainer-plans-bundle-path-docs-and-publish-refusal-20261111",
+    "overlaps": [
+      {
+        "kind": "member",
+        "member": "publish-run-rewrites-plans-companion-keys-20261111",
+        "paths": [
+          "benchbox/cli/commands/publish.py"
+        ]
+      }
+    ],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "bc4403bf19ce19fe3e7c5755e5613287957d25d87d8c22b4e1bbba1b02397661",
+    "source_base": "dde64141c583e00f6777f7280deac3662128bf41",
+    "source_revision": "0014fe168eb9243099d6da982171206fceb845b3",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-pcf-stageplans",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/test_publish_cli.py",
+        "tests/integration/test_tpcds_official_end_to_end.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_e2e_integration.py",
+        "tests/uat/test_no_cli_surface_drift.py",
+        "tests/unit/cli/commands/test_publish.py",
+        "tests/unit/cli/commands/test_publish_plans_boundary.py",
+        "tests/unit/cli/test_run_command_branches.py",
+        "tests/unit/core/publishing/test_bundle_publisher_label.py",
+        "tests/unit/core/results/test_local_result_diagnosability.py",
+        "tests/unit/core/results/test_routed_compliance.py",
+        "tests/unit/test_ledger_coverage.py",
+        "tests/unit/workflows/test_seed_corpus_pr_base.py"
+      ],
+      "review": {
+        "base_sha": "dde64141c583e00f6777f7280deac3662128bf41",
+        "head_sha": "0014fe168eb9243099d6da982171206fceb845b3",
+        "head_tree": "e8cf9363e75a1741140b8da97d4967497e33c20d",
+        "outcome": "clear",
+        "patch_digest": "9994175e8a7ce7919e3a4481e16f070a",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "7967583ee5d35a003f3953c07b30a5679b0f78dc"
+      },
+      "revision": "0014fe168eb9243099d6da982171206fceb845b3",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ce763d5976f477ecde9610ed",
@@ -40,6 +112,15 @@
       "generation": "3c2577befcc6455ab5dc2456019f9c87",
       "op": "take",
       "op_id": "b07fb0be2274425ea93e722a3bbe8e80",
+      "session_id": "32e4db9816694cfb9be59807549223c7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:eb741106bc3418ce287ca405",
+      "at": "2026-11-12T15:05:44Z",
+      "client": "omp-coding-agent",
+      "generation": "3c2577befcc6455ab5dc2456019f9c87",
+      "op": "prepare",
+      "op_id": "6c21684510ab48b097e78ab1c0149813",
       "session_id": "32e4db9816694cfb9be59807549223c7"
     }
   ]
