@@ -3,7 +3,7 @@
     "A decision is recorded with the scale at which each cap first applies.",
     "If the caps are removed: row counts at SF 10 scale with the factor (test), and the corpus impact is listed."
   ],
-  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.\n\nDecision 2026-11-11 (owner): remove the caps and scale linearly, as the TPC-DI specification describes (Poess et al., VLDB 2014, section 3.2: fact source data scales linearly with SF). The caps dated from the initial release commit e0438e9932 with no recorded reason. With 100,000 accounts, 10,000 securities and 50,000 customers per SF, each cap first applied above: FactCashBalances SF 0.033, FactHoldings SF 0.05, FactMarketHistory about SF 0.2 (its day count also scaled with SF below 1), FactWatches SF 0.32 (scale applied twice). Corpus impact: FactMarketHistory and FactWatches change at every scale, so all 24 published TPC-DI bundles (5 at SF 0.01, 8 at SF 0.1, 8 at SF 1, 3 at SF 10) describe data the new generator no longer produces; the data-generation fingerprint now covers the TPC-DI multipliers, so comparisons flag the mismatch. Measured after the change: full SF 0.1 generation 9.7 s and 47 MB uncompressed. SF 10 was not run because the host refused heavy work under memory pressure; about 16 minutes and 4.7 GB is a projection.",
+  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.\n\nDecision 2026-11-11 (owner): remove the caps and scale linearly, as the TPC-DI specification describes (Poess et al., VLDB 2014, section 3.2: fact source data scales linearly with SF). The caps dated from the initial release commit e0438e9932 with no recorded reason. With 100,000 accounts, 10,000 securities and 50,000 customers per SF, each cap first applied above: FactCashBalances SF 0.033, FactHoldings SF 0.05, FactMarketHistory about SF 0.2 (its day count also scaled with SF below 1), FactWatches SF 0.32 (scale applied twice). Corpus impact: FactMarketHistory and FactWatches change at every scale, so all 24 published TPC-DI bundles (5 at SF 0.01, 8 at SF 0.1, 8 at SF 1, 3 at SF 10) describe data the new generator no longer produces; the data-generation fingerprint now covers the TPC-DI multipliers, so comparisons flag the mismatch. Measured after the change: full SF 0.1 generation 9.7 s and 47 MB uncompressed. SF 10 was not run because the host refused heavy work under memory pressure; about 16 minutes and 4.7 GB is a projection.\n\nMerged as BenchBox-dev/benchbox#4149 (25a271c109) and benchbox-site#142. Follow-ups: local-tpcdi-bundles-regenerate-current-generator, tpcdi-generator-ratios-and-speed-vs-spec-20261111.",
   "description": "## Problem\n`benchbox/core/tpcdi/generator/facts.py` caps four fact tables with `min(..., N)`: FactCashBalances at 100,000 rows, FactHoldings at 50,000, FactMarketHistory at 100,000 and FactWatches at 25,000. Above the scale at which each cap is reached the table stops growing, so a TPC-DI run at SF 10 or more does not have proportionally more fact data. FactMarketHistory also uses `min(252, int(252 * scale_factor))` days. The site page now states the caps, but the behaviour is unchanged, and the command line accepts TPC-DI up to SF 100000 since BenchBox#4126.\n\n## Change\nDecide whether the caps are intended (a bounded synthetic generator) or a leftover. If intended, record why and consider a lower accepted maximum for `tpcdi`. If not, remove the caps, check generation time and memory at SF 10, and check the effect on published TPC-DI results, which would no longer be comparable.\n\n## Guardrails\n- Removing a cap changes generated data: published TPC-DI bundles at affected scales need a supersede decision before the change lands.\n- Related: `local-tpcdi-bundles-regenerate-current-generator`.",
   "links": [
     "benchbox/core/tpcdi/generator/facts.py",
@@ -33,6 +33,14 @@
       "generation": "d63ac3666e2941e3abbcbba545a059a9",
       "op": "take",
       "op_id": "23bcd4ac00e445a2b519bb681dd20197",
+      "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba",
+      "at": "2026-11-12T03:08:27Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "76e99af32d074ddf8db2a1cbc3c2e41e",
       "session_id": "84d81f109eb348759fdc1c024f00b55b"
     }
   ]
