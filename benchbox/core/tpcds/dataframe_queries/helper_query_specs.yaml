@@ -306,13 +306,11 @@ helper_queries:
   pandas_helper: _web_multi_warehouse_pandas
   args:
   - anti
-  - false
 - query_id: 95
   expression_helper: _web_multi_warehouse_expression
   pandas_helper: _web_multi_warehouse_pandas
   args:
   - semi
-  - true
 - query_id: 56
   expression_helper: _three_channel_item_sales_expression
   pandas_helper: _three_channel_item_sales_pandas
