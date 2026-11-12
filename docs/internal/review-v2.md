@@ -2066,3 +2066,9 @@ for a body with neither, with conflicting claims, or with a repeated marker.
 description is either `review: waiting for the review's verdict on <head>,…` or
 begins with the frozen token `Waiting for review-verdict` and contains
 `Stand-in review: APPROVE <head>`. Any other failure description stays a failure.
+
+From Theseus v0.2.11, `review-gate` posts `pending` (not `failure`) while a head has
+no verdict and no stand-in, with a description that begins `Waiting for review-verdict`;
+`pr_landing` reads `pending` as pending directly. The two `failure` forms above stay
+accepted so that statuses posted by earlier releases on open pull requests keep
+reading as waiting.

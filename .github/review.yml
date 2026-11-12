@@ -7,12 +7,14 @@ consumer:
   gated_base:
     - develop
     - release/*
+  review_guidance: .github/review-guidance.md
   attesters:
     - joeharris76
   soundness_manifest: .github/soundness-paths.txt
   omp_config: .github/review-omp-config.yml
   inert_manifest: .github/inert-paths.txt
   omp_fixture_prefix: tests/fixtures/review_candidates/omp_candidate
+minimize_superseded: true
 max_attempts: 5
 protocol:
   max_defects: 10
