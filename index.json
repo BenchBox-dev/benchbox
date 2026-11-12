@@ -28115,6 +28115,13 @@
       "status": "done",
       "title": "Add a Windows unit-test domain to nightly-v2 so retiring nightly.yml keeps Windows coverage"
     },
+    "nightly-windows-cli-reconstruct-test-truncated-panel-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Nightly t3:windows fails: test_show_cli_reconstructs_legacy_command reads a truncated Rich panel"
+    },
     "nightly-windows-mcp-durable-fsync-followup": {
       "claim": null,
       "needs": [],

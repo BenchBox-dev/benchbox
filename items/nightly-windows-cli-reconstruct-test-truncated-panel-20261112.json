@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The test passes on windows-latest in the nightly T3 windows job",
+    "The reconstructed command a user sees is complete on an 80-column console, or the decision not to guarantee that is recorded"
+  ],
+  "context": "Found while reviewing open GitHub issues on 2026-11-12.",
+  "description": "## Problem\nnightly-v2 run 43048718870 (2026-11-11), job \"t3:windows | fast unit tests (windows-latest, py3.12)\", failed on tests/unit/cli/commands/test_results.py::test_show_cli_reconstructs_legacy_command. The test asserts '--queries Q1,Q2' is in the output, but on Windows the reconstructed command is printed inside a Rich panel that is cut to the console width (\"benc...\"), so the substring is missing. Tracked on GitHub as BenchBox-dev/benchbox#2964, which has flipped between pass and fail since October.\n\n## Change\nMake the test independent of console width (for example a fixed wide console or reading the command from the structured result), or make the CLI print the reconstructed command unwrapped so users can copy it on narrow terminals. Decide which is the intended behaviour first.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/issues/2964"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e5d016c94a8f4c507bfd7f06",
+      "at": "2026-11-12T16:56:05Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f46feddaf360479295780f8f3d6d37f6",
+      "session_id": "3eed397749064ec1bd2dfc32be3ed6a1"
+    }
+  ]
+}
