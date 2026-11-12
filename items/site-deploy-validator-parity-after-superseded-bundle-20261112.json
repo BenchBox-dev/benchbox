@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Two develop merges in quick succession, one of them a corpus change, reach production without a manual dispatch",
+    "A test covers parent selection when the newest bundled ancestor was not deployed"
+  ],
+  "description": "Found 2026-11-12. Corpus commit 5a2250e918 and code commit 0eeec0d5bd merged to develop about a minute apart. The site deploy for the 5a2250e918 bundle was cancelled as superseded. The deploy for the 0eeec0d5bd bundle was then refused by the benchbox-site gate: `deploy: corpus changed but validator_parity covers 21f671030625..0eeec0d5bd19, not the deployed 01a15152ba09; dispatch core site-inputs.yml with parent_core_sha=01a15152ba09...`. The site stayed on the old corpus until `gh workflow run site-inputs.yml --ref develop -f parent_core_sha=<deployed core>` was dispatched by hand (run 43235517354, deploy 43237076470). scripts/site_inputs_parent.py picks the newest bundled ancestor on develop as the parity parent; when that ancestor's bundle was never deployed (its deploy was superseded or still queued), the range does not start at the deployed core and every corpus-changing deploy is refused until someone dispatches. Decide whether the parent should be the last deployed core (from the site's deploy receipt), or whether the site should dispatch the corrective build itself.",
+  "links": [
+    "BenchBox-dev/BenchBox: scripts/site_inputs_parent.py",
+    "BenchBox-dev/BenchBox: .github/workflows/site-inputs.yml",
+    "BenchBox-dev/benchbox-site: .github/workflows/deploy.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:eb741106bc3418ce287ca405",
+      "at": "2026-11-12T14:48:47Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9a5d12f4f28d46a2b79d658bf60a3c7f",
+      "session_id": "32e4db9816694cfb9be59807549223c7"
+    }
+  ]
+}
