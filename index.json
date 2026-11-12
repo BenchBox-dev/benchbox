@@ -12531,6 +12531,15 @@
       "status": "done",
       "title": "Add batch-start, batch-member-create and batch-member-check, and refuse pr-open and pr-fanout in member worktrees"
     },
+    "batch-member-subagent-doc-rule-20261112": {
+      "claim": null,
+      "needs": [
+        "batch-member-subagent-rule-20261112"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Rewrite the batch member-identity rule in batch-feature-delivery.md to allow subagent members"
+    },
     "batch-member-subagent-rule-20261112": {
       "claim": null,
       "needs": [],
