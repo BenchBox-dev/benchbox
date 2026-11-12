@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "At the next owner-named feature batch, the leader's transcript shows subagent members dispatched with no authorization question to the owner; the batch and date are recorded here. If a question was asked, its exact wording is recorded and the doc is corrected.",
+    "`docs/agent/batch-feature-delivery.md` carries a short member dispatch prompt a leader can paste, covering: no tracker write, absolute paths under the member worktree, stop at a landing report.",
+    "A subagent member's first commit in a leader-created member worktree is observed to succeed, or the extra step it needed is added to the doc."
+  ],
+  "description": "The rule change of 2026-11-12 (PR #4170, catalog #116, global skills applied the same day) was made to stop leader sessions asking the owner whether their subagents may be batch members. No batch has run since, so the outcome is unproven. Two gaps may keep the question alive:\n- The doc requires the dispatch prompt to forbid tracker writes and to require absolute worktree paths, but gives no text to copy, so each leader words it differently and may still ask whether its wording is enough.\n- Whether a subagent can commit in a member worktree its leader created was assumed from the absence of a rule, not tried.\n\nGuardrail: this item observes the next owner-named batch; it does not start a batch to prove the loop, which the protocol forbids.",
+  "links": [
+    "docs/agent/batch-feature-delivery.md",
+    "https://github.com/BenchBox-dev/benchbox/pull/4170",
+    "batch-member-subagent-rule-20261112"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-12T16:52:06Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "83c41f83ac2e4eb88a0318b9b39b7fd6",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    }
+  ]
+}

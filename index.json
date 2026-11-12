@@ -12982,6 +12982,13 @@
       "status": "done",
       "title": "Refuse one-member batches, freeze companion files into scopes, enforce scope at member check, and drop the member-check review"
     },
+    "batch-subagent-member-first-use-check-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Confirm at the next feature batch that leaders dispatch subagent members without asking, and supply the dispatch prompt text"
+    },
     "batch-tooling-blocked-by-foreign-primary-edits-20261110": {
       "claim": null,
       "needs": [],
