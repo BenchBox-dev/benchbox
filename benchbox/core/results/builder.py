@@ -47,7 +47,7 @@ from benchbox.core.results.subscale_policy import (
     routed_compliance_class,
 )
 from benchbox.core.results.timer_scope import effective_timing_method
-from benchbox.core.tpc_spec import full_spec_violations, min_streams_for_scale
+from benchbox.core.tpc_spec import full_spec_violations
 
 if TYPE_CHECKING:
     pass
@@ -381,18 +381,16 @@ class ResultBuilder:
             return []
         override = self._execution_phases_override
         throughput = override.throughput_test if override else None
-        required_streams = min_streams_for_scale(benchmark_id, self._benchmark.scale_factor)
-        streams = throughput.num_streams if throughput is not None else required_streams
+        power = override.power_test if override else None
+        refresh_functions = bool(power is not None and power.refresh_functions)
         return full_spec_violations(
             benchmark_id,
             self._benchmark.scale_factor,
             seed=run_config.seed,
-            phases=run_config.phases
-            if run_config.phases is not None
-            else ("load", "power", "throughput", "maintenance"),
-            streams=streams,
+            phases=run_config.phases,
+            streams=throughput.num_streams if throughput is not None else None,
             query_subset=run_config.query_subset,
-            refresh_functions=True,
+            refresh_functions=refresh_functions,
         )
 
     def build(self) -> BenchmarkResults:

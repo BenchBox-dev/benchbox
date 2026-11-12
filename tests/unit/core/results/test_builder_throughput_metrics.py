@@ -5,6 +5,7 @@ import pytest
 from benchbox.core.results.builder import BenchmarkInfoInput, ResultBuilder, RunConfigInput
 from benchbox.core.results.models import (
     ExecutionPhases,
+    PowerTestPhase,
     SetupPhase,
     ThroughputStream,
     ThroughputTestPhase,
@@ -191,17 +192,41 @@ class TestValidationPhaseStatus:
         assert payload["phases"]["validation"]["status"] == "SKIPPED"
 
 
-@pytest.mark.parametrize(
-    ("run_config", "expected"),
-    [
-        (RunConfigInput(seed=7, phases=["power"]), "unofficial_nonstandard"),
-        (RunConfigInput(seed=7), "official"),
-        (RunConfigInput(seed=None), "unofficial_nonstandard"),
-        (RunConfigInput(seed=7, query_subset=["1", "2"]), "unofficial_nonstandard"),
-    ],
-)
-def test_official_class_requires_seed_and_full_query_set(run_config, expected):
+PHASES = ["load", "power", "throughput"]
+RF = [{"name": "RF1", "status": "SUCCESS"}, {"name": "RF2", "status": "SUCCESS"}]
+
+
+def _official_build(run_config, *, streams=2, refresh=True, throughput=True):
     builder = _builder(compliance_class="official")
     builder.set_run_config(run_config)
+    power = PowerTestPhase(
+        start_time="a",
+        end_time="b",
+        duration_ms=1000,
+        query_executions=[],
+        geometric_mean_time=1.0,
+        power_at_size=1.0,
+        refresh_functions=RF if refresh else None,
+    )
+    phase = _throughput_phase(success=True, throughput_at_size=1.0) if throughput else None
+    if phase is not None:
+        phase.num_streams = streams
+    builder.set_execution_phases(ExecutionPhases(setup=SetupPhase(), power_test=power, throughput_test=phase))
+    return builder.build().compliance_class
 
-    assert builder.build().compliance_class == expected
+
+@pytest.mark.parametrize(
+    ("run_config", "kwargs", "expected"),
+    [
+        (RunConfigInput(seed=7, phases=PHASES), {}, "official"),
+        (RunConfigInput(seed=None, phases=PHASES), {}, "unofficial_nonstandard"),
+        (RunConfigInput(seed=7, phases=PHASES, query_subset=["1"]), {}, "unofficial_nonstandard"),
+        (RunConfigInput(seed=7, phases=["load", "power"]), {}, "unofficial_nonstandard"),
+        (RunConfigInput(seed=7), {}, "unofficial_nonstandard"),
+        (RunConfigInput(seed=7, phases=PHASES), {"streams": 1}, "unofficial_nonstandard"),
+        (RunConfigInput(seed=7, phases=PHASES), {"refresh": False}, "unofficial_nonstandard"),
+        (RunConfigInput(seed=7, phases=PHASES), {"throughput": False}, "unofficial_nonstandard"),
+    ],
+)
+def test_official_class_requires_recorded_full_spec_evidence(run_config, kwargs, expected):
+    assert _official_build(run_config, **kwargs) == expected
