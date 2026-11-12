@@ -5401,6 +5401,93 @@
       "start_head": "3a3ee9826a6ab939d6235d31e69056c789ac365e",
       "terminal_outcome": "deliver"
     },
+    "plan-capture-followups": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/plan-capture-followups",
+      "integration_head": "4f5cfba46877b9887ab5fbd68bee5938e2b1fce2",
+      "integration_log": [
+        {
+          "at": "2026-11-12T14:50:36Z",
+          "head": "4f5cfba46877b9887ab5fbd68bee5938e2b1fce2",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-capture-followups",
+      "lifecycle": "active",
+      "members": [
+        "heavy-run-cmd-dollar-expansion-20261111",
+        "polars-df-plan-capture-no-fingerprint-20261111",
+        "publish-run-rewrites-plans-companion-keys-20261111",
+        "maintainer-plans-bundle-path-docs-and-publish-refusal-20261111"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:eb741106bc3418ce287ca405",
+      "owner_epoch": 0,
+      "owner_generation": "816c9a30484e8c6a2e7cbb15a1ec063d",
+      "project_id": "benchbox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "heavy-run-cmd-dollar-expansion-20261111": [
+          "make/tests.mk",
+          "make/help.mk",
+          "docs/agent/heavy-work.md",
+          "benchbox/utils/host_lock.py",
+          "tests/unit/test_heavy*",
+          "tests/unit/test_makefile*",
+          "tests/unit/utils/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "maintainer-plans-bundle-path-docs-and-publish-refusal-20261111": [
+          "scripts/stage_seed_corpus_bundle.py",
+          "benchbox/cli/commands/publish.py",
+          "benchbox/core/publishing/*",
+          "docs/agent/maintainer-bundles.md",
+          "results-data/README.md",
+          "make/build.mk",
+          "make/help.mk",
+          "tests/unit/workflows/test_seed_corpus_pr_base.py",
+          "tests/unit/cli/commands/*",
+          "tests/unit/core/publishing/*",
+          "tests/unit/scripts/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "polars-df-plan-capture-no-fingerprint-20261111": [
+          "benchbox/platforms/dataframe/*",
+          "benchbox/core/dataframe/*",
+          "benchbox/core/results/schema.py",
+          "benchbox/core/results/query_plan_models.py",
+          "benchbox/core/query_plans/*",
+          "tests/unit/platforms/dataframe/*",
+          "tests/unit/core/dataframe/*",
+          "tests/unit/core/results/*",
+          "tests/unit/core/query_plans/*",
+          "docs/internal/dataframe-plan-capture.md",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "publish-run-rewrites-plans-companion-keys-20261111": [
+          "benchbox/cli/commands/publish.py",
+          "benchbox/core/results/*",
+          "benchbox/core/publishing/*",
+          "tests/unit/cli/commands/*",
+          "tests/unit/core/results/*",
+          "tests/unit/core/publishing/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ]
+      },
+      "scope_hash": "bc4403bf19ce19fe3e7c5755e5613287957d25d87d8c22b4e1bbba1b02397661",
+      "start_head": "4f5cfba46877b9887ab5fbd68bee5938e2b1fce2",
+      "terminal_outcome": "deliver"
+    },
     "plan-companion-publication-hygiene": {
       "accepted_members": {
         "core-docs-plan-fingerprint-variation-fields-20261107": "f56d5a5d5183be2b13115801921ae43edcc1c21c",
