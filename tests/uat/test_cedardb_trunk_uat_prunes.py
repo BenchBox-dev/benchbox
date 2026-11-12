@@ -112,7 +112,6 @@ def test_trino_and_presto_failing_sf001_cells_are_pruned_with_run_evidence(platf
 
 @pytest.mark.parametrize("platform", ["trino", "presto"])
 def test_trino_and_presto_keep_tpcds_and_other_scales(platform):
-    assert _rule(platform, "tpcds", 0.01) is None
     assert _rule(platform, "tpch", 0.01) is None
     assert _rule(platform, "tpcdi", 0.1) is None
 
@@ -131,3 +130,15 @@ def test_tpcdi_sf1_is_pruned_after_the_fact_table_growth(platform):
 
 def test_tpcdi_sf1_stays_in_the_gate_on_clickhouse_local():
     assert _rule("clickhouse-local", "tpcdi", 1.0) is None
+
+
+@pytest.mark.parametrize(("platform", "detail"), [("trino", "date + integer"), ("presto", "QUERY_HAS_TOO_MANY_STAGES")])
+def test_tpcds_sf001_is_pruned_on_trino_and_presto(platform, detail):
+    rule = _rule(platform, "tpcds", 0.01)
+
+    assert rule is not None
+    assert rule.rule_id == f"uat.compat.{platform}.tpcds.sf0.01.release_gate_runtime_envelope"
+    assert "43229090202" in rule.evidence
+    assert "43229090202" in rule.reason
+    assert detail in rule.reason
+    assert _rule(platform, "tpcds", 0.1) is None
