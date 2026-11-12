@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "A recorded decision on the scale unit and ratios, with the site page stating the difference if it is kept.",
+    "A measured SF 10 generation time through `make heavy-run`."
+  ],
+  "context": "Filed 2026-11-11 while removing the TPC-DI fact-table row caps: identified during that work and not addressed.",
+  "description": "## Problem\nAfter the secondary fact tables were made linear, two differences from the TPC-DI specification and one cost remain:\n- The specification defines the scale factor as 5,000 unique customers per unit; BenchBox uses 50,000 customers per unit, so BenchBox SF 1 corresponds to specification SF 10.\n- Rows per customer differ from the design paper's Table 3 (Poess et al., VLDB 2014): BenchBox generates 60 cash-balance, 20 holding, 50.4 market-history and 5 watch rows per customer; the paper's source-file factors imply roughly 24, 24, 108 and 60. BenchBox writes warehouse fact tables directly, not the DIGen source files, so the two are not the same quantity.\n- FactCashBalances, FactHoldings, FactMarketHistory and FactWatches are written by single-threaded Python loops. Full SF 0.1 generation took 9.7 s; SF 10 is projected at about 16 minutes and was not measured.\n\n## Change\nDecide whether BenchBox TPC-DI should match the specification's scale unit and per-table ratios (a data change for every published bundle), or document the difference. Separately, measure SF 10 generation and parallelise the four tables the way FactTrade is if the time is impractical.\n\n## Guardrails\n- Any ratio change alters generated data: update `benchbox/core/tpcdi/generator_specs.yaml` so cached data regenerates, and treat published bundles as superseded.\n- Parallel generation must stay deterministic for a given seed, as FactTrade is.",
+  "links": [
+    "benchbox/core/tpcdi/generator_specs.yaml",
+    "benchbox/core/tpcdi/generator/facts.py",
+    "http://www.vldb.org/pvldb/vol7/p1367-poess.pdf"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba",
+      "at": "2026-11-12T02:16:23Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "3a88d5f32a234d7d84f977922fe38b85",
+      "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    }
+  ]
+}

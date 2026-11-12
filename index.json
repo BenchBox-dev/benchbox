@@ -41143,6 +41143,13 @@
       "status": "open",
       "title": "TPC-DI fact tables stop growing at fixed row caps, so data size does not follow the scale factor"
     },
+    "tpcdi-generator-ratios-and-speed-vs-spec-20261111": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "TPC-DI generator: per-customer row ratios differ from the specification, and secondary fact tables generate single-threaded"
+    },
     "tpcdi-memory-test-delta-refactor": {
       "claim": null,
       "needs": [],
