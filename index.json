@@ -19650,10 +19650,15 @@
       "title": "Stage TPC-H and TPC-DS gates, budget TPC-DS CI subset"
     },
     "df-q21-multi-supplier-min-max": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T16:11:06Z",
+        "generation": "88d21e7331db491082bb499185acac0c",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Use min/max for the multi-supplier test in TPC-H, Data Vault and TPC-Havoc DataFrame Q21 if timing supports it"
     },
     "df-suffix-platform-options-unreachable": {
