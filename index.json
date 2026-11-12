@@ -41827,6 +41827,13 @@
       "status": "open",
       "title": "Measure TPC-DI generation at SF 10; the four secondary fact tables are written single-threaded"
     },
+    "tpcdi-standard-scales-and-estimates-after-unit-change-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Revisit TPC-DI standard scale factors, registry estimates and UAT settings now that one unit is 5,000 customers"
+    },
     "tpcds-can-never-be-published-official-flag-not-wired": {
       "claim": null,
       "needs": [],

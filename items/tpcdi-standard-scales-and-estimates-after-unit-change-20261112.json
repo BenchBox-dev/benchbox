@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "A recorded decision on the TPC-DI standard scale list.",
+    "Registry estimates for `tpcdi` are backed by a measured run at the current generator."
+  ],
+  "context": "Filed 2026-11-12 from the scale-factor follow-up and TPC-DI generator work of 2026-11-11 and 2026-11-12: identified during that work and not addressed.",
+  "description": "## Problem\nSince BenchBox-dev/benchbox#4171 a TPC-DI scale-factor unit is a tenth of its former size. Settings chosen for the old unit were not revisited:\n- The standard list is 0.01, 0.1, 1 and 10. SF 0.01 is now 50 customers, 5 companies, 8 securities and 1,300 trades; timings on that are close to noise. Whether the list should move up (for example 1, 3, 10, 30) was not decided.\n- The registry's `estimated_time_range` and `base_memory_gb` for `tpcdi`, which drive the interactive resource estimates, are unchanged.\n- FactTrade's parallel path starts above 100,000 trades, which is now SF 0.77.\n- Spark and DataFusion TPC-DI at SF 1 were pruned from the release gate for timeouts at the previous volume (6.77 million fact rows); SF 1 is now 1.21 million.\n\n## Change\nDecide the standard list, update the registry estimates from a measured run, and re-check the UAT timeouts and the release-gate prune at the new volume.\n\n## Guardrails\n- Changing the standard list changes published cohorts and the UAT smoke scale; decide it together with regenerating the TPC-DI bundles.\n- Related: `tpcdi-sf1-slowdown-after-linear-fact-scaling`, `local-tpcdi-bundles-regenerate-current-generator`.",
+  "links": [
+    "benchbox/core/benchmark_registry.yaml",
+    "benchbox/core/tpcdi/generator_specs.yaml",
+    "tests/uat/matrix.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:eb0e48032edcab785e018919",
+      "at": "2026-11-12T16:52:48Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6a683e4400714917937e8ceb69070c8c",
+      "session_id": "3f84b7b72a6a4389855a4c2d913fb7f9"
+    }
+  ]
+}
