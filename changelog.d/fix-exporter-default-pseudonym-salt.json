@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Result exports made with anonymization and no explicit configuration now pseudonymize identifiers with the private public-pseudonym salt (the environment variable or the per-user salt file) instead of an empty salt, so an exported file no longer carries guessable pseudonyms that publish would accept unchanged."
+    }
+  ]
+}

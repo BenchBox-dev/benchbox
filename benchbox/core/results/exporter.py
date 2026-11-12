@@ -27,6 +27,7 @@ from benchbox.core.results.anonymization import (
     AnonymizationManager,
     anonymize_applied_tuning_payload,
     anonymize_plans_payload,
+    ensure_public_pseudonym_salt,
 )
 from benchbox.core.results.canonical_json import canonical_json_text
 from benchbox.core.results.comparison_modes import IncomparableModesError, bundle_mode_differences
@@ -101,8 +102,8 @@ class ResultExporter:
         self.console = console or Console()
         self.anonymize = anonymize
         if anonymize:
-            default_config = anonymization_config or AnonymizationConfig.from_public_environ()
-            self.anonymization_manager = AnonymizationManager(default_config)
+            config = anonymization_config or AnonymizationConfig(machine_id_salt=ensure_public_pseudonym_salt()[0])
+            self.anonymization_manager = AnonymizationManager(config)
         else:
             self.anonymization_manager = None
         self._validator = SchemaV2Validator()
