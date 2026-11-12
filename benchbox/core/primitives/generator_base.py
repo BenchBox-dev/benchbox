@@ -188,12 +188,7 @@ class PrimitivesDataGeneratorBase(CompressionMixin, CloudStorageGeneratorMixin, 
                 yield stream
 
     def _write_staging_file(self, filename: str, file_pattern: str, limit: int = 1_000_000) -> PathLike:
-        import pyarrow as pa
-        import pyarrow.csv as pacsv
-
         output_path = self.output_dir / filename
-        write_options = pacsv.WriteOptions(include_header=False, delimiter="|", quoting_style="none")
-        parse_options = pacsv.ParseOptions(delimiter="|", quote_char=False, ignore_empty_lines=False)
         written = 0
 
         with open(output_path, "wb") as sink:
@@ -201,28 +196,19 @@ class PrimitivesDataGeneratorBase(CompressionMixin, CloudStorageGeneratorMixin, 
                 if written >= limit:
                     break
                 with self._open_tbl_binary(file_path) as stream:
-                    first_line = stream.readline().rstrip(b"\r\n")
-                if not first_line:
-                    continue
-                names = [f"c{index}" for index in range(first_line.count(b"|") + 1)]
-                keep = names[:-1] if first_line.endswith(b"|") else names
-                convert_options = pacsv.ConvertOptions(
-                    column_types=dict.fromkeys(names, pa.string()), include_columns=keep
-                )
-                with self._open_tbl_binary(file_path) as stream:
-                    reader = pacsv.open_csv(
-                        stream,
-                        read_options=pacsv.ReadOptions(column_names=names),
-                        parse_options=parse_options,
-                        convert_options=convert_options,
-                    )
-                    with pacsv.CSVWriter(sink, reader.schema, write_options=write_options) as writer:
-                        for batch in reader:
-                            batch = batch.slice(0, limit - written)
-                            writer.write_batch(batch)
-                            written += batch.num_rows
-                            if written >= limit:
+                    strip_trailing_delimiter = False
+                    for index, raw_line in enumerate(stream):
+                        line = raw_line.rstrip(b"\r\n")
+                        if index == 0:
+                            if not line:
                                 break
+                            strip_trailing_delimiter = line.endswith(b"|")
+                        if strip_trailing_delimiter and line.endswith(b"|"):
+                            line = line[:-1]
+                        sink.write(line + b"\n")
+                        written += 1
+                        if written >= limit:
+                            break
 
         self.log_verbose(f"Generated {output_path} ({written} rows)")
 

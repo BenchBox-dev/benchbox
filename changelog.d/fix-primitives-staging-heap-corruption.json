@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Write Primitives, Read Primitives and other primitives benchmarks at scale factor 1 no longer corrupt native memory while writing their 1M-row staging files from zstd-compressed TPC-H data, which crashed in-process engines such as DuckDB and SQLite with a double-linked-list abort or a segfault. The staging files are now written line by line instead of through an Arrow streaming reader that was abandoned mid-stream.",
+      "details": [],
+      "platforms": ["duckdb", "sqlite"]
+    }
+  ]
+}

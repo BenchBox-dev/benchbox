@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import contextlib
 import csv
 import gzip
 import io
 import json
 import os
+import threading
+import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -113,6 +116,72 @@ class TestWriteStagingFile:
         (tmp_path / "orders.tbl").write_bytes(b"")
         path = gen._write_staging_file("orders_stage.tbl", "orders.tbl*")
         assert path.read_bytes() == b""
+
+    def test_zstd_source_stopped_at_the_limit_is_only_read_from_the_calling_thread_while_open(self, tmp_path: Path):
+        import zstandard
+
+        gen = _make_gen(tmp_path)
+        payload = b"".join(b"%d|%s|\n" % (index, b"x" * 40) for index in range(200_000))
+        (tmp_path / "lineitem.tbl.1.zst").write_bytes(zstandard.ZstdCompressor().compress(payload))
+        caller = threading.get_ident()
+        touches: list[tuple[str, int, bool]] = []
+        state = {"closed": False}
+        open_source = gen._open_tbl_binary
+
+        class _AuditedStream:
+            def __init__(self, inner):
+                self._inner = inner
+
+            def __iter__(self):
+                return self
+
+            def __next__(self):
+                touches.append(("next", threading.get_ident(), state["closed"]))
+                return next(self._inner)
+
+            def __getattr__(self, name):
+                attribute = getattr(self._inner, name)
+                if not callable(attribute):
+                    return attribute
+
+                def audited(*args, **kwargs):
+                    touches.append((name, threading.get_ident(), state["closed"]))
+                    return attribute(*args, **kwargs)
+
+                return audited
+
+        @contextlib.contextmanager
+        def audited_open(file_path):
+            with open_source(file_path) as stream:
+                try:
+                    yield _AuditedStream(stream)
+                finally:
+                    state["closed"] = True
+
+        with patch.object(gen, "_open_tbl_binary", audited_open):
+            path = gen._write_staging_file("lineitem_stage.tbl", "lineitem.tbl*", limit=1_000)
+        time.sleep(0.2)
+
+        lines = path.read_bytes().splitlines()
+        assert len(lines) == 1_000
+        assert lines[0] == b"0|" + b"x" * 40
+        assert lines[-1] == b"999|" + b"x" * 40
+        assert touches
+        assert {thread for _, thread, _ in touches} == {caller}
+        assert not [name for name, _, closed in touches if closed]
+
+    def test_normalises_crlf_line_endings(self, tmp_path: Path):
+        gen = _make_gen(tmp_path)
+        (tmp_path / "orders.tbl").write_bytes(b"1|a|\r\n2|b|\r\n")
+        path = gen._write_staging_file("orders_stage.tbl", "orders.tbl*")
+        assert path.read_bytes() == b"1|a\n2|b\n"
+
+    def test_skips_a_shard_with_an_empty_first_line(self, tmp_path: Path):
+        gen = _make_gen(tmp_path)
+        (tmp_path / "orders.tbl.1").write_bytes(b"\n1|a|\n")
+        (tmp_path / "orders.tbl.2").write_bytes(b"3|c|\n")
+        path = gen._write_staging_file("orders_stage.tbl", "orders.tbl*")
+        assert path.read_bytes() == b"3|c\n"
 
 
 class TestReadTblFile:
