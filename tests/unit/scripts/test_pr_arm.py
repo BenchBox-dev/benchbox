@@ -1629,11 +1629,16 @@ PENDING_VERDICT = (
     f"{HEAD}, or a stand-in attestation 'Stand-in review: APPROVE {HEAD}' from a listed attester"
 )
 OPEN_FINDINGS = f"a fresh review-gate evaluation of {HEAD[:9]} does not pass: review: SHIP WITH FIXES on {HEAD}"
-OWNER_ACTION = (
-    f"a fresh review-gate evaluation of {HEAD[:9]} does not pass: Waiting for review-verdict: the owner must post "
+PENDING_VERDICT_CURRENT = (
+    f"a fresh review-gate evaluation of {HEAD[:9]} does not pass: Waiting for review-verdict · owner bypass: "
     f"'Stand-in review: APPROVE {HEAD}'"
 )
+REVIEW_STOPPED = (
+    f"a fresh review-gate evaluation of {HEAD[:9]} does not pass: Waiting · not reviewed yet · see the "
+    "review-verdict status · owner may post a stand-in"
+)
 OTHER_HEAD = PENDING_VERDICT.replace(HEAD, "b" * 40)
+OTHER_HEAD_CURRENT = PENDING_VERDICT_CURRENT.replace(f"APPROVE {HEAD}", f"APPROVE {'b' * 40}")
 GATE_ERROR = f"a fresh review-gate evaluation of {HEAD[:9]} failed (exit 1): review: waiting for the review's verdict"
 
 
@@ -1655,15 +1660,18 @@ def test_a_pending_review_verdict_is_refused_without_a_wait(capsys: pytest.Captu
     assert _last_outcome_line(capsys).startswith("pr-arm: outcome: refused: ")
 
 
-def test_a_pending_review_verdict_counts_as_waiting_inside_a_wait(capsys: pytest.CaptureFixture[str]) -> None:
+@pytest.mark.parametrize("pending", [PENDING_VERDICT, PENDING_VERDICT_CURRENT])
+def test_a_pending_review_verdict_counts_as_waiting_inside_a_wait(
+    pending: str, capsys: pytest.CaptureFixture[str]
+) -> None:
     gh = FakeGh()
 
-    assert _arm_with_gate([PENDING_VERDICT], wait=True, gh=gh) == 2
+    assert _arm_with_gate([pending], wait=True, gh=gh) == 2
     assert _last_outcome_line(capsys).startswith("pr-arm: outcome: waiting: ")
     assert gh.merged() == []
 
 
-@pytest.mark.parametrize("reason", [OPEN_FINDINGS, OWNER_ACTION, OTHER_HEAD, GATE_ERROR])
+@pytest.mark.parametrize("reason", [OPEN_FINDINGS, REVIEW_STOPPED, OTHER_HEAD, OTHER_HEAD_CURRENT, GATE_ERROR])
 def test_only_a_pending_verdict_for_this_head_counts_as_waiting(
     reason: str, capsys: pytest.CaptureFixture[str]
 ) -> None:

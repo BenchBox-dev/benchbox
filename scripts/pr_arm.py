@@ -455,8 +455,7 @@ GATE_NOT_PASSING = " does not pass: "
 def _review_verdict_pending(reason: str, head: str) -> bool:
     if not reason.startswith("a fresh review-gate evaluation of ") or GATE_NOT_PASSING not in reason:
         return False
-    detail = reason.split(GATE_NOT_PASSING, 1)[1]
-    return pr_landing.review_gate_waiting(detail, head) and not detail.startswith(pr_landing.REVIEW_GATE_WAITING_PREFIX)
+    return pr_landing.review_gate_waiting(reason.split(GATE_NOT_PASSING, 1)[1], head)
 
 
 def _is_waiting(reason: str, head: str, wait_on_pending_review: bool) -> bool:
