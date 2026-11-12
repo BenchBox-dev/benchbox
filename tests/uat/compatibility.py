@@ -345,13 +345,12 @@ _LATER_SF1_TIMEOUT_CELL_EVIDENCE = {
 
 _LATER_SF1_TIMEOUT_RUNTIME_ENVELOPES = {key: _sf1_timeout_reason(key[0]) for key in _LATER_SF1_TIMEOUT_CELL_EVIDENCE}
 
-_TRUNK_UAT_RUN = "trunk UAT runs 43154678095 and 43229090202"
+_TRUNK_UAT_RUN = "trunk UAT run 43154678095"
 
 _CEDARDB_STAGING_ABORT_REASON = (
     "cedardb {benchmark} fails every query at SF{scale}: staging-table initialization hits 'current transaction is "
     "aborted, commands ignored until end of transaction block' and reports the TPC-H 'orders' table as missing, so "
-    "the 'current transaction is aborted' error cascades through all of the cell's queries (trunk UAT run "
-    "43154678095)."
+    "the error cascades through all of the cell's queries (trunk UAT run 43154678095)."
 )
 _CEDARDB_TPCDI_SMALL_REASON = (
     "cedardb TPC-DI SF{scale} fails queries on CedarDB gaps: QAQ5 raises 'cannot take square root of a negative "
@@ -550,6 +549,7 @@ _RELEASE_GATE_RUNTIME_ENVELOPE_EVIDENCE = (
     _SF1_TIMEOUT_RUNTIME_ENVELOPE_EVIDENCE
     | _LATER_SF1_TIMEOUT_CELL_EVIDENCE
     | dict.fromkeys(_TRUNK_UAT_PRUNES, _TRUNK_UAT_RUN)
+    | dict.fromkeys((("trino", "tpcds", 0.01), ("presto", "tpcds", 0.01)), "trunk UAT run 43229090202")
     | dict.fromkeys(
         _PANDAS_DF_SF1_MEMORY_RUNTIME_ENVELOPES,
         "release UAT dry run 2 (run 41163626947) SF1 memory: UAT_MEMORY_LIMIT limit_gib=13 peak_gib=13.09 / 13.22",
