@@ -2729,6 +2729,7 @@
     "df-distinct-remediation": {
       "accepted_members": {
         "df-n-unique-null-semantics": "0c08f85dbee66a6e4184bb43660425e3c3b7551a",
+        "df-q21-multi-supplier-min-max": "46a6a4ccc7cf94d8db3a212d5f15dce8bfbf4d95",
         "tpcds-df-multi-warehouse-min-max": "d6d50d50ab488c76a1ff866c33a24124c9c2584d"
       },
       "batch_schema": 2,
@@ -2747,6 +2748,19 @@
           "integration_head": "02d1a93bc7ba5155946a67089dab07f16f3c1437",
           "integration_seq": 1
         },
+        "df-q21-multi-supplier-min-max": {
+          "accepted_head": "46a6a4ccc7cf94d8db3a212d5f15dce8bfbf4d95",
+          "changed_files": [
+            "benchbox/core/datavault/dataframe_queries/queries.py",
+            "benchbox/core/tpch/dataframe_queries.py",
+            "benchbox/core/tpchavoc/dataframe_queries/q21.py",
+            "changelog.d/feat-df-distinct-remediation--df-q21-multi-supplier-min-max.json",
+            "tests/unit/core/datavault/test_datavault_q21_multi_supplier_semantics.py",
+            "tests/unit/core/tpch/test_q21_multi_supplier_semantics.py"
+          ],
+          "integration_head": "f933e864081b5554a6f75a7aa54bcb17d35f58e6",
+          "integration_seq": 3
+        },
         "tpcds-df-multi-warehouse-min-max": {
           "accepted_head": "d6d50d50ab488c76a1ff866c33a24124c9c2584d",
           "changed_files": [
@@ -2760,7 +2774,7 @@
         }
       },
       "integration_branch": "feat/df-distinct-remediation",
-      "integration_head": "f5d0829cfba821c5be868b39b8da42e082d7286c",
+      "integration_head": "f933e864081b5554a6f75a7aa54bcb17d35f58e6",
       "integration_log": [
         {
           "at": "2026-11-12T13:36:05Z",
@@ -2785,6 +2799,15 @@
           "op_id": "994c3549a2a448efb97b0f909212411b",
           "previous_head": "02d1a93bc7ba5155946a67089dab07f16f3c1437",
           "seq": 2
+        },
+        {
+          "at": "2026-11-12T14:18:23Z",
+          "head": "f933e864081b5554a6f75a7aa54bcb17d35f58e6",
+          "kind": "prepare",
+          "member": "df-q21-multi-supplier-min-max",
+          "op_id": "01c81b8956914394957bdb0c87610d3d",
+          "previous_head": "f5d0829cfba821c5be868b39b8da42e082d7286c",
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-df-distinct-remediation",
@@ -19398,15 +19421,10 @@
       "title": "Stage TPC-H and TPC-DS gates, budget TPC-DS CI subset"
     },
     "df-q21-multi-supplier-min-max": {
-      "claim": {
-        "expires_at": "2026-11-13T14:18:17Z",
-        "generation": "ececf64efa424868955e48bd616fd959",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Use min/max for the multi-supplier test in TPC-H, Data Vault and TPC-Havoc DataFrame Q21 if timing supports it"
     },
     "df-suffix-platform-options-unreachable": {

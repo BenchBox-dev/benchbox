@@ -19,6 +19,85 @@
     "benchbox/core/datavault/dataframe_queries/queries.py",
     "benchbox/core/tpchavoc/dataframe_queries/q21.py"
   ],
+  "prepared": {
+    "accepted_head": "46a6a4ccc7cf94d8db3a212d5f15dce8bfbf4d95",
+    "batch_id": "df-distinct-remediation",
+    "changed_files": [
+      "benchbox/core/datavault/dataframe_queries/queries.py",
+      "benchbox/core/tpch/dataframe_queries.py",
+      "benchbox/core/tpchavoc/dataframe_queries/q21.py",
+      "changelog.d/feat-df-distinct-remediation--df-q21-multi-supplier-min-max.json",
+      "tests/unit/core/datavault/test_datavault_q21_multi_supplier_semantics.py",
+      "tests/unit/core/tpch/test_q21_multi_supplier_semantics.py"
+    ],
+    "integration_head": "f933e864081b5554a6f75a7aa54bcb17d35f58e6",
+    "integration_seq": 3,
+    "member_id": "df-q21-multi-supplier-min-max",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "c023026163695aa3b4b767b5085c5f33deb87a9533937ebad23112ebedf5f013",
+    "source_base": "f5d0829cfba821c5be868b39b8da42e082d7286c",
+    "source_revision": "46a6a4ccc7cf94d8db3a212d5f15dce8bfbf4d95",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-df-distinct-remediation--df-q21-multi-supplier-min-max",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/test_dask_dataframe_integration.py",
+        "tests/integration/validation/test_cross_platform.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/unit/core/dataframe/test_benchmark_suite_lifecycle.py",
+        "tests/unit/core/datavault/test_datavault_dask_parity.py",
+        "tests/unit/core/datavault/test_datavault_dataframe_queries.py",
+        "tests/unit/core/datavault/test_datavault_empty_aggregate_null.py",
+        "tests/unit/core/datavault/test_datavault_q21_multi_supplier_semantics.py",
+        "tests/unit/core/equivalence/test_dataframe_id_mapping.py",
+        "tests/unit/core/flightdata/test_dataframe_queries.py",
+        "tests/unit/core/joinorder_synthetic/test_dataframe_queries.py",
+        "tests/unit/core/test_parameter_parity.py",
+        "tests/unit/core/test_unified_comparison_suite.py",
+        "tests/unit/core/tpch/test_dask_q21_parity.py",
+        "tests/unit/core/tpch/test_dataframe_queries.py",
+        "tests/unit/core/tpch/test_dataframe_queries_coverage.py",
+        "tests/unit/core/tpch/test_dataframe_seed_parity.py",
+        "tests/unit/core/tpch/test_q17_backend_execution.py",
+        "tests/unit/core/tpch/test_q17_spark_execution.py",
+        "tests/unit/core/tpch/test_q21_multi_supplier_semantics.py",
+        "tests/unit/core/tpch/test_tpch_dataframe_execution.py",
+        "tests/unit/core/tpch/test_variant_dataframe_seed_binding.py",
+        "tests/unit/core/tpch_skew/test_tpch_skew_dataframe_queries.py",
+        "tests/unit/core/tpch_skew/test_tpch_skew_id_mapping.py",
+        "tests/unit/core/tpchavoc/test_dataframe_equivalence_state.py",
+        "tests/unit/core/tpchavoc/test_tpchavoc_dask_parity.py",
+        "tests/unit/core/tpchavoc/test_tpchavoc_dataframe_queries.py",
+        "tests/unit/platforms/dataframe/test_benchmark_mixin.py",
+        "tests/unit/platforms/dataframe/test_client_link_region.py",
+        "tests/unit/platforms/dataframe/test_polars_execution_engine.py"
+      ],
+      "review": {
+        "base_sha": "f5d0829cfba821c5be868b39b8da42e082d7286c",
+        "head_sha": "46a6a4ccc7cf94d8db3a212d5f15dce8bfbf4d95",
+        "head_tree": "ea919f87fa6994c88c6550327eb6c85c863611f7",
+        "outcome": "clear",
+        "patch_digest": "fc3c4006d992bc3a0e3d8799796a1e46",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "0eeec0d5bd194ad0b811911ea73004586ed51469"
+      },
+      "revision": "46a6a4ccc7cf94d8db3a212d5f15dce8bfbf4d95",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
@@ -51,6 +130,15 @@
       "generation": "ececf64efa424868955e48bd616fd959",
       "op": "take",
       "op_id": "b860ea9281a3460892b068c39a6a9846",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-12T14:18:23Z",
+      "client": "omp-coding-agent",
+      "generation": "ececf64efa424868955e48bd616fd959",
+      "op": "prepare",
+      "op_id": "01c81b8956914394957bdb0c87610d3d",
       "session_id": "512d9ad0b25247538901b68a758a6fbb"
     }
   ]
