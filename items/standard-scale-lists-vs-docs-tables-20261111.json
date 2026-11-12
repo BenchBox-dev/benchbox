@@ -3,7 +3,7 @@
     "Each listed value is either in the registry list with a recorded passing run, or marked in the site table as outside the standard set.",
     "`tests/unit/core/test_scale_factor_validation.py` covers any value added."
   ],
-  "context": "Found 2026-11-11 while verifying the merged scale-factor work (BenchBox#4126, benchbox-site#138) against the original audit findings.\n\n2026-11-11: the site tables now mark every row outside the standard set (benchbox-site branch docs/scale-tables-tpcdi-coffeeshop). No registry value was added: the DuckDB runs for read_primitives SF 1 and clickbench SF 0.01 and 0.1 were stopped twice by the heavy-work watchdog (host memory pressure level 4 from other sessions), so no passing run exists. Remaining optional work: run those three and add the values to scale_options.",
+  "context": "Found 2026-11-11 while verifying the merged scale-factor work (BenchBox#4126, benchbox-site#138) against the original audit findings.\n\n2026-11-11: the site tables now mark every row outside the standard set (benchbox-site branch docs/scale-tables-tpcdi-coffeeshop). No registry value was added: the DuckDB runs for read_primitives SF 1 and clickbench SF 0.01 and 0.1 were stopped twice by the heavy-work watchdog (host memory pressure level 4 from other sessions), so no passing run exists. Remaining optional work: run those three and add the values to scale_options.\n\nClosed by marking the site rows (benchbox-site#142). No registry value was added, so no validation test change was needed.",
   "description": "## Problem\nSince BenchBox#4126 a value outside a benchmark's `scale_options` runs with a note that results are not comparable with published results. Several values that the site's per-benchmark tables present as ordinary use cases are not in the lists, so following the docs prints the note:\n- `read_primitives`: list is 0.01 and 0.1; the docs table has 1.0 and 10.0, and the sibling write and transaction primitives list 1.0 on the same TPC-H data.\n- `clickbench`: list is 1.0 only; the docs table has 0.01, 0.1 and 10.\n- `ssb` 100; `h2odb` 10, 100 and 1000; `amplab` 10 and 100; `tsbs_devops` 100; `coffeeshop` 10; `tpcdi` 3 and 30.\nThe original audit accepted the read_primitives case as a list that was too short; it was resolved for acceptance (the value now runs) but not for the standard set.\n\n## Change\nPer benchmark, either add the value to `scale_options` (after a passing run at that scale; adding a value also adds it to the UAT matrix and the interactive options) or mark the docs row as outside the standard set. Start with `read_primitives` 1.0 and `clickbench` 0.01 and 0.1, which are small and already exercised.\n\n## Guardrails\n- No value is added without a recorded passing run.\n- Large values wait for `generator-validation-large-scales-20261111`.\n- Site edits go through a benchbox-site pull request.",
   "links": [
     "benchbox/core/benchmark_registry.yaml",
@@ -34,6 +34,14 @@
       "generation": "fac1b3a5079b485a87f7786c2b69784c",
       "op": "take",
       "op_id": "57ade4a01b904d74816846e7c61a640d",
+      "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba",
+      "at": "2026-11-12T03:08:57Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b4db167aba244a2681ba64437dcd201d",
       "session_id": "84d81f109eb348759fdc1c024f00b55b"
     }
   ]
