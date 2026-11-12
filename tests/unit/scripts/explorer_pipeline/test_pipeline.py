@@ -1322,9 +1322,14 @@ class TestPublicOnlyAnonymization:
         raw.setdefault("platform", {})["options"] = {"bucket": "private-bucket"}
         bundles = tmp_path / "data" / "bundles"
         bundles.mkdir(parents=True)
-        (bundles / "raw.json").write_bytes(canonical_json_bytes(raw))
+        bundle = bundles / "raw.json"
+        bundle.write_bytes(canonical_json_bytes(raw))
 
         with pytest.raises(pipeline_module.PrivacyRejectionError, match="not already pseudonymized"):
             ExplorerPipeline().run(tmp_path / "data", tmp_path / "out")
 
-        assert "private-bucket" not in str(list((tmp_path).rglob("*.json")))
+        out = tmp_path / "out"
+        assert not out.exists() or not any(out.rglob("*"))
+        assert not any(
+            b"private-bucket" in path.read_bytes() for path in tmp_path.rglob("*") if path.is_file() and path != bundle
+        )
