@@ -243,7 +243,7 @@ measurement.
 ## Follow-up: `1_v8` after the `QUALIFY` order fix (2026-11-11)
 
 The `1_v8` order defect above is fixed in BenchBox, not in the SQLGlot fork: the
-`hoist_qualify_order_by` rewrite (`benchbox/utils/query_shape_rewrites.py`) runs
+`hoist_qualify_order_by` rewrite (`benchbox/utils/dialect_utils.py`) runs
 before generation for the `presto`, `trino` and `athena` targets, performs the
 `QUALIFY` elimination itself and puts the original sort keys on the outermost
 `SELECT`. The vendored wheel is unchanged. The inner `ORDER BY` is kept.

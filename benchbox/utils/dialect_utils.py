@@ -2,6 +2,7 @@
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
 import hashlib
+import logging
 import re
 from collections import Counter
 from collections.abc import Iterable, Iterator, Mapping, Sequence
@@ -19,7 +20,6 @@ from benchbox.utils.query_shape_rewrites import (
     exists_to_derived_join,
     fold_scalar_having_into_case,
     hoist_aggregate_subqueries,
-    hoist_qualify_order_by,
     inline_named_windows,
     inline_sourceless_exists,
     qualify_aggregated_columns,
@@ -744,6 +744,63 @@ def positive_count_subquery_to_exists(expression, *, copy: bool = True):
             continue
         inner.set("expressions", [exp.Literal.number(1)])
         node.replace(exp.Exists(this=inner.copy()))
+    return tree
+
+
+def _outer_order_key(key, outputs: Sequence[tuple[object, object]], exp):
+    if isinstance(key, exp.Literal) and not key.is_string:
+        return key.copy()
+    if isinstance(key, exp.Column):
+        for _, projection in outputs:
+            if projection.name.lower() == key.name.lower():
+                return projection.copy()
+    for source, projection in outputs:
+        if source == key:
+            return projection.copy()
+    if isinstance(key, exp.Column):
+        return None
+    resolved = key.copy()
+    for column in list(resolved.find_all(exp.Column)):
+        replacement = _outer_order_key(column, outputs, exp)
+        if replacement is None:
+            return None
+        column.replace(replacement)
+    return resolved
+
+
+def hoist_qualify_order_by(expression, *, copy: bool = True):
+    exp = sql_expressions()
+    from benchbox._vendor.sqlglot import transforms
+
+    tree = expression.copy() if copy else expression
+    targets = [
+        select
+        for select in tree.find_all(exp.Select)
+        if select.args.get("qualify") is not None and select.args.get("order") is not None
+    ]
+    for select in reversed(targets):
+        order = select.args["order"]
+        sources = [item.this if isinstance(item, exp.Alias) else item for item in select.selects]
+        eliminated = transforms.eliminate_qualify(select.copy())
+        outputs = list(zip(sources, eliminated.selects))
+        keys = [_outer_order_key(item.this, outputs, exp) for item in order.expressions]
+        if any(key is None for key in keys):
+            logging.getLogger(__name__).warning(
+                "QUALIFY elimination cannot hoist %s to the outer select; its sort keys are not "
+                "projected, so the result order is undefined",
+                order.sql(),
+            )
+            continue
+        ordered = []
+        for item, key in zip(order.expressions, keys):
+            hoisted = item.copy()
+            hoisted.set("this", key)
+            ordered.append(hoisted)
+        eliminated.set("order", exp.Order(expressions=ordered))
+        if select.parent is None:
+            tree = eliminated
+        else:
+            select.replace(eliminated)
     return tree
 
 

@@ -104,7 +104,7 @@ def test_qualify_without_order_by_is_left_for_the_generator():
 def test_unprojected_sort_key_is_reported_rather_than_silently_dropped(caplog):
     sql = "SELECT a FROM t QUALIFY ROW_NUMBER() OVER (PARTITION BY a ORDER BY b) = 1 ORDER BY b"
 
-    with caplog.at_level(logging.WARNING, logger="benchbox.utils.query_shape_rewrites"):
+    with caplog.at_level(logging.WARNING, logger="benchbox.utils.dialect_utils"):
         rendered = translate_sql_query(sql, "trino", source_dialect="duckdb")
 
     assert "cannot hoist" in caplog.text
