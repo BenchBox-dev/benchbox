@@ -19428,9 +19428,9 @@
     },
     "dev-loop-metrics-collectors-time-out-20261112": {
       "claim": {
-        "expires_at": "2026-11-13T16:57:13Z",
-        "generation": "3352f91862494215a5c8e6bf111c552a",
-        "renewals": 0,
+        "expires_at": "2026-11-13T16:57:24Z",
+        "generation": "e09196e501b6409195fcbb1c103406ca",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e5d016c94a8f4c507bfd7f06"
       },
       "needs": [],
