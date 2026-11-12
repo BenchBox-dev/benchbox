@@ -40043,6 +40043,13 @@
       "status": "done",
       "title": "Theseus: a hosted finding posted without a review thread can never be disputed or adjudicated"
     },
+    "theseus-close-known-defects-trigger-scan-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Theseus: close #74 (known-defects trigger scan) and park the known-defects work behind a reopen trigger"
+    },
     "theseus-decision-promotion-evidence-form-20261102": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "#74 is CLOSED (not merged) with a comment giving the reason; link recorded.",
+    "theseus.wt-known and theseus.wt-guidance no longer appear in `git worktree list`; nothing unpushed was lost (branch tips recorded before removal).",
+    "theseus-known-defects-pre-existing-20261109 and theseus-known-defect-base-reproduction-proof-20261109 are status blocked, each with the reopen trigger recorded in context.",
+    "BenchBox and Theseus .github/review.yml on their default branches have no pre_existing value other than block (grep recorded)."
+  ],
+  "context": "Supersedes the handoff recommendations to file a base-branch reproduction design item and an adjudication feature (both rejected in the 2026-11-12 adversarial review). The 'High also blocks' agent default from #74 is moot once #74 closes.",
+  "description": "Owner decision 2026-11-12 (choice dialog): close Theseus #74 and keep `protocol.pre_existing: block` everywhere. Reason: over 15 hosted rounds each verdict found a new way a change can trigger an unchanged defect without a file-level scan noticing (data/config files, new calls through existing imports, symlinks, depth-limited import walks, C/Java definitions, packaged prompt templates). Any scan strict enough to satisfy the reviewer demotes almost nothing, so it adds nothing over `block`.\nAlso by owner decision: no base-branch reproduction design now, no one-click adjudication feature, no known-issues store. The known-defects items are parked with a reopen trigger instead.\nSteps:\n1. Close #74 with a two-sentence comment giving the reason above (no session labels, no item ids).\n2. Remove worktrees theseus.wt-known and theseus.wt-guidance with `git worktree remove` after confirming each is clean and its branch is merged or pushed. Never use --force.\n3. Set theseus-known-defects-pre-existing-20261109 and theseus-known-defect-base-reproduction-proof-20261109 to blocked, with the reopen trigger in context: each time the owner adjudicates a finding only because it was pre-existing, append a note to theseus-known-defects-pre-existing-20261109; three such notes reopen the design question.\nDecision gate: none left; any proposal to revive a static trigger scan needs a new owner decision.\nGuardrails: no change to any policy file; pre_existing stays block; no owner-only actions; no tracker drop of the parked items (they stay as blocked records).",
+  "links": [
+    "https://github.com/joeharris76/theseus/pull/74"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b89414e427d02d5b37262d82",
+      "at": "2026-11-12T14:11:57Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ff3817772ad345b19250f82a95d225b2",
+      "session_id": "88f192edfe954a75a195b192ece667bc"
+    }
+  ]
+}
