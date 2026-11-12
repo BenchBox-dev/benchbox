@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "A recorded reproduction on at least darwin-arm64 and linux-x86_64.",
+    "Either the error message for scales below 0.01 states that generation does not terminate, or dsdgen finishes at SF 0.001 with a test."
+  ],
+  "context": "Filed 2026-11-12 from the scale-factor follow-up and TPC-DI generator work of 2026-11-11 and 2026-11-12: identified during that work and not addressed.",
+  "description": "## Problem\nThe bundled `dsdgen` (darwin-arm64) does not finish at `-SCALE 0.001`. Run on its own it was killed after 60 s with three files written (`call_center.dat`, `catalog_page.dat` and a 719-byte `catalog_sales.dat`). A stack sample showed it spinning in `mk_w_catalog_sales` > `mk_master` > `dateScaling` > `dist_weight`. At `-SCALE 0.01` the same binary finishes in 2 s. BenchBox hides this with a 0.01 minimum for `tpcds` and `tpcds_obt` (`TPCDS_MIN_SUBSCALE`); the hang itself is not fixed, and the validator's message says only that dsdgen gives no row-count guarantees below the threshold.\n\n## Change\nDecide whether to leave the floor as the fix and say in the error message that generation does not terminate below it, or to patch the kit so that tiny scales terminate. Check whether the Linux and Windows binaries behave the same.\n\n## Guardrails\n- A kit patch changes the dsdgen binary digest, which makes cached TPC-DS data regenerate.\n- Reproduce with dsdgen alone and a timeout; no BenchBox run is needed.",
+  "links": [
+    "benchbox/core/tpcds/compliance.py",
+    "_sources/tpc-ds/tools",
+    "benchbox/_binaries/tpc-ds"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:eb0e48032edcab785e018919",
+      "at": "2026-11-12T16:52:10Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a698c175b26f449c8b69f2f52589b0b1",
+      "session_id": "3f84b7b72a6a4389855a4c2d913fb7f9"
+    }
+  ]
+}

@@ -41792,6 +41792,13 @@
       "status": "done",
       "title": "Use one NULL-safe multi-warehouse rule in TPC-DS DataFrame Q16, Q94 and Q95 and remove the dead platform branches"
     },
+    "tpcds-dsdgen-hangs-below-sf001-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "dsdgen never finishes below SF 0.01: it loops in catalog_sales date scaling"
+    },
     "tpcds-dsqgen-q9-timeout-sf10000-20261111": {
       "claim": null,
       "needs": [],
