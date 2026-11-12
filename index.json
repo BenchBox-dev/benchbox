@@ -39203,10 +39203,15 @@
       "title": "Teach the standalone todo-db CLI and its compat adapter the renew verb"
     },
     "standard-scale-lists-vs-docs-tables-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T03:08:53Z",
+        "generation": "fac1b3a5079b485a87f7786c2b69784c",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Decide which documented scale factors count as standard, so documented use cases do not print the non-standard note"
     },
     "standardize-benchmark-constraint-parameter-apis": {
