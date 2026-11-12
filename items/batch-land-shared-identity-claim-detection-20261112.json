@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "An owner decision is recorded: tighten the guard, or accept the risk and drop this item.",
+    "If tightened: a member-made `take` in the pre-landing window under the leader's identity refuses the landing and names the op id, proven by a unit test using the repository's fake tracker.",
+    "If tightened: re-landing after a failed overlap rerun, a `merged-unprepared` resume, a dependent member's pre-landing take, and a landing after `recover_batch_owner` all still pass, each covered by a test.",
+    "The residual-risk sentence in `docs/agent/batch-feature-delivery.md` matches the guard's behaviour after the change."
+  ],
+  "description": "Since 2026-11-12 a batch member may run as a subagent of its leader, so it shares the leader's tractable identity. `_check_member_writes` in `scripts/batch_integration.py` exempts every `take`, `release`, `renew` and `recover` (`LEADER_MEMBER_OPS`) and every `prepare` found in the batch's integration log, without checking who made it. A subagent member that breaks its no-tracker-writes instruction with one of those operations is therefore not refused at landing. `docs/agent/batch-feature-delivery.md` states this as an accepted residual risk. No such write has been observed; the audit in PR #3957 found none in four batches.\n\nIdea to evaluate, not yet a decision: an independent member should have no `take` before its first landing and a dependent member exactly one, so an unexpected claim in the window could be refused. This was left out of the 2026-11-12 change because it is untested against re-landing, `merged-unprepared` recovery, and owner recovery, and the same guard already needed a follow-up fix (#3976).\n\nDecision gate: first decide whether the risk justifies more batch-only machinery; the ADR of 2026-11-01 records that such machinery caused the aborts that made the mode opt-in. Dropping this item with that reason is a valid outcome.",
+  "links": [
+    "scripts/batch_integration.py",
+    "docs/agent/batch-feature-delivery.md",
+    "https://github.com/BenchBox-dev/benchbox/pull/4170",
+    "batch-member-subagent-rule-20261112"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-12T16:51:34Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "efe68ee7b0cb44bc944d4c4fa1d9566e",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    }
+  ]
+}

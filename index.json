@@ -12701,6 +12701,13 @@
       "status": "done",
       "title": "batch-land uses `theseus preflight` instead of copied review constants and gates leader fixes"
     },
+    "batch-land-shared-identity-claim-detection-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "batch-land cannot detect a claim or prepare made by a member that shares the leader's identity"
+    },
     "batch-load-hardening-umbrella-20261106": {
       "claim": null,
       "needs": [],
