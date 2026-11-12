@@ -40397,6 +40397,15 @@
       "status": "dropped",
       "title": "Theseus v0.2.5: brief on stdin, mode from rendered size, capacity recalibration and legacy-name removal"
     },
+    "theseus-v0211-rehearsal-first-reviewed-pr-20261112": {
+      "claim": null,
+      "needs": [
+        "theseus-lock-self-review-format-release-b-20261110"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Theseus: rehearse v0.2.11 on the first Theseus PR it reviews (dependabot #61) before BenchBox is armed"
+    },
     "theseus-v025-review-convergence-20261107": {
       "claim": null,
       "needs": [

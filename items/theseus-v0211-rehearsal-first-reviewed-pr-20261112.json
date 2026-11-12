@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "#61 merged with hosted SHIP, green checks and an independent review SHIP on its final head (links and SHAs recorded).",
+    "R1-R4 each recorded as pass or fail with a link to the review, statuses or workflow run.",
+    "GO or NO-GO recorded here, and the minimise outcome recorded on theseus-review-minimize-superseded-20261110."
+  ],
+  "context": "#61 was held until after the v0.2.11 tag (owner decision 2026-11-11); this item gives it a purpose in the rollout.",
+  "description": "Owner decision 2026-11-12: the Theseus self-lock to v0.2.11 (with minimize_superseded: true) merges before the BenchBox v0.2.11 lock is armed, and dependabot #61 (ruff 0.17.3 -> 0.17.4) is the first PR reviewed under v0.2.11. Its result is the go/no-go for arming BenchBox.\nSteps: after the self-lock merges, merge origin/main into #61 (strict up-to-date rule; this creates a new head, so the earlier v0.2.4 review on #61 becomes superseded). Wait for the hosted review and gate. If #61 has no superseded verdict review to minimise, record that minimising was not exercised and leave the observation to the first BenchBox PR.\nVerification rubric (all recorded with links):\nR1 Body: line 1 is `### <mark> <DECISION> · <fact>`; reviewed SHA shown once; reviewer notes and run details collapsed; `<!-- review-verdict: v2 <state> <40hex> -->` and the review-protocol record each appear exactly once, with the record as the last bytes.\nR2 Statuses: review-verdict and review-gate descriptions are <= 140 chars; review-gate posted pending while waiting and passed on SHIP.\nR3 Threads (only if findings): first line `<mark> **<Severity>** · D<n> · <title>`, dispute footer present, markers unchanged.\nR4 Minimise: the superseded earlier verdict review is collapsed as outdated, OR the minimise call failed and verdict, statuses and gate are unaffected (workflow log line recorded). Webhook side effects: no extra verdict or gate run was triggered by the minimise (run list recorded).\nDecision gate: GO = R1-R3 pass and R4 either minimised or failed harmlessly. NO-GO on any R1-R3 failure: do not arm BenchBox; revert the Theseus self-lock if the gate is broken, and report to the owner. If R4 failed harmlessly, BenchBox ships with minimize_superseded off (owner decision 2026-11-12) and the failure is recorded on theseus-review-minimize-superseded-20261110.\nGuardrails: Theseus merge rule G7 for #61 (hosted SHIP on the current head + green checks + independent review of the exact final head); at most one /review per head; no owner-only actions; no live model calls beyond the hosted review the PR triggers.",
+  "links": [
+    "https://github.com/joeharris76/theseus/pull/61"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b89414e427d02d5b37262d82",
+      "at": "2026-11-12T14:12:01Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8a7b6560c3104787b876d9ed2759cc2b",
+      "session_id": "88f192edfe954a75a195b192ece667bc"
+    }
+  ]
+}
