@@ -45018,10 +45018,15 @@
       "title": "validate-submission.yml injects empty path args for deleted bundle+manifest pairs, making the validator scan the whole live corpus"
     },
     "validation-missing-count-unvalidated-status-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T18:48:47Z",
+        "generation": "1673391f595f479694c5d23dfeee4305",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9dde2030f0b654b7eae6a730"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Fail validation on expected-row-count lookup misses and record intended absences as unvalidated"
     },
     "validation-presentation-vs-engines": {
