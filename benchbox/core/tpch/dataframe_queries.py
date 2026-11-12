@@ -811,23 +811,23 @@ def q21_expression_impl(ctx: DataFrameContext) -> Any:
     suppliers_per_order = (
         lineitem.join(candidate_orders, left_on="l_orderkey", right_on="cand_orderkey", how="semi")
         .group_by("l_orderkey")
-        .agg(col("l_suppkey").n_unique().alias("num_suppliers"))
-        .select(col("l_orderkey").alias("supp_orderkey"), col("num_suppliers"))
+        .agg(col("l_suppkey").min().alias("min_supp"), col("l_suppkey").max().alias("max_supp"))
+        .select(col("l_orderkey").alias("supp_orderkey"), col("min_supp"), col("max_supp"))
     )
 
     late_suppliers_per_order = (
         lineitem.filter(col("l_receiptdate") > col("l_commitdate"))
         .join(candidate_orders, left_on="l_orderkey", right_on="cand_orderkey", how="semi")
         .group_by("l_orderkey")
-        .agg(col("l_suppkey").n_unique().alias("num_late_suppliers"))
-        .select(col("l_orderkey").alias("late_orderkey"), col("num_late_suppliers"))
+        .agg(col("l_suppkey").min().alias("min_late_supp"), col("l_suppkey").max().alias("max_late_supp"))
+        .select(col("l_orderkey").alias("late_orderkey"), col("min_late_supp"), col("max_late_supp"))
     )
 
     return (
         candidates.join(suppliers_per_order, left_on="l_orderkey", right_on="supp_orderkey")
         .join(late_suppliers_per_order, left_on="l_orderkey", right_on="late_orderkey")
-        .filter(col("num_suppliers") > lit(1))
-        .filter(col("num_late_suppliers") == lit(1))
+        .filter(col("min_supp") != col("max_supp"))
+        .filter(col("min_late_supp") == col("max_late_supp"))
         .group_by("s_name")
         .agg(col("l_orderkey").count().alias("numwait"))
         .sort(["numwait", "s_name"], descending=[True, False])

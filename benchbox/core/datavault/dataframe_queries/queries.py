@@ -1456,15 +1456,19 @@ def q21_expression_impl(ctx: DataFrameContext) -> Any:
 
     l1 = late_li.join(failed_orders, left_on="hk_order", right_on="hk_order")
 
-    order_suppliers = li.group_by("hk_order").agg(col("hk_supplier").n_unique().alias("n_suppliers"))
-    order_late_suppliers = late_li.group_by("hk_order").agg(col("hk_supplier").n_unique().alias("n_late"))
+    order_suppliers = li.group_by("hk_order").agg(
+        col("hk_supplier").min().alias("min_supp"), col("hk_supplier").max().alias("max_supp")
+    )
+    order_late_suppliers = late_li.group_by("hk_order").agg(
+        col("hk_supplier").min().alias("min_late_supp"), col("hk_supplier").max().alias("max_late_supp")
+    )
 
     df = (
         l1.join(supp_nation, left_on="hk_supplier", right_on="hk_supplier")
         .join(order_suppliers, left_on="hk_order", right_on="hk_order")
-        .filter(col("n_suppliers") > lit(1))
+        .filter(col("min_supp") != col("max_supp"))
         .join(order_late_suppliers, left_on="hk_order", right_on="hk_order")
-        .filter(col("n_late") == lit(1))
+        .filter(col("min_late_supp") == col("max_late_supp"))
     )
 
     result = df.group_by("s_name").agg(col("hk_order").count().alias("numwait"))

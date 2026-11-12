@@ -63,6 +63,19 @@ def _q21_expr_final(candidates: Any, per_order: Any, late_per_order: Any, col: A
     )
 
 
+def _q21_expr_final_span(candidates: Any, per_order: Any, late_per_order: Any, col: Any) -> Any:
+    return (
+        candidates.join(per_order, left_on="l_orderkey", right_on="supp_orderkey")
+        .join(late_per_order, left_on="l_orderkey", right_on="late_orderkey")
+        .filter(col("min_supp") != col("max_supp"))
+        .filter(col("min_late_supp") == col("max_late_supp"))
+        .group_by("s_name")
+        .agg(col("l_orderkey").count().alias("numwait"))
+        .sort(["numwait", "s_name"], descending=[True, False])
+        .limit(100)
+    )
+
+
 def _make_q21_expression_impl(variant: int) -> VariantImpl:
     def impl(ctx: DataFrameContext) -> Any:
         if variant == 1:
@@ -146,16 +159,22 @@ def _make_q21_expression_impl(variant: int) -> VariantImpl:
                 lineitem.filter(late)
                 .join(cand_orders, left_on="l_orderkey", right_on="cand_orderkey", how="semi")
                 .group_by("l_orderkey")
-                .agg(col("l_suppkey").n_unique().alias("num_late_suppliers"))
-                .select(col("l_orderkey").alias("late_orderkey"), col("num_late_suppliers"))
+                .agg(
+                    col("l_suppkey").min().alias("min_late_supp"),
+                    col("l_suppkey").max().alias("max_late_supp"),
+                )
+                .select(col("l_orderkey").alias("late_orderkey"), col("min_late_supp"), col("max_late_supp"))
             )
             per_order = (
                 lineitem.join(cand_orders, left_on="l_orderkey", right_on="cand_orderkey", how="semi")
                 .group_by("l_orderkey")
-                .agg(col("l_suppkey").n_unique().alias("num_suppliers"))
-                .select(col("l_orderkey").alias("supp_orderkey"), col("num_suppliers"))
+                .agg(
+                    col("l_suppkey").min().alias("min_supp"),
+                    col("l_suppkey").max().alias("max_supp"),
+                )
+                .select(col("l_orderkey").alias("supp_orderkey"), col("min_supp"), col("max_supp"))
             )
-            return _q21_expr_final(candidates, per_order, late_per_order, col, lit)
+            return _q21_expr_final_span(candidates, per_order, late_per_order, col)
 
         if variant == 5:
             targets = (
@@ -182,16 +201,22 @@ def _make_q21_expression_impl(variant: int) -> VariantImpl:
             )
             per_order = (
                 scoped.group_by("l_orderkey")
-                .agg(col("l_suppkey").n_unique().alias("num_suppliers"))
-                .select(col("l_orderkey").alias("supp_orderkey"), col("num_suppliers"))
+                .agg(
+                    col("l_suppkey").min().alias("min_supp"),
+                    col("l_suppkey").max().alias("max_supp"),
+                )
+                .select(col("l_orderkey").alias("supp_orderkey"), col("min_supp"), col("max_supp"))
             )
             late_per_order = (
                 scoped.filter(col("l_receiptdate") > col("l_commitdate"))
                 .group_by("l_orderkey")
-                .agg(col("l_suppkey").n_unique().alias("num_late_suppliers"))
-                .select(col("l_orderkey").alias("late_orderkey"), col("num_late_suppliers"))
+                .agg(
+                    col("l_suppkey").min().alias("min_late_supp"),
+                    col("l_suppkey").max().alias("max_late_supp"),
+                )
+                .select(col("l_orderkey").alias("late_orderkey"), col("min_late_supp"), col("max_late_supp"))
             )
-            return _q21_expr_final(candidates, per_order, late_per_order, col, lit)
+            return _q21_expr_final_span(candidates, per_order, late_per_order, col)
 
         if variant == 6:
             valid = _q21_expr_valid_orders(orders, col, lit)
@@ -201,16 +226,22 @@ def _make_q21_expression_impl(variant: int) -> VariantImpl:
             scoped = scoped_lineitem.join(cand_orders, left_on="l_orderkey", right_on="cand_orderkey", how="semi")
             per_order = (
                 scoped.group_by("l_orderkey")
-                .agg(col("l_suppkey").n_unique().alias("num_suppliers"))
-                .select(col("l_orderkey").alias("supp_orderkey"), col("num_suppliers"))
+                .agg(
+                    col("l_suppkey").min().alias("min_supp"),
+                    col("l_suppkey").max().alias("max_supp"),
+                )
+                .select(col("l_orderkey").alias("supp_orderkey"), col("min_supp"), col("max_supp"))
             )
             late_per_order = (
                 scoped.filter(late)
                 .group_by("l_orderkey")
-                .agg(col("l_suppkey").n_unique().alias("num_late_suppliers"))
-                .select(col("l_orderkey").alias("late_orderkey"), col("num_late_suppliers"))
+                .agg(
+                    col("l_suppkey").min().alias("min_late_supp"),
+                    col("l_suppkey").max().alias("max_late_supp"),
+                )
+                .select(col("l_orderkey").alias("late_orderkey"), col("min_late_supp"), col("max_late_supp"))
             )
-            return _q21_expr_final(candidates, per_order, late_per_order, col, lit)
+            return _q21_expr_final_span(candidates, per_order, late_per_order, col)
 
         if variant == 7:
             candidates = (
@@ -220,19 +251,24 @@ def _make_q21_expression_impl(variant: int) -> VariantImpl:
                 .select("l_orderkey", "l_suppkey", "s_name")
             )
             cand_orders = candidates.select(col("l_orderkey").alias("cand_orderkey")).unique()
-            return _q21_expr_final(
+            return _q21_expr_final_span(
                 candidates,
                 lineitem.join(cand_orders, left_on="l_orderkey", right_on="cand_orderkey", how="semi")
                 .group_by("l_orderkey")
-                .agg(col("l_suppkey").n_unique().alias("num_suppliers"))
-                .select(col("l_orderkey").alias("supp_orderkey"), col("num_suppliers")),
+                .agg(
+                    col("l_suppkey").min().alias("min_supp"),
+                    col("l_suppkey").max().alias("max_supp"),
+                )
+                .select(col("l_orderkey").alias("supp_orderkey"), col("min_supp"), col("max_supp")),
                 lineitem.filter(late)
                 .join(cand_orders, left_on="l_orderkey", right_on="cand_orderkey", how="semi")
                 .group_by("l_orderkey")
-                .agg(col("l_suppkey").n_unique().alias("num_late_suppliers"))
-                .select(col("l_orderkey").alias("late_orderkey"), col("num_late_suppliers")),
+                .agg(
+                    col("l_suppkey").min().alias("min_late_supp"),
+                    col("l_suppkey").max().alias("max_late_supp"),
+                )
+                .select(col("l_orderkey").alias("late_orderkey"), col("min_late_supp"), col("max_late_supp")),
                 col,
-                lit,
             )
 
         candidates = _q21_expr_candidates(lineitem, targets, valid, col)
@@ -240,21 +276,27 @@ def _make_q21_expression_impl(variant: int) -> VariantImpl:
         scoped = lineitem.join(cand_orders, left_on="l_orderkey", right_on="cand_orderkey", how="semi")
         per_order = (
             scoped.group_by("l_orderkey")
-            .agg(col("l_suppkey").n_unique().alias("num_suppliers"))
-            .select(col("l_orderkey").alias("supp_orderkey"), col("num_suppliers"))
+            .agg(
+                col("l_suppkey").min().alias("min_supp"),
+                col("l_suppkey").max().alias("max_supp"),
+            )
+            .select(col("l_orderkey").alias("supp_orderkey"), col("min_supp"), col("max_supp"))
         )
         late_per_order = (
             scoped.filter(late)
             .group_by("l_orderkey")
-            .agg(col("l_suppkey").n_unique().alias("num_late_suppliers"))
-            .select(col("l_orderkey").alias("late_orderkey"), col("num_late_suppliers"))
+            .agg(
+                col("l_suppkey").min().alias("min_late_supp"),
+                col("l_suppkey").max().alias("max_late_supp"),
+            )
+            .select(col("l_orderkey").alias("late_orderkey"), col("min_late_supp"), col("max_late_supp"))
         )
 
         if variant == 8:
             return (
                 candidates.join(per_order, left_on="l_orderkey", right_on="supp_orderkey")
                 .join(late_per_order, left_on="l_orderkey", right_on="late_orderkey")
-                .filter((col("num_suppliers") > lit(1)) & (col("num_late_suppliers") == lit(1)))
+                .filter((col("min_supp") != col("max_supp")) & (col("min_late_supp") == col("max_late_supp")))
                 .group_by("s_name")
                 .agg(col("l_orderkey").count().alias("numwait"))
                 .sort(["numwait", "s_name"], descending=[True, False])
@@ -265,8 +307,8 @@ def _make_q21_expression_impl(variant: int) -> VariantImpl:
             return (
                 candidates.join(late_per_order, left_on="l_orderkey", right_on="late_orderkey")
                 .join(per_order, left_on="l_orderkey", right_on="supp_orderkey")
-                .filter(col("num_suppliers") > lit(1))
-                .filter(col("num_late_suppliers") == lit(1))
+                .filter(col("min_supp") != col("max_supp"))
+                .filter(col("min_late_supp") == col("max_late_supp"))
                 .group_by("s_name")
                 .agg(col("l_orderkey").count().alias("numwait"))
                 .sort(["numwait", "s_name"], descending=[True, False])
@@ -278,16 +320,22 @@ def _make_q21_expression_impl(variant: int) -> VariantImpl:
         scoped_narrow = lineitem.join(narrowed, left_on="l_orderkey", right_on="cand_orderkey", how="semi")
         per_order = (
             scoped_narrow.group_by("l_orderkey")
-            .agg(col("l_suppkey").n_unique().alias("num_suppliers"))
-            .select(col("l_orderkey").alias("supp_orderkey"), col("num_suppliers"))
+            .agg(
+                col("l_suppkey").min().alias("min_supp"),
+                col("l_suppkey").max().alias("max_supp"),
+            )
+            .select(col("l_orderkey").alias("supp_orderkey"), col("min_supp"), col("max_supp"))
         )
         late_per_order = (
             scoped_narrow.filter(late)
             .group_by("l_orderkey")
-            .agg(col("l_suppkey").n_unique().alias("num_late_suppliers"))
-            .select(col("l_orderkey").alias("late_orderkey"), col("num_late_suppliers"))
+            .agg(
+                col("l_suppkey").min().alias("min_late_supp"),
+                col("l_suppkey").max().alias("max_late_supp"),
+            )
+            .select(col("l_orderkey").alias("late_orderkey"), col("min_late_supp"), col("max_late_supp"))
         )
-        return _q21_expr_final(candidates, per_order, late_per_order, col, lit)
+        return _q21_expr_final_span(candidates, per_order, late_per_order, col)
 
     impl.__name__ = f"q21_v{variant}_expression_impl"
     impl.__qualname__ = impl.__name__
