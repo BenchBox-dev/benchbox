@@ -1,5 +1,10 @@
-fact_row_multipliers:
-  cash_balances_per_account: 30
-  holdings_per_account: 10
-  market_history_days_per_security: 252
-  watches_per_customer: 5
+rows_per_scale_factor:
+  customers: 5000
+  accounts: 5000
+  companies: 500
+  securities: 800
+  trades: 130000
+  cash_balances: 120300
+  holdings: 120470
+  market_history: 541550
+  watches: 300000

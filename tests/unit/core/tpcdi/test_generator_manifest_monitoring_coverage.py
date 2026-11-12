@@ -86,6 +86,10 @@ class _MonitoringHarness(FactGenerationMixin, ResourceMonitoringMixin):
         self.base_customers = 30
         self.base_accounts = 40
         self.base_trades = 50
+        self.base_cash_balances = 60
+        self.base_holdings = 70
+        self.base_market_history = 80
+        self.base_watches = 90
         self.chunk_size = 25
         self.generation_stats = {
             "records_generated": 123,

@@ -9,6 +9,7 @@ from typing import Any
 import psutil
 
 from benchbox.core.tpcdi.financial_data import FinancialDataPatterns
+from benchbox.core.tpcdi.scaling import ROWS_PER_SCALE_FACTOR
 from benchbox.utils.cloud_storage import CloudStorageGeneratorMixin, create_path_handler
 from benchbox.utils.compression_mixin import CompressionMixin
 
@@ -69,11 +70,15 @@ class TPCDIDataGenerator(
         self.memory_threshold = 0.8
         self.initial_memory = psutil.virtual_memory().percent
 
-        self.base_customers = 50000
-        self.base_companies = 1000
-        self.base_securities = 10000
-        self.base_accounts = 100000
-        self.base_trades = 1000000
+        self.base_customers = ROWS_PER_SCALE_FACTOR["customers"]
+        self.base_companies = ROWS_PER_SCALE_FACTOR["companies"]
+        self.base_securities = ROWS_PER_SCALE_FACTOR["securities"]
+        self.base_accounts = ROWS_PER_SCALE_FACTOR["accounts"]
+        self.base_trades = ROWS_PER_SCALE_FACTOR["trades"]
+        self.base_cash_balances = ROWS_PER_SCALE_FACTOR["cash_balances"]
+        self.base_holdings = ROWS_PER_SCALE_FACTOR["holdings"]
+        self.base_market_history = ROWS_PER_SCALE_FACTOR["market_history"]
+        self.base_watches = ROWS_PER_SCALE_FACTOR["watches"]
 
         self.generation_seed = int(generation_seed)
         self._rng = random.Random(self.generation_seed)

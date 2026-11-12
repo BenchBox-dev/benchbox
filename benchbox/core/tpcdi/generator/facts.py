@@ -5,21 +5,11 @@ import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-import yaml
-
 from benchbox.utils.printing import emit
 
 from .rows import PipeRowWriter
 
 FACT_TRADE_GENERATION_ALGORITHM_VERSION = 1
-
-
-def _load_fact_row_multipliers() -> dict[str, int]:
-    with (Path(__file__).parent.with_name("generator_specs.yaml")).open(encoding="utf-8") as handle:
-        return yaml.safe_load(handle)["fact_row_multipliers"]
-
-
-_FACT_ROW_MULTIPLIERS = _load_fact_row_multipliers()
 
 
 def _trade_record_rng(generation_seed: int, trade_id: int) -> random.Random:
@@ -206,14 +196,11 @@ class FactGenerationMixin:
         ]
 
     def _secondary_fact_row_counts(self) -> dict[str, int]:
-        num_accounts = int(self.base_accounts * self.scale_factor)
-        num_securities = int(self.base_securities * self.scale_factor)
-        num_customers = int(self.base_customers * self.scale_factor)
         return {
-            "FactCashBalances": num_accounts * _FACT_ROW_MULTIPLIERS["cash_balances_per_account"],
-            "FactHoldings": num_accounts * _FACT_ROW_MULTIPLIERS["holdings_per_account"],
-            "FactMarketHistory": num_securities * _FACT_ROW_MULTIPLIERS["market_history_days_per_security"],
-            "FactWatches": num_customers * _FACT_ROW_MULTIPLIERS["watches_per_customer"],
+            "FactCashBalances": int(self.base_cash_balances * self.scale_factor),
+            "FactHoldings": int(self.base_holdings * self.scale_factor),
+            "FactMarketHistory": int(self.base_market_history * self.scale_factor),
+            "FactWatches": int(self.base_watches * self.scale_factor),
         }
 
     def _generate_factcashbalances_data(self) -> str:

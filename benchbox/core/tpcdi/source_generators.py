@@ -15,6 +15,8 @@ from typing import Any, Optional
 
 import pandas as pd
 
+from benchbox.core.tpcdi.scaling import ROWS_PER_SCALE_FACTOR
+
 
 def _lines(values: str) -> list[str]:
     return [line.strip() for line in values.splitlines() if line.strip()]
@@ -37,14 +39,14 @@ class TPCDISourceDataGenerator:
         self.generation_seed = int(seed)
         self._rng = random.Random(self.generation_seed)
 
-        self.base_customers = 50000
-        self.base_accounts = 100000
-        self.base_trades = 1000000
-        self.base_companies = 1000
-        self.base_securities = 10000
+        self.base_customers = ROWS_PER_SCALE_FACTOR["customers"]
+        self.base_accounts = ROWS_PER_SCALE_FACTOR["accounts"]
+        self.base_trades = ROWS_PER_SCALE_FACTOR["trades"]
+        self.base_companies = ROWS_PER_SCALE_FACTOR["companies"]
+        self.base_securities = ROWS_PER_SCALE_FACTOR["securities"]
         self.base_brokers = 500
         self.base_tax_rates = 100
-        self.base_market_prices = 1000000
+        self.base_market_prices = ROWS_PER_SCALE_FACTOR["market_history"]
 
         self._init_reference_data()
 
