@@ -18,6 +18,7 @@ from typing import Any, NamedTuple
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ci_text_edit_verdict
 import pr_landing
+import pr_stale_base
 import theseus_cli
 import trunk_revert
 
@@ -35,6 +36,7 @@ PROCEEDING_VERDICTS = frozenset({"pass", "neutral", "not-applicable"})
 PRODUCER_CHECK = "core"
 WAITING_MARKERS = ("waiting for full CI run", "waiting for the placeholder re-run", "has not finished for")
 WAIT_INTERVAL_SECONDS = 180.0
+ALREADY_CLEAN = "clean status"
 WAIT_MAX_MINUTES = 120
 
 _last_outcome = ""
@@ -317,9 +319,9 @@ def duration_verdict_refusals(run: Runner, repo: str, number: int, head: str, la
         f"verify-fast-duration reported would-block for {head[:9]}: normalized summed-time ratio "
         f"{_ratio(report.get('sum_ratio'))}, median per-test ratio {_ratio(report.get('median_test_ratio'))}. "
         f"The duration gate blocks `core` on a would-block verdict, and arming refuses it unless the PR changes "
-        f"{BASELINE_DIRECTORY}: if the slowdown may be runner noise, re-measure with make pr-rerun PR={number} "
-        f"(it re-runs the fast-tier job so the verdict comes from new timings; a would-block that survives "
-        f"fresh timings is real); otherwise remove the slowdown, or regenerate the "
+        f"{BASELINE_DIRECTORY}. If the change does not slow the fast tier (a slow runner alone can cause this), "
+        f"run make pr-rerun PR={number}: it re-runs the whole CI run so the fast tier is timed again, and a "
+        f"failed-jobs-only re-run would re-read the same timings. Otherwise remove the slowdown, or regenerate the "
         f"baseline with scripts/build_fast_duration_baseline.py (python -m scripts.build_fast_duration_baseline "
         f"build --manifest <manifest> --output {BASELINE_DIRECTORY}) and justify the change in the PR"
     ]
@@ -479,6 +481,7 @@ def arm(
     require_batch: bool = False,
     discover: Callable[..., tuple[str | None, str]] | None = None,
     wait_on_pending_review: bool = False,
+    stale_base: Callable[..., list[str]] | None = None,
 ) -> int:
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         return _refused(f"--repo must be owner/name, got {repo!r}", 2)
@@ -521,21 +524,29 @@ def arm(
             if all(_is_waiting(reason, local_head, wait_on_pending_review) for reason in reasons):
                 return _outcome(f"waiting: PR #{view['number']} is not armed yet: {' | '.join(reasons)}", 2)
             return _outcome(f"refused: PR #{view['number']} was not armed: {' | '.join(reasons)}", 2)
-        code, out = run(
-            [
-                "gh",
-                "pr",
-                "merge",
-                str(view["number"]),
-                "--repo",
-                repo,
-                "--squash",
-                "--auto",
-                "--match-head-commit",
-                local_head,
-            ]
+        stale = (stale_base or pr_stale_base.stale_base_refusals)(
+            run, repo, int(view["number"]), local_head, BASE_BRANCH, checkout
         )
+        if stale:
+            for reason in stale:
+                print(f"pr-arm: refusing to arm PR #{view['number']}: {reason}", file=sys.stderr)
+            kind = (
+                "waiting"
+                if all(_is_waiting(reason, local_head, wait_on_pending_review) for reason in stale)
+                else "refused"
+            )
+            return _outcome(f"{kind}: PR #{view['number']} is not armed yet: {' | '.join(stale)}", 2)
+        merge = ["gh", "pr", "merge", str(view["number"]), "--repo", repo, "--squash"]
+        code, out = run([*merge, "--auto", "--match-head-commit", local_head])
         print(out.strip())
+        if code != 0 and ALREADY_CLEAN in out:
+            code, out = run([*merge, "--match-head-commit", local_head])
+            print(out.strip())
+            if code != 0:
+                return _outcome(
+                    f"refused: gh pr merge exited {code} for PR #{view['number']}: {out.strip()[:200]}", code
+                )
+            return _outcome(f"merged: PR #{view['number']} was already mergeable and merged at head {local_head}", 0)
         if code != 0:
             return _outcome(f"refused: gh pr merge exited {code} for PR #{view['number']}: {out.strip()[:200]}", code)
         return _outcome(f"armed: PR #{view['number']} at head {local_head}", 0)

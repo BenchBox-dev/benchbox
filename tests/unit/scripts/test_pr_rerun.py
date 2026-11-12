@@ -73,9 +73,7 @@ class FakeGitHub:
         pr_reads: list[dict[str, Any]] | None = None,
         shared_after: list[int] | None = None,
         check_runs: list[dict[str, Any]] | None = None,
-        attempts: dict[tuple[int, int], list[dict[str, Any]]] | None = None,
     ) -> None:
-        self.attempts = attempts or {}
         self.check_runs = check_runs or []
         self.lists = 0
         self.shared_after = shared_after
@@ -110,12 +108,7 @@ class FakeGitHub:
             out = "\n".join(json.dumps(run) for run in self.runs)
         elif args[0] == "api" and "/jobs" in args[-1]:
             run_id = int(args[-1].split("/runs/")[1].split("/")[0])
-            if "/attempts/" in args[-1]:
-                attempt = int(args[-1].split("/attempts/")[1].split("/")[0])
-                listed = self.attempts[(run_id, attempt)]
-            else:
-                listed = self.jobs[run_id]
-            out = "\n".join(json.dumps(job) for job in listed)
+            out = "\n".join(json.dumps(job) for job in self.jobs[run_id])
         return subprocess.CompletedProcess(command, 0, out, "")
 
     def reruns(self) -> list[list[str]]:
@@ -438,108 +431,72 @@ def test_invalid_gh_json_is_reported() -> None:
         pr_rerun.rerun(REPO, PR, garbled)
 
 
-FAST_JOB = "test (ubuntu-latest, 3.14)"
-FAST_JOB_ID = 9001
+class VerdictGitHub(FakeGitHub):
+    def __init__(self, *args: Any, verdict: dict[str, Any] | None, artifact_run: int = 11, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.verdict = verdict
+        self.artifact_run = artifact_run
+
+    def __call__(self, command: list[str]) -> subprocess.CompletedProcess[str]:
+        args = command[1:]
+        if args[0] == "api" and "/actions/artifacts?" in args[-1]:
+            self.calls.append(command)
+            assert args[-1].startswith(f"repos/{REPO}/actions/artifacts?name=fast-duration-verdict-{PR}-{HEAD}")
+            found = "" if self.verdict is None else "99\n"
+            return subprocess.CompletedProcess(command, 0, found, "")
+        if args[:2] == ["run", "download"]:
+            self.calls.append(command)
+            Path(args[args.index("-D") + 1], "fast-duration-verdict.json").write_text(
+                json.dumps(self.verdict), encoding="utf-8"
+            )
+            return subprocess.CompletedProcess(command, 0, "", "")
+        return super().__call__(command)
 
 
-def _would_block_jobs(*, fast_attempt: int = 1, failed_step: str = "verify-fast-duration") -> list[dict[str, Any]]:
-    return [
-        {"name": "ci-paths", "status": "completed", "conclusion": "success", "run_attempt": 1, "id": 1},
-        {
-            "id": FAST_JOB_ID,
-            "name": FAST_JOB,
-            "status": "completed",
-            "conclusion": "success",
-            "run_attempt": fast_attempt,
-        },
-        {
-            "id": 9002,
-            "name": "core",
-            "status": "completed",
-            "conclusion": "failure",
-            "run_attempt": 3,
-            "steps": [
-                {"name": "aggregate", "conclusion": "success"},
-                {"name": failed_step, "conclusion": "failure"},
-            ],
-        },
-    ]
-
-
-def test_a_would_block_verdict_re_runs_the_fast_tier_job_and_not_the_failed_jobs() -> None:
-    gh = FakeGitHub([_run(11, "2026-10-17T10:00:00Z")], {11: _would_block_jobs()})
+def test_a_would_block_verdict_reruns_the_whole_run_for_fresh_timings() -> None:
+    gh = VerdictGitHub(
+        [_run(11, "2026-10-17T10:00:00Z")], {11: _jobs()}, verdict={"verdict": "would-block", "sum_ratio": 1.3}
+    )
     message = pr_rerun.rerun(REPO, PR, gh)
-    assert gh.reruns() == [["gh", "run", "rerun", "11", "--repo", REPO, "--job", str(FAST_JOB_ID)]]
-    assert "re-measure timings" in message
+    assert gh.reruns() == [["gh", "run", "rerun", "11", "--repo", REPO]]
+    assert "all jobs of CI run 11" in message
+    assert "fresh timings" in message
 
 
-def test_a_would_block_that_survives_fresh_timings_is_refused_as_a_real_slowdown() -> None:
-    gh = FakeGitHub(
-        [_run(11, "2026-10-17T10:00:00Z")],
-        {11: _would_block_jobs(fast_attempt=3)},
-        attempts={
-            (11, 1): _would_block_jobs(fast_attempt=1, failed_step="aggregate"),
-            (11, 2): _would_block_jobs(fast_attempt=1),
-        },
-    )
-    with pytest.raises(pr_rerun.RerunError, match=r"real slowdown.*baseline"):
-        pr_rerun.rerun(REPO, PR, gh)
-    assert gh.reruns() == []
-
-
-def test_fresh_timings_after_an_unrelated_failure_still_get_one_re_measure() -> None:
-    earlier = _would_block_jobs(fast_attempt=1, failed_step="aggregate")
-    gh = FakeGitHub(
-        [_run(11, "2026-10-17T10:00:00Z")],
-        {11: _would_block_jobs(fast_attempt=2)},
-        attempts={(11, 1): earlier},
-    )
+@pytest.mark.parametrize("verdict", [None, {"verdict": "pass"}, {"verdict": "rejected"}, {"verdict": "neutral"}])
+def test_other_verdicts_keep_the_failed_jobs_rerun(verdict: dict[str, Any] | None) -> None:
+    gh = VerdictGitHub([_run(11, "2026-10-17T10:00:00Z")], {11: _jobs()}, verdict=verdict)
     pr_rerun.rerun(REPO, PR, gh)
-    assert gh.reruns() == [["gh", "run", "rerun", "11", "--repo", REPO, "--job", str(FAST_JOB_ID)]]
+    assert gh.reruns() == [["gh", "run", "rerun", "11", "--repo", REPO, "--failed"]]
 
 
-def test_an_unrelated_attempt_between_would_blocks_does_not_reset_the_re_measure_cap() -> None:
-    gh = FakeGitHub(
-        [_run(11, "2026-10-17T10:00:00Z")],
-        {11: _would_block_jobs(fast_attempt=3)},
-        attempts={
-            (11, 1): _would_block_jobs(fast_attempt=1),
-            (11, 2): _would_block_jobs(fast_attempt=1, failed_step="aggregate"),
-        },
-    )
+def test_an_unreadable_verdict_keeps_the_failed_jobs_rerun() -> None:
+    gh = VerdictGitHub([_run(11, "2026-10-17T10:00:00Z")], {11: _jobs()}, verdict={"verdict": "would-block"})
+    original = gh.__call__
+
+    def broken(command: list[str]) -> subprocess.CompletedProcess[str]:
+        if command[2:4] == ["run", "download"] or command[1:3] == ["run", "download"]:
+            return subprocess.CompletedProcess(command, 1, "", "HTTP 404")
+        return original(command)
+
+    pr_rerun.rerun(REPO, PR, broken)
+    assert any("--failed" in call for call in gh.reruns())
+
+
+def test_rerun_arguments_selects_a_full_rerun_only_for_a_failed_would_block_run() -> None:
+    run = _run(11, "2026-10-17T10:00:00Z")
+    assert pr_rerun.rerun_arguments(run, _jobs(), REPO, True) == ["run", "rerun", "11", "--repo", REPO]
+    assert pr_rerun.rerun_arguments(run, _jobs(), REPO, False) == ["run", "rerun", "11", "--repo", REPO, "--failed"]
+
+
+@pytest.mark.parametrize(("attempt", "allowed"), [(1, True), (2, True), (3, False), (4, False)])
+def test_repeated_would_block_verdicts_stop_being_rerun(attempt: int, allowed: bool) -> None:
+    run = _run(11, "2026-10-17T10:00:00Z", run_attempt=attempt)
+    if allowed:
+        assert pr_rerun.rerun_arguments(run, _jobs(), REPO, True) == ["run", "rerun", "11", "--repo", REPO]
+        return
     with pytest.raises(pr_rerun.RerunError, match="real slowdown"):
-        pr_rerun.rerun(REPO, PR, gh)
-    assert gh.reruns() == []
-
-
-def test_a_would_block_that_does_not_report_the_measuring_attempt_is_refused() -> None:
-    jobs = _would_block_jobs()
-    jobs[1] = {key: value for key, value in jobs[1].items() if key != "run_attempt"}
-    gh = FakeGitHub([_run(11, "2026-10-17T10:00:00Z")], {11: jobs})
-    with pytest.raises(pr_rerun.RerunError, match="does not report which attempt"):
-        pr_rerun.rerun(REPO, PR, gh)
-    assert gh.reruns() == []
-
-
-def test_a_would_block_without_a_fast_tier_job_is_refused() -> None:
-    jobs = [job for job in _would_block_jobs() if job["name"] != FAST_JOB]
-    gh = FakeGitHub([_run(11, "2026-10-17T10:00:00Z")], {11: jobs})
-    with pytest.raises(pr_rerun.RerunError, match="no 'test \\(ubuntu-latest, 3.14\\)' job"):
-        pr_rerun.rerun(REPO, PR, gh)
-
-
-def test_other_core_failures_keep_the_failed_jobs_rerun() -> None:
-    gh = FakeGitHub([_run(11, "2026-10-17T10:00:00Z")], {11: _would_block_jobs(failed_step="aggregate")})
-    pr_rerun.rerun(REPO, PR, gh)
-    assert gh.reruns() == [["gh", "run", "rerun", "11", "--repo", REPO, "--failed"]]
-
-
-def test_a_would_block_next_to_another_failed_job_keeps_the_failed_jobs_rerun() -> None:
-    jobs = _would_block_jobs()
-    jobs[1] = {**jobs[1], "conclusion": "failure"}
-    gh = FakeGitHub([_run(11, "2026-10-17T10:00:00Z")], {11: jobs})
-    pr_rerun.rerun(REPO, PR, gh)
-    assert gh.reruns() == [["gh", "run", "rerun", "11", "--repo", REPO, "--failed"]]
+        pr_rerun.rerun_arguments(run, _jobs(), REPO, True)
 
 
 def test_a_failed_placeholder_run_is_re_run_after_the_full_run_succeeded() -> None:
@@ -562,3 +519,13 @@ def test_a_passing_or_running_placeholder_run_is_not_re_run() -> None:
     gh = FakeGitHub(runs, {11: _jobs(), 12: _jobs(text_edit=True), 13: _jobs(text_edit=True)})
     assert "nothing to re-run" in pr_rerun.rerun(REPO, PR, gh)
     assert gh.reruns() == []
+
+
+def test_a_failed_placeholder_run_is_not_re_run_while_the_full_run_failed() -> None:
+    runs = [
+        _run(11, "2026-10-17T10:00:00Z", display_title="CI"),
+        _run(12, "2026-10-17T10:05:00Z", display_title="CI (text edit)"),
+    ]
+    gh = FakeGitHub(runs, {11: _jobs(), 12: _jobs(text_edit=True)})
+    pr_rerun.rerun(REPO, PR, gh)
+    assert gh.reruns() == [["gh", "run", "rerun", "11", "--repo", REPO, "--failed"]]

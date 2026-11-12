@@ -66,6 +66,7 @@ class ResourceMonitoringMixin:
             + int(self.base_customers * self.scale_factor)
             + int(self.base_accounts * self.scale_factor)
             + int(self.base_trades * self.scale_factor)
+            + sum(self._secondary_fact_row_counts().values())
         )
 
         avg_record_size = 150

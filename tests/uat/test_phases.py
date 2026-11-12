@@ -292,13 +292,11 @@ def test_enumerate_records_pg_family_release_gate_compatibility_pruning():
         ("pg-mooncake", "tpch"),
         ("pg-mooncake", "datavault"),
         ("pg-mooncake", "joinorder"),
-        ("pg-mooncake", "tpcds_obt"),
         ("timescaledb", "tpch"),
         ("timescaledb", "tpcds"),
         ("timescaledb", "datavault"),
-        ("timescaledb", "tpcds_obt"),
     }
-    assert len(result.compatibility_pruned) == 12
+    assert len(result.compatibility_pruned) == 14
     pruned = {(c.platform, c.benchmark): c for c in result.compatibility_pruned}
     assert pruned[("pg-mooncake", "tpcds")].rule_id == "uat.compat.pg-mooncake.tpcds.benchmark_gate"
     for platform in ("pg-duckdb", "pg-mooncake", "timescaledb"):

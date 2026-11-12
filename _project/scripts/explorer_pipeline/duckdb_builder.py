@@ -67,7 +67,7 @@ _LEGACY_COST_DEPLOYMENT_COLUMNS = [
 ]
 
 _COST_SCOPES = frozenset({"compute_only", "compute_plus_storage"})
-_COST_STATUSES = frozenset({"normalized", "not_applicable_local", "unavailable", "estimated"})
+_COST_STATUSES = frozenset({"normalized", "not_applicable_local", "unavailable", "estimated", "not_comparable_gateway"})
 
 
 def _finite_float_or_none(entry: ManifestEntry, key: str, value: Any) -> float | None:
