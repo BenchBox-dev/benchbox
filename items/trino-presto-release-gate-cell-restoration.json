@@ -3,6 +3,7 @@
     "Each pruned Trino and Presto cell fixed or deliberately re-scoped by the owner",
     "Prunes removed and the cells green in a trunk UAT"
   ],
+  "context": "2026-11-12: after #4156 fixed the cursor bug, tpcds 0.01 failed for real in trunk UAT 43229090202 (01a15152) and was pruned on both platforms (owner decision). Trino: queries 16, 32, 58, 72, 83, 92, 94, 95 TYPE_MISMATCH (date arithmetic and date literals arrive as varchar, e.g. date BETWEEN varchar(9) and date; IN-list coercion). Presto: the same 8 queries as SYNTAX_ERROR, plus 14a QUERY_HAS_TOO_MANY_STAGES (102 > 100; consider query.max-stage-count in the UAT container). Restore tpcds 0.01 together with the other cells.",
   "description": "#4138 restored Trino and Presto to stage 3. The tpcds power-test cursor bug was fixed by #4156. In trunk UAT 43154678095, about ten other 0.01 cells per platform failed and are compatibility-pruned. Trino: type mismatches (date vs varchar, boolean = integer) and `Column 'm' cannot be resolved` in clickbench. Presto: empty CSV loads, external-table errors, and MEMORY_LIMIT_EXCEEDED in datavault. The prune PR body lists each cell's error.",
   "sessions": [
     {
@@ -11,6 +12,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "9bd166deefb9493aa97de377e5793226",
+      "session_id": "7f2d8583a7d94300804da984b061b91c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a4419e6ace05ac5a296d594b",
+      "at": "2026-11-12T14:15:56Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c3ec47fc60244762be363b50d9c40874",
       "session_id": "7f2d8583a7d94300804da984b061b91c"
     }
   ]
