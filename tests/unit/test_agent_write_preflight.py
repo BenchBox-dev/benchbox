@@ -274,6 +274,7 @@ def test_snapshot_records_changed_tracked_paths_with_hashes(tmp_path: Path) -> N
     entries = _snapshot_path(linked).read_text(encoding="utf-8").splitlines()
     expected_hash = subprocess.run(
         ["git", "hash-object", str(primary / "README.md")],
+        cwd=primary,
         check=True,
         capture_output=True,
         text=True,
