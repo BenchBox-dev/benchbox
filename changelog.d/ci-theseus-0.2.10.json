@@ -1,1 +1,0 @@
-{"schema": 1, "internal": "Promote the reviewed Theseus 0.2.10 release and keep the workflow callers pinned to its source commit, so the review reads both review formats and posts the new status descriptions."}
