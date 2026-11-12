@@ -390,6 +390,9 @@ class ResultBuilder:
         compliance_class = routed_compliance_class(
             self._benchmark.compliance_class, platform_info_gateway(platform_info)
         )
+        if compliance_class == "official" and self._run_config is not None:
+            if self._run_config.seed is None or self._run_config.query_subset:
+                compliance_class = NONSTANDARD_COMPLIANCE_CLASS
         if failed_queries or compliance_class == NONSTANDARD_COMPLIANCE_CLASS:
             tpc_metrics = {
                 "power_at_size": None,

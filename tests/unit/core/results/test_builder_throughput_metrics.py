@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from benchbox.core.results.builder import BenchmarkInfoInput, ResultBuilder
+from benchbox.core.results.builder import BenchmarkInfoInput, ResultBuilder, RunConfigInput
 from benchbox.core.results.models import (
     ExecutionPhases,
     SetupPhase,
@@ -189,3 +189,18 @@ class TestValidationPhaseStatus:
         payload = self._payload(["SUCCESS"] * 3 + ["FAILED"] * 2, row_count_status="SKIPPED")
 
         assert payload["phases"]["validation"]["status"] == "SKIPPED"
+
+
+@pytest.mark.parametrize(
+    ("run_config", "expected"),
+    [
+        (RunConfigInput(seed=7), "official"),
+        (RunConfigInput(seed=None), "unofficial_nonstandard"),
+        (RunConfigInput(seed=7, query_subset=["1", "2"]), "unofficial_nonstandard"),
+    ],
+)
+def test_official_class_requires_seed_and_full_query_set(run_config, expected):
+    builder = _builder(compliance_class="official")
+    builder.set_run_config(run_config)
+
+    assert builder.build().compliance_class == expected
