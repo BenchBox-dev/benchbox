@@ -1,0 +1,30 @@
+{
+  "acceptance": [
+    "For a published release tag older than 90 days, a certified bundle for the tag commit can be obtained by a documented procedure, and the site's `npm run docs:pin -- <tag>` succeeds against it.",
+    "For a tag commit that never had a bundle, the same procedure either produces a certified one or fails with a message that names the missing Trunk certification.",
+    "The bundle's manifest `core_sha` equals the tag commit and `package_version` equals the tag without the leading `v`.",
+    "A commit that has no successful Trunk push run on `develop` cannot be given a certified bundle by this route.",
+    "The release guide states when and how the release bundle is produced or preserved.",
+    "The site paths this touches are linked in the item."
+  ],
+  "context": "Evidence, 2026-11-12: v0.5.0 is commit dfe585e0944ee7a4b0e52da4994f1e1fee6669f1; its bundle artifact came from site-inputs run 42114319044 and expires 2027-02-03. The site pinned v0.5.0 from that artifact. The site's nightly job opens a `docs-release-pending` issue in benchbox-site when core's newest published vX.Y.Z release is above the pin, so the pin normally happens within days of a release; this item covers the cases where it does not, and tags with no bundle. Related fact for whoever takes this: the v0.5.0 bundle's doc-contracts.json exports num_queries 17, 12 and 12 for tpcds_obt, write_primitives and transaction_primitives, while its docs-data query catalog holds 93, 112 and 23; core corrected the contract after the release. This is cross-repository work, so it is tracked in core; the site-side follow-ups are in the benchbox-site tracker (first-default-docs-pin-run, docs-pin-from-skips-certification).",
+  "description": "Problem: benchbox-site now publishes its documentation from a \"release pin\": the docs inputs (manifest, docs-data, doc-contracts.json, repo-files.json) of one published core release, copied from the certified site-inputs bundle of the release tag's commit by the site's `npm run docs:pin -- vX.Y.Z`. That command can only pin a release while the bundle artifact for the tag commit still exists. Two limits in core make that fragile:\n\n1. `.github/workflows/site-inputs.yml` uploads `site-inputs-<sha>` with `retention-days: 90`. After that the release can no longer be pinned.\n2. The workflow cannot rebuild a bundle for a tag. Its `workflow_dispatch` path checks out `develop` and builds HEAD; its `workflow_run` path builds only the commit a Trunk push run just certified. There is no input for a commit or tag.\n\nA release whose tag commit never got a bundle (for example, Trunk failed or was superseded for that commit) has the same problem from day one.\n\nOutcome: the site can always obtain a certified bundle for any published release tag, without weakening certification.\n\nOptions to evaluate, choose one and record why:\n- A `core_sha` (or tag) input on the `workflow_dispatch` path that builds the bundle for that commit, still requiring a successful Trunk push run on `develop` for it so `certified_by` stays a real run id.\n- Attach the bundle to the GitHub release as an asset at release time, and have the site fetch it from there.\n- Longer retention for the bundle of a tagged commit only.\n\nConstraints:\n- `certified_by` must remain the numeric id of the `trunk.yml` push run on `develop` for the bundle commit; the site verifies this online and rejects anything else.\n- A bundle rebuilt later for an old commit will be produced by the current exporters. State whether its `doc-contracts.json` and `docs-data` describe the old commit faithfully, and whether the site's current schemas accept it.\n- Any bundle schema or manifest change lands in core first, then the site adds support, per the existing bundle contract.\n- Do not change which bundle the site deploys for the Results Explorer.",
+  "links": [
+    ".github/workflows/site-inputs.yml",
+    "scripts/site_inputs_parent.py",
+    "docs/internal/release-guide.md",
+    "https://github.com/BenchBox-dev/benchbox-site/pull/145",
+    "https://github.com/BenchBox-dev/benchbox-site/blob/main/scripts/docs-pin.mjs",
+    "https://github.com/BenchBox-dev/benchbox-site/blob/main/AGENTS.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a250daff95b91a4eb6cd2504",
+      "at": "2026-11-12T18:15:42Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a74eb5146c314b9ba498cb0648c80618",
+      "session_id": "8e07c6e3a10b49bb94ae7e31664ce4b9"
+    }
+  ]
+}

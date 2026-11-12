@@ -37247,6 +37247,13 @@
       "status": "done",
       "title": "Resolve the new high-severity vite advisory failing site CI audit"
     },
+    "site-inputs-bundle-for-release-tag": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Let a site-inputs bundle be built or kept for a release tag"
+    },
     "site-inputs-queue-max-live-verification-20261028": {
       "claim": null,
       "needs": [],
