@@ -28164,6 +28164,13 @@
       "status": "done",
       "title": "Fix Windows nightly: sorted-parquet writer CSV parse errors on trailing-pipe rows"
     },
+    "nightly-windows-starrocks-smoke-crlf-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Nightly t3:integration-smoke fails on Windows: StarRocks smoke expects LF but gets CRLF"
+    },
     "nightly-windows-teardown-and-singles-20261008": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The StarRocks smoke test passes on windows-latest in the nightly integration-smoke job",
+    "The load payload BenchBox sends is byte-identical on Windows and Linux, with a test"
+  ],
+  "context": "Found while reviewing open GitHub issues on 2026-11-12.",
+  "description": "## Problem\nnightly-v2 run 43048718870 (2026-11-11), job \"t3:integration-smoke | windows-latest py3.12\", failed on tests/integration/platforms/test_starrocks_smoke_resource_heavy.py::test_starrocks_smoke_full_workflow with assert b'1,alpha\\r\\n2,beta\\r\\n' == b'1,alpha\\n2,beta\\n'. The Ubuntu leg passed. Tracked on GitHub as BenchBox-dev/benchbox#4109.\n\n## Change\nFind whether the CRLF comes from the code under test writing the load file in text mode on Windows (a product defect: StarRocks stream loads would then carry carriage returns) or from the test fixture. Fix the writer to emit LF bytes if it is the product, otherwise fix the fixture.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/issues/4109"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e5d016c94a8f4c507bfd7f06",
+      "at": "2026-11-12T16:56:11Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "29a597a0e75b47bdae101b5cad7666d0",
+      "session_id": "3eed397749064ec1bd2dfc32be3ed6a1"
+    }
+  ]
+}
