@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "TPC-H, Data Vault and TPC-Havoc DataFrame Q21 now test for multiple suppliers on an order with min/max of the supplier key instead of a distinct count; results are unchanged. TPC-Havoc Q21 variants 2 and 3 keep their distinct-count and anti-join forms."
+    }
+  ]
+}
