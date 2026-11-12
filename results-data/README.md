@@ -157,19 +157,28 @@ exporter keeps absolute `platform.config.database_path` and
 `platform.raw_config.database_path` values, applied tuning statements
 (for example SQLite `harness_default` PRAGMAs under
 `platform.tuning.applied.statements`) and no submission manifest.
-`validate_submission.py --require-manifest` rejects all three on purpose, and
-`benchbox submit` packages the raw bytes and refuses for the same reasons.
+`validate_submission.py --require-manifest` rejects all three on purpose.
+`benchbox submit` anonymizes the bundle and its companions (including the plans
+companion), re-scans them and refuses if anything unsafe remains, then writes a
+manifest with their hashes.
 
 Maintainers stage locally produced results with the same anonymiser the seed
 lane uses, and write the internal manifest in the same step. The salt comes from
 `BENCHBOX_MACHINE_ID_SALT` when set, otherwise from `~/.benchbox/submission_salt`:
 
 ```bash
-BENCHBOX_OUTPUT_DIR=~/Developer/benchmark_runs uv run -- benchbox run ...
-uv run -- python scripts/stage_seed_corpus_bundle.py --internal-manifest \
-  ~/Developer/benchmark_runs/results/<run>.json <staging dir>
-uv run -- python scripts/validate_submission.py --require-manifest <staging dir>/<run>.json
+BENCHBOX_OUTPUT_DIR=~/Developer/benchmark_runs uv run -- benchbox run ... --capture-plans
+make corpus-stage-local RESULT=~/Developer/benchmark_runs/results/<run>.json OUT=<staging dir>
+uv run -- python scripts/validate_submission.py --require-manifest --trust-internal-source <staging dir>/<run>.json
 ```
+
+`make corpus-stage-local` runs `scripts/stage_seed_corpus_bundle.py --internal-manifest`.
+For a run made with `--capture-plans` it also sanitizes the plans companion
+(local paths redacted, `raw_explain_output` cleared, operator `platform_metadata`
+emptied) and re-scans it; staging fails if anything unsafe remains.
+`--trust-internal-source` is what admits a subscale internal bundle; without it
+the validator answers `only compliance_class=official may be submitted`.
+`benchbox publish run` is not needed for the corpus path.
 
 The staged bundle carries `export.anonymized: true`, redacted paths and tuning
 statements, and a `<run>.manifest.json` with `result_source: internal`. Bundles
