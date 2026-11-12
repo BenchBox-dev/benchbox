@@ -30965,6 +30965,13 @@
       "status": "open",
       "title": "Have make pr-arm dispatch an oracle verdict when the exact head has none"
     },
+    "pr-arm-github-rate-limit-backoff-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "`make pr-arm WAIT=` aborts on a GitHub API rate limit and does not wait for the reset"
+    },
     "pr-arm-hold-message-reads-as-refusal-20261028": {
       "claim": null,
       "needs": [],

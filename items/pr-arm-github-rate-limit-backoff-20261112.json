@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "A unit test feeds a 403 rate-limit response followed by success and shows `pr-arm` waits and then evaluates the gate, without arming in between.",
+    "With the budget exhausted, the outcome line reads as waiting on the rate limit and names the reset time; exit status distinguishes it from a real refusal.",
+    "A secondary-rate-limit response (`Retry-After`) is handled the same way."
+  ],
+  "description": "Gap seen three times on 2026-11-12 (PR #4169 twice, PR #4175 once). While waiting, `pr-arm` calls `gh run list` for the trunk check; when the account's REST quota is exhausted (several agent sessions share one user) it prints `trunk-arm-gate: refusing: gh run list failed: HTTP 403: API rate limit exceeded` and exits non-zero with most of the `WAIT` budget unused. The reset time is known (`gh api rate_limit` does not count against the quota) and was 3 minutes away in the first case. Each caller then has to notice, compute the reset and start again, which is the hand-written loop the guide forbids.\n\nExpected: within the `WAIT` budget, a 403 rate-limit response is treated as waiting, not refusal: sleep until the reported reset (bounded by the remaining budget), then continue. Outside the budget, exit with an outcome that names the reset time.\n\nGuardrails: never treat an unreadable trunk state as passing; arming still requires a successful read. No retry on other 4xx responses. `scripts/pr_arm.py` and `scripts/trunk_revert.py` currently contain no rate-limit handling.",
+  "links": [
+    "scripts/pr_arm.py",
+    "scripts/trunk_revert.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-12T16:52:02Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e048cc71e85a43a1943d4beff01e6972",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}
