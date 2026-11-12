@@ -12814,13 +12814,18 @@
       "title": "Allow subagent batch members and make every statement of the member-identity rule agree"
     },
     "batch-member-subagent-skill-pin-20261112": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T15:59:58Z",
+        "generation": "8840f135b92044bc979f35a571888586",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785"
+      },
       "needs": [
         "batch-member-subagent-rule-20261112",
         "batch-member-subagent-skill-text-20261112"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Pin BenchBox to the catalog commit with the corrected member-identity rule and regenerate skill mirrors"
     },
     "batch-member-subagent-skill-text-20261112": {
