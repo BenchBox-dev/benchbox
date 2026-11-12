@@ -68,6 +68,48 @@ class TestTierAndPreview:
         )
         assert any("preview features (x)" in e for e in errors)
 
+    def test_databricks_preview_refused_without_permission(self):
+        errors, _ = evaluate_vendor_conditions(
+            {"platform": "databricks", "plan_tier": "paid", "preview_features": ["serverless gpu"]}
+        )
+        assert len(errors) == 1
+        assert "Beta" in errors[0] and "serverless gpu" in errors[0]
+
+    def test_databricks_preview_refused_with_permission(self):
+        errors, _ = evaluate_vendor_conditions(
+            {
+                "platform": "databricks",
+                "plan_tier": "paid",
+                "preview_features": ["serverless gpu"],
+                "vendor_permission": "email 2026-10-30",
+            }
+        )
+        assert len(errors) == 1
+        assert "does not lift the exclusion" in errors[0]
+
+    def test_databricks_variant_preview_refused_with_permission(self):
+        errors, _ = evaluate_vendor_conditions(
+            {
+                "platform": "Databricks DataFrame",
+                "plan_tier": "paid",
+                "preview_features": ["x"],
+                "vendor_permission": "email 2026-10-30",
+            }
+        )
+        assert any("Beta" in e for e in errors)
+
+    def test_other_vendor_preview_still_accepted_with_permission(self):
+        errors, _ = evaluate_vendor_conditions(
+            {
+                "platform": "snowflake",
+                "plan_tier": "paid",
+                "preview_features": ["x"],
+                "vendor_permission": "approval 2026-11-01",
+                "vendor_notice": NOTICE,
+            }
+        )
+        assert errors == []
+
     def test_paid_without_preview_accepted(self):
         errors, warnings = evaluate_vendor_conditions(
             {"platform": "snowflake", "plan_tier": "paid", "vendor_notice": NOTICE}
