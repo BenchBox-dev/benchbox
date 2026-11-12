@@ -20416,7 +20416,8 @@
     "dlv2-30day-metrics": {
       "claim": null,
       "needs": [
-        "dlv2-84-final-audit-and-metrics"
+        "dlv2-84-final-audit-and-metrics",
+        "dev-loop-metrics-collectors-time-out-20261112"
       ],
       "priority": "low",
       "status": "open",
