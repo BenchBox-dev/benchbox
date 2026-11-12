@@ -23882,19 +23882,14 @@
       "title": "Greybeam CDC lifecycle runtime guardrails"
     },
     "gw-metadata-guards": {
-      "claim": {
-        "expires_at": "2026-11-13T02:24:09Z",
-        "generation": "542fc6fcbfac45b8b60776f3e908e3cc",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66"
-      },
+      "claim": null,
       "needs": [
         "gw-databricks",
         "gw-snowflake-conn",
         "gw-snowflake-querytag"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Gateway-aware metadata, baseline guard, cost suppression"
     },
     "gw-snowflake-conn": {
