@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "A reproduction (delegated task, relative-path edit of a tracked file while a worktree is active) is refused or reported immediately, with the offending path named.",
+    "The chosen mechanism is documented in `docs/agent/primary-clone-guard.md`, including why the alternatives were not chosen.",
+    "The owner's edits in the primary clone and the emergency override still work."
+  ],
+  "description": "Defect in the safety net. On 2026-11-12 a subagent working in its own worktree edited `tests/unit/scripts/explorer_pipeline/test_duckdb_builder.py` in the primary clone, because its file tool resolved a relative path against the session directory. `docs/agent/primary-clone-guard.md` describes this hazard, and `scripts/check_primary_clone_clean.sh report` only reports. The edit was found by chance through `git status` before a batch step that refuses a dirty primary clone; the same change was also missing from the agent's worktree, so its tests had been passing without it.\n\nExpected: an agent write to a tracked path in the primary clone is refused or surfaced at the time of the write, not at a later unrelated gate. Options to evaluate: make the primary clone's tracked files read-only for agent sessions, a file-tool hook that refuses relative or primary-clone paths when a worktree is active, or a cheap check at the start and end of every delegated task.\n\nGuardrails: must not block the owner's own edits or the documented `BENCHBOX_ALLOW_MAIN_CLONE_WRITE=1` emergency path. Must not rely on the agent remembering an instruction; the instruction was given and still failed.",
+  "links": [
+    "docs/agent/primary-clone-guard.md",
+    "scripts/check_primary_clone_clean.sh"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-12T16:52:44Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b9da89a541ec421a9f015f215be94f80",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}
