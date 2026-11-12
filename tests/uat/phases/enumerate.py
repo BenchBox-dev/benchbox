@@ -154,7 +154,11 @@ def enumerate_cells_with_pruning(
             filtered = filter_scales_by_registry(benchmark, remaining, info=info)
             dropped = [scale for scale in remaining if scale not in filtered]
             uses_min_scale_fallback = (
-                bool(remaining) and not filtered and config.scales.override is None and info.min_scale is not None
+                bool(remaining)
+                and not filtered
+                and config.scales.override is None
+                and info.min_scale is not None
+                and info.min_scale not in scale_rules
             )
             if uses_min_scale_fallback:
                 filtered = [info.min_scale]

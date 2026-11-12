@@ -449,7 +449,8 @@ _SF1_TIMEOUT_PRUNED_CELLS = frozenset(
             "tsbs_devops",
         ),
         "pyspark-df": ("datavault", "tpchavoc", "tpcds", "joinorder", "flightdata"),
-        "spark": ("joinorder", "tpchavoc", "tpcds_obt", "datavault"),
+        "spark": ("joinorder", "tpchavoc", "tpcds_obt", "datavault", "tpcdi"),
+        "datafusion": ("tpcdi",),
         "pandas-df": ("joinorder", "flightdata", "datavault"),
         "sqlite": ("joinorder", "flightdata", "tsbs_devops", "tpch", "tpch_skew"),
     }.items()
@@ -469,7 +470,7 @@ def test_release_gate_stage1_prunes_sf1_timeouts_measured_in_dry_run_2():
         if cell.rule_id.endswith(".release_gate_runtime_envelope") and cell.scale == 1.0
     }
 
-    assert len(_SF1_TIMEOUT_PRUNED_CELLS) == 29
+    assert len(_SF1_TIMEOUT_PRUNED_CELLS) == 31
     assert pruned >= _SF1_TIMEOUT_PRUNED_CELLS
     assert _SF1_TIMEOUT_PRUNED_CELLS.isdisjoint(cells)
     for platform, benchmark, _ in _SF1_TIMEOUT_PRUNED_CELLS:
@@ -505,6 +506,21 @@ _DOCKER_SF1_TIMEOUT_PRUNED_CELLS = {
             ("cedardb", "tpch_skew", 0.01),
             ("cedardb", "tpch_skew", 0.1),
             ("cedardb", "tpch_skew", 1.0),
+            ("cedardb", "tpcdi", 0.01),
+            ("cedardb", "tpcdi", 0.1),
+            ("cedardb", "tpcdi", 1.0),
+            ("cedardb", "read_primitives", 0.01),
+            ("cedardb", "read_primitives", 0.1),
+            ("cedardb", "write_primitives", 0.01),
+            ("cedardb", "write_primitives", 0.1),
+            ("cedardb", "write_primitives", 1.0),
+            ("cedardb", "transaction_primitives", 0.01),
+            ("cedardb", "transaction_primitives", 0.1),
+            ("cedardb", "transaction_primitives", 1.0),
+            ("cedardb", "flightdata", 1.0),
+            ("cedardb", "vector_search", 0.01),
+            ("cedardb", "vector_search", 0.1),
+            ("cedardb", "vector_search", 1.0),
         }
     ),
     "release-gate-03-docker-oltp.yaml": frozenset(
@@ -521,6 +537,26 @@ _DOCKER_SF1_TIMEOUT_PRUNED_CELLS = {
             ("postgresql", "tpcds_obt", 0.01),
             ("timescaledb", "tpcds_obt", 0.01),
             ("pg-mooncake", "tpcds_obt", 0.01),
+            ("trino", "tpcds_obt", 0.01),
+            ("trino", "tpcdi", 0.01),
+            ("trino", "clickbench", 0.01),
+            ("trino", "amplab", 0.01),
+            ("trino", "read_primitives", 0.01),
+            ("trino", "coffeeshop", 0.01),
+            ("trino", "tsbs_devops", 0.01),
+            ("trino", "nyctaxi", 0.01),
+            ("trino", "flightdata", 0.01),
+            ("trino", "vector_search", 0.01),
+            ("presto", "tpcds_obt", 0.01),
+            ("presto", "tpcdi", 0.01),
+            ("presto", "clickbench", 0.01),
+            ("presto", "amplab", 0.01),
+            ("presto", "coffeeshop", 0.01),
+            ("presto", "tsbs_devops", 0.01),
+            ("presto", "nyctaxi", 0.01),
+            ("presto", "flightdata", 0.01),
+            ("presto", "datavault", 0.01),
+            ("presto", "vector_search", 0.01),
         }
     ),
 }
@@ -528,10 +564,45 @@ _DOCKER_SF1_TIMEOUT_PRUNED_CELLS = {
 _DOCKER_NON_TIMEOUT_ENVELOPE_CELLS = frozenset(
     {
         ("cedardb", "tpcds_obt", 1.0),
+        ("cedardb", "tpcdi", 0.01),
+        ("cedardb", "tpcdi", 0.1),
+        ("cedardb", "tpcdi", 1.0),
+        ("cedardb", "read_primitives", 0.01),
+        ("cedardb", "read_primitives", 0.1),
+        ("cedardb", "write_primitives", 0.01),
+        ("cedardb", "write_primitives", 0.1),
+        ("cedardb", "write_primitives", 1.0),
+        ("cedardb", "transaction_primitives", 0.01),
+        ("cedardb", "transaction_primitives", 0.1),
+        ("cedardb", "transaction_primitives", 1.0),
+        ("cedardb", "flightdata", 1.0),
+        ("cedardb", "vector_search", 0.01),
+        ("cedardb", "vector_search", 0.1),
+        ("cedardb", "vector_search", 1.0),
         ("presto", "joinorder", 0.01),
         ("trino", "joinorder", 0.01),
         ("questdb", "tpcds_obt", 0.01),
         ("pg-mooncake", "tpcds_obt", 0.01),
+        ("trino", "tpcds_obt", 0.01),
+        ("trino", "tpcdi", 0.01),
+        ("trino", "clickbench", 0.01),
+        ("trino", "amplab", 0.01),
+        ("trino", "read_primitives", 0.01),
+        ("trino", "coffeeshop", 0.01),
+        ("trino", "tsbs_devops", 0.01),
+        ("trino", "nyctaxi", 0.01),
+        ("trino", "flightdata", 0.01),
+        ("trino", "vector_search", 0.01),
+        ("presto", "tpcds_obt", 0.01),
+        ("presto", "tpcdi", 0.01),
+        ("presto", "clickbench", 0.01),
+        ("presto", "amplab", 0.01),
+        ("presto", "coffeeshop", 0.01),
+        ("presto", "tsbs_devops", 0.01),
+        ("presto", "nyctaxi", 0.01),
+        ("presto", "flightdata", 0.01),
+        ("presto", "datavault", 0.01),
+        ("presto", "vector_search", 0.01),
     }
 )
 
@@ -603,8 +674,8 @@ def test_release_gate_stage1_prunes_measured_runtime_envelopes():
     for cell in result.cells:
         by_pair.setdefault((cell.platform, cell.benchmark), set()).add(cell.scale)
     eligible = sum(1 for scales in by_pair.values() if set(stage1.scales.rungs).issubset(scales))
-    assert eligible == 117
-    assert stage1.report.cross_scale_coverage_min_pairs == int(0.8 * eligible) == 93
+    assert eligible == 115
+    assert stage1.report.cross_scale_coverage_min_pairs == int(0.8 * eligible) == 92
 
 
 def test_release_gate_cross_scale_floors_are_tuned_and_achievable():
