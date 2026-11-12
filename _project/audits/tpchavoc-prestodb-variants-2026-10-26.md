@@ -239,24 +239,3 @@ change. The four `MISMATCH` results differ in row count and the `ORDER_DIFFERS`
 result is decided before the new matching runs, so neither is affected either.
 Only the unit tests were run again; the numbers above are the original
 measurement.
-
-## Follow-up: `1_v8` after the `QUALIFY` order fix (2026-11-11)
-
-The `1_v8` order defect above is fixed in BenchBox, not in the SQLGlot fork: the
-`hoist_qualify_order_by` rewrite (`benchbox/utils/dialect_utils.py`) runs
-before generation for the `presto`, `trino` and `athena` targets, performs the
-`QUALIFY` elimination itself and puts the original sort keys on the outermost
-`SELECT`. The vendored wheel is unchanged. The inner `ORDER BY` is kept.
-
-Rendered `1_v8` for `presto` now ends
-`... ORDER BY "l_returnflag", "l_linestatus") AS "_t" WHERE "_w" > 0 ORDER BY "l_returnflag", "l_linestatus"`;
-`trino` and `athena` render the same outer `ORDER BY` (unit tests
-`tests/unit/utils/test_qualify_order_by_rewrite.py`).
-
-Re-run on the same server and harness as above (PrestoDB 0.298.1, `tpch.tiny`,
-`python -m _project.scripts.tpchavoc_presto_variant_check variants --only 1_v8 1`,
-BenchBox revision `9df749a86` plus the uncommitted rewrite): canonical `Q1` and
-`1_v8` both `PASS`, compared in order (`compare: ordered`), 4 rows against 4,
-largest relative difference 5.9e-15 for `1_v8`. Before the fix all five
-executions of `1_v8` were `ORDER_DIFFERS`. This is one execution, on PrestoDB
-only; Trino and Athena were not run.
