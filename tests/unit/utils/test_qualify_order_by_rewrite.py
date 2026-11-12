@@ -221,19 +221,22 @@ def test_distinct_on_stays_with_its_own_elimination():
 
     inner = rewritten.args["from_"].this.this
     assert inner.args["distinct"].args["on"] is not None
+    assert inner.args["order"] is not None
     assert rewritten.args["order"] is not None
 
 
-def test_limit_is_hoisted_even_when_the_sort_key_cannot_be(caplog):
+def test_limit_stays_with_its_sort_key_when_the_key_cannot_be_hoisted(caplog):
     sql = "SELECT a FROM t QUALIFY ROW_NUMBER() OVER (PARTITION BY a ORDER BY b) = 1 ORDER BY b LIMIT 4"
 
     with caplog.at_level(logging.WARNING, logger="benchbox.utils.dialect_utils"):
         rendered = translate_sql_query(sql, "postgres", source_dialect="duckdb")
 
     tree = sqlglot.parse_one(rendered, read="postgres")
+    inner = tree.args["from_"].this.this
     assert "cannot hoist" in caplog.text
-    assert tree.args["limit"] is not None
-    assert tree.args["from_"].this.this.args.get("limit") is None
+    assert tree.args.get("limit") is None
+    assert inner.args["limit"] is not None
+    assert inner.args["order"] is not None
 
 
 def test_qualified_order_by_resolves_by_source_not_by_bare_name():

@@ -827,24 +827,27 @@ def hoist_qualify_outer_clauses(expression, *, copy: bool = True):
         inner = eliminated.args["from_"].this.this
         outputs = list(zip(sources, eliminated.selects))
         keys = [_outer_order_key(item.this, outputs, exp) for item in order.expressions] if order is not None else []
-        if any(key is None for key in keys):
+        order_hoisted = order is not None and all(key is not None for key in keys)
+        if order is not None and not order_hoisted:
             logging.getLogger(__name__).warning(
                 "QUALIFY elimination cannot hoist %s to the outer select; its sort keys are not "
                 "projected, so the result order is undefined",
                 order.sql(),
             )
-        elif order is not None:
+        if order_hoisted:
             ordered = []
             for item, key in zip(order.expressions, keys):
                 hoisted = item.copy()
                 hoisted.set("this", key)
                 ordered.append(hoisted)
             eliminated.set("order", exp.Order(expressions=ordered))
-            inner.set("order", None)
-        for clause in ("limit", "offset"):
-            if inner.args.get(clause) is not None:
-                eliminated.set(clause, inner.args[clause].copy())
-                inner.set(clause, None)
+            if not inner.args.get("distinct") or _hoistable_distinct(inner, exp):
+                inner.set("order", None)
+        if order is None or order_hoisted:
+            for clause in ("limit", "offset"):
+                if inner.args.get(clause) is not None:
+                    eliminated.set(clause, inner.args[clause].copy())
+                    inner.set(clause, None)
         if _hoistable_distinct(inner, exp):
             eliminated.set("distinct", inner.args["distinct"].copy())
             inner.set("distinct", None)
