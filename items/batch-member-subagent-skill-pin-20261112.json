@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "`skill-sync.conf` pins the group containing `todo` to the catalog merge commit; the two other `rev` values are unchanged.",
+    "`make skill-sync-check` and `scripts/check_untracked_skill_mirrors.sh` pass in the worktree.",
+    "`rg -n \"must not use the leader\" .claude/skills` prints nothing.",
+    "The tracked mirror diff is limited to the two todo files plus skill-sync manifest or receipt files."
+  ],
+  "description": "Files: `skill-sync.conf` and the generated `.claude/skills/todo` mirror. The mirrored todo skill repeats the old ban at `SKILL.md` (Role boundaries in a batch) and `references/batch.md` (Roles).\n\nChange. Set the `rev` of the source group that lists `skill = todo` to the catalog merge commit recorded on the umbrella. Fetch that commit into the local catalog checkout if it is absent. Run `make skill-sync` in the write worktree, then `make skill-sync-check`.\n\nDecision gates.\n- Do not start until the catalog text pull request is merged; pin only a commit that is on catalog `main`, never a feature-branch commit.\n- If the regenerated diff under `.claude/skills` touches any file other than `todo/SKILL.md`, `todo/references/batch.md` and skill-sync's own manifest or receipt files, stop and report the extra files.\n- If `make skill-sync` needs the `.agents/skills` materialization refreshed, let it; that directory is gitignored and is never staged.\n\nGuardrails. The `shared-agent-execution` and `skill-sync` pins do not move. No hand edit under `.claude/skills`. Stage files by explicit path. The umbrella's guardrails also apply.",
+  "links": [
+    "skill-sync.conf",
+    ".claude/skills/todo/SKILL.md",
+    ".claude/skills/todo/references/batch.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-12T14:13:50Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "84fa37d095184238b97c118f4a3e3a70",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    }
+  ]
+}
