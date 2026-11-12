@@ -1241,7 +1241,10 @@ def _estimated_normalized_cost(bundle: BundleDocument) -> NormalizedCost | None:
 def _normalized_cost(bundle: BundleDocument) -> NormalizedCost:
     raw = _raw_normalized_cost_block(bundle)
     if _bundle_gateway_routed(bundle):
-        return _normalized_cost_from_block(raw) if raw is not None else _gateway_not_comparable_cost()
+        recorded = _normalized_cost_from_block(raw) if raw is not None else None
+        if recorded is not None and recorded.cost_status == "not_comparable_gateway":
+            return recorded
+        return _gateway_not_comparable_cost()
     prior_reasons: tuple[str, ...] = ()
     if raw is not None:
         normalized = _normalized_cost_from_block(raw)

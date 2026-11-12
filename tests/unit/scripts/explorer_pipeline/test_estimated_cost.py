@@ -319,3 +319,35 @@ def test_gateway_bundle_without_cost_block_gets_no_timing_estimate(platform: str
     assert cost.cost_status == "not_comparable_gateway"
     assert cost.normalized_cost_usd is None
     assert cost.estimated_cost_usd is None
+
+
+@pytest.mark.parametrize("status", ["normalized", "estimated"])
+def test_gateway_bundle_never_publishes_a_recorded_cost(status: str) -> None:
+    data = _snowflake_bundle()
+    data["platform"]["gateway"] = {"name": "espresso", "routed": True}
+    block = {
+        "normalized_cost_usd": "1.25",
+        "cost_model_version": "2026.05.0",
+        "cost_model_source": "benchbox.core.cost.pricing",
+        "cost_scope": "compute_only",
+        "cost_status": status,
+        "billing_unit": "credit",
+        "pricing_region": "us-east-1",
+        "deployment": {},
+    }
+    if status == "estimated":
+        block.update(
+            normalized_cost_usd=None,
+            estimated_cost_usd="1.25",
+            cost_estimate_method="m",
+            cost_estimate_source="s",
+            cost_estimate_pricing_date="2026-01-01",
+            cost_estimate_assumptions=["a"],
+        )
+    data["normalized_cost"] = block
+
+    cost = _normalized_cost(_parse_bundle(data))
+
+    assert cost.cost_status == "not_comparable_gateway"
+    assert cost.normalized_cost_usd is None
+    assert cost.estimated_cost_usd is None
