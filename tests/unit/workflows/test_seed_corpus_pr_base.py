@@ -269,15 +269,73 @@ def test_seed_staging_anonymizes_plans_companions(tmp_path: Path) -> None:
     assert "lineitem.parquet" not in staged
 
 
-def test_seed_staging_refuses_plans_with_raw_explain_output(tmp_path: Path) -> None:
-    plans = {"queries": {"1": {"plan": {"raw_explain_output": "EXPLAIN text"}}}}
+def _captured_plans() -> dict[str, Any]:
+    return {
+        "queries": {
+            "Q1#0:power": {
+                "plan": {
+                    "raw_explain_output": "SEQ_SCAN /Users/maintainer/data/lineitem.parquet",
+                    "logical_root": {
+                        "physical_operator": {"platform_metadata": {"estimated_cardinality": 6000, "file": "x"}},
+                        "children": [],
+                    },
+                }
+            }
+        }
+    }
+
+
+def test_seed_staging_sanitizes_captured_plans_instead_of_refusing(tmp_path: Path) -> None:
+    process, destination = _stage_bundle(
+        tmp_path, _clean_payload(), (".plans.json",), companion_payloads={".plans.json": _captured_plans()}
+    )
+
+    assert process.returncode == 0, process.stderr
+    assert "eligible=true" in (tmp_path / "github-output").read_text(encoding="utf-8")
+    staged = json.loads((destination / "bundle.plans.json").read_text(encoding="utf-8"))
+    assert list(staged["queries"]) == ["Q1#0:power"]
+    plan = staged["queries"]["Q1#0:power"]["plan"]
+    assert plan["raw_explain_output"] is None
+    assert plan["logical_root"]["physical_operator"]["platform_metadata"] == {}
+    assert "/Users/maintainer" not in (destination / "bundle.plans.json").read_text(encoding="utf-8")
+
+
+def test_seed_staging_records_sanitized_plans_hash_in_internal_manifest(tmp_path: Path) -> None:
+    process, destination = _stage_bundle(
+        tmp_path,
+        _local_run_payload(),
+        (".plans.json",),
+        internal_manifest=True,
+        companion_payloads={".plans.json": _captured_plans()},
+    )
+
+    assert process.returncode == 0, process.stderr
+    manifest = json.loads((destination / "bundle.manifest.json").read_text(encoding="utf-8"))
+    assert manifest["companion_hashes"] == {
+        "bundle.plans.json": hashlib.sha256((destination / "bundle.plans.json").read_bytes()).hexdigest()
+    }
+
+
+def test_seed_staging_still_refuses_plans_leak_the_sanitizer_cannot_remove(tmp_path: Path) -> None:
+    plans = _captured_plans()
+    plans["/Users/maintainer/secret-key"] = 1
     process, destination = _stage_bundle(
         tmp_path, _clean_payload(), (".plans.json",), companion_payloads={".plans.json": plans}
     )
 
     assert process.returncode != 0
-    assert "raw_explain_output" in process.stderr
+    assert "private path leak" in process.stderr
     assert "eligible=true" not in (tmp_path / "github-output").read_text(encoding="utf-8")
+    assert "\tstaging_failed: " in (tmp_path / "seed-status.txt").read_text(encoding="utf-8")
+    assert not destination.exists()
+
+
+def test_seed_staging_refuses_plans_companion_that_is_not_an_object(tmp_path: Path) -> None:
+    process, destination = _stage_bundle(
+        tmp_path, _clean_payload(), (".plans.json",), companion_payloads={".plans.json": ["raw"]}
+    )
+
+    assert process.returncode != 0
     assert "\tstaging_failed: " in (tmp_path / "seed-status.txt").read_text(encoding="utf-8")
     assert not destination.exists()
 

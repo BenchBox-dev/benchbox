@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Staging a local run for the corpus now sanitizes a captured plans companion instead of refusing it, and still refuses if anything unsafe remains. The refusal printed by `benchbox publish run` for an unofficial result now names the compliance class once and mentions the TPC-DS contract only for TPC-DS results."
+    }
+  ]
+}

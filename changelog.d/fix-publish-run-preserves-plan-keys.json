@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "benchbox publish run and benchbox run --publish now publish the plans companion with its original Q<id>#<stream>:<test_type> keys and fingerprint_varied / fingerprint_variants fields intact, sanitizing the source companion instead of regenerating it from the reloaded result."
+    }
+  ]
+}

@@ -42,15 +42,24 @@ has no salt file, so a missing secret fails the lane.
 ## Staging a local run
 
 ```bash
+uv run -- benchbox run ... --capture-plans
 make corpus-stage-local RESULT=~/Developer/benchmark_runs/results/<run>.json OUT=<staging dir>
-uv run -- python scripts/validate_submission.py --require-manifest <staging dir>/<run>.json
+uv run -- python scripts/validate_submission.py --require-manifest --trust-internal-source <staging dir>/<run>.json
 ```
 
 `make corpus-stage-local` wraps
 `scripts/stage_seed_corpus_bundle.py --internal-manifest`. It writes the
-anonymized bundle and an internal manifest into `OUT`. Keep `OUT` outside the
-repository. Copying staged files into `results-data/bundles/` needs the owner's
-approval. Published bundle JSON is never modified.
+anonymized bundle and an internal manifest into `OUT`. With `--capture-plans`
+it also sanitizes the `<run>.plans.json` companion (local paths redacted,
+`raw_explain_output` cleared, operator `platform_metadata` emptied), re-scans
+it, and stages it with its hash in the manifest. It still refuses if anything
+unsafe remains. Keep `OUT` outside the repository. Copying staged files into
+`results-data/bundles/` needs the owner's approval. Published bundle JSON is
+never modified.
+
+`--trust-internal-source` is what admits a subscale internal bundle. Without it
+the validator answers `only compliance_class=official may be submitted`.
+`benchbox publish run` is not needed for the corpus path.
 
 ## Guard refusals
 
