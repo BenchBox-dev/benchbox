@@ -37342,6 +37342,15 @@
       "status": "done",
       "title": "Rewrite the TPC-DS maintenance phase guide in benchbox-site for dsdgen refresh sets"
     },
+    "site-multi-warehouse-post-correction-20261112": {
+      "claim": null,
+      "needs": [
+        "df-distinct-timing-confirmation"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Reword the multi-warehouse blog draft: BenchBox never ran the DataFusion self-join"
+    },
     "site-myst-converter-retirement-20261017": {
       "claim": null,
       "needs": [],

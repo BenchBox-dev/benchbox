@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "The draft no longer says BenchBox ran different multi-warehouse code per platform; it describes the dead branch and the NULL defects accurately.",
+    "The post's numbers for current BenchBox behaviour come from complete-query timings recorded in `df-distinct-timing-confirmation`.",
+    "The front-matter placeholders noted in the draft (publication date, `post_number` 6 versus 7) are settled by the owner."
+  ],
+  "description": "Cross-repository gap; the work is in BenchBox-dev/benchbox-site, tracked here because the finding came from core and this session could not write to the site tracker. Draft PR #143 there (`drafts/benchbox-in-action/drafts/06-platform-specific-optimization-patterns.md`) says BenchBox picks the self-join for DataFusion in TPC-DS Q16 and Q95. The branch that did so was dead code in every release from v0.1.1 to v0.5.0 (it compared the platform with `\"datafusion\"`; the adapter reports `\"DataFusion\"`). The correction was posted as a comment on that PR on 2026-11-12; the draft text itself is unchanged. Core PR #4169 has since removed the branches, fixed NULL handling, and moved Q16, Q94 and Q95 to a min/max rule, so the post's description of current BenchBox behaviour is also out of date.\n\nExpected: the draft states what BenchBox actually executed in February and executes now, and cites complete-query timings once `df-distinct-timing-confirmation` has them.\n\nGuardrails: the thesis and publication date are the owner's editorial decisions. Do not publish isolated-step timings as if they were complete-query results. Site changes go by pull request in the site repository.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-site/pull/143",
+    "https://github.com/BenchBox-dev/benchbox/pull/4169"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-12T22:24:23Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f00add7ab7624144b04f7a1174f66bba",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}
