@@ -596,7 +596,7 @@ def find_cross_surface_dtype_divergences(
         if query_id in skip_query_ids:
             continue
         try:
-            reference_schema = connection.execute(reference_sql(query_id)).fetch_arrow_table().schema
+            reference_schema = connection.execute(reference_sql(query_id)).to_arrow_table().schema
         except Exception as exc:
             divergences.append(SurfaceDivergence(query_id=query_id, cell="reference", detail=f"error: {exc}"))
             continue

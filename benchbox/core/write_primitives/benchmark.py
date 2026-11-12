@@ -58,6 +58,12 @@ from benchbox.sql_compat.rules.execution_filter.starrocks_write_primitives impor
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.cloud_storage import normalize_output_dir
 from benchbox.utils.dialect_utils import split_sql_statements
+from benchbox.utils.duckdb_extensions import (
+    DATAFRAME_ENABLE_HINT,
+    THIRD_PARTY_ENABLE_HINT,
+    datasketches_skip_reason,
+    rewrite_datasketches_install_sql,
+)
 from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
 
 _POSTGRES_OPERATION_SKIP_DIALECTS = frozenset({"postgres", "postgresql"})
@@ -921,10 +927,31 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                     skip_reason=skip_reason,
                 )
 
+            if effective_sql is not None and (platform_key or "").lower() in {"duckdb", "ducklake"}:
+                skip_reason = datasketches_skip_reason(effective_sql, bool(kwargs.get("allow_third_party_extensions")))
+                if skip_reason is not None:
+                    skip_reason = f"Operation '{operation_id}' is skipped: {skip_reason}"
+                    self.log_verbose(skip_reason)
+                    return OperationResult(
+                        operation_id=operation_id,
+                        success=True,
+                        write_duration_ms=0.0,
+                        rows_affected=0,
+                        validation_duration_ms=0.0,
+                        validation_passed=True,
+                        validation_results=[],
+                        cleanup_duration_ms=0.0,
+                        cleanup_success=True,
+                        status="SKIPPED",
+                        skip_reason=skip_reason,
+                    )
+
             self.log_verbose(f"Executing write operation: {operation_id}")
             if effective_sql is None:
                 raise RuntimeError(f"No executable SQL resolved for operation '{operation_id}'")
             effective_sql = self._rewrite_transactional_sql_for_platform(effective_sql, platform_key)
+            if (platform_key or "").lower() in {"duckdb", "ducklake"}:
+                effective_sql = rewrite_datasketches_install_sql(effective_sql)
             write_sql = self._replace_placeholders(effective_sql)
             summed_statements = (
                 split_sql_statements(write_sql, "sqlite")
@@ -1232,7 +1259,23 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
             }
 
             for op_id in sql_parity_op_ids:
-                op_result = self.execute_operation(op_id, connection, platform_key="duckdb")
+                op_result = self.execute_operation(
+                    op_id,
+                    connection,
+                    platform_key="duckdb",
+                    allow_third_party_extensions=False,
+                )
+                if op_result.status == "SKIPPED":
+                    results.append(
+                        {
+                            "query_id": op_id,
+                            "status": "SKIPPED",
+                            "execution_time_seconds": 0.0,
+                            "rows_returned": 0,
+                            "error": op_result.skip_reason.replace(THIRD_PARTY_ENABLE_HINT, DATAFRAME_ENABLE_HINT),
+                        }
+                    )
+                    continue
                 status = "SUCCESS" if op_result.success and op_result.validation_passed else "FAILED"
                 error = op_result.error
                 if status == "FAILED" and not error and not op_result.validation_passed:

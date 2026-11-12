@@ -8,6 +8,7 @@ on:
       - 'benchbox/core/write_primitives/**'
       - 'benchbox/core/read_primitives/**'
       - 'scripts/duckdb_datasketches_smoke.py'
+      - 'benchbox/utils/duckdb_extensions.py'
       - 'pyproject.toml'
       - 'uv.lock'
       - '.github/workflows/extension-smoke.yml'

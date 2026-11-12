@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Internal BenchBox TODO and release tooling - not shipped in the wheel"
 requires-python = ">=3.11"
 dependencies = [
-    "duckdb>=1.0.0,<2.0.0",
+    "duckdb>=1.0.0,<3.0.0",
     "pyyaml>=6.0.0",
     "sqlglot>=25.6.0,<31.0.0",
     "tractable[mcp]",

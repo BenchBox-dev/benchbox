@@ -221,7 +221,7 @@ def test_generic_handlers_route_through_arrow_insert(monkeypatch, tmp_path, hand
     else:
         (path / "metadata.ducklake").write_text("")
         fake_duck = MagicMock()
-        fake_duck.connect.return_value.execute.return_value.fetch_arrow_table.return_value = table
+        fake_duck.connect.return_value.execute.return_value.to_arrow_table.return_value = table
         monkeypatch.setitem(__import__("sys").modules, "duckdb", fake_duck)
 
     assert handler_cls().load_table("t", path, MagicMock(), MagicMock(), MagicMock()) == 10

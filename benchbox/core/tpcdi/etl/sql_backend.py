@@ -148,7 +148,7 @@ class SQLETLBackend:
             current_max_sk, current_max_batch, latest_effective = cursor.execute(
                 'SELECT COALESCE(MAX("SK_CustomerID"), 0), COALESCE(MAX("BatchID"), 0), MAX("EffectiveDate") '
                 'FROM "DimCustomer"'
-            ).fetchone()
+            ).fetchall()[0]
             effective_date = self._next_effective_date(latest_effective, customers["EffectiveDate"].iloc[0])
             batch_id = int(current_max_batch) + 1
             initial_sk = {"historical": 1, "incremental": 1_000_001, "scd": 2_000_001}.get(batch_type, 1)

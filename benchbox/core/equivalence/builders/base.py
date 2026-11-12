@@ -44,8 +44,10 @@ def _load_duckdb_cell(benchmark: Any, output_dir: Path, table_names: Sequence[st
     import duckdb
 
     from benchbox.platforms.duckdb import DuckDBAdapter
+    from benchbox.utils.duckdb_extensions import apply_single_arrow_lambda
 
     connection = duckdb.connect(":memory:")
+    apply_single_arrow_lambda(connection, duckdb.__version__)
     try:
         for statement in benchmark.get_create_tables_sql(dialect="duckdb").strip().split(";"):
             if statement.strip():

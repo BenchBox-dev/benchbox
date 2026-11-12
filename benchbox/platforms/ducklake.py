@@ -311,6 +311,7 @@ class DuckLakeAdapter(DuckDBAdapter):
             "gcs_secret",
             "azure_connection_string",
             "azure_account_name",
+            "allow_third_party_extensions",
         ):
             value = _resolve_option(key)
             if value is not None:
@@ -667,7 +668,7 @@ class DuckLakeAdapter(DuckDBAdapter):
                 "DuckLake requires DuckDB >= 1.3 (the 'ducklake' extension is not "
                 f"available on earlier releases). Detected DuckDB version: "
                 f"{live_version or 'unknown'}. Use a duckdb>=1.3 environment "
-                "(e.g. `uv add 'duckdb>=1.3,<2.0'` or --platform-option driver_version=1.3.2)."
+                "(e.g. `uv add 'duckdb>=1.3,<3.0'` or --platform-option driver_version=1.3.2)."
             )
 
         if self.catalog in ("duckdb", "sqlite"):

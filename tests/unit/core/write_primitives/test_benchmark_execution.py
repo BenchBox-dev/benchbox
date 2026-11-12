@@ -811,6 +811,40 @@ class TestExecuteOperation:
         assert "DataSketches" in (result.skip_reason or "")
         mock_conn.execute.assert_not_called()
 
+    @pytest.mark.parametrize(
+        ("version", "allow", "expected", "absent", "skipped"),
+        [
+            ("2.0.0", False, None, "allow_extension_repositories", True),
+            ("2.0.0", True, "INSTALL datasketches FROM query_farm", "FROM community", False),
+            ("1.5.5", False, "INSTALL datasketches FROM community", "query_farm", False),
+        ],
+    )
+    def test_execute_operation_gates_datasketches_install_by_version_and_option(
+        self, wp_benchmark, monkeypatch, version, allow, expected, absent, skipped
+    ):
+        mock_conn = Mock()
+        monkeypatch.setattr(wp_benchmark, "is_setup", lambda conn: True)
+        monkeypatch.setattr("benchbox.utils.duckdb_extensions.duckdb_major_version", lambda v=None: int(version[0]))
+
+        result = wp_benchmark.execute_operation(
+            "sketch_ddl_create_persistent_table",
+            mock_conn,
+            platform_key="duckdb",
+            allow_third_party_extensions=allow,
+        )
+
+        executed = "\n".join(str(call.args[0]) for call in mock_conn.execute.call_args_list if call.args)
+        assert absent not in executed
+        if skipped:
+            assert result.status == "SKIPPED"
+            assert result.success is True
+            assert "allow_third_party_extensions=true" in result.skip_reason
+            assert "duckdb-extensions.query.farm" in result.skip_reason
+            assert "query_farm" not in executed
+            assert "INSTALL" not in executed
+        else:
+            assert expected in executed
+
     def test_execute_operation_skips_postgres_merge_shorthand(self, wp_benchmark, monkeypatch):
         mock_conn = Mock()
         mock_conn.execute = Mock()

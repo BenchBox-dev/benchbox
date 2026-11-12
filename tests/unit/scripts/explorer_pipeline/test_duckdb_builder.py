@@ -43,6 +43,14 @@ class TestDuckDBSnapshotBuilder:
         assert out.exists()
         assert out.stat().st_size > 0
 
+    def test_snapshot_uses_browser_readable_storage_version(self, tmp_path: Path) -> None:
+        out = tmp_path / "results.duckdb"
+        DuckDBSnapshotBuilder().build([_make_entry()], out)
+
+        header = out.read_bytes()[:20]
+        assert header[8:12] == b"DUCK"
+        assert int.from_bytes(header[12:20], "little") == 64
+
     def test_failed_rebuild_preserves_last_known_good_snapshot(self, tmp_path: Path, monkeypatch) -> None:
         builder = DuckDBSnapshotBuilder()
         out = tmp_path / "results.duckdb"

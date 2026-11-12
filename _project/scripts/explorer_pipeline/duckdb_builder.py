@@ -33,6 +33,8 @@ logger = logging.getLogger(__name__)
 
 _SummaryKey = tuple[str, float, str, int | None]
 
+_SNAPSHOT_CONFIG = {"storage_compatibility_version": "v0.10.0"}
+
 _COHORT_PLATFORM_REQUIRED_KEYS = frozenset({"platform_id", "platform", "result_id", "short_id", "trust_label"})
 
 _NORMALIZED_COST_COLUMNS = [
@@ -234,7 +236,7 @@ class DuckDBSnapshotBuilder:
         rows = [self._entry_to_tuple(e) for e in entries]
 
         try:
-            with duckdb.connect(str(candidate_path)) as con:
+            with duckdb.connect(str(candidate_path), config=_SNAPSHOT_CONFIG) as con:
                 self._create_metadata(con)
                 con.execute(f"CREATE TABLE results ({col_defs})")
                 if rows:
@@ -275,7 +277,7 @@ class DuckDBSnapshotBuilder:
         prefix = bundle_url_prefix.rstrip("/")
 
         try:
-            with duckdb.connect(str(candidate_path)) as con:
+            with duckdb.connect(str(candidate_path), config=_SNAPSHOT_CONFIG) as con:
                 self._create_schema(con, read_model_version)
                 self._create_metadata(con, read_model_version)
                 self._populate_supporting_tables(con, entries, details_map)

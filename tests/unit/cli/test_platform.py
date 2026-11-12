@@ -507,7 +507,7 @@ class TestPlatformManager:
         assert guide is not None
         assert guide["platform"] == "DuckDB"
         assert guide["description"] == "Columnar OLAP engine • Single-node • In-memory"
-        assert guide["installation_command"] == "uv add 'duckdb>=1.5,<2'"
+        assert guide["installation_command"] == "uv add 'duckdb>=1.5,<3'"
         assert guide["category"] == "analytical"
         assert isinstance(guide["available"], bool)
         assert isinstance(guide["missing_libraries"], list)

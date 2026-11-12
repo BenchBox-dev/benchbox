@@ -44,7 +44,7 @@ def build_dataframe_contexts_from_specs(
             f"CAST({column} AS DOUBLE) AS {column}" if str(sql_type).upper().startswith("DECIMAL") else column
             for column, sql_type in columns
         ]
-        arrow = connection.execute(f"SELECT {', '.join(projections)} FROM {table_name.lower()}").fetch_arrow_table()
+        arrow = connection.execute(f"SELECT {', '.join(projections)} FROM {table_name.lower()}").to_arrow_table()
         expression_ctx.register_table(table_name, pl.from_arrow(arrow).lazy())
         pandas_ctx.register_table(table_name, arrow.to_pandas(types_mapper=pd.ArrowDtype))
     return {"expression": expression_ctx, "pandas": pandas_ctx}

@@ -1171,6 +1171,7 @@ class TestDriversMixin:
         op_kwargs["platform_key"] = getattr(self, "operation_platform_key", None) or self.get_target_dialect()
         op_kwargs["platform_fallback_key"] = getattr(self, "operation_platform_fallback_key", None)
         op_kwargs["platform_name"] = self.platform_name
+        op_kwargs["allow_third_party_extensions"] = bool(getattr(self, "allow_third_party_extensions", False))
 
         operation = None
         if hasattr(self, "preprocess_operation_sql") and hasattr(benchmark, "get_operation"):
