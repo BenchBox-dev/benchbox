@@ -377,19 +377,32 @@ class ResultBuilder:
     def _full_spec_violations(self) -> list[str]:
         benchmark_id = normalize_benchmark_id(self._benchmark.name)
         run_config = self._run_config
-        if run_config is None:
-            return []
-        override = self._execution_phases_override
-        throughput = override.throughput_test if override else None
-        power = override.power_test if override else None
-        refresh_functions = bool(power is not None and power.refresh_functions)
+        recorded = self._execution_phases_override
+        power = recorded.power_test if recorded else None
+        throughput = recorded.throughput_test if recorded else None
+        executed_phases = []
+        if recorded is not None:
+            if recorded.setup.data_loading is not None:
+                executed_phases.append("load")
+            if power is not None:
+                executed_phases.append("power")
+            if throughput is not None:
+                executed_phases.append("throughput")
+            if recorded.maintenance_test is not None:
+                executed_phases.append("maintenance")
+        refresh = power.refresh_functions if power is not None else None
+        refresh_functions = (
+            refresh is not None
+            and len(refresh) == 2
+            and all(function.get("status") == "SUCCESS" for function in refresh)
+        )
         return full_spec_violations(
             benchmark_id,
             self._benchmark.scale_factor,
-            seed=run_config.seed,
-            phases=run_config.phases,
+            seed=run_config.seed if run_config else None,
+            phases=executed_phases,
             streams=throughput.num_streams if throughput is not None else None,
-            query_subset=run_config.query_subset,
+            query_subset=run_config.query_subset if run_config else None,
             refresh_functions=refresh_functions,
         )
 
@@ -414,7 +427,7 @@ class ResultBuilder:
         compliance_class = routed_compliance_class(
             self._benchmark.compliance_class, platform_info_gateway(platform_info)
         )
-        if compliance_class == "official" and self._run_config is not None:
+        if compliance_class == "official":
             violations = self._full_spec_violations()
             if violations:
                 logger.warning("Result is not classified official: %s", "; ".join(violations))

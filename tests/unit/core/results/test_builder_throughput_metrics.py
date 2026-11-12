@@ -4,6 +4,7 @@ import pytest
 
 from benchbox.core.results.builder import BenchmarkInfoInput, ResultBuilder, RunConfigInput
 from benchbox.core.results.models import (
+    DataLoadingPhase,
     ExecutionPhases,
     PowerTestPhase,
     SetupPhase,
@@ -192,13 +193,13 @@ class TestValidationPhaseStatus:
         assert payload["phases"]["validation"]["status"] == "SKIPPED"
 
 
-PHASES = ["load", "power", "throughput"]
 RF = [{"name": "RF1", "status": "SUCCESS"}, {"name": "RF2", "status": "SUCCESS"}]
 
 
-def _official_build(run_config, *, streams=2, refresh=True, throughput=True):
+def _official_build(run_config, *, streams=2, refresh=RF, throughput=True, loaded=True):
     builder = _builder(compliance_class="official")
-    builder.set_run_config(run_config)
+    if run_config is not None:
+        builder.set_run_config(run_config)
     power = PowerTestPhase(
         start_time="a",
         end_time="b",
@@ -206,26 +207,36 @@ def _official_build(run_config, *, streams=2, refresh=True, throughput=True):
         query_executions=[],
         geometric_mean_time=1.0,
         power_at_size=1.0,
-        refresh_functions=RF if refresh else None,
+        refresh_functions=refresh,
     )
     phase = _throughput_phase(success=True, throughput_at_size=1.0) if throughput else None
     if phase is not None:
         phase.num_streams = streams
-    builder.set_execution_phases(ExecutionPhases(setup=SetupPhase(), power_test=power, throughput_test=phase))
+    loading = DataLoadingPhase(
+        duration_ms=1, status="SUCCESS", total_rows_loaded=1, tables_loaded=1, per_table_stats={}
+    )
+    setup = SetupPhase(data_loading=loading if loaded else None)
+    builder.set_execution_phases(ExecutionPhases(setup=setup, power_test=power, throughput_test=phase))
     return builder.build().compliance_class
 
 
 @pytest.mark.parametrize(
     ("run_config", "kwargs", "expected"),
     [
-        (RunConfigInput(seed=7, phases=PHASES), {}, "official"),
-        (RunConfigInput(seed=None, phases=PHASES), {}, "unofficial_nonstandard"),
-        (RunConfigInput(seed=7, phases=PHASES, query_subset=["1"]), {}, "unofficial_nonstandard"),
-        (RunConfigInput(seed=7, phases=["load", "power"]), {}, "unofficial_nonstandard"),
-        (RunConfigInput(seed=7), {}, "unofficial_nonstandard"),
-        (RunConfigInput(seed=7, phases=PHASES), {"streams": 1}, "unofficial_nonstandard"),
-        (RunConfigInput(seed=7, phases=PHASES), {"refresh": False}, "unofficial_nonstandard"),
-        (RunConfigInput(seed=7, phases=PHASES), {"throughput": False}, "unofficial_nonstandard"),
+        (RunConfigInput(seed=7), {}, "official"),
+        (RunConfigInput(seed=None), {}, "unofficial_nonstandard"),
+        (None, {}, "unofficial_nonstandard"),
+        (RunConfigInput(seed=7, query_subset=["1"]), {}, "unofficial_nonstandard"),
+        (RunConfigInput(seed=7), {"loaded": False}, "official"),
+        (RunConfigInput(seed=7), {"throughput": False}, "unofficial_nonstandard"),
+        (RunConfigInput(seed=7), {"streams": 1}, "unofficial_nonstandard"),
+        (RunConfigInput(seed=7), {"refresh": None}, "unofficial_nonstandard"),
+        (RunConfigInput(seed=7), {"refresh": [RF[0]]}, "unofficial_nonstandard"),
+        (
+            RunConfigInput(seed=7),
+            {"refresh": [RF[0], {"name": "RF2", "status": "FAILED"}]},
+            "unofficial_nonstandard",
+        ),
     ],
 )
 def test_official_class_requires_recorded_full_spec_evidence(run_config, kwargs, expected):
