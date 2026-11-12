@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "A unit test shows the refusal message never reports an available figure at or above the figure it calls required; the margin, if any, is named in the message.",
+    "A query-subset run reports an estimate based on the tables those queries read, or the message states plainly that the figure is the full-benchmark estimate.",
+    "The four refused commands from 2026-11-12 are re-run on a host with the same free memory and either start or are refused with a message whose numbers explain the refusal."
+  ],
+  "context": "Logs: ~/Developer/benchmark_runs/df-distinct-remediation/logs/pregen-*.log (local, not committed). The PySpark TPC-Havoc log also shows `Manifest validation failed; regenerating benchmark data` for data generated minutes earlier by the Polars run of the same benchmark and scale; whether that is expected per-platform regeneration was not checked.",
+  "description": "Two defects in the pre-run memory check for DataFrame platforms, seen on a 16 GiB host on 2026-11-12 through `benchbox run --platform <df> --queries ...`.\n\n1. Contradictory refusal. Runs failed with messages such as `Insufficient memory: ~3.0 GB required, but only 3.5 GB available`, `~2.0 GB required, but only 2.4 GB available`, and `~3.0 GB required, but only 3.1 GB available` (PySpark TPC-DS, Data Vault and TPC-Havoc at SF1; Polars CoffeeShop at SF1). Available memory exceeds the stated requirement in every case. Either the comparison includes a margin the message does not state, or the comparison is wrong. A user cannot tell how much memory to free.\n2. Subset blind. A three-query TPC-DS run at SF10 on Polars or DataFusion is refused with `~18.0-20.0 GB required`. The same isolated steps ran on this host at SF10 in an earlier measurement, with lazy scans that read two tables. The estimate appears to be per benchmark and scale, not per selected queries or tables.\n\nExpected: the refusal message states the real threshold being applied (requirement plus margin) so the numbers are consistent, and the estimate accounts for the tables the selected queries read, or the message says the estimate is for the full benchmark and how to proceed.\n\nGuardrails: do not weaken the guard for full runs; exhausting a shared host is the failure it prevents. `--ignore-memory-warnings` stays the explicit override. Locate the estimate and comparison before proposing a fix; they were not read for this report.",
+  "links": [
+    "benchbox/platforms/dataframe/benchmark_mixin.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-12T22:23:50Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "927ee258c71e4bacbfd46b71ffd3b4c8",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}

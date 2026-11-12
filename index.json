@@ -19633,6 +19633,13 @@
       "status": "open",
       "title": "Time the DataFrame distinct-count remediation on an idle machine and change or revert any pattern that is slower"
     },
+    "df-memory-guard-refusal-message-and-subset-estimate-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "DataFrame memory guard refuses runs whose stated requirement is below available memory, and ignores `--queries` subsets"
+    },
     "df-n-unique-null-semantics": {
       "claim": null,
       "needs": [],
