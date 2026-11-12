@@ -450,7 +450,10 @@ a manual dispatch, a `pull_request_target` event other than a plain edit, and a
      else single-line at its first line. Other defects go in the review body
      with the summary. DO NOT SHIP opens no thread. A run with no verdict still
      posts a review explaining the pending result, so the latest review reflects
-     the latest run. The ruleset requires every thread resolved, so threads
+     the latest run, but only once per head and cause: the notice ends with a
+     `<!-- review-unavailable: v1 <head> <cause-key> -->` marker, and a later run
+     that would post the same cause for the same head posts nothing new (the
+     status is still posted). A different cause posts a new notice. The ruleset requires every thread resolved, so threads
      block merges.
 
 ## Job structure and controls
@@ -827,13 +830,14 @@ answer", and is retried. Prose or malformed-JSON final text, and OMP output that
 is not an event stream, is `invalid` and goes to Jev.
 
 The review body lists every absent attempt under "Reviewers not available" as `-
-<reviewer> (attempt <slot>): absent (<kind>): <detail>`, followed for an invalid
-attempt by `; recovery: <choice> (Jev, probability, confidence)` or
-`; recovery: <choice> (fallback, <reason>)`. The detail is the
-attempt artifact's, credentials redacted, whitespace collapsed, at most 160
-characters, and omitted when absent. A reviewer's raw response is never published
-there; the detail can carry the reviewer's own `incomplete_reason` or the text of a
-contradiction, redacted and clipped like any other detail.
+<reviewer> (attempt <slot>): <cause>`, where the cause is a fixed plain-English
+sentence for the kind of absence (quota, authentication, timeout, invalid or
+empty answer, incomplete read, provider error, run failure, too large), followed
+for an invalid attempt by `; recovery: <choice> (Jev, probability, confidence)` or
+`; recovery: <choice> (fallback, <reason>)`. A provider is named only when the
+run routed through it. The attempt artifact's free-text detail and the
+reviewer's raw response are never published there, so the line cannot carry
+reviewer text; the detail stays on the artifact.
 
 ## Decisions
 
