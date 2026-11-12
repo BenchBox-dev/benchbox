@@ -30480,10 +30480,15 @@
       "title": "Add a blocking plan-capture CI gate (the highest escaped-defect-density subsystem has no required check)"
     },
     "plan-capture-followups-batch-notes-20261112": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T17:08:39Z",
+        "generation": "4325336adf82428db4f2aa6eeef99a26",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:eb741106bc3418ce287ca405"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Batch notes: plan-capture follow-ups (registered batch plan-capture-followups)"
     },
     "plan-capture-robustness-hardening": {
