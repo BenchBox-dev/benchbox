@@ -425,14 +425,6 @@ class DuckDBQueryPlanParser(QueryPlanParser):
             if sort_keys:
                 kwargs["sort_keys"] = sort_keys
 
-        elif logical_type == LogicalOperatorType.JOIN:
-            join_type = self._extract_join_type_from_operator(operator_type_str)
-            kwargs["join_type"] = join_type
-
-            join_conds = [d for d in details if "=" in d or "ON" in d]
-            if join_conds:
-                kwargs["join_conditions"] = join_conds
-
         physical_op = self._create_physical_operator(
             operator_type_str,
             properties={},
