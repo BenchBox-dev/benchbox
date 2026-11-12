@@ -24823,10 +24823,15 @@
       "title": "Add open table format selection to CLI interactive mode"
     },
     "interactive-scale-prompt-treats-lists-as-limits-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T01:56:52Z",
+        "generation": "b32535e3355d44739b178200e10735c9",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Interactive scale prompt still presents scale lists as limits and forces ClickBench to SF 1"
     },
     "interactive-table-mode-ux-and-equivalent-command": {
