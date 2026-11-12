@@ -31516,7 +31516,7 @@
       ],
       "priority": "high",
       "status": "open",
-      "title": "Publish the first query-plan capture bundles to the Results Explorer (PR 4127 on hold for the DuckDB parser fix)"
+      "title": "Publish the first query-plan capture bundles to the Results Explorer (PR 4153 awaits the owner lifting its hold)"
     },
     "publish-run-rewrites-plans-companion-keys-20261111": {
       "claim": null,
