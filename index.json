@@ -15470,17 +15470,12 @@
       "title": "Repeat the ClickHouse TPC-H layout and session-settings study at SF10 or larger"
     },
     "clickhouse-tpch-q3-q5-slowdown-probe-20261008": {
-      "claim": {
-        "expires_at": "2026-11-13T22:05:46Z",
-        "generation": "27a661d65d334a6eafbde0f3e02f24e0",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9dde2030f0b654b7eae6a730"
-      },
+      "claim": null,
       "needs": [
         "tuning-evidence-measurement-harness-20261008"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Find why TPC-H Q3, Q5 and Q18 slow down under the date-first ClickHouse sort key"
     },
     "clickhouse-tpchavoc-q6-decimal-bug": {
