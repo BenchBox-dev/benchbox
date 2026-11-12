@@ -2735,7 +2735,20 @@
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
-      "final_pr_history": [],
+      "final_pr": {
+        "head": "1e4ac18b3e18b35f7e1707585cd3f6ede6b374d7",
+        "node_id": "PR_kwDOQ7J64c8AAAABOqwCiw",
+        "number": 4169,
+        "repository": "https://github.com/BenchBox-dev/BenchBox.git"
+      },
+      "final_pr_history": [
+        {
+          "at": "2026-11-12T14:38:12Z",
+          "head": "1e4ac18b3e18b35f7e1707585cd3f6ede6b374d7",
+          "op_id": "b75638eb3bf1487fb741ed786f38df55",
+          "previous_head": null
+        }
+      ],
       "integrated_members": {
         "df-n-unique-null-semantics": {
           "accepted_head": "0c08f85dbee66a6e4184bb43660425e3c3b7551a",
