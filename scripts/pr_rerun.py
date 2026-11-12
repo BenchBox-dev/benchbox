@@ -12,6 +12,9 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import ci_text_edit_verdict
 
 from _project.scripts import check_suites
 
@@ -26,7 +29,7 @@ VERDICT_FILE = "fast-duration-verdict.json"
 WOULD_BLOCK_MAX_ATTEMPTS = 3
 RUN_FILTER = (
     ".workflow_runs[] | {id, path, event, head_branch, head_sha,"
-    " head_repository: .head_repository.full_name, status, conclusion, created_at, run_attempt}"
+    " head_repository: .head_repository.full_name, display_title, status, conclusion, created_at, run_attempt}"
 )
 FULL_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 REPOSITORY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*$")
@@ -306,9 +309,9 @@ def _check_identity(runner: Runner, repo: str, pr: int, created: datetime, branc
 
 
 def _newest_ci_run(
-    runner: Runner, repo: str, head: str, branch: str, head_repository: str
+    runner: Runner, repo: str, runs: Sequence[dict[str, Any]]
 ) -> tuple[dict[str, Any], list[dict[str, Any]]] | None:
-    for run in _runs(runner, repo, head, branch, head_repository):
+    for run in runs:
         jobs = _jobs(runner, repo, int(run["id"]))
         if not is_text_edit_run(jobs):
             return run, jobs
@@ -319,7 +322,8 @@ def rerun(repo: str, pr: int, runner: Runner = _subprocess_runner) -> str:
     if not REPOSITORY_RE.fullmatch(repo):
         raise RerunError("repository must be a GitHub owner/name")
     head, branch, head_repository = _pull_request_snapshot(runner, repo, pr)
-    chosen = _newest_ci_run(runner, repo, head, branch, head_repository)
+    runs = _runs(runner, repo, head, branch, head_repository)
+    chosen = _newest_ci_run(runner, repo, runs)
     suite_reruns = _suite_reruns(runner, repo, head, BASE_BRANCH)
     commands: list[tuple[list[str], str]] = []
     created: list[datetime] = []
@@ -334,6 +338,16 @@ def rerun(repo: str, pr: int, runner: Runner = _subprocess_runner) -> str:
             scope = "failed jobs of" if "--failed" in arguments else "all jobs of"
             fresh = " (would-block duration verdict, fresh timings)" if would_block else ""
             commands.append((arguments, f"{scope} CI run {run['id']}{fresh}"))
+        else:
+            by_id = {item["id"]: item for item in runs}
+            for placeholder in ci_text_edit_verdict.failed_text_edit_runs(runs):
+                created.append(_time(by_id[placeholder].get("created_at")))
+                commands.append(
+                    (
+                        ["run", "rerun", str(placeholder), "--repo", repo, "--failed"],
+                        f"failed jobs of {ci_text_edit_verdict.TEXT_EDIT_RUN_NAME} run {placeholder}",
+                    )
+                )
     covered = {arguments[2] for arguments, _ in commands}
     for item in suite_reruns:
         if str(item.run_id) in covered:
