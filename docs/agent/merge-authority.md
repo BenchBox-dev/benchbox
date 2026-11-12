@@ -273,6 +273,8 @@ happened to #3264 and #3319 (`review` runs from `synchronize` and
   completed with the placeholder still failed, past the 10 minutes with no
   refresh run, or when the full run failed, the refusal and the advice stand. An
   error reading the refresh runs counts as no refresh run known.
+  With a successful full run and a failed `CI (text edit)` run on the head,
+  `make pr-rerun` re-runs that run's failed jobs.
 - `make pr-status PR=<n>` (or `RUN=<id>`) prints, for each failed job of the
   newest run of each workflow on the head, the failed step and the lines that
   explain it: error markers, failed test ids, the guard an aggregator names.

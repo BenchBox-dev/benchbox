@@ -497,3 +497,35 @@ def test_repeated_would_block_verdicts_stop_being_rerun(attempt: int, allowed: b
         return
     with pytest.raises(pr_rerun.RerunError, match="real slowdown"):
         pr_rerun.rerun_arguments(run, _jobs(), REPO, True)
+
+
+def test_a_failed_placeholder_run_is_re_run_after_the_full_run_succeeded() -> None:
+    runs = [
+        _run(11, "2026-10-17T10:00:00Z", conclusion="success", display_title="CI"),
+        _run(12, "2026-10-17T10:05:00Z", display_title="CI (text edit)"),
+    ]
+    gh = FakeGitHub(runs, {11: _jobs(), 12: _jobs(text_edit=True)})
+    message = pr_rerun.rerun(REPO, PR, gh)
+    assert gh.reruns() == [["gh", "run", "rerun", "12", "--repo", REPO, "--failed"]]
+    assert "CI (text edit) run 12" in message
+
+
+def test_a_passing_or_running_placeholder_run_is_not_re_run() -> None:
+    runs = [
+        _run(11, "2026-10-17T10:00:00Z", conclusion="success", display_title="CI"),
+        _run(12, "2026-10-17T10:05:00Z", conclusion="success", display_title="CI (text edit)"),
+        _run(13, "2026-10-17T10:06:00Z", status="in_progress", conclusion=None, display_title="CI (text edit)"),
+    ]
+    gh = FakeGitHub(runs, {11: _jobs(), 12: _jobs(text_edit=True), 13: _jobs(text_edit=True)})
+    assert "nothing to re-run" in pr_rerun.rerun(REPO, PR, gh)
+    assert gh.reruns() == []
+
+
+def test_a_failed_placeholder_run_is_not_re_run_while_the_full_run_failed() -> None:
+    runs = [
+        _run(11, "2026-10-17T10:00:00Z", display_title="CI"),
+        _run(12, "2026-10-17T10:05:00Z", display_title="CI (text edit)"),
+    ]
+    gh = FakeGitHub(runs, {11: _jobs(), 12: _jobs(text_edit=True)})
+    pr_rerun.rerun(REPO, PR, gh)
+    assert gh.reruns() == [["gh", "run", "rerun", "11", "--repo", REPO, "--failed"]]
