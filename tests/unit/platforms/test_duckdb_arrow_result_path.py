@@ -4,42 +4,29 @@ import warnings
 
 import pytest
 
-from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW, FETCH_MODE_ROWS
-from benchbox.platforms.duckdb import DuckDBAdapter
+from benchbox.platforms.duckdb import _dbapi_arrow_fetcher
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 
-def _adapter(fetch_mode: str) -> DuckDBAdapter:
-    return DuckDBAdapter(database_path=":memory:", fetch_mode=fetch_mode)
-
-
-def test_arrow_mode_reads_selects_through_a_relation_without_an_arrow_warning() -> None:
+def test_dbapi_arrow_fetch_does_not_raise_the_extra_copy_warning() -> None:
     import duckdb
 
-    adapter = _adapter(FETCH_MODE_ARROW)
-    connection = duckdb.connect(":memory:")
+    result = duckdb.connect(":memory:").execute("SELECT range AS i FROM range(3)")
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        result = adapter._open_result(connection, "SELECT range AS i FROM range(3)")
-        assert result.to_arrow_table().num_rows == 3
+        assert _dbapi_arrow_fetcher(result)().num_rows == 3
 
 
-def test_arrow_mode_executes_statements_that_are_not_queries() -> None:
-    import duckdb
-
-    adapter = _adapter(FETCH_MODE_ARROW)
-    connection = duckdb.connect(":memory:")
-
-    adapter._open_result(connection, "CREATE TABLE t (i INTEGER)")
-
-    assert connection.execute("SELECT count(*) FROM t").fetchone() == (0,)
+def test_fetcher_is_absent_when_the_result_has_no_arrow_method() -> None:
+    assert _dbapi_arrow_fetcher(object()) is None
 
 
-def test_rows_mode_keeps_dbapi_execution() -> None:
-    import duckdb
+def test_other_warnings_still_surface() -> None:
+    class Result:
+        @staticmethod
+        def to_arrow_table():
+            warnings.warn("something else", UserWarning, stacklevel=1)
 
-    adapter = _adapter(FETCH_MODE_ROWS)
-    connection = duckdb.connect(":memory:")
-
-    assert adapter._open_result(connection, "SELECT 1").fetchall() == [(1,)]
+    with pytest.warns(UserWarning, match="something else"):
+        _dbapi_arrow_fetcher(Result())()

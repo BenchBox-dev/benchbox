@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import re
 import uuid
+import warnings
 from collections.abc import Sequence
 from datetime import timedelta
 from pathlib import Path
@@ -37,6 +38,19 @@ _DUCKDB_MEMORY_SIZE_PATTERN = (
 )
 
 
+def _dbapi_arrow_fetcher(result: Any) -> Any:
+    method = getattr(result, "to_arrow_table", None)
+    if method is None:
+        return None
+
+    def fetch() -> Any:
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="Arrow output on a DB-API result", category=UserWarning)
+            return method()
+
+    return fetch
+
+
 def _as_bool(value: Any) -> bool:
     if value is None:
         return False
@@ -46,8 +60,6 @@ def _as_bool(value: Any) -> bool:
 
     return parse_bool(str(value))
 
-
-_RELATION_QUERY_PATTERN = re.compile(r"\s*\(*\s*(?:SELECT|WITH)\b", re.IGNORECASE)
 
 _MEMORY_LIMIT_PATTERN = re.compile(
     rf"^{_DUCKDB_MEMORY_SIZE_PATTERN}$",
@@ -1077,15 +1089,6 @@ class DuckDBAdapter(PlatformAdapter):
         if self.show_query_plans and not self.capture_plans:
             connection.execute("SET enable_profiling = 'query_tree'")
 
-    def _open_result(self, connection: Any, query: str) -> Any:
-        if self.fetch_mode == FETCH_MODE_ARROW and _RELATION_QUERY_PATTERN.match(query):
-            relation_factory = getattr(connection, "sql", None)
-            if callable(relation_factory):
-                relation = relation_factory(query)
-                if relation is not None:
-                    return relation
-        return connection.execute(query)
-
     def execute_query(
         self,
         connection: Any,
@@ -1124,11 +1127,11 @@ class DuckDBAdapter(PlatformAdapter):
 
             start_time = mono_time()
             ledger.add_request()
-            result = self._open_result(connection, query)
+            result = connection.execute(query)
             fetched = fetch_result(
                 self.fetch_mode,
                 fetch_rows=result.fetchall,
-                fetch_arrow=getattr(result, "to_arrow_table", None),
+                fetch_arrow=_dbapi_arrow_fetcher(result),
             )
 
             execution_time = elapsed_seconds(start_time)
