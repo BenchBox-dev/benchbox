@@ -1,0 +1,11 @@
+{
+  "bundle_file": "tpch_sf01_polars_df_20261111_154204_3d7d3e84.json",
+  "bundle_hash": "275610374b760d9feac9b056dd98c1b43e6273f37669dc737eaba38f2cc3e3e5",
+  "companion_hashes": {
+    "tpch_sf01_polars_df_20261111_154204_3d7d3e84.plans.json": "faa80e34cbaab75ddfacef25d09551bc19744fac3d2216986a289d811f46a0f2"
+  },
+  "funding": "unspecified",
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer"
+}
