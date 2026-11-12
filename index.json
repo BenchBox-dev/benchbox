@@ -42270,6 +42270,13 @@
       "status": "done",
       "title": "TPC-DS PySpark Compatibility - Add missing UnifiedExpr methods and context functions"
     },
+    "tpcds-q28-redundant-null-filter-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Remove the now-redundant NULL filter before `n_unique()` in TPC-DS DataFrame Q28"
+    },
     "tpcds-qphds-nonspec-formula": {
       "claim": null,
       "needs": [],

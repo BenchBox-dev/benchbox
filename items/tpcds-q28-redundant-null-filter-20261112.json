@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Q28 reference-answer and equivalence tests pass unchanged on every DataFrame platform the unit and fast tiers exercise.",
+    "Before and after timings for Q28 are recorded in this item."
+  ],
+  "description": "Cleanup. TPC-DS DataFrame Q28 in `benchbox/core/tpcds/dataframe_queries/queries.py` computes `col(\"ss_list_price\").filter(col(\"ss_list_price\").is_not_null()).n_unique()`. Since PR #4169, `n_unique()` skips NULL on every platform, so the filter does nothing and adds an operation to a timed query on all engines. It was left alone in that change because no batch member owned it.\n\nExpected: the filter is removed and Q28 answers are unchanged.\n\nGuardrails: Q28 is a timed query; record before and after timing on Polars, DataFusion and PySpark and keep the change only if no platform is more than 10% slower. On DataFusion the `.filter(...)` form goes through a deferred-filter path in `unified_frame.py`; confirm the plan really gets simpler there.",
+  "links": [
+    "benchbox/core/tpcds/dataframe_queries/queries.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-12T22:24:18Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b9abd9e488934df08c108f3c0a5c0cbd",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}
