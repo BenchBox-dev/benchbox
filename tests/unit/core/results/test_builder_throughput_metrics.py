@@ -194,6 +194,7 @@ class TestValidationPhaseStatus:
 @pytest.mark.parametrize(
     ("run_config", "expected"),
     [
+        (RunConfigInput(seed=7, phases=["power"]), "unofficial_nonstandard"),
         (RunConfigInput(seed=7), "official"),
         (RunConfigInput(seed=None), "unofficial_nonstandard"),
         (RunConfigInput(seed=7, query_subset=["1", "2"]), "unofficial_nonstandard"),

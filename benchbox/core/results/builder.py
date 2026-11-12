@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
@@ -46,6 +47,7 @@ from benchbox.core.results.subscale_policy import (
     routed_compliance_class,
 )
 from benchbox.core.results.timer_scope import effective_timing_method
+from benchbox.core.tpc_spec import full_spec_violations, min_streams_for_scale
 
 if TYPE_CHECKING:
     pass
@@ -90,6 +92,9 @@ _BENCHMARK_FAMILY: dict[str, str] = {
 
 def benchmark_family(benchmark_id: str) -> str:
     return _BENCHMARK_FAMILY.get(benchmark_id, "generic")
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -369,6 +374,27 @@ class ResultBuilder:
         self._plan_capture_failures = capture_failures
         self._plan_capture_errors = capture_errors or []
 
+    def _full_spec_violations(self) -> list[str]:
+        benchmark_id = normalize_benchmark_id(self._benchmark.name)
+        run_config = self._run_config
+        if run_config is None:
+            return []
+        override = self._execution_phases_override
+        throughput = override.throughput_test if override else None
+        required_streams = min_streams_for_scale(benchmark_id, self._benchmark.scale_factor)
+        streams = throughput.num_streams if throughput is not None else required_streams
+        return full_spec_violations(
+            benchmark_id,
+            self._benchmark.scale_factor,
+            seed=run_config.seed,
+            phases=run_config.phases
+            if run_config.phases is not None
+            else ("load", "power", "throughput", "maintenance"),
+            streams=streams,
+            query_subset=run_config.query_subset,
+            refresh_functions=True,
+        )
+
     def build(self) -> BenchmarkResults:
         duration_seconds = self._calculate_duration()
 
@@ -391,7 +417,9 @@ class ResultBuilder:
             self._benchmark.compliance_class, platform_info_gateway(platform_info)
         )
         if compliance_class == "official" and self._run_config is not None:
-            if self._run_config.seed is None or self._run_config.query_subset:
+            violations = self._full_spec_violations()
+            if violations:
+                logger.warning("Result is not classified official: %s", "; ".join(violations))
                 compliance_class = NONSTANDARD_COMPLIANCE_CLASS
         if failed_queries or compliance_class == NONSTANDARD_COMPLIANCE_CLASS:
             tpc_metrics = {
