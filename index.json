@@ -19158,6 +19158,13 @@
       "status": "open",
       "title": "Coordinate the DataFrame distinct-count remediation batch (df-distinct-remediation)"
     },
+    "df-n-unique-null-semantics": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Make UnifiedExpr.n_unique() skip NULL on Polars so it means COUNT(DISTINCT) on every platform"
+    },
     "df-parity-id-mapping-builders": {
       "claim": null,
       "needs": [],
