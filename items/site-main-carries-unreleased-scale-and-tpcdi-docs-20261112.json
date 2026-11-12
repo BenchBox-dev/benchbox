@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Each statement on `main` from #138 and #142 is true for the pinned release, or the page says it applies to the next release.",
+    "`next` carries the unreleased statements and passes `docs:check` against the develop bundle."
+  ],
+  "context": "Filed 2026-11-12 from the scale-factor follow-up and TPC-DI generator work of 2026-11-11 and 2026-11-12: identified during that work and not addressed.",
+  "description": "## Problem\nSince benchbox-site#145 (2026-11-12) the site's `main` branch documents the pinned core release (v0.5.0, core `dfe585e094`) and unreleased documentation belongs on `next`. Two documentation pull requests merged to `main` the day before that rule, describing core changes that are on `develop` only:\n- benchbox-site#138: the 0.01 to 100000 scale range, the non-standard note, the fixed `joinorder` and `metadata_primitives` scales, and corrected size tables.\n- benchbox-site#142: TPC-DI fact tables growing linearly with new SF 1 row counts and sizes, the CoffeeShop order counts, and the notes on rows outside the standard set.\n`docs:check` on `main` does not catch this: #145 restored the query counts it checks, but the scale-factor text and the TPC-DI row counts are not contract-checked. A v0.5.0 user reading the live site is told that off-list scales run with a note and that TPC-DI SF 1 has 3,000,000 FactCashBalances rows; neither is true for v0.5.0. The CoffeeShop correction is valid for v0.5.0 and should stay.\n\n## Change\nDecide per page: revert the unreleased statements on `main` and carry them on `next` (where benchbox-site#148 already restates TPC-DI for the specification's scale unit), or leave them until the next release is pinned and say so. Then merge `main` into `next`.\n\n## Guardrails\n- Site-only work: by that repository's rules it belongs in the benchbox-site tracker; filed here because this session's tracker server is bound to core.\n- Fixes to released documentation go to `main`, unreleased documentation to `next`, by pull request.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-site/pull/138",
+    "https://github.com/BenchBox-dev/benchbox-site/pull/142",
+    "https://github.com/BenchBox-dev/benchbox-site/pull/145",
+    "https://github.com/BenchBox-dev/benchbox-site/pull/148"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:eb0e48032edcab785e018919",
+      "at": "2026-11-12T17:28:45Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "bb0e2f455abc455781fa18f60a471dc3",
+      "session_id": "3f84b7b72a6a4389855a4c2d913fb7f9"
+    }
+  ]
+}

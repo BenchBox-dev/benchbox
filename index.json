@@ -37261,6 +37261,13 @@
       "status": "open",
       "title": "Generate the landing page benchmark cards from the core bundle instead of a hand-kept copy"
     },
+    "site-main-carries-unreleased-scale-and-tpcdi-docs-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "benchbox-site main describes unreleased scale-factor and TPC-DI behaviour that the pinned v0.5.0 release does not have"
+    },
     "site-maintenance-phase-guide-dsdgen-refresh-20261107": {
       "claim": null,
       "needs": [
