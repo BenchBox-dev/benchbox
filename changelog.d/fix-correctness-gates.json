@@ -9,11 +9,6 @@
     {
       "category": "fixed",
       "breaking": false,
-      "text": "The cross-surface equivalence gate no longer fails when an approximate-quantile or approximate-distinct-count cell happens to equal the exact DataFrame value"
-    },
-    {
-      "category": "fixed",
-      "breaking": false,
       "text": "Queries that use QUALIFY and ORDER BY now keep the ORDER BY on the outermost SELECT for Presto, Trino and Athena, so TPC-Havoc 1_v8 returns rows in the canonical order"
     }
   ]
