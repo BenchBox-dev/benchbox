@@ -114,6 +114,32 @@ class TestWriteStagingFile:
         path = gen._write_staging_file("orders_stage.tbl", "orders.tbl*")
         assert path.read_bytes() == b""
 
+    def test_stops_reading_a_zstd_source_at_the_limit_without_an_arrow_reader(self, tmp_path: Path):
+        import zstandard
+
+        gen = _make_gen(tmp_path)
+        payload = b"".join(b"%d|row|\n" % index for index in range(50_000))
+        (tmp_path / "lineitem.tbl.1.zst").write_bytes(zstandard.ZstdCompressor().compress(payload))
+        with patch("pyarrow.csv.open_csv", side_effect=AssertionError("Arrow streaming reader used")):
+            path = gen._write_staging_file("lineitem_stage.tbl", "lineitem.tbl*", limit=1_000)
+        lines = path.read_bytes().splitlines()
+        assert len(lines) == 1_000
+        assert lines[0] == b"0|row"
+        assert lines[-1] == b"999|row"
+
+    def test_normalises_crlf_line_endings(self, tmp_path: Path):
+        gen = _make_gen(tmp_path)
+        (tmp_path / "orders.tbl").write_bytes(b"1|a|\r\n2|b|\r\n")
+        path = gen._write_staging_file("orders_stage.tbl", "orders.tbl*")
+        assert path.read_bytes() == b"1|a\n2|b\n"
+
+    def test_skips_a_shard_with_an_empty_first_line(self, tmp_path: Path):
+        gen = _make_gen(tmp_path)
+        (tmp_path / "orders.tbl.1").write_bytes(b"\n1|a|\n")
+        (tmp_path / "orders.tbl.2").write_bytes(b"3|c|\n")
+        path = gen._write_staging_file("orders_stage.tbl", "orders.tbl*")
+        assert path.read_bytes() == b"3|c\n"
+
 
 class TestReadTblFile:
     def test_reads_rows(self, tmp_path: Path):
