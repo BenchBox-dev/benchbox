@@ -1403,6 +1403,8 @@ def _build_plan_entry(qr: dict[str, Any], *, max_depth: int = DEFAULT_PLAN_MAX_D
     plan_entry["plan_format"] = (
         "dag" if isinstance(serialized_plan, dict) and "logical_root" in serialized_plan else "text"
     )
+    if plan_fingerprint and plan_entry["plan_format"] == "text":
+        plan_entry["fingerprint_kind"] = "text"
 
     return plan_entry
 

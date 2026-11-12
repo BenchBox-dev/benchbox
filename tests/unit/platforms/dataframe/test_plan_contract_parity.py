@@ -118,7 +118,7 @@ def test_capture_time_is_excluded_from_execution_time(monkeypatch):
     assert row["execution_time_seconds"] < 0.1
 
 
-def test_polars_plan_stays_raw_text_without_fabricated_dag_or_fingerprint(tmp_path: Path):
+def test_polars_plan_stays_raw_text_without_fabricated_dag_and_with_text_fingerprint(tmp_path: Path):
     assert plan_capture_support("Polars") is PlanCaptureSupport.RAW_TEXT
 
     result = _run(_Adapter("Polars"), lambda: _PolarsFrame())
@@ -126,7 +126,7 @@ def test_polars_plan_stays_raw_text_without_fabricated_dag_or_fingerprint(tmp_pa
     row = result.query_results[0]
     assert not isinstance(row["query_plan"], QueryPlanDAG)
     assert row["query_plan"].platform == "polars"
-    assert "plan_fingerprint" not in row
+    assert len(row["plan_fingerprint"]) == 64
     assert result.query_plans_captured == 1
     assert result.plan_capture_failures == 0
 
@@ -135,7 +135,9 @@ def test_polars_plan_stays_raw_text_without_fabricated_dag_or_fingerprint(tmp_pa
     payload = json.loads(next(Path(tmp_path).glob("*.plans.json")).read_text(encoding="utf-8"))
     entry = next(iter(payload["queries"].values()))
     assert entry["plan_format"] == "text"
-    assert "fingerprint" not in entry
+    assert entry["fingerprint"] == row["plan_fingerprint"]
+    assert entry["fingerprint_kind"] == "text"
+    assert "fingerprint_version" not in entry
 
     loaded, _ = load_result_file(tmp_path / "run.json")
     loaded_row = loaded.query_results[0]
