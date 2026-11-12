@@ -1,0 +1,35 @@
+Expression (Project names)
+  Limit (preliminary LIMIT (without OFFSET))
+    Sorting (Sorting for ORDER BY)
+      Expression ((Before ORDER BY + Projection))
+        Aggregating
+          Expression ((Before GROUP BY + ))
+            Expression
+              Join
+                Expression
+                  Expression
+                    Join
+                      Expression ((WHERE + Change column names to column identifiers))
+                        ReadFromMergeTree (te_20261112203725_n.customer)
+                        Indexes:
+                          PrimaryKey
+                            Condition: true
+                            Parts: 5/5
+                            Granules: 19/19
+                            Ranges: 5
+                      Expression ((WHERE + Change column names to column identifiers))
+                        ReadFromMergeTree (te_20261112203725_n.orders)
+                        Indexes:
+                          PrimaryKey
+                            Condition: true
+                            Parts: 5/5
+                            Granules: 186/186
+                            Ranges: 5
+                Expression ((WHERE + Change column names to column identifiers))
+                  ReadFromMergeTree (te_20261112203725_n.lineitem)
+                  Indexes:
+                    PrimaryKey
+                      Condition: true
+                      Parts: 5/5
+                      Granules: 740/740
+                      Ranges: 5

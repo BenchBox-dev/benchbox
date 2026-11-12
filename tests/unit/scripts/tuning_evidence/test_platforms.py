@@ -254,6 +254,23 @@ def test_run_query_reports_failures_with_a_kind(tmp_path: Path) -> None:
     assert outcome.rows is None
 
 
+def test_run_query_reports_the_statement_id_the_adapter_used(tmp_path: Path) -> None:
+    class StatementAdapter(FakeAdapter):
+        def execute_query(self, connection: Any, sql: str, query_id: str, **kwargs: Any) -> dict[str, Any]:
+            result = super().execute_query(connection, sql, query_id, **kwargs)
+            result["platform_timing"] = {
+                "source": "clickhouse_query_log",
+                "status": "valid",
+                "requests": [{"attempt": 1, "kind": "query", "id": "adapter-id-1", "fields": {}}],
+            }
+            return result
+
+    seam = platforms.AdapterSeam(benchmark="tpch", scale_factor=1.0, work_dir=tmp_path, run_tag="t1")
+    outcome = seam.run_query(duckdb_handle(StatementAdapter([(1,)])), None, "3", "select", 10.0)
+    assert outcome.engine_query_id == "adapter-id-1"
+    assert platforms.adapter_statement_id({"platform_timing": {"status": "unavailable"}}) is None
+
+
 def test_duckdb_timeout_interrupts_the_connection(tmp_path: Path) -> None:
     class Connection:
         interrupted = False

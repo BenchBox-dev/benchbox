@@ -143,6 +143,17 @@ def git_state(root: Path, runner: Runner = subprocess.run) -> dict[str, Any]:
     return {"commit": commit.stdout.strip(), "dirty": bool(status.stdout.strip())}
 
 
+def adapter_statement_id(result: Mapping[str, Any]) -> str | None:
+    timing = result.get("platform_timing")
+    requests = timing.get("requests") if isinstance(timing, Mapping) else None
+    ids = [
+        request["id"]
+        for request in requests or ()
+        if isinstance(request, Mapping) and request.get("kind") == "query" and request.get("id")
+    ]
+    return str(ids[-1]) if ids else None
+
+
 class TaggedClient:
     def __init__(self, client: Any) -> None:
         self.client = client
@@ -469,6 +480,7 @@ class AdapterSeam:
             if timer is not None:
                 timer.cancel()
         wall = elapsed_seconds(started)
+        engine_query_id = adapter_statement_id(result) or engine_query_id
         elapsed = result.get("execution_time_seconds")
         elapsed = wall if elapsed is None else float(elapsed)
         if result.get("status") != "SUCCESS":

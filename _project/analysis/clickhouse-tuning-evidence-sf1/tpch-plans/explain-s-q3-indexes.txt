@@ -1,0 +1,41 @@
+Expression (Project names)
+  Limit (preliminary LIMIT (without OFFSET))
+    Sorting (Sorting for ORDER BY)
+      Expression ((Before ORDER BY + Projection))
+        Aggregating
+          Expression ((Before GROUP BY + ))
+            Expression
+              Join
+                Expression
+                  Expression
+                    Join
+                      Expression ((WHERE + Change column names to column identifiers))
+                        ReadFromMergeTree (te_20261112203725_s.customer)
+                        Indexes:
+                          PrimaryKey
+                            Condition: true
+                            Parts: 5/5
+                            Granules: 19/19
+                            Ranges: 5
+                      Expression ((WHERE + Change column names to column identifiers))
+                        ReadFromMergeTree (te_20261112203725_s.orders)
+                        Indexes:
+                          PrimaryKey
+                            Keys:
+                              o_orderdate
+                            Condition: (o_orderdate in (-Inf, 9203])
+                            Parts: 5/5
+                            Granules: 90/186
+                            Search Algorithm: binary search
+                            Ranges: 5
+                Expression ((WHERE + Change column names to column identifiers))
+                  ReadFromMergeTree (te_20261112203725_s.lineitem)
+                  Indexes:
+                    PrimaryKey
+                      Keys:
+                        l_shipdate
+                      Condition: (l_shipdate in [9205, +Inf))
+                      Parts: 5/5
+                      Granules: 406/740
+                      Search Algorithm: binary search
+                      Ranges: 5

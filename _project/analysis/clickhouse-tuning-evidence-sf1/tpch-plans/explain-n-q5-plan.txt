@@ -1,0 +1,31 @@
+Expression (Project names)
+  Sorting (Sorting for ORDER BY)
+    Expression ((Before ORDER BY + Projection))
+      Aggregating
+        Expression ((Before GROUP BY + ))
+          Expression
+            Join
+              Expression
+                Expression
+                  Join
+                    Expression
+                      Expression
+                        Join
+                          Expression
+                            Expression
+                              Join
+                                Expression
+                                  Expression
+                                    Join
+                                      Expression ((WHERE + Change column names to column identifiers))
+                                        ReadFromMergeTree (te_20261112203725_n.orders)
+                                      Expression (Change column names to column identifiers)
+                                        ReadFromMergeTree (te_20261112203725_n.customer)
+                                Expression (Change column names to column identifiers)
+                                  ReadFromMergeTree (te_20261112203725_n.lineitem)
+                          Expression (Change column names to column identifiers)
+                            ReadFromMergeTree (te_20261112203725_n.supplier)
+                    Expression (Change column names to column identifiers)
+                      ReadFromMergeTree (te_20261112203725_n.nation)
+              Expression ((WHERE + Change column names to column identifiers))
+                ReadFromMergeTree (te_20261112203725_n.region)

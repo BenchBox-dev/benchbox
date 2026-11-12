@@ -1,0 +1,17 @@
+Expression (Project names)
+  Limit (preliminary LIMIT (without OFFSET))
+    Sorting (Sorting for ORDER BY)
+      Expression ((Before ORDER BY + Projection))
+        Aggregating
+          Expression ((Before GROUP BY + ))
+            Expression
+              Join
+                Expression
+                  Expression
+                    Join
+                      Expression ((WHERE + Change column names to column identifiers))
+                        ReadFromMergeTree (te_20261112203725_n.customer)
+                      Expression ((WHERE + Change column names to column identifiers))
+                        ReadFromMergeTree (te_20261112203725_n.orders)
+                Expression ((WHERE + Change column names to column identifiers))
+                  ReadFromMergeTree (te_20261112203725_n.lineitem)

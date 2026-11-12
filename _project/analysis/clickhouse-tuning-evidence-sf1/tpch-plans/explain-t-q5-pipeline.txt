@@ -1,0 +1,113 @@
+(Expression)
+ExpressionTransform
+  (Sorting)
+  MergingSortedTransform 8 → 1
+    MergeSortingTransform × 8
+      LimitsCheckingTransform × 8
+        PartialSortingTransform × 8
+          (Expression)
+          ExpressionTransform × 8
+            (Aggregating)
+            Resize 8 → 8
+              AggregatingTransform × 8
+                (Expression)
+                ExpressionTransform × 8
+                  (Expression)
+                  ExpressionTransform × 8
+                    (Join)
+                    JoiningTransform × 8 2 → 1
+                      (Expression)
+                      ExpressionTransform × 8
+                        (Expression)
+                        ExpressionTransform × 8
+                          (Join)
+                          JoiningTransform × 8 2 → 1
+                            (Expression)
+                            ExpressionTransform × 8
+                              (Expression)
+                              ExpressionTransform × 8
+                                (Join)
+                                JoiningTransform × 8 2 → 1
+                                  (Expression)
+                                  ExpressionTransform × 8
+                                    (Expression)
+                                    ExpressionTransform × 8
+                                      (Join)
+                                      SimpleSquashingTransform × 8
+                                        JoiningTransform × 8 2 → 1
+                                          Resize 8 → 8
+                                            (Expression)
+                                            ExpressionTransform × 8
+                                              (Expression)
+                                              ExpressionTransform × 8
+                                                (Join)
+                                                SimpleSquashingTransform × 8
+                                                  JoiningTransform × 8 2 → 1
+                                                    Resize 5 → 8
+                                                      (Expression)
+                                                      ExpressionTransform × 5
+                                                        (ReadFromMergeTree)
+                                                        MergeTreeSelect(pool: ReadPool, algorithm: Thread) × 5 0 → 1
+                                                      (Expression)
+                                                      Resize × 2 8 → 1
+                                                        FillingRightJoinSide
+                                                          SimpleSquashingTransform
+                                                            FillingRightJoinSide
+                                                              SimpleSquashingTransform
+                                                                FillingRightJoinSide
+                                                                  SimpleSquashingTransform
+                                                                    FillingRightJoinSide
+                                                                      SimpleSquashingTransform
+                                                                        FillingRightJoinSide
+                                                                          SimpleSquashingTransform
+                                                                            FillingRightJoinSide
+                                                                              SimpleSquashingTransform
+                                                                                FillingRightJoinSide
+                                                                                  SimpleSquashingTransform
+                                                                                    FillingRightJoinSide
+                                                                                      SimpleSquashingTransform
+                                                                                        Resize 5 → 8
+                                                                                          ExpressionTransform × 5
+                                                                                            (ReadFromMergeTree)
+                                                                                            MergeTreeSelect(pool: ReadPool, algorithm: Thread) × 5 0 → 1
+                                            (Expression)
+                                            Resize × 2 8 → 1
+                                              FillingRightJoinSide
+                                                SimpleSquashingTransform
+                                                  FillingRightJoinSide
+                                                    SimpleSquashingTransform
+                                                      FillingRightJoinSide
+                                                        SimpleSquashingTransform
+                                                          FillingRightJoinSide
+                                                            SimpleSquashingTransform
+                                                              FillingRightJoinSide
+                                                                SimpleSquashingTransform
+                                                                  FillingRightJoinSide
+                                                                    SimpleSquashingTransform
+                                                                      FillingRightJoinSide
+                                                                        SimpleSquashingTransform
+                                                                          FillingRightJoinSide
+                                                                            SimpleSquashingTransform
+                                                                              Resize 8 → 8
+                                                                                ExpressionTransform × 8
+                                                                                  (ReadFromMergeTree)
+                                                                                  MergeTreeSelect(pool: ReadPool, algorithm: Thread) × 8 0 → 1
+                                  (Expression)
+                                  Resize 1 → 8
+                                    FillingRightJoinSide
+                                      Resize 5 → 1
+                                        ExpressionTransform × 5
+                                          (ReadFromMergeTree)
+                                          MergeTreeSelect(pool: ReadPool, algorithm: Thread) × 5 0 → 1
+                            (Expression)
+                            Resize 1 → 8
+                              FillingRightJoinSide
+                                ExpressionTransform
+                                  (ReadFromMergeTree)
+                                  MergeTreeSelect(pool: ReadPoolInOrder, algorithm: InOrder) 0 → 1
+                      (Expression)
+                      Resize 1 → 8
+                        FillingRightJoinSide
+                          ExpressionTransform
+                            (ReadFromMergeTree)
+                            MergeTreeSelect(pool: ReadPoolInOrder, algorithm: InOrder) 0 → 1
