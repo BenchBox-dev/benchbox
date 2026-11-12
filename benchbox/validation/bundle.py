@@ -2102,7 +2102,7 @@ def _validate_gateway_cost(data: dict[str, Any], vr: ValidationResult) -> None:
         return
     raw_normalized = _raw_normalized_cost_block(data)
     status = raw_normalized.get("cost_status") if isinstance(raw_normalized, dict) else None
-    if status is not None and status != "not_comparable_gateway":
+    if status != "not_comparable_gateway":
         vr.error(
             f"gateway-routed results must declare normalized_cost.cost_status 'not_comparable_gateway'; got {status!r}"
         )

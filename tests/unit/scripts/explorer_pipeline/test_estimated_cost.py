@@ -306,3 +306,16 @@ def test_gateway_not_comparable_cost_is_ingested_without_an_estimate() -> None:
     assert cost.cost_status == "not_comparable_gateway"
     assert cost.normalized_cost_usd is None
     assert cost.estimated_cost_usd is None
+
+
+@pytest.mark.parametrize("platform", ["snowflake", "databricks"])
+def test_gateway_bundle_without_cost_block_gets_no_timing_estimate(platform: str) -> None:
+    data = _snowflake_bundle()
+    data["platform"]["name"] = platform
+    data["platform"]["gateway"] = {"name": "espresso", "routed": True}
+
+    cost = _normalized_cost(_parse_bundle(data))
+
+    assert cost.cost_status == "not_comparable_gateway"
+    assert cost.normalized_cost_usd is None
+    assert cost.estimated_cost_usd is None

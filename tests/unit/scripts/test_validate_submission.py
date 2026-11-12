@@ -1032,6 +1032,19 @@ class TestValidateBundle:
         assert any("must declare normalized_cost.cost_status 'not_comparable_gateway'" in e for e in vr.errors)
         assert any("must not carry a cost total: cost.total_usd" in e for e in vr.errors)
 
+    def test_gateway_routed_bundle_without_cost_block_fails(self):
+        data = _minimal_bundle()
+        data["platform"] = {**data["platform"], "gateway": {"name": "espresso", "routed": True}}
+        data.pop("normalized_cost", None)
+        data.pop("cost", None)
+
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+
+        assert any(
+            "must declare normalized_cost.cost_status 'not_comparable_gateway'; got None" in e for e in vr.errors
+        )
+
     def test_gateway_routed_bundle_with_not_comparable_cost_passes(self):
         data = _minimal_bundle()
         data["platform"] = {**data["platform"], "gateway": {"name": "espresso", "routed": True}}
@@ -1769,6 +1782,7 @@ class TestSubmissionDeterministicGates:
         data = _minimal_bundle()
         data["benchmark"]["compliance_class"] = "official"
         data["platform"]["gateway"] = {"name": "espresso", "routed": True}
+        data["normalized_cost"] = _normalized_cost_block(cost=None, status="not_comparable_gateway")
         vr = ValidationResult("test")
         _validate_bundle(data, vr, allow_partial_validation=True)
         assert vr.ok, vr.errors
@@ -2671,6 +2685,7 @@ class TestInternalSourceComplianceExemption:
         data = _minimal_bundle()
         data["benchmark"]["compliance_class"] = "official"
         data["platform"]["gateway"] = {"name": "espresso", "routed": True}
+        data["normalized_cost"] = _normalized_cost_block(cost=None, status="not_comparable_gateway")
         bundle = tmp_path / "result.json"
         bundle.write_text(json.dumps(data), encoding="utf-8")
         (tmp_path / "result.manifest.json").write_text(
