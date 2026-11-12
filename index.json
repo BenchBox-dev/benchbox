@@ -40217,7 +40217,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "Log proven pre-existing review findings as known defects instead of blocking, except Critical"
     },
     "theseus-local-gateway-tooling-20261102": {
