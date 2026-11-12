@@ -24700,6 +24700,13 @@
       "status": "done",
       "title": "Add an opt-in admission wait to make heavy-run"
     },
+    "heavy-run-admitted-then-killed-by-foreign-memory-pressure-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "make heavy-run admits a job and the watchdog kills it seconds later for memory pressure the job did not cause"
+    },
     "heavy-run-cmd-dollar-expansion-20261111": {
       "claim": null,
       "needs": [],

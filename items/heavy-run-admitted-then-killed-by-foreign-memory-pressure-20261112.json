@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "A recorded analysis of the four breaches with the footprint inside and outside the holder tree.",
+    "A decided change, or a recorded decision to keep the behaviour, with the operator guidance in `docs/agent/heavy-work.md`."
+  ],
+  "context": "Filed 2026-11-12 from the scale-factor follow-up and TPC-DI generator work of 2026-11-11 and 2026-11-12: identified during that work and not addressed.",
+  "description": "## Problem\nOn 2026-11-11 and 2026-11-12 four `make heavy-run HEAVY_ADMIT_WAIT=...` jobs from one session were admitted after waiting and then stopped by the watchdog with `BREACH memory pressure: measured level 4`, within about 15 s to 3 minutes of starting. The watchdog's own report showed the holder tree was small (ten dbgen processes at 0.29 GiB each in one case; a single Python generator in another). The pressure came from other sessions on a 16 GiB host with swap 90% to 95% used. Admission (pressure level 1 for a few samples) and the kill rule (level 4 at any moment) are far enough apart that a job can be admitted into a host that is about to breach, and the kill is not attributed: a light job dies for another process's memory. A 13-minute wait ended in a kill with no result, twice.\n\n## Change\nOptions: require the admission condition to hold for longer before starting; make the kill decision consider the holder tree's share of the footprint, or pause instead of kill when the tree is small; report on a breach which processes outside the tree hold the memory; give `heavy-run` a retry-after-breach mode for idempotent commands.\n\n## Guardrails\n- The watchdog exists to stop the host from locking up; do not weaken the kill for a tree that is the cause.\n- Never stop processes that belong to other sessions.\n- Related: `heavy-guard-watchdog-20261030-deferral-1`.",
+  "links": [
+    "docs/agent/heavy-work.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:eb0e48032edcab785e018919",
+      "at": "2026-11-12T16:52:57Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e6fee3041bdc4e7a8af1705580232671",
+      "session_id": "3f84b7b72a6a4389855a4c2d913fb7f9"
+    }
+  ]
+}
