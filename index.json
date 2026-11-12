@@ -30025,7 +30025,7 @@
     "pandas-df-write-primitives-sf1-segfault": {
       "claim": null,
       "needs": [],
-      "priority": "high",
+      "priority": "critical",
       "status": "open",
       "title": "pandas-df write_primitives SF1 intermittently segfaults in trunk UAT"
     },
