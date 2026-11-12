@@ -517,6 +517,10 @@ _DOCKER_SF1_TIMEOUT_PRUNED_CELLS = {
             ("velox", "joinorder", 0.01),
             ("presto", "joinorder", 0.01),
             ("trino", "joinorder", 0.01),
+            ("questdb", "tpcds_obt", 0.01),
+            ("postgresql", "tpcds_obt", 0.01),
+            ("timescaledb", "tpcds_obt", 0.01),
+            ("pg-mooncake", "tpcds_obt", 0.01),
         }
     ),
 }
@@ -526,6 +530,8 @@ _DOCKER_NON_TIMEOUT_ENVELOPE_CELLS = frozenset(
         ("cedardb", "tpcds_obt", 1.0),
         ("presto", "joinorder", 0.01),
         ("trino", "joinorder", 0.01),
+        ("questdb", "tpcds_obt", 0.01),
+        ("pg-mooncake", "tpcds_obt", 0.01),
     }
 )
 
