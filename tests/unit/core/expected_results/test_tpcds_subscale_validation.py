@@ -327,7 +327,7 @@ def test_tpcds_dataframe_query_without_agreed_count_is_uncertain() -> None:
     assert summary.status == "UNCERTAIN"
     assert summary.details["checked"] == 0
     assert summary.details["skipped"] == 1
-    assert measurement["row_count_validation"]["status"] == "SKIPPED"
+    assert measurement["row_count_validation"]["status"] == "UNVALIDATED"
 
 
 def test_tpcds_dataframe_unrecorded_scale_remains_uncertain() -> None:
@@ -341,7 +341,7 @@ def test_tpcds_dataframe_unrecorded_scale_remains_uncertain() -> None:
 
     assert summary.status == "UNCERTAIN"
     assert summary.details["checked"] == 0
-    assert measurement["row_count_validation"]["status"] == "SKIPPED"
+    assert measurement["row_count_validation"]["status"] == "UNVALIDATED"
 
 
 def test_tpcds_dataframe_subscale_validation_mode_skip_opt_out() -> None:

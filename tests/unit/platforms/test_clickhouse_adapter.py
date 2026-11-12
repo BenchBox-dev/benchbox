@@ -1293,7 +1293,11 @@ class TestClickHouseWorkloadCoverage:
         assert status == "FAILED"
         assert "execute() method" in details["integrity_error"]
 
-    def test_execute_query_adds_row_count_validation_metadata(self):
+    @pytest.mark.parametrize(
+        ("mode", "unvalidated", "expected_status"),
+        [("exact", False, "PASSED"), ("skip", False, "SKIPPED"), ("skip", True, "UNVALIDATED")],
+    )
+    def test_execute_query_adds_row_count_validation_metadata(self, mode, unvalidated, expected_status):
         adapter = self._adapter()
         adapter.verbose_enabled = True
         adapter.very_verbose = True
@@ -1305,6 +1309,8 @@ class TestClickHouseWorkloadCoverage:
             warning_message="expected row count unavailable",
             error_message=None,
             expected_row_count=None,
+            unvalidated=unvalidated,
+            validation_mode=mode,
         )
 
         with patch("benchbox.core.validation.query_validation.QueryValidator") as validator_cls:
@@ -1318,7 +1324,7 @@ class TestClickHouseWorkloadCoverage:
             )
 
         assert result["status"] == "SUCCESS"
-        assert result["row_count_validation"]["status"] == "PASSED"
+        assert result["row_count_validation"]["status"] == expected_status
         assert result["row_count_validation"]["warning"] == "expected row count unavailable"
         first_call = connection.execute.call_args_list[0]
         assert first_call.args == ("SELECT * FROM orders SETTINGS joined_subquery_requires_alias = 0",)

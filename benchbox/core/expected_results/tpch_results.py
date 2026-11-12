@@ -28,6 +28,8 @@ TPCH_LOOSE_QUERY_IDS: frozenset[str] = frozenset({"16"})
 
 PARAMETER_SENSITIVE_QUERY_IDS: frozenset[str] = frozenset(TPCH_RANGE_ROW_COUNT_BOUNDS) | TPCH_LOOSE_QUERY_IDS
 
+TPCH_QUERY_IDS: frozenset[str] = frozenset(str(number) for number in range(1, 23))
+
 
 def get_tpch_expected_results(scale_factor: float = 1.0) -> BenchmarkExpectedResults | None:
     if scale_factor != 1.0:
@@ -89,6 +91,7 @@ def get_tpch_expected_results(scale_factor: float = 1.0) -> BenchmarkExpectedRes
         benchmark_name="tpch",
         scale_factor=scale_factor,
         query_results=query_results,
+        known_query_ids=TPCH_QUERY_IDS,
         metadata={
             "source": "TPC-H answer files",
             "answer_files_scale_factor": 1.0,
@@ -120,6 +123,7 @@ def _subscale_expected_results(scale_factor: float) -> BenchmarkExpectedResults:
         benchmark_name="tpch",
         scale_factor=scale_factor,
         query_results=query_results,
+        known_query_ids=TPCH_QUERY_IDS,
         metadata={
             "source": "BenchBox TPC-H row-count reference",
             "reference_scale_factor": scale_factor,

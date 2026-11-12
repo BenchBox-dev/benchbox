@@ -524,6 +524,7 @@ class TestBuildQueryResultWithValidation:
             validation_mode=ValidationMode.EXACT,
             warning_message=None,
             error_message=None,
+            unvalidated=False,
         )
         result = duckdb_adapter._build_query_result_with_validation(
             query_id="Q3",
@@ -545,6 +546,7 @@ class TestBuildQueryResultWithValidation:
             validation_mode=ValidationMode.EXACT,
             warning_message=None,
             error_message="Expected 100, got 50",
+            unvalidated=False,
         )
         result = duckdb_adapter._build_query_result_with_validation(
             query_id="Q4",
@@ -565,6 +567,7 @@ class TestBuildQueryResultWithValidation:
             validation_mode=ValidationMode.SKIP,
             warning_message="No expected row count available",
             error_message=None,
+            unvalidated=False,
         )
         result = duckdb_adapter._build_query_result_with_validation(
             query_id="Q5",
@@ -575,6 +578,37 @@ class TestBuildQueryResultWithValidation:
         assert result["status"] == "SUCCESS"
         assert result["row_count_validation"]["status"] == "SKIPPED"
         assert "No expected" in result["row_count_validation"]["warning"]
+
+    def test_unvalidated_result_is_labelled_and_not_passed(self, duckdb_adapter):
+        from benchbox.core.validation.query_validation import QueryValidator
+
+        validation = QueryValidator().validate_query_result("tpch", "2", 42, 10.0)
+        result = duckdb_adapter._build_query_result_with_validation(
+            query_id="Q1",
+            execution_time=0.05,
+            actual_row_count=42,
+            validation_result=validation,
+        )
+
+        assert result["status"] == "SUCCESS"
+        assert result["row_count_validation"]["status"] == "UNVALIDATED"
+        assert result["row_count_validation"]["expected"] is None
+        assert "not counted as passed" in result["row_count_validation"]["warning"]
+
+    def test_lookup_miss_marks_the_query_failed(self, duckdb_adapter):
+        from benchbox.core.validation.query_validation import QueryValidator
+
+        validation = QueryValidator().validate_query_result("tpch", "99", 42, 1.0)
+        result = duckdb_adapter._build_query_result_with_validation(
+            query_id="Q99",
+            execution_time=0.05,
+            actual_row_count=42,
+            validation_result=validation,
+        )
+
+        assert result["status"] == "FAILED"
+        assert result["row_count_validation"]["status"] == "FAILED"
+        assert "Row-count lookup failed" in result["row_count_validation"]["error"]
 
 
 class TestBuildQueryFailureResult:

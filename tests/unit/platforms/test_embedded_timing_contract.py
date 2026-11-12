@@ -67,6 +67,7 @@ class TestDuckDBTimingContract:
                 error_message=None,
                 expected_row_count=1,
                 validation_mode=ValidationMode.EXACT,
+                unvalidated=False,
             )
 
         monkeypatch.setattr(query_validation.QueryValidator, "validate_query_result", slow_validate)

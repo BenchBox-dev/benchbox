@@ -265,17 +265,35 @@ class QueryValidator:
         if expected_result is not None:
             expected_result = self._apply_tpcds_validation_mode(benchmark_type, scale_factor, expected_result)
 
+        if load_outcome is LoadOutcome.QUERY_NOT_FOUND:
+            return ValidationResult(
+                is_valid=False,
+                query_id=query_id_str,
+                expected_row_count=None,
+                actual_row_count=actual_row_count,
+                validation_mode=ValidationMode.EXACT,
+                error_message=(
+                    f"Row-count lookup failed: query '{query_id}' (normalized '{query_id_normalized}') has no "
+                    f"expected row count in the '{benchmark_type}' reference answers at scale factor "
+                    f"{scale_factor or 1.0}, although that benchmark has reference answers. Check the query id "
+                    f"and variant key. The query is not treated as validated. "
+                    f"Actual rows returned: {actual_row_count}"
+                ),
+            )
+
         if expected_result is None:
-            if stream_id is not None and stream_id > 0:
-                warning_msg = (
-                    f"Query '{query_id}' executed on stream {stream_id}. "
-                    f"Answer files only available for stream 0 in '{benchmark_type}' benchmark. "
-                    f"Validation skipped. Actual rows returned: {actual_row_count}"
-                )
-            else:
-                warning_msg = (
-                    f"No expected row count defined for query '{query_id}' in benchmark '{benchmark_type}'. "
-                    f"Validation skipped. Actual rows returned: {actual_row_count}"
+            if load_outcome is LoadOutcome.STREAM_NOT_REFERENCE_VALIDATED or (stream_id is not None and stream_id > 0):
+                return ValidationResult(
+                    is_valid=True,
+                    query_id=query_id_str,
+                    expected_row_count=None,
+                    actual_row_count=actual_row_count,
+                    validation_mode=ValidationMode.SKIP,
+                    warning_message=(
+                        f"Query '{query_id}' executed on stream {stream_id}. "
+                        f"Answer files only available for stream 0 in '{benchmark_type}' benchmark. "
+                        f"Validation skipped. Actual rows returned: {actual_row_count}"
+                    ),
                 )
 
             return ValidationResult(
@@ -284,7 +302,12 @@ class QueryValidator:
                 expected_row_count=None,
                 actual_row_count=actual_row_count,
                 validation_mode=ValidationMode.SKIP,
-                warning_message=warning_msg,
+                warning_message=(
+                    f"Unvalidated: no reference answers exist for benchmark '{benchmark_type}' at scale factor "
+                    f"{scale_factor or 1.0} (query '{query_id}'). The row count was not checked and is not "
+                    f"counted as passed. Actual rows returned: {actual_row_count}"
+                ),
+                unvalidated=True,
             )
 
         if get_reference_seed_context() is False and expected_result.reference_parameters_only:
@@ -320,15 +343,16 @@ class QueryValidator:
 
         if expected_result.validation_mode == ValidationMode.EXACT and expected_count is None:
             return ValidationResult(
-                is_valid=True,
+                is_valid=False,
                 query_id=query_id_str,
                 expected_row_count=None,
                 actual_row_count=actual_row_count,
-                validation_mode=ValidationMode.SKIP,
-                warning_message=(
-                    f"Query '{query_id}' has EXACT validation mode but no expected count available. "
-                    f"Validation skipped. This may indicate a variant lookup issue or missing answer file. "
-                    f"Actual rows returned: {actual_row_count}"
+                validation_mode=ValidationMode.EXACT,
+                error_message=(
+                    f"Row-count lookup failed for query '{query_id}' in benchmark '{benchmark_type}' at scale "
+                    f"factor {scale_factor or 1.0}: the reference entry has EXACT validation mode but no "
+                    f"expected count. This indicates a variant lookup defect or a missing answer file; the "
+                    f"query is not treated as validated. Actual rows returned: {actual_row_count}"
                 ),
             )
 

@@ -63,7 +63,7 @@ class TestLakeSailStubConnection:
         )
         connection = adapter.create_connection()
         try:
-            result = adapter.execute_query(connection, "SELECT 1 AS value", query_id="Q0", benchmark_type="tpch")
+            result = adapter.execute_query(connection, "SELECT 1 AS value", query_id="Q0", benchmark_type="smoke")
             assert result["status"] == "SUCCESS"
             assert "SELECT 1 AS value" in state.statements
         finally:

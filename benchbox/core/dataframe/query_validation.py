@@ -7,6 +7,7 @@ from typing import Any
 from benchbox.core.expected_results.models import ValidationMode, ValidationResult
 from benchbox.core.expected_results.ssb_results import normalize_ssb_query_id, ssb_expected_row_counts
 from benchbox.core.expected_results.tpcds_results import (
+    tpcds_known_query_ids,
     tpcds_subscale_expected_row_counts,
     tpcds_subscale_reference_seed,
 )
@@ -79,10 +80,12 @@ def validate_dataframe_query_results(
         evidence["provider"] = "ssb_expected_row_counts"
     if benchmark_id == "tpcds" and tpcds_subscale_expected_row_counts(scale_factor) is not None:
         evidence["provider"] = "tpcds_subscale_expected_row_counts"
+
     reason = _reference_unavailable_reason(benchmark_id, scale_factor, seed)
     if reason:
+        reference_absent = _reference_absent(benchmark_id, scale_factor)
         for row in successful_rows:
-            _attach_skipped_validation(row, reason)
+            _attach_skipped_validation(row, reason, "UNVALIDATED" if reference_absent else "SKIPPED")
         evidence["skipped"] = len(successful_rows) + selected_skips
         evidence["reason"] = reason
         status = _unavailable_status(execution_failures, bool(successful_rows or selected_skips))
@@ -135,6 +138,16 @@ def _reference_unavailable_reason(benchmark_id: str, scale_factor: float, seed: 
             "parameters (no seed)"
         )
     return None
+
+
+def _reference_absent(benchmark_id: str, scale_factor: float) -> bool:
+    if benchmark_id == "ssb":
+        return ssb_expected_row_counts(scale_factor) is None
+    if benchmark_id == "tpcds":
+        return scale_factor != 1.0 and tpcds_subscale_expected_row_counts(scale_factor) is None
+    from benchbox.core.tpch.benchmark import has_row_count_reference
+
+    return benchmark_id == "tpch" and not has_row_count_reference(scale_factor)
 
 
 def _apply_reference_row_counts(
@@ -222,13 +235,29 @@ def _validate_tpcds_subscale_row_count(
         )
     expected = counts.get(normalized)
     if expected is None:
+        if normalized in tpcds_known_query_ids():
+            return ValidationResult(
+                is_valid=True,
+                query_id=query_id,
+                expected_row_count=None,
+                actual_row_count=actual_row_count,
+                validation_mode=ValidationMode.SKIP,
+                warning_message=(
+                    f"Unvalidated: no TPC-DS subscale row count is recorded for query {query_id!r} at this "
+                    "scale factor. The row count was not checked and is not counted as passed."
+                ),
+                unvalidated=True,
+            )
         return ValidationResult(
-            is_valid=True,
+            is_valid=False,
             query_id=query_id,
             expected_row_count=None,
             actual_row_count=actual_row_count,
-            validation_mode=ValidationMode.SKIP,
-            warning_message=f"No agreed TPC-DS subscale row count is recorded for query {query_id!r}",
+            validation_mode=ValidationMode.EXACT,
+            error_message=(
+                f"Row-count lookup failed: TPC-DS query {query_id!r} is not in the reference row counts. "
+                "Check the query id and variant key. The query is not treated as validated."
+            ),
         )
     is_valid = actual_row_count == expected
     return ValidationResult(
@@ -247,12 +276,15 @@ def _validate_ssb_row_count(counts: dict[str, int], query_id: str, actual_row_co
     expected = counts.get(normalize_ssb_query_id(query_id))
     if expected is None:
         return ValidationResult(
-            is_valid=True,
+            is_valid=False,
             query_id=query_id,
             expected_row_count=None,
             actual_row_count=actual_row_count,
-            validation_mode=ValidationMode.SKIP,
-            warning_message=f"No expected SSB row count is recorded for query {query_id!r}",
+            validation_mode=ValidationMode.EXACT,
+            error_message=(
+                f"Row-count lookup failed: SSB query {query_id!r} has no expected row count in the "
+                "reference answers. Check the query id. The query is not treated as validated."
+            ),
         )
     is_valid = actual_row_count == expected
     return ValidationResult(
@@ -332,7 +364,12 @@ def _apply_row_count_oracle(
             "expected": result.expected_row_count,
             "actual": actual_row_count,
         }
-        if result.validation_mode == ValidationMode.SKIP:
+        if result.unvalidated and result.is_valid:
+            row_count_validation["status"] = "UNVALIDATED"
+            if result.warning_message:
+                row_count_validation["warning"] = _bounded_message(result.warning_message)
+            evidence["skipped"] += 1
+        elif result.validation_mode == ValidationMode.SKIP:
             row_count_validation["status"] = "SKIPPED"
             if result.warning_message:
                 row_count_validation["warning"] = _bounded_message(result.warning_message)
@@ -378,9 +415,9 @@ def _is_execution_failure(row: dict[str, Any]) -> bool:
     return str(row.get("status", "")).upper() not in {"SUCCESS", "SKIPPED"}
 
 
-def _attach_skipped_validation(row: dict[str, Any], warning: str) -> None:
+def _attach_skipped_validation(row: dict[str, Any], warning: str, status: str = "SKIPPED") -> None:
     row["row_count_validation"] = {
-        "status": "SKIPPED",
+        "status": status,
         "expected": None,
         "actual": row.get("rows_returned"),
         "warning": warning,

@@ -46,7 +46,7 @@ class TestLakeSailSQLSmoke:
 
     def test_select_one(self, adapter):
         connection = adapter.create_connection()
-        result = adapter.execute_query(connection, "SELECT 1 AS value", query_id="Q0", benchmark_type="tpch")
+        result = adapter.execute_query(connection, "SELECT 1 AS value", query_id="Q0", benchmark_type="smoke")
         assert result["status"] == "SUCCESS"
         assert result["rows_returned"] == 1
         adapter.close_connection(connection)

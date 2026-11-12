@@ -58,7 +58,9 @@ class TestQueryValidator:
             scale_factor=1.0,
         )
         assert result.is_valid
+        assert result.unvalidated
         assert result.validation_mode == ValidationMode.SKIP
+        assert result.expected_row_count is None
         assert result.warning_message is not None
 
     def test_validate_unknown_query(self):
@@ -69,9 +71,12 @@ class TestQueryValidator:
             actual_row_count=100,
             scale_factor=1.0,
         )
-        assert result.is_valid
-        assert result.validation_mode == ValidationMode.SKIP
-        assert result.warning_message is not None
+        assert not result.is_valid
+        assert not result.unvalidated
+        assert result.validation_mode == ValidationMode.EXACT
+        assert result.error_message is not None
+        assert "lookup failed" in result.error_message
+        assert "'999'" in result.error_message
 
     def test_validate_tpcds_query(self):
         validator = QueryValidator()

@@ -390,7 +390,7 @@ class ConsoleResultFormatter:
 
         console.print("\n[bold yellow]Validation Breakdown[/bold yellow]")
 
-        validation_stats = {"PASSED": 0, "FAILED": 0, "SKIPPED": 0, "UNKNOWN": 0}
+        validation_stats = {"PASSED": 0, "FAILED": 0, "SKIPPED": 0, "UNVALIDATED": 0, "UNKNOWN": 0}
 
         for query in results.query_results:
             if isinstance(query, dict):
@@ -432,6 +432,15 @@ class ConsoleResultFormatter:
                 str(validation_stats["SKIPPED"]),
                 f"{pct:.1f}%",
                 "Validation skipped (SF≠1.0 or disabled)",
+            )
+
+        if validation_stats["UNVALIDATED"] > 0:
+            pct = (validation_stats["UNVALIDATED"] / total_val) * 100 if total_val > 0 else 0
+            val_table.add_row(
+                "[yellow]? UNVALIDATED[/yellow]",
+                str(validation_stats["UNVALIDATED"]),
+                f"{pct:.1f}%",
+                "No reference answers; not counted as passed",
             )
 
         console.print(val_table)

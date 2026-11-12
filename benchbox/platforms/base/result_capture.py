@@ -1060,7 +1060,11 @@ class ResultCaptureMixin:
                 "actual": actual_row_count,
             }
 
-            if validation_result.validation_mode == ValidationMode.SKIP and validation_result.is_valid:
+            if validation_result.unvalidated and validation_result.is_valid:
+                row_count_validation["status"] = "UNVALIDATED"
+                if validation_result.warning_message:
+                    row_count_validation["warning"] = validation_result.warning_message
+            elif validation_result.validation_mode == ValidationMode.SKIP and validation_result.is_valid:
                 row_count_validation["status"] = "SKIPPED"
                 if validation_result.warning_message:
                     row_count_validation["warning"] = validation_result.warning_message

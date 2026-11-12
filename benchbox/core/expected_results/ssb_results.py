@@ -78,6 +78,11 @@ def ssb_expected_row_counts(scale_factor: float) -> dict[str, int] | None:
     return None
 
 
+SSB_QUERY_IDS: frozenset[str] = frozenset(
+    query_id for counts in SSB_EXPECTED_ROW_COUNTS.values() for query_id in counts
+)
+
+
 def normalize_ssb_query_id(query_id: object) -> str:
     return str(query_id).strip().upper().removeprefix("Q")
 
@@ -106,6 +111,7 @@ def get_ssb_expected_results(scale_factor: float = 1.0) -> BenchmarkExpectedResu
         benchmark_name="ssb",
         scale_factor=scale_factor,
         query_results=query_results,
+        known_query_ids=SSB_QUERY_IDS,
         metadata={
             "source": "SSB recorded row counts",
             "total_queries": len(query_results),

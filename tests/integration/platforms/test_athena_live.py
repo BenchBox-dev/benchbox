@@ -43,7 +43,9 @@ class TestLiveAthenaConnection:
 
         connection = athena_adapter.create_connection()
         try:
-            result = athena_adapter.execute_query(connection, "SELECT 1 AS value", query_id="Q0", benchmark_type="tpch")
+            result = athena_adapter.execute_query(
+                connection, "SELECT 1 AS value", query_id="Q0", benchmark_type="smoke"
+            )
             assert result["status"] == "SUCCESS"
         finally:
             athena_adapter.close_connection(connection)

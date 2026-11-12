@@ -119,6 +119,16 @@ def get_query_validation_mode() -> ValidationMode:
     return ValidationMode.SKIP
 
 
+_TPCDS_MULTI_PART_QUERY_IDS = frozenset({"14a", "14b", "23a", "23b", "24a", "24b", "39a", "39b"})
+
+
+def tpcds_known_query_ids() -> frozenset[str]:
+    known = {query_id for counts in TPCDS_SUBSCALE_ROW_COUNTS.values() for query_id in counts}
+    known.update(str(number) for number in range(1, 100))
+    known.update(_TPCDS_MULTI_PART_QUERY_IDS)
+    return frozenset(known)
+
+
 def get_tpcds_expected_results(scale_factor: float = 1.0) -> BenchmarkExpectedResults | None:
     if scale_factor != 1.0:
         subscale_counts = tpcds_subscale_expected_row_counts(scale_factor)
@@ -145,6 +155,7 @@ def get_tpcds_expected_results(scale_factor: float = 1.0) -> BenchmarkExpectedRe
                     "reference_rngseed": TPCDS_REFERENCE_RNGSEED,
                     "provenance": TPCDS_SUBSCALE_PROVENANCE,
                 },
+                known_query_ids=tpcds_known_query_ids(),
             )
         logger.info(
             f"TPC-DS expected results only available for SF=1.0 and recorded subscale factors "
@@ -186,6 +197,7 @@ def get_tpcds_expected_results(scale_factor: float = 1.0) -> BenchmarkExpectedRe
         benchmark_name="tpcds",
         scale_factor=scale_factor,
         query_results=query_results,
+        known_query_ids=tpcds_known_query_ids(),
         metadata={
             "source": "TPC-DS answer files",
             "answer_files_scale_factor": 1.0,

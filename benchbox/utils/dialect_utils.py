@@ -2,6 +2,7 @@
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
 import hashlib
+import logging
 import re
 from collections import Counter
 from collections.abc import Iterable, Iterator, Mapping, Sequence
@@ -70,6 +71,8 @@ def _eliminate_starrocks_qualify() -> None:
 
 SCHEMA_DDL_SCOPE = "schema_ddl"
 WORKLOAD_QUERY_SCOPE = "workload_query"
+
+PRESTO_FAMILY_DIALECTS = frozenset({"presto", "trino", "athena"})
 
 NO_IDENTIFY_DIALECTS = frozenset(
     {"clickhouse", "postgres", "snowflake", "exasol", "questdb", "netezza", "greenplum", "vertica", "datafusion"}
@@ -419,6 +422,8 @@ def translate_sql_query(
 
                 expression = rewrite_subqueries(expression.copy())
 
+            if tgt in PRESTO_FAMILY_DIALECTS:
+                expression = apply_rewrite("hoist_qualify_order_by", expression, tgt)
             if tgt == "doris":
                 _keep_full_outer_join("doris")
                 for doris_rewrite in (
@@ -742,6 +747,68 @@ def positive_count_subquery_to_exists(expression, *, copy: bool = True):
     return tree
 
 
+def _outer_order_key(key, outputs: Sequence[tuple[object, object]], exp, *, nested: bool = False):
+    if isinstance(key, exp.Literal) and not key.is_string:
+        return key.copy()
+    if isinstance(key, exp.Column):
+        if not key.table and not nested:
+            for _, projection in outputs:
+                if projection.name.lower() == key.name.lower():
+                    return projection.copy()
+        for source, projection in outputs:
+            if source == key:
+                return projection.copy()
+        return None
+    for source, projection in outputs:
+        if source == key:
+            return projection.copy()
+    if key.find(exp.Window, exp.AggFunc) is not None:
+        return None
+    resolved = key.copy()
+    for column in list(resolved.find_all(exp.Column)):
+        replacement = _outer_order_key(column, outputs, exp, nested=True)
+        if replacement is None:
+            return None
+        column.replace(replacement)
+    return resolved
+
+
+def hoist_qualify_order_by(expression, *, copy: bool = True):
+    exp = sql_expressions()
+    from benchbox._vendor.sqlglot import transforms
+
+    tree = expression.copy() if copy else expression
+    targets = [
+        select
+        for select in tree.find_all(exp.Select)
+        if select.args.get("qualify") is not None and select.args.get("order") is not None
+    ]
+    for select in reversed(targets):
+        order = select.args["order"]
+        sources = [item.this if isinstance(item, exp.Alias) else item for item in select.selects]
+        eliminated = transforms.eliminate_qualify(select.copy())
+        outputs = list(zip(sources, eliminated.selects))
+        keys = [_outer_order_key(item.this, outputs, exp) for item in order.expressions]
+        if any(key is None for key in keys):
+            logging.getLogger(__name__).warning(
+                "QUALIFY elimination cannot hoist %s to the outer select; its sort keys are not "
+                "projected, so the result order is undefined",
+                order.sql(),
+            )
+            continue
+        ordered = []
+        for item, key in zip(order.expressions, keys):
+            hoisted = item.copy()
+            hoisted.set("this", key)
+            ordered.append(hoisted)
+        eliminated.set("order", exp.Order(expressions=ordered))
+        if select.parent is None:
+            tree = eliminated
+        else:
+            select.replace(eliminated)
+    return tree
+
+
 _LOCAL_REWRITES: dict[str, Callable[..., object]] = {
     "add_dual_source_to_filtered_selects": add_dual_source_to_filtered_selects,
     "alias_derived_tables": alias_derived_tables,
@@ -755,6 +822,7 @@ _LOCAL_REWRITES: dict[str, Callable[..., object]] = {
     "factor_common_conjuncts": factor_common_conjuncts,
     "fold_scalar_having_into_case": fold_scalar_having_into_case,
     "hoist_aggregate_subqueries": hoist_aggregate_subqueries,
+    "hoist_qualify_order_by": hoist_qualify_order_by,
     "in_subquery_or_to_left_join": in_subquery_or_to_left_join,
     "inline_named_windows": inline_named_windows,
     "inline_sourceless_exists": inline_sourceless_exists,

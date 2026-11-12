@@ -100,7 +100,7 @@ class TestLiveRedshiftConnection:
         connection = live_redshift_adapter.create_connection()
         try:
             result = live_redshift_adapter.execute_query(
-                connection, "SELECT 1 AS value", query_id="Q0", benchmark_type="tpch"
+                connection, "SELECT 1 AS value", query_id="Q0", benchmark_type="smoke"
             )
             assert result["status"] == "SUCCESS"
         finally:
