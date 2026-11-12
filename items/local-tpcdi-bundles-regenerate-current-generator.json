@@ -4,7 +4,7 @@
     "Their table row counts and QVQ12/QAQ7 result counts match the cloud bundles at each scale",
     "The superseded local bundles are replaced through the normal corpus PR path, and the CORPUS_NOTES caveat is updated"
   ],
-  "context": "Found during the live-cloud corpus publication (PRs #2602 and #2615). Rerunning the local engines costs nothing.\n\n2026-11-11: the TPC-DI generator change that scales FactCashBalances, FactHoldings, FactMarketHistory and FactWatches linearly (see tpcdi-fact-table-row-caps-20261111) changes generated data at every scale. All 24 published TPC-DI bundles, cloud platforms included (BigQuery, Databricks), now predate the current generator. Regenerate after that change merges, and decide whether the old bundles are superseded or flagged in CORPUS_NOTES.md.",
+  "context": "Found during the live-cloud corpus publication (PRs #2602 and #2615). Rerunning the local engines costs nothing.\n\n2026-11-11: the TPC-DI generator change that scales FactCashBalances, FactHoldings, FactMarketHistory and FactWatches linearly (see tpcdi-fact-table-row-caps-20261111) changes generated data at every scale. All 24 published TPC-DI bundles, cloud platforms included (BigQuery, Databricks), now predate the current generator. Regenerate after that change merges, and decide whether the old bundles are superseded or flagged in CORPUS_NOTES.md.\n\n2026-11-12: a second generator change merged (BenchBox-dev/benchbox#4171: specification scale unit and row factors). All 24 published TPC-DI bundles are now two data changes behind the generator: 15 local (DuckDB, DataFusion, ClickHouse Local at SF 0.01, 0.1, 1) and 9 cloud (BigQuery, Databricks, Snowflake at SF 0.1, 1, 10). The cloud re-runs need owner approval for spend. Settle `tpcdi-remaining-spec-differences-20261112` and `tpcdi-standard-scales-and-estimates-after-unit-change-20261112` first so the bundles are regenerated once.",
   "description": "The published TPC-DI cohorts mix two data versions. The cloud bundles (BigQuery, Snowflake and Databricks at SF 0.1, 1 and 10) were loaded after the generator change in #2220 (`cac8582a0`). They agree on all sixteen table row counts and on QVQ12/QAQ7 result counts: 100/1 at SF 0.1, 32/2 at SF 1, 1/1 at SF 10. The local TPC-DI bundles in the corpus predate that change and report QVQ12=9 and QAQ7=1 at SF 1. So local and cloud timings in the same cohort are measured over different data. results-data/CORPUS_NOTES.md section \"TPC-DI cloud data comparison (2026-10-03)\" discloses this.",
   "sessions": [
     {
@@ -22,6 +22,14 @@
       "op": "update",
       "op_id": "aae707e0604045f2b8f3b47fcca9dc64",
       "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:eb0e48032edcab785e018919",
+      "at": "2026-11-12T16:53:20Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "20f7e2b068c949369a96b2f3e730ce54",
+      "session_id": "3f84b7b72a6a4389855a4c2d913fb7f9"
     }
   ]
 }
