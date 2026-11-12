@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "The DuckDB SSB and TPC-DS tuned templates now carry measured evidence states. At SF1 on DuckDB v1.5.5 with 16 GiB host memory the SSB template is measured-benefit against notuning (geometric mean ratio 0.6687, 95% interval 0.6457 to 0.6992) and the TPC-DS template is measured-regression (load time 13.6 times notuning). The DuckDB TPC-H template stays SF1-only: SF10 could not be measured on this host.",
+      "details": [],
+      "platforms": ["duckdb"]
+    }
+  ]
+}
