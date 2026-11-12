@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "With the option set on a DataFrame platform and DuckDB 2.x, the sketch operations in the write-primitives workload run and report their real status; without it they report SKIPPED with the reason. Or: the write-primitives README states the 1.x-only limitation for DataFrame platforms and this item records why forwarding was not built.",
+    "A test covers the chosen behaviour."
+  ],
+  "description": "Gap. On DuckDB 2.x the datasketches extension installs only from a third-party repository, and BenchBox requires `--platform-option allow_third_party_extensions=true`, registered for the `duckdb` and `ducklake` platforms (PR #4175). The DataFrame SQL-parity workload in `benchbox/core/write_primitives/benchmark.py` (`_execute_dataframe_sql_parity_workload`) runs sketch operations on an internal DuckDB adapter, but DataFrame platforms do not register the option, so on 2.x those operations are always skipped. The skip message says so accurately; the capability is simply missing.\n\nExpected: either DataFrame platforms that run this workload accept the same option and forward it to the internal adapter, or the documentation states that sketch operations in DataFrame write-primitives runs need DuckDB 1.x.\n\nGuardrails: the default stays off; no third-party repository is contacted without the explicit option. Adapter SDK imports stay lazy.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4175",
+    "benchbox/core/write_primitives/benchmark.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-12T22:20:29Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ce659252014140af889108e437d58dc7",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}
