@@ -156,9 +156,11 @@ concrete commands; this guide names only the tracker calls and the contract.
   never call `take`, `prepare`, `finish`, `release`, or any other tracker write
   for batch items; while the batch is active the tracker refuses a claim from
   anyone but the owner (`E_BATCH_OWNER`). The refusal holds only for a distinct
-  identity: a member must not use the leader's server instance or actor
-  (`--actor`/`TRACTABLE_ACTOR`). A member that needs a tracker fact asks
-  the leader or reads it (`show_item`, `show_batch`).
+  identity: a member on the leader's server instance or actor
+  (`--actor`/`TRACTABLE_ACTOR`), such as a subagent, is not refused, so
+  dispatch it with an instruction to make no tracker writes. Repository policy
+  decides whether such a member is allowed. A member that needs a tracker fact
+  asks the leader or reads it (`show_item`, `show_batch`).
 - The leader claims a member (`take`) only around its own landing, prepare,
   or finish, and releases or prepares it immediately. A member with
   implementation edges is taken just before its landing, because the tracker

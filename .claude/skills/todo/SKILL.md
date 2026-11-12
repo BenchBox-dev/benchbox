@@ -95,8 +95,10 @@ the product repository.
   own worktrees and stop at a committed, checked change handed to the leader as
   a landing request; they make no tracker writes and open no PR. The leader claims
   a member only to prepare or finish it. The refusal holds only for a distinct
-  identity: a member must not use the leader's server instance or actor
-  (`--actor`/`TRACTABLE_ACTOR`). Procedure: `references/batch.md`.
+  identity: a member on the leader's server instance or actor
+  (`--actor`/`TRACTABLE_ACTOR`), such as a subagent, is not refused, so
+  dispatch it with an instruction to make no tracker writes. Repository policy
+  decides whether such a member is allowed. Procedure: `references/batch.md`.
 - **Guarded checkout relocation.** Require
   `tractable_batch.features.integration_worktree_relocation=true` before using
   the optional expected-path/expected-head/new-path tuple in owner recovery.

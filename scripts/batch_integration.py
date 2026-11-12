@@ -1201,7 +1201,7 @@ def _check_member_writes(
         listed = "; ".join(f"{e.get('op')} {e.get('op_id')} at {e.get('at')} by {e.get('actor')}" for e in unexplained)
         raise BatchError(
             f"member {member!r} has tracker writes between {since} and its first landing ({listed}). "
-            "Members never write to the tracker: run each member in its own session with its own tractable identity. "
+            "Members never write to the tracker. "
             "Inspect the writes with show_item, then land again with ACCEPT_WRITES=<op_id,...> to record them as "
             "reviewed"
         )
