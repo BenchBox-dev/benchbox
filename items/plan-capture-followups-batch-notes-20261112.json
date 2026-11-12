@@ -2,6 +2,7 @@
   "acceptance": [
     "The final PR for feat/plan-capture-followups merges and every member is finished"
   ],
+  "context": "2026-11-12: batch registered at start head 4f5cfba468; four member worktrees created at /Users/joe/Developer/BenchBox.wt-pcf-{heavyrun,polarsfp,pubkeys,stageplans} and dispatched as leader subagents. Declared overlaps: publish.py (publish-keys and stage-plans members), benchbox/core/results/schema.py (polars and publish-keys members), make/help.mk (heavy-run and stage-plans members). Next: land each member with make batch-land, take and prepare, then fast tier, pr-open, bind_batch_pr, batch-evidence, pr-arm. Also done today: mirror PR 4163 merged onto published-results at the owner's instruction; site-deploy-validator-parity-after-superseded-bundle-20261112 filed.",
   "description": "Umbrella for the registered batch plan-capture-followups; not a member. Members: heavy-run-cmd-dollar-expansion-20261111, polars-df-plan-capture-no-fingerprint-20261111, publish-run-rewrites-plans-companion-keys-20261111, maintainer-plans-bundle-path-docs-and-publish-refusal-20261111. Integration branch feat/plan-capture-followups, worktree /Users/joe/Developer/BenchBox.wt-plan-capture-followups, start head 4f5cfba46877b9887ab5fbd68bee5938e2b1fce2. Owner decisions 2026-11-12: members run as the leader's subagents; Polars plans get a fingerprint of the redacted optimized plan text (no parser); corpus staging sanitizes plans companions itself and still refuses any leak; publish run keeps requiring --label unofficial-research for subscale and only its message is fixed; publish run must preserve companion keys, and the two live companions are left as published. Deferred out of the batch until PR 4154 merges: duckdb-tpch-sf1-official-export-row-count-contract-20261111 and seeded-dataframe-tpch-validation-uncertain-20261111.",
   "sessions": [
     {
@@ -10,6 +11,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "92772218e566421e8b5d4b7d827544bf",
+      "session_id": "32e4db9816694cfb9be59807549223c7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:eb741106bc3418ce287ca405",
+      "at": "2026-11-12T14:52:39Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "de24045294eb43de89fa15bb1a00af2a",
       "session_id": "32e4db9816694cfb9be59807549223c7"
     }
   ]
