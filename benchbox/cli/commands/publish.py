@@ -15,7 +15,7 @@ from rich.markup import escape
 from benchbox.cli.output import ResultExporter
 from benchbox.cli.pseudonym_salt import ensure_publication_salt
 from benchbox.cli.shared import console
-from benchbox.core.publishing.admission import publish_admission
+from benchbox.core.publishing.admission import is_tpcds_result, publish_admission, unofficial_result_subject
 from benchbox.core.publishing.bundle_publisher import COMPANION_SUFFIXES, VALID_LABELS, BundlePublisher
 from benchbox.core.publishing.store import PublicationStore
 from benchbox.core.results.anonymization import (
@@ -104,11 +104,12 @@ def publish_run(ctx, result_file, target, label, last, benchmark, platform, dry_
             if _decision.code == "unofficial_compliance":
                 console.print(
                     f"\n[red]❌ Publish refused: compliance_class={_decision.reason}[/red]\n"
-                    "   This result was produced with an unofficial TPC-DS configuration.\n"
+                    f"   This result was produced with {unofficial_result_subject(_result)}.\n"
                     "   To publish anyway, add: [bold]--label unofficial-research[/bold]\n"
-                    "   Note: unofficial results must not be used for comparative benchmarking.\n"
-                    "   See _sources/tpcds-subscale-contract.md for details."
+                    "   Note: unofficial results must not be used for comparative benchmarking."
                 )
+                if is_tpcds_result(_result):
+                    console.print("   See _sources/tpcds-subscale-contract.md for details.")
             else:
                 console.print(
                     f"\n[red]❌ Publish refused: result is not a clean pass ({_decision.reason})[/red]\n"
@@ -494,10 +495,9 @@ def publish_bundle(
         if not _decision.allowed:
             if _decision.code == "unofficial_compliance":
                 console.print(
-                    "[red]Publish refused:[/red] This result has compliance_class "
-                    f"'{_decision.reason}' and cannot be published under label "
-                    f"'{label}'. Add [bold]--label unofficial-research[/bold] to "
-                    "publish unofficial TPC-DS results."
+                    f"[red]Publish refused:[/red] This result has compliance_class '{_decision.reason}' "
+                    f"({unofficial_result_subject(_result)}) and cannot be published under label "
+                    f"'{label}'. Add [bold]--label unofficial-research[/bold] to publish it as unofficial research."
                 )
             else:
                 console.print(

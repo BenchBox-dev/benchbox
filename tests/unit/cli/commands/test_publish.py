@@ -15,9 +15,9 @@ pytestmark = [
 ]
 
 
-def _fake_result(compliance_class: str | None = None) -> SimpleNamespace:
+def _fake_result(compliance_class: str | None = None, benchmark_name: str = "tpcds") -> SimpleNamespace:
     ns = SimpleNamespace(
-        benchmark_name="tpcds",
+        benchmark_name=benchmark_name,
         platform="duckdb",
         scale_factor=0.1,
         total_queries=99,
@@ -52,6 +52,42 @@ def test_publish_run_refuses_unofficial_subscale_without_label(monkeypatch: pyte
     assert result.exit_code == 1
     assert "refused" in result.output.lower()
     assert "unofficial-research" in result.output
+
+
+def test_publish_run_refusal_names_class_once_and_not_tpcds_for_tpch(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    src = tmp_path / "tpch_subscale.json"
+    src.write_text('{"schema_version": "2.0", "export": {"anonymized": true}}', encoding="utf-8")
+    monkeypatch.setattr(
+        pub,
+        "load_result_file",
+        lambda *_a, **_k: (_fake_result("unofficial_subscale", benchmark_name="tpch"), {}),
+    )
+
+    result = CliRunner().invoke(pub.publish_run, [str(src)])
+
+    assert result.exit_code == 1
+    assert result.output.count("unofficial_subscale") == 1
+    assert "compliance_class=compliance_class" not in result.output
+    assert "TPC-DS" not in result.output
+    assert "tpcds-subscale-contract" not in result.output
+    assert "TPC-H" in result.output
+    assert "--label unofficial-research" in result.output
+
+
+def test_publish_run_refusal_points_tpcds_results_at_the_contract(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    src = tmp_path / "tpcds_subscale.json"
+    src.write_text('{"schema_version": "2.0", "export": {"anonymized": true}}', encoding="utf-8")
+    monkeypatch.setattr(pub, "load_result_file", lambda *_a, **_k: (_fake_result("unofficial_subscale"), {}))
+
+    result = CliRunner().invoke(pub.publish_run, [str(src)])
+
+    assert result.output.count("unofficial_subscale") == 1
+    assert "TPC-DS" in result.output
+    assert "tpcds-subscale-contract.md" in result.output
 
 
 def test_publish_run_refuses_unofficial_nonstandard_without_label(

@@ -12,6 +12,7 @@ from benchbox.core.results.anonymization import (
     AnonymizationConfig,
     AnonymizationManager,
     MissingPublicPseudonymSaltError,
+    anonymize_plans_payload,
     public_pseudonym_salt_path,
     require_public_pseudonym_salt,
     resolve_public_pseudonym_salt,
@@ -86,6 +87,8 @@ def _anonymized_companion(path: Path, manager: AnonymizationManager) -> dict[str
         payload = manager.anonymize_tuning_payload(payload)
     else:
         payload = manager.anonymize_result_payload(payload)
+        if path.name.endswith(PLANS_SUFFIX):
+            payload = anonymize_plans_payload(payload)
     findings = [f"private path leak at {leak}" for leak in sorted(set(find_public_path_leaks(payload)))]
     findings += unanonymized_plans_findings(payload) + unanonymized_tuning_findings(payload)
     if findings:
