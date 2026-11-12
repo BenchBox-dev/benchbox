@@ -527,7 +527,17 @@ def test_submit_manifest_provenance_fields(monkeypatch: pytest.MonkeyPatch, tmp_
     out_dir = tmp_path / "submission"
     CliRunner().invoke(
         sub.submit,
-        [str(src), "--output", str(out_dir), "--funding", "free-trial", "--notes", "ran on a laptop"],
+        [
+            str(src),
+            "--output",
+            str(out_dir),
+            "--funding",
+            "free-trial",
+            "--vendor-permission",
+            "approval 2026-11-01",
+            "--notes",
+            "ran on a laptop",
+        ],
     )
 
     manifest = json.loads((out_dir / "tpch_duckdb.manifest.json").read_text(encoding="utf-8"))
@@ -586,6 +596,18 @@ def test_submit_refuses_free_tier_without_permission(monkeypatch: pytest.MonkeyP
     assert result.exit_code == 1
     assert "written permission" in result.output
     assert not (out_dir / "tpch_duckdb.manifest.json").exists()
+
+
+def test_submit_refuses_free_trial_funding_without_permission(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    src = tmp_path / "tpch_duckdb.json"
+    _write_valid_submission_bundle(src)
+    monkeypatch.setattr(sub, "load_result_file", lambda *_a, **_k: (_fake_result(), {}))
+
+    out_dir = tmp_path / "submission"
+    result = CliRunner().invoke(sub.submit, [str(src), "--output", str(out_dir), "--funding", "free-trial"])
+
+    assert result.exit_code == 1
+    assert "written permission" in result.output
 
 
 def test_submit_load_error(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

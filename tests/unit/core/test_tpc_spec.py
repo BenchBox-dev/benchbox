@@ -86,6 +86,9 @@ class TestFullSpecViolations:
     def test_tpcds_missing_maintenance_phase_refused(self):
         assert any("maintenance" in item for item in _tpcds(phases=("load", "power", "throughput")))
 
+    def test_tpcds_missing_load_phase_refused(self):
+        assert any("load" in item for item in _tpcds(phases=("power", "throughput", "maintenance")))
+
     def test_tpch_stream_minimum_per_scale(self):
         assert any("at least 5" in item for item in _tpch(streams=4))
 

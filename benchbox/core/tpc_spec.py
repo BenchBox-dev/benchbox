@@ -22,7 +22,7 @@ FULL_SPEC_BENCHMARKS = frozenset({"tpch", "tpcds"})
 
 _REQUIRED_PHASES: Mapping[str, tuple[str, ...]] = {
     "tpch": ("power", "throughput"),
-    "tpcds": ("power", "throughput", "maintenance"),
+    "tpcds": ("load", "power", "throughput", "maintenance"),
 }
 
 _LABELS = {"tpch": "TPC-H", "tpcds": "TPC-DS"}

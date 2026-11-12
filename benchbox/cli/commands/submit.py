@@ -208,8 +208,11 @@ def _vendor_condition_fields(
     return fields
 
 
-def _enforce_vendor_conditions(ctx: click.Context, result, vendor_conditions: dict) -> None:
-    errors, warnings = evaluate_vendor_conditions({"platform": result.platform, **vendor_conditions})
+def _enforce_vendor_conditions(ctx: click.Context, result, vendor_conditions: dict, funding: str | None) -> None:
+    resolved_funding = normalize_funding(funding or getattr(result, "funding", None))
+    errors, warnings = evaluate_vendor_conditions(
+        {"platform": result.platform, "funding": resolved_funding, **vendor_conditions}
+    )
     for message in warnings:
         console.print(f"[yellow]⚠️  Vendor publishing condition not recorded: {escape(message)}[/yellow]")
     if errors:
@@ -852,7 +855,7 @@ def submit(
         vendor_notice_ref=vendor_notice_ref,
         self_run=self_run,
     )
-    _enforce_vendor_conditions(ctx, result, vendor_conditions)
+    _enforce_vendor_conditions(ctx, result, vendor_conditions, funding)
 
     companions = [
         p for suffix in COMPANION_SUFFIXES if (p := source_path.with_name(source_path.stem + suffix)).exists()
