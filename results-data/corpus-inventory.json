@@ -1,6 +1,6 @@
 {
   "schema_version": "2.3",
-  "generated_at": "2026-11-12T02:30:54.143856+00:00",
+  "generated_at": "2026-11-12T16:01:42.204777+00:00",
   "bundles": [
     {
       "file": "amplab_sf01_bigquery_sql_20260920_000055_35490af7.json",
@@ -2551,6 +2551,20 @@
       "bundle_sha256": "3f1d598b30fa9cba1ddc3dd56d3c291be0776392f98911a7d8e0235ff11b1e83"
     },
     {
+      "file": "read_primitives_sf001_clickhouse_local_sql_20261112_160015_8c2401a3.json",
+      "benchmark": "read_primitives",
+      "benchmark_name": "Read Primitives",
+      "platform": "ClickHouse Local",
+      "platform_version": "unknown",
+      "scale_factor": 0.01,
+      "phase": "power",
+      "timestamp": "2026-11-12T16:00:14.920759",
+      "query_count": 441,
+      "trust_label": "maintainer-run",
+      "funding": "unspecified",
+      "bundle_sha256": "111f56a22b4fe7ddc49719af28e7d4b692e862b6f3203396ba5dc9ae9e2541bc"
+    },
+    {
       "file": "read_primitives_sf01_clickhouse_local_sql_20260825_175504_c1aeca88.json",
       "benchmark": "read_primitives",
       "benchmark_name": "Read Primitives",
@@ -2577,6 +2591,20 @@
       "trust_label": "maintainer-run",
       "funding": "unspecified",
       "bundle_sha256": "5c27403d087bf75bcee6977e68a959f98f6df855a2f6447b56a2bc4da19fc4d9"
+    },
+    {
+      "file": "read_primitives_sf01_clickhouse_local_sql_20261112_160115_f3180de4.json",
+      "benchmark": "read_primitives",
+      "benchmark_name": "Read Primitives",
+      "platform": "ClickHouse Local",
+      "platform_version": "unknown",
+      "scale_factor": 0.1,
+      "phase": "power",
+      "timestamp": "2026-11-12T16:01:15.365910",
+      "query_count": 441,
+      "trust_label": "maintainer-run",
+      "funding": "unspecified",
+      "bundle_sha256": "2ab842b802fb435ec89636a16e60bbb33df08d9248054d4fbbc354266bf20806"
     },
     {
       "file": "read_primitives_sf001_datafusion_sql_20260825_173248_cb4cfcba.json",
@@ -7392,7 +7420,7 @@
     ]
   },
   "summary": {
-    "total_bundles": 489,
+    "total_bundles": 491,
     "by_benchmark": {
       "amplab": 25,
       "clickbench": 25,
@@ -7403,7 +7431,7 @@
       "joinorder": 9,
       "metadata_primitives": 3,
       "nyctaxi": 21,
-      "read_primitives": 24,
+      "read_primitives": 26,
       "ssb": 47,
       "tpcdi": 24,
       "tpcds": 37,
@@ -7419,7 +7447,7 @@
       "Apache Doris": 3,
       "BigQuery": 51,
       "CedarDB": 1,
-      "ClickHouse Local": 68,
+      "ClickHouse Local": 70,
       "ClickHouse Server": 1,
       "DataFusion": 75,
       "Databricks": 50,
@@ -7435,13 +7463,13 @@
       "StarRocks": 1
     },
     "by_trust_label": {
-      "maintainer-run": 489
+      "maintainer-run": 491
     },
     "by_funding": {
-      "unspecified": 489
+      "unspecified": 491
     },
     "by_phase": {
-      "power": 486,
+      "power": 488,
       "throughput": 3
     }
   }
