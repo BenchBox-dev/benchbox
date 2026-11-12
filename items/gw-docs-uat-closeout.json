@@ -5,7 +5,7 @@
     "TCO inputs opaque + cost-not-comparable banner rule",
     "Write-only UAT runbook (SF 0.01, caps, evidence checklist); not executed; G3 recorded"
   ],
-  "context": "Plan v2 E/G/H/J. Depends on gw-tests-gates. Close-out: code-skill review, pr-preflight, pr-open to develop.",
+  "context": "Plan v2 E/G/H/J. Depends on gw-tests-gates. Close-out: code-skill review, pr-preflight, pr-open to develop.\n\n2026-11-11: Core PR #4136 (538b12a856) and benchbox-site PR #139 merged: site page docs/platforms/snowflake-gateways.md with pointers from the Snowflake and Databricks pages; core-only write-only runbook docs/internal/gateway-uat-runbook.md records G3 as not executed. Remaining: G3 (live gateway UAT), which needs owner approval for live cloud runs (currently 'not now').",
   "description": "Gateway docs (snowflake-gateways.md + pointers), cost/TCO rules, write-only live-UAT runbook, G3 gate record, and PR close-out.",
   "sessions": [
     {
@@ -23,6 +23,14 @@
       "op": "update",
       "op_id": "965586de50634eedb3665529a194d479",
       "session_id": "ece27cd7b1e84cfdb901409d637eabe8"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-12T02:24:38Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0e08f21ab8de446f9b4a53ae867a7c16",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
 }
