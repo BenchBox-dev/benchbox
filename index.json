@@ -12824,12 +12824,17 @@
       "title": "Pin BenchBox to the catalog commit with the corrected member-identity rule and regenerate skill mirrors"
     },
     "batch-member-subagent-skill-text-20261112": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T15:59:22Z",
+        "generation": "4c3cfe028a054bb4bf53f453df7668b5",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785"
+      },
       "needs": [
         "batch-member-subagent-rule-20261112"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Correct the todo skill's batch member-identity rule in the catalog and bump the global pin"
     },
     "batch-mode-opt-in-policy-docs-20261107": {
