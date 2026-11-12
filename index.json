@@ -19266,6 +19266,17 @@
       "status": "open",
       "title": "Coordinate the DataFrame distinct-count remediation batch (df-distinct-remediation)"
     },
+    "df-distinct-timing-confirmation": {
+      "claim": null,
+      "needs": [
+        "tpcds-df-multi-warehouse-min-max",
+        "df-n-unique-null-semantics",
+        "df-q21-multi-supplier-min-max"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Time the DataFrame distinct-count remediation on an idle machine and change or revert any pattern that is slower"
+    },
     "df-n-unique-null-semantics": {
       "claim": null,
       "needs": [],

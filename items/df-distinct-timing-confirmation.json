@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Every listed cell has a best-time pair from five undiscarded rounds, or is recorded as not runnable with the reason (for example PySpark at SF10 exceeding memory).",
+    "The context holds one table per group with base ms, changed ms, ratio, engine versions, and the load averages seen.",
+    "Each of the three decision gates has a recorded outcome: kept, changed (with the PR), or escalated to the owner.",
+    "If a pattern changed or was reverted, the PR is merged and `tests/unit/core/tpcds/test_multi_warehouse_orders.py`, the two Q21 semantics tests, and `tests/unit/platforms/dataframe/test_distinct_count_null_parity.py` pass on it.",
+    "The complete-query numbers are posted to BenchBox-dev/benchbox-site PR #143 or its successor, since the blog post is waiting on them.",
+    "The local branch `chore/df-distinct-timing-base` and its worktree are removed once the timings are recorded."
+  ],
+  "context": "Ready-made harness: ~/Developer/benchmark_runs/df-distinct-remediation/timing.py (one cell, resumable), matrix.py (all cells; `pregen` generates data, `time` runs the gates), watch.sh (retries every 5 minutes for 8 hours; started 2026-11-12 09:00). Base worktree: /Users/joe/Developer/BenchBox.wt-df-distinct-timing-base. matrix.py points the changed side at the three member worktrees; if those are gone, point it at a checkout of `develop` after the batch merges. The resumable harness has only been syntax-checked; its first version passed an SF0.01 Polars smoke run. ClickBench scales 0.1 and 1 are a guess.",
+  "description": "Problem. The batch `df-distinct-remediation` changed how DataFrame queries test for more than one distinct value: TPC-DS Q16/Q94/Q95 (min/max instead of a distinct count or self-join), TPC-H, Data Vault and TPC-Havoc Q21 (min/max instead of two distinct counts), and `UnifiedExpr.n_unique()` on Polars (drops NULL first). The owner agreed on 2026-11-12 to merge these without complete-query timings because the host could not admit heavy work (memory pressure level 2, swap about 95%, load average 9-11). The only speed evidence is isolated-step timing of the TPC-DS warehouse step on newer engine versions. This item supplies the missing measurement and acts on it.\n\nMethod. Compare the batch start head 0eeec0d5bd194ad0b811911ea73004586ed51469 (base) with the merged change on the locked engine versions (record polars, datafusion, pyspark versions). Alternate base and changed checkouts, one warm-up then five timed runs each, best time per cell. A cell is one query on one platform at one scale factor. Run only through `make heavy-run` after `make heavy-status`; 1-minute load average at or below 3.0 before and after every round, otherwise the round is discarded.\n\nCells:\n- TPC-DS Q16, Q94, Q95 on polars-df, datafusion-df, pyspark-df at SF1 and SF10.\n- TPC-H Q21, Data Vault Q21, TPC-Havoc Q21 variants 1 and 4-10 on the same three platforms at SF1 and SF10.\n- Polars only, for the shared `n_unique()` change: TPC-H Q16, TPC-DS Q16, CoffeeShop SA1 at SF1 and SF10; ClickBench Q5 and Q9 at two scales that fit in 16 GiB.\n\nDecision gates, per group, applied to the best-time ratio changed/base:\n- TPC-DS multi-warehouse: if any cell exceeds 1.10, replace min/max on every platform with a distinct count over rows whose warehouse is not NULL and time again. The NULL fix and the removal of platform branches stay. If the fallback also exceeds 1.10 on any cell, stop and ask the owner.\n- Q21: if any cell exceeds 1.10, revert the Q21 query change (commit b35a41981ddd52749ff7b5e354cf887067930441 on the member branch) in the affected module, keeping the semantics tests. A change that is neither faster nor slower stays; reverting it would be churn.\n- Shared `n_unique()`: if any Polars cell exceeds 1.10, switch to counting distinct values and subtracting one when the group contains a NULL, and time again. If that also exceeds 1.10, stop and ask the owner; correctness may not be traded back for speed without that decision.\n\nGuardrails:\n- No platform-name branch may select a query pattern; one rule for every platform.\n- Do not edit SQL text, reference answers, or expected-result fixtures.\n- Never force heavy-work admission, skip the test lock, or disable the watchdog without the owner's approval in that task.\n- Harness scripts are throwaway and are not committed. Raw results stay under ~/Developer/benchmark_runs/df-distinct-remediation/; this item's context carries the tables.\n- Any code change that results is an ordinary pull request with a changelog fragment and the same NULL and Q21 semantics tests passing.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-site/pull/143"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-12T14:12:59Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "eae330ed650b48f3b85ae09a190e805b",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}
