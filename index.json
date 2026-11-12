@@ -45579,6 +45579,13 @@
       "status": "done",
       "title": "When the BenchBox wrapper gains the update verb, move it out of standalone_only_commands"
     },
+    "write-guard-ignores-shell-writes-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Primary-clone write guard does not inspect shell commands"
+    },
     "write-guard-unproven-outside-omp-20261112": {
       "claim": null,
       "needs": [],
