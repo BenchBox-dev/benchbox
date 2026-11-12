@@ -30500,15 +30500,10 @@
       "title": "make pr-arm prints no 'pr-arm: outcome:' line when the red-develop gate refuses"
     },
     "pr-arm-refuses-already-clean-pr-20261101": {
-      "claim": {
-        "expires_at": "2026-11-13T03:21:44Z",
-        "generation": "a69c09552cc14ca0923490408076faef",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Let make pr-arm land a PR that is already mergeable instead of refusing"
     },
     "pr-arm-rerun-contradictory-guidance-20261027": {
