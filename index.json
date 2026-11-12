@@ -37708,10 +37708,15 @@
       "title": "Add delta/iceberg/hudi loading to SparkDataLoadMixin and close shared Spark loader gaps"
     },
     "spark-session-config-map-validation-20261013": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T05:55:54Z",
+        "generation": "da4dbc089ba0402db1a2c9972457bf48",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Spark session-config map accepts typos, static settings and credential keys, and logs values"
     },
     "spark-session-config-model": {
