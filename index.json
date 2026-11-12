@@ -30872,15 +30872,10 @@
       "title": "Make the polars-df compatibility target assert that Polars 2.x is installed"
     },
     "polars-df-plan-capture-no-fingerprint-20261111": {
-      "claim": {
-        "expires_at": "2026-11-13T17:07:42Z",
-        "generation": "b8735c0997cc484c82b0ac860aa17853",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:eb741106bc3418ce287ca405"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Polars DataFrame plan capture records text plans without fingerprints, so plan stability is never recorded"
     },
     "polars-engine-selection-compat-20261014": {
