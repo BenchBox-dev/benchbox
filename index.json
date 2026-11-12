@@ -41372,6 +41372,13 @@
       "status": "done",
       "title": "Rerun the six published TPC-DS OBT SF1 results with correct queries and restore their rankings"
     },
+    "tpcds-obt-sf001-platform-restoration": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Restore tpcds_obt SF0.01 on QuestDB, PostgreSQL, TimescaleDB and pg-mooncake"
+    },
     "tpcds-obt-static-query-catalog": {
       "claim": null,
       "needs": [],

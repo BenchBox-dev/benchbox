@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Each platform fixed or deliberately re-scoped by the owner",
+    "Prunes removed and the cells green in a trunk UAT"
+  ],
+  "description": "#4148 (de061b53) pruned tpcds_obt 0.01 on four platforms after #4088 and #4126 brought the cell into the gate. Causes: QuestDB subquery limits on 17 queries (1, 10, 16, 23a, 23b, 30, 32, 33, 35, 41, 44, 58, 81, 83, 92, 94, 95; untested rewrites were drafted in /tmp/qdb/q/); PostgreSQL and TimescaleDB 1200 s timeouts; pg-mooncake `mooncake_scan` missing on queries 4, 11, 14b, 23a, 23b and 74.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a4419e6ace05ac5a296d594b",
+      "at": "2026-11-12T12:53:13Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f403bca2d0104fcba69ec6c3e2a3a6d4",
+      "session_id": "7f2d8583a7d94300804da984b061b91c"
+    }
+  ]
+}
