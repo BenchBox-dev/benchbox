@@ -12798,12 +12798,17 @@
       "title": "Rewrite the batch member-identity rule in batch-feature-delivery.md to allow subagent members"
     },
     "batch-member-subagent-land-message-20261112": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T15:59:42Z",
+        "generation": "69f7235c5ff34318a043c62f5d2fafaf",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785"
+      },
       "needs": [
         "batch-member-subagent-rule-20261112"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Stop the batch-land tracker-write refusal from telling leaders to give each member its own identity"
     },
     "batch-member-subagent-rule-20261112": {
