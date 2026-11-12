@@ -24735,10 +24735,15 @@
       "title": "make heavy-run admits a job and the watchdog kills it seconds later for memory pressure the job did not cause"
     },
     "heavy-run-cmd-dollar-expansion-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T17:07:32Z",
+        "generation": "93e8a3757a1345249a1df5700c07d491",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:eb741106bc3418ce287ca405"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "make heavy-run CMD='...' lets make expand $ in the command, so $HOME becomes OME"
     },
     "heavy-run-wait-for-admission-20261112": {
