@@ -38700,6 +38700,13 @@
       "status": "done",
       "title": "Make core SQLGlot delivery event-driven and verify App readiness"
     },
+    "sqlglot-delivery-workflow-run-unfiltered-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "SQLGlot delivery workflow starts a run for every CI and review completion on every branch"
+    },
     "sqlglot-dialect-translation-code-review-implementation": {
       "claim": null,
       "needs": [],

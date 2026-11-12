@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The workflow_run trigger carries a branches filter for chore/sqlglot-* (kept consistent with the delivery trust root's branchPrefix, as the existing drift test does for the arm job if).",
+    "A non-adoption CI or review completion starts no run of this workflow.",
+    "An adoption PR's CI and review completions still trigger the arm job, shown by the workflow contract tests."
+  ],
+  "description": "sqlglot-delivery.yml triggers on workflow_run completion of CI, review-verdict and review-gate with no branches filter; the arm job's if (startsWith(head_branch, 'chore/sqlglot-')) is the only scope. The workflow therefore starts a run for every such completion in the repository: 780 runs between 2026-11-11T15:00Z and 2026-11-12T15:00Z, all skipped. The 200 most recent runs were all skipped workflow_run runs, which buried the scheduled and dispatched runs (finding the four 2026-11-11 dispatch startup_failures needed --event filters), and each run enters the workflow-level concurrency group sqlglot-delivery (queue: max) ahead of or behind real schedule and dispatch runs. Introduced with event-driven arming in #4075.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4075"
+  ],
+  "sessions": [
+    {
+      "actor": "omp:sqlglot-delivery-hardening-leader",
+      "at": "2026-11-12T16:53:34Z",
+      "client": "mcp",
+      "op": "create",
+      "op_id": "b202260c191c458e8a8a0acad1aa54ca",
+      "session_id": "c0aa4551a12644549f4625c40698c4fa"
+    }
+  ]
+}
