@@ -31,11 +31,41 @@ duckdb:
           mismatches, A/A passed (G 1.0244, 95% CI 0.9861-1.0533): full tuned template G 1.0965
           (1.0443-1.1323), sort only G 1.1235 (1.0559-1.1732), constraints only G 1.0087
           (0.9722-1.0534) with load 85.7 s against 36.5 s notuning, full tuned load 138.7 s;
-          SF1 only, SF10 not yet measured
+          SF10 could not be measured on this 16 GiB host: the SF10 cell was killed by the
+          heavy-work memory-pressure watchdog during the lineitem load on 3 attempts, so SF10
+          stays unmeasured
   tpcds:
-    measurements: []
+    measurements:
+      - state: measured-regression
+        scale_factor: 1.0
+        memory:
+          basis: host_total_gb
+          value: 16.0
+        engine_version: v1.5.5
+        measured_on: "2026-11-12"
+        evidence: >-
+          scripts.tuning_evidence, 9 shuffled rounds, seed 42, 99 queries, no failures or answer
+          mismatches, A/A passed (G 0.9899, 95% CI 0.9706-1.0125): full tuned template G 1.0202
+          (0.9972-1.0542) with load 75.9 s against 5.6 s notuning, sort only G 1.0258
+          (1.0084-1.0654) with load 48.9 s, constraints only G 0.9763 (0.9626-1.0076) with load
+          13.0 s; the full tuned query-time interval includes 1.0, so the regression verdict comes
+          from the benefit rule's load clause (load plus settle above 1.5x notuning with no
+          query-time benefit); SF1 only, SF10 not measured
   ssb:
-    measurements: []
+    measurements:
+      - state: measured-benefit
+        scale_factor: 1.0
+        memory:
+          basis: host_total_gb
+          value: 16.0
+        engine_version: v1.5.5
+        measured_on: "2026-11-12"
+        evidence: >-
+          scripts.tuning_evidence, 9 shuffled rounds, seed 42, 13 queries, no failures or answer
+          mismatches, A/A passed (G 0.9842, 95% CI 0.9318-1.0236): full tuned template G 0.6687
+          (0.6457-0.6992) with load 67.8 s against 3.1 s notuning, sort only G 0.6816
+          (0.6373-0.7405) with load 23.7 s, constraints only G 0.9641 (0.9165-1.0204) with load
+          5.7 s; SF1 only, SF10 not measured
   tpchavoc:
     measurements: []
   amplab:
