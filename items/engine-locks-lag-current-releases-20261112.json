@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "For each of Polars, DataFusion and PySpark: the fast tier and DataFrame equivalence reports are run on the newer release and the failures listed in this item.",
+    "The lock or the declared bounds are changed so that the versions users can install are versions CI tests.",
+    "The Polars engine choice (streaming default versus pinned) is documented where users read platform options."
+  ],
+  "description": "Gap. The lock resolves polars 1.44.2, datafusion 54.0.0 and pyspark 4.2.0. The 2026-11-11 blog remeasurement used Polars 2.1.0, DataFusion 55.0.0 and PySpark 4.3.0 and found behaviour that BenchBox has not measured or tested on its own queries:\n- Polars 2 runs lazy queries on the streaming engine by default; on the isolated TPC-DS warehouse step a self-join went from 15-23x slower than a distinct count to about 5x. Relative costs of query patterns change without a code change.\n- DataFusion 55 reversed the February finding that a self-join beats a distinct count.\n- `pyproject.toml` declares `polars>=1.35.2`, `datafusion>=54.0.0` and `pyspark>=3.5.0` with no upper bound, so users can already install these releases while CI tests only the locked ones.\n\nExpected: a recorded decision per engine: raise the lock and fix what breaks, or add an upper bound until that is done. For Polars 2, state whether BenchBox pins the engine (`engine=` platform option) or follows the new default, since published Polars numbers depend on it.\n\nGuardrails: one engine per pull request. Follow the dependency-bounds policy enforced by `scripts/check_dependency_bounds.py`. Do not regenerate correctness digests or reference answers without the owner's decision. Timings only through `make heavy-run`.",
+  "links": [
+    "pyproject.toml",
+    "https://github.com/BenchBox-dev/benchbox-site/pull/143"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-12T22:23:54Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "010ae7c9ff824b0790d5d44b4d066240",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}

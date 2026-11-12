@@ -21840,6 +21840,13 @@
       "status": "done",
       "title": "Enforce separate-turn authorization for review remediation"
     },
+    "engine-locks-lag-current-releases-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Evaluate BenchBox DataFrame queries on Polars 2.x, DataFusion 55 and PySpark 4.3; the lock is one release behind each"
+    },
     "engine-receipt-default-and-legacy-reader-20261014": {
       "claim": null,
       "needs": [],
