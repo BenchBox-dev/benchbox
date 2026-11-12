@@ -72,7 +72,33 @@ def _eliminate_starrocks_qualify() -> None:
 SCHEMA_DDL_SCOPE = "schema_ddl"
 WORKLOAD_QUERY_SCOPE = "workload_query"
 
-PRESTO_FAMILY_DIALECTS = frozenset({"presto", "trino", "athena"})
+QUALIFY_ELIMINATING_DIALECTS = frozenset(
+    {
+        "athena",
+        "datafusion",
+        "doris",
+        "dune",
+        "fabric",
+        "greenplum",
+        "hive",
+        "materialize",
+        "mysql",
+        "netezza",
+        "oracle",
+        "postgres",
+        "presto",
+        "questdb",
+        "risingwave",
+        "singlestore",
+        "spark",
+        "spark2",
+        "sqlite",
+        "starrocks",
+        "trino",
+        "tsql",
+        "vertica",
+    }
+)
 
 NO_IDENTIFY_DIALECTS = frozenset(
     {"clickhouse", "postgres", "snowflake", "exasol", "questdb", "netezza", "greenplum", "vertica", "datafusion"}
@@ -422,8 +448,8 @@ def translate_sql_query(
 
                 expression = rewrite_subqueries(expression.copy())
 
-            if tgt in PRESTO_FAMILY_DIALECTS:
-                expression = apply_rewrite("hoist_qualify_order_by", expression, tgt)
+            if tgt in QUALIFY_ELIMINATING_DIALECTS:
+                expression = apply_rewrite("hoist_qualify_outer_clauses", expression, tgt)
             if tgt == "doris":
                 _keep_full_outer_join("doris")
                 for doris_rewrite in (
@@ -773,7 +799,12 @@ def _outer_order_key(key, outputs: Sequence[tuple[object, object]], exp, *, nest
     return resolved
 
 
-def hoist_qualify_order_by(expression, *, copy: bool = True):
+def _hoistable_distinct(select, exp) -> bool:
+    distinct = select.args.get("distinct")
+    return isinstance(distinct, exp.Distinct) and not distinct.args.get("on")
+
+
+def hoist_qualify_outer_clauses(expression, *, copy: bool = True):
     exp = sql_expressions()
     from benchbox._vendor.sqlglot import transforms
 
@@ -781,27 +812,42 @@ def hoist_qualify_order_by(expression, *, copy: bool = True):
     targets = [
         select
         for select in tree.find_all(exp.Select)
-        if select.args.get("qualify") is not None and select.args.get("order") is not None
+        if select.args.get("qualify") is not None
+        and (
+            select.args.get("order") is not None
+            or select.args.get("limit") is not None
+            or select.args.get("offset") is not None
+            or _hoistable_distinct(select, exp)
+        )
     ]
     for select in reversed(targets):
-        order = select.args["order"]
+        order = select.args.get("order")
         sources = [item.this if isinstance(item, exp.Alias) else item for item in select.selects]
         eliminated = transforms.eliminate_qualify(select.copy())
+        inner = eliminated.args["from_"].this.this
         outputs = list(zip(sources, eliminated.selects))
-        keys = [_outer_order_key(item.this, outputs, exp) for item in order.expressions]
+        keys = [_outer_order_key(item.this, outputs, exp) for item in order.expressions] if order is not None else []
         if any(key is None for key in keys):
             logging.getLogger(__name__).warning(
                 "QUALIFY elimination cannot hoist %s to the outer select; its sort keys are not "
                 "projected, so the result order is undefined",
                 order.sql(),
             )
-            continue
-        ordered = []
-        for item, key in zip(order.expressions, keys):
-            hoisted = item.copy()
-            hoisted.set("this", key)
-            ordered.append(hoisted)
-        eliminated.set("order", exp.Order(expressions=ordered))
+        elif order is not None:
+            ordered = []
+            for item, key in zip(order.expressions, keys):
+                hoisted = item.copy()
+                hoisted.set("this", key)
+                ordered.append(hoisted)
+            eliminated.set("order", exp.Order(expressions=ordered))
+            inner.set("order", None)
+        for clause in ("limit", "offset"):
+            if inner.args.get(clause) is not None:
+                eliminated.set(clause, inner.args[clause].copy())
+                inner.set(clause, None)
+        if _hoistable_distinct(inner, exp):
+            eliminated.set("distinct", inner.args["distinct"].copy())
+            inner.set("distinct", None)
         if select.parent is None:
             tree = eliminated
         else:
@@ -822,7 +868,7 @@ _LOCAL_REWRITES: dict[str, Callable[..., object]] = {
     "factor_common_conjuncts": factor_common_conjuncts,
     "fold_scalar_having_into_case": fold_scalar_having_into_case,
     "hoist_aggregate_subqueries": hoist_aggregate_subqueries,
-    "hoist_qualify_order_by": hoist_qualify_order_by,
+    "hoist_qualify_outer_clauses": hoist_qualify_outer_clauses,
     "in_subquery_or_to_left_join": in_subquery_or_to_left_join,
     "inline_named_windows": inline_named_windows,
     "inline_sourceless_exists": inline_sourceless_exists,
