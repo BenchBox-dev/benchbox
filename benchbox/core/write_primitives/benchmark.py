@@ -1254,7 +1254,23 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
             }
 
             for op_id in sql_parity_op_ids:
-                op_result = self.execute_operation(op_id, connection, platform_key="duckdb")
+                op_result = self.execute_operation(
+                    op_id,
+                    connection,
+                    platform_key="duckdb",
+                    allow_third_party_extensions=bool(getattr(adapter, "allow_third_party_extensions", False)),
+                )
+                if op_result.status == "SKIPPED":
+                    results.append(
+                        {
+                            "query_id": op_id,
+                            "status": "SKIPPED",
+                            "execution_time_seconds": 0.0,
+                            "rows_returned": 0,
+                            "error": op_result.skip_reason,
+                        }
+                    )
+                    continue
                 status = "SUCCESS" if op_result.success and op_result.validation_passed else "FAILED"
                 error = op_result.error
                 if status == "FAILED" and not error and not op_result.validation_passed:

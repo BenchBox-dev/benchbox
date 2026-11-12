@@ -384,7 +384,12 @@ class TestDataFrameParityDialect:
         def fake_execute(op_id, conn, **kwargs):
             calls.append(kwargs)
             return SimpleNamespace(
-                success=True, validation_passed=True, error=None, write_duration_ms=1.0, rows_affected=1
+                success=True,
+                validation_passed=True,
+                error=None,
+                write_duration_ms=1.0,
+                rows_affected=1,
+                status="SUCCESS",
             )
 
         monkeypatch.setattr(wp, "execute_operation", fake_execute)
@@ -392,8 +397,45 @@ class TestDataFrameParityDialect:
         rows = wp._execute_dataframe_sql_parity_workload()
 
         assert rows[0]["status"] == "SUCCESS"
-        assert calls == [{"platform_key": "duckdb"}]
+        assert calls == [{"platform_key": "duckdb", "allow_third_party_extensions": False}]
         assert wp.dataframe_loaded_tables(ctx=None, adapter=None)[0]["lineitem"] == 5
+
+    def test_parity_workload_reports_skipped_operations_and_forwards_the_opt_in(self, wp, monkeypatch):
+        duckdb_adapter = MagicMock()
+        duckdb_adapter.create_connection.return_value = MagicMock()
+        monkeypatch.setattr("benchbox.platforms.duckdb.DuckDBAdapter", lambda **_kw: duckdb_adapter)
+        monkeypatch.setattr(
+            wp, "_select_dataframe_operation_ids", lambda query_filter=None: ["sketch_ddl_create_persistent_table"]
+        )
+        monkeypatch.setattr(wp, "_dataframe_loaded_table_counts", {}, raising=False)
+        seen = []
+
+        def fake_execute(op_id, conn, **kwargs):
+            seen.append(kwargs["allow_third_party_extensions"])
+            return SimpleNamespace(
+                success=True,
+                validation_passed=True,
+                error=None,
+                write_duration_ms=0.0,
+                rows_affected=0,
+                status="SKIPPED",
+                skip_reason="set --platform-option allow_third_party_extensions=true",
+            )
+
+        monkeypatch.setattr(wp, "execute_operation", fake_execute)
+
+        rows = wp._execute_dataframe_sql_parity_workload(adapter=SimpleNamespace(allow_third_party_extensions=True))
+
+        assert seen == [True]
+        assert rows == [
+            {
+                "query_id": "sketch_ddl_create_persistent_table",
+                "status": "SKIPPED",
+                "execution_time_seconds": 0.0,
+                "rows_returned": 0,
+                "error": "set --platform-option allow_third_party_extensions=true",
+            }
+        ]
 
 
 class TestGetPopulationSql:
