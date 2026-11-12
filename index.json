@@ -41128,10 +41128,15 @@
       "title": "TPCHOfficialBenchmark and TPCDSOfficialBenchmark produce wrong or no throughput results"
     },
     "tpc-remove-certification-and-compliance-claims": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T12:55:30Z",
+        "generation": "429fd96a6f1244bcbdabecfdd91f82cf",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9dde2030f0b654b7eae6a730"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Remove certification and compliance claims from TPC docs, CLI and Explorer text"
     },
     "tpc-specification-compliance-issues-completed": {
