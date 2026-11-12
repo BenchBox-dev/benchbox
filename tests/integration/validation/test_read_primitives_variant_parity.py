@@ -10,7 +10,7 @@ import pytest
 from benchbox.core.read_primitives.benchmark import ReadPrimitivesBenchmark
 from benchbox.core.read_primitives.catalog import ResultContract, load_primitives_catalog
 from benchbox.platforms.clickhouse._dependencies import import_chdb_session
-from benchbox.utils.duckdb_extensions import SINGLE_ARROW_LAMBDA_STATEMENT
+from benchbox.utils.duckdb_extensions import apply_single_arrow_lambda
 from tests.utilities.optional_engines import chdb_skip_reason
 
 pytestmark = [
@@ -99,7 +99,7 @@ def read_primitives_tpch_parquet_dir(tmp_path_factory):
 @pytest.fixture(scope="session")
 def read_primitives_duckdb_conn(read_primitives_tpch_parquet_dir):
     conn = duckdb.connect(":memory:")
-    conn.execute(SINGLE_ARROW_LAMBDA_STATEMENT)
+    apply_single_arrow_lambda(conn, duckdb.__version__)
     for table in _TPCH_TABLES:
         parquet_path = read_primitives_tpch_parquet_dir / f"{table}.parquet"
         conn.execute(f"CREATE TABLE {table} AS SELECT * FROM read_parquet('{parquet_path}')")

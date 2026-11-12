@@ -400,7 +400,9 @@ class TestDataFrameParityDialect:
         assert calls == [{"platform_key": "duckdb", "allow_third_party_extensions": False}]
         assert wp.dataframe_loaded_tables(ctx=None, adapter=None)[0]["lineitem"] == 5
 
-    def test_parity_workload_reports_skipped_operations_and_forwards_the_opt_in(self, wp, monkeypatch):
+    def test_parity_workload_reports_skipped_operations_with_a_reason_true_for_dataframe_platforms(
+        self, wp, monkeypatch
+    ):
         duckdb_adapter = MagicMock()
         duckdb_adapter.create_connection.return_value = MagicMock()
         monkeypatch.setattr("benchbox.platforms.duckdb.DuckDBAdapter", lambda **_kw: duckdb_adapter)
@@ -424,18 +426,20 @@ class TestDataFrameParityDialect:
 
         monkeypatch.setattr(wp, "execute_operation", fake_execute)
 
-        rows = wp._execute_dataframe_sql_parity_workload(adapter=SimpleNamespace(allow_third_party_extensions=True))
+        rows = wp._execute_dataframe_sql_parity_workload(adapter=SimpleNamespace())
 
-        assert seen == [True]
+        assert seen == [False]
         assert rows == [
             {
                 "query_id": "sketch_ddl_create_persistent_table",
                 "status": "SKIPPED",
                 "execution_time_seconds": 0.0,
                 "rows_returned": 0,
-                "error": "set --platform-option allow_third_party_extensions=true",
+                "error": rows[0]["error"],
             }
         ]
+        assert "have no allow_third_party_extensions option" in rows[0]["error"]
+        assert "--platform-option" not in rows[0]["error"]
 
 
 class TestGetPopulationSql:

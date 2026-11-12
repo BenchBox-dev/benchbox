@@ -19,7 +19,7 @@ from benchbox.core.platform_config import get_platform_config
 from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.core.schemas import DatabaseConfig, SystemProfile
 from benchbox.platforms import _DATAFRAME_PLATFORM_INFO, get_platform_adapter, is_dataframe_platform
-from benchbox.utils.duckdb_extensions import SINGLE_ARROW_LAMBDA_STATEMENT
+from benchbox.utils.duckdb_extensions import single_arrow_lambda_statement
 from benchbox.utils.runtime_env import DriverResolution
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
@@ -308,6 +308,13 @@ def _duckdb_set_statements(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, *opt
     return statements, adapter.create_connection()
 
 
+def _lambda_statements() -> list[str]:
+    import duckdb
+
+    statement = single_arrow_lambda_statement(duckdb.__version__)
+    return [statement] if statement else []
+
+
 def test_duckdb_connection_is_unchanged_without_threads_or_temp_directory(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -319,7 +326,7 @@ def test_duckdb_connection_is_unchanged_without_threads_or_temp_directory(
     assert statements == [
         "SET memory_limit = '8GB'",
         f"SET threads TO {min(cores, 8)}",
-        SINGLE_ARROW_LAMBDA_STATEMENT,
+        *_lambda_statements(),
         "SET default_order = 'ASC'",
     ]
     connection.close()
@@ -335,7 +342,7 @@ def test_duckdb_threads_and_temp_directory_are_applied_to_the_connection(
         "SET memory_limit = '8GB'",
         f"SET temp_directory = '{spill}'",
         "SET threads TO 3",
-        SINGLE_ARROW_LAMBDA_STATEMENT,
+        *_lambda_statements(),
         "SET default_order = 'ASC'",
     ]
     assert connection.execute("SELECT current_setting('threads')").fetchone()[0] == 3

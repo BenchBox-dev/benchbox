@@ -1258,7 +1258,7 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                     op_id,
                     connection,
                     platform_key="duckdb",
-                    allow_third_party_extensions=bool(getattr(adapter, "allow_third_party_extensions", False)),
+                    allow_third_party_extensions=False,
                 )
                 if op_result.status == "SKIPPED":
                     results.append(
@@ -1267,7 +1267,11 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                             "status": "SKIPPED",
                             "execution_time_seconds": 0.0,
                             "rows_returned": 0,
-                            "error": op_result.skip_reason,
+                            "error": (
+                                f"Operation '{op_id}' is skipped in the DataFrame SQL-parity reference run: the "
+                                "datasketches extension for DuckDB 2.x needs a third-party extension repository, "
+                                "and DataFrame platforms have no allow_third_party_extensions option to enable it"
+                            ),
                         }
                     )
                     continue

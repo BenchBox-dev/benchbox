@@ -2,7 +2,7 @@ import duckdb
 import pytest
 
 from benchbox._vendor import sqlglot
-from benchbox.utils.duckdb_extensions import SINGLE_ARROW_LAMBDA_STATEMENT
+from benchbox.utils.duckdb_extensions import apply_single_arrow_lambda
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -32,7 +32,7 @@ QUERIES = {
 @pytest.fixture(scope="module")
 def connection():
     with duckdb.connect() as conn:
-        conn.execute(SINGLE_ARROW_LAMBDA_STATEMENT)
+        apply_single_arrow_lambda(conn, duckdb.__version__)
         for statement in SETUP:
             conn.execute(statement)
         yield conn

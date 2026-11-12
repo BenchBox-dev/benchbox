@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 from benchbox.core.tpchavoc.benchmark import TPCHavocBenchmark
 from benchbox.core.tpchavoc.validation import ValidationError
-from benchbox.utils.duckdb_extensions import SINGLE_ARROW_LAMBDA_STATEMENT
+from benchbox.utils.duckdb_extensions import apply_single_arrow_lambda
 
 if TYPE_CHECKING:
     from benchbox import TPCH
@@ -147,7 +147,7 @@ def build_duckdb_with_tpch(scale_factor: float, output_dir: str | Path) -> tuple
     data_dir, tpchavoc, tpch = _generate_tpch(scale_factor, Path(output_dir))
 
     connection = duckdb.connect(":memory:")
-    connection.execute(SINGLE_ARROW_LAMBDA_STATEMENT)
+    apply_single_arrow_lambda(connection, duckdb.__version__)
     try:
         for statement in tpchavoc.get_create_tables_sql(dialect="duckdb").strip().split(";"):
             if statement.strip():
