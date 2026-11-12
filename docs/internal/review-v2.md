@@ -312,14 +312,15 @@ these are the settings BenchBox sets and what each one does at its limit.
   It is scanned for and redacted like the other secrets. This accepts that the
   prepare and scan steps hold one more third-party key. Removing the caller
   mapping and the environment secret withdraws it.
-- `.github/review-guidance.md` holds BenchBox conventions for reviewers. The
-  pinned Theseus release does not load it into briefs and refuses a
-  `consumer.review_guidance` policy key, so today nothing reads it at review
-  time. It is a gate path and a soundness path, so any edit to it needs the
-  exact-head review and the owner's merge, and a test pins that its
-  do-not-flag list never names a gate, soundness or data input. Its entries
-  take effect only once a Theseus release reads the file from the trusted
-  base.
+- `.github/review-guidance.md` holds BenchBox conventions for reviewers. From
+  Theseus v0.2.11, `consumer.review_guidance` in `.github/review.yml` names it,
+  and the copy on the gated base goes into every reviewer brief as trusted
+  consumer guidance. A missing, empty, symlinked, non-UTF-8 or over-16384-byte
+  file makes the plan and the gate fail closed for every pull request. It is a
+  gate path and a soundness path, so any edit to it needs the exact-head review
+  and the owner's merge, and that review runs under the base's copy of the file.
+  A test pins that its do-not-flag list never names a gate, soundness or data
+  input; edits to the do-not-flag entries deserve owner scrutiny.
 
 ### Credential gateway
 
@@ -2066,3 +2067,9 @@ for a body with neither, with conflicting claims, or with a repeated marker.
 description is either `review: waiting for the review's verdict on <head>,…` or
 begins with the frozen token `Waiting for review-verdict` and contains
 `Stand-in review: APPROVE <head>`. Any other failure description stays a failure.
+
+From Theseus v0.2.11, `review-gate` posts `pending` (not `failure`) while a head has
+no verdict and no stand-in, with a description that begins `Waiting for review-verdict`;
+`pr_landing` reads `pending` as pending directly. The two `failure` forms above stay
+accepted so that statuses posted by earlier releases on open pull requests keep
+reading as waiting.
