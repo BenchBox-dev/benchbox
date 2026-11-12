@@ -40,7 +40,7 @@ def _empty_contexts(conn):
     polars_ctx = PolarsDataFrameAdapter().create_context()
     pandas_ctx = PandasDataFrameAdapter().create_context()
     for table in _EMPTY_TABLES:
-        arrow = conn.execute(f"SELECT * FROM {table} LIMIT 0").fetch_arrow_table()
+        arrow = conn.execute(f"SELECT * FROM {table} LIMIT 0").to_arrow_table()
         polars_ctx.register_table(table, pl.from_arrow(arrow))
         pandas_ctx.register_table(table, arrow.to_pandas())
     return polars_ctx, pandas_ctx
@@ -57,7 +57,7 @@ def _seeded_contexts(conn):
     polars_ctx = PolarsDataFrameAdapter().create_context()
     pandas_ctx = PandasDataFrameAdapter().create_context()
     for table in _EMPTY_TABLES:
-        arrow = conn.execute(f"SELECT * FROM {table}").fetch_arrow_table()
+        arrow = conn.execute(f"SELECT * FROM {table}").to_arrow_table()
         polars_ctx.register_table(table, pl.from_arrow(arrow))
         pandas_ctx.register_table(table, arrow.to_pandas())
     return polars_ctx, pandas_ctx

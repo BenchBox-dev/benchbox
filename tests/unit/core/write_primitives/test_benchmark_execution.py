@@ -811,6 +811,26 @@ class TestExecuteOperation:
         assert "DataSketches" in (result.skip_reason or "")
         mock_conn.execute.assert_not_called()
 
+    @pytest.mark.parametrize(
+        ("version", "expected", "absent"),
+        [
+            ("2.0.0", "INSTALL datasketches FROM query_farm", "FROM community"),
+            ("1.5.5", "INSTALL datasketches FROM community", "query_farm"),
+        ],
+    )
+    def test_execute_operation_selects_datasketches_install_by_duckdb_version(
+        self, wp_benchmark, monkeypatch, version, expected, absent
+    ):
+        mock_conn = Mock()
+        monkeypatch.setattr(wp_benchmark, "is_setup", lambda conn: True)
+        monkeypatch.setattr("benchbox.utils.duckdb_extensions.duckdb_major_version", lambda v=None: int(version[0]))
+
+        wp_benchmark.execute_operation("sketch_ddl_create_persistent_table", mock_conn, platform_key="duckdb")
+
+        executed = "\n".join(str(call.args[0]) for call in mock_conn.execute.call_args_list if call.args)
+        assert expected in executed
+        assert absent not in executed
+
     def test_execute_operation_skips_postgres_merge_shorthand(self, wp_benchmark, monkeypatch):
         mock_conn = Mock()
         mock_conn.execute = Mock()

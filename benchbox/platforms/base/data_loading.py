@@ -1207,7 +1207,7 @@ class DuckLakeFileHandler(FileFormatHandler):
 
             temp_conn.execute(f"ATTACH 'ducklake:{metadata_path}' AS ducklake_db (DATA_PATH '{data_path}')")
 
-            arrow_table = temp_conn.execute(f"SELECT * FROM ducklake_db.main.{validated_table}").fetch_arrow_table()
+            arrow_table = temp_conn.execute(f"SELECT * FROM ducklake_db.main.{validated_table}").to_arrow_table()
 
             row_count = arrow_table.num_rows
 

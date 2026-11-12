@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 _SummaryKey = tuple[str, float, str, int | None]
 
-_SNAPSHOT_CONFIG = {"storage_compatibility_version": "v1.0.0"}
+_SNAPSHOT_CONFIG = {"storage_compatibility_version": "v0.10.0"}
 
 _COHORT_PLATFORM_REQUIRED_KEYS = frozenset({"platform_id", "platform", "result_id", "short_id", "trust_label"})
 
