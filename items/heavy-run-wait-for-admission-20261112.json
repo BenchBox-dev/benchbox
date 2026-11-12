@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "`make heavy-run WAIT=10 CMD=...` on a refusing host waits, re-samples, and runs the command once admitted, or exits 76 with the last admission report after 10 minutes.",
+    "While waiting it does not hold the host lock, shown by a second heavy run acquiring it.",
+    "`docs/agent/heavy-work.md` documents the option and says callers must not write their own retry loops."
+  ],
+  "description": "Gap. On 2026-11-12 heavy-work admission refused for over three hours (memory pressure level 2). `make heavy-run` exits 76 immediately, so two separate agents each wrote their own retry loop (a shell watcher retrying every 5 minutes for 8 hours, and a subagent retrying six times), which the guide otherwise discourages. A waiter that ends up admitted while the lock holder changes also has no fairness guarantee.\n\nExpected: an opt-in `WAIT=<minutes>` (or equivalent) on `make heavy-run` that re-samples admission at a fixed interval up to the budget, holds no lock while waiting, and exits with the existing refusal code and report when the budget ends.\n\nGuardrails: default behaviour unchanged (refuse at once). No way to force admission through this option; `BENCHBOX_HEAVY_ADMIT=force` stays owner-approved. The watchdog stays on.",
+  "links": [
+    "docs/agent/heavy-work.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-12T16:53:01Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1b007e33ba264317b4468ef4c207892a",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}

@@ -24714,6 +24714,13 @@
       "status": "open",
       "title": "make heavy-run CMD='...' lets make expand $ in the command, so $HOME becomes OME"
     },
+    "heavy-run-wait-for-admission-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "`make heavy-run` refuses at once when the host is under pressure; give it a bounded wait mode"
+    },
     "heavy-tier-merge-group-dead-code-20261009": {
       "claim": null,
       "needs": [],
