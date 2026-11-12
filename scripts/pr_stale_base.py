@@ -31,15 +31,14 @@ def imported_paths(source: str, relative_to: str, exists: Callable[[str], bool])
     def add_module(parts: Sequence[str]) -> None:
         if not parts:
             return
-        for depth in range(1, len(parts)):
-            package = "/".join(parts[:depth])
-            if exists(f"{package}/__init__.py"):
-                found.add(f"{package}/__init__.py")
         base = "/".join(parts)
         for root in SOURCE_ROOTS:
             for candidate in (f"{root}{base}.py", f"{root}{base}/__init__.py"):
-                if exists(candidate):
-                    found.add(candidate)
+                if not exists(candidate):
+                    continue
+                found.add(candidate)
+                for depth in range(1, len(parts)):
+                    found.add(f"{root}{'/'.join(parts[:depth])}/__init__.py")
 
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -132,10 +131,8 @@ def related_develop_changes(
     for path in sorted(pr_files):
         if path.startswith("tests/") and path.endswith(".py"):
             for ancestor in PurePosixPath(path).parents:
-                conftest = f"{ancestor}/conftest.py"
-                if exists(conftest):
-                    related.add(conftest)
-            related.update(name for name in TEST_CONFIG_FILES if exists(name))
+                related.add("conftest.py" if str(ancestor) == "." else f"{ancestor}/conftest.py")
+            related.update(TEST_CONFIG_FILES)
     develop_files: set[str] = set()
     for sha in commits:
         develop_files.update(

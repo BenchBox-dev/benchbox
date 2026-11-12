@@ -216,15 +216,14 @@ def test_a_non_python_data_file_named_by_a_changed_file_is_related(checkout: Pat
     assert "benchbox/data.json" in _refusals(gh, checkout)[0]
 
 
-def test_a_changed_test_depends_on_its_ancestor_conftest_and_pytest_config(checkout: Path) -> None:
-    (checkout / "tests" / "conftest.py").write_text("", encoding="utf-8")
-    (checkout / "pytest.ini").write_text("", encoding="utf-8")
-    for changed in ("tests/conftest.py", "pytest.ini"):
-        gh = FakeGh(pr_files=["tests/test_a.py"], commit_files={SHA_NEW: [changed]})
-        assert changed in _refusals(gh, checkout)[0]
+@pytest.mark.parametrize("added", ["tests/conftest.py", "conftest.py", "pytest.ini", "pytest-ci.ini"])
+def test_a_changed_test_depends_on_conftest_and_pytest_config_even_when_develop_adds_them(
+    checkout: Path, added: str
+) -> None:
+    gh = FakeGh(pr_files=["tests/test_a.py"], commit_files={SHA_NEW: [added]})
+    assert added in _refusals(gh, checkout)[0]
 
 
-def test_importing_a_submodule_depends_on_its_parent_package_init(checkout: Path) -> None:
-    (checkout / "benchbox" / "__init__.py").write_text("", encoding="utf-8")
+def test_importing_a_submodule_depends_on_its_parent_package_init_even_when_develop_adds_it(checkout: Path) -> None:
     found = pr_stale_base.imported_paths("import benchbox.core\n", "tests/t.py", lambda p: (checkout / p).is_file())
     assert "benchbox/__init__.py" in found
