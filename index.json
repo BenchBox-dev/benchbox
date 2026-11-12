@@ -40221,17 +40221,12 @@
       "title": "Theseus: ask reviewers for Problem, Impact and Fix so finding threads are shorter"
     },
     "theseus-review-thread-ids-footer-20261110": {
-      "claim": {
-        "expires_at": "2026-11-13T13:28:41Z",
-        "generation": "10459b7e69b2452b80527170540f7de1",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b89414e427d02d5b37262d82"
-      },
+      "claim": null,
       "needs": [
         "theseus-review-format-release-a-20261110"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Theseus: show the severity mark and finding id in each review thread, with a dispute footer"
     },
     "theseus-review-verdict-body-redesign-20261110": {
