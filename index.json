@@ -19684,6 +19684,13 @@
       "status": "done",
       "title": "Stage TPC-H and TPC-DS gates, budget TPC-DS CI subset"
     },
+    "df-platform-name-comparison-guard-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Stop DataFrame query code comparing `ctx.platform` with string literals"
+    },
     "df-q21-multi-supplier-min-max": {
       "claim": null,
       "needs": [],

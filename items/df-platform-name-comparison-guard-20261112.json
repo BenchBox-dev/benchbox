@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "No module under `benchbox/core/**/dataframe_queries*` compares `ctx.platform` (or a lower-cased copy) with a string literal; they use the shared predicate.",
+    "A test shows an unknown engine name passed to the predicate raises instead of returning false.",
+    "Existing tests for TPC-DS rank handling on Polars and the read-primitives Dask and DataFusion paths pass unchanged."
+  ],
+  "description": "Gap. TPC-DS Q16 and Q95 carried branches comparing `ctx.platform` with `\"datafusion\"` while the adapter reports `\"DataFusion\"`; they were dead from v0.1.1 until removed in PR #4169, and nothing failed. The same mistake can be written again: `ctx.platform` is the adapter's display name (`Polars`, `DataFusion`, `PySpark`, `LakeSail`, `Dask`, `Pandas`, `cuDF`), and query modules compare it three different ways today: exact display name (`benchbox/core/tpcds/dataframe_queries/queries.py`, `_sql_rank_expression`, `!= \"Polars\"`), lower-cased with separator normalisation (`benchbox/core/read_primitives/dataframe_queries.py`, `_is_dask_context`, `_is_datafusion_context`), and class-internal checks in `unified_frame.py`.\n\nExpected: one typed way to ask which engine a context runs on (for example an enum or predicate on the context), used by every query module, so a misspelt or wrong-case name is a type or lookup error, not a silently false comparison.\n\nGuardrails: no query pattern may be selected by platform for speed without recorded complete-query timings. Search for an existing helper before adding one (`make duplicate-check-delta`). Behaviour of the three existing call sites must not change. If a static check is added, wire it into required CI in the same change.",
+  "links": [
+    "benchbox/core/read_primitives/dataframe_queries.py",
+    "benchbox/core/dataframe/context.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-12T16:52:21Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f21c05f8e389485da59abb1879d54f1e",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}
