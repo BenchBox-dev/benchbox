@@ -20,6 +20,85 @@
     "benchbox/core/tpcds/dataframe_queries/helper_query_specs.yaml",
     "https://github.com/BenchBox-dev/benchbox-site/pull/143"
   ],
+  "prepared": {
+    "accepted_head": "d6d50d50ab488c76a1ff866c33a24124c9c2584d",
+    "batch_id": "df-distinct-remediation",
+    "changed_files": [
+      "benchbox/core/tpcds/dataframe_queries/helper_query_specs.yaml",
+      "benchbox/core/tpcds/dataframe_queries/queries.py",
+      "changelog.d/feat-df-distinct-remediation--tpcds-df-multi-warehouse-min-max.json",
+      "tests/unit/core/tpcds/test_multi_warehouse_orders.py"
+    ],
+    "integration_head": "f5d0829cfba821c5be868b39b8da42e082d7286c",
+    "integration_seq": 2,
+    "member_id": "tpcds-df-multi-warehouse-min-max",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "c023026163695aa3b4b767b5085c5f33deb87a9533937ebad23112ebedf5f013",
+    "source_base": "02d1a93bc7ba5155946a67089dab07f16f3c1437",
+    "source_revision": "d6d50d50ab488c76a1ff866c33a24124c9c2584d",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-df-distinct-remediation--tpcds-df-multi-warehouse-min-max",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/unit/core/test_dataframe_generated_impl_registry.py",
+        "tests/unit/core/tpcds/test_adapter_batch_semantics.py",
+        "tests/unit/core/tpcds/test_ascending_null_order.py",
+        "tests/unit/core/tpcds/test_dask_high_queries.py",
+        "tests/unit/core/tpcds/test_dask_low_numbered_queries.py",
+        "tests/unit/core/tpcds/test_descending_null_order.py",
+        "tests/unit/core/tpcds/test_item_category_sales_limit.py",
+        "tests/unit/core/tpcds/test_multi_warehouse_orders.py",
+        "tests/unit/core/tpcds/test_null_aggregates.py",
+        "tests/unit/core/tpcds/test_null_semantics.py",
+        "tests/unit/core/tpcds/test_parameter_consumption_inventory.py",
+        "tests/unit/core/tpcds/test_q18_q27_null_averages.py",
+        "tests/unit/core/tpcds/test_q36_q86_hierarchy_order.py",
+        "tests/unit/core/tpcds/test_q39_columns.py",
+        "tests/unit/core/tpcds/test_q44_q65_pandas_null_outputs.py",
+        "tests/unit/core/tpcds/test_q4_q11_q19_semantics.py",
+        "tests/unit/core/tpcds/test_q51_ordered_cumulative.py",
+        "tests/unit/core/tpcds/test_q51_q53_q63_template_fidelity.py",
+        "tests/unit/core/tpcds/test_q66_value_columns.py",
+        "tests/unit/core/tpcds/test_q70_expression_rounding.py",
+        "tests/unit/core/tpcds/test_q70_state_filter.py",
+        "tests/unit/core/tpcds/test_q78_pandas_null_sums.py",
+        "tests/unit/core/tpcds/test_q78_returns_and_rounding.py",
+        "tests/unit/core/tpcds/test_q90_dataframe_null.py",
+        "tests/unit/core/tpcds/test_q9_q46_q68_parameters.py",
+        "tests/unit/core/tpcds/test_qualification_numeric_ties.py",
+        "tests/unit/core/tpcds/test_qualification_parameter_choices.py",
+        "tests/unit/core/tpcds/test_sql_rank_nulls.py",
+        "tests/unit/core/tpcds/test_state_average_returns_nulls.py",
+        "tests/unit/core/tpcds/test_tpcds_dataframe_queries.py",
+        "tests/unit/core/tpcds/test_warehouse_null_name.py"
+      ],
+      "review": {
+        "base_sha": "02d1a93bc7ba5155946a67089dab07f16f3c1437",
+        "head_sha": "d6d50d50ab488c76a1ff866c33a24124c9c2584d",
+        "head_tree": "1b9f6be96fd47955c72a68b5a457f619f5e480a3",
+        "outcome": "clear",
+        "patch_digest": "2327ab8a83fe160cf4b16eb5c93362c8",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "0eeec0d5bd194ad0b811911ea73004586ed51469"
+      },
+      "revision": "d6d50d50ab488c76a1ff866c33a24124c9c2584d",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
@@ -52,6 +131,15 @@
       "generation": "6f43f41dc90a4aafa80cf8629b266eb1",
       "op": "take",
       "op_id": "545aee02772d4568935fe70df4c6c6e5",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-12T13:55:08Z",
+      "client": "omp-coding-agent",
+      "generation": "6f43f41dc90a4aafa80cf8629b266eb1",
+      "op": "prepare",
+      "op_id": "994c3549a2a448efb97b0f909212411b",
       "session_id": "512d9ad0b25247538901b68a758a6fbb"
     }
   ]

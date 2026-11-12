@@ -2728,7 +2728,8 @@
     },
     "df-distinct-remediation": {
       "accepted_members": {
-        "df-n-unique-null-semantics": "0c08f85dbee66a6e4184bb43660425e3c3b7551a"
+        "df-n-unique-null-semantics": "0c08f85dbee66a6e4184bb43660425e3c3b7551a",
+        "tpcds-df-multi-warehouse-min-max": "d6d50d50ab488c76a1ff866c33a24124c9c2584d"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -2745,10 +2746,21 @@
           ],
           "integration_head": "02d1a93bc7ba5155946a67089dab07f16f3c1437",
           "integration_seq": 1
+        },
+        "tpcds-df-multi-warehouse-min-max": {
+          "accepted_head": "d6d50d50ab488c76a1ff866c33a24124c9c2584d",
+          "changed_files": [
+            "benchbox/core/tpcds/dataframe_queries/helper_query_specs.yaml",
+            "benchbox/core/tpcds/dataframe_queries/queries.py",
+            "changelog.d/feat-df-distinct-remediation--tpcds-df-multi-warehouse-min-max.json",
+            "tests/unit/core/tpcds/test_multi_warehouse_orders.py"
+          ],
+          "integration_head": "f5d0829cfba821c5be868b39b8da42e082d7286c",
+          "integration_seq": 2
         }
       },
       "integration_branch": "feat/df-distinct-remediation",
-      "integration_head": "02d1a93bc7ba5155946a67089dab07f16f3c1437",
+      "integration_head": "f5d0829cfba821c5be868b39b8da42e082d7286c",
       "integration_log": [
         {
           "at": "2026-11-12T13:36:05Z",
@@ -2764,6 +2776,15 @@
           "op_id": "0f2fa8e1d106442ba924cc0ae2263350",
           "previous_head": "0eeec0d5bd194ad0b811911ea73004586ed51469",
           "seq": 1
+        },
+        {
+          "at": "2026-11-12T13:55:08Z",
+          "head": "f5d0829cfba821c5be868b39b8da42e082d7286c",
+          "kind": "prepare",
+          "member": "tpcds-df-multi-warehouse-min-max",
+          "op_id": "994c3549a2a448efb97b0f909212411b",
+          "previous_head": "02d1a93bc7ba5155946a67089dab07f16f3c1437",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-df-distinct-remediation",
@@ -41339,15 +41360,10 @@
       "title": "TPC-DS generate with default compression writes only chunk 1 of 10, records an empty manifest, and loads zero rows"
     },
     "tpcds-df-multi-warehouse-min-max": {
-      "claim": {
-        "expires_at": "2026-11-13T13:55:03Z",
-        "generation": "6f43f41dc90a4aafa80cf8629b266eb1",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "Use one NULL-safe multi-warehouse rule in TPC-DS DataFrame Q16, Q94 and Q95 and remove the dead platform branches"
     },
     "tpcds-dsqgen-q9-timeout-sf10000-20261111": {
