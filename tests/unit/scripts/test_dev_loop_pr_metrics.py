@@ -79,13 +79,13 @@ def test_runtime_metrics_only_include_successful_jobs() -> None:
     ]
     jobs = [
         {
-            "name": metrics.FAST_TEST_JOB_NAME,
+            "name": "test (ubuntu-latest, 3.12)",
             "conclusion": "cancelled",
             "started_at": "2026-07-27T10:01:00+00:00",
             "completed_at": "2026-07-27T10:09:00+00:00",
         },
         {
-            "name": metrics.FAST_TEST_JOB_NAME,
+            "name": "test (ubuntu-latest, 3.12)",
             "conclusion": "success",
             "started_at": "2026-07-27T10:10:00+00:00",
             "completed_at": "2026-07-27T10:10:20+00:00",
@@ -126,7 +126,7 @@ def _partitioned_result(jobs: list[dict]) -> tuple:
 
 def test_partitioned_medium_metric_includes_collector_and_wait_without_summing_parallel_shards() -> None:
     jobs = _partitioned_jobs()
-    jobs.append(_check(metrics.FAST_TEST_JOB_NAME, started="2026-07-27T10:00:00Z", completed="2026-07-27T10:05:00Z"))
+    jobs.append(_check("test (ubuntu-latest, 3.14)", started="2026-07-27T10:00:00Z", completed="2026-07-27T10:05:00Z"))
     assert _partitioned_result(list(reversed(jobs))) == (True, 300.0, 1080.0)
     assert metrics._medium_budget_warning(1080.0) is None
 
@@ -1477,6 +1477,25 @@ class _UsageApi:
             matching = [run for run in self.runs if low <= metrics._iso_to_dt(run["created_at"]) <= high]
             matching.sort(key=lambda run: (run["created_at"], run["id"]), reverse=True)
             return {"total_count": len(matching), "workflow_runs": paged(matching[:1000])}
+        workflow_runs_match = _re.fullmatch(r"/repos/o/r/actions/workflows/([^/]+)/runs", route)
+        if workflow_runs_match:
+            low_text, high_text = query["created"][0].split("..")
+            low, high = metrics._iso_to_dt(low_text), metrics._iso_to_dt(high_text)
+            matching = [
+                run
+                for run in self.runs
+                if metrics.workflow_name(run) == workflow_runs_match.group(1)
+                and low <= metrics._iso_to_dt(run["created_at"]) <= high
+                and run["event"] == query.get("event", [run["event"]])[0]
+                and run["head_branch"] == query.get("branch", [run["head_branch"]])[0]
+            ]
+            matching.sort(key=lambda run: (run["created_at"], run["id"]), reverse=True)
+            return {"total_count": len(matching), "workflow_runs": paged(matching[:1000])}
+        attempt_jobs_match = _re.fullmatch(r"/repos/o/r/actions/runs/(\d+)/attempts/(\d+)/jobs", route)
+        if attempt_jobs_match:
+            number = int(attempt_jobs_match.group(2))
+            jobs = [job for job in self.jobs.get(int(attempt_jobs_match.group(1)), []) if job["run_attempt"] == number]
+            return {"total_count": len(jobs), "jobs": paged(jobs)}
         jobs_match = _re.fullmatch(r"/repos/o/r/actions/runs/(\d+)/jobs", route)
         if jobs_match:
             jobs = self.jobs.get(int(jobs_match.group(1)), [])
@@ -2180,3 +2199,77 @@ def test_log_download_follows_the_redirect_without_sending_the_token(monkeypatch
     assert seen[0][1]["Authorization"] == "Bearer secret"
     assert seen[1][0] == location
     assert "Authorization" not in seen[1][1]
+
+
+def _ci_timing_jobs(run_id: int, hour: int, fast_minutes: int, last_shard_end: int | None) -> list[dict]:
+    base = run_id * 10
+    jobs = [
+        _usage_job(base, "test (ubuntu-latest, 3.14)", 1, _at(hour), _at(hour), _at(hour, fast_minutes)),
+        _usage_job(base + 1, "medium-collect", 1, _at(hour), _at(hour, 1), _at(hour, 3)),
+    ]
+    if last_shard_end is not None:
+        jobs += [
+            _usage_job(base + 2 + shard, f"medium-test (shard {shard})", 1, _at(hour), _at(hour, 4), _at(hour, end))
+            for shard, end in enumerate(range(last_shard_end - 3, last_shard_end + 1))
+        ]
+    return jobs
+
+
+def _comparison_api() -> _UsageApi:
+    api = _UsageApi()
+    api.runs = [
+        _usage_run(1, _at(1)),
+        _usage_run(2, _at(2)),
+        _usage_run(3, _at(3), run_attempt=2),
+        _usage_run(4, _at(4), conclusion="failure"),
+        _usage_run(5, _at(5)),
+        _usage_run(6, _at(6), path=".github/workflows/docs.yml"),
+        _trunk_run(10, "t1", _at(3), "success", _at(3, 30)),
+        _trunk_run(11, "t2", _at(4), "failure", _at(4, 30)),
+        _trunk_run(12, "t3", _at(5), "success", _at(5, 30)),
+    ]
+    api.jobs = {
+        1: _ci_timing_jobs(1, 1, 7, 18),
+        2: _ci_timing_jobs(2, 2, 5, 13),
+        3: _ci_timing_jobs(3, 3, 30, 50),
+        4: _ci_timing_jobs(4, 4, 30, 50),
+        5: _ci_timing_jobs(5, 5, 6, None),
+        6: _ci_timing_jobs(6, 6, 30, 50),
+    }
+    api.prs = [_pr(2, _at(3), _at(11), "B"), _pr(1, _at(1), _at(2), "A")]
+    return api
+
+
+def _compare(api: _UsageApi) -> dict:
+    return metrics.collect_comparison(
+        api,
+        since=USAGE_DAY,
+        until=USAGE_DAY + timedelta(hours=12),
+        now=USAGE_NOW,
+        cache=metrics.DiskCache(None),
+        workers=1,
+    )
+
+
+def test_comparison_times_only_clean_first_attempts_and_fetches_only_their_jobs() -> None:
+    api = _comparison_api()
+    report = _compare(api)
+    assert report["completeness"]["status"] == "complete"
+    assert report["t1_fast_test_job"] == {"n": 3, "p95_seconds": 420.0, "excluded_runs": 0}
+    assert report["t2_medium_tier"] == {"n": 2, "p95_seconds": 1020.0, "excluded_runs": 1}
+    assert report["retry"] == {"rerun_runs": 1, "runs": 5, "rate": 0.2}
+    assert report["trunk"]["incident_count"] == 1
+    assert report["trunk"]["incidents"][0]["first_red_run"] == 11
+    assert report["merges"] == {"count": 2, "per_day": 4.0}
+    job_requests = {int(match.group(1)) for path in api.requests if (match := _re.search(r"runs/(\d+)/.*jobs", path))}
+    assert job_requests == {1, 2, 5}
+    assert not any(path.startswith("/repos/o/r/actions/runs?") for path in api.requests)
+
+
+def test_comparison_reports_failed_job_fetches_as_incomplete() -> None:
+    api = _comparison_api()
+    api.failing = {"/attempts/1/jobs"}
+    report = _compare(api)
+    assert report["completeness"]["status"] == "incomplete"
+    assert {gap["scope"] for gap in report["completeness"]["gaps"]} == {"ci_jobs"}
+    assert report["t1_fast_test_job"]["n"] == 0
