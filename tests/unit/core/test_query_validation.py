@@ -29,11 +29,11 @@ class TestQueryValidatorExactModeSafeguards:
     @pytest.mark.parametrize(
         ("expected_count", "actual_count", "mode", "valid"),
         [
-            (None, 123, ValidationMode.SKIP, True),
+            (None, 123, ValidationMode.EXACT, False),
             (7, 7, ValidationMode.EXACT, True),
             (7, 8, ValidationMode.EXACT, False),
         ],
-        ids=["missing-count-skips-with-warning", "known-count-matches", "known-count-mismatch-fails"],
+        ids=["missing-count-fails-with-named-error", "known-count-matches", "known-count-mismatch-fails"],
     )
     def test_exact_count_lookup_verdict(self, monkeypatch, expected_count, actual_count, mode, valid):
         expected = ExpectedQueryResult(query_id="14a", expected_row_count=7, validation_mode=ValidationMode.EXACT)
@@ -62,10 +62,10 @@ class TestQueryValidatorExactModeSafeguards:
         assert result.expected_row_count == expected_count
         assert result.actual_row_count == actual_count
         if expected_count is None:
-            assert result.warning_message is not None
-            assert "EXACT validation mode but no expected count available" in result.warning_message
-            assert "Validation skipped" in result.warning_message
-            assert result.error_message is None
+            assert result.warning_message is None
+            assert result.error_message is not None
+            assert "no expected count" in result.error_message
+            assert "Row-count lookup failed" in result.error_message
         else:
             assert result.warning_message is None
             assert (result.error_message is None) is valid
@@ -123,9 +123,9 @@ class TestQueryValidatorSkipMode:
         )
 
         registry = get_registry()
-        if "TEST_SKIP_MODE" not in registry._cache:
-            registry._cache["TEST_SKIP_MODE"] = {}
-        registry._cache["TEST_SKIP_MODE"][1.0] = test_registry
+        if "test_skip_mode" not in registry._cache:
+            registry._cache["test_skip_mode"] = {}
+        registry._cache["test_skip_mode"][1.0] = test_registry
 
         try:
             validator = QueryValidator()
@@ -138,11 +138,12 @@ class TestQueryValidatorSkipMode:
             )
 
             assert result.is_valid is True
+            assert result.unvalidated is False
             assert result.validation_mode == ValidationMode.SKIP
             assert "skipped" in result.warning_message.lower()
 
         finally:
-            registry._cache.pop("TEST_SKIP_MODE", None)
+            registry._cache.pop("test_skip_mode", None)
 
 
 class TestQueryValidatorNoExpectation:
@@ -157,8 +158,9 @@ class TestQueryValidatorNoExpectation:
         )
 
         assert result.is_valid is True
+        assert result.unvalidated is True
         assert result.validation_mode == ValidationMode.SKIP
-        assert "no expected" in result.warning_message.lower() or "validation skipped" in result.warning_message.lower()
+        assert "no reference answers" in result.warning_message.lower()
         assert result.expected_row_count is None
 
 

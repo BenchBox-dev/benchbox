@@ -35,6 +35,7 @@ from benchbox.core.results.models import (
     SetupPhase,
 )
 from benchbox.core.results.platform_options import build_platform_options_capture
+from benchbox.core.results.query_status import unvalidated_measurement_query_ids
 from benchbox.core.runner.conversion import FormatConversionOrchestrator
 from benchbox.core.schemas import (
     BenchmarkConfig,
@@ -211,7 +212,31 @@ def _run_postload_validation(
                 pass
 
 
+def _mark_unvalidated_queries(result: BenchmarkResults) -> BenchmarkResults:
+    unvalidated = unvalidated_measurement_query_ids(result.query_results)
+    if not unvalidated:
+        return result
+    if (result.validation_status or "").upper() not in {"PASSED", "WARNINGS"}:
+        return result
+    result.validation_status = "NOT_VALIDATED"
+    result.validation_details = result.validation_details or {}
+    warnings = result.validation_details.setdefault("warnings", [])
+    if isinstance(warnings, list):
+        noun = "query" if len(unvalidated) == 1 else "queries"
+        warnings.append(
+            f"{len(unvalidated)} {noun} unvalidated: no reference answers for this benchmark and scale factor; "
+            "row counts were not checked and are not counted as passed."
+        )
+    return result
+
+
 def _finalize_validation_metadata(
+    result: BenchmarkResults, records: list[tuple[str, ValidationResult]]
+) -> BenchmarkResults:
+    return _mark_unvalidated_queries(_aggregate_validation_records(result, records))
+
+
+def _aggregate_validation_records(
     result: BenchmarkResults, records: list[tuple[str, ValidationResult]]
 ) -> BenchmarkResults:
 

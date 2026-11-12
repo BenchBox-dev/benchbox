@@ -19,6 +19,7 @@ from benchbox.utils.query_shape_rewrites import (
     exists_to_derived_join,
     fold_scalar_having_into_case,
     hoist_aggregate_subqueries,
+    hoist_qualify_order_by,
     inline_named_windows,
     inline_sourceless_exists,
     qualify_aggregated_columns,
@@ -70,6 +71,8 @@ def _eliminate_starrocks_qualify() -> None:
 
 SCHEMA_DDL_SCOPE = "schema_ddl"
 WORKLOAD_QUERY_SCOPE = "workload_query"
+
+PRESTO_FAMILY_DIALECTS = frozenset({"presto", "trino", "athena"})
 
 NO_IDENTIFY_DIALECTS = frozenset(
     {"clickhouse", "postgres", "snowflake", "exasol", "questdb", "netezza", "greenplum", "vertica", "datafusion"}
@@ -419,6 +422,8 @@ def translate_sql_query(
 
                 expression = rewrite_subqueries(expression.copy())
 
+            if tgt in PRESTO_FAMILY_DIALECTS:
+                expression = apply_rewrite("hoist_qualify_order_by", expression, tgt)
             if tgt == "doris":
                 _keep_full_outer_join("doris")
                 for doris_rewrite in (
@@ -755,6 +760,7 @@ _LOCAL_REWRITES: dict[str, Callable[..., object]] = {
     "factor_common_conjuncts": factor_common_conjuncts,
     "fold_scalar_having_into_case": fold_scalar_having_into_case,
     "hoist_aggregate_subqueries": hoist_aggregate_subqueries,
+    "hoist_qualify_order_by": hoist_qualify_order_by,
     "in_subquery_or_to_left_join": in_subquery_or_to_left_join,
     "inline_named_windows": inline_named_windows,
     "inline_sourceless_exists": inline_sourceless_exists,

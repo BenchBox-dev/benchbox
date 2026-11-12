@@ -307,19 +307,20 @@ def test_ssb_wrong_row_count_fails_the_query_and_run() -> None:
     assert "expected 398" in wrong["error"]
 
 
-def test_ssb_unknown_query_is_uncertain_not_passed() -> None:
+def test_ssb_unknown_query_fails_the_lookup_and_the_run() -> None:
     measurement = _measurement(query_id="9.9", rows=1)
 
     summary = validate_dataframe_query_results([measurement], benchmark_name="ssb", scale_factor=0.1)
 
-    assert summary.status == "UNCERTAIN"
-    assert summary.details["checked"] == 0
-    assert summary.details["skipped"] == 1
-    assert measurement["status"] == "SUCCESS"
-    assert measurement["row_count_validation"]["status"] == "SKIPPED"
+    assert summary.status == "FAILED"
+    assert summary.details["checked"] == 1
+    assert summary.details["failed"] == 1
+    assert measurement["status"] == "FAILED"
+    assert measurement["row_count_validation"]["status"] == "FAILED"
+    assert "Row-count lookup failed" in measurement["error"]
 
 
-def test_ssb_unrecorded_scale_factor_is_uncertain() -> None:
+def test_ssb_unrecorded_scale_factor_is_unvalidated_not_passed() -> None:
     measurement = _measurement(query_id="1.1", rows=1)
 
     summary = validate_dataframe_query_results([measurement], benchmark_name="ssb", scale_factor=0.5)
@@ -327,7 +328,20 @@ def test_ssb_unrecorded_scale_factor_is_uncertain() -> None:
     assert summary.status == "UNCERTAIN"
     assert summary.details["provider"] == "ssb_expected_row_counts"
     assert "scale factor 0.5" in summary.details["reason"]
-    assert measurement["row_count_validation"]["status"] == "SKIPPED"
+    assert measurement["row_count_validation"]["status"] == "UNVALIDATED"
+
+
+def test_tpcds_subscale_gap_is_unvalidated_and_unknown_variant_fails() -> None:
+    gap = {**_measurement(query_id="21", rows=1), "stream_id": 0}
+    typo = {**_measurement(query_id="14c", rows=1), "stream_id": 0}
+
+    summary = validate_dataframe_query_results([gap, typo], benchmark_name="tpcds", scale_factor=0.1, seed=None)
+
+    assert summary.status == "FAILED"
+    assert gap["row_count_validation"]["status"] == "UNVALIDATED"
+    assert gap["status"] == "SUCCESS"
+    assert typo["row_count_validation"]["status"] == "FAILED"
+    assert typo["status"] == "FAILED"
 
 
 @pytest.mark.parametrize("scale_factor", [0.01, 0.1])

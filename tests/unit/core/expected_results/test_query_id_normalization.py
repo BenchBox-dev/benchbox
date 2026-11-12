@@ -181,7 +181,7 @@ class TestQueryIDNormalization:
         assert result.is_valid
         assert result.expected_row_count == 4
 
-    def test_normalize_id_with_no_digits_falls_back(self, validator):
+    def test_normalize_id_with_no_digits_fails_the_lookup(self, validator):
 
         result = validator.validate_query_result(
             benchmark_type="tpch",
@@ -189,8 +189,9 @@ class TestQueryIDNormalization:
             actual_row_count=100,
             scale_factor=1.0,
         )
-        assert result.is_valid
-        assert result.validation_mode.value == "skip"
+        assert not result.is_valid
+        assert result.error_message is not None
+        assert "lookup failed" in result.error_message
 
     def test_normalize_consistency_across_formats(self, validator):
 

@@ -400,14 +400,25 @@ class TestRunLocalPolicy:
 
 
 class TestOutcomeDistinction:
-    def test_no_answer_set_is_a_normal_skip(self, policy_validator):
+    def test_no_answer_set_is_unvalidated_not_a_failure(self, policy_validator):
+        result = policy_validator.validate_query_result(
+            benchmark_type="no_such_benchmark", query_id="1", actual_row_count=5, scale_factor=1.0
+        )
+
+        assert result.is_valid
+        assert result.unvalidated
+        assert result.validation_mode == ValidationMode.SKIP
+        assert result.warning_message is not None
+
+    def test_query_missing_from_an_answer_set_is_a_named_failure(self, policy_validator):
         result = policy_validator.validate_query_result(
             benchmark_type="tpcds", query_id="no-such-query", actual_row_count=5, scale_factor=1.0
         )
 
-        assert result.is_valid
-        assert result.validation_mode == ValidationMode.SKIP
-        assert result.warning_message is not None
+        assert not result.is_valid
+        assert not result.unvalidated
+        assert result.error_message is not None
+        assert "lookup failed" in result.error_message
 
     def test_provider_failure_is_never_a_normal_skip(self, fresh_registry):
         def failing_provider(sf):

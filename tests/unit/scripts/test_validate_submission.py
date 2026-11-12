@@ -359,6 +359,57 @@ class TestValidateBundle:
         assert not vr.ok
         assert any("summary.validation='passed' contradicts" in error for error in vr.errors)
 
+    def test_unvalidated_row_count_is_named_distinctly_when_summary_validation_passed(self):
+        data = _minimal_bundle()
+        data["version"] = "2.2"
+        data["summary"]["validation"] = "passed"
+        data["queries"][0].update(
+            {
+                "rows": 4,
+                "row_count_validation": {"status": "UNVALIDATED", "expected": None, "actual": 4},
+            }
+        )
+        vr = ValidationResult("test")
+
+        _validate_bundle(data, vr)
+
+        assert not vr.ok
+        assert any("counts queries[0] as validated, but its row count is unvalidated" in e for e in vr.errors)
+        assert not any("contradicts queries[0].row_count_validation.status" in e for e in vr.errors)
+        assert any("1 query unvalidated" in warning for warning in vr.warnings)
+
+    def test_unvalidated_row_count_is_listed_in_a_warning_for_a_non_passed_bundle(self):
+        data = _minimal_bundle()
+        data["version"] = "2.2"
+        data["summary"]["validation"] = "not_validated"
+        data["queries"][0].update(
+            {
+                "rows": 4,
+                "row_count_validation": {"status": "UNVALIDATED", "expected": None, "actual": 4},
+            }
+        )
+        vr = ValidationResult("test")
+
+        _validate_bundle(data, vr)
+
+        assert any("1 query unvalidated" in warning and "not counted as passed" in warning for warning in vr.warnings)
+        assert not any("row_count_validation.status is invalid" in e for e in vr.errors)
+
+    def test_unvalidated_row_count_must_not_carry_an_expected_count(self):
+        data = _minimal_bundle()
+        data["version"] = "2.2"
+        data["queries"][0].update(
+            {
+                "rows": 4,
+                "row_count_validation": {"status": "UNVALIDATED", "expected": 4, "actual": 4},
+            }
+        )
+        vr = ValidationResult("test")
+
+        _validate_bundle(data, vr)
+
+        assert any("UNVALIDATED must not carry an expected count" in e for e in vr.errors)
+
     def test_absent_optional_extension_blocks_pass(self):
         vr = ValidationResult("test")
         _validate_bundle(_minimal_bundle(), vr)

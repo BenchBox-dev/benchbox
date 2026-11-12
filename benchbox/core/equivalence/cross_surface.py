@@ -1097,7 +1097,7 @@ _READ_PRIMITIVES_KNOWN_DIVERGENCES: dict[str, str | ClassifiedDivergence] = {
             "approx_quantile_groupby_expression",
             "approx_quantile_groupby_pandas",
         ),
-        ClassifiedDivergence(_READ_PRIMITIVES_APPROX, _read_primitives_sketch_residue),
+        ClassifiedDivergence(_READ_PRIMITIVES_APPROX, _read_primitives_sketch_residue, requires_live_divergence=False),
     ),
     **dict.fromkeys(
         ("statistical_percentiles_expression", "statistical_percentiles_pandas"),

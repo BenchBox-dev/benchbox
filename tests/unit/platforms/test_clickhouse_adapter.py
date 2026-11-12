@@ -1299,6 +1299,7 @@ class TestClickHouseWorkloadCoverage:
             warning_message="expected row count unavailable",
             error_message=None,
             expected_row_count=None,
+            unvalidated=False,
         )
 
         with patch("benchbox.core.validation.query_validation.QueryValidator") as validator_cls:

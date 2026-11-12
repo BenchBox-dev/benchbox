@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
+
+_LOGGER = logging.getLogger(__name__)
 
 _DERIVED_SOURCE_ALIAS = "hoisted_source"
 _ORDERED_ROWS_ALIAS = "ordered_rows"
@@ -419,6 +422,63 @@ def hoist_aggregate_subqueries(expression, *, copy: bool = True):
     tree = expression.copy() if copy else expression
     for select in list(tree.find_all(exp.Select)):
         _hoist_aggregate_subqueries(select)
+    return tree
+
+
+def _outer_order_key(key, outputs: Sequence[tuple[object, object]], exp):
+    if isinstance(key, exp.Literal) and not key.is_string:
+        return key.copy()
+    if isinstance(key, exp.Column):
+        for _, projection in outputs:
+            if projection.name.lower() == key.name.lower():
+                return projection.copy()
+    for source, projection in outputs:
+        if source == key:
+            return projection.copy()
+    if isinstance(key, exp.Column):
+        return None
+    resolved = key.copy()
+    for column in list(resolved.find_all(exp.Column)):
+        replacement = _outer_order_key(column, outputs, exp)
+        if replacement is None:
+            return None
+        column.replace(replacement)
+    return resolved
+
+
+def hoist_qualify_order_by(expression, *, copy: bool = True):
+    exp = sql_expressions()
+    from benchbox._vendor.sqlglot import transforms
+
+    tree = expression.copy() if copy else expression
+    targets = [
+        select
+        for select in tree.find_all(exp.Select)
+        if select.args.get("qualify") is not None and select.args.get("order") is not None
+    ]
+    for select in reversed(targets):
+        order = select.args["order"]
+        sources = [item.this if isinstance(item, exp.Alias) else item for item in select.selects]
+        eliminated = transforms.eliminate_qualify(select.copy())
+        outputs = list(zip(sources, eliminated.selects))
+        keys = [_outer_order_key(item.this, outputs, exp) for item in order.expressions]
+        if any(key is None for key in keys):
+            _LOGGER.warning(
+                "QUALIFY elimination cannot hoist %s to the outer select; its sort keys are not "
+                "projected, so the result order is undefined",
+                order.sql(),
+            )
+            continue
+        ordered = []
+        for item, key in zip(order.expressions, keys):
+            hoisted = item.copy()
+            hoisted.set("this", key)
+            ordered.append(hoisted)
+        eliminated.set("order", exp.Order(expressions=ordered))
+        if select.parent is None:
+            tree = eliminated
+        else:
+            select.replace(eliminated)
     return tree
 
 

@@ -21,6 +21,7 @@ class LoadOutcome(str, Enum):
     STREAM_NOT_REFERENCE_VALIDATED = "stream_not_reference_validated"
     PROVIDER_FAILED = "provider_failed"
     PROVIDER_TIMEOUT = "provider_timeout"
+    QUERY_NOT_FOUND = "query_not_found"
 
 
 class ExpectedResultsRegistry:
@@ -104,11 +105,17 @@ class ExpectedResultsRegistry:
 
         expected_result = benchmark_results.get_expected_result(query_id)
         if expected_result is None:
+            if benchmark_results.known_query_ids is not None and query_id in benchmark_results.known_query_ids:
+                logger.debug(
+                    f"No expected result recorded for query '{query_id}' in benchmark '{benchmark_name}' "
+                    f"at scale factor {sf}."
+                )
+                return None, LoadOutcome.NO_ANSWER_SET
             logger.debug(
-                f"No expected result found for query '{query_id}' in benchmark '{benchmark_name}'. "
-                f"Validation will be skipped for this query."
+                f"Query '{query_id}' is not in the reference answers of benchmark '{benchmark_name}' "
+                f"at scale factor {sf}."
             )
-            return None, LoadOutcome.NO_ANSWER_SET
+            return None, LoadOutcome.QUERY_NOT_FOUND
 
         return expected_result, LoadOutcome.HIT
 

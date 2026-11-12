@@ -181,6 +181,7 @@ class BenchmarkExpectedResults:
     scale_factor: float
     query_results: dict[str, ExpectedQueryResult]
     metadata: dict[str, Any] | None = None
+    known_query_ids: frozenset[str] | None = None
 
     def get_expected_result(self, query_id: str) -> ExpectedQueryResult | None:
         return self.query_results.get(query_id)
@@ -197,6 +198,7 @@ class ValidationResult:
     warning_message: str | None = None
     difference: int | None = None
     difference_percent: float | None = None
+    unvalidated: bool = False
 
     def __post_init__(self):
         if self.expected_row_count is not None and self.actual_row_count is not None:

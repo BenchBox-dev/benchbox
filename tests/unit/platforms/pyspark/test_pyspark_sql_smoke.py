@@ -38,7 +38,7 @@ def test_select_one(tmp_path, pyspark_test_environment):
     adapter = PySparkSQLAdapter(master="local[1]", database="pyspark_sql_tests", warehouse_dir=str(tmp_path))
     connection = adapter.create_connection()
 
-    result = adapter.execute_query(connection, "SELECT 1 AS value", query_id="Q0", benchmark_type="tpch")
+    result = adapter.execute_query(connection, "SELECT 1 AS value", query_id="Q0", benchmark_type="smoke")
     assert result["status"] == "SUCCESS"
     assert result["rows_returned"] == 1
     adapter.close()

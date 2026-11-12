@@ -119,6 +119,15 @@ def get_query_validation_mode() -> ValidationMode:
     return ValidationMode.SKIP
 
 
+def tpcds_known_query_ids() -> frozenset[str]:
+    known = {query_id for counts in TPCDS_SUBSCALE_ROW_COUNTS.values() for query_id in counts}
+    try:
+        known.update(load_tpcds_expected_results(scale_factor=1.0))
+    except FileNotFoundError:
+        pass
+    return frozenset(known)
+
+
 def get_tpcds_expected_results(scale_factor: float = 1.0) -> BenchmarkExpectedResults | None:
     if scale_factor != 1.0:
         subscale_counts = tpcds_subscale_expected_row_counts(scale_factor)
@@ -145,6 +154,7 @@ def get_tpcds_expected_results(scale_factor: float = 1.0) -> BenchmarkExpectedRe
                     "reference_rngseed": TPCDS_REFERENCE_RNGSEED,
                     "provenance": TPCDS_SUBSCALE_PROVENANCE,
                 },
+                known_query_ids=tpcds_known_query_ids(),
             )
         logger.info(
             f"TPC-DS expected results only available for SF=1.0 and recorded subscale factors "

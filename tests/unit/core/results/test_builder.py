@@ -63,6 +63,49 @@ def test_failed_warmup_validation_is_exported_without_corrupting_measurement_met
     assert any("row_count_validation.status='FAILED'" in error for error in validation.errors)
 
 
+def test_unvalidated_measurement_is_exported_and_never_summarised_as_passed():
+    from benchbox.core.results.schema import build_result_payload
+    from benchbox.core.results.status import result_cli_failure_reason, result_unvalidated_reason
+    from benchbox.validation.bundle import ValidationResult, _validate_execution_consistency
+
+    builder = ResultBuilder(
+        benchmark=BenchmarkInfoInput(name="TPC-H", scale_factor=10.0),
+        platform=PlatformInfoInput(name="duckdb", platform_version="1.3.2"),
+    )
+    builder.add_query_results(
+        [
+            normalize_query_result(
+                {
+                    "query_id": "2",
+                    "status": "SUCCESS",
+                    "iteration": 1,
+                    "execution_time_seconds": 0.5,
+                    "rows_returned": 100,
+                    "row_count_validation": {
+                        "status": "UNVALIDATED",
+                        "expected": None,
+                        "actual": 100,
+                        "warning": "no reference answers",
+                    },
+                }
+            )
+        ]
+    )
+
+    result = builder.build()
+    payload = build_result_payload(result)
+
+    assert result.validation_status == "NOT_VALIDATED"
+    assert payload["summary"]["validation"] == "not_validated"
+    assert payload["queries"][0]["row_count_validation"]["status"] == "UNVALIDATED"
+    assert result_cli_failure_reason(result) is None
+    assert result_unvalidated_reason(result) == "validation_status=not_validated"
+    payload["summary"]["validation"] = "passed"
+    validation = ValidationResult("test")
+    _validate_execution_consistency(payload, validation)
+    assert any("counts queries[0] as validated" in error for error in validation.errors)
+
+
 class TestNormalizeBenchmarkId:
     @pytest.mark.parametrize(
         ("input_name", "expected_id"),

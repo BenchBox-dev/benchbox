@@ -382,7 +382,7 @@ ACCEPTED_VERSION_PREFIX = "2."
 NUMERIC_SCHEMA_VERSION_RE = re.compile(r"^\d+\.\d+(?:\.\d+)?$")
 ROW_COUNT_VALIDATION_SCHEMA_VERSION = (2, 2)
 ROW_COUNT_VALIDATION_MESSAGE_MAX_CHARS = 500
-ROW_COUNT_VALIDATION_STATUSES = frozenset({"PASSED", "FAILED", "SKIPPED", "ERROR"})
+ROW_COUNT_VALIDATION_STATUSES = frozenset({"PASSED", "FAILED", "SKIPPED", "UNVALIDATED", "ERROR"})
 ROW_COUNT_VALIDATION_FIELDS = frozenset({"status", "expected", "actual", "error", "warning"})
 ROW_COUNT_VALIDATION_REQUIRED_FIELDS = frozenset({"status", "expected", "actual"})
 
@@ -2191,6 +2191,8 @@ def _validate_row_count_validation(index: int, q: dict[str, Any], version: Any, 
         normalized_counts["expected"] is None or normalized_counts["actual"] != normalized_counts["expected"]
     ):
         vr.error(f"queries[{index}].row_count_validation PASSED requires equal integer expected and actual counts")
+    if status == "UNVALIDATED" and normalized_counts["expected"] is not None:
+        vr.error(f"queries[{index}].row_count_validation UNVALIDATED must not carry an expected count")
 
     for field in ("error", "warning"):
         if field not in evidence:
@@ -2251,6 +2253,21 @@ def _validate_queries_section(queries: Any, version: Any, vr: ValidationResult) 
             if run_type == "measurement":
                 any_nonzero_measurement = True
 
+    unvalidated = [
+        str(q.get("id"))
+        for q in queries
+        if isinstance(q, dict)
+        and str(q.get("run_type") or "measurement").strip().lower() == "measurement"
+        and isinstance(q.get("row_count_validation"), dict)
+        and q["row_count_validation"].get("status") == "UNVALIDATED"
+    ]
+    if unvalidated:
+        shown = ", ".join(unvalidated[:10]) + (", ..." if len(unvalidated) > 10 else "")
+        noun = "query" if len(unvalidated) == 1 else "queries"
+        vr.warn(
+            f"{len(unvalidated)} {noun} unvalidated: no reference answers for this benchmark and scale factor, "
+            f"row counts were not checked and are not counted as passed ({shown})"
+        )
     if not any_nonzero:
         vr.error("All query timings are 0ms - likely invalid data")
     elif not any_nonzero_measurement:
@@ -2561,7 +2578,12 @@ def _validate_execution_consistency(data: dict[str, Any], vr: ValidationResult) 
             rcv = q.get("row_count_validation")
             if isinstance(rcv, dict):
                 rcv_status = rcv.get("status")
-                if rcv_status is not None and rcv_status != "PASSED":
+                if rcv_status == "UNVALIDATED":
+                    vr.error(
+                        f"summary.validation='passed' counts queries[{i}] as validated, but its row count is "
+                        "unvalidated (no reference answers for this benchmark and scale factor)"
+                    )
+                elif rcv_status is not None and rcv_status != "PASSED":
                     vr.error(
                         f"summary.validation='passed' contradicts queries[{i}].row_count_validation.status={rcv_status!r}"
                     )
