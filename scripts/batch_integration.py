@@ -40,6 +40,10 @@ ROLE_MEMBER = "member"
 DEVELOP_REF = "refs/remotes/origin/develop"
 LEDGER_ROOT = ".todo-batch"
 LEDGER_SCHEMA = "benchbox_batch_ledger_v1"
+OWNER_GENERATION_PLACEHOLDER = (
+    "<owner generation: print it with the owner-generation command of scripts/batch_integration.py>"
+)
+EXPECTED_OWNER_GENERATION_PLACEHOLDER = "<the expected owner generation you supplied>"
 EVIDENCE_SCHEMA = "benchbox_batch_evidence_v2"
 CHECK_SCHEMA = "benchbox_member_check_v1"
 MEMBER_REVIEW_SCHEMA = "benchbox_member_review_v1"
@@ -548,7 +552,7 @@ def start_batch(
         "batch_id": batch_id,
         "project_id": project_id,
         "repository": origin,
-        "owner_generation": generation,
+        "owner_generation": OWNER_GENERATION_PLACEHOLDER,
         "integration_branch": branch,
         "integration_worktree": str(path),
         "start_head": start_head,
@@ -1496,7 +1500,7 @@ def advance_head(repo: Path, reason: str, *, push: bool = True) -> dict:
         "tool": "advance_batch_head",
         "arguments": {
             "batch_id": batch_id,
-            "owner_generation": ledger.get("owner_generation") or "<owner generation from the leader's ledger>",
+            "owner_generation": OWNER_GENERATION_PLACEHOLDER,
             "expected_head": expected,
             "head": head,
             "reason": reason,
@@ -1982,8 +1986,8 @@ def recover_owner(
     arguments = {
         "batch_id": batch_id,
         "expected_owner": expected_owner,
-        "expected_owner_generation": expected_owner_generation,
-        "new_owner_generation": generation,
+        "expected_owner_generation": EXPECTED_OWNER_GENERATION_PLACEHOLDER,
+        "new_owner_generation": OWNER_GENERATION_PLACEHOLDER,
         "reason": reason,
     }
     if relocate:
@@ -1991,6 +1995,15 @@ def recover_owner(
         arguments["expected_integration_head"] = head
         arguments["integration_worktree"] = here
     return {"worktree": here, "tool": "recover_batch_owner", "arguments": arguments, "worktree_takeover": taken}
+
+
+def read_owner_generation(repo: Path, batch_id: str | None = None) -> str:
+    batch_id = require_role(repo, ROLE_INTEGRATION) if batch_id is None else batch_id
+    ledger = load_ledger(repo, batch_id)
+    generation = ledger.get("owner_generation") if ledger else None
+    if not isinstance(generation, str) or not generation:
+        raise BatchError("this ledger holds no owner generation; run make batch-recover")
+    return generation
 
 
 def batch_status(repo: Path) -> dict:
@@ -2300,6 +2313,10 @@ def main(argv: list[str] | None = None) -> int:
     recover.add_argument("--relocate", action="store_true")
     recover.add_argument("--batch")
 
+    sub.add_parser(
+        "owner-generation",
+        help="print only the owner generation from the private ledger, for the next tracker call; never record it",
+    )
     sub.add_parser("status", help="reconcile the ledger with the tracker and Git")
     sub.add_parser("verify", help="check first-parent history, recorded heads and member ancestry")
     sub.add_parser("evidence", help="write final-evidence.json and print finish payloads")
@@ -2354,6 +2371,8 @@ def main(argv: list[str] | None = None) -> int:
                     batch_id=args.batch,
                 )
             )
+        elif args.command == "owner-generation":
+            print(read_owner_generation(repo))
         elif args.command == "status":
             _print(batch_status(repo))
         elif args.command == "verify":

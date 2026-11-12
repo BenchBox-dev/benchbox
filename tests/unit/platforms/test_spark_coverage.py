@@ -932,7 +932,7 @@ class TestApplyPlatformOptimizations:
         a = SparkAdapter()
         a.tuning_enabled = True
         a.unified_tuning_configuration = UnifiedTuningConfiguration.from_dict(
-            {"platform_optimizations": {"spark": {"bad.key": "value"}}}
+            {"platform_optimizations": {"spark": {"bad.key": "value"}, "spark_allow_unknown_keys": True}}
         )
         a._applied_tuning_ledger = AppliedTuningLedger()
         mock_session.conf.set.side_effect = Exception("read-only")
@@ -941,7 +941,7 @@ class TestApplyPlatformOptimizations:
 
         mock_session.conf.set.assert_called_with("spark.bad.key", "value")
         failed = [s for s in a._applied_tuning_ledger.statements if s.status == STATEMENT_FAILED]
-        assert [s.statement for s in failed] == ["SET spark.bad.key=value"]
+        assert [s.statement for s in failed] == ["SET spark.bad.key=<redacted>"]
 
 
 class TestApplyConstraintConfiguration:
