@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "A pytest-xdist release containing the fix for #1378 is locked",
+    "A worker killed mid-session under --dist loadscope lets the session finish (reproduce with a test that kills its worker, or cite the upstream test)",
+    "--max-worker-restart=0 is removed from the three workflows, or kept with the reason recorded",
+    "Decision gate: blocked until upstream releases; check the changelog first"
+  ],
+  "description": "PR #4121 added --max-worker-restart=0 to the medium-tier pytest command in ci.yml, trunk.yml and trunk-coverage.yml because pytest-xdist 3.8.0 with --dist loadscope cannot finish a session after a worker dies (pytest-dev/pytest-xdist#1378; fixed on master by #1324 and #1328, unreleased on 2026-11-11). The flag turns a 25-minute hang into a fast failure that names the test, but it also means one crashed worker ends the shard.",
+  "links": [
+    ".github/workflows/ci.yml",
+    "https://github.com/pytest-dev/pytest-xdist/issues/1378"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1319a3225e6eeb104ec2240b",
+      "at": "2026-11-12T00:52:07Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f3f95dd171494021bb77dca5619908cf",
+      "session_id": "c16189175abd4e878b3c9ce4c03812e3"
+    }
+  ]
+}
