@@ -15359,10 +15359,15 @@
       "title": "Harden TODO verification commands: audit buggy DONE examples, schema-enforce single-line commands, decide actioned-completion convention"
     },
     "coffeeshop-order-count-docs-disagree-with-generator-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T03:08:38Z",
+        "generation": "0cbcb0a982694de9b55f8b18fa404679",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fa7327b60b0f9b4f7a539bba"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "CoffeeShop row counts: schema spec and site usage page say 50M orders per SF, the generator makes 8.5M"
     },
     "comment-checker-review-followups": {
