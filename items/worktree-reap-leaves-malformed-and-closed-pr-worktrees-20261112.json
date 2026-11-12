@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "The cause of the malformed provenance records is identified (which creation path writes them) and fixed, or the reaper can repair or accept them when the branch is otherwise proven merged and clean.",
+    "A worktree whose only pull request is closed and unmerged gets its own verdict, and there is a documented command to remove it that states what unmerged commits will be lost.",
+    "The nine worktrees ambiguous on 2026-11-12 are each removed or recorded as intentionally kept."
+  ],
+  "description": "make worktree-reap on 2026-11-12 classed 9 of 79 worktrees as ambiguous and will never remove them. Most report \"Worktree lifecycle provenance is 'malformed'; only managed worktrees can be finished\" (for example BenchBox.wt-theseus-0.2.6, BenchBox.wt-tm-mocker, BenchBox.wt-windows-leg-xdist). One, BenchBox.wt-fix-batch-evidence-develop-ci, belongs to draft PR #4037, which was closed without merging because #4038 and #4048 superseded it; the tool only recognises a merged pull request, so a deliberately abandoned branch stays forever. An earlier triage item (worktree-reap-ambiguous-triage-20261023) cleared the ambiguous set once by hand, and the set has grown back. The same run kept 47 worktrees with no merged pull request; some of those are stale too, but the tool cannot tell.",
+  "links": [
+    "scripts/worktree_reap.py",
+    "https://github.com/BenchBox-dev/benchbox/pull/4037"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a250daff95b91a4eb6cd2504",
+      "at": "2026-11-12T16:50:55Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "01c74061ec2e4d7ab67f03aaf8c87d10",
+      "session_id": "8e07c6e3a10b49bb94ae7e31664ce4b9"
+    }
+  ]
+}

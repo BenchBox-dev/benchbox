@@ -45540,6 +45540,13 @@
       "status": "done",
       "title": "Triage the worktrees the reaper could not classify"
     },
+    "worktree-reap-leaves-malformed-and-closed-pr-worktrees-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "worktree-reap has no way to clear worktrees with malformed provenance or a closed, unmerged pull request"
+    },
     "worktree-release-force-does-not-force-past-dirty-tree-20260806": {
       "claim": null,
       "needs": [],
