@@ -358,7 +358,9 @@ REMOTE_CLOSEOUT_TARGETS := pr-arm-remote pr-landing-remote
 REMOTE_CLOSEOUT_VARIABLES := PR HEAD REPO BRANCH ITEM RECORD BUILDER_HEAD OWNER_EXPLAINED MODEL REVIEWER DRY_RUN RESUME ACTION
 .PHONY: $(REMOTE_CLOSEOUT_TARGETS)
 $(foreach name,$(REMOTE_CLOSEOUT_VARIABLES),$(eval $(REMOTE_CLOSEOUT_TARGETS): override $(name) := $$(value $(name))))
+ifneq ($(filter $(REMOTE_CLOSEOUT_TARGETS),$(MAKECMDGOALS)),)
 $(foreach name,$(REMOTE_CLOSEOUT_VARIABLES),$(if $(filter command line,$(origin $(name))),$(eval unexport $(name))))
+endif
 $(foreach name,$(REMOTE_CLOSEOUT_VARIABLES),$(eval $(REMOTE_CLOSEOUT_TARGETS): export REMOTE_CLOSEOUT_$(name) = $$(value $(name))))
 $(REMOTE_CLOSEOUT_TARGETS): export PYTHONDONTWRITEBYTECODE := 1
 REMOTE_ARM_GATE = if [ -n "$${REMOTE_CLOSEOUT_PR:-}" ]; then \

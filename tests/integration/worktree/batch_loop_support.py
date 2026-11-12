@@ -507,8 +507,9 @@ class Loop:
             )
         start = self.world.make_json(self.world.primary, "batch-start", **variables)
         self.integration = Path(start["worktree"])
-        self.generation = start["arguments"]["owner_generation"]
-        registered = self.leader.ok("register_batch", **start["arguments"])
+        self.generation = self.ledger()["owner_generation"]
+        assert self.generation not in json.dumps(start)
+        registered = self.leader.ok("register_batch", **{**start["arguments"], "owner_generation": self.generation})
         for step in start["after_register"]["steps"]:
             self.leader.ok(step["tool"], **step["arguments"])
         self.reminders = start["after_register"]["reminders"]
@@ -587,7 +588,8 @@ class Loop:
 
     def advance(self, reason: str) -> dict:
         result = self.world.make_json(self.integration, "batch-advance", REASON=reason)
-        self.leader.ok("advance_batch_head", **result["payload"]["arguments"])
+        assert self.generation not in json.dumps(result)
+        self.leader.ok("advance_batch_head", **{**result["payload"]["arguments"], "owner_generation": self.generation})
         return result
 
     def evidence(self) -> dict:
@@ -612,8 +614,17 @@ class Loop:
             REASON=reason,
             RELOCATE="1",
         )
-        recovered = successor.ok(payload["tool"], **payload["arguments"])
-        self.leader = successor
         self.integration = destination.resolve()
-        self.generation = payload["arguments"]["new_owner_generation"]
+        new_generation = self.ledger()["owner_generation"]
+        assert self.generation not in json.dumps(payload) and new_generation not in json.dumps(payload)
+        recovered = successor.ok(
+            payload["tool"],
+            **{
+                **payload["arguments"],
+                "expected_owner_generation": self.generation,
+                "new_owner_generation": new_generation,
+            },
+        )
+        self.leader = successor
+        self.generation = new_generation
         return {"payload": payload, "recovered": recovered}
