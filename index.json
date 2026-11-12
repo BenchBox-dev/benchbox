@@ -19578,15 +19578,10 @@
       "title": "Time the DataFrame distinct-count remediation on an idle machine and change or revert any pattern that is slower"
     },
     "df-n-unique-null-semantics": {
-      "claim": {
-        "expires_at": "2026-11-13T16:10:58Z",
-        "generation": "04cb4206a08e43ada15ad8bdd8e1139b",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Make UnifiedExpr.n_unique() skip NULL on Polars so it means COUNT(DISTINCT) on every platform"
     },
     "df-parity-id-mapping-builders": {
