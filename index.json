@@ -12551,9 +12551,9 @@
     },
     "batch-member-subagent-rule-20261112": {
       "claim": {
-        "expires_at": "2026-11-13T14:14:58Z",
-        "generation": "694ff65cf3d84edaada6e2e89320e2d0",
-        "renewals": 0,
+        "expires_at": "2026-11-13T14:15:17Z",
+        "generation": "288706640d99434bad9acd7223154507",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785"
       },
       "needs": [],
