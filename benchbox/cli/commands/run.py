@@ -98,6 +98,7 @@ from benchbox.core.results.provenance import FUNDING_SOURCES, RESULT_SOURCES
 from benchbox.core.results.status import result_cli_failure_reason, result_non_clean_reason
 from benchbox.core.schemas import ExecutionContext
 from benchbox.core.tpc_disclaimer import official_mode_disclaimer
+from benchbox.core.tpc_spec import refresh_functions_enabled, require_full_spec
 from benchbox.core.tuning import modes as tuning_modes
 from benchbox.utils.cloud_storage import is_cloud_path
 from benchbox.utils.compression import CompressionManager
@@ -599,11 +600,6 @@ def _validate_initial_flags(s: types.SimpleNamespace) -> None:
             console.print(f"Allowed scale factors: {sorted(tpc_allowed)}")
             s.ctx.exit(1)
 
-        if s.seed is None:
-            console.print(
-                "[yellow]⚠️  Warning: No --seed specified. TPC official mode requires a random seed for reproducibility.[/yellow]"
-            )
-
         console.print("[bold blue]TPC Official Mode Benchmark Run[/bold blue]")
         console.print(f"[dim]{official_mode_disclaimer(benchmark)}[/dim]")
         console.print(f"Scale Factor: {s.scale} (TPC-allowed)")
@@ -977,6 +973,30 @@ def _capture_resolved_run_plan(s: types.SimpleNamespace) -> ResolvedRunPlan:
     return capture_resolved_run_plan(s, canonical_tuning_mode=_canonical_tuning_mode(s))
 
 
+def _enforce_full_spec(s: types.SimpleNamespace) -> None:
+    if not s.official:
+        return
+    plan: ResolvedRunPlan = s.resolved_run_plan
+    benchmark = normalize_benchmark_name(plan.benchmark) if plan.benchmark else None
+    if not (plan.platform_key and plan.benchmark):
+        return
+    if not {"warmup", "power", "standard", "throughput", "maintenance"} & set(plan.phases):
+        return
+    try:
+        require_full_spec(
+            benchmark,
+            plan.scale,
+            seed=plan.seed,
+            phases=plan.phases,
+            streams=plan.concurrency,
+            query_subset=plan.queries,
+            refresh_functions=refresh_functions_enabled({"benchmark_options": s.parsed_benchmark_options or {}}),
+        )
+    except ValueError as exc:
+        console.print(f"[red]❌ {exc}[/red]")
+        s.ctx.exit(1)
+
+
 def _resolve_run_request(
     s: types.SimpleNamespace,
     *,
@@ -1002,6 +1022,7 @@ def _resolve_run_request(
     _resolve_compression_settings(s)
     _validate_output_dir(s)
     s.resolved_run_plan = _capture_resolved_run_plan(s)
+    _enforce_full_spec(s)
 
 
 def _validate_output_dir(s: types.SimpleNamespace) -> None:

@@ -102,25 +102,73 @@ class TestOfficialModeValidation:
         assert "not a TPC-specified scale factor" in result.output
         assert "0.01" in result.output
 
-    def test_official_mode_warns_without_seed(self):
-        runner = CliRunner()
-        result = runner.invoke(
-            run,
-            [
-                "--official",
-                "--platform",
-                "duckdb",
-                "--benchmark",
-                "tpch",
-                "--scale",
-                "1",
-                "--phases",
-                "generate",
-            ],
-            obj={},
-        )
+    @staticmethod
+    def _enforce(**overrides):
+        import types
 
-        assert "Warning" in result.output or "seed" in result.output.lower()
+        from benchbox.cli.commands.run import _enforce_full_spec
+
+        plan = types.SimpleNamespace(
+            platform_key="duckdb",
+            benchmark="tpch",
+            scale=1.0,
+            phases=("load", "power", "throughput"),
+            queries=None,
+            seed=7,
+            concurrency=2,
+        )
+        for key, value in overrides.items():
+            setattr(plan, key, value)
+        state = types.SimpleNamespace(
+            official=True,
+            resolved_run_plan=plan,
+            parsed_benchmark_options={"tpch_refresh_functions": True},
+            ctx=MagicMock(),
+        )
+        state.ctx.exit.side_effect = SystemExit
+        _enforce_full_spec(state)
+        return state
+
+    def test_full_spec_run_passes(self):
+        self._enforce()
+
+    def test_non_official_run_is_unchecked(self):
+        import types
+
+        from benchbox.cli.commands.run import _enforce_full_spec
+
+        _enforce_full_spec(types.SimpleNamespace(official=False))
+
+    @pytest.mark.parametrize(
+        ("overrides", "message"),
+        [
+            ({"seed": None}, "--seed is required"),
+            ({"queries": ("1", "2")}, "query subsets are not allowed"),
+            ({"phases": ("load", "power")}, "partial runs are not allowed"),
+            ({"concurrency": 1}, "requires at least 2 throughput streams"),
+            ({"scale": 100.0, "concurrency": 3}, "requires at least 5 throughput streams"),
+            ({"concurrency": None}, "--streams is required"),
+        ],
+    )
+    def test_official_mode_refusals(self, overrides, message, capsys):
+        with pytest.raises(SystemExit):
+            self._enforce(**overrides)
+
+        assert message in capsys.readouterr().out.replace("\n", " ")
+
+    def test_official_mode_refuses_without_refresh_functions(self, capsys):
+        from benchbox.cli.commands.run import _enforce_full_spec
+
+        state = self._enforce()
+        state.parsed_benchmark_options = {}
+        state.ctx.exit.side_effect = SystemExit
+        with pytest.raises(SystemExit):
+            _enforce_full_spec(state)
+
+        assert "RF1/RF2" in capsys.readouterr().out.replace("\n", " ")
+
+    def test_data_only_official_run_is_unchecked(self):
+        self._enforce(phases=("generate",), seed=None)
 
     def test_official_mode_shows_derived_banner(self):
         runner = CliRunner()

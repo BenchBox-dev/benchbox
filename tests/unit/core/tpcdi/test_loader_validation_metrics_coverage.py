@@ -201,9 +201,14 @@ def test_metrics_calculations_and_exports(monkeypatch: pytest.MonkeyPatch, capsy
 
     assert metrics.etl_throughput > 0
     assert metrics.tpc_di_compliant is True
-    assert report.summary["tpc_di_compliant"] == "YES"
+    assert report.summary["internal_validation_checks_passed"] == "YES"
+    assert "tpc_di_compliant" not in report.summary
+    assert "do not comply" in exported["benchmark_info"]["disclaimer"]
     assert exported["primary_metrics"]["data_quality_score"] == 1.0
-    assert "OFFICIAL TPC-DI BENCHMARK RESULTS" in capsys.readouterr().out
+    printed = capsys.readouterr().out
+    assert "TPC-DI DERIVED BENCHMARK RESULTS" in printed
+    assert "OFFICIAL" not in printed
+    assert "do not comply with the TPC-DI Specification" in printed
 
     comparison = metrics_calc.compare_benchmarks(metrics, metrics)
     assert comparison["improvement"] is False

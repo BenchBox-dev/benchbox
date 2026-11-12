@@ -38,12 +38,52 @@ class TestManifestProvenance:
         assert self._run({"bundle_file": "x", "bundle_hash": "y"}).ok
 
     def test_valid_funding_ok(self):
-        assert self._run({"funding": "free-trial"}).ok
+        assert self._run({"funding": "employer"}).ok
+
+    def test_free_trial_funding_needs_vendor_permission(self):
+        assert not self._run({"funding": "free-trial"}).ok
+        assert self._run({"funding": "free-trial", "vendor_permission": "approval 2026-11-01"}).ok
 
     def test_invalid_funding_rejected(self):
         vr = self._run({"funding": "crowdfunded"})
         assert not vr.ok
         assert any("funding" in e for e in vr.errors)
+
+    def test_free_tier_without_permission_rejected(self):
+        vr = self._run({"platform": "databricks", "plan_tier": "free"})
+        assert not vr.ok
+        assert any("written permission" in e for e in vr.errors)
+
+    def test_preview_with_permission_ok(self):
+        vr = self._run(
+            {
+                "platform": "snowflake",
+                "plan_tier": "paid",
+                "preview_features": ["hybrid tables"],
+                "vendor_permission": "approval 2026-11-01",
+                "vendor_notice": {"sent_on": "2026-11-01", "reference": "ticket"},
+            }
+        )
+        assert vr.ok
+        assert vr.warnings == []
+
+    def test_vendor_platform_without_notice_warns(self):
+        vr = self._run({"platform": "snowflake", "plan_tier": "paid"})
+        assert vr.ok
+        assert any("vendor_notice" in w for w in vr.warnings)
+
+    def test_bundle_platform_and_funding_override_manifest(self, tmp_path):
+        bundle = tmp_path / "results-data" / "bundles" / "tpch_result.json"
+        bundle.parent.mkdir(parents=True)
+        bundle.write_text(
+            json.dumps({"platform": {"name": "Databricks"}, "provenance": {"funding": "free-trial"}}),
+            encoding="utf-8",
+        )
+        vr = ValidationResult("test")
+        _validate_manifest_provenance({"platform": "duckdb", "funding": "employer"}, bundle, vr)
+
+        assert not vr.ok
+        assert any("written permission" in e and "Databricks" in e for e in vr.errors)
 
     def test_notes_too_long_rejected(self):
         vr = self._run({"submission_notes": "x" * (SUBMISSION_NOTES_MAX_LEN + 1)})

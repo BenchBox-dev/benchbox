@@ -52,9 +52,11 @@ from benchbox.core.results.submit_classification import (
 from benchbox.core.results.subscale_policy import result_compliance_class
 from benchbox.validation.bundle import (
     COMPANION_SUFFIXES,
+    PLAN_TIERS,
     SUBMISSION_NOTES_MAX_LEN,
     _hash_bytes,
     _hash_file,
+    evaluate_vendor_conditions,
     export_anonymized_errors,
     find_public_path_leaks,
     format_summary,
@@ -156,6 +158,7 @@ def _build_submission_manifest(
     submission_path: str,
     funding: str | None = None,
     submission_notes: str | None = None,
+    vendor_conditions: dict | None = None,
 ) -> dict:
 
     resolved_funding = normalize_funding(funding or getattr(result, "funding", None))
@@ -177,7 +180,46 @@ def _build_submission_manifest(
     }
     if submission_notes:
         manifest["submission_notes"] = submission_notes
+    if vendor_conditions:
+        manifest.update(vendor_conditions)
     return manifest
+
+
+def _vendor_condition_fields(
+    *,
+    plan_tier: str | None,
+    preview_features: tuple[str, ...],
+    vendor_permission: str | None,
+    vendor_notice_date: str | None,
+    vendor_notice_ref: str | None,
+    self_run: bool,
+) -> dict:
+    fields: dict = {}
+    if plan_tier:
+        fields["plan_tier"] = plan_tier.lower()
+    if preview_features:
+        fields["preview_features"] = list(preview_features)
+    if vendor_permission:
+        fields["vendor_permission"] = vendor_permission
+    if vendor_notice_date or vendor_notice_ref:
+        fields["vendor_notice"] = {"sent_on": vendor_notice_date, "reference": vendor_notice_ref}
+    if self_run:
+        fields["self_run"] = True
+    return fields
+
+
+def _enforce_vendor_conditions(ctx: click.Context, result, vendor_conditions: dict, funding: str | None) -> None:
+    resolved_funding = normalize_funding(funding or getattr(result, "funding", None))
+    errors, warnings = evaluate_vendor_conditions(
+        {"platform": result.platform, "funding": resolved_funding, **vendor_conditions}
+    )
+    for message in warnings:
+        console.print(f"[yellow]⚠️  Vendor publishing condition not recorded: {escape(message)}[/yellow]")
+    if errors:
+        console.print("\n[red]❌ Submission refused: vendor publication conditions are not met[/red]")
+        for message in errors:
+            console.print(f"   - {escape(message)}")
+        ctx.exit(1)
 
 
 def _resolve_submission_salt(ctx: click.Context, *, dry_run: bool) -> str:
@@ -353,6 +395,7 @@ def _dispatch_service_mode(
     submitted_by: str | None,
     funding: str | None = None,
     submission_notes: str | None = None,
+    vendor_conditions: dict | None = None,
     original_result_file: Path | None = None,
 ) -> None:
     bundle_bytes = _canonical_submission_file_bytes(source_path)
@@ -402,6 +445,7 @@ def _dispatch_service_mode(
             submitted_by=submitted_by,
             funding=funding,
             submission_notes=submission_notes,
+            vendor_conditions=vendor_conditions,
             submission_path="hosted-service",
         )
         bundle_hash = manifest["bundle_hash"]
@@ -660,6 +704,42 @@ def _print_submission_summary(
     default=None,
     help=f"Optional free-text submission notes (max {SUBMISSION_NOTES_MAX_LEN} characters).",
 )
+@click.option(
+    "--plan-tier",
+    type=click.Choice(PLAN_TIERS, case_sensitive=False),
+    default=None,
+    help="Plan tier the run used. Free and trial tiers cannot be submitted without --vendor-permission.",
+)
+@click.option(
+    "--preview-feature",
+    "preview_features",
+    multiple=True,
+    help="Beta or Preview vendor feature the run used (repeatable). Needs --vendor-permission.",
+)
+@click.option(
+    "--vendor-permission",
+    type=str,
+    default=None,
+    help="Reference to the vendor's written permission to publish free-tier, trial or preview results.",
+)
+@click.option(
+    "--vendor-notice-date",
+    type=str,
+    default=None,
+    help="Date (YYYY-MM-DD) the results or replication information were sent to the vendor.",
+)
+@click.option(
+    "--vendor-notice-ref",
+    type=str,
+    default=None,
+    help="Reference for the notice sent to the vendor (message id, ticket or link).",
+)
+@click.option(
+    "--self-run",
+    is_flag=True,
+    default=False,
+    help="Attest that you ran the benchmark yourself, not on behalf of a cloud provider (BigQuery).",
+)
 @click.pass_context
 def submit(
     ctx,
@@ -676,6 +756,12 @@ def submit(
     submitted_by,
     funding,
     submission_notes,
+    plan_tier,
+    preview_features,
+    vendor_permission,
+    vendor_notice_date,
+    vendor_notice_ref,
+    self_run,
 ):
     if submission_notes is not None and len(submission_notes) > SUBMISSION_NOTES_MAX_LEN:
         console.print(
@@ -761,6 +847,16 @@ def submit(
         _refuse_non_submittable_result(ctx, result, submit_state)
         return
 
+    vendor_conditions = _vendor_condition_fields(
+        plan_tier=plan_tier,
+        preview_features=preview_features,
+        vendor_permission=vendor_permission,
+        vendor_notice_date=vendor_notice_date,
+        vendor_notice_ref=vendor_notice_ref,
+        self_run=self_run,
+    )
+    _enforce_vendor_conditions(ctx, result, vendor_conditions, funding)
+
     companions = [
         p for suffix in COMPANION_SUFFIXES if (p := source_path.with_name(source_path.stem + suffix)).exists()
     ]
@@ -791,6 +887,7 @@ def submit(
                 submitted_by=submitted_by,
                 funding=funding,
                 submission_notes=submission_notes,
+                vendor_conditions=vendor_conditions,
                 original_result_file=source_path,
             )
             return
@@ -827,6 +924,7 @@ def submit(
             submitted_by=submitted_by,
             funding=funding,
             submission_notes=submission_notes,
+            vendor_conditions=vendor_conditions,
             submission_path="PR-based",
         )
 
