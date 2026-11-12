@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Complete TPC-DS Q16, Q94 and Q95 on DuckDB 1.5.x and 2.x at SF1 and SF10 are timed (best of five, alternating) and the table is in this item; a regression above 10% is reported to DuckDB with a minimal reproduction.",
+    "The nanobind warnings are traced to a cause: fixed in BenchBox if it leaks connections, otherwise recorded as upstream with a link.",
+    "The places where BenchBox depends on DuckDB-generated TPC-DS data matching stored digests are listed, with the effect of 2.x on each."
+  ],
+  "description": "Gaps left by the DuckDB `<3.0.0` pin lift (PR #4175, not merged when this was filed).\n\n1. Timing. On DuckDB 2.0.0 the isolated correlated-EXISTS multi-warehouse statement measured up to 45x slower than on 1.5.6 (5,063 ms against 111 ms at SF10 `catalog_sales`, shared machine), while complete Q16, Q94 and Q95 were not slower in the same session. The pin-lift work confirmed identical answers on 2.0.0 and 1.5.5 over the same SF1 data but ran no timings. BenchBox's published DuckDB numbers would move if complete queries regress on other scale factors or parameter sets.\n2. Warnings. Test runs on DuckDB 2.0.0 print nanobind `leaked N instances/types/functions` messages at interpreter exit. Not investigated; may be binding noise or unclosed connections in BenchBox.\n3. Data. `dsdgen` output from DuckDB's `tpcds` extension differs between 1.5.5 and 2.0; anything that compares against stored digests or answers generated on 1.x is affected. Whether BenchBox uses that extension's data anywhere digests are pinned was not established.\n\nGuardrails: timings only through `make heavy-run` on an idle host, with engine versions recorded. Do not regenerate correctness digests or baselines without the owner's decision. Do not rewrite the SQL queries to work around an engine regression; report it upstream instead.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4175"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-12T16:53:13Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8626f5fa37984a3883b1dd05b14aa2ab",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}
