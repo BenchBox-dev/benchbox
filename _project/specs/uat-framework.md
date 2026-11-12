@@ -675,7 +675,7 @@ The compose service is the source of truth: image, `platform`, `mem_limit`
 (`-m`), `cpus`, `entrypoint` plus its arguments, `command`, `ports`,
 `environment`, `volumes`, `privileged` and `restart` are translated to flags.
 Memory and cpu come from the compose file (`DORIS_MEMORY_LIMIT`,
-`SINGLESTORE_MEMORY_LIMIT`, `SINGLESTORE_CPUS`, default 4g and 4). The container is named
+`SINGLESTORE_MEMORY_LIMIT`, `SINGLESTORE_CPUS`, default 6g for Doris, 4g for SingleStore, and 4 cpus). The container is named
 `<project>-<service>-1`, carries the `com.docker.compose.project` and
 `com.docker.compose.service` labels, and named volumes become
 `<project>-<volume>`, so container and volume cleanup helpers find them. Health is
