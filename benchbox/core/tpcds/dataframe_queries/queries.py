@@ -1301,32 +1301,31 @@ def _promotion_sales_pandas(
     return _none_for_null(result, ["agg1", "agg2", "agg3", "agg4"])
 
 
-def _web_multi_warehouse_orders_expression(ctx: DataFrameContext, web_sales: Any, optimized: bool) -> Any:
-    col, lit = ctx.col, ctx.lit
-    if optimized and getattr(ctx, "platform", "polars") != "datafusion":
-        return (
-            web_sales.group_by("ws_order_number")
-            .agg(col("ws_warehouse_sk").n_unique().alias("num_warehouses"))
-            .filter(col("num_warehouses") > lit(1))
-            .select("ws_order_number")
-        )
-    order_warehouses = web_sales.select(["ws_order_number", "ws_warehouse_sk"]).unique()
+def _multi_warehouse_orders_expression(ctx: DataFrameContext, sales: Any, order_col: str, warehouse_col: str) -> Any:
+    col = ctx.col
     return (
-        order_warehouses.join(
-            order_warehouses.rename({"ws_warehouse_sk": "ws_warehouse_sk_2"}),
-            on="ws_order_number",
-        )
-        .filter(col("ws_warehouse_sk") != col("ws_warehouse_sk_2"))
-        .select(["ws_order_number"])
-        .unique()
+        sales.group_by(order_col)
+        .agg(col(warehouse_col).min().alias("min_warehouse"), col(warehouse_col).max().alias("max_warehouse"))
+        .filter(col("min_warehouse") != col("max_warehouse"))
+        .select(order_col)
     )
+
+
+def _multi_warehouse_orders_pandas(ctx: DataFrameContext, sales: Any, order_col: str, warehouse_col: str) -> Any:
+    bounds = ctx.groupby_agg(
+        sales,
+        order_col,
+        {"min_warehouse": (warehouse_col, "min"), "max_warehouse": (warehouse_col, "max")},
+        as_index=False,
+    )
+    multi = bounds["min_warehouse"].notnull() & (bounds["min_warehouse"] != bounds["max_warehouse"])
+    return bounds[multi][[order_col]]
 
 
 def _web_multi_warehouse_expression(
     ctx: DataFrameContext,
     query_id: int,
     return_mode: str,
-    optimized_multi_warehouse: bool,
 ) -> Any:
     params = get_parameters(query_id)
     year = params.get("year", 1999)
@@ -1343,7 +1342,7 @@ def _web_multi_warehouse_expression(
     date_filtered = date_dim.filter((col("d_date") >= lit(start_date)) & (col("d_date") <= lit(end_date)))
     ca_filtered = customer_address.filter(col("ca_state").is_in(states))
     ws_filtered = web_site.filter(col("web_company_name") == lit("pri"))
-    multi_warehouse_orders = _web_multi_warehouse_orders_expression(ctx, web_sales, optimized_multi_warehouse)
+    multi_warehouse_orders = _multi_warehouse_orders_expression(ctx, web_sales, "ws_order_number", "ws_warehouse_sk")
 
     if return_mode == "semi":
         returned_orders = (
@@ -1355,8 +1354,9 @@ def _web_multi_warehouse_expression(
     else:
         returned_orders = web_returns.select(["wr_order_number"]).unique()
 
+    outer_sales = web_sales.filter(col("ws_warehouse_sk").is_not_null()) if return_mode == "anti" else web_sales
     result = (
-        web_sales.join(date_filtered, left_on="ws_ship_date_sk", right_on="d_date_sk")
+        outer_sales.join(date_filtered, left_on="ws_ship_date_sk", right_on="d_date_sk")
         .join(ca_filtered, left_on="ws_ship_addr_sk", right_on="ca_address_sk")
         .join(ws_filtered, left_on="ws_web_site_sk", right_on="web_site_sk")
         .join(multi_warehouse_orders, on="ws_order_number", how="semi")
@@ -1383,7 +1383,6 @@ def _web_multi_warehouse_pandas(
     ctx: DataFrameContext,
     query_id: int,
     return_mode: str,
-    _optimized_multi_warehouse: bool,
 ) -> Any:
     import pandas as pd
 
@@ -1403,11 +1402,10 @@ def _web_multi_warehouse_pandas(
     ca_filtered = customer_address[customer_address["ca_state"].isin(states)]
     ws_filtered = web_site[web_site["web_company_name"] == "pri"]
 
-    order_warehouses = web_sales[["ws_order_number", "ws_warehouse_sk"]].drop_duplicates()
-    ow_count = ctx.groupby_size(order_warehouses, "ws_order_number", name="wh_count")
-    multi_warehouse_orders = ow_count[ow_count["wh_count"] > 1][["ws_order_number"]]
+    multi_warehouse_orders = _multi_warehouse_orders_pandas(ctx, web_sales, "ws_order_number", "ws_warehouse_sk")
 
-    result = web_sales.merge(date_filtered, left_on="ws_ship_date_sk", right_on="d_date_sk")
+    outer_sales = web_sales[web_sales["ws_warehouse_sk"].notnull()] if return_mode == "anti" else web_sales
+    result = outer_sales.merge(date_filtered, left_on="ws_ship_date_sk", right_on="d_date_sk")
     result = result.merge(ca_filtered[["ca_address_sk"]], left_on="ws_ship_addr_sk", right_on="ca_address_sk")
     result = result.merge(ws_filtered[["web_site_sk"]], left_on="ws_web_site_sk", right_on="web_site_sk")
     result = result.merge(multi_warehouse_orders, on="ws_order_number")
@@ -7072,25 +7070,7 @@ def q16_expression_impl(ctx: DataFrameContext) -> Any:
     returned_orders = catalog_returns.select(["cr_order_number"]).unique()
 
     shipped = catalog_sales.filter(col("cs_warehouse_sk").is_not_null())
-    platform = getattr(ctx, "platform", "polars")
-    if platform == "datafusion":
-        order_warehouses = shipped.select(["cs_order_number", "cs_warehouse_sk"]).unique()
-        multi_warehouse_orders = (
-            order_warehouses.join(
-                order_warehouses.rename({"cs_warehouse_sk": "cs_warehouse_sk_2"}),
-                on="cs_order_number",
-            )
-            .filter(col("cs_warehouse_sk") != col("cs_warehouse_sk_2"))
-            .select(["cs_order_number"])
-            .unique()
-        )
-    else:
-        multi_warehouse_orders = (
-            shipped.group_by("cs_order_number")
-            .agg(col("cs_warehouse_sk").n_unique().alias("num_warehouses"))
-            .filter(col("num_warehouses") > lit(1))
-            .select("cs_order_number")
-        )
+    multi_warehouse_orders = _multi_warehouse_orders_expression(ctx, shipped, "cs_order_number", "cs_warehouse_sk")
 
     result = (
         shipped.join(date_filtered, left_on="cs_ship_date_sk", right_on="d_date_sk")
@@ -7143,9 +7123,7 @@ def q16_pandas_impl(ctx: DataFrameContext) -> Any:
     returned_orders = catalog_returns[["cr_order_number"]].drop_duplicates()
 
     shipped = catalog_sales[catalog_sales["cs_warehouse_sk"].notnull()]
-    order_warehouses = shipped[["cs_order_number", "cs_warehouse_sk"]].drop_duplicates()
-    ow_count = ctx.groupby_size(order_warehouses, "cs_order_number", name="wh_count")
-    multi_warehouse_orders = ow_count[ow_count["wh_count"] > 1][["cs_order_number"]]
+    multi_warehouse_orders = _multi_warehouse_orders_pandas(ctx, shipped, "cs_order_number", "cs_warehouse_sk")
 
     result = shipped.merge(date_filtered, left_on="cs_ship_date_sk", right_on="d_date_sk")
     result = result.merge(ca_filtered[["ca_address_sk"]], left_on="cs_ship_addr_sk", right_on="ca_address_sk")
