@@ -331,7 +331,7 @@ def test_validator_and_explorer_agree_on_the_tpch_sf01_cohort() -> None:
 
     assert defective > 0
     assert validator.cohort_platforms(bundles) == {("tpch", "0.1"): explorer_identities}
-    assert explorer_identities == {"clickhouse-local^container", "datafusion", "duckdb", "sqlite"}
+    assert explorer_identities == {"clickhouse-local^container", "datafusion", "duckdb", "polars", "sqlite"}
 
 
 def test_requested_engine_without_variant_string_matches_pipeline(tmp_path: Path) -> None:
