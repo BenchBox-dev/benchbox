@@ -87,12 +87,12 @@ def _refusals(gh: FakeGh, checkout: Path) -> list[str]:
 def test_imported_paths_resolve_modules_from_imports_and_path_strings(checkout: Path) -> None:
     source = (checkout / "tests" / "test_a.py").read_text(encoding="utf-8")
     found = pr_stale_base.imported_paths(source, "tests/test_a.py", lambda p: (checkout / p).is_file())
-    assert found == {"benchbox/helper.py", "benchbox/core.py", "scripts/tool.py"}
+    assert found == {"benchbox/__init__.py", "benchbox/helper.py", "benchbox/core.py", "scripts/tool.py"}
 
 
 def test_relative_imports_resolve_against_the_importing_file(checkout: Path) -> None:
     found = pr_stale_base.imported_paths("from . import core\n", "benchbox/x.py", lambda p: (checkout / p).is_file())
-    assert found == {"benchbox/core.py"}
+    assert found == {"benchbox/__init__.py", "benchbox/core.py"}
 
 
 def test_unparseable_source_imports_nothing() -> None:
