@@ -38,9 +38,11 @@ heavy-sentinel-uninstall:
 	@uv run -- python -m benchbox.utils.host_lock sentinel uninstall $(SENTINEL_ARGS)
 
 .PHONY: heavy-run
+heavy-run: override CMD := $(value CMD)
+heavy-run: export HEAVY_RUN_CMD := $(CMD)
 heavy-run:
-	@test -n "$$CMD" || { echo "usage: make heavy-run CMD='<command>' [HEAVY_ADMIT_WAIT=<minutes>]"; exit 2; }
-	@uv run -- python -m benchbox.utils.host_lock run --admit --guard $${HEAVY_ADMIT_WAIT:+--admit-wait-minutes "$$HEAVY_ADMIT_WAIT"} -- sh -c "$$CMD"
+	@test -n "$$HEAVY_RUN_CMD" || { echo "usage: make heavy-run CMD='<command>' [HEAVY_ADMIT_WAIT=<minutes>]"; exit 2; }
+	@uv run -- python -m benchbox.utils.host_lock run --admit --guard $${HEAVY_ADMIT_WAIT:+--admit-wait-minutes "$$HEAVY_ADMIT_WAIT"} -- sh -c "$$HEAVY_RUN_CMD"
 
 .PHONY: test-medium
 test-medium:
