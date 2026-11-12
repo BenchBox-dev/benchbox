@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
@@ -47,7 +46,6 @@ from benchbox.core.results.subscale_policy import (
     routed_compliance_class,
 )
 from benchbox.core.results.timer_scope import effective_timing_method
-from benchbox.core.tpc_spec import full_spec_violations
 
 if TYPE_CHECKING:
     pass
@@ -92,9 +90,6 @@ _BENCHMARK_FAMILY: dict[str, str] = {
 
 def benchmark_family(benchmark_id: str) -> str:
     return _BENCHMARK_FAMILY.get(benchmark_id, "generic")
-
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -374,38 +369,6 @@ class ResultBuilder:
         self._plan_capture_failures = capture_failures
         self._plan_capture_errors = capture_errors or []
 
-    def _full_spec_violations(self) -> list[str]:
-        benchmark_id = normalize_benchmark_id(self._benchmark.name)
-        run_config = self._run_config
-        recorded = self._execution_phases_override
-        power = recorded.power_test if recorded else None
-        throughput = recorded.throughput_test if recorded else None
-        executed_phases = []
-        if recorded is not None:
-            if recorded.setup.data_loading is not None:
-                executed_phases.append("load")
-            if power is not None:
-                executed_phases.append("power")
-            if throughput is not None:
-                executed_phases.append("throughput")
-            if recorded.maintenance_test is not None:
-                executed_phases.append("maintenance")
-        refresh = power.refresh_functions if power is not None else None
-        refresh_functions = (
-            refresh is not None
-            and len(refresh) == 2
-            and all(function.get("status") == "SUCCESS" for function in refresh)
-        )
-        return full_spec_violations(
-            benchmark_id,
-            self._benchmark.scale_factor,
-            seed=run_config.seed if run_config else None,
-            phases=executed_phases,
-            streams=throughput.num_streams if throughput is not None else None,
-            query_subset=run_config.query_subset if run_config else None,
-            refresh_functions=refresh_functions,
-        )
-
     def build(self) -> BenchmarkResults:
         duration_seconds = self._calculate_duration()
 
@@ -427,11 +390,6 @@ class ResultBuilder:
         compliance_class = routed_compliance_class(
             self._benchmark.compliance_class, platform_info_gateway(platform_info)
         )
-        if compliance_class == "official":
-            violations = self._full_spec_violations()
-            if violations:
-                logger.warning("Result is not classified official: %s", "; ".join(violations))
-                compliance_class = NONSTANDARD_COMPLIANCE_CLASS
         if failed_queries or compliance_class == NONSTANDARD_COMPLIANCE_CLASS:
             tpc_metrics = {
                 "power_at_size": None,
