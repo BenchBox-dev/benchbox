@@ -19153,7 +19153,11 @@
     },
     "df-distinct-remediation-umbrella-20261112": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "tpcds-df-multi-warehouse-min-max",
+        "df-n-unique-null-semantics",
+        "df-q21-multi-supplier-min-max"
+      ],
       "priority": "medium-high",
       "status": "open",
       "title": "Coordinate the DataFrame distinct-count remediation batch (df-distinct-remediation)"
