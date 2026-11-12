@@ -13621,6 +13621,13 @@
       "status": "done",
       "title": "Add CedarDB Platform Adapter"
     },
+    "cedardb-release-gate-cell-restoration": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Add CedarDB rewrites and restore its 15 pruned cells to the release gate"
+    },
     "cedardb-release-uat-coverage": {
       "claim": null,
       "needs": [],
