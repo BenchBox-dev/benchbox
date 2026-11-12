@@ -24430,12 +24430,17 @@
       "title": "Record that the identity remediation instruction is external, and inoculate agents against following it"
     },
     "harness-reapply-clickhouse-session-settings-20261010": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T15:02:57Z",
+        "generation": "4f93cb6e1e244e20a6fec380dd93ace4",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9dde2030f0b654b7eae6a730"
+      },
       "needs": [
         "tuning-evidence-measurement-harness-20261008"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Harness re-applies ClickHouse server session settings beyond load time"
     },
     "heavy-choke-machine-name-xdist-race-20261107": {
