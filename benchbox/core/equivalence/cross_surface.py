@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from collections import Counter
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from importlib import resources
@@ -508,18 +508,35 @@ def find_cross_surface_divergences(
     )
 
 
+def _implemented_cells(
+    query_ids: Iterable[Any],
+    dataframe_query: Callable[[Any], Any],
+    backends: tuple[str, ...],
+) -> Iterator[tuple[Any, str]]:
+    for query_id in query_ids:
+        query = dataframe_query(query_id)
+        for backend in backends:
+            if query.get_impl_for_family(_BACKEND_FAMILIES.get(backend, backend)) is not None:
+                yield query_id, backend
+
+
 def count_executed_cells(
     query_ids: Iterable[Any],
     dataframe_query: Callable[[Any], Any],
     backends: tuple[str, ...],
 ) -> dict[str, int]:
     coverage = dict.fromkeys(backends, 0)
-    for query_id in query_ids:
-        query = dataframe_query(query_id)
-        for backend in backends:
-            if query.get_impl_for_family(_BACKEND_FAMILIES.get(backend, backend)) is not None:
-                coverage[backend] += 1
+    for _, backend in _implemented_cells(query_ids, dataframe_query, backends):
+        coverage[backend] += 1
     return coverage
+
+
+def executed_cell_keys(
+    query_ids: Iterable[Any],
+    dataframe_query: Callable[[Any], Any],
+    backends: tuple[str, ...],
+) -> set[str]:
+    return {f"{query_id}_{backend}" for query_id, backend in _implemented_cells(query_ids, dataframe_query, backends)}
 
 
 def _dtype_category(dtype: Any) -> str:
@@ -1420,10 +1437,12 @@ _BASELINE_YAML_PATH = Path(__file__).parent / "cross_surface_baseline.yaml"
 
 
 def _resolved_baseline_keys(
-    known: dict[str, str | ClassifiedDivergence], divergences: list[SurfaceDivergence]
+    known: dict[str, str | ClassifiedDivergence],
+    divergences: list[SurfaceDivergence],
+    executed_cells: set[str] | None = None,
 ) -> list[str]:
     found = {d.key for d in divergences}
-    return sorted(key for key, entry in known.items() if key not in found and _requires_live_divergence(entry))
+    return _split_absent_known(known, found, executed_cells)[0]
 
 
 def _apply_baseline_update(
@@ -1434,10 +1453,11 @@ def _apply_baseline_update(
     reference_row_counts: dict[Any, int],
     vacuous_cells: int,
     all_null_references: set[Any] | None = None,
+    executed_cells: set[str] | None = None,
 ) -> int:
     from benchbox.core.equivalence.known_divergences_baseline import update_baseline_file
 
-    resolved = _resolved_baseline_keys(gate.known_divergences, divergences)
+    resolved = _resolved_baseline_keys(gate.known_divergences, divergences, executed_cells)
     known_after_update = {key: entry for key, entry in gate.known_divergences.items() if key not in resolved}
     exit_code = _report(
         divergences,
@@ -1450,6 +1470,7 @@ def _apply_baseline_update(
         scale_factor=gate.scale_factor,
         vacuous_cells=vacuous_cells,
         all_null_references=all_null_references,
+        executed_cells=executed_cells,
     )
 
     if exit_code != 0:
@@ -1559,6 +1580,7 @@ def run_gate(
                     )
                 )
             coverage = count_executed_cells(data.query_ids, data.dataframe_query, gate.backends)
+            executed_cells = executed_cell_keys(data.query_ids, data.dataframe_query, gate.backends)
             vacuous_cells = count_executed_cells(
                 [qid for qid, n in reference_row_counts.items() if n == 0],
                 data.dataframe_query,
@@ -1577,7 +1599,14 @@ def run_gate(
             _report_flaky(gate.name, flaky, repeats, enforced=True)
             return 1
         return _apply_baseline_update(
-            gate, divergences, total, coverage, reference_row_counts, vacuous_cells_total, all_null_references
+            gate,
+            divergences,
+            total,
+            coverage,
+            reference_row_counts,
+            vacuous_cells_total,
+            all_null_references,
+            executed_cells,
         )
 
     exit_code = _report(
@@ -1593,6 +1622,7 @@ def run_gate(
         all_null_references=all_null_references,
         enforce_vacuity=gate.vacuity_classified,
         order_statuses=order_statuses,
+        executed_cells=executed_cells,
     )
     if flaky:
         _report_flaky(gate.name, flaky, repeats, enforced=enforced)
@@ -1614,15 +1644,37 @@ def _requires_live_divergence(entry: str | ClassifiedDivergence) -> bool:
     return entry.requires_live_divergence if isinstance(entry, ClassifiedDivergence) else True
 
 
-def _print_tolerated_matches(known: dict[str, str | ClassifiedDivergence], found: set[str]) -> None:
-    keys = sorted(
-        key
-        for key, entry in known.items()
-        if key not in found and isinstance(entry, ClassifiedDivergence) and not entry.requires_live_divergence
-    )
+def _split_absent_known(
+    known: dict[str, str | ClassifiedDivergence], found: set[str], executed_cells: set[str] | None
+) -> tuple[list[str], list[str], list[str]]:
+    executed = executed_cells or set()
+    resolved: list[str] = []
+    tolerated_matched: list[str] = []
+    uncompared: list[str] = []
+    for key, entry in sorted(known.items()):
+        if key in found:
+            continue
+        if _requires_live_divergence(entry):
+            resolved.append(key)
+        elif key in executed:
+            tolerated_matched.append(key)
+        else:
+            uncompared.append(key)
+    return resolved, tolerated_matched, uncompared
+
+
+def _print_uncompared(keys: list[str]) -> None:
+    if keys:
+        print(
+            "GATE FAILURE - tolerated approximate cells were not compared this run (not implemented, skipped or "
+            f"no result): {keys} - a tolerated cell must run to count as matching"
+        )
+
+
+def _print_tolerated_matches(keys: list[str]) -> None:
     if not keys:
         return
-    print("  [tolerated nondeterministic cells - matched this run, divergence also accepted]")
+    print("  [tolerated nondeterministic cells - compared and matched this run, divergence also accepted]")
     for key in keys:
         print(f"    {key}")
     print()
@@ -1671,6 +1723,7 @@ def _report(
     all_null_references: set[Any] | None = None,
     enforce_vacuity: bool = True,
     order_statuses: dict[tuple[Any, str], OrderStatus] | None = None,
+    executed_cells: set[str] | None = None,
 ) -> int:
     legitimately_empty = legitimately_empty or {}
     reference_row_counts = reference_row_counts or {}
@@ -1678,7 +1731,7 @@ def _report(
 
     found = {d.key for d in divergences}
     new = sorted({d.key for d in divergences if _classification(known, d) is None})
-    resolved = sorted(key for key, entry in known.items() if key not in found and _requires_live_divergence(entry))
+    resolved, tolerated_matched, uncompared = _split_absent_known(known, found, executed_cells)
     missing_backends = sorted(backend for backend, count in coverage.items() if count == 0)
     executed = sum(coverage.values())
 
@@ -1739,7 +1792,7 @@ def _report(
             print(f"    {qid}{label}: {legitimately_empty[qid]}")
         print()
 
-    _print_tolerated_matches(known, found)
+    _print_tolerated_matches(tolerated_matched)
 
     if missing_backends:
         print(f"GATE FAILURE - gated backend(s) implement no queries (nothing compared): {missing_backends}")
@@ -1757,6 +1810,7 @@ def _report(
                 "- remove the stale classification in a reviewed change"
             ]
         )
+    _print_uncompared(uncompared)
     if resolved:
         print(
             "GATE FAILURE - previously-known divergences now equivalent: "
@@ -1767,10 +1821,17 @@ def _report(
             entry = known[key]
             assert isinstance(entry, ClassifiedDivergence)
             print(f"WAIVER REVIEW DUE - {key}: review_by {entry.review_by} has passed - {entry.reason}")
-    if not new and not resolved and not missing_backends and not unclassified_empty and not stale_empty:
+    if (
+        not new
+        and not resolved
+        and not uncompared
+        and not missing_backends
+        and not unclassified_empty
+        and not stale_empty
+    ):
         suffix = " (modulo classified exceptions)" if (known or classified_empty) else ""
         print(f"SQL and DataFrame surfaces are equivalent{suffix}.")
-    return 1 if (new or resolved or missing_backends or unclassified_empty or stale_empty) else 0
+    return 1 if (new or resolved or uncompared or missing_backends or unclassified_empty or stale_empty) else 0
 
 
 def main(argv: list[str] | None = None) -> int:
