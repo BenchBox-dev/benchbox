@@ -1434,8 +1434,7 @@ def _validate_compliance_section(
     if not isinstance(benchmark, dict):
         return
     compliance = benchmark.get("compliance_class")
-    gateway = platform.get("gateway") if isinstance(platform, dict) else None
-    if isinstance(gateway, dict) and gateway.get("name") and gateway.get("routed") is True:
+    if _is_gateway_routed(platform):
         compliance = "unofficial_nonstandard"
     if compliance is None:
         return
@@ -2093,7 +2092,26 @@ def _direct_cost_total_fields(data: dict[str, Any]) -> list[tuple[str, Any]]:
     return direct_fields
 
 
+def _is_gateway_routed(platform: Any) -> bool:
+    gateway = platform.get("gateway") if isinstance(platform, dict) else None
+    return isinstance(gateway, dict) and bool(gateway.get("name")) and gateway.get("routed") is True
+
+
+def _validate_gateway_cost(data: dict[str, Any], vr: ValidationResult) -> None:
+    if not _is_gateway_routed(data.get("platform")):
+        return
+    raw_normalized = _raw_normalized_cost_block(data)
+    status = raw_normalized.get("cost_status") if isinstance(raw_normalized, dict) else None
+    if status is not None and status != "not_comparable_gateway":
+        vr.error(
+            f"gateway-routed results must declare normalized_cost.cost_status 'not_comparable_gateway'; got {status!r}"
+        )
+    for field_path, _value in _direct_cost_total_fields(data):
+        vr.error(f"gateway-routed results must not carry a cost total: {field_path}")
+
+
 def _validate_public_cost_section(data: dict[str, Any], vr: ValidationResult) -> None:
+    _validate_gateway_cost(data, vr)
     direct_fields = _direct_cost_total_fields(data)
     raw_normalized = _raw_normalized_cost_block(data)
 

@@ -1020,6 +1020,28 @@ class TestValidateBundle:
         _validate_bundle(data, vr)
         assert any("'not_comparable_gateway' must not include normalized_cost_usd" in e for e in vr.errors)
 
+    def test_gateway_routed_bundle_must_declare_not_comparable_cost(self):
+        data = _minimal_bundle()
+        data["platform"] = {**data["platform"], "gateway": {"name": "espresso", "routed": True}}
+        data["normalized_cost"] = _normalized_cost_block(cost="1.25")
+        data["cost"] = {"total_usd": 1.25, "model": "estimated"}
+
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+
+        assert any("must declare normalized_cost.cost_status 'not_comparable_gateway'" in e for e in vr.errors)
+        assert any("must not carry a cost total: cost.total_usd" in e for e in vr.errors)
+
+    def test_gateway_routed_bundle_with_not_comparable_cost_passes(self):
+        data = _minimal_bundle()
+        data["platform"] = {**data["platform"], "gateway": {"name": "espresso", "routed": True}}
+        data["normalized_cost"] = _normalized_cost_block(cost=None, status="not_comparable_gateway")
+
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+
+        assert not any("gateway-routed" in e for e in vr.errors)
+
     def test_local_zero_cost_total_with_not_applicable_provenance_passes(self):
         data = _minimal_bundle()
         data["normalized_cost"] = _normalized_cost_block(cost="0", status="not_applicable_local")

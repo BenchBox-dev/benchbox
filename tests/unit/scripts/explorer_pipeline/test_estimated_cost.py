@@ -284,3 +284,25 @@ def test_published_estimate_satisfies_the_submission_validator(bundle: dict) -> 
     result = ValidationResult("estimate")
     _validate_normalized_cost_block(cost.to_dict(), result)
     assert result.errors == []
+
+
+def test_gateway_not_comparable_cost_is_ingested_without_an_estimate() -> None:
+    data = _snowflake_bundle()
+    data["platform"]["gateway"] = {"name": "espresso", "routed": True}
+    data["normalized_cost"] = {
+        "normalized_cost_usd": None,
+        "cost_model_version": "2026.05.0",
+        "cost_model_source": "benchbox.core.cost.pricing",
+        "cost_scope": "compute_only",
+        "cost_status": "not_comparable_gateway",
+        "billing_unit": "credit",
+        "pricing_region": "us-east-1",
+        "deployment": {},
+    }
+
+    cost = _normalized_cost(_parse_bundle(data))
+
+    assert cost is not None
+    assert cost.cost_status == "not_comparable_gateway"
+    assert cost.normalized_cost_usd is None
+    assert cost.estimated_cost_usd is None

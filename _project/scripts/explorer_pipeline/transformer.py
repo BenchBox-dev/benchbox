@@ -284,7 +284,9 @@ _PASS_STATUSES = {"SUCCESS", "PASS", "pass", "success"}
 _ALLOWED_EXECUTION_RUN_TYPES: frozenset[str] = frozenset({"measurement", "warmup"})
 _COST_MODEL_SOURCE = "benchbox.core.cost.pricing"
 _COST_SCOPES: frozenset[str] = frozenset({"compute_only", "compute_plus_storage"})
-_COST_STATUSES: frozenset[str] = frozenset({"normalized", "not_applicable_local", "unavailable", "estimated"})
+_COST_STATUSES: frozenset[str] = frozenset(
+    {"normalized", "not_applicable_local", "unavailable", "estimated", "not_comparable_gateway"}
+)
 _KNOWN_LOGICAL_QUERY_COUNTS: dict[str, int] = {
     "tpch": 22,
     "tpch_skew": 22,
