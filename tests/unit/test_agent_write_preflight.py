@@ -234,7 +234,12 @@ def _run_check_in(
 ) -> subprocess.CompletedProcess[str]:
     skip_without_posix_shell()
     env = {**os.environ, **HUMAN_IDENTITY, "BENCHBOX_AGENT_PRIMARY_CLONE": str(primary)}
-    for key in ("BENCHBOX_ALLOW_MAIN_CLONE_WRITE", "ALLOW_MAIN_CLONE_WRITE", "BENCHBOX_EPHEMERAL_CLONE"):
+    for key in (
+        "BENCHBOX_ALLOW_MAIN_CLONE_WRITE",
+        "ALLOW_MAIN_CLONE_WRITE",
+        "BENCHBOX_EPHEMERAL_CLONE",
+        *SESSION_ENV_KEYS,
+    ):
         env.pop(key, None)
     env.update(extra_env or {})
     return run_posix_shell(
@@ -345,22 +350,34 @@ def test_write_preflight_records_snapshot_and_passes_with_dirty_primary(tmp_path
     primary, linked = _dirty_primary_with_linked(tmp_path)
     _write_generated_hook(primary, sys.executable)
 
-    result = _run_script(
-        SCRIPT.resolve(),
-        cwd=linked,
-        env={**os.environ, **HUMAN_IDENTITY, "BENCHBOX_AGENT_PRIMARY_CLONE": str(primary)},
-    )
+    result = _write_preflight_in(linked, primary, session=None)
 
     assert result.returncode == 0, result.stderr
     assert "README.md" in _snapshot_path(linked).read_text(encoding="utf-8")
 
 
+SESSION_ENV_KEYS = (
+    "PI_SESSION_ID",
+    "CLAUDE_CODE_SESSION_ID",
+    "CLAUDE_SESSION_ID",
+    "CODEX_SESSION_ID",
+    "AGENT_SESSION_ID",
+)
+
+
 def _write_preflight_in(
-    linked: Path, primary: Path, *, extra_env: dict[str, str] | None = None
+    linked: Path, primary: Path, *, session: str | None = "session-a", extra_env: dict[str, str] | None = None
 ) -> subprocess.CompletedProcess[str]:
     env = {**os.environ, **HUMAN_IDENTITY, "BENCHBOX_AGENT_PRIMARY_CLONE": str(primary)}
-    for key in ("BENCHBOX_ALLOW_MAIN_CLONE_WRITE", "ALLOW_MAIN_CLONE_WRITE", "BENCHBOX_EPHEMERAL_CLONE"):
+    for key in (
+        "BENCHBOX_ALLOW_MAIN_CLONE_WRITE",
+        "ALLOW_MAIN_CLONE_WRITE",
+        "BENCHBOX_EPHEMERAL_CLONE",
+        *SESSION_ENV_KEYS,
+    ):
         env.pop(key, None)
+    if session is not None:
+        env["PI_SESSION_ID"] = session
     env.update(extra_env or {})
     return _run_script(SCRIPT.resolve(), cwd=linked, env=env)
 
@@ -368,7 +385,8 @@ def _write_preflight_in(
 def test_write_preflight_fails_when_primary_gains_tracked_changes_after_snapshot(tmp_path: Path) -> None:
     primary, linked = _linked_worktree(tmp_path)
     _write_generated_hook(primary, sys.executable)
-    assert _write_preflight_in(linked, primary).returncode == 0
+    first = _write_preflight_in(linked, primary)
+    assert first.returncode == 0, first.stderr
     (primary / "README.md").write_text("stray write\n", encoding="utf-8")
 
     result = _write_preflight_in(linked, primary)
@@ -388,6 +406,43 @@ def test_write_preflight_ignores_untracked_primary_files_and_preexisting_dirt(tm
     (primary / "scratch.txt").write_text("untracked\n", encoding="utf-8")
 
     assert _write_preflight_in(linked, primary).returncode == 0
+
+
+def test_new_session_in_reused_worktree_starts_from_a_fresh_snapshot(tmp_path: Path) -> None:
+    primary, linked = _linked_worktree(tmp_path)
+    _write_generated_hook(primary, sys.executable)
+    assert _write_preflight_in(linked, primary, session="session-a").returncode == 0
+    (primary / "README.md").write_text("owner edit after session a began\n", encoding="utf-8")
+    assert _write_preflight_in(linked, primary, session="session-a").returncode == 1
+
+    reused = _write_preflight_in(linked, primary, session="session-b", extra_env={"BENCHBOX_WORKTREE_TAKEOVER": "1"})
+
+    assert reused.returncode == 0, reused.stderr
+    assert _write_preflight_in(linked, primary, session="session-b").returncode == 0
+
+
+def test_write_preflight_without_session_identity_only_reports(tmp_path: Path) -> None:
+    primary, linked = _linked_worktree(tmp_path)
+    _write_generated_hook(primary, sys.executable)
+    assert _write_preflight_in(linked, primary, session=None).returncode == 0
+    (primary / "README.md").write_text("stray write\n", encoding="utf-8")
+
+    result = _write_preflight_in(linked, primary, session=None)
+
+    assert result.returncode == 0, result.stderr
+    assert "README.md" in result.stderr
+
+
+def test_commit_hook_path_reports_but_does_not_fail(tmp_path: Path) -> None:
+    primary, linked = _linked_worktree(tmp_path)
+    _write_generated_hook(primary, sys.executable)
+    assert _write_preflight_in(linked, primary).returncode == 0
+    (primary / "README.md").write_text("owner edit\n", encoding="utf-8")
+
+    result = _write_preflight_in(linked, primary, extra_env={"BENCHBOX_PREFLIGHT_FROM_COMMIT_HOOK": "1"})
+
+    assert result.returncode == 0, result.stderr
+    assert "README.md" in result.stderr
 
 
 def test_write_preflight_refresh_override_accepts_new_primary_state(tmp_path: Path) -> None:

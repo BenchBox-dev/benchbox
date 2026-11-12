@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -185,6 +187,170 @@ def test_refusal_names_the_sessions_own_worktree_when_several_exist(repo: tuple[
     own = _run_guard(_payload("Edit", linked, file_path="../BenchBox/app.txt"))
     assert str(linked / "app.txt") in own.stderr
     assert str(other / "app.txt") not in own.stderr
+
+
+NON_FILESYSTEM_TARGETS = [
+    "xd://mcp__tractable_take",
+    "local://notes.md",
+    "ssh://host/x",
+    "conflict://1",
+    "proc://id/kill",
+    "agent://name",
+    "out://x.md",
+    "artifact://1",
+]
+
+
+@pytest.mark.parametrize("target", NON_FILESYSTEM_TARGETS)
+@pytest.mark.parametrize("tool", ["write", "edit"])
+def test_non_filesystem_targets_are_never_treated_as_paths(repo: tuple[Path, Path], target: str, tool: str) -> None:
+    primary, _ = repo
+
+    assert _run_guard(_payload(tool, primary, path=target)).returncode == 0
+    assert _run_guard(_payload("edit", primary, input=f"[{target}#1A2B]\nPUT 1:\n+x\n")).returncode == 0
+    assert _run_guard(_payload("ast_edit", primary, paths=[target])).returncode == 0
+
+
+def test_dot_slash_prefix_keeps_a_uri_shaped_name_a_real_path(repo: tuple[Path, Path]) -> None:
+    primary, _ = repo
+
+    assert _run_guard(_payload("write", primary, path="./xd://literal")).returncode == 2
+
+
+def test_file_url_into_primary_is_refused_and_into_worktree_is_allowed(repo: tuple[Path, Path]) -> None:
+    primary, linked = repo
+
+    assert _run_guard(_payload("write", linked, path=(primary / "app.txt").as_uri())).returncode == 2
+    assert _run_guard(_payload("write", primary, path=(linked / "app.txt").as_uri())).returncode == 0
+
+
+def test_write_path_wrapped_in_hashline_header_is_unwrapped(repo: tuple[Path, Path]) -> None:
+    primary, linked = repo
+
+    assert _run_guard(_payload("write", primary, path="[app.txt#1A2B]")).returncode == 2
+    assert _run_guard(_payload("write", primary, path=f"[{linked / 'app.txt'}#1A2B]")).returncode == 0
+
+
+def test_multi_file_edit_input_is_refused_when_any_section_targets_primary(repo: tuple[Path, Path]) -> None:
+    primary, linked = repo
+    own = linked / "ok.py"
+    edit_input = f"*** Begin Patch\n[{own}#1A2B]\nPUT 1:\n+x\n[app.txt#3C4D]\nPUT 1:\n+y\n*** End Patch\n"
+
+    result = _run_guard(_payload("edit", primary, input=edit_input))
+
+    assert result.returncode == 2
+    assert str(linked / "app.txt") in result.stderr
+    assert str(own) not in result.stderr.split("Use the absolute path")[0]
+    clean = f"[{own}#1A2B]\nPUT 1:\n+x\n[{linked / 'b.py'}#3C4D]\nPUT 1:\n+y\n"
+    assert _run_guard(_payload("edit", primary, input=clean)).returncode == 0
+
+
+@pytest.mark.parametrize("destination", ["app.txt", '"app.txt"', "'app.txt'"])
+def test_edit_move_destination_into_primary_is_refused(repo: tuple[Path, Path], destination: str) -> None:
+    primary, linked = repo
+    edit_input = f"[{linked / 'a.py'}#1A2B]\nMV {destination}\n"
+
+    assert _run_guard(_payload("edit", primary, input=edit_input)).returncode == 2
+    assert (
+        _run_guard(_payload("edit", primary, input=f"[{linked / 'a.py'}#1A2B]\nMV {linked / 'b.py'}\n")).returncode == 0
+    )
+
+
+def test_absolute_primary_write_is_refused_when_session_cwd_is_outside_any_repository(
+    repo: tuple[Path, Path], tmp_path: Path
+) -> None:
+    primary, _ = repo
+    scripts = primary / "scripts"
+    scripts.mkdir()
+    shutil.copy(GUARD, scripts / GUARD.name)
+    outside = tmp_path / "elsewhere"
+    outside.mkdir()
+    payload = json.dumps(_payload("write", outside, path=str(primary / "app.txt")))
+    base = {k: v for k, v in os.environ.items() if k not in CLEAN_ENV_KEYS}
+
+    result = subprocess.run([str(scripts / GUARD.name)], input=payload, env=base, capture_output=True, text=True)
+
+    assert result.returncode == 2
+
+
+def test_unrelated_repository_primary_with_worktrees_is_not_guarded(repo: tuple[Path, Path], tmp_path: Path) -> None:
+    other = (tmp_path / "other").resolve()
+    other.mkdir()
+    _git(other, "init", "-q")
+    _git(other, "config", "user.name", "Test")
+    _git(other, "config", "user.email", "test@example.com")
+    (other / "f.txt").write_text("x\n", encoding="utf-8")
+    _git(other, "add", "f.txt")
+    _git(other, "commit", "-qm", "base")
+    _git(other, "worktree", "add", "-q", "-b", "x", str(tmp_path / "other.wt"))
+    primary, _ = repo
+
+    assert _run_guard(_payload("write", primary, path=str(other / "f.txt"))).returncode == 0
+
+
+def test_differently_cased_primary_path_is_refused_on_case_insensitive_filesystems(repo: tuple[Path, Path]) -> None:
+    primary, _ = repo
+    swapped = Path(str(primary).swapcase()) / "app.txt"
+    if not swapped.exists():
+        pytest.skip("filesystem is case sensitive")
+
+    assert _run_guard(_payload("write", primary, path=str(swapped))).returncode == 2
+
+
+def _js_runtime() -> list[str] | None:
+    bun = shutil.which("bun")
+    if bun:
+        return [bun]
+    node = shutil.which("node")
+    return [node, "--experimental-strip-types", "--no-warnings"] if node else None
+
+
+def test_omp_hook_module_blocks_primary_writes_and_ignores_everything_else(
+    repo: tuple[Path, Path], tmp_path: Path
+) -> None:
+    runtime = _js_runtime()
+    if runtime is None:
+        pytest.skip("neither bun nor node is installed")
+    primary, linked = repo
+    scripts = primary / "scripts"
+    scripts.mkdir()
+    shutil.copy(GUARD, scripts / GUARD.name)
+    shim = REPO_ROOT / ".omp" / "hooks" / "pre" / "primary-clone-write-guard.ts"
+    runner = tmp_path / "run_hook.mjs"
+    calls = [
+        ["edit", {"input": "[app.txt#1A2B]\nPUT 1:\n+x\n"}],
+        ["write", {"path": "app.txt", "content": "x"}],
+        ["write", {"path": str(linked / "app.txt"), "content": "x"}],
+        ["write", {"path": "xd://mcp__tractable_take", "content": "{}"}],
+        ["read", {"path": "app.txt"}],
+        ["bash", {"command": "echo app.txt"}],
+        ["constructor", {}],
+    ]
+    runner.write_text(
+        f"""import hook from {json.dumps(shim.as_uri())};
+let handler;
+hook({{ on: (_name, fn) => {{ handler = fn; }} }});
+const ctx = {{ cwd: {json.dumps(str(primary))} }};
+const calls = {json.dumps(calls)};
+const out = [];
+for (const [toolName, input] of calls) out.push((await handler({{ toolName, input }}, ctx)) ?? null);
+console.log(JSON.stringify(out));
+""",
+        encoding="utf-8",
+    )
+    base = {k: v for k, v in os.environ.items() if k not in CLEAN_ENV_KEYS}
+
+    skip_without_posix_shell()
+    command = " ".join(shlex.quote(part) for part in [*runtime, str(runner)])
+    result = run_posix_shell(
+        command, cwd=tmp_path, env=base, capture_output=True, text=True, encoding="utf-8", check=False
+    )
+
+    assert result.returncode == 0, result.stderr
+    outcomes = json.loads(result.stdout.strip().splitlines()[-1])
+    assert outcomes[0]["block"] is True and str(linked / "app.txt") in outcomes[0]["reason"]
+    assert outcomes[1]["block"] is True
+    assert outcomes[2:] == [None] * 5
 
 
 @pytest.mark.parametrize("stdin", ["not json", "[]"])

@@ -1,6 +1,8 @@
 #!/bin/sh
 set -eu
 
+export BENCHBOX_PREFLIGHT_FROM_COMMIT_HOOK=1
+
 configured=$(git config --bool --get benchbox.agent-write-preflight 2>/dev/null || true)
 if [ "$configured" = "true" ] || [ "${BENCHBOX_AGENT_SESSION:-}" = "1" ]; then
   exec sh scripts/agent_write_preflight.sh

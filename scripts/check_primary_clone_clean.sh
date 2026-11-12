@@ -16,6 +16,10 @@ primary_clone=${BENCHBOX_AGENT_PRIMARY_CLONE:-$(dirname "$common_abs")}
 top_abs=$(realpath "$top")
 primary_abs=$(realpath "$primary_clone")
 snapshot="$git_dir_abs/primary-clone-snapshot"
+session_id=${PI_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CLAUDE_SESSION_ID:-${CODEX_SESSION_ID:-${AGENT_SESSION_ID:-}}}}}
+if [ -n "$session_id" ]; then
+  snapshot="$snapshot.$(printf '%s' "$session_id" | git hash-object --stdin)"
+fi
 
 if [ "${BENCHBOX_ALLOW_MAIN_CLONE_WRITE:-${ALLOW_MAIN_CLONE_WRITE:-}}" = "1" ] || [ "${BENCHBOX_EPHEMERAL_CLONE:-}" = "1" ]; then
   exit 0
@@ -57,6 +61,9 @@ case "$mode" in
     changed=$(current_state | grep -vxFf "$snapshot" | cut -f2 || true)
     if [ -z "$changed" ]; then
       exit 0
+    fi
+    if [ "$mode" = enforce ] && [ -z "$session_id" ]; then
+      mode=report
     fi
     if [ "$mode" = enforce ]; then
       heading="ERROR: tracked files in the primary clone changed after this worktree's snapshot."
