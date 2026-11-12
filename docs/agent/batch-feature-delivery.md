@@ -152,6 +152,10 @@ A member:
 
 - implements inside its scope and writes one changelog fragment for its change
   (see `changelog.d/README.md`);
+- passes an absolute path under its own worktree to every file read, edit and
+  write, never a relative one: file tools resolve relative paths against the
+  session directory, which is the primary clone, even after `cd` in a shell
+  (`docs/agent/primary-clone-guard.md`);
 - merges the current integration branch into its branch whenever the head moved;
 - runs the union of mapped tests and any it names, through `make batch-member-check
   TESTS=...` (non-Python changes must name tests); a named test that fails or

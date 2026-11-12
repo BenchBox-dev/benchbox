@@ -6,5 +6,18 @@
   },
   "enabledMcpjsonServers": [
     "tractable"
-  ]
+  ],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "p=\"$CLAUDE_PROJECT_DIR/scripts/primary_clone_write_guard.py\"; [ -f \"$p\" ] || exit 0; exec python3 \"$p\""
+          }
+        ]
+      }
+    ]
+  }
 }

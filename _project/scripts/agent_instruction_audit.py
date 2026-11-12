@@ -204,6 +204,7 @@ EVALUATION_BOOLEAN_FIELDS = {
 }
 EVALUATION_FIELDS = {"action", "git_identity", *EVALUATION_BOOLEAN_FIELDS}
 LEGACY_REVIEW_DOC = "docs/agent/review-protocol-legacy.md"
+APPROVED_HOOK_SCRIPT = "scripts/primary_clone_write_guard.py"
 RETIRED_REVIEW_DOCS = (
     LEGACY_REVIEW_DOC,
     "docs/development/review-protocol.md",
@@ -616,6 +617,19 @@ def audit_handback_wording(project: Path) -> list[str]:
     return errors
 
 
+def _has_unapproved_hooks(hooks: object) -> bool:
+    if not hooks:
+        return False
+    if not isinstance(hooks, dict) or set(hooks) != {"PreToolUse"}:
+        return True
+    for group in hooks["PreToolUse"]:
+        for hook in group.get("hooks", []) if isinstance(group, dict) else [group]:
+            command = hook.get("command") if isinstance(hook, dict) else None
+            if not isinstance(command, str) or APPROVED_HOOK_SCRIPT not in command:
+                return True
+    return False
+
+
 def audit(project: Path, corpus: dict[str, Any]) -> tuple[Metrics, list[str]]:
     errors: list[str] = []
     metrics = collect_metrics(project)
@@ -646,7 +660,7 @@ def audit(project: Path, corpus: dict[str, Any]) -> tuple[Metrics, list[str]]:
         if retired in command_text:
             surface_errors.append(f"a .claude/commands surface binds to the superseded {retired}")
     settings = json.loads(_read(project, ".claude/settings.json"))
-    if settings.get("hooks"):
+    if _has_unapproved_hooks(settings.get("hooks")):
         surface_errors.append(".claude/settings.json contains executable hooks; use explicit gates")
     forbidden_active = {
         "imposed Claude co-author": "Co-Authored-By: Claude",

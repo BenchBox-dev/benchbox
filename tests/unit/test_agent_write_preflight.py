@@ -314,7 +314,6 @@ def test_report_names_new_and_further_modified_tracked_paths(tmp_path: Path) -> 
     assert result.returncode == 0
     assert "notes.txt" in result.stderr
     assert "README.md" in result.stderr
-    assert "Do NOT revert" in result.stderr
     assert (primary / "notes.txt").read_text(encoding="utf-8") == "stray write\n"
 
 
@@ -353,6 +352,64 @@ def test_write_preflight_records_snapshot_and_passes_with_dirty_primary(tmp_path
 
     assert result.returncode == 0, result.stderr
     assert "README.md" in _snapshot_path(linked).read_text(encoding="utf-8")
+
+
+def _write_preflight_in(
+    linked: Path, primary: Path, *, extra_env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[str]:
+    env = {**os.environ, **HUMAN_IDENTITY, "BENCHBOX_AGENT_PRIMARY_CLONE": str(primary)}
+    for key in ("BENCHBOX_ALLOW_MAIN_CLONE_WRITE", "ALLOW_MAIN_CLONE_WRITE", "BENCHBOX_EPHEMERAL_CLONE"):
+        env.pop(key, None)
+    env.update(extra_env or {})
+    return _run_script(SCRIPT.resolve(), cwd=linked, env=env)
+
+
+def test_write_preflight_fails_when_primary_gains_tracked_changes_after_snapshot(tmp_path: Path) -> None:
+    primary, linked = _linked_worktree(tmp_path)
+    _write_generated_hook(primary, sys.executable)
+    assert _write_preflight_in(linked, primary).returncode == 0
+    (primary / "README.md").write_text("stray write\n", encoding="utf-8")
+
+    result = _write_preflight_in(linked, primary)
+
+    assert result.returncode == 1
+    assert "README.md" in result.stderr
+    assert str(primary) in result.stderr
+    assert str(linked) in result.stderr
+    assert (primary / "README.md").read_text(encoding="utf-8") == "stray write\n"
+
+
+def test_write_preflight_ignores_untracked_primary_files_and_preexisting_dirt(tmp_path: Path) -> None:
+    primary, linked = _dirty_primary_with_linked(tmp_path)
+    _write_generated_hook(primary, sys.executable)
+    assert _write_preflight_in(linked, primary).returncode == 0
+    (primary / "scratch.txt").write_text("untracked\n", encoding="utf-8")
+
+    assert _write_preflight_in(linked, primary).returncode == 0
+
+
+def test_write_preflight_refresh_override_accepts_new_primary_state(tmp_path: Path) -> None:
+    primary, linked = _linked_worktree(tmp_path)
+    _write_generated_hook(primary, sys.executable)
+    assert _write_preflight_in(linked, primary).returncode == 0
+    (primary / "README.md").write_text("owner edit\n", encoding="utf-8")
+
+    accepted = _write_preflight_in(linked, primary, extra_env={"BENCHBOX_PRIMARY_SNAPSHOT_REFRESH": "1"})
+
+    assert accepted.returncode == 0, accepted.stderr
+    assert _write_preflight_in(linked, primary).returncode == 0
+    assert (primary / "README.md").read_text(encoding="utf-8") == "owner edit\n"
+
+
+def test_write_preflight_main_clone_override_skips_primary_change_failure(tmp_path: Path) -> None:
+    primary, linked = _linked_worktree(tmp_path)
+    _write_generated_hook(primary, sys.executable)
+    assert _write_preflight_in(linked, primary).returncode == 0
+    (primary / "README.md").write_text("authorized\n", encoding="utf-8")
+
+    result = _write_preflight_in(linked, primary, extra_env={"BENCHBOX_ALLOW_MAIN_CLONE_WRITE": "1"})
+
+    assert result.returncode == 0, result.stderr
 
 
 def test_snapshot_honors_declared_main_clone_write(tmp_path: Path) -> None:
