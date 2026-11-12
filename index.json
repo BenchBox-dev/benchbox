@@ -28636,6 +28636,13 @@
       "status": "done",
       "title": "Stop accepting the old `### oracle-review-shadow:` first line in the required oracle check"
     },
+    "oracle-claimed-local-finding-cannot-be-withdrawn-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Give the owner a way to withdraw a claimed local-review finding that has no review thread"
+    },
     "oracle-classify-on-gateway-host-20261025": {
       "claim": null,
       "needs": [

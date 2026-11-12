@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "A documented path lets the owner withdraw, or an agent dispute, a claimed local finding that has no review thread, and a test covers it.",
+    "A `Review adjudication:` comment that cannot apply gets a visible reply (or gate reason) saying why, instead of being ignored.",
+    "Either the planner drops a claimed prior whose path and lines are no longer in the PR diff, or docs/internal/oracle-review-v2.md states why it must not."
+  ],
+  "description": "Gap seen on PR #4013 (tracker runtime move to tractable 1.0.0), 2026-11-07. The hosted verdict on head aaa8ead was SHIP WITH FIXES and carried \"D1 (claimed Medium)\" as still open: \"Modified test fakes the upstream release download by patching urllib.request.urlopen\" at tests/unit/scripts/test_comment_policy.py:3613-3626. D1 came from the local `make pr-open` findings record, written into the PR body as a review-local-record marker and replayed by CI as a claimed prior. By then the PR no longer modified that file (it had been restored to develop), and the patching was pre-existing on develop. The owner decided WITHDRAW D1 and posted `Review adjudication: WITHDRAW D1 - ...`, but it had no effect: oracle-gate stayed failure for about 30 minutes and `make pr-arm` refused because the latest verdict listed open findings \"which a stand-in cannot waive\". Per docs/internal/oracle-review-v2.md, owner adjudication applies only to an escalated finding (open after two dispute rounds), and a dispute needs a `Dispute:` reply on a thread carrying the hidden finding marker; a claimed prior has no such thread. The only way through was to change the test (commit ba696ea), which happened to be a reasonable fix but was forced. Two gaps: (1) a claimed prior whose location is outside the PR's current diff is still replayed; (2) an owner decision on a non-escalated claimed finding is silently ignored rather than applied or refused with an explanation.",
+  "sessions": [
+    {
+      "actor": "joe-tractable-followups",
+      "at": "2026-11-12T16:54:10Z",
+      "client": "mcp",
+      "op": "create",
+      "op_id": "e8442fa0907543f8b5cd41e9194da3da",
+      "session_id": "f2d490b3e67f4a799a2cdcae340365d1"
+    }
+  ]
+}
