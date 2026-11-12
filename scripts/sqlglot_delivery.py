@@ -1125,7 +1125,7 @@ def arm_in_worktree(
             environment,
         )
         if armed.returncode == 0:
-            return {"outcome": "armed"}
+            return {"outcome": "merged" if "outcome: merged:" in (armed.stdout or "") else "armed"}
         return {"outcome": "not-armed", "reason": "the arming checks refused or are waiting", "detail": detail(armed)}
     finally:
         run(["git", "worktree", "remove", "--force", str(checkout)], clone)
