@@ -33341,6 +33341,13 @@
       "status": "done",
       "title": "Read Primitives DataFrame implementation (136 queries)"
     },
+    "read-primitives-direct-polars-n-unique-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Route the direct Polars `n_unique()` call in read primitives through the NULL-skipping form"
+    },
     "read-primitives-simplify-inline-window-helpers": {
       "claim": null,
       "needs": [],

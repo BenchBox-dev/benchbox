@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "No `pl.col(...).n_unique()` without a NULL drop remains under `benchbox/core`.",
+    "The affected read primitive returns the same rows as before on TPC-H data, and its timing before and after is recorded in this item."
+  ],
+  "description": "Latent inconsistency. PR #4169 made `UnifiedExpr.n_unique()` skip NULL on Polars so it equals SQL `COUNT(DISTINCT x)`. `benchbox/core/read_primitives/dataframe_queries.py` (around line 2317, the Polars-native cube/rollup path) calls `pl.col(\"o_custkey\").n_unique()` on the native frame and so still counts NULL. TPC-H `o_custkey` has no NULLs, so no answer is wrong today; the call would diverge from the other platforms on any data with NULL keys.\n\nExpected: that call drops NULL first, or goes through the unified expression.\n\nGuardrails: this is a timed read primitive; record before and after timing for the affected primitive on Polars and keep the change only if it is not more than 10% slower.",
+  "links": [
+    "benchbox/core/read_primitives/dataframe_queries.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-12T16:52:32Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f6341efb7471498fa5d9d855591a1479",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}
