@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Captured DuckDB query plans now record the join type DuckDB reports (semi, anti, mark, single and outer joins were recorded as inner) and split ORDER BY into one sort key per expression with its real direction (every key was recorded as ASC). A TOP_N operator also records its limit.",
+      "details": ["Fingerprints of DuckDB plans that contain such joins or sort keys change, so a plan captured before this fix compares as different from the same plan captured after it."],
+      "platforms": ["duckdb"]
+    }
+  ]
+}
