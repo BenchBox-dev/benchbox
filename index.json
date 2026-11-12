@@ -40127,15 +40127,10 @@
       "title": "Theseus: a hosted finding posted without a review thread can never be disputed or adjudicated"
     },
     "theseus-close-known-defects-trigger-scan-20261112": {
-      "claim": {
-        "expires_at": "2026-11-13T14:19:07Z",
-        "generation": "d7f0bf91b4ac4bc398ad48080eb47954",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b89414e427d02d5b37262d82"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Theseus: close #74 (known-defects trigger scan) and park the known-defects work behind a reopen trigger"
     },
     "theseus-decision-promotion-evidence-form-20261102": {
