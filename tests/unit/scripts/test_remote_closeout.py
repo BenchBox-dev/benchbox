@@ -1059,6 +1059,42 @@ def test_the_make_wrapper_hands_values_over_untouched_and_runs_no_shell_metachar
 
 
 @skip_on_windows
+def test_make_function_syntax_in_values_never_runs_and_arrives_byte_for_byte(tmp_path: Path) -> None:
+    marker = tmp_path / "ran"
+    values = {
+        "PR": f"7 $(shell touch {marker}) ${{shell touch {marker}}} $$HOME",
+        "OWNER_EXPLAINED": f"said $(shell touch {marker}) $(call x,y) $$$$ %",
+        "ACTION": f"$(shell touch {marker}) $$(shell touch {marker})",
+    }
+    env = _make_env(tmp_path, "pr-arm-remote", *(f"{name}={value}" for name, value in values.items()))
+    for name, value in values.items():
+        assert env[f"REMOTE_CLOSEOUT_{name}"] == value
+    assert not marker.exists()
+
+
+@skip_on_windows
+def test_other_targets_still_receive_command_line_values_in_their_environment(tmp_path: Path) -> None:
+    shim = tmp_path / "python3"
+    shim.write_text('#!/bin/sh\necho "$@" > "$RECORD_DIR/argv"\n', encoding="utf-8")
+    shim.chmod(0o755)
+    env = {k: v for k, v in os.environ.items() if k not in {"PR", "HEAD", "REASON"}}
+    env.update({"PATH": f"{tmp_path}{os.pathsep}{env['PATH']}", "RECORD_DIR": str(tmp_path)})
+    result = subprocess.run(
+        ["make", "--no-print-directory", "review-backoff-reset", "PR=7", f"HEAD={OTHER_SHA}", "REASON=why"],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    argv = (tmp_path / "argv").read_text(encoding="utf-8").split()
+    assert argv[argv.index("--pr") + 1] == "7"
+    assert argv[argv.index("--head") + 1] == OTHER_SHA
+
+
+@skip_on_windows
 def test_the_review_target_hands_its_options_to_the_review_script(tmp_path: Path) -> None:
     options = ("PR=7", f"HEAD={OTHER_SHA}", "MODEL=gpt-x", "REVIEWER=claude", "DRY_RUN=1", "RESUME=1")
     env = _make_env(tmp_path, "pr-landing-remote", "ACTION=review", *options)

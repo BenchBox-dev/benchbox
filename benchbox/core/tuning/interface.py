@@ -724,10 +724,114 @@ _SPARK_ADAPTER_OWNED_KEYS = frozenset(
         "spark.shuffle.manager",
     }
 )
-_SPARK_CREDENTIAL_SUBSTRINGS = ("secret", "password", "token", "credential", "access.key")
+_SPARK_CREDENTIAL_SUBSTRINGS = (
+    "secret",
+    "password",
+    "passwd",
+    "token",
+    "credential",
+    "access.key",
+    "accesskey",
+    "account.key",
+    "accountkey",
+    "private.key",
+    "privatekey",
+    "api.key",
+    "apikey",
+    "keyfile",
+    "key.file",
+)
+_SPARK_CREDENTIAL_SEGMENT_PREFIXES = ("sas",)
+_SPARK_FILESYSTEM_PREFIXES = ("spark.hadoop.", "spark.fs.")
+SPARK_SESSION_CONFIG_ALLOWED_PREFIXES = ("spark.gluten.",)
+SPARK_SESSION_CONFIG_ALLOWED_KEYS = frozenset(
+    {
+        "spark.sql.adaptive.advisoryPartitionSizeInBytes",
+        "spark.sql.adaptive.autoBroadcastJoinThreshold",
+        "spark.sql.adaptive.coalescePartitions.enabled",
+        "spark.sql.adaptive.coalescePartitions.initialPartitionNum",
+        "spark.sql.adaptive.coalescePartitions.minPartitionSize",
+        "spark.sql.adaptive.coalescePartitions.parallelismFirst",
+        "spark.sql.adaptive.enabled",
+        "spark.sql.adaptive.forceOptimizeSkewedJoin",
+        "spark.sql.adaptive.localShuffleReader.enabled",
+        "spark.sql.adaptive.maxShuffledHashJoinLocalMapThreshold",
+        "spark.sql.adaptive.nonEmptyPartitionRatioForBroadcastJoin",
+        "spark.sql.adaptive.optimizeSkewsInRebalancePartitions.enabled",
+        "spark.sql.adaptive.rebalancePartitionsSmallPartitionFactor",
+        "spark.sql.adaptive.skewJoin.enabled",
+        "spark.sql.adaptive.skewJoin.skewedPartitionFactor",
+        "spark.sql.adaptive.skewJoin.skewedPartitionThresholdInBytes",
+        "spark.sql.ansi.enabled",
+        "spark.sql.autoBroadcastJoinThreshold",
+        "spark.sql.broadcastTimeout",
+        "spark.sql.cbo.enabled",
+        "spark.sql.cbo.joinReorder.dp.threshold",
+        "spark.sql.cbo.joinReorder.enabled",
+        "spark.sql.cbo.planStats.enabled",
+        "spark.sql.codegen.hugeMethodLimit",
+        "spark.sql.codegen.maxFields",
+        "spark.sql.codegen.wholeStage",
+        "spark.sql.constraintPropagation.enabled",
+        "spark.sql.crossJoin.enabled",
+        "spark.sql.execution.arrow.pyspark.enabled",
+        "spark.sql.execution.rangeExchange.sampleSizePerPartition",
+        "spark.sql.execution.reuseSubquery",
+        "spark.sql.execution.sortBeforeRepartition",
+        "spark.sql.files.ignoreCorruptFiles",
+        "spark.sql.files.ignoreMissingFiles",
+        "spark.sql.files.maxPartitionBytes",
+        "spark.sql.files.maxPartitionNum",
+        "spark.sql.files.maxRecordsPerFile",
+        "spark.sql.files.minPartitionNum",
+        "spark.sql.files.openCostInBytes",
+        "spark.sql.inMemoryColumnarStorage.batchSize",
+        "spark.sql.inMemoryColumnarStorage.compressed",
+        "spark.sql.join.preferSortMergeJoin",
+        "spark.sql.limit.initialNumPartitions",
+        "spark.sql.limit.scaleUpFactor",
+        "spark.sql.optimizer.dynamicPartitionPruning.enabled",
+        "spark.sql.optimizer.dynamicPartitionPruning.useStats",
+        "spark.sql.optimizer.excludedRules",
+        "spark.sql.optimizer.inSetConversionThreshold",
+        "spark.sql.optimizer.maxIterations",
+        "spark.sql.optimizer.nestedSchemaPruning.enabled",
+        "spark.sql.optimizer.runtime.bloomFilter.applicationSideScanSizeThreshold",
+        "spark.sql.optimizer.runtime.bloomFilter.creationSideThreshold",
+        "spark.sql.optimizer.runtime.bloomFilter.enabled",
+        "spark.sql.optimizer.runtime.bloomFilter.expectedNumItems",
+        "spark.sql.optimizer.runtime.bloomFilter.maxNumBits",
+        "spark.sql.optimizer.runtime.bloomFilter.maxNumItems",
+        "spark.sql.optimizer.runtime.bloomFilter.numBits",
+        "spark.sql.optimizer.runtime.rowLevelOperationGroupFilter.enabled",
+        "spark.sql.orc.compression.codec",
+        "spark.sql.orc.enableVectorizedReader",
+        "spark.sql.orc.filterPushdown",
+        "spark.sql.parquet.aggregatePushdown",
+        "spark.sql.parquet.columnarReaderBatchSize",
+        "spark.sql.parquet.compression.codec",
+        "spark.sql.parquet.enableVectorizedReader",
+        "spark.sql.parquet.filterPushdown",
+        "spark.sql.session.timeZone",
+        "spark.sql.shuffle.partitions",
+        "spark.sql.sort.enableRadixSort",
+        "spark.sql.sortMergeJoinExec.buffer.in.memory.threshold",
+        "spark.sql.sortMergeJoinExec.buffer.spill.threshold",
+        "spark.sql.sources.bucketing.enabled",
+        "spark.sql.sources.parallelPartitionDiscovery.threshold",
+        "spark.sql.statistics.fallBackToHdfs",
+        "spark.sql.statistics.histogram.enabled",
+        "spark.sql.windowExec.buffer.in.memory.threshold",
+        "spark.sql.windowExec.buffer.spill.threshold",
+    }
+)
 
 
-def _canonicalize_spark_config(raw: Any) -> dict[str, str]:
+def is_known_spark_session_key(qualified: str) -> bool:
+    return qualified in SPARK_SESSION_CONFIG_ALLOWED_KEYS or qualified.startswith(SPARK_SESSION_CONFIG_ALLOWED_PREFIXES)
+
+
+def _canonicalize_spark_config(raw: Any, allow_unknown_keys: bool = False) -> dict[str, str]:
     if raw is None:
         return {}
     if not isinstance(raw, dict):
@@ -774,10 +878,22 @@ def _canonicalize_spark_config(raw: Any) -> dict[str, str]:
                 f"Invalid 'spark' session-config map: key '{qualified}' is owned by the adapter; "
                 "configure it through the adapter options instead"
             )
-        if any(marker in lowered for marker in _SPARK_CREDENTIAL_SUBSTRINGS):
+        if (
+            lowered.startswith(_SPARK_FILESYSTEM_PREFIXES)
+            or any(marker in lowered for marker in _SPARK_CREDENTIAL_SUBSTRINGS)
+            or any(segment.startswith(_SPARK_CREDENTIAL_SEGMENT_PREFIXES) for segment in lowered.split("."))
+        ):
             raise ValueError(
-                f"Invalid 'spark' session-config map: key '{qualified}' looks like a credential; "
-                "credentials are not accepted in the spark session-config map"
+                f"Invalid 'spark' session-config map: key '{qualified}' is a filesystem or "
+                "credential setting; these are not accepted in the spark session-config map"
+            )
+        if not allow_unknown_keys and not is_known_spark_session_key(qualified):
+            suggestions = difflib.get_close_matches(qualified, sorted(SPARK_SESSION_CONFIG_ALLOWED_KEYS), n=1)
+            hint = f"; did you mean '{suggestions[0]}'?" if suggestions else ""
+            raise ValueError(
+                f"Invalid 'spark' session-config map: key '{qualified}' is not a known runtime-modifiable "
+                f"Spark SQL setting{hint}. Set 'spark_allow_unknown_keys: true' in platform_optimizations "
+                "to apply keys outside the known list"
             )
     return dict(sorted(canonical.items()))
 
@@ -798,9 +914,12 @@ class PlatformOptimizationConfiguration:
     bloom_filter_columns: list[str] = field(default_factory=list)
     materialized_views_enabled: bool = False
     spark: dict[str, str] = field(default_factory=dict)
+    spark_allow_unknown_keys: bool = False
 
     def __post_init__(self) -> None:
-        self.spark = _canonicalize_spark_config(self.spark)
+        if not isinstance(self.spark_allow_unknown_keys, bool):
+            raise ValueError("Invalid 'spark_allow_unknown_keys': expected true or false")
+        self.spark = _canonicalize_spark_config(self.spark, self.spark_allow_unknown_keys)
         valid_modes = {"off", "auto", "force"}
         valid_methods = {"auto", "ctas", "z_order", "hilbert", "liquid_clustering", "vacuum_sort"}
         valid_dbx_strategies = {"z_order", "liquid_clustering", "liquid_clustering_auto", "none"}
@@ -902,6 +1021,8 @@ class PlatformOptimizationConfiguration:
             result["physical_rendering_id"] = self.physical_rendering_id
         if self.spark:
             result["spark"] = dict(sorted(self.spark.items()))
+        if self.spark_allow_unknown_keys:
+            result["spark_allow_unknown_keys"] = True
         return result
 
     @classmethod
@@ -936,7 +1057,8 @@ class PlatformOptimizationConfiguration:
             bloom_filters_enabled=data.get("bloom_filters_enabled", False),
             bloom_filter_columns=data.get("bloom_filter_columns", []),
             materialized_views_enabled=data.get("materialized_views_enabled", False),
-            spark=_canonicalize_spark_config(data.get("spark")),
+            spark=data.get("spark"),
+            spark_allow_unknown_keys=data.get("spark_allow_unknown_keys", False),
         )
 
 

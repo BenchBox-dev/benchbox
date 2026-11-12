@@ -73,7 +73,7 @@
       "provenance": "_sources/README.md"
     },
     {
-      "path": "_project/scripts/vendor/tractable-1.1.0-py3-none-any.whl",
+      "path": "_project/scripts/vendor/tractable-1.1.1-py3-none-any.whl",
       "owner": "tractable",
       "provenance": "_project/scripts/pyproject.toml"
     }

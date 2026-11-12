@@ -5,10 +5,12 @@ import socket
 from collections.abc import Callable, Mapping
 from typing import Any
 
+from benchbox.core.results.platform_options import REDACTED_VALUE
 from benchbox.core.sql_utils import (
     extract_table_name as _extract_table_name,
     normalize_table_name_in_sql as _normalize_table_name_in_sql,
 )
+from benchbox.core.tuning.interface import is_known_spark_session_key
 from benchbox.utils.sql_identifier import is_valid_sql_identifier
 
 _SPARK_IDENTIFIER_MAX_LEN = 128
@@ -395,6 +397,10 @@ def drop_tuned_spark_session_config(adapter: Any, reason: str) -> list[str]:
     return keys
 
 
+def _ledger_safe_value(conf_key: str, text: str) -> str:
+    return text if is_known_spark_session_key(conf_key) else REDACTED_VALUE
+
+
 def apply_tuned_spark_session_config(adapter: Any, connection: Any) -> dict[str, str]:
     config = _effective_tuning_configuration(adapter)
     spark_map = _tuned_spark_map(adapter, config)
@@ -412,10 +418,10 @@ def apply_tuned_spark_session_config(adapter: Any, connection: Any) -> dict[str,
     for key, value in spark_map.items():
         conf_key = key if key.startswith("spark.") else f"spark.{key}"
         text = str(value)
+        recorded_text = _ledger_safe_value(conf_key, text)
         if conf_key in explicit and explicit[conf_key].lower() != text.lower():
             adapter.logger.warning(
-                f"Tuned session config {conf_key}={text} overrides explicit adapter option "
-                f"({explicit[conf_key]}); the tuning file wins"
+                f"Tuned session config {conf_key} overrides an explicit adapter option; the tuning file wins"
             )
         try:
             is_modifiable = conf.isModifiable(conf_key) if hasattr(conf, "isModifiable") else True
@@ -423,22 +429,26 @@ def apply_tuned_spark_session_config(adapter: Any, connection: Any) -> dict[str,
             is_modifiable = True
         if not is_modifiable:
             error = RuntimeError(f"engine refused session key {conf_key} (not modifiable)")
-            adapter.logger.warning(f"Tuned session config {conf_key} was refused by the engine: {error}")
-            SparkLikeAdapterMixin._record_spark_conf_ledger(ledger, conf_key, text, applied=False, error=error)
+            adapter.logger.warning(f"Tuned session config {conf_key} was refused by the engine: not modifiable")
+            SparkLikeAdapterMixin._record_spark_conf_ledger(ledger, conf_key, recorded_text, applied=False, error=error)
             continue
         try:
             conf.set(conf_key, text)
             actual = conf.get(conf_key, None)
         except Exception as exc:
-            adapter.logger.warning(f"Tuned session config {conf_key} failed to apply: {exc}")
-            SparkLikeAdapterMixin._record_spark_conf_ledger(ledger, conf_key, text, applied=False, error=exc)
+            adapter.logger.warning(f"Tuned session config {conf_key} failed to apply: {type(exc).__name__}")
+            error = exc if is_known_spark_session_key(conf_key) else RuntimeError(type(exc).__name__)
+            SparkLikeAdapterMixin._record_spark_conf_ledger(ledger, conf_key, recorded_text, applied=False, error=error)
             continue
         if actual is None or str(actual).lower() != text.lower():
-            error = RuntimeError(f"session key {conf_key} reads back as {actual!r}, expected {text!r}")
-            adapter.logger.warning(f"Tuned session config {conf_key} did not take effect: {error}")
-            SparkLikeAdapterMixin._record_spark_conf_ledger(ledger, conf_key, text, applied=False, error=error)
+            adapter.logger.warning(f"Tuned session config {conf_key} did not take effect: read-back differs")
+            error = RuntimeError(
+                f"session key {conf_key} reads back as {_ledger_safe_value(conf_key, str(actual))!r}, "
+                f"expected {recorded_text!r}"
+            )
+            SparkLikeAdapterMixin._record_spark_conf_ledger(ledger, conf_key, recorded_text, applied=False, error=error)
             continue
-        SparkLikeAdapterMixin._record_spark_conf_ledger(ledger, conf_key, text, applied=True)
+        SparkLikeAdapterMixin._record_spark_conf_ledger(ledger, conf_key, recorded_text, applied=True)
         applied[conf_key] = text
     adapter._tuned_session_applied = applied
     return dict(applied)

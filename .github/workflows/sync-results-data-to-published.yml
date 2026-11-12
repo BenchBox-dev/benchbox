@@ -104,14 +104,14 @@ jobs:
           import sys
           from pathlib import Path
 
-          from benchbox.core.results.anonymization import AnonymizationManager
+          from benchbox.core.results.anonymization import AnonymizationManager, UnpseudonymizedPublicValueError
           from benchbox.core.results.canonical_json import canonical_json_bytes
 
           RESULTS_DATA = Path("results-data")
           COMPANION_SUFFIXES = (".manifest.json", ".plans.json", ".tuning.json", ".applied.json", ".override.json")
           MIGRATION_MANIFEST = "path-privacy-migration.manifest.json"
 
-          manager = AnonymizationManager()
+          manager = AnonymizationManager.for_public_only_bundles()
           drifted: list[str] = []
           scanned = 0
 
@@ -123,7 +123,12 @@ jobs:
               if not isinstance(payload, dict):
                   continue
               scanned += 1
-              if canonical_json_bytes(manager.anonymize_result_payload(payload)) != stored:
+              try:
+                  anonymized = manager.anonymize_result_payload(payload)
+              except UnpseudonymizedPublicValueError as exc:
+                  print(f"::error::{path} is not already pseudonymized: {exc}", file=sys.stderr)
+                  raise SystemExit(1)
+              if canonical_json_bytes(anonymized) != stored:
                   drifted.append(str(path))
 
           if not scanned:
