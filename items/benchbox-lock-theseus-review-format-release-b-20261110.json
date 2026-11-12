@@ -1,12 +1,15 @@
 {
   "acceptance": [
-    "Lock values (v0.2.11) independently recomputed and verified; both wheel URLs hash to the recorded sha256.",
+    "Lock values (v0.2.11) independently recomputed and verified: both wheel URLs downloaded and hashed; source_sha256 and delta_sha256 (from v0.2.10) recomputed; `uses:` and `with.theseus_ref` equal workflow_sha in review-gate.yml and review-verdict.yml.",
+    ".github/review.yml adds `consumer.review_guidance: .github/review-guidance.md`; the policy and guidance load under v0.2.11 without a model call (for example `theseus plan` or load_policy plus the guidance reader, command and output recorded); the file stays in gate_paths and the soundness manifest.",
+    "`minimize_superseded: true` is set unless the rehearsal recorded a token refusal, in which case it is absent and the reason is recorded here.",
+    "docs/internal/review-v2.md states that review-gate posts pending while a head has no verdict; changelog.d fragment added.",
+    "The PR body lists the three behaviour changes (format, guidance, minimising) and the rollback path (revert PR; its review runs under v0.2.11, so an owner stand-in may be needed).",
     "BenchBox digest tests pass against the release-B fixtures on the PR head (make heavy-run).",
-    "`minimize_superseded: true` set in .github/review.yml in this PR (owner decision 2026-11-11); first real App-token minimise result recorded on theseus-review-minimize-superseded-20261110, flag reverted if the token is refused.",
-    "Merged to develop with hosted SHIP and green required checks; merge SHA recorded.",
-    "The first BenchBox PR reviewed under v0.2.11 shows the new body and thread format, and the next scheduled soundness-merge-digest run after a merge reviewed under v0.2.11 classifies its decision and any overridden findings correctly (run id recorded)."
+    "Armed only after theseus-v0211-rehearsal-first-reviewed-pr-20261112 records GO; merged to develop with hosted SHIP and green required checks via make pr-arm; merge SHA recorded.",
+    "The first BenchBox PR reviewed under v0.2.11 shows the new body and thread format, and the next soundness-merge-digest run after such a merge classifies its decision and any overridden findings correctly (run id recorded)."
   ],
-  "context": "Part of theseus-review-output-format-20261110. Final delivery step of the format work.\n\nRevalidated 2026-11-11: Release B is Theseus v0.2.11, not yet published (latest tag v0.2.10). BenchBox develop lock is v0.2.9; the release-A promotion to v0.2.10 is open as PR #4123, which this item follows. Owner decision 2026-11-11: this lock PR itself enables `minimize_superseded` in BenchBox .github/review.yml (not a separate policy PR); record the first real App-token result on theseus-review-minimize-superseded-20261110 and turn the flag off again if the token is refused. That supersedes the description's recommendation and the acceptance line about a separate policy PR. The key is absent from BenchBox review.yml today. The need benchbox-review-format-dual-read-20261110 is done. Update docs/internal/review-v2.md gate-pending text when adopting (see review-gate-pending-while-waiting-decision-20261110).\n\nOwner decision 2026-11-12: v0.2.11 includes Theseus #71, and this lock PR also adds `consumer.review_guidance: .github/review-guidance.md` to .github/review.yml. The key is described in Theseus docs/consumer-policy.md under 'Reviewer guidance'. Theseus fails closed (plan exit 2) if the file is missing, empty, a symlink, not UTF-8 or over 16384 bytes, and it reads the file from the trusted base checkout. Checked on develop: a 2731-byte regular UTF-8 file, mode 100644. Also: minimize_superseded: true; update docs/internal/review-v2.md about the gate posting pending.",
+  "context": "Part of theseus-review-output-format-20261110. Final delivery step of the format work.\n\nRevalidated 2026-11-11: Release B is Theseus v0.2.11, not yet published (latest tag v0.2.10). BenchBox develop lock is v0.2.9; the release-A promotion to v0.2.10 is open as PR #4123, which this item follows. Owner decision 2026-11-11: this lock PR itself enables `minimize_superseded` in BenchBox .github/review.yml (not a separate policy PR); record the first real App-token result on theseus-review-minimize-superseded-20261110 and turn the flag off again if the token is refused. That supersedes the description's recommendation and the acceptance line about a separate policy PR. The key is absent from BenchBox review.yml today. The need benchbox-review-format-dual-read-20261110 is done. Update docs/internal/review-v2.md gate-pending text when adopting (see review-gate-pending-while-waiting-decision-20261110).\n\nOwner decision 2026-11-12: v0.2.11 includes Theseus #71, and this lock PR also adds `consumer.review_guidance: .github/review-guidance.md` to .github/review.yml. The key is described in Theseus docs/consumer-policy.md under 'Reviewer guidance'. Theseus fails closed (plan exit 2) if the file is missing, empty, a symlink, not UTF-8 or over 16384 bytes, and it reads the file from the trusted base checkout. Checked on develop: a 2731-byte regular UTF-8 file, mode 100644. Also: minimize_superseded: true; update docs/internal/review-v2.md about the gate posting pending.\n\nOwner decisions 2026-11-12 (choice dialog): serial mode, one PR carrying lock + workflow refs + review_guidance + minimize_superseded + review-v2.md doc. A feature batch was rejected: batch-land refuses a member carrying a Theseus lock change, the work spans two repositories, and the remaining non-lock change is two policy lines plus a doc paragraph. Prepare and open the PR in parallel with the Theseus self-lock; arm only after the rehearsal item records GO. Minimising: on, unless the rehearsal shows the token refused.",
   "description": "Lock-only promotion of BenchBox to Theseus release B, same procedure as release A. This installs the new verdict-body and thread writer for BenchBox PRs.\nDecision gate: start only when benchbox-review-format-dual-read-20261110 is merged on develop (the digest's High-override classification fails open without it). If release B shipped the minimise flag, decide with the owner whether BenchBox enables `minimize_superseded` in .github/review.yml (recommend: enable, since the probe proved it is not an edit); record the decision here.\nGuardrails: BenchBox AGENTS.md write workflow; recompute and verify lock values independently; hosted SHIP on the final head; make pr-arm; no live model calls.",
   "links": [
     ".github/theseus-lock.json",
@@ -44,6 +47,14 @@
       "op": "update",
       "op_id": "a5e9254bbbb04a46a8541bfdd298a636",
       "session_id": "ac7352d3450d445aa9132af1db2251b7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b89414e427d02d5b37262d82",
+      "at": "2026-11-12T14:12:38Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5c2f34c14ea347468ab6efe68dd44337",
+      "session_id": "88f192edfe954a75a195b192ece667bc"
     }
   ]
 }
