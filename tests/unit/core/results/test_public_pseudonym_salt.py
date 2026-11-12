@@ -115,7 +115,7 @@ def test_exporter_soft_reads_env_salt_for_public_hash(
     assert endpoint != empty_expected
 
 
-def test_exporter_without_env_salt_still_exports_empty_default(
+def test_exporter_without_env_salt_uses_private_salt_file(
     tmp_path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -128,13 +128,13 @@ def test_exporter_without_env_salt_still_exports_empty_default(
 
     exporter = ResultExporter(output_dir=tmp_path, anonymize=True)
     assert exporter.anonymization_manager is not None
-    assert exporter.anonymization_manager.config.machine_id_salt is None
+    assert exporter.anonymization_manager.config.machine_id_salt
 
     exported = exporter.export_result(_minimal_result_with_endpoint(), formats=["json"])
     with open(exported["json"], encoding="utf-8") as handle:
         payload = json.load(handle)
 
-    assert payload["platform"]["config"]["endpoint"] == empty_expected
+    assert payload["platform"]["config"]["endpoint"] != empty_expected
     assert payload["export"]["anonymized"] is True
 
 
