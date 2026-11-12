@@ -41785,6 +41785,13 @@
       "status": "done",
       "title": "TPC-DI parallel transform swallows failures; phases with no work report success"
     },
+    "tpcdi-remaining-spec-differences-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "TPC-DI still differs from the specification in brokers, date and time dimensions, reference tables, accounts and two fact-table meanings"
+    },
     "tpcdi-scd2-expire-update-never-runs": {
       "claim": null,
       "needs": [],

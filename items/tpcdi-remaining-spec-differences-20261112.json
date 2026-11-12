@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "A recorded decision for each difference: align or keep, with the reason.",
+    "The site TPC-DI page lists exactly the differences that remain."
+  ],
+  "context": "Filed 2026-11-12 from the scale-factor follow-up and TPC-DI generator work of 2026-11-11 and 2026-11-12: identified during that work and not addressed.",
+  "description": "## Problem\nBenchBox-dev/benchbox#4171 aligned the TPC-DI scale unit (5,000 customers) and the main row factors. These differences were left and are stated on the site page:\n- DimBroker is `max(100, 50 * SF)` rows and FactTrade draws broker ids from 1 to 100. The official generator's settings give 5,000 HR rows per unit, 30% of them brokers (1,500 per unit).\n- DimDate has 5,844 rows (2010 to 2025) and DimTime 288; the official generator uses 1950 to 2021 (about 25,900 days) and 86,400 seconds.\n- Reference tables: Industry 12 (official 102), StatusType 4 (6), TaxRate 10 (320), TradeType 6 (5).\n- One account per customer; the official generator derives accounts from customer-management actions.\n- FactCashBalances and FactWatches carry their source files' row counts (120,300 and 300,000 per unit). In the specification FactCashBalances is one row per account per day and FactWatches one row per watch, so both hold fewer rows than their sources.\n- FactMarketHistory uses the design paper's 541,550 rows per unit; the official generator's configuration (about two years of days times 800 securities) gives about 584,800. The cause of the difference was not investigated.\n\n## Change\nDecide which of these to align. Each changes generated data, so batch any that are accepted into one change, before published TPC-DI bundles are regenerated.\n\n## Guardrails\n- Queries hard-code date-key ranges such as `randint(1, 5844)`; a DimDate change touches every fact generator.\n- Update `benchbox/core/results/benchmark_specs.yaml`, the SF 1 size baseline and the site page with any change.",
+  "links": [
+    "benchbox/core/tpcdi/generator/dimensions.py",
+    "benchbox/core/tpcdi/generator_specs.yaml",
+    "http://www.vldb.org/pvldb/vol7/p1367-poess.pdf",
+    "https://github.com/BenchBox-dev/benchbox-site/pull/148"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:eb0e48032edcab785e018919",
+      "at": "2026-11-12T16:52:35Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9825fb8698ba495e94f5ed61468cc92d",
+      "session_id": "3f84b7b72a6a4389855a4c2d913fb7f9"
+    }
+  ]
+}
