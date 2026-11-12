@@ -88,6 +88,8 @@ class JoinType(str, Enum):
     CROSS = "cross"
     SEMI = "semi"
     ANTI = "anti"
+    MARK = "mark"
+    SINGLE = "single"
 
 
 class AggregateFunction(str, Enum):
