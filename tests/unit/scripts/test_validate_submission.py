@@ -72,6 +72,19 @@ class TestManifestProvenance:
         assert vr.ok
         assert any("vendor_notice" in w for w in vr.warnings)
 
+    def test_bundle_platform_and_funding_override_manifest(self, tmp_path):
+        bundle = tmp_path / "results-data" / "bundles" / "tpch_result.json"
+        bundle.parent.mkdir(parents=True)
+        bundle.write_text(
+            json.dumps({"platform": {"name": "Databricks"}, "provenance": {"funding": "free-trial"}}),
+            encoding="utf-8",
+        )
+        vr = ValidationResult("test")
+        _validate_manifest_provenance({"platform": "duckdb", "funding": "employer"}, bundle, vr)
+
+        assert not vr.ok
+        assert any("written permission" in e and "Databricks" in e for e in vr.errors)
+
     def test_notes_too_long_rejected(self):
         vr = self._run({"submission_notes": "x" * (SUBMISSION_NOTES_MAX_LEN + 1)})
         assert not vr.ok

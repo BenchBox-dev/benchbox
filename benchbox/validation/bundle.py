@@ -3160,6 +3160,25 @@ def _validate_manifest_translator_version(manifest: dict[str, Any], primary_path
         vr.error(str(exc))
 
 
+def _manifest_with_bundle_identity(manifest: dict[str, Any], primary_path: Path) -> dict[str, Any]:
+    merged = dict(manifest)
+    try:
+        bundle = json.loads(primary_path.read_text(encoding="utf-8")) if primary_path.is_file() else {}
+    except (OSError, ValueError):
+        return merged
+    if not isinstance(bundle, dict):
+        return merged
+    platform = bundle.get("platform")
+    platform_name = platform.get("name") if isinstance(platform, dict) else None
+    if isinstance(platform_name, str) and platform_name.strip():
+        merged["platform"] = platform_name
+    provenance = bundle.get("provenance")
+    bundle_funding = provenance.get("funding") if isinstance(provenance, dict) else None
+    if bundle_funding == "free-trial":
+        merged["funding"] = "free-trial"
+    return merged
+
+
 def _validate_manifest_provenance(manifest: dict[str, Any], primary_path: Path, vr: ValidationResult) -> None:
     funding = manifest.get("funding")
     if funding is not None and funding not in FUNDING_SOURCES:
@@ -3183,7 +3202,7 @@ def _validate_manifest_provenance(manifest: dict[str, Any], primary_path: Path, 
                 "community submission cannot self-assert the vendor-supplied label."
             )
 
-    vendor_errors, vendor_warnings = evaluate_vendor_conditions(manifest)
+    vendor_errors, vendor_warnings = evaluate_vendor_conditions(_manifest_with_bundle_identity(manifest, primary_path))
     for message in vendor_errors:
         vr.error(message)
     for message in vendor_warnings:
