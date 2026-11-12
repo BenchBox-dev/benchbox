@@ -1097,7 +1097,7 @@ _READ_PRIMITIVES_KNOWN_DIVERGENCES: dict[str, str | ClassifiedDivergence] = {
             "approx_quantile_groupby_expression",
             "approx_quantile_groupby_pandas",
         ),
-        ClassifiedDivergence(_READ_PRIMITIVES_APPROX, _read_primitives_sketch_residue),
+        ClassifiedDivergence(_READ_PRIMITIVES_APPROX, _read_primitives_sketch_residue, requires_live_divergence=False),
     ),
     **dict.fromkeys(
         ("statistical_percentiles_expression", "statistical_percentiles_pandas"),
@@ -1614,6 +1614,20 @@ def _requires_live_divergence(entry: str | ClassifiedDivergence) -> bool:
     return entry.requires_live_divergence if isinstance(entry, ClassifiedDivergence) else True
 
 
+def _print_tolerated_matches(known: dict[str, str | ClassifiedDivergence], found: set[str]) -> None:
+    keys = sorted(
+        key
+        for key, entry in known.items()
+        if key not in found and isinstance(entry, ClassifiedDivergence) and not entry.requires_live_divergence
+    )
+    if not keys:
+        return
+    print("  [tolerated nondeterministic cells - matched this run, divergence also accepted]")
+    for key in keys:
+        print(f"    {key}")
+    print()
+
+
 def _emit_report_lines(lines: list[str]) -> None:
     from benchbox.utils.printing import get_console
 
@@ -1724,6 +1738,8 @@ def _report(
             label = " [all-NULL row]" if qid in all_null_references else ""
             print(f"    {qid}{label}: {legitimately_empty[qid]}")
         print()
+
+    _print_tolerated_matches(known, found)
 
     if missing_backends:
         print(f"GATE FAILURE - gated backend(s) implement no queries (nothing compared): {missing_backends}")

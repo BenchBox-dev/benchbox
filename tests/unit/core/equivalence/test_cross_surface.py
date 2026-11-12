@@ -768,6 +768,69 @@ def test_known_divergence_baseline_allows_nondeterministic_absence(capsys):
     assert "SQL and DataFrame surfaces are equivalent (modulo classified exceptions)." in out
 
 
+def test_approximate_sketch_cells_pass_whether_or_not_they_diverge(capsys):
+    from benchbox.core.equivalence.cross_surface import GATES
+
+    known = GATES["read_primitives"].known_divergences
+    key = "approx_quantile_groupby_pandas"
+    within_error = SurfaceDivergence(
+        "approx_quantile_groupby", "pandas", "Value mismatch at row 0, column 1. Original: 100.0, Variant: 101.0"
+    )
+    assert known[key].accepts(within_error)
+
+    def run(divergences):
+        code = _report(
+            divergences,
+            total=2,
+            coverage={"expression": 1, "pandas": 1},
+            known={key: known[key]},
+            benchmark="fake",
+            reference_row_counts={"approx_quantile_groupby": 5},
+        )
+        return code, capsys.readouterr().out
+
+    diverged_code, diverged_out = run([within_error])
+    matched_code, matched_out = run([])
+    assert diverged_code == 0
+    assert matched_code == 0
+    assert "tolerated nondeterministic cells" not in diverged_out
+    assert f"    {key}" in matched_out
+    assert "tolerated nondeterministic cells" in matched_out
+
+
+def test_approximate_sketch_cell_still_fails_on_new_divergence_kind(capsys):
+    from benchbox.core.equivalence.cross_surface import GATES
+
+    known = GATES["read_primitives"].known_divergences
+    key = "approx_quantile_groupby_pandas"
+    errored = SurfaceDivergence("approx_quantile_groupby", "pandas", "error: boom")
+    code = _report(
+        [errored],
+        total=2,
+        coverage={"expression": 1, "pandas": 1},
+        known={key: known[key]},
+        benchmark="fake",
+        reference_row_counts={"approx_quantile_groupby": 5},
+    )
+    assert code == 1
+    assert "unclassified cross-surface divergences" in capsys.readouterr().out
+
+
+def test_only_approximate_sketch_cells_tolerate_matching_in_read_primitives():
+    from benchbox.core.equivalence.cross_surface import GATES
+
+    known = GATES["read_primitives"].known_divergences
+    tolerant = {key for key, entry in known.items() if not entry.requires_live_divergence}
+    assert tolerant == {
+        "approx_count_distinct_simple_expression",
+        "approx_count_distinct_simple_pandas",
+        "approx_count_distinct_groupby_expression",
+        "approx_count_distinct_groupby_pandas",
+        "approx_quantile_groupby_expression",
+        "approx_quantile_groupby_pandas",
+    }
+
+
 def test_known_divergence_baseline_accepts_live_entry(capsys):
     coverage = {"expression": 1, "pandas": 1}
 
