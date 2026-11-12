@@ -1665,19 +1665,24 @@ def _split_absent_known(
 
 def _print_uncompared(keys: list[str]) -> None:
     if keys:
-        print(
-            "GATE FAILURE - tolerated approximate cells were not compared this run (not implemented, skipped or "
-            f"no result): {keys} - a tolerated cell must run to count as matching"
+        _emit_report_lines(
+            [
+                "GATE FAILURE - tolerated approximate cells were not compared this run (not implemented, skipped or "
+                f"no result): {keys} - a tolerated cell must run to count as matching"
+            ]
         )
 
 
 def _print_tolerated_matches(keys: list[str]) -> None:
     if not keys:
         return
-    print("  [tolerated nondeterministic cells - compared and matched this run, divergence also accepted]")
-    for key in keys:
-        print(f"    {key}")
-    print()
+    _emit_report_lines(
+        [
+            "  [tolerated nondeterministic cells - compared and matched this run, divergence also accepted]",
+            *(f"    {key}" for key in keys),
+            "",
+        ]
+    )
 
 
 def _emit_report_lines(lines: list[str]) -> None:
