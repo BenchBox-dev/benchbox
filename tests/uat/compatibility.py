@@ -345,10 +345,180 @@ _LATER_SF1_TIMEOUT_CELL_EVIDENCE = {
 
 _LATER_SF1_TIMEOUT_RUNTIME_ENVELOPES = {key: _sf1_timeout_reason(key[0]) for key in _LATER_SF1_TIMEOUT_CELL_EVIDENCE}
 
+_TRUNK_UAT_RUN = "trunk UAT run 43154678095"
+
+_CEDARDB_STAGING_ABORT_REASON = (
+    "cedardb {benchmark} fails every query at SF{scale}: staging-table initialization hits 'current transaction is "
+    "aborted, commands ignored until end of transaction block' and reports the TPC-H 'orders' table as missing, so "
+    "the 'current transaction is aborted' error cascades through all of the cell's queries (trunk UAT run "
+    "43154678095)."
+)
+
+_CEDARDB_TPCDI_SMALL_REASON = (
+    "cedardb TPC-DI SF{scale} fails queries on CedarDB gaps: QAQ5 raises 'cannot take square root of a negative "
+    "number', QAQ7 is rejected for GROUP BY strictness ('column \"months_since_first_trade\" must appear in the "
+    "GROUP BY clause or be used in an aggregate function'), and QV1 hits 'current transaction is aborted' (trunk "
+    "UAT run 43154678095)."
+)
+
+_CEDARDB_TPCDI_SF1_REASON = (
+    "cedardb TPC-DI SF1 fails queries on CedarDB gaps: QAQ4 and QAQ5 exhaust working memory ('unable to allocate "
+    "working memory', workmemsize), QAQ6 raises 'numeric overflow', QAQ7 is rejected for GROUP BY strictness, "
+    "and QV1 hits 'current transaction is aborted' (trunk UAT run 43154678095)."
+)
+
+_CEDARDB_READ_PRIMITIVES_REASON = (
+    "cedardb Read Primitives SF{scale} fails queries on CedarDB gaps: to_date(text, text) is missing, IS JSON is "
+    "not implemented, RANGE PRECEDING needs a numeric order key, DISTINCT ORDER BY aggregates and DISTINCT "
+    "aggregates in grouping sets are not implemented, corr(numeric, numeric) and array_sort(integer[]) are "
+    "missing, the full-text @@ operator is undefined, GROUP BY strictness rejects 'p_partkey', and the cascading "
+    "'current transaction is aborted' error follows (trunk UAT run 43154678095)."
+)
+
+_CEDARDB_FLIGHTDATA_SF1_REASON = (
+    "cedardb Flight Data SF1 exits 1 after about 273s with no result file: the quiet run prints no error and the "
+    "verbose diagnostic re-run times out (exit 124) at 'Generating benchmark data...', so the cell produces no "
+    "submittable result (trunk UAT run 43154678095); SF0.01 and SF0.1 stay in the gate."
+)
+
+_CEDARDB_VECTOR_SEARCH_REASON = (
+    "cedardb Vector Search SF{scale} aborts at setup: 'Failed to configure vector extension: CREATE EXTENSION not "
+    "implemented yet', so CedarDB has no vector extension to configure (trunk UAT run 43154678095)."
+)
+
+_TPCDI_SF1_FACT_GROWTH_REASON = (
+    "{platform} TPC-DI SF1 cannot meet the 1200s release-gate cell contract: scaling the four secondary fact tables "
+    "linearly (#4149) grew the SF1 facts from 275k to 6.77M rows, and the join-heavy analytic queries (AQ2, "
+    "AQ4-AQ7, AQ10) now exceed the cell budget; {measurement} (trunk UAT run 43154678095). The root cause is open "
+    "for follow-up; other scales and other platforms stay in the gate."
+)
+
+_TRINO_PRESTO_TRUNK_UAT_REASONS = {
+    ("trino", "tpcds_obt"): (
+        "Trino TPC-DS OBT SF0.01 fails queries with TYPE_MISMATCH: 'Cannot check if date is BETWEEN varchar(9) "
+        "and date', 'Cannot apply operator: date = varchar(10)' and 'IN value and list items must be the same type "
+        "or coercible to a common type', plus 'Column 'ca_county' cannot be resolved' and 'Column 'd_year' cannot be "
+        "resolved' (trunk UAT run 43154678095)."
+    ),
+    ("trino", "tpcdi"): (
+        "Trino TPC-DI SF0.01 fails queries with TYPE_MISMATCH: 'Cannot apply operator: boolean = integer' and "
+        "'Cannot apply operator: date <= varchar(10)' (trunk UAT run 43154678095)."
+    ),
+    ("trino", "clickbench"): (
+        "Trino ClickBench SF0.01 fails queries: TYPE_MISMATCH 'Cannot apply operator: date <= varchar(10)' and "
+        "'Column 'k' cannot be resolved' / 'Column 'm' cannot be resolved' (trunk UAT run 43154678095)."
+    ),
+    ("trino", "amplab"): (
+        "Trino AMPLab SF0.01 fails queries with TYPE_MISMATCH 'Cannot apply operator: date <= varchar(10)' (trunk "
+        "UAT run 43154678095)."
+    ),
+    ("trino", "read_primitives"): (
+        "Trino Read Primitives SF0.01 fails approx_top_k_lineitem with FUNCTION_NOT_FOUND: 'Unexpected parameters "
+        "(integer, char(10), integer) for function approx_most_frequent' (trunk UAT run 43154678095)."
+    ),
+    ("trino", "coffeeshop"): (
+        "Trino CoffeeShop SF0.01 fails queries with COLUMN_NOT_FOUND: 'Column 'day_part' cannot be resolved', "
+        "'Column 'season' cannot be resolved', 'Column 'price_band' cannot be resolved' and 'Column 'year' cannot be "
+        "resolved' (trunk UAT run 43154678095)."
+    ),
+    ("trino", "tsbs_devops"): (
+        "Trino TSBS DevOps SF0.01 fails queries with TYPE_MISMATCH 'Cannot apply operator: timestamp(3) <= "
+        "varchar(19)' (trunk UAT run 43154678095)."
+    ),
+    ("trino", "nyctaxi"): (
+        "Trino NYC Taxi SF0.01 fails queries with TYPE_MISMATCH 'Cannot apply operator: timestamp(3) <= "
+        "varchar(10)' (trunk UAT run 43154678095)."
+    ),
+    ("trino", "flightdata"): (
+        "Trino Flight Data SF0.01 fails queries with TYPE_MISMATCH 'Cannot apply operator: date <= varchar(10)' "
+        "(trunk UAT run 43154678095)."
+    ),
+    ("trino", "vector_search"): (
+        "Trino Vector Search SF0.01 fails queries with FUNCTION_NOT_FOUND: Function 'array_distance' not "
+        "registered and Function 'array_cosine_similarity' not registered (trunk UAT run 43154678095)."
+    ),
+    ("presto", "tpcds_obt"): (
+        "Presto TPC-DS OBT SF0.01 loads no data: the external-table load of tpcds_sales_returns_obt fails with "
+        "SYNTAX_ERROR 'Mismatch at column 1: 'channel' is of type...', leaving the table empty ('Required benchmark "
+        "tables are missing or empty'; trunk UAT run 43154678095)."
+    ),
+    ("presto", "tpcdi"): (
+        "Presto TPC-DI SF0.01 fails queries with SYNTAX_ERROR: ''=' cannot be applied to boolean, integer' and "
+        "''>=' cannot be applied to date, varchar(10)' (trunk UAT run 43154678095)."
+    ),
+    ("presto", "clickbench"): (
+        "Presto ClickBench SF0.01 fails queries with SYNTAX_ERROR ''>=' cannot be applied to date, varchar(10)' "
+        "(trunk UAT run 43154678095)."
+    ),
+    ("presto", "amplab"): (
+        "Presto AMPLab SF0.01 fails queries with SYNTAX_ERROR ''>=' cannot be applied to date, varchar(10)' "
+        "(trunk UAT run 43154678095)."
+    ),
+    ("presto", "coffeeshop"): (
+        "Presto CoffeeShop SF0.01 loads empty tables: the dim_locations and dim_products loads fail with "
+        "SYNTAX_ERROR 'Mismatch at column 2: 'location_id' is...' and 'Mismatch at column 3: 'name' is of type...' "
+        "(trunk UAT run 43154678095)."
+    ),
+    ("presto", "tsbs_devops"): (
+        "Presto TSBS DevOps SF0.01 loads empty tables: the cpu, disk, mem, net and tags loads fail with SYNTAX_ERROR "
+        "'Mismatch at column 2: 'hostname' is of...' (trunk UAT run 43154678095)."
+    ),
+    ("presto", "nyctaxi"): (
+        "Presto NYC Taxi SF0.01 fails queries with SYNTAX_ERROR ''>=' cannot be applied to timestamp, "
+        "varchar(10)' (trunk UAT run 43154678095)."
+    ),
+    ("presto", "flightdata"): (
+        "Presto Flight Data SF0.01 fails queries with SYNTAX_ERROR ''>=' cannot be applied to date, "
+        "varchar(10)' (trunk UAT run 43154678095)."
+    ),
+    ("presto", "datavault"): (
+        "Presto Data Vault SF0.01 loads empty tables: the external-table bulk load is skipped because quoted CSV "
+        "fields cannot be read by a delimited-text external table, and the fallback loads fail with "
+        "MEMORY_LIMIT_EXCEEDED (Memory limit [134217728]; trunk UAT run 43154678095)."
+    ),
+    ("presto", "vector_search"): (
+        "Presto Vector Search SF0.01 loads empty tables: the external-table bulk load is skipped because column "
+        "type array(real) has no delimited-text representation, and the fallback loads of vectors and "
+        "vector_queries fail with MEMORY_LIMIT_EXCEEDED (Memory limit [134217728]; trunk UAT run 43154678095)."
+    ),
+}
+
+_TRUNK_UAT_PRUNES = {
+    **{("cedardb", "tpcdi", scale): _CEDARDB_TPCDI_SMALL_REASON.format(scale=f"{scale:g}") for scale in (0.01, 0.1)},
+    ("cedardb", "tpcdi", 1.0): _CEDARDB_TPCDI_SF1_REASON,
+    **{
+        ("cedardb", "read_primitives", scale): _CEDARDB_READ_PRIMITIVES_REASON.format(scale=f"{scale:g}")
+        for scale in (0.01, 0.1)
+    },
+    **{
+        ("cedardb", benchmark, scale): _CEDARDB_STAGING_ABORT_REASON.format(benchmark=label, scale=f"{scale:g}")
+        for benchmark, label in (
+            ("write_primitives", "Write Primitives"),
+            ("transaction_primitives", "Transaction Primitives"),
+        )
+        for scale in (0.01, 0.1, 1.0)
+    },
+    ("cedardb", "flightdata", 1.0): _CEDARDB_FLIGHTDATA_SF1_REASON,
+    **{
+        ("cedardb", "vector_search", scale): _CEDARDB_VECTOR_SEARCH_REASON.format(scale=f"{scale:g}")
+        for scale in (0.01, 0.1, 1.0)
+    },
+    **{
+        (platform, benchmark, 0.01): reason for (platform, benchmark), reason in _TRINO_PRESTO_TRUNK_UAT_REASONS.items()
+    },
+    ("spark", "tpcdi", 1.0): _TPCDI_SF1_FACT_GROWTH_REASON.format(
+        platform="spark", measurement="the cell took 311s before the change and timed out at 1200s after it"
+    ),
+    ("datafusion", "tpcdi", 1.0): _TPCDI_SF1_FACT_GROWTH_REASON.format(
+        platform="datafusion", measurement="the cell took 62s before the change and timed out at 1200s twice after it"
+    ),
+}
+
 _RELEASE_GATE_RUNTIME_ENVELOPES = (
     _SF1_TIMEOUT_RUNTIME_ENVELOPES
     | _PANDAS_DF_SF1_MEMORY_RUNTIME_ENVELOPES
     | _LATER_SF1_TIMEOUT_RUNTIME_ENVELOPES
+    | _TRUNK_UAT_PRUNES
     | {
         ("sqlite", "datavault", 1.0): _SQLITE_DATAVAULT_SF1_RUNTIME_ENVELOPE_REASON,
         ("sqlite", "tpchavoc", 1.0): _SQLITE_TPCHAVOC_SF1_RUNTIME_ENVELOPE_REASON,
@@ -377,6 +547,7 @@ _RELEASE_GATE_RUNTIME_ENVELOPES = (
 _RELEASE_GATE_RUNTIME_ENVELOPE_EVIDENCE = (
     _SF1_TIMEOUT_RUNTIME_ENVELOPE_EVIDENCE
     | _LATER_SF1_TIMEOUT_CELL_EVIDENCE
+    | dict.fromkeys(_TRUNK_UAT_PRUNES, _TRUNK_UAT_RUN)
     | dict.fromkeys(
         _PANDAS_DF_SF1_MEMORY_RUNTIME_ENVELOPES,
         "release UAT dry run 2 (run 41163626947) SF1 memory: UAT_MEMORY_LIMIT limit_gib=13 peak_gib=13.09 / 13.22",
