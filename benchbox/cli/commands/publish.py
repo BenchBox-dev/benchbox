@@ -405,7 +405,10 @@ def _redacted_bundle_is_complete_and_clean(source: Path, redacted_path: Path) ->
                 return False
             continue
         if output_companion.is_file():
-            continue
+            if suffix != PLANS_SUFFIX:
+                continue
+            if not _redacted_output_is_clean(output_companion, roots=roots):
+                return False
         if suffix in (".plans.json", ".tuning.json", ".applied.json"):
             if _copy_clean_companion(source_companion, output_companion) is not True:
                 return False
