@@ -72,7 +72,7 @@ cannot be edited, and invalidating edits are refused once any member is `done`.
 
 The ledger under `.todo-batch/<batch>/` is the leader's rebuildable cache. It
 holds the owner generation, which no tracker tool serves back and which
-`make batch-owner-generation` prints only on request. `show_batch` and
+`uv run -- python scripts/batch_integration.py owner-generation` prints only on request. `show_batch` and
 `tractable batch show` (read-only; page every section named in `data.sections`)
 are the authoritative reads.
 

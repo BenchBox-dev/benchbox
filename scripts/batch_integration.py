@@ -40,7 +40,9 @@ ROLE_MEMBER = "member"
 DEVELOP_REF = "refs/remotes/origin/develop"
 LEDGER_ROOT = ".todo-batch"
 LEDGER_SCHEMA = "benchbox_batch_ledger_v1"
-OWNER_GENERATION_PLACEHOLDER = "<owner generation: run make batch-owner-generation in the integration worktree>"
+OWNER_GENERATION_PLACEHOLDER = (
+    "<owner generation: print it with the owner-generation command of scripts/batch_integration.py>"
+)
 EXPECTED_OWNER_GENERATION_PLACEHOLDER = "<the expected owner generation you supplied>"
 EVIDENCE_SCHEMA = "benchbox_batch_evidence_v2"
 CHECK_SCHEMA = "benchbox_member_check_v1"

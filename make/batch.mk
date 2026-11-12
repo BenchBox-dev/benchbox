@@ -59,10 +59,6 @@ batch-advance:
 	@test -n "$$BATCH_ARG_REASON" || { echo "Usage: make batch-advance REASON=<fix|develop-merge>" >&2; exit 2; }
 	@$(BATCH_SCRIPT) advance --reason "$$BATCH_ARG_REASON"
 
-.PHONY: batch-owner-generation
-batch-owner-generation:
-	@$(BATCH_SCRIPT) owner-generation
-
 .PHONY: batch-status
 batch-status:
 	@$(BATCH_SCRIPT) status

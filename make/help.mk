@@ -126,7 +126,6 @@ help:
 	@echo "  make batch-member-check [TESTS=a,b]                  Member: require clean and synced, no tracked primary-clone edits and none in scope, refuse changes outside the member scope, run preflight, changelog check and tests, record the result"
 	@echo "  make batch-land MEMBER=id [ACCEPT_WRITES=op_id,...]   Leader: refuse primary-clone edits in scope or member tracker writes, merge a checked member with --no-ff and print the take/prepare payload"
 	@echo "  make batch-advance REASON=fix|develop-merge           Leader: record a fix commit or develop merge and print the advance_batch_head payload"
-	@echo "  make batch-owner-generation                          Leader: print only the owner generation from the private ledger, for pasting into the next tracker call; never copy it into notes"
 	@echo "  make batch-status                                    Reconcile the ledger with the tracker and Git; names the next step"
 	@echo "  make batch-verify                                    Check first-parent history, recorded heads and member ancestry"
 	@echo "  make batch-recover EXPECTED_OWNER=w EXPECTED_OWNER_GENERATION=g REASON=text [RELOCATE=1]  Leader: from a clean checkout of the integration branch at the recorded head, mint a new owner generation and print the recover_batch_owner payload and take over the batch worktrees' session ownership (RELOCATE=1 moves the registered worktree here)"
