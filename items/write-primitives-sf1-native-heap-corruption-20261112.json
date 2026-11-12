@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Root cause identified with a reproducer (Linux, make ci-linux or the Linux VM)",
+    "Fix in the harness, or a minimal upstream engine reproducer filed and the cell recorded as a known engine defect with that link",
+    "duckdb and sqlite write_primitives SF1 pass in a trunk UAT shard"
+  ],
+  "description": "Trunk UAT run 43229090202 (01a15152ba, 2026-11-12): duckdb write_primitives SF1.0 exited 134 with 'malloc(): unsorted double linked list corrupted' (peak RSS 1.35 GiB) after SF0.01 and SF0.1 passed. Scheduled run 43190522005 (f4ffb30ea): sqlite write_primitives SF1 exited 139 (segfault). Two in-process engines crashing natively on the same benchmark at the same scale suggests a shared cause in the write_primitives harness path (threads sharing a connection, freed buffers, or an Arrow/driver interaction), not two engine bugs. Pruning the cells would hide a crash that a user would also hit.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/actions/runs/43229090202",
+    "https://github.com/BenchBox-dev/BenchBox/actions/runs/43190522005"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9dde2030f0b654b7eae6a730",
+      "at": "2026-11-12T17:42:18Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "738f0384768e485d8f3093649894622f",
+      "session_id": "4fc38207b51b48f682c92ef4be5cc6b0"
+    }
+  ]
+}

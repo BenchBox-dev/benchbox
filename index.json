@@ -45921,6 +45921,13 @@
       "status": "done",
       "title": "Write Primitives - Add SCD Type 2 Dimension Maintenance Coverage"
     },
+    "write-primitives-sf1-native-heap-corruption-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "write_primitives SF1 crashes the process with native heap corruption on DuckDB and SQLite"
+    },
     "write-primitives-sketch-clickhouse-and-storage-metrics": {
       "claim": null,
       "needs": [
