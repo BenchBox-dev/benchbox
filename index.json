@@ -31899,10 +31899,15 @@
       "title": "Publish the first query-plan capture bundles to the Results Explorer (PR 4153 awaits the owner lifting its hold)"
     },
     "publish-run-rewrites-plans-companion-keys-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T15:01:30Z",
+        "generation": "417ea0078dd74c90a2b71cbb13c6ef7f",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:eb741106bc3418ce287ca405"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "benchbox publish run rewrites plans companion keys from Q<id>#<stream>:<test_type> to the bare query id"
     },
     "publish-tpcds-obt-subscale-results-20261111": {
