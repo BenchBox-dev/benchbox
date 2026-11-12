@@ -11,6 +11,9 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import ci_text_edit_verdict
 
 from _project.scripts import check_suites
 
@@ -19,10 +22,14 @@ USAGE = "usage: make pr-rerun [PR=<number>] [REPO=<owner/name>]"
 
 WORKFLOW_PATH = ".github/workflows/ci.yml"
 PATHS_JOB = "ci-paths"
+FAST_TIER_JOB = "test (ubuntu-latest, 3.14)"
+DURATION_JOB = "core"
+DURATION_STEP = "verify-fast-duration"
 BASE_BRANCH = "develop"
+JOB_FILTER = ".jobs[] | {id, name, status, conclusion, run_attempt, steps: [(.steps // [])[] | {name, conclusion}]}"
 RUN_FILTER = (
     ".workflow_runs[] | {id, path, event, head_branch, head_sha,"
-    " head_repository: .head_repository.full_name, status, conclusion, created_at}"
+    " head_repository: .head_repository.full_name, display_title, status, conclusion, created_at}"
 )
 FULL_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 REPOSITORY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*$")
@@ -193,7 +200,15 @@ def _runs(runner: Runner, repo: str, head: str, branch: str, head_repository: st
 
 def _jobs(runner: Runner, repo: str, run_id: int) -> list[dict[str, Any]]:
     endpoint = f"repos/{repo}/actions/runs/{run_id}/jobs?per_page=100"
-    jobs = _lines(runner, ["api", "--paginate", "--jq", ".jobs[] | {name, status, conclusion}", endpoint])
+    return _job_records(runner, endpoint)
+
+
+def _attempt_jobs(runner: Runner, repo: str, run_id: int, attempt: int) -> list[dict[str, Any]]:
+    return _job_records(runner, f"repos/{repo}/actions/runs/{run_id}/attempts/{attempt}/jobs?per_page=100")
+
+
+def _job_records(runner: Runner, endpoint: str) -> list[dict[str, Any]]:
+    jobs = _lines(runner, ["api", "--paginate", "--jq", JOB_FILTER, endpoint])
     return [job for job in jobs if isinstance(job, dict)]
 
 
@@ -201,7 +216,42 @@ def is_text_edit_run(jobs: Sequence[Mapping[str, Any]]) -> bool:
     return any(job.get("name") == PATHS_JOB and job.get("conclusion") == "skipped" for job in jobs)
 
 
-def rerun_arguments(run: Mapping[str, Any], jobs: Sequence[Mapping[str, Any]], repo: str) -> list[str] | None:
+def is_duration_would_block(jobs: Sequence[Mapping[str, Any]]) -> bool:
+    failed = [job for job in jobs if job.get("conclusion") == "failure"]
+    if len(failed) != 1 or failed[0].get("name") != DURATION_JOB:
+        return False
+    steps = failed[0].get("steps") or []
+    return [step.get("name") for step in steps if step.get("conclusion") == "failure"] == [DURATION_STEP]
+
+
+def _fresh_timings_arguments(
+    run_id: str,
+    jobs: Sequence[Mapping[str, Any]],
+    repo: str,
+    attempt_jobs: Callable[[int], Sequence[Mapping[str, Any]]],
+) -> list[str]:
+    fast = next((job for job in jobs if job.get("name") == FAST_TIER_JOB), None)
+    if fast is None or not isinstance(fast.get("id"), int):
+        raise RerunError(
+            f"CI run {run_id} failed {DURATION_STEP} but has no {FAST_TIER_JOB!r} job to re-measure; "
+            "push a new head, or close and reopen the PR"
+        )
+    measured = fast.get("run_attempt")
+    if isinstance(measured, int) and measured > 1 and is_duration_would_block(attempt_jobs(measured - 1)):
+        raise RerunError(
+            f"CI run {run_id} measured fresh fast-tier timings after a {DURATION_STEP} would-block and the verdict "
+            "is would-block again, so this is a real slowdown, and re-running cannot clear it: remove the "
+            "slowdown, or regenerate the baseline with scripts/build_fast_duration_baseline.py"
+        )
+    return ["run", "rerun", run_id, "--repo", repo, "--job", str(fast["id"])]
+
+
+def rerun_arguments(
+    run: Mapping[str, Any],
+    jobs: Sequence[Mapping[str, Any]],
+    repo: str,
+    attempt_jobs: Callable[[int], Sequence[Mapping[str, Any]]] = lambda attempt: (),
+) -> list[str] | None:
     status = run.get("status")
     conclusion = run.get("conclusion")
     run_id = str(run.get("id"))
@@ -215,6 +265,8 @@ def rerun_arguments(run: Mapping[str, Any], jobs: Sequence[Mapping[str, Any]], r
         return None
     if conclusion == "cancelled" or any(job.get("conclusion") == "cancelled" for job in jobs):
         return ["run", "rerun", run_id, "--repo", repo]
+    if conclusion == "failure" and is_duration_would_block(jobs):
+        return _fresh_timings_arguments(run_id, jobs, repo, attempt_jobs)
     if conclusion == "failure":
         return ["run", "rerun", run_id, "--repo", repo, "--failed"]
     raise RerunError(f"CI run {run_id} ended {conclusion!r}; re-running it is not supported here")
@@ -269,30 +321,50 @@ def _check_identity(runner: Runner, repo: str, pr: int, created: datetime, branc
 
 
 def _newest_ci_run(
-    runner: Runner, repo: str, head: str, branch: str, head_repository: str
+    runner: Runner, repo: str, runs: Sequence[dict[str, Any]]
 ) -> tuple[dict[str, Any], list[dict[str, Any]]] | None:
-    for run in _runs(runner, repo, head, branch, head_repository):
+    for run in runs:
         jobs = _jobs(runner, repo, int(run["id"]))
         if not is_text_edit_run(jobs):
             return run, jobs
     return None
 
 
+def _scope(arguments: Sequence[str]) -> str:
+    if "--failed" in arguments:
+        return "failed jobs of"
+    if "--job" in arguments:
+        return "the fast-tier job and its dependents, to re-measure timings, of"
+    return "all jobs of"
+
+
 def rerun(repo: str, pr: int, runner: Runner = _subprocess_runner) -> str:
     if not REPOSITORY_RE.fullmatch(repo):
         raise RerunError("repository must be a GitHub owner/name")
     head, branch, head_repository = _pull_request_snapshot(runner, repo, pr)
-    chosen = _newest_ci_run(runner, repo, head, branch, head_repository)
+    runs = _runs(runner, repo, head, branch, head_repository)
+    chosen = _newest_ci_run(runner, repo, runs)
     suite_reruns = _suite_reruns(runner, repo, head, BASE_BRANCH)
     commands: list[tuple[list[str], str]] = []
     created: list[datetime] = []
     if chosen is not None:
         run, jobs = chosen
         created.append(_time(run.get("created_at")))
-        arguments = rerun_arguments(run, jobs, repo)
+        arguments = rerun_arguments(
+            run, jobs, repo, lambda attempt: _attempt_jobs(runner, repo, int(run["id"]), attempt)
+        )
         if arguments is not None:
-            scope = "failed jobs of" if "--failed" in arguments else "all jobs of"
-            commands.append((arguments, f"{scope} CI run {run['id']}"))
+            commands.append((arguments, f"{_scope(arguments)} CI run {run['id']}"))
+        else:
+            by_id = {item["id"]: item for item in runs}
+            for placeholder in ci_text_edit_verdict.failed_text_edit_runs(runs):
+                created.append(_time(by_id[placeholder].get("created_at")))
+                commands.append(
+                    (
+                        ["run", "rerun", str(placeholder), "--repo", repo, "--failed"],
+                        f"failed jobs of {ci_text_edit_verdict.TEXT_EDIT_RUN_NAME} run {placeholder}",
+                    )
+                )
     covered = {arguments[2] for arguments, _ in commands}
     for item in suite_reruns:
         if str(item.run_id) in covered:

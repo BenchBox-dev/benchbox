@@ -592,6 +592,15 @@ def test_a_would_block_verdict_refuses_with_the_ratios_and_the_baseline_route(
         assert expected in err
 
 
+def test_a_would_block_refusal_names_the_rerun_remedy_beside_the_baseline_remedy(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert _arm(FakeGh(verdict=WOULD_BLOCK)) == 2
+    err = capsys.readouterr().err
+    assert "make pr-rerun PR=7" in err
+    assert "regenerate the baseline" in err
+
+
 def test_a_would_block_verdict_arms_when_the_pr_updates_the_baseline() -> None:
     gh = FakeGh(verdict=WOULD_BLOCK, changed_files=["scripts/x.py", BASELINE_FILE])
     assert _arm(gh) == 0

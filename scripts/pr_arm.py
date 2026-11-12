@@ -317,7 +317,9 @@ def duration_verdict_refusals(run: Runner, repo: str, number: int, head: str, la
         f"verify-fast-duration reported would-block for {head[:9]}: normalized summed-time ratio "
         f"{_ratio(report.get('sum_ratio'))}, median per-test ratio {_ratio(report.get('median_test_ratio'))}. "
         f"The duration gate blocks `core` on a would-block verdict, and arming refuses it unless the PR changes "
-        f"{BASELINE_DIRECTORY}: remove the slowdown, or regenerate the "
+        f"{BASELINE_DIRECTORY}: if the slowdown may be runner noise, re-measure with make pr-rerun PR={number} "
+        f"(it re-runs the fast-tier job so the verdict comes from new timings; a would-block that survives "
+        f"fresh timings is real); otherwise remove the slowdown, or regenerate the "
         f"baseline with scripts/build_fast_duration_baseline.py (python -m scripts.build_fast_duration_baseline "
         f"build --manifest <manifest> --output {BASELINE_DIRECTORY}) and justify the change in the PR"
     ]

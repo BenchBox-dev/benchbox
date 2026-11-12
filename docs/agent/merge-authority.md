@@ -224,6 +224,17 @@ happened to #3264 and #3319 (`review` runs from `synchronize` and
   `not-applicable` verdict arms; a `rejected`, unknown or field-less verdict
   refuses, and a `would-block` verdict refuses unless the PR updates the
   baseline. PRs where no fast-tier tests ran upload a `not-applicable` verdict.
+- A `would-block` verdict is cleared by re-measuring through `make pr-rerun PR=<n>`.
+  When the only failure of the head's full CI run is the `verify-fast-duration`
+  step of `core`, `make pr-rerun` re-runs the `test (ubuntu-latest, 3.14)` job
+  (GitHub re-runs `core`, which depends on it) so the verdict is computed from
+  new timings. Repeating an unchanged failed-jobs rerun cannot clear it: `core`
+  re-reads the saved fast-tier timings and reproduces the verdict. Do this once
+  per head: if the run's attempt history shows fresh timings were already
+  measured after a would-block and the verdict is would-block again,
+  `make pr-rerun` refuses, because the slowdown is real; remove it or
+  regenerate the baseline. A rebase is the remedy only when develop has a newer
+  baseline.
 - `make pr-rerun` re-runs the failed jobs of the newest CI run and of every
   Actions run behind a failed required suite (a cancelled suite re-runs the
   whole run). Pending suites are left alone. It refuses a conclusion it cannot
@@ -240,6 +251,9 @@ happened to #3264 and #3319 (`review` runs from `synchronize` and
   completed with the placeholder still failed, past the 10 minutes with no
   refresh run, or when the full run failed, the refusal and the advice stand. An
   error reading the refresh runs counts as no refresh run known.
+  When the full run succeeded and a `CI (text edit)` run on the head is still
+  failed, `make pr-rerun` re-runs that run's failed jobs, which is the command
+  to use once the refresh has not cleared it.
 - `make pr-status PR=<n>` (or `RUN=<id>`) prints, for each failed job of the
   newest run of each workflow on the head, the failed step and the lines that
   explain it: error markers, failed test ids, the guard an aggregator names.
