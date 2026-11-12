@@ -42091,6 +42091,13 @@
       "status": "open",
       "title": "Trino and Presto record no platform timing inside power tests"
     },
+    "trino-presto-release-gate-cell-restoration": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Fix Trino and Presto failures and restore their pruned cells to the release gate"
+    },
     "trino-presto-text-bulk-varbinary-and-sf1-gaps-20261111": {
       "claim": null,
       "needs": [],

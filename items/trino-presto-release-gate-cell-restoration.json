@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Each pruned Trino and Presto cell fixed or deliberately re-scoped by the owner",
+    "Prunes removed and the cells green in a trunk UAT"
+  ],
+  "description": "#4138 restored Trino and Presto to stage 3. The tpcds power-test cursor bug was fixed by #4156. In trunk UAT 43154678095, about ten other 0.01 cells per platform failed and are compatibility-pruned. Trino: type mismatches (date vs varchar, boolean = integer) and `Column 'm' cannot be resolved` in clickbench. Presto: empty CSV loads, external-table errors, and MEMORY_LIMIT_EXCEEDED in datavault. The prune PR body lists each cell's error.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a4419e6ace05ac5a296d594b",
+      "at": "2026-11-12T12:52:58Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9bd166deefb9493aa97de377e5793226",
+      "session_id": "7f2d8583a7d94300804da984b061b91c"
+    }
+  ]
+}
