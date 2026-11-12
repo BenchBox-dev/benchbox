@@ -429,6 +429,21 @@ def test_json_sort_keys_are_split_with_their_own_direction() -> None:
     assert root.limit_count is None
 
 
+def test_json_sort_keys_in_one_newline_joined_string_are_split() -> None:
+    root = _parse_root(
+        {
+            "name": "ORDER_BY",
+            "extra_info": {"Order By": "o_totalprice DESC\no_orderdate ASC"},
+            "children": [_scan("orders")],
+        }
+    )
+
+    assert root.sort_keys == [
+        {"expr": "o_totalprice", "direction": "DESC"},
+        {"expr": "o_orderdate", "direction": "ASC"},
+    ]
+
+
 def test_json_top_n_records_a_single_descending_key_and_its_limit() -> None:
     root = _parse_root(
         {

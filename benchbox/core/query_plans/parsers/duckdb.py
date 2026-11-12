@@ -217,13 +217,17 @@ class DuckDBQueryPlanParser(QueryPlanParser):
             return []
         sort_keys = []
         for entry in entries:
-            if not isinstance(entry, str) or not entry.strip():
+            if not isinstance(entry, str):
                 continue
-            match = _SORT_KEY_RE.match(entry.strip())
-            if match:
-                sort_keys.append({"expr": match.group("expr").strip(), "direction": match.group("direction")})
-            else:
-                sort_keys.append({"expr": entry.strip(), "direction": "ASC"})
+            for line in entry.splitlines():
+                key = line.strip()
+                if not key:
+                    continue
+                match = _SORT_KEY_RE.match(key)
+                if match:
+                    sort_keys.append({"expr": match.group("expr").strip(), "direction": match.group("direction")})
+                else:
+                    sort_keys.append({"expr": key, "direction": "ASC"})
         return sort_keys
 
     @staticmethod
