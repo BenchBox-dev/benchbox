@@ -42575,6 +42575,13 @@
       "status": "done",
       "title": "125 existing items trip the new rung-falsifiability lint with no sweep planned"
     },
+    "tractable-expect-store-substring-match-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "tractable `expect_store` accepts a repository name that is a prefix of the bound store's name"
+    },
     "tractable-expect-store-substring-matches-prefix-repo-20261109": {
       "claim": null,
       "needs": [],
