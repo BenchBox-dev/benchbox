@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "ClickHouse statement-level join settings are now declared data and recorded in the applied-tuning ledger as harness-required entries. TPC-H Q21 on the ClickHouse server now runs with join_algorithm = 'hash' in every tuning mode, including notuning, where it previously ran with it only when tuned; the default parallel hash join exceeds the 5.25 GiB server memory rung with either layout.",
+      "details": ["notuning ClickHouse server TPC-H results that failed Q21 with a memory-limit error now complete it, so they are not comparable with earlier notuning runs on that query."],
+      "platforms": ["clickhouse"]
+    }
+  ]
+}
