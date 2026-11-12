@@ -62,14 +62,14 @@ def test_spark_map_round_trips_with_canonical_values():
                     "sql.shuffle.partitions": 200,
                     "spark.sql.adaptive.enabled": True,
                     "spark.sql.adaptive.advisoryPartitionSizeInBytes": "64MB",
-                    "spark.foo": 1.5,
+                    "spark.sql.broadcastTimeout": 1.5,
                 }
             }
         }
     )
 
     assert config.platform_optimizations.spark == {
-        "spark.foo": "1.5",
+        "spark.sql.broadcastTimeout": "1.5",
         "spark.sql.adaptive.advisoryPartitionSizeInBytes": "64MB",
         "spark.sql.adaptive.enabled": "true",
         "spark.sql.shuffle.partitions": "200",
@@ -102,10 +102,10 @@ def test_bare_and_prefixed_forms_share_hash_and_duplicates_rejected():
 
 def test_spark_key_order_stable_for_hash_and_database_name():
     first = UnifiedTuningConfiguration.from_dict(
-        {"platform_optimizations": {"spark": {"spark.b": "2", "spark.a": "1"}}}
+        {"platform_optimizations": {"spark": {"spark.sql.shuffle.partitions": "2", "spark.sql.cbo.enabled": "1"}}}
     )
     second = UnifiedTuningConfiguration.from_dict(
-        {"platform_optimizations": {"spark": {"spark.a": "1", "spark.b": "2"}}}
+        {"platform_optimizations": {"spark": {"spark.sql.cbo.enabled": "1", "spark.sql.shuffle.partitions": "2"}}}
     )
 
     assert first.get_configuration_hash() == second.get_configuration_hash()
@@ -131,6 +131,14 @@ def test_spark_key_order_stable_for_hash_and_database_name():
         ("spark.token", "credential"),
         ("spark.credential.provider", "credential"),
         ("spark.hadoop.fs.s3a.access.key", "credential"),
+        ("spark.hadoop.fs.azure.account.key.store.dfs.core.windows.net", "credential"),
+        ("spark.hadoop.fs.azure.sas.container.store.blob.core.windows.net", "credential"),
+        ("spark.hadoop.google.cloud.auth.service.account.json.keyfile", "credential"),
+        ("spark.hadoop.anything", "credential"),
+        ("fs.s3a.endpoint", "credential"),
+        ("spark.sql.azure.account.key.store", "credential"),
+        ("spark.sql.sas.token", "credential"),
+        ("spark.sql.private.key", "credential"),
     ],
 )
 def test_rejected_key_classes_name_key_and_alternative(key: str, match: str):
@@ -175,3 +183,59 @@ def test_non_empty_spark_reports_session_config_tuning_type():
         {"platform_optimizations": {"spark": {"spark.sql.shuffle.partitions": "200"}}}
     )
     assert "session_config" in _tuning_types_present(tuned.to_dict())
+
+
+@pytest.mark.parametrize("key", ["spark.sql.shuffle.partitoins", "spark.serializer", "spark.sql.catalogImplementation"])
+def test_unknown_keys_are_rejected_with_a_suggestion_and_the_override_hint(key: str):
+    with pytest.raises(ValueError, match=f"{key}.*not a known runtime-modifiable.*spark_allow_unknown_keys"):
+        PlatformOptimizationConfiguration.from_dict({"spark": {key: "x"}})
+
+
+def test_a_typo_names_the_closest_known_key():
+    with pytest.raises(ValueError, match="did you mean 'spark.sql.shuffle.partitions'"):
+        PlatformOptimizationConfiguration.from_dict({"spark": {"sql.shuffle.partitoins": "8"}})
+
+
+def test_the_override_flag_admits_unknown_keys_and_round_trips():
+    config = UnifiedTuningConfiguration.from_dict(
+        {"platform_optimizations": {"spark": {"spark.custom.vendor.flag": "1"}, "spark_allow_unknown_keys": True}}
+    )
+    assert config.platform_optimizations.spark == {"spark.custom.vendor.flag": "1"}
+    rebuilt = UnifiedTuningConfiguration.from_dict(config.to_dict())
+    assert rebuilt.platform_optimizations.spark == config.platform_optimizations.spark
+    assert rebuilt.platform_optimizations.spark_allow_unknown_keys is True
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "spark.sql.extensions",
+        "spark.driver.memory",
+        "spark.plugins",
+        "spark.hadoop.fs.s3a.access.key",
+        "spark.hadoop.fs.azure.account.key.store",
+        "spark.sql.sas.token",
+    ],
+)
+def test_the_override_flag_never_admits_static_adapter_or_credential_keys(key: str):
+    with pytest.raises(ValueError, match=key):
+        PlatformOptimizationConfiguration.from_dict({"spark": {key: "x"}, "spark_allow_unknown_keys": True})
+
+
+def test_the_override_flag_must_be_a_boolean():
+    with pytest.raises(ValueError, match="spark_allow_unknown_keys"):
+        PlatformOptimizationConfiguration(spark_allow_unknown_keys="yes")
+
+
+def test_every_allowed_key_is_accepted_and_none_is_a_denied_class():
+    from benchbox.core.tuning.interface import SPARK_SESSION_CONFIG_ALLOWED_KEYS
+
+    config = PlatformOptimizationConfiguration.from_dict(
+        {"spark": dict.fromkeys(SPARK_SESSION_CONFIG_ALLOWED_KEYS, "1")}
+    )
+    assert set(config.spark) == set(SPARK_SESSION_CONFIG_ALLOWED_KEYS)
+
+
+def test_gluten_keys_are_accepted_without_the_override_flag():
+    config = PlatformOptimizationConfiguration.from_dict({"spark": {"spark.gluten.sql.columnar.shuffle": "true"}})
+    assert config.spark == {"spark.gluten.sql.columnar.shuffle": "true"}

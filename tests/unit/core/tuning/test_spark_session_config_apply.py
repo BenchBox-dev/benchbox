@@ -140,7 +140,7 @@ def test_shadowed_adapter_option_warns_and_tuning_wins(caplog):
         apply_tuned_spark_session_config(adapter, session)
 
     assert session.conf.store["spark.sql.shuffle.partitions"] == "8"
-    assert "overrides explicit adapter option" in caplog.text
+    assert "overrides an explicit adapter option" in caplog.text
 
 
 def test_notuning_applies_nothing():
@@ -264,3 +264,39 @@ def test_spark_family_platforms_have_no_spark_alias():
         assert platform not in PLATFORM_ALIASES
         assert resolve_platform_key(platform) == platform
         assert not list_packaged_templates(platform).get(platform)
+
+
+_SECRET_VALUE = "s3cr3t-value-0123"
+
+
+def test_no_map_value_reaches_logs_or_ledger_for_an_unknown_key(caplog):
+    adapter = _ProbeAdapter()
+    adapter.unified_tuning_configuration = UnifiedTuningConfiguration.from_dict(
+        {"platform_optimizations": {"spark": {"spark.vendor.tuning": _SECRET_VALUE}, "spark_allow_unknown_keys": True}}
+    )
+    session = _FakeSession()
+
+    def failing_set(key, value):
+        raise RuntimeError(f"bad value {value}")
+
+    session.conf.set = failing_set
+    with caplog.at_level("DEBUG"):
+        apply_tuned_spark_session_config(adapter, session)
+
+    assert _SECRET_VALUE not in caplog.text
+    assert "spark.vendor.tuning" in caplog.text
+    for statement in _applied_statements(adapter):
+        assert _SECRET_VALUE not in repr(statement)
+
+
+def test_no_map_value_is_logged_on_override_refusal_or_readback_mismatch(caplog):
+    adapter = _ProbeAdapter({"spark.sql.shuffle.partitions": "7777"})
+    adapter.spark_config = {"spark.sql.shuffle.partitions": "8888"}
+    session = _FakeSession()
+    session.conf.get = lambda key, default=None: "9999"
+
+    with caplog.at_level("DEBUG"):
+        apply_tuned_spark_session_config(adapter, session)
+
+    for value in ("7777", "8888", "9999"):
+        assert value not in caplog.text

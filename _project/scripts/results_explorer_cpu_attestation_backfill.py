@@ -97,7 +97,7 @@ def _inject_cpu(data: dict[str, Any]) -> dict[str, Any]:
 
 
 def backfill(*, bundles_dir: Path, write: bool, manifest_path: Path) -> dict[str, Any]:
-    manager = AnonymizationManager()
+    manager = AnonymizationManager.for_public_only_bundles()
     transformer = BundleTransformer()
     entries: list[dict[str, Any]] = []
     pending_writes: list[tuple[Path, bytes]] = []

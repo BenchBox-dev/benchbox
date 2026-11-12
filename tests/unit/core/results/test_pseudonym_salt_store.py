@@ -16,6 +16,7 @@ from benchbox.core.results.anonymization import (
     AnonymizationConfig,
     AnonymizationManager,
     MissingPublicPseudonymSaltError,
+    UnpseudonymizedPublicValueError,
     ensure_public_pseudonym_salt,
     public_pseudonym_salt_path,
     require_public_pseudonym_salt,
@@ -248,13 +249,34 @@ def test_config_repr_hides_the_salt() -> None:
     assert "repr-secret-salt" not in repr(config)
 
 
-def test_pipeline_and_backfill_managers_ignore_env_and_file(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_public_only_manager_ignores_env_and_file_and_never_hashes_raw_values(monkeypatch: pytest.MonkeyPatch) -> None:
     ensure_public_pseudonym_salt()
     monkeypatch.setenv(PUBLIC_PSEUDONYM_SALT_ENV, "ignored-by-public-pipeline")
-    default_manager = AnonymizationManager()
-    assert default_manager.config.machine_id_salt is None
-    unsalted = AnonymizationManager(AnonymizationConfig())._hash_public_identifier("host.example.invalid", "host")
-    assert default_manager._hash_public_identifier("host.example.invalid", "host") == unsalted
+    manager = AnonymizationManager.for_public_only_bundles()
+    assert manager.config.machine_id_salt is None and manager.config.public_only is True
+    pseudonym = AnonymizationManager(AnonymizationConfig(machine_id_salt="x"))._hash_public_identifier(
+        "h.invalid", "host"
+    )
+    assert manager._hash_public_identifier(pseudonym, "host") == pseudonym
+    with pytest.raises(UnpseudonymizedPublicValueError) as raised:
+        manager._hash_public_identifier("host.example.invalid", "host")
+    assert "host.example.invalid" not in str(raised.value)
+
+
+def test_public_only_manager_passes_pseudonymized_payloads_and_refuses_raw_ones() -> None:
+    manager = AnonymizationManager.for_public_only_bundles()
+    salted = AnonymizationManager(AnonymizationConfig(machine_id_salt="corpus-salt"))
+    raw = {"platform": {"options": {"bucket": "private-bucket", "host": "db.internal.example"}}}
+    public = salted.anonymize_result_payload(raw)
+    assert manager.anonymize_result_payload(public) == public
+    with pytest.raises(UnpseudonymizedPublicValueError):
+        manager.anonymize_result_payload(raw)
+    with pytest.raises(UnpseudonymizedPublicValueError):
+        manager.anonymize_tuning_payload({"requested": {"table_tunings": {"t": {"columns": [{"name": "secret_col"}]}}}})
+
+
+def test_the_default_manager_stays_unsalted_but_is_not_public_only() -> None:
+    assert AnonymizationManager().config.public_only is False
 
 
 @pytest.mark.parametrize(
@@ -270,7 +292,8 @@ def test_public_pipeline_sources_stay_unsalted(relative_path: str) -> None:
     if not source.exists():
         pytest.skip(f"{relative_path} is not part of this tree")
     text = source.read_text(encoding="utf-8")
-    assert "AnonymizationManager()" in text
+    assert "AnonymizationManager.for_public_only_bundles()" in text
+    assert "AnonymizationManager()" not in text
     for forbidden in (
         "ensure_public_pseudonym_salt",
         "require_public_pseudonym_salt",

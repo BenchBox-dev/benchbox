@@ -124,8 +124,10 @@ SPARK_SESSION_CONFIG_EXAMPLE = """
 # To use them, move this block under platform_optimizations above and remove
 # the leading '#'. Keys may omit the 'spark.' prefix. Static keys (warehouse,
 # catalogs, extensions), core deploy keys (spark.driver.*, spark.executor.*),
-# adapter-owned keys and credentials are rejected; set those through the
-# adapter options instead.
+# adapter-owned keys, spark.hadoop.* / spark.fs.* keys and credentials are
+# rejected; set those through the adapter options instead. Keys outside the
+# known runtime-modifiable Spark SQL list are rejected as likely typos unless
+# 'spark_allow_unknown_keys: true' is set next to 'spark'.
 #
 #   spark:
 #     spark.sql.shuffle.partitions: "200"
