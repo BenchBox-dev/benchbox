@@ -14,7 +14,9 @@
       "from_item": "theseus-review-output-format-20261110",
       "id": 1,
       "reason": "Independent review of Theseus #68 (v0.2.9) found this non-blocking P3 at report.py:112-117,139-143,549. The same code is on main via #63. The owner chose to ship v0.2.9 as reviewed and fix it on main in the re-land PR. The gate is unaffected: both findings still count.",
-      "resolution": "open",
+      "resolution": "dismissed",
+      "resolved_at": "2026-11-12T14:23:55Z",
+      "resolved_reason": "Fixed in Theseus #69 (1bdb2343): report.py:164-186 shared_room and report.py:814-822 pass carried_at and room to dedup.split. Tests in test_report_outcomes.py: test_one_unmarked_thread_covers_only_one_of_a_new_and_a_carried_defect, test_a_new_finding_at_an_unthreaded_carried_location_takes_no_thread_room.",
       "summary": "Fix in the v0.2.10 re-land PR: split and _threads_to_open use separate open_counts rooms; one unmarked thread can hide a carried same-title location."
     },
     {
@@ -179,6 +181,14 @@
       "client": "omp-coding-agent",
       "op": "promote",
       "op_id": "f6aff966c60145d6aaafaf14bd6410b5",
+      "session_id": "88f192edfe954a75a195b192ece667bc"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b89414e427d02d5b37262d82",
+      "at": "2026-11-12T14:23:55Z",
+      "client": "omp-coding-agent",
+      "op": "dismiss",
+      "op_id": "ffe6c542d7734e1e9e8f199a15784627",
       "session_id": "88f192edfe954a75a195b192ece667bc"
     }
   ]
