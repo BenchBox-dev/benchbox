@@ -41238,6 +41238,13 @@
       "status": "done",
       "title": "TPC-DS generate with default compression writes only chunk 1 of 10, records an empty manifest, and loads zero rows"
     },
+    "tpcds-df-multi-warehouse-min-max": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Use one NULL-safe multi-warehouse rule in TPC-DS DataFrame Q16, Q94 and Q95 and remove the dead platform branches"
+    },
     "tpcds-dsqgen-q9-timeout-sf10000-20261111": {
       "claim": null,
       "needs": [],
