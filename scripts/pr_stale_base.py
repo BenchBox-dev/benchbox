@@ -16,6 +16,7 @@ Runner = Callable[[list[str]], tuple[int, str]]
 DEVELOP_COMMIT_LIMIT = 100
 DEVELOP_SOURCE_READ_LIMIT = 60
 SOURCE_ROOTS = ("", "scripts/", "tests/")
+TEST_CONFIG_FILES = ("pytest.ini", "pytest-ci.ini")
 FILE_NAMES_JQ = ".filename, (.previous_filename // empty)"
 LATEST_CI_RUN_JQ = r'[.workflow_runs[] | select(.display_title == "CI") | .created_at] | max // empty'
 
@@ -30,6 +31,10 @@ def imported_paths(source: str, relative_to: str, exists: Callable[[str], bool])
     def add_module(parts: Sequence[str]) -> None:
         if not parts:
             return
+        for depth in range(1, len(parts)):
+            package = "/".join(parts[:depth])
+            if exists(f"{package}/__init__.py"):
+                found.add(f"{package}/__init__.py")
         base = "/".join(parts)
         for root in SOURCE_ROOTS:
             for candidate in (f"{root}{base}.py", f"{root}{base}/__init__.py"):
@@ -124,6 +129,13 @@ def related_develop_changes(
     for path in sorted(pr_files):
         if path.endswith(".py") and exists(path):
             related |= imported_paths((root / path).read_text(encoding="utf-8"), path, exists)
+    for path in sorted(pr_files):
+        if path.startswith("tests/") and path.endswith(".py"):
+            for ancestor in PurePosixPath(path).parents:
+                conftest = f"{ancestor}/conftest.py"
+                if exists(conftest):
+                    related.add(conftest)
+            related.update(name for name in TEST_CONFIG_FILES if exists(name))
     develop_files: set[str] = set()
     for sha in commits:
         develop_files.update(

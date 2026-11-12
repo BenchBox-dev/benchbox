@@ -205,7 +205,9 @@ apart. After every other gate passes, `make pr-arm` compares the start time of
 the newest `CI` run for the head with the `develop` commits made since. It
 refuses when any of those commits changed (or renamed) a file the PR changes
 (or renamed), a file the PR's changed Python files import or name as a
-repo-relative path, or a Python file that imports a file the PR changes. It
+repo-relative path (with their parent packages' `__init__.py`, and the
+`conftest.py` and pytest config a changed test runs under), or a Python file
+that imports a file the PR changes. It
 then closes and reopens the PR so CI runs again on a fresh merge ref, and
 reports `waiting`; arm again (or use `WAIT`) once the new run passes. If the
 reopen fails, the refusal says so and names `gh pr reopen`. More than 100
