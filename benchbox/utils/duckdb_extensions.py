@@ -4,6 +4,7 @@ from typing import Any
 
 THIRD_PARTY_EXTENSION_OPTION = "allow_third_party_extensions"
 QUERY_FARM_HOST = "duckdb-extensions.query.farm"
+SINGLE_ARROW_LAMBDA_STATEMENT = "SET lambda_syntax = 'ENABLE_SINGLE_ARROW'"
 
 DATASKETCHES_COMMUNITY_STATEMENTS: tuple[str, ...] = (
     "INSTALL datasketches FROM community",

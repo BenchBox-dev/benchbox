@@ -21,6 +21,7 @@ from benchbox.core.errors import PlanCaptureError
 from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW, FETCH_MODE_ROWS
 from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY, RequestLedger, outside_query_timer
 from benchbox.utils.cloud_storage import get_cloud_path_info, is_cloud_path
+from benchbox.utils.duckdb_extensions import SINGLE_ARROW_LAMBDA_STATEMENT
 from benchbox.utils.printing import emit
 
 from .base import DriverIsolationCapability, PlatformAdapter
@@ -922,6 +923,7 @@ class DuckDBAdapter(PlatformAdapter):
             config_applied.append("progress_bar=enabled")
             self.log_very_verbose("DuckDB progress bar enabled")
 
+        conn.execute(SINGLE_ARROW_LAMBDA_STATEMENT)
         conn.execute("SET default_order = 'ASC'")
         config_applied.append("OLAP optimizations")
         self.log_very_verbose("DuckDB OLAP optimizations applied")

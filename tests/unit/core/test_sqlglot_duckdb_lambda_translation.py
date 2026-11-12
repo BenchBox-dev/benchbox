@@ -2,6 +2,7 @@ import duckdb
 import pytest
 
 from benchbox._vendor import sqlglot
+from benchbox.utils.duckdb_extensions import SINGLE_ARROW_LAMBDA_STATEMENT
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -31,6 +32,7 @@ QUERIES = {
 @pytest.fixture(scope="module")
 def connection():
     with duckdb.connect() as conn:
+        conn.execute(SINGLE_ARROW_LAMBDA_STATEMENT)
         for statement in SETUP:
             conn.execute(statement)
         yield conn

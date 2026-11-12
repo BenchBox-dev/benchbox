@@ -348,8 +348,8 @@ def test_caller_transaction_without_savepoint_support_fails_closed(dim_customer)
     assert stats["success"] is False
     assert "SAVEPOINT" in stats["error_message"]
     assert not any(sql.lstrip().upper().startswith(("UPDATE", "INSERT")) for sql, _ in conn.calls)
-    assert _rows(dim_customer) == before
     dim_customer.execute("ROLLBACK")
+    assert _rows(dim_customer) == before
 
 
 def test_dml_uses_bound_parameters(dim_customer) -> None:
