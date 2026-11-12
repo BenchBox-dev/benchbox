@@ -237,7 +237,9 @@ def _fresh_timings_arguments(
             "push a new head, or close and reopen the PR"
         )
     measured = fast.get("run_attempt")
-    if isinstance(measured, int) and measured > 1 and is_duration_would_block(attempt_jobs(measured - 1)):
+    if not isinstance(measured, int):
+        raise RerunError(f"CI run {run_id} does not report which attempt measured the fast-tier timings")
+    if any(is_duration_would_block(attempt_jobs(earlier)) for earlier in range(1, measured)):
         raise RerunError(
             f"CI run {run_id} measured fresh fast-tier timings after a {DURATION_STEP} would-block and the verdict "
             "is would-block again, so this is a real slowdown, and re-running cannot clear it: remove the "
@@ -250,7 +252,7 @@ def rerun_arguments(
     run: Mapping[str, Any],
     jobs: Sequence[Mapping[str, Any]],
     repo: str,
-    attempt_jobs: Callable[[int], Sequence[Mapping[str, Any]]] = lambda attempt: (),
+    attempt_jobs: Callable[[int], Sequence[Mapping[str, Any]]],
 ) -> list[str] | None:
     status = run.get("status")
     conclusion = run.get("conclusion")

@@ -477,7 +477,10 @@ def test_a_would_block_that_survives_fresh_timings_is_refused_as_a_real_slowdown
     gh = FakeGitHub(
         [_run(11, "2026-10-17T10:00:00Z")],
         {11: _would_block_jobs(fast_attempt=3)},
-        attempts={(11, 2): _would_block_jobs(fast_attempt=1)},
+        attempts={
+            (11, 1): _would_block_jobs(fast_attempt=1, failed_step="aggregate"),
+            (11, 2): _would_block_jobs(fast_attempt=1),
+        },
     )
     with pytest.raises(pr_rerun.RerunError, match=r"real slowdown.*baseline"):
         pr_rerun.rerun(REPO, PR, gh)
@@ -493,6 +496,29 @@ def test_fresh_timings_after_an_unrelated_failure_still_get_one_re_measure() -> 
     )
     pr_rerun.rerun(REPO, PR, gh)
     assert gh.reruns() == [["gh", "run", "rerun", "11", "--repo", REPO, "--job", str(FAST_JOB_ID)]]
+
+
+def test_an_unrelated_attempt_between_would_blocks_does_not_reset_the_re_measure_cap() -> None:
+    gh = FakeGitHub(
+        [_run(11, "2026-10-17T10:00:00Z")],
+        {11: _would_block_jobs(fast_attempt=3)},
+        attempts={
+            (11, 1): _would_block_jobs(fast_attempt=1),
+            (11, 2): _would_block_jobs(fast_attempt=1, failed_step="aggregate"),
+        },
+    )
+    with pytest.raises(pr_rerun.RerunError, match="real slowdown"):
+        pr_rerun.rerun(REPO, PR, gh)
+    assert gh.reruns() == []
+
+
+def test_a_would_block_that_does_not_report_the_measuring_attempt_is_refused() -> None:
+    jobs = _would_block_jobs()
+    jobs[1] = {key: value for key, value in jobs[1].items() if key != "run_attempt"}
+    gh = FakeGitHub([_run(11, "2026-10-17T10:00:00Z")], {11: jobs})
+    with pytest.raises(pr_rerun.RerunError, match="does not report which attempt"):
+        pr_rerun.rerun(REPO, PR, gh)
+    assert gh.reruns() == []
 
 
 def test_a_would_block_without_a_fast_tier_job_is_refused() -> None:
