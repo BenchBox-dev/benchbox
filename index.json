@@ -33123,15 +33123,10 @@
       "title": "✅ Reinstate Benchmark Coverage with Test Doubles"
     },
     "relative-path-primary-writes-recur-after-guard-20261110": {
-      "claim": {
-        "expires_at": "2026-11-13T06:37:34Z",
-        "generation": "6f698e15745b4cc8b5d3cb10cea85874",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1319a3225e6eeb104ec2240b"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Prevent delegated agents' relative-path edits from landing in the primary clone"
     },
     "release-accounting-drift-correction": {
