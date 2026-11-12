@@ -265,6 +265,7 @@ class TPCDIDataGenerator(
                 "DimCustomer": int(self.base_customers * self.scale_factor),
                 "DimAccount": int(self.base_accounts * self.scale_factor),
                 "FactTrade": int(self.base_trades * self.scale_factor),
+                **self._secondary_fact_row_counts(),
             },
             "estimated_memory_gb": self._estimate_memory_requirements(),
             "estimated_disk_gb": self._estimate_disk_requirements(),

@@ -258,6 +258,12 @@ def test_skew_fingerprint_covers_both_specs() -> None:
     assert manifest_datagen_is_current(dict(stamp), benchmark="tpch_skew") is True
 
 
+def test_tpcdi_data_stamped_before_its_spec_was_fingerprinted_is_stale() -> None:
+    unfingerprinted = {"benchmark": "tpcdi", **current_datagen_stamp(None)}
+    assert manifest_datagen_is_current(unfingerprinted, benchmark="tpcdi") is False
+    assert manifest_datagen_is_current({"benchmark": "tpcdi", **current_datagen_stamp("tpcdi")}, benchmark="tpcdi")
+
+
 def test_skew_configuration_changes_data_generation_comparison_identity() -> None:
     from benchbox.core.results.exporter import ResultExporter
     from benchbox.core.tpch_skew.skew_config import AttributeSkewConfig, SkewConfiguration

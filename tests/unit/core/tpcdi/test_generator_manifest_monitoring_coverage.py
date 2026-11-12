@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from benchbox.core.tpcdi.generator.facts import FactGenerationMixin
 from benchbox.core.tpcdi.generator.manifest import ManifestMixin
 from benchbox.core.tpcdi.generator.monitoring import ResourceMonitoringMixin
 
@@ -73,7 +74,7 @@ class _Logger:
         self.messages.append(msg)
 
 
-class _MonitoringHarness(ResourceMonitoringMixin):
+class _MonitoringHarness(FactGenerationMixin, ResourceMonitoringMixin):
     def __init__(self) -> None:
         self.enable_progress = True
         self.logger = _Logger()

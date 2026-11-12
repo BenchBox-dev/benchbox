@@ -14,6 +14,7 @@ _BENCHMARK_SPECS_FILES: dict[str, tuple[str, ...]] = {
         "benchbox/core/tpch/generator_specs.yaml",
         "benchbox/core/tpch_skew/generator_specs.yaml",
     ),
+    "tpcdi": ("benchbox/core/tpcdi/generator_specs.yaml",),
     "tsbs_devops": ("benchbox/core/tsbs_devops/generator_specs.yaml",),
     "tsbs": ("benchbox/core/tsbs_devops/generator_specs.yaml",),
 }
