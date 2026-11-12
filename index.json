@@ -31773,12 +31773,17 @@
       "title": "Publication Pages deploy never reaches terminal success; live bytes and durable journal head diverge"
     },
     "publish-first-plan-capture-bundles-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-13T14:43:27Z",
+        "generation": "1d1968796e2f44c19be12390c10a6127",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:eb741106bc3418ce287ca405"
+      },
       "needs": [
         "duckdb-plan-parser-join-type-and-sort-direction-20261111"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Publish the first query-plan capture bundles to the Results Explorer (PR 4153 awaits the owner lifting its hold)"
     },
     "publish-run-rewrites-plans-companion-keys-20261111": {
