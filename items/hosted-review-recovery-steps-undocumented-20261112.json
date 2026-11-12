@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "docs/agent/review-protocol.md, or a page it links, states the three behaviours and the exact reply format for a dispute.",
+    "The text is checked against the reviewer's current behaviour in the Theseus repository before it is written, and names the Theseus version it was checked against.",
+    "If the instruction-file byte budget has no room, the text goes in a linked reference page, not in the six budgeted instruction files."
+  ],
+  "description": "Three behaviours of the hosted reviewer cost several wasted review rounds on 2026-11-11 and 2026-11-12 and are written down nowhere under docs/ on develop. (1) Commenting /review on a head that has not changed only reposts the previous verdict; it does not re-evaluate. (2) A finding carried forward from an earlier head clears only when the author replies 'Dispute: D<n> - <reason>' on the finding's thread while that thread is still unresolved, and then comments /review. Resolving the thread first, or disputing in a top-level comment, leaves the finding in force. (3) A review that reports 'reviewer process is blocked' does not recover by itself; a /review comment restarts it. Agents currently rediscover these by trial, and each wrong attempt spends a review run. Related open item oracle-review-comment-skipped-on-backoff-after-dispute-20261101 covers one failure after a dispute, not the procedure.",
+  "links": [
+    "docs/agent/review-protocol.md",
+    "https://github.com/joeharris76/theseus"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a250daff95b91a4eb6cd2504",
+      "at": "2026-11-12T22:31:07Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e879ca365041414591e80f3f8e6b3303",
+      "session_id": "8e07c6e3a10b49bb94ae7e31664ce4b9"
+    }
+  ]
+}
