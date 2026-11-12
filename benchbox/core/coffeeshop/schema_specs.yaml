@@ -50,7 +50,7 @@ tables:
   schema:
     name: order_lines
     description: Exploded order lines fact table with 1-5 lines per order.
-    row_count_formula: 50_000_000 * scale_factor * 1.5 (average lines per order)
+    row_count_formula: 8_500_000 * scale_factor * 1.56 (average lines per order)
     columns:
     - name: order_id
       type: BIGINT

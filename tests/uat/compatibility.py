@@ -139,6 +139,26 @@ _SQLITE_TPCDS_OBT_RUNTIME_ENVELOPE_REASON = (
     "issue. Keep it pruned until a bounded atomic bulk loader fits the declared budget."
 )
 
+_QUESTDB_TPCDS_OBT_SF001_REASON = (
+    "QuestDB TPC-DS OBT SF0.01 fails 17 of 93 queries (1, 10, 16, 23a, 23b, 30, 32, 33, 35, 41, 44, 58, 81, 83, 92, 94, "
+    "95) on QuestDB subquery limits: correlated subqueries and EXISTS beside explicit JOINs report 'Invalid table name "
+    "or alias', a scalar subquery inside arithmetic reports 'DOUBLE * CURSOR', and an IN subquery that reuses the outer "
+    "alias reports 'cannot compare ... with type CURSOR'. Keep it pruned until the QuestDB rewrites cover these shapes."
+)
+
+_POSTGRES_TPCDS_OBT_SF001_REASON = (
+    "{platform} TPC-DS OBT SF0.01 timed out at 1200s on both attempts of trunk UAT run 43117035812 without finishing "
+    "the cell. Keep it pruned until the OBT load and queries fit the release-gate cell budget on {platform}."
+)
+
+_PG_MOONCAKE_TPCDS_OBT_SF001_REASON = (
+    "pg-mooncake TPC-DS OBT SF0.01 fails queries 4, 11, 14b, 23a, 23b and 74 with 'Catalog Error: Table Function with "
+    "name mooncake_scan does not exist' on the pg_duckdb plan path. Keep it pruned until those queries plan on "
+    "pg-mooncake."
+)
+
+_TPCDS_OBT_SF001_EVIDENCE = "trunk UAT run 43117035812 on 90f2c8714ef4fd52f9afe54d0288f18ea487cc76 (tpcds_obt SF0.01)"
+
 _SQLITE_TPCDS_OBT_SF01_RUNTIME_ENVELOPE_REASON = (
     "SQLite TPC-DS OBT SF0.1 cannot meet the 1200s release-gate cell contract on the native UAT host. "
     "The 2026-11-11 run loaded 503,753 rows in 103.7s, then query 35 was still running when the cell reached "
@@ -345,6 +365,10 @@ _RELEASE_GATE_RUNTIME_ENVELOPES = (
             (platform, "joinorder"): _MEMORY_CATALOG_JOINORDER_RUNTIME_ENVELOPE_REASON.format(engine=engine)
             for platform, engine in (("presto", "Presto"), ("trino", "Trino"))
         },
+        ("questdb", "tpcds_obt", 0.01): _QUESTDB_TPCDS_OBT_SF001_REASON,
+        ("postgresql", "tpcds_obt", 0.01): _POSTGRES_TPCDS_OBT_SF001_REASON.format(platform="PostgreSQL"),
+        ("timescaledb", "tpcds_obt", 0.01): _POSTGRES_TPCDS_OBT_SF001_REASON.format(platform="TimescaleDB"),
+        ("pg-mooncake", "tpcds_obt", 0.01): _PG_MOONCAKE_TPCDS_OBT_SF001_REASON,
         ("singlestore", "joinorder"): _SINGLESTORE_JOINORDER_RUNTIME_ENVELOPE_REASON,
         ("pyspark-df", "tpchavoc", 0.1): _PYSPARK_DF_TPCHAVOC_SF01_RUNTIME_ENVELOPE_REASON,
     }
@@ -362,6 +386,10 @@ _RELEASE_GATE_RUNTIME_ENVELOPE_EVIDENCE = (
         ("sqlite", "tpcds"): "docs/internal/uat-release-campaign.md: SQLite TPC-DS (2026-08-25)",
         ("sqlite", "tpcds_obt", 0.1): "docs/internal/uat-release-campaign.md: SQLite TPC-DS OBT (2026-11-11)",
         ("sqlite", "tpcds_obt", 1.0): "PR #1904; docs/internal/uat-release-campaign.md: SQLite TPC-DS OBT (2026-08-25)",
+        ("questdb", "tpcds_obt", 0.01): _TPCDS_OBT_SF001_EVIDENCE,
+        ("postgresql", "tpcds_obt", 0.01): _TPCDS_OBT_SF001_EVIDENCE,
+        ("timescaledb", "tpcds_obt", 0.01): _TPCDS_OBT_SF001_EVIDENCE,
+        ("pg-mooncake", "tpcds_obt", 0.01): _TPCDS_OBT_SF001_EVIDENCE,
         (
             "singlestore",
             "joinorder",

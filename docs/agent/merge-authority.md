@@ -44,7 +44,10 @@ branch is incomplete.
   the labelled event, run `make pr-rerun PR=<n>`: that run re-checks the live
   labels, finds none, and passes, so the stale failure clears. While the label
   is present, a re-run fails again, which keeps the hold in force.
-- Never merge with raw `gh pr merge`; use `make pr-arm`.
+- Never merge with raw `gh pr merge`; use `make pr-arm`. When GitHub reports the
+  PR is already mergeable ("clean status"), auto-merge cannot be enabled;
+  `make pr-arm` then merges it itself after the same gates, with
+  `gh pr merge --squash --match-head-commit <head>`, and reports `merged`.
 
 ## Stand-in approvals
 
@@ -177,7 +180,8 @@ authorization lands, then arm with `make pr-arm`.
 | Kind | Meaning | Exit |
 |---|---|---|
 | `armed` | Auto-merge is enabled for the exact head | 0 |
-| `waiting` | Every reason is a check that has not finished: the full CI run, the `core` job that records the fast-duration verdict, or a `CI (text edit)` placeholder failure that the refresh workflow re-runs on its own (during the run, while the `ci-text-edit-refresh` run for the head is queued or in progress, or, before that run exists, for 10 minutes after a successful full run if it has not re-run yet). With `WAIT`, a review verdict that is still pending for this head also counts | 2 |
+| `merged` | The PR was already mergeable, so GitHub refused auto-merge; every gate had passed and `make pr-arm` merged the exact head directly | 0 |
+| `waiting` | Every reason is a check that has not finished: the full CI run, the `core` job that records the fast-duration verdict, or a `CI (text edit)` placeholder failure that the refresh workflow re-runs on its own (during the run, while the `ci-text-edit-refresh` run for the head is queued or in progress, or, before that run exists, for 10 minutes after a successful full run if it has not re-run yet). A CI run started by the stale-base guard (below) is also `waiting`. With `WAIT`, a review verdict that is still pending for this head also counts | 2 |
 | `refused` | Anything else: a hold, an unresolved review thread (outdated ones count, and each is named, because the ruleset requires every conversation to be resolved), a failed required check, a failing review verdict or one that waits for the owner, a red trunk, a head mismatch. Without `WAIT`, a pending review verdict is also `refused` | 2; 1 when live state could not be read; the `gh` exit code when the merge command itself fails |
 
 `waiting` and `refused` usually both exit 2; read the outcome line, not the exit
@@ -191,6 +195,27 @@ every 3 minutes, and it runs the red-trunk check
 the time runs out it prints the last `waiting` outcome with
 `(WAIT=<minutes> expired)`. It never re-runs a job, rebases, or changes a hold.
 Do not write a polling loop around `make pr-arm`.
+
+## Stale base guard
+
+The `develop` ruleset does not require branches to be up to date, so a PR can
+be green on a base that no longer matches `develop`. Two PRs that each pass
+on their own base can then break `develop` together when they merge minutes
+apart. After every other gate passes, `make pr-arm` compares the start time of
+the newest `CI` run for the head with the `develop` commits made since. It
+refuses when any of those commits changed (or renamed) a file the PR changes
+(or renamed), a file the PR's changed Python files import or name as a
+repo-relative path (with their parent packages' `__init__.py`, and the
+`conftest.py` and pytest config a changed test runs under), or a Python file
+that imports a file the PR changes. It
+then closes and reopens the PR so CI runs again on a fresh merge ref, and
+reports `waiting`; arm again (or use `WAIT`) once the new run passes. If the
+reopen fails, the refusal says so and names `gh pr reopen`. More than 100
+`develop` commits since the run are too many to compare and also trigger the
+refresh. A head with no recorded `CI` run is refused, because its tested base
+cannot be established. The guard follows one import hop and reads file names,
+not meaning, so a change two hops away passes; it cannot see merges after
+arming. The trunk auto-revert stays the backstop.
 
 ## Stale failed check suites
 
@@ -224,9 +249,17 @@ happened to #3264 and #3319 (`review` runs from `synchronize` and
   `not-applicable` verdict arms; a `rejected`, unknown or field-less verdict
   refuses, and a `would-block` verdict refuses unless the PR updates the
   baseline. PRs where no fast-tier tests ran upload a `not-applicable` verdict.
+  A would-block refusal names two remedies: `make pr-rerun PR=<n>` when the
+  change does not slow the fast tier (slow-runner noise alone can cause it),
+  and removing the slowdown or regenerating the baseline when it does.
 - `make pr-rerun` re-runs the failed jobs of the newest CI run and of every
   Actions run behind a failed required suite (a cancelled suite re-runs the
-  whole run). Pending suites are left alone. It refuses a conclusion it cannot
+  whole run). A failed run whose recorded duration verdict is would-block is
+  re-run whole instead, because a failed-jobs re-run re-reads the same
+  fast-junit timings and reproduces the verdict; the fresh measurement still
+  blocks a real slowdown. An unchanged failed-jobs re-run never clears a
+  would-block, and after a would-block verdict on the third attempt of a run
+  `make pr-rerun` refuses: that is a slowdown, not runner noise. Pending suites are left alone. It refuses a conclusion it cannot
   re-run, such as `startup_failure`. GitHub re-runs failed jobs only after the
   whole run completes, so while the newest CI run is still in progress
   `make pr-rerun` refuses and names that run; `make pr-arm` agrees: a required

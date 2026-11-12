@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     )
 
 from benchbox.core.execution_engine import ExecutionEngineReceipt, supported_execution_engines
+from benchbox.core.gateway import UNKNOWN_GATEWAY_ENGINE
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.core.upload_validation import UploadValidationEngine
 from benchbox.platforms.base import DriverIsolationCapability, PlatformAdapter
@@ -772,7 +773,10 @@ class DatabricksAdapter(PlatformAdapter):
             platform_info["engine_version_source"] = None
 
         if self.gateway != "native":
+            from benchbox.platforms.cloud_shared import gateway_cache_control_receipt
+
             platform_info["gateway"] = {"name": self.gateway, "routed": True}
+            platform_info["configuration"]["cache_control"] = gateway_cache_control_receipt(self._cache_control_receipt)
 
         warehouse_id = self._warehouse_id_from_http_path(self.http_path)
         try:
@@ -879,9 +883,13 @@ class DatabricksAdapter(PlatformAdapter):
         config = info.get("configuration") if isinstance(info.get("configuration"), Mapping) else {}
         compute = info.get("compute_configuration") if isinstance(info.get("compute_configuration"), Mapping) else {}
 
-        from benchbox.platforms.cloud_shared import sanitize_cache_control_receipt
+        from benchbox.platforms.cloud_shared import gateway_cache_control_receipt, sanitize_cache_control_receipt
 
-        receipt = sanitize_cache_control_receipt(self._cache_control_receipt)
+        receipt = (
+            gateway_cache_control_receipt(self._cache_control_receipt)
+            if self.gateway != "native"
+            else sanitize_cache_control_receipt(self._cache_control_receipt)
+        )
         config = dict(cast(Mapping[str, Any], config))
         config["result_cache_enabled"] = not receipt["cache_disabled"] if receipt and receipt["validated"] else None
 
@@ -2542,6 +2550,8 @@ class DatabricksAdapter(PlatformAdapter):
             )
 
             result_dict["translated_query"] = None
+            if self.gateway != "native":
+                result_dict["execution_engine"] = UNKNOWN_GATEWAY_ENGINE
 
             result_dict["resource_usage"] = {
                 "execution_time_seconds": execution_time,

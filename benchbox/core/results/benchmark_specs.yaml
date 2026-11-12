@@ -644,11 +644,11 @@ benchmark_specs:
       DimDate: 5844
       DimSecurity: 10000
       DimTime: 288
-      FactCashBalances: 100000
-      FactHoldings: 50000
-      FactMarketHistory: 100000
+      FactCashBalances: 3000000
+      FactHoldings: 1000000
+      FactMarketHistory: 2520000
       FactTrade: 1000000
-      FactWatches: 25000
+      FactWatches: 250000
       Industry: 12
       StatusType: 4
       TaxRate: 10

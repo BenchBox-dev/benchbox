@@ -1,0 +1,5 @@
+fact_row_multipliers:
+  cash_balances_per_account: 30
+  holdings_per_account: 10
+  market_history_days_per_security: 252
+  watches_per_customer: 5

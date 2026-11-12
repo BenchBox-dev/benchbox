@@ -429,3 +429,71 @@ def test_invalid_gh_json_is_reported() -> None:
 
     with pytest.raises(pr_rerun.RerunError, match="gh pr returned invalid JSON"):
         pr_rerun.rerun(REPO, PR, garbled)
+
+
+class VerdictGitHub(FakeGitHub):
+    def __init__(self, *args: Any, verdict: dict[str, Any] | None, artifact_run: int = 11, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.verdict = verdict
+        self.artifact_run = artifact_run
+
+    def __call__(self, command: list[str]) -> subprocess.CompletedProcess[str]:
+        args = command[1:]
+        if args[0] == "api" and "/actions/artifacts?" in args[-1]:
+            self.calls.append(command)
+            assert args[-1].startswith(f"repos/{REPO}/actions/artifacts?name=fast-duration-verdict-{PR}-{HEAD}")
+            found = "" if self.verdict is None else "99\n"
+            return subprocess.CompletedProcess(command, 0, found, "")
+        if args[:2] == ["run", "download"]:
+            self.calls.append(command)
+            Path(args[args.index("-D") + 1], "fast-duration-verdict.json").write_text(
+                json.dumps(self.verdict), encoding="utf-8"
+            )
+            return subprocess.CompletedProcess(command, 0, "", "")
+        return super().__call__(command)
+
+
+def test_a_would_block_verdict_reruns_the_whole_run_for_fresh_timings() -> None:
+    gh = VerdictGitHub(
+        [_run(11, "2026-10-17T10:00:00Z")], {11: _jobs()}, verdict={"verdict": "would-block", "sum_ratio": 1.3}
+    )
+    message = pr_rerun.rerun(REPO, PR, gh)
+    assert gh.reruns() == [["gh", "run", "rerun", "11", "--repo", REPO]]
+    assert "all jobs of CI run 11" in message
+    assert "fresh timings" in message
+
+
+@pytest.mark.parametrize("verdict", [None, {"verdict": "pass"}, {"verdict": "rejected"}, {"verdict": "neutral"}])
+def test_other_verdicts_keep_the_failed_jobs_rerun(verdict: dict[str, Any] | None) -> None:
+    gh = VerdictGitHub([_run(11, "2026-10-17T10:00:00Z")], {11: _jobs()}, verdict=verdict)
+    pr_rerun.rerun(REPO, PR, gh)
+    assert gh.reruns() == [["gh", "run", "rerun", "11", "--repo", REPO, "--failed"]]
+
+
+def test_an_unreadable_verdict_keeps_the_failed_jobs_rerun() -> None:
+    gh = VerdictGitHub([_run(11, "2026-10-17T10:00:00Z")], {11: _jobs()}, verdict={"verdict": "would-block"})
+    original = gh.__call__
+
+    def broken(command: list[str]) -> subprocess.CompletedProcess[str]:
+        if command[2:4] == ["run", "download"] or command[1:3] == ["run", "download"]:
+            return subprocess.CompletedProcess(command, 1, "", "HTTP 404")
+        return original(command)
+
+    pr_rerun.rerun(REPO, PR, broken)
+    assert any("--failed" in call for call in gh.reruns())
+
+
+def test_rerun_arguments_selects_a_full_rerun_only_for_a_failed_would_block_run() -> None:
+    run = _run(11, "2026-10-17T10:00:00Z")
+    assert pr_rerun.rerun_arguments(run, _jobs(), REPO, True) == ["run", "rerun", "11", "--repo", REPO]
+    assert pr_rerun.rerun_arguments(run, _jobs(), REPO, False) == ["run", "rerun", "11", "--repo", REPO, "--failed"]
+
+
+@pytest.mark.parametrize(("attempt", "allowed"), [(1, True), (2, True), (3, False), (4, False)])
+def test_repeated_would_block_verdicts_stop_being_rerun(attempt: int, allowed: bool) -> None:
+    run = _run(11, "2026-10-17T10:00:00Z", run_attempt=attempt)
+    if allowed:
+        assert pr_rerun.rerun_arguments(run, _jobs(), REPO, True) == ["run", "rerun", "11", "--repo", REPO]
+        return
+    with pytest.raises(pr_rerun.RerunError, match="real slowdown"):
+        pr_rerun.rerun_arguments(run, _jobs(), REPO, True)

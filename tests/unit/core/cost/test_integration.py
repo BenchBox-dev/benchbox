@@ -662,6 +662,47 @@ class TestMultiPlatformIntegration:
         assert normalized_cost["normalized_cost_usd"] == "0"
         assert normalized_cost["cost_usd"] is None
 
+    @pytest.mark.parametrize("platform", ["snowflake", "databricks"])
+    def test_gateway_routed_run_suppresses_cost(self, monkeypatch, platform):
+        monkeypatch.setattr("benchbox.core.cost.calculator.get_pricing_age_days", lambda table=None: 1)
+        results = create_test_results(
+            benchmark_name="TPC-H",
+            platform=platform,
+            platform_info={
+                "platform_type": platform,
+                "edition": "standard",
+                "region": "us-east-1",
+                "gateway": {"name": "espresso", "routed": True},
+            },
+            query_results=[{"query_id": "Q1", "resource_usage": {"credits_used": 0.5, "dbu_used": 0.5}}],
+        )
+
+        updated = add_cost_estimation_to_results(results)
+
+        normalized_cost = updated.cost_summary["normalized_cost"]
+        assert normalized_cost["cost_status"] == "not_comparable_gateway"
+        assert normalized_cost["normalized_cost_usd"] is None
+        assert normalized_cost["cost_usd"] is None
+        assert "estimated_cost_usd" not in normalized_cost
+        assert updated.query_results[0].get("cost") is None
+
+    def test_unrouted_gateway_block_does_not_suppress_cost(self, monkeypatch):
+        monkeypatch.setattr("benchbox.core.cost.calculator.get_pricing_age_days", lambda table=None: 1)
+        results = create_test_results(
+            benchmark_name="TPC-H",
+            platform_info={
+                "platform_type": "snowflake",
+                "edition": "standard",
+                "region": "us-east-1",
+                "gateway": {"name": "espresso", "routed": False},
+            },
+            query_results=[{"query_id": "Q1", "resource_usage": {"credits_used": 0.5}}],
+        )
+
+        updated = add_cost_estimation_to_results(results)
+
+        assert updated.cost_summary["normalized_cost"]["cost_status"] != "not_comparable_gateway"
+
     def test_missing_cloud_metadata_marks_normalized_cost_unavailable(self, caplog):
         results = create_test_results(
             benchmark_name="TPC-H",

@@ -1052,8 +1052,9 @@ def test_publishing_is_restricted_to_the_consumer_repository(world: World) -> No
 
 
 class FakeRunner:
-    def __init__(self, codes: Mapping[str, int] | None = None) -> None:
+    def __init__(self, codes: Mapping[str, int] | None = None, stdout: str = "") -> None:
         self.codes = dict(codes or {})
+        self.stdout = stdout
         self.calls: list[dict[str, Any]] = []
 
     def __call__(
@@ -1071,7 +1072,7 @@ class FakeRunner:
                 "env": dict(env or {}),
             }
         )
-        return subprocess.CompletedProcess(list(args), self.codes.get(script, 0), "", "refused")
+        return subprocess.CompletedProcess(list(args), self.codes.get(script, 0), self.stdout, "refused")
 
 
 @pytest.fixture
@@ -1103,6 +1104,13 @@ def test_arm_uses_the_repository_arming_rules_on_the_exact_head(published: World
     assert arming["upstream"].startswith("origin/chore/sqlglot-")
     assert arming["env"] == {"GH_TOKEN": "app-token"}
     assert not published.api.mutations
+
+
+def test_an_already_mergeable_pull_request_merged_by_arming_is_reported_as_merged(published: World) -> None:
+    runner = FakeRunner(stdout="pr-arm: outcome: merged: PR #7 was already mergeable and merged at head abc\n")
+    pull = published.api.pulls[0]
+    outcome = arm(published, runner)
+    assert outcome == [{"pullRequest": pull["number"], "head": pull["head"]["sha"], "outcome": "merged"}]
 
 
 @pytest.mark.parametrize("failing", ["trunk_revert.py", "pr_arm.py"])
