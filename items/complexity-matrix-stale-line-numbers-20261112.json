@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Every `line` in the matrix points at the named function in the current tree, or the field is removed and `make complexity-check` still passes.",
+    "The number of entries whose function no longer exists is reported and each is removed or re-keyed."
+  ],
+  "description": "Stale metadata. The matrix records `benchbox/platforms/dataframe/unified_frame.py` functions at lines 2761 (`join`), 3348 (`_datafusion_join_with_exprs`), 2428, 3806 (`sort`) and 2553, but the file has 2,556 lines. The entries' `line` fields no longer locate the functions, so a reader following a rationale or a re-review trigger lands nowhere, and any tool that joins on line would miss. Other files in the matrix were not checked.\n\nExpected: the matrix is regenerated from the current tree, or `line` is dropped in favour of the `file:function` key it already has.\n\nGuardrails: keep every existing classification and rationale; this is a metadata refresh, not a re-review. If a check is added for drift, wire it into required CI in the same change.",
+  "links": [
+    "quality/complexity/classification-matrix.yaml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-12T22:24:10Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8a7bfe78dcc246daae148bdcd1bf6a5b",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}

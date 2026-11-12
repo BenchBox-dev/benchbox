@@ -17162,6 +17162,13 @@
       "status": "done",
       "title": "Mark required-complexity functions as approved ignores in pyproject.toml"
     },
+    "complexity-matrix-stale-line-numbers-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "`quality/complexity/classification-matrix.yaml` cites line numbers beyond the end of `unified_frame.py`"
+    },
     "complexity-mcp-analytics-w14": {
       "claim": null,
       "needs": [],
