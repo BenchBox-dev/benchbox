@@ -3,7 +3,7 @@
     "Every Presto and Trino release UAT cell passes, or carries a documented skip that cites a reproduced engine error",
     "Presto and Trino are back in the stage-3 query-engines shard with recomputed floors and a passing dry run"
   ],
-  "context": "When Presto and Trino left the gate, the SF1 runtime envelopes for (presto|trino, joinorder|tpcds_obt) were removed. Their reason was that the memory catalog cannot hold the SF1 dataset: joinorder is about 74M rows and tpcds_obt about 5M rows by 518 columns, beyond the connector's per-node data cap, and row-wise inserts cannot finish within 1200s. That held in dry runs 2 and 3 and in a local Trino 484 / Presto 0.298.1 load profile on 2026-11-01. The write/transaction primitives benchmark gates for the memory catalog remain in tests/uat/compatibility.py.\n\nOwner decision 2026-11-11 (choice dialog): v0.5.0 release-gate cuts approved as shipped; restore Presto and Trino at SF <= 0.1 after CedarDB (SF1 stays out until perf-trino-presto-hive-target-sf1-20261110 lands).",
+  "context": "When Presto and Trino left the gate, the SF1 runtime envelopes for (presto|trino, joinorder|tpcds_obt) were removed. Their reason was that the memory catalog cannot hold the SF1 dataset: joinorder is about 74M rows and tpcds_obt about 5M rows by 518 columns, beyond the connector's per-node data cap, and row-wise inserts cannot finish within 1200s. That held in dry runs 2 and 3 and in a local Trino 484 / Presto 0.298.1 load profile on 2026-11-01. The write/transaction primitives benchmark gates for the memory catalog remain in tests/uat/compatibility.py.\n\nOwner decision 2026-11-11 (choice dialog): v0.5.0 release-gate cuts approved as shipped; restore Presto and Trino at SF <= 0.1 after CedarDB (SF1 stays out until perf-trino-presto-hive-target-sf1-20261110 lands).\n\n2026-11-11: PR #4138 (5341ac55ec) restored Presto and Trino to stage 3 at SF0.01 with their own shards; write/transaction primitive gates kept; JoinOrder envelope added (memory catalog cannot hold ~74M IMDb rows); SF1 stays out; stage 3 floor 112 -> 139 pairs. Close after the next scheduled trunk UAT run shows every presto and trino cell passing (a failing cell needs a documented skip citing the reproduced engine error).",
   "description": "Presto and Trino were removed from the 0.5.0 release UAT by owner decision on 2026-11-01. In release UAT dry run 5 (run 41309974530, stage 3 query-engines) the JSON-batch loader loaded most benchmarks, but these still failed: tpcds queries 92, 93, 95, 97, 98, 99 and others (failed:unofficial); tpcdi QV1/QV2/QA*; clickbench 19, 29, 37-40; amplab 2, 2a, 3-5; coffeeshop QSA3/QPR2/QTR1/QTM1/QQC2; and Trino read_primitives approx_top_k_lineitem. Loads for tsbs_devops, nyctaxi, flightdata, datavault and vector_search exit 1. Write and transaction primitives stay gated, and the SF1 JoinOrder and TPC-DS OBT memory-catalog envelopes stay, until a Hive or Iceberg catalog is added to the stacks.",
   "sessions": [
     {
@@ -28,6 +28,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "555b0c0c686940dbb40a820187fc358f",
+      "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af4bd8f2705a8277cc153f66",
+      "at": "2026-11-12T01:35:34Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6f0af713930549d2bb799718071e10d2",
       "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
     }
   ]
