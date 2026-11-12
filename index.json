@@ -12823,8 +12823,7 @@
       "needs": [
         "theseus-review-format-release-b-20261110",
         "benchbox-review-format-dual-read-20261110",
-        "benchbox-lock-theseus-review-format-release-a-20261110",
-        "theseus-v0211-rehearsal-first-reviewed-pr-20261112"
+        "benchbox-lock-theseus-review-format-release-a-20261110"
       ],
       "priority": "high",
       "status": "open",
