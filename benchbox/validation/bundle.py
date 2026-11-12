@@ -759,7 +759,7 @@ TIERED_PLATFORMS: Mapping[str, str] = {
     "redshift": "Beta or Preview features need AWS's approval",
     "athena": "Beta or Preview features need AWS's approval",
     "clickhouse-cloud": "Beta or Preview features need ClickHouse's approval",
-    "databricks": "Databricks Free Edition needs express permission; Beta or Preview features need Databricks' approval",
+    "databricks": "Databricks Free Edition needs express permission; Beta services are excluded from publishable results",
     "motherduck": "Free or trial use needs MotherDuck's permission",
 }
 
@@ -850,6 +850,13 @@ def evaluate_vendor_conditions(manifest: Mapping[str, Any]) -> tuple[list[str], 
     if permission is not None and not _nonempty_string(permission):
         errors.append("Manifest vendor_permission must be a non-empty string naming the vendor's written permission")
         permission = None
+
+    if platform == "databricks" and feature_list:
+        errors.append(
+            f"Databricks results that use Beta or preview features ({', '.join(feature_list)}) cannot be published: "
+            "the Databricks Acceptable Use Policy excludes Beta services, and vendor_permission does not lift the exclusion"
+        )
+        feature_list = []
 
     restricted = tier in {"free", "trial"} or bool(feature_list)
     if restricted and not permission:
