@@ -415,10 +415,10 @@ def test_seeded_validation_leaves_the_reference_seed_context_unchanged() -> None
     assert get_reference_seed_context() is None
 
 
-@pytest.mark.parametrize(("benchmark", "scale_factor"), [("tpch", 10.0), ("tpcds", 10.0), ("ssb", 0.5)])
-def test_dataframe_scales_without_reference_counts_are_unvalidated(benchmark: str, scale_factor: float) -> None:
+@pytest.mark.parametrize(("benchmark_id", "scale_factor"), [("tpch", 10.0), ("tpcds", 10.0), ("ssb", 0.5)])
+def test_dataframe_scales_without_reference_counts_are_unvalidated(benchmark_id: str, scale_factor: float) -> None:
     measurement = _measurement(query_id="1", rows=1)
 
-    validate_dataframe_query_results([measurement], benchmark_name=benchmark, scale_factor=scale_factor)
+    validate_dataframe_query_results([measurement], benchmark_name=benchmark_id, scale_factor=scale_factor)
 
     assert measurement["row_count_validation"]["status"] == "UNVALIDATED"
