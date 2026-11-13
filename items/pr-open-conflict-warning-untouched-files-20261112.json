@@ -4,7 +4,7 @@
     "A test with two branches that change the same lines still warns and names the shared file.",
     "The chosen option and its reason are recorded on this item, and `make pr-open` still succeeds when the scan itself fails."
   ],
-  "context": "Decision 2026-11-13 (owner approved the scope line): option (a), warn only when a conflicting file is also changed by this branch.",
+  "context": "Decision 2026-11-13 (owner approved the scope line): option (a), warn only when a conflicting file is also changed by this branch.\n\n2026-11-13: implemented on branch fix/landing-tooling-noise (commit 97a0bc6434), inline in the `pr-conflict-scan` recipe. Correction to this item's guardrail: `make/monolith-baseline.json` is a historical inventory that nothing reads or regenerates (`docs/internal/makefile-architecture.md`), so it was left unchanged. Tests run the real recipe against temporary Git repositories with a stub `gh`.",
   "description": "`make pr-open` for PR #4170 printed: `textual conflict with PR #3916 (chore/seed-corpus-20261101-3095) in publication/ledger-seed.json, results-data/corpus-inventory.json — coordinate before landing`. PR #4170 changed nine files, none of them those two, and merged without conflict.\n\nCause, read from `make/pr-landing.mk` (`pr-conflict-scan`): for every open pull request against `develop` it runs `git merge-tree --write-tree --name-only HEAD origin/<branch>` and reports any conflict. `HEAD` contains current `develop`, so a branch that is merely stale against `develop` conflicts with every fresh branch, whatever that branch changed. The warning then tells an unrelated author to coordinate. It repeats on every `pr-open` while the stale pull request stays open.\n\nDecision gate. Choose one and record why: (a) report a conflict only when a conflicting file is also in this branch's diff against the merge base with `develop`; or (b) keep the scan and reword the line to say the other pull request conflicts with `develop`. Prefer (a) unless authors use the stale-branch signal.\n\nGuardrails.\n- The scan stays advisory: `pr-open` calls it with `|| true`, and it must not become a refusal.\n- It must not add GitHub REST calls; the shared quota is already exhausted at times (pr-arm-github-rate-limit-backoff-20261112). Note that it also fetches every open branch.\n- `make/monolith-baseline.json` records the recipe text; update it through the repository's own regeneration step, not by hand.",
   "links": [
     "make/pr-landing.mk",
@@ -43,6 +43,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "65e8f2104b2447018c8d3d1142a49f02",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-13T19:01:08Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3ca03d5bc7bb4762910d93d5c654a023",
       "session_id": "570099c30e51431ebfbca6042d41ee8f"
     }
   ]
