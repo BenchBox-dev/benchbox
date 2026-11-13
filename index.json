@@ -32672,6 +32672,13 @@
       "status": "done",
       "title": "PySpark: the existing-database check runs before the Spark session exists, so it always reports no database and force_recreate is a no-op"
     },
+    "pyspark-manifest-validation-regenerates-fresh-data-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "PySpark DataFrame run reported `Manifest validation failed; regenerating benchmark data` for data generated minutes earlier"
+    },
     "pyspark-parquet-time-millis-false-cache-loader-compatibility": {
       "claim": null,
       "needs": [],

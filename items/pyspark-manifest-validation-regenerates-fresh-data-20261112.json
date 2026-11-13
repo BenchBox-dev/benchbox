@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "A reproduction, or a statement that it cannot be reproduced with the steps tried, is recorded in this item.",
+    "The message distinguishes `data absent or in another format for this platform` from `data present but failed validation`.",
+    "Running two DataFrame platforms alternately against one output directory does not regenerate data on each switch, or the documentation says to use separate directories."
+  ],
+  "context": "Log (local, not committed): ~/Developer/benchmark_runs/df-distinct-remediation/logs/pregen-pyspark-df-tpchavoc-sf1.log. Related: df-memory-guard-refusal-message-and-subset-estimate-20261112.",
+  "description": "Unexplained behaviour, seen once on 2026-11-12 and not investigated. A `benchbox run --platform pyspark-df --benchmark tpchavoc --scale 1 --output <dir>` printed `Manifest validation failed; regenerating benchmark data`. The same output directory had just been populated by the Polars and DataFusion runs of the same benchmark and scale from the same checkout, and those runs succeeded. The PySpark run then failed on the memory guard, so whether regeneration would have completed, and whether it rewrote data the other platforms were about to reuse, is unknown.\n\nPossibilities to distinguish: per-platform data formats that legitimately differ (then the message should say so and not call it a validation failure); a manifest keyed in a way that makes platforms invalidate each other's data in a shared output directory; or a real validation defect.\n\nExpected: the cause is identified. If regeneration is by design, the message says what differs. If platforms sharing an output directory invalidate each other, that is fixed or documented, because alternating platforms on one directory would regenerate data every run and could race.\n\nGuardrails: do not relax manifest validation to silence the message. Data generation for timing runs goes through `make heavy-run`.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-13T18:18:26Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "15afd6f91a2e449f91dfc31e5bd06a64",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}
