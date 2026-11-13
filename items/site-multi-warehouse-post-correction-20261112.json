@@ -4,7 +4,7 @@
     "The post's numbers for current BenchBox behaviour come from complete-query timings recorded in `df-distinct-timing-confirmation`.",
     "The front-matter placeholders noted in the draft (publication date, `post_number` 6 versus 7) are settled by the owner."
   ],
-  "context": "2026-11-13 13:45: owner decision: one corrective commit is being added to benchbox-site draft PR #143 (factual corrections and the SF1 complete-query table); title, thesis and date stay with the owner. df-distinct-timing-confirmation is done, so the dependency is met; PySpark and SF10 numbers are tracked in df-distinct-pyspark-sf10-timing-20261113.",
+  "context": "2026-11-13 13:45: owner decision: one corrective commit is being added to benchbox-site draft PR #143 (factual corrections and the SF1 complete-query table); title, thesis and date stay with the owner. df-distinct-timing-confirmation is done, so the dependency is met; PySpark and SF10 numbers are tracked in df-distinct-pyspark-sf10-timing-20261113.\n\n2026-11-13 14:05: corrective commit 47992bc4292a3739f080a75008a1992a5901dbb0 pushed to benchbox-site branch docs/refresh-cross-engine-pattern-post (draft PR #143, still a draft), with a summary comment https://github.com/BenchBox-dev/benchbox-site/pull/143#issuecomment-6861756159. Changed: lead, TL;DR, introduction, the Q16/Q95 sentence and code excerpt, the 'What this means for BenchBox' section (now includes the SF1 complete-query table for Polars 1.44.2 and DataFusion 54.0.0 with its limits), limitations, the outline and the research note. Site checks run: check-blog-publication (0 findings), check-repo-boundary (0 findings), commit hooks. Not changed, by owner decision: title, thesis, date, post_number, series plan, schedule. Left for the owner's editorial pass, because they still frame BenchBox as having picked per-platform code: the first sentence of the conclusions ('The same query did need different code in February'); 'the self-join we had picked for DataFusion' and 'each engine needed a different one' in the third-pattern section; the first and last bullets of 'What we learned about benchmarking'; and the title, series-plan and schedule summaries. Remaining acceptance: those passages, and the front-matter placeholders (date, post_number 6 versus 7).",
   "description": "Cross-repository gap; the work is in BenchBox-dev/benchbox-site, tracked here because the finding came from core and this session could not write to the site tracker. Draft PR #143 there (`drafts/benchbox-in-action/drafts/06-platform-specific-optimization-patterns.md`) says BenchBox picks the self-join for DataFusion in TPC-DS Q16 and Q95. The branch that did so was dead code in every release from v0.1.1 to v0.5.0 (it compared the platform with `\"datafusion\"`; the adapter reports `\"DataFusion\"`). The correction was posted as a comment on that PR on 2026-11-12; the draft text itself is unchanged. Core PR #4169 has since removed the branches, fixed NULL handling, and moved Q16, Q94 and Q95 to a min/max rule, so the post's description of current BenchBox behaviour is also out of date.\n\nExpected: the draft states what BenchBox actually executed in February and executes now, and cites complete-query timings once `df-distinct-timing-confirmation` has them.\n\nGuardrails: the thesis and publication date are the owner's editorial decisions. Do not publish isolated-step timings as if they were complete-query results. Site changes go by pull request in the site repository.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox-site/pull/143",
@@ -25,6 +25,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "934c4879462741bb8ee1eb63d6f44e0b",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-13T18:39:15Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "2885037258ac4531aaac2aff43cc4290",
       "session_id": "512d9ad0b25247538901b68a758a6fbb"
     }
   ]
