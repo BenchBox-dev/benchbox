@@ -42,6 +42,7 @@ class LakeSailDataFrameAdapter(PySparkDataFrameAdapter):
         shuffle_partitions: int | None = None,
         enable_aqe: bool = True,
         deployment_mode: str | None = None,
+        allow_third_party_extensions: bool = False,
         **spark_config: Any,
     ) -> None:
         if not PYSPARK_AVAILABLE:
@@ -62,6 +63,7 @@ class LakeSailDataFrameAdapter(PySparkDataFrameAdapter):
         self._driver_memory = driver_memory
         self._shuffle_partitions = shuffle_partitions or os.cpu_count() or 8
         self._enable_aqe = enable_aqe
+        self.allow_third_party_extensions = bool(allow_third_party_extensions)
         self.deployment_selected = select_adapter_deployment("lakesail", {"deployment_mode": deployment_mode}, "local")
         self.deployment_selected_class = deployment_class("lakesail", self.deployment_selected)
         self._spark_config = spark_config
@@ -123,6 +125,7 @@ class LakeSailDataFrameAdapter(PySparkDataFrameAdapter):
         }
         if PYSPARK_AVAILABLE:
             info["pyspark_version"] = PYSPARK_VERSION
+        self._enrich_with_extension_options(info)
         return info
 
     def get_tuning_summary(self) -> dict[str, Any]:

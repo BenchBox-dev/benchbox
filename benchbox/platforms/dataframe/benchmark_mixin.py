@@ -62,6 +62,7 @@ from benchbox.core.schemas import BenchmarkConfig, SystemProfile
 from benchbox.platforms.base.adapter import DriverIsolationCapability
 from benchbox.platforms.base.client_region import discover_client_region
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.duckdb_extensions import THIRD_PARTY_EXTENSION_OPTION
 from benchbox.utils.printing import quiet_console
 
 if TYPE_CHECKING:
@@ -240,6 +241,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
     driver_isolation_capability: DriverIsolationCapability = DriverIsolationCapability.NOT_APPLICABLE
     is_dataframe_adapter: bool = True
     timing_method: int = TIMING_METHOD_LEGACY
+    allow_third_party_extensions: bool = False
 
     platform_name: str
     family: str
@@ -278,6 +280,10 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
     @property
     def collect_engine(self) -> str:
         return DEFAULT_EXECUTION_ENGINE
+
+    def _enrich_with_extension_options(self, info: dict[str, Any]) -> None:
+        if self.allow_third_party_extensions:
+            info[THIRD_PARTY_EXTENSION_OPTION] = True
 
     def _enrich_with_driver_metadata(self, info: dict[str, Any]) -> None:
         for attr in (

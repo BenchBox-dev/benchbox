@@ -47,6 +47,7 @@ class CuDFDataFrameAdapter(PandasFamilyAdapter[CuDFDF]):
         device_id: int = 0,
         spill_to_host: bool = True,
         tuning_config: DataFrameTuningConfiguration | None = None,
+        allow_third_party_extensions: bool = False,
     ) -> None:
         if not CUDF_AVAILABLE:
             raise ImportError("cuDF not installed. Install with: pip install cudf-cu12 (for CUDA 12.x)")
@@ -60,6 +61,7 @@ class CuDFDataFrameAdapter(PandasFamilyAdapter[CuDFDF]):
 
         self.device_id = device_id
         self.spill_to_host = spill_to_host
+        self.allow_third_party_extensions = bool(allow_third_party_extensions)
         self._pool_type = "default"
 
         self._validate_and_apply_tuning()
@@ -205,6 +207,7 @@ class CuDFDataFrameAdapter(PandasFamilyAdapter[CuDFDF]):
             except Exception:
                 pass
 
+        self._enrich_with_extension_options(info)
         return info
 
     def _merge_frames(

@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "The allow_third_party_extensions platform option now applies to the DataFrame platforms (Polars, Pandas, cuDF, Dask, DataFusion, PySpark, LakeSail), so the write-primitives sketch operations can run on DuckDB 2.x in DataFrame mode; it stays off by default and the skip reason names it."
+    }
+  ]
+}
