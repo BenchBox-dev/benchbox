@@ -31806,15 +31806,10 @@
       "title": "Verify the complete PR process against incident replays and live operating targets"
     },
     "pr-rerun-cannot-clear-duration-would-block-20261107": {
-      "claim": {
-        "expires_at": "2026-11-14T18:45:08Z",
-        "generation": "8a663c18d1d140429f2d1e14ca9ce0c7",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a250daff95b91a4eb6cd2504"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "make pr-rerun cannot clear a slow-runner would-block duration verdict"
     },
     "pr-rerun-live-verification": {
