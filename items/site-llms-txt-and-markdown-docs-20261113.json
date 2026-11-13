@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "GET /llms.txt returns 200 as text, and every link in it returns 200; a site CI check fails the build on a dead link.",
+    "The file is generated from the documentation navigation source, not maintained by hand, so a new page cannot be silently missing.",
+    "Each documentation page has a Markdown version at a documented URL pattern, or the PR records why not and files the remainder with the tracker's defer tool.",
+    "The install command and first run command shown are executed in a clean environment and their output is in the PR.",
+    "The site build and deploy checks pass."
+  ],
+  "context": "Origin: adversarial review on 2026-11-13 of work first left unfiled. The earlier reasons assumed a person at the keyboard; this item records the corrected disposition. Line numbers are hints; re-read the cited file before relying on them.\n\nEvidence and its limits: the session study comes from a vendor of agent-visibility tooling and gives no sample sizes, so treat the one-third figure as directional. Separate server-log studies of AI crawlers show little use of llms.txt; those measure crawlers, not coding agents reading documentation during a task.\n\nDecision gate (first step, read-only): confirm in BenchBox-dev/benchbox-site that the build can emit both outputs from the existing Markdown sources. If Markdown versions need more than a small converter change, ship llms.txt with HTML links and defer the rest.\n\nVerification rubric: pass only if the link check is automated and the commands were run as written.\n\nThe evidence gate (agent-reach-evidence-gate-20261112) records whether any probe session requested llms.txt; that is context for priority, not a prerequisite.\n\nGuardrails: work only in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. One PR per item, squash-merged to develop (site work: one PR in BenchBox-dev/benchbox-site). Add a changelog.d fragment for any user-facing change. No live-cloud runs and no credentials in Git or logs. Heavy work (benchmarks, test tiers) runs only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy (make comment-policy-check). Stop and report instead of widening scope; scope removed during review must be re-homed to a named item or dropped by the owner with a reason.",
+  "description": "Problem: https://benchbox.dev/llms.txt returns 404 and the documentation is served as HTML only (the docs index is about 125 KB). One study of coding-agent sessions found agents opened llms.txt in about a third of sessions where they had to build against a named product, then followed its links; in sessions choosing between products they almost never did. Agents sometimes read a missing or thin file as a missing capability.\n\nOutcome: an llms.txt at the site root, generated at build time, that maps to installation and the first working command, the CLI reference, the MCP reference, the methodology page and the result summaries; and a Markdown version of each documentation page at a predictable URL.\n\nExpectation to state in the PR: this helps an agent that is already using BenchBox. It is not a way for agents to discover BenchBox.",
+  "links": [
+    "https://benchbox.dev/llms.txt",
+    "https://benchbox.dev/docs/",
+    "https://www.withgauge.com/blog/what-is-llms-txt-used-for.md",
+    "docs/internal/site-deploy.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-13T13:53:19Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "36e9364a93de4edba3c6c798c773335d",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}
