@@ -4,7 +4,7 @@
     "Theseus gains a documented cleanup command with the same safety conditions as BenchBox's reaper, or its contributor guide states the manual procedure and that sessions must remove their worktree after merge.",
     "Nothing unmerged or uncommitted is deleted without the owner's decision."
   ],
-  "context": "Owner decision 2026-11-13: classify every Theseus worktree, remove only those merged and clean, report the rest, and open a small documentation pull request in Theseus for the owner to merge.\n\nOwner decision 2026-11-13: classify every Theseus worktree, remove only those merged and clean, report the rest, and open a small documentation pull request in Theseus for the owner to merge.",
+  "context": "Owner decision 2026-11-13: classify every Theseus worktree, remove only those merged and clean, report the rest, and open a small documentation pull request in Theseus for the owner to merge.\n\nOwner decision 2026-11-13: classify every Theseus worktree, remove only those merged and clean, report the rest, and open a small documentation pull request in Theseus for the owner to merge.\n\n2026-11-13 cleanup done. Full before-list (path, branch, sha, verdict, reason): ~/.cache/benchbox/theseus-worktrees-20261113.txt. 40 linked worktrees classified: 31 merged-and-clean removed (git worktree remove, no force; local branches deleted after recording name+sha; 8 by ancestor test plus 3 detached/ancestor, 20 squash-equivalent) and 9 kept. Kept: advisory-proof, eval-evidence, sqlglot-source-review, v029 (unpushed-or-unmerged); check-mirror, dashboard, release-0.2.12, thread-content (modified in last 24h); pr72 (detached, not an ancestor of origin/main). Remote branches untouched. Documentation PR (worktree hygiene section in CONTRIBUTING.md, not merged, awaits owner): https://github.com/joeharris76/theseus/pull/83 ; its worktree /Users/joe/Developer/theseus.wt-worktree-cleanup-doc left in place. Item left open.",
   "description": "On 2026-11-12 the owner's machine held about thirty linked worktrees of the Theseus repository beside its clone (theseus.wt-0.2.8, theseus.wt-release-0.2.6 through theseus.wt-release-0.2.11, theseus.wt-v029, theseus.wt-v029-revert, theseus.wt-body-redesign and others), most named for releases and changes that have long since merged. BenchBox has make worktree-reap, which removes a worktree only when its branch is a merged pull request head, clean, with nothing unpushed; that run removed 23 BenchBox worktrees the same day. Theseus has no equivalent, so agent sessions that create a worktree there leave it behind unless they remember to remove it. Nobody checked the state of the thirty; some may hold unmerged work.",
   "links": [
     "https://github.com/joeharris76/theseus",
@@ -33,6 +33,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "5f797f3c985f47a3a73e45e561e738b0",
+      "session_id": "8e07c6e3a10b49bb94ae7e31664ce4b9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a250daff95b91a4eb6cd2504",
+      "at": "2026-11-13T18:44:05Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e22192e383c448bba5425016477687be",
       "session_id": "8e07c6e3a10b49bb94ae7e31664ce4b9"
     }
   ]
