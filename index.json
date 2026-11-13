@@ -21928,7 +21928,7 @@
         "benchmark-methodology-page-20261112"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "Ship a short end-user skill that teaches an agent to run BenchBox soundly from the CLI"
     },
     "enforce-explicit-query-run-type-across-executions": {

@@ -8,6 +8,7 @@
   ],
   "context": "Origin: adversarial review of an agent-facing strategy for BenchBox, 2026-11-12. Owner decisions quoted here were made on that date. Line numbers are hints; re-read the cited file before relying on them.\n\nEvidence: core dependencies include no database driver and the quick-start extra installs only Polars, so the bare command 'benchbox run --platform duckdb' fails in a fresh environment unless the CLI installs the driver itself (not checked).\n\nDecision gate: read the gate ruling first; on no-go, do nothing and ask the owner to drop the item. On go, decide and record where the skill is published (site docs, the package, or a plugin listing) before writing it; writing instructions into a user's own agent files is out of scope.\n\nVerification rubric: pass only if every command was executed as written and no claim lacks a methodology-page source.\n\nGuardrails: work only in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. One PR per item, squash-merged to develop (site work: one PR in BenchBox-dev/benchbox-site). Add a changelog.d fragment for any user-facing change. No live-cloud runs and no credentials in Git or logs. Heavy work (benchmarks, test tiers) runs only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy (make comment-policy-check). Stop and report instead of widening scope; scope removed during review must be re-homed to a named item or dropped by the owner with a reason.",
   "description": "Problem: an agent with a shell but no BenchBox MCP server has no always-loaded guidance, and models do not know the BenchBox CLI from training. A skill is the standard way to teach an unfamiliar CLI at low context cost.\n\nOutcome: one short skill for end users (not contributors) covering the first working command, how to choose scale and iterations for a stated purpose, validating a run, comparing two runs, and what to report. Every claim comes from the methodology page.\n\nGate: do not start unless agent-reach-evidence-gate-20261112 ruled go for this item, or the owner overrides in writing on this item.",
+  "drop_reason": "Dropped by owner decision on 2026-11-13: its go signal measured discovery, which a skill the user must install cannot fix. No successor.",
   "links": [
     "pyproject.toml",
     "benchbox/cli/commands/run.py",
@@ -21,6 +22,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "9cc5d0f3f0b64babbad9a9dad9e6a252",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-13T16:37:44Z",
+      "client": "omp-coding-agent",
+      "op": "drop",
+      "op_id": "ea1f2e8308c74a998c6574edd4fa6e87",
       "session_id": "ac67b069b7864c4699843546272d3701"
     }
   ]
