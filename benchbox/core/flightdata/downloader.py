@@ -8,6 +8,7 @@ import calendar
 import contextlib
 import csv
 import hashlib
+import http.client
 import io
 import json
 import logging
@@ -133,15 +134,21 @@ def _months_sequence(
 
 
 BTS_PREFETCH_WORKERS = 4
-BTS_FETCH_ATTEMPTS = 3
-BTS_FETCH_BACKOFF_S = 2.0
+BTS_FETCH_ATTEMPTS = 6
+BTS_FETCH_BACKOFF_BASE_S = 4.0
+BTS_FETCH_BACKOFF_MIN_JITTER = 0.5
 _sleep = time.sleep
+_jitter = random.uniform
 
 
 def _is_transient_fetch_error(exc: BaseException) -> bool:
     if isinstance(exc, urllib.error.HTTPError):
-        return exc.code >= 500
-    return isinstance(exc, (urllib.error.URLError, OSError))
+        return exc.code >= 500 or exc.code == 429
+    return isinstance(exc, (urllib.error.URLError, OSError, http.client.IncompleteRead))
+
+
+def _fetch_backoff_s(attempt: int) -> float:
+    return BTS_FETCH_BACKOFF_BASE_S * 2 ** (attempt - 1) * _jitter(BTS_FETCH_BACKOFF_MIN_JITTER, 1.0)
 
 
 class _ZipPrefetcher:
@@ -749,7 +756,9 @@ class FlightDataDownloader(CompressionMixin, VerbosityMixin):
             return rows
         except (urllib.error.URLError, urllib.error.HTTPError, OSError, zipfile.BadZipFile, ValueError) as e:
             if not self.allow_synthetic_fallback:
-                raise RuntimeError(f"BTS download failed for {year}-{month:02d}; real data is required") from e
+                raise RuntimeError(
+                    f"BTS download failed for {year}-{month:02d} ({type(e).__name__}: {e}); real data is required"
+                ) from e
             logger.warning(f"BTS download failed for {year}-{month:02d}: {e}. Using synthetic data.")
             rows = self._generate_synthetic_month(writer, year, month, start_id)
             self._stats["months_synthetic"] += 1
@@ -764,12 +773,15 @@ class FlightDataDownloader(CompressionMixin, VerbosityMixin):
             try:
                 with tls.urlopen(req, timeout=120) as response:
                     zip_bytes = response.read()
+                    declared = getattr(response, "headers", None) and response.headers.get("Content-Length")
+                if declared is not None and int(declared) != len(zip_bytes):
+                    raise ValueError(f"size mismatch for {url}: expected {declared} bytes, received {len(zip_bytes)}")
                 break
             except Exception as exc:
                 if attempt == BTS_FETCH_ATTEMPTS or not _is_transient_fetch_error(exc):
                     raise
                 logger.warning(f"BTS fetch {url} failed (attempt {attempt}/{BTS_FETCH_ATTEMPTS}): {exc}; retrying")
-                _sleep(BTS_FETCH_BACKOFF_S * attempt)
+                _sleep(_fetch_backoff_s(attempt))
         expected_sha256 = PINNED_SOURCE_SHA256.get(url)
         if expected_sha256 is not None:
             actual_sha256 = hashlib.sha256(zip_bytes).hexdigest()

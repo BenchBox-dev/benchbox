@@ -370,10 +370,6 @@ _CEDARDB_READ_PRIMITIVES_REASON = (
     "missing, the full-text @@ operator is undefined, GROUP BY strictness rejects 'p_partkey', and the cascading "
     "'current transaction is aborted' error follows (trunk UAT run 43154678095)."
 )
-_CEDARDB_FLIGHTDATA_SF1_REASON = (
-    "cedardb Flight Data SF1 exits 1 after about 273s with no result file: the quiet run prints no error and the "
-    "verbose re-run times out (exit 124) at 'Generating benchmark data...' (trunk UAT run 43154678095)."
-)
 _CEDARDB_VECTOR_SEARCH_REASON = (
     "cedardb Vector Search SF{scale} aborts at setup: 'Failed to configure vector extension: CREATE EXTENSION not "
     "implemented yet', so CedarDB has no vector extension to configure (trunk UAT run 43154678095)."
@@ -498,7 +494,6 @@ _TRUNK_UAT_PRUNES = {
         )
         for scale in (0.01, 0.1, 1.0)
     },
-    ("cedardb", "flightdata", 1.0): _CEDARDB_FLIGHTDATA_SF1_REASON,
     **{
         ("cedardb", "vector_search", scale): _CEDARDB_VECTOR_SEARCH_REASON.format(scale=f"{scale:g}")
         for scale in (0.01, 0.1, 1.0)

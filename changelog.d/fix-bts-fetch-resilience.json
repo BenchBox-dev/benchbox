@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Made the Flight Data BTS download survive short outages: it now retries network errors, HTTP 5xx and 429 up to six times with jittered exponential backoff totalling about two minutes, and the final error names the month and the cause.",
+      "benchmarks": [
+        "flightdata"
+      ]
+    }
+  ]
+}

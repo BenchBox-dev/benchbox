@@ -16,7 +16,6 @@ _PRUNED_CELLS = {
     ("transaction_primitives", 0.01): "current transaction is aborted",
     ("transaction_primitives", 0.1): "current transaction is aborted",
     ("transaction_primitives", 1.0): "current transaction is aborted",
-    ("flightdata", 1.0): "exit 124",
     ("vector_search", 0.01): "CREATE EXTENSION not implemented yet",
     ("vector_search", 0.1): "CREATE EXTENSION not implemented yet",
     ("vector_search", 1.0): "CREATE EXTENSION not implemented yet",
@@ -73,7 +72,14 @@ def test_cedardb_failing_cells_are_pruned_with_run_evidence(bench_name, scale):
 
 @pytest.mark.parametrize(
     ("bench_name", "scale"),
-    [("read_primitives", 1.0), ("flightdata", 0.01), ("flightdata", 0.1), ("tpch", 0.01), ("datavault", 1.0)],
+    [
+        ("read_primitives", 1.0),
+        ("flightdata", 0.01),
+        ("flightdata", 0.1),
+        ("flightdata", 1.0),
+        ("tpch", 0.01),
+        ("datavault", 1.0),
+    ],
 )
 def test_cedardb_passing_cells_stay_in_the_gate(bench_name, scale):
     assert _rule("cedardb", bench_name, scale) is None
@@ -95,7 +101,7 @@ def test_stage2_enumeration_keeps_only_the_passing_cedardb_cells():
         (cell.benchmark, cell.scale) for cell in enumerate_cells_with_pruning(stage).cells if cell.platform == "cedardb"
     }
 
-    assert len(cells) == 34
+    assert len(cells) == 35
     assert cells.isdisjoint(_PRUNED_CELLS)
 
 
