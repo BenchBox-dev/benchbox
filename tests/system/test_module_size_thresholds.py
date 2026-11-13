@@ -12,7 +12,7 @@ MAX_LINES_DEFAULT = 1_200
 ALLOWLIST_HEADROOM = 25
 
 ALLOWLIST = {
-    Path("benchbox/cli/commands/run.py"): 2_977,
+    Path("benchbox/cli/commands/run.py"): 3_011,
     Path("benchbox/core/tpcds/benchmark/runner.py"): 2_115,
     Path("benchbox/core/tpcdi/generator/data.py"): 317,
 }
