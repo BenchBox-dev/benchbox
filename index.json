@@ -45480,15 +45480,10 @@
       "title": "Umbrella: MCP fixes for coding agents, one branch and one PR"
     },
     "umbrella-cli-ci-contract-20261113": {
-      "claim": {
-        "expires_at": "2026-11-14T21:31:48Z",
-        "generation": "450c5b47d0944e3ca87198e221c73cff",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Umbrella: CLI contract for scripts and CI, one branch and one PR"
     },
     "unattributed-update-branch-commits-block-merge-20261008": {
