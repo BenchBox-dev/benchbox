@@ -17446,17 +17446,12 @@
       "title": "Compare Command UX Improvements"
     },
     "compare-exit-codes-distinct-outcomes-20261112": {
-      "claim": {
-        "expires_at": "2026-11-14T21:32:11Z",
-        "generation": "39e5c587d88144719d57ccf7a1f0a5ad",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
-      },
+      "claim": null,
       "needs": [
         "umbrella-cli-ci-contract-20261113"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Give benchbox compare distinct exit codes for regression, not comparable, and error"
     },
     "compare-interactive-file-selection": {
