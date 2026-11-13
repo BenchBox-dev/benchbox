@@ -296,3 +296,38 @@ Ruleset relaxation is owner-only everywhere (`docs/internal/repo-admin-settings.
 broken by the contents of `develop` (including when `review-gate` itself is
 broken); it gives agents evidence-and-stop steps only. Do not skip a check for a
 problem another open PR already fixes; rebase onto the fix instead.
+
+## After the merge
+
+A merged pull request leaves its worktree and local branch behind. Retire both
+with `make worktree-finish`, from the primary clone or any worktree:
+
+```bash
+gh pr view <n> --json headRefOid --jq .headRefOid
+make worktree-finish WORKTREE_PATH=<worktree> EXPECTED_HEAD_OID=<that oid>
+make worktree-finish WORKTREE_PATH=<worktree> EXPECTED_HEAD_OID=<that oid> APPLY=1
+```
+
+- `EXPECTED_HEAD_OID` is the full 40-character commit OID the worktree's branch
+  must be at, and the worktree's `HEAD` must equal it. Use the merged pull
+  request's head OID from `gh pr view`; a squash merge keeps that OID only on
+  the pull request, not on `develop`.
+- Without `APPLY=1` the target only reports (`FORMAT=json` for JSON) and
+  changes nothing. Read the report; a held target lists its hold reason.
+- `APPLY=1` re-checks the evidence, runs `git worktree remove`, then deletes
+  the local branch only if it is still at `EXPECTED_HEAD_OID`. If the branch
+  moved, nothing is changed. It never touches the remote branch.
+- It deletes only a clean, attached, unlocked, registered worktree that
+  `make worktree-create` set up and that is not bound to an external
+  controller. The branch needs a merged pull request into `develop`,
+  `release` or `published-results` whose merge-time head is the expected OID
+  (or whose later commits are all integrated) and whose merge commit is in the
+  base branch. Anything else is refused with a hold reason, and `APPLY=1` then
+  exits without changing anything.
+- `make worktree-remove` removes the worktree but keeps the local branch. A
+  batch leader's `make batch-finish` runs this same finish.
+- Never delete a branch with `git branch -D`, and never run `git worktree
+  prune` or `git gc`, to get around a hold. Fix the cause or stop and report.
+- `make worktree-reap` and `make branch-prune-merged` clean many worktrees or
+  branches at once. Run them only when the owner approved bulk cleanup in the
+  task that does it.
