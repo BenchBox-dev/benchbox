@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "Maintainer CI metrics tooling only: make dev-loop-metrics now reports the bounded dev-loop comparison; no user-visible effect."
-}
