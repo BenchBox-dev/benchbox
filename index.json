@@ -27310,17 +27310,12 @@
       "title": "Architecture hardening: decide MCP fidelity and avoid CLI-internal coupling"
     },
     "mcp-prompts-name-nonexistent-tools-20261112": {
-      "claim": {
-        "expires_at": "2026-11-14T19:34:05Z",
-        "generation": "ba66d78ca80c44cfa32f0bcb7ed8ff9d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
-      },
+      "claim": null,
       "needs": [
         "umbrella-agent-mcp-surface-20261113"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Fix MCP prompts that name missing tools, and make the server instructions require validation"
     },
     "mcp-public-contract-table-topology-gate-v1": {
