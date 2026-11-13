@@ -1,0 +1,28 @@
+{
+  "acceptance": [
+    "Each of the seven prompts and the server instructions name only tools present in the local-mode tool registry, and every argument used in an example exists in that tool's input schema.",
+    "Durable-job tool names (start_benchmark and its siblings) appear only in text that states they need authenticated remote mode.",
+    "A test derives the allowed tool and argument names from the live registry, not from a hard-coded list. The PR shows it failing on the pre-fix text and passing after.",
+    "scripts/verify_mcp_conformance.py and the doc-contract check pass, and a changelog.d fragment is present.",
+    "Smoke: start benchbox-mcp over stdio, fetch every prompt, and show that each named tool resolves in tools/list."
+  ],
+  "context": "Origin: adversarial review of an agent-facing strategy for BenchBox, 2026-11-12. Owner decisions quoted here were made on that date. Line numbers are hints; re-read the cited file before relying on them.\n\nEvidence: a search of benchbox/mcp for function definitions named validate_config, list_recent_runs, compare_results, list_platforms or list_benchmarks finds none registered as tools; list_available and analyze_results are registered. The published MCP reference lists 12 local tools while an internal scan counted 16; record the true count in the PR but do not reconcile the docs here.\n\nDecision gate (before editing): list the registered tools in local and remote mode and map each stale name to its replacement. If a prompt step has no equivalent capability, delete the step and say so in the PR; never invent a tool to make the prompt true.\n\nVerification rubric: pass only if the new test fails without the text fix, the stdio smoke resolves every name, and no file outside benchbox/mcp, its tests and changelog.d changes.\n\nGuardrails: work only in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. One PR per item, squash-merged to develop (site work: one PR in BenchBox-dev/benchbox-site). Add a changelog.d fragment for any user-facing change. No live-cloud runs and no credentials in Git or logs. Heavy work (benchmarks, test tiers) runs only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy (make comment-policy-check). Stop and report instead of widening scope; scope removed during review must be re-homed to a named item or dropped by the owner with a reason.",
+  "description": "Problem: the prompts built in benchbox/mcp/prompts/registry.py instruct the model to call validate_config, list_recent_runs, compare_results, list_platforms and list_benchmarks. None is a registered tool. The registered equivalents are run_benchmark(validate_only=True), get_results, analyze_results and list_available. An agent that follows a prompt gets tool-not-found errors or improvises.\n\nOutcome: every tool name and argument name used in every prompt and in the server instructions (MCPServer instructions in benchbox/mcp/server.py) resolves against the server's own registry, and a test keeps it that way.\n\nNon-goals: no tool is added, renamed or removed; no tool schema changes; no methodology wording changes (that is mcp-instructions-carry-methodology-20261112).",
+  "links": [
+    "benchbox/mcp/prompts/registry.py",
+    "benchbox/mcp/server.py",
+    "benchbox/mcp/tools/discovery.py",
+    "benchbox/mcp/tools/analytics.py",
+    "scripts/verify_mcp_conformance.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-13T04:03:55Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "765b8b2606ba47d78ddb3ccf2f102b73",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}

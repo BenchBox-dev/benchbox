@@ -26893,6 +26893,13 @@
       "status": "done",
       "title": "Architecture hardening: decide MCP fidelity and avoid CLI-internal coupling"
     },
+    "mcp-prompts-name-nonexistent-tools-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "MCP prompts tell agents to call five tools that do not exist"
+    },
     "mcp-public-contract-table-topology-gate-v1": {
       "claim": null,
       "needs": [],
