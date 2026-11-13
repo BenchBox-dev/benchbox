@@ -202,6 +202,9 @@ concrete commands; this guide names only the tracker calls and the contract.
    Record the dispatch base in the ledger and update it each time the member
    merges a newer integration head. Dispatch the member with its item,
    frozen scope, base, and the repository's member-closeout rules.
+   Tell the member that every file-tool call (read, edit, write) must use an
+   absolute path inside its own worktree: a relative path resolves against the
+   primary clone, not the worktree.
 
 ### Verification and same-file overlap
 
