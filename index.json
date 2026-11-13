@@ -2883,7 +2883,8 @@
     },
     "df-platform-followups": {
       "accepted_members": {
-        "df-memory-guard-refusal-message-and-subset-estimate-20261112": "c287fd1d6e7743d9c11cf8493f40846c6f328f40"
+        "df-memory-guard-refusal-message-and-subset-estimate-20261112": "c287fd1d6e7743d9c11cf8493f40846c6f328f40",
+        "df-platform-name-comparison-guard-20261112": "068a41c2a38d4490e6906bb79488b4c0a601ade8"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -2899,10 +2900,25 @@
           ],
           "integration_head": "a3d2bfcefea1fe790f83d49a67e978d54e70206e",
           "integration_seq": 1
+        },
+        "df-platform-name-comparison-guard-20261112": {
+          "accepted_head": "068a41c2a38d4490e6906bb79488b4c0a601ade8",
+          "changed_files": [
+            "benchbox/core/dataframe/__init__.py",
+            "benchbox/core/dataframe/engine.py",
+            "benchbox/core/read_primitives/dataframe_queries.py",
+            "benchbox/core/tpcds/dataframe_queries/queries.py",
+            "benchbox/platforms/dataframe/expression_family.py",
+            "changelog.d/feat-df-platform-followups--df-platform-name-comparison-guard-20261112.json",
+            "tests/unit/core/dataframe/test_engine_identity.py",
+            "tests/unit/core/tpcds/test_parameter_consumption_inventory.py"
+          ],
+          "integration_head": "d671e72ac6b3de5dae1b7b018e5074087de4b32c",
+          "integration_seq": 2
         }
       },
       "integration_branch": "feat/df-platform-followups",
-      "integration_head": "a3d2bfcefea1fe790f83d49a67e978d54e70206e",
+      "integration_head": "d671e72ac6b3de5dae1b7b018e5074087de4b32c",
       "integration_log": [
         {
           "at": "2026-11-13T18:33:07Z",
@@ -2918,6 +2934,15 @@
           "op_id": "fb10c8cfb91b448e8afb83e67c1892d7",
           "previous_head": "9f739da8e8647532916fdd8cecda169ce585a4af",
           "seq": 1
+        },
+        {
+          "at": "2026-11-13T19:08:56Z",
+          "head": "d671e72ac6b3de5dae1b7b018e5074087de4b32c",
+          "kind": "prepare",
+          "member": "df-platform-name-comparison-guard-20261112",
+          "op_id": "b5c5e2e2d1704f31b25943394d2e4f7c",
+          "previous_head": "a3d2bfcefea1fe790f83d49a67e978d54e70206e",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-df-platform-followups",
@@ -20063,15 +20088,10 @@
       "title": "Coordinate the DataFrame platform follow-ups batch (df-platform-followups)"
     },
     "df-platform-name-comparison-guard-20261112": {
-      "claim": {
-        "expires_at": "2026-11-14T19:08:46Z",
-        "generation": "4e4d5d520dbc4756869f87254c1a9d24",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Stop DataFrame query code comparing `ctx.platform` with string literals"
     },
     "df-q21-multi-supplier-min-max": {
