@@ -20175,19 +20175,14 @@
       "title": "Stage TPC-H and TPC-DS gates, budget TPC-DS CI subset"
     },
     "df-platform-followups-umbrella-20261113": {
-      "claim": {
-        "expires_at": "2026-11-14T20:49:50Z",
-        "generation": "9cabb13aa4114386b2a615486796e961",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287"
-      },
+      "claim": null,
       "needs": [
         "df-memory-guard-refusal-message-and-subset-estimate-20261112",
         "df-write-primitives-sketch-opt-in-20261112",
         "df-platform-name-comparison-guard-20261112"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Coordinate the DataFrame platform follow-ups batch (df-platform-followups)"
     },
     "df-platform-name-comparison-guard-20261112": {
