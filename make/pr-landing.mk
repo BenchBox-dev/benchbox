@@ -451,8 +451,8 @@ pr-refresh:
 pr-conflict-scan:
 	@CURRENT="$(BRANCH)"; \
 	[ -n "$$CURRENT" ] || CURRENT=$$(git branch --show-current); \
-	scoped=1; \
-	base=$$(git merge-base HEAD origin/develop 2>/dev/null) && mine=$$(git diff --no-renames --name-only "$$base" HEAD 2>/dev/null) || scoped=0; \
+	scoped=1; mine=$$(mktemp); trap 'rm -f "$$mine"' EXIT; \
+	base=$$(git merge-base HEAD origin/develop 2>/dev/null) && git diff --no-renames --name-only "$$base" HEAD > "$$mine" 2>/dev/null || scoped=0; \
 	gh api --method GET --paginate "repos/$(or $(REPO),BenchBox-dev/benchbox)/pulls?base=develop&state=open&per_page=100" \
 		--jq '.[] | "\(.number) \(.head.ref)"' 2>/dev/null | \
 	while read num branch; do \
@@ -461,7 +461,8 @@ pr-conflict-scan:
 		git rev-parse --verify --quiet "origin/$$branch^{commit}" >/dev/null || continue; \
 		out=$$(git merge-tree --write-tree --name-only HEAD "origin/$$branch" 2>/dev/null); \
 		[ $$? -eq 1 ] || continue; \
-		files=$$(printf '%s\n' "$$out" | awk -v mine="$$mine" -v scoped="$$scoped" 'BEGIN{n=split(mine,m,"\n"); for(i=1;i<=n;i++) own[m[i]]=1} NR>1 && NF==0{exit} NR>1 && (scoped==0 || ($$0 in own)){printf "%s%s", sep, $$0; sep=", "}'); \
+		files=$$(printf '%s\n' "$$out" | awk -v mine="$$mine" -v scoped="$$scoped" 'BEGIN{while ((getline line < mine) > 0) own[line]=1} NR>1 && NF==0{exit} NR>1 && (scoped==0 || ($$0 in own)){printf "%s%s", sep, $$0; sep=", "}') || \
+			files=$$(printf '%s\n' "$$out" | awk 'NR>1 && NF==0{exit} NR>1{printf "%s%s", sep, $$0; sep=", "}'); \
 		[ -n "$$files" ] || continue; \
 		echo "  ⚠ textual conflict with PR #$$num ($$branch) in $$files — coordinate before landing"; \
 	done; true
