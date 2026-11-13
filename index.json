@@ -31513,7 +31513,9 @@
     },
     "pr-open-conflict-warning-untouched-files-20261112": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "batch-rule-followups-serial-20261113"
+      ],
       "priority": "low",
       "status": "open",
       "title": "pr-conflict-scan warns about another pull request's conflict with develop as if this pull request caused it"
