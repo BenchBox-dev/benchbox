@@ -69,6 +69,9 @@ Gaps: shell commands (`bash`, `sed -i`, `cat >`) are not inspected; a hook only
 runs from a checkout that already contains it, so a primary clone behind
 `origin/develop` has none until it is updated; the Codex and Gemini trust
 prompts can be declined. The preflight below is the backstop for all of these.
+The preflight also warns when the primary clone is behind `origin/develop`; see
+[primary-clone-update.md](primary-clone-update.md) for the update procedure and
+the per-agent live-probe results.
 
 ## The check
 
