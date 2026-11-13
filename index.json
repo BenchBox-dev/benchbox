@@ -13067,9 +13067,7 @@
     },
     "benchbox-adopt-theseus-v025-review-guidance-20261107": {
       "claim": null,
-      "needs": [
-        "theseus-v025-review-convergence-20261107"
-      ],
+      "needs": [],
       "priority": "high",
       "status": "open",
       "title": "BenchBox: adopt Theseus review guidance and round cap (PR #4118)"
