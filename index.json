@@ -31334,10 +31334,15 @@
       "title": "Route post-merge failures to the correct owner before proposing a revert"
     },
     "post-merge-worktree-finish-undocumented-20261113": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-14T18:47:35Z",
+        "generation": "7d9f7eb15c5c4990ab4d0e85827a50de",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Agent docs do not say how to retire a worktree and its branch after merge, so merged local branches pile up"
     },
     "postgres-cluster-plus-sort-same-table-20261017": {
