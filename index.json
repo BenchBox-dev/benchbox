@@ -36245,10 +36245,12 @@
     },
     "run-billable-platform-guard-noninteractive-20261113": {
       "claim": null,
-      "needs": [],
-      "priority": "high",
+      "needs": [
+        "umbrella-cli-ci-contract-20261113"
+      ],
+      "priority": "medium",
       "status": "open",
-      "title": "Refuse to start a managed-cloud platform non-interactively without an explicit acknowledgement"
+      "title": "Refuse to start a cloud platform non-interactively without an explicit acknowledgement"
     },
     "run-lifecycle-and-export-unification-refactor": {
       "claim": null,
