@@ -26986,10 +26986,12 @@
     },
     "mcp-prompts-name-nonexistent-tools-20261112": {
       "claim": null,
-      "needs": [],
-      "priority": "medium-high",
+      "needs": [
+        "umbrella-agent-mcp-surface-20261113"
+      ],
+      "priority": "medium",
       "status": "open",
-      "title": "MCP prompts tell agents to call five tools that do not exist"
+      "title": "Fix MCP prompts that name missing tools, and make the server instructions require validation"
     },
     "mcp-public-contract-table-topology-gate-v1": {
       "claim": null,
