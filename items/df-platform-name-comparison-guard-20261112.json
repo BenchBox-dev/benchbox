@@ -6,6 +6,11 @@
     "`make batch-member-check TESTS=<tests added or changed>` passes; `make comment-policy-check` reports nothing for the touched files.",
     "A `changelog.d/` fragment (internal category if nothing user-visible changes)."
   ],
+  "batch": {
+    "batch_id": "df-platform-followups",
+    "implementation_dependencies": [],
+    "member_id": "df-platform-name-comparison-guard-20261112"
+  },
   "description": "Problem. TPC-DS Q16 and Q95 carried branches comparing `ctx.platform` with `\"datafusion\"` while the adapter reports `\"DataFusion\"`; they were dead from v0.1.1 until removed in PR #4169, and nothing failed. The same mistake can be written again: `ctx.platform` is the adapter's display name (`Polars`, `DataFusion`, `PySpark`, `LakeSail`, `Dask`, `Pandas`, `cuDF`), and code asks which engine it is on in different ways: exact display name (`benchbox/core/tpcds/dataframe_queries/queries.py`, `_sql_rank_expression`, `!= \"Polars\"`), lower-cased with separator normalisation (`benchbox/core/read_primitives/dataframe_queries.py`, `_is_dask_context`, `_is_datafusion_context`), set membership on `self._adapter.platform_name` (`benchbox/platforms/dataframe/expression_family.py`), and string checks inside `unified_frame.py`.\n\nExpected: one typed way to ask which engine a context runs on (an enum plus a lookup or predicate reachable from the context), used by the query modules, so a misspelt or wrong-case name raises or fails type checking instead of comparing false.\n\nDecision gate (member, before editing): choose where the typed identity lives so that `benchbox/core` does not import adapter SDKs and the `DataFrameContext` protocol stays satisfied by both families. Record the choice in the landing report. Convert the query-module sites (TPC-DS, read primitives) and `expression_family.py`; convert `unified_frame.py` internals only if it is a mechanical change with no behaviour difference, otherwise leave them and say so.\n\nFrozen scope: `benchbox/core/dataframe/context.py`, `benchbox/core/dataframe/__init__.py`, `benchbox/core/dataframe/engine.py`, `benchbox/core/read_primitives/dataframe_queries.py`, `benchbox/core/tpcds/dataframe_queries/queries.py`, `benchbox/platforms/dataframe/expression_family.py`, `benchbox/platforms/dataframe/pandas_family.py`, `benchbox/platforms/dataframe/unified_frame.py`, `tests/unit/core/dataframe/test_engine_identity*`, `tests/unit/core/read_primitives/*`, `tests/unit/core/tpcds/*`.\n\nGuardrails (members of batch df-platform-followups):\n- Stay inside the frozen scope below; a path outside it is refused at landing. If the work needs another path, stop and report it.\n- No explanatory comments or docstrings (COMMENT-POLICY-001). Search for an existing helper before adding one (`make duplicate-check-delta`).\n- Do not edit SQL text, reference answers, expected-result fixtures or baselines to make a check pass.\n- Members make no tracker write, open no PR, do not run the fast tier, benchmarks or timing runs, and never force heavy-work admission. They use absolute paths under their own worktree and stop at a landing report.\n- One `changelog.d/` fragment per member.\n- `ctx.platform` keeps returning the same display string; results, logs and published bundles read it.\n- No query pattern may be selected by platform for speed. The existing three behaviours (Polars NULL rank handling, Dask and DataFusion read-primitive paths) must not change.\n- Do not edit `benchbox/platforms/dataframe/*_df.py`, `benchmark_mixin.py` or `benchbox/core/dataframe/capabilities.py`; other members own them.",
   "links": [
     "benchbox/core/read_primitives/dataframe_queries.py",
@@ -26,6 +31,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "f7399042bc8446fe93093a831178dcf7",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-13T18:33:26Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ecabcfa047c14828938a1bae91204b41",
       "session_id": "512d9ad0b25247538901b68a758a6fbb"
     }
   ]
