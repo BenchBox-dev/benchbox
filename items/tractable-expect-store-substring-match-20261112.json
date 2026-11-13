@@ -4,6 +4,7 @@
     "A regression test in tractable covers the prefix case and the exact-match case.",
     "The todo skill text that says the match is a substring is updated to describe the new rule, and BenchBox pins the fixed runtime."
   ],
+  "context": "2026-11-13 13:45: owner decision: a fix pull request is being opened in joeharris76/tractable (branch fix/expect-store-exact-match) with a regression test, and left for the owner to merge and release. This item stays open until the release exists and BenchBox vendors the new wheel.",
   "description": "Defect, reported from a session in the benchbox-site checkout on 2026-11-12 (not reproduced here). `get_instructions(expect_store=\"BenchBox-dev/BenchBox\")` passed on a server bound to `https://github.com/BenchBox-dev/benchbox-site.git`, because the check is a case-insensitive substring match on the remote and `benchbox-dev/benchbox` is a substring of `benchbox-dev/benchbox-site`. The guard exists to stop writes to the wrong project's tracker; for this pair of repositories it cannot. The session noticed only by reading the bound-store text.\n\nExpected: the check compares the whole `owner/repo` (case-insensitive, optional `.git`), so a sibling repository whose name extends the expected one is refused with the existing gate.\n\nGuardrails: this is a change in the tractable product, not in BenchBox; deliver it there and bump the pinned runtime here. Do not weaken the gate to a warning. Keep accepting a full URL or `owner/repo` form.",
   "links": [
     ".claude/skills/todo/SKILL.md"
@@ -15,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "a13789303ade471baf4602729adb7ec5",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-13T18:36:15Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "68dc7e03630542a5bd10582a22fca365",
       "session_id": "512d9ad0b25247538901b68a758a6fbb"
     }
   ]
