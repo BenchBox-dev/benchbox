@@ -45020,6 +45020,13 @@
       "status": "open",
       "title": "Umbrella: MCP fixes for coding agents, one branch and one PR"
     },
+    "umbrella-cli-ci-contract-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Umbrella: CLI contract for scripts and CI, one branch and one PR"
+    },
     "unattributed-update-branch-commits-block-merge-20261008": {
       "claim": null,
       "needs": [],

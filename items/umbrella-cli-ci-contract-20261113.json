@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "One PR containing all four members has merged to develop.",
+    "Each member's own acceptance criteria are met on the merged head, with the evidence in the PR.",
+    "The host-load member touches result-schema code; the external soundness review on the PR head is resolved before merge."
+  ],
+  "context": "Owner decision (2026-11-13): feature branch per group, built by one delegated agent; the session that owns this plan is the only tracker writer. Guardrails: work only in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items are delivered together on one feature branch and one PR, as their umbrella item names (site work: BenchBox-dev/benchbox-site); squash-merged. Add a changelog.d fragment for any user-facing change. No live-cloud runs and no credentials in Git or logs. Heavy work (benchmarks, test tiers) runs only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy (make comment-policy-check). Stop and report instead of widening scope; scope removed during review must be re-homed to a named item or dropped by the owner with a reason.",
+  "description": "Feature-branch umbrella (not itself a change). Members, delivered together on feat/cli-ci-contract with one PR to develop, in this order: compare-exit-codes-distinct-outcomes-20261112, cli-results-integrity-validate-command-20261112, run-billable-platform-guard-noninteractive-20261113, bundle-record-host-load-20261113.\n\nThe branch shares files with the MCP branch (benchbox/mcp/tools/benchmark.py, benchbox/mcp/jobs.py); merge origin/develop before opening the PR.\n\nAfter the PR merges: finish this umbrella, then take and finish each member in the order above.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-13T16:36:21Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "fa179cbae8b4497b8bc4bc4861b31ea9",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}
