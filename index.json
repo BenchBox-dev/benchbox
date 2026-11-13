@@ -11375,6 +11375,15 @@
       "status": "open",
       "title": "Clean up leftover local branches and the stale primary-clone develop"
     },
+    "agent-reach-evidence-gate-20261112": {
+      "claim": null,
+      "needs": [
+        "mcp-prompts-name-nonexistent-tools-20261112"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Measure whether chat assistants and coding agents reach and correctly use BenchBox, then rule on the gated work"
+    },
     "agent-relative-path-primary-clone-writes": {
       "claim": null,
       "needs": [],
