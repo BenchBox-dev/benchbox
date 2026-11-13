@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import re
+from types import SimpleNamespace
+from unittest.mock import patch
+
 import pytest
 
 from benchbox.core.dataframe.capabilities import (
@@ -224,6 +228,73 @@ class TestCheckSufficientMemory:
         result = check_sufficient_memory("tpch", 1.0, "cudf")
 
         assert result.message is not None
+
+
+def _guarded(estimate, available, margin=0.2):
+    target = "benchbox.core.dataframe.capabilities"
+    with (
+        patch(f"{target}.get_available_memory_gb", return_value=available),
+        patch(f"{target}.estimate_memory_required", return_value=SimpleNamespace(estimated_memory_gb=estimate)),
+    ):
+        return check_sufficient_memory("tpch", 10.0, "polars", safety_margin=margin)
+
+
+def _printed(message):
+    available = float(re.search(r"([\d.]+) GB available", message).group(1))
+    threshold = float(re.search(r"at least ([\d.]+) GB", message).group(1))
+    return available, threshold
+
+
+class TestMemoryGuardMessage:
+    @pytest.mark.parametrize("estimate", [0.05, 0.37, 1.0, 2.0, 3.0, 3.33, 7.77, 18.0, 20.0])
+    @pytest.mark.parametrize("margin", [0.0, 0.2, 0.25])
+    def test_printed_available_below_printed_threshold(self, estimate, margin):
+        threshold = estimate * (1 + margin)
+        for step in range(1, 1001):
+            available = threshold * step / 1000 * 0.9999 if step < 1000 else threshold - 1e-9
+            result = _guarded(estimate, available, margin)
+            assert result.is_safe is False
+            shown_available, shown_threshold = _printed(result.message)
+            assert shown_available < shown_threshold
+
+    @pytest.mark.parametrize(("estimate", "available"), [(3.0, 3.5), (2.0, 2.36), (3.0, 3.1)])
+    def test_reported_cases_refused_with_consistent_message(self, estimate, available):
+        result = _guarded(estimate, available)
+
+        assert result.is_safe is False
+        shown_available, shown_threshold = _printed(result.message)
+        assert shown_available < shown_threshold
+        assert f"~{estimate:.1f} GB estimated" in result.message
+        assert "20% safety margin" in result.message
+        assert "full benchmark" in result.message
+        assert "subset of queries" in result.message
+        assert result.estimated_memory_gb == estimate
+        assert result.available_memory_gb == available
+
+    @pytest.mark.parametrize(
+        ("estimate", "available", "safe"),
+        [
+            (3.0, 3.5, False),
+            (2.0, 2.36, False),
+            (3.0, 3.1, False),
+            (3.0, 3.59, False),
+            (3.0, 3.6, True),
+            (3.0, 3.61, True),
+            (2.0, 2.39, False),
+            (2.0, 2.4, True),
+            (3.0, 10.0, True),
+        ],
+    )
+    def test_decision_unchanged(self, estimate, available, safe):
+        assert _guarded(estimate, available).is_safe is safe
+
+    def test_passing_message_states_margin_and_threshold(self):
+        result = _guarded(3.0, 10.0)
+
+        assert "~3.0 GB estimated" in result.message
+        assert "20% safety margin" in result.message
+        assert "3.6 GB" in result.message
+        assert "full benchmark" in result.message
 
 
 class TestFormatMemoryWarning:

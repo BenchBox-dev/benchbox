@@ -12,7 +12,7 @@ from benchbox.core.write_primitives.benchmark import (
     _check_validation_query,
     _resolve_validation_sql,
 )
-from benchbox.utils.duckdb_extensions import DATAFRAME_ENABLE_HINT, THIRD_PARTY_ENABLE_HINT
+from benchbox.utils.duckdb_extensions import THIRD_PARTY_ENABLE_HINT
 
 pytestmark = [
     pytest.mark.unit,
@@ -407,7 +407,7 @@ class TestDataFrameParityDialect:
             ("required bulk-load files are missing: x.csv", "required bulk-load files are missing: x.csv"),
             (
                 f"needs the extension; {THIRD_PARTY_ENABLE_HINT}",
-                f"needs the extension; {DATAFRAME_ENABLE_HINT}",
+                f"needs the extension; {THIRD_PARTY_ENABLE_HINT}",
             ),
         ],
     )
@@ -445,6 +445,76 @@ class TestDataFrameParityDialect:
                 "error": expected,
             }
         ]
+
+
+class TestDataFrameThirdPartyExtensionOption:
+    @staticmethod
+    def _stub_duckdb(monkeypatch, wp, op_id):
+        connection = MagicMock()
+        connection.execute.return_value.fetchone.return_value = (5,)
+        duckdb_adapter = MagicMock()
+        duckdb_adapter.create_connection.return_value = connection
+        monkeypatch.setattr("benchbox.platforms.duckdb.DuckDBAdapter", lambda **_kw: duckdb_adapter)
+        monkeypatch.setattr(wp, "_select_dataframe_operation_ids", lambda query_filter=None: [op_id])
+        return connection
+
+    @pytest.mark.parametrize(("attr", "expected"), [(True, True), (False, False), (None, False)])
+    def test_adapter_value_reaches_execute_operation(self, wp, monkeypatch, attr, expected):
+        self._stub_duckdb(monkeypatch, wp, "insert_single_row")
+        seen = []
+
+        def fake_execute(op_id, conn, **kwargs):
+            seen.append(kwargs)
+            return SimpleNamespace(
+                success=True,
+                validation_passed=True,
+                error=None,
+                write_duration_ms=1.0,
+                rows_affected=1,
+                status="SUCCESS",
+            )
+
+        monkeypatch.setattr(wp, "execute_operation", fake_execute)
+        adapter = SimpleNamespace() if attr is None else SimpleNamespace(allow_third_party_extensions=attr)
+
+        wp._execute_dataframe_sql_parity_workload(adapter=adapter)
+
+        assert seen == [{"platform_key": "duckdb", "allow_third_party_extensions": expected}]
+
+    def test_unset_option_skips_with_the_option_name_and_issues_no_repository_statement(self, wp, monkeypatch):
+        op_id = "sketch_ddl_create_persistent_table"
+        connection = self._stub_duckdb(monkeypatch, wp, op_id)
+        monkeypatch.setattr(wp, "is_setup", lambda conn: True)
+        monkeypatch.setattr("benchbox.utils.duckdb_extensions.duckdb_major_version", lambda v=None: 2)
+
+        rows = wp._execute_dataframe_sql_parity_workload(adapter=SimpleNamespace(allow_third_party_extensions=False))
+
+        assert [row["status"] for row in rows] == ["SKIPPED"]
+        assert "--platform-option allow_third_party_extensions=true" in rows[0]["error"]
+        assert "no allow_third_party_extensions option" not in rows[0]["error"]
+        executed = "\n".join(str(call.args[0]) for call in connection.execute.call_args_list if call.args)
+        for forbidden in ("allow_extension_repositories", "query_farm", "INSTALL", "CREATE EXTENSION"):
+            assert forbidden not in executed
+
+    def test_set_option_installs_from_the_third_party_repository(self, wp, monkeypatch):
+        op_id = "sketch_ddl_create_persistent_table"
+        connection = self._stub_duckdb(monkeypatch, wp, op_id)
+        monkeypatch.setattr(wp, "is_setup", lambda conn: True)
+        monkeypatch.setattr("benchbox.utils.duckdb_extensions.duckdb_major_version", lambda v=None: 2)
+        real_execute = wp.execute_operation
+
+        def execute_with_integer_rows(*args, **kwargs):
+            result = real_execute(*args, **kwargs)
+            result.rows_affected = 0
+            return result
+
+        monkeypatch.setattr(wp, "execute_operation", execute_with_integer_rows)
+
+        rows = wp._execute_dataframe_sql_parity_workload(adapter=SimpleNamespace(allow_third_party_extensions=True))
+
+        assert rows[0]["status"] != "SKIPPED"
+        executed = "\n".join(str(call.args[0]) for call in connection.execute.call_args_list if call.args)
+        assert "INSTALL datasketches FROM query_farm" in executed
 
 
 class TestGetPopulationSql:

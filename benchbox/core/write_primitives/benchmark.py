@@ -59,8 +59,6 @@ from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.cloud_storage import normalize_output_dir
 from benchbox.utils.dialect_utils import split_sql_statements
 from benchbox.utils.duckdb_extensions import (
-    DATAFRAME_ENABLE_HINT,
-    THIRD_PARTY_ENABLE_HINT,
     datasketches_skip_reason,
     rewrite_datasketches_install_sql,
 )
@@ -1242,6 +1240,8 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
 
         results: list[dict[str, Any]] = []
 
+        allow_third_party = bool(getattr(adapter, "allow_third_party_extensions", False))
+
         for op_id in agg_state_op_ids:
             results.append(self._execute_aggregate_state_op(op_id, adapter=adapter))
 
@@ -1263,7 +1263,7 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                     op_id,
                     connection,
                     platform_key="duckdb",
-                    allow_third_party_extensions=False,
+                    allow_third_party_extensions=allow_third_party,
                 )
                 if op_result.status == "SKIPPED":
                     results.append(
@@ -1272,7 +1272,7 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                             "status": "SKIPPED",
                             "execution_time_seconds": 0.0,
                             "rows_returned": 0,
-                            "error": op_result.skip_reason.replace(THIRD_PARTY_ENABLE_HINT, DATAFRAME_ENABLE_HINT),
+                            "error": op_result.skip_reason,
                         }
                     )
                     continue

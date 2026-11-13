@@ -110,6 +110,7 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
         spill_directory: str | Path | None = None,
         tuning_config: DataFrameTuningConfiguration | None = None,
         execution_engine: str = "default",
+        allow_third_party_extensions: bool = False,
     ) -> None:
         if not DASK_AVAILABLE:
             raise ImportError("Dask not installed. Install with: pip install dask[distributed]")
@@ -125,6 +126,7 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
         )
 
         self.n_workers = n_workers
+        self.allow_third_party_extensions = bool(allow_third_party_extensions)
         self.threads_per_worker = threads_per_worker if threads_per_worker is not None else 1
         self.scheduler_address = scheduler_address
         self._legacy_use_distributed = use_distributed
@@ -549,6 +551,7 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
             except Exception as e:
                 logger.debug(f"Failed to get scheduler info: {e}")
 
+        self._enrich_with_extension_options(info)
         return info
 
     def _merge_frames(

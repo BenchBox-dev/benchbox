@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
 from benchbox.core.dataframe.context import DataFrameContextImpl
+from benchbox.core.dataframe.engine import SPARK_ENGINES
 from benchbox.core.dataframe.profiling import (
     MemoryTracker,
     QueryExecutionProfile,
@@ -76,12 +77,12 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
         return UnifiedExpr(self._adapter.element())
 
     def date_sub(self, column: Expr, days: int) -> Expr:
-        if self._adapter.platform_name in {"PySpark", "LakeSail"} and isinstance(column, UnifiedExpr):
+        if self._adapter.platform_name in SPARK_ENGINES and isinstance(column, UnifiedExpr):
             return UnifiedExpr(self._adapter.date_sub(column._expr, days))
         return self._adapter.date_sub(column, days)
 
     def date_add(self, column: Expr, days: int) -> Expr:
-        if self._adapter.platform_name in {"PySpark", "LakeSail"} and isinstance(column, UnifiedExpr):
+        if self._adapter.platform_name in SPARK_ENGINES and isinstance(column, UnifiedExpr):
             return UnifiedExpr(self._adapter.date_add(column._expr, days))
         return self._adapter.date_add(column, days)
 

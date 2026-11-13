@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Added a typed DataFrame engine identity so query code no longer compares platform display names as strings"
+}
