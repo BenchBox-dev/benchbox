@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-from scripts import analyze_polars_version_matrix as analyzer, run_polars_version_matrix as runner
+from scripts import analyze_polars_version_matrix as analyzer, run_polars_version_matrix as runner, run_version_matrix
 from scripts.polars_matrix_spec import POLARS, SETUP_ENGINES, PolarsMatrixSpec, round_order
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -187,6 +187,19 @@ def test_environment_check_rejects_stale_runtime_and_wrong_version() -> None:
     assert runner.verify_installation({"polars": "1.40.1", "polars-runtime-64": "1.40.1"}, "1.40.1")["runtimes"] == {
         "polars-runtime-64": "1.40.1"
     }
+
+
+def test_spill_measurement_counts_the_out_of_core_directory_under_the_process_temp_dir(tmp_path: Path) -> None:
+    process_temp = tmp_path / run_version_matrix.PROCESS_TEMP_SUBDIR
+    out_of_core = process_temp / "polars-someone" / "spill" / "query"
+    polars_temp = tmp_path / run_version_matrix.POLARS_TEMP_SUBDIR
+    for directory in (out_of_core, polars_temp, process_temp / "unrelated"):
+        directory.mkdir(parents=True)
+    (out_of_core / "frame.ipc").write_bytes(b"x" * 300)
+    (polars_temp / "cache.bin").write_bytes(b"x" * 20)
+    (process_temp / "unrelated" / "scratch").write_bytes(b"x" * 4000)
+
+    assert run_version_matrix.spill_bytes(tmp_path) == 320
 
 
 @pytest.mark.parametrize("key", ["benchbox_commit", "pyarrow", "datagen_manifests"])
