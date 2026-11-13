@@ -10,13 +10,14 @@ while `origin/develop` pinned 1.1.1.
 
 ## The warning
 
-`make agent-write-preflight` runs `scripts/check_primary_clone_stale.py` after
-the other checks. It only warns and always succeeds. It reads the
+`make agent-write-preflight` runs `scripts/check_primary_clone_stale.py` right
+after the clean-clone check. It only warns and always succeeds. It reads the
 `origin/develop` ref that is already fetched and makes no network call, so it is
 as fresh as the last fetch. It prints a warning when:
 
 - `origin/develop` has commits not in the primary clone's `HEAD` that touch
-  `.claude`, `.codex`, `.gemini`, `.omp`, `.mcp.json`,
+  `.claude/settings.json`, `.codex/hooks.json`, `.gemini/settings.json`,
+  `.omp/hooks`, `.omp/extensions`, `.mcp.json`,
   `scripts/primary_clone_write_guard.py`, `_project/scripts/pyproject.toml`,
   `_project/scripts/uv.lock` or `_project/scripts/vendor`; changes to any other
   path are not reported;
@@ -51,18 +52,10 @@ scripts run with the primary clone as working directory) are not inspected; the
 owner accepted detection afterwards by the snapshot comparison in
 `make agent-write-preflight`.
 
-Live probes started a non-interactive session with the primary clone as working
-directory and asked each agent to create `guard-probe-<agent>.txt` in the
-repository root through its edit tool:
-
-| Agent | Version | Probe result | Status |
-| --- | --- | --- | --- |
-| omp | n/a | A relative write in the primary clone was refused, a worktree write allowed. | Enforced |
-| Claude Code | 2.1.309 | Not run: `claude --version` and `claude -p` produced no output and used CPU until killed after 60 s and 200 s. No probe file was created. | Unproven; relies on the preflight backstop |
-| Codex | codex-cli 0.162.1 | Not run: `codex exec` started, ran its session hooks, then failed with `You've hit your usage limit` before any tool call, so neither the edit tool nor `apply_patch` was exercised (the openai/codex#27833 case stays untested). No probe file was created. | Unproven; relies on the preflight backstop |
-| Gemini CLI | 0.46.0 | Not run: it announced the `primary-clone-write-guard` project hook, then failed with `IneligibleTierError: This client is no longer supported for Gemini Code Assist for individuals`. No probe file was created. | Unproven; relies on the preflight backstop |
-
-Probes were run on 2026-11-13. Rerun them when a login, quota or tier problem
-clears; until then treat Claude Code, Codex and Gemini as relying on the
-preflight backstop. If a probe file ever appears in the primary clone, delete
-exactly that file and record the hook as not enforcing for that agent.
+Per-agent enforcement status, with the live-probe result and date for each
+agent, is the table in [primary-clone-guard.md](primary-clone-guard.md). On
+2026-11-13 live probes (a non-interactive session with the primary clone as
+working directory, asked to create `guard-probe-<agent>.txt` through the edit
+tool) could not be run for Claude Code, Codex or Gemini CLI, so those three rely
+on the preflight backstop. Rerun them when the login, quota or tier problem
+clears.

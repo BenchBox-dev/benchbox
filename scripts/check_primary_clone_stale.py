@@ -7,10 +7,11 @@ from pathlib import Path
 
 REMOTE_REF = "origin/develop"
 WATCHED_PATHS = (
-    ".claude",
-    ".codex",
-    ".gemini",
-    ".omp",
+    ".claude/settings.json",
+    ".codex/hooks.json",
+    ".gemini/settings.json",
+    ".omp/hooks",
+    ".omp/extensions",
     ".mcp.json",
     "scripts/primary_clone_write_guard.py",
     "_project/scripts/pyproject.toml",

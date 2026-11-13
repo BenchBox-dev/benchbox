@@ -70,6 +70,8 @@ def test_behind_on_watched_path_warns(tmp_path: Path) -> None:
 def test_behind_only_on_unwatched_paths_is_silent(tmp_path: Path) -> None:
     repo = _primary(tmp_path)
     _advance_remote(repo, "benchbox/core.py", "x = 1\n")
+    _advance_remote(repo, ".claude/skills/x/SKILL.md", "skill\n")
+    _advance_remote(repo, ".omp/skills/y/SKILL.md", "skill\n")
 
     assert stale.stale_warnings(repo) == []
 
