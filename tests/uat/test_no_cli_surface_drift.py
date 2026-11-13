@@ -72,6 +72,8 @@ ALLOWED_INTERNAL_CLI_FILES = {
     "benchbox/cli/cloud_storage.py",
     "benchbox/cli/commands/auth.py",
     "benchbox/cli/common_types.py",
+    "benchbox/cli/billable_guard.py",
+    "benchbox/cli/exit_codes.py",
     "benchbox/cli/output.py",
     "benchbox/cli/platform_checks.py",
     "benchbox/cli/presentation/__init__.py",
@@ -100,8 +102,9 @@ ALLOWED_HIDDEN_COMPAT_CLI_FILES = {
 }
 ALLOWED_INTERNAL_CLI_FILES = ALLOWED_INTERNAL_CLI_FILES | ALLOWED_HIDDEN_COMPAT_CLI_FILES
 ACCEPTED_CLI_SURFACE_DIGESTS = {
-    "benchbox/cli/commands/compare.py": "714db0ad76e30d663fec933dffffd568d109daf7e79ad82d91bde8d22e1c88ee",
+    "benchbox/cli/commands/compare.py": "619038759fe450955d1778f680acdeba6d62baf295a2153af03280d085b0d4d6",
     "benchbox/cli/commands/report.py": "e373d381a336a479b892334a140a35e8804bc8d2ac5513d18edff21999ef2b60",
+    "benchbox/cli/commands/results.py": "d7e157d2e82397b62e671476c7aa2ee4bf897b5c41a33549a70ee33fd3fd0eac",
     "benchbox/cli/commands/metrics.py": "170f47a581bd13aa1e57a5ddbbb7743630f3600524c3508eb17dccea7f0fe096",
 }
 FORBIDDEN_CLI_SURFACE_DECORATORS = {"argument", "command", "group", "option"}

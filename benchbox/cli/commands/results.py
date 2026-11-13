@@ -1,4 +1,5 @@
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -6,8 +7,17 @@ import click
 from pydantic import ValidationError
 from rich.table import Table
 
+from benchbox.cli.exit_codes import ExitCode, exit_code_help
 from benchbox.cli.output import ResultExporter
 from benchbox.cli.shared import console
+from benchbox.core.results.integrity_validator import (
+    CheckStatus,
+    IntegrityReport,
+    directory_payload,
+    report_payload,
+    validate_directory,
+    validate_file,
+)
 from benchbox.core.results.submission_history import list_hosted_submissions
 from benchbox.core.schemas import ExecutionContext
 
@@ -203,6 +213,104 @@ def show_cli(result_file: str, full: bool) -> None:
         console.print(f"[red]❌ Invalid result file format: {e}[/red]")
     except ValidationError as e:
         console.print(f"[red]❌ Invalid execution context in result file: {e}[/red]")
+
+
+VALIDATE_EXIT_CODES = (ExitCode.SUCCESS, ExitCode.ERROR, ExitCode.VALIDATION_FAILED)
+
+
+@results.command(
+    "validate",
+    help=(
+        "Check result files for integrity, completeness and believability.\n"
+        "\n"
+        "Validates one result JSON file or every result file in a directory and reports\n"
+        "PASS, INFO, WARN and FAIL findings. The findings are the ones the MCP\n"
+        "validate_results tool returns for the same input.\n"
+        "\n"
+        "\b\n"
+        "Examples:\n"
+        "    benchbox results validate benchmark_runs/results/tpch_sf001_duckdb_sql.json\n"
+        "    benchbox results validate benchmark_runs/results --json\n"
+        "    benchbox results validate ./bundles --fail-on-warn --benchmark tpch\n"
+        "\n"
+        "\b\n"
+        "JSON output (--json):\n"
+        "    One file: an object with file, benchmark_id, platform, scale_factor,\n"
+        "    overall_status, summary (count per status) and checks (category, name,\n"
+        "    status, message, details; PASS checks only with --verbose).\n"
+        "    Directory: an object with total, pass, warn, fail, files (file, benchmark_id,\n"
+        "    platform, overall_status) and reports (one file object per result file).\n"
+        "\n"
+        "\b\n"
+        "Exit status:\n"
+        f"{exit_code_help(VALIDATE_EXIT_CODES)}\n"
+        "    An input that cannot be read (missing path, or a file that is not readable JSON) exits 1."
+    ),
+)
+@click.argument("path", type=click.Path(path_type=Path))
+@click.option("--json", "as_json", is_flag=True, help="Print the findings as JSON instead of a table")
+@click.option("--verbose", is_flag=True, help="Include PASS checks in the output")
+@click.option("--fail-on-warn", is_flag=True, help="Exit 5 when any file has a WARN finding, as for a FAIL")
+@click.option("--benchmark", default=None, help="Only report files whose benchmark id or platform contains this text")
+def validate_cli(path: Path, as_json: bool, verbose: bool, fail_on_warn: bool, benchmark: str | None) -> None:
+    if not path.exists():
+        click.echo(f"Error: {path} not found", err=True)
+        sys.exit(ExitCode.ERROR)
+
+    reports = [validate_file(path)] if path.is_file() else validate_directory(path)
+    if benchmark:
+        needle = benchmark.lower()
+        reports = [r for r in reports if needle in r.benchmark_id.lower() or needle in r.platform.lower()]
+
+    if as_json:
+        payload = (
+            report_payload(reports[0], verbose=verbose)
+            if path.is_file() and reports
+            else {**directory_payload(reports), "reports": [report_payload(r, verbose=verbose) for r in reports]}
+        )
+        click.echo(json.dumps(payload, indent=2))
+    elif not reports:
+        click.echo("No result files found.")
+    else:
+        for report in reports:
+            _print_validation_report(report, verbose=verbose)
+        if len(reports) > 1:
+            _print_validation_totals(reports)
+
+    sys.exit(_validation_exit_status(reports, fail_on_warn=fail_on_warn))
+
+
+def _validation_exit_status(reports: list[IntegrityReport], *, fail_on_warn: bool) -> ExitCode:
+    if any(c.name == "file_readable" and c.status == CheckStatus.FAIL for r in reports for c in r.checks):
+        return ExitCode.ERROR
+    if any(r.overall_status == CheckStatus.FAIL for r in reports):
+        return ExitCode.VALIDATION_FAILED
+    if fail_on_warn and any(r.overall_status == CheckStatus.WARN for r in reports):
+        return ExitCode.VALIDATION_FAILED
+    return ExitCode.SUCCESS
+
+
+def _print_validation_report(report: IntegrityReport, *, verbose: bool) -> None:
+    click.echo(f"File: {Path(report.file).name}")
+    click.echo(
+        f"Benchmark: {report.benchmark_id} | Platform: {report.platform} | "
+        f"SF: {report.scale_factor} | Status: {report.overall_status.value}"
+    )
+    click.echo()
+    click.echo(f"{'CATEGORY':<16} {'CHECK':<30} {'STATUS':<6} MESSAGE")
+    for check in report.checks:
+        if verbose or check.status != CheckStatus.PASS:
+            click.echo(f"{check.category.value:<16} {check.name:<30} {check.status.value:<6} {check.message}")
+    click.echo()
+
+
+def _print_validation_totals(reports: list[IntegrityReport]) -> None:
+    counts = directory_payload(reports)
+    click.echo("=" * 60)
+    click.echo(
+        f"Aggregate: {counts['total']} files - {counts['pass']} PASS, {counts['warn']} WARN, {counts['fail']} FAIL"
+    )
+    click.echo("=" * 60)
 
 
 def _display_provenance_info(execution_context: dict[str, Any] | None) -> None:

@@ -10,6 +10,7 @@ from tests.uat import docker_assets
 
 PLATFORM_CLI_FLAGS: dict[str, list[str]] = {
     "velox": ["--iterations", "1"],
+    "databend": ["--acknowledge-billable-platform"],
 }
 
 PLATFORM_UV_EXTRA: dict[str, str] = {

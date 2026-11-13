@@ -14,6 +14,7 @@ from rich.prompt import Confirm
 from rich.text import Text
 
 from benchbox.cli.benchmarks import BenchmarkConfig, BenchmarkManager
+from benchbox.cli.billable_guard import ACKNOWLEDGEMENT_FLAG_HELP, enforce_billable_acknowledgement
 from benchbox.cli.cloud_storage import prompt_cloud_output_location
 from benchbox.cli.composite_params import (
     COMPRESSION,
@@ -273,6 +274,7 @@ def _build_execution_context(
     strict_plan_capture: bool,
     non_interactive: bool,
     tuning: str | None,
+    billable_acknowledgement: dict[str, object] | None = None,
 ) -> ExecutionContext:
     return ExecutionContext(
         entry_point="cli",
@@ -291,6 +293,7 @@ def _build_execution_context(
         strict_plan_capture=strict_plan_capture,
         non_interactive=non_interactive,
         tuning_mode=tuning_modes.NOTUNING if tuning == tuning_modes.NOTUNING else tuning,
+        billable_platform_acknowledgement=billable_acknowledgement,
     )
 
 
@@ -1013,6 +1016,8 @@ def _resolve_run_request(
     _parse_phases_list(s)
     _parse_queries_list(s)
     _derive_exec_type_and_banner(s)
+    if not s.dry_run:
+        s.billable_acknowledgement = _enforce_billable_acknowledgement(s)
 
     s.platform_manager = get_platform_manager()
     _check_platforms_status(s)
@@ -1132,6 +1137,18 @@ def _build_benchmark_config(
     )
 
 
+def _enforce_billable_acknowledgement(s: types.SimpleNamespace) -> dict[str, object] | None:
+    if s.test_execution_type == "data_only" or not s.platform_key:
+        return None
+    return enforce_billable_acknowledgement(
+        s.platform_key,
+        deployment=getattr(s, "deployment_selector", None),
+        options=s.parsed_platform_options,
+        flag=bool(getattr(s, "acknowledge_billable_platform", False)),
+        non_interactive=bool(s.non_interactive),
+    )
+
+
 def _build_execution_context_from_plan(s: types.SimpleNamespace) -> ExecutionContext:
     plan: ResolvedRunPlan = s.resolved_run_plan
     return _build_execution_context(
@@ -1151,6 +1168,7 @@ def _build_execution_context_from_plan(s: types.SimpleNamespace) -> ExecutionCon
         strict_plan_capture=s.strict_plan_capture,
         non_interactive=s.non_interactive,
         tuning=plan.canonical_tuning_mode,
+        billable_acknowledgement=getattr(s, "billable_acknowledgement", None),
     )
 
 
@@ -2595,6 +2613,12 @@ def _interactive_handle_result(s: types.SimpleNamespace, result: Any, orchestrat
 @click.option("-q", "--quiet", is_flag=True, help="Suppress output")
 @click.option("--non-interactive", is_flag=True, help="Non-interactive mode (CI/CD)")
 @click.option(
+    "--acknowledge-billable-platform",
+    "acknowledge_billable_platform",
+    is_flag=True,
+    help=ACKNOWLEDGEMENT_FLAG_HELP,
+)
+@click.option(
     "--official",
     is_flag=True,
     help="TPC official mode: validates scale factors, requires seed for reproducibility; results are derived and do not comply with the TPC Specification",
@@ -2903,6 +2927,7 @@ def run(
     no_link_probe: bool = False,
     polars_streaming: bool = False,
     allow_greybeam_inline_load: bool = False,
+    acknowledge_billable_platform: bool = False,
 ) -> None:
     from benchbox.core.run_service import apply_polars_streaming_flag, begin_run
 
@@ -2964,6 +2989,7 @@ def run(
         no_link_probe=no_link_probe,
         polars_streaming=polars_streaming,
         allow_greybeam_inline_load=allow_greybeam_inline_load,
+        acknowledge_billable_platform=acknowledge_billable_platform,
     )
     _prepare_run_state(s)
 
