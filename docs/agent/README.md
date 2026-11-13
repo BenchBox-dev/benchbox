@@ -33,7 +33,7 @@ are owned by the site repository, not this one.
 | `audit-evidence-provenance.md` | SHA-field convention for `_project/audits/` |
 | `handoffs.md` | Where resumable session state goes, and why handoff files are retired |
 | `cloud-builder.md` | How a cloud session builds, verifies, and hands off one change |
-| `merge-authority.md` | Owner holds, stand-in approvals (requires owner-named PR, head SHA, and prior instruction comment), and stale failed check suites; ruleset relaxation is owner-only |
+| `merge-authority.md` | Owner holds, stand-in approvals (requires owner-named PR, head SHA, and prior instruction comment), and stale failed check suites, and retiring a worktree and its branch after the merge; ruleset relaxation is owner-only |
 | `emergency-merge.md` | Base-pinned gate breakage: agents reproduce, record evidence, and stop; stand-in evidence matches `merge-authority.md`; ruleset relaxation is owner-only |
 | `primary-clone-guard.md` | Pre-write tool hook per harness, failing primary-clone change check, absolute worktree paths for workers, and the lost-edit cause |
 | `remote-closeout.md` | Closing out a PR from the primary clone without a checkout |
