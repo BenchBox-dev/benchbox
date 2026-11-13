@@ -19916,10 +19916,15 @@
       "title": "Time the DataFrame distinct-count remediation on an idle machine and change or revert any pattern that is slower"
     },
     "df-memory-guard-refusal-message-and-subset-estimate-20261112": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-14T18:50:24Z",
+        "generation": "33acfa0fc23243bc90670bc8993d5ec4",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Make the DataFrame memory guard's refusal message state the threshold it applies"
     },
     "df-memory-guard-subset-estimate-20261113": {
