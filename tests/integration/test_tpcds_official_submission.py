@@ -35,14 +35,16 @@ def test_official_tpcds_run_produces_a_submittable_bundle(tmp_path: Path) -> Non
             "--scale",
             "1",
             "--phases",
-            "power",
+            "load,power,throughput,maintenance",
+            "--streams",
+            "4",
             "--iterations",
             "1",
             "--no-progress",
             "--non-interactive",
         ],
         env=env,
-        timeout=180.0,
+        timeout=600.0,
     )
 
     assert run.returncode == 0, run.stdout + run.stderr
