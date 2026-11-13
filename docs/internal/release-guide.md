@@ -51,6 +51,46 @@ make release-check VERSION=X.Y.Z RELEASE_PRE_TAG=1
 Choose an unused version and resolve any existing `vX.Y.Z` tag before starting.
 Never retag or force-push a published tag.
 
+### The site-inputs bundle of a release
+
+The site documents a release from the certified `site-inputs-<sha>` bundle of
+the release tag's commit. That bundle is produced when the commit is pushed to
+`develop`: `site-inputs.yml` runs after the commit's green `trunk.yml` push run
+and uploads the artifact with 90 days of retention. No step of the release flow
+builds it, and the release carries no copy of it.
+
+When the artifact has expired, or the tag commit never got one, rebuild it:
+
+```bash
+gh workflow run site-inputs.yml --ref develop -f core_sha=vX.Y.Z
+```
+
+`core_sha` takes a full or abbreviated commit SHA or a tag name. The run
+resolves it to a commit, requires a successful `trunk.yml` push run on
+`develop` for exactly that commit and records its numeric id as `certified_by`.
+With no such run the build fails with `no successful trunk.yml push run on
+<sha>`, and no certified bundle can be made for that commit by this route. For
+a tag of the form `vX.Y.Z` the run also refuses a commit whose
+`pyproject.toml` version differs, so the manifest `package_version` is the tag
+without the `v`. The manifest `core_sha` is the resolved commit.
+
+The bundle is built from a checkout of the target commit, using that commit's
+own `scripts/site_inputs.py` and exporters, so `docs-data`,
+`doc-contracts.json` and `repo-files.json` describe that commit as it exported
+them then. Contract values that were wrong at the time stay wrong: the
+v0.5.0 `doc-contracts.json` exports `num_queries` 17, 12 and 12 for
+`tpcds_obt`, `write_primitives` and `transaction_primitives` and is
+reproduced as is. A commit that predates the bundle contract cannot be rebuilt
+because its own tooling cannot produce a bundle. The site accepts the result
+when its current schema support covers the manifest schema of that commit's
+exporter, which the site's `npm run docs:pin -- vX.Y.Z` checks.
+
+`parent_core_sha` defaults to the first parent of the target commit with
+`parent_source` `dispatch`; pass `-f parent_core_sha=<sha>` to choose another
+ancestor. A targeted rebuild only uploads the artifact: it does not send the
+`core-bundle` dispatch to the site, so the Results Explorer deploy is not
+affected, and it never opens or closes the `site-bundle-failed` incident.
+
 ## Maintenance releases
 
 A maintenance line ships a fix on an older minor without shipping everything on

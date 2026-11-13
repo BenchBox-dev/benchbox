@@ -75,7 +75,7 @@ def test_reporter_suppresses_repeat_comments_with_a_hidden_marker() -> None:
 def test_close_job_closes_only_the_core_label_on_build_success() -> None:
     close = _jobs()["close-failure"]
     assert close["needs"] == "build"
-    assert close["if"] == "success()"
+    assert close["if"] == "success() && inputs.core_sha == ''"
     assert close["permissions"] == {"issues": "write"}
     step = close["steps"][0]
     assert step["env"]["EXPECTED_REJECTION"] == "${{ inputs.expected_rejection }}"
@@ -115,5 +115,13 @@ def test_workflow_never_selects_a_candidate_profile() -> None:
 def test_publication_build_takes_its_profile_from_the_default() -> None:
     text = _text()
     assert "SITE_INPUTS_PROFILE" not in text
-    assert "make site-inputs SITE_INPUTS_OUT=site-inputs-bundle" in text
+    assert 'make -C "$BUILD_DIR" site-inputs SITE_INPUTS_OUT="$GITHUB_WORKSPACE/site-inputs-bundle"' in text
     assert 'SITE_INPUTS_CERTIFIED_BY="$CERTIFIED_BY"' in text
+
+
+def test_targeted_rebuild_never_notifies_the_site_or_the_incident() -> None:
+    jobs = _jobs()
+    assert jobs["report-failure"]["if"] == "failure() && inputs.core_sha == ''"
+    for step in jobs["build"]["steps"]:
+        if step.get("name") in ("Dispatch to site repo", "Send core-bundle dispatch", "Bridge disabled notice"):
+            assert "inputs.core_sha == ''" in step["if"]

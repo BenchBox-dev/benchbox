@@ -121,7 +121,10 @@ sketch columns, not on one-shot aggregate latency).
 `INSTALL datasketches FROM community`. On DuckDB 2.x the extension is no
 longer published to the community repository. Those operations are
 skipped unless you opt in with
-`--platform-option allow_third_party_extensions=true` (DuckDB and DuckLake).
+`--platform-option allow_third_party_extensions=true`. The option applies to
+DuckDB and DuckLake, and also to the DataFrame platforms (Polars, Pandas, cuDF,
+Dask, DataFusion, PySpark, LakeSail), whose SQL-parity workload runs the sketch
+operations on an internal DuckDB connection; it defaults to off everywhere.
 With the option, BenchBox sets `allow_extension_repositories = 'allowed'`,
 registers the third-party Query.Farm repository
 (`https://duckdb-extensions.query.farm`) and installs `datasketches` from

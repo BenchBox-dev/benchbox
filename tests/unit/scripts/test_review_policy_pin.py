@@ -61,7 +61,9 @@ def test_the_adopted_review_settings_are_pinned() -> None:
 
     assert POLICY["protocol"]["max_finding_rounds"] == 4
     assert "pre_existing" not in POLICY["protocol"]
-    assert POLICY["brief"] == {"include_intent": True}
+    assert POLICY["brief"] == {"include_intent": True, "structured_findings": True, "suggestions": True}
+    assert POLICY["dashboard_comment"] is True
+    assert POLICY["check_run_mirror"] is True
     assert classifier["unavailable_bucket"] == "max"
     assert classifier["fallback"] == "decisions"
     assert classifier["fallback_min_bucket"] == "large"

@@ -43,6 +43,7 @@ MAX_MEMORY_LIMIT_BYTES = 1 << 40
 
 MIN_SCALE_FACTOR = 0.001
 MAX_SCALE_FACTOR = 10000
+MAX_SEED = 2**31 - 1
 
 
 class MCPValidationError(ValueError):
@@ -657,3 +658,23 @@ def validate_scale_factor(scale_factor: float) -> float:
         raise MCPValidationError(f"Scale factor too large (max {MAX_SCALE_FACTOR}): {scale_factor}")
 
     return scale_factor
+
+
+def validate_seed(seed: object) -> int | None:
+    if seed is None:
+        return None
+    if isinstance(seed, bool) or not isinstance(seed, int):
+        raise MCPValidationError("Seed must be an integer")
+    if not 0 <= seed <= MAX_SEED:
+        raise MCPValidationError(f"Seed must be between 0 and {MAX_SEED}: {seed}")
+    return seed
+
+
+def validate_iterations(iterations: object) -> int | None:
+    if iterations is None:
+        return None
+    if isinstance(iterations, bool) or not isinstance(iterations, int):
+        raise MCPValidationError("Iterations must be an integer")
+    if iterations < 1:
+        raise MCPValidationError(f"Iterations must be at least 1: {iterations}")
+    return iterations

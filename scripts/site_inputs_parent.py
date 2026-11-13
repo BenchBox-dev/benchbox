@@ -9,12 +9,15 @@ import re
 import subprocess
 import sys
 import tempfile
+import tomllib
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 SITE_RECEIPT_RE = re.compile(r"^site-deploy receipt sha256:([0-9a-f]{64}) run:(\d+)(?: target:(\S+))?$")
+TARGET_REF_RE = re.compile(r"^[0-9A-Za-z][0-9A-Za-z._/+-]{0,199}$")
+RELEASE_TAG_RE = re.compile(r"^v\d+\.\d+\.\d+$")
 RECOVERY_SUFFIX = "dispatch site-inputs.yml with parent_core_sha set to the last deployed core_sha"
 SITE_REPO = "BenchBox-dev/benchbox-site"
 SITE_ENVIRONMENT = "github-pages"
@@ -64,12 +67,36 @@ def _gh(args: Sequence[str]) -> str:
     return proc.stdout
 
 
-def resolve_commit(ref: str) -> str:
+def resolve_commit(ref: str, label: str = "parent_core_sha") -> str:
     proc = _git("rev-parse", "--verify", "--end-of-options", f"{ref}^{{commit}}")
     sha = proc.stdout.strip()
     if proc.returncode != 0 or not SHA_RE.match(sha):
-        raise ParentResolutionError("parent_core_sha does not name a commit")
+        raise ParentResolutionError(f"{label} does not name a commit")
     return sha
+
+
+def resolve_target_commit(ref: str) -> str:
+    if not TARGET_REF_RE.match(ref):
+        raise ParentResolutionError("core_sha is not a commit SHA or a tag name")
+    return resolve_commit(ref, "core_sha")
+
+
+def commit_package_version(core_sha: str) -> str:
+    proc = _git("show", f"{core_sha}:pyproject.toml")
+    if proc.returncode != 0:
+        raise ParentResolutionError(f"cannot read pyproject.toml at {core_sha}")
+    try:
+        return str(tomllib.loads(proc.stdout)["project"]["version"])
+    except (ValueError, KeyError) as error:
+        raise ParentResolutionError(f"pyproject.toml at {core_sha} has no project version") from error
+
+
+def check_tag_version(ref: str, core_sha: str) -> None:
+    if not RELEASE_TAG_RE.match(ref):
+        return
+    version = commit_package_version(core_sha)
+    if version != ref[1:]:
+        raise ParentResolutionError(f"tag {ref} is commit {core_sha}, whose package version is {version}")
 
 
 def is_ancestor(parent: str, core: str) -> bool:
@@ -121,17 +148,21 @@ def decide_certified_by(
     raise NotTrunkCertifiedError(f"no successful trunk.yml push run on {core_sha}")
 
 
-def recent_trunk_runs(repo: str, limit: int = 20) -> list[dict]:
+def recent_trunk_runs(repo: str, limit: int = 20, commit: str | None = None) -> list[dict]:
+    scope = ["--commit", commit, "--event", "push"] if commit else []
     raw = _gh(
         [
             "run",
             "list",
+            "--repo",
+            repo,
             "--workflow",
             "trunk.yml",
             "--branch",
             "develop",
             "--status",
             "success",
+            *scope,
             "--json",
             "databaseId,headSha,headBranch,event,conclusion",
             "--limit",
@@ -359,8 +390,21 @@ def resolve_and_decide(
     repo: str,
     limit: int,
     run_id: str,
+    target: bool = False,
 ) -> tuple[str, str, str]:
     dispatch_parent = resolve_commit(dispatch_parent_raw) if dispatch_parent_raw.strip() else None
+    if target:
+        certified_by = decide_certified_by(core_sha, "", recent_trunk_runs(repo, commit=core_sha))
+        if dispatch_parent is None:
+            return (resolve_commit(f"{core_sha}~1"), "dispatch", certified_by)
+        parent_sha, parent_source = decide_parent(
+            core_sha,
+            dispatch_parent,
+            recent_bundled_shas(repo, limit),
+            is_ancestor,
+            lambda sha: parent_bundle_state(sha, repo),
+        )
+        return (parent_sha, parent_source, certified_by)
     if dispatch_parent is None:
         deployed_sha = site_deployed_core_sha(SITE_REPO)
         parent_sha, parent_source = decide_deployed_parent(
@@ -379,15 +423,20 @@ def main(argv: Sequence[str] | None = None, environ: dict[str, str] | None = Non
     env = os.environ if environ is None else environ
     parser = argparse.ArgumentParser(description="Resolve the site-inputs bundle parent by SHA.")
     parser.add_argument("--core-sha", default="")
+    parser.add_argument("--target-ref", default=env.get("TARGET_REF", ""))
     parser.add_argument("--dispatch-parent", default=env.get("DISPATCH_PARENT", ""))
     parser.add_argument("--repo", default=env.get("REPO", env.get("GITHUB_REPOSITORY", "")))
     parser.add_argument("--run-id", default=env.get("RUN_ID", ""))
     parser.add_argument("--limit", type=int, default=100)
     args = parser.parse_args(argv)
+    target_ref = args.target_ref.strip()
     try:
         if not args.repo:
             raise ParentResolutionError("missing repository for parent lookup")
-        if args.core_sha:
+        if target_ref:
+            core_sha = resolve_target_commit(target_ref)
+            check_tag_version(target_ref, core_sha)
+        elif args.core_sha:
             core_sha = args.core_sha.strip()
             if not SHA_RE.match(core_sha):
                 raise ParentResolutionError("core_sha is not a full commit SHA")
@@ -397,7 +446,7 @@ def main(argv: Sequence[str] | None = None, environ: dict[str, str] | None = Non
             if proc.returncode != 0 or not SHA_RE.match(core_sha):
                 raise ParentResolutionError("cannot resolve HEAD to a full commit SHA")
         parent_sha, parent_source, certified_by = resolve_and_decide(
-            core_sha, args.dispatch_parent, args.repo, args.limit, args.run_id
+            core_sha, args.dispatch_parent, args.repo, args.limit, args.run_id, target=bool(target_ref)
         )
     except ParentResolutionError as error:
         print(str(error), file=sys.stderr)
@@ -408,6 +457,8 @@ def main(argv: Sequence[str] | None = None, environ: dict[str, str] | None = Non
         return 1
     output = env.get("GITHUB_OUTPUT", "")
     lines = [f"parent_sha={parent_sha}", f"parent_source={parent_source}", f"certified_by={certified_by}"]
+    if target_ref:
+        lines.insert(0, f"core_sha={core_sha}")
     if output:
         with open(output, "a", encoding="utf-8") as handle:
             handle.write("\n".join(lines) + "\n")

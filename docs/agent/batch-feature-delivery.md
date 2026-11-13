@@ -184,6 +184,20 @@ A member:
   and tests. It does not push for publication, open a PR, or
   touch the tracker.
 
+A leader that dispatches a member as a subagent pastes this prompt into the
+task, followed by the item text:
+
+```text
+You are a member of batch <batch>. Your worktree is <absolute path>.
+- Make no tracker write: no take, prepare, finish, release or update.
+- Pass an absolute path under your worktree to every file tool.
+- Change only paths in your frozen scope: <patterns>.
+- Commit, then run `make batch-member-check TESTS=<tests>`.
+- Do not push and open no pull request.
+- Stop with a landing report: branch, accepted head, base, changed files,
+  tests.
+```
+
 ### 3. Land (leader), one member at a time
 
 1. `make batch-land MEMBER=<id>` refuses unless the member worktree is clean,

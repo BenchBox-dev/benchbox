@@ -11,6 +11,10 @@ on:
         description: "Base SHA for the validator_parity attestation (default: the newest bundled ancestor on develop)"
         required: false
         default: ""
+      core_sha:
+        description: "Build the bundle for this commit SHA or release tag instead of develop HEAD (the commit needs a successful Trunk push run on develop; parent_core_sha defaults to its first parent)"
+        required: false
+        default: ""
       expected_rejection:
         description: "Mark this run as an expected-failure probe: it never opens, comments, or closes an incident"
         required: false
@@ -66,13 +70,24 @@ jobs:
         id: shas
         env:
           DISPATCH_PARENT: ${{ inputs.parent_core_sha }}
+          TARGET_REF: ${{ inputs.core_sha }}
           RUN_ID: ${{ github.event.workflow_run.id }}
           REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
         run: |
-          CORE_SHA="$(git rev-parse HEAD)"
-          echo "core_sha=${CORE_SHA}" >> "$GITHUB_OUTPUT"
-          uv run -- python scripts/site_inputs_parent.py --core-sha "$CORE_SHA" --dispatch-parent "$DISPATCH_PARENT" --repo "$REPO" --limit 100 --run-id "${RUN_ID:-}"
+          if [ -n "${TARGET_REF:-}" ]; then
+            uv run -- python scripts/site_inputs_parent.py --dispatch-parent "$DISPATCH_PARENT" --repo "$REPO" --limit 100
+          else
+            CORE_SHA="$(git rev-parse HEAD)"
+            echo "core_sha=${CORE_SHA}" >> "$GITHUB_OUTPUT"
+            uv run -- python scripts/site_inputs_parent.py --core-sha "$CORE_SHA" --dispatch-parent "$DISPATCH_PARENT" --repo "$REPO" --limit 100 --run-id "${RUN_ID:-}"
+          fi
+
+      - name: Check out the requested commit
+        if: inputs.core_sha != ''
+        env:
+          CORE_SHA: ${{ steps.shas.outputs.core_sha }}
+        run: git worktree add --detach target "$CORE_SHA"
 
       - name: Build and verify bundle
         env:
@@ -80,8 +95,13 @@ jobs:
           PARENT_SHA: ${{ steps.shas.outputs.parent_sha }}
           PARENT_SOURCE: ${{ steps.shas.outputs.parent_source }}
           CERTIFIED_BY: ${{ steps.shas.outputs.certified_by }}
+          TARGET_REF: ${{ inputs.core_sha }}
         run: |
-          make site-inputs SITE_INPUTS_OUT=site-inputs-bundle \
+          BUILD_DIR=.
+          if [ -n "${TARGET_REF:-}" ]; then
+            BUILD_DIR=target
+          fi
+          make -C "$BUILD_DIR" site-inputs SITE_INPUTS_OUT="$GITHUB_WORKSPACE/site-inputs-bundle" \
             SITE_INPUTS_CORE_SHA="$CORE_SHA" \
             SITE_INPUTS_PARENT_SHA="$PARENT_SHA" \
             SITE_INPUTS_PARENT_SOURCE="$PARENT_SOURCE" \
@@ -105,7 +125,7 @@ jobs:
 
       - name: Dispatch to site repo
         id: dispatch
-        if: vars.SITE_BRIDGE_ENABLED == 'true'
+        if: vars.SITE_BRIDGE_ENABLED == 'true' && inputs.core_sha == ''
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
         with:
           app-id: ${{ secrets.SITE_BRIDGE_APP_ID }}
@@ -114,7 +134,7 @@ jobs:
           repositories: benchbox-site
 
       - name: Send core-bundle dispatch
-        if: vars.SITE_BRIDGE_ENABLED == 'true'
+        if: vars.SITE_BRIDGE_ENABLED == 'true' && inputs.core_sha == ''
         env:
           GH_TOKEN: ${{ steps.dispatch.outputs.token }}
           CORE_SHA: ${{ steps.shas.outputs.core_sha }}
@@ -130,7 +150,7 @@ jobs:
             -f client_payload[digest]="sha256:$DIGEST"
 
       - name: Bridge disabled notice
-        if: vars.SITE_BRIDGE_ENABLED != 'true'
+        if: vars.SITE_BRIDGE_ENABLED != 'true' && inputs.core_sha == ''
         run: |
           {
             echo "Site bridge not enabled: bundle built and uploaded, dispatch skipped.";
@@ -140,7 +160,7 @@ jobs:
   report-failure:
     name: report failed bundle
     needs: build
-    if: failure()
+    if: failure() && inputs.core_sha == ''
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -181,7 +201,7 @@ jobs:
   close-failure:
     name: close the bundle-failure issue
     needs: build
-    if: success()
+    if: success() && inputs.core_sha == ''
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
