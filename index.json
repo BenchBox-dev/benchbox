@@ -28382,6 +28382,13 @@
       "status": "done",
       "title": "Increase core, CLI, platform, and utils test coverage to 80%"
     },
+    "noninteractive-safeguard-audit-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Audit every safeguard that depends on a person seeing a prompt"
+    },
     "normalize-comparison-duration-units-20260808": {
       "claim": null,
       "needs": [],

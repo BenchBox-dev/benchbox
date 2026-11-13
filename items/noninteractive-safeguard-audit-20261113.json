@@ -1,0 +1,30 @@
+{
+  "acceptance": [
+    "The findings document under docs/internal covers every command in the CLI command registry and every MCP tool, with one row each and the evidence (file and symbol, or a dry-run transcript).",
+    "Each safeguard that is skipped non-interactively and leads to an external side effect is listed in a severity table with a proposed fix and a proposed tracker item title; the owner decides which to file.",
+    "The document states specifically whether an agent can open a results-corpus submission or publish without a human step, and how stored keyring credentials are reached in non-interactive mode.",
+    "The document confirms whether run-billable-platform-guard-noninteractive-20261113 covers every path that can start a managed platform, and names any path it misses.",
+    "No command with an external side effect was executed for real: only code reading, --dry-run, and throwaway local directories."
+  ],
+  "context": "Origin: adversarial review on 2026-11-13 of work first left unfiled. The earlier reasons assumed a person at the keyboard; this item records the corrected disposition. Line numbers are hints; re-read the cited file before relying on them.\n\nKnown starting points from an earlier scan, each to be re-verified: export asks 'Proceed with export?' even with --force; platforms disable and setup remove confirm; submit authentication prompts for a token and errors at end of input; run exits 2 when it would need the wizard without a terminal.\n\nDecision gate: none before starting. Stop condition: if a finding shows that an agent can publish to the public corpus or spend money through a path the billable guard does not cover, report it to the owner at once rather than waiting for the full document.\n\nVerification rubric: pass only if the row count equals the number of registered commands plus non-read-only tools, and every 'skipped' verdict cites the guarding condition in code.\n\nThis item does not block run-billable-platform-guard-noninteractive-20261113; it checks that item's coverage.\n\nGuardrails: work only in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. One PR per item, squash-merged to develop (site work: one PR in BenchBox-dev/benchbox-site). Add a changelog.d fragment for any user-facing change. No live-cloud runs and no credentials in Git or logs. Heavy work (benchmarks, test tiers) runs only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy (make comment-policy-check). Stop and report instead of widening scope; scope removed during review must be re-homed to a named item or dropped by the owner with a reason.",
+  "description": "Problem: BenchBox's safeguards were designed for a person at a terminal. At least one, the confirmation before a run, is skipped when there is no terminal. Other commands also prompt (export, setup, platforms enable, disable and install, publish remove, submit authentication), and nobody has checked what each does when run by an agent or a CI job.\n\nOutcome: a findings document that lists, for every CLI command and every MCP tool not annotated read-only, what safeguard exists, what happens to it non-interactively (fails closed, is skipped, or hangs), and what side effect follows (spend, publication to the results corpus, deletion, package installation, credential use).\n\nThis is a read-only review. It changes no product code.",
+  "links": [
+    "benchbox/cli/commands/__init__.py",
+    "benchbox/cli/commands/run.py",
+    "benchbox/cli/commands/submit.py",
+    "benchbox/cli/commands/publish.py",
+    "benchbox/cli/commands/export.py",
+    "benchbox/cli/platform.py",
+    "benchbox/mcp/server.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-13T13:53:11Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "584ef8c2985446e785ab8bec38fc2c6a",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}
