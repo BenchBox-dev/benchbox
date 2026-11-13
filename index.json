@@ -12811,6 +12811,13 @@
       "status": "open",
       "title": "Add the absolute-path rule to the batch member brief template in the skill catalog"
     },
+    "batch-member-dispatch-prompt-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Give leaders a member dispatch prompt to paste and prove a subagent can commit in a member worktree"
+    },
     "batch-member-identity-for-subagents-20261112": {
       "claim": null,
       "needs": [],
