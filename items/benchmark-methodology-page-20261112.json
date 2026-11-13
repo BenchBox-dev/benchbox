@@ -1,0 +1,29 @@
+{
+  "acceptance": [
+    "The page is published in the site docs and navigation, and the site build and documentation checks pass.",
+    "Every normative statement cites an existing source (an ADR, a validator rule or observed CLI behaviour); the PR body carries the source table.",
+    "Statements about CLI or MCP behaviour, such as default iterations and default validation mode, are verified by running the command, with output in the PR.",
+    "The scattered pages named in the description link to the new page, and the PR lists each page checked for contradiction.",
+    "Publication and licensing wording agrees with docs/tpc-licensing-analysis.md and DISCLAIMER.md and makes no claim to be legal advice."
+  ],
+  "context": "Origin: adversarial review of an agent-facing strategy for BenchBox, 2026-11-12. Owner decisions quoted here were made on that date. Line numbers are hints; re-read the cited file before relying on them.\n\nDecision gate: consolidate, do not legislate. Where no policy exists for a question, list it under 'Open questions' in the PR description for the owner and leave it out of the page; never invent a threshold. The owner's review of the PR is the approval gate for content, so open it early as a draft.\n\nVerification rubric: pass only if a reviewer can trace every 'must' or 'should' on the page to a cited source, and the open-questions list is present even if empty.\n\nConsumers: mcp-instructions-carry-methodology-20261112 and end-user-benchmarking-skill-20261112 quote this page and may add no claim it does not contain.\n\nGuardrails: work only in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. One PR per item, squash-merged to develop (site work: one PR in BenchBox-dev/benchbox-site). Add a changelog.d fragment for any user-facing change. No live-cloud runs and no credentials in Git or logs. Heavy work (benchmarks, test tiers) runs only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy (make comment-policy-check). Stop and report instead of widening scope; scope removed during review must be re-homed to a named item or dropped by the owner with a reason.",
+  "description": "Problem: guidance on running a sound benchmark is scattered across the contributing-results page, the understanding-results and comparing-platforms tutorials, the subscale ranking ADR, the README comparability sentence and docs/tpc-licensing-analysis.md. Neither a person nor an agent has one page that says what a run at a given scale and iteration count supports.\n\nOutcome: one page in the benchbox.dev docs that consolidates existing policy. Required sections: what each scale factor supports (smoke, regression, comparison, publication); iterations and warm-up; seed; validation modes and the integrity validator; when two results are comparable (benchmark, scale, phase, tuning mode, execution variant, timing mode, hardware); tuning disclosure; host noise; publication limits (licence terms that restrict publishing benchmark results, the 'Derived from' wording, official against unofficial); how to cite a published result.\n\nNon-goals: no change to ranking policy, validator behaviour or CLI defaults.",
+  "links": [
+    "README.md",
+    "docs/tpc-licensing-analysis.md",
+    "DISCLAIMER.md",
+    "results-data/README.md",
+    "benchbox/core/results/integrity_validator.py",
+    "benchbox/core/results/subscale_policy.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-13T04:04:08Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "598247eff7e342678251249f2b012a03",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}
