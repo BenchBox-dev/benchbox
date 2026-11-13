@@ -86,6 +86,8 @@ _REQUIRED_KEYS = frozenset(
 
 _NO_LOAD_BENCHMARKS = frozenset({"metadata_primitives"})
 
+RESULT_COMPANION_SUFFIXES = (".plans.json", ".tuning.json", ".applied.json", ".override.json", ".manifest.json")
+
 _STRUCTURAL = CheckCategory.STRUCTURAL
 _COMPLETENESS = CheckCategory.COMPLETENESS
 _BELIEVABILITY = CheckCategory.BELIEVABILITY
@@ -679,5 +681,45 @@ def validate_directory(
     return [
         _validate_path(filepath, validator)
         for filepath in sorted(path.glob(pattern))
-        if not filepath.name.endswith((".plans.json", ".tuning.json", ".applied.json", ".override.json"))
+        if not filepath.name.endswith(RESULT_COMPANION_SUFFIXES)
     ]
+
+
+def check_payload(check: CheckResult) -> dict[str, Any]:
+    return {
+        "category": check.category.value,
+        "name": check.name,
+        "status": check.status.value,
+        "message": check.message,
+        "details": check.details,
+    }
+
+
+def report_payload(report: IntegrityReport, *, verbose: bool = False) -> dict[str, Any]:
+    return {
+        "file": report.file,
+        "benchmark_id": report.benchmark_id,
+        "platform": report.platform,
+        "scale_factor": report.scale_factor,
+        "overall_status": report.overall_status.value,
+        "summary": report.summary,
+        "checks": [check_payload(c) for c in report.checks if verbose or c.status != CheckStatus.PASS],
+    }
+
+
+def directory_payload(reports: list[IntegrityReport]) -> dict[str, Any]:
+    return {
+        "total": len(reports),
+        "pass": sum(1 for r in reports if r.overall_status == CheckStatus.PASS),
+        "warn": sum(1 for r in reports if r.overall_status == CheckStatus.WARN),
+        "fail": sum(1 for r in reports if r.overall_status == CheckStatus.FAIL),
+        "files": [
+            {
+                "file": r.file,
+                "benchmark_id": r.benchmark_id,
+                "platform": r.platform,
+                "overall_status": r.overall_status.value,
+            }
+            for r in reports
+        ],
+    }

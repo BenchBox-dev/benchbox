@@ -11,6 +11,15 @@
         "A script that treated exit 1 as 'regression' must now test for 3, and may treat 4 as 'inputs not comparable'. A pipeline step that fails on any non-zero status is unaffected.",
         "A missing result file is now reported as exit 1 by compare itself rather than as a usage error."
       ]
+    },
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "benchbox results validate checks one result file or a directory of them for integrity, completeness and believability, prints PASS, INFO, WARN and FAIL findings, offers --json and --fail-on-warn, and exits 5 when a file has a FAIL finding.",
+      "details": [
+        "The findings are the ones the MCP validate_results tool returns for the same input; the repository script _project/scripts/validate_results.py now runs this command.",
+        "Directory validation skips submission manifests (*.manifest.json) as well as the other companion files, so a bundle directory is no longer reported with spurious FAILs; the MCP validate_results directory summary changes the same way."
+      ]
     }
   ]
 }

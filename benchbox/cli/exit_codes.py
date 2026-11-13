@@ -9,6 +9,7 @@ class ExitCode(IntEnum):
     USAGE = 2
     REGRESSION = 3
     NOT_COMPARABLE = 4
+    VALIDATION_FAILED = 5
 
 
 RESERVED_BY_HOST_LOCK = range(75, 80)
@@ -19,6 +20,7 @@ EXIT_CODE_MEANINGS: dict[ExitCode, str] = {
     ExitCode.USAGE: "usage error: invalid options or arguments",
     ExitCode.REGRESSION: "compare: a regression exceeded the --fail-on-regression threshold",
     ExitCode.NOT_COMPARABLE: "compare: the results cannot be compared (different variants or timing modes)",
+    ExitCode.VALIDATION_FAILED: "results validate: a result file has a FAIL finding (or a WARN with --fail-on-warn)",
 }
 
 
