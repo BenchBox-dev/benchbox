@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Queue time and run time per required job are measured over at least 20 recent PR runs and recorded in this item.",
+    "The `continuing anyway` behaviour in the trunk arm gate has a written rationale or is changed, with a test for the chosen behaviour.",
+    "If runner capacity is the cause, the owner's decision on capacity is recorded here."
+  ],
+  "description": "Operational gap observed on 2026-11-12 across PRs #4169, #4175 and #4196. A full CI round took 60-90 minutes, most of it jobs waiting in the queue (required checks `core`, `docs` and `tooling` sat `QUEUED` after their placeholder failures; medium-test shards were pending for over 40 minutes). During one arm, `trunk-arm-gate` printed `the newest trunk.yml run on develop ... has been queued for 40 minutes (over 30), so develop may be unverified; continuing anyway` and the PR was armed. So a PR can be armed, and merge, on top of a `develop` head whose trunk verification has not run.\n\nNot established: whether the queueing was runner capacity on that day or a standing limit, and whether the 30-minute warning was chosen deliberately as warn-only.\n\nExpected: a recorded decision on the warning (keep warn-only with the reason, or refuse to arm past a stated age), and a measurement of where the CI time goes so the queue can be sized or the workflow reordered.\n\nGuardrails: no change that lets a PR merge with fewer required checks; no skipping of the trunk gate. Runner settings and spend are owner decisions.",
+  "links": [
+    "scripts/trunk_revert.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-13T18:18:10Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ba988282586b4d50bf633f12269a51ce",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}

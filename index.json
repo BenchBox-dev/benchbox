@@ -14771,6 +14771,13 @@
       "status": "done",
       "title": "Disarm red PRs #3548/#3549 and make pr-arm refuse visible required-check failures"
     },
+    "ci-queue-latency-and-unverified-trunk-warning-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "CI rounds took over an hour and `pr-arm` armed while the newest trunk run had been queued 40 minutes"
+    },
     "ci-queue-throughput-delays-arming-20261101": {
       "claim": null,
       "needs": [],
