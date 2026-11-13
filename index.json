@@ -37963,15 +37963,10 @@
       "title": "Run the owed agy adversarial review of the site-repo split plan and adjudicate its findings"
     },
     "site-static-result-pages-permalink-200-20261112": {
-      "claim": {
-        "expires_at": "2026-11-14T17:41:10Z",
-        "generation": "274533f01b004f67bbdcbc59018e3a8a",
-        "renewals": 1,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Serve a static page with HTTP 200 at every published result permalink"
     },
     "site-summary-pages-comparison-context-20261112": {
