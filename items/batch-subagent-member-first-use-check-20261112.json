@@ -4,7 +4,7 @@
     "If a question was asked, the text that prompted it is identified and a correcting pull request is merged, or an owner decision is recorded.",
     "If members ran as separate sessions instead of subagents, that is recorded and the item stays blocked for the next batch."
   ],
-  "context": "Blocked 2026-11-13: waits for the owner to name the next feature batch. Unblock when one is registered.",
+  "context": "Blocked 2026-11-13: waits for the owner to name the next feature batch. Unblock when one is registered.\n\n2026-11-13: registered batch `member-rule-docs` (final pull request #4209, merged as 9fcfe7c934a32d3a0d91f7bcf64624e4c6c5573b) ran with two members dispatched as subagents of the leader, using the pasted dispatch prompt. No authorization question was put to the owner, both landings passed the tracker-write guard with zero member writes, and the batch completed. This does NOT satisfy this item: the leader was the session that wrote the rule, and the owner had already chosen subagent members when naming the batch. The item stays blocked for a batch led by an independent session.",
   "description": "The rule change of 2026-11-12 (PR #4170, catalog pull request #116, global skills applied the same day) was made to stop leader sessions asking the owner whether their subagents may be batch members. No batch has run since, so the outcome is unproven.\n\nThis item is an observation and is blocked until the owner names a feature batch. The work that can be done now is in batch-member-dispatch-prompt-20261113.\n\nDecision gate. After the batch: if no authorization question was asked, finish this item. If one was asked, record its exact wording and which text the leader was reading (repository doc, project skill mirror, global skill), then either correct that text in a serial pull request or, if the question shows the rule itself is wrong, stop and report to the owner.\n\nGuardrails.\n- Do not start, register or simulate a batch to satisfy this item; the protocol forbids using the loop to prove itself.\n- Do not unblock this item until a batch has been named by the owner.\n- Evidence comes from the leader's own transcript or report, read after the fact; the observer makes no tracker write on the batch's items.",
   "links": [
     "docs/agent/batch-feature-delivery.md",
@@ -34,6 +34,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "e87f4895be534c6b9cbd9e98855d034e",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-13T20:25:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9093eb5d935c44f18977e3e5533194f9",
       "session_id": "570099c30e51431ebfbca6042d41ee8f"
     }
   ]
