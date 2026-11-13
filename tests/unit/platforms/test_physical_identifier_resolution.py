@@ -24,6 +24,7 @@ from benchbox.core.tuning.introspection import (
 )
 from benchbox.platforms.duckdb import DuckDBAdapter, DuckDBConnectionWrapper
 from benchbox.platforms.duckdb_introspection import DuckDBTuningIntrospector
+from benchbox.utils.duckdb_extensions import duckdb_major_version
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -31,6 +32,7 @@ FIXTURES = Path(__file__).resolve().parents[2] / "fixtures" / "tuning"
 SORT_ONLY_FIXTURE = FIXTURES / "duckdb_sort_only.yaml"
 CLICKHOUSE_FIXTURE = FIXTURES / "clickhouse_sort_partition.yaml"
 PLATFORMS_ROOT = Path(__file__).resolve().parents[3] / "benchbox" / "platforms"
+INDEX_EXPRESSIONS_STORED_UNBOUND = (duckdb_major_version(duckdb.__version__) or 0) >= 2
 
 
 @pytest.fixture
@@ -122,6 +124,7 @@ class TestDuckDBPhysicalIdentifiers:
         assert status == APPLIED_VERIFIED
         assert payload["corroborated"] is True
 
+    @pytest.mark.skipif(INDEX_EXPRESSIONS_STORED_UNBOUND, reason="DuckDB 2.x stores index expressions unbound")
     def test_bound_form_catalog_fact_is_still_a_mismatch_with_explicit_diff(self, schema_connection):
         _, connection = schema_connection
         ledger = AppliedTuningLedger()
@@ -130,8 +133,7 @@ class TestDuckDBPhysicalIdentifiers:
         stored = connection.execute(
             "SELECT expressions FROM duckdb_indexes() WHERE index_name = 'idx_lineitem_sort'"
         ).fetchone()[0]
-        if "LINEITEM.L_ORDERKEY" not in stored:
-            pytest.skip("DuckDB 2.x stores index expressions unbound, so no bound-form mismatch arises")
+        assert "LINEITEM.L_ORDERKEY" in stored
 
         receipt = corroborate(ledger, DuckDBTuningIntrospector().introspect(connection, ledger))
 
@@ -139,6 +141,24 @@ class TestDuckDBPhysicalIdentifiers:
         [entry] = receipt.entries
         assert entry.verdict == MISMATCH
         assert BOUND_EXPRESSION_DIFF_NOTE in entry.diff
+
+    @pytest.mark.skipif(not INDEX_EXPRESSIONS_STORED_UNBOUND, reason="DuckDB before 2.x stores index expressions bound")
+    def test_unbound_catalog_fact_with_differing_identifier_case_is_corroborated(self, schema_connection):
+        _, connection = schema_connection
+        ledger = AppliedTuningLedger()
+        statement = "CREATE INDEX IF NOT EXISTS idx_lineitem_sort ON LINEITEM (L_ORDERKEY, L_LINENUMBER)"
+        recording_connection(connection, ledger, PHASE_DDL).execute(statement)
+        stored = connection.execute(
+            "SELECT expressions FROM duckdb_indexes() WHERE index_name = 'idx_lineitem_sort'"
+        ).fetchone()[0]
+        assert stored == "[L_ORDERKEY, L_LINENUMBER]"
+
+        receipt = corroborate(ledger, DuckDBTuningIntrospector().introspect(connection, ledger))
+
+        assert receipt.corroborated
+        [entry] = receipt.entries
+        assert entry.verdict == CORROBORATED
+        assert BOUND_EXPRESSION_DIFF_NOTE not in (entry.diff or "")
 
     def test_unbound_mismatch_does_not_claim_a_bound_expression(self, schema_connection):
         _, connection = schema_connection

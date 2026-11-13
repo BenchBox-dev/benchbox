@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "DuckDB 2.x runs no longer let an unfinished result block DataFrame and Arrow loads, Arrow results use the supported relation API without the extra-copy warning, and TPC-DI SCD loads no longer send an unsupported SAVEPOINT that aborts the caller's transaction.",
+      "platforms": [
+        "duckdb"
+      ]
+    },
+    {
+      "category": "documentation",
+      "breaking": false,
+      "text": "The README now lists the BenchBox-written DuckDB files that DuckDB 1.x cannot open after a run on DuckDB 2.x.",
+      "platforms": [
+        "duckdb"
+      ]
+    }
+  ]
+}
