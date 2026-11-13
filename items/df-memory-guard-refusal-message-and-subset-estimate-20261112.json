@@ -16,6 +16,61 @@
   "links": [
     "benchbox/platforms/dataframe/benchmark_mixin.py"
   ],
+  "prepared": {
+    "accepted_head": "c287fd1d6e7743d9c11cf8493f40846c6f328f40",
+    "batch_id": "df-platform-followups",
+    "changed_files": [
+      "benchbox/core/dataframe/capabilities.py",
+      "changelog.d/feat-df-platform-followups--df-memory-guard-refusal-message-and-subset-estimate-20261112.json",
+      "tests/unit/core/dataframe/test_dataframe_capabilities.py"
+    ],
+    "integration_head": "a3d2bfcefea1fe790f83d49a67e978d54e70206e",
+    "integration_seq": 1,
+    "member_id": "df-memory-guard-refusal-message-and-subset-estimate-20261112",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "9aee93343308885e839ea8c51bba092ba2794867c2d0f451d66029392e664073",
+    "source_base": "9f739da8e8647532916fdd8cecda169ce585a4af",
+    "source_revision": "c287fd1d6e7743d9c11cf8493f40846c6f328f40",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-df-platform-followups--df-memory-guard-refusal-message-and-subset-estimate-20261112",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/unit/core/dataframe/test_data_loader.py",
+        "tests/unit/core/dataframe/test_data_loader_atomic_cache.py",
+        "tests/unit/core/dataframe/test_data_loader_behavioral.py",
+        "tests/unit/core/dataframe/test_data_loader_cache_hygiene.py",
+        "tests/unit/core/dataframe/test_dataframe_capabilities.py",
+        "tests/unit/core/dataframe/test_storage_location_parity.py",
+        "tests/unit/platforms/dataframe/test_benchmark_mixin_behavioral.py",
+        "tests/unit/platforms/dataframe/test_benchmark_mixin_memory_policy.py"
+      ],
+      "review": {
+        "base_sha": "9f739da8e8647532916fdd8cecda169ce585a4af",
+        "head_sha": "c287fd1d6e7743d9c11cf8493f40846c6f328f40",
+        "head_tree": "c6d1dc7f7462a8de4c242a07825dbb87b3c06bd9",
+        "outcome": "clear",
+        "patch_digest": "d9ed829429d06711d28cbb3dbae8196d",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "9f739da8e8647532916fdd8cecda169ce585a4af"
+      },
+      "revision": "c287fd1d6e7743d9c11cf8493f40846c6f328f40",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
@@ -48,6 +103,15 @@
       "generation": "33acfa0fc23243bc90670bc8993d5ec4",
       "op": "take",
       "op_id": "a069f2c31f8a408297de6af87f25ac25",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-13T18:50:41Z",
+      "client": "omp-coding-agent",
+      "generation": "33acfa0fc23243bc90670bc8993d5ec4",
+      "op": "prepare",
+      "op_id": "fb10c8cfb91b448e8afb83e67c1892d7",
       "session_id": "512d9ad0b25247538901b68a758a6fbb"
     }
   ]
