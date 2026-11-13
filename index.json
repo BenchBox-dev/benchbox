@@ -40590,10 +40590,15 @@
       "title": "Correct or retire the stale documentation the retrospective left in place"
     },
     "stale-primary-clone-runs-old-tracker-and-hooks-20261112": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-14T20:24:19Z",
+        "generation": "7c3f6ced6fb14f3abc98375cc25b166c",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a250daff95b91a4eb6cd2504"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Nothing warns when the primary clone is behind develop, so sessions run an old tracker server and miss new hooks"
     },
     "standalone-todo-db-renew-verb": {
