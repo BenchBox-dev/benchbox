@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "With an artificial 1 s delay injected into the adapter call outside the validator, the test still passes; with validation moved inside the timed region it fails.",
+    "No test in `tests/unit/platforms/test_sql_family_timing_contract.py` asserts an absolute wall-clock bound below 1 s on real elapsed time.",
+    "Fifty consecutive local runs under `stress`-level CPU load pass."
+  ],
+  "description": "Flaky test. On PR #4213 (head fb36849815, CI run 43498555816) the Windows job failed with one test out of 17,032: `tests/unit/platforms/test_sql_family_timing_contract.py::test_psycopg_validation_runs_outside_the_query_timer - assert 0.968594400000029 < 0.05`. That failure made the required `core` check fail and blocked arming until a re-run. The PR does not touch the PostgreSQL adapter, the timing code, or the test.\n\nCause as read from the test: it patches the query validator with a function that sleeps 0.05 s, runs `_PsycopgAdapter().execute_query` on a fake connection, and asserts `result[\"execution_time_seconds\"] < 0.05`. The bound is meant to show the validator's sleep is excluded from the query timer, but it is an absolute wall-clock limit on everything else the call does (imports on first use, patch overhead, runner scheduling). On a loaded Windows runner that took 0.97 s.\n\nExpected: the test proves the exclusion without an absolute time limit. For example make the validator's cost much larger than any plausible overhead and assert the reported time is below that cost by a wide margin, or drive the timer with an injected clock (the suite already has `ConversionClock`; timing durations use `benchbox.utils.clock.mono_time()`), so no real sleep or wall-clock bound is involved.\n\nGuardrails: the contract under test (validation runs outside the query timer) must still be asserted and must still fail if validation moves inside the timer. Do not mark the test skipped on Windows or add a retry. Check the parametrized sibling tests in the same file for the same pattern.",
+  "links": [
+    "tests/unit/platforms/test_sql_family_timing_contract.py",
+    "https://github.com/BenchBox-dev/benchbox/pull/4213"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-13T20:34:40Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e58e42ce4774413eb50c4cff81d910e6",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}
