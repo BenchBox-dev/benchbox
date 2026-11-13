@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "Tests cover: regression over threshold exits 3; a slowdown under the threshold or under the minimum deltas exits 0; incomparable variants exit 4; incomparable timing modes exit 4 in both result-file mode and platform-run mode; a missing or corrupt result file exits 1; a usage error exits 2.",
+    "--allow-heterogeneous-comparison still bypasses the variant refusal, after which the normal codes apply.",
+    "compare --help and the user documentation list the codes, and the changelog.d fragment marks the change as breaking.",
+    "The perf step in .github/workflows/nightly-v2.yml still fails its job on a regression; the PR states how this was checked.",
+    "Smoke: run compare on real bundles for each of the four outcomes and show the exit status of each."
+  ],
+  "context": "Origin: adversarial review of an agent-facing strategy for BenchBox, 2026-11-12. Owner decisions quoted here were made on that date. Line numbers are hints; re-read the cited file before relying on them.\n\nEvidence: the --fail-on-regression help text says 'Fail (exit 1)'; the two incomparable branches in the file-comparison path call sys.exit(1); the platform-run path raises ValueError wrapping IncomparableModesError.\n\nDecision gate (before coding): search core workflows, the Makefile, scripts, tests and the benchbox-site docs for anything that matches compare's exit status exactly 1. List the consumers in the PR. If 3 or 4 already has a documented meaning anywhere in the CLI, stop and report; do not pick other numbers silently.\n\nVerification rubric: pass only if each outcome has a test that would fail under the old single code, the four-outcome smoke is shown, and no other command's exit status changes.\n\nRelated, not duplicated: nightly-perf-gate-sensitivity-review-20261010 and perf-smoke-rebaseline-after-power-query-generation-20261103 own the nightly gate's thresholds and baseline.\n\nGuardrails: work only in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. One PR per item, squash-merged to develop (site work: one PR in BenchBox-dev/benchbox-site). Add a changelog.d fragment for any user-facing change. No live-cloud runs and no credentials in Git or logs. Heavy work (benchmarks, test tiers) runs only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy (make comment-policy-check). Stop and report instead of widening scope; scope removed during review must be re-homed to a named item or dropped by the owner with a reason.",
+  "description": "Problem: benchbox compare exits 1 when a regression exceeds --fail-on-regression, when two results are not comparable (IncomparableVariantsError, IncomparableModesError), and on ordinary errors. A pipeline cannot tell 'slower' from 'cannot compare' from 'broken'.\n\nOwner decision (2026-11-12): distinct codes now; the breaking change is accepted because the project is pre-1.0. Codes: 0 success, 1 error, 2 usage error (Click default, unchanged), 3 regression over threshold, 4 not comparable.\n\nNon-goals: exit codes of run and every other command; thresholds, minimum-delta semantics and comparison maths; JSON output shape.",
+  "links": [
+    "benchbox/cli/commands/compare.py",
+    "benchbox/core/results/execution_variant.py",
+    "benchbox/core/results/comparison_modes.py",
+    ".github/workflows/nightly-v2.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-13T04:04:01Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "38ab155256a64ce7a60c7c0acd869c0d",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}
