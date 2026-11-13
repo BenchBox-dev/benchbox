@@ -217,3 +217,14 @@ def test_conf_must_pin_todo_in_exactly_one_group(tmp_path: Path, old: str, new: 
         conf = conf.replace("skill  = benchbox\n", "skill  = benchbox\nskill  = todo\n")
     with pytest.raises(PolicyError, match=r"expected exactly one conf group"):
         validate_evidence_binding(conf, json.dumps(evidence), tracked)
+
+
+@pytest.mark.parametrize("remove_mirror", [True, False])
+def test_empty_or_missing_mirror_is_refused_even_with_no_listed_files(tmp_path: Path, remove_mirror: bool) -> None:
+    tracked, _, evidence = _evidence_copy(tmp_path)
+    shutil.rmtree(tracked)
+    if not remove_mirror:
+        tracked.mkdir()
+    evidence["mirrors"]["tracked_target"]["files"] = {}
+    with pytest.raises(PolicyError, match=r"has no files to bind"):
+        validate_evidence_binding(CONF, json.dumps(evidence), tracked)
