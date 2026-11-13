@@ -151,3 +151,69 @@ def test_wrong_mirror_hash_names_the_file(tmp_path: Path) -> None:
     evidence["mirrors"]["tracked_target"]["files"]["references/batch.md"] = "f" * 64
     with pytest.raises(PolicyError, match=r"batch-rollout-evidence\.json: .*references/batch\.md"):
         validate_evidence_binding(CONF, json.dumps(evidence), tracked)
+
+
+@pytest.mark.parametrize(
+    ("section", "field", "label"),
+    [
+        ("catalog", "merge_revision", r"catalog\.merge_revision"),
+        ("tracked_target", "receipt_revision", r"mirrors\.tracked_target\.receipt_revision"),
+    ],
+)
+def test_each_stale_revision_field_is_reported(tmp_path: Path, section: str, field: str, label: str) -> None:
+    tracked, _, evidence = _evidence_copy(tmp_path)
+    target = evidence["mirrors"][section] if section == "tracked_target" else evidence[section]
+    target[field] = "0" * 40
+    with pytest.raises(PolicyError, match=rf"batch-rollout-evidence\.json: {label}"):
+        validate_evidence_binding(CONF, json.dumps(evidence), tracked)
+
+
+@pytest.mark.parametrize("files", [{}, [], None])
+def test_empty_or_malformed_file_list_is_refused(tmp_path: Path, files: object) -> None:
+    tracked, _, evidence = _evidence_copy(tmp_path)
+    evidence["mirrors"]["tracked_target"]["files"] = files
+    with pytest.raises(PolicyError, match=r"batch-rollout-evidence\.json"):
+        validate_evidence_binding(CONF, json.dumps(evidence), tracked)
+
+
+def test_trimmed_file_list_is_refused(tmp_path: Path) -> None:
+    tracked, _, evidence = _evidence_copy(tmp_path)
+    del evidence["mirrors"]["tracked_target"]["files"]["SKILL.md"]
+    with pytest.raises(PolicyError, match=r"not listed: \['SKILL\.md'\]"):
+        validate_evidence_binding(CONF, json.dumps(evidence), tracked)
+
+
+def test_mirror_file_missing_from_evidence_is_refused(tmp_path: Path) -> None:
+    tracked, _, evidence = _evidence_copy(tmp_path)
+    (tracked / "references" / "extra.md").write_text("extra\n", encoding="utf-8")
+    with pytest.raises(PolicyError, match=r"not listed: \['references/extra\.md'\]"):
+        validate_evidence_binding(CONF, json.dumps(evidence), tracked)
+
+
+@pytest.mark.parametrize("key", ["../outside.md", "/etc/hosts", "references/gone.md"])
+def test_listed_path_outside_the_mirror_is_refused(tmp_path: Path, key: str) -> None:
+    tracked, _, evidence = _evidence_copy(tmp_path)
+    (tmp_path / "outside.md").write_text("outside\n", encoding="utf-8")
+    evidence["mirrors"]["tracked_target"]["files"][key] = "0" * 64
+    with pytest.raises(PolicyError, match=r"listed but not in the mirror"):
+        validate_evidence_binding(CONF, json.dumps(evidence), tracked)
+
+
+def test_missing_pin_field_is_refused(tmp_path: Path) -> None:
+    tracked, _, evidence = _evidence_copy(tmp_path)
+    del evidence["benchbox_pin"]
+    with pytest.raises(PolicyError, match=r"cannot read the catalog pin fields"):
+        validate_evidence_binding(CONF, json.dumps(evidence), tracked)
+
+
+@pytest.mark.parametrize(
+    ("old", "new"), [("skill  = todo\n", ""), ("skill  = todo\n", "skill  = todo\nskill  = todo-extra\n")]
+)
+def test_conf_must_pin_todo_in_exactly_one_group(tmp_path: Path, old: str, new: str) -> None:
+    tracked, _, evidence = _evidence_copy(tmp_path)
+    assert old in CONF
+    conf = CONF.replace(old, new)
+    if new:
+        conf = conf.replace("skill  = benchbox\n", "skill  = benchbox\nskill  = todo\n")
+    with pytest.raises(PolicyError, match=r"expected exactly one conf group"):
+        validate_evidence_binding(conf, json.dumps(evidence), tracked)

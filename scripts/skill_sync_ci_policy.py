@@ -231,6 +231,14 @@ def validate_evidence_binding(manifest_text: str, evidence_text: str, tracked_ro
             raise PolicyError(
                 f"{name}: {field} is {value!r} but the skill-sync.conf group listing skill = {PINNED_SKILL} pins {pin}"
             )
+    mirrored = {path.relative_to(tracked_root).as_posix() for path in tracked_root.rglob("*") if path.is_file()}
+    if set(files) != mirrored:
+        unlisted = sorted(mirrored - set(files))
+        absent = sorted(set(files) - mirrored)
+        raise PolicyError(
+            f"{name}: mirrors.tracked_target.files must list every file under {tracked_root.as_posix()} and no other; "
+            f"not listed: {unlisted}; listed but not in the mirror: {absent}"
+        )
     for relative, expected in sorted(files.items()):
         field = f"mirrors.tracked_target.files[{relative!r}]"
         path = tracked_root / relative
