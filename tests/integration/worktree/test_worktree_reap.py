@@ -188,6 +188,18 @@ def test_renamed_branch_worktree_keeps_its_managed_verdict(tmp_path: Path) -> No
     assert verdict.branch == "feat/after-rename"
 
 
+def test_switching_to_another_branch_is_not_treated_as_a_rename(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    wt, branch = _feature_worktree(repo, "switched")
+    prs = {branch: [_merge(repo, branch, 22)], "feat/other": [_merge(repo, branch, 23)]}
+    _git(["switch", "-q", "-c", "feat/other"], wt)
+
+    verdict = _verdicts(repo, _lookup(prs))[wt.resolve()]
+
+    assert verdict.verdict == AMBIGUOUS
+    assert "malformed" in verdict.reason
+
+
 def test_closed_unmerged_worktree_is_never_removed_by_apply(tmp_path: Path) -> None:
     repo = _init_repo(tmp_path / "repo")
     wt, branch = _feature_worktree(repo, "abandoned-only")

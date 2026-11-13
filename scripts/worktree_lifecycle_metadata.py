@@ -473,7 +473,13 @@ def read_metadata(worktree_path: Path) -> WorktreeLifecycleMetadata:
     current_branch = current_branch_res.stdout.strip()
     branch_matches = (not current_branch) or (current_branch == branch)
 
-    if missing_required or not valid_timestamp or not valid_oid or not valid_head:
+    renamed = False
+    if not branch_matches and not missing_required and valid_head:
+        recorded_ref = _run_git(["rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"], worktree_path)
+        lineage = _run_git(["merge-base", "--is-ancestor", str(initial_head), "HEAD"], worktree_path)
+        renamed = recorded_ref.returncode != 0 and lineage.returncode == 0
+
+    if missing_required or not valid_timestamp or not valid_oid or not valid_head or not (branch_matches or renamed):
         return WorktreeLifecycleMetadata(
             lifecycle_id=lifecycle_id,
             created_at=created_at,
