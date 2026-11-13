@@ -4550,20 +4550,42 @@
       "terminal_outcome": "deliver"
     },
     "member-rule-docs": {
-      "accepted_members": {},
+      "accepted_members": {
+        "post-merge-worktree-finish-undocumented-20261113": "713e0bc90532887c2fb814d19f2a8a23f0d96a72"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "post-merge-worktree-finish-undocumented-20261113": {
+          "accepted_head": "713e0bc90532887c2fb814d19f2a8a23f0d96a72",
+          "changed_files": [
+            "changelog.d/feat-member-rule-docs--post-merge-worktree-finish-undocumented-20261113.json",
+            "docs/agent/README.md",
+            "docs/agent/merge-authority.md"
+          ],
+          "integration_head": "445f7c85540e19a7176291703073c28431130010",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/member-rule-docs",
-      "integration_head": "9f739da8e8647532916fdd8cecda169ce585a4af",
+      "integration_head": "445f7c85540e19a7176291703073c28431130010",
       "integration_log": [
         {
           "at": "2026-11-13T18:34:29Z",
           "head": "9f739da8e8647532916fdd8cecda169ce585a4af",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-13T18:47:45Z",
+          "head": "445f7c85540e19a7176291703073c28431130010",
+          "kind": "prepare",
+          "member": "post-merge-worktree-finish-undocumented-20261113",
+          "op_id": "5859dcebd7a042c3a141b6304a1678c9",
+          "previous_head": "9f739da8e8647532916fdd8cecda169ce585a4af",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-member-rule-docs",
@@ -31334,15 +31356,10 @@
       "title": "Route post-merge failures to the correct owner before proposing a revert"
     },
     "post-merge-worktree-finish-undocumented-20261113": {
-      "claim": {
-        "expires_at": "2026-11-14T18:47:35Z",
-        "generation": "7d9f7eb15c5c4990ab4d0e85827a50de",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Agent docs do not say how to retire a worktree and its branch after merge, so merged local branches pile up"
     },
     "postgres-cluster-plus-sort-same-table-20261017": {

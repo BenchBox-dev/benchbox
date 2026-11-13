@@ -20,6 +20,55 @@
     "agent-leftover-branches-and-clone-drift-20261109",
     "branch-prune-merged-exhausts-github-quota-20261112"
   ],
+  "prepared": {
+    "accepted_head": "713e0bc90532887c2fb814d19f2a8a23f0d96a72",
+    "batch_id": "member-rule-docs",
+    "changed_files": [
+      "changelog.d/feat-member-rule-docs--post-merge-worktree-finish-undocumented-20261113.json",
+      "docs/agent/README.md",
+      "docs/agent/merge-authority.md"
+    ],
+    "integration_head": "445f7c85540e19a7176291703073c28431130010",
+    "integration_seq": 1,
+    "member_id": "post-merge-worktree-finish-undocumented-20261113",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "8ea3fe9ef9732a1d4491f8998c770bbab85f5e32d7f6b8c59f8dc71fafc867e9",
+    "source_base": "9f739da8e8647532916fdd8cecda169ce585a4af",
+    "source_revision": "713e0bc90532887c2fb814d19f2a8a23f0d96a72",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-member-rule-docs--post-merge-worktree-finish-undocumented-20261113",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/unit/scripts/test_agent_instruction_audit.py",
+        "tests/unit/scripts/test_doc_reference_inventory.py",
+        "tests/unit/scripts/test_docs_ownership.py"
+      ],
+      "review": {
+        "base_sha": "9f739da8e8647532916fdd8cecda169ce585a4af",
+        "head_sha": "713e0bc90532887c2fb814d19f2a8a23f0d96a72",
+        "head_tree": "a3f05d82e840980af9e6daae42cf83074b9961f8",
+        "outcome": "clear",
+        "patch_digest": "40df4a79e83fd0101cbce9f031a1eba2",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "9f739da8e8647532916fdd8cecda169ce585a4af"
+      },
+      "revision": "713e0bc90532887c2fb814d19f2a8a23f0d96a72",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
@@ -52,6 +101,15 @@
       "generation": "7d9f7eb15c5c4990ab4d0e85827a50de",
       "op": "take",
       "op_id": "a70cbcd47b874508ad7b9b108bfd1cfb",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-13T18:47:45Z",
+      "client": "omp-coding-agent",
+      "generation": "7d9f7eb15c5c4990ab4d0e85827a50de",
+      "op": "prepare",
+      "op_id": "5859dcebd7a042c3a141b6304a1678c9",
       "session_id": "570099c30e51431ebfbca6042d41ee8f"
     }
   ]
