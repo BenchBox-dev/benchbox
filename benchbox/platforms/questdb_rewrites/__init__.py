@@ -7,7 +7,7 @@ from types import ModuleType
 
 from benchbox.utils.dialect_utils import rewrite_sql_tree, sql_expressions
 
-from ._join_scope import ColumnsOf, reassign_join_predicates
+from ._join_scope import ColumnsOf, qualify_join_window_columns, reassign_join_predicates
 from ._or_factor import factor_shared_or_conjuncts
 
 QUESTDB_DIALECT = "questdb"
@@ -33,6 +33,7 @@ def rewrite_query(sql: str, columns_of: ColumnsOf | None = None) -> str:
         expression = factor_shared_or_conjuncts(expression)
         if columns_of is not None:
             expression = reassign_join_predicates(expression, columns_of)
+            expression = qualify_join_window_columns(expression, columns_of)
         for module in active:
             expression = module.transform(expression)
         return expression
