@@ -11,6 +11,120 @@
   },
   "context": "Decisions 2026-11-13: document the pin-change sites, and make a fast check report stale evidence; do not generate the evidence file. Extend the existing `scripts/skill_sync_ci_policy.py` in preference to a new script. Delivered as a member of registered batch `member-rule-docs`.",
   "description": "Moving the catalog `rev` in `skill-sync.conf` and running `make skill-sync` is not enough. `tests/integration/worktree/test_batch_skill_delivery.py::test_pin_receipt_and_tracked_mirror_bind_catalog_tip` also requires `_project/analysis/batch-rollout-evidence.json` (`catalog.merge_revision`, `catalog.parent_revision`, `catalog.pr`, `benchbox_pin.before/after`, both `receipt_revision` values and every changed mirror hash for `.claude/skills/todo` and `.agents/skills/todo`) and the `DELIVERY_CATALOG_REV` constant in that test to match the new pin. `docs/agent/batch-tracker-contract.md` lists the sites for a tractable wheel upgrade but says nothing for a catalog pin change, and `make skill-sync-check` was observed to pass while the evidence was stale. `make skill-integrity-check` was run only after the evidence was fixed; its recipe (`skill_sync_ci_policy.py validate`, `skill-sync verify`, the mirror guard, the instruction and identity checks, artifact hygiene) names no step that reads the evidence file, so it very likely passes too, but confirm that before relying on it. On 2026-11-12 this was found only when `make pr-preflight` failed after a six-minute test run; the fix was copied from the previous pin change (#4102).\n\nDecision gate: document the sites, or remove the hand step by having a target rewrite the evidence from the receipt. Prefer the second only if the evidence file's other consumers (`scripts/pr_landing.py`, the comment-policy scope check) do not depend on it being hand-reviewed.\n\nGuardrails.\n- Never hand-edit `.claude/skills` or `.agents/skills`; mirrors change only through `make skill-sync`.\n- Do not weaken or delete `test_pin_receipt_and_tracked_mirror_bind_catalog_tip`; the aim is an earlier, clearer failure, not a looser one.\n- `scripts/pr_landing.py` (`batch_runtime_capability_available`) reads the same evidence file to decide whether the batch capability is present. Any generated rewrite must leave the `runtime` section byte-identical, and an unreadable file must keep meaning 'capability absent'.\n- A generated evidence file records only values read from the receipt and the catalog history; it never invents a pull-request number.",
+  "final_evidence": {
+    "batch_id": "member-rule-docs",
+    "changed_files": [
+      "changelog.d/feat-member-rule-docs--catalog-pin-change-sites-undocumented-20261112.json",
+      "changelog.d/feat-member-rule-docs--post-merge-worktree-finish-undocumented-20261113.json",
+      "docs/agent/README.md",
+      "docs/agent/batch-tracker-contract.md",
+      "docs/agent/merge-authority.md",
+      "scripts/skill_sync_ci_policy.py",
+      "tests/unit/scripts/test_skill_sync_ci_policy.py"
+    ],
+    "clean": true,
+    "current_acceptance": {
+      "catalog-pin-change-sites-undocumented-20261112": {
+        "clean": true,
+        "command": [
+          "uv",
+          "run",
+          "--",
+          "python",
+          "-m",
+          "pytest",
+          "-n",
+          "0",
+          "-q",
+          "tests/unit/scripts/test_skill_sync_ci_policy.py",
+          "tests/unit/test_ledger_coverage.py"
+        ],
+        "dropped_paths": [],
+        "ran_command": [
+          "uv",
+          "run",
+          "--",
+          "python",
+          "-m",
+          "pytest",
+          "-n",
+          "0",
+          "-q",
+          "tests/unit/scripts/test_skill_sync_ci_policy.py",
+          "tests/unit/test_ledger_coverage.py"
+        ],
+        "revision": "2406b0fec153313e7ac556bfb3eca34e5e8869bc",
+        "status": "passed",
+        "suite": "member-tests",
+        "worktree": "/Users/joe/Developer/BenchBox.wt-member-rule-docs"
+      },
+      "post-merge-worktree-finish-undocumented-20261113": {
+        "clean": true,
+        "command": [
+          "uv",
+          "run",
+          "--",
+          "python",
+          "-m",
+          "pytest",
+          "-n",
+          "0",
+          "-q",
+          "tests/unit/scripts/test_agent_instruction_audit.py",
+          "tests/unit/scripts/test_doc_reference_inventory.py",
+          "tests/unit/scripts/test_docs_ownership.py"
+        ],
+        "dropped_paths": [],
+        "ran_command": [
+          "uv",
+          "run",
+          "--",
+          "python",
+          "-m",
+          "pytest",
+          "-n",
+          "0",
+          "-q",
+          "tests/unit/scripts/test_agent_instruction_audit.py",
+          "tests/unit/scripts/test_doc_reference_inventory.py",
+          "tests/unit/scripts/test_docs_ownership.py"
+        ],
+        "revision": "2406b0fec153313e7ac556bfb3eca34e5e8869bc",
+        "status": "passed",
+        "suite": "member-tests",
+        "worktree": "/Users/joe/Developer/BenchBox.wt-member-rule-docs"
+      }
+    },
+    "final_pr": {
+      "head": "2406b0fec153313e7ac556bfb3eca34e5e8869bc",
+      "node_id": "PR_kwDOQ7J64c8AAAABO_3OYA",
+      "number": 4209,
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git"
+    },
+    "integration_branch": "feat/member-rule-docs",
+    "integration_head": "2406b0fec153313e7ac556bfb3eca34e5e8869bc",
+    "member_heads": {
+      "catalog-pin-change-sites-undocumented-20261112": "808b18093c01afd2d01c7f1c28e2c94b94772979",
+      "post-merge-worktree-finish-undocumented-20261113": "713e0bc90532887c2fb814d19f2a8a23f0d96a72"
+    },
+    "member_ranges": {
+      "catalog-pin-change-sites-undocumented-20261112": {
+        "base": "445f7c85540e19a7176291703073c28431130010",
+        "head": "808b18093c01afd2d01c7f1c28e2c94b94772979"
+      },
+      "post-merge-worktree-finish-undocumented-20261113": {
+        "base": "9f739da8e8647532916fdd8cecda169ce585a4af",
+        "head": "713e0bc90532887c2fb814d19f2a8a23f0d96a72"
+      }
+    },
+    "project_id": "benchbox",
+    "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+    "scope_hash": "8ea3fe9ef9732a1d4491f8998c770bbab85f5e32d7f6b8c59f8dc71fafc867e9",
+    "status": "passed",
+    "suite": "member-reruns",
+    "tree_revision": "2406b0fec153313e7ac556bfb3eca34e5e8869bc",
+    "tree_worktree": "/Users/joe/Developer/BenchBox.wt-member-rule-docs"
+  },
   "links": [
     "docs/agent/batch-tracker-contract.md",
     "_project/analysis/batch-rollout-evidence.json",
@@ -125,6 +239,15 @@
       "generation": "107530185eb84d8c81be124e1fce615d",
       "op": "take",
       "op_id": "c8d47455aaaf49a7b0935ca589ba69ec",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-13T20:23:39Z",
+      "client": "omp-coding-agent",
+      "generation": "107530185eb84d8c81be124e1fce615d",
+      "op": "finish",
+      "op_id": "3eccc04779504ebaa6fa61ea2eaa1b63",
       "session_id": "570099c30e51431ebfbca6042d41ee8f"
     }
   ]
