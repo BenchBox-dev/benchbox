@@ -41197,6 +41197,13 @@
       "status": "open",
       "title": "Theseus: ask reviewers for Problem, Impact and Fix so finding threads are shorter"
     },
+    "theseus-review-suggestion-blocks-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Theseus: offer GitHub suggestion blocks for mechanical fixes, opt-in and never on gate or soundness paths"
+    },
     "theseus-review-thread-ids-footer-20261110": {
       "claim": null,
       "needs": [
