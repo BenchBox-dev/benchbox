@@ -123,3 +123,44 @@ def test_adapter_rows_mode_is_unchanged() -> None:
     )
     assert result["rows_returned"] == 4
     assert result["fetch_mode"] == FETCH_MODE_ROWS
+
+
+STATEMENT_CLASSES = [
+    ("CREATE TABLE made (i INTEGER)", 0, [(1,)]),
+    ("INSERT INTO probe VALUES (2)", 1, [(1,), (2,)]),
+    ("INSERT INTO probe VALUES (2) RETURNING i", 1, [(1,), (2,)]),
+    ("UPDATE probe SET i = i + 10 WHERE i = 1", 1, [(11,)]),
+    ("DELETE FROM probe WHERE i = 1", 1, []),
+    ("SET threads = 1", 0, [(1,)]),
+    ("CHECKPOINT", 0, [(1,)]),
+    ("PRAGMA table_info('probe')", 1, [(1,)]),
+    ("SHOW TABLES", 1, [(1,)]),
+    ("SELECT i FROM probe", 1, [(1,)]),
+]
+
+
+@pytest.mark.parametrize("mode", [FETCH_MODE_ARROW, FETCH_MODE_ROWS])
+@pytest.mark.parametrize(("statement", "rows", "contents"), STATEMENT_CLASSES)
+def test_adapter_runs_each_statement_class_once_in_every_fetch_mode(
+    mode: str, statement: str, rows: int, contents: list[tuple[int]]
+) -> None:
+    connection = duckdb.connect(":memory:")
+    connection.execute("CREATE TABLE probe (i INTEGER)")
+    connection.execute("INSERT INTO probe VALUES (1)")
+    result = _adapter(mode).execute_query(connection, statement, "q", validate_row_count=False)
+    assert result["status"] == "SUCCESS"
+    assert result["rows_returned"] == rows
+    assert connection.execute("SELECT i FROM probe ORDER BY i").fetchall() == contents
+
+
+def test_adapter_treats_a_statement_without_a_relation_as_an_empty_result() -> None:
+    class Connection:
+        def complete(self) -> None:
+            return None
+
+        def sql(self, query: str) -> None:
+            return None
+
+    result = _adapter(FETCH_MODE_ARROW).execute_query(Connection(), "SET x = 1", "q", validate_row_count=False)
+    assert result["status"] == "SUCCESS"
+    assert result["rows_returned"] == 0

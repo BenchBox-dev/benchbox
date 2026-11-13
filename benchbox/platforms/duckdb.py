@@ -1136,7 +1136,12 @@ class DuckDBAdapter(PlatformAdapter):
             ledger.add_request()
             if via_relation:
                 result = connection.sql(query)
-                fetched = fetch_result(FETCH_MODE_ARROW, fetch_rows=result.fetchall, fetch_arrow=result.to_arrow_table)
+                if result is None:
+                    fetched = fetch_result(FETCH_MODE_ROWS, fetch_rows=list)
+                else:
+                    fetched = fetch_result(
+                        FETCH_MODE_ARROW, fetch_rows=result.fetchall, fetch_arrow=result.to_arrow_table
+                    )
             else:
                 result = connection.execute(query)
                 fetched = fetch_result(
@@ -1148,7 +1153,7 @@ class DuckDBAdapter(PlatformAdapter):
             execution_time = elapsed_seconds(start_time)
             actual_row_count = fetched.row_count
             if isinstance(fetched.rows, ArrowRows):
-                fetched.rows.convert_columns(_duckdb_arrow_converters(result.description))
+                fetched.rows.convert_columns(_duckdb_arrow_converters(getattr(result, "description", None)))
             logger.debug(f"Query {query_id} completed in {execution_time:.3f}s, returned {actual_row_count} rows")
 
             validation_result = None
