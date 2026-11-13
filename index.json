@@ -43044,6 +43044,13 @@
       "status": "open",
       "title": "tractable MCP calls time out at 30 seconds with an unknown outcome while the host is loaded"
     },
+    "tractable-mcp-write-timeout-unknown-outcome-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "tractable MCP: writes time out at 30 s while still landing, leaving the outcome unknown"
+    },
     "tractable-not-before-empty-does-not-clear-hold-20261111": {
       "claim": null,
       "needs": [],
