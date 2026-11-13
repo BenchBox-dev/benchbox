@@ -27003,7 +27003,7 @@
     "mcp-run-benchmark-seed-iterations-20261112": {
       "claim": null,
       "needs": [
-        "mcp-prompts-name-nonexistent-tools-20261112"
+        "umbrella-agent-mcp-surface-20261113"
       ],
       "priority": "medium",
       "status": "open",
