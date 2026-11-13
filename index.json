@@ -19768,7 +19768,7 @@
       "needs": [],
       "priority": "medium",
       "status": "open",
-      "title": "DataFrame memory guard refuses runs whose stated requirement is below available memory, and ignores `--queries` subsets"
+      "title": "Make the DataFrame memory guard's refusal message state the threshold it applies"
     },
     "df-n-unique-null-semantics": {
       "claim": null,
