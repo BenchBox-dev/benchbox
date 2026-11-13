@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "CONTRIBUTING.md and RELEASING.md name where the independent review is recorded and in what form.",
+    "RELEASING.md has a checklist step that lists each merge since the last tag with its hosted SHIP and independent review record.",
+    "Merged to Theseus main under G7."
+  ],
+  "description": "While releasing v0.2.11 (PR #76), the independent release reviewer found no recorded independent review for #64, #65 and #66 on their PRs. The reviews existed: TheseusPR64Review gave SHIP at 8f2d08ad, TheseusPR65Review at bda3202c and TheseusPR66Review at 01067466. But #64's and #66's were recorded only in tracker item notes, and #65's only in an agent transcript. The coordinator reconstructed them by hand and recorded them on theseus-review-format-release-b-20261110.\nGap: the merge rule (G7) says the independent review is 'recorded on the item', but nothing checks it at merge or at release, and #65's was never recorded.\nWork: pick one durable place for the record (recommended: a PR comment naming the reviewer session, the exact head and the verdict, posted before merge, because it is readable by the release reviewer and needs no tracker access). Add it to CONTRIBUTING.md and RELEASING.md, and add a release-checklist step that lists every first-parent merge since the last tag with its hosted SHIP run and its independent review record.\nGuardrails: the record never counts as an owner attestation or stand-in; no agent attribution in commits; docs and checklist only unless the owner asks for tooling.",
+  "links": [
+    "https://github.com/joeharris76/theseus/pull/76"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b89414e427d02d5b37262d82",
+      "at": "2026-11-13T13:25:20Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "11cc445591b8488490b803ab5d0efb2e",
+      "session_id": "88f192edfe954a75a195b192ece667bc"
+    }
+  ]
+}

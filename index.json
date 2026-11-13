@@ -41001,6 +41001,13 @@
       "status": "done",
       "title": "Publish the parity-proven Theseus bytes and assemble independently approved first-promotion evidence"
     },
+    "theseus-release-review-record-check-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Theseus releases: make the since-last-tag merge-rule check read recorded independent reviews instead of agent memory"
+    },
     "theseus-remove-oracle-vocabulary-20261105": {
       "claim": null,
       "needs": [
