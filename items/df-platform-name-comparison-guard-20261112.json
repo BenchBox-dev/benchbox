@@ -1,10 +1,12 @@
 {
   "acceptance": [
-    "No module under `benchbox/core/**/dataframe_queries*` compares `ctx.platform` (or a lower-cased copy) with a string literal; they use the shared predicate.",
-    "A test shows an unknown engine name passed to the predicate raises instead of returning false.",
-    "Existing tests for TPC-DS rank handling on Polars and the read-primitives Dask and DataFusion paths pass unchanged."
+    "No module under `benchbox/core/**/dataframe_queries*` compares `ctx.platform` (or a lower-cased copy) with a string literal; they use the shared typed check. `rg -n 'ctx\\.platform' benchbox/core --glob '*dataframe_queries*'` shows no comparison.",
+    "A test shows an unknown or wrong-case engine name passed to the lookup raises instead of returning false, and that every registered DataFrame adapter's `platform_name` maps to a member of the enum.",
+    "Existing tests for TPC-DS rank handling on Polars and the read-primitives Dask and DataFusion paths pass unchanged.",
+    "`make batch-member-check TESTS=<tests added or changed>` passes; `make comment-policy-check` reports nothing for the touched files.",
+    "A `changelog.d/` fragment (internal category if nothing user-visible changes)."
   ],
-  "description": "Gap. TPC-DS Q16 and Q95 carried branches comparing `ctx.platform` with `\"datafusion\"` while the adapter reports `\"DataFusion\"`; they were dead from v0.1.1 until removed in PR #4169, and nothing failed. The same mistake can be written again: `ctx.platform` is the adapter's display name (`Polars`, `DataFusion`, `PySpark`, `LakeSail`, `Dask`, `Pandas`, `cuDF`), and query modules compare it three different ways today: exact display name (`benchbox/core/tpcds/dataframe_queries/queries.py`, `_sql_rank_expression`, `!= \"Polars\"`), lower-cased with separator normalisation (`benchbox/core/read_primitives/dataframe_queries.py`, `_is_dask_context`, `_is_datafusion_context`), and class-internal checks in `unified_frame.py`.\n\nExpected: one typed way to ask which engine a context runs on (for example an enum or predicate on the context), used by every query module, so a misspelt or wrong-case name is a type or lookup error, not a silently false comparison.\n\nGuardrails: no query pattern may be selected by platform for speed without recorded complete-query timings. Search for an existing helper before adding one (`make duplicate-check-delta`). Behaviour of the three existing call sites must not change. If a static check is added, wire it into required CI in the same change.",
+  "description": "Problem. TPC-DS Q16 and Q95 carried branches comparing `ctx.platform` with `\"datafusion\"` while the adapter reports `\"DataFusion\"`; they were dead from v0.1.1 until removed in PR #4169, and nothing failed. The same mistake can be written again: `ctx.platform` is the adapter's display name (`Polars`, `DataFusion`, `PySpark`, `LakeSail`, `Dask`, `Pandas`, `cuDF`), and code asks which engine it is on in different ways: exact display name (`benchbox/core/tpcds/dataframe_queries/queries.py`, `_sql_rank_expression`, `!= \"Polars\"`), lower-cased with separator normalisation (`benchbox/core/read_primitives/dataframe_queries.py`, `_is_dask_context`, `_is_datafusion_context`), set membership on `self._adapter.platform_name` (`benchbox/platforms/dataframe/expression_family.py`), and string checks inside `unified_frame.py`.\n\nExpected: one typed way to ask which engine a context runs on (an enum plus a lookup or predicate reachable from the context), used by the query modules, so a misspelt or wrong-case name raises or fails type checking instead of comparing false.\n\nDecision gate (member, before editing): choose where the typed identity lives so that `benchbox/core` does not import adapter SDKs and the `DataFrameContext` protocol stays satisfied by both families. Record the choice in the landing report. Convert the query-module sites (TPC-DS, read primitives) and `expression_family.py`; convert `unified_frame.py` internals only if it is a mechanical change with no behaviour difference, otherwise leave them and say so.\n\nFrozen scope: `benchbox/core/dataframe/context.py`, `benchbox/core/dataframe/__init__.py`, `benchbox/core/dataframe/engine.py`, `benchbox/core/read_primitives/dataframe_queries.py`, `benchbox/core/tpcds/dataframe_queries/queries.py`, `benchbox/platforms/dataframe/expression_family.py`, `benchbox/platforms/dataframe/pandas_family.py`, `benchbox/platforms/dataframe/unified_frame.py`, `tests/unit/core/dataframe/test_engine_identity*`, `tests/unit/core/read_primitives/*`, `tests/unit/core/tpcds/*`.\n\nGuardrails (members of batch df-platform-followups):\n- Stay inside the frozen scope below; a path outside it is refused at landing. If the work needs another path, stop and report it.\n- No explanatory comments or docstrings (COMMENT-POLICY-001). Search for an existing helper before adding one (`make duplicate-check-delta`).\n- Do not edit SQL text, reference answers, expected-result fixtures or baselines to make a check pass.\n- Members make no tracker write, open no PR, do not run the fast tier, benchmarks or timing runs, and never force heavy-work admission. They use absolute paths under their own worktree and stop at a landing report.\n- One `changelog.d/` fragment per member.\n- `ctx.platform` keeps returning the same display string; results, logs and published bundles read it.\n- No query pattern may be selected by platform for speed. The existing three behaviours (Polars NULL rank handling, Dask and DataFusion read-primitive paths) must not change.\n- Do not edit `benchbox/platforms/dataframe/*_df.py`, `benchmark_mixin.py` or `benchbox/core/dataframe/capabilities.py`; other members own them.",
   "links": [
     "benchbox/core/read_primitives/dataframe_queries.py",
     "benchbox/core/dataframe/context.py"
@@ -16,6 +18,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "f21c05f8e389485da59abb1879d54f1e",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-13T18:31:43Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f7399042bc8446fe93093a831178dcf7",
       "session_id": "512d9ad0b25247538901b68a758a6fbb"
     }
   ]
