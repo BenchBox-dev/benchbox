@@ -19733,19 +19733,14 @@
       "title": "Coordinate the DataFrame distinct-count remediation batch (df-distinct-remediation)"
     },
     "df-distinct-timing-confirmation": {
-      "claim": {
-        "expires_at": "2026-11-14T18:29:12Z",
-        "generation": "6eab7aa3d5b94b05ac1d383a7d657ad9",
-        "renewals": 1,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287"
-      },
+      "claim": null,
       "needs": [
         "tpcds-df-multi-warehouse-min-max",
         "df-n-unique-null-semantics",
         "df-q21-multi-supplier-min-max"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Time the DataFrame distinct-count remediation on an idle machine and change or revert any pattern that is slower"
     },
     "df-memory-guard-refusal-message-and-subset-estimate-20261112": {
