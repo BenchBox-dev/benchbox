@@ -853,6 +853,7 @@ class TestDuckDBAdapter:
             return Mock()
 
         mock_connection.execute.side_effect = mock_execute
+        mock_connection.sql.side_effect = mock_execute
         mock_duckdb.connect.return_value = mock_connection
 
         adapter = DuckDBAdapter(show_query_plans=True)
