@@ -2884,7 +2884,8 @@
     "df-platform-followups": {
       "accepted_members": {
         "df-memory-guard-refusal-message-and-subset-estimate-20261112": "c287fd1d6e7743d9c11cf8493f40846c6f328f40",
-        "df-platform-name-comparison-guard-20261112": "068a41c2a38d4490e6906bb79488b4c0a601ade8"
+        "df-platform-name-comparison-guard-20261112": "068a41c2a38d4490e6906bb79488b4c0a601ade8",
+        "df-write-primitives-sketch-opt-in-20261112": "a558dd4f590ecbb9b604f1d1b28ac47291fd1dc8"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -2915,10 +2916,33 @@
           ],
           "integration_head": "d671e72ac6b3de5dae1b7b018e5074087de4b32c",
           "integration_seq": 2
+        },
+        "df-write-primitives-sketch-opt-in-20261112": {
+          "accepted_head": "a558dd4f590ecbb9b604f1d1b28ac47291fd1dc8",
+          "changed_files": [
+            "benchbox/core/write_primitives/README.md",
+            "benchbox/core/write_primitives/benchmark.py",
+            "benchbox/platforms/__init__.py",
+            "benchbox/platforms/dataframe/benchmark_mixin.py",
+            "benchbox/platforms/dataframe/cudf_df.py",
+            "benchbox/platforms/dataframe/dask_df.py",
+            "benchbox/platforms/dataframe/datafusion_df.py",
+            "benchbox/platforms/dataframe/lakesail_df.py",
+            "benchbox/platforms/dataframe/pandas_df.py",
+            "benchbox/platforms/dataframe/polars_df.py",
+            "benchbox/platforms/dataframe/pyspark_df.py",
+            "benchbox/utils/duckdb_extensions.py",
+            "changelog.d/feat-df-platform-followups--df-write-primitives-sketch-opt-in-20261112.json",
+            "tests/unit/cli/test_dataframe_third_party_extension_option.py",
+            "tests/unit/cli/test_platform_options_reach_adapters.py",
+            "tests/unit/core/write_primitives/test_write_primitives_benchmark_coverage.py"
+          ],
+          "integration_head": "fb368498159cf5a014408dcd224e7e7149bbf09b",
+          "integration_seq": 3
         }
       },
       "integration_branch": "feat/df-platform-followups",
-      "integration_head": "d671e72ac6b3de5dae1b7b018e5074087de4b32c",
+      "integration_head": "fb368498159cf5a014408dcd224e7e7149bbf09b",
       "integration_log": [
         {
           "at": "2026-11-13T18:33:07Z",
@@ -2943,6 +2967,15 @@
           "op_id": "b5c5e2e2d1704f31b25943394d2e4f7c",
           "previous_head": "a3d2bfcefea1fe790f83d49a67e978d54e70206e",
           "seq": 2
+        },
+        {
+          "at": "2026-11-13T19:37:01Z",
+          "head": "fb368498159cf5a014408dcd224e7e7149bbf09b",
+          "kind": "prepare",
+          "member": "df-write-primitives-sketch-opt-in-20261112",
+          "op_id": "819006b8df9540069932b2d871c63930",
+          "previous_head": "d671e72ac6b3de5dae1b7b018e5074087de4b32c",
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-df-platform-followups",
@@ -20195,15 +20228,10 @@
       "title": "Add DataFrame execution support to Transaction Primitives benchmark"
     },
     "df-write-primitives-sketch-opt-in-20261112": {
-      "claim": {
-        "expires_at": "2026-11-14T19:36:53Z",
-        "generation": "9d8858c658c74fc09b34c58ce49225ed",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "open",
       "title": "Sketch operations cannot be enabled in the DataFrame write-primitives workload on DuckDB 2.x"
     },
     "dfparity-n01-q66-value-mismatch": {
