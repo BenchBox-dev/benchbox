@@ -26,6 +26,7 @@ ACCEPTED_OUTCOMES = frozenset({"passed", "unverified", "known-failure"})
 ALLOWLISTED_STEPS = frozenset({"linux-pytest"})
 PYTEST_FAILED_EXIT = 1
 SELECTION_KEYS = ("python_files", "test_files", "linux_files")
+LISTED_TEST_FILES_LIMIT = 20
 TREE_PATTERN = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
 SUMMARY_LINE = re.compile(r"^\W*(?P<body>.*?\d+ \w+.*?) in (?P<secs>[0-9.]+)s\b")
 COUNT = re.compile(r"(\d+) (passed|failed|skipped|deselected|errors?|xfailed|xpassed|warnings?)")
@@ -235,6 +236,25 @@ def run_note(args: argparse.Namespace) -> int:
     return 0
 
 
+def run_tests(args: argparse.Namespace) -> int:
+    names = sorted({line.strip() for line in Path(args.list).read_text(encoding="utf-8").splitlines() if line.strip()})
+    with open(args.stage, "a", encoding="utf-8") as handle:
+        handle.write(json.dumps({"kind": "tests", "names": names}, sort_keys=True) + "\n")
+    if len(names) <= LISTED_TEST_FILES_LIMIT:
+        print(f"{len(names)} files: {', '.join(names)}")
+        return 0
+    first = json.loads(Path(args.stage).read_text(encoding="utf-8").splitlines()[0])
+    tree = first.get("state", {}).get("tree")
+    where = receipt_dir() / f"{tree}.json" if tree else "the preflight receipt"
+    print(f"{len(names)} files; names in {where} (test_file_names)")
+    return 0
+
+
+def _stage_test_files(path: Path) -> list[str]:
+    records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    return [name for record in records if record.get("kind") == "tests" for name in record["names"]]
+
+
 def _read_stage(path: Path) -> tuple[dict[str, object], list[dict[str, object]], dict[str, int]]:
     records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
     begins = [record for record in records if record.get("kind") == "begin"]
@@ -272,6 +292,7 @@ def write_receipt(args: argparse.Namespace) -> int:
             "base_sha": begin["base_sha"],
             "merge_base": begin["merge_base"],
             "selection": selection,
+            "test_file_names": _stage_test_files(Path(args.stage)),
             "platform": begin["platform"],
             "started_at": begin["started_at"],
             "recorded_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -473,6 +494,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     note = sub.add_parser("note")
     note.add_argument("--stage", required=True)
     note.add_argument("count")
+    tests = sub.add_parser("tests")
+    tests.add_argument("--stage", required=True)
+    tests.add_argument("--list", required=True)
     finalize = sub.add_parser("finalize")
     finalize.add_argument("--stage", required=True)
     finalize.add_argument("--exit-status", type=int, required=True)
@@ -492,6 +516,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return run_step(args)
     if args.action == "note":
         return run_note(args)
+    if args.action == "tests":
+        return run_tests(args)
     if args.action == "finalize":
         return write_receipt(args)
     return run_verify(args)

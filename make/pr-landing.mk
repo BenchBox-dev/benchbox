@@ -61,7 +61,7 @@ pr-preflight:
 		echo "No test files map to the changed paths; CI runs the fast lane."; \
 		exit 0; \
 	fi; \
-	echo "==> tests for changed files"; \
+	echo "==> tests for changed files: $$(python3 scripts/preflight_receipt.py tests --stage "$$STAGE" --list "$$TEST_LIST")"; \
 	STATUS=0; \
 	$$RECORD --name pytest --ok-codes 0,5 -- env $$(env | sed -n 's/^\(GIT_[A-Za-z0-9_]*\)=.*/-u \1/p') uv run -- python -m pytest -q -n 0 --tb=short --ff $$(cat "$$TEST_LIST") || STATUS=$$?; \
 	if [ "$$STATUS" -eq 5 ]; then echo "Mapped tests are all deselected by the default markers."; STATUS=0; fi; \

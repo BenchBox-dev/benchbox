@@ -611,6 +611,47 @@ def test_a_receipt_missing_a_step_its_selection_required_is_refused(repo, tmp_pa
     assert "lacks required step(s) ruff-format, pytest, linux-pytest" in done.stderr
 
 
+def _list_file(tmp_path: Path, names: list[str]) -> Path:
+    listing = tmp_path / "tests.list"
+    listing.write_text("".join(f"{name}\n" for name in names), encoding="utf-8")
+    return listing
+
+
+def test_the_selected_test_files_are_recorded_sorted_and_listed_when_few(repo, tmp_path: Path) -> None:
+    root, env = repo
+    stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0), ("pytest", "ok", 0)], None)
+    listing = _list_file(tmp_path, ["tests/unit/test_b.py", "tests/unit/test_a.py"])
+    shown = _script(root, env, "tests", "--stage", str(stage), "--list", str(listing))
+    assert shown.returncode == 0
+    assert shown.stdout.strip() == "2 files: tests/unit/test_a.py, tests/unit/test_b.py"
+    _note(root, env, stage, python_files=0, test_files=2, linux_files=0)
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    assert _receipt(root, env, tmp_path)["test_file_names"] == ["tests/unit/test_a.py", "tests/unit/test_b.py"]
+    assert _verify(root, env, None).returncode == 0
+
+
+def test_many_selected_test_files_point_at_the_receipt_instead_of_listing_them(repo, tmp_path: Path) -> None:
+    root, env = repo
+    stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0)], None)
+    names = [f"tests/unit/test_{index:02d}.py" for index in range(21)]
+    shown = _script(root, env, "tests", "--stage", str(stage), "--list", str(_list_file(tmp_path, names)))
+    tree = _git(root, env, "rev-parse", "HEAD^{tree}")
+    assert shown.stdout.strip() == f"21 files; names in {tmp_path / 'receipts' / f'{tree}.json'} (test_file_names)"
+    assert "test_00.py" not in shown.stdout
+
+
+def test_a_receipt_without_the_test_file_names_field_is_still_accepted(repo, tmp_path: Path) -> None:
+    root, env = repo
+    stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0)], None)
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    tree = _git(root, env, "rev-parse", "HEAD^{tree}")
+    path = tmp_path / "receipts" / f"{tree}.json"
+    receipt = json.loads(path.read_text(encoding="utf-8"))
+    del receipt["test_file_names"]
+    path.write_text(json.dumps(receipt), encoding="utf-8")
+    assert _verify(root, env, None).returncode == 0
+
+
 def test_a_receipt_with_every_required_step_is_accepted(repo, tmp_path: Path) -> None:
     root, env = repo
     steps = [(name, "ok", 0) for name in ("changelog-check", "ruff-check", "ruff-format", "pytest", "linux-pytest")]
