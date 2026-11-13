@@ -2881,6 +2881,78 @@
       "start_head": "0eeec0d5bd194ad0b811911ea73004586ed51469",
       "terminal_outcome": "deliver"
     },
+    "df-platform-followups": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/df-platform-followups",
+      "integration_head": "9f739da8e8647532916fdd8cecda169ce585a4af",
+      "integration_log": [
+        {
+          "at": "2026-11-13T18:33:07Z",
+          "head": "9f739da8e8647532916fdd8cecda169ce585a4af",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-df-platform-followups",
+      "lifecycle": "active",
+      "members": [
+        "df-memory-guard-refusal-message-and-subset-estimate-20261112",
+        "df-write-primitives-sketch-opt-in-20261112",
+        "df-platform-name-comparison-guard-20261112"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "owner_epoch": 0,
+      "owner_generation": "e30d84299c6bcee748993c51dffb5fbb",
+      "project_id": "benchbox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "df-memory-guard-refusal-message-and-subset-estimate-20261112": [
+          "benchbox/core/dataframe/capabilities.py",
+          "tests/unit/core/dataframe/test_dataframe_capabilities.py",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "df-platform-name-comparison-guard-20261112": [
+          "benchbox/core/dataframe/context.py",
+          "benchbox/core/dataframe/__init__.py",
+          "benchbox/core/dataframe/engine.py",
+          "benchbox/core/read_primitives/dataframe_queries.py",
+          "benchbox/core/tpcds/dataframe_queries/queries.py",
+          "benchbox/platforms/dataframe/expression_family.py",
+          "benchbox/platforms/dataframe/pandas_family.py",
+          "benchbox/platforms/dataframe/unified_frame.py",
+          "tests/unit/core/dataframe/test_engine_identity*",
+          "tests/unit/core/read_primitives/*",
+          "tests/unit/core/tpcds/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "df-write-primitives-sketch-opt-in-20261112": [
+          "benchbox/core/write_primitives/*",
+          "benchbox/platforms/__init__.py",
+          "benchbox/platforms/dataframe/*_df.py",
+          "benchbox/platforms/dataframe/benchmark_mixin.py",
+          "benchbox/utils/duckdb_extensions.py",
+          "benchbox/cli/*",
+          "tests/unit/core/write_primitives/*",
+          "tests/unit/cli/*",
+          "tests/unit/platforms/test_*",
+          "tests/unit/utils/test_duckdb_extensions.py",
+          "docs/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ]
+      },
+      "scope_hash": "9aee93343308885e839ea8c51bba092ba2794867c2d0f451d66029392e664073",
+      "start_head": "9f739da8e8647532916fdd8cecda169ce585a4af",
+      "terminal_outcome": "deliver"
+    },
     "hold-label-and-batch-e2e-20261106": {
       "accepted_members": {},
       "batch_schema": 2,
