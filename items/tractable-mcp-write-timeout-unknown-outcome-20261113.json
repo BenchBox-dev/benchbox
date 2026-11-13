@@ -4,7 +4,7 @@
     "The timeout message names how to reconcile.",
     "Measured p95 latency of take and finish recorded before and after."
   ],
-  "context": "BenchBox tracker store: BenchBox-dev/BenchBox branch todo-state. The host also had intermittent GitHub network drops the same day, which may explain the latency.",
+  "context": "BenchBox tracker store: BenchBox-dev/BenchBox branch todo-state. The host also had intermittent GitHub network drops the same day, which may explain the latency.\n\n2026-11-13, merged from a dropped duplicate (tractable-mcp-mutation-exceeds-client-timeout-20261112): one more occurrence on 2026-11-12 in a third session. `update_item` with `context_append` on batch-member-subagent-rule-20261112 returned 'Request timeout after 30000ms ... the request outcome is unknown'; reading the `context` field showed the note had been appended once. Other writes in that session returned in a few seconds. Guardrail for the latency measurement in the acceptance list: measure from server logs or against a disposable state remote, not by issuing extra writes to the project store.",
   "description": "Observed twice on 2026-11-12 against the BenchBox state store:\n- `finish` on benchbox-lock-theseus-review-format-release-a-20261110 returned 'MCP failure … stage: receive, failure: timeout … Request timeout after 30000ms … the request outcome is unknown'. A later list_items showed the item done.\n- `take` on theseus-review-minimize-superseded-20261110 timed out the same way. The item stayed open and unclaimed, and a retry took it.\nIn both cases the client cannot tell whether the write landed. A blind retry of finish would be refused or would double-apply, and a blind retry of take could fail with E_MULTIPLE_CLAIMS if the first had landed. Agents have to read the state back by hand.\nWork (tractable product; owner decides where it is fixed):\n- Return the operation id before the slow part, or make the MCP write timeout longer than the state-branch push time.\n- Make every write idempotent under a client-supplied operation id, so a retry with the same id is safe.\n- Document the reconcile step (`tractable recover --op-id`, or show_item) in the timeout message.\nGuardrails: no hand edits of the state branch; changes go through the tractable repository's own review.",
   "sessions": [
     {
@@ -14,6 +14,14 @@
       "op": "create",
       "op_id": "8e170087d8ff4ba2b58dc2f3a020ba91",
       "session_id": "88f192edfe954a75a195b192ece667bc"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-13T18:12:06Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4c49bf33e1814921b701d74b00867b61",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
     }
   ]
 }
