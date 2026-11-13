@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "The site-inputs workflow accepts a core_sha input that rebuilds the certified site bundle for an older commit or release tag, still requiring a successful Trunk push run on develop for that commit."
+    }
+  ]
+}

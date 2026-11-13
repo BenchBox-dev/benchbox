@@ -479,3 +479,75 @@ def test_main_records_the_failure_class_for_step_outputs(tmp_path: Path, monkeyp
     monkeypatch.setenv("GITHUB_OUTPUT", str(output))
     assert parent_mod.main(["--core-sha", "not-a-sha", "--repo", "example/repo", "--run-id", "1"]) == 1
     assert output.read_text(encoding="utf-8").splitlines() == ["failure_class=other"]
+
+
+def _git_repo(tmp_path: Path, version: str) -> str:
+    import subprocess
+
+    def git(*args: str) -> str:
+        return subprocess.run(
+            ["git", "-c", "user.name=t", "-c", "user.email=t@example.com", *args],
+            cwd=tmp_path,
+            check=True,
+            text=True,
+            encoding="utf-8",
+            capture_output=True,
+        ).stdout.strip()
+
+    git("init", "-q")
+    (tmp_path / "pyproject.toml").write_text(f'[project]\nname = "x"\nversion = "{version}"\n', encoding="utf-8")
+    git("add", "pyproject.toml")
+    git("commit", "-q", "-m", "release")
+    git("tag", f"v{version}")
+    return git("rev-parse", "HEAD")
+
+
+def test_target_tag_resolves_to_its_commit_and_checks_the_version(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sha = _git_repo(tmp_path, "1.2.3")
+    monkeypatch.setattr(parent_mod, "ROOT", tmp_path)
+    assert parent_mod.resolve_target_commit("v1.2.3") == sha
+    parent_mod.check_tag_version("v1.2.3", sha)
+    with pytest.raises(RuntimeError, match="package version is 1.2.3"):
+        parent_mod.check_tag_version("v1.2.4", sha)
+
+
+@pytest.mark.parametrize("ref", ["--upload-pack=x", "-v1.0.0", "a b", "v1;rm", "", "x" * 201])
+def test_target_ref_with_unsafe_shape_is_refused(ref: str) -> None:
+    with pytest.raises(RuntimeError, match="not a commit SHA or a tag name"):
+        parent_mod.resolve_target_commit(ref)
+
+
+def test_unknown_target_ref_is_refused(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _git_repo(tmp_path, "1.2.3")
+    monkeypatch.setattr(parent_mod, "ROOT", tmp_path)
+    with pytest.raises(RuntimeError, match="core_sha does not name a commit"):
+        parent_mod.resolve_target_commit("v9.9.9")
+
+
+def test_target_lookup_queries_runs_of_that_commit_and_returns_run_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[list[str]] = []
+
+    def fake_gh(args):
+        calls.append(list(args))
+        return __import__("json").dumps([dict(TRUNK_RUN, databaseId=555)])
+
+    monkeypatch.setattr(parent_mod, "_gh", fake_gh)
+    monkeypatch.setattr(parent_mod, "resolve_commit", lambda ref, label="x": PARENT if ref.endswith("~1") else CORE)
+    parent, source, certified = parent_mod.resolve_and_decide(CORE, "", "o/r", 100, "", target=True)
+    assert (parent, source, certified) == (PARENT, "dispatch", "555")
+    assert "--commit" in calls[0] and CORE in calls[0]
+
+
+def test_target_without_trunk_run_names_the_missing_certification(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(parent_mod, "_gh", lambda args: "[]")
+    with pytest.raises(parent_mod.NotTrunkCertifiedError, match="no successful trunk.yml push run on " + CORE):
+        parent_mod.resolve_and_decide(CORE, "", "o/r", 100, "", target=True)
+
+
+def test_target_run_on_another_branch_is_not_certification(monkeypatch: pytest.MonkeyPatch) -> None:
+    row = dict(TRUNK_RUN, headBranch="feature", databaseId=9)
+    monkeypatch.setattr(parent_mod, "_gh", lambda args: __import__("json").dumps([row]))
+    with pytest.raises(parent_mod.NotTrunkCertifiedError):
+        parent_mod.resolve_and_decide(CORE, "", "o/r", 100, "", target=True)
