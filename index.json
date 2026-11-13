@@ -41325,15 +41325,10 @@
       "title": "Owner decision: approve one vendored soundness-path matcher module as the only embedded exception"
     },
     "theseus-format-proposal-doc-status-note-20261113": {
-      "claim": {
-        "expires_at": "2026-11-14T19:46:00Z",
-        "generation": "f4087ae7791747338610177d4240293e",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b89414e427d02d5b37262d82"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Theseus docs: mark the review-format proposal as a v0.2.8 audit and make its checkout references reproducible"
     },
     "theseus-freeze-final-parity-20261102": {
