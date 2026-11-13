@@ -26931,6 +26931,15 @@
       "status": "done",
       "title": "MCP public-contract tables: enforce Markdown topology"
     },
+    "mcp-run-benchmark-seed-iterations-20261112": {
+      "claim": null,
+      "needs": [
+        "mcp-prompts-name-nonexistent-tools-20261112"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Expose seed and iterations on MCP run_benchmark and start_benchmark"
+    },
     "mcp-scrub-structured-and-prose-secret-material": {
       "claim": null,
       "needs": [
