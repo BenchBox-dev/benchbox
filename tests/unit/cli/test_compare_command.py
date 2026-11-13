@@ -13,6 +13,7 @@ import pytest
 from click.testing import CliRunner
 
 from benchbox.cli.app import cli
+from benchbox.cli.exit_codes import ExitCode
 from tests.fixtures.result_dict_fixtures import make_v2_result_dict
 
 __import__("benchbox.cli.commands.compare")
@@ -140,7 +141,7 @@ class TestCompareCommand:
                 cli, ["compare", str(baseline_path), str(current_path), "--fail-on-regression", "10%"]
             )
 
-            assert result.exit_code == 1
+            assert result.exit_code == ExitCode.REGRESSION
             assert "regression detected" in result.output.lower()
 
     def test_compare_json_output_format(self):

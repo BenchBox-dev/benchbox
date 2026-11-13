@@ -17,6 +17,7 @@ from benchbox.cli.commands.compare import (
     _validate_min_regression_delta,
     _validate_regression_threshold,
 )
+from benchbox.cli.exit_codes import ExitCode
 from tests.fixtures.result_dict_fixtures import make_v2_result_dict
 
 pytestmark = [
@@ -39,7 +40,7 @@ class TestRegressionExitCode:
         with pytest.raises(SystemExit) as exit_info:
             _check_regression_threshold(_comparison(query_change=25.0), 0.10)
 
-        assert exit_info.value.code == 1
+        assert exit_info.value.code == ExitCode.REGRESSION
 
     def test_no_regression_does_not_exit(self):
         assert _check_regression_threshold(_comparison(query_change=2.0), 0.10) is None
@@ -54,7 +55,7 @@ class TestRegressionExitCode:
         with pytest.raises(SystemExit) as exit_info:
             _check_regression_threshold(_comparison(metric_change=25.0), 0.10)
 
-        assert exit_info.value.code == 1
+        assert exit_info.value.code == ExitCode.REGRESSION
 
     def test_exactly_at_the_threshold_does_not_exit(self):
         assert _check_regression_threshold(_comparison(query_change=10.0), 0.10) is None
@@ -63,7 +64,7 @@ class TestRegressionExitCode:
         with pytest.raises(SystemExit) as exit_info:
             _check_regression_threshold(_comparison(query_change=10.5), 0.10)
 
-        assert exit_info.value.code == 1
+        assert exit_info.value.code == ExitCode.REGRESSION
 
 
 class TestThresholdParsing:
@@ -157,7 +158,7 @@ class TestMinRegressionDelta:
         with pytest.raises(SystemExit) as exit_info:
             _check_regression_threshold(comparison, 0.10, 5.0)
 
-        assert exit_info.value.code == 1
+        assert exit_info.value.code == ExitCode.REGRESSION
 
     def test_floor_does_not_apply_to_aggregate_metrics(self):
         comparison = {
@@ -236,7 +237,7 @@ class TestMinAggregateRegressionDelta:
         with pytest.raises(SystemExit) as exit_info:
             _check_regression_threshold(comparison, 0.10, None, 82.0)
 
-        assert exit_info.value.code == 1
+        assert exit_info.value.code == ExitCode.REGRESSION
 
     def test_floor_is_reported_in_the_verdict(self, capsys: pytest.CaptureFixture[str]):
         _check_regression_threshold(
@@ -360,14 +361,14 @@ class TestMinRegressionDeltaCommand:
     def test_jitter_on_a_short_query_fails_without_the_floor(self, tmp_path: Path):
         result = self._compare(tmp_path, {"8": 9.0, "20": 10.0}, {"8": 11.6, "20": 11.9})
 
-        assert result.exit_code == 1
+        assert result.exit_code == ExitCode.REGRESSION
 
     def test_large_slowdown_on_a_long_query_fails_with_the_floor(self, tmp_path: Path):
         result = self._compare(
             tmp_path, {"8": 9.0, "9": 5000.0}, {"8": 9.0, "9": 5600.0}, "--min-regression-delta", "5ms"
         )
 
-        assert result.exit_code == 1
+        assert result.exit_code == ExitCode.REGRESSION
         assert "Performance regression detected" in result.output
 
     def test_seconds_spelling_is_equivalent(self, tmp_path: Path):
