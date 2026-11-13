@@ -20063,10 +20063,15 @@
       "title": "Coordinate the DataFrame platform follow-ups batch (df-platform-followups)"
     },
     "df-platform-name-comparison-guard-20261112": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-14T19:08:46Z",
+        "generation": "4e4d5d520dbc4756869f87254c1a9d24",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Stop DataFrame query code comparing `ctx.platform` with string literals"
     },
     "df-q21-multi-supplier-min-max": {
