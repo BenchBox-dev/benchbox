@@ -52,6 +52,7 @@ from benchbox.core.dataframe.data_loader import (
     get_tpcds_column_names,
     get_tpch_column_names,
 )
+from benchbox.core.dataframe.engine import DataFrameEngine
 from benchbox.core.dataframe.maintenance_interface import (
     DELTA_LAKE_CAPABILITIES,
     ICEBERG_CAPABILITIES,
@@ -117,6 +118,7 @@ __all__ = [
     "QueryRegistry",
     "DataFrameContext",
     "DataFrameContextImpl",
+    "DataFrameEngine",
     "DataFrameOps",
     "DataFrameGroupBy",
     "DataFrameMaintenanceOperations",

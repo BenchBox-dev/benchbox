@@ -46,6 +46,8 @@ _ABBREVIATIONS = {
 
 
 class _Stub:
+    platform = "Pandas"
+
     def __getattr__(self, name: str) -> Any:
         if name == "npartitions" or (name.startswith("__") and name.endswith("__")):
             raise AttributeError(name)
