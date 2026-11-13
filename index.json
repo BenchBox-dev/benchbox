@@ -31151,6 +31151,13 @@
       "status": "done",
       "title": "Route post-merge failures to the correct owner before proposing a revert"
     },
+    "post-merge-worktree-finish-undocumented-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Agent docs do not say how to retire a worktree and its branch after merge, so merged local branches pile up"
+    },
     "postgres-cluster-plus-sort-same-table-20261017": {
       "claim": null,
       "needs": [],
