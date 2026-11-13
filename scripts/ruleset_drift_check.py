@@ -46,10 +46,12 @@ PYPI_REQUIRED_REVIEWERS = (("User", 57046, "joeharris76"),)
 PYPI_CAN_ADMINS_BYPASS = True
 PYPI_PREVENT_SELF_REVIEW = False
 TEST_PYPI_ENVIRONMENT = "test-pypi"
+LEGACY_REVIEW_ENVIRONMENT = "oracle"
 REVIEW_ENVIRONMENT = "review"
 ENVIRONMENT_DEPLOYMENT_POLICIES = {
     PYPI_ENVIRONMENT: (("tag", "v*"),),
     TEST_PYPI_ENVIRONMENT: (("branch", "develop"), ("tag", "v*")),
+    LEGACY_REVIEW_ENVIRONMENT: (("branch", "develop"), ("branch", "release/*")),
     REVIEW_ENVIRONMENT: (("branch", "develop"), ("branch", "release/*")),
 }
 RETIRED_RELEASE_BRANCH = "release"
@@ -536,6 +538,7 @@ def render_summary(findings: list[str], expected: dict[str, ExpectedRuleset]) ->
         lines.append("- test-pypi environment: deployments only from tag v* and branch develop")
         lines.append(f"- {RELEASE_LIFECYCLE_RULESET}: creation and deletion of {RELEASE_BRANCHES_REF} owner-only")
         lines.append("- no `release` branch or ruleset")
+        lines.append("- oracle environment: deployments only from branches develop and release/*")
         lines.append("- review environment: deployments only from branches develop and release/*")
     if warnings:
         lines += ["", "## Non-blocking warnings", "", *[f"- {finding}" for finding in warnings]]

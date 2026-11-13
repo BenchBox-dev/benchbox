@@ -196,7 +196,7 @@ def _deployment_policies(name: str) -> dict:
     }
 
 
-@pytest.mark.parametrize("name", ["pypi", "test-pypi", "review"])
+@pytest.mark.parametrize("name", ["pypi", "test-pypi", "oracle", "review"])
 def test_matching_deployment_policies_have_no_findings(name: str) -> None:
     assert deployment_policy_findings(name, _deployment_environment(), _deployment_policies(name)) == []
 
@@ -224,6 +224,36 @@ def test_matching_deployment_policies_have_no_findings(name: str) -> None:
             lambda env: None,
             lambda p: p["branch_policies"].append({"type": "branch", "name": "release"}),
             "deployment policies",
+        ),
+        (
+            "oracle",
+            lambda env: None,
+            lambda p: p["branch_policies"].append({"type": "branch", "name": "feature/*"}),
+            "oracle environment: deployment policies",
+        ),
+        (
+            "oracle",
+            lambda env: None,
+            lambda p: p["branch_policies"].remove({"type": "branch", "name": "release/*"}),
+            "oracle environment: deployment policies",
+        ),
+        (
+            "oracle",
+            lambda env: None,
+            lambda p: p["branch_policies"].remove({"type": "branch", "name": "develop"}),
+            "oracle environment: deployment policies",
+        ),
+        (
+            "oracle",
+            lambda env: None,
+            lambda p: p["branch_policies"].append({"type": "tag", "name": "release/*"}),
+            "oracle environment: deployment policies",
+        ),
+        (
+            "oracle",
+            lambda env: env["deployment_branch_policy"].update(custom_branch_policies=False),
+            lambda p: None,
+            "oracle environment: deployment_branch_policy",
         ),
         (
             "review",
@@ -285,6 +315,7 @@ def test_main_fails_when_a_live_environment_gains_a_policy(
     policies = {
         "pypi": _deployment_policies("pypi"),
         "test-pypi": _deployment_policies("test-pypi"),
+        "oracle": _deployment_policies("oracle"),
         "review": _deployment_policies("review"),
     }
     policies["pypi"]["branch_policies"].append({"type": "branch", "name": "*"})

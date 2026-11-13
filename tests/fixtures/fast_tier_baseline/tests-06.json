@@ -17000,7 +17000,7 @@
     "p50_seconds": 0.021979
   },
   {
-    "id": "tests/unit/test_ruleset_drift.py::test_deployment_policy_drift_is_reported[review-<lambda>-<lambda>-review environment: deployment policies0]",
+    "id": "tests/unit/test_ruleset_drift.py::test_deployment_policy_drift_is_reported[oracle-<lambda>-<lambda>-oracle environment: deployment policies0]",
     "p50_seconds": 0.020306
   },
   {
