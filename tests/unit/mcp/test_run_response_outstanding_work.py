@@ -58,6 +58,7 @@ def _build(result: BenchmarkResults, tmp_path: Path) -> dict[str, object]:
         benchmark="tpch",
         scale_factor=0.01,
         resolved_mode="sql",
+        seed=None,
     )
 
 
