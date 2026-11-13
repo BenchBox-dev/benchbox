@@ -63,6 +63,10 @@ else
   sh "$(dirname "$0")/check_primary_clone_clean.sh" enforce
 fi
 
+if [ "${BENCHBOX_PREFLIGHT_FROM_COMMIT_HOOK:-}" != "1" ] && [ "$ephemeral" != "yes" ] && command -v python3 >/dev/null 2>&1; then
+  python3 "$(dirname "$0")/check_primary_clone_stale.py" "$primary_abs" || true
+fi
+
 if [ "${BENCHBOX_ALLOW_AGENT_GIT_IDENTITY:-}" != "1" ]; then
   author_ident=$(git -C "$top_abs" var GIT_AUTHOR_IDENT 2>/dev/null || true)
   author_email=$(printf '%s' "$author_ident" | sed -n 's/^.*<\([^>]*\)>.*$/\1/p' | tr 'A-Z' 'a-z')
