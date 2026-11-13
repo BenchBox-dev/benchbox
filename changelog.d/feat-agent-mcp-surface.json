@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "MCP prompts and server instructions now name only registered tools and real arguments, tell the model to call validate_results before reporting a run, and state when two results are comparable."
+    }
+  ]
+}

@@ -172,6 +172,14 @@ external textcharts MCP server if that server is configured separately.
 To capture query execution plans, use the capture_plans parameter:
   run_benchmark(platform="datafusion", benchmark="tpch", capture_plans=True)
 Then inspect plans: get_query_plan(result_file="...", query_id="19")
+
+Before reporting any run, call validate_results(result_file="<result_file>") and report its WARN and FAIL findings.
+Compare two results only when their benchmark, scale, phase, configuration, tuning, hardware and evidence are
+compatible; a shared benchmark name alone is not enough.
+TPC-H and TPC-DS runs below scale factor 1 are unofficial subscale results and remain ranked.
+
+On an authenticated remote server (remote mode only), run_benchmark does not execute; queue work with
+start_benchmark, then read get_benchmark_status and get_benchmark_result.
 """,
         **server_kwargs,
     )
