@@ -31556,6 +31556,13 @@
       "status": "done",
       "title": "Back-port nightly's anti-skip guard to pr.yml's non-blocking postgres-integration sample"
     },
+    "pr-preflight-does-not-list-selected-tests-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "make pr-preflight does not show which test files it selected, so a required test cannot be confirmed from its output"
+    },
     "pr-preflight-landing-quickstarts-check-20261014": {
       "claim": null,
       "needs": [],

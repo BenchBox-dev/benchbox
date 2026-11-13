@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "After `make pr-preflight`, the selected test files can be read from its output or from a file whose path it prints, without re-running anything.",
+    "A unit test of the receipt or the listing step shows a known mapped file appears for a changed source path.",
+    "`make pr-open` accepts a receipt produced after the change, shown once on a real branch."
+  ],
+  "description": "`make pr-preflight` builds the list of test files mapped to the changed paths, then runs `pytest -q -n 0 --tb=short --ff $(cat \"$TEST_LIST\")` and deletes the temporary list. With `-q` the output is dots and a count ('156 passed, 1 skipped'), so neither the log nor the terminal says which files ran. On 2026-11-12 an item required `tests/unit/scripts/test_batch_integration.py` to pass; the preflight log could not show whether it was among the 156, and the file was run again by hand (4.5 minutes) to be sure. A reviewer reading a pull request's 'pr-preflight passed' line has the same blind spot, and so does anyone diagnosing why a mapped test was missed (compare preflight-misses-source-scanning-guard-tests-20261112).\n\nDecision gate. Check first whether the preflight receipt (`scripts/preflight_receipt.py`, written under `~/.cache/benchbox/preflight/`) already records the selected files. If it does, the fix is to print its path and a one-line count per directory; if it does not, decide between printing the list before the run and recording it in the receipt. Do not do both without a reason.\n\nGuardrails.\n- Selection itself does not change: same files, same order, same pytest flags.\n- No raw log is committed, and the receipt format changes only in a way `make pr-open` still accepts (it requires a passing receipt for the pushed tree).\n- Output stays short for large changes: print a count and the receipt path when the list is long.",
+  "links": [
+    "make/pr-landing.mk",
+    "scripts/preflight_receipt.py",
+    "_project/scripts/preflight_targets.py",
+    "preflight-misses-source-scanning-guard-tests-20261112"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-13T18:16:22Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b0001a51e10740098d08730b92fb2ba4",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    }
+  ]
+}
