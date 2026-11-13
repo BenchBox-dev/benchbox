@@ -37964,9 +37964,9 @@
     },
     "site-static-result-pages-permalink-200-20261112": {
       "claim": {
-        "expires_at": "2026-11-14T17:28:56Z",
-        "generation": "7362f4e5d7cb476bb6a276a7016368f7",
-        "renewals": 0,
+        "expires_at": "2026-11-14T17:41:10Z",
+        "generation": "274533f01b004f67bbdcbc59018e3a8a",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
       },
       "needs": [],
