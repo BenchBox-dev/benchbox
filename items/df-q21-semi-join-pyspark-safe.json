@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Optimisation reintroduced with PySpark (and the other dataframe platforms) measured before and after",
+    "pyspark-df tpchavoc and tpch cells green in a trunk UAT"
+  ],
+  "description": "#4196 rewrote DataFrame TPC-H Q21 and the shared TPC-Havoc Q21 final step as filtered semi-joins (about a 10% gain on DataFusion and Polars). In trunk UAT 43392619506, pyspark-df tpchavoc 0.01 then timed out at 1200 s on both attempts, with Spark past stage 8,900. It is being reverted for 0.5.1 if local runs confirm the cause.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a4419e6ace05ac5a296d594b",
+      "at": "2026-11-13T13:18:51Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "331797f45d4945649133fb79c8d6769c",
+      "session_id": "7f2d8583a7d94300804da984b061b91c"
+    }
+  ]
+}
