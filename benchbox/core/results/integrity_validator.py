@@ -669,6 +669,10 @@ class ResultIntegrityValidator:
         for point in ("start", "end"):
             sample = host_load.get(point)
             load = sample.get("load_average") if isinstance(sample, dict) else None
+            if not isinstance(load, list) or not all(
+                isinstance(v, int | float) and not isinstance(v, bool) for v in load
+            ):
+                load = None
             parts.append(
                 f"{point} load average " + (", ".join(f"{value:g}" for value in load) if load else "unavailable")
             )

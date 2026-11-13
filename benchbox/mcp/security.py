@@ -30,6 +30,7 @@ from benchbox.core.billable_platforms import (
     billable_platform_names,
     environment_acknowledged,
 )
+from benchbox.core.constants import GENERIC_POWER_DEFAULT_MEASUREMENT_ITERATIONS
 from benchbox.utils.clock import mono_time, utc_now
 
 AUTHORIZATION_ERROR = -32003
@@ -101,6 +102,7 @@ class RemoteSecurityConfig(BaseModel):
     allowed_platforms: tuple[str, ...] = ()
     allowed_benchmarks: tuple[str, ...] = ()
     max_scale_factor: float = Field(default=1.0, gt=0.0)
+    max_iterations: int = Field(default=10, ge=GENERIC_POWER_DEFAULT_MEASUREMENT_ITERATIONS, le=1000)
     admission: AdmissionLimits = Field(default_factory=AdmissionLimits)
     jobs: JobLimits = Field(default_factory=JobLimits)
 
@@ -533,6 +535,12 @@ class RemoteSecurityMiddleware:
             raise MCPError(AUTHORIZATION_ERROR, "Benchmark scale factor must be finite and positive")
         if scale_factor > self.config.max_scale_factor:
             raise MCPError(AUTHORIZATION_ERROR, "Benchmark scale factor exceeds policy")
+        iterations = arguments.get("iterations")
+        if iterations is not None:
+            if isinstance(iterations, bool) or not isinstance(iterations, int):
+                raise MCPError(AUTHORIZATION_ERROR, "Benchmark iterations must be an integer")
+            if iterations > self.config.max_iterations:
+                raise MCPError(AUTHORIZATION_ERROR, "Benchmark iterations exceed policy")
 
     @staticmethod
     def _tool_call(ctx: ServerRequestContext[Any, Any]) -> tuple[str, Mapping[str, Any]] | None:

@@ -70,6 +70,8 @@ EXPECTED_RUN_PARAMS = {
     "validate_only": {"type": "boolean", "required": False, "default": False},
     "link_probe": {"type": "boolean", "required": False, "default": True},
     "platform_options": {"type": "object or null", "required": False, "default": None},
+    "seed": {"type": "integer or null", "required": False, "default": None},
+    "iterations": {"type": "integer or null", "required": False, "default": None},
 }
 
 RUN_SURFACE = json.loads((REPO_ROOT / "quality/mcp-run-surface.json").read_text(encoding="utf-8"))

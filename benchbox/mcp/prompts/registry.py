@@ -19,7 +19,7 @@ def _build_analyze_results_prompt(benchmark: str, platform: str, focus: str | No
     return f"""Analyze the {benchmark.upper()} benchmark results on {platform}.
 
 Please use the following tools to gather data:
-1. list_recent_runs(platform="{platform}", benchmark="{benchmark}") - Find recent runs
+1. get_results(platform="{platform}", benchmark="{benchmark}") - Find recent runs
 2. get_results(result_file="<filename>") - Get detailed results
 
 Based on the results, provide:
@@ -40,10 +40,13 @@ def _build_compare_platforms_prompt(benchmark: str, platforms: str, scale_factor
 Scale Factor: {scale_factor}
 
 Please use these tools:
-1. validate_config() for each platform to check availability
-2. run_benchmark() for each platform (if results don't exist)
-3. list_recent_runs() to find existing results
-4. compare_results() to compare two runs at a time
+1. run_benchmark(platform="<platform>", benchmark="{benchmark.lower()}", validate_only=True) for each platform to check availability
+2. run_benchmark(platform="<platform>", benchmark="{benchmark.lower()}", scale_factor={scale_factor}) for each platform (if results don't exist)
+3. get_results(benchmark="{benchmark.lower()}") to find existing results
+4. validate_results(result_file="<filename>") on every run before using it
+5. analyze_results(analysis="compare", file1="<baseline_file>", file2="<comparison_file>") to compare two runs at a time
+
+Only compare runs whose benchmark, scale, phase, configuration, tuning, hardware and evidence are compatible; a shared benchmark name alone is not enough.
 
 Provide a comprehensive comparison including:
 1. **Overall Performance**: Total runtime for each platform
@@ -63,8 +66,8 @@ Comparison: {comparison_run}
 Regression Threshold: {threshold_percent}%
 
 Use these tools:
-1. compare_results(file1="{baseline_run}", file2="{comparison_run}", threshold_percent={threshold_percent})
-2. get_results() for detailed query information if needed
+1. analyze_results(analysis="compare", file1="{baseline_run}", file2="{comparison_run}", threshold_percent={threshold_percent})
+2. get_results(result_file="<filename>") for detailed query information if needed
 
 Provide analysis including:
 1. **Regression Summary**: Number and severity of regressions
@@ -78,9 +81,9 @@ Provide analysis including:
 Regression Threshold: {threshold_percent}%
 
 Use these tools:
-1. list_recent_runs() - Find the two most recent comparable runs
-2. compare_results() - Compare them with threshold {threshold_percent}%
-3. get_results() - Get details on any regressed queries
+1. get_results() - List recent runs and pick the two most recent comparable ones
+2. analyze_results(analysis="regressions", threshold_percent={threshold_percent}) - Detect regressions across recent runs
+3. get_results(result_file="<filename>") - Get details on any regressed queries
 
 Provide analysis including:
 1. **Regression Summary**: Overview of any regressions found
@@ -96,8 +99,8 @@ Time Budget: {time_budget_minutes} minutes
 Target Platforms: {platforms or "To be determined based on use case"}
 
 Use these tools to gather information:
-1. list_platforms() - See available platforms and their capabilities
-2. list_benchmarks() - See available benchmarks with query counts
+1. list_available(category="platforms") - See available platforms and their capabilities
+2. list_available(category="benchmarks") - See available benchmarks
 3. system_profile() - Check system resources for scale factor recommendations
 
 Based on this information, provide:
@@ -130,9 +133,9 @@ def _build_troubleshoot_prompt(error_message: str | None, platform: str | None, 
 {context_str}
 
 Use these tools to diagnose:
-1. validate_config() - Check if configuration is valid
+1. run_benchmark(platform="<platform>", benchmark="<benchmark>", validate_only=True) - Check if configuration is valid
 2. system_profile() - Check system resources
-3. list_platforms() - Verify platform availability
+3. list_available(category="platforms") - Verify platform availability
 
 Common issues to check:
 1. **Platform Dependencies**: Is the platform properly installed?
@@ -160,11 +163,14 @@ Benchmark: {benchmark.upper()}
 Scale Factor: {scale_factor}{queries_text}
 
 Before running, please:
-1. validate_config(platform="{platform}", benchmark="{benchmark}", scale_factor={scale_factor}) - Verify the configuration is valid
+1. run_benchmark(platform="{platform}", benchmark="{benchmark}", scale_factor={scale_factor}, validate_only=True) - Verify the configuration is valid
 2. check_dependencies(platform="{platform}") - Ensure dependencies are installed
 
 If validation passes, execute:
 3. run_benchmark(platform="{platform}", benchmark="{benchmark}", scale_factor={scale_factor}{f', queries="{queries}"' if queries else ""})
+
+Before reporting the results:
+4. validate_results(result_file="<result_file from the run>") - Check integrity and report any WARN or FAIL findings
 
 After execution, provide:
 1. **Execution Summary**: Overall status and runtime

@@ -13,7 +13,9 @@
     "dry_run": "--dry-run",
     "validate_only": null,
     "link_probe": "--no-link-probe",
-    "platform_options": "--platform-option"
+    "platform_options": "--platform-option",
+    "seed": "--seed",
+    "iterations": "--iterations"
   },
   "partial_cli_surfaces": ["--platform-option"],
   "omission_tiers": {
@@ -30,7 +32,6 @@
     "--gateway": "security-scoped",
     "--global-cache": "security-scoped",
     "--ignore-memory-warnings": "security-scoped",
-    "--iterations": "not-yet-demanded",
     "--no-monitoring": "not-yet-demanded",
     "--no-progress": "interaction-scoped",
     "--non-interactive": "interaction-scoped",
@@ -46,7 +47,6 @@
     "--publish-target": "security-scoped",
     "--quiet": "interaction-scoped",
     "--result-source": "not-yet-demanded",
-    "--seed": "not-yet-demanded",
     "--show-plans": "interaction-scoped",
     "--sorted-ingestion-*": "not-yet-demanded",
     "--stats-per-table-timing": "not-yet-demanded",

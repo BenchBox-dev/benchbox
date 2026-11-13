@@ -127,3 +127,15 @@ def test_compare_and_validate_accept_bundles_with_and_without_the_fields(tmp_pat
 
     assert CliRunner().invoke(cli, ["compare", str(path), str(path)]).exit_code == 0
     assert CliRunner().invoke(cli, ["results", "validate", str(path)]).exit_code in (0, 5)
+
+
+@pytest.mark.parametrize("bad", ["1.0, 2.0", ["a", "b"], 3, {"x": 1}])
+def test_integrity_validator_tolerates_malformed_load_average(bad):
+    payload = build_result_payload(_result(None))
+    payload["environment"]["host_load"]["start"]["load_average"] = bad
+
+    report = ResultIntegrityValidator().validate(payload)
+    check = next(c for c in report.checks if c.name == "host_load")
+
+    assert check.status.value == "INFO"
+    assert "start load average unavailable" in check.message
