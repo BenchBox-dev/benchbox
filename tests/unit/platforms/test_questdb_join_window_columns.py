@@ -88,3 +88,13 @@ def test_columns_of_nothing_known_leaves_the_query_unchanged():
         "SELECT ROW_NUMBER() OVER (PARTITION BY k ORDER BY x) AS r FROM a JOIN b ON a.k = b.k", lambda _: None
     )
     assert "PARTITION BY k ORDER BY x" in sql
+
+
+def test_unaliased_derived_table_source_is_not_given_an_empty_qualifier():
+    schema = {"b": frozenset({"k", "y"})}
+    sql = rewrite_query(
+        "SELECT ROW_NUMBER() OVER (PARTITION BY x ORDER BY y) AS r FROM (SELECT 1 AS x) JOIN b ON b.k = x", schema.get
+    )
+    assert "PARTITION BY x ORDER BY b.y" in sql
+    assert '""' not in sql
+    assert ". " not in sql

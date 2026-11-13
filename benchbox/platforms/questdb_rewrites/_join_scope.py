@@ -250,8 +250,9 @@ def _qualify_window_columns(select: exp.Select, columns_of: ColumnsOf) -> None:
             if column.table or column.parent_select is not select or isinstance(column.this, exp.Star):
                 continue
             owner = scope.owner_of(column.name)
-            if owner is not None:
-                column.set("table", exp.to_identifier(scope.source_name(owner)))
+            qualifier = scope.source_name(owner) if owner is not None else ""
+            if qualifier:
+                column.set("table", exp.to_identifier(qualifier))
 
 
 def qualify_join_window_columns(expression: exp.Expr, columns_of: ColumnsOf) -> exp.Expr:
