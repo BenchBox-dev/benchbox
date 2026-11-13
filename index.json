@@ -41081,6 +41081,13 @@
       "status": "open",
       "title": "Theseus: a promotion review cannot close its own finding on upstream code because the staged path is not a head-commit file"
     },
+    "theseus-review-dashboard-comment-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Theseus: keep one sticky dashboard comment per PR listing every open finding and the current verdict"
+    },
     "theseus-review-depth-and-capacity-20261105": {
       "claim": null,
       "needs": [
