@@ -35885,6 +35885,16 @@
       "status": "done",
       "title": "Make Results Explorer Vitest an enforced develop-PR merge gate"
     },
+    "results-machine-index-decision-20261113": {
+      "claim": null,
+      "needs": [
+        "agent-reach-evidence-gate-20261112",
+        "site-static-result-pages-permalink-200-20261112"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Decide whether published results need a generated machine-readable index for readers without a browser"
+    },
     "results-normalized-cost-contract-cloud-facets": {
       "claim": null,
       "needs": [],
