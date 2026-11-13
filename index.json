@@ -4637,7 +4637,20 @@
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
-      "final_pr_history": [],
+      "final_pr": {
+        "head": "2406b0fec153313e7ac556bfb3eca34e5e8869bc",
+        "node_id": "PR_kwDOQ7J64c8AAAABO_3OYA",
+        "number": 4209,
+        "repository": "https://github.com/BenchBox-dev/BenchBox.git"
+      },
+      "final_pr_history": [
+        {
+          "at": "2026-11-13T19:38:53Z",
+          "head": "2406b0fec153313e7ac556bfb3eca34e5e8869bc",
+          "op_id": "3a84e122293248d082e91b05f889b793",
+          "previous_head": null
+        }
+      ],
       "integrated_members": {
         "catalog-pin-change-sites-undocumented-20261112": {
           "accepted_head": "808b18093c01afd2d01c7f1c28e2c94b94772979",
