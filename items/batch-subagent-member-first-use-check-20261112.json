@@ -1,10 +1,10 @@
 {
   "acceptance": [
-    "At the next owner-named feature batch, the leader's transcript shows subagent members dispatched with no authorization question to the owner; the batch and date are recorded here. If a question was asked, its exact wording is recorded and the doc is corrected.",
-    "`docs/agent/batch-feature-delivery.md` carries a short member dispatch prompt a leader can paste, covering: no tracker write, absolute paths under the member worktree, stop at a landing report.",
-    "A subagent member's first commit in a leader-created member worktree is observed to succeed, or the extra step it needed is added to the doc."
+    "The batch id, date and leader session are recorded here, with one of: 'members dispatched as subagents, no authorization question', or the question quoted verbatim.",
+    "If a question was asked, the text that prompted it is identified and a correcting pull request is merged, or an owner decision is recorded.",
+    "If members ran as separate sessions instead of subagents, that is recorded and the item stays blocked for the next batch."
   ],
-  "description": "The rule change of 2026-11-12 (PR #4170, catalog #116, global skills applied the same day) was made to stop leader sessions asking the owner whether their subagents may be batch members. No batch has run since, so the outcome is unproven. Two gaps may keep the question alive:\n- The doc requires the dispatch prompt to forbid tracker writes and to require absolute worktree paths, but gives no text to copy, so each leader words it differently and may still ask whether its wording is enough.\n- Whether a subagent can commit in a member worktree its leader created was assumed from the absence of a rule, not tried.\n\nGuardrail: this item observes the next owner-named batch; it does not start a batch to prove the loop, which the protocol forbids.",
+  "description": "The rule change of 2026-11-12 (PR #4170, catalog pull request #116, global skills applied the same day) was made to stop leader sessions asking the owner whether their subagents may be batch members. No batch has run since, so the outcome is unproven.\n\nThis item is an observation and is blocked until the owner names a feature batch. The work that can be done now is in batch-member-dispatch-prompt-20261113.\n\nDecision gate. After the batch: if no authorization question was asked, finish this item. If one was asked, record its exact wording and which text the leader was reading (repository doc, project skill mirror, global skill), then either correct that text in a serial pull request or, if the question shows the rule itself is wrong, stop and report to the owner.\n\nGuardrails.\n- Do not start, register or simulate a batch to satisfy this item; the protocol forbids using the loop to prove itself.\n- Do not unblock this item until a batch has been named by the owner.\n- Evidence comes from the leader's own transcript or report, read after the fact; the observer makes no tracker write on the batch's items.",
   "links": [
     "docs/agent/batch-feature-delivery.md",
     "https://github.com/BenchBox-dev/benchbox/pull/4170",
@@ -17,6 +17,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "83c41f83ac2e4eb88a0318b9b39b7fd6",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-13T18:13:12Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ceefcfea91be46d2b2c58990185b590d",
       "session_id": "570099c30e51431ebfbca6042d41ee8f"
     }
   ]

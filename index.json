@@ -13018,10 +13018,12 @@
     },
     "batch-subagent-member-first-use-check-20261112": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "batch-member-dispatch-prompt-20261113"
+      ],
       "priority": "medium",
       "status": "open",
-      "title": "Confirm at the next feature batch that leaders dispatch subagent members without asking, and supply the dispatch prompt text"
+      "title": "Observe the next owner-named feature batch: do leaders dispatch subagent members without asking the owner"
     },
     "batch-tooling-blocked-by-foreign-primary-edits-20261110": {
       "claim": null,
