@@ -21,7 +21,7 @@ from mcp.types import DiscoverResult, RequestParams
 from benchbox.core.runtime_paths import resolve_runtime_paths
 from benchbox.mcp.prompts import register_all_prompts
 from benchbox.mcp.resources import register_all_resources
-from benchbox.mcp.security import RemoteSecurityRuntime, configure_transport_security_logging
+from benchbox.mcp.security import LocalPlatformPolicy, RemoteSecurityRuntime, configure_transport_security_logging
 from benchbox.mcp.telemetry import RedactedTelemetryMiddleware, TelemetrySettings, configure_telemetry
 from benchbox.mcp.tools.analytics import register_analytics_tools
 from benchbox.mcp.tools.benchmark import register_benchmark_tools
@@ -192,6 +192,7 @@ Then inspect plans: get_query_plan(result_file="...", query_id="19")
         results_dir=results_provider,
         allow_synchronous_execution=remote_security is None,
         anonymize_results=remote_security is not None,
+        platform_policy=LocalPlatformPolicy.from_environment(env),
     )
     if job_runtime is not None:
         from benchbox.mcp.jobs import register_durable_job_tools

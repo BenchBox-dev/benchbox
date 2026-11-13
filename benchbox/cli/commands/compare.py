@@ -10,6 +10,7 @@ import re
 import statistics
 import sys
 import warnings
+from collections.abc import Mapping
 from html import escape as html_escape
 from pathlib import Path
 from typing import Any
@@ -19,6 +20,7 @@ from rich.markup import escape
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
+from benchbox.cli.billable_guard import ACKNOWLEDGEMENT_FLAG_HELP, enforce_billable_acknowledgement
 from benchbox.cli.exit_codes import ExitCode, exit_code_help
 from benchbox.cli.host_lock_optin import host_guarded
 from benchbox.cli.shared import console
@@ -39,6 +41,7 @@ COMPARE_EXIT_CODES = (
     ExitCode.USAGE,
     ExitCode.REGRESSION,
     ExitCode.NOT_COMPARABLE,
+    ExitCode.ACKNOWLEDGEMENT_REQUIRED,
 )
 
 
@@ -371,6 +374,12 @@ def _discover_result_files_with_metadata(
     default=None,
     help=f"{FETCH_MODE_OPTION_HELP} Applies to platform runs; defaults to BENCHBOX_FETCH_MODE when set.",
 )
+@click.option(
+    "--acknowledge-billable-platform",
+    "acknowledge_billable_platform",
+    is_flag=True,
+    help=ACKNOWLEDGEMENT_FLAG_HELP,
+)
 @click.pass_context
 @host_guarded(
     "compare",
@@ -406,6 +415,7 @@ def compare(
     plan_threshold,
     allow_heterogeneous_comparison: bool = False,
     fetch_mode: str | None = None,
+    acknowledge_billable_platform: bool = False,
 ):
     if list_platforms:
         _list_available_platforms()
@@ -463,6 +473,8 @@ def compare(
             generate_charts=generate_charts,
             theme=theme,
             fetch_mode=fetch_mode,
+            acknowledge_billable_platform=acknowledge_billable_platform,
+            non_interactive=non_interactive,
         )
     elif has_files:
         _run_file_comparison(
@@ -932,13 +944,16 @@ def _list_available_platforms():
     console.print("  benchbox compare                               # Interactive wizard")
 
 
-def _build_platform_runner(fetch_mode: str | None = None):
+def _build_platform_runner(
+    fetch_mode: str | None = None, acknowledgements: Mapping[str, dict[str, object] | None] | None = None
+):
+    acknowledgements = acknowledgements or {}
     from benchbox.cli.database import DatabaseManager
     from benchbox.cli.orchestrator import BenchmarkOrchestrator
     from benchbox.cli.system import SystemProfiler
     from benchbox.core.benchmark_registry import get_benchmark_metadata
     from benchbox.core.results.comparison_modes import IncomparableModesError, results_mode_differences
-    from benchbox.core.schemas import BenchmarkConfig
+    from benchbox.core.schemas import BenchmarkConfig, ExecutionContext
 
     executed: list[Any] = []
 
@@ -975,6 +990,7 @@ def _build_platform_runner(fetch_mode: str | None = None):
         platform_options = (
             {"fetch_mode": fetch_mode} if fetch_mode and platform.lower() in FETCH_MODE_PLATFORMS else None
         )
+        record = acknowledgements.get(platform)
         result = orchestrator.execute_benchmark(
             benchmark_config,
             SystemProfiler().get_system_profile(),
@@ -984,6 +1000,9 @@ def _build_platform_runner(fetch_mode: str | None = None):
                 explicit_option_keys=platform_options.keys() if platform_options else None,
             ),
             ["data", "schema", "load", "power"],
+            execution_context=(
+                ExecutionContext(entry_point="cli", billable_platform_acknowledgement=record) if record else None
+            ),
         )
         mode_differences = results_mode_differences([*executed, result])
         if mode_differences:
@@ -1008,6 +1027,8 @@ def _run_platform_comparison(
     generate_charts: bool,
     theme: str,
     fetch_mode: str | None = None,
+    acknowledge_billable_platform: bool = False,
+    non_interactive: bool = False,
 ):
     from benchbox.core.comparison import (
         PlatformType,
@@ -1049,7 +1070,13 @@ def _run_platform_comparison(
         benchmark_iterations=iterations,
     )
 
-    suite = UnifiedBenchmarkSuite(config=config, platform_runner=_build_platform_runner(fetch_mode))
+    acknowledgements = {
+        platform: enforce_billable_acknowledgement(
+            platform, flag=acknowledge_billable_platform, non_interactive=non_interactive
+        )
+        for platform in platforms
+    }
+    suite = UnifiedBenchmarkSuite(config=config, platform_runner=_build_platform_runner(fetch_mode, acknowledgements))
 
     console.print("\n[bold]Cross-Platform Benchmark Comparison[/bold]")
     console.print(f"Platforms: {', '.join(platforms)}")
