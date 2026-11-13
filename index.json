@@ -13022,7 +13022,7 @@
         "batch-member-dispatch-prompt-20261113"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Observe the next owner-named feature batch: do leaders dispatch subagent members without asking the owner"
     },
     "batch-tooling-blocked-by-foreign-primary-edits-20261110": {
