@@ -59,6 +59,10 @@ def silence_output(enabled: bool = True) -> Iterator[None]:
         sys.stderr = stderr_backup
 
 
+def fatal(msg: Any) -> None:
+    get_console(quiet=False, stderr=True).print(msg, markup=False, highlight=False, soft_wrap=True)
+
+
 def info(msg: str) -> None:
     emit(msg)
 

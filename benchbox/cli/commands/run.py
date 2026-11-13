@@ -104,6 +104,7 @@ from benchbox.utils.cloud_storage import is_cloud_path
 from benchbox.utils.compression import CompressionManager
 from benchbox.utils.input_validation import MAX_QUERY_ID_LENGTH
 from benchbox.utils.output_path import normalize_output_root
+from benchbox.utils.printing import fatal
 from benchbox.utils.verbosity import VerbositySettings
 
 logger = logging.getLogger(__name__)
@@ -1516,7 +1517,16 @@ def _direct_handle_result(
     else:
         _emit_load_failure_marker(result)
         console.print(f"\n[red]❌ Benchmark failed: {result.validation_status}[/red]")
+        if s.quiet:
+            fatal(_failure_summary(result))
         s.ctx.exit(1)
+
+
+def _failure_summary(result: Any) -> str:
+    details = getattr(result, "validation_details", None)
+    cause = details.get("error") if isinstance(details, dict) else None
+    summary = f"Benchmark failed: {result.validation_status}"
+    return f"{summary}: {cause}" if cause else summary
 
 
 def _data_or_load_build_db_config(s: types.SimpleNamespace, db_manager: DatabaseManager) -> DatabaseConfig | None:
