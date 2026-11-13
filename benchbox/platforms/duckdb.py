@@ -42,11 +42,6 @@ _DUCKDB_MEMORY_SIZE_PATTERN = (
 )
 
 
-_ROW_RETURNING_QUERY = re.compile(
-    r"(?:\s|--[^\n]*(?:\n|$)|/\*.*?\*/)*\(*\s*(?:select|with)\b", re.IGNORECASE | re.DOTALL
-)
-
-
 def _legacy_arrow_fetcher(result: Any) -> Any:
     return getattr(result, "fetch_arrow_table", None)
 
@@ -1131,10 +1126,8 @@ class DuckDBAdapter(PlatformAdapter):
                     connection.execute("PRAGMA enable_profiling = 'query_tree'")
                 logger.debug("DuckDB query profiling enabled for this query")
 
-            via_relation = (
-                self.fetch_mode == FETCH_MODE_ARROW
-                and duckdb_relation_arrow_supported(getattr(self._duckdb_module, "__version__", None))
-                and _ROW_RETURNING_QUERY.match(query) is not None
+            via_relation = self.fetch_mode == FETCH_MODE_ARROW and duckdb_relation_arrow_supported(
+                getattr(self._duckdb_module, "__version__", None)
             )
             if via_relation:
                 finish_unfinished_result(connection)

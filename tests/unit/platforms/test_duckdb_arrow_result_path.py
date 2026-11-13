@@ -78,27 +78,43 @@ def test_adapter_arrow_mode_reads_through_a_relation_without_warnings() -> None:
 
 @requires_duckdb_2
 @pytest.mark.parametrize(
-    "query",
+    ("query", "rows"),
     [
-        "WITH t AS (SELECT 1 AS a) SELECT a FROM t",
-        "  (SELECT 1 AS a)",
-        "-- start query 1\n-- in stream 0\nSELECT 1 AS a",
-        "/* header */ SELECT 1 AS a",
+        ("WITH t AS (SELECT 1 AS a) SELECT a FROM t", 1),
+        ("  ( (SELECT 1 AS a))", 1),
+        ("-- start query 1\n-- in stream 0\nSELECT 1 AS a", 1),
+        ("/* header */ SELECT 1 AS a", 1),
+        ("FROM range(3)", 3),
+        ("VALUES (1), (2)", 2),
+        ("SHOW TABLES", 1),
+        ("PRAGMA table_info('probe')", 1),
+        ("SUMMARIZE probe", 1),
+        ("PIVOT (SELECT 1 AS a, 2 AS b) ON a USING sum(b)", 1),
+        ("INSERT INTO probe VALUES (7), (8) RETURNING i", 2),
+        ("CREATE TABLE created AS SELECT 1 AS i", 1),
     ],
 )
-def test_adapter_arrow_mode_treats_with_and_parenthesised_selects_as_row_returning(query: str) -> None:
-    result = _adapter(FETCH_MODE_ARROW).execute_query(duckdb.connect(":memory:"), query, "q", validate_row_count=False)
+def test_adapter_arrow_mode_reads_every_statement_through_a_relation(query: str, rows: int) -> None:
+    connection = duckdb.connect(":memory:")
+    connection.execute("CREATE TABLE probe (i INTEGER)")
+    connection.execute("INSERT INTO probe VALUES (1)")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        result = _adapter(FETCH_MODE_ARROW).execute_query(connection, query, "q", validate_row_count=False)
+    assert result["status"] == "SUCCESS"
     assert result["fetch_mode"] == FETCH_MODE_ARROW
-    assert result["rows_returned"] == 1
+    assert result["rows_returned"] == rows
 
 
 @requires_duckdb_2
-def test_adapter_arrow_mode_falls_back_to_rows_for_statements_that_are_not_selects() -> None:
+def test_adapter_arrow_mode_runs_a_data_changing_statement_once() -> None:
+    connection = duckdb.connect(":memory:")
+    connection.execute("CREATE TABLE probe (i INTEGER)")
     result = _adapter(FETCH_MODE_ARROW).execute_query(
-        duckdb.connect(":memory:"), "SHOW TABLES", "q", validate_row_count=False
+        connection, "INSERT INTO probe VALUES (7), (8) RETURNING i", "q", validate_row_count=False
     )
-    assert result["status"] == "SUCCESS"
-    assert result["fetch_mode"] == FETCH_MODE_ROWS
+    assert result["rows_returned"] == 2
+    assert connection.execute("SELECT COUNT(*) FROM probe").fetchall() == [(2,)]
 
 
 def test_adapter_rows_mode_is_unchanged() -> None:
