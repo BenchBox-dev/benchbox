@@ -31,12 +31,23 @@ class RepositoryIdentity:
         return self.name_with_owner.split("/", 1)[0]
 
 
+REQUESTS_PER_LOOKUP = 2
+ANCESTOR_PROOF = "tip is contained in origin/develop"
+SQUASH_PROOF = "squash-equivalent to a commit on origin/develop"
+
+
 @dataclass(frozen=True)
 class Candidate:
     branch: str
     local_oid: str
-    pr_number: int
-    merge_commit_oid: str
+    pr_number: int | None
+    merge_commit_oid: str | None
+    proof: str | None = None
+
+    def describe(self) -> str:
+        if self.proof:
+            return self.proof
+        return f"PR #{self.pr_number} merged from historical head {self.local_oid[:8]}"
 
 
 @dataclass(frozen=True)
@@ -125,10 +136,9 @@ def get_worktree_branches(repo_root: Path) -> set[str]:
 
 def list_pull_requests(
     identity: RepositoryIdentity,
-    branch: str,
+    branches: set[str],
     repo_root: Path,
-) -> list[dict[str, Any]]:
-    endpoint = f"repos/{identity.name_with_owner}/pulls"
+) -> dict[str, list[dict[str, Any]]]:
     payload = _run_json(
         [
             "gh",
@@ -137,9 +147,7 @@ def list_pull_requests(
             "--slurp",
             "-X",
             "GET",
-            endpoint,
-            "-f",
-            f"head={identity.owner}:{branch}",
+            f"repos/{identity.name_with_owner}/pulls",
             "-f",
             "state=all",
             "-f",
@@ -147,32 +155,21 @@ def list_pull_requests(
         ],
         repo_root,
     )
-    if not isinstance(payload, list):
-        raise PruneError(f"PR listing for '{branch}' returned an unexpected payload")
-
-    prs: list[dict[str, Any]] = []
-    for page in payload:
-        if not isinstance(page, list):
-            raise PruneError(f"PR listing for '{branch}' returned an invalid page")
-        for pr in page:
-            if not isinstance(pr, dict):
-                raise PruneError(f"PR listing for '{branch}' returned an invalid record")
-            head = pr.get("head")
-            base = pr.get("base")
-            head_repo = head.get("repo") if isinstance(head, dict) else None
-            base_repo = base.get("repo") if isinstance(base, dict) else None
-            if (
-                not isinstance(head, dict)
-                or not isinstance(base, dict)
-                or not isinstance(head_repo, dict)
-                or not isinstance(base_repo, dict)
-                or head.get("ref") != branch
-                or head_repo.get("node_id") != identity.node_id
-                or base_repo.get("node_id") != identity.node_id
-            ):
-                raise PruneError(f"PR listing for '{branch}' failed exact repository/ref validation")
-            prs.append(pr)
-    return prs
+    by_branch: dict[str, list[dict[str, Any]]] = {branch: [] for branch in branches}
+    for pr in _flatten_pages(payload, "PR listing"):
+        head = pr.get("head")
+        base = pr.get("base")
+        if not isinstance(head, dict) or not isinstance(base, dict):
+            raise PruneError("PR listing returned a record without head and base")
+        head_repo = head.get("repo")
+        base_repo = base.get("repo")
+        if not isinstance(base_repo, dict) or base_repo.get("node_id") != identity.node_id:
+            raise PruneError("PR listing failed exact repository validation")
+        ref = head.get("ref")
+        if ref not in by_branch or not isinstance(head_repo, dict) or head_repo.get("node_id") != identity.node_id:
+            continue
+        by_branch[ref].append(pr)
+    return by_branch
 
 
 def _flatten_pages(payload: Any, description: str) -> list[dict[str, Any]]:
@@ -262,21 +259,145 @@ def is_merge_commit_reachable(merge_commit: str, repo_root: Path) -> bool:
     raise PruneError(f"could not verify merge commit {merge_commit}: {detail}")
 
 
+def _verbatim_patch_ids(args: list[str], repo_root: Path) -> list[tuple[str, str]]:
+    log = _run(args, repo_root)
+    if log.returncode != 0:
+        return []
+    try:
+        proc = subprocess.run(
+            ["git", "patch-id", "--verbatim"],
+            cwd=repo_root,
+            input=log.stdout,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=120,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    if proc.returncode != 0:
+        return []
+    pairs: list[tuple[str, str]] = []
+    for line in proc.stdout.splitlines():
+        patch_id, _, commit = line.partition(" ")
+        if patch_id:
+            pairs.append((patch_id, commit))
+    return pairs
+
+
+def prove_locally(branch_oid: str, repo_root: Path) -> str | None:
+    target = f"refs/remotes/origin/{TARGET_BRANCH}"
+    ancestor = _run(["git", "merge-base", "--is-ancestor", branch_oid, target], repo_root)
+    if ancestor.returncode == 0:
+        return ANCESTOR_PROOF
+    if ancestor.returncode != 1:
+        return None
+
+    base = _run(["git", "merge-base", target, branch_oid], repo_root)
+    base_oid = base.stdout.strip()
+    if base.returncode != 0 or not base_oid:
+        return None
+    squashed = _run(
+        ["git", "commit-tree", f"{branch_oid}^{{tree}}", "-p", base_oid, "-m", "x"],
+        repo_root,
+    )
+    squashed_oid = squashed.stdout.strip()
+    if squashed.returncode != 0 or not squashed_oid:
+        return None
+    cherry = _run(["git", "cherry", target, squashed_oid], repo_root)
+    if cherry.returncode != 0 or not any(line.startswith("-") for line in cherry.stdout.splitlines()):
+        return None
+
+    branch_ids = _verbatim_patch_ids(["git", "diff", "--no-ext-diff", base_oid, branch_oid], repo_root)
+    if len(branch_ids) != 1:
+        return None
+    wanted = branch_ids[0][0]
+    upstream_ids = _verbatim_patch_ids(
+        ["git", "log", "-p", "--no-merges", "--no-ext-diff", "--format=commit %H", f"{base_oid}..{target}"],
+        repo_root,
+    )
+    if any(patch_id == wanted for patch_id, _ in upstream_ids):
+        return SQUASH_PROOF
+    return None
+
+
+def remaining_request_quota(repo_root: Path) -> int | None:
+    proc = _run(["gh", "api", "rate_limit", "--jq", ".resources.core.remaining"], repo_root)
+    if proc.returncode != 0:
+        return None
+    try:
+        return int(proc.stdout.strip())
+    except ValueError:
+        return None
+
+
+def _is_rate_limited(err: PruneError) -> bool:
+    text = str(err).lower()
+    return "rate limit" in text or "secondary rate" in text or "abuse detection" in text
+
+
 def _latest_pr(prs: list[dict[str, Any]]) -> dict[str, Any] | None:
     numbered = [pr for pr in prs if isinstance(pr.get("number"), int)]
     return max(numbered, key=lambda pr: pr["number"], default=None)
 
 
-def _plan_candidates(
-    repo_root: Path,
+def _remote_candidate(
     identity: RepositoryIdentity,
+    branch: str,
+    local_oid: str,
+    prs: list[dict[str, Any]],
+    repo_root: Path,
     out: TextIO,
-) -> tuple[list[Candidate], int]:
+) -> tuple[Candidate | None, bool]:
+    latest = _latest_pr(prs)
+    if latest is None:
+        return None, False
+    latest_base = latest.get("base", {}).get("ref")
+    if latest_base != TARGET_BRANCH:
+        print(f"keep {branch}: latest PR #{latest['number']} targets {latest_base or 'an unknown base'}", file=out)
+        return None, True
+    if not latest.get("merged_at") or latest.get("state") != "closed":
+        print(f"keep {branch}: latest PR #{latest['number']} is not merged", file=out)
+        return None, True
+
+    merge_commit = latest.get("merge_commit_sha")
+    if not isinstance(merge_commit, str) or not merge_commit:
+        print(f"keep {branch}: PR #{latest['number']} has no merge commit evidence", file=out)
+        return None, True
+
+    historical_head = get_historical_head_at_merge(identity, latest["number"], merge_commit, repo_root)
+    if not historical_head:
+        print(f"keep {branch}: PR #{latest['number']} merge-time head could not be proven", file=out)
+        return None, True
+    if local_oid != historical_head:
+        print(
+            f"keep {branch}: local tip {local_oid[:8]} is not historical merged head {historical_head[:8]}",
+            file=out,
+        )
+        return None, True
+    if not is_merge_commit_reachable(merge_commit, repo_root):
+        print(
+            f"keep {branch}: PR #{latest['number']} merge commit {merge_commit[:8]} is not reachable from "
+            f"origin/{TARGET_BRANCH}",
+            file=out,
+        )
+        return None, True
+
+    return (
+        Candidate(branch=branch, local_oid=local_oid, pr_number=latest["number"], merge_commit_oid=merge_commit),
+        False,
+    )
+
+
+def _plan_candidates(repo_root: Path, out: TextIO) -> tuple[list[Candidate], int, int]:
     branches = get_local_branches(repo_root)
     current = get_current_branch(repo_root)
     worktree_branches = get_worktree_branches(repo_root)
     candidates: list[Candidate] = []
+    needs_lookup: dict[str, str] = {}
     kept = 0
+    failed = 0
 
     for branch, local_oid in branches.items():
         if branch in PROTECTED_BRANCHES or branch == current:
@@ -284,63 +405,57 @@ def _plan_candidates(
         if branch in worktree_branches:
             print(f"skip {branch}: attached to a worktree (use worktree-remove)", file=out)
             continue
+        proof = prove_locally(local_oid, repo_root)
+        if proof:
+            candidates.append(
+                Candidate(branch=branch, local_oid=local_oid, pr_number=None, merge_commit_oid=None, proof=proof)
+            )
+        else:
+            needs_lookup[branch] = local_oid
 
-        prs = list_pull_requests(identity, branch, repo_root)
-        latest = _latest_pr(prs)
-        if latest is None:
-            continue
-        latest_base = latest.get("base", {}).get("ref")
-        if latest_base != TARGET_BRANCH:
-            print(f"keep {branch}: latest PR #{latest['number']} targets {latest_base or 'an unknown base'}", file=out)
-            kept += 1
-            continue
-        if not latest.get("merged_at") or latest.get("state") != "closed":
-            print(f"keep {branch}: latest PR #{latest['number']} is not merged", file=out)
-            kept += 1
-            continue
+    if not needs_lookup:
+        return candidates, kept, failed
 
-        merge_commit = latest.get("merge_commit_sha")
-        if not isinstance(merge_commit, str) or not merge_commit:
-            print(f"keep {branch}: PR #{latest['number']} has no merge commit evidence", file=out)
-            kept += 1
-            continue
+    def skip_unchecked(branch_names: list[str], reason: str) -> int:
+        for name in branch_names:
+            print(f"error: {name} not checked: {reason}", file=out)
+        return len(branch_names)
 
-        historical_head = get_historical_head_at_merge(
-            identity,
-            latest["number"],
-            merge_commit,
-            repo_root,
+    pending = list(needs_lookup)
+    try:
+        identity = resolve_repository_identity(repo_root)
+        prs_by_branch = list_pull_requests(identity, set(pending), repo_root)
+    except PruneError as err:
+        failed += skip_unchecked(pending, str(err))
+        return candidates, kept, failed
+
+    with_merged = [name for name in pending if any(pr.get("merged_at") for pr in prs_by_branch.get(name, []))]
+    quota = remaining_request_quota(repo_root)
+    needed = len(with_merged) * REQUESTS_PER_LOOKUP
+    if quota is not None and quota < needed:
+        failed += skip_unchecked(
+            with_merged,
+            f"{quota} GitHub requests remain but {needed} may be needed; wait for the rate limit to reset",
         )
-        if not historical_head:
-            print(f"keep {branch}: PR #{latest['number']} merge-time head could not be proven", file=out)
-            kept += 1
-            continue
-        if local_oid != historical_head:
-            print(
-                f"keep {branch}: local tip {local_oid[:8]} is not historical merged head {historical_head[:8]}",
-                file=out,
-            )
-            kept += 1
-            continue
-        if not is_merge_commit_reachable(merge_commit, repo_root):
-            print(
-                f"keep {branch}: PR #{latest['number']} merge commit {merge_commit[:8]} is not reachable from "
-                f"origin/{TARGET_BRANCH}",
-                file=out,
-            )
-            kept += 1
-            continue
+        pending = [name for name in pending if name not in with_merged]
 
-        candidates.append(
-            Candidate(
-                branch=branch,
-                local_oid=local_oid,
-                pr_number=latest["number"],
-                merge_commit_oid=merge_commit,
+    for index, branch in enumerate(pending):
+        try:
+            candidate, was_kept = _remote_candidate(
+                identity, branch, needs_lookup[branch], prs_by_branch.get(branch, []), repo_root, out
             )
-        )
+        except PruneError as err:
+            if _is_rate_limited(err):
+                failed += skip_unchecked(pending[index:], f"GitHub rate limit reached: {err}")
+                break
+            failed += skip_unchecked([branch], str(err))
+            continue
+        if candidate:
+            candidates.append(candidate)
+        if was_kept:
+            kept += 1
 
-    return candidates, kept
+    return candidates, kept, failed
 
 
 def _delete_branch(candidate: Candidate, repo_root: Path) -> tuple[bool, str]:
@@ -378,11 +493,10 @@ def _delete_branch(candidate: Candidate, repo_root: Path) -> tuple[bool, str]:
 
 
 def prune_merged_branches(repo_root: Path, *, dry_run: bool, out: TextIO = sys.stdout) -> PruneResult:
-    identity = resolve_repository_identity(repo_root)
     fetch_target_branch(repo_root)
 
     try:
-        candidates, kept = _plan_candidates(repo_root, identity, out)
+        candidates, kept, planning_failed = _plan_candidates(repo_root, out)
     except PruneError:
         raise
     except Exception as err:
@@ -390,16 +504,15 @@ def prune_merged_branches(repo_root: Path, *, dry_run: bool, out: TextIO = sys.s
 
     if dry_run:
         for candidate in candidates:
-            print(
-                f"would delete {candidate.branch} (PR #{candidate.pr_number} merged from historical head "
-                f"{candidate.local_oid[:8]})",
-                file=out,
-            )
-        print(f"Dry run: would delete {len(candidates)} branch(es); {kept} kept.", file=out)
-        return PruneResult(deleted=0, would_delete=len(candidates), kept=kept, failed=0)
+            print(f"would delete {candidate.branch} ({candidate.describe()})", file=out)
+        print(
+            f"Dry run: would delete {len(candidates)} branch(es); {kept} kept; {planning_failed} unchecked.",
+            file=out,
+        )
+        return PruneResult(deleted=0, would_delete=len(candidates), kept=kept, failed=planning_failed)
 
     deleted = 0
-    failed = 0
+    failed = planning_failed
     for candidate in candidates:
         current_oid = get_local_branches(repo_root).get(candidate.branch)
         if current_oid != candidate.local_oid:
@@ -416,14 +529,10 @@ def prune_merged_branches(repo_root: Path, *, dry_run: bool, out: TextIO = sys.s
             print(f"error: failed to delete {candidate.branch}: {detail or 'unknown Git error'}", file=out)
             failed += 1
             continue
-        print(
-            f"deleted {candidate.branch} (PR #{candidate.pr_number} merged from historical head "
-            f"{candidate.local_oid[:8]})",
-            file=out,
-        )
+        print(f"deleted {candidate.branch} ({candidate.describe()})", file=out)
         deleted += 1
 
-    print(f"Deleted {deleted} branch(es); {kept} kept; {failed} deletion failure(s).", file=out)
+    print(f"Deleted {deleted} branch(es); {kept} kept; {failed} failure(s).", file=out)
     return PruneResult(deleted=deleted, would_delete=0, kept=kept, failed=failed)
 
 

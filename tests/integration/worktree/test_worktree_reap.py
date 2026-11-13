@@ -11,6 +11,7 @@ import scripts.worktree_finish as finish
 import scripts.worktree_reap as reap
 from scripts.worktree_lifecycle_metadata import init_metadata
 from scripts.worktree_reap import (
+    ABANDONED,
     AMBIGUOUS,
     KEEP,
     REMOVE,
@@ -161,7 +162,7 @@ def test_dry_run_reports_every_worktree_with_a_verdict_and_changes_nothing(tmp_p
         current: (KEEP, "current worktree"),
         active: (KEEP, "No PRs found"),
         open_pr: (KEEP, "No merged PR"),
-        abandoned: (AMBIGUOUS, "No merged PR"),
+        abandoned: (ABANDONED, "closed unmerged"),
         legacy: (AMBIGUOUS, "legacy"),
         detached: (AMBIGUOUS, "detached"),
     }
@@ -171,7 +172,31 @@ def test_dry_run_reports_every_worktree_with_a_verdict_and_changes_nothing(tmp_p
         assert verdict.verdict == kind, (path, verdict.reason)
         assert reason in verdict.reason, (path, verdict.reason)
     assert verdicts[merged.resolve()].branch == merged_branch
-    assert format_summary(list(verdicts.values())) == "Summary: 12 worktrees: remove=1 keep=8 ambiguous=3"
+    assert format_summary(list(verdicts.values())) == "Summary: 12 worktrees: remove=1 keep=8 abandoned=1 ambiguous=2"
+
+
+def test_renamed_branch_worktree_keeps_its_managed_verdict(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    wt, branch = _feature_worktree(repo, "before-rename")
+    prs = {"feat/after-rename": []}
+    prs["feat/after-rename"] = [_merge(repo, branch, 21)]
+    _git(["branch", "-m", branch, "feat/after-rename"], wt)
+
+    verdict = _verdicts(repo, _lookup(prs))[wt.resolve()]
+
+    assert verdict.verdict == REMOVE, verdict.reason
+    assert verdict.branch == "feat/after-rename"
+
+
+def test_closed_unmerged_worktree_is_never_removed_by_apply(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    wt, branch = _feature_worktree(repo, "abandoned-only")
+    prs = {branch: [{"number": 30, "state": "closed", "merged_at": None, "base": {"ref": "develop"}}]}
+
+    verdict = _verdicts(repo, _lookup(prs))[wt.resolve()]
+    assert verdict.verdict == ABANDONED
+    assert not list(remove_worktrees([verdict], repo, SLUG, _lookup(prs)))
+    assert wt.exists() and _branch_exists(repo, branch)
 
 
 def test_undecidable_pr_evidence_is_ambiguous(tmp_path: Path) -> None:
@@ -347,7 +372,7 @@ def test_cli_dry_run_leaves_the_candidate_in_place(
 
     out = capsys.readouterr().out
     assert f"remove    {wt.resolve()}  {branch}  merged via PR #1" in out
-    assert "Summary: 2 worktrees: remove=1 keep=1 ambiguous=0" in out
+    assert "Summary: 2 worktrees: remove=1 keep=1 abandoned=0 ambiguous=0" in out
     assert wt.exists() and _branch_exists(repo, branch)
 
 

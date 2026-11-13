@@ -32,6 +32,11 @@ mod = _load_module()
 IDENTITY = mod.RepositoryIdentity(name_with_owner="BenchBox-dev/BenchBox", node_id="R_test")
 
 
+@pytest.fixture(autouse=True)
+def _no_quota_probe(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(mod, "remaining_request_quota", lambda repo_root: None)
+
+
 def _git(repo: Path, *args: str, check: bool = True) -> str:
     proc = subprocess.run(["git", *args], cwd=repo, capture_output=True, text=True)
     if check and proc.returncode != 0:
@@ -92,7 +97,11 @@ def _stub_evidence(
 ) -> None:
     monkeypatch.setattr(mod, "resolve_repository_identity", lambda repo_root: IDENTITY)
     monkeypatch.setattr(mod, "fetch_target_branch", lambda repo_root: None)
-    monkeypatch.setattr(mod, "list_pull_requests", lambda identity, branch, repo_root: prs_by_branch.get(branch, []))
+    monkeypatch.setattr(
+        mod,
+        "list_pull_requests",
+        lambda identity, branches, repo_root: {name: prs_by_branch.get(name, []) for name in branches},
+    )
     monkeypatch.setattr(
         mod,
         "get_historical_head_at_merge",
@@ -296,9 +305,9 @@ def test_branch_change_after_planning_is_kept(repo: Path, monkeypatch: pytest.Mo
     monkeypatch.setattr(mod, "resolve_repository_identity", lambda repo_root: IDENTITY)
     monkeypatch.setattr(mod, "fetch_target_branch", lambda repo_root: None)
 
-    def plan_then_change(repo_root: Path, identity, out):
+    def plan_then_change(repo_root: Path, out):
         _git(repo, "branch", "-f", branch, "develop")
-        return [candidate], 0
+        return [candidate], 0, 0
 
     monkeypatch.setattr(mod, "_plan_candidates", plan_then_change)
     output = io.StringIO()
@@ -319,9 +328,9 @@ def test_worktree_attachment_after_planning_is_kept(
     monkeypatch.setattr(mod, "resolve_repository_identity", lambda repo_root: IDENTITY)
     monkeypatch.setattr(mod, "fetch_target_branch", lambda repo_root: None)
 
-    def plan_then_attach(repo_root: Path, identity, out):
+    def plan_then_attach(repo_root: Path, out):
         _git(repo, "worktree", "add", str(tmp_path / "raced-worktree"), branch)
-        return [candidate], 0
+        return [candidate], 0, 0
 
     monkeypatch.setattr(mod, "_plan_candidates", plan_then_attach)
     output = io.StringIO()
@@ -333,20 +342,171 @@ def test_worktree_attachment_after_planning_is_kept(
     assert "became attached to a worktree" in output.getvalue()
 
 
-def test_collection_failure_aborts_before_any_deletion(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    branch = "fix/candidate"
-    _add_merged_candidate(repo, branch)
-    monkeypatch.setattr(mod, "resolve_repository_identity", lambda repo_root: IDENTITY)
+def _fail_all_github(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    calls: list[str] = []
+
+    def boom(*args: Any, **kwargs: Any) -> Any:
+        calls.append("github")
+        raise AssertionError("GitHub must not be contacted")
+
     monkeypatch.setattr(mod, "fetch_target_branch", lambda repo_root: None)
+    monkeypatch.setattr(mod, "resolve_repository_identity", boom)
+    monkeypatch.setattr(mod, "list_pull_requests", boom)
+    monkeypatch.setattr(mod, "get_historical_head_at_merge", boom)
+    return calls
 
-    def fail_list(identity, requested_branch, repo_root):
-        raise mod.PruneError("GitHub unavailable")
 
-    monkeypatch.setattr(mod, "list_pull_requests", fail_list)
+def test_branches_provable_from_local_history_need_no_github_requests(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _git(repo, "switch", "-q", "-c", "fix/contained")
+    _commit(repo, "contained.txt", "c\n")
+    _git(repo, "switch", "-q", "develop")
+    _git(repo, "merge", "-q", "--ff-only", "fix/contained")
 
-    with pytest.raises(mod.PruneError, match="GitHub unavailable"):
-        mod.prune_merged_branches(repo, dry_run=False, out=io.StringIO())
+    _git(repo, "switch", "-q", "-c", "fix/squashed")
+    _commit(repo, "one.txt", "1\n")
+    _commit(repo, "two.txt", "2\n")
+    _git(repo, "switch", "-q", "develop")
+    _git(repo, "merge", "-q", "--squash", "fix/squashed")
+    _git(repo, "commit", "-q", "-m", "squash fix/squashed")
+    _git(repo, "update-ref", "refs/remotes/origin/develop", "develop")
+    calls = _fail_all_github(monkeypatch)
+    output = io.StringIO()
 
+    result = mod.prune_merged_branches(repo, dry_run=False, out=output)
+
+    assert result == mod.PruneResult(deleted=2, would_delete=0, kept=0, failed=0)
+    assert calls == []
+    assert _git(repo, "branch", "--list", "fix/*") == ""
+    assert "squash-equivalent" in output.getvalue()
+
+
+def test_unmerged_work_is_not_locally_proven(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _git(repo, "switch", "-q", "-c", "fix/unmerged")
+    _commit(repo, "wip.txt", "wip\n")
+    _git(repo, "switch", "-q", "develop")
+    _commit(repo, "other.txt", "other\n")
+    _git(repo, "update-ref", "refs/remotes/origin/develop", "develop")
+    _stub_evidence(monkeypatch, {}, {})
+    looked_up: list[str] = []
+
+    def listing(identity, branches, repo_root):
+        looked_up.extend(branches)
+        return {name: [] for name in branches}
+
+    monkeypatch.setattr(mod, "list_pull_requests", listing)
+
+    result = mod.prune_merged_branches(repo, dry_run=False, out=io.StringIO())
+
+    assert result.deleted == 0
+    assert looked_up == ["fix/unmerged"]
+    assert _git(repo, "show-ref", "--verify", "refs/heads/fix/unmerged")
+
+
+def test_one_failing_lookup_keeps_other_deletions_and_exits_nonzero(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    heads = {}
+    prs: dict[str, list[dict[str, Any]]] = {}
+    historical: dict[int, str | None] = {}
+    for number, name in enumerate(["fix/a", "fix/flaky", "fix/b"], start=200):
+        head, merge_commit = _add_merged_candidate(repo, name)
+        heads[name] = head
+        prs[name] = [_pr(name, head, merge_commit, number=number)]
+        historical[number] = head
+    _stub_evidence(monkeypatch, prs, historical)
+
+    def flaky(identity, number, merge_commit, repo_root):
+        if number == 201:
+            raise mod.PruneError("gh api failed: HTTP 502")
+        return historical[number]
+
+    monkeypatch.setattr(mod, "get_historical_head_at_merge", flaky)
+    output = io.StringIO()
+
+    result = mod.prune_merged_branches(repo, dry_run=False, out=output)
+
+    assert result == mod.PruneResult(deleted=2, would_delete=0, kept=0, failed=1)
+    assert result.exit_code == 1
+    assert _git(repo, "show-ref", "--verify", "refs/heads/fix/flaky")
+    assert _git(repo, "branch", "--list", "fix/a", "fix/b") == ""
+    assert "fix/flaky not checked" in output.getvalue()
+
+
+def test_rate_limit_stops_lookups_but_keeps_proven_deletions(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _git(repo, "switch", "-q", "-c", "fix/contained")
+    _commit(repo, "contained.txt", "c\n")
+    _git(repo, "switch", "-q", "develop")
+    _git(repo, "merge", "-q", "--ff-only", "fix/contained")
+    prs: dict[str, list[dict[str, Any]]] = {}
+    historical: dict[int, str | None] = {}
+    for number, name in enumerate(["fix/one", "fix/two"], start=300):
+        head, merge_commit = _add_merged_candidate(repo, name)
+        prs[name] = [_pr(name, head, merge_commit, number=number)]
+        historical[number] = head
+    _stub_evidence(monkeypatch, prs, historical)
+    seen: list[int] = []
+
+    def limited(identity, number, merge_commit, repo_root):
+        seen.append(number)
+        raise mod.PruneError("gh api failed: API rate limit exceeded")
+
+    monkeypatch.setattr(mod, "get_historical_head_at_merge", limited)
+
+    result = mod.prune_merged_branches(repo, dry_run=False, out=io.StringIO())
+
+    assert len(seen) == 1
+    assert result.deleted == 1
+    assert result.failed == 2
+    assert result.exit_code == 1
+    assert _git(repo, "branch", "--list", "fix/contained") == ""
+
+
+def test_whitespace_only_difference_is_not_squash_equivalent(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (repo / "mod.py").write_text("if x:\n    pass\n", encoding="utf-8")
+    _git(repo, "add", "mod.py")
+    _git(repo, "commit", "-q", "-m", "base")
+    _git(repo, "switch", "-q", "-c", "fix/indented")
+    (repo / "mod.py").write_text("if x:\n    pass\n        y()\n", encoding="utf-8")
+    _git(repo, "commit", "-q", "-am", "indented call")
+    _git(repo, "switch", "-q", "develop")
+    (repo / "mod.py").write_text("if x:\n    pass\ny()\n", encoding="utf-8")
+    _git(repo, "commit", "-q", "-am", "top-level call")
+    _git(repo, "update-ref", "refs/remotes/origin/develop", "develop")
+    _stub_evidence(monkeypatch, {}, {})
+
+    assert mod.prove_locally(_git(repo, "rev-parse", "fix/indented"), repo) is None
+    result = mod.prune_merged_branches(repo, dry_run=False, out=io.StringIO())
+
+    assert result.deleted == 0
+    assert _git(repo, "show-ref", "--verify", "refs/heads/fix/indented")
+
+
+def test_net_empty_branch_is_not_proven_by_an_empty_upstream_commit(repo: Path) -> None:
+    _git(repo, "switch", "-q", "-c", "fix/net-empty")
+    _commit(repo, "temp.txt", "t\n")
+    _git(repo, "rm", "-q", "temp.txt")
+    _git(repo, "commit", "-q", "-m", "undo")
+    _git(repo, "switch", "-q", "develop")
+    _git(repo, "commit", "-q", "--allow-empty", "-m", "empty upstream")
+    _git(repo, "update-ref", "refs/remotes/origin/develop", "develop")
+
+    assert mod.prove_locally(_git(repo, "rev-parse", "fix/net-empty"), repo) is None
+
+
+def test_insufficient_quota_refuses_remote_lookups(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    branch = "fix/candidate"
+    head, merge_commit = _add_merged_candidate(repo, branch)
+    _stub_evidence(monkeypatch, {branch: [_pr(branch, head, merge_commit)]}, {100: head})
+    monkeypatch.setattr(mod, "remaining_request_quota", lambda repo_root: 1)
+    output = io.StringIO()
+
+    result = mod.prune_merged_branches(repo, dry_run=False, out=output)
+
+    assert result.deleted == 0
+    assert result.failed == 1
+    assert "requests remain" in output.getvalue()
     assert _git(repo, "show-ref", "--verify", f"refs/heads/{branch}")
 
 
