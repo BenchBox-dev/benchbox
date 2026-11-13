@@ -11390,7 +11390,7 @@
         "mcp-prompts-name-nonexistent-tools-20261112"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "dropped",
       "title": "Measure whether chat assistants and coding agents reach and correctly use BenchBox, then rule on the gated work"
     },
     "agent-relative-path-primary-clone-writes": {
