@@ -40,16 +40,16 @@ jobs:
       pull-requests: read
     uses: joeharris76/theseus/.github/workflows/review.yml@3a760ae4f90b8b286de0df95402661630412055d
     with:
-      environment: oracle
+      environment: review
       theseus_ref: 3a760ae4f90b8b286de0df95402661630412055d
       gated_base: "develop,release/*"
       policy_path: .github/review.yml
-      tailscale_tag: tag:oracle-ci
+      tailscale_tag: tag:review-ci
     secrets:
-      REVIEW_APP_ID: ${{ secrets.ORACLE_APP_ID }}
-      REVIEW_APP_PRIVATE_KEY: ${{ secrets.ORACLE_APP_PRIVATE_KEY }}
-      REVIEW_GATEWAY_TOKEN: ${{ secrets.ORACLE_GATEWAY_TOKEN }}
-      REVIEW_GATEWAY_URL: ${{ secrets.ORACLE_GATEWAY_URL }}
+      REVIEW_APP_ID: ${{ secrets.REVIEW_APP_ID }}
+      REVIEW_APP_PRIVATE_KEY: ${{ secrets.REVIEW_APP_PRIVATE_KEY }}
+      REVIEW_GATEWAY_TOKEN: ${{ secrets.REVIEW_GATEWAY_TOKEN }}
+      REVIEW_GATEWAY_URL: ${{ secrets.REVIEW_GATEWAY_URL }}
       TS_OAUTH_CI_CLIENT_ID: ${{ secrets.TS_OAUTH_CI_CLIENT_ID }}
       TS_OAUTH_CI_SECRET: ${{ secrets.TS_OAUTH_CI_SECRET }}
       TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
@@ -77,7 +77,7 @@ jobs:
       INPUT_HEAD: ${{ inputs.head }}
       JOB_RESULT: ${{ needs.verdict.result }}
       GATED_BASE: "develop,release/*"
-      POSTER: benchbox-oracle[bot]
+      POSTER: benchbox-review[bot]
       CONTEXTS: review-verdict
     steps:
       - name: Fail when no verdict status was posted for the handled head

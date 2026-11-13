@@ -61,14 +61,14 @@ Required status checks:
 - release-v2 probe
 ```
 
-`review-gate` is bound to the `benchbox-oracle` App
+`review-gate` is bound to the `benchbox-review` App
 (`integration_id` 5201041). `release-v2 probe` is the job of
 `.github/workflows/release-v2-probe.yml`, bound to the GitHub Actions App
 (`integration_id` 15368); it runs on every pull request regardless of base.
 
 Five of these contexts are always-reporting result jobs in
 `.github/workflows/ci.yml`. `review-gate` is a commit status that
-`.github/workflows/review-gate.yml` posts through the `benchbox-oracle` App;
+`.github/workflows/review-gate.yml` posts through the `benchbox-review` App;
 it passes at once for a change confined to inert paths (see Inert-path
 manifest in `docs/internal/review-v2.md`). `hold` comes from
 `.github/workflows/pr-hold.yml` and fails while the PR carries the
@@ -94,7 +94,7 @@ Markdown routes to the `docs` unit alone unless a test or audit reads it. `.gith
 | `results-data` | `results-data/`, submission validator, `benchbox/core/results/` | corpus inventory and validation, submission validator sync, corpus and explorer-pipeline contract tests |
 | `docs` | `docs/`, examples, the prompt catalog, CLI and registries | example and docs reference validation, docs generators, spell check |
 | `tooling` | every event | content guard, skill integrity, and audit checks by path |
-| `review-gate` | every PR, from `develop` code on trusted triggers | `benchbox-oracle` success `review-verdict` status on the current head, or the stand-in approval; inert-only changes report success. Open review threads are enforced by the ruleset's required thread resolution, not by this status. Posted by the `benchbox-oracle` App from the verdict run right after its review and from `review-gate.yml` for stand-in comments, head and base changes and the scheduled sweep, so it needs `ORACLE_APP_ID` and `ORACLE_APP_PRIVATE_KEY` in the `oracle` environment, else nothing is posted and the head cannot merge |
+| `review-gate` | every PR, from `develop` code on trusted triggers | `benchbox-review` success `review-verdict` status on the current head, or the stand-in approval; inert-only changes report success. Open review threads are enforced by the ruleset's required thread resolution, not by this status. Posted by the `benchbox-review` App from the verdict run right after its review and from `review-gate.yml` for stand-in comments, head and base changes and the scheduled sweep, so it needs `REVIEW_APP_ID` and `REVIEW_APP_PRIVATE_KEY` in the `review` environment, else nothing is posted and the head cannot merge |
 
 The Windows PR selection excludes tests changed only on `develop` unless the PR changes them or the
 coverage, importer or reader selection reaches them. POSIX-only repository
@@ -216,7 +216,7 @@ do first).
 5. Merge the named pull request at the named head.
 6. Restore the context immediately, whether the merge succeeded or failed,
    before retrying, starting other work, or recording notes. If `review-gate`
-   was removed, restore it bound to integration 5201041 (`benchbox-oracle` App).
+   was removed, restore it bound to integration 5201041 (`benchbox-review` App).
 7. Read back and compare with the capture, using a token that can see
    `bypass_actors`:
    `gh auth token | uv run -- python scripts/ruleset_drift_check.py --token-stdin --compare-capture /tmp/ruleset-15611785-before.json`.
@@ -302,6 +302,10 @@ History of the required contexts:
   The migration is done: `review-gate` is the only required review check, and
   `scripts/ruleset_drift_check.py` treats `oracle-gate` as drift like any other
   unexpected required context. No BenchBox script reads an `oracle-*` status.
+- 2026-11-13: the GitHub App `benchbox-oracle` was renamed `benchbox-review`,
+  the `oracle` environment and its secrets became the `review` environment with
+  `REVIEW_*` secrets, and `tag:oracle-ci` became `tag:review-ci`. The App ID,
+  and so the `review-gate` integration binding, did not change.
 
 ### No merge queue
 
@@ -317,7 +321,7 @@ when any of these holds:
 
 - The change touches only inert paths (see Inert-path manifest in `docs/internal/review-v2.md`).
 - The latest `review-verdict` commit status on the current head, created by the
-  `benchbox-oracle` App after any retarget, is success. Review bodies are not read, so editing or
+  `benchbox-review` App after any retarget, is success. Review bodies are not read, so editing or
   deleting a review cannot change the result; statuses from any other creator
   and the legacy `oracle-review-shadow` context are ignored.
 - An account in `consumer.attesters` (`.github/review.yml`)
@@ -339,8 +343,9 @@ sweep; to force it, run
 `gh workflow run review-gate.yml --ref develop -f pr=<number>`.
 
 The live `develop-squash-only` ruleset binds `review-gate` to
-`integration_id` 5201041, the `benchbox-oracle` App's ID
-(`gh api apps/benchbox-oracle --jq .id`, checked 2026-10-23), which matches
+`integration_id` 5201041, the `benchbox-review` App's ID
+(`gh api apps/benchbox-review --jq .id`; the App was named `benchbox-oracle`
+when the binding was first checked on 2026-10-23), which matches
 `REVIEW_GATE_INTEGRATION_ID` in `_project/scripts/ruleset_review_enforcement.py`.
 Before `oracle-review` was dropped, the two contexts were compared on the 198
 pull request heads reviewed from 2026-10-22: they agreed on 195; on one,
@@ -358,32 +363,32 @@ checker's rule unchanged: success when only exempt paths changed, when the
 App's latest `review-verdict` status on the head is success,
 or when a valid stand-in covers the exact head, and failure otherwise.
 
-The workflow posts the context only when `ORACLE_APP_ID` and
-`ORACLE_APP_PRIVATE_KEY` are set as secrets in the `oracle` environment; when
+The workflow posts the context only when `REVIEW_APP_ID` and
+`REVIEW_APP_PRIVATE_KEY` are set as secrets in the `review` environment; when
 either is missing it only logs the decision with `--no-post`. With the check
 required, a head that never receives the context cannot merge. Check that both
 names exist with
-`gh api repos/BenchBox-dev/benchbox/environments/oracle/secrets --jq '.secrets[].name'`
+`gh api repos/BenchBox-dev/benchbox/environments/review/secrets --jq '.secrets[].name'`
 (names only; never read values).
 
-The `oracle` environment deploys only from the `develop` branch and from
+The `review` environment deploys only from the `develop` branch and from
 `release/*` branches (custom branch policies with exactly those two entries).
 `scripts/ruleset_drift_check.py` fails when that policy widens or loses an
 entry, because any branch allowed to deploy there can mint the App token.
 
 Read it with
-`gh api repos/BenchBox-dev/benchbox/environments/oracle --jq .deployment_branch_policy`
+`gh api repos/BenchBox-dev/benchbox/environments/review --jq .deployment_branch_policy`
 (expect `{"custom_branch_policies":true,"protected_branches":false}`) and
-`gh api repos/BenchBox-dev/benchbox/environments/oracle/deployment-branch-policies --jq '.branch_policies[]|[.type,.name]'`
+`gh api repos/BenchBox-dev/benchbox/environments/review/deployment-branch-policies --jq '.branch_policies[]|[.type,.name]'`
 (expect exactly `["branch","develop"]` and `["branch","release/*"]`). Verified on 2026-11-08. To restore it:
 
 ```bash
-gh api -X PUT repos/BenchBox-dev/benchbox/environments/oracle \
+gh api -X PUT repos/BenchBox-dev/benchbox/environments/review \
   -F 'deployment_branch_policy[protected_branches]=false' \
   -F 'deployment_branch_policy[custom_branch_policies]=true'
-gh api -X POST repos/BenchBox-dev/benchbox/environments/oracle/deployment-branch-policies \
+gh api -X POST repos/BenchBox-dev/benchbox/environments/review/deployment-branch-policies \
   -f name=develop -f type=branch
-gh api -X POST repos/BenchBox-dev/benchbox/environments/oracle/deployment-branch-policies \
+gh api -X POST repos/BenchBox-dev/benchbox/environments/review/deployment-branch-policies \
   -f name='release/*' -f type=branch
 ```
 
@@ -401,7 +406,7 @@ The soundness gate, as operated:
   guards. `review-gate` requires a review unless the diff touches only inert
   paths (`.github/inert-paths.txt`, read by `_project/scripts/inert_paths.py`),
   including changes to the gate itself. Any non-inert PR needs the
-  `benchbox-oracle` App's success review of its current head, or the stand-in
+  `benchbox-review` App's success review of its current head, or the stand-in
   approval, with every review thread resolved.
 - **Checkers run from the base commit.** CI runs the comment-policy checker and launcher, the changelog-fragment
   checker and the soundness-path reader from the PR's base commit (`git show <base sha>:<path>`), and `review-gate`
@@ -411,7 +416,7 @@ The soundness gate, as operated:
   triggers, so a pull request cannot change the check that judges it. What
   stops a pull request workflow with `statuses: write` from posting a forged
   `review-gate` success to its own head is the ruleset binding of the required
-  check to the `benchbox-oracle` App's integration ID. GitHub documents that a
+  check to the `benchbox-review` App's integration ID. GitHub documents that a
   required check bound to an app is satisfied only by a check run or commit
   status that app set ("If the status is set by any other person or
   integration, merging won't be allowed", [available rules for
@@ -432,7 +437,7 @@ The soundness gate, as operated:
   `integration_id`, so read the binding by hand after any ruleset edit with the
   `required_check_bindings` field of the Verify command above, or
   `gh api repos/BenchBox-dev/benchbox/rulesets/15611785 --jq '[.rules[] | select(.type == "required_status_checks") | .parameters.required_status_checks[]? | {context, integration_id}]'`,
-  and compare the `review-gate` entry with `gh api apps/benchbox-oracle --jq .id`.
+  and compare the `review-gate` entry with `gh api apps/benchbox-review --jq .id`.
 - `make pr-open` does not arm auto-merge when it creates a PR. `make pr-arm`
   (or `make pr-open READY=1`) arms it after a live check of the PR, so a PR
   cannot merge while a follow-up commit is still being written. Arm only when
@@ -591,10 +596,10 @@ Required status checks:
 - release-v2 probe
 ```
 
-`review-gate` is bound to the `benchbox-oracle` App (`integration_id` 5201041)
+`review-gate` is bound to the `benchbox-review` App (`integration_id` 5201041)
 and `release-v2 probe` to the GitHub Actions App (`integration_id` 15368),
 as on `develop`; the drift check requires the two required-check lists to be
-identical. The `oracle` environment already admits `release/*`, and `trunk.yml`
+identical. The `review` environment already admits `release/*`, and `trunk.yml`
 runs on pushes to `release/**`. The gate workflow, the review workflow and the
 reviewer policy (`.github/review.yml`) gate `develop` and `release/*`, so a pull
 request into `release/X.Y.x` reports `review-gate` from the base tip's policy.

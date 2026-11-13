@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
-DEFAULT_REVIEW_AUTHORS = ("benchbox-oracle[bot]",)
+DEFAULT_REVIEW_AUTHORS = ("benchbox-review[bot]",)
 ACTION_MARKER = "benchbox-pr-review-followup-actioned"
 ACTION_MARKER_REGEX = re.compile(rf"(?m)^<!--\s*{re.escape(ACTION_MARKER)}\b")
 CODEX_USAGE_LIMIT_REVIEW_TEXT = "You have reached your Codex usage limits for code reviews"

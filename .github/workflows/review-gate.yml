@@ -39,13 +39,13 @@ jobs:
       pull-requests: read
     uses: joeharris76/theseus/.github/workflows/gate.yml@3a760ae4f90b8b286de0df95402661630412055d
     with:
-      environment: oracle
+      environment: review
       theseus_ref: 3a760ae4f90b8b286de0df95402661630412055d
       gated_base: "develop,release/*"
       policy_path: .github/review.yml
     secrets:
-      REVIEW_APP_ID: ${{ secrets.ORACLE_APP_ID }}
-      REVIEW_APP_PRIVATE_KEY: ${{ secrets.ORACLE_APP_PRIVATE_KEY }}
+      REVIEW_APP_ID: ${{ secrets.REVIEW_APP_ID }}
+      REVIEW_APP_PRIVATE_KEY: ${{ secrets.REVIEW_APP_PRIVATE_KEY }}
 
   posting-check:
     name: gate posting check
@@ -66,7 +66,7 @@ jobs:
       INPUT_PR: ${{ inputs.pr }}
       JOB_RESULT: ${{ needs.gate.result }}
       GATED_BASE: "develop,release/*"
-      POSTER: benchbox-oracle[bot]
+      POSTER: benchbox-review[bot]
       CONTEXTS: review-gate
     steps:
       - name: Fail when no gate status was posted for the handled head

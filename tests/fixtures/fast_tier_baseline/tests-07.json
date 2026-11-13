@@ -17428,11 +17428,11 @@
     "p50_seconds": 0.02204
   },
   {
-    "id": "tests/unit/test_ruleset_drift.py::test_deployment_policy_drift_is_reported[oracle-<lambda>-<lambda>-oracle environment: deployment policies2]",
+    "id": "tests/unit/test_ruleset_drift.py::test_deployment_policy_drift_is_reported[review-<lambda>-<lambda>-review environment: deployment policies2]",
     "p50_seconds": 0.020064
   },
   {
-    "id": "tests/unit/test_ruleset_drift.py::test_deployment_policy_drift_is_reported[oracle-<lambda>-<lambda>-oracle environment: deployment policies3]",
+    "id": "tests/unit/test_ruleset_drift.py::test_deployment_policy_drift_is_reported[review-<lambda>-<lambda>-review environment: deployment policies3]",
     "p50_seconds": 0.01976
   },
   {

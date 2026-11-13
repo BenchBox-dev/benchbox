@@ -799,7 +799,7 @@ def test_gateway_clients_follow_a_develop_config_that_changed_after_the_checkout
 FAKE_GH = """#!/bin/sh
 echo "$*" >> "$GH_LOG"
 case "$1 $2" in
-  "secret list") printf 'ORACLE_GATEWAY_TOKEN\\nORACLE_GATEWAY_URL\\n';;
+  "secret list") printf 'REVIEW_GATEWAY_TOKEN\\nREVIEW_GATEWAY_URL\\n';;
   "issue list") [ -f "$GH_STATE/open" ] && cat "$GH_STATE/open";;
   "issue create")
     [ -z "${GH_FAIL_CREATE:-}" ] || exit 1
@@ -951,7 +951,7 @@ def test_check_passes_when_every_provider_is_granted_and_served(host: dict) -> N
     checked = _check(host)
     assert checked.returncode == 0, checked.stdout + checked.stderr
     assert "usage probes: ok" in checked.stdout
-    assert "secrets: ORACLE_GATEWAY_TOKEN and ORACLE_GATEWAY_URL are set" in checked.stdout
+    assert "secrets: REVIEW_GATEWAY_TOKEN and REVIEW_GATEWAY_URL are set" in checked.stdout
 
 
 def test_check_names_a_granted_provider_the_gateway_does_not_serve(host: dict) -> None:

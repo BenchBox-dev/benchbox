@@ -22,7 +22,7 @@ Decision and evidence:
    changes a path in `.github/soundness-paths.txt`) needs a completed external
    adversarial review of its current head. The required `review-gate` check
    passes only on a successful latest `review-verdict` commit status that the
-   `benchbox-oracle` app created for that head, or on a listed attester's stand-in approval for that head after an
+   `benchbox-review` app created for that head, or on a listed attester's stand-in approval for that head after an
    independent review. The reviewer posts Critical and High findings as PR
    review threads, and required thread resolution makes them binding. A
    scheduled digest lists merged soundness-path commits with each one's review
@@ -50,7 +50,7 @@ fails it. Checks run on the pull request head, which need not be current with
 | `results-data` | `.github/workflows/ci.yml` | Corpus inventory and validation, submission validator sync, and corpus contract tests on results-data changes. |
 | `docs` | `.github/workflows/ci.yml` | Example validation, generated docs inputs (`make docs-generate`), and spell check on docs changes. The site build runs in `BenchBox-dev/benchbox-site`. |
 | `tooling` | `.github/workflows/ci.yml` | Every event. Base-branch guard, comment policy, content guard, skill integrity, and audit checks by path. |
-| `review-gate` | `.github/workflows/review-gate.yml` and the publish step of `.github/workflows/review-verdict.yml` (commit status posted by the `benchbox-oracle` app from `develop` code; the ruleset binds the context to that app) | Passes when only paths listed as inert by `.github/inert-paths.txt` (see Inert-path manifest in `docs/internal/review-v2.md`) change, or when the latest `review-verdict` commit status on the current head, created by the `benchbox-oracle` app after any retarget, is success. Open review threads are not read here: the ruleset's required thread resolution blocks the merge while one is unresolved. Each new head gets its own oracle result (`.github/workflows/review-verdict.yml`, which posts `review-gate` for that head right after its review; rerun with a `/review` comment): a full review, a follow-up on files whose patch changed, or the earlier decision carried over when a rebase or prose-only push leaves the patch unchanged (Rounds in `docs/internal/review-v2.md`). Every head change gets a pending `review-gate` before it is evaluated. If the reviewer cannot review or its verdict is overruled, the check also passes on an independent stand-in review of the exact head followed by a `Stand-in review: APPROVE <full head SHA>` comment from an account in `STANDIN_ATTESTERS`, posted after the reviewer's latest review of that head (dev-loop ADR, D4; `docs/internal/soundness-drain.md`). A plain owner comment does not. The `review` workflow (`.github/workflows/review-request.yml`) reports no check; it only notifies `review-gate` of review events. |
+| `review-gate` | `.github/workflows/review-gate.yml` and the publish step of `.github/workflows/review-verdict.yml` (commit status posted by the `benchbox-review` app from `develop` code; the ruleset binds the context to that app) | Passes when only paths listed as inert by `.github/inert-paths.txt` (see Inert-path manifest in `docs/internal/review-v2.md`) change, or when the latest `review-verdict` commit status on the current head, created by the `benchbox-review` app after any retarget, is success. Open review threads are not read here: the ruleset's required thread resolution blocks the merge while one is unresolved. Each new head gets its own oracle result (`.github/workflows/review-verdict.yml`, which posts `review-gate` for that head right after its review; rerun with a `/review` comment): a full review, a follow-up on files whose patch changed, or the earlier decision carried over when a rebase or prose-only push leaves the patch unchanged (Rounds in `docs/internal/review-v2.md`). Every head change gets a pending `review-gate` before it is evaluated. If the reviewer cannot review or its verdict is overruled, the check also passes on an independent stand-in review of the exact head followed by a `Stand-in review: APPROVE <full head SHA>` comment from an account in `STANDIN_ATTESTERS`, posted after the reviewer's latest review of that head (dev-loop ADR, D4; `docs/internal/soundness-drain.md`). A plain owner comment does not. The `review` workflow (`.github/workflows/review-request.yml`) reports no check; it only notifies `review-gate` of review events. |
 
 ### Shadow selection miss report
 
@@ -390,7 +390,7 @@ For each kept commit, the digest finds the pull request that merged into
 `develop` as that commit and records which review signal it had at merge for
 its final content:
 
-- the `benchbox-oracle` app's latest review, submitted after any retarget,
+- the `benchbox-review` app's latest review, submitted after any retarget,
   of the last content commit or of a later merge that only refreshed the
   base, when that review reports success;
 - a stand-in approval of the merged head, posted after any retarget and after

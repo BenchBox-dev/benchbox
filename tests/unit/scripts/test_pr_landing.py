@@ -1559,17 +1559,17 @@ def test_live_statuses_distinguish_waiting_from_failed_oracle(description: str, 
     def run(cmd: list[str]) -> tuple[int, str]:
         assert "--paginate" in cmd
         assert cmd[-1] == f"repos/o/r/commits/{'a' * 40}/statuses?per_page=100"
-        return 0, f"review-gate\tfailure\tbenchbox-oracle[bot]\tBot\t{description}\n"
+        return 0, f"review-gate\tfailure\tbenchbox-review[bot]\tBot\t{description}\n"
 
     assert landing.live_commit_statuses(run, "o/r", "a" * 40) == {"review-gate": expected}
 
 
-@pytest.mark.parametrize(("login", "account_type"), [("joeharris76", "User"), ("benchbox-oracle", "User"), ("", "")])
+@pytest.mark.parametrize(("login", "account_type"), [("joeharris76", "User"), ("benchbox-review", "User"), ("", "")])
 def test_live_statuses_ignore_an_review_gate_status_the_app_did_not_create(login: str, account_type: str) -> None:
     def run(cmd: list[str]) -> tuple[int, str]:
         return 0, (
             f"review-gate\tsuccess\t{login}\t{account_type}\tforged\n"
-            "review-gate\tfailure\tbenchbox-oracle[bot]\tBot\treview: waiting\n"
+            "review-gate\tfailure\tbenchbox-review[bot]\tBot\treview: waiting\n"
         )
 
     assert landing.live_commit_statuses(run, "o/r", "a" * 40) == {"review-gate": "failure"}

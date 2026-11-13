@@ -196,7 +196,7 @@ def _deployment_policies(name: str) -> dict:
     }
 
 
-@pytest.mark.parametrize("name", ["pypi", "test-pypi", "oracle"])
+@pytest.mark.parametrize("name", ["pypi", "test-pypi", "review"])
 def test_matching_deployment_policies_have_no_findings(name: str) -> None:
     assert deployment_policy_findings(name, _deployment_environment(), _deployment_policies(name)) == []
 
@@ -226,34 +226,34 @@ def test_matching_deployment_policies_have_no_findings(name: str) -> None:
             "deployment policies",
         ),
         (
-            "oracle",
+            "review",
             lambda env: None,
             lambda p: p["branch_policies"].append({"type": "branch", "name": "feature/*"}),
-            "oracle environment: deployment policies",
+            "review environment: deployment policies",
         ),
         (
-            "oracle",
+            "review",
             lambda env: None,
             lambda p: p["branch_policies"].remove({"type": "branch", "name": "release/*"}),
-            "oracle environment: deployment policies",
+            "review environment: deployment policies",
         ),
         (
-            "oracle",
+            "review",
             lambda env: None,
             lambda p: p["branch_policies"].remove({"type": "branch", "name": "develop"}),
-            "oracle environment: deployment policies",
+            "review environment: deployment policies",
         ),
         (
-            "oracle",
+            "review",
             lambda env: None,
             lambda p: p["branch_policies"].append({"type": "tag", "name": "release/*"}),
-            "oracle environment: deployment policies",
+            "review environment: deployment policies",
         ),
         (
-            "oracle",
+            "review",
             lambda env: env["deployment_branch_policy"].update(custom_branch_policies=False),
             lambda p: None,
-            "oracle environment: deployment_branch_policy",
+            "review environment: deployment_branch_policy",
         ),
         ("pypi", lambda env: None, lambda p: p.update(branch_policies=None), "missing or malformed"),
         ("pypi", lambda env: None, lambda p: p["branch_policies"].append("v*"), "deployment policies"),
@@ -285,7 +285,7 @@ def test_main_fails_when_a_live_environment_gains_a_policy(
     policies = {
         "pypi": _deployment_policies("pypi"),
         "test-pypi": _deployment_policies("test-pypi"),
-        "oracle": _deployment_policies("oracle"),
+        "review": _deployment_policies("review"),
     }
     policies["pypi"]["branch_policies"].append({"type": "branch", "name": "*"})
     monkeypatch.setattr(ruleset_drift_check, "_fetch_live_rulesets", lambda _repo, _token: {})

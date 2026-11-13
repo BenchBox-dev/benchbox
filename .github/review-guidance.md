@@ -17,7 +17,7 @@ BenchBox conventions for the automated reviewer. They add to the review template
 
 - A missing docstring or explanatory comment in Python or other first-party source. BenchBox has a no-source-docstring policy: contracts live in API docs, and the comment-policy registry lists the few directives, notices and fixtures that must stay.
 - A missing, short or oddly worded `changelog.d/` fragment, or a PR that does not edit `CHANGELOG.md`. Fragments are JSON files in `changelog.d/`; `CHANGELOG.md` is never edited by hand, and a fragment is required only when a changed path ships in the package.
-- The names `oracle` (environment), `ORACLE_*` (secrets), `tag:oracle-ci` and the mirrored `oracle-gate` and `oracle-verdict` status contexts. They remain on purpose until separate tracked work renames them. This covers the names only: still flag a change that hands those secrets to another job or step, or loosens the environment.
+- The names `tag:oracle-cloud` and the historical `oracle-gate` and `oracle-verdict` status contexts. They remain on purpose. This covers the names only: still flag a change that hands the `review` environment secrets to another job or step, or loosens the environment.
 - Individual lines of `uv.lock` and of the generated documentation reference pages. Judge the change or generator that produced them, and still flag a dependency change with no matching source change.
 - Formatting, import order, line length and type-hint style that Ruff or the pre-commit hooks already enforce.
 - Commit author, committer or attribution trailers. Hooks and CI check actual commits.
