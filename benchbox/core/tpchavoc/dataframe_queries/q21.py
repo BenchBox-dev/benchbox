@@ -65,18 +65,10 @@ def _q21_expr_final(candidates: Any, per_order: Any, late_per_order: Any, col: A
 
 def _q21_expr_final_span(candidates: Any, per_order: Any, late_per_order: Any, col: Any) -> Any:
     return (
-        candidates.join(
-            per_order.filter(col("min_supp") != col("max_supp")).select("supp_orderkey"),
-            left_on="l_orderkey",
-            right_on="supp_orderkey",
-            how="semi",
-        )
-        .join(
-            late_per_order.filter(col("min_late_supp") == col("max_late_supp")).select("late_orderkey"),
-            left_on="l_orderkey",
-            right_on="late_orderkey",
-            how="semi",
-        )
+        candidates.join(per_order, left_on="l_orderkey", right_on="supp_orderkey")
+        .join(late_per_order, left_on="l_orderkey", right_on="late_orderkey")
+        .filter(col("min_supp") != col("max_supp"))
+        .filter(col("min_late_supp") == col("max_late_supp"))
         .group_by("s_name")
         .agg(col("l_orderkey").count().alias("numwait"))
         .sort(["numwait", "s_name"], descending=[True, False])

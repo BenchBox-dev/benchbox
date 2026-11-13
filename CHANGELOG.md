@@ -46,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - DuckDB loads Vortex and DuckLake natively, and Delta, DuckLake, Iceberg and Vortex fallbacks, Iceberg maintenance, Spark and Hudi ingestion and the DataFusion cursor stay in Arrow.
 - TPC-H RF1 on SingleStore uses `LOAD DATA LOCAL INFILE` inside the timed transaction, and DuckLake keeps its RF1/RF2 declaration.
 - The bundled SQLGlot moves from 30.29.0.1 to 30.31.0.1 (fork commit `945aced55e0e`, upstream v30.31.0).
-- The benchmark listing reports 90 queries for TPC-DS OBT instead of 17, and DataFrame Q21 (TPC-H, Data Vault, TPC-Havoc) uses min/max of the supplier key instead of a distinct count with unchanged results, filtering the supplier aggregates before the join.
+- The benchmark listing reports 90 queries for TPC-DS OBT instead of 17, and DataFrame Q21 (TPC-H, Data Vault, TPC-Havoc) uses min/max of the supplier key instead of a distinct count with unchanged results.
 - Tuned templates carry SF1 evidence versus notuning. DuckDB: TPC-H is a regression (geometric mean ratio 1.0965), TPC-DS a regression through load time (13.6 times), SSB a benefit (0.6687). ClickHouse: TPC-H 0.8230, SSB 0.7484; TPC-DS is unmeasured.
 
 ### Fixed
