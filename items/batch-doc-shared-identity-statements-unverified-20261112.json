@@ -4,6 +4,7 @@
     "A refuted statement is corrected in `docs/agent/batch-feature-delivery.md`; a confirmed one is left as is.",
     "No write reaches the `todo-state` branch of the project store during the test."
   ],
+  "context": "Result 2026-11-13, tractable 1.1.1, store schema 4, disposable bare state remote in a temp dir (asserted before every write; the project store was not used). Harness: `World`, `Loop`, `McpServer`, `submit` from tests/integration/worktree/batch_loop_support.py, four `tractable-mcp` processes, three with `--actor shared` (leader A, leader B, a member) and one with `--actor other`.\nStatement 1 CONFIRMED: leader A (owner of batch ba) called `take` on bb-m1, a member of batch bb owned by leader B under the same actor, and got `ok: true` with a claim generation. Control: actor `other` on bb-m2 got `E_BATCH_OWNER` ('only the owner may claim it'). The refusal compares only the actor string.\nStatement 2 CONFIRMED: the same-actor member process called `take` then `prepare` on ba-m1; `prepare` returned ok and `show_batch` listed an `integration_log` entry `kind: prepare, member: ba-m1` with only at/head/kind/member/op_id/previous_head/seq. No actor, session or client field; the receipt has none either.\nExtra finding: the item's `sessions` history records a `session_id` per operation, and the two same-actor processes had different ones; the log entry joins to it by `op_id`. That separates two server processes, but not a subagent from its parent when both use one server process. Not tested: whether `session_id` survives a server restart.\nOutcome: no correction to docs/agent/batch-feature-delivery.md is needed.",
   "description": "`docs/agent/batch-feature-delivery.md` (section 'Two layers', changed in PR #4170) makes two claims that were inferred and never exercised:\n1. 'Leaders that share one identity can claim each other's members.' Inferred from PR #3957, which reports four leaders registering the same owner, and from the tracker treating the owner as an identity. Not tested against tractable 1.1.1.\n2. A `prepare` made by a shared-identity member appears in the batch's integration log and is therefore treated as the leader's by `_check_member_writes`. Inferred from the exemption built from `integration_log` entries of kind `prepare`; whether a member-made prepare is logged that way was not tested.\n\nGuardrail: test against a throwaway local state remote, never the project's tracker store.\n\nDecision gates.\n- Record the tractable version tested. If the vendored wheel has moved since 1.1.1, test the pinned version and say so.\n- A refuted statement is a doc defect: correct it in a serial pull request (the file is the batch protocol, so no registered batch). If statement 2 is refuted, also update the description of batch-land-shared-identity-claim-detection-20261112, whose premise it is.\n- If a statement cannot be tested without owner credentials or a second machine, stop and report what is missing; do not mark it confirmed from reading.",
   "links": [
     "docs/agent/batch-feature-delivery.md",
@@ -32,6 +33,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "398bcf08ad4d4c9a9617781c439dc97d",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-13T18:36:54Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d98145c009ea4fe897039c779334e04f",
       "session_id": "570099c30e51431ebfbca6042d41ee8f"
     }
   ]
