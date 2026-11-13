@@ -2890,7 +2890,20 @@
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
-      "final_pr_history": [],
+      "final_pr": {
+        "head": "fb368498159cf5a014408dcd224e7e7149bbf09b",
+        "node_id": "PR_kwDOQ7J64c8AAAABPAd3wA",
+        "number": 4213,
+        "repository": "https://github.com/BenchBox-dev/BenchBox.git"
+      },
+      "final_pr_history": [
+        {
+          "at": "2026-11-13T20:07:18Z",
+          "head": "fb368498159cf5a014408dcd224e7e7149bbf09b",
+          "op_id": "d0d909d45758423daef888291263b259",
+          "previous_head": null
+        }
+      ],
       "integrated_members": {
         "df-memory-guard-refusal-message-and-subset-estimate-20261112": {
           "accepted_head": "c287fd1d6e7743d9c11cf8493f40846c6f328f40",
