@@ -32262,6 +32262,15 @@
       "status": "done",
       "title": "Publish the first query-plan capture bundles to the Results Explorer (PR 4153 awaits the owner lifting its hold)"
     },
+    "publish-result-bundle-json-schema-20261112": {
+      "claim": null,
+      "needs": [
+        "agent-reach-evidence-gate-20261112"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Publish a versioned JSON Schema for the result bundle, generated from the validator's source"
+    },
     "publish-run-rewrites-plans-companion-keys-20261111": {
       "claim": null,
       "needs": [],
