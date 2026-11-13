@@ -21916,10 +21916,15 @@
       "title": "Make DataFrame-mode dry runs check platform options against the DataFrame adapter"
     },
     "duckdb-2-behaviour-changes-audit-20261112": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-14T20:50:07Z",
+        "generation": "f29d0bdc7f8e4942981050b5dd86c057",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Audit BenchBox product code for DuckDB 2.0 behaviour changes the pin lift only fixed where tests failed"
     },
     "duckdb-2-followups-20261112": {
