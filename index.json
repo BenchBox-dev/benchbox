@@ -13785,10 +13785,12 @@
     },
     "bundle-record-host-load-20261113": {
       "claim": null,
-      "needs": [],
-      "priority": "medium",
+      "needs": [
+        "umbrella-cli-ci-contract-20261113"
+      ],
+      "priority": "low",
       "status": "open",
-      "title": "Record host load at the start and end of a run in the result bundle"
+      "title": "Write the host-load snapshot the run already takes into the result bundle, and add a start sample"
     },
     "bundle-schema-and-run-cli": {
       "claim": null,
