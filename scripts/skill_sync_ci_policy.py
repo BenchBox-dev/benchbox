@@ -34,6 +34,9 @@ TOOL_SHA256 = "01f2b383318c448e3ed94aed4781432ac69dbd33f1556dae9792e65f9883eb34"
 TOOL_PATH = Path("tools/skill-sync")
 MANIFEST_PATH = Path("skill-sync.conf")
 RECEIPT_PATH = Path(".claude/skills/skill-sync.receipt")
+EVIDENCE_PATH = Path("_project/analysis/batch-rollout-evidence.json")
+TRACKED_TODO_ROOT = Path(".claude/skills/todo")
+PINNED_SKILL = "todo"
 _FULL_SHA_RE = re.compile(r"[0-9a-f]{40}")
 
 APPROVED_SOURCE_URLS = frozenset(
@@ -201,6 +204,44 @@ def validate_manifest_text(text: str) -> None:
     validate_conf_text(text)
 
 
+def validate_evidence_binding(manifest_text: str, evidence_text: str, tracked_root: Path) -> None:
+    name = EVIDENCE_PATH.as_posix()
+    _, groups = parse_conf_groups(manifest_text)
+    pins = [str(group["rev"]) for group in groups if PINNED_SKILL in list(group["skills"])]
+    if len(pins) != 1:
+        raise PolicyError(f"{name}: expected exactly one conf group listing skill = {PINNED_SKILL}, found {len(pins)}")
+    pin = pins[0]
+    try:
+        evidence = json.loads(evidence_text)
+        after = evidence["benchbox_pin"]["after"]
+        merge_revision = evidence["catalog"]["merge_revision"]
+        tracked = evidence["mirrors"]["tracked_target"]
+        receipt_revision = tracked["receipt_revision"]
+        files = tracked["files"]
+        if not isinstance(files, dict):
+            raise TypeError("files is not an object")
+    except (ValueError, KeyError, TypeError) as exc:
+        raise PolicyError(f"{name}: cannot read the catalog pin fields: {exc!r}") from exc
+    for field, value in (
+        ("benchbox_pin.after", after),
+        ("catalog.merge_revision", merge_revision),
+        ("mirrors.tracked_target.receipt_revision", receipt_revision),
+    ):
+        if value != pin:
+            raise PolicyError(
+                f"{name}: {field} is {value!r} but the skill-sync.conf group listing skill = {PINNED_SKILL} pins {pin}"
+            )
+    for relative, expected in sorted(files.items()):
+        field = f"mirrors.tracked_target.files[{relative!r}]"
+        path = tracked_root / relative
+        try:
+            actual = hashlib.sha256(path.read_bytes()).hexdigest()
+        except OSError as exc:
+            raise PolicyError(f"{name}: {field} names {path.as_posix()} which cannot be read: {exc}") from exc
+        if actual != expected:
+            raise PolicyError(f"{name}: {field} is {expected} but {path.as_posix()} hashes to {actual}")
+
+
 def normalize_ref_only_manifest(text: str) -> str:
     validate_conf_text(text)
     normalized: list[str] = []
@@ -257,6 +298,8 @@ def main(argv: list[str] | None = None) -> int:
     validate.add_argument("--manifest", type=Path, default=MANIFEST_PATH)
     validate.add_argument("--receipt", type=Path, default=RECEIPT_PATH)
     validate.add_argument("--tool", type=Path, default=TOOL_PATH)
+    validate.add_argument("--evidence", type=Path, default=None)
+    validate.add_argument("--tracked-todo", type=Path, default=None)
     compare = subparsers.add_parser("compare")
     compare.add_argument("--base-sha", required=True)
     compare.add_argument("--manifest", type=Path, default=MANIFEST_PATH)
@@ -264,9 +307,16 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "validate":
         try:
-            validate_conf_text(args.manifest.read_text(encoding="utf-8"))
+            manifest_text = args.manifest.read_text(encoding="utf-8")
+            validate_conf_text(manifest_text)
             validate_receipt_text(args.receipt.read_text(encoding="utf-8"))
             validate_tool_bytes(args.tool.read_bytes())
+            repo_root = args.manifest.parent
+            validate_evidence_binding(
+                manifest_text,
+                (args.evidence or repo_root / EVIDENCE_PATH).read_text(encoding="utf-8"),
+                args.tracked_todo or repo_root / TRACKED_TODO_ROOT,
+            )
         except (OSError, PolicyError) as exc:
             print(json.dumps({"valid": False, "reason": str(exc)}, sort_keys=True))
             return 1

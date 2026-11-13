@@ -1,17 +1,22 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
+import shutil
 from pathlib import Path
 
 import pytest
 from skill_sync_ci_policy import (
+    EVIDENCE_PATH,
     TOOL_REF,
     TOOL_SHA256,
     PolicyError,
     compare_manifest_texts,
+    main,
     normalize_ref_only_manifest,
     validate_conf_text,
+    validate_evidence_binding,
     validate_receipt_text,
     validate_tool_bytes,
 )
@@ -102,3 +107,47 @@ def test_comments_or_non_rev_config_edits_are_structural() -> None:
 
     assert decision.narrow_eligible is False
     assert decision.reason == "manifest_structural_change"
+
+
+def _evidence_copy(tmp_path: Path) -> tuple[Path, Path, dict]:
+    tracked = tmp_path / "todo"
+    shutil.copytree(ROOT / ".claude" / "skills" / "todo", tracked)
+    evidence_path = tmp_path / "evidence.json"
+    shutil.copy(ROOT / EVIDENCE_PATH, evidence_path)
+    return tracked, evidence_path, json.loads(evidence_path.read_text(encoding="utf-8"))
+
+
+def test_current_evidence_matches_the_pin_and_tracked_mirror() -> None:
+    validate_evidence_binding(CONF, (ROOT / EVIDENCE_PATH).read_text(encoding="utf-8"), ROOT / ".claude/skills/todo")
+
+
+def test_stale_pin_in_evidence_names_the_file_and_field(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    tracked, evidence_path, evidence = _evidence_copy(tmp_path)
+    evidence["benchbox_pin"]["after"] = "0" * 40
+    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+    with pytest.raises(PolicyError, match=r"batch-rollout-evidence\.json: benchbox_pin\.after"):
+        validate_evidence_binding(CONF, evidence_path.read_text(encoding="utf-8"), tracked)
+    code = main(
+        [
+            "validate",
+            "--manifest",
+            str(ROOT / "skill-sync.conf"),
+            "--receipt",
+            str(ROOT / ".claude/skills/skill-sync.receipt"),
+            "--tool",
+            str(ROOT / "tools/skill-sync"),
+            "--evidence",
+            str(evidence_path),
+            "--tracked-todo",
+            str(tracked),
+        ]
+    )
+    assert code == 1
+    assert "batch-rollout-evidence.json" in capsys.readouterr().out
+
+
+def test_wrong_mirror_hash_names_the_file(tmp_path: Path) -> None:
+    tracked, evidence_path, evidence = _evidence_copy(tmp_path)
+    evidence["mirrors"]["tracked_target"]["files"]["references/batch.md"] = "f" * 64
+    with pytest.raises(PolicyError, match=r"batch-rollout-evidence\.json: .*references/batch\.md"):
+        validate_evidence_binding(CONF, json.dumps(evidence), tracked)
