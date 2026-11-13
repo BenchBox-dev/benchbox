@@ -4,7 +4,7 @@
     "A PR that adds no tests reports 0 new tests against the current baseline.",
     "The speed-factor decision is recorded with the measured runs behind it."
   ],
-  "context": "Related done items: ci-fast-duration-baseline-20261025, ci-fast-duration-gate-false-block-review-20261027.",
+  "context": "Related done items: ci-fast-duration-baseline-20261025, ci-fast-duration-gate-false-block-review-20261027.\n\nSecond occurrence, PR #4175 (2026-11-12, CI run 43315533371, head bc7139178d): verify-fast-duration would-block at summed ratio 1.310, delta +593.8 s, runner speed factor 1.707, median per-test ratio 1.102, '680 new tests (81.0 s, 51.5 s over allowance)' of which the PR added about 30. The same head had passed the gate on an earlier run. A full re-run through `make pr-rerun PR=4175` measured ratio 1.042, delta +80.7 s, pass, with no code change. Analysis of the junit artifact: of +542 s over 38,083 shared tests, 356 s was in test files that never mention DuckDB (the PR's subject), about 295 s in 104 tests that each gained over 1 s, mostly first-test-in-worker start-up costs, and about 247 s in tests that each gained under 1 s. Locally the same test groups ran as fast on the PR as on the base. Cost: about one hour of blocked merge and a full investigation before the re-run.",
   "description": "Observed on BenchBox #4172 (2026-11-12, ci run 43254784181), a PR that changes no Python code or tests (lock, two workflow refs, review.yml, one doc, one changelog fragment):\n1. `core` / verify-fast-duration failed: summed ratio 1.343 > 1.30, delta +656 s > 360 s, runner speed factor 1.635.\n2. `gh run rerun --failed` re-ran only the verify job. It read the same fast-junit artifacts and printed identical numbers, so the 're-run once' recovery could not measure anything. Only a full workflow re-run re-measured: ratio 1.042, delta +80 s, speed factor 1.199, pass.\n3. The verdict counted '446 new tests (58.0 s, 38.4 s over allowance)' for a PR that adds none, so the baseline lags develop and every PR is charged for tests other PRs added.\n4. The speed-factor normalisation did not absorb a 1.6x slow runner.\nWork:\n- Make the verify job say plainly when its inputs come from an earlier attempt, and document that only a full re-run re-measures; or make the shard jobs re-run with it.\n- Count as 'new' only tests the PR's own diff adds, or refresh the baseline from develop's newest merged runs.\n- Review whether the speed factor should cap or widen the thresholds when it exceeds about 1.4.\nGuardrails: never weaken the gate for a PR that really slows the tier (the threshold change needs measured runs); heavy-work and test-lock rules apply; changelog fragment if user-visible.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/actions/runs/43254784181"
@@ -17,6 +17,14 @@
       "op": "create",
       "op_id": "11a313e193034e94a2f0f407c24f4ca8",
       "session_id": "88f192edfe954a75a195b192ece667bc"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-13T18:16:44Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "39d77a3599f340ec8266a8b4ba053121",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
     }
   ]
 }
