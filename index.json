@@ -14434,10 +14434,15 @@
       "title": "Add storage-bytes smoke and doc-yaml consistency check for catalog empirical claims"
     },
     "catalog-pin-change-sites-undocumented-20261112": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-14T20:23:31Z",
+        "generation": "107530185eb84d8c81be124e1fce615d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Changing the skill catalog pin needs two extra edits that no doc or target mentions"
     },
     "cedardb-adapter": {
