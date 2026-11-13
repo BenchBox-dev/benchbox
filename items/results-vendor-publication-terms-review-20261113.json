@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Each managed vendor with published results has a row: the clause, its source and date read, and the owner's decision.",
+    "Any result the owner decides to withdraw is handled through the existing takedown process, not by editing pages."
+  ],
+  "context": "Listed for the owner; see also human-action-required. Guardrails: work only in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items are delivered together on one feature branch and one PR, as their umbrella item names (site work: BenchBox-dev/benchbox-site); squash-merged. Add a changelog.d fragment for any user-facing change. No live-cloud runs and no credentials in Git or logs. Heavy work (benchmarks, test tiers) runs only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy (make comment-policy-check). Stop and report instead of widening scope; scope removed during review must be re-homed to a named item or dropped by the owner with a reason.",
+  "description": "Problem: the published corpus includes results for Snowflake, Databricks, BigQuery and other managed services. No document in the repository records whether each vendor's terms allow publishing benchmark results; docs/tpc-licensing-analysis.md covers redistributing the TPC tools, not publishing results. The results are already public in the static summaries and bundle files, and static result pages will make each one indexable.\n\nOutcome: a short record, per vendor in the corpus, of what its terms say about publishing benchmark results and what BenchBox does about it. This is a legal judgement for the owner; an agent can gather the texts but must not decide.\n\nOwner decision (2026-11-13): static result pages include every published result meanwhile.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-13T16:36:29Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5c0cfb71807b41aa80c162e35e63a5de",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}

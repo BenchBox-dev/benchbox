@@ -35912,6 +35912,13 @@
       "status": "dropped",
       "title": "Results-publishing coverage work"
     },
+    "results-vendor-publication-terms-review-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Owner: check cloud vendors' terms on publishing benchmark results"
+    },
     "resync-tpch-darwin-x86-64-binaries": {
       "claim": null,
       "needs": [],
