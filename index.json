@@ -12813,7 +12813,9 @@
     },
     "batch-member-dispatch-prompt-20261113": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "batch-rule-followups-serial-20261113"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Give leaders a member dispatch prompt to paste and prove a subagent can commit in a member worktree"
