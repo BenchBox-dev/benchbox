@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING
@@ -312,7 +313,8 @@ def check_sufficient_memory(
             is_safe=True,
             message=(
                 f"Memory check passed: {available:.1f} GB available, "
-                f"~{estimate.estimated_memory_gb:.1f} GB required for SF {scale_factor}."
+                f"~{estimate.estimated_memory_gb:.1f} GB estimated for the full benchmark at SF {scale_factor} "
+                f"(+{safety_margin:.0%} safety margin = {required_with_margin:.1f} GB)."
             ),
             estimated_memory_gb=estimate.estimated_memory_gb,
             available_memory_gb=available,
@@ -345,11 +347,18 @@ def check_sufficient_memory(
     if caps.supports_streaming:
         suggestions.append(f"Enable streaming mode for {caps.platform_name}")
 
+    available_shown = math.floor(available * 10) / 10
+    threshold_shown = math.ceil(required_with_margin * 10) / 10
+    if threshold_shown <= available_shown:
+        threshold_shown = available_shown + 0.1
+
     return MemoryCheckResult(
         is_safe=False,
         message=(
-            f"Insufficient memory: ~{estimate.estimated_memory_gb:.1f} GB required, "
-            f"but only {available:.1f} GB available.\n"
+            f"Insufficient memory: {available_shown:.1f} GB available, but at least {threshold_shown:.1f} GB "
+            f"is needed (~{estimate.estimated_memory_gb:.1f} GB estimated + {safety_margin:.0%} safety margin). "
+            f"The estimate is for the full benchmark at scale factor {scale_factor}, "
+            f"even when only a subset of queries is selected.\n"
             f"Platform: {caps.platform_name}, Scale Factor: {scale_factor}"
         ),
         estimated_memory_gb=estimate.estimated_memory_gb,
