@@ -483,6 +483,39 @@ def test_whitespace_only_difference_is_not_squash_equivalent(repo: Path, monkeyp
     assert _git(repo, "show-ref", "--verify", "refs/heads/fix/indented")
 
 
+def test_crlf_difference_is_not_squash_equivalent(repo: Path) -> None:
+    _git(repo, "config", "core.autocrlf", "false")
+    _git(repo, "switch", "-q", "-c", "fix/crlf")
+    (repo / "b.txt").write_bytes(b"b\r\n")
+    _git(repo, "add", "b.txt")
+    _git(repo, "commit", "-q", "-m", "crlf")
+    _git(repo, "switch", "-q", "develop")
+    (repo / "b.txt").write_bytes(b"b\n")
+    _git(repo, "add", "b.txt")
+    _git(repo, "commit", "-q", "-m", "lf")
+    _git(repo, "update-ref", "refs/remotes/origin/develop", "develop")
+
+    assert mod.prove_locally(_git(repo, "rev-parse", "fix/crlf"), repo) is None
+
+
+def test_non_utf8_upstream_history_does_not_abort_the_run(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _git(repo, "switch", "-q", "-c", "fix/squashed")
+    _commit(repo, "one.txt", "1\n")
+    _commit(repo, "two.txt", "2\n")
+    _git(repo, "switch", "-q", "develop")
+    (repo / "latin1.txt").write_bytes(b"ab\xe9 \xff\xfe\n")
+    _git(repo, "add", "latin1.txt")
+    _git(repo, "commit", "-q", "-m", "non-utf8 file")
+    _git(repo, "merge", "-q", "--squash", "fix/squashed")
+    _git(repo, "commit", "-q", "-m", "squash")
+    _git(repo, "update-ref", "refs/remotes/origin/develop", "develop")
+    _fail_all_github(monkeypatch)
+
+    result = mod.prune_merged_branches(repo, dry_run=False, out=io.StringIO())
+
+    assert result == mod.PruneResult(deleted=1, would_delete=0, kept=0, failed=0)
+
+
 def test_net_empty_branch_is_not_proven_by_an_empty_upstream_commit(repo: Path) -> None:
     _git(repo, "switch", "-q", "-c", "fix/net-empty")
     _commit(repo, "temp.txt", "t\n")

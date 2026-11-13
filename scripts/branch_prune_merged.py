@@ -260,18 +260,15 @@ def is_merge_commit_reachable(merge_commit: str, repo_root: Path) -> bool:
 
 
 def _verbatim_patch_ids(args: list[str], repo_root: Path) -> list[tuple[str, str]]:
-    log = _run(args, repo_root)
-    if log.returncode != 0:
-        return []
     try:
+        log = subprocess.run(args, cwd=repo_root, capture_output=True, timeout=120)
+        if log.returncode != 0:
+            return []
         proc = subprocess.run(
             ["git", "patch-id", "--verbatim"],
             cwd=repo_root,
             input=log.stdout,
             capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
             timeout=120,
         )
     except (OSError, subprocess.TimeoutExpired):
@@ -279,7 +276,7 @@ def _verbatim_patch_ids(args: list[str], repo_root: Path) -> list[tuple[str, str
     if proc.returncode != 0:
         return []
     pairs: list[tuple[str, str]] = []
-    for line in proc.stdout.splitlines():
+    for line in proc.stdout.decode("ascii", errors="replace").splitlines():
         patch_id, _, commit = line.partition(" ")
         if patch_id:
             pairs.append((patch_id, commit))
@@ -405,7 +402,10 @@ def _plan_candidates(repo_root: Path, out: TextIO) -> tuple[list[Candidate], int
         if branch in worktree_branches:
             print(f"skip {branch}: attached to a worktree (use worktree-remove)", file=out)
             continue
-        proof = prove_locally(local_oid, repo_root)
+        try:
+            proof = prove_locally(local_oid, repo_root)
+        except PruneError:
+            proof = None
         if proof:
             candidates.append(
                 Candidate(branch=branch, local_oid=local_oid, pr_number=None, merge_commit_oid=None, proof=proof)
