@@ -74,6 +74,7 @@ class PySparkDataFrameAdapter(ExpressionFamilyAdapter[PySparkDF, PySparkLazyDF, 
         executor_memory: str | None = None,
         shuffle_partitions: int | None = None,
         enable_aqe: bool = True,
+        allow_third_party_extensions: bool = False,
         **spark_config: Any,
     ) -> None:
         if not PYSPARK_AVAILABLE:
@@ -92,6 +93,7 @@ class PySparkDataFrameAdapter(ExpressionFamilyAdapter[PySparkDF, PySparkLazyDF, 
         self._executor_memory = executor_memory
         self._shuffle_partitions = shuffle_partitions or os.cpu_count() or 8
         self._enable_aqe = enable_aqe
+        self.allow_third_party_extensions = bool(allow_third_party_extensions)
         self._spark_config = spark_config
 
         self._spark: SparkSession | None = None
@@ -493,6 +495,7 @@ class PySparkDataFrameAdapter(ExpressionFamilyAdapter[PySparkDF, PySparkLazyDF, 
         if PYSPARK_AVAILABLE:
             info["version"] = PYSPARK_VERSION
 
+        self._enrich_with_extension_options(info)
         return info
 
     def get_tuning_summary(self) -> dict[str, Any]:

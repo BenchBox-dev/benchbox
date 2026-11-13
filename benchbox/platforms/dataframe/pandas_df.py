@@ -138,6 +138,7 @@ class PandasDataFrameAdapter(PandasFamilyAdapter[PandasDF]):
         dtype_backend: str = "numpy_nullable",
         copy_on_write: bool | None = None,
         tuning_config: DataFrameTuningConfiguration | None = None,
+        allow_third_party_extensions: bool = False,
     ) -> None:
         if not PANDAS_AVAILABLE:
             raise ImportError("Pandas not installed. Install with: pip install pandas")
@@ -150,6 +151,7 @@ class PandasDataFrameAdapter(PandasFamilyAdapter[PandasDF]):
         )
 
         self.dtype_backend = dtype_backend
+        self.allow_third_party_extensions = bool(allow_third_party_extensions)
 
         self._configure_copy_on_write(copy_on_write)
 
@@ -318,6 +320,7 @@ class PandasDataFrameAdapter(PandasFamilyAdapter[PandasDF]):
             else:
                 info["copy_on_write_active"] = False
 
+        self._enrich_with_extension_options(info)
         return info
 
     def filter_rows(
