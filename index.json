@@ -17083,7 +17083,9 @@
     },
     "compare-exit-codes-distinct-outcomes-20261112": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "umbrella-cli-ci-contract-20261113"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Give benchbox compare distinct exit codes for regression, not comparable, and error"
