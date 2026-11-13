@@ -324,8 +324,11 @@ make worktree-finish WORKTREE_PATH=<worktree> EXPECTED_HEAD_OID=<that oid> APPLY
   (or whose later commits are all integrated) and whose merge commit is in the
   base branch. Anything else is refused with a hold reason, and `APPLY=1` then
   exits without changing anything.
-- `make worktree-remove` removes the worktree but keeps the local branch. A
-  batch leader's `make batch-finish` runs this same finish.
+- `make worktree-remove` removes the worktree but keeps the local branch.
+- A batch leader uses `make batch-finish` instead. It applies this finish to
+  the integration worktree only; member worktrees and branches follow its own
+  rules, which can also delete a member's remote branch
+  (`batch-feature-delivery.md`).
 - Never delete a branch with `git branch -D`, and never run `git worktree
   prune` or `git gc`, to get around a hold. Fix the cause or stop and report.
 - `make worktree-reap` and `make branch-prune-merged` clean many worktrees or
