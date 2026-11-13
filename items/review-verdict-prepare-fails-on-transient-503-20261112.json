@@ -4,11 +4,12 @@
     "BenchBox pins a Theseus version in which a single 503 on the pull-request read does not fail the review job, or the owner records a decision not to change it.",
     "The recovery command for a review that died before any reviewer ran is stated in `docs/agent/merge-authority.md` next to the sentence that tells agents to re-run a review when a reviewer errors."
   ],
-  "description": "On 2026-11-12 the `verdict / review` job for PR #4170 (run 43239267451) failed after 10 seconds in the step 'Prepare the review': `theseus_reviewer.github.GitHubError: gh api repos/BenchBox-dev/benchbox/pulls/4170 failed: gh: HTTP 503`. No reviewer ran, no verdict was posted, the `verdict posting check` and `review-gate` then failed, and the pull request stayed blocked until the review was dispatched again by hand with `gh workflow run review-verdict.yml --ref develop -f pr=4170 -f head=<sha>`. The failing code is in the pinned Theseus reviewer package, not in this repository.\n\nDecision gate: establish first whether the reviewer already retries that read and the 503 outlasted it, or does not retry. The fix belongs upstream in Theseus; this item tracks the report and the pin that picks it up. Also decide whether a prepare-step failure should count against the daily rerun budget.",
+  "description": "On 2026-11-12 the `verdict / review` job for PR #4170 (run 43239267451) failed after 10 seconds in the step 'Prepare the review': `theseus_reviewer.github.GitHubError: gh api repos/BenchBox-dev/benchbox/pulls/4170 failed: gh: HTTP 503`. No reviewer ran, no verdict was posted, the `verdict posting check` and `review-gate` then failed, and the pull request stayed blocked until the review was dispatched again by hand with `gh workflow run review-verdict.yml --ref develop -f pr=4170 -f head=<sha>`. The failing code is in the pinned Theseus reviewer package, not in this repository.\n\nRelated: theseus-gate-transient-github-timeout-20261113 covers the same weakness in the gate's reads and states that `theseus_reviewer/github.py` already has a retry and backoff path. The failure here was raised from that module (`_gh_bytes`), so either that path does not cover this read or the 503 outlasted it.\n\nDecision gate: establish first which of those is true, from the Theseus source at the pinned version. If one upstream change can fix both items, do it once and close both against the same Theseus release. The fix belongs upstream in Theseus; this item tracks the report and the pin that picks it up. Also decide whether a prepare-step failure should count against the daily rerun budget.\n\nGuardrails.\n- A failed or absent review is never worked around with a stand-in approval, a skipped check or a relaxed gate; the only recovery is to dispatch the review again for the same head.\n- A Theseus lock change lands on its own pull request and is never part of a batch.\n- A retry must apply only to idempotent reads; it must not repeat a post of a verdict or status.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/actions/runs/43239267451/job/131262243518",
     "docs/internal/review-v2.md",
-    "docs/agent/merge-authority.md"
+    "docs/agent/merge-authority.md",
+    "theseus-gate-transient-github-timeout-20261113"
   ],
   "sessions": [
     {
@@ -17,6 +18,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "048f8f056cb24fe886aa9248746e422f",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-13T18:12:47Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b635320a528a4ba6a563dce2dfb38f38",
       "session_id": "570099c30e51431ebfbca6042d41ee8f"
     }
   ]
