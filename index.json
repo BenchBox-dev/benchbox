@@ -26896,7 +26896,7 @@
         "benchmark-methodology-page-20261112"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Make the MCP server instructions state what a run supports and require validation"
     },
     "mcp-job-ownership-cancellation-fencing": {
