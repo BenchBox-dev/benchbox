@@ -37804,6 +37804,13 @@
       "status": "done",
       "title": "Run the owed agy adversarial review of the site-repo split plan and adjudicate its findings"
     },
+    "site-static-result-pages-permalink-200-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Serve a static page with HTTP 200 at every published result permalink"
+    },
     "site-todo-state-scheduled-validation-20261030": {
       "claim": null,
       "needs": [],
