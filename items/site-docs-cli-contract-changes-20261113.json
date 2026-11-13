@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "The CLI reference documents compare exit codes 0 to 4, results validate with exit 5, and the guard with its flag, environment variable and exit 6, including its limits.",
+    "The result-format reference lists environment.host_load and execution.billable_platform_acknowledgement.",
+    "The site docs check passes and the PR is merged to the site's next branch."
+  ],
+  "context": "Site repository BenchBox-dev/benchbox-site; follow its AGENTS.md. Facts come from PR 4203 and the code on develop, not from memory.",
+  "description": "Core PR https://github.com/BenchBox-dev/benchbox/pull/4203 changed user-facing CLI behaviour, including a breaking change to compare's exit codes and a new refusal for non-interactive cloud runs. The site documentation does not yet describe them. The needed text is in the PR body.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-13T21:33:44Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "fa7d58ab8b8c433b978d86555002a255",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}

@@ -37895,6 +37895,13 @@
       "status": "done",
       "title": "Fix the 15 broken fragment links that are live on benchbox.dev today"
     },
+    "site-docs-cli-contract-changes-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Document compare exit codes, results validate, the cloud-platform guard and host-load fields on the site"
+    },
     "site-explorer-vite-high-advisory-blocks-ci-20261020": {
       "claim": null,
       "needs": [],
