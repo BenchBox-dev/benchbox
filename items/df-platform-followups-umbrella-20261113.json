@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "All three members are `done` and the batch's one final PR to `develop` is merged.",
+    "The final PR is armed only after CI and the required reviewer succeed on the bound head; no check is bypassed and admission is never forced.",
+    "This item's context holds the final per-member row: tracker state, PR, head, verification run, blocker."
+  ],
+  "description": "Notes item for the registered feature batch `df-platform-followups`. Never a batch member; carries no code change.\n\nMembers, independent, with disjoint file scopes: df-memory-guard-refusal-message-and-subset-estimate-20261112, df-write-primitives-sketch-opt-in-20261112, df-platform-name-comparison-guard-20261112.\n\nOwner decisions 2026-11-13: memory guard is a message-only fix (subset estimate tracked separately in df-memory-guard-subset-estimate-20261113); the sketch opt-in is registered and forwarded for DataFrame platforms, default off; members run as subagents of the leader session for this batch, overriding the rule in docs/agent/batch-feature-delivery.md, and make no tracker call; heavy-work admission is never forced, the leader retries every 5 minutes for up to 8 hours.\n\nRunning alongside, outside the batch: duckdb-2-behaviour-changes-audit-20261112 as its own pull request; a fix pull request in joeharris76/tractable for tractable-expect-store-substring-match-20261112 (opened, not merged or released by the agent); one corrective commit on benchbox-site draft PR #143 for site-multi-warehouse-post-correction-20261112.",
+  "links": [
+    "docs/agent/batch-feature-delivery.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-13T18:32:27Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1c0aa8c1940f4a2bb567457ecb3f293e",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}
