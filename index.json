@@ -13037,15 +13037,10 @@
       "title": "Delete batch member branches only when nothing would be lost, after amending the lifecycle contract"
     },
     "batch-member-brief-absolute-path-rule-in-catalog-20261112": {
-      "claim": {
-        "expires_at": "2026-11-14T19:25:06Z",
-        "generation": "70ce7a0561af41918d83eb911d80b73a",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a250daff95b91a4eb6cd2504"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Add the absolute-path rule to the batch member brief template in the skill catalog"
     },
     "batch-member-dispatch-prompt-20261113": {
