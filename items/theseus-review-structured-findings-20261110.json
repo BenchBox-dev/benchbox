@@ -1,11 +1,12 @@
 {
   "acceptance": [
-    "Owner decisions on option and eval spend recorded.",
-    "Eval run on the corpus shows no lower score than the baseline (or the owner accepts the measured change), results committed per docs/review-evals.md.",
-    "Thread fixtures show the labelled layout and the fallback.",
-    "Merged with hosted SHIP + independent review (brief/template change)."
+    "Prompt-only change (owner decision 2026-11-13): the brief asks for `Problem:`, `Impact:` and `Fix:` paragraphs and titles of at most 80 characters; the renderer bolds the labels when present and falls back to plain detail otherwise; gate reviews keep the mandatory bypass analysis, preceded by a one-sentence lead. No schema or marker change.",
+    "One-off manual comparison: the existing eval corpus is run once with the current brief and once with the structured brief, same models and settings. Scores, per-case expected-finding hits and total cost are recorded here and committed per docs/review-evals.md.",
+    "Decision gate: ship only if the structured run finds every expected finding the baseline finds and its score is not lower; otherwise the owner decides on the measured difference.",
+    "Thread and body fixtures show the labelled layout and the fallback.",
+    "Merged with hosted SHIP and independent review (brief and template change), then released and locked."
   ],
-  "context": "Follow-up from theseus-review-output-format-20261110; ranked 7 of 10 in the proposal.",
+  "context": "Follow-up from theseus-review-output-format-20261110; ranked 7 of 10 in the proposal.\n\nOwner decisions 2026-11-13 (choice dialog): approach = prompt only. Evaluation = one-off manual comparison, not through the trusted evaluator (theseus-trusted-candidate-evaluator-20261109 stays a separate item, so its need was removed). Eval spend for the two corpus runs is approved; report the cost after each run. Guardrails: no live run beyond the two approved ones without asking; Guardrails: Theseus merge rule G7 (hosted SHIP + green checks + independent review of the exact final head); markers, fingerprints and the review-protocol record unchanged; verdict reviews and threads never edited after posting unless this item says otherwise; no owner-only actions; shipped through a Theseus release and the BenchBox and Theseus locks.",
   "description": "Rendering alone cannot turn a 750-character finding paragraph into problem, impact and fix. Proposal section 8.7: start with the brief-only option (ask the reviewer to write `detail` as short `Problem:`, `Impact:`, `Fix:` paragraphs and titles ≤80 chars; the renderer bolds the labels when present and falls back otherwise; gate reviews get a one-sentence lead before the mandatory bypass analysis, which stays). A schema change (optional impact/fix/evidence keys) is the alternative.\nDecision gates: (1) owner chooses brief-only or schema; (2) because this changes reviewer behaviour, it ships only through the review-eval gate, which needs live model runs: owner approval of the eval spend is required before any run, and the eval score rule is currently inactive (no authenticated baseline; see theseus-trusted-candidate-evaluator-20261109).\nNot part of the format delivery batch; deferred until both gates are decided.",
   "links": [
     "https://github.com/joeharris76/theseus/blob/main/docs/review-comment-format-proposal.md (section 8.7)"
@@ -34,6 +35,14 @@
       "op": "update",
       "op_id": "7cc6f8ef67fe4d948680d5b7474ae359",
       "session_id": "8e07c6e3a10b49bb94ae7e31664ce4b9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b89414e427d02d5b37262d82",
+      "at": "2026-11-13T14:31:10Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d4f3d62ba2264a50baa7c11557bccf91",
+      "session_id": "88f192edfe954a75a195b192ece667bc"
     }
   ]
 }

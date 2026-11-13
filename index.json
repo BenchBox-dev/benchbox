@@ -41184,10 +41184,9 @@
     "theseus-review-structured-findings-20261110": {
       "claim": null,
       "needs": [
-        "theseus-review-format-release-b-20261110",
-        "theseus-trusted-candidate-evaluator-20261109"
+        "theseus-review-format-release-b-20261110"
       ],
-      "priority": "low",
+      "priority": "medium",
       "status": "open",
       "title": "Theseus: ask reviewers for Problem, Impact and Fix so finding threads are shorter"
     },
