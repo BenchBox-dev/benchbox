@@ -4,6 +4,7 @@
     "Each member item's acceptance list is met before this item is finished; the members are then taken and finished.",
     "batch-land-shared-identity-claim-detection-20261112 is dropped with the owner's decision as the reason, after the statement test result is recorded on batch-doc-shared-identity-statements-unverified-20261112."
   ],
+  "context": "2026-11-13 outcome. Branch 1 merged as pull request #4205 (e4f632df82): dispatch prompt; the two doc statements were tested and stand, so no correction was needed. Branch 2 merged as pull request #4208 (a0f79dd48a2a3a6c92564f689a6df4fd726e0a4b) after two hosted-review fixes to the conflict scan: fall back to warning about every conflict when the merge base cannot be resolved, and pass the own-file list through a file. Both worktrees and branches were retired with `make worktree-finish`. batch-land-shared-identity-claim-detection-20261112 was dropped on the owner's decision after the statement test was recorded. The registered batch `member-rule-docs` merged separately as #4209 (9fcfe7c934) and is completed.",
   "description": "Umbrella for two feature branches built by one session; it is not a batch member and carries no batch metadata.\n\nBranch 1, `docs/batch-member-dispatch-prompt` (changes the batch protocol doc, so it is serial by rule): batch-member-dispatch-prompt-20261113 and any doc correction required by batch-doc-shared-identity-statements-unverified-20261112.\nBranch 2, `fix/landing-tooling-noise` (changes `pr-preflight` and `pr-open`, tools a batch runs on itself, so also serial): pr-open-conflict-warning-untouched-files-20261112 and pr-preflight-does-not-list-selected-tests-20261113.\n\nOwner decisions, 2026-11-13: deliver these serially; accept the undetected-claim risk and drop batch-land-shared-identity-claim-detection-20261112 once batch-doc-shared-identity-statements-unverified-20261112 has reported; a separate registered batch (`member-rule-docs`) carries catalog-pin-change-sites-undocumented-20261112 and post-merge-worktree-finish-undocumented-20261113 and is not part of this umbrella.\n\nGuardrails: no edit in the primary clone; absolute worktree paths; no change to batch guard logic; no registered batch for these items; each branch ends at a merged pull request; stop only for an owner-only action, a hold, or an unresolved Critical or High review finding.",
   "links": [
     "batch-member-dispatch-prompt-20261113",
@@ -28,6 +29,14 @@
       "generation": "b3d20b68437540ce8786a3b41e7ed895",
       "op": "take",
       "op_id": "87cc69d254dc416abb6a1eccc44ee72a",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-13T20:29:50Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ff94db1968b44af9a4df4234e619b6bd",
       "session_id": "570099c30e51431ebfbca6042d41ee8f"
     }
   ]
