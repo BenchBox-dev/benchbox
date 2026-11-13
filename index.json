@@ -41078,12 +41078,7 @@
       "title": "Theseus: replace raw provider errors in not-reviewed output with human reasons, posted once per head and cause"
     },
     "theseus-review-output-format-20261110": {
-      "claim": {
-        "expires_at": "2026-11-14T13:23:46Z",
-        "generation": "24e1bbe403ab4842869a8716669b846d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b89414e427d02d5b37262d82"
-      },
+      "claim": null,
       "needs": [
         "benchbox-lock-theseus-review-format-release-b-20261110",
         "theseus-lock-self-review-format-release-b-20261110",
@@ -41093,7 +41088,7 @@
         "theseus-review-minimize-superseded-20261110"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Make Theseus review output verdict-first, concise and easy to scan"
     },
     "theseus-review-recurring-class-locations-20261110": {
