@@ -6,7 +6,7 @@
     "User documentation states which BenchBox-written DuckDB files are not readable by DuckDB 1.x after running on 2.x.",
     "The `tpcds_answers()` error is reproduced and reported upstream, or explained."
   ],
-  "context": "Filed while PR #4175 was armed but not merged. Related items: duckdb-2-followups-20261112 (timing, nanobind warnings, data digests) and duckdb-lambda-arrow-syntax-migration-20261112.\n\n2026-11-12 18:25: PR #4175 merged to develop as 6ab8a3d979 (DuckDB bound <3.0.0, lock on 2.0.0). The precondition for this item now holds.",
+  "context": "Filed while PR #4175 was armed but not merged. Related items: duckdb-2-followups-20261112 (timing, nanobind warnings, data digests) and duckdb-lambda-arrow-syntax-migration-20261112.\n\n2026-11-12 18:25: PR #4175 merged to develop as 6ab8a3d979 (DuckDB bound <3.0.0, lock on 2.0.0). The precondition for this item now holds.\n\n2026-11-13 13:45: in progress as a standalone pull request (branch fix/duckdb-2-behaviour-audit, worktree ../BenchBox.wt-duckdb-2-behaviour-audit) by a delegated agent of the claiming session. Owner decision: survey everything, fix only sites shown to be at risk.",
   "description": "Gap. The DuckDB 2.x pin lift (PR #4175) fixed each DuckDB 2.0 break that a test exposed. Several are behaviour changes that product code could hit on paths no test covers:\n- A parser error inside a caller's open transaction now aborts the transaction. Only a SAVEPOINT test was adjusted (it now rolls back first). Any code that catches a SQL error and continues in the same transaction is affected.\n- An unfinished result from `fetchone()` blocks later use of the connection (seen in the TPC-DI customer batch loader, where it blocked DataFrame `register`). Other `fetchone()` calls on DuckDB connections were not surveyed.\n- `fetch_arrow_table` and `Relation.fetchone()` are removed; DuckDB warns `Arrow output on a DB-API result` on every Arrow fetch and BenchBox now suppresses that one warning around its fetch instead of moving to the replacement API.\n- Index expressions are stored unbound; the bound-form mismatch test is skipped on 2.x, so that check has no coverage on the locked version.\n- Database files written by 2.x cannot be opened by 1.x. The explorer snapshot is pinned to the old storage format; other persisted DuckDB files (result stores, cached benchmark databases) are not, and a user who downgrades or shares them loses access. This is disclosed in the changelog only.\n- `tpcds_answers()` in DuckDB's `tpcds` extension raised `Don't have TPC-DS answers for SF 10.0` during an SF1 check, so answers were compared 2.0 against 1.5.5 instead of against published answers.\n\nExpected: each bullet has a recorded disposition: code fixed, test coverage restored on 2.x, documented as a limitation, or reported upstream.\n\nGuardrails: do not regenerate digests or baselines. Keep older runtimes selected through `driver_version` working. No change to SQL query text to work around engine behaviour without recording why.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4175"
@@ -35,6 +35,14 @@
       "generation": "83e0362257bf4f26b28b71e36c984af7",
       "op": "take",
       "op_id": "2fc67036447d490d832fb9afd79edd92",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-13T18:36:07Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "34ed83272b414e2ea210b13983e8a670",
       "session_id": "512d9ad0b25247538901b68a758a6fbb"
     }
   ]
