@@ -4,6 +4,7 @@
     "The final PR is armed only after CI and the required reviewer succeed on the bound head; no check is bypassed and admission is never forced.",
     "This item's context holds the final per-member row: tracker state, PR, head, verification run, blocker."
   ],
+  "context": "2026-11-13 13:45: batch `df-platform-followups` registered (project_id benchbox, start head 9f739da8e8647532916fdd8cecda169ce585a4af, integration worktree /Users/joe/Developer/BenchBox.wt-df-platform-followups, capability version 2). Metadata attached; three member worktrees created at the start head; members dispatched. Host at registration: load average 64, swap 97.5%, heavy-work admission refused. Next: landing reports, land one at a time (each later member must merge the integration head and re-check), leader fast tier and preflight when admitted, pr-open, bind, evidence, arm, finish members after merge, batch-finish.",
   "description": "Notes item for the registered feature batch `df-platform-followups`. Never a batch member; carries no code change.\n\nMembers, independent, with disjoint file scopes: df-memory-guard-refusal-message-and-subset-estimate-20261112, df-write-primitives-sketch-opt-in-20261112, df-platform-name-comparison-guard-20261112.\n\nOwner decisions 2026-11-13: memory guard is a message-only fix (subset estimate tracked separately in df-memory-guard-subset-estimate-20261113); the sketch opt-in is registered and forwarded for DataFrame platforms, default off; members run as subagents of the leader session for this batch, overriding the rule in docs/agent/batch-feature-delivery.md, and make no tracker call; heavy-work admission is never forced, the leader retries every 5 minutes for up to 8 hours.\n\nRunning alongside, outside the batch: duckdb-2-behaviour-changes-audit-20261112 as its own pull request; a fix pull request in joeharris76/tractable for tractable-expect-store-substring-match-20261112 (opened, not merged or released by the agent); one corrective commit on benchbox-site draft PR #143 for site-multi-warehouse-post-correction-20261112.",
   "links": [
     "docs/agent/batch-feature-delivery.md"
@@ -15,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "1c0aa8c1940f4a2bb567457ecb3f293e",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-13T18:36:33Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "87b2e9e2b4944c56a6c5fe6ad33b0f41",
       "session_id": "512d9ad0b25247538901b68a758a6fbb"
     }
   ]
