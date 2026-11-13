@@ -4,6 +4,7 @@
     "A non-adoption CI or review completion starts no run of this workflow.",
     "An adoption PR's CI and review completions still trigger the arm job, shown by the workflow contract tests."
   ],
+  "context": "Decision gate: none needed for the trigger filter. If the branches filter cannot express the trust root's branchPrefix exactly, stop and ask the owner before changing the arm job's condition.\n\nVerification rubric: (1) workflow contract tests, including the branchPrefix drift test, extended to the new branches filter, fail before and pass after; (2) actionlint shows no new findings (the existing queue and SC2086 findings are pre-existing); (3) confirm from GitHub's docs that workflow_run branches filters on the triggering run's head branch; (4) after merge, record the delivery run count for 24 hours before and after: non-adoption CI and review completions start no run, and a dry-run dispatch still passes readiness with state current.\n\nGuardrails: schedule and workflow_dispatch triggers, the readiness, prepare and publish jobs, and the arm job's if stay unchanged; no new permission or secret; ship through the core PR flow (make worktree-create, make pr-preflight, make pr-open, make pr-arm) with a changelog fragment marked internal.",
   "description": "sqlglot-delivery.yml triggers on workflow_run completion of CI, review-verdict and review-gate with no branches filter; the arm job's if (startsWith(head_branch, 'chore/sqlglot-')) is the only scope. The workflow therefore starts a run for every such completion in the repository: 780 runs between 2026-11-11T15:00Z and 2026-11-12T15:00Z, all skipped. The 200 most recent runs were all skipped workflow_run runs, which buried the scheduled and dispatched runs (finding the four 2026-11-11 dispatch startup_failures needed --event filters), and each run enters the workflow-level concurrency group sqlglot-delivery (queue: max) ahead of or behind real schedule and dispatch runs. Introduced with event-driven arming in #4075.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4075"
@@ -16,6 +17,14 @@
       "op": "create",
       "op_id": "b202260c191c458e8a8a0acad1aa54ca",
       "session_id": "c0aa4551a12644549f4625c40698c4fa"
+    },
+    {
+      "actor": "omp:sqlglot-delivery-hardening-leader",
+      "at": "2026-11-13T16:52:24Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "fc22a1b658e64dbab4c20f9ae99f5197",
+      "session_id": "b5bbdccf008f4ffea393206edd986580"
     }
   ]
 }
