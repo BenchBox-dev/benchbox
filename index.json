@@ -27326,12 +27326,17 @@
       "title": "MCP public-contract tables: enforce Markdown topology"
     },
     "mcp-run-benchmark-seed-iterations-20261112": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-14T19:34:34Z",
+        "generation": "4029b2913ac44795ae96560f3f4676b1",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
+      },
       "needs": [
         "umbrella-agent-mcp-surface-20261113"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Expose seed and iterations on MCP run_benchmark and start_benchmark"
     },
     "mcp-scrub-structured-and-prose-secret-material": {
