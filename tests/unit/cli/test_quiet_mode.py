@@ -194,3 +194,33 @@ def test_normal_mode_does_not_double_print_filepath():
     result = _invoke_run_quiet_with_export(quiet=False)
     assert result.exit_code == 0, result.output
     assert result.output.count("/tmp/result.json") == 1
+
+
+def test_quiet_run_reports_generation_failure_on_stderr(tmp_path):
+    set_quiet(False)
+    message = "BTS download failed for 2024-12; real data is required"
+    with patch(
+        "benchbox.core.flightdata.benchmark.FlightDataBenchmark.generate_data",
+        side_effect=RuntimeError(message),
+    ):
+        result = CliRunner().invoke(
+            cli,
+            [
+                "run",
+                "--platform",
+                "duckdb",
+                "--benchmark",
+                "flightdata",
+                "--scale",
+                "0.1",
+                "--non-interactive",
+                "--quiet",
+                "--phases",
+                "load,power",
+                "--output",
+                str(tmp_path / "datagen"),
+            ],
+        )
+    set_quiet(False)
+    assert result.exit_code == 1
+    assert "BTS download failed" in result.stderr
