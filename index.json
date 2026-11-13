@@ -34588,7 +34588,7 @@
     "rerun-cloud-bundles-defective-dbgen": {
       "claim": null,
       "needs": [],
-      "priority": "medium",
+      "priority": "high",
       "status": "open",
       "title": "Rerun the 61 cloud bundles built with the defective macOS dbgen"
     },

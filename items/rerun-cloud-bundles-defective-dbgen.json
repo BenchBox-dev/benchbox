@@ -3,7 +3,7 @@
     "Every affected cloud bundle is regenerated with the fixed generator or withdrawn from published rankings",
     "No published ranking includes data from the defective macOS dbgen"
   ],
-  "context": "Audit evidence: ~/Developer/audit-defective-generators-bundles.csv (53 direct, 52 presumed, 35 unresolved macOS TPC-H-family bundles); per-bundle table in results-data/DEFECTIVE_DATAGEN_AUDIT.md on develop. The 61 paid cloud bundles cannot be regenerated without spending on live warehouses — needs owner approval. Local-engine bundles were labelled with known_defects in #2708 and are excluded from rankings by #2705.",
+  "context": "Audit evidence: ~/Developer/audit-defective-generators-bundles.csv (53 direct, 52 presumed, 35 unresolved macOS TPC-H-family bundles); per-bundle table in results-data/DEFECTIVE_DATAGEN_AUDIT.md on develop. The 61 paid cloud bundles cannot be regenerated without spending on live warehouses — needs owner approval. Local-engine bundles were labelled with known_defects in #2708 and are excluded from rankings by #2705.\n\nPriority raised to high by owner decision on 2026-11-13: making published results easier to read and cite is worth little while most rows are flagged defective, so corpus repair outranks the agent-facing work.",
   "description": "61 published bundles ran on paid cloud warehouses with data from the defective macOS TPC-H dbgen (non-canonical supplier/customer addresses, fixed in #2622). They cannot be regenerated locally; rerunning them spends live-warehouse budget and needs owner approval. Until then they stay labelled and excluded from rankings.",
   "sessions": [
     {
@@ -13,6 +13,14 @@
       "op": "create",
       "op_id": "0b64b690414a43e8a70069491f718f87",
       "session_id": "1b12a2c1c7b14a05a649d008ac5701eb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-13T16:37:56Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b20322c95c374320816d8e7318b787b1",
+      "session_id": "ac67b069b7864c4699843546272d3701"
     }
   ]
 }
