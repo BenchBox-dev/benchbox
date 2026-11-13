@@ -207,13 +207,17 @@ class TestRemoteIterationBound:
             middleware._authorize(principal, tool, {**base, "iterations": config.max_iterations + 1})
 
     def test_policy_value_is_configurable(self, tmp_path: Path):
-        config, middleware, principal = self._middleware(tmp_path, max_iterations=2)
+        config, middleware, principal = self._middleware(tmp_path, max_iterations=4)
         base = {"platform": "duckdb", "benchmark": "tpch", "scale_factor": 0.01}
 
-        assert config.max_iterations == 2
-        middleware._authorize(principal, "start_benchmark", {**base, "iterations": 2})
+        assert config.max_iterations == 4
+        middleware._authorize(principal, "start_benchmark", {**base, "iterations": 4})
         with pytest.raises(MCPError, match="iterations exceed policy"):
-            middleware._authorize(principal, "start_benchmark", {**base, "iterations": 3})
+            middleware._authorize(principal, "start_benchmark", {**base, "iterations": 5})
+
+    def test_policy_cannot_be_set_below_the_default_iteration_count(self, tmp_path: Path):
+        with pytest.raises(ValueError, match="max_iterations"):
+            self._middleware(tmp_path, max_iterations=GENERIC_POWER_DEFAULT_MEASUREMENT_ITERATIONS - 1)
 
     @pytest.mark.parametrize("value", [1e6, "1000000", 2.5, True, [3]])
     @pytest.mark.parametrize("tool", ["run_benchmark", "start_benchmark"])

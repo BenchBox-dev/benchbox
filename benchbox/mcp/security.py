@@ -23,6 +23,7 @@ from mcp.shared.exceptions import MCPError
 from mcp.types import CallToolResult, TextContent
 from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from benchbox.core.constants import GENERIC_POWER_DEFAULT_MEASUREMENT_ITERATIONS
 from benchbox.utils.clock import mono_time, utc_now
 
 AUTHORIZATION_ERROR = -32003
@@ -90,7 +91,7 @@ class RemoteSecurityConfig(BaseModel):
     allowed_platforms: tuple[str, ...] = ()
     allowed_benchmarks: tuple[str, ...] = ()
     max_scale_factor: float = Field(default=1.0, gt=0.0)
-    max_iterations: int = Field(default=10, ge=1, le=1000)
+    max_iterations: int = Field(default=10, ge=GENERIC_POWER_DEFAULT_MEASUREMENT_ITERATIONS, le=1000)
     admission: AdmissionLimits = Field(default_factory=AdmissionLimits)
     jobs: JobLimits = Field(default_factory=JobLimits)
 
