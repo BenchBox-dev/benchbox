@@ -41081,6 +41081,13 @@
       "status": "open",
       "title": "Theseus: a promotion review cannot close its own finding on upstream code because the staged path is not a head-commit file"
     },
+    "theseus-review-check-run-mirror-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Theseus: mirror threadless findings as check-run annotations"
+    },
     "theseus-review-dashboard-comment-20261113": {
       "claim": null,
       "needs": [],
