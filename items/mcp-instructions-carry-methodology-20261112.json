@@ -6,7 +6,7 @@
     "The size of the instructions plus all tool definitions is measured before and after (characters, and tokens on one named model) and reported; growth above 15 percent needs a stated justification.",
     "The registry-derived test from mcp-prompts-name-nonexistent-tools-20261112 still passes, scripts/verify_mcp_conformance.py passes, and a changelog.d fragment is present."
   ],
-  "context": "Origin: adversarial review of an agent-facing strategy for BenchBox, 2026-11-12. Owner decisions quoted here were made on that date. Line numbers are hints; re-read the cited file before relying on them.\n\nWhy it matters: always-loaded text is the one channel that reliably reaches an agent, and it costs input tokens on every request, so it must be short and correct.\n\nDecision gate: if the methodology page left a needed point under 'Open questions', omit that point here and note it; do not settle it in tool text.\n\nVerification rubric: pass only if the before-and-after size is reported and no sentence lacks a source on the methodology page.\n\nGuardrails: work only in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. One PR per item, squash-merged to develop (site work: one PR in BenchBox-dev/benchbox-site). Add a changelog.d fragment for any user-facing change. No live-cloud runs and no credentials in Git or logs. Heavy work (benchmarks, test tiers) runs only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy (make comment-policy-check). Stop and report instead of widening scope; scope removed during review must be re-homed to a named item or dropped by the owner with a reason.",
+  "context": "Origin: adversarial review of an agent-facing strategy for BenchBox, 2026-11-12. Owner decisions quoted here were made on that date. Line numbers are hints; re-read the cited file before relying on them.\n\nWhy it matters: always-loaded text is the one channel that reliably reaches an agent, and it costs input tokens on every request, so it must be short and correct.\n\nDecision gate: if the methodology page left a needed point under 'Open questions', omit that point here and note it; do not settle it in tool text.\n\nVerification rubric: pass only if the before-and-after size is reported and no sentence lacks a source on the methodology page.\n\nGuardrails: work only in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. One PR per item, squash-merged to develop (site work: one PR in BenchBox-dev/benchbox-site). Add a changelog.d fragment for any user-facing change. No live-cloud runs and no credentials in Git or logs. Heavy work (benchmarks, test tiers) runs only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy (make comment-policy-check). Stop and report instead of widening scope; scope removed during review must be re-homed to a named item or dropped by the owner with a reason.\n\nReview note (2026-11-13): if run-billable-platform-guard-noninteractive-20261113 has landed, the run tool description states in one sentence that managed platforms need the operator's acknowledgement at server start.",
   "description": "Problem: the MCP server instructions are loaded into the model's context whenever the server is connected. Today they suggest a scale 0.01 run as the quick test, never mention validate_results, and say nothing about what such a run can support. The compare_platforms prompt asks for platform recommendations with no comparability rule.\n\nOutcome: the instructions, the run_benchmark description and the comparison prompts state the scale limits, tell the model to validate every run before reporting, give the comparability rule in one sentence, and link to the methodology page.\n\nNon-goals: no new tools or arguments; no claim that the methodology page does not contain.",
   "links": [
     "benchbox/mcp/server.py",
@@ -20,6 +20,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "474f25e2cfcb4fa1a154e484cce71d9f",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-13T13:54:10Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9e33dbf9c0724153b9fc8e9ad55da28e",
       "session_id": "ac67b069b7864c4699843546272d3701"
     }
   ]
