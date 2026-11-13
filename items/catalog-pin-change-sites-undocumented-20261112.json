@@ -4,6 +4,7 @@
     "A stale rollout evidence file after a pin change is reported by a fast check (`make skill-sync-check` or `make skill-integrity-check`) with a message naming the file, not only by the medium integration test.",
     "A pin change made by following the documented steps passes `make pr-preflight` on the first run."
   ],
+  "context": "Decisions 2026-11-13: document the pin-change sites, and make a fast check report stale evidence; do not generate the evidence file. Extend the existing `scripts/skill_sync_ci_policy.py` in preference to a new script. Delivered as a member of registered batch `member-rule-docs`.",
   "description": "Moving the catalog `rev` in `skill-sync.conf` and running `make skill-sync` is not enough. `tests/integration/worktree/test_batch_skill_delivery.py::test_pin_receipt_and_tracked_mirror_bind_catalog_tip` also requires `_project/analysis/batch-rollout-evidence.json` (`catalog.merge_revision`, `catalog.parent_revision`, `catalog.pr`, `benchbox_pin.before/after`, both `receipt_revision` values and every changed mirror hash for `.claude/skills/todo` and `.agents/skills/todo`) and the `DELIVERY_CATALOG_REV` constant in that test to match the new pin. `docs/agent/batch-tracker-contract.md` lists the sites for a tractable wheel upgrade but says nothing for a catalog pin change, and `make skill-sync-check` was observed to pass while the evidence was stale. `make skill-integrity-check` was run only after the evidence was fixed; its recipe (`skill_sync_ci_policy.py validate`, `skill-sync verify`, the mirror guard, the instruction and identity checks, artifact hygiene) names no step that reads the evidence file, so it very likely passes too, but confirm that before relying on it. On 2026-11-12 this was found only when `make pr-preflight` failed after a six-minute test run; the fix was copied from the previous pin change (#4102).\n\nDecision gate: document the sites, or remove the hand step by having a target rewrite the evidence from the receipt. Prefer the second only if the evidence file's other consumers (`scripts/pr_landing.py`, the comment-policy scope check) do not depend on it being hand-reviewed.\n\nGuardrails.\n- Never hand-edit `.claude/skills` or `.agents/skills`; mirrors change only through `make skill-sync`.\n- Do not weaken or delete `test_pin_receipt_and_tracked_mirror_bind_catalog_tip`; the aim is an earlier, clearer failure, not a looser one.\n- `scripts/pr_landing.py` (`batch_runtime_capability_available`) reads the same evidence file to decide whether the batch capability is present. Any generated rewrite must leave the `runtime` section byte-identical, and an unreadable file must keep meaning 'capability absent'.\n- A generated evidence file records only values read from the receipt and the catalog history; it never invents a pull-request number.",
   "links": [
     "docs/agent/batch-tracker-contract.md",
@@ -27,6 +28,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "989705122835425f9b0c38f1220b52fe",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-13T18:31:57Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c47fcb9dedd5446e9b3cb1ab551d74a0",
       "session_id": "570099c30e51431ebfbca6042d41ee8f"
     }
   ]
