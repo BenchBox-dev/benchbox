@@ -70,8 +70,9 @@ runs from a checkout that already contains it, so a primary clone behind
 `origin/develop` has none until it is updated; the Codex and Gemini trust
 prompts can be declined. The preflight below is the backstop for all of these.
 The preflight also warns when the primary clone is behind `origin/develop`; see
-[primary-clone-update.md](primary-clone-update.md) for the update procedure and
-the update procedure. If a probe file ever appears in the primary clone, delete exactly that file and record the hook as not enforcing for that agent.
+[primary-clone-update.md](primary-clone-update.md) for the update procedure.
+
+If a probe file ever appears in the primary clone, delete exactly that file and record the hook as not enforcing for that agent.
 
 ## The check
 

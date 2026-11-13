@@ -48,10 +48,15 @@ def _primary(tmp_path: Path, installed: str = "1.1.1") -> Path:
 
 
 def _advance_remote(repo: Path, relative: str, text: str) -> None:
-    head = _git(repo, "rev-parse", "HEAD")
+    remote = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "--verify", "--quiet", "refs/remotes/origin/develop"],
+        capture_output=True,
+        check=False,
+    )
+    _git(repo, "checkout", "-q", "--detach", "refs/remotes/origin/develop" if remote.returncode == 0 else "HEAD")
     _commit(repo, relative, text)
     _git(repo, "update-ref", "refs/remotes/origin/develop", "HEAD")
-    _git(repo, "reset", "-q", "--hard", head)
+    _git(repo, "checkout", "-q", "develop")
 
 
 def test_behind_on_watched_path_warns(tmp_path: Path) -> None:
