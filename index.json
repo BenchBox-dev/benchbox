@@ -37708,15 +37708,10 @@
       "title": "Resolve the new high-severity vite advisory failing site CI audit"
     },
     "site-inputs-bundle-for-release-tag": {
-      "claim": {
-        "expires_at": "2026-11-14T18:42:23Z",
-        "generation": "975f2897ba9c45c4affcb4ef5e94564c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a250daff95b91a4eb6cd2504"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Let a site-inputs bundle be built or kept for a release tag"
     },
     "site-inputs-queue-max-live-verification-20261028": {
