@@ -15577,18 +15577,13 @@
       "title": "Fix --platform <name>:<mode> availability check (clickhouse:local reported as missing dependencies)"
     },
     "cli-results-integrity-validate-command-20261112": {
-      "claim": {
-        "expires_at": "2026-11-14T21:32:32Z",
-        "generation": "c8e4baefc17944a79778b3ece33531a1",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
-      },
+      "claim": null,
       "needs": [
         "umbrella-cli-ci-contract-20261113",
         "compare-exit-codes-distinct-outcomes-20261112"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Expose the result integrity validator in the CLI"
     },
     "cli-test-coverage-enhancement-to-80": {
