@@ -5,6 +5,7 @@
     "Unit tests cover a 403 rate limit followed by success, a 503 followed by success, and a failure that outlasts WAIT.",
     "The number of REST calls one wait cycle makes is measured and recorded, and reduced if a cheaper read gives the same answer."
   ],
+  "context": "More occurrences on 2026-11-12: `make pr-arm PR=4172 HEAD=e7617006…` refused at 17:43Z with 'trunk-arm-gate: refusing: gh run list failed: HTTP 403: API rate limit exceeded'. This was the non-WAIT form, so it is the first check rather than the wait loop. Recovery was to sleep until the rate_limit reset (remaining 4985 afterwards) and run it again, which armed. The same session also lost a release watcher and several gh calls to the shared limit.",
   "description": "Observed three times on 2026-11-12 while arming PR #4170 with `make pr-arm PR=4170 WAIT=60..110`:\n- twice the wait loop ended with `pr-arm: refusing: stopped waiting, the trunk check refuses: the trunk state could not be read: gh run list failed: HTTP 403: API rate limit exceeded`, with 56 and 77 minutes of WAIT left;\n- once it ended with `review-gate: error: cannot read #4170 after 3 attempts: GitHub returned HTTP 503`.\nEach time the pull request was healthy and the only recovery was to wait for the limit to reset and run the same command again. The repository rule is to wait with `make pr-arm WAIT=<min>` and never a hand-written loop, so a wait that exits on a transient read failure pushes agents toward exactly that loop.\n\nContributing cause: the core REST limit (5000 per hour) is shared by every local session under one user, and was exhausted twice within an hour. The wait loop's own polling every 3 minutes adds to it.\n\nGuardrail: an unreadable trunk or gate state must still never arm. The change is to keep waiting inside the WAIT budget, not to treat an unreadable state as passing.",
   "links": [
     "make/pr-landing.mk",
@@ -20,6 +21,14 @@
       "op": "create",
       "op_id": "d4ea4f30d9234db0b0a50f7e63394584",
       "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b89414e427d02d5b37262d82",
+      "at": "2026-11-13T13:25:09Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "05ffe8ef2a0343eaa5a629271b5e72d9",
+      "session_id": "88f192edfe954a75a195b192ece667bc"
     }
   ]
 }
