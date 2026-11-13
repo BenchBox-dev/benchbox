@@ -28413,7 +28413,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "dropped",
       "title": "Audit every safeguard that depends on a person seeing a prompt"
     },
     "normalize-comparison-duration-units-20260808": {
