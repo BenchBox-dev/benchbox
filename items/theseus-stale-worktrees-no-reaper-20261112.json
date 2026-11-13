@@ -4,6 +4,7 @@
     "Theseus gains a documented cleanup command with the same safety conditions as BenchBox's reaper, or its contributor guide states the manual procedure and that sessions must remove their worktree after merge.",
     "Nothing unmerged or uncommitted is deleted without the owner's decision."
   ],
+  "context": "Owner decision 2026-11-13: classify every Theseus worktree, remove only those merged and clean, report the rest, and open a small documentation pull request in Theseus for the owner to merge.",
   "description": "On 2026-11-12 the owner's machine held about thirty linked worktrees of the Theseus repository beside its clone (theseus.wt-0.2.8, theseus.wt-release-0.2.6 through theseus.wt-release-0.2.11, theseus.wt-v029, theseus.wt-v029-revert, theseus.wt-body-redesign and others), most named for releases and changes that have long since merged. BenchBox has make worktree-reap, which removes a worktree only when its branch is a merged pull request head, clean, with nothing unpushed; that run removed 23 BenchBox worktrees the same day. Theseus has no equivalent, so agent sessions that create a worktree there leave it behind unless they remember to remove it. Nobody checked the state of the thirty; some may hold unmerged work.",
   "links": [
     "https://github.com/joeharris76/theseus",
@@ -16,6 +17,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "ab9b507945564edcbb2fc152d3c0c9ab",
+      "session_id": "8e07c6e3a10b49bb94ae7e31664ce4b9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a250daff95b91a4eb6cd2504",
+      "at": "2026-11-13T18:39:34Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "bab8e714b0e4433083dd40e61d06cafb",
       "session_id": "8e07c6e3a10b49bb94ae7e31664ce4b9"
     }
   ]
