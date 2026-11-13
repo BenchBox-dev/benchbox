@@ -35902,7 +35902,7 @@
         "site-static-result-pages-permalink-200-20261112"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Decide whether published results need a generated machine-readable index for readers without a browser"
     },
     "results-normalized-cost-contract-cloud-facets": {

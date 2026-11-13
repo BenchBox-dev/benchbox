@@ -8,6 +8,7 @@
   ],
   "context": "Origin: adversarial review on 2026-11-13 of work first left unfiled. The earlier reasons assumed a person at the keyboard; this item records the corrected disposition. Line numbers are hints; re-read the cited file before relying on them.\n\nEvidence (2026-11-13): results.duckdb is served with content length 14,168,064; a single bundle JSON is about 23 KB and returns 200; the strategy document's rule rejects any metric-looking key in manifest.json and prefers deriving all navigation from DuckDB.\n\nDecision gate: this whole item is the gate. Do not start generator work under it. If the static result pages already let a client enumerate results, say so and recommend (a).\n\nVerification rubric: pass only if the owner's decision is written into the record and each option has its evidence.\n\nGuardrails: work only in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. One PR per item, squash-merged to develop (site work: one PR in BenchBox-dev/benchbox-site). Add a changelog.d fragment for any user-facing change. No live-cloud runs and no credentials in Git or logs. Heavy work (benchmarks, test tiers) runs only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy (make comment-policy-check). Stop and report instead of widening scope; scope removed during review must be re-homed to a named item or dropped by the owner with a reason.",
   "description": "Problem: the Explorer migration removed the JSON index files (manifest.json, benchmarks/, details/, compare/, meta_leaderboard.json) so that the browser pages had one source of metric truth, results.duckdb. That decision considered the browser client only. results.duckdb is a 14 MB binary: a client that can only fetch text cannot read it, and a script needs DuckDB and knowledge of the schema. Nothing lets a program list result IDs by benchmark, scale and platform except parsing the HTML summaries.\n\nOutcome: a decision record that states whether the earlier removal applies to non-browser readers and chooses one option: (a) nothing more, the static result and summary pages are enough; (b) a small index generated from results.duckdb at build time with a parity check; (c) a tabular export such as Parquet or CSV.\n\nThis item delivers the decision record only. It changes no generator, contract or site code.",
+  "drop_reason": "Dropped by owner decision on 2026-11-13: no reader has asked for an index, and bundle JSON and results.duckdb already return 200. No successor.",
   "links": [
     "_project/scripts/explorer_pipeline/contract.py",
     "docs/internal/benchbox-results-platform-strategy.md",
@@ -21,6 +22,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "2b232072f34f4283b2ab1f32c85d4dcd",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-13T16:37:47Z",
+      "client": "omp-coding-agent",
+      "op": "drop",
+      "op_id": "251bb3badf544a349dc2f86992056868",
       "session_id": "ac67b069b7864c4699843546272d3701"
     }
   ]
