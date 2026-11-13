@@ -5,6 +5,11 @@
     "The decision on a `worktree-remove` hint is recorded; if added, a test shows it prints for a merged branch and not for an unmerged one, and deletes nothing extra.",
     "`make agent-instructions-check` passes with the added text."
   ],
+  "batch": {
+    "batch_id": "member-rule-docs",
+    "implementation_dependencies": [],
+    "member_id": "post-merge-worktree-finish-undocumented-20261113"
+  },
   "context": "Decisions 2026-11-13: the step is documented on a page `AGENTS.md` already links (`docs/agent/merge-authority.md`), not in `AGENTS.md`; `make worktree-remove` gets no hint and deletes exactly what it does today. Delivered as a member of registered batch `member-rule-docs`.",
   "description": "After PR #4170 merged on 2026-11-12 the session removed its worktree with `make worktree-remove`, which runs `git worktree remove` and keeps the local branch (`remove_worktree` in `scripts/worktree_lifecycle.sh`). `docs/batch-member-subagent-rule` is still in the primary clone. The targets that also retire the branch exist (`make worktree-finish WORKTREE_PATH= EXPECTED_HEAD_OID= [APPLY=1]`, `make worktree-reap`, `make branch-prune-merged`) but are named only in `make help`: neither `AGENTS.md` nor any file under `docs/agent/` mentions them, and the write close-out rule ends at the merged pull request without a step for the worktree. On 2026-11-13 the primary clone held 219 local branches, of which `git branch --merged origin/develop` lists 6; squash merges hide the rest from that test.\n\nRelated, not duplicates: agent-leftover-branches-and-clone-drift-20261109 (a one-off cleanup of named branches) and branch-prune-merged-exhausts-github-quota-20261112 (a defect in the prune target).\n\nDecision gates.\n- Decide where the step lives: one clause in the close-out rule in `AGENTS.md`, or a `docs/agent/` page it already links. `AGENTS.md` is near its size budget (agent-instruction-budget-headroom), so prefer the linked page unless the owner wants it in the guide.\n- Decide whether `make worktree-remove` should print a hint naming `worktree-finish` when the branch's pull request has merged, or stay silent. Do not change what it deletes without an owner decision.\n- Bulk removal of the existing backlog is a separate, destructive action: it needs the owner's approval in the task that does it, and is not part of this item.\n\nGuardrails.\n- No branch or worktree is deleted under this item except the author's own throwaway test branch.\n- The documented step must use the evidence-checked target (`worktree-finish`), never `git branch -D` by hand, and must keep the dry-run default.\n- Agents still never run `git worktree prune` or `gc`.",
   "links": [
@@ -30,6 +35,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "c92f797cbf864bdfa667703ba06e53bb",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-13T18:34:45Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8fcd9c13319d432691b85ec68bb51c3d",
       "session_id": "570099c30e51431ebfbca6042d41ee8f"
     }
   ]
