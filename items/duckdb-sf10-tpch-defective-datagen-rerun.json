@@ -3,6 +3,7 @@
     "The TPC-H SF10 cells are rerun on data without the defect and the new bundles carry no known_defects entry",
     "The analysis for the DuckDB matrix is regenerated, or the old TPC-H SF10 results are marked superseded where they are published"
   ],
+  "context": "Priority raised to high by owner decision on 2026-11-13: making published results easier to read and cite is worth little while most rows are flagged defective, so corpus repair outranks the agent-facing work.",
   "description": "The archived DuckDB version matrix (2026-08-29, ~/Developer/benchmark_runs/duckdb-version-matrix-20260829-sf10 and -v2) has 7 TPC-H SF10 result bundles carrying known_defects `defective-macdbgen-addresses`. Their generated data must not be reused, and the bundles should not be treated as clean results. Regenerate the TPC-H SF10 data with a non-defective generator and rerun those cells, then re-analyze. Recorded as an out-of-scope follow-up of the Polars matrix work.",
   "links": [
     "~/Developer/benchmark_runs/duckdb-version-matrix-20260829-sf10",
@@ -16,6 +17,14 @@
       "op": "create",
       "op_id": "3b0fdf633569461cbdd5f702451553b6",
       "session_id": "1f74fac6df92445cbacc470514ed2645"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-13T16:37:52Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "867c743904904fc5b82b14a20c532ee1",
+      "session_id": "ac67b069b7864c4699843546272d3701"
     }
   ]
 }
