@@ -19775,6 +19775,13 @@
       "status": "open",
       "title": "Make the DataFrame memory guard's refusal message state the threshold it applies"
     },
+    "df-memory-guard-subset-estimate-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Estimate DataFrame memory from the tables a `--queries` subset reads"
+    },
     "df-n-unique-null-semantics": {
       "claim": null,
       "needs": [],

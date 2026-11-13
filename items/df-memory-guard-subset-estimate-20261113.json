@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "For a query subset, the estimate is derived from the tables read, and a test covers a subset, the full benchmark, and an unknown query id (which falls back to the full estimate).",
+    "Measured peak memory for at least three subset runs per engine is recorded in this item and is below the estimate in every case.",
+    "The refusal message says whether the figure is a subset or full-benchmark estimate."
+  ],
+  "description": "Problem. The DataFrame memory guard estimates memory for the whole benchmark at a scale factor (`estimate_memory_required(benchmark, scale_factor, platform)` in `benchbox/core/dataframe/capabilities.py`), so a run of three TPC-DS queries at SF10 is refused with an 18-20 GiB requirement although those queries read a few tables and ran on a 16 GiB host in an earlier measurement. Users must pass `--ignore-memory-warnings`, which also removes protection for runs that really are too large.\n\nOwner decision 2026-11-13: not built with the message fix, because an estimate that is too low could let a run exhaust a shared host. This item exists so the option is not lost.\n\nExpected: when a query subset is selected, the estimate reflects the tables those queries read, with a stated margin, and never falls below a measured floor for the platform.\n\nGuardrails: the guard must stay conservative; validate the estimate against measured peak memory on at least Polars, DataFusion and PySpark before it gates anything. Timings and memory measurements only through `make heavy-run`.",
+  "links": [
+    "benchbox/core/dataframe/capabilities.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-13T18:32:19Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "66e51ffd9c03410781775029f04d0ed0",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}
