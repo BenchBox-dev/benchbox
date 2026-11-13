@@ -4,6 +4,7 @@
     "An edit of the dashboard comment does not start a gate or verdict run and is not taken as a command (tests, plus one live observation on a Theseus PR).",
     "Policy flag documented, default false; enabled for Theseus first, then BenchBox after one observed PR."
   ],
+  "context": "2026-11-13: Released in Theseus v0.2.12 (#80, merged 1a162840, independent SHIP at aed95693; release #82 a9acebe7). Enabled for Theseus (#84, 98e07430) and BenchBox (#4215, 30ad7059). Live observation: Theseus #85, comment 6862596638 posted once with its marker and non-authoritative note. Its issue_comment events ran only the guard jobs (runs 43490962373 and 43490962279: verdict/review and gate/gate skipped). Remaining before finish: one BenchBox PR with findings shows the dashboard table and in-place edit.",
   "description": "Owner decision 2026-11-13: build the sticky dashboard comment (proposal section 8.4 step 3). It is one bot comment at the top of the PR conversation, edited in place after each review, with the current verdict and a table of open findings (severity mark and word, D<n>, title, a link to the thread, or 'no thread').\nKnown costs to design around:\n1. Each edit fires issue_comment, which BenchBox's gate workflow listens to. The gate must ignore edits of this comment (by marker and author) without ignoring real commands.\n2. The comment must never start with a command prefix (`/review`, `Stand-in`, `Dispute:`, `Owner instruction`).\n3. It is non-authoritative: readers, the gate and the digest never parse it, and it says so.\n4. The rule that 'a run with no verdict still posts a review' stays.\nBehind a consumer policy flag, default false.\nGuardrails: Theseus merge rule G7 (hosted SHIP + green checks + independent review of the exact final head); markers, fingerprints and the review-protocol record unchanged; verdict reviews and threads never edited after posting unless this item says otherwise; no owner-only actions; shipped through a Theseus release and the BenchBox and Theseus locks. Editing this one comment is the only allowed edit, and edit detection must not treat it as a review edit.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "d012d848c3cc4761a5834d789045b8bc",
+      "session_id": "88f192edfe954a75a195b192ece667bc"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b89414e427d02d5b37262d82",
+      "at": "2026-11-13T21:09:35Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "eecfa30cbf894245af5368a801d30933",
       "session_id": "88f192edfe954a75a195b192ece667bc"
     }
   ]
