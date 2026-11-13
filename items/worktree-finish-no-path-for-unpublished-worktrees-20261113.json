@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "A worktree created by `make worktree-create`, never pushed, with its tip reachable from the remote and only tool temp files untracked, can be removed through a documented make target with a dry run first.",
+    "The same target refuses when the tip has a commit not on the remote or when tracked files are modified, naming the reason.",
+    "`.tmp/` DuckDB temp storage left by benchmark runs is either cleaned by the run or ignored by the cleanliness check, with the choice recorded."
+  ],
+  "description": "Gap. `make worktree-create` is the required way to make any worktree, including throwaway ones (a baseline checkout for timing, a scratch checkout to reproduce a bug). `make worktree-finish` and `make worktree-reap` only remove a worktree whose branch has a merged pull request: for a branch with none they report `HOLD ... No PRs found on GitHub for branch` and `keep`. A worktree with untracked files is held too, even when the files are tool temp output (684 MB of `duckdb_temp_storage_*.tmp` under `.tmp/` in one case on 2026-11-13). The only remaining route is `git worktree remove --force` and deleting the branch ref by hand, which the agent guide classes as destructive commands needing owner approval each time. Such worktrees therefore accumulate.\n\nExpected: a supported removal path for a worktree that was never published: for example `make worktree-finish UNPUBLISHED=1`, allowed only when the branch has no upstream, its tip is reachable from a ref on the remote (so no commit is lost), and untracked files are limited to known tool temp paths or are listed for confirmation.\n\nGuardrails: never remove a worktree holding commits that exist nowhere else, or tracked modifications. Keep the dry-run default and the expected-head check. The evidence contract in `_project/specs/worktree-lifecycle-evidence-contract.md` governs what proof removal needs; extend it, do not bypass it.",
+  "links": [
+    "scripts/worktree_lifecycle.sh",
+    "scripts/worktree_reap.py",
+    "_project/specs/worktree-lifecycle-evidence-contract.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-13T18:18:34Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "616260d26cea49b09531d915fd61cc7e",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}

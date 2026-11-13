@@ -46160,6 +46160,13 @@
       "status": "done",
       "title": "Let make worktree-create accept the test/ branch prefix or document the allowed set"
     },
+    "worktree-finish-no-path-for-unpublished-worktrees-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Worktree lifecycle tooling has no way to remove a worktree whose branch never had a pull request"
+    },
     "worktree-maintenance-bossmode-adapter": {
       "claim": null,
       "needs": [
