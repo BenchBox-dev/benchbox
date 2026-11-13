@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "A failed-jobs re-run of verify-fast-duration either re-measures or prints that it reused attempt N's timings and how to re-measure.",
+    "A PR that adds no tests reports 0 new tests against the current baseline.",
+    "The speed-factor decision is recorded with the measured runs behind it."
+  ],
+  "context": "Related done items: ci-fast-duration-baseline-20261025, ci-fast-duration-gate-false-block-review-20261027.",
+  "description": "Observed on BenchBox #4172 (2026-11-12, ci run 43254784181), a PR that changes no Python code or tests (lock, two workflow refs, review.yml, one doc, one changelog fragment):\n1. `core` / verify-fast-duration failed: summed ratio 1.343 > 1.30, delta +656 s > 360 s, runner speed factor 1.635.\n2. `gh run rerun --failed` re-ran only the verify job. It read the same fast-junit artifacts and printed identical numbers, so the 're-run once' recovery could not measure anything. Only a full workflow re-run re-measured: ratio 1.042, delta +80 s, speed factor 1.199, pass.\n3. The verdict counted '446 new tests (58.0 s, 38.4 s over allowance)' for a PR that adds none, so the baseline lags develop and every PR is charged for tests other PRs added.\n4. The speed-factor normalisation did not absorb a 1.6x slow runner.\nWork:\n- Make the verify job say plainly when its inputs come from an earlier attempt, and document that only a full re-run re-measures; or make the shard jobs re-run with it.\n- Count as 'new' only tests the PR's own diff adds, or refresh the baseline from develop's newest merged runs.\n- Review whether the speed factor should cap or widen the thresholds when it exceeds about 1.4.\nGuardrails: never weaken the gate for a PR that really slows the tier (the threshold change needs measured runs); heavy-work and test-lock rules apply; changelog fragment if user-visible.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/43254784181"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b89414e427d02d5b37262d82",
+      "at": "2026-11-13T13:25:03Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "11a313e193034e94a2f0f407c24f4ca8",
+      "session_id": "88f192edfe954a75a195b192ece667bc"
+    }
+  ]
+}

@@ -14581,6 +14581,13 @@
       "status": "done",
       "title": "Review the blocking duration gate after 20 measured runs"
     },
+    "ci-fast-duration-gate-rerun-and-baseline-drift-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Fast-tier duration gate: a failed-jobs re-run never re-measures, and a stale baseline charges PRs for other PRs' tests"
+    },
     "ci-fast-duration-gate-slow-runner-margin-20261101": {
       "claim": null,
       "needs": [],
