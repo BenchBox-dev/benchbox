@@ -841,7 +841,7 @@ class TestPrConflictScan:
 
 
 class TestPrConflictScanScope:
-    def _scenario(self, tmp_path: Path, mine_path: str) -> subprocess.CompletedProcess:
+    def _scenario(self, tmp_path: Path, mine_path: str, *, drop_base_ref: bool = False) -> subprocess.CompletedProcess:
         origin = tmp_path / "origin.git"
         origin.mkdir()
         _git("init", "-q", "--bare", "-b", "develop", ".", cwd=origin)
@@ -867,6 +867,8 @@ class TestPrConflictScanScope:
         _git("checkout", "-q", "-b", "mine", cwd=work)
         (work / mine_path).write_text("mine edit\n")
         _commit_all(work, "mine")
+        if drop_base_ref:
+            _git("update-ref", "-d", "refs/remotes/origin/develop", cwd=work)
 
         bin_dir = tmp_path / "bin"
         bin_dir.mkdir()
@@ -892,6 +894,13 @@ class TestPrConflictScanScope:
     @requires_modern_merge_tree
     def test_warns_and_names_the_file_both_branches_changed(self, tmp_path: Path):
         result = self._scenario(tmp_path, "data.txt")
+
+        assert result.returncode == 0, result.stderr
+        assert "textual conflict with PR #7 (other) in data.txt" in result.stdout
+
+    @requires_modern_merge_tree
+    def test_warns_about_every_conflict_when_the_base_branch_cannot_be_resolved(self, tmp_path: Path):
+        result = self._scenario(tmp_path, "mine.txt", drop_base_ref=True)
 
         assert result.returncode == 0, result.stderr
         assert "textual conflict with PR #7 (other) in data.txt" in result.stdout
