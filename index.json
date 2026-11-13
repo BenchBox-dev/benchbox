@@ -31860,17 +31860,12 @@
       "title": "Detect PRs opened without make pr-open's local review"
     },
     "pr-open-conflict-warning-untouched-files-20261112": {
-      "claim": {
-        "expires_at": "2026-11-14T20:30:37Z",
-        "generation": "dd5e6b835cd144d9801c17bb20291ebe",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785"
-      },
+      "claim": null,
       "needs": [
         "batch-rule-followups-serial-20261113"
       ],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "pr-conflict-scan warns about another pull request's conflict with develop as if this pull request caused it"
     },
     "pr-open-fill-branch-name-title-20261017": {
