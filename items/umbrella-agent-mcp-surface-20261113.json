@@ -3,7 +3,7 @@
     "One PR containing both members has merged to develop.",
     "Each member's own acceptance criteria are met on the merged head, with the evidence in the PR."
   ],
-  "context": "Owner decision (2026-11-13): feature branch per group, built by one delegated agent; the session that owns this plan is the only tracker writer. Guardrails: work only in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items are delivered together on one feature branch and one PR, as their umbrella item names (site work: BenchBox-dev/benchbox-site); squash-merged. Add a changelog.d fragment for any user-facing change. No live-cloud runs and no credentials in Git or logs. Heavy work (benchmarks, test tiers) runs only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy (make comment-policy-check). Stop and report instead of widening scope; scope removed during review must be re-homed to a named item or dropped by the owner with a reason.\n\nDelivery note (2026-11-13): implementation is delegated to one agent per branch, working in parallel. The planning session is the only tracker writer and one worker can hold one claim, so this item is claimed and finished at closeout, after its PR merges. Work is in progress; do not take it.",
+  "context": "Owner decision (2026-11-13): feature branch per group, built by one delegated agent; the session that owns this plan is the only tracker writer. Guardrails: work only in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items are delivered together on one feature branch and one PR, as their umbrella item names (site work: BenchBox-dev/benchbox-site); squash-merged. Add a changelog.d fragment for any user-facing change. No live-cloud runs and no credentials in Git or logs. Heavy work (benchmarks, test tiers) runs only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy (make comment-policy-check). Stop and report instead of widening scope; scope removed during review must be re-homed to a named item or dropped by the owner with a reason.\n\nDelivery note (2026-11-13): implementation is delegated to one agent per branch, working in parallel. The planning session is the only tracker writer and one worker can hold one claim, so this item is claimed and finished at closeout, after its PR merges. Work is in progress; do not take it.\n\nCloseout (2026-11-13): delivered by https://github.com/BenchBox-dev/benchbox/pull/4202 (merged to develop as 9f739da8e8) and the documentation change https://github.com/BenchBox-dev/benchbox-site/pull/154 (merged to the site's next branch). Checked on origin/develop: the prompt registry no longer names the five missing tools, and run_benchmark carries seed and iterations. The delivering agent reported: the registry-derived test failed on the old text and passes now; a stdio smoke resolved every name across 12 tools; CLI and MCP produced matching bundles with seed 42 and 2 iterations at scale 0.01; instructions plus tool definitions grew 9.4 percent. For the owner: scripts/verify_mcp_conformance.py passed only with npm 10 on PATH and fails its Inspector pin check under npm 12; CLI and MCP bundles already differ in recorded compression and platform options, unrelated to this change.",
   "description": "Feature-branch umbrella (not itself a change). Members, delivered together on feat/agent-mcp-surface with one PR to develop: mcp-prompts-name-nonexistent-tools-20261112 and mcp-run-benchmark-seed-iterations-20261112. Order on the branch: prompts and instructions first, then seed and iterations.\n\nAfter the PR merges: finish this umbrella, then take and finish each member.",
   "sessions": [
     {
@@ -29,6 +29,14 @@
       "generation": "38198a85a8ca433b9969e2898929c1db",
       "op": "take",
       "op_id": "0ff9f29b0ed144a8a44d55cb0bb33d4e",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-13T19:33:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f264d97457154f8e8a134d648b1a4d30",
       "session_id": "ac67b069b7864c4699843546272d3701"
     }
   ]
