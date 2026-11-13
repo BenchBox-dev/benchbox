@@ -31480,7 +31480,7 @@
       "needs": [],
       "priority": "low",
       "status": "open",
-      "title": "make pr-open warned of a textual conflict in files the pull request does not touch"
+      "title": "pr-conflict-scan warns about another pull request's conflict with develop as if this pull request caused it"
     },
     "pr-open-fill-branch-name-title-20261017": {
       "claim": null,
