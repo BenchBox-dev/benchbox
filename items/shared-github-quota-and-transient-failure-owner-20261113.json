@@ -1,0 +1,28 @@
+{
+  "acceptance": [
+    "A table of REST requests per caller for one working day is recorded on this item, with the method, and names the top three consumers.",
+    "An owner decision among options (a), (b) and (c) is recorded, with any follow-up items created and linked.",
+    "Each of the seven symptom items is either linked from here as still needed, or dropped as merged into another with its unique evidence moved first.",
+    "If option (a) is chosen, the expected saving per day is stated from the measurement, so the follow-up can be checked against it."
+  ],
+  "description": "Between 2026-11-12 and 2026-11-13 separate sessions filed at least seven items for what looks like one cause: several concurrent agent sessions use the same GitHub user (5,000 REST requests per hour, exhausted twice within an hour on 2026-11-12) and the same loaded host, and the tools they call treat a transient failure as final.\n- pr-arm-github-rate-limit-backoff-20261112 and pr-open-and-pr-arm-fail-on-github-rate-limit-20261112: landing targets exit on a rate limit.\n- branch-prune-merged-exhausts-github-quota-20261112: one target spends a request per branch.\n- review-verdict-prepare-fails-on-transient-503-20261112 and theseus-gate-transient-github-timeout-20261113: hosted review jobs fail on one 503 or timeout.\n- tractable-mcp-request-timeouts-20261112 and tractable-mcp-write-timeout-unknown-outcome-20261113: tracker writes outlast the client timeout under load.\nEach item fixes one symptom. None measures who spends the quota, sets a budget, or decides whether sessions should stop sharing one identity. Three duplicates were filed in two days, which is itself a cost of having no owner.\n\nThis item is the analysis and the decision, not the fixes. It ends with a recorded decision and links; the symptom items stay where they are.\n\nDecision gates.\n- Measure before proposing: one working day of REST use per caller (make target or script), taken from `gh api rate_limit` samples and the callers' own logs. `gh api rate_limit` does not count against the quota.\n- Then choose, with the owner: (a) cut calls in the top consumers (conditional requests, GraphQL for batched reads, fewer polls); (b) give agent sessions a separate identity or a GitHub App installation token with its own quota; (c) accept the limit and rely on the backoff items. Option (b) changes credentials and identity, which is owner-only: propose it, do not do it.\n- Decide whether the duplicates should be merged into fewer items once the cause is confirmed.\n\nGuardrails.\n- No credential, token, App or secret is created, rotated or stored under this item, and none is written to Git, logs or the tracker.\n- Commit identity rules are unchanged: a separate API identity must never become a commit author.\n- Measurement must not itself spend meaningful quota or add writes to the tracker store.\n- No check is skipped or made non-blocking to save requests.",
+  "links": [
+    "pr-arm-github-rate-limit-backoff-20261112",
+    "pr-open-and-pr-arm-fail-on-github-rate-limit-20261112",
+    "branch-prune-merged-exhausts-github-quota-20261112",
+    "review-verdict-prepare-fails-on-transient-503-20261112",
+    "theseus-gate-transient-github-timeout-20261113",
+    "tractable-mcp-request-timeouts-20261112",
+    "tractable-mcp-write-timeout-unknown-outcome-20261113"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-13T18:16:29Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ed2f3b9a13584bfc83737d7a7eaa1e96",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    }
+  ]
+}
