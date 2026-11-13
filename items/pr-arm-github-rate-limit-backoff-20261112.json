@@ -4,6 +4,7 @@
     "With the budget exhausted, the outcome line reads as waiting on the rate limit and names the reset time; exit status distinguishes it from a real refusal.",
     "A secondary-rate-limit response (`Retry-After`) is handled the same way."
   ],
+  "context": "2026-11-13, merged from a dropped duplicate (pr-arm-wait-stops-on-transient-github-errors-20261112): the same exit was seen twice more on 2026-11-12 while arming PR #4170 with WAIT=60 and WAIT=90, with 56 and 77 minutes left: `pr-arm: refusing: stopped waiting, the trunk check refuses: the trunk state could not be read: gh run list failed: HTTP 403: API rate limit exceeded`. A third wait on that pull request ended on a server error, not a rate limit: `review-gate: error: cannot read #4170 after 3 attempts: GitHub returned HTTP 503`; a 5xx on any read inside the wait should be treated the same way. The message comes from `scripts/pr_arm.py`. Guardrail to keep: an unreadable trunk or review-gate state must never arm; the change is to keep waiting inside the WAIT budget, and to refuse as today without WAIT or when it runs out. Worth measuring while here: how many REST calls one 3-minute wait cycle makes, since the loop itself spends the shared quota.",
   "description": "Gap seen three times on 2026-11-12 (PR #4169 twice, PR #4175 once). While waiting, `pr-arm` calls `gh run list` for the trunk check; when the account's REST quota is exhausted (several agent sessions share one user) it prints `trunk-arm-gate: refusing: gh run list failed: HTTP 403: API rate limit exceeded` and exits non-zero with most of the `WAIT` budget unused. The reset time is known (`gh api rate_limit` does not count against the quota) and was 3 minutes away in the first case. Each caller then has to notice, compute the reset and start again, which is the hand-written loop the guide forbids.\n\nExpected: within the `WAIT` budget, a 403 rate-limit response is treated as waiting, not refusal: sleep until the reported reset (bounded by the remaining budget), then continue. Outside the budget, exit with an outcome that names the reset time.\n\nGuardrails: never treat an unreadable trunk state as passing; arming still requires a successful read. No retry on other 4xx responses. `scripts/pr_arm.py` and `scripts/trunk_revert.py` currently contain no rate-limit handling.",
   "links": [
     "scripts/pr_arm.py",
@@ -17,6 +18,14 @@
       "op": "create",
       "op_id": "e048cc71e85a43a1943d4beff01e6972",
       "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-13T18:11:56Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f599ed20870340b291d59abe27adab1d",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
     }
   ]
 }
