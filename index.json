@@ -12825,6 +12825,13 @@
       "status": "open",
       "title": "Feature batches cannot run members as subagents of the leader without overriding the identity rule"
     },
+    "batch-member-remerge-recheck-cost-20261112": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "In a feature batch every pending member must re-merge and re-run its full check after each other member lands"
+    },
     "batch-member-side-tooling-20261101": {
       "claim": null,
       "needs": [

@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "A batch of three independent members lands with one check per member, or `docs/agent/batch-feature-delivery.md` explains with a concrete failure case why each must re-check.",
+    "If the rule is relaxed, a test shows a member with an overlapping scope or an implementation edge is still refused until it re-checks."
+  ],
+  "description": "Process cost observed on batch `df-distinct-remediation` (2026-11-12, three members with disjoint scopes and no implementation edges). After the first member landed, `make batch-land` refused the second with `the integration head moved since the member synced`; the member had to merge the integration branch and re-run `make batch-member-check` (preflight plus mapped tests) although no file it touched had changed. The third member repeated this after the second. With N independent members that is on the order of N squared member checks, each taking the host test lock, and each needs the member session to be revived.\n\nThe rule protects against a member being checked on a tree that differs from what lands. For members whose frozen scopes do not overlap and whose mapped tests do not cover the newly landed files, the re-check verifies nothing new; the leader already re-runs overlap checks from receipts at landing and every member's command at final evidence.\n\nExpected: either landing accepts a member whose check ran on an older recorded integration head when the intervening landings are outside its scope and outside its mapped tests' inputs (merging at landing, with the existing tree-equality and overlap checks), or the protocol document states why the re-check is required even then.\n\nGuardrails: batch-loop changes are delivered serially and cannot use a batch to certify themselves. Do not weaken the rule for overlapping scopes or for members with implementation edges. Final evidence must still run every member's command on the final tree.",
+  "links": [
+    "docs/agent/batch-feature-delivery.md",
+    "scripts/batch_integration.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-13T18:18:18Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "44140b6e001c40a68cb3f571b0475c73",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}
