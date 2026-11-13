@@ -5,7 +5,7 @@
       "category": "before-you-upgrade",
       "breaking": true,
       "lead": "benchbox compare exit codes",
-      "text": "benchbox compare now exits 3 when a regression exceeds --fail-on-regression and 4 when the results cannot be compared, in both result-file mode and platform-run mode; exit 1 is left for errors such as a missing or unreadable result file.",
+      "text": "benchbox compare now exits 3 when a regression exceeds --fail-on-regression (a result-file comparison) and 4 when the results cannot be compared (different variants or timing modes), in both result-file mode and platform-run mode; exit 1 is left for errors such as a missing or unreadable result file.",
       "details": [
         "Exit codes: 0 success, 1 error, 2 usage error, 3 regression over threshold, 4 not comparable (different variants or timing modes). Codes 75 to 79 belong to the heavy-work host lock.",
         "A script that treated exit 1 as 'regression' must now test for 3, and may treat 4 as 'inputs not comparable'. A pipeline step that fails on any non-zero status is unaffected.",
