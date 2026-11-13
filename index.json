@@ -14131,17 +14131,12 @@
       "title": "Derive bundle validator KNOWN_PLATFORMS from the platform registry"
     },
     "bundle-record-host-load-20261113": {
-      "claim": {
-        "expires_at": "2026-11-14T21:33:24Z",
-        "generation": "7e4a6a75316847deb8091bd16988a1c0",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
-      },
+      "claim": null,
       "needs": [
         "umbrella-cli-ci-contract-20261113"
       ],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Write the host-load snapshot the run already takes into the result bundle, and add a start sample"
     },
     "bundle-schema-and-run-cli": {
