@@ -11315,6 +11315,15 @@
       "status": "done",
       "title": "Decide and enforce a policy for agent attribution footers on GitHub comments and PR bodies"
     },
+    "agent-demand-signals-baseline-20261113": {
+      "claim": null,
+      "needs": [
+        "site-static-result-pages-permalink-200-20261112"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Measure real demand from agents with free signals before building more agent-facing work"
+    },
     "agent-identity-hook-misreports-failing-check": {
       "claim": null,
       "needs": [],

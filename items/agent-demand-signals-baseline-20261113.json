@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "The record states each signal with its date range and source, or says plainly that access was not available.",
+    "It recommends unblock, keep blocked or drop for each of the three blocked items, with the number that supports it.",
+    "It states the baseline taken on 2026-11-13: about 393 PyPI downloads in a month, three issues ever from outside contributors, and no benchbox.dev page in a comparison search."
+  ],
+  "context": "No paid model calls and no scored agent sessions under this item. Guardrails: work only in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items are delivered together on one feature branch and one PR, as their umbrella item names (site work: BenchBox-dev/benchbox-site); squash-merged. Add a changelog.d fragment for any user-facing change. No live-cloud runs and no credentials in Git or logs. Heavy work (benchmarks, test tiers) runs only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy (make comment-policy-check). Stop and report instead of widening scope; scope removed during review must be re-homed to a named item or dropped by the owner with a reason.",
+  "description": "Problem: nothing shows whether assistants or coding agents reach BenchBox. A scored probe was planned and dropped: its thresholds could pass or fail by chance, and it would have run before the result permalinks were fixed.\n\nOutcome: a short record of free demand signals, taken six to eight weeks after the static result pages ship: search impressions and clicks for /result-summaries/ and /results/r/ pages (Search Console or Bing Webmaster Tools), GitHub traffic referrers that are assistants (for example chatgpt.com, perplexity.ai, claude.ai), and PyPI downloads by installer and system. The record ends with a recommendation on each blocked item: site-summary-pages-comparison-context-20261112, publish-result-bundle-json-schema-20261112, site-llms-txt-and-markdown-docs-20261113.\n\nOwner input needed: access to Search Console or Bing Webmaster Tools and to the repositories' traffic pages.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-13T16:36:25Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "03013cec36e34833b2d7720f36961bb0",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}
