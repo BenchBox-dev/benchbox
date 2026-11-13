@@ -15186,6 +15186,15 @@
       "status": "done",
       "title": "Fix --platform <name>:<mode> availability check (clickhouse:local reported as missing dependencies)"
     },
+    "cli-results-integrity-validate-command-20261112": {
+      "claim": null,
+      "needs": [
+        "compare-exit-codes-distinct-outcomes-20261112"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Expose the result integrity validator in the CLI"
+    },
     "cli-test-coverage-enhancement-to-80": {
       "claim": null,
       "needs": [],
