@@ -58,6 +58,19 @@ class _Scope:
                 self._columns[ref] = self._columns_of(source.name.lower())
         return self._columns[ref]
 
+    def owner_of(self, name: str) -> str | None:
+        owners = []
+        for ref in self.refs:
+            columns = self._columns_for(ref)
+            if columns is None:
+                return None
+            if name.lower() in columns:
+                owners.append(ref)
+        return owners[0] if len(owners) == 1 else None
+
+    def source_name(self, ref: str) -> str:
+        return self._sources[ref].alias_or_name
+
     def tables_of(self, predicate: exp.Expr) -> set[str]:
         tables: set[str] = set()
         for column in predicate.find_all(exp.Column):
@@ -218,4 +231,30 @@ def reassign_join_predicates(expression: exp.Expr, columns_of: ColumnsOf) -> exp
             _reassign(select, columns_of)
         except _Unresolved:
             continue
+    return expression
+
+
+def _qualify_window_columns(select: exp.Select, columns_of: ColumnsOf) -> None:
+    from_ = select.args.get("from_")
+    joins = select.args.get("joins") or []
+    if not from_ or not joins or not isinstance(from_.this, (exp.Table, exp.Subquery)):
+        return
+    if not all(isinstance(join.this, (exp.Table, exp.Subquery)) for join in joins):
+        return
+    windows = [window for window in select.find_all(exp.Window) if window.parent_select is select]
+    if not windows:
+        return
+    scope = _Scope([from_.this] + [join.this for join in joins], columns_of)
+    for window in windows:
+        for column in list(window.find_all(exp.Column)):
+            if column.table or column.parent_select is not select or isinstance(column.this, exp.Star):
+                continue
+            owner = scope.owner_of(column.name)
+            if owner is not None:
+                column.set("table", exp.to_identifier(scope.source_name(owner)))
+
+
+def qualify_join_window_columns(expression: exp.Expr, columns_of: ColumnsOf) -> exp.Expr:
+    for select in expression.find_all(exp.Select):
+        _qualify_window_columns(select, columns_of)
     return expression
