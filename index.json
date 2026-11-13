@@ -26817,6 +26817,16 @@
       "status": "done",
       "title": "Secure remote MCP with authentication, tenant isolation, quotas, and admission control"
     },
+    "mcp-instructions-carry-methodology-20261112": {
+      "claim": null,
+      "needs": [
+        "mcp-prompts-name-nonexistent-tools-20261112",
+        "benchmark-methodology-page-20261112"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Make the MCP server instructions state what a run supports and require validation"
+    },
     "mcp-job-ownership-cancellation-fencing": {
       "claim": null,
       "needs": [
