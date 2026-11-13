@@ -4,7 +4,7 @@
     "A worktree whose only pull request is closed and unmerged gets its own verdict, and there is a documented command to remove it that states what unmerged commits will be lost.",
     "The nine worktrees ambiguous on 2026-11-12 are each removed or recorded as intentionally kept."
   ],
-  "context": "2026-11-13: with the owner's approval the worktree and branch for closed draft #4037 (BenchBox.wt-fix-batch-evidence-develop-ci, head 6643673b8e, still reachable as refs/pull/4037/head) were removed by hand. Eight ambiguous worktrees remain.",
+  "context": "2026-11-13: with the owner's approval the worktree and branch for closed draft #4037 (BenchBox.wt-fix-batch-evidence-develop-ci, head 6643673b8e, still reachable as refs/pull/4037/head) were removed by hand. Eight ambiguous worktrees remain.\n\nCause of 'malformed': lifecycle metadata was created correctly, but the branch was later renamed (git branch -m) so the recorded benchbox.worktree.branch no longer matched the checked-out branch; read_metadata treated that alone as malformed. Fix in PR (branch fix/prune-reap-local-proof): a lone branch mismatch is now provenance 'renamed' and passes finish/reap; closed-unmerged-only worktrees get verdict 'abandoned'. Ambiguous worktrees at 2026-11-13, none touched (other sessions own them): wt-theseus-0.2.6 (branch chore/theseus-0.2.7, renamed, 3 commits ahead of origin/develop, clean, owned by a session) - becomes classifiable after fix; wt-windows-leg-xdist (ci/windows-leg-xdist-workers, renamed, 1 commit ahead, clean, owned) - same; wt-ci-release-uat-dryrun (ci/release-uat-dryrun-9, renamed from ci/release-uat-dryrun, clean) - same; wt-qip-3820/3824/3826 are detached HEAD (3/8/6 commits ahead of origin/develop, clean) - intentionally ambiguous, need owner decision; wt-tm-mocker is no longer a registered worktree. Third acceptance line (each removed or recorded as intentionally kept) is NOT fully met: the detached qip-* and the renamed ones still exist.",
   "description": "make worktree-reap on 2026-11-12 classed 9 of 79 worktrees as ambiguous and will never remove them. Most report \"Worktree lifecycle provenance is 'malformed'; only managed worktrees can be finished\" (for example BenchBox.wt-theseus-0.2.6, BenchBox.wt-tm-mocker, BenchBox.wt-windows-leg-xdist). One, BenchBox.wt-fix-batch-evidence-develop-ci, belongs to draft PR #4037, which was closed without merging because #4038 and #4048 superseded it; the tool only recognises a merged pull request, so a deliberately abandoned branch stays forever. An earlier triage item (worktree-reap-ambiguous-triage-20261023) cleared the ambiguous set once by hand, and the set has grown back. The same run kept 47 worktrees with no merged pull request; some of those are stale too, but the tool cannot tell.",
   "links": [
     "scripts/worktree_reap.py",
@@ -25,6 +25,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "7b3c0f1d4e354e76bae9cfb408ed2be4",
+      "session_id": "8e07c6e3a10b49bb94ae7e31664ce4b9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a250daff95b91a4eb6cd2504",
+      "at": "2026-11-13T18:46:30Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e185229ce80f427f8e3641450ca323fa",
       "session_id": "8e07c6e3a10b49bb94ae7e31664ce4b9"
     }
   ]
