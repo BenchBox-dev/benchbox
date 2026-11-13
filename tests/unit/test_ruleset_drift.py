@@ -358,7 +358,7 @@ def test_token_stdin_is_forwarded_to_all_github_queries(monkeypatch: pytest.Monk
     )
 
     assert ruleset_drift_check.main(["--token-stdin"]) == 1
-    assert seen == ["stdin-token"] * 8
+    assert seen == ["stdin-token"] * 10
 
 
 def _http_error(code: int) -> urllib.error.HTTPError:
