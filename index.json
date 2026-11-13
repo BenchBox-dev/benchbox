@@ -12859,7 +12859,7 @@
         "batch-doc-shared-identity-statements-unverified-20261112"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "batch-land cannot detect a claim or prepare made by a member that shares the leader's identity"
     },
     "batch-load-hardening-umbrella-20261106": {
