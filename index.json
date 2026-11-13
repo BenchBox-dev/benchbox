@@ -12990,6 +12990,13 @@
       "status": "done",
       "title": "Umbrella: result-validity feature batch"
     },
+    "batch-rule-followups-serial-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Deliver the serial follow-ups to the subagent-member rule: loop doc pull request and landing-tooling pull request"
+    },
     "batch-scope-cannot-be-amended-forces-abort-20261111": {
       "claim": null,
       "needs": [],
