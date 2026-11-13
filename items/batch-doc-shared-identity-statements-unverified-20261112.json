@@ -4,7 +4,7 @@
     "A refuted statement is corrected in `docs/agent/batch-feature-delivery.md`; a confirmed one is left as is.",
     "No write reaches the `todo-state` branch of the project store during the test."
   ],
-  "description": "`docs/agent/batch-feature-delivery.md` (section 'Two layers', changed in PR #4170) makes two claims that were inferred and never exercised:\n1. 'Leaders that share one identity can claim each other's members.' Inferred from PR #3957, which reports four leaders registering the same owner, and from the tracker treating the owner as an identity. Not tested against tractable 1.1.1.\n2. A `prepare` made by a shared-identity member appears in the batch's integration log and is therefore treated as the leader's by `_check_member_writes`. Inferred from the exemption built from `integration_log` entries of kind `prepare`; whether a member-made prepare is logged that way was not tested.\n\nGuardrail: test against a throwaway local state remote, never the project's tracker store.",
+  "description": "`docs/agent/batch-feature-delivery.md` (section 'Two layers', changed in PR #4170) makes two claims that were inferred and never exercised:\n1. 'Leaders that share one identity can claim each other's members.' Inferred from PR #3957, which reports four leaders registering the same owner, and from the tracker treating the owner as an identity. Not tested against tractable 1.1.1.\n2. A `prepare` made by a shared-identity member appears in the batch's integration log and is therefore treated as the leader's by `_check_member_writes`. Inferred from the exemption built from `integration_log` entries of kind `prepare`; whether a member-made prepare is logged that way was not tested.\n\nGuardrail: test against a throwaway local state remote, never the project's tracker store.\n\nDecision gates.\n- Record the tractable version tested. If the vendored wheel has moved since 1.1.1, test the pinned version and say so.\n- A refuted statement is a doc defect: correct it in a serial pull request (the file is the batch protocol, so no registered batch). If statement 2 is refuted, also update the description of batch-land-shared-identity-claim-detection-20261112, whose premise it is.\n- If a statement cannot be tested without owner credentials or a second machine, stop and report what is missing; do not mark it confirmed from reading.",
   "links": [
     "docs/agent/batch-feature-delivery.md",
     "https://github.com/BenchBox-dev/benchbox/pull/4170"
@@ -16,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "d884d4e9c0874b36bd173306c06c0436",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-13T18:12:39Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "888d9707918f4c67bc53cb0fc31d9774",
       "session_id": "570099c30e51431ebfbca6042d41ee8f"
     }
   ]
