@@ -228,3 +228,9 @@ class TestUatMatrixStillRuns:
             billable = assess_platform(docker_assets.platform_cli_selector(platform)).billable
             argv = matrix.benchbox_run_argv(platform, "tpch", 0.01)
             assert ("--acknowledge-billable-platform" in argv) == billable, platform
+
+
+def test_legacy_clickhouse_cloud_selector_is_billable():
+    assert assess_platform("clickhouse:cloud").billable
+    assert not assess_platform("clickhouse:local").billable
+    assert not assess_platform("clickhouse:server").billable

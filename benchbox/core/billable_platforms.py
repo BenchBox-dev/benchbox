@@ -53,14 +53,13 @@ def refusal_message(assessment: BillableAssessment) -> str:
 
 
 def _canonical_platform(platform: str) -> tuple[str, str | None]:
-    from benchbox.core.platform_manifest import get_all_platform_aliases
-    from benchbox.platforms.clickhouse.deployment_mode import CLICKHOUSE_LEGACY_SELECTOR_MAP
+    from benchbox.core.platform_manifest import PLATFORM_MANIFEST_BY_KEY, get_all_platform_aliases
 
     key = platform.strip().lower()
-    if key in CLICKHOUSE_LEGACY_SELECTOR_MAP:
-        return CLICKHOUSE_LEGACY_SELECTOR_MAP[key], None
     base, separator, mode = key.partition(":")
     base = get_all_platform_aliases().get(base, base)
+    if separator and f"{base}-{mode}" in PLATFORM_MANIFEST_BY_KEY:
+        return f"{base}-{mode}", None
     return PlatformRegistry.resolve_platform_name(base), (mode if separator else None)
 
 
