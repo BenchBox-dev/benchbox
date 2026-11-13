@@ -13150,9 +13150,7 @@
     },
     "benchbox-residual-oracle-names-20261106": {
       "claim": null,
-      "needs": [
-        "theseus-v025-review-convergence-20261107"
-      ],
+      "needs": [],
       "priority": "medium",
       "status": "open",
       "title": "Retire the oracle names BenchBox still uses after its migration to Theseus review-* names"
