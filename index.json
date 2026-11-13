@@ -2992,7 +2992,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-df-platform-followups",
-      "lifecycle": "active",
+      "lifecycle": "completed",
       "members": [
         "df-memory-guard-refusal-message-and-subset-estimate-20261112",
         "df-write-primitives-sketch-opt-in-20261112",
@@ -20186,15 +20186,10 @@
       "title": "Coordinate the DataFrame platform follow-ups batch (df-platform-followups)"
     },
     "df-platform-name-comparison-guard-20261112": {
-      "claim": {
-        "expires_at": "2026-11-14T20:46:21Z",
-        "generation": "a221c778fdb54b56b545f623c53d3374",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Stop DataFrame query code comparing `ctx.platform` with string literals"
     },
     "df-q21-multi-supplier-min-max": {
