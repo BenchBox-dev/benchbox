@@ -180,7 +180,9 @@ class TestServerInstructionsCarryMethodology:
     def test_scale_wording_follows_the_subscale_policy(self):
         instructions = " ".join((_local_server().instructions or "").split())
 
-        assert "below scale factor 1 are unofficial subscale results and remain ranked" in instructions
+        assert "below scale factor 1 are unofficial subscale results: they remain ranked, but never as official" in (
+            instructions
+        )
         assert not re.search(r"cannot be ranked|not a ranking|not ranked|unranked", instructions, re.IGNORECASE)
 
     def test_run_benchmark_description_requires_validation_and_comparability(self):

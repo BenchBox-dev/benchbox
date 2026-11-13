@@ -179,7 +179,8 @@ iterations (default 3). Both are reported in the response mcp_metadata.
 Before reporting any run, call validate_results(result_file="<result_file>") and report its WARN and FAIL findings.
 Compare two results only when their benchmark, scale, phase, configuration, tuning, hardware and evidence are
 compatible; a shared benchmark name alone is not enough.
-TPC-H and TPC-DS runs below scale factor 1 are unofficial subscale results and remain ranked.
+TPC-H and TPC-DS runs below scale factor 1 are unofficial subscale results: they remain ranked, but never as
+official results.
 
 On an authenticated remote server (remote mode only), run_benchmark does not execute; queue work with
 start_benchmark, then read get_benchmark_status and get_benchmark_result.
