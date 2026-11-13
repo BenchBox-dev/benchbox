@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Rate measured with a loop of the cell on x86 CI",
+    "Cause identified (stale chdb session or path reuse, fork after mutex init, or a chdb bug) and fixed or reported upstream"
+  ],
+  "description": "Trunk UAT 43451522754 (91d357a1) attempt 1: clickhouse-local read_primitives 0.01 failed in 4 s with 'Failed to create connection: Code: 36. DB::Exception: Error initializing EmbeddedServer: . (BAD_ARGUMENTS)' and 'Load job load table default.orders failed: std::system_error recursive_mutex lock failed: Invalid argument (ASYNC_LOAD_WAIT_FAILED)'. The same cell passed at 131c0b76, and no clickhouse-local code changed in between.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a4419e6ace05ac5a296d594b",
+      "at": "2026-11-13T17:34:53Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "675c30db76874be8b93ab8f3c1182ed0",
+      "session_id": "7f2d8583a7d94300804da984b061b91c"
+    }
+  ]
+}
