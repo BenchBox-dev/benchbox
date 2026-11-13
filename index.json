@@ -20249,15 +20249,10 @@
       "title": "Add DataFrame execution support to Transaction Primitives benchmark"
     },
     "df-write-primitives-sketch-opt-in-20261112": {
-      "claim": {
-        "expires_at": "2026-11-14T20:46:07Z",
-        "generation": "0c84f409b8a945dd84a47d5d16f5d92a",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Sketch operations cannot be enabled in the DataFrame write-primitives workload on DuckDB 2.x"
     },
     "dfparity-n01-q66-value-mismatch": {
