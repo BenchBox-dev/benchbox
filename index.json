@@ -12728,7 +12728,9 @@
     },
     "batch-land-shared-identity-claim-detection-20261112": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "batch-doc-shared-identity-statements-unverified-20261112"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "batch-land cannot detect a claim or prepare made by a member that shares the leader's identity"

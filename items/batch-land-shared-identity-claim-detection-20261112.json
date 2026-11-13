@@ -5,7 +5,7 @@
     "If tightened: re-landing after a failed overlap rerun, a `merged-unprepared` resume, a dependent member's pre-landing take, and a landing after `recover_batch_owner` all still pass, each covered by a test.",
     "The residual-risk sentence in `docs/agent/batch-feature-delivery.md` matches the guard's behaviour after the change."
   ],
-  "description": "Since 2026-11-12 a batch member may run as a subagent of its leader, so it shares the leader's tractable identity. `_check_member_writes` in `scripts/batch_integration.py` exempts every `take`, `release`, `renew` and `recover` (`LEADER_MEMBER_OPS`) and every `prepare` found in the batch's integration log, without checking who made it. A subagent member that breaks its no-tracker-writes instruction with one of those operations is therefore not refused at landing. `docs/agent/batch-feature-delivery.md` states this as an accepted residual risk. No such write has been observed; the audit in PR #3957 found none in four batches.\n\nIdea to evaluate, not yet a decision: an independent member should have no `take` before its first landing and a dependent member exactly one, so an unexpected claim in the window could be refused. This was left out of the 2026-11-12 change because it is untested against re-landing, `merged-unprepared` recovery, and owner recovery, and the same guard already needed a follow-up fix (#3976).\n\nDecision gate: first decide whether the risk justifies more batch-only machinery; the ADR of 2026-11-01 records that such machinery caused the aborts that made the mode opt-in. Dropping this item with that reason is a valid outcome.",
+  "description": "Since 2026-11-12 a batch member may run as a subagent of its leader, so it shares the leader's tractable identity. `_check_member_writes` in `scripts/batch_integration.py` exempts every `take`, `release`, `renew` and `recover` (`LEADER_MEMBER_OPS`) and every `prepare` found in the batch's integration log, without checking who made it. A subagent member that breaks its no-tracker-writes instruction with one of those operations is therefore not refused at landing. `docs/agent/batch-feature-delivery.md` states this as an accepted residual risk. No such write has been observed; the audit in PR #3957 found none in four batches.\n\nIdea to evaluate, not yet a decision: an independent member should have no `take` before its first landing and a dependent member exactly one, so an unexpected claim in the window could be refused. This was left out of the 2026-11-12 change because it is untested against re-landing, `merged-unprepared` recovery, and owner recovery, and the same guard already needed a follow-up fix (#3976).\n\nDecision gate: first decide whether the risk justifies more batch-only machinery; the ADR of 2026-11-01 records that such machinery caused the aborts that made the mode opt-in. Dropping this item with that reason is a valid outcome.\n\nDepends on batch-doc-shared-identity-statements-unverified-20261112: the premise that a member-made `prepare` is exempt because it appears in the integration log is untested until that item reports.\n\nGuardrails.\n- This changes the batch loop, so it is delivered serially, never through a registered batch.\n- No existing refusal in `_check_member_writes` or `land_member` is loosened, and `ACCEPT_WRITES` keeps working for a reviewed write.\n- Tests use the repository's fake tracker (`tests/unit/scripts/batch_loop_world.py`) or a disposable state remote; none writes to the project store.\n- If the owner decides to accept the risk, drop this item with that decision as the reason; do not leave it open.",
   "links": [
     "scripts/batch_integration.py",
     "docs/agent/batch-feature-delivery.md",
@@ -19,6 +19,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "efe68ee7b0cb44bc944d4c4fa1d9566e",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-13T18:12:31Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "fcd41171e7324571a084efce65e4293b",
       "session_id": "570099c30e51431ebfbca6042d41ee8f"
     }
   ]
