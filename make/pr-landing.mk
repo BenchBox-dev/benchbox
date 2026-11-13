@@ -451,6 +451,7 @@ pr-refresh:
 pr-conflict-scan:
 	@CURRENT="$(BRANCH)"; \
 	[ -n "$$CURRENT" ] || CURRENT=$$(git branch --show-current); \
+	mine=$$(git diff --name-only "$$(git merge-base HEAD origin/develop)" HEAD 2>/dev/null); \
 	gh api --method GET --paginate "repos/$(or $(REPO),BenchBox-dev/benchbox)/pulls?base=develop&state=open&per_page=100" \
 		--jq '.[] | "\(.number) \(.head.ref)"' 2>/dev/null | \
 	while read num branch; do \
@@ -459,7 +460,8 @@ pr-conflict-scan:
 		git rev-parse --verify --quiet "origin/$$branch^{commit}" >/dev/null || continue; \
 		out=$$(git merge-tree --write-tree --name-only HEAD "origin/$$branch" 2>/dev/null); \
 		[ $$? -eq 1 ] || continue; \
-		files=$$(printf '%s\n' "$$out" | awk 'NR>1 && NF==0{exit} NR>1{printf "%s%s", sep, $$0; sep=", "}'); \
+		files=$$(printf '%s\n' "$$out" | awk -v mine="$$mine" 'BEGIN{n=split(mine,m,"\n"); for(i=1;i<=n;i++) own[m[i]]=1} NR>1 && NF==0{exit} NR>1 && ($$0 in own){printf "%s%s", sep, $$0; sep=", "}'); \
+		[ -n "$$files" ] || continue; \
 		echo "  ⚠ textual conflict with PR #$$num ($$branch) in $$files — coordinate before landing"; \
 	done; true
 

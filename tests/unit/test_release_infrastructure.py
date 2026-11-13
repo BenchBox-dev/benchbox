@@ -3,6 +3,7 @@
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
 import itertools
+import os
 import re
 import subprocess
 import sys
@@ -837,6 +838,68 @@ class TestPrConflictScan:
 
         assert "<<<<<<<" in legacy
         assert not any(line.startswith("<<<<<<<") for line in legacy.splitlines())
+
+
+class TestPrConflictScanScope:
+    def _scenario(self, tmp_path: Path, mine_path: str) -> subprocess.CompletedProcess:
+        origin = tmp_path / "origin.git"
+        origin.mkdir()
+        _git("init", "-q", "--bare", "-b", "develop", ".", cwd=origin)
+        work = tmp_path / "work"
+        _init_repo(work)
+        _git("checkout", "-q", "-b", "develop", cwd=work)
+        _git("remote", "add", "origin", str(origin), cwd=work)
+        for name in ("mine.txt", "data.txt"):
+            (work / name).write_text("".join(f"line{i}\n" for i in range(1, 6)))
+        _commit_all(work, "base")
+        _git("push", "-q", "origin", "develop", cwd=work)
+
+        _git("checkout", "-q", "-b", "other", cwd=work)
+        (work / "data.txt").write_text("other edit\n")
+        _commit_all(work, "other")
+        _git("push", "-q", "origin", "other", cwd=work)
+
+        _git("checkout", "-q", "develop", cwd=work)
+        (work / "data.txt").write_text("develop edit\n")
+        _commit_all(work, "develop advances")
+        _git("push", "-q", "origin", "develop", cwd=work)
+
+        _git("checkout", "-q", "-b", "mine", cwd=work)
+        (work / mine_path).write_text("mine edit\n")
+        _commit_all(work, "mine")
+
+        bin_dir = tmp_path / "bin"
+        bin_dir.mkdir()
+        gh = bin_dir / "gh"
+        gh.write_text("#!/bin/sh\necho '7 other'\n")
+        gh.chmod(0o755)
+        env = {**os.environ, "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}
+        return subprocess.run(
+            ["make", "-s", "-f", str(REPO_ROOT / "make" / "pr-landing.mk"), "pr-conflict-scan", "BRANCH=mine"],
+            cwd=work,
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+
+    @requires_modern_merge_tree
+    def test_branch_stale_against_develop_does_not_warn_about_files_this_branch_leaves_alone(self, tmp_path: Path):
+        result = self._scenario(tmp_path, "mine.txt")
+
+        assert result.returncode == 0, result.stderr
+        assert "textual conflict" not in result.stdout
+
+    @requires_modern_merge_tree
+    def test_warns_and_names_the_file_both_branches_changed(self, tmp_path: Path):
+        result = self._scenario(tmp_path, "data.txt")
+
+        assert result.returncode == 0, result.stderr
+        assert "textual conflict with PR #7 (other) in data.txt" in result.stdout
+
+    def test_pr_open_keeps_the_scan_advisory(self):
+        assert '$(MAKE) -s pr-conflict-scan BRANCH="$$CURRENT" REPO="$$REPOSITORY" || true' in _make_target_recipe(
+            "pr-open"
+        )
 
 
 class TestUATGateReleaseEvidence:
