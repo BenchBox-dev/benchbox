@@ -45391,10 +45391,15 @@
       "title": "Validator rejects DuckDB and ClickHouse Local results for unanonymized tuning statements"
     },
     "umbrella-agent-mcp-surface-20261113": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-14T19:33:33Z",
+        "generation": "38198a85a8ca433b9969e2898929c1db",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Umbrella: MCP fixes for coding agents, one branch and one PR"
     },
     "umbrella-cli-ci-contract-20261113": {
