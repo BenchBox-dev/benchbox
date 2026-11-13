@@ -7,6 +7,16 @@
     "The MCP reference parameter table and the CLI-to-MCP omission list are updated, doc contracts are regenerated, scripts/verify_mcp_conformance.py passes, and a changelog.d fragment is present."
   ],
   "context": "Origin: adversarial review of an agent-facing strategy for BenchBox, 2026-11-12. Owner decisions quoted here were made on that date. Line numbers are hints; re-read the cited file before relying on them.\n\nEvidence: the run_benchmark signature has twelve parameters and no seed or iterations; a search of the tool module finds neither word.\n\nDecision gate (before coding): confirm how the shared runner receives seed and iterations from the CLI and reuse that path; if MCP would need a second code path to set them, stop and report. Check whether this touches a soundness path that needs the external reviewer, and say so in the PR.\n\nVerification rubric: pass only if the CLI-against-MCP equivalence is shown with real bundles from both entry points, at scale 0.01 on a local platform.\n\nRelated: mcp-start-benchmark-nonstandard-scale-note-20261111 is an existing gap between the two run tools; keep the two tools aligned here.\n\nGuardrails: work only in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items are delivered together on one feature branch and one PR, as their umbrella item names (site work: BenchBox-dev/benchbox-site); squash-merged. Add a changelog.d fragment for any user-facing change. No live-cloud runs and no credentials in Git or logs. Heavy work (benchmarks, test tiers) runs only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy (make comment-policy-check). Stop and report instead of widening scope; scope removed during review must be re-homed to a named item or dropped by the owner with a reason.\n\nReview note (2026-11-12): while in this code, record in the PR what the run_benchmark response already says about validation. If it carries no integrity verdict, do not add one here; record it with the tracker's defer tool on this item so the owner can promote or dismiss it.\n\nRevision (2026-11-13), after an independent critique and owner decisions: the dependency on the prompt fix is removed; both ship on the umbrella's branch.\n\nCloseout (2026-11-13): delivered by https://github.com/BenchBox-dev/benchbox/pull/4202 (merged to develop as 9f739da8e8) and the documentation change https://github.com/BenchBox-dev/benchbox-site/pull/154 (merged to the site's next branch). Checked on origin/develop: the prompt registry no longer names the five missing tools, and run_benchmark carries seed and iterations. The delivering agent reported: the registry-derived test failed on the old text and passes now; a stdio smoke resolved every name across 12 tools; CLI and MCP produced matching bundles with seed 42 and 2 iterations at scale 0.01; instructions plus tool definitions grew 9.4 percent. For the owner: scripts/verify_mcp_conformance.py passed only with npm 10 on PATH and fails its Inspector pin check under npm 12; CLI and MCP bundles already differ in recorded compression and platform options, unrelated to this change.",
+  "deferrals": [
+    {
+      "created_at": "2026-11-13T19:34:54Z",
+      "from_item": "mcp-run-benchmark-seed-iterations-20261112",
+      "id": 1,
+      "reason": "The run response carries summary.validation, phases.validation.status and per-query row-count validation, but no PASS/WARN/FAIL verdict from ResultIntegrityValidator, so an agent must call validate_results separately. Left out of the seed and iterations change by design; the owner decides whether to add it.",
+      "resolution": "open",
+      "summary": "MCP run_benchmark returns execution validation but no integrity-validator verdict"
+    }
+  ],
   "description": "Problem: the CLI run command accepts --seed and --iterations, but MCP run_benchmark has neither, so a run made through MCP cannot be repeated exactly or given more measurement iterations.\n\nOwner decision (2026-11-12): expose seed and iterations only, keep the CLI defaults, and report the effective values in the response. Validation mode and tuning stay CLI-only.\n\nOutcome: run_benchmark and the durable start_benchmark accept seed and iterations with the same meaning and defaults as the CLI.\n\nNon-goals: validation mode, tuning, and any change to the platform-option allow-list.",
   "links": [
     "benchbox/mcp/tools/benchmark.py",
@@ -54,6 +64,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "7a45661a70e84b2798591fab572169f5",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-13T19:34:55Z",
+      "client": "omp-coding-agent",
+      "op": "defer",
+      "op_id": "4f9902aed28d446a8a48ca27288b1ee9",
       "session_id": "ac67b069b7864c4699843546272d3701"
     }
   ]
