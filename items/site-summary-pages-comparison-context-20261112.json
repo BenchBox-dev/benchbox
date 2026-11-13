@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "On every platform and benchmark summary page fetched without JavaScript, the main table holds only runs whose status is Ranked, and the excluded section's heading and reason come before its table.",
+    "No result disappears: for each page, ranked rows plus excluded rows equal the previous row count, and every excluded row keeps its numbers and its link.",
+    "The three new columns are populated from results.duckdb for every row, or show an explicit 'not recorded'.",
+    "Each score column states its unit and links to its definition on the methodology page.",
+    "The site build, parity and deploy checks pass, and no artifact under removed_legacy in the Explorer build contract is reintroduced."
+  ],
+  "context": "Origin: adversarial review of an agent-facing strategy for BenchBox, 2026-11-12. Owner decisions quoted here were made on that date. Line numbers are hints; re-read the cited file before relying on them.\n\nEvidence (2026-11-12): on the DuckDB platform page all seven TPC-H scale factor 10 rows read 'Known defective data' and show scores; on the TPC-H benchmark page the scale factor 1 power table has one ranked row. Benchmark pages already sort excluded rows below ranked ones; platform pages do not.\n\nRelated, not duplicated: duckdb-sf10-tpch-defective-datagen-rerun and rerun-cloud-bundles-defective-dbgen replace the defective runs; corpus-tpch-shallow-cohort-replacements-20261018 restores cohort depth. This item changes presentation only.\n\nDecision gate: read the gate ruling first. If the ruling is no-go, do nothing here and ask the owner to drop the item, re-homing the defective-run separation as the gate record proposes. The wording for excluded runs lives in the site repository; reuse it, and stop if changing it would alter ranking policy.\n\nVerification rubric: pass only if the row-count conservation check is run over every summary page and its output is in the PR.\n\nGuardrails: work only in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. One PR per item, squash-merged to develop (site work: one PR in BenchBox-dev/benchbox-site). Add a changelog.d fragment for any user-facing change. No live-cloud runs and no credentials in Git or logs. Heavy work (benchmarks, test tiers) runs only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy (make comment-policy-check). Stop and report instead of widening scope; scope removed during review must be re-homed to a named item or dropped by the owner with a reason.",
+  "description": "Problem: the static summaries under /result-summaries/ are what a non-JavaScript reader sees. Platform pages interleave ranked runs with runs marked 'Known defective data' or unranked, with the caveat in the last column. The tables have no hardware, tuning or trust-label column, and 'Score' has no unit or definition.\n\nOwner decision (2026-11-12): ranked runs stay in the main table; defective and unranked runs move to their own section with the reason stated above the table, and their numbers are kept.\n\nOutcome: each summary page separates ranked from excluded runs, adds execution environment, tuning mode and trust label columns, defines each score with its unit, and places the snapshot date, the comparability rule and the 'Derived from' wording in body text beside the tables.\n\nGate: do not start unless agent-reach-evidence-gate-20261112 ruled go for this item, or the owner overrides in writing on this item.",
+  "links": [
+    "https://benchbox.dev/result-summaries/platforms/duckdb.html",
+    "https://benchbox.dev/result-summaries/benchmarks/tpch.html",
+    "_project/scripts/explorer_pipeline/contract.py",
+    "benchbox/core/results/provenance.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-13T04:04:25Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "32ddc109be4d4f6882be83f06358b682",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}

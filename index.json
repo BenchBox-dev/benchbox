@@ -37846,6 +37846,16 @@
       "status": "open",
       "title": "Serve a static page with HTTP 200 at every published result permalink"
     },
+    "site-summary-pages-comparison-context-20261112": {
+      "claim": null,
+      "needs": [
+        "agent-reach-evidence-gate-20261112",
+        "site-static-result-pages-permalink-200-20261112"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Give the static result summaries the context a reader needs to compare runs"
+    },
     "site-todo-state-scheduled-validation-20261030": {
       "claim": null,
       "needs": [],
