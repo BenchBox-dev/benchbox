@@ -1,13 +1,14 @@
 {
   "acceptance": [
-    "A server bound to `.../benchbox-site.git` answers `expect_store=\"BenchBox-dev/BenchBox\"` with the `E_STATE` gate; a server bound to `.../BenchBox.git` accepts it in any letter case, with or without `.git`.",
-    "A regression test in tractable covers the prefix case and the exact-match case.",
-    "The todo skill text that says the match is a substring is updated to describe the new rule, and BenchBox pins the fixed runtime."
+    "The todo skill in the catalog and its mirror here describe exact `owner/repo` matching; no skill text says substring.",
+    "A session whose tracker server runs older code than the vendored wheel is told so by a documented check, and the check is exercised once with the result recorded here.",
+    "A fresh server answers `expect_store=\"BenchBox-dev/BenchBox\"` on a `benchbox-site` binding with the `E_STATE` gate; the live result is recorded here."
   ],
-  "context": "2026-11-13 13:45: owner decision: a fix pull request is being opened in joeharris76/tractable (branch fix/expect-store-exact-match) with a regression test, and left for the owner to merge and release. This item stays open until the release exists and BenchBox vendors the new wheel.",
-  "description": "Defect, reported from a session in the benchbox-site checkout on 2026-11-12 (not reproduced here). `get_instructions(expect_store=\"BenchBox-dev/BenchBox\")` passed on a server bound to `https://github.com/BenchBox-dev/benchbox-site.git`, because the check is a case-insensitive substring match on the remote and `benchbox-dev/benchbox` is a substring of `benchbox-dev/benchbox-site`. The guard exists to stop writes to the wrong project's tracker; for this pair of repositories it cannot. The session noticed only by reading the bound-store text.\n\nExpected: the check compares the whole `owner/repo` (case-insensitive, optional `.git`), so a sibling repository whose name extends the expected one is refused with the existing gate.\n\nGuardrails: this is a change in the tractable product, not in BenchBox; deliver it there and bump the pinned runtime here. Do not weaken the gate to a warning. Keep accepting a full URL or `owner/repo` form.",
+  "context": "2026-11-13 13:45: owner decision: a fix pull request is being opened in joeharris76/tractable (branch fix/expect-store-exact-match) with a regression test, and left for the owner to merge and release. This item stays open until the release exists and BenchBox vendors the new wheel.\n\n2026-11-13 14:00: a delegated agent sent to open a fix PR in joeharris76/tractable found the fix already on `origin/main` (commit 92872f7, in v1.1.1) and made no change. Verified by this session: the installed 1.1.1 source has the exact-segment comparison; the venv file was written 2026-11-12 08:20:26, after this session's server (pid 35970) started at 08:16:54; a live probe on that server with `expect_store=\"BenchBox-dev/Bench\"` was accepted.",
+  "description": "Finding corrected on 2026-11-13. The `expect_store` substring defect (a server bound to `benchbox-site` accepted `BenchBox-dev/BenchBox`) is already fixed in tractable 1.1.1: `_check_expected_store` in `src/tractable/mcp/resources.py` compares whole trailing path segments, case-insensitively, and `tests/test_mcp_store_report.py::test_check_expected_store_matches_whole_repository_paths` covers the sibling-repository case. BenchBox has vendored 1.1.1 since PR #4144 (2026-11-11), and the global `tractable-mcp` is 1.1.1. No tractable change or release is needed.\n\nWhat is still wrong:\n1. Long-running MCP servers keep the code they started with. A server started on 2026-11-12 08:16 from `_project/scripts/.venv` reports `tool_version` 1.1.0 and still accepted the prefix `BenchBox-dev/Bench` for the store `BenchBox-dev/BenchBox` on 2026-11-13 (the venv was synced to 1.1.1 four minutes after it started). The session that first reported the defect was in the same position. Nothing tells a session that its server is older than the pinned runtime.\n2. `.claude/skills/todo/SKILL.md` still says `The match is a case-insensitive substring of the remote only, so pass the full owner/repo`. The skill source lives in the skills catalog, not in this repository.\n\nExpected: the todo skill text states the exact-match rule (changed in the catalog, then `make skill-sync` here), and a session can tell when its tracker server is older than the pinned runtime (for example `get_instructions` or `show_batch` reporting the running version next to the pinned one, or the skill telling agents to compare `capability.tool_version` with the vendored wheel and ask for a restart).\n\nGuardrails: never hand-edit a skill mirror; change the catalog and sync. Do not restart or kill another session's MCP server.",
   "links": [
-    ".claude/skills/todo/SKILL.md"
+    ".claude/skills/todo/SKILL.md",
+    "_project/scripts/pyproject.toml"
   ],
   "sessions": [
     {
@@ -24,6 +25,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "68dc7e03630542a5bd10582a22fca365",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-13T18:37:38Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "800949ec37dc41b4813a74adcd23a481",
       "session_id": "512d9ad0b25247538901b68a758a6fbb"
     }
   ]
