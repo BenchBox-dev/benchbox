@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Every PySpark SF1 cell has a best-time pair, or is recorded as not runnable with the exact refusal or failure.",
+    "SF10 cells are run on a host that can hold them, or recorded as not run with the host's memory and the guard's stated requirement.",
+    "Each gate has a recorded outcome (kept, changed with the PR, or escalated), with the tables in this item.",
+    "The two timing worktrees are removed when the work ends."
+  ],
+  "context": "Depends on the memory-guard fix so that a refusal states the real threshold; that fix does not lower the requirement, so a quiet host is still needed for PySpark at SF1 (about 3.6 GiB free for a 3.0 GiB estimate).",
+  "description": "Problem. Three merged changes altered how DataFrame queries test for more than one distinct value: TPC-DS Q16/Q94/Q95 min/max (PR #4169), Polars `n_unique()` skipping NULL (PR #4169), and Q21 filtering its per-order aggregates before joining (PR #4196). They were timed at SF1 on Polars 1.44.2 and DataFusion 54.0.0 only (results in `df-distinct-timing-confirmation`). They are unmeasured on PySpark at any scale and on every engine at SF10, because BenchBox's memory guard refused those runs on the 16 GiB development host: PySpark at SF1 with messages such as `~3.0 GB required, but only 2.7 GB available`, and SF10 with an estimate of 18-20 GiB. PySpark took the same code change as the other engines, so a regression there would be in published PySpark numbers unnoticed.\n\nMethod. Compare commit 0eeec0d5bd194ad0b811911ea73004586ed51469 (before PR #4169) with current `develop` in two checkouts made by `make worktree-create`. Alternate checkouts; one warm-up then at least five timed runs a side per round, five rounds; compare best times. Check the 1-minute load average only before each round (the benchmark's own load must not discard a round). Record engine versions and the load seen.\n\nCells: PySpark at SF1 for TPC-DS Q16, Q94, Q95; TPC-H Q21; Data Vault Q21; TPC-Havoc Q21 variants 1 and 4-10. All three engines at SF10 for the same queries, where the host can hold the data.\n\nDecision gates, ratio changed/base on best times: above 1.10 on any cell means the pattern is changed or reverted on every platform (no platform-name branch), keeping the NULL fixes; if no form is within 1.10 on all engines, stop and ask the owner. A change that is neither faster nor slower stays.\n\nGuardrails: timing only through `make heavy-run` after `make heavy-status`; never force admission, skip the test lock, or disable the watchdog without the owner's approval in that task; `--ignore-memory-warnings` likewise needs the owner's approval. Harness scripts are throwaway and not committed; the earlier ones are in ~/Developer/benchmark_runs/df-distinct-remediation/ (timing.py, matrix.py) and point at worktrees that no longer exist. Do not edit SQL text, reference answers, or fixtures.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4169",
+    "https://github.com/BenchBox-dev/benchbox/pull/4196"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-13T18:29:25Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "22303be6353240459fb78c9460dc4eb1",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    }
+  ]
+}

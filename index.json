@@ -19721,6 +19721,15 @@
       "status": "done",
       "title": "make trunk-revert unusable from inside a managed linked worktree"
     },
+    "df-distinct-pyspark-sf10-timing-20261113": {
+      "claim": null,
+      "needs": [
+        "df-memory-guard-refusal-message-and-subset-estimate-20261112"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Time the DataFrame distinct-test changes on PySpark at SF1 and on all engines at SF10"
+    },
     "df-distinct-remediation-umbrella-20261112": {
       "claim": null,
       "needs": [
