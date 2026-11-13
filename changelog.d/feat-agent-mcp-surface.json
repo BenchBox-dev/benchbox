@@ -5,6 +5,11 @@
       "category": "fixed",
       "breaking": false,
       "text": "MCP prompts and server instructions now name only registered tools and real arguments, tell the model to call validate_results before reporting a run, and state when two results are comparable."
+    },
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "MCP run_benchmark and start_benchmark accept seed and iterations with the same meaning and defaults as the CLI --seed and --iterations options, report the effective values in mcp_metadata, and remote servers bound iterations with the new max_iterations policy setting (default 10)."
     }
   ]
 }

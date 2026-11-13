@@ -173,6 +173,9 @@ To capture query execution plans, use the capture_plans parameter:
   run_benchmark(platform="datafusion", benchmark="tpch", capture_plans=True)
 Then inspect plans: get_query_plan(result_file="...", query_id="19")
 
+To repeat a run exactly, pass seed (query parameter generation); iterations sets the power test measurement
+iterations (default 3). Both are reported in the response mcp_metadata.
+
 Before reporting any run, call validate_results(result_file="<result_file>") and report its WARN and FAIL findings.
 Compare two results only when their benchmark, scale, phase, configuration, tuning, hardware and evidence are
 compatible; a shared benchmark name alone is not enough.
