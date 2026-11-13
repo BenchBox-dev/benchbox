@@ -4629,7 +4629,7 @@
         }
       },
       "integration_branch": "feat/member-rule-docs",
-      "integration_head": "3352ffe1a491843b719250dafc8b4fe5772fd18d",
+      "integration_head": "b2f27b3a9e61dca2a4238d3ea3895340f7a08c2e",
       "integration_log": [
         {
           "at": "2026-11-13T18:34:29Z",
@@ -4654,6 +4654,21 @@
           "op_id": "ef384a323a3741fdaee3a155a76113b5",
           "previous_head": "445f7c85540e19a7176291703073c28431130010",
           "seq": 2
+        },
+        {
+          "at": "2026-11-13T19:21:55Z",
+          "changed_files": [
+            "scripts/skill_sync_ci_policy.py",
+            "tests/unit/scripts/test_skill_sync_ci_policy.py"
+          ],
+          "head": "b2f27b3a9e61dca2a4238d3ea3895340f7a08c2e",
+          "kind": "fix",
+          "op_id": "ab86716415f046c98d4dbf15fde2bbfd",
+          "previous_head": "3352ffe1a491843b719250dafc8b4fe5772fd18d",
+          "requires_acceptance": [
+            "catalog-pin-change-sites-undocumented-20261112"
+          ],
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-member-rule-docs",
