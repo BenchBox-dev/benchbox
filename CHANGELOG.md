@@ -46,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - DuckDB loads Vortex and DuckLake natively, and Delta, DuckLake, Iceberg and Vortex fallbacks, Iceberg maintenance, Spark and Hudi ingestion and the DataFusion cursor stay in Arrow.
 - TPC-H RF1 on SingleStore uses `LOAD DATA LOCAL INFILE` inside the timed transaction, and DuckLake keeps its RF1/RF2 declaration.
 - The bundled SQLGlot moves from 30.29.0.1 to 30.31.0.1 (fork commit `945aced55e0e`, upstream v30.31.0).
-- The benchmark listing reports 90 queries for TPC-DS OBT instead of 17, and DataFrame Q21 (TPC-H, Data Vault, TPC-Havoc) uses min/max of the supplier key instead of a distinct count with unchanged results.
+- The benchmark listing reports 90 queries for TPC-DS OBT instead of 17, and DataFrame Q21 (TPC-H, Data Vault, TPC-Havoc) uses min/max of the supplier key instead of a distinct count with unchanged results, filtering the supplier aggregates before the join.
 - Tuned templates carry SF1 evidence versus notuning. DuckDB: TPC-H is a regression (geometric mean ratio 1.0965), TPC-DS a regression through load time (13.6 times), SSB a benefit (0.6687). ClickHouse: TPC-H 0.8230, SSB 0.7484; TPC-DS is unmeasured.
 
 ### Fixed
@@ -57,13 +57,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **SingleStore.** Tables are analyzed after loading, which stops TPC-DS query 24a from hanging; FULL OUTER JOIN and ROLLUP over empty input return expected rows; Parquet loads in 1,000,000-row chunks.
 - **TPC-DS and TPC-H.** Maintenance is reproducible and the run seed reaches it, TPC-H power runs with refresh no longer fail Q13 validation, and TPC-DS power tests on Trino and Presto no longer fail every query with a Cursor error.
 - **Primitives and DataFrames.** Scale factor 1 staging no longer corrupts native memory and crashes DuckDB and SQLite, write and transaction primitives report 112 and 23 operations, Polars distinct counts ignore NULL, and TPC-DS Q16, Q94 and Q95 use one NULL-safe multi-warehouse rule.
-- **QUALIFY translation.** ORDER BY, DISTINCT, LIMIT and OFFSET stay on the outermost SELECT for every dialect without native QUALIFY, so row sets and order match.
+- **QUALIFY translation.** ORDER BY, DISTINCT, LIMIT and OFFSET stay on the outermost SELECT for every dialect without native QUALIFY, so row sets and order match, and QuestDB qualifies window columns over joins.
 - **Validation.** Row-count validation fails a query whose expected count is missing where reference answers exist, and labels queries without reference answers UNVALIDATED. TPC-DI output no longer claims official or compliant status.
 - **Spark.** Validating or recreating a database no longer stops the shared session, and Hudi maintenance supports Spark 3.5, 4.0 and 4.1 with Hudi 1.2.1. Local Spark sizes its driver heap within the heavy-run budget.
 - **Plans and publishing.** Plan companions, `benchbox export`, `benchbox publish` and leak detection redact local paths. Publishing keeps plan keys and fingerprints intact, and staging a run sanitizes a captured plans companion instead of refusing it. DuckDB plans record real join types and sort directions, and Polars plans carry a text fingerprint.
 - **Exports.** Anonymized exports without explicit configuration use the private pseudonym salt, not an empty one.
-- **Platform options and others.** EMR Serverless, Dataproc, Synapse Spark, Fabric Spark, Snowpark Connect, AWS Glue and TimescaleDB honor options they ignored, DuckDB runs write-primitives `MERGE INTO`, throughput runs record worker translations and apply strict translation, FlightData downloads start with the first month processed, and the interactive scale prompt no longer treats ClickBench's single standard scale as fixed.
-- **UAT, VM and workflow.** UAT bring-up verifies container settings, the Linux VM powers off cleanly, `make heavy-run CMD='...'` keeps `$HOME` intact, and removing the `no-auto-merge` label clears the hold check without a new commit.
+- **Platform options and others.** EMR Serverless, Dataproc, Synapse Spark, Fabric Spark, Snowpark Connect, AWS Glue and TimescaleDB honor options they ignored, DuckDB runs write-primitives `MERGE INTO`, throughput runs record worker translations and apply strict translation, and FlightData downloads start with the first month processed and retry short outages.
+- **UAT, VM and workflow.** UAT bring-up verifies container settings, the Linux VM powers off cleanly, `make heavy-run CMD='...'` keeps `$HOME` intact, `benchbox run --quiet` prints failures to stderr, the interactive scale prompt no longer fixes ClickBench at 1.0, and removing the `no-auto-merge` label clears the hold check without a new commit.
 
 ### Security
 
