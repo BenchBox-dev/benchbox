@@ -211,3 +211,20 @@ class TestBundleRecordsAcknowledgement:
         block = _build_execution_from_context(result, {})
 
         assert block["billable_platform_acknowledgement"] == {"acknowledged": True, "source": "cli_flag"}
+
+
+class TestUatMatrixStillRuns:
+    def test_every_matrix_platform_that_is_billable_passes_the_acknowledgement(self):
+        from tests.uat import docker_assets, matrix
+
+        platforms = {
+            *matrix.FAST_NATIVE_PLATFORMS,
+            *matrix.FAST_DOCKER_PLATFORMS,
+            *matrix.SLOW_NATIVE_PLATFORMS,
+            *matrix.SLOW_DOCKER_PLATFORMS,
+            *matrix.LOCAL_SQL_PLATFORMS,
+        }
+        for platform in sorted(platforms):
+            billable = assess_platform(docker_assets.platform_cli_selector(platform)).billable
+            argv = matrix.benchbox_run_argv(platform, "tpch", 0.01)
+            assert ("--acknowledge-billable-platform" in argv) == billable, platform

@@ -20,6 +20,25 @@
         "The findings are the ones the MCP validate_results tool returns for the same input; the repository script _project/scripts/validate_results.py now runs this command.",
         "Directory validation skips submission manifests (*.manifest.json) as well as the other companion files, so a bundle directory is no longer reported with spurious FAILs; the MCP validate_results directory summary changes the same way."
       ]
+    },
+    {
+      "category": "before-you-upgrade",
+      "breaking": true,
+      "lead": "billable platforms need an acknowledgement when non-interactive",
+      "text": "benchbox run and benchbox compare now refuse to start a billable platform (registry category 'cloud' or a managed deployment) in non-interactive mode, exit 6, unless --acknowledge-billable-platform or BENCHBOX_ACKNOWLEDGE_BILLABLE_PLATFORM=1 is set; the local MCP run_benchmark tool refuses them unless the operator started the server with that variable.",
+      "details": [
+        "The check runs before any adapter, credential or connection is used; local and self-hosted platforms and interactive terminal runs are unchanged; --dry-run is exempt.",
+        "The result bundle's execution block records billable_platform_acknowledgement with the acknowledgement source.",
+        "CI jobs and scripts that run Snowflake, BigQuery, Databricks, Redshift and other cloud platforms through the CLI must set the variable or pass the flag. Any caller can set it, and platform credentials in ~/.benchbox/credentials.yaml are stored in plain text."
+      ]
+    },
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "Result bundles now record host load in environment.host_load: a start and an end sample of load average, CPU frequency, available memory and swap, with an explicit null where a value is unavailable; benchbox results validate reports it as an INFO finding.",
+      "details": [
+        "The fields are additive under the current result schema version; bundles without them stay valid."
+      ]
     }
   ]
 }

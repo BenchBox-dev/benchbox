@@ -1324,6 +1324,7 @@ class TestGenerateCliCommandCompleteness:
             "help_topic",
             "concurrency",
             "polars_streaming",
+            "acknowledge_billable_platform",
         }
     )
 

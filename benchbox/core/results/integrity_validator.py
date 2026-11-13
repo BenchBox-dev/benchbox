@@ -200,6 +200,7 @@ class ResultIntegrityValidator:
         self._check_timing_outliers(raw, checks)
         self._check_no_duplicate_executions(raw, checks)
         self._check_load_time_nonzero(raw, benchmark_id, checks)
+        self._check_host_load(raw, checks)
 
         status_counts = dict.fromkeys(CheckStatus, 0)
         for c in checks:
@@ -657,6 +658,21 @@ class ResultIntegrityValidator:
                 "load_time_nonzero",
                 "Load time is non-zero" if load_time else "No load time recorded",
             )
+
+    def _check_host_load(self, raw: dict[str, Any], checks: list[CheckResult]) -> None:
+        environment = raw.get("environment")
+        host_load = environment.get("host_load") if isinstance(environment, dict) else None
+        if not isinstance(host_load, dict):
+            _info(checks, _BELIEVABILITY, "host_load", "Host load not recorded")
+            return
+        parts = []
+        for point in ("start", "end"):
+            sample = host_load.get(point)
+            load = sample.get("load_average") if isinstance(sample, dict) else None
+            parts.append(
+                f"{point} load average " + (", ".join(f"{value:g}" for value in load) if load else "unavailable")
+            )
+        _info(checks, _BELIEVABILITY, "host_load", "; ".join(parts))
 
 
 def _validate_path(path: Path, validator: ResultIntegrityValidator) -> IntegrityReport:

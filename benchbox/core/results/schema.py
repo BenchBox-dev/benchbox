@@ -15,6 +15,7 @@ from benchbox.core.execution_variant import VariantIdError, derive_variant_id, r
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.core.results.environment import (
     build_environment_payload,
+    build_host_load_block,
     build_platform_metadata_payload,
 )
 from benchbox.core.results.execution_variant import execution_engine_payload, gateway_payload
@@ -827,7 +828,7 @@ _EXEC_CTX_TRUTHY = [
     ("strict_plan_capture", "strict_plan_capture", True),
     ("non_interactive", "non_interactive", True),
 ]
-_EXEC_CTX_VALUE = ["validation_mode", "query_subset", "tuning_mode"]
+_EXEC_CTX_VALUE = ["validation_mode", "query_subset", "tuning_mode", "billable_platform_acknowledgement"]
 
 
 def _build_execution_from_context(result: BenchmarkResults, driver_metadata: dict[str, Any]) -> dict[str, Any]:
@@ -1893,10 +1894,15 @@ def _extract_tuning_profile_metadata(result: BenchmarkResults) -> dict[str, Any]
 
 
 def _build_environment_block(result: BenchmarkResults) -> dict[str, Any]:
-    return build_environment_payload(
+    environment = build_environment_payload(
         system_profile=getattr(result, "system_profile", None),
         execution_environment=getattr(result, "execution_environment", None),
     )
+    metadata = result.execution_metadata if isinstance(result.execution_metadata, Mapping) else {}
+    environment["host_load"] = build_host_load_block(
+        metadata.get("resource_utilization_start"), metadata.get("resource_utilization")
+    )
+    return environment
 
 
 def _build_tables_block(table_statistics: dict[str, Any] | None) -> dict[str, Any]:
