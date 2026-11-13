@@ -1,9 +1,12 @@
 {
   "acceptance": [
-    "The owner creates the `review` environment with REVIEW_* secrets and a tailnet tag such as tag:review-ci with the ACL; a PR switches the callers and the drift checks in one cutover, then the old environment, secrets and tag are removed.",
-    "A repository grep for `oracle`, excluding history and archives, finds only historical references."
+    "The App-rename semantics are recorded with a source (documentation link or scratch-App observation), along with the resulting dual-read decision.",
+    "The owner-step checklist is delivered and confirmed done before arming.",
+    "The cutover PR is merged with hosted SHIP. The first PR after the cutover gets a verdict and gate pass from the renamed App, and the merge digest classifies it correctly.",
+    "The old environment, secrets and tag are deleted by the owner after a successful post-cutover review. A repository grep for `oracle` (excluding history, archives, decision records and the tracker export) returns only intentional historical references."
   ],
-  "description": "The in-repo rename (benchbox-residual-oracle-names-20261106) deliberately keeps these infrastructure names as documented legacy names:\n- the GitHub environment `oracle`;\n- its ORACLE_* secrets, which the callers map to REVIEW_*;\n- the tailnet tag `tag:oracle-ci` with its ACL;\n- the `benchbox-oracle` App name.\nRenaming them needs owner work: a new `review` environment with the secrets re-entered, a new tag plus ACL and OAuth client, and possibly an App rename. The caller and tag changes must land in the same PR as the cutover.",
+  "context": "Owner decisions 2026-11-13 (choice dialog): do it now, including the App rename. The need on benchbox-residual-oracle-names-20261106 was removed; the remaining residual names are folded into this cutover.",
+  "description": "Owner decision 2026-11-13: rename the remaining oracle infrastructure now, including the GitHub App, in one BenchBox cutover.\nTo rename:\n- the GitHub environment `oracle` and its ORACLE_* secrets (the callers map them to REVIEW_*) become `review` with REVIEW_* secrets;\n- the tailnet tag `tag:oracle-ci` becomes `tag:review-ci`, with its ACL and a Tailscale OAuth client;\n- the GitHub App `benchbox-oracle` is renamed (proposed `benchbox-review`), so its bot login changes from `benchbox-oracle[bot]`.\nSequence:\n1. Read-only inventory: every secret name in environment `oracle` (names only, never values); every reference to `benchbox-oracle[bot]`, the environment and the tag in BenchBox (policy bot_login and attesters, digest POSTER, gate posting check, pr_landing, drift checks, docs, tests) and in Theseus consumer config.\n2. Verify the App-rename semantics before anything else: does renaming an App change the login shown on existing reviews and statuses retroactively (same bot user id) or only on new content? Check GitHub's documentation, then a scratch App the owner renames if needed. If old content keeps the old login, the cutover must read both logins for in-flight PRs (verdict history, carry, dedup, stand-in checks) until they merge. Stop and ask the owner if that needs a Theseus change.\n3. Owner steps, given with exact names: create environment `review` with the same protection rules and re-enter every secret; create `tag:review-ci`, its ACL and the OAuth client; rename the App at merge time.\n4. One PR switches the callers, the bot login references and the drift checks. It is armed only after the owner confirms steps 3a and 3b, and it merges right after the App rename.\n5. Afterwards: the first PR reviewed post-cutover passes the gate; then the owner deletes the old environment, its secrets and the old tag.\nRollback: revert the PR and rename the App back; the old environment and tag stay in place until step 5.\nGuardrails: never print or copy secret values; required checks and rulesets keep matching (rulesets use the integration id, which a rename does not change; verify); no owner-only actions by agents; BenchBox write workflow with hosted SHIP and make pr-arm; Theseus merge rule if Theseus changes.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
@@ -12,6 +15,14 @@
       "op": "create",
       "op_id": "ef5b5a9267ab40f59b9818ac71c267c2",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b89414e427d02d5b37262d82",
+      "at": "2026-11-13T14:31:49Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "52dc1a85d32d40479e518ead43b5805e",
+      "session_id": "88f192edfe954a75a195b192ece667bc"
     }
   ]
 }

@@ -13125,10 +13125,8 @@
     },
     "benchbox-oracle-infra-names-20261108": {
       "claim": null,
-      "needs": [
-        "benchbox-residual-oracle-names-20261106"
-      ],
-      "priority": "low",
+      "needs": [],
+      "priority": "medium",
       "status": "open",
       "title": "Retire BenchBox's remaining oracle infrastructure names: the `oracle` environment, ORACLE_* secrets and tag:oracle-ci"
     },
