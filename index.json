@@ -12988,12 +12988,17 @@
       "title": "Give batch leaders and members distinct todo-db identities"
     },
     "batch-doc-shared-identity-statements-unverified-20261112": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-14T20:30:07Z",
+        "generation": "76842a6ad92544cc9c5b5a173bbb8246",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785"
+      },
       "needs": [
         "batch-rule-followups-serial-20261113"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Two statements about shared tracker identity in the batch protocol doc were written from reading, not from a test"
     },
     "batch-feature-branch-integration": {
