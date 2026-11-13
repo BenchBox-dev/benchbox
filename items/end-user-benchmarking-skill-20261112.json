@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "The skill is under 1,500 characters of instructions plus commands, and each command in it is run in a clean environment with its output shown in the PR.",
+    "The first command works from an environment with only the documented install step; the install step names the extra that provides a database driver.",
+    "Every methodological sentence maps to the published methodology page; the PR lists the mapping.",
+    "The skill has a name distinct from the contributor skill 'benchbox', lives outside the skill-sync managed mirrors, and scripts/check_untracked_skill_mirrors.sh passes.",
+    "The CLI-only arm of the gate's coding-agent probe is rerun with the skill within any remaining budget and the change in sound reports is recorded; if no budget remains, the PR says it was not measured."
+  ],
+  "context": "Origin: adversarial review of an agent-facing strategy for BenchBox, 2026-11-12. Owner decisions quoted here were made on that date. Line numbers are hints; re-read the cited file before relying on them.\n\nEvidence: core dependencies include no database driver and the quick-start extra installs only Polars, so the bare command 'benchbox run --platform duckdb' fails in a fresh environment unless the CLI installs the driver itself (not checked).\n\nDecision gate: read the gate ruling first; on no-go, do nothing and ask the owner to drop the item. On go, decide and record where the skill is published (site docs, the package, or a plugin listing) before writing it; writing instructions into a user's own agent files is out of scope.\n\nVerification rubric: pass only if every command was executed as written and no claim lacks a methodology-page source.\n\nGuardrails: work only in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. One PR per item, squash-merged to develop (site work: one PR in BenchBox-dev/benchbox-site). Add a changelog.d fragment for any user-facing change. No live-cloud runs and no credentials in Git or logs. Heavy work (benchmarks, test tiers) runs only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy (make comment-policy-check). Stop and report instead of widening scope; scope removed during review must be re-homed to a named item or dropped by the owner with a reason.",
+  "description": "Problem: an agent with a shell but no BenchBox MCP server has no always-loaded guidance, and models do not know the BenchBox CLI from training. A skill is the standard way to teach an unfamiliar CLI at low context cost.\n\nOutcome: one short skill for end users (not contributors) covering the first working command, how to choose scale and iterations for a stated purpose, validating a run, comparing two runs, and what to report. Every claim comes from the methodology page.\n\nGate: do not start unless agent-reach-evidence-gate-20261112 ruled go for this item, or the owner overrides in writing on this item.",
+  "links": [
+    "pyproject.toml",
+    "benchbox/cli/commands/run.py",
+    ".claude/skills/benchbox/SKILL.md",
+    "skill-sync.conf"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-13T04:04:32Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9cc5d0f3f0b64babbad9a9dad9e6a252",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}
