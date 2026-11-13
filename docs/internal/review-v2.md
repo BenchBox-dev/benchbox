@@ -321,6 +321,24 @@ these are the settings BenchBox sets and what each one does at its limit.
   and the owner's merge, and that review runs under the base's copy of the file.
   A test pins that its do-not-flag list never names a gate, soundness or data
   input; edits to the do-not-flag entries deserve owner scrutiny.
+- From Theseus v0.2.12 four more settings are on:
+  - `brief.structured_findings` asks reviewers to write each defect as
+    `Problem:`, `Impact:` and `Fix:` paragraphs with short titles, and a gate
+    review opens with a one-sentence decision.
+  - `brief.suggestions` lets a reviewer attach a one-click suggestion block to a
+    mechanical fix. It is never offered on gate or soundness paths, on files under
+    `.github/`, or on files the policy names, and the committed change is reviewed
+    like any other.
+  - `dashboard_comment` keeps one App comment per pull request, edited in place,
+    listing the verdict and open findings.
+  - `check_run_mirror` publishes findings that have no thread as annotations on a
+    neutral `review-findings` check run. It only warns until the App is granted
+    `checks: write`.
+
+  The dashboard comment and the annotations are non-authoritative mirrors: the
+  review, its protocol record and the `review-verdict` status stay the record, and
+  no reader, the gate or the digest parses either mirror. Each flag can be turned
+  off on its own.
 
 ### Credential gateway
 
