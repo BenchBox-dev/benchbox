@@ -3,6 +3,7 @@
     "A recorded decision: accept the preflight backstop as sufficient for shell writes, or extend the hook.",
     "If the hook is extended, it refuses a shell command that writes a tracked file in the primary clone, still permits read-only commands and make pr-arm-remote and pr-landing-remote, and has tests for both."
   ],
+  "context": "Owner decision 2026-11-13: accept the preflight snapshot backstop as sufficient for shell writes. Do not extend the hook. Document the limit beside the guard's documentation and close this item.",
   "description": "The pre-tool hook from PR #4143 checks the target path of file edit and write tools. It does not look at shell commands, so a redirect, sed -i, cp, git checkout or a script run with the primary clone as the working directory still changes tracked files there. The original defect (relative-path writes landing in the primary clone) came through file tools, so that path is covered; shell writes are caught only afterwards by the snapshot comparison in make agent-write-preflight. Decide whether detection after the fact is enough or whether the hook should also refuse shell commands whose working directory is the primary clone, allowing read-only commands and the remote close-out targets the repository rules permit there.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4143",
@@ -15,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "c23810fef99b4555841cb0fd47056401",
+      "session_id": "8e07c6e3a10b49bb94ae7e31664ce4b9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a250daff95b91a4eb6cd2504",
+      "at": "2026-11-13T18:38:20Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "95cd70fe4aba484f89ac41a8174de0f4",
       "session_id": "8e07c6e3a10b49bb94ae7e31664ce4b9"
     }
   ]
