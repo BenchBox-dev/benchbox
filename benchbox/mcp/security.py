@@ -524,8 +524,11 @@ class RemoteSecurityMiddleware:
         if scale_factor > self.config.max_scale_factor:
             raise MCPError(AUTHORIZATION_ERROR, "Benchmark scale factor exceeds policy")
         iterations = arguments.get("iterations")
-        if isinstance(iterations, int) and not isinstance(iterations, bool) and iterations > self.config.max_iterations:
-            raise MCPError(AUTHORIZATION_ERROR, "Benchmark iterations exceed policy")
+        if iterations is not None:
+            if isinstance(iterations, bool) or not isinstance(iterations, int):
+                raise MCPError(AUTHORIZATION_ERROR, "Benchmark iterations must be an integer")
+            if iterations > self.config.max_iterations:
+                raise MCPError(AUTHORIZATION_ERROR, "Benchmark iterations exceed policy")
 
     @staticmethod
     def _tool_call(ctx: ServerRequestContext[Any, Any]) -> tuple[str, Mapping[str, Any]] | None:

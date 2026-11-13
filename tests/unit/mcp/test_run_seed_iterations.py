@@ -101,7 +101,7 @@ class TestRunBenchmarkSeedAndIterations:
         assert (without_values.kwargs["seed"], without_values.kwargs["iterations"]) == (None, None)
 
 
-def _run_core(tmp_path: Path, *, seed, iterations, phases=("load", "power"), benchmark_class=None):
+def _run_core(tmp_path: Path, *, seed, iterations, phases=("load", "power"), benchmark_class=None, payload=None):
     from benchbox.mcp.tools import benchmark as benchmark_tools
 
     datagen_root = tmp_path / "benchmark_runs" / "datagen" / "tpch_sf001"
@@ -111,7 +111,7 @@ def _run_core(tmp_path: Path, *, seed, iterations, phases=("load", "power"), ben
     with (
         patch.object(benchmark_tools, "get_all_benchmarks", return_value={"tpch": {"display_name": "TPC-H"}}),
         patch("benchbox.core.system.SystemProfiler") as profiler_cls,
-        patch.object(benchmark_tools, "_export_and_build_payload", return_value=("result.json", {})),
+        patch.object(benchmark_tools, "_export_and_build_payload", return_value=("result.json", payload or {})),
         patch.object(benchmark_tools, "_attach_summary_charts"),
         patch("benchbox.core.platform_config.get_platform_config", return_value={}),
         patch("benchbox.core.run_service.execute_run", return_value=SimpleNamespace()) as execute,
@@ -139,7 +139,7 @@ def _run_core(tmp_path: Path, *, seed, iterations, phases=("load", "power"), ben
 
 class TestSharedRunnerReceivesSeedAndIterations:
     def test_values_land_where_the_cli_puts_them(self, tmp_path: Path):
-        response, kwargs, _ = _run_core(tmp_path, seed=42, iterations=5)
+        response, kwargs, _ = _run_core(tmp_path, seed=42, iterations=5, payload={"run": {"iterations": 5}})
 
         assert kwargs["config"].options["seed"] == 42
         assert kwargs["config"].options["power_iterations"] == 5
@@ -148,13 +148,13 @@ class TestSharedRunnerReceivesSeedAndIterations:
         assert response["mcp_metadata"]["iterations"] == 5
 
     def test_omitted_values_leave_the_cli_default_configuration(self, tmp_path: Path):
-        response, kwargs, _ = _run_core(tmp_path, seed=None, iterations=None)
+        response, kwargs, _ = _run_core(tmp_path, seed=None, iterations=None, payload={"run": {"iterations": 1}})
 
         assert "seed" not in kwargs["config"].options
         assert "power_iterations" not in kwargs["config"].options
         assert kwargs["execution_context"].seed is None
         assert response["mcp_metadata"]["seed"] is None
-        assert response["mcp_metadata"]["iterations"] == GENERIC_POWER_DEFAULT_MEASUREMENT_ITERATIONS
+        assert response["mcp_metadata"]["iterations"] == 1
         assert "warnings" not in response
 
     def test_iterations_without_a_power_phase_is_reported(self, tmp_path: Path):
@@ -214,6 +214,15 @@ class TestRemoteIterationBound:
         middleware._authorize(principal, "start_benchmark", {**base, "iterations": 2})
         with pytest.raises(MCPError, match="iterations exceed policy"):
             middleware._authorize(principal, "start_benchmark", {**base, "iterations": 3})
+
+    @pytest.mark.parametrize("value", [1e6, "1000000", 2.5, True, [3]])
+    @pytest.mark.parametrize("tool", ["run_benchmark", "start_benchmark"])
+    def test_non_integer_iterations_are_denied_at_admission(self, tmp_path: Path, tool: str, value):
+        _, middleware, principal = self._middleware(tmp_path)
+        base = {"platform": "duckdb", "benchmark": "tpch", "scale_factor": 0.01}
+
+        with pytest.raises(MCPError, match="iterations must be an integer"):
+            middleware._authorize(principal, tool, {**base, "iterations": value})
 
     def test_default_policy_allows_the_cli_default(self, tmp_path: Path):
         config, _, _ = self._middleware(tmp_path)

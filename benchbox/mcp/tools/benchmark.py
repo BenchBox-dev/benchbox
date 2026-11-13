@@ -20,7 +20,7 @@ from benchbox.core.benchmark_registry import (
     get_public_benchmark_class,
     nonstandard_scale_note,
 )
-from benchbox.core.constants import GENERIC_POWER_DEFAULT_MEASUREMENT_ITERATIONS, VALID_PHASES
+from benchbox.core.constants import VALID_PHASES
 from benchbox.core.deprecation_notices import begin_run
 from benchbox.core.hooks.benchmark_hooks import BenchmarkHookRegistry
 from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
@@ -511,7 +511,6 @@ def _execute_mcp_run_via_core(
         scale_factor=scale_factor,
         resolved_mode=resolved_mode,
         seed=seed,
-        iterations=GENERIC_POWER_DEFAULT_MEASUREMENT_ITERATIONS if iterations is None else iterations,
     )
     if iterations is not None and not {"power", "standard"} & set(phases):
         response.setdefault("warnings", []).append("iterations has no effect without a power or standard phase")
@@ -542,7 +541,6 @@ def _build_run_response(
     scale_factor: float,
     resolved_mode: str,
     seed: int | None,
-    iterations: int,
 ) -> dict[str, Any]:
     execution_time = elapsed_seconds(start_time)
     result_file_path, result_payload = (
@@ -562,7 +560,7 @@ def _build_run_response(
         "scale_factor_requested": scale_factor,
         "execution_mode": resolved_mode,
         "seed": seed,
-        "iterations": iterations,
+        "iterations": (response.get("run") or {}).get("iterations"),
         "execution_time_seconds": round(execution_time, 2),
         "result_file": result_file_path,
     }
