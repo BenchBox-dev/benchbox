@@ -12995,10 +12995,15 @@
       "title": "Umbrella: result-validity feature batch"
     },
     "batch-rule-followups-serial-20261113": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-14T18:32:10Z",
+        "generation": "b3d20b68437540ce8786a3b41e7ed895",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Deliver the serial follow-ups to the subagent-member rule: loop doc pull request and landing-tooling pull request"
     },
     "batch-scope-cannot-be-amended-forces-abort-20261111": {
