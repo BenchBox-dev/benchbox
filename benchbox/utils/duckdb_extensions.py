@@ -8,6 +8,7 @@ THIRD_PARTY_ENABLE_HINT = f"set --platform-option {THIRD_PARTY_EXTENSION_OPTION}
 SINGLE_ARROW_LAMBDA_STATEMENT = "SET lambda_syntax = 'ENABLE_SINGLE_ARROW'"
 SINGLE_ARROW_LAMBDA_SETTING = "lambda_syntax=ENABLE_SINGLE_ARROW"
 SINGLE_ARROW_REJECTED_FROM_MAJOR = 2
+RELATION_ARROW_FROM_MAJOR = 2
 
 DATASKETCHES_COMMUNITY_STATEMENTS: tuple[str, ...] = (
     "INSTALL datasketches FROM community",
@@ -29,6 +30,24 @@ def duckdb_major_version(version: str | None = None) -> int | None:
         version = getattr(duckdb, "__version__", None)
     head = (version or "").lstrip("v").split(".", 1)[0]
     return int(head) if head.isdigit() else None
+
+
+def duckdb_relation_arrow_supported(version: str | None = None) -> bool:
+    major = duckdb_major_version(version)
+    return major is not None and major >= RELATION_ARROW_FROM_MAJOR
+
+
+def finish_unfinished_result(connection: Any) -> None:
+    complete = getattr(connection, "complete", None)
+    if callable(complete):
+        complete()
+
+
+def fetch_duckdb_arrow_table(connection: Any, sql: str, version: str | None = None) -> Any:
+    if duckdb_relation_arrow_supported(version):
+        finish_unfinished_result(connection)
+        return connection.sql(sql).to_arrow_table()
+    return connection.execute(sql).fetch_arrow_table()
 
 
 def datasketches_install_statements(version: str | None = None) -> tuple[str, ...]:

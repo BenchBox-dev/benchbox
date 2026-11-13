@@ -184,10 +184,18 @@ def test_dtype_cell_collects_with_the_requested_engine(monkeypatch, tmp_path):
             return lambda ctx: ctx.get_table("t")
 
     class _Connection:
-        def execute(self, sql):
+        def complete(self):
+            return None
+
+        def sql(self, sql):
             import pyarrow as pa
 
             return type("R", (), {"to_arrow_table": lambda self: pa.table({"value": [1]})})()
+
+        def execute(self, sql):
+            import pyarrow as pa
+
+            return type("R", (), {"fetch_arrow_table": lambda self: pa.table({"value": [1]})})()
 
     divergences, compared = cross_surface.find_cross_surface_dtype_divergences(
         _Connection(),

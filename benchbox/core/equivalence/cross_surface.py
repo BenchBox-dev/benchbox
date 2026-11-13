@@ -36,6 +36,7 @@ from benchbox.core.equivalence.dataframe_surface import (
     materialize_rows,
 )
 from benchbox.core.execution_engine import resolve_requested
+from benchbox.utils.duckdb_extensions import fetch_duckdb_arrow_table
 from benchbox.utils.polars_collection import collect_frame
 from benchbox.utils.printing import quiet_console as console
 
@@ -596,7 +597,7 @@ def find_cross_surface_dtype_divergences(
         if query_id in skip_query_ids:
             continue
         try:
-            reference_schema = connection.execute(reference_sql(query_id)).to_arrow_table().schema
+            reference_schema = fetch_duckdb_arrow_table(connection, reference_sql(query_id)).schema
         except Exception as exc:
             divergences.append(SurfaceDivergence(query_id=query_id, cell="reference", detail=f"error: {exc}"))
             continue

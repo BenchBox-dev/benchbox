@@ -7,6 +7,7 @@ import pytest
 from benchbox.core.results import fetch_mode as fetch_mode_module
 from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW, FETCH_MODE_ROWS
 from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY, outside_query_timer
+from benchbox.utils.duckdb_extensions import fetch_duckdb_arrow_table
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -35,7 +36,7 @@ class TestDuckDBTimingContract:
         result = self._adapter(FETCH_MODE_ARROW).execute_query(
             connection, "SELECT range AS a FROM range(100)", "q", validate_row_count=False
         )
-        expected = connection.execute("SELECT range AS a FROM range(100)").to_arrow_table().nbytes
+        expected = fetch_duckdb_arrow_table(connection, "SELECT range AS a FROM range(100)").nbytes
         assert result["request_count"] == 1
         assert result["result_bytes"] == expected
         assert "platform_timing" not in result
