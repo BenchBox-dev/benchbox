@@ -27353,6 +27353,13 @@
       "status": "active",
       "title": "Expose seed and iterations on MCP run_benchmark and start_benchmark"
     },
+    "mcp-run-benchmark-seed-iterations-20261112-deferral-1": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Decide whether MCP run_benchmark should return the integrity-validator verdict"
+    },
     "mcp-scrub-structured-and-prose-secret-material": {
       "claim": null,
       "needs": [
