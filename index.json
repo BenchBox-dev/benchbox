@@ -43128,7 +43128,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Tracker mutations sometimes outlast the 30-second MCP client timeout and return an unknown outcome"
     },
     "tractable-mcp-request-timeouts-20261112": {
