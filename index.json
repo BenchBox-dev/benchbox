@@ -40836,6 +40836,13 @@
       "status": "done",
       "title": "Owner decision: approve one vendored soundness-path matcher module as the only embedded exception"
     },
+    "theseus-format-proposal-doc-status-note-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Theseus docs: mark the review-format proposal as a v0.2.8 audit and make its checkout references reproducible"
+    },
     "theseus-freeze-final-parity-20261102": {
       "claim": null,
       "needs": [

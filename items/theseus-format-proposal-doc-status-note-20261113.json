@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The proposal opens with a status line naming the audited version and the releases that shipped its recommendations.",
+    "No 'local checkout' references remain; each cites a tag or commit.",
+    "Merged to Theseus main with hosted SHIP."
+  ],
+  "description": "From the independent review of Theseus #72 (docs/review-comment-format-proposal.md, merged 51501be5, shipped in v0.2.11), two P3 notes were left unfixed so the release would not be delayed:\n1. Lines 7-36 (the Summary) use the present tense ('Today', 'currently the machine API in eight places') for problems that #59, #60, #62, #64, #65 and #66 have since fixed. Line 20 ('Line 1 is `### review-verdict: failure…`') and line 27 are no longer true on main. Fix: a one-line status note under the title, for example 'Audit of v0.2.8 (360cead); recommendations 1-6 shipped in v0.2.10 and v0.2.11'.\n2. Lines 41 and 242 cite 'an older local checkout' and 'the local v0.2.4 checkout' (docs/hosted-workflows.md:203-207). Replace these with 'at tag v0.2.4' so readers can follow them.\nGuardrails: docs only; no change to design content; G7 merge rule (hosted SHIP; independent review optional for docs-only per the rule's scope).",
+  "links": [
+    "https://github.com/joeharris76/theseus/blob/main/docs/review-comment-format-proposal.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b89414e427d02d5b37262d82",
+      "at": "2026-11-13T13:25:13Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a444151715c74a52ac0b118f9cf78ceb",
+      "session_id": "88f192edfe954a75a195b192ece667bc"
+    }
+  ]
+}
