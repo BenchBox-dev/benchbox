@@ -31589,7 +31589,9 @@
     },
     "pr-preflight-does-not-list-selected-tests-20261113": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "batch-rule-followups-serial-20261113"
+      ],
       "priority": "low",
       "status": "open",
       "title": "make pr-preflight does not show which test files it selected, so a required test cannot be confirmed from its output"
