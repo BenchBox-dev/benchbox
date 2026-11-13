@@ -14774,7 +14774,7 @@
         "compare-exit-codes-distinct-outcomes-20261112"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "Publish a tested guide and example workflow for performance regression checks in CI"
     },
     "ci-retry-artifact-collision-breaks-canary-gate": {
