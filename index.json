@@ -15216,6 +15216,7 @@
     "cli-results-integrity-validate-command-20261112": {
       "claim": null,
       "needs": [
+        "umbrella-cli-ci-contract-20261113",
         "compare-exit-codes-distinct-outcomes-20261112"
       ],
       "priority": "medium",
