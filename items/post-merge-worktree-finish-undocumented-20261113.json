@@ -12,6 +12,120 @@
   },
   "context": "Decisions 2026-11-13: the step is documented on a page `AGENTS.md` already links (`docs/agent/merge-authority.md`), not in `AGENTS.md`; `make worktree-remove` gets no hint and deletes exactly what it does today. Delivered as a member of registered batch `member-rule-docs`.\n\n2026-11-13, demonstration of the documented step on a freshly squash-merged pull request (#4205, head f597c3aff8ac98406fe16764bd11798469782096): `gh pr view 4205 --json headRefOid --jq .headRefOid`, then `make worktree-finish WORKTREE_PATH=/Users/joe/Developer/BenchBox.wt-docs-batch-member-dispatch-prompt EXPECTED_HEAD_OID=<oid>` reported `STATUS: ACTIONABLE` with `PR Integration: PR #4205 (base=develop, merged=True, merge_reachable=True)` and two proposed actions; the same command with `APPLY=1` reported `worktree_removal ... Outcome: removed` and `branch_deletion ... Outcome: deleted`. Afterwards neither the worktree nor the local branch `docs/batch-member-dispatch-prompt` existed.",
   "description": "After PR #4170 merged on 2026-11-12 the session removed its worktree with `make worktree-remove`, which runs `git worktree remove` and keeps the local branch (`remove_worktree` in `scripts/worktree_lifecycle.sh`). `docs/batch-member-subagent-rule` is still in the primary clone. The targets that also retire the branch exist (`make worktree-finish WORKTREE_PATH= EXPECTED_HEAD_OID= [APPLY=1]`, `make worktree-reap`, `make branch-prune-merged`) but are named only in `make help`: neither `AGENTS.md` nor any file under `docs/agent/` mentions them, and the write close-out rule ends at the merged pull request without a step for the worktree. On 2026-11-13 the primary clone held 219 local branches, of which `git branch --merged origin/develop` lists 6; squash merges hide the rest from that test.\n\nRelated, not duplicates: agent-leftover-branches-and-clone-drift-20261109 (a one-off cleanup of named branches) and branch-prune-merged-exhausts-github-quota-20261112 (a defect in the prune target).\n\nDecision gates.\n- Decide where the step lives: one clause in the close-out rule in `AGENTS.md`, or a `docs/agent/` page it already links. `AGENTS.md` is near its size budget (agent-instruction-budget-headroom), so prefer the linked page unless the owner wants it in the guide.\n- Decide whether `make worktree-remove` should print a hint naming `worktree-finish` when the branch's pull request has merged, or stay silent. Do not change what it deletes without an owner decision.\n- Bulk removal of the existing backlog is a separate, destructive action: it needs the owner's approval in the task that does it, and is not part of this item.\n\nGuardrails.\n- No branch or worktree is deleted under this item except the author's own throwaway test branch.\n- The documented step must use the evidence-checked target (`worktree-finish`), never `git branch -D` by hand, and must keep the dry-run default.\n- Agents still never run `git worktree prune` or `gc`.",
+  "final_evidence": {
+    "batch_id": "member-rule-docs",
+    "changed_files": [
+      "changelog.d/feat-member-rule-docs--catalog-pin-change-sites-undocumented-20261112.json",
+      "changelog.d/feat-member-rule-docs--post-merge-worktree-finish-undocumented-20261113.json",
+      "docs/agent/README.md",
+      "docs/agent/batch-tracker-contract.md",
+      "docs/agent/merge-authority.md",
+      "scripts/skill_sync_ci_policy.py",
+      "tests/unit/scripts/test_skill_sync_ci_policy.py"
+    ],
+    "clean": true,
+    "current_acceptance": {
+      "catalog-pin-change-sites-undocumented-20261112": {
+        "clean": true,
+        "command": [
+          "uv",
+          "run",
+          "--",
+          "python",
+          "-m",
+          "pytest",
+          "-n",
+          "0",
+          "-q",
+          "tests/unit/scripts/test_skill_sync_ci_policy.py",
+          "tests/unit/test_ledger_coverage.py"
+        ],
+        "dropped_paths": [],
+        "ran_command": [
+          "uv",
+          "run",
+          "--",
+          "python",
+          "-m",
+          "pytest",
+          "-n",
+          "0",
+          "-q",
+          "tests/unit/scripts/test_skill_sync_ci_policy.py",
+          "tests/unit/test_ledger_coverage.py"
+        ],
+        "revision": "2406b0fec153313e7ac556bfb3eca34e5e8869bc",
+        "status": "passed",
+        "suite": "member-tests",
+        "worktree": "/Users/joe/Developer/BenchBox.wt-member-rule-docs"
+      },
+      "post-merge-worktree-finish-undocumented-20261113": {
+        "clean": true,
+        "command": [
+          "uv",
+          "run",
+          "--",
+          "python",
+          "-m",
+          "pytest",
+          "-n",
+          "0",
+          "-q",
+          "tests/unit/scripts/test_agent_instruction_audit.py",
+          "tests/unit/scripts/test_doc_reference_inventory.py",
+          "tests/unit/scripts/test_docs_ownership.py"
+        ],
+        "dropped_paths": [],
+        "ran_command": [
+          "uv",
+          "run",
+          "--",
+          "python",
+          "-m",
+          "pytest",
+          "-n",
+          "0",
+          "-q",
+          "tests/unit/scripts/test_agent_instruction_audit.py",
+          "tests/unit/scripts/test_doc_reference_inventory.py",
+          "tests/unit/scripts/test_docs_ownership.py"
+        ],
+        "revision": "2406b0fec153313e7ac556bfb3eca34e5e8869bc",
+        "status": "passed",
+        "suite": "member-tests",
+        "worktree": "/Users/joe/Developer/BenchBox.wt-member-rule-docs"
+      }
+    },
+    "final_pr": {
+      "head": "2406b0fec153313e7ac556bfb3eca34e5e8869bc",
+      "node_id": "PR_kwDOQ7J64c8AAAABO_3OYA",
+      "number": 4209,
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git"
+    },
+    "integration_branch": "feat/member-rule-docs",
+    "integration_head": "2406b0fec153313e7ac556bfb3eca34e5e8869bc",
+    "member_heads": {
+      "catalog-pin-change-sites-undocumented-20261112": "808b18093c01afd2d01c7f1c28e2c94b94772979",
+      "post-merge-worktree-finish-undocumented-20261113": "713e0bc90532887c2fb814d19f2a8a23f0d96a72"
+    },
+    "member_ranges": {
+      "catalog-pin-change-sites-undocumented-20261112": {
+        "base": "445f7c85540e19a7176291703073c28431130010",
+        "head": "808b18093c01afd2d01c7f1c28e2c94b94772979"
+      },
+      "post-merge-worktree-finish-undocumented-20261113": {
+        "base": "9f739da8e8647532916fdd8cecda169ce585a4af",
+        "head": "713e0bc90532887c2fb814d19f2a8a23f0d96a72"
+      }
+    },
+    "project_id": "benchbox",
+    "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+    "scope_hash": "8ea3fe9ef9732a1d4491f8998c770bbab85f5e32d7f6b8c59f8dc71fafc867e9",
+    "status": "passed",
+    "suite": "member-reruns",
+    "tree_revision": "2406b0fec153313e7ac556bfb3eca34e5e8869bc",
+    "tree_worktree": "/Users/joe/Developer/BenchBox.wt-member-rule-docs"
+  },
   "links": [
     "scripts/worktree_lifecycle.sh",
     "make/worktrees.mk",
@@ -127,6 +241,15 @@
       "generation": "4ac362ba78f64ed3892a782353096ea8",
       "op": "take",
       "op_id": "59ee17ec0a1c4c93bbf2d71f5ece4fe0",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-13T20:23:57Z",
+      "client": "omp-coding-agent",
+      "generation": "4ac362ba78f64ed3892a782353096ea8",
+      "op": "finish",
+      "op_id": "d978d701788d4258842e175f6aeadab9",
       "session_id": "570099c30e51431ebfbca6042d41ee8f"
     }
   ]

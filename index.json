@@ -4760,7 +4760,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-member-rule-docs",
-      "lifecycle": "active",
+      "lifecycle": "completed",
       "members": [
         "catalog-pin-change-sites-undocumented-20261112",
         "post-merge-worktree-finish-undocumented-20261113"
@@ -31534,15 +31534,10 @@
       "title": "Route post-merge failures to the correct owner before proposing a revert"
     },
     "post-merge-worktree-finish-undocumented-20261113": {
-      "claim": {
-        "expires_at": "2026-11-14T20:23:48Z",
-        "generation": "4ac362ba78f64ed3892a782353096ea8",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Agent docs do not say how to retire a worktree and its branch after merge, so merged local branches pile up"
     },
     "postgres-cluster-plus-sort-same-table-20261017": {
