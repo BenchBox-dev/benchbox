@@ -7,6 +7,11 @@
     "`make batch-member-check TESTS=<tests added or changed>` passes; `make comment-policy-check` reports nothing for the touched files.",
     "A `changelog.d/` fragment describes the new option on DataFrame platforms."
   ],
+  "batch": {
+    "batch_id": "df-platform-followups",
+    "implementation_dependencies": [],
+    "member_id": "df-write-primitives-sketch-opt-in-20261112"
+  },
   "context": "2026-11-12 18:25: PR #4175 merged to develop as 6ab8a3d979 (DuckDB bound <3.0.0, lock on 2.0.0). The precondition for this item now holds.",
   "description": "Problem. On DuckDB 2.x the datasketches extension installs only from a third-party repository, and BenchBox requires `--platform-option allow_third_party_extensions=true`, registered for the `duckdb` and `ducklake` platforms (PR #4175). The DataFrame SQL-parity workload in `benchbox/core/write_primitives/benchmark.py` (`_execute_dataframe_sql_parity_workload`) runs sketch operations on an internal `DuckDBAdapter` and passes `allow_third_party_extensions=False`, because DataFrame platforms do not register the option. On 2.x those operations are therefore always SKIPPED and a user has no way to enable them.\n\nOwner decision 2026-11-13: register the same option for the DataFrame platforms that run this workload and forward it to the internal adapter. Default stays off.\n\nDecision gate (member, before editing): trace how a `--platform-option` reaches a DataFrame adapter (`_OPTION_SPEC_ROWS` in `benchbox/platforms/__init__.py`, `tests/unit/cli/test_platform_options_reach_adapters.py`, an existing DataFrame option such as Polars `rechunk`). If forwarding fits inside the frozen scope, build it. If it needs a path outside the scope, stop and report the path; do not fall back silently.\n\nFrozen scope: `benchbox/core/write_primitives/*`, `benchbox/platforms/__init__.py`, `benchbox/platforms/dataframe/*_df.py`, `benchbox/platforms/dataframe/benchmark_mixin.py`, `benchbox/utils/duckdb_extensions.py`, `benchbox/cli/*`, `tests/unit/core/write_primitives/*`, `tests/unit/cli/*`, `tests/unit/platforms/test_*`, `tests/unit/utils/test_duckdb_extensions.py`, `docs/*`.\n\nGuardrails (members of batch df-platform-followups):\n- Stay inside the frozen scope below; a path outside it is refused at landing. If the work needs another path, stop and report it.\n- No explanatory comments or docstrings (COMMENT-POLICY-001). Search for an existing helper before adding one (`make duplicate-check-delta`).\n- Do not edit SQL text, reference answers, expected-result fixtures or baselines to make a check pass.\n- Members make no tracker write, open no PR, do not run the fast tier, benchmarks or timing runs, and never force heavy-work admission. They use absolute paths under their own worktree and stop at a landing report.\n- One `changelog.d/` fragment per member.\n- No third-party repository is contacted, and `allow_extension_repositories` is not touched, unless the option is explicitly true.\n- Adapter SDK imports stay lazy. DuckDB 1.x behaviour is unchanged.\n- Do not edit `benchbox/platforms/dataframe/expression_family.py`, `pandas_family.py` or `unified_frame.py`; another member owns them.",
   "links": [
@@ -36,6 +41,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "63cb9dd49f3e4877930e4a78fe9ea091",
+      "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ca318680c1e5843a0279e287",
+      "at": "2026-11-13T18:33:19Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0cb3081b00b14193bc7ff4fc0478e249",
       "session_id": "512d9ad0b25247538901b68a758a6fbb"
     }
   ]
