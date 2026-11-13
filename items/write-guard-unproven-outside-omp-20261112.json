@@ -4,6 +4,7 @@
     "Any agent whose hook does not block has a fix merged or a separate item that names the upstream limitation, and the guard's documentation states which agents are enforced and which rely on the preflight backstop.",
     "The Codex apply_patch case is tested specifically."
   ],
+  "context": "Owner decision 2026-11-13: retry a live test in each of Claude Code, Codex and Gemini. Any agent that still cannot be run is documented as relying on the preflight backstop, and this item stays open for that agent only.",
   "description": "PR #4143 added scripts/primary_clone_write_guard.py and wired it as a pre-tool hook for four agents: .omp/hooks/pre/primary-clone-write-guard.ts, .claude/settings.json, .codex/hooks.json and .gemini/settings.json. Only the omp hook was exercised against a live agent. The other three could not be tried when the change was made (expired login, usage limit, unsupported tier), so nobody has seen them refuse a write to the primary clone. Known risks: openai/codex#27833 reports Codex not enforcing a hook deny for apply_patch; Gemini runs project hooks only in a trusted workspace. If a hook does not fire, the only protection is the snapshot check in make agent-write-preflight, which reports after the write has happened.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4143",
@@ -17,6 +18,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "32d8d5f902b24637bb4171dab3840ce7",
+      "session_id": "8e07c6e3a10b49bb94ae7e31664ce4b9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a250daff95b91a4eb6cd2504",
+      "at": "2026-11-13T18:38:31Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "79cd9009141c466483ea3b82d7995d3c",
       "session_id": "8e07c6e3a10b49bb94ae7e31664ce4b9"
     }
   ]
