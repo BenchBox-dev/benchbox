@@ -601,6 +601,11 @@ class TestTPCDISpecificationValidation:
             assert passed_rules >= len(business_rule_checks) // 2, "Too many business rule violations"
 
 
+FIXED_SIZE_TPCDI_TABLES = frozenset(
+    {"DimDate", "DimTime", "DimBroker", "Industry", "StatusType", "TaxRate", "TradeType"}
+)
+
+
 class TestTPCDIPerformanceAndScalability:
     @pytest.fixture
     def temp_dir(self):
@@ -637,7 +642,7 @@ class TestTPCDIPerformanceAndScalability:
             total_size = 0
             for file_path in data_files:
                 file_path = Path(file_path)
-                if file_path.exists():
+                if file_path.exists() and file_path.stem not in FIXED_SIZE_TPCDI_TABLES:
                     total_size += file_path.stat().st_size
 
             generation_metrics[scale_factor] = {
