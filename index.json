@@ -4573,6 +4573,7 @@
     },
     "member-rule-docs": {
       "accepted_members": {
+        "catalog-pin-change-sites-undocumented-20261112": "808b18093c01afd2d01c7f1c28e2c94b94772979",
         "post-merge-worktree-finish-undocumented-20261113": "713e0bc90532887c2fb814d19f2a8a23f0d96a72"
       },
       "batch_schema": 2,
@@ -4580,6 +4581,17 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "catalog-pin-change-sites-undocumented-20261112": {
+          "accepted_head": "808b18093c01afd2d01c7f1c28e2c94b94772979",
+          "changed_files": [
+            "changelog.d/feat-member-rule-docs--catalog-pin-change-sites-undocumented-20261112.json",
+            "docs/agent/batch-tracker-contract.md",
+            "scripts/skill_sync_ci_policy.py",
+            "tests/unit/scripts/test_skill_sync_ci_policy.py"
+          ],
+          "integration_head": "3352ffe1a491843b719250dafc8b4fe5772fd18d",
+          "integration_seq": 2
+        },
         "post-merge-worktree-finish-undocumented-20261113": {
           "accepted_head": "713e0bc90532887c2fb814d19f2a8a23f0d96a72",
           "changed_files": [
@@ -4592,7 +4604,7 @@
         }
       },
       "integration_branch": "feat/member-rule-docs",
-      "integration_head": "445f7c85540e19a7176291703073c28431130010",
+      "integration_head": "3352ffe1a491843b719250dafc8b4fe5772fd18d",
       "integration_log": [
         {
           "at": "2026-11-13T18:34:29Z",
@@ -4608,6 +4620,15 @@
           "op_id": "5859dcebd7a042c3a141b6304a1678c9",
           "previous_head": "9f739da8e8647532916fdd8cecda169ce585a4af",
           "seq": 1
+        },
+        {
+          "at": "2026-11-13T18:57:10Z",
+          "head": "3352ffe1a491843b719250dafc8b4fe5772fd18d",
+          "kind": "prepare",
+          "member": "catalog-pin-change-sites-undocumented-20261112",
+          "op_id": "ef384a323a3741fdaee3a155a76113b5",
+          "previous_head": "445f7c85540e19a7176291703073c28431130010",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-member-rule-docs",
@@ -14285,15 +14306,10 @@
       "title": "Add storage-bytes smoke and doc-yaml consistency check for catalog empirical claims"
     },
     "catalog-pin-change-sites-undocumented-20261112": {
-      "claim": {
-        "expires_at": "2026-11-14T18:56:58Z",
-        "generation": "e4d1e8d1985a4ec788b0465701ba6b62",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Changing the skill catalog pin needs two extra edits that no doc or target mentions"
     },
     "cedardb-adapter": {

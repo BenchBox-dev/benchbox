@@ -18,6 +18,55 @@
     "https://github.com/BenchBox-dev/benchbox/pull/4102",
     "https://github.com/BenchBox-dev/benchbox/pull/4170"
   ],
+  "prepared": {
+    "accepted_head": "808b18093c01afd2d01c7f1c28e2c94b94772979",
+    "batch_id": "member-rule-docs",
+    "changed_files": [
+      "changelog.d/feat-member-rule-docs--catalog-pin-change-sites-undocumented-20261112.json",
+      "docs/agent/batch-tracker-contract.md",
+      "scripts/skill_sync_ci_policy.py",
+      "tests/unit/scripts/test_skill_sync_ci_policy.py"
+    ],
+    "integration_head": "3352ffe1a491843b719250dafc8b4fe5772fd18d",
+    "integration_seq": 2,
+    "member_id": "catalog-pin-change-sites-undocumented-20261112",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "8ea3fe9ef9732a1d4491f8998c770bbab85f5e32d7f6b8c59f8dc71fafc867e9",
+    "source_base": "445f7c85540e19a7176291703073c28431130010",
+    "source_revision": "808b18093c01afd2d01c7f1c28e2c94b94772979",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-member-rule-docs--catalog-pin-change-sites-undocumented-20261112",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/unit/scripts/test_skill_sync_ci_policy.py",
+        "tests/unit/test_ledger_coverage.py"
+      ],
+      "review": {
+        "base_sha": "445f7c85540e19a7176291703073c28431130010",
+        "head_sha": "808b18093c01afd2d01c7f1c28e2c94b94772979",
+        "head_tree": "3431f3ba4010649ed13830f1d7f9c37cc38d7e65",
+        "outcome": "clear",
+        "patch_digest": "869461b85c368dc62eaad41faae82ad7",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "9f739da8e8647532916fdd8cecda169ce585a4af"
+      },
+      "revision": "808b18093c01afd2d01c7f1c28e2c94b94772979",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
@@ -58,6 +107,15 @@
       "generation": "e4d1e8d1985a4ec788b0465701ba6b62",
       "op": "take",
       "op_id": "27f955df1bd84d1687840cc507ffd256",
+      "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:81f8840352b80207f03e4785",
+      "at": "2026-11-13T18:57:10Z",
+      "client": "omp-coding-agent",
+      "generation": "e4d1e8d1985a4ec788b0465701ba6b62",
+      "op": "prepare",
+      "op_id": "ef384a323a3741fdaee3a155a76113b5",
       "session_id": "570099c30e51431ebfbca6042d41ee8f"
     }
   ]
