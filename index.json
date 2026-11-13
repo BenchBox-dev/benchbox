@@ -13780,6 +13780,13 @@
       "status": "open",
       "title": "Derive bundle validator KNOWN_PLATFORMS from the platform registry"
     },
+    "bundle-record-host-load-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Record host load at the start and end of a run in the result bundle"
+    },
     "bundle-schema-and-run-cli": {
       "claim": null,
       "needs": [
