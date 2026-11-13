@@ -36194,6 +36194,13 @@
       "status": "dropped",
       "title": "The ruleset drift check fails because the runbook does not list oracle-gate as a required check on develop"
     },
+    "run-billable-platform-guard-noninteractive-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Refuse to start a managed-cloud platform non-interactively without an explicit acknowledgement"
+    },
     "run-lifecycle-and-export-unification-refactor": {
       "claim": null,
       "needs": [],
