@@ -12,6 +12,7 @@ from benchbox.core.run_service import (
     validate_tpc_scale_factor,
 )
 from benchbox.core.tpc_disclaimer import official_mode_disclaimer
+from benchbox.utils.printing import fatal
 
 
 @click.command("run-official", hidden=True, deprecated=True)
@@ -51,8 +52,8 @@ def run_official(
     try:
         validate_tpc_scale_factor(scale)
     except ValueError:
-        console.print(f"[red]Error: Scale factor {scale} is not a TPC-specified scale factor[/red]")
-        console.print(f"Allowed scale factors: {sorted(TPC_ALLOWED_SCALE_FACTORS)}")
+        fatal(f"Error: Scale factor {scale} is not a TPC-specified scale factor")
+        fatal(f"Allowed scale factors: {sorted(TPC_ALLOWED_SCALE_FACTORS)}")
         sys.exit(1)
 
     if seed is None and not quiet:
@@ -62,7 +63,7 @@ def run_official(
     try:
         validate_stream_count(streams, phases, benchmark=benchmark, scale_factor=scale)
     except ValueError as exc:
-        console.print(f"[red]Error: {exc}[/red]")
+        fatal(f"Error: {exc}")
         sys.exit(1)
 
     if not quiet:
@@ -99,6 +100,8 @@ def run_official(
             concurrency=streams,
             benchmark_option_pairs=(("tpch_refresh_functions", "true"),) if benchmark.lower() == "tpch" else (),
         )
+    except click.exceptions.Exit:
+        raise
     except Exception as e:
-        console.print(f"[red]Benchmark execution failed: {e}[/red]")
+        fatal(f"Benchmark execution failed: {e}")
         sys.exit(1)
