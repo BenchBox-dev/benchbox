@@ -18676,7 +18676,9 @@
     },
     "credentials-file-plaintext-permission-race-20261113": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "umbrella-credentials-publication-safety-20261114"
+      ],
       "priority": "medium-high",
       "status": "open",
       "title": "Platform credentials are stored in plaintext and made private only after they are written"
