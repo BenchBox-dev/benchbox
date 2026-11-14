@@ -28723,6 +28723,13 @@
       "status": "done",
       "title": "Operator: confirm nightly throughput-uat green with gating (workflow_dispatch)"
     },
+    "nightly-throughput-run-official-silent-refusal-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Nightly throughput UAT fails silently: run-official exits 1 with no message since full-spec enforcement"
+    },
     "nightly-v2-liveness-port-20261008": {
       "claim": null,
       "needs": [

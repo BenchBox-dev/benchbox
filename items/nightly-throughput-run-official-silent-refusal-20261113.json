@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Root cause confirmed with a local reproduction",
+    "A refused official run always prints its reason, including under --quiet, with a test",
+    "The nightly throughput configs run a phase set the official gate accepts, or use the non-official run path if a partial run is intended, without weakening the gate",
+    "t3:throughput duckdb and cedardb green in the next nightly"
+  ],
+  "description": "Nightly-v2 runs 43254687916 (2026-11-12) and 43453477982 (2026-11-13): t3:throughput duckdb and cedardb cells run `benchbox run-official tpch --scale 1.0 --phases load,throughput --streams 3 --seed 20260709 --quiet` and exit 1 after the banner with no error text (terminal_state no_json_nonzero, 'recorded no result_path'). Last green before PR #4137 (f4ffb30eaf, 2026-11-12), which made --official refuse partial phases and TPC-H runs without refresh functions. Likely two defects: the nightly throughput configs request a phase set the official gate now refuses, and the refusal is not printed under --quiet.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/actions/runs/43453477982",
+    "https://github.com/BenchBox-dev/BenchBox/pull/4137"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9dde2030f0b654b7eae6a730",
+      "at": "2026-11-14T01:48:50Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "97ab6e03f83842d689bc05b7c143c121",
+      "session_id": "4fc38207b51b48f682c92ef4be5cc6b0"
+    }
+  ]
+}
