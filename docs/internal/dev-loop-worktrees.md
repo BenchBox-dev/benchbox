@@ -225,7 +225,7 @@ container.
 
 Local branches created with plain `git checkout -b` (no worktree) are not
 swept by `worktree-remove`. After the PR merges, preview and sweep only those
-worktree-less branches still at the exact commit GitHub merged:
+worktree-less branches proven merged into `origin/develop`:
 
 ```bash
 make branch-prune-merged DRY_RUN=1
@@ -238,8 +238,8 @@ The first command previews the sweep and requires `gh` only for branches that lo
 `published-results`, and any branch still attached to a worktree. It fetches
 `origin/develop`, then settles branches from local history before any GitHub
 request: a branch is deleted if its tip is an ancestor of `origin/develop`, or
-if its net diff against the merge base has a non-empty whitespace-exact
-(`git patch-id --verbatim`) match with a single non-merge commit on
+if its net diff against the merge base has a non-empty byte-exact
+(`git patch-id --verbatim` over `--binary` diffs) match with a single non-merge commit on
 `origin/develop` (a squash merge). Remaining branches use one paginated listing
 of the repository's pull requests. The latest PR must be merged into `develop`,
 its historical merge-time head (GitHub timeline plus PR commit list) must equal

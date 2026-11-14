@@ -119,7 +119,7 @@ help:
 	@echo "  make worktree-reap [APPLY=1]                         Classify every worktree remove/keep/ambiguous with worktree-finish checks (APPLY=1 removes 'remove' verdicts)"
 	@echo "  make worktree-list                                   List registered worktrees"
 	@echo "  make worktree-audit [FORMAT=json]                    Read-only inventory and lifecycle audit of worktrees and branches"
-	@echo "  make branch-prune-merged [DRY_RUN=1]                 Delete worktree-less branches at a proven merge-time PR head (requires gh)"
+	@echo "  make branch-prune-merged [DRY_RUN=1]                 Delete worktree-less branches proven merged into origin/develop (gh for the rest)"
 	@echo "Batch integration loop (leader runs these in the role=integration worktree; members only run batch-member-check):"
 	@echo "  make batch-start BATCH=id MEMBERS=a,b SCOPE_JSON=file PROJECT_ID=id [WORKTREE_PATH=path] [DEPENDENCIES=m=a+b,...] [CONFIRM_CUTOVER=1]  Create the integration worktree and print the register_batch payload"
 	@echo "  make batch-member-create MEMBER=id [WORKTREE_PATH=path]  Create feat/<batch>--<member> at the integration head; refuse while the primary clone has uncommitted tracked changes"

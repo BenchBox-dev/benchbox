@@ -498,6 +498,21 @@ def test_crlf_difference_is_not_squash_equivalent(repo: Path) -> None:
     assert mod.prove_locally(_git(repo, "rev-parse", "fix/crlf"), repo) is None
 
 
+def test_different_binary_content_is_not_squash_equivalent(repo: Path) -> None:
+    (repo / "blob.bin").write_bytes(b"\x00base\x00")
+    _git(repo, "add", "blob.bin")
+    _git(repo, "commit", "-q", "-m", "binary base")
+    _git(repo, "switch", "-q", "-c", "fix/binary")
+    (repo / "blob.bin").write_bytes(b"\x00branch\x00")
+    _git(repo, "commit", "-q", "-am", "branch binary")
+    _git(repo, "switch", "-q", "develop")
+    (repo / "blob.bin").write_bytes(b"\x00develop\x00")
+    _git(repo, "commit", "-q", "-am", "develop binary")
+    _git(repo, "update-ref", "refs/remotes/origin/develop", "develop")
+
+    assert mod.prove_locally(_git(repo, "rev-parse", "fix/binary"), repo) is None
+
+
 def test_non_utf8_upstream_history_does_not_abort_the_run(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _git(repo, "switch", "-q", "-c", "fix/squashed")
     _commit(repo, "one.txt", "1\n")

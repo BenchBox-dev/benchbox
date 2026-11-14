@@ -306,12 +306,12 @@ def prove_locally(branch_oid: str, repo_root: Path) -> str | None:
     if cherry.returncode != 0 or not any(line.startswith("-") for line in cherry.stdout.splitlines()):
         return None
 
-    branch_ids = _verbatim_patch_ids(["git", "diff", "--no-ext-diff", base_oid, branch_oid], repo_root)
+    branch_ids = _verbatim_patch_ids(["git", "diff", "--binary", "--no-ext-diff", base_oid, branch_oid], repo_root)
     if len(branch_ids) != 1:
         return None
     wanted = branch_ids[0][0]
     upstream_ids = _verbatim_patch_ids(
-        ["git", "log", "-p", "--no-merges", "--no-ext-diff", "--format=commit %H", f"{base_oid}..{target}"],
+        ["git", "log", "-p", "--binary", "--no-merges", "--no-ext-diff", "--format=commit %H", f"{base_oid}..{target}"],
         repo_root,
     )
     if any(patch_id == wanted for patch_id, _ in upstream_ids):
