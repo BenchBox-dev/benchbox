@@ -45803,6 +45803,13 @@
       "status": "done",
       "title": "✅ Universal Validation Mode System - Architectural Refactor"
     },
+    "unrank-tpcdi-old-scale-bundles-20261114": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Exclude the six ranked TPC-DI SF1 bundles built before the TPC-DI scale fix from ranking"
+    },
     "unsalted-anonymization-manager-in-corpus-scripts-20261029": {
       "claim": null,
       "needs": [],

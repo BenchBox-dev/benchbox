@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "The six bundles are identified by file name from the triage (see corpus-integrity-validator-failures-triage-20261113) and each gets a known-defect label using the existing sidecar mechanism, not a bundle edit.",
+    "The change goes through the published-results lane and its validators (results-data/README.md, docs/internal/results-phase-2-runbook.md); deletion is not used.",
+    "After deploy, the TPC-DI summary page shows the six under 'Runs not included in rankings' with the reason, and they no longer appear as ranked; checked with a plain GET.",
+    "local-tpcdi-bundles-regenerate-current-generator is noted as the item that will replace them."
+  ],
+  "context": "Corpus-only change; no generator or validator code. Follow the A0 freeze and takedown rules in the runbook; if the lane forbids this kind of change, stop and report. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "description": "Problem: six ranked TPC-DI SF1 bundles (BigQuery, Snowflake, Databricks, DataFusion, DuckDB, ClickHouse Local) were generated before #4149 and #4171 corrected the TPC-DI scale, so their data is about ten times the specification's SF1 and the integrity validator correctly fails them on sf1_row_counts. Owner decision (2026-11-14): unrank them now; keep their numbers visible as excluded runs until local-tpcdi-bundles-regenerate-current-generator replaces them.\n\nOutcome: each of the six carries the existing known-defect mechanism with a reason naming the scale change, through the published-results contribution lane.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T03:58:16Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "2455fa0e5a7c46bea849cd516cd3bf2f",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}
