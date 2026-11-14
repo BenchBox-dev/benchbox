@@ -3,7 +3,7 @@
     "Issue #3446 has a reply from the maintainer stating the decision.",
     "If planned, a tracker item exists and is linked from the issue."
   ],
-  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). The reply is the owner's; an agent may draft it from the issue and the platform registry. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). The reply is the owner's; an agent may draft it from the issue and the platform registry. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\nOwner decision (2026-11-14): an agent drafts the reply into this item; the owner posts it under his own name. Nothing is posted by an agent.",
   "description": "Problem: only three issues have ever come from outside contributors, and #3446 (a request about R data.table) is still open. The independent critique noted that real outside users ask for platforms and correctness, and an unanswered request costs more goodwill than any agent-facing feature gains.\n\nOutcome: the issue gets a reply with a decision: planned with a tracker item, not planned with the reason, or a question back.",
   "sessions": [
     {
@@ -12,6 +12,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "3d2822405cfc47f7ac586c25b02d8fca",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T03:31:31Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "55e8d37142214e898c2987c52941b610",
       "session_id": "ac67b069b7864c4699843546272d3701"
     }
   ]
