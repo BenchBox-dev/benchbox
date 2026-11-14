@@ -76,14 +76,11 @@ def _local_datagen_name(benchmark: Any, benchmark_name: str) -> str:
 
 
 class BenchmarkOrchestrator:
-    def __init__(self, base_dir: Optional[str] = None):
+    def __init__(self, base_dir: Optional[str] = None, non_interactive: bool = False):
         self.console = quiet_console
         self.directory_manager = DirectoryManager(base_dir)
         self.custom_output_dir = None
         self._verbosity = VerbositySettings.default()
-        self._non_interactive = False
-
-    def set_non_interactive(self, non_interactive: bool) -> None:
         self._non_interactive = non_interactive
 
     def set_verbosity(self, settings: VerbositySettings) -> None:

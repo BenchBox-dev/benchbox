@@ -289,14 +289,17 @@ class TestPromptsWithoutATerminal:
 
 class TestOrchestratorCredentialPrompt:
     @pytest.fixture
-    def failing_orchestrator(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> BenchmarkOrchestrator:
-        orchestrator = BenchmarkOrchestrator(base_dir=str(tmp_path))
+    def failing_orchestrator(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        def build(non_interactive: bool = False) -> BenchmarkOrchestrator:
+            orchestrator = BenchmarkOrchestrator(base_dir=str(tmp_path), non_interactive=non_interactive)
 
-        def credentials_missing(*_args, **_kwargs):
-            raise RuntimeError("Snowflake configuration requires account")
+            def credentials_missing(*_args, **_kwargs):
+                raise RuntimeError("Snowflake configuration requires account")
 
-        monkeypatch.setattr(orchestrator, "_get_benchmark_instance", credentials_missing)
-        return orchestrator
+            monkeypatch.setattr(orchestrator, "_get_benchmark_instance", credentials_missing)
+            return orchestrator
+
+        return build
 
     @staticmethod
     def _run(orchestrator: BenchmarkOrchestrator):
@@ -308,7 +311,7 @@ class TestOrchestratorCredentialPrompt:
         )
 
     def test_non_interactive_never_reaches_the_prompt(
-        self, failing_orchestrator: BenchmarkOrchestrator, monkeypatch: pytest.MonkeyPatch
+        self, failing_orchestrator, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         import rich.prompt
 
@@ -316,18 +319,15 @@ class TestOrchestratorCredentialPrompt:
             raise AssertionError("credential prompt reached")
 
         monkeypatch.setattr(rich.prompt.Confirm, "ask", prompted)
-        failing_orchestrator.set_non_interactive(True)
 
-        result = self._run(failing_orchestrator)
-
-        assert result is not None
+        assert self._run(failing_orchestrator(non_interactive=True)) is not None
 
     def test_closed_stdin_declines_instead_of_crashing(
-        self, failing_orchestrator: BenchmarkOrchestrator, monkeypatch: pytest.MonkeyPatch
+        self, failing_orchestrator, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setattr("sys.stdin", io.StringIO(""))
 
-        assert self._run(failing_orchestrator) is not None
+        assert self._run(failing_orchestrator()) is not None
 
     @pytest.mark.parametrize(("flags", "expected"), [(["--non-interactive"], True), ([], False)])
     def test_run_command_passes_its_mode_to_the_orchestrator(

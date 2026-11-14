@@ -1438,9 +1438,8 @@ def _run_direct(s: types.SimpleNamespace) -> None:
 
     execution_context = _build_execution_context_from_plan(s)
 
-    orchestrator = BenchmarkOrchestrator()
+    orchestrator = BenchmarkOrchestrator(non_interactive=s.non_interactive)
     orchestrator.set_verbosity(s.verbosity_settings)
-    orchestrator.set_non_interactive(s.non_interactive)
 
     if s.output:
         normalized_output = normalize_output_root(s.output, s.benchmark, s.scale)
@@ -1643,9 +1642,8 @@ def _run_data_or_load_only(s: types.SimpleNamespace) -> None:
 
     execution_context = _build_execution_context_from_plan(s)
 
-    orchestrator = BenchmarkOrchestrator()
+    orchestrator = BenchmarkOrchestrator(non_interactive=s.non_interactive)
     orchestrator.set_verbosity(s.verbosity_settings)
-    orchestrator.set_non_interactive(s.non_interactive)
 
     if s.output:
         normalized_output = normalize_output_root(s.output, s.benchmark, s.scale)
@@ -2379,9 +2377,8 @@ def _interactive_preflight_and_execute(s: types.SimpleNamespace, system_profile:
 
     execution_context = _build_execution_context_from_plan(s)
 
-    orchestrator = BenchmarkOrchestrator()
+    orchestrator = BenchmarkOrchestrator(non_interactive=s.non_interactive)
     orchestrator.set_verbosity(s.verbosity_settings)
-    orchestrator.set_non_interactive(s.non_interactive)
 
     if s.output:
         normalized_output = normalize_output_root(s.output, s.benchmark_config.name, s.benchmark_config.scale_factor)
