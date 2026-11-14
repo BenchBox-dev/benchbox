@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Timings for scale 0.01, 0.1 and 1 TPC-H on DuckDB through MCP are recorded via make heavy-run.",
+    "The documented or observed tool-call timeout of at least two MCP clients is cited.",
+    "The recommendation (no change, document a limit, or enable local job tools) is recorded for the owner."
+  ],
+  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "description": "Problem: in local mode run_benchmark runs synchronously; durable job tools register only in authenticated remote mode. A long run may exceed a client's tool-call timeout and return nothing. This is a hypothesis with no observation yet.\n\nOutcome: measured run times for typical requests against documented timeouts of the main MCP clients, and a recommendation on enabling job tools locally.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T01:19:04Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5b96d0aa50c14084a9c850fc58c1aa9c",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}

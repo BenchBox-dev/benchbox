@@ -27382,6 +27382,13 @@
       "status": "open",
       "title": "Scope file-error detail in MCP tools so local paths do not leak into shared transcripts"
     },
+    "mcp-local-run-timeout-measure-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Measure whether synchronous MCP run_benchmark calls exceed common client tool-call timeouts"
+    },
     "mcp-multiworker-acceptance-flaky-under-load-20261004": {
       "claim": null,
       "needs": [],
