@@ -74,6 +74,7 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "tuning-liveness", "Run real-CLI tuning liveness matrix"): "tuning-liveness-gate",
     ("ci.yml", "sql-execution-evidence", "Run the executed SQL comparison gate"): "sql-execution-gate",
     ("ci.yml", "package-smoke", "Build package"): "test-package",
+    ("ci.yml", "package-smoke", "Run the README first command from the built wheel"): "test-package",
     ("ci.yml", "ci-paths", "Check paths linked from the published site documentation"): "site-linked-paths-check",
     ("ci.yml", "ci-paths", "Check release content"): "release-check",
     ("ci.yml", "ci-paths", "Check changelog fragments"): "changelog-check",
