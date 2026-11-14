@@ -3,7 +3,7 @@
     "A DataFrame run at scale 0.01 (for example Polars) records non-null start and end samples where the host supports them; a test covers the DataFrame path.",
     "Sampling stays outside every measured interval; timings unchanged."
   ],
-  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Result-capture code may be a soundness path; check before opening the PR. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Result-capture code may be a soundness path; check before opening the PR. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\nCloseout (2026-11-14): https://github.com/BenchBox-dev/benchbox/pull/4228 merged (6bb08eb3b9). Cause: MCP built the benchmark without the CLI's resolved compression (so it generated uncompressed data) and built DatabaseConfig without registered platform defaults (DuckDB ran with a 12GB system-profile limit against the CLI's 8GB default). MCP now uses the same sources, read through core; real duckdb runs from both entry points record identical config blocks, pinned by tests/integration/test_cli_mcp_result_parity.py. DataFrame runs now record host-load start and end samples outside every timer. The 'saved_config' label actually means registered defaults plus overrides.",
   "description": "Problem: PR #4203 writes the resource snapshot taken in benchbox/platforms/base/result_capture.py into the bundle's environment.host_load. DataFrame adapters never take that snapshot, so their bundles always carry nulls, which reads as 'not available on this platform' when it is in fact not collected.\n\nOutcome: DataFrame runs record the same start and end samples, from the same sampler.",
   "sessions": [
     {
@@ -29,6 +29,14 @@
       "generation": "293b4b96bcf0400cbded47e2c8a160ed",
       "op": "take",
       "op_id": "6ba021ab559a4de2858a34b201664ab4",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T06:27:47Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5a35a93d472f486e8368c74ff6c0188e",
       "session_id": "ac67b069b7864c4699843546272d3701"
     }
   ]
