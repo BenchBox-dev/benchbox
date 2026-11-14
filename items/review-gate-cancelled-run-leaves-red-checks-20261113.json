@@ -3,7 +3,7 @@
     "The cause is shown from the workflow definition and run logs.",
     "After the fix, superseding a gate run on a test PR leaves no failed gate check on the head; evidence in the PR."
   ],
-  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Related reliability item: ci-oracle-reviewer-availability-and-head-race. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Related reliability item: ci-oracle-reviewer-availability-and-head-race. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\nCloseout (2026-11-14): https://github.com/BenchBox-dev/benchbox/pull/4221 merged (4f375464a7). Cause: the review-gate concurrency group is shared by pull_request_target, comment and dispatch runs with cancel-in-progress true, so a dispatch run cancelled the PR-head run, and its gate jobs and posting check ended red with nothing replacing them on the head. Fix: cancel-in-progress false, so runs queue and a newer pending run replaces an older one before it starts. Demonstrated after merge on throwaway PR #4226: no failed gate check on the head. Tradeoff: a stale-head gate run now completes rather than aborting (15 to 100 seconds). External reviewer ran; one Low finding fixed.",
   "description": "Problem: on PR #4203, the review-gate run for the final head (run 43504881252) was cancelled when another run superseded it, and its 'gate posting check' failed with 'no gate status was posted for the handled head'. Five gate checks stayed red on the merged PR although review-gate and review-verdict statuses were success. Red checks that do not matter train people and agents to ignore red checks.\n\nOutcome: a superseded or cancelled gate run does not leave failing checks, or they are replaced by the successful run's checks on the same head.",
   "sessions": [
     {
@@ -21,6 +21,14 @@
       "generation": "8dde47d5f7934262ab45001b1bcf4712",
       "op": "take",
       "op_id": "109a857bb9f04893a2da09eb685c7249",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T04:35:09Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5cbcc1d393d54fd2a6f4ffb80ca37e23",
       "session_id": "ac67b069b7864c4699843546272d3701"
     }
   ]
