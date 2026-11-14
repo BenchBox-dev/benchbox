@@ -46123,7 +46123,9 @@
     },
     "verify-fresh-install-first-command-20261113": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "umbrella-core-tooling-docs-20261114"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Verify the documented install gives a working first benchmark command in a clean environment"
