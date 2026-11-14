@@ -99,6 +99,7 @@ ALLOWED_HIDDEN_COMPAT_CLI_FILES = {
     "benchbox/cli/commands/run.py",
     "benchbox/cli/commands/submit.py",
     "benchbox/cli/commands/export.py",
+    "benchbox/cli/commands/publish.py",
     "benchbox/cli/platform.py",
     "benchbox/cli/commands/plan_history.py",
 }
