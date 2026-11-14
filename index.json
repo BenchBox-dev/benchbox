@@ -41060,6 +41060,13 @@
       "status": "done",
       "title": "Carry funding + result_source in the submission manifest; enforce vendor label governance"
     },
+    "submit-refusal-text-names-wrong-benchmark-20261114": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "submit refusal message says 'unofficial TPC-DS configuration' for TPC-H results"
+    },
     "subscale-tpc-ranking-policy-20261016": {
       "claim": null,
       "needs": [],
