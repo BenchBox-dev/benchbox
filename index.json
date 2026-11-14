@@ -45736,10 +45736,15 @@
       "title": "Umbrella: conformance script, fresh-install check, MCP timing and doc links, one branch and one PR"
     },
     "umbrella-credentials-publication-safety-20261114": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-15T07:35:12Z",
+        "generation": "23d9b52c23694994837ee74843422f04",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Umbrella: credentials and publication safety, one branch and one PR"
     },
     "umbrella-result-capture-parity-20261114": {
