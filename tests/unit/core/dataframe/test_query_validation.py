@@ -4,7 +4,8 @@ from unittest.mock import patch
 
 import pytest
 
-from benchbox.core.dataframe.query_validation import validate_dataframe_query_results
+from benchbox.core.dataframe.query_validation import _apply_row_count_oracle, validate_dataframe_query_results
+from benchbox.core.expected_results.models import ValidationMode, ValidationResult
 from benchbox.core.expected_results.ssb_results import SSB_EXPECTED_ROW_COUNTS
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -422,3 +423,26 @@ def test_dataframe_scales_without_reference_counts_are_unvalidated(benchmark_id:
     validate_dataframe_query_results([measurement], benchmark_name=benchmark_id, scale_factor=scale_factor)
 
     assert measurement["row_count_validation"]["status"] == "UNVALIDATED"
+
+
+def test_loose_tolerance_match_is_not_recorded_as_passed() -> None:
+    row = _measurement(query_id="16", rows=17900)
+    evidence = {"checked": 0, "passed": 0, "failed": 0, "skipped": 0, "errors": 0}
+
+    _apply_row_count_oracle(
+        [row],
+        lambda query_id, actual, _row: ValidationResult(
+            is_valid=True,
+            query_id=query_id,
+            expected_row_count=18314,
+            actual_row_count=actual,
+            validation_mode=ValidationMode.LOOSE,
+        ),
+        evidence,
+    )
+
+    validation = row["row_count_validation"]
+    assert validation["status"] == "SKIPPED"
+    assert (validation["expected"], validation["actual"]) == (18314, 17900)
+    assert "not an exact match" in validation["warning"]
+    assert evidence == {"checked": 0, "passed": 0, "failed": 0, "skipped": 1, "errors": 0}
