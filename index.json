@@ -18153,10 +18153,15 @@
       "title": "Corpus inventory, validator and explorer disagree on engine identity and phase, and ignore stream count"
     },
     "corpus-integrity-validator-failures-triage-20261113": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-15T03:48:48Z",
+        "generation": "e327c10374094991b4be9fbc862a50bc",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Triage the 74 ranking-eligible published bundles that fail the result integrity validator"
     },
     "corpus-invariant-validator-runs-in-no-ci-lane": {
