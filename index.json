@@ -36832,12 +36832,17 @@
       "title": "Refuse to start a cloud platform non-interactively without an explicit acknowledgement"
     },
     "run-force-drops-remote-database-silently-20261113": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-15T06:02:41Z",
+        "generation": "0aad017aa2b34c9eac3697cc0a39dcf0",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
+      },
       "needs": [
         "umbrella-run-path-safety-20261114"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Make run --force help text state that it drops the target database on remote platforms"
     },
     "run-lifecycle-and-export-unification-refactor": {
