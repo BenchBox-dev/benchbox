@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 import yaml
-from workflow_expressions import evaluate as _evaluate, render as _render
+from workflow_expressions import render as _render
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -112,13 +112,10 @@ def test_the_caller_has_no_steps_and_passes_named_secrets_with_no_in_tree_engine
         assert needle not in text, needle
 
 
-def test_the_concurrency_group_keeps_the_gate_prefix_and_never_cancels_pushes() -> None:
+def test_the_concurrency_group_keeps_the_gate_prefix_and_never_cancels_a_run_in_flight() -> None:
     concurrency = _load()["concurrency"]
     assert concurrency["group"].startswith("review-gate-${{")
-    assert concurrency["cancel-in-progress"] == "${{ github.event_name != 'push' }}"
-    cancel = concurrency["cancel-in-progress"].removeprefix("${{").removesuffix("}}")
-    assert _evaluate(cancel, {"github": {"event_name": "push"}}) is False
-    assert _evaluate(cancel, {"github": {"event_name": "pull_request_target"}}) is True
+    assert concurrency["cancel-in-progress"] is False
 
 
 def _group(event_name: str, event: dict[str, Any], inputs: dict[str, Any] | None = None) -> str:
