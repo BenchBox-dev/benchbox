@@ -73,6 +73,8 @@ ALLOWED_INTERNAL_CLI_FILES = {
     "benchbox/cli/commands/auth.py",
     "benchbox/cli/common_types.py",
     "benchbox/cli/billable_guard.py",
+    "benchbox/cli/prompt_guard.py",
+    "benchbox/cli/publication_guard.py",
     "benchbox/cli/exit_codes.py",
     "benchbox/cli/output.py",
     "benchbox/cli/platform_checks.py",
