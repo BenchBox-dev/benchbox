@@ -25327,15 +25327,10 @@
       "title": "Host disk hit 100% (ENOSPC): tracker and event log degraded"
     },
     "hosted-review-recovery-steps-undocumented-20261112": {
-      "claim": {
-        "expires_at": "2026-11-15T00:38:06Z",
-        "generation": "811e1c8654d246ae9330cec96a2cc976",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a250daff95b91a4eb6cd2504"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Document how to clear a carried review finding and a stalled hosted review"
     },
     "http-tls-certificate-validation": {
