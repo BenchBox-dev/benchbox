@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "--force datagen no longer implies dropping a remote database; a distinct option or platform option is required, and the change is marked breaking if it alters existing behaviour.",
+    "Before a drop on a remote platform, the run prints the platform, database name and that it will be dropped; in a terminal it asks; non-interactively it requires the explicit option.",
+    "Tests cover local, remote-with-option and remote-without-option cases using fakes; no live-cloud run.",
+    "The help text for --force describes exactly what each value deletes."
+  ],
+  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Found by the guard coverage survey for PR #4203. Decision gate: choose the option name and whether --force upload keeps its current meaning; record it in the PR. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "description": "Problem: `benchbox run --force datagen|upload|all` (which also sets force_recreate) or `--platform-option force_recreate=true` reaches _remove_database in connection_lifecycle.py and calls drop_database on Snowflake, BigQuery, Databricks, Redshift and others, with no prompt in any mode. A person or agent using --force to regenerate local data can delete a remote database.\n\nOutcome: dropping a database on a remote platform requires an explicit, separately named intent, and the run states what it will drop before doing it.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T01:17:22Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e3fb0a43256e4330b6bec86bd938e334",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}

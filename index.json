@@ -36683,6 +36683,13 @@
       "status": "done",
       "title": "Refuse to start a cloud platform non-interactively without an explicit acknowledgement"
     },
+    "run-force-drops-remote-database-silently-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "run --force and force_recreate drop the target database on a cloud platform without confirmation"
+    },
     "run-lifecycle-and-export-unification-refactor": {
       "claim": null,
       "needs": [],
