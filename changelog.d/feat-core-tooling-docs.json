@@ -7,9 +7,9 @@
       "text": "The MCP conformance script's Inspector pin check now accepts both the object and the one-element array that npm view prints, so it passes on npm 10 and npm 12."
     },
     {
-      "category": "fixed",
+      "category": "changed",
       "breaking": false,
-      "text": "The MCP conformance script's Inspector pin check now accepts both the object and the one-element array that npm view prints, so it passes on npm 10 and npm 12."
+      "text": "The package smoke check (CI package-smoke and make test-package) now installs the built wheel with the duckdb extra in a clean environment and runs the README's first benchmark command, benchbox run --platform duckdb --benchmark tpch --scale 0.01."
     }
   ]
 }
