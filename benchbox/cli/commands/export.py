@@ -5,6 +5,7 @@ from pathlib import Path
 import click
 
 from benchbox.cli.output import ResultExporter
+from benchbox.cli.prompt_guard import confirm_or_refuse
 from benchbox.cli.pseudonym_salt import ensure_publication_salt
 from benchbox.cli.shared import console
 from benchbox.core.constants import EXPORT_FORMATS
@@ -186,7 +187,11 @@ def _confirm_overwrite(source_path, output_directory, formats) -> bool:
     for fmt in conflicts:
         console.print(f"  • {base_name}.{fmt}")
 
-    if not click.confirm("\nProceed with export?", default=True):
+    if not confirm_or_refuse(
+        "overwriting existing export files",
+        flag="--force",
+        ask=lambda: click.confirm("\nProceed with export?", default=True),
+    ):
         console.print("[yellow]Export cancelled[/yellow]")
         return False
     return True

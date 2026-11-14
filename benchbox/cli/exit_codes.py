@@ -25,7 +25,10 @@ EXIT_CODE_MEANINGS: dict[ExitCode, str] = {
     ExitCode.ACKNOWLEDGEMENT_REQUIRED: (
         "run, run-official, compare: a non-interactive run of a billable platform was refused without an "
         "acknowledgement; run, run-official: a non-interactive driver auto-install was refused without "
-        "BENCHBOX_DRIVER_AUTO_INSTALL=1"
+        "BENCHBOX_DRIVER_AUTO_INSTALL=1; submit --service: a non-interactive hosted upload was refused without "
+        "an acknowledgement; publish: the maintainer-run label was refused without "
+        "BENCHBOX_ALLOW_MAINTAINER_LABEL=1; setup --remove, export, publish remove: a confirmation prompt had "
+        "no terminal to answer it"
     ),
 }
 

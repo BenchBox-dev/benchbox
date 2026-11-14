@@ -51,6 +51,7 @@ from benchbox.cli.platform_checks import check_and_setup_platform_credentials
 from benchbox.cli.platform_hooks import PlatformOptionError
 from benchbox.cli.presentation.system import display_system_recommendations
 from benchbox.cli.progress import BenchmarkProgress, should_show_progress
+from benchbox.cli.publication_guard import PUBLISH_LABEL_HELP, enforce_maintainer_label
 from benchbox.cli.run_platform_resolution import (
     BENCHMARK_ALIASES as BENCHMARK_ALIASES,
     _apply_benchmark_default_scale,
@@ -1443,7 +1444,7 @@ def _run_direct(s: types.SimpleNamespace) -> None:
 
     execution_context = _build_execution_context_from_plan(s)
 
-    orchestrator = BenchmarkOrchestrator()
+    orchestrator = BenchmarkOrchestrator(non_interactive=s.non_interactive)
     orchestrator.set_verbosity(s.verbosity_settings)
 
     if s.output:
@@ -1647,7 +1648,7 @@ def _run_data_or_load_only(s: types.SimpleNamespace) -> None:
 
     execution_context = _build_execution_context_from_plan(s)
 
-    orchestrator = BenchmarkOrchestrator()
+    orchestrator = BenchmarkOrchestrator(non_interactive=s.non_interactive)
     orchestrator.set_verbosity(s.verbosity_settings)
 
     if s.output:
@@ -2382,7 +2383,7 @@ def _interactive_preflight_and_execute(s: types.SimpleNamespace, system_profile:
 
     execution_context = _build_execution_context_from_plan(s)
 
-    orchestrator = BenchmarkOrchestrator()
+    orchestrator = BenchmarkOrchestrator(non_interactive=s.non_interactive)
     orchestrator.set_verbosity(s.verbosity_settings)
 
     if s.output:
@@ -2847,10 +2848,7 @@ def _interactive_handle_result(s: types.SimpleNamespace, result: Any, orchestrat
     "--publish-label",
     default="maintainer-run",
     show_default=True,
-    help=(
-        "Trust label for --publish (maintainer-run, community-submission, "
-        "vendor-supplied, ci, local, unofficial-research)."
-    ),
+    help=PUBLISH_LABEL_HELP,
 )
 @click.option(
     "--funding",
@@ -2947,6 +2945,9 @@ def run(
     acknowledge_billable_platform: bool = False,
 ) -> None:
     from benchbox.core.run_service import apply_polars_streaming_flag, begin_run
+
+    if publish:
+        enforce_maintainer_label(publish_label)
 
     begin_run()
     if polars_streaming:
