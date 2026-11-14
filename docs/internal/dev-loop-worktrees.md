@@ -194,7 +194,9 @@ make worktree-reap
 make worktree-reap APPLY=1
 ```
 
-The dry run prints one line per worktree (`remove`, `keep`, or `ambiguous`, then path, branch, and reason) and changes no worktree or local branch; it refreshes the remote-tracking ref of each target branch once per run. It lists all PRs once and runs the worktree-finish evaluation for each worktree with that evidence. `remove` means finish would act and the worktree HEAD is exactly the merged PR's historical merge-time head: merged PR into a structural branch, clean, managed provenance. `keep` covers the primary clone, the current worktree, locked or dirty/untracked worktrees, unintegrated post-merge commits, branches with no PR or an open PR, and a HEAD that differs from the merged PR head (for example a new worktree reusing an old merged branch name). Everything else finish cannot decide (detached, missing, legacy or controller-bound provenance, closed-unmerged PRs, unprovable merge heads, lookup failures) is `ambiguous` for the owner and never removed. `APPLY=1` re-evaluates each `remove` candidate with live per-branch evidence and the same exact-head rule immediately before running the same apply actions as `APPLY=1 make worktree-finish`; it reports every removal and failure, continues past failures, and exits nonzero if any candidate was not fully removed.
+The dry run prints one line per worktree (`remove`, `keep`, `abandoned`, or `ambiguous`, then path, branch, and reason) and changes no worktree or local branch; it refreshes the remote-tracking ref of each target branch once per run. It lists all PRs once and runs the worktree-finish evaluation for each worktree with that evidence. `remove` means finish would act and the worktree HEAD is exactly the merged PR's historical merge-time head: merged PR into a structural branch, clean, managed provenance. `keep` covers the primary clone, the current worktree, locked or dirty/untracked worktrees, unintegrated post-merge commits, branches with no PR or an open PR, and a HEAD that differs from the merged PR head (for example a new worktree reusing an old merged branch name). Everything else finish cannot decide (detached, missing, legacy or controller-bound provenance, unprovable merge heads, lookup failures) is `ambiguous` for the owner and never removed. `APPLY=1` re-evaluates each `remove` candidate with live per-branch evidence and the same exact-head rule immediately before running the same apply actions as `APPLY=1 make worktree-finish`; it reports every removal and failure, continues past failures, and exits nonzero if any candidate was not fully removed.
+
+A worktree whose only pull requests are closed without merging gets the `abandoned` verdict: the branch was never integrated, so the reaper never removes it. If the work is not needed, remove just the worktree with the command below. That deletes the checkout but leaves the local branch ref, so commits stay reachable until the branch is deleted. Deleting the branch afterwards (`git branch -D <branch>`) permanently loses every commit that is not also on `origin` or on another branch. A worktree whose recorded lifecycle branch differs from its checked-out branch (the branch was renamed after creation) is still treated as managed and is judged on the current branch name.
 
 After the PR merges and the worktree is clean, remove the exact registration:
 
@@ -223,25 +225,32 @@ container.
 
 Local branches created with plain `git checkout -b` (no worktree) are not
 swept by `worktree-remove`. After the PR merges, preview and sweep only those
-worktree-less branches still at the exact commit GitHub merged:
+worktree-less branches proven merged into `origin/develop`:
 
 ```bash
 make branch-prune-merged DRY_RUN=1
 make branch-prune-merged
 ```
 
-The first command previews the sweep and requires `gh`. The second deletes only branches whose tips are historically proven merge-time heads.
+The first command previews the sweep and requires `gh` only for branches that local history cannot settle. The second deletes only branches proven merged by one of the rules below.
 
 `branch-prune-merged` skips the current branch, `develop`/`main`/`release`/
 `published-results`, and any branch still attached to a worktree. It fetches
-`origin/develop`, proves the latest PR's historical merge-time head from the
-GitHub timeline plus paginated PR commit list, requires the local tip to equal
-that immutable head, and verifies the PR merge commit is reachable from the
-fresh target. A branch re-created under an old merged name, carrying post-merge
-commits, or lacking complete evidence is reported and kept. Evidence collection
-or branch deletion failures return nonzero rather than reporting false success.
-The final ref deletion is an expected-OID compare-and-swap, so a branch changed
-after evidence collection is preserved.
+`origin/develop`, then settles branches from local history before any GitHub
+request: a branch is deleted if its tip is an ancestor of `origin/develop`, or
+if its net diff against the merge base has a non-empty byte-exact
+(`git patch-id --verbatim` over `--binary` diffs) match with a single non-merge commit on
+`origin/develop` (a squash merge). Remaining branches use one paginated listing
+of the repository's pull requests. The latest PR must be merged into `develop`,
+its historical merge-time head (GitHub timeline plus PR commit list) must equal
+the local tip, and the merge commit must be reachable from the fresh target. A
+branch re-created under an old merged name, carrying post-merge commits, or
+lacking complete evidence is reported and kept. A failure on one branch (a 5xx,
+a timeout, too little request quota) skips that branch and is reported; a rate
+limit stops further lookups. Branches already proven are still deleted, and the
+exit code is 1 because the run was incomplete. The final ref deletion is an
+expected-OID compare-and-swap, so a branch changed after evidence collection is
+preserved.
 
 ## Inspection
 
