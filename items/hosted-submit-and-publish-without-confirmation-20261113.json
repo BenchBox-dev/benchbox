@@ -4,7 +4,7 @@
     "If a gate is added, it follows the billable guard's pattern (flag plus environment variable, documented exit code from benchbox/cli/exit_codes.py) and has tests.",
     "Whether a non-maintainer can set the trust label maintainer-run on publish is checked and either restricted or documented."
   ],
-  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\nOwner decision (2026-11-14): gate hosted submission and restrict the label. submit --service refuses non-interactively without an explicit acknowledgement (flag plus environment variable, reusing exit code 6 ACKNOWLEDGEMENT_REQUIRED from benchbox/cli/exit_codes.py). publish refuses the maintainer-run trust label unless an environment variable explicitly allows it. Local and storage publication are otherwise unchanged.",
   "description": "Problem: with BENCHBOX_SUBMIT_TOKEN or BENCHBOX_SERVICE_TOKEN set, or a token in the keyring, `benchbox submit --service` uploads to the hosted corpus with no confirmation; `auth login --token-stdin` stores a token non-interactively. `benchbox publish run` and `run --publish` copy bundles to any local, s3, gs or abfss destination with ambient cloud credentials, with a caller-chosen trust label defaulting to maintainer-run. An agent with those credentials can publish without a human step. Admission still refuses unclean or unofficial results.\n\nOutcome: an owner decision on whether hosted submission and remote publication need an explicit acknowledgement or a human-issued token scope, then the change or the documentation.",
   "sessions": [
     {
@@ -13,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "77d30df0849b40768ff390f30f0ec3fc",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T03:31:07Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "04dd91807de44b28889de0c302291528",
       "session_id": "ac67b069b7864c4699843546272d3701"
     }
   ]
