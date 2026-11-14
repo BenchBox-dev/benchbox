@@ -32287,10 +32287,15 @@
       "title": "Pre-Compile TPC Binaries for Multiple Platforms ✅ COMPLETED"
     },
     "pre-tractable-worktrees-still-register-todo-db-20261112": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-15T21:10:50Z",
+        "generation": "568fecd51ea740fb932eeb198d38c6bb",
+        "renewals": 0,
+        "worker": "joe-tractable-followups"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Update or retire worktrees still on pre-tractable branches"
     },
     "precommit-hook-loses-unstaged-edit": {
