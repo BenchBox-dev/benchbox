@@ -127,10 +127,11 @@ Changing the catalog pin touches these sites, in this order:
 for `benchbox_pin.after`, `catalog.merge_revision`, `mirrors.tracked_target.receipt_revision` and the tracked file hashes
 without waiting for the integration test. It never rewrites the evidence.
 
-After the upgrade merges, run `uv sync --project _project/scripts --locked` in the primary clone, restart the
-tractable MCP server, and reinstall any globally installed tractable tool with the `[mcp]` extra
-(`tractable[mcp]`, as `_project/scripts/pyproject.toml` requires). Dropping the extra has broken the MCP server for several sessions.
+After the upgrade merges, in this order:
 
-Once the move has landed and every session on the old runtime has restarted, the owner makes the primary
-clone's environment exact by running `uv sync --project _project/scripts --locked` there (exact by default),
-checking first with `--dry-run`. Do not run it while any session still uses the old runtime.
+1. Restart the tractable MCP server and every session still on the old runtime, and reinstall any globally installed
+   tractable tool with the `[mcp]` extra (`tractable[mcp]`, as `_project/scripts/pyproject.toml` requires). Dropping
+   the extra has broken the MCP server for several sessions.
+2. Only after every session on the old runtime has restarted, the owner runs `uv sync --project _project/scripts --locked`
+   in the primary clone, after checking the change first with `--dry-run`. `uv sync` is exact by default, so it removes
+   what the lock no longer lists. Never run it while any session still uses the old runtime.
