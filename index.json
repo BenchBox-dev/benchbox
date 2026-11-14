@@ -18679,17 +18679,12 @@
       "title": "Snowflake, Redshift, Firebolt, Databend and Athena credential errors still say \"Environment variables: ...\""
     },
     "credentials-file-plaintext-permission-race-20261113": {
-      "claim": {
-        "expires_at": "2026-11-15T07:35:36Z",
-        "generation": "a5f61bc7772e423ba5c0264c4aa3fa23",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
-      },
+      "claim": null,
       "needs": [
         "umbrella-credentials-publication-safety-20261114"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Platform credentials are stored in plaintext and made private only after they are written"
     },
     "crlf-framing-coverage-and-text-mode-invariant": {
