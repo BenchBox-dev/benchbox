@@ -30620,6 +30620,13 @@
       "status": "done",
       "title": "Clear the two remaining orphans on test/freeze-bulk-path-coverage"
     },
+    "outside-issue-3446-response-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Respond to outside issue #3446 (R data.table request)"
+    },
     "overlay-guard-scans-untracked-venv": {
       "claim": null,
       "needs": [],
