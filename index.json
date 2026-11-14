@@ -25958,7 +25958,9 @@
     },
     "integrity-validator-false-failures-20261114": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "umbrella-results-validation-soundness-20261114"
+      ],
       "priority": "high",
       "status": "open",
       "title": "Fix integrity-validator checks and benchmark specs that fail correct published bundles"
