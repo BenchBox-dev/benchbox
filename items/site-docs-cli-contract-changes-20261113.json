@@ -4,7 +4,7 @@
     "The result-format reference lists environment.host_load and execution.billable_platform_acknowledgement.",
     "The site docs check passes and the PR is merged to the site's next branch."
   ],
-  "context": "Site repository BenchBox-dev/benchbox-site; follow its AGENTS.md. Facts come from PR 4203 and the code on develop, not from memory.\n\nProgress (2026-11-14): documented in https://github.com/BenchBox-dev/benchbox-site/pull/157, merged to the site's next branch, which deploys only when next is merged into main at the next core release pin. Behaviour verified on develop: compare 0/3/4/1/2, results validate 5 and 1, guard exit 6 for run and compare, MCP refusal RESOURCE_ACCESS_DENIED. Remaining: changes from the credentials, submit-gate and run-official branches once they merge. This item stays open until those are documented.",
+  "context": "Site repository BenchBox-dev/benchbox-site; follow its AGENTS.md. Facts come from PR 4203 and the code on develop, not from memory.\n\nProgress (2026-11-14): documented in https://github.com/BenchBox-dev/benchbox-site/pull/157, merged to the site's next branch, which deploys only when next is merged into main at the next core release pin. Behaviour verified on develop: compare 0/3/4/1/2, results validate 5 and 1, guard exit 6 for run and compare, MCP refusal RESOURCE_ACCESS_DENIED. Remaining: changes from the credentials, submit-gate and run-official branches once they merge. This item stays open until those are documented.\n\nAlso to document (from PR #4227, merged 2026-11-14): run --force per-value deletion text, platforms install prints instructions only, run-official --acknowledge-billable-platform, the driver auto-install gate (exit 6, BENCHBOX_DRIVER_AUTO_INSTALL) and the list of paths the guard does not cover (see core docs/operations/run-safety.md).",
   "description": "Core PR https://github.com/BenchBox-dev/benchbox/pull/4203 changed user-facing CLI behaviour, including a breaking change to compare's exit codes and a new refusal for non-interactive cloud runs. The site documentation does not yet describe them. The needed text is in the PR body.",
   "sessions": [
     {
@@ -29,6 +29,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "dff3b2c2a6a843d1aa0f7777407ceeff",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T06:03:02Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "dfafe38e4aae4b73859533ef22306429",
       "session_id": "ac67b069b7864c4699843546272d3701"
     }
   ]
