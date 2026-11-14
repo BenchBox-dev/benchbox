@@ -36461,6 +36461,13 @@
       "status": "dropped",
       "title": "Results-publishing coverage work"
     },
+    "results-validate-skips-non-bundle-json-20261114": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "benchbox results validate reports corpus-inventory.json as a failing bundle"
+    },
     "results-vendor-publication-terms-review-20261113": {
       "claim": null,
       "needs": [],

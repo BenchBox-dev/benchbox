@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "A directory run over results-data reports no non-bundle file as FAIL; a test covers the inventory file.",
+    "A file that is a malformed bundle still fails."
+  ],
+  "context": "Found while fixing integrity-validator-false-failures-20261114. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "description": "Problem: a directory run of `benchbox results validate` over results-data includes results-data/corpus-inventory.json, which is an index, not a result bundle, so it always shows as FAIL. The command already skips *.manifest.json; it should also skip, or recognise, other non-bundle JSON.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T04:36:53Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "78f096c2f78742e1a127a106e5bc44d9",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}
