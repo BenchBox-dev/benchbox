@@ -101,6 +101,33 @@ class TestAdapterValidationConsistency:
         assert result["row_count_validation"]["error"] == mock_validation_failed.error_message
         assert "warning" not in result["row_count_validation"]
 
+    def test_base_adapter_loose_tolerance_match_is_not_recorded_as_passed(self):
+        from benchbox.platforms.base.adapter import PlatformAdapter
+
+        adapter = Mock(spec=PlatformAdapter)
+        adapter._build_query_result_with_validation = PlatformAdapter._build_query_result_with_validation.__get__(
+            adapter, PlatformAdapter
+        )
+        validation = ValidationResult(
+            is_valid=True,
+            query_id="16",
+            expected_row_count=18314,
+            actual_row_count=17900,
+            validation_mode=ValidationMode.LOOSE,
+        )
+        result = adapter._build_query_result_with_validation(
+            query_id="16",
+            execution_time=1.0,
+            actual_row_count=17900,
+            validation_result=validation,
+        )
+
+        evidence = result["row_count_validation"]
+        assert result["status"] == "SUCCESS"
+        assert evidence["status"] == "SKIPPED"
+        assert (evidence["expected"], evidence["actual"]) == (18314, 17900)
+        assert "not an exact match" in evidence["warning"]
+
     def test_base_adapter_validation_skipped(self, mock_validation_skipped):
 
         from benchbox.platforms.base.adapter import PlatformAdapter
