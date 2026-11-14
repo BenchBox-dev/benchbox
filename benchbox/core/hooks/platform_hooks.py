@@ -115,6 +115,10 @@ class PlatformHookRegistry:
         return defaults
 
     @classmethod
+    def get_applied_default_options(cls, platform: str) -> dict[str, Any]:
+        return {name: value for name, value in cls.get_default_options(platform).items() if value is not None}
+
+    @classmethod
     def parse_options(cls, platform: str, provided: Iterable[tuple[str, str]]) -> dict[str, Any]:
         platform = platform.lower()
         specs = cls._option_specs.get(platform, {})

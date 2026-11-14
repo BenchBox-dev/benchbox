@@ -45,7 +45,7 @@ def test_run_benchmark_impl_suppresses_transitive_stdout() -> None:
 def test_data_only_core_run_suppresses_transitive_stdout(tmp_path: Path) -> None:
     from benchbox.mcp.tools.benchmark import _run_benchmark_impl
 
-    def build_dummy_benchmark(scale_factor: float, output_dir: Path) -> SimpleNamespace:
+    def build_dummy_benchmark(scale_factor: float, output_dir: Path, **_: object) -> SimpleNamespace:
         return SimpleNamespace(scale_factor=scale_factor, output_dir=output_dir)
 
     captured = io.StringIO()

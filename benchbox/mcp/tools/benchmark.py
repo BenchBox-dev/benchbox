@@ -28,6 +28,7 @@ from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
 from benchbox.core.results.exporter import ResultExporter
 from benchbox.core.results.schema import build_result_payload
 from benchbox.core.run_selection import RunSelection, resolve_run_selection
+from benchbox.core.tuning import modes as tuning_modes
 from benchbox.mcp.deprecations import attach_deprecations
 from benchbox.mcp.errors import (
     ErrorCode,
@@ -55,6 +56,13 @@ from benchbox.utils.printing import get_quiet_console, silence_output
 logger = logging.getLogger(__name__)
 
 DEFAULT_LOCAL_PLATFORM_POLICY = LocalPlatformPolicy()
+
+INACTIVE_RUN_FLAGS: Mapping[str, object] = {
+    "force_recreate": False,
+    "force_upload": False,
+    "show_query_plans": False,
+    "normalize_plan_literals": False,
+}
 
 RUN_BENCHMARK_ANNOTATIONS = ToolAnnotations(
     title="Execute benchmark",
@@ -408,6 +416,7 @@ def _execute_mcp_run_via_core(
         SilentVerbosity,
         execute_run,
         map_phases_to_execution_type,
+        resolve_default_compression,
         translate_platform_options_for_adapter,
     )
     from benchbox.core.schemas import BenchmarkConfig, DatabaseConfig, ExecutionContext
@@ -426,10 +435,16 @@ def _execute_mcp_run_via_core(
     data_only = resolved_mode == "data_only"
     data_dir = get_benchmark_runs_datagen_path(benchmark, scale_factor, results_dir / "datagen") if data_only else None
     seed_kwargs = _benchmark_seed_kwargs(benchmark, seed)
+    compression_enabled, compression_type, compression_level = resolve_default_compression()
+    compression_kwargs = {
+        "compress_data": compression_enabled,
+        "compression_type": compression_type,
+        "compression_level": compression_level,
+    }
     benchmark_instance = (
-        benchmark_class(scale_factor=scale_factor, output_dir=data_dir, **seed_kwargs)
+        benchmark_class(scale_factor=scale_factor, output_dir=data_dir, **compression_kwargs, **seed_kwargs)
         if data_only
-        else benchmark_class(scale_factor=scale_factor, **seed_kwargs)
+        else benchmark_class(scale_factor=scale_factor, **compression_kwargs, **seed_kwargs)
     )
 
     adapter_options: dict[str, object] = {}
@@ -445,7 +460,10 @@ def _execute_mcp_run_via_core(
                 adapter_input["port"] = profile["port"]
                 adapter_input["secure"] = profile["secure"]
                 adapter_input.pop("connection_profile", None)
-            adapter_options = translate_platform_options_for_adapter(platform_key, adapter_input)
+            adapter_options = {
+                **PlatformHookRegistry.get_applied_default_options(platform_key),
+                **translate_platform_options_for_adapter(platform_key, adapter_input),
+            }
             if selection.selector_deployment is not None:
                 adapter_options["_deployment_selector"] = selection.selector_deployment
         except MCPValidationError as exc:
@@ -459,6 +477,9 @@ def _execute_mcp_run_via_core(
         entry_point="mcp",
         phases=phases,
         seed=seed,
+        compression_enabled=compression_enabled,
+        compression_type=compression_type,
+        compression_level=compression_level,
         query_subset=query_subset,
         mode=resolved_mode if resolved_mode in ("sql", "dataframe") else "sql",
         billable_platform_acknowledgement=dict(billable_acknowledgement) if billable_acknowledgement else None,
@@ -472,6 +493,9 @@ def _execute_mcp_run_via_core(
         queries=query_subset,
         capture_plans=capture_plans,
         link_probe=link_probe,
+        compress_data=compression_enabled,
+        compression_type=compression_type,
+        compression_level=compression_level,
         options={
             **({"seed": seed} if seed is not None else {}),
             **({"power_iterations": iterations} if iterations is not None else {}),
@@ -490,7 +514,8 @@ def _execute_mcp_run_via_core(
             name=f"mcp_{platform_key}",
             execution_mode=resolved_mode,
             execution_engine=resolved_execution_engine,
-            options=dict(adapter_options),
+            options={**adapter_options, **INACTIVE_RUN_FLAGS},
+            tuning_source=tuning_modes.BASELINE_SOURCE,
         )
     profiler = SystemProfiler()
     system_profile = profiler.get_system_profile()
@@ -516,9 +541,9 @@ def _execute_mcp_run_via_core(
         if execution_mode == "dataframe":
             registered = PlatformHookRegistry.list_option_specs(database_config.type)
             dataframe_options = (
-                {key: value for key, value in database_config.options.items() if key in registered}
+                {key: value for key, value in adapter_options.items() if key in registered}
                 if registered
-                else dict(database_config.options)
+                else dict(adapter_options)
             )
             from benchbox.platforms import get_adapter
 

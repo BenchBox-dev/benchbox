@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
 from benchbox.core.config import BenchmarkConfig, RunConfig
 from benchbox.core.constants import (
+    DEFAULT_OUTPUT_COMPRESSION_TYPE,
     GENERIC_POWER_DEFAULT_MEASUREMENT_ITERATIONS,
     GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS,
+    NO_COMPRESSION_ENV_VAR,
     QUERY_PHASES,
 )
 
@@ -98,6 +101,7 @@ from benchbox.core.runner.runner import (
 )
 from benchbox.core.schemas import reject_single_stream_throughput
 from benchbox.core.tpc_spec import min_streams_for_scale, refresh_functions_enabled, require_full_spec
+from benchbox.utils.compression import CompressionManager
 from benchbox.utils.disk_guard import ensure_run_output_space
 from benchbox.utils.toggles import is_probe_requested
 
@@ -337,6 +341,13 @@ def translate_platform_options_for_adapter(platform: str, options: dict) -> dict
     return normalized
 
 
+def resolve_default_compression() -> tuple[bool, str, int | None]:
+    disabled = os.getenv(NO_COMPRESSION_ENV_VAR, "").lower() in {"true", "1", "yes", "on"}
+    if disabled or DEFAULT_OUTPUT_COMPRESSION_TYPE not in CompressionManager().get_available_compressors():
+        return False, "none", None
+    return True, DEFAULT_OUTPUT_COMPRESSION_TYPE, None
+
+
 def build_databricks_clustering_intent(options: dict[str, object]):
     strategy = options.get("databricks_clustering_strategy")
     columns = options.get("liquid_clustering_columns")
@@ -425,6 +436,7 @@ __all__ = [
     "is_dataframe_execution",
     "map_phases_to_execution_type",
     "reject_unsupported_dataframe_phases",
+    "resolve_default_compression",
     "resolve_execution_mode",
     "resolve_lifecycle_phases",
     "resolve_mode_with_registry",
