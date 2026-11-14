@@ -5,6 +5,7 @@
     "The nightly throughput configs run a phase set the official gate accepts, or use the non-official run path if a partial run is intended, without weakening the gate",
     "t3:throughput duckdb and cedardb green in the next nightly"
   ],
+  "context": "2026-11-12: PR #4220 merged (9e1f9208d7 2026-11-14T03:13:05Z). Root cause: uat-throughput-{duckdb,cedardb}-nightly.yaml ran official TPC-H with phases load,throughput; #4137's gate requires power and throughput, and the refusal went to the silenced console under --quiet (run_official also relabelled the exit as 'Benchmark execution failed: 1'). Fix: refusals print via fatal() to stderr under --quiet with a test; configs use load,power,throughput; gate unchanged. Second bug found and fixed: a TPC-H Q16 row count inside the loose non-reference-seed tolerance was recorded as an exact PASSED and failed export; now SKIPPED with a warning (result_capture and DataFrame validation, tests for both). Local: duckdb cell exit 0 at SF1, 132 queries passed, refresh included, validate_throughput_result ok for 3 streams. Remaining: close when the next nightly shows t3:throughput duckdb and cedardb green (CedarDB not run locally).",
   "description": "Nightly-v2 runs 43254687916 (2026-11-12) and 43453477982 (2026-11-13): t3:throughput duckdb and cedardb cells run `benchbox run-official tpch --scale 1.0 --phases load,throughput --streams 3 --seed 20260709 --quiet` and exit 1 after the banner with no error text (terminal_state no_json_nonzero, 'recorded no result_path'). Last green before PR #4137 (f4ffb30eaf, 2026-11-12), which made --official refuse partial phases and TPC-H runs without refresh functions. Likely two defects: the nightly throughput configs request a phase set the official gate now refuses, and the refusal is not printed under --quiet.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/actions/runs/43453477982",
@@ -17,6 +18,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "97ab6e03f83842d689bc05b7c143c121",
+      "session_id": "4fc38207b51b48f682c92ef4be5cc6b0"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9dde2030f0b654b7eae6a730",
+      "at": "2026-11-14T03:13:34Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4a6ff6b98205493d91ae79e475d35ac9",
       "session_id": "4fc38207b51b48f682c92ef4be5cc6b0"
     }
   ]
