@@ -7,7 +7,7 @@ import click
 
 from benchbox.cli.exit_codes import ExitCode
 from benchbox.cli.shared import console
-from benchbox.core.billable_platforms import is_non_interactive_session
+from benchbox.utils.session import is_non_interactive_session
 
 
 def confirm_or_refuse(action: str, *, flag: str, ask: Callable[[], bool]) -> bool:

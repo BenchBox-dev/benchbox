@@ -7,7 +7,7 @@ from rich.markup import escape
 
 from benchbox.cli.exit_codes import ExitCode
 from benchbox.cli.shared import console
-from benchbox.core.billable_platforms import is_non_interactive_session
+from benchbox.utils.session import is_non_interactive_session
 
 HOSTED_SUBMISSION_ACKNOWLEDGEMENT_ENV_VAR = "BENCHBOX_ACKNOWLEDGE_HOSTED_SUBMISSION"
 MAINTAINER_LABEL_ENV_VAR = "BENCHBOX_ALLOW_MAINTAINER_LABEL"
