@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Failing tests first: case-insensitive table match, required_keys accepting result_schema_version without version, PARTIAL accepted (texts in the triage item's context and the analysis report); each fails before and passes after.",
+    "Spec pins: clickbench hits 1000000 at SF1; joinorder counts checked against the canonical IMDB 2013 archive used by the downloader; flightdata counts checked against the pinned BTS source before changing, with the evidence in the PR.",
+    "Re-running the command over every result directory leaves only real defects failing: the TPC-DI old-scale bundles and the 14 already-unranked run failures; the PR lists the before and after counts.",
+    "A wrong bundle (row count off by more than tolerance, missing a truly required key) still fails; tests cover both.",
+    "The external soundness review passes if validation code is a soundness path."
+  ],
+  "context": "Source: triage recorded in corpus-integrity-validator-failures-triage-20261113 (2026-11-14). The validator is the one behind `benchbox results validate` and MCP validate_results. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "description": "Problem: `benchbox results validate` fails 50 ranked published bundles that are correct. Causes: (1) _check_required_keys requires 'version' though bundles from 2026-09-19/20 carry only result_schema_version, which schema_policy.result_schema_version_value reads first; (2) _check_sf1_row_counts matches table names case-sensitively, failing BigQuery/Snowflake upper-case and Databricks lower-case names with correct counts; (3) benchmark_specs.yaml expects clickbench hits 499576 while the generator writes int(1_000_000*sf); (4) joinorder SF1 counts do not match the IMDB data the bundles hold (aka_name 901343, cast_info 36244344, and so on); (5) flightdata expects 25457793 flights and 26 airlines against 23437547 and 25 in every bundle; (6) _VALID_PHASE_STATUSES lacks PARTIAL, which writers emit.\n\nOutcome: the validator accepts correct bundles and still fails wrong ones; specs match the data the generators and pinned sources produce.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T03:48:41Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0f8b33516ca64229bbb4c69b9a7fa0ca",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}

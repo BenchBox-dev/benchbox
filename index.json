@@ -25956,6 +25956,13 @@
       "status": "done",
       "title": "Integration tests with real PySpark + Delta Lake execution"
     },
+    "integrity-validator-false-failures-20261114": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Fix integrity-validator checks and benchmark specs that fail correct published bundles"
+    },
     "interactive-cdfchart-tooltip-showing-exact-percentile-at-cur": {
       "claim": null,
       "needs": [],
