@@ -46218,17 +46218,12 @@
       "title": "todo create --verify splits on :: and silently truncates pytest node-id commands"
     },
     "verify-fresh-install-first-command-20261113": {
-      "claim": {
-        "expires_at": "2026-11-15T06:32:13Z",
-        "generation": "a5d0c439bc9c4e8aa09c3133413be23b",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
-      },
+      "claim": null,
       "needs": [
         "umbrella-core-tooling-docs-20261114"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Verify the documented install gives a working first benchmark command in a clean environment"
     },
     "verify-pg-integration-after-baseline-fix-20261020": {
