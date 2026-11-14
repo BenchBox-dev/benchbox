@@ -38026,7 +38026,9 @@
     },
     "site-docs-cli-contract-changes-20261113": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "umbrella-site-docs-accuracy-20261114"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Document compare exit codes, results validate, the cloud-platform guard and host-load fields on the site"
