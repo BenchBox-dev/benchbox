@@ -196,7 +196,7 @@ def _deployment_policies(name: str) -> dict:
     }
 
 
-@pytest.mark.parametrize("name", ["pypi", "test-pypi", "oracle"])
+@pytest.mark.parametrize("name", ["pypi", "test-pypi", "oracle", "review"])
 def test_matching_deployment_policies_have_no_findings(name: str) -> None:
     assert deployment_policy_findings(name, _deployment_environment(), _deployment_policies(name)) == []
 
@@ -255,6 +255,36 @@ def test_matching_deployment_policies_have_no_findings(name: str) -> None:
             lambda p: None,
             "oracle environment: deployment_branch_policy",
         ),
+        (
+            "review",
+            lambda env: None,
+            lambda p: p["branch_policies"].append({"type": "branch", "name": "feature/*"}),
+            "review environment: deployment policies",
+        ),
+        (
+            "review",
+            lambda env: None,
+            lambda p: p["branch_policies"].remove({"type": "branch", "name": "release/*"}),
+            "review environment: deployment policies",
+        ),
+        (
+            "review",
+            lambda env: None,
+            lambda p: p["branch_policies"].remove({"type": "branch", "name": "develop"}),
+            "review environment: deployment policies",
+        ),
+        (
+            "review",
+            lambda env: None,
+            lambda p: p["branch_policies"].append({"type": "tag", "name": "release/*"}),
+            "review environment: deployment policies",
+        ),
+        (
+            "review",
+            lambda env: env["deployment_branch_policy"].update(custom_branch_policies=False),
+            lambda p: None,
+            "review environment: deployment_branch_policy",
+        ),
         ("pypi", lambda env: None, lambda p: p.update(branch_policies=None), "missing or malformed"),
         ("pypi", lambda env: None, lambda p: p["branch_policies"].append("v*"), "deployment policies"),
     ],
@@ -286,6 +316,7 @@ def test_main_fails_when_a_live_environment_gains_a_policy(
         "pypi": _deployment_policies("pypi"),
         "test-pypi": _deployment_policies("test-pypi"),
         "oracle": _deployment_policies("oracle"),
+        "review": _deployment_policies("review"),
     }
     policies["pypi"]["branch_policies"].append({"type": "branch", "name": "*"})
     monkeypatch.setattr(ruleset_drift_check, "_fetch_live_rulesets", lambda _repo, _token: {})
@@ -327,7 +358,7 @@ def test_token_stdin_is_forwarded_to_all_github_queries(monkeypatch: pytest.Monk
     )
 
     assert ruleset_drift_check.main(["--token-stdin"]) == 1
-    assert seen == ["stdin-token"] * 8
+    assert seen == ["stdin-token"] * 10
 
 
 def _http_error(code: int) -> urllib.error.HTTPError:

@@ -2539,7 +2539,7 @@ def _review_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, head: str = "a"
 def _verdict_review(
     state: str = "success",
     head: str = "a" * 40,
-    login: str = "benchbox-oracle",
+    login: str = "benchbox-review",
     account_type: str = "Bot",
     commit: str | None = None,
     review_state: str = "COMMENTED",
@@ -2557,7 +2557,7 @@ def _verdict_review(
 
 def _gate_status(
     state: str = "success",
-    login: str = "benchbox-oracle[bot]",
+    login: str = "benchbox-review[bot]",
     account_type: str = "Bot",
     context: str = "review-gate",
 ) -> dict:

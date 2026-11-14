@@ -90,7 +90,7 @@ fails, when:
 For a notice under an external selector, the working-tree file must keep the
 pinned bytes, and a whole-file pin must match the whole file. A pull request
 may change these pins only in a run with a comparison base, and only after a success
-verdict from `benchbox-oracle` covers its head. Even then a changed pin must
+verdict from `benchbox-review` covers its head. Even then a changed pin must
 name a path already pinned at the base, stay inside the base range, keep those
 bytes identical to the base, and not turn a partial pin into a whole-file pin.
 

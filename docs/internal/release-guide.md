@@ -142,7 +142,7 @@ The procedure:
    legacy `release` branch and its rulesets are gone; Git cannot hold `release`
    and `release/X.Y.x` together, so none may be recreated.
 2. The owner creates the branch as one commit on top of the `vX.Y.0` tag commit
-   (or the newest `vX.Y.Z` tag of that minor). Because the `oracle` environment
+   (or the newest `vX.Y.Z` tag of that minor). Because the `review` environment
    admits `release/*`, that commit must replace the tag's reviewer files with
    `develop`'s before any workflow can run on the branch: a tag that predates
    the pinned callers must not leave older reviewer code able to run with the

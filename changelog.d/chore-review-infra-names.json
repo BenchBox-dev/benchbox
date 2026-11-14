@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "Rename the review infrastructure from oracle to review: the GitHub environment, its secrets, the tailnet tag and the GitHub App login; no user-facing effect"}

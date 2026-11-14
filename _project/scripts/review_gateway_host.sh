@@ -518,9 +518,9 @@ cmd_secrets() {
   [ -s "$CLIENT_TOKEN_FILE" ] || fail "no client token; run '$(basename "$0") gateway' first"
   local url
   url=$(tailnet_url)
-  gh secret set ORACLE_GATEWAY_TOKEN --env oracle --repo "$REPO_SLUG" < "$CLIENT_TOKEN_FILE"
-  gh secret set ORACLE_GATEWAY_URL --env oracle --repo "$REPO_SLUG" --body "$url"
-  echo "secrets: ORACLE_GATEWAY_TOKEN and ORACLE_GATEWAY_URL=$url set on the oracle environment"
+  gh secret set REVIEW_GATEWAY_TOKEN --env review --repo "$REPO_SLUG" < "$CLIENT_TOKEN_FILE"
+  gh secret set REVIEW_GATEWAY_URL --env review --repo "$REPO_SLUG" --body "$url"
+  echo "secrets: REVIEW_GATEWAY_TOKEN and REVIEW_GATEWAY_URL=$url set on the review environment"
 }
 
 health_collect() {
@@ -581,12 +581,12 @@ cmd_check() {
   fi
   health_collect || rc=$?
   [ "$rc" -eq 0 ] || [ "$rc" -eq 3 ] || exit "$rc"
-  secrets=$(gh secret list --env oracle --repo "$REPO_SLUG" --json name --jq '.[].name') \
-    || fail "gh could not list the oracle environment secrets; run 'gh auth login'"
-  for name in ORACLE_GATEWAY_TOKEN ORACLE_GATEWAY_URL; do
-    printf '%s\n' "$secrets" | grep -x "$name" >/dev/null || fail "the oracle environment has no $name secret"
+  secrets=$(gh secret list --env review --repo "$REPO_SLUG" --json name --jq '.[].name') \
+    || fail "gh could not list the review environment secrets; run 'gh auth login'"
+  for name in REVIEW_GATEWAY_TOKEN REVIEW_GATEWAY_URL; do
+    printf '%s\n' "$secrets" | grep -x "$name" >/dev/null || fail "the review environment has no $name secret"
   done
-  echo "secrets: ORACLE_GATEWAY_TOKEN and ORACLE_GATEWAY_URL are set"
+  echo "secrets: REVIEW_GATEWAY_TOKEN and REVIEW_GATEWAY_URL are set"
   exit "$rc"
 }
 

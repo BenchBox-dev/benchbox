@@ -30,7 +30,7 @@ def test_the_live_policy_enforces_and_posts_where_the_gate_reads() -> None:
     assert POLICY["mode"] == "enforce"
     assert POLICY["findings_delivery"] == "review"
     assert POLICY["status_context"] == "review-verdict"
-    assert POLICY["bot_login"] == "benchbox-oracle"
+    assert POLICY["bot_login"] == "benchbox-review"
 
 
 def test_the_gated_base_and_attesters_are_pinned() -> None:

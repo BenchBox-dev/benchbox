@@ -16,7 +16,7 @@ WORKFLOW = REPO_ROOT / ".github" / "workflows" / "review-gate.yml"
 LOCK = REPO_ROOT / ".github" / "theseus-lock.json"
 CALLEE = re.compile(r"^joeharris76/theseus/\.github/workflows/gate\.yml@([0-9a-f]{40})$")
 ENGINE_PATHS = ("oracle_reviewers", "oracle_gate", "oracle_review_check", "uv run", "setup-uv")
-EXPECTED_SECRETS = {"REVIEW_APP_ID": "ORACLE_APP_ID", "REVIEW_APP_PRIVATE_KEY": "ORACLE_APP_PRIVATE_KEY"}
+EXPECTED_SECRETS = {"REVIEW_APP_ID": "REVIEW_APP_ID", "REVIEW_APP_PRIVATE_KEY": "REVIEW_APP_PRIVATE_KEY"}
 SHA = "0123456789abcdef0123456789abcdef01234567"
 STANDIN = "Stand-in review: APPROVE"
 
@@ -88,7 +88,7 @@ def test_the_caller_calls_the_pinned_theseus_gate_workflow_with_the_same_commit_
 
 def test_the_caller_passes_the_environment_the_develop_base_and_the_policy_path_and_nothing_else() -> None:
     assert _job()["with"] == {
-        "environment": "oracle",
+        "environment": "review",
         "theseus_ref": _job()["with"]["theseus_ref"],
         "gated_base": "develop,release/*",
         "policy_path": ".github/review.yml",
@@ -103,9 +103,7 @@ def test_the_caller_has_no_steps_and_passes_named_secrets_with_no_in_tree_engine
     job = _job()
     assert set(job) == {"permissions", "uses", "with", "secrets"}
     text = _text()
-    assert _job()["secrets"] == {
-        name: "${{ secrets." + name.replace("REVIEW_", "ORACLE_") + " }}" for name in EXPECTED_SECRETS
-    }
+    assert _job()["secrets"] == {name: "${{ secrets." + name + " }}" for name in EXPECTED_SECRETS}
     assert "inherit" not in text
     assert text.count("secrets:") == 1
     for needle in ENGINE_PATHS:

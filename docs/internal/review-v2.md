@@ -49,8 +49,8 @@ BenchBox keeps the consumer side:
 
 - `.github/workflows/review-verdict.yml` and `review-gate.yml`: thin callers of
   the SHA-pinned Theseus reusable workflows. Each caller job passes every
-  `oracle` environment secret the callee uses by name (`NAME: ${{ secrets.NAME }}`):
-  seven for the review workflow, `ORACLE_APP_ID` and `ORACLE_APP_PRIVATE_KEY` for
+  `review` environment secret the callee uses by name (`NAME: ${{ secrets.NAME }}`):
+  seven for the review workflow, `REVIEW_APP_ID` and `REVIEW_APP_PRIVATE_KEY` for
   the gate. The callee declares them under `on.workflow_call.secrets` as
   required, so a missing mapping fails at startup instead of resolving empty.
   `secrets: inherit` is not used: it does not cross owners (this repository is
@@ -161,7 +161,7 @@ checks are not part of a bump.
 
 ### What cannot be exercised before the merge
 
-A bump branch cannot run the new pin. The `oracle` environment deploys only from
+A bump branch cannot run the new pin. The `review` environment deploys only from
 `develop` and `release/*` (`repo-admin-settings.md`; `scripts/ruleset_drift_check.py` fails
 if the policy widens or narrows), the callee guard refuses a `workflow_dispatch` that is not
 on a gated base (`develop` or `release/*`), so `gh workflow run review-verdict.yml` accepts
@@ -191,14 +191,14 @@ The pin is healthy when, on each pull request:
 - the run logs `HAS_APP: true` (an empty secret still ends the job green, so a green run
   alone proves nothing);
 - `review-verdict` and `review-gate` are posted for the head by
-  `benchbox-oracle[bot]`; no `oracle-*` mirror is posted;
+  `benchbox-review[bot]`; no `oracle-*` mirror is posted;
 - the trivial pull request reaches `success` on every required gate context;
 - the defect pull request gets a verdict that lists the defect, and its gate does not report
   `success`.
 
 Each caller also ends with a `posting-check` job (`review-verdict.yml`, `review-gate.yml`)
 that reads `needs.<caller job>.result` explicitly and fails when the head the run handled has
-no status from `benchbox-oracle[bot]` in `review-verdict` (verdict) or
+no status from `benchbox-review[bot]` in `review-verdict` (verdict) or
 `review-gate` (gate), so an empty secret mapping can no longer end green while
 posting nothing on a head that has no status yet. It asserts only for `pull_request_target`
 and `workflow_dispatch` runs, and skips the runs the callee skips by design: sweeps and
@@ -241,20 +241,20 @@ reviews and gates stop posting on `develop`.
 
 If the bad pin stops the gate from posting on every pull request, the revert cannot pass
 the gate either, because the gate runs from `develop`'s callers. That is a base-pinned gate
-failure: follow `docs/agent/emergency-merge.md`. Relaxing the ruleset or the `oracle`
+failure: follow `docs/agent/emergency-merge.md`. Relaxing the ruleset or the `review`
 environment is an owner action, and an agent never takes it.
 
 ## Setup
 
 1. Create a GitHub App owned by the repository owner with **Commit statuses:
    write** and **Pull requests: write**, installed on this repository only.
-2. Before the workflow first runs, create the `oracle` environment with
+2. Before the workflow first runs, create the `review` environment with
    deployment branches limited to `develop` and `release/*`; GitHub creates a missing
    environment with no protection rules. The branch rule does not keep PR
    runs from the secrets: for `pull_request_target` it is evaluated against
    the default branch, so those runs reach them.
-3. Add these `oracle` environment secrets:
-   - `ORACLE_APP_ID`, `ORACLE_APP_PRIVATE_KEY`: only the `review` job's `Mint
+3. Add these `review` environment secrets:
+   - `REVIEW_APP_ID`, `REVIEW_APP_PRIVATE_KEY`: only the `review` job's `Mint
      the App token` step, after the attempt loop and the redaction check.
    - `TYPESAFE_API_KEY`: only the classify step (TypeSafe's Jev model classifies
      the change), the recovery steps between loop steps (Jev classifies an
@@ -267,13 +267,13 @@ environment is an owner action, and an agent never takes it.
      ([amendment](../../_project/decisions/oracle-reviewer-gateway-2026-10-22.md#amendment-a-classification-only-openai-key)).
      Without it the fallback ends at `classifier.unavailable_bucket` and the
      step summary warns.
-   - `ORACLE_GATEWAY_TOKEN`, `ORACLE_GATEWAY_URL`: the reviewer's client token
+   - `REVIEW_GATEWAY_TOKEN`, `REVIEW_GATEWAY_URL`: the reviewer's client token
      for the credential gateway and the gateway's HTTPS URL, held by the attempt
      loop and the redaction step. No provider key, broker URL, broker token or
      owner OMP config is stored for the reviewer; its model roles and fallback
      chains are committed in `.github/review-omp-config.yml`.
    - `TS_OAUTH_CI_CLIENT_ID`, `TS_OAUTH_CI_SECRET`: the tailnet join (a
-     Tailscale OAuth client with Auth Keys write, tag `tag:oracle-ci`).
+     Tailscale OAuth client with Auth Keys write, tag `tag:review-ci`).
 4. Keep provider credentials, `CLAUDE_CODE_OAUTH_TOKEN` included, out of
    repository secrets: same-repository PR workflows can read those.
 
@@ -377,7 +377,7 @@ URLs and output.
 
 The `review` job joins the tailnet once, before the attempt loop, through
 `tailscale/github-action` with the OAuth client secret pair, tagged
-`tag:oracle-ci`; the secret is referenced only by that step and the scans and
+`tag:review-ci`; the secret is referenced only by that step and the scans and
 redaction. The job holds no `id-token: write`. The step runs only when
 `TS_OAUTH_CI_CLIENT_ID` and `TS_OAUTH_CI_SECRET` are set. A failed join does not end the
 review; the attempt is absent.
@@ -386,7 +386,7 @@ review; the attempt is absent.
 rotating and moving the gateway host, and the Tailscale OAuth client and
 tailnet policy the job needs.
 
-Without `ORACLE_APP_ID`, the job logs the result and succeeds.
+Without `REVIEW_APP_ID`, the job logs the result and succeeds.
 
 ## How a run works
 
@@ -509,12 +509,12 @@ one-time inspection:
 | C7 token scope | Job permissions are exactly `actions: write`, `contents: read`, `pull-requests: read`; no `id-token`, and the isolation step fails if `ACTIONS_ID_TOKEN_REQUEST_TOKEN` is present. `github.token` appears only in the `env:` of steps before or after the loop; both checkouts use `persist-credentials: false`. |
 | C8 timeout budget | The job's `timeout-minutes` is `max_attempts` times the longest reviewer `timeout_minutes` plus setup, under 360; the harness timeout fires first and becomes an absence. Every phase step also carries its own `timeout-minutes`: attempt-loop steps the `max_attempts` times longest reviewer budget, every other phase at most 30. A workflow test recomputes both from the policy. |
 | C9 cancellation | `cancel-in-progress` is true only for `pull_request_target`. Push and schedule runs share one `sweep` group; owner `/review` and adjudication comments and dispatches share the pull request's group with its `pull_request_target` runs; every other event gets a group of its own. A run that waits behind one in flight is held as the group's single pending run, and a newer pending run replaces the older one, which GitHub cancels. The publish and dispatch steps keep the default success condition, so a cancelled run posts nothing. |
-| C10 App mint last | `ORACLE_APP_PRIVATE_KEY` is referenced by the review job's posting mint, after the loop, last disk scan and the finalize phase's redaction check, and by the sweep job's failure-status mint; the sweep job runs no reviewer, so its mint cannot leak to one. |
+| C10 App mint last | `REVIEW_APP_PRIVATE_KEY` is referenced by the review job's posting mint, after the loop, last disk scan and the finalize phase's redaction check, and by the sweep job's failure-status mint; the sweep job runs no reviewer, so its mint cannot leak to one. |
 
 Redaction is accident hygiene, not a control: it matches literal and
 control-split values, so an encoding defeats it. The loop environment holds the
 gateway token and URL, which a same-user reviewer can read and encode-leak. The
-owner accepted that with compensating controls: the `tag:oracle-ci` ACL
+owner accepted that with compensating controls: the `tag:review-ci` ACL
 (gateway port only, tailnet-only reachability), model scope, per-client quota
 and revocation. The OAuth client secret is never in the loop environment.
 
@@ -1480,7 +1480,7 @@ and posts nothing to GitHub.
 ## Calibration
 
 The workflow has five attempt slots. Each reviewer authenticates in CI through
-the credential gateway with the `ORACLE_GATEWAY_TOKEN` client token; one that
+the credential gateway with the `REVIEW_GATEWAY_TOKEN` client token; one that
 cannot is set `enabled: false` with a `disabled_reason`.
 
 Capture each reviewer's quota, authentication and outage output from real runs.
@@ -1737,7 +1737,7 @@ Done: `.github/review.yml` sets `mode: enforce`, and the checker
 (`_project/scripts/oracle_review_check.py`), reported by the required
 `review-gate` check, accepts only the reviewer signal:
 
-- a latest `review-verdict` commit status on the head from the `benchbox-oracle`
+- a latest `review-verdict` commit status on the head from the `benchbox-review`
   App's Bot account, state `success`, posted after any retarget;
 - no unresolved review thread from the App.
 
@@ -1852,7 +1852,7 @@ forged `review-gate` success to its own head, so the workflow alone does not
 make the context unforgeable. The unit test fails on any step outside
 `review-gate.yml` that could post the context, but a generated file or new
 workflow could still land one. The ruleset closes this: the required
-`review-gate` check is scoped to the `benchbox-oracle` App's integration ID
+`review-gate` check is scoped to the `benchbox-review` App's integration ID
 (5201041), so only that App's statuses satisfy it. Without that binding a forged
 success would count and the gate property would not hold.
 
@@ -1885,7 +1885,7 @@ can target another branch or be stacked on that head) and dispatches the gate
 for it from `develop`. Gate and sweep jobs check out `develop`, never the PR,
 sparsely (gate, predicate, reviewers policy), run the script with pinned
 `pyyaml` as `review-verdict` does, and mint the App token as `review-verdict`
-does, from the same `oracle` environment and secrets. If the reviewers policy
+does, from the same `review` environment and secrets. If the reviewers policy
 cannot load, the script errors rather than deciding with empty rules; the sweep
 records every per-PR error and fails if any PR errored. Runs evaluating a PR
 share one concurrency group keyed by its number that queues rather than cancels, so
@@ -1909,14 +1909,14 @@ resolve step. The remaining gap: if REST and GraphQL both fail, nothing posts
 and the prior status stands until the next sweep.
 Every reader of `review-gate` (the merge landing checks, the remote closeout and
 the comment-cleanup scope check) ignores a status whose creator is not the
-`benchbox-oracle` App.
+`benchbox-review` App.
 When the GraphQL read of a receipt's edit state fails, the evaluation errors and
 the gate posts `failure` rather than treating the receipt as edited.
 PRs not based on `develop` and `--no-post` runs never post, errors included. The
 sweep lists open `develop` PRs with `gh api --paginate`, with a 45-minute
 timeout.
 
-`review-gate` became required on 2026-10-21, scoped to the `benchbox-oracle`
+`review-gate` became required on 2026-10-21, scoped to the `benchbox-review`
 App's integration ID, alongside `review`, which stopped being required on
 2026-10-24 after a side-by-side comparison
 (`_project/decisions/oracle-review-check-retired-2026-10-24.md`). The notification workflow, `review-request`,
@@ -2010,15 +2010,13 @@ dependence on the old names. In BenchBox:
   (`scripts/pr_landing.py`, `scripts/pr_arm.py`, `scripts/check_comment_cleanup_scope.py`,
   `_project/scripts/soundness_merge_digest.py`, `scripts/ruleset_drift_check.py`).
   Nothing reads an `oracle-*` status (the digest still recognises the historical `oracle-verdict` review headings of merged PRs). The drift check reports `oracle-gate` as an unexpected required context.
-- **Legacy infrastructure names kept.** The callers keep `environment: oracle`
-  and pass `tailscale_tag: tag:oracle-ci`, the tag the tailnet policy and OAuth
-  client already use; the cloud nodes keep `tag:oracle-cloud`. The secrets block
-  maps the callee names onto the secrets BenchBox holds, by name:
-  `REVIEW_APP_ID: ${{ secrets.ORACLE_APP_ID }}`, and the same for
+- **Infrastructure names.** The callers use `environment: review` and pass
+  `tailscale_tag: tag:review-ci`, the tag the tailnet policy and OAuth client use;
+  the cloud nodes keep `tag:oracle-cloud`. The secrets block passes each callee
+  secret by name from the `review` environment:
+  `REVIEW_APP_ID: ${{ secrets.REVIEW_APP_ID }}`, and the same for
   `REVIEW_APP_PRIVATE_KEY`, `REVIEW_GATEWAY_TOKEN` and `REVIEW_GATEWAY_URL`. The
-  repository secrets and the gateway host's `secrets` command keep their
-  `ORACLE_*` names, and the GitHub App is still `benchbox-oracle`. Renaming those
-  is tracked by `benchbox-oracle-infra-names-20261108`.
+  GitHub App is `benchbox-review`.
 - Environment variables read by Theseus or by BenchBox's scripts use the
   `REVIEW_` prefix (`REVIEW_CLOUD_GATEWAY_TOKEN`, `REVIEW_GATEWAY_URL` in cloud
   sessions, `REVIEW_LOCAL_RECORD_OUT`). Gateway clients are `review-ci`,

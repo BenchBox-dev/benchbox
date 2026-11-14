@@ -123,7 +123,7 @@ class FakeGh:
             return self.status_code, self.gate_state + "\n" if self.status_code == 0 else "gh: HTTP 502"
         if cmd[:2] == ["gh", "api"] and f"repos/{pr_arm.REPOSITORY}/commits/{self.local_head}/statuses?" in cmd[-1]:
             lines = [
-                "\t".join([name, state, "benchbox-oracle[bot]", "Bot", self.status_descriptions.get(name, "")])
+                "\t".join([name, state, "benchbox-review[bot]", "Bot", self.status_descriptions.get(name, "")])
                 for name, state in self.statuses.items()
             ]
             return 0, "\n".join(lines)

@@ -2,7 +2,7 @@ version: 2
 mode: enforce
 status_context: review-verdict
 findings_delivery: review
-bot_login: benchbox-oracle
+bot_login: benchbox-review
 consumer:
   gated_base:
     - develop

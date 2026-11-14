@@ -17,10 +17,10 @@ LOCK = REPO_ROOT / ".github" / "theseus-lock.json"
 CALLEE = re.compile(r"^joeharris76/theseus/\.github/workflows/review\.yml@([0-9a-f]{40})$")
 ENGINE_PATHS = ("oracle_reviewers", "oracle_gate", "oracle_review_check", "uv run", "setup-uv")
 EXPECTED_SECRETS = {
-    "REVIEW_APP_ID": "ORACLE_APP_ID",
-    "REVIEW_APP_PRIVATE_KEY": "ORACLE_APP_PRIVATE_KEY",
-    "REVIEW_GATEWAY_TOKEN": "ORACLE_GATEWAY_TOKEN",
-    "REVIEW_GATEWAY_URL": "ORACLE_GATEWAY_URL",
+    "REVIEW_APP_ID": "REVIEW_APP_ID",
+    "REVIEW_APP_PRIVATE_KEY": "REVIEW_APP_PRIVATE_KEY",
+    "REVIEW_GATEWAY_TOKEN": "REVIEW_GATEWAY_TOKEN",
+    "REVIEW_GATEWAY_URL": "REVIEW_GATEWAY_URL",
     "TS_OAUTH_CI_CLIENT_ID": "TS_OAUTH_CI_CLIENT_ID",
     "TS_OAUTH_CI_SECRET": "TS_OAUTH_CI_SECRET",
     "TYPESAFE_API_KEY": "TYPESAFE_API_KEY",
@@ -95,11 +95,11 @@ def test_the_caller_calls_the_pinned_theseus_review_workflow_with_the_same_commi
 
 def test_the_caller_passes_the_environment_base_policy_path_and_tailscale_tag_and_nothing_else() -> None:
     assert _job()["with"] == {
-        "environment": "oracle",
+        "environment": "review",
         "theseus_ref": _job()["with"]["theseus_ref"],
         "gated_base": "develop,release/*",
         "policy_path": ".github/review.yml",
-        "tailscale_tag": "tag:oracle-ci",
+        "tailscale_tag": "tag:review-ci",
     }
 
 

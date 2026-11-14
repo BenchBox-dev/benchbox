@@ -20,7 +20,7 @@ scratch. The design and its accepted risks are in
 | Owner denylist | `~/.omp/review-gateway/disabled-providers` (0600, owned by you, host-only, never in the repository): one provider id per line, `#` starts a comment. `gateway` excludes each listed provider from `clients.json` and writes the list as `disabledProviders:` into `~/.omp/review-gateway/home/.omp/agent/config.yml`, which the script owns. |
 | Health monitor | launchd agent `dev.omp.review-gateway-monitor`, installed by `monitor-install`: runs `review_gateway_host.sh monitor` every 15 minutes. State is `~/.omp/review-gateway/monitor.state`. Log: `~/.omp/logs/review-gateway-monitor.log`. |
 | Tailnet | `tailscale serve --bg --https=4000 http://127.0.0.1:4000`, reachable only inside the tailnet. |
-| GitHub | `oracle` environment secrets `ORACLE_GATEWAY_TOKEN` (the contents of `client.token`) and `ORACLE_GATEWAY_URL` (`https://<host>.<tailnet>.ts.net:4000`). |
+| GitHub | `review` environment secrets `REVIEW_GATEWAY_TOKEN` (the contents of `client.token`) and `REVIEW_GATEWAY_URL` (`https://<host>.<tailnet>.ts.net:4000`). |
 
 `_project/scripts/review_gateway_host.sh` builds and checks all of this. A
 rerun restarts an agent only when its plist or `run.sh` changed or its
@@ -35,14 +35,14 @@ granted.
 
 These settings outlive any one machine. Redo them only if they are lost.
 
-- **GitHub App and `oracle` environment:** see Setup in
+- **GitHub App and `review` environment:** see Setup in
   [`review-v2.md`](review-v2.md#setup).
 - **Tailscale DNS settings:** MagicDNS and HTTPS Certificates are on, which
   `tailscale serve --https` needs. The first `tailscale serve` on a tailnet may
   print a link to enable Serve; open it.
 - **Tailscale OAuth client** for the review job: Auth Keys write scope, tag
-  `tag:oracle-ci`. Its client ID and secret are the `TS_OAUTH_CI_CLIENT_ID` and
-  `TS_OAUTH_CI_SECRET` environment secrets of the `oracle` environment. The
+  `tag:review-ci`. Its client ID and secret are the `TS_OAUTH_CI_CLIENT_ID` and
+  `TS_OAUTH_CI_SECRET` environment secrets of the `review` environment. The
   job holds no OIDC token. Revoke or rotate the client in the Tailscale admin
   console, Settings, OAuth clients.
 - **Tailscale auth key for cloud builders:** a reusable, ephemeral,
@@ -50,7 +50,7 @@ These settings outlive any one machine. Redo them only if they are lost.
   variable of the cloud builder environments. Cloud sessions join in
   userspace-networking mode with in-memory state, so each session is one
   ephemeral node that disappears when the session ends.
-- **Tailnet policy:** `tag:oracle-ci` and `tag:oracle-cloud` have `tagOwners`
+- **Tailnet policy:** `tag:review-ci` and `tag:oracle-cloud` have `tagOwners`
   entries. The policy uses `grants`, not the older `acls` and host-alias
   form. The default allow-all grant's source is `autogroup:member`, so tagged
   nodes match nothing else. One grant per tag lets it reach only the gateway
@@ -60,17 +60,17 @@ These settings outlive any one machine. Redo them only if they are lost.
   ```json
   {
     "tagOwners": {
-      "tag:oracle-ci": ["autogroup:admin"],
+      "tag:review-ci": ["autogroup:admin"],
       "tag:oracle-cloud": ["autogroup:admin"]
     },
     "grants": [
       { "src": ["autogroup:member"], "dst": ["*"], "ip": ["*"] },
-      { "src": ["tag:oracle-ci"], "dst": ["<tailnet IPv4 of the host>"], "ip": ["tcp:4000"] },
+      { "src": ["tag:review-ci"], "dst": ["<tailnet IPv4 of the host>"], "ip": ["tcp:4000"] },
       { "src": ["tag:oracle-cloud"], "dst": ["<tailnet IPv4 of the host>"], "ip": ["tcp:4000"] }
     ],
     "tests": [
       { "src": "tag:oracle-cloud", "accept": ["<tailnet IPv4 of the host>:4000"], "deny": ["<tailnet IPv4 of the host>:22"] },
-      { "src": "tag:oracle-ci", "accept": ["<tailnet IPv4 of the host>:4000"], "deny": ["<tailnet IPv4 of the host>:22"] }
+      { "src": "tag:review-ci", "accept": ["<tailnet IPv4 of the host>:4000"], "deny": ["<tailnet IPv4 of the host>:22"] }
     ]
   }
   ```
@@ -137,7 +137,7 @@ Then:
    http://127.0.0.1:4000: healthz=200 models=11/11 usage=403
    https://<host>.<tailnet>.ts.net:4000: healthz=200 models=11/11 usage=403
    usage probes: ok
-   secrets: ORACLE_GATEWAY_TOKEN and ORACLE_GATEWAY_URL are set
+   secrets: REVIEW_GATEWAY_TOKEN and REVIEW_GATEWAY_URL are set
    ```
 
    `check` exits 0 when healthy, 3 when degraded and 1 when broken.
@@ -272,8 +272,8 @@ closed.
 4. Run `gateway` (it regenerates `clients.json` from `origin/develop` with
    `review-ci`, `review-local`, `review-cloud` and `review-theseus`, rewrites
    `run.sh` for the new directory and restarts the agent), then `check`.
-5. The GitHub secrets keep their `ORACLE_*` names and values; the callers map
-   them to the `REVIEW_*` names Theseus expects, so `secrets` needs no change.
+5. Run `secrets` to set the `REVIEW_GATEWAY_TOKEN` and `REVIEW_GATEWAY_URL`
+   secrets of the `review` environment.
 6. Local review now reads only `~/.omp/review-gateway/local-client.token`, and
    host-token redaction scans only the new directory, so no copy of a token may
    stay in `~/.omp/oracle-gateway`. Remove it once `check` passes.
@@ -297,8 +297,8 @@ merged `origin/develop`:
    and `run.sh` from the renamed policy files; it restarts the agent only if they
    changed), then `check`.
 
-The `oracle` GitHub environment, the `ORACLE_*` secret names and `tag:oracle-ci`
-stay as legacy infrastructure names (`benchbox-oracle-infra-names-20261108`).
+The GitHub environment is `review`, its secrets use the `REVIEW_*` names Theseus
+expects, and the review job's tailnet tag is `tag:review-ci`.
 
 ## Named clients
 
@@ -316,7 +316,7 @@ quota setting, so every client draws on the same pinned broker accounts and a
 leaked `review-local` or `review-cloud` token can spend the quota that
 `review-ci` depends on. Limiting a client's `models` would only stop it doing
 its job, so all clients stay identical and `check` fails if they differ. The
-controls are the tailnet policy (only `tag:oracle-ci` and `tag:oracle-cloud`
+controls are the tailnet policy (only `tag:review-ci` and `tag:oracle-cloud`
 nodes and the owner's devices reach the gateway), per-client tokens, and fast
 revocation, which needs neither the broker nor a rebuild of the other clients.
 Watch the providers' own usage pages for unexpected spend. No proxy is built
@@ -409,8 +409,8 @@ rm ~/Library/LaunchAgents/dev.omp.auth-broker.plist
 | Symptom | Cause and fix |
 | --- | --- |
 | Attempts end absent with connection errors | The Mac is asleep, offline or logged out, or an agent is down. Run `check`. |
-| Attempts end absent with `exit code 1` after about two minutes while `check` passes | The tailnet policy does not let `tag:oracle-ci` reach the host on port 4000. Add the port to that tag's grant. While the review job is on the tailnet, `tailscale debug netmap \| jq -r '.PacketFilterRules[].DstPorts[] \| select(.Ports.Last < 65535) \| "\(.IP):\(.Ports.First)"'` on the host lists the ports open to it; with no tagged node online it prints nothing. |
-| Gateway answers 401 | `ORACLE_GATEWAY_TOKEN` does not match `client.token`. Run `secrets`. |
+| Attempts end absent with `exit code 1` after about two minutes while `check` passes | The tailnet policy does not let `tag:review-ci` reach the host on port 4000. Add the port to that tag's grant. While the review job is on the tailnet, `tailscale debug netmap \| jq -r '.PacketFilterRules[].DstPorts[] \| select(.Ports.Last < 65535) \| "\(.IP):\(.Ports.First)"'` on the host lists the ports open to it; with no tagged node online it prints nothing. |
+| Gateway answers 401 | `REVIEW_GATEWAY_TOKEN` does not match `client.token`. Run `secrets`. |
 | Gateway answers 403 for a model | The model is not in `clients.json`. Run `gateway`. |
 | `check` exits 3 | The host is degraded: read the `degraded:` lines. See [Losing or removing a provider](#losing-or-removing-a-provider). |
 | `gateway` refuses with `disabled-providers must be a regular file you own` or `is mode …` | The denylist must be a regular file owned by you with no group or other access: `chmod 600 ~/.omp/review-gateway/disabled-providers`. |
