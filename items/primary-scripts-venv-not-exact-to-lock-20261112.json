@@ -42,6 +42,15 @@
       "op": "update",
       "op_id": "66745823c1904fc9b9a243e68d413fd8",
       "session_id": "802d481b1aae4b46a439a00c7d50e216"
+    },
+    {
+      "actor": "joe-tractable-followups",
+      "at": "2026-11-14T22:12:58Z",
+      "client": "mcp",
+      "generation": "25af70eda8674c939c34a85a8fcff870",
+      "op": "finish",
+      "op_id": "863e4fdd3498428197a6ca717f72f13b",
+      "session_id": "802d481b1aae4b46a439a00c7d50e216"
     }
   ]
 }
