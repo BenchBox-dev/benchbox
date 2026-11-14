@@ -3,6 +3,7 @@
     "tractable's release-gates.md says a consumer that vendors the wheel from the GitHub release may adopt it once the release exists and its SHA256SUMS verifies, while index installs wait for distribution-verify; the tractable PR is merged.",
     "BenchBox docs/internal/comment-policy.md states the same rule next to the vendored-wheel provenance rules; the BenchBox PR is merged."
   ],
+  "context": "2026-11-14 done. tractable half: https://github.com/joeharris76/tractable/pull/75 (merge 2ef7b7c) amends docs/operations/release-gates.md (After the tag, consumer rollout): a consumer that vendors the wheel from the GitHub release may adopt it once the release exists and its SHA256SUMS verifies; index installs, including the global tool, wait for distribution-verify. BenchBox half: https://github.com/BenchBox-dev/benchbox/pull/4234 (merge 949f560, oracle SHIP, required checks green) states in docs/internal/comment-policy.md, with the vendored-wheel provenance rules, that a vendored tracker-runtime bump depends only on the GitHub release whose SHA256SUMS the ratchet verifies and does not wait for PyPI. No ratchet check changed; no new network dependency.\n",
   "description": "Process gap. tractable's docs/operations/release-gates.md says consumer rollout waits until the opt-in PyPI run's distribution-verify passes. BenchBox PR #4144 vendored tractable 1.1.1 and merged at 2026-11-12T04:46Z, about 8 hours before 1.1.1's PyPI publication completed (about 12:55Z, run 43133361734). No harm resulted: BenchBox vendors the GitHub release wheel, the comment-policy ratchet (scripts/check_comment_cleanup_scope.py, _verify_upstream_release) checks its hash against the release SHA256SUMS, and the pinned wheel (sha256 c09ba584...a5f4) is identical to the one PyPI serves.\n\nDecision (owner, 2026-11-14): a vendored tracker-runtime bump depends only on the GitHub release whose SHA256SUMS the ratchet verifies; it does not wait for PyPI. Amend tractable's release-gates.md (consumer rollout) to distinguish vendored consumers from index-installed ones, and state the rule in BenchBox's docs/internal/comment-policy.md (vendored wheel section).\n\nGuardrails:\n- No change to the ratchet's checks.\n- No new network dependency in BenchBox CI.\n- The global index install on this machine still waits for distribution-verify.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4144",
@@ -33,6 +34,14 @@
       "generation": "a4d75574a40845b0babdd1896dccbb16",
       "op": "take",
       "op_id": "6641644cf0c8414ab5007f7422cb0de4",
+      "session_id": "c70a94df5d8e4c0096c89065e7004d9b"
+    },
+    {
+      "actor": "joe-tractable-followups",
+      "at": "2026-11-14T22:12:43Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "bc6298b8091f426685b8424ed55dac8c",
       "session_id": "c70a94df5d8e4c0096c89065e7004d9b"
     }
   ]
