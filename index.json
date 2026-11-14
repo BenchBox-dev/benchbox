@@ -27170,7 +27170,9 @@
     },
     "mcp-conformance-script-npm12-20261113": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "umbrella-core-tooling-docs-20261114"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "scripts/verify_mcp_conformance.py fails its Inspector pin check under npm 12"
