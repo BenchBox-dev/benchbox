@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "In a fresh virtual environment with only the documented install step, the README's first run command completes at scale 0.01; the transcript is in the PR.",
+    "If it fails, the README or the extras are fixed so it succeeds.",
+    "A CI job installs the built wheel in a clean environment and runs the same command."
+  ],
+  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Check first whether an existing installed-wheel smoke job already runs this exact command. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "description": "Problem: core dependencies include no database driver, and the quick-start extra installs only Polars. Whether the README's install step plus its first run command works in a clean environment was never run; the check belonged to a probe that was dropped. A first command that fails is the cheapest way to lose a new user or agent.\n\nOutcome: the documented first command is run in a clean environment, fixed if it fails, and kept working by CI.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T01:18:51Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b1454a48b7a64e5fb37ccc900ef075bd",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}

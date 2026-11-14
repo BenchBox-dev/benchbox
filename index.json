@@ -46054,6 +46054,13 @@
       "status": "done",
       "title": "todo create --verify splits on :: and silently truncates pytest node-id commands"
     },
+    "verify-fresh-install-first-command-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Verify the documented install gives a working first benchmark command in a clean environment"
+    },
     "verify-pg-integration-after-baseline-fix-20261020": {
       "claim": null,
       "needs": [],
