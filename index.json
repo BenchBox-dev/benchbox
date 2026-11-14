@@ -21865,6 +21865,13 @@
       "status": "done",
       "title": "A platform option can make benchbox run pip install a package, including during a dry run"
     },
+    "driver-install-gate-ignores-non-interactive-flag-20261114": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "run --non-interactive does not count as non-interactive for the driver auto-install gate"
+    },
     "drop-chdb-core-from-core-dependencies": {
       "claim": null,
       "needs": [],

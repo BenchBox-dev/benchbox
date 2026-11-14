@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Owner decision recorded on whether --non-interactive should count; if yes, a test shows the gate refuses with the flag in a terminal.",
+    "Dry run and real run treat an invalid driver_version consistently, or the difference is documented."
+  ],
+  "context": "Found while delivering PR #4227. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "description": "Problem: the driver auto-install gate added in PR #4227 detects non-interactive sessions from the terminal and BENCHBOX_NON_INTERACTIVE only, so `run --non-interactive` in a terminal still installs without the environment variable. Also, a dry run with an invalid driver_version only warns and continues, while a real run exits 2.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T06:03:08Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8c8f673060d346a6bdf2dc16e2822589",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}
