@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Owner decision recorded: widen the trigger, or run the check nightly or on trunk.",
+    "The chosen trigger is shown running the check in CI."
+  ],
+  "context": "Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "description": "Problem: PR #4230 added the README first command (benchbox run duckdb tpch 0.01 from a clean wheel install) to the package-smoke job, but that job runs only on packaging path changes (.github/path-filters.yml 'packaging'), so a code change that breaks the first command is not caught.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T06:33:16Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ce11dbe6a4b542929c4fccc49644b0d0",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}

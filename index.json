@@ -30744,6 +30744,13 @@
       "status": "done",
       "title": "✅ Package CoffeeShop Seeds and Restore Reference Parity"
     },
+    "package-smoke-first-command-trigger-20261114": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "The first-command check in package-smoke runs only when packaging files change"
+    },
     "packaging-config-hygiene": {
       "claim": null,
       "needs": [],
