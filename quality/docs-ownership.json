@@ -249,6 +249,7 @@
     "docs/operations/heavy-work-guard.md": "core-only",
     "docs/operations/local-platform-provisioning.tsv": "core-only",
     "docs/operations/mcp-remote-security.md": "site-owned",
+    "docs/operations/run-safety.md": "core-only",
     "docs/operations/uat-framework.md": "site-owned",
     "docs/operations/uat-local-provisioning.md": "site-owned",
     "docs/operations/uat-methodology.md": "site-owned",

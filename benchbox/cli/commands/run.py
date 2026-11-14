@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import click
+from rich.markup import escape
 from rich.panel import Panel
 from rich.prompt import Confirm
 from rich.text import Text
@@ -36,6 +37,7 @@ from benchbox.cli.exceptions import (
     ValidationRules,
     create_error_handler,
 )
+from benchbox.cli.exit_codes import ExitCode
 from benchbox.cli.help import BenchBoxCommand, advanced_option
 from benchbox.cli.host_lock_optin import host_guarded
 from benchbox.cli.logo import rich_logo
@@ -106,6 +108,7 @@ from benchbox.utils.compression import CompressionManager
 from benchbox.utils.input_validation import MAX_QUERY_ID_LENGTH
 from benchbox.utils.output_path import normalize_output_root
 from benchbox.utils.printing import fatal
+from benchbox.utils.runtime_env import DriverAutoInstallRefused, InvalidDriverVersion
 from benchbox.utils.verbosity import VerbositySettings
 
 logger = logging.getLogger(__name__)
@@ -1339,6 +1342,7 @@ def _dry_run_build_db_config(s: types.SimpleNamespace, db_manager: DatabaseManag
             deployment_selector=getattr(s, "deployment_selector", None),
             gateway_selector=getattr(s, "gateway", None),
             explicit_option_keys=getattr(s, "explicit_platform_option_keys", ()),
+            allow_driver_install=False,
         )
     except PlatformOptionError as exc:
         console.print(f"[red]❌ {exc}[/red]")
@@ -2610,7 +2614,15 @@ def _interactive_handle_result(s: types.SimpleNamespace, result: Any, orchestrat
     default=None,
     is_flag=False,
     flag_value="all",
-    help="Force regeneration: all, datagen, upload, or datagen,upload",
+    help=(
+        "Force a rerun: all, datagen, upload, or datagen,upload (bare --force means all). "
+        "datagen: regenerates the local data files and deletes the existing target database before the run, "
+        "the same as --platform-option force_recreate=true: a local database file or directory is deleted; on a "
+        "remote platform the database is dropped (Snowflake drops only this benchmark's tables and its tuning "
+        "metadata; Databricks truncates every table in the schema); platforms that cannot drop a database refuse. "
+        "upload: re-uploads data to remote storage even when a valid copy exists; deletes no database and no local "
+        "data. all: both."
+    ),
 )
 @click.option("-v", "--verbose", count=True, help="Verbose output (-vv for debug)")
 @click.option("-q", "--quiet", is_flag=True, help="Suppress output")
@@ -3000,21 +3012,28 @@ def run(
         allow_greybeam_inline_load=allow_greybeam_inline_load,
         acknowledge_billable_platform=acknowledge_billable_platform,
     )
-    _prepare_run_state(s)
+    try:
+        _prepare_run_state(s)
 
-    if s.dry_run:
-        _run_dry_run(s)
-        return
+        if s.dry_run:
+            _run_dry_run(s)
+            return
 
-    if s.test_execution_type not in {"data_only", "load_only"} and s.platform and s.benchmark:
-        _run_direct(s)
-        return
+        if s.test_execution_type not in {"data_only", "load_only"} and s.platform and s.benchmark:
+            _run_direct(s)
+            return
 
-    if s.test_execution_type in {"data_only", "load_only"}:
-        _run_data_or_load_only(s)
-        return
+        if s.test_execution_type in {"data_only", "load_only"}:
+            _run_data_or_load_only(s)
+            return
 
-    _run_interactive(s)
+        _run_interactive(s)
+    except DriverAutoInstallRefused as exc:
+        console.print(f"[red]❌ {escape(str(exc))}[/red]")
+        sys.exit(ExitCode.ACKNOWLEDGEMENT_REQUIRED)
+    except InvalidDriverVersion as exc:
+        console.print(f"[red]❌ {escape(str(exc))}[/red]")
+        sys.exit(ExitCode.USAGE)
 
 
 __all__ = ["run", "BenchmarkOptionParamType", "PlatformOptionParamType", "setup_verbose_logging"]

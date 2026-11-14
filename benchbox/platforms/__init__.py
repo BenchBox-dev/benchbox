@@ -316,6 +316,7 @@ def get_platform_adapter(platform_name: str, **config) -> PlatformAdapter:
             requested_version=requested_version,
             auto_install=driver_auto_install,
             install_hint=install_hint,
+            allow_install=not config.get("dry_run"),
         )
 
     check_isolation_capability(adapter_class, canonical_name, resolution.runtime_strategy)
