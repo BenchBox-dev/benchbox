@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "A DataFrame run at scale 0.01 (for example Polars) records non-null start and end samples where the host supports them; a test covers the DataFrame path.",
+    "Sampling stays outside every measured interval; timings unchanged."
+  ],
+  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Result-capture code may be a soundness path; check before opening the PR. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "description": "Problem: PR #4203 writes the resource snapshot taken in benchbox/platforms/base/result_capture.py into the bundle's environment.host_load. DataFrame adapters never take that snapshot, so their bundles always carry nulls, which reads as 'not available on this platform' when it is in fact not collected.\n\nOutcome: DataFrame runs record the same start and end samples, from the same sampler.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T01:18:38Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "cd044c01256e4228b923a9c950534626",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}
