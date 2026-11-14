@@ -21850,7 +21850,9 @@
     },
     "driver-auto-install-from-cli-flag-20261113": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "umbrella-run-path-safety-20261114"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "A platform option can make benchbox run pip install a package, including during a dry run"
