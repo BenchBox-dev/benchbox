@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
 from benchbox.core.config import BenchmarkConfig, RunConfig
+from benchbox.core.config_utils import load_config_file
 from benchbox.core.constants import (
     DEFAULT_OUTPUT_COMPRESSION_TYPE,
     GENERIC_POWER_DEFAULT_MEASUREMENT_ITERATIONS,
@@ -341,11 +342,31 @@ def translate_platform_options_for_adapter(platform: str, options: dict) -> dict
     return normalized
 
 
-def resolve_default_compression() -> tuple[bool, str, int | None]:
+def _saved_compression_settings() -> Mapping[str, Any]:
+    config_path = Path("benchbox.yaml")
+    if not config_path.exists():
+        config_path = Path.home() / ".benchbox" / "config.yaml"
+    try:
+        saved = load_config_file(config_path)
+    except (FileNotFoundError, ValueError):
+        return {}
+    output = saved.get("output") if isinstance(saved, dict) else None
+    compression = output.get("compression") if isinstance(output, dict) else None
+    return compression if isinstance(compression, dict) else {}
+
+
+def resolve_configured_compression() -> tuple[bool, str, int | None]:
+    saved = _saved_compression_settings()
+    compression_type = str(saved.get("type", DEFAULT_OUTPUT_COMPRESSION_TYPE))
     disabled = os.getenv(NO_COMPRESSION_ENV_VAR, "").lower() in {"true", "1", "yes", "on"}
-    if disabled or DEFAULT_OUTPUT_COMPRESSION_TYPE not in CompressionManager().get_available_compressors():
+    usable = (
+        bool(saved.get("enabled", True))
+        and compression_type != "none"
+        and compression_type in CompressionManager().get_available_compressors()
+    )
+    if disabled or not usable:
         return False, "none", None
-    return True, DEFAULT_OUTPUT_COMPRESSION_TYPE, None
+    return True, compression_type, saved.get("level")
 
 
 def build_databricks_clustering_intent(options: dict[str, object]):
@@ -436,7 +457,7 @@ __all__ = [
     "is_dataframe_execution",
     "map_phases_to_execution_type",
     "reject_unsupported_dataframe_phases",
-    "resolve_default_compression",
+    "resolve_configured_compression",
     "resolve_execution_mode",
     "resolve_lifecycle_phases",
     "resolve_mode_with_registry",

@@ -416,7 +416,7 @@ def _execute_mcp_run_via_core(
         SilentVerbosity,
         execute_run,
         map_phases_to_execution_type,
-        resolve_default_compression,
+        resolve_configured_compression,
         translate_platform_options_for_adapter,
     )
     from benchbox.core.schemas import BenchmarkConfig, DatabaseConfig, ExecutionContext
@@ -435,7 +435,7 @@ def _execute_mcp_run_via_core(
     data_only = resolved_mode == "data_only"
     data_dir = get_benchmark_runs_datagen_path(benchmark, scale_factor, results_dir / "datagen") if data_only else None
     seed_kwargs = _benchmark_seed_kwargs(benchmark, seed)
-    compression_enabled, compression_type, compression_level = resolve_default_compression()
+    compression_enabled, compression_type, compression_level = resolve_configured_compression()
     compression_kwargs = {
         "compress_data": compression_enabled,
         "compression_type": compression_type,
@@ -515,7 +515,7 @@ def _execute_mcp_run_via_core(
             execution_mode=resolved_mode,
             execution_engine=resolved_execution_engine,
             options={**adapter_options, **INACTIVE_RUN_FLAGS},
-            tuning_source=tuning_modes.BASELINE_SOURCE,
+            tuning_source=None if adapter_options.get("tuning_enabled") else tuning_modes.BASELINE_SOURCE,
         )
     profiler = SystemProfiler()
     system_profile = profiler.get_system_profile()

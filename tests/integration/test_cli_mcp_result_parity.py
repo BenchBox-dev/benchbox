@@ -20,6 +20,16 @@ def _only_bundle(results_dir: Path) -> dict[str, Any]:
     return json.loads(bundles[0].read_text(encoding="utf-8"))
 
 
+def _isolated_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, config: str | None) -> None:
+    home = tmp_path / "home"
+    (home / ".benchbox").mkdir(parents=True)
+    if config is not None:
+        (home / ".benchbox" / "config.yaml").write_text(config, encoding="utf-8")
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.delenv("BENCHBOX_NO_COMPRESSION", raising=False)
+
+
 def _cli_bundle(tmp_path: Path, platform: str) -> dict[str, Any]:
     result = run_cli_command(
         [
@@ -68,13 +78,22 @@ def _mcp_bundle(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, platform: str) 
     return _only_bundle(results_dir)
 
 
+@pytest.mark.parametrize(
+    ("saved_config", "expected_compression"),
+    [
+        (None, {"type": "zstd", "level": None}),
+        ("output:\n  compression:\n    enabled: false\n", {"type": "none", "level": None}),
+    ],
+    ids=["shipped-defaults", "compression-disabled-in-saved-config"],
+)
 def test_cli_and_mcp_record_the_same_config_block_for_the_same_request(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, saved_config: str | None, expected_compression: dict[str, Any]
 ) -> None:
+    _isolated_home(tmp_path, monkeypatch, saved_config)
     cli = _cli_bundle(tmp_path, "duckdb")
     mcp = _mcp_bundle(tmp_path, monkeypatch, "duckdb")
 
-    assert cli["config"]["compression"] == {"type": "zstd", "level": None}
+    assert cli["config"]["compression"] == expected_compression
     assert mcp["config"] == cli["config"]
     assert mcp["platform"]["config"]["memory_limit"] == cli["platform"]["config"]["memory_limit"]
 
@@ -85,6 +104,7 @@ def test_dataframe_runs_record_host_load_samples_from_both_entry_points(
 ) -> None:
     pytest.importorskip("psutil")
     pytest.importorskip("polars")
+    _isolated_home(tmp_path, monkeypatch, None)
 
     for bundle in (_cli_bundle(tmp_path, platform), _mcp_bundle(tmp_path, monkeypatch, platform)):
         host_load = bundle["environment"]["host_load"]
