@@ -45722,15 +45722,10 @@
       "title": "Umbrella: validator false failures and the TPC-DS subscale contract, one branch and one PR"
     },
     "umbrella-run-path-safety-20261114": {
-      "claim": {
-        "expires_at": "2026-11-15T06:01:38Z",
-        "generation": "2e2035f73b76418e8917162bbeae4823",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Umbrella: run-path safety fixes, one branch and one PR"
     },
     "umbrella-site-docs-accuracy-20261114": {
