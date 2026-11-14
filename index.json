@@ -45715,10 +45715,15 @@
       "title": "Umbrella: credentials and publication safety, one branch and one PR"
     },
     "umbrella-result-capture-parity-20261114": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-15T06:26:57Z",
+        "generation": "d6b13162039d4d358f5c6ce8bf4cdd52",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Umbrella: CLI and MCP result parity and DataFrame host load, one branch and one PR"
     },
     "umbrella-results-validation-soundness-20261114": {
