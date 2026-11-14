@@ -11,6 +11,15 @@ from benchbox.core.expected_results.ssb_results import SSB_EXPECTED_ROW_COUNTS
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 
+@pytest.fixture(autouse=True)
+def _isolated_validation_mode_context():
+    from benchbox.core.validation.query_validation import clear_validation_mode_context
+
+    clear_validation_mode_context()
+    yield
+    clear_validation_mode_context()
+
+
 def _measurement(query_id: str = "Q1", rows: int | None = 4, status: str = "SUCCESS") -> dict[str, object]:
     result: dict[str, object] = {
         "query_id": query_id,
