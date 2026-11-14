@@ -2,7 +2,7 @@
   "acceptance": [
     "The branch's PR has merged, and each member's acceptance criteria are evidenced on it."
   ],
-  "context": "Guardrails: one linked worktree and one feature branch, one PR to develop; follow AGENTS.md; no live-cloud runs; heavy work only via lock-taking targets; comment policy; changelog.d fragments. Delivered by one delegated agent; the planning session is the only tracker writer and finishes this umbrella and its members after the PR merges.",
+  "context": "Guardrails: one linked worktree and one feature branch, one PR to develop; follow AGENTS.md; no live-cloud runs; heavy work only via lock-taking targets; comment policy; changelog.d fragments. Delivered by one delegated agent; the planning session is the only tracker writer and finishes this umbrella and its members after the PR merges.\n\nCloseout (2026-11-14): https://github.com/BenchBox-dev/benchbox/pull/4230 merged (0c95ff5659). Conformance script accepts both npm view shapes and passed end to end with a real npm 12.2.1 (no shim). Fresh venv with the built wheel and [duckdb]: the README first command completes 22/22 at SF 0.01; a step now runs it in package-smoke and make test-package, but package-smoke triggers only on packaging paths (filed separately). MCP timing via a real stdio client: SF 0.01 6-7 s and SF 0.1 6-9 s complete; SF 1 returns 'incomplete' with no error flag (filed as a defect). Client timeouts: Codex tool_timeout_sec default 60 s; Claude Code long wall clock. Recommendation: no behaviour change and no local job tools now; document using SF 0.1 or lower over local MCP or raising the client timeout; revisit after the SF 1 defect. README and docs/tpc-licensing-analysis.md link to the methodology page.",
   "description": "Feature-branch umbrella. Members: mcp-conformance-script-npm12-20261113, verify-fresh-install-first-command-20261113, mcp-local-run-timeout-measure-20261113, core-docs-link-methodology-page-20261113.",
   "sessions": [
     {
@@ -20,6 +20,14 @@
       "generation": "60a5cd7c4f834a55afd9275b7bc21a96",
       "op": "take",
       "op_id": "7a233f635c7c42cca00b8fe7d094c144",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T06:31:41Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7433ea0002dd4f9fb487651b22c94e07",
       "session_id": "ac67b069b7864c4699843546272d3701"
     }
   ]
