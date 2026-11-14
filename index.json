@@ -28893,7 +28893,9 @@
     },
     "noninteractive-prompts-fail-instead-of-skip-20261113": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "umbrella-credentials-publication-safety-20261114"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Remaining prompts abort or crash when stdin is not a terminal"
