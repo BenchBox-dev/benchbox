@@ -2,7 +2,7 @@
   "acceptance": [
     "The branch's PR has merged, and each member's acceptance criteria are evidenced on it."
   ],
-  "context": "Guardrails: one linked worktree and one feature branch, one PR to develop; follow AGENTS.md; no live-cloud runs; heavy work only via lock-taking targets; comment policy; changelog.d fragments. Delivered by one delegated agent; the planning session is the only tracker writer and finishes this umbrella and its members after the PR merges.",
+  "context": "Guardrails: one linked worktree and one feature branch, one PR to develop; follow AGENTS.md; no live-cloud runs; heavy work only via lock-taking targets; comment policy; changelog.d fragments. Delivered by one delegated agent; the planning session is the only tracker writer and finishes this umbrella and its members after the PR merges.\n\nCloseout (2026-11-14): https://github.com/BenchBox-dev/benchbox/pull/4228 merged (6bb08eb3b9). Cause: MCP built the benchmark without the CLI's resolved compression (so it generated uncompressed data) and built DatabaseConfig without registered platform defaults (DuckDB ran with a 12GB system-profile limit against the CLI's 8GB default). MCP now uses the same sources, read through core; real duckdb runs from both entry points record identical config blocks, pinned by tests/integration/test_cli_mcp_result_parity.py. DataFrame runs now record host-load start and end samples outside every timer. The 'saved_config' label actually means registered defaults plus overrides.",
   "description": "Feature-branch umbrella. Members: cli-mcp-bundle-config-divergence-20261113, dataframe-adapters-host-load-null-20261113.",
   "sessions": [
     {
@@ -20,6 +20,14 @@
       "generation": "d6b13162039d4d358f5c6ce8bf4cdd52",
       "op": "take",
       "op_id": "ecbb3c69770046af80668e9d6ab9870a",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T06:27:04Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a5669388d42740eca3c41acb33195f8c",
       "session_id": "ac67b069b7864c4699843546272d3701"
     }
   ]
