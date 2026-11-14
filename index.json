@@ -36903,6 +36903,13 @@
       "status": "done",
       "title": "benchbox/cli/commands/run.py keeps growing: extract platform and selector resolution so the size allowlist stops being re-baselined"
     },
+    "run-py-module-size-limit-20261114": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "benchbox/cli/commands/run.py is at its module size limit"
+    },
     "run-service-all-exports-private-names": {
       "claim": null,
       "needs": [],
