@@ -27215,17 +27215,12 @@
       "title": "Revalidate and retire pinned MCP conformance baseline exceptions"
     },
     "mcp-conformance-script-npm12-20261113": {
-      "claim": {
-        "expires_at": "2026-11-15T06:31:53Z",
-        "generation": "253a170b607b450199889955002b53cc",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
-      },
+      "claim": null,
       "needs": [
         "umbrella-core-tooling-docs-20261114"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "scripts/verify_mcp_conformance.py fails its Inspector pin check under npm 12"
     },
     "mcp-contract-matrix-value-parity": {
