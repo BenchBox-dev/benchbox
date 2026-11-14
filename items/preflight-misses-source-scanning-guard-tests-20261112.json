@@ -4,7 +4,7 @@
     "Other tests that scan benchbox/ source by path are listed and either mapped or recorded as too slow for preflight",
     "A test covers the new mapping"
   ],
-  "context": "Path-scanning tests of benchbox/ classified: mapped to every benchbox/ change (each runs in under 20s): tests/unit/cli/test_output_control_static.py, tests/unit/cli/test_shipped_docs_urls.py, tests/unit/core/tpcdi/test_tpcdi_no_values_row_source.py, tests/unit/platforms/test_credential_error_messages.py. Too slow for preflight (about 190s): tests/unit/sql_compat/test_vendored_sqlglot_bypass.py. Others that glob only a subtree (abc_conformance, post_load_seam, tuning, mcp run surface) are import- or subtree-specific and left to CI.",
+  "context": "Path-scanning tests of benchbox/ classified: mapped to every benchbox/ change (each runs in under 20s): tests/unit/cli/test_output_control_static.py, tests/unit/cli/test_shipped_docs_urls.py, tests/unit/core/tpcdi/test_tpcdi_no_values_row_source.py, tests/unit/platforms/test_credential_error_messages.py. Too slow for preflight (about 190s): tests/unit/sql_compat/test_vendored_sqlglot_bypass.py. Others that glob only a subtree (abc_conformance, post_load_seam, tuning, mcp run surface) are import- or subtree-specific and left to CI.\n\nMerged in PR #4214 as b06127878f: any benchbox/ change now selects four fast path-scanning guard tests in preflight; the 190-second sqlglot bypass scan stays CI-only.",
   "description": "On PR #4146 a change to benchbox/core/equivalence/cross_surface.py added four raw print() calls. `make pr-preflight` passed; CI's medium tier failed in tests/unit/cli/test_output_control_static.py::test_no_new_raw_print_in_benchbox_runtime ('found 22, pinned to 18'), costing one CI cycle. The test scans source files by path and never imports the changed module, so the import-based selection in _project/scripts/preflight_targets.py (_source_dependents) cannot reach it, and SOURCE_GUARD_TESTS maps the benchbox/ prefix only to tests/system/test_module_size_thresholds.py.",
   "links": [
     "_project/scripts/preflight_targets.py",
@@ -25,6 +25,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "f2432e76d93042a48c3b87fccc63e5e5",
+      "session_id": "8e07c6e3a10b49bb94ae7e31664ce4b9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a250daff95b91a4eb6cd2504",
+      "at": "2026-11-14T00:38:21Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8cea6e9e86634139b9a921c1bb1a016d",
       "session_id": "8e07c6e3a10b49bb94ae7e31664ce4b9"
     }
   ]
