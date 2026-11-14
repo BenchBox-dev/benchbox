@@ -4,7 +4,7 @@
     "Code, ADR, methodology page and MCP instructions agree afterwards; a test pins the TPC-DS subscale classification.",
     "The change goes through the external soundness review if it touches ranking or compliance code."
   ],
-  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Reported in the body of site PR #153; the exact location of the core contract was not recorded there and must be found first. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\nOwner decision (2026-11-14): stop and ask. An agent locates and quotes both texts and assesses which published rankings each reading would change, then the owner rules. No code or docs change until the ruling.",
+  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Reported in the body of site PR #153; the exact location of the core contract was not recorded there and must be found first. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\nOwner decision (2026-11-14): stop and ask. An agent locates and quotes both texts and assesses which published rankings each reading would change, then the owner rules. No code or docs change until the ruling.\n\nFindings (2026-11-14): contract is _sources/tpcds-subscale-contract.md in core (Comparability Rules: subscale TPC-DS must not compute or display power_at_size/throughput_at_size/qph_at_size and must not appear in rankings or cohorts); ADR is benchbox-site docs/development/adr/adr-subscale-tpc-ranking-policy.md (Accepted 2026-10-16: subscale TPC-H and TPC-DS stay ranked by Power@Size with an unofficial marker). Code, tests, the methodology page and MCP text follow the ADR. Only the contract's Comparability Rules section conflicts; it was last edited 2026-11-11 (#4126) without reconciling. Affected results: the single TPC-DS SF0.1 power cohort, BigQuery 435.79 (rank 1), Snowflake 341.77 (rank 2), Databricks 305.91 (rank 3); under the contract they would be unranked and the cohort would leave the meta-leaderboard. Awaiting the owner's ruling.",
   "description": "Problem: the methodology review found that core's TPC-DS subscale contract and the ADR 'Rank Subscale TPC-H and TPC-DS Results as Unofficial' disagree on how subscale TPC-DS results are treated. benchbox/core/results/subscale_policy.py excludes only non-standard runs from ranking. The MCP instructions now say subscale results 'remain ranked, but never as official results'; if the TPC-DS contract differs, that sentence and the methodology page may be wrong for TPC-DS.\n\nOutcome: one rule, stated in the ADR and enforced by code, with the methodology page and MCP text matching it.",
   "sessions": [
     {
@@ -21,6 +21,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "b55b81df5b724258b210575cb4b33113",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T03:49:08Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ee7f1620f56b41eca4aea2f9784b31cb",
       "session_id": "ac67b069b7864c4699843546272d3701"
     }
   ]
