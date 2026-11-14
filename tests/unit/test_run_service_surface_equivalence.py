@@ -131,3 +131,40 @@ def test_durable_data_only_surface_delegates_to_execute_run(tmp_path):
     assert request["database_config"] is None
     assert request["phases_to_run"] == ["generate"]
     assert response["data_generation"]["data_path"].startswith(str(tmp_path / "datagen"))
+
+
+@pytest.mark.parametrize(
+    ("platform_options", "expected_source"),
+    [({}, "baseline"), ({"databricks_clustering_strategy": "liquid_clustering_auto"}, None)],
+)
+def test_mcp_database_config_claims_baseline_only_when_no_tuning_is_applied(
+    tmp_path, platform_options, expected_source
+):
+    from benchbox.mcp.tools import benchmark as benchmark_tools
+
+    benchmark_instance = SimpleNamespace(output_dir=tmp_path / "datagen")
+    with (
+        patch.object(benchmark_tools, "get_all_benchmarks", return_value={"tpch": {"display_name": "TPC-H"}}),
+        patch("benchbox.core.system.SystemProfiler") as profiler_cls,
+        patch("benchbox.core.platform_config.get_platform_config", return_value={}),
+        patch("benchbox.core.run_service.execute_run", return_value=None) as execute_run,
+        patch.object(benchmark_tools, "_build_run_response", return_value={}),
+    ):
+        profiler_cls.return_value.get_system_profile.return_value = None
+        benchmark_tools._execute_mcp_run_via_core(
+            platform="databricks",
+            benchmark="tpch",
+            benchmark_class=Mock(return_value=benchmark_instance),
+            scale_factor=0.01,
+            queries=None,
+            phases=["load", "power"],
+            resolved_mode="sql",
+            capture_plans=False,
+            normalized_platform_options=platform_options,
+            results_dir=tmp_path,
+            execution_id="mcp_test",
+            start_time=0.0,
+            anonymize=False,
+        )
+
+    assert execute_run.call_args.kwargs["database_config"].tuning_source == expected_source

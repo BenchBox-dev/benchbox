@@ -61,6 +61,7 @@ from benchbox.core.results.timer_scope import TIMING_METHOD_LEGACY
 from benchbox.core.schemas import BenchmarkConfig, SystemProfile
 from benchbox.platforms.base.adapter import DriverIsolationCapability
 from benchbox.platforms.base.client_region import discover_client_region
+from benchbox.platforms.base.result_capture import ResultCaptureMixin
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.duckdb_extensions import THIRD_PARTY_EXTENSION_OPTION
 from benchbox.utils.printing import quiet_console
@@ -337,6 +338,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
             platform=platform_info,
         )
         builder.mark_started()
+        host_load_start = ResultCaptureMixin._collect_resource_utilization()
         builder.set_timing_contract(self.timing_method)
         builder.set_validation_status("NOT_RUN")
         builder.set_system_profile(_client_host_profile(system_profile))
@@ -430,6 +432,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                     )
                     builder.set_phase_status("data_loading", "FAILED")
                     self._attach_applied_tuning_ledger(builder)
+                    self._stamp_host_load(builder, host_load_start)
                     builder.mark_completed()
                     return builder.build()
             elif phases.load and skip_data_loading:
@@ -481,6 +484,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                 builder.set_phase_status("power_test", "COMPLETED")
 
             self._attach_applied_tuning_ledger(builder)
+            self._stamp_host_load(builder, host_load_start)
             builder.mark_completed()
             return builder.build()
 
@@ -494,8 +498,14 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
             )
             builder.add_execution_metadata("error", str(e))
             self._attach_applied_tuning_ledger(builder)
+            self._stamp_host_load(builder, host_load_start)
             builder.mark_completed()
             return builder.build()
+
+    @staticmethod
+    def _stamp_host_load(builder: Any, start_snapshot: dict[str, Any]) -> None:
+        builder.add_execution_metadata("resource_utilization_start", start_snapshot)
+        builder.add_execution_metadata("resource_utilization", ResultCaptureMixin._collect_resource_utilization())
 
     def _managed_load_validation(
         self, load_validation: Any, benchmark: Any, ctx: Any, options_map: Any, *, managed: bool
