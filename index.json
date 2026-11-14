@@ -13868,7 +13868,9 @@
     },
     "billable-guard-coverage-gaps-20261113": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "umbrella-run-path-safety-20261114"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Close or document the paths that reach a cloud platform outside the billable-platform guard"
