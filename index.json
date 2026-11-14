@@ -38064,17 +38064,12 @@
       "title": "Document compare exit codes, results validate, the cloud-platform guard and host-load fields on the site"
     },
     "site-docs-contradict-cli-behaviour-20261113": {
-      "claim": {
-        "expires_at": "2026-11-15T05:14:49Z",
-        "generation": "904cc429037240af80dd7d5271d3648a",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
-      },
+      "claim": null,
       "needs": [
         "umbrella-site-docs-accuracy-20261114"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Correct site documentation that contradicts current CLI and MCP behaviour"
     },
     "site-explorer-vite-high-advisory-blocks-ci-20261020": {
