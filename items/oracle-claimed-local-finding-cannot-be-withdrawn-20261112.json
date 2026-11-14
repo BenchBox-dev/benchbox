@@ -1,10 +1,16 @@
 {
   "acceptance": [
-    "A documented path lets the owner withdraw, or an agent dispute, a claimed local finding that has no review thread, and a test covers it.",
-    "A `Review adjudication:` comment that cannot apply gets a visible reply (or gate reason) saying why, instead of being ignored.",
-    "Either the planner drops a claimed prior whose path and lines are no longer in the PR diff, or docs/internal/oracle-review-v2.md states why it must not."
+    "A unit test reproduces the #4013 shape: a claimed prior D1 from the local record, an owner WITHDRAW D1 comment, and a fresh gate evaluation that no longer lists D1 as open; the same comment from a non-owner leaves it open.",
+    "A test shows that an adjudication that cannot apply (unknown id, or a finding that is not open) yields a visible reason naming the comment and why it did not apply.",
+    "Existing adjudication tests for escalated ordinary findings pass unchanged.",
+    "docs/internal/oracle-review-v2.md states that owner adjudication covers claimed priors, and how an unusable adjudication is reported.",
+    "The PR is merged with required checks green."
   ],
-  "description": "Gap seen on PR #4013 (tracker runtime move to tractable 1.0.0), 2026-11-07. The hosted verdict on head aaa8ead was SHIP WITH FIXES and carried \"D1 (claimed Medium)\" as still open: \"Modified test fakes the upstream release download by patching urllib.request.urlopen\" at tests/unit/scripts/test_comment_policy.py:3613-3626. D1 came from the local `make pr-open` findings record, written into the PR body as a review-local-record marker and replayed by CI as a claimed prior. By then the PR no longer modified that file (it had been restored to develop), and the patching was pre-existing on develop. The owner decided WITHDRAW D1 and posted `Review adjudication: WITHDRAW D1 - ...`, but it had no effect: oracle-gate stayed failure for about 30 minutes and `make pr-arm` refused because the latest verdict listed open findings \"which a stand-in cannot waive\". Per docs/internal/oracle-review-v2.md, owner adjudication applies only to an escalated finding (open after two dispute rounds), and a dispute needs a `Dispute:` reply on a thread carrying the hidden finding marker; a claimed prior has no such thread. The only way through was to change the test (commit ba696ea), which happened to be a reasonable fix but was forced. Two gaps: (1) a claimed prior whose location is outside the PR's current diff is still replayed; (2) an owner decision on a non-escalated claimed finding is silently ignored rather than applied or refused with an explanation.",
+  "description": "Gap seen on PR #4013 (tracker runtime move to tractable 1.0.0), 2026-11-07. The hosted verdict on head aaa8ead was SHIP WITH FIXES and carried \"D1 (claimed Medium)\" as still open: \"Modified test fakes the upstream release download by patching urllib.request.urlopen\", in tests/unit/scripts/test_comment_policy.py, test test_verify_upstream_release_validates_real_github_asset. D1 came from the local make pr-open findings record, written into the PR body as the review-local-record marker and replayed by CI as a claimed prior (docs/internal/oracle-review-v2.md, sections \"Findings record and local disputes\" and \"Findings record in the PR body\"). By then the PR no longer modified that file, and the patching was pre-existing on develop.\n\nThe owner decided WITHDRAW D1 and posted `Review adjudication: WITHDRAW D1 - ...`. It had no effect: oracle-gate stayed failure for about 30 minutes, and make pr-arm refused because the latest verdict listed open findings \"which a stand-in cannot waive\". Owner adjudication applies only to escalated findings (open after two dispute rounds), and a dispute needs a Dispute: reply on a thread with the finding marker, which a claimed prior does not have. The only way through was changing the test (commit ba696ea).\n\nDecision (owner, 2026-11-14):\n- An owner `Review adjudication: WITHDRAW|MAINTAIN D<n> - <instruction>` comment also applies to a finding carried as a claimed prior from the local record, without needing escalation.\n- An adjudication comment that cannot apply (unknown id, finding not open, wrong head, not from the owner) produces a visible reason in the gate result instead of being ignored.\n\nGuardrails:\n- Only the repository owner's comment counts, as today. Agents never post adjudications on their own initiative, only when the owner names the PR, head, finding and decision.\n- The record's claims still never close a finding or count as a strike on their own; a forged or edited local record can only create work.\n- Escalation, strike and dispute-round rules for ordinary findings are unchanged.\n- MAINTAIN on a claimed finding keeps it open.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4013",
+    "docs/internal/oracle-review-v2.md"
+  ],
   "sessions": [
     {
       "actor": "joe-tractable-followups",
@@ -13,6 +19,14 @@
       "op": "create",
       "op_id": "e8442fa0907543f8b5cd41e9194da3da",
       "session_id": "f2d490b3e67f4a799a2cdcae340365d1"
+    },
+    {
+      "actor": "joe-tractable-followups",
+      "at": "2026-11-14T21:06:41Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "d8ea918f73174418bb10ccd331f4f131",
+      "session_id": "5b2617602b274625909e4834eb179a80"
     }
   ]
 }
