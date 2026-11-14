@@ -10,10 +10,10 @@ from benchbox.cli.shared import console
 from benchbox.core.billable_platforms import (
     acknowledgement_record_for,
     assess_platform,
-    is_non_interactive_session,
     refusal_message,
     resolve_acknowledgement,
 )
+from benchbox.utils.session import is_non_interactive_session
 
 ACKNOWLEDGEMENT_FLAG_HELP = (
     "Acknowledge that running a billable platform (registry category 'cloud' or a managed deployment) may "
@@ -22,8 +22,10 @@ ACKNOWLEDGEMENT_FLAG_HELP = (
     "acknowledgement and its source are recorded in the result bundle. Limits: any caller can set the flag or "
     "variable itself, so it is a statement of intent, not an access control; platform credentials saved in "
     "~/.benchbox/credentials.yaml are stored in plain text and readable by any process the user runs; "
-    "--dry-run is exempt, yet it still reads that file, may install a driver when auto-install is set, and for "
-    "some platforms builds a client that makes a network call."
+    "--dry-run is exempt: it still reads that file but installs no package and makes no Databricks network call. "
+    "Also not guarded: setup --validate-only and --diagnose (their purpose is to connect, and a Snowflake check "
+    "can resume a warehouse), remote start_benchmark (gated only by the operator allow-list) and shell with an "
+    "md: MotherDuck path."
 )
 
 

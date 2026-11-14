@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import sys
 from collections.abc import Mapping
 from dataclasses import dataclass
 
@@ -18,7 +17,6 @@ BILLABLE_CATEGORY = "cloud"
 MANAGED_DEPLOYMENT_CLASS = "managed"
 
 _TRUTHY = frozenset({"1", "true", "yes", "on"})
-_NON_INTERACTIVE_ENV_VAR = "BENCHBOX_NON_INTERACTIVE"
 _DEPLOYMENT_OPTION_KEYS = ("deployment_mode", "deployment", "mode")
 
 
@@ -116,12 +114,6 @@ def resolve_acknowledgement(
     if environment_acknowledged(env):
         return BillableAcknowledgement(SOURCE_ENVIRONMENT)
     return None
-
-
-def is_non_interactive_session(flag: bool = False) -> bool:
-    if flag or os.environ.get(_NON_INTERACTIVE_ENV_VAR, "").strip().lower() in _TRUTHY:
-        return True
-    return not (sys.stdin.isatty() and sys.stdout.isatty())
 
 
 def require_acknowledgement(
