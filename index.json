@@ -15550,7 +15550,9 @@
     },
     "cli-mcp-bundle-config-divergence-20261113": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "umbrella-result-capture-parity-20261114"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "CLI and MCP runs record different compression and platform options for the same request"
