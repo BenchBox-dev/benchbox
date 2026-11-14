@@ -10,10 +10,10 @@ from benchbox.cli.shared import console
 from benchbox.core.billable_platforms import (
     acknowledgement_record_for,
     assess_platform,
-    is_non_interactive_session,
     refusal_message,
     resolve_acknowledgement,
 )
+from benchbox.utils.session import is_non_interactive_session
 
 ACKNOWLEDGEMENT_FLAG_HELP = (
     "Acknowledge that running a billable platform (registry category 'cloud' or a managed deployment) may "

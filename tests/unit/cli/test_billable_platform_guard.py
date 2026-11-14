@@ -17,6 +17,7 @@ from benchbox.core.billable_platforms import (
 )
 from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.core.schemas import ExecutionContext
+from benchbox.utils import session
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -181,7 +182,6 @@ class TestAcknowledgement:
         assert reached == ["snowflake"]
 
     def test_interactive_terminal_session_is_not_refused(self, monkeypatch):
-        monkeypatch.setattr(billable_platforms, "is_non_interactive_session", lambda flag=False: False)
         monkeypatch.setattr(billable_guard, "is_non_interactive_session", lambda flag=False: False)
 
         assert billable_guard.enforce_billable_acknowledgement("snowflake") is None
@@ -190,10 +190,10 @@ class TestAcknowledgement:
         monkeypatch.setattr("sys.stdin", MagicMock(isatty=lambda: True))
         monkeypatch.setattr("sys.stdout", MagicMock(isatty=lambda: True))
 
-        assert not billable_platforms.is_non_interactive_session()
-        assert billable_platforms.is_non_interactive_session(True)
+        assert not session.is_non_interactive_session()
+        assert session.is_non_interactive_session(True)
         monkeypatch.setenv("BENCHBOX_NON_INTERACTIVE", "true")
-        assert billable_platforms.is_non_interactive_session()
+        assert session.is_non_interactive_session()
 
 
 class TestBundleRecordsAcknowledgement:

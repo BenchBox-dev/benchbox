@@ -580,9 +580,7 @@ class TestAutoInstallGate:
 
     @staticmethod
     def _session(monkeypatch, *, non_interactive: bool):
-        monkeypatch.setattr(
-            "benchbox.core.billable_platforms.is_non_interactive_session", lambda flag=False: non_interactive
-        )
+        monkeypatch.setattr("benchbox.utils.runtime_env.is_non_interactive_session", lambda flag=False: non_interactive)
 
     def test_platform_option_alone_is_refused_non_interactively(self, installer, monkeypatch):
         self._session(monkeypatch, non_interactive=True)

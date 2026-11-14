@@ -17,6 +17,7 @@ from typing import Iterable
 from packaging.version import InvalidVersion, Version
 
 from benchbox.utils.printing import emit
+from benchbox.utils.session import is_non_interactive_session
 
 try:
     from importlib import metadata as importlib_metadata
@@ -301,8 +302,6 @@ def _should_auto_install(auto_install: bool) -> bool:
         return True
     if not auto_install:
         return False
-    from benchbox.core.billable_platforms import is_non_interactive_session
-
     if is_non_interactive_session():
         raise DriverAutoInstallRefused(
             "Refusing to install a driver package in a non-interactive session: driver_auto_install was set as a "
