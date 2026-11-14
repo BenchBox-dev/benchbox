@@ -43190,17 +43190,12 @@
       "title": "Fix TPC-DS stream query labels that turn each query into a SQL comment line"
     },
     "tpcds-subscale-contract-conflicts-with-adr-20261113": {
-      "claim": {
-        "expires_at": "2026-11-15T04:36:29Z",
-        "generation": "5a38c56751b54003b84be337fb8a9d31",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
-      },
+      "claim": null,
       "needs": [
         "umbrella-results-validation-soundness-20261114"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "The TPC-DS subscale contract in core conflicts with the subscale ranking ADR"
     },
     "tpcds-subscale-row-count-reference-20261017": {
