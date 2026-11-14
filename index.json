@@ -26377,6 +26377,13 @@
       "status": "done",
       "title": "Strip JoinOrder primary-key constraints from Trino CREATE TABLE DDL"
     },
+    "known-defect-labels-carry-no-reason-20261114": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Known-defect labels cannot say why a published result is excluded"
+    },
     "lakesail-benchmark-sql-compatibility-remediation": {
       "claim": null,
       "needs": [
