@@ -45708,10 +45708,15 @@
       "title": "Umbrella: CLI contract for scripts and CI, one branch and one PR"
     },
     "umbrella-core-tooling-docs-20261114": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-15T06:31:34Z",
+        "generation": "60a5cd7c4f834a55afd9275b7bc21a96",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Umbrella: conformance script, fresh-install check, MCP timing and doc links, one branch and one PR"
     },
     "umbrella-credentials-publication-safety-20261114": {
