@@ -45614,6 +45614,13 @@
       "status": "done",
       "title": "Umbrella: CLI contract for scripts and CI, one branch and one PR"
     },
+    "umbrella-run-path-safety-20261114": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Umbrella: run-path safety fixes, one branch and one PR"
+    },
     "unattributed-update-branch-commits-block-merge-20261008": {
       "claim": null,
       "needs": [],
