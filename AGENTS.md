@@ -131,7 +131,7 @@ Apple/macOS: correctness-gate digests are Linux-generated; use `make ci-linux`. 
 
 ## Skills and generated mirrors
 
-Stable wrappers are `code`, `test`, `todo`, `docs`, `blog`, `benchbox`, `skill-sync`, and `tidy-perms`. `todo` authors ideas/specs and owns tracker actions. Skill sources are local catalog checkouts named in `skill-sync.conf`, copied by `tools/skill-sync`; only `.claude/skills` is tracked. `.agents/skills` is the shared, gitignored materialization for Codex, Gemini, and Antigravity. Regenerate mirrors with `make skill-sync` in a write worktree; never hand-edit one. `scripts/check_untracked_skill_mirrors.sh` guards tracking state.
+Stable wrappers are `code`, `test`, `todo`, `docs`, `blog`, `benchbox`, and `skill-sync`. `todo` authors ideas/specs and owns tracker actions. Skill sources are local catalog checkouts named in `skill-sync.conf`, copied by `tools/skill-sync`; only `.claude/skills` is tracked. `.agents/skills` is the shared, gitignored materialization for Codex, Gemini, and Antigravity. Regenerate mirrors with `make skill-sync` in a write worktree; never hand-edit one. `scripts/check_untracked_skill_mirrors.sh` guards tracking state.
 
 ## Operational references
 
