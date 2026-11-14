@@ -38033,7 +38033,9 @@
     },
     "site-docs-contradict-cli-behaviour-20261113": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "umbrella-site-docs-accuracy-20261114"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Correct site documentation that contradicts current CLI and MCP behaviour"
