@@ -28953,17 +28953,12 @@
       "title": "Increase core, CLI, platform, and utils test coverage to 80%"
     },
     "noninteractive-prompts-fail-instead-of-skip-20261113": {
-      "claim": {
-        "expires_at": "2026-11-15T07:36:13Z",
-        "generation": "9de754d46dae424f9ec01378b6d3b5a2",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
-      },
+      "claim": null,
       "needs": [
         "umbrella-credentials-publication-safety-20261114"
       ],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Remaining prompts abort or crash when stdin is not a terminal"
     },
     "noninteractive-safeguard-audit-20261113": {
