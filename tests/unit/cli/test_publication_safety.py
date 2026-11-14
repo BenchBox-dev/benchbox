@@ -40,6 +40,7 @@ def _clean_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     ):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
     (tmp_path / "home").mkdir()
 
 
