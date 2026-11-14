@@ -15546,6 +15546,13 @@
       "status": "dropped",
       "title": "`--phases generate,load` without power exits 1: 'NoneType' object has no attribute 'overall_status'"
     },
+    "cli-mcp-bundle-config-divergence-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "CLI and MCP runs record different compression and platform options for the same request"
+    },
     "cli-mcp-execution-type-divergence-still-live": {
       "claim": null,
       "needs": [

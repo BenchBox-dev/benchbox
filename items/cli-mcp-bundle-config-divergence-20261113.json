@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "The cause of each difference is traced to code and stated in the PR.",
+    "A test runs the same request through the CLI path and the MCP path at scale 0.01 and asserts equal config blocks, or asserts the documented, intended difference.",
+    "If the difference is intended, compare refuses or warns on the pair with the not-comparable exit code, and the MCP reference states it."
+  ],
+  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Related: the earlier item cli-mcp-execution-type-divergence-still-live; check whether it already covers part of this. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "description": "Problem: for the same platform, benchmark and scale, a CLI bundle records compression zstd and the saved-config platform options, while an MCP bundle records compression none and no platform options (observed while proving seed and iterations equivalence for PR #4202). Results from the two entry points may therefore not be comparable, and the bundles say so only implicitly.\n\nOutcome: either both entry points apply the same defaults, or the difference is intended, recorded and treated as a comparability dimension by compare.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T01:18:02Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ce9807be7ef246e69f9e21065da26e73",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}
