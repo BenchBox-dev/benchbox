@@ -28225,6 +28225,13 @@
       "status": "done",
       "title": "Metadata Primitives Complexity Enhancements"
     },
+    "methodology-open-questions-owner-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Owner: answer the open questions left out of the methodology page"
+    },
     "metrics-command-group": {
       "claim": null,
       "needs": [],

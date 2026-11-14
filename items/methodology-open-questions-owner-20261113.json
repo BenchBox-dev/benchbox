@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Each question from PR #153's open-questions list has an answer or an explicit 'no policy', recorded in the repository.",
+    "Answers that become rules are added to the methodology page in a follow-up PR with their source."
+  ],
+  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). The authoritative list is the open-questions section of https://github.com/BenchBox-dev/benchbox-site/pull/153. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "description": "Problem: the methodology page (site PR #153, merged) states only recorded policy. Questions with no recorded policy were left off it: minimum iterations, how to aggregate repeated runs, noise thresholds, cold against warm runs, seed cohorts, whether hardware and tuning define a cohort, non-standard scales for non-TPC benchmarks, which scale suits which purpose, regression thresholds, whether the EULA clause 4c wording is sufficient, and how third parties should cite results.\n\nOutcome: an owner answer for each, recorded as policy (an ADR or the methodology page), so tools and documentation can rely on it.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T01:18:23Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "060cbd8803e4450ca5454a81c02fd43e",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}
