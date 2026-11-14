@@ -2,7 +2,7 @@
   "acceptance": [
     "The branch's PR has merged, and each member's acceptance criteria are evidenced on it."
   ],
-  "context": "Guardrails: one linked worktree and one feature branch, one PR to develop; follow AGENTS.md; no live-cloud runs; heavy work only via lock-taking targets; comment policy; changelog.d fragments. Delivered by one delegated agent; the planning session is the only tracker writer and finishes this umbrella and its members after the PR merges.",
+  "context": "Guardrails: one linked worktree and one feature branch, one PR to develop; follow AGENTS.md; no live-cloud runs; heavy work only via lock-taking targets; comment policy; changelog.d fragments. Delivered by one delegated agent; the planning session is the only tracker writer and finishes this umbrella and its members after the PR merges.\n\nCloseout (2026-11-14): https://github.com/BenchBox-dev/benchbox/pull/4227 merged (cfeec2d04b). Databricks dry run no longer auto-detects credentials over the network; run-official takes --acknowledge-billable-platform; unguarded paths named in the flag help and docs/operations/run-safety.md. Dry runs never install drivers; auto-install prints package==version and refuses non-interactively (exit 6) unless BENCHBOX_DRIVER_AUTO_INSTALL=1; driver_version must parse as a version (invalid exits 2). platforms install help says it prints instructions. run --help states what each --force value deletes, including the Snowflake and Databricks in-place variants. Open questions are filed separately.",
   "description": "Feature-branch umbrella. Members: billable-guard-coverage-gaps-20261113, driver-auto-install-from-cli-flag-20261113, run-force-drops-remote-database-silently-20261113.",
   "sessions": [
     {
@@ -20,6 +20,14 @@
       "generation": "2e2035f73b76418e8917162bbeae4823",
       "op": "take",
       "op_id": "4a3f4ea3ac5545de983e53da7f6fc1e2",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T06:01:45Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e503585f811f45e285a1e02f8d227202",
       "session_id": "ac67b069b7864c4699843546272d3701"
     }
   ]
