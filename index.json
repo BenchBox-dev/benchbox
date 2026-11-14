@@ -25354,6 +25354,13 @@
       "status": "done",
       "title": "Document how to clear a carried review finding and a stalled hosted review"
     },
+    "hosted-submit-and-publish-without-confirmation-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Decide whether submit --service and publish should need a human step when run non-interactively"
+    },
     "http-tls-certificate-validation": {
       "claim": null,
       "needs": [],
