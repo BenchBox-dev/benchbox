@@ -19145,7 +19145,9 @@
     },
     "dataframe-adapters-host-load-null-20261113": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "umbrella-result-capture-parity-20261114"
+      ],
       "priority": "low",
       "status": "open",
       "title": "DataFrame adapters never take the resource snapshot, so their bundles record no host load"
