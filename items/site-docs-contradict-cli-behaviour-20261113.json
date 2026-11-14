@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Each contradiction above is either corrected, with the command output proving the new text in the PR, or shown to be wrong with evidence.",
+    "The submission examples use a scale that submit accepts, run end to end with --dry-run.",
+    "The site docs check passes and the PR merges under the site repository's rules."
+  ],
+  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Can share a branch with site-docs-cli-contract-changes-20261113, which documents the new exit codes, validate command, guard and host-load fields. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "description": "Problem: while writing the methodology page, these contradictions were found on benchbox.dev (site repository BenchBox-dev/benchbox-site): contributing-results and hosted-submission use --scale 0.01 as the submission example, but submit refuses unofficial subscale results; reference/cli/run.md omits --iterations and states loose validation tolerance as 5 percent where the code uses 50 percent; utilities.md says power_run defaults to 4 iterations and 0 warm-up where 3 and 1 are observed; the integrity-validator page and the code disagree on check severities; and the MCP reference says resources are reached only through tools while also listing static resources.\n\nOutcome: each page states current behaviour, verified by running the command.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T01:18:09Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "95f25adf7086481cbb362b42b40e2de0",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}
