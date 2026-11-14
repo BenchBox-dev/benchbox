@@ -27443,17 +27443,12 @@
       "title": "Scope file-error detail in MCP tools so local paths do not leak into shared transcripts"
     },
     "mcp-local-run-timeout-measure-20261113": {
-      "claim": {
-        "expires_at": "2026-11-15T06:32:32Z",
-        "generation": "64ffbc5ab6b549729e618c3af406a5bd",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
-      },
+      "claim": null,
       "needs": [
         "umbrella-core-tooling-docs-20261114"
       ],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Measure whether synchronous MCP run_benchmark calls exceed common client tool-call timeouts"
     },
     "mcp-multiworker-acceptance-flaky-under-load-20261004": {
