@@ -40782,6 +40782,13 @@
       "status": "done",
       "title": "Nothing warns when the primary clone is behind develop, so sessions run an old tracker server and miss new hooks"
     },
+    "stale-shared-output-dir-tpch-q18-mismatch-20261114": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Stale data in the shared default output directory made TPC-H SF1 Q18 fail validation"
+    },
     "standalone-todo-db-renew-verb": {
       "claim": null,
       "needs": [],
