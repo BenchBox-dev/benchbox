@@ -6,7 +6,7 @@
     "A wrong bundle (row count off by more than tolerance, missing a truly required key) still fails; tests cover both.",
     "The external soundness review passes if validation code is a soundness path."
   ],
-  "context": "Source: triage recorded in corpus-integrity-validator-failures-triage-20261113 (2026-11-14). The validator is the one behind `benchbox results validate` and MCP validate_results. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "context": "Source: triage recorded in corpus-integrity-validator-failures-triage-20261113 (2026-11-14). The validator is the one behind `benchbox results validate` and MCP validate_results. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\nCloseout (2026-11-14): https://github.com/BenchBox-dev/benchbox/pull/4223 merged (e50caef57a) with the external reviewer's SHIP on head 320cb54c9e. Validator: case-insensitive table names, result_schema_version accepted for version, PARTIAL accepted; tests show wrong bundles still fail. Specs: clickbench hits 1000000; joinorder from the pinned IMDB 2013 manifest (archive sha256 matches, all 21 tables match); flightdata airlines 25 and flights 23437547 (41 BTS months; per-file hashes are not pinned in downloader_specs.yaml). Contract Comparability Rules rewritten to the ADR. Corpus over results-data: before 379 PASS / 23 WARN / 90 FAIL; after 448 / 26 / 18. Remaining FAILs: 8 TPC-DI old-scale bundles, 9 already-unranked run defects, and corpus-inventory.json, which is not a bundle but is picked up by a directory run.",
   "description": "Problem: `benchbox results validate` fails 50 ranked published bundles that are correct. Causes: (1) _check_required_keys requires 'version' though bundles from 2026-09-19/20 carry only result_schema_version, which schema_policy.result_schema_version_value reads first; (2) _check_sf1_row_counts matches table names case-sensitively, failing BigQuery/Snowflake upper-case and Databricks lower-case names with correct counts; (3) benchmark_specs.yaml expects clickbench hits 499576 while the generator writes int(1_000_000*sf); (4) joinorder SF1 counts do not match the IMDB data the bundles hold (aka_name 901343, cast_info 36244344, and so on); (5) flightdata expects 25457793 flights and 26 airlines against 23437547 and 25 in every bundle; (6) _VALID_PHASE_STATUSES lacks PARTIAL, which writers emit.\n\nOutcome: the validator accepts correct bundles and still fails wrong ones; specs match the data the generators and pinned sources produce.",
   "sessions": [
     {
@@ -32,6 +32,14 @@
       "generation": "2b748475cb894614864a59e7d65e0ee6",
       "op": "take",
       "op_id": "9b1fcf0733004380ac34e61b23eaaf8c",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T04:36:08Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f187b3600f424a62b490c2a12006cc14",
       "session_id": "ac67b069b7864c4699843546272d3701"
     }
   ]
