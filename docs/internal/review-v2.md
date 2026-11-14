@@ -209,6 +209,13 @@ earlier run satisfies it: a green `posting-check` proves the pin only for a head
 status before the run. Dispatch the checks above on such heads and record the run links in
 the tracker item that carried the bump.
 
+`review-gate.yml` never cancels a run in flight: runs for one pull request queue in one
+concurrency group and a newer pending run replaces an older pending one before it starts,
+so it leaves no check. A run cancelled while it executed would leave its `gate / *` checks
+and `gate posting check` red on the head it handled, and a dispatch or comment run that
+cancelled it reports on the default-branch commit, so nothing ever replaced them. A
+`posting-check` that sees a cancelled gate job still fails by design.
+
 ### Rollback
 
 Rollback is a revert of the pin commit. Trigger it when a post-merge check fails or when
