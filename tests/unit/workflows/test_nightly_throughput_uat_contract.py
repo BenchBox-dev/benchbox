@@ -249,7 +249,7 @@ def test_cedardb_cell_keeps_the_throughput_workload_and_a_bounded_timeout() -> N
     assert config["platforms"]["include"] == ["cedardb"]
     assert config["benchmarks"]["include"] == ["tpch"]
     assert config["scales"]["rungs"] == [1]
-    assert (execute["official"], execute["streams"], execute["phases_arg"]) == (True, 3, "load,throughput")
+    assert (execute["official"], execute["streams"], execute["phases_arg"]) == (True, 3, "load,power,throughput")
     assert execute["extra_args"] == ["--platform-option", "port=5435"]
     assert 0 < execute["per_cell_timeout_s"] <= 900
     assert config["cleanup"]["docker_manage_platforms"] is True

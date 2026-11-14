@@ -118,11 +118,11 @@ _GUIDED_CREDENTIAL_PLATFORMS = frozenset(
 def _reject_official_fallback(s: types.SimpleNamespace, resolution: TuningResolution) -> None:
     if not s.official or resolution.canonical_mode != tuning_modes.TUNED_FALLBACK:
         return
-    console.print("[red]❌ Error: --official runs cannot use a 'tuned-fallback' configuration[/red]")
-    console.print(
-        "[yellow]No tuning template was found for this platform/benchmark. "
+    fatal("❌ Error: --official runs cannot use a 'tuned-fallback' configuration")
+    fatal(
+        "No tuning template was found for this platform/benchmark. "
         "Add one under examples/tunings/, or rerun with --tuning notuning "
-        "or an explicit --tuning <file>.[/yellow]"
+        "or an explicit --tuning <file>."
     )
     if s.logger:
         s.logger.error("Official run refused: tuning resolved to tuned-fallback under --official")
@@ -600,8 +600,8 @@ def _validate_initial_flags(s: types.SimpleNamespace) -> None:
         else:
             tpc_allowed = frozenset({1, 10, 30, 100, 300, 1000, 3000, 10000, 30000, 100000})
         if s.scale not in tpc_allowed:
-            console.print(f"[red]❌ Scale factor {s.scale} is not a TPC-specified scale factor[/red]")
-            console.print(f"Allowed scale factors: {sorted(tpc_allowed)}")
+            fatal(f"❌ Scale factor {s.scale} is not a TPC-specified scale factor")
+            fatal(f"Allowed scale factors: {sorted(tpc_allowed)}")
             s.ctx.exit(1)
 
         console.print("[bold blue]TPC Official Mode Benchmark Run[/bold blue]")
@@ -997,7 +997,7 @@ def _enforce_full_spec(s: types.SimpleNamespace) -> None:
             refresh_functions=refresh_functions_enabled({"benchmark_options": s.parsed_benchmark_options or {}}),
         )
     except ValueError as exc:
-        console.print(f"[red]❌ {exc}[/red]")
+        fatal(f"❌ {exc}")
         s.ctx.exit(1)
 
 
