@@ -3,7 +3,7 @@
     "benchbox run --help states for each --force value whether it deletes local data, the remote database, or both, verified against connection_lifecycle.py.",
     "No behaviour change; existing tests pass."
   ],
-  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Found by the guard coverage survey for PR #4203. Decision gate: choose the option name and whether --force upload keeps its current meaning; record it in the PR. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Found by the guard coverage survey for PR #4203. Decision gate: choose the option name and whether --force upload keeps its current meaning; record it in the PR. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\nCloseout (2026-11-14): https://github.com/BenchBox-dev/benchbox/pull/4227 merged (cfeec2d04b). Databricks dry run no longer auto-detects credentials over the network; run-official takes --acknowledge-billable-platform; unguarded paths named in the flag help and docs/operations/run-safety.md. Dry runs never install drivers; auto-install prints package==version and refuses non-interactively (exit 6) unless BENCHBOX_DRIVER_AUTO_INSTALL=1; driver_version must parse as a version (invalid exits 2). platforms install help says it prints instructions. run --help states what each --force value deletes, including the Snowflake and Databricks in-place variants. Open questions are filed separately.",
   "description": "Problem: `benchbox run --force datagen|upload|all` and `--platform-option force_recreate=true` drop the target database on remote platforms (drop_database on Snowflake, BigQuery, Databricks, Redshift and others). Owner decision (2026-11-14): --force already implies the user understands the impact, so behaviour stays as it is. The remaining gap is that the help text does not say what each value deletes.\n\nOutcome: the help and CLI reference state exactly what each --force value and force_recreate delete, local and remote.",
   "sessions": [
     {
@@ -37,6 +37,14 @@
       "generation": "0aad017aa2b34c9eac3697cc0a39dcf0",
       "op": "take",
       "op_id": "addff8de9d3743979ac50f82d7dffafa",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T06:02:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7143d00b6a1345f0b4b3dc8952fa087d",
       "session_id": "ac67b069b7864c4699843546272d3701"
     }
   ]
