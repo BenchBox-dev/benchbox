@@ -2,7 +2,7 @@
   "acceptance": [
     "The branch's PR has merged, and each member's acceptance criteria are evidenced on it."
   ],
-  "context": "Guardrails: one linked worktree and one feature branch, one PR to develop; follow AGENTS.md; no live-cloud runs; heavy work only via lock-taking targets; comment policy; changelog.d fragments. Delivered by one delegated agent; the planning session is the only tracker writer and finishes this umbrella and its members after the PR merges.",
+  "context": "Guardrails: one linked worktree and one feature branch, one PR to develop; follow AGENTS.md; no live-cloud runs; heavy work only via lock-taking targets; comment policy; changelog.d fragments. Delivered by one delegated agent; the planning session is the only tracker writer and finishes this umbrella and its members after the PR merges.\n\nCloseout (2026-11-14): https://github.com/BenchBox-dev/benchbox/pull/4223 merged (e50caef57a) with the external reviewer's SHIP on head 320cb54c9e. Validator: case-insensitive table names, result_schema_version accepted for version, PARTIAL accepted; tests show wrong bundles still fail. Specs: clickbench hits 1000000; joinorder from the pinned IMDB 2013 manifest (archive sha256 matches, all 21 tables match); flightdata airlines 25 and flights 23437547 (41 BTS months; per-file hashes are not pinned in downloader_specs.yaml). Contract Comparability Rules rewritten to the ADR. Corpus over results-data: before 379 PASS / 23 WARN / 90 FAIL; after 448 / 26 / 18. Remaining FAILs: 8 TPC-DI old-scale bundles, 9 already-unranked run defects, and corpus-inventory.json, which is not a bundle but is picked up by a directory run.",
   "description": "Feature-branch umbrella. Members: integrity-validator-false-failures-20261114, tpcds-subscale-contract-conflicts-with-adr-20261113.",
   "sessions": [
     {
@@ -20,6 +20,14 @@
       "generation": "19586ef49450453680b361d22300c257",
       "op": "take",
       "op_id": "7d07a7e973e24759a5c12bcd838945f4",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T04:35:47Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6e22023437be4734ba533c7effc69fe1",
       "session_id": "ac67b069b7864c4699843546272d3701"
     }
   ]
