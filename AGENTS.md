@@ -55,7 +55,7 @@ fails (keep the commit and report the blocker).
 
 A batch member opens no PR and writes no tracker state: it ends when its change is landed on the integration branch and reported; the leader ends at the merged final PR.
 
-Active bindings: `docs/agent/review-protocol.md`, superseding `docs/agent/review-protocol-legacy.md`.
+Active review binding: `docs/agent/review-protocol.md`.
 
 ## Worktree and change safety
 
@@ -70,7 +70,7 @@ make agent-write-preflight
 
 `worktree-create` pins identity via `git config --worktree`, so later writes cannot reauthor it. `BASE=<ref>` (default `origin/develop`) sets the start ref. Integration worktrees are leader-only (`make batch-start`).
 
-Stop if `git rev-parse --show-toplevel` is the primary clone; emergency writes there need explicit authorization plus `BENCHBOX_ALLOW_MAIN_CLONE_WRITE=1`. Preserve unrelated dirty work; never use destructive Git/filesystem commands without approval. Use `rg`; stage only authorized paths; never `git add -A`.
+Stop if `git rev-parse --show-toplevel` is the primary clone; emergency writes there need explicit authorization plus `BENCHBOX_ALLOW_MAIN_CLONE_WRITE=1`. Preserve unrelated dirty work; never use destructive Git/filesystem commands without approval. Stage only authorized paths; never `git add -A`.
 
 `[REMOTE-CLOSEOUT-001]` A local closer of a cloud-built branch may skip the worktree: fetch the PR head in the primary clone, then run `make pr-arm-remote` and `pr-landing-remote` per `docs/agent/remote-closeout.md`, arming only on a stored reviewer record for that head and changing no repository file, local branch, or config. Feature, batch, stack, and soundness PRs use a worktree, as does every PR until cloud `pr-open` works.
 
@@ -81,8 +81,8 @@ A disposable clone (remote session, CI runner) declares `BENCHBOX_EPHEMERAL_CLON
 - Prefer repository `make` targets and existing helpers.
 - Python tooling is `uv` only: `uv run -- ...`, `uv add`, `uv sync`, `uv lock`.
 - `[COMMENT-POLICY-001]` Follow the comment and docstring policy (`docs/internal/comment-policy.md`). Maintained first-party code has no explanatory comments or docstrings: clarify intent with structure, names, and types. Put public contracts in API docs, not source prose. Permitted directives, notices, and fixtures must be registered in `quality/comment-policy.json`. Verify with `make comment-policy-check`; resolve every finding. Enforcement is blocking.
-- Research the affected path, make the narrowest coherent change, and preserve compatibility and critical-path performance. Before writing a new helper, search for an existing equivalent (`make duplicate-check-verbose` / `duplicate-check-delta`).
-- Use Python 3.11+, four spaces, 120 columns, Ruff, and public API type hints.
+- Before writing a new helper, search for an existing equivalent (`make duplicate-check-verbose` / `duplicate-check-delta`).
+- Public APIs carry type hints.
 - No credentials in Git; redact logs and use environment variables.
 - Live cloud tests and broad/destructive cleanup require explicit approval.
 - `[CHANGELOG-001]` User-facing PRs add a `changelog.d/` fragment; never edit `CHANGELOG.md`.
@@ -94,9 +94,11 @@ For long output, write `/tmp/<slug>.log` (report status + short tail). UAT/stres
 
 `[EVIDENCE-FRESHNESS-001]` Assert tracker state, timings, and gate outcomes from a live read; a scheduled validation of the `todo-state` branch dates a past state, never a current one. A validator pass is not a `submit` pass.
 
-Before publication, self-review with the `code` review action and fix all Critical and Required findings; nits and considerations are optional. `make pr-open` needs a `pr-preflight` receipt. Low-effort subagents may handle boilerplate gates; you choose commands and interpret failures. Wait on CI with `make pr-arm WAIT=<min>`, never your own loop.
+Before publication, self-review with the `code` review action and fix all Critical and Required findings. `make pr-open` needs a `pr-preflight` receipt. Wait on CI with `make pr-arm WAIT=<min>`, never your own loop.
 
-Dev PRs target `develop` (or `published-results`); squash-merge, never direct-push protected branches. Force-push feature branches only with `--force-with-lease`. Soundness paths need review: resolve `benchbox-oracle` threads; arm only on its success review of the current head (rerun if pending/absent). Land drift/pinning guards with required-CI wiring. Five `ci.yml` unit checks pass even when untouched. Stacks: each at most 3 PRs deep, one agent and tracker item; upper PRs are parent-branch drafts. Caps chain depth, not PR count. No other agent's unmerged branch (batch members exempt); deeper work uses a batch. After parent squash-merge, retarget to `develop`, `git rebase --onto origin/develop <old parent tip>`, mark ready, pass CI and review on that head, then arm.
+- Dev PRs target `develop` (or `published-results`); squash-merge; never direct-push protected branches; force-push feature branches only with `--force-with-lease`.
+- Soundness paths: resolve `benchbox-oracle` threads; arm only on its success review of the current head (rerun if pending/absent). Land drift/pinning guards with required-CI wiring.
+- Stacks: at most 3 PRs deep (caps chain depth, not PR count), one agent and tracker item; upper PRs are parent-branch drafts; never build on another agent's unmerged branch (batch members exempt); deeper work uses a batch. After the parent squash-merges, retarget to `develop`, `git rebase --onto origin/develop <old parent tip>`, mark ready, pass CI and review on that head, then arm.
 
 ## TODO tracker
 
@@ -127,11 +129,11 @@ controls, and cannot certify or unlock the changes that make it possible.
 - CLI dry runs must propagate explicit phases; deterministic runs use a seed.
 - Green focused/fast tests are not UAT or production certification.
 
-Apple/macOS: correctness-gate digests are Linux-generated; use `make ci-linux`. Local containers run on `mocker` (no `docker`), never in CI: databend, doris and starrocks are single-service stacks. Per-stack status: https://benchbox.dev/docs/operations/uat-framework.html. Never prune globally.
+Apple/macOS: correctness-gate digests are Linux-generated; use `make ci-linux`. Local containers run on `mocker` (no `docker`) and never in CI; per-stack status: https://benchbox.dev/docs/operations/uat-framework.html. Never run a global mocker prune without approval.
 
 ## Skills and generated mirrors
 
-Stable wrappers are `code`, `test`, `todo`, `docs`, `blog`, `benchbox`, `skill-sync`, and `tidy-perms`. `todo` authors ideas/specs and owns tracker actions. Skill sources are local catalog checkouts named in `skill-sync.conf`, copied by `tools/skill-sync`; only `.claude/skills` is tracked. `.agents/skills` is the shared, gitignored materialization for Codex, Gemini, and Antigravity. Regenerate mirrors with `make skill-sync` in a write worktree; never hand-edit one. `scripts/check_untracked_skill_mirrors.sh` guards tracking state.
+Skill sources are local catalog checkouts named in `skill-sync.conf`, copied by `tools/skill-sync`; only `.claude/skills` is tracked, and `.agents/skills` is the gitignored copy for Codex, Gemini and Antigravity. Regenerate mirrors with `make skill-sync` in a write worktree; never hand-edit one. `scripts/check_untracked_skill_mirrors.sh` guards tracking state.
 
 ## Operational references
 
