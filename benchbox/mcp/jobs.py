@@ -27,8 +27,10 @@ from benchbox.core.throughput.containment import await_quiescence, track_outstan
 from benchbox.mcp.deprecations import attach_deprecations, request_deprecations
 from benchbox.mcp.schemas import (
     validate_execution_engine,
+    validate_iterations,
     validate_phases,
     validate_platform_options,
+    validate_seed,
 )
 from benchbox.mcp.security import (
     AUTHORIZATION_ERROR,
@@ -1085,6 +1087,8 @@ class DurableJobWorker:
         link_probe = bool(request.get("link_probe", True))
         execution_engine = request.get("execution_engine", "default")
         platform_options = request.get("platform_options")
+        seed = request.get("seed")
+        iterations = request.get("iterations")
         results_dir = staging
         execution_id = job.execution_id
         anonymize = True
@@ -1169,6 +1173,8 @@ class DurableJobWorker:
             capture_plans=capture_plans,
             execution_engine=resolved_execution_engine,
             link_probe=link_probe,
+            seed=seed,
+            iterations=iterations,
             normalized_platform_options=normalized_platform_options,
             results_dir=results_dir,
             execution_id=execution_id,
@@ -1512,7 +1518,7 @@ def _public_status(job: JobRecord) -> dict[str, Any]:
 def register_durable_job_tools(mcp: MCPServer, runtime: DurableJobRuntime) -> None:
 
     @mcp.tool(
-        description="Queue a tenant-owned benchmark and immediately return its durable handle.",
+        description="Queue a tenant-owned benchmark and immediately return its durable handle. Optional seed and iterations have the same meaning as in run_benchmark; iterations is bounded by the server policy.",
         annotations=START_ANNOTATIONS,
     )
     async def start_benchmark(
@@ -1526,6 +1532,8 @@ def register_durable_job_tools(mcp: MCPServer, runtime: DurableJobRuntime) -> No
         capture_plans: bool = False,
         link_probe: bool = True,
         platform_options: dict[str, object] | None = None,
+        seed: int | None = None,
+        iterations: int | None = None,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         principal = authenticated_principal()
@@ -1535,6 +1543,8 @@ def register_durable_job_tools(mcp: MCPServer, runtime: DurableJobRuntime) -> No
             with run_scope(log=False):
                 resolve_run_selection(platform, resolved_execution_engine, normalized_platform_options)
             phases = validate_phases(phases)
+            seed = validate_seed(seed)
+            iterations = validate_iterations(iterations)
         except ValueError as exc:
             raise MCPError(-32602, str(exc)) from exc
         request = {
@@ -1550,6 +1560,10 @@ def register_durable_job_tools(mcp: MCPServer, runtime: DurableJobRuntime) -> No
         }
         if normalized_platform_options:
             request["platform_options"] = normalized_platform_options
+        if seed is not None:
+            request["seed"] = seed
+        if iterations is not None:
+            request["iterations"] = iterations
         job, created = await anyio.to_thread.run_sync(
             lambda: runtime.repository.submit(principal.principal_id, request, idempotency_key=idempotency_key)
         )

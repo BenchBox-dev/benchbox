@@ -1,8 +1,9 @@
 # BenchBox worktree lifecycle evidence contract
 
 Status: draft specification (2026-08-26) as amended 2026-08-31 to authorize
-`make branch-prune-merged` — an explicit, operator-driven, `gh`-based reaper
-limited to worktree-less local branches still at their historical merge-time PR head —
+`make branch-prune-merged` — an explicit, operator-driven reaper limited to
+worktree-less local branches proven merged into `origin/develop` (by local
+history, or by `gh` evidence of their historical merge-time PR head) —
 and amended 2026-10-18 to authorize `make worktree-reap`, an operator-invoked
 sweep whose removals are exactly `worktree-finish` apply actions; see §2.
 
@@ -24,8 +25,9 @@ This spec fixes what evidence is recorded, what it can and cannot prove, how
 uncertainty is classified, who is allowed to produce which part of it, and
 what a report is (and is not) authorized to do. The read-only audit adds no
 deletion authority. The separately invoked `branch-prune-merged` exception in
-§2 adds a destructive local-branch path only after independently recollecting
-the complete §7 evidence; it never consumes an audit snapshot as authority.
+§2 adds a destructive local-branch path only after independently proving each
+branch merged, from local history or from freshly recollected §7 evidence; it
+never consumes an audit snapshot as authority.
 
 ## 2. Non-goals
 
@@ -38,8 +40,10 @@ the complete §7 evidence; it never consumes an audit snapshot as authority.
   actions; it never removes the primary clone, the invoking worktree, or
   anything that evaluation holds. The authorized branch-only exception is
   `make branch-prune-merged`, which reaps only worktree-less local branches
-  still at their historically proven merge-time PR head (operator-driven, `gh`-based, with
-  `DRY_RUN=1` preview).
+  proven merged into `origin/develop`: the tip is an ancestor of it, the net
+  diff has a non-empty byte-exact (`git patch-id --verbatim`, `--binary`) match
+  with a non-merge commit on it, or `gh` shows the tip is the historically
+  proven merge-time PR head (operator-driven, with `DRY_RUN=1` preview).
 - No change to `worktree-remove`'s existing refusal rules, and no destructive
   Git operation beyond `worktree-finish` apply actions (also reached through
   `worktree-reap`) and `branch-prune-merged` local branch ref deletion.

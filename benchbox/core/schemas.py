@@ -442,6 +442,8 @@ class ExecutionContext(BaseModel):
 
     tuning_mode: Optional[str] = None
 
+    billable_platform_acknowledgement: Optional[dict[str, Any]] = None
+
     def to_cli_args(self) -> list[str]:
         args: list[str] = []
 

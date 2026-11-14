@@ -205,6 +205,19 @@ def test_platform_source_selects_its_smoke_tests_and_guards(repo: Path) -> None:
     assert pt.map_tests(repo, ["scripts/tool.py"]) == ["tests/unit/test_tool.py"]
 
 
+def test_any_benchbox_source_change_selects_the_path_scanning_guards(repo: Path) -> None:
+    guards = [
+        "tests/unit/cli/test_output_control_static.py",
+        "tests/unit/cli/test_shipped_docs_urls.py",
+        "tests/unit/core/tpcdi/test_tpcdi_no_values_row_source.py",
+        "tests/unit/platforms/test_credential_error_messages.py",
+    ]
+    for path in guards:
+        _write(repo, path)
+
+    assert pt.map_tests(repo, ["benchbox/core/equivalence/cross_surface.py"]) == guards
+
+
 def test_source_guard_tests_exist() -> None:
     root = SCRIPT.parents[2]
     missing = [test for tests in pt.SOURCE_GUARD_TESTS.values() for test in tests if not (root / test).is_file()]

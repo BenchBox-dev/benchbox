@@ -10,6 +10,7 @@ from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
+from benchbox.core.dataframe.engine import DataFrameEngine
 from benchbox.core.dataframe.pandas_groups import collect, native_frame, per_group, per_partition
 from benchbox.core.dataframe.pandas_ops import select as pandas_select
 from benchbox.core.dataframe.query import DataFrameQuery, QueryCategory, QueryRegistry
@@ -95,12 +96,11 @@ def _scalar_frame(ctx: DataFrameContext, data: dict[str, Any]) -> Any:
 
 
 def _is_dask_context(ctx: DataFrameContext) -> bool:
-    platform = ctx.platform.lower().replace("_", "-")
-    return platform in {"dask", "dask-df"}
+    return DataFrameEngine.from_platform_name(ctx.platform) is DataFrameEngine.DASK
 
 
 def _is_datafusion_context(ctx: DataFrameContext) -> bool:
-    return ctx.platform.lower().replace("_", "-") in {"datafusion", "datafusion-df"}
+    return DataFrameEngine.from_platform_name(ctx.platform) is DataFrameEngine.DATAFUSION
 
 
 SKIP_FOR_DATAFRAME = [

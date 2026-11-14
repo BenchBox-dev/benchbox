@@ -69,6 +69,7 @@ class PolarsDataFrameAdapter(ExpressionFamilyAdapter[PolarsDF, PolarsLazyDF, Pol
         n_rows: int | None = None,
         tuning_config: DataFrameTuningConfiguration | None = None,
         execution_engine: str = "default",
+        allow_third_party_extensions: bool = False,
     ) -> None:
         if not POLARS_AVAILABLE:
             raise ImportError("Polars not installed. Install with: pip install polars")
@@ -83,6 +84,7 @@ class PolarsDataFrameAdapter(ExpressionFamilyAdapter[PolarsDF, PolarsLazyDF, Pol
         self.streaming = streaming
         self.rechunk = rechunk
         self.n_rows = n_rows
+        self.allow_third_party_extensions = bool(allow_third_party_extensions)
         self.engine = execution_engine
 
         pl.enable_string_cache()
@@ -329,6 +331,7 @@ class PolarsDataFrameAdapter(ExpressionFamilyAdapter[PolarsDF, PolarsLazyDF, Pol
             info["version"] = pl.__version__
             info["polars_runtime_package"], info["polars_runtime_version"] = active_runtime()
 
+        self._enrich_with_extension_options(info)
         return info
 
     def when(self, condition: PolarsExpr) -> Any:

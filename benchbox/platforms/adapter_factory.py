@@ -201,6 +201,7 @@ def _get_dataframe_adapter(platform: str, **config: Any) -> Any:
         requested_version=requested_version,
         auto_install=driver_auto_install,
         install_hint=platform_info.installation_command if platform_info else None,
+        allow_install=not config.get("dry_run"),
     )
     resolved_version = resolution.resolved or driver_version_resolved
     requested = driver_version or resolution.requested

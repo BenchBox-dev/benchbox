@@ -209,6 +209,13 @@ earlier run satisfies it: a green `posting-check` proves the pin only for a head
 status before the run. Dispatch the checks above on such heads and record the run links in
 the tracker item that carried the bump.
 
+`review-gate.yml` never cancels a run in flight: runs for one pull request queue in one
+concurrency group and a newer pending run replaces an older pending one before it starts,
+so it leaves no check. A run cancelled while it executed would leave its `gate / *` checks
+and `gate posting check` red on the head it handled, and a dispatch or comment run that
+cancelled it reports on the default-branch commit, so nothing ever replaced them. A
+`posting-check` that sees a cancelled gate job still fails by design.
+
 ### Rollback
 
 Rollback is a revert of the pin commit. Trigger it when a post-merge check fails or when
@@ -321,6 +328,24 @@ these are the settings BenchBox sets and what each one does at its limit.
   and the owner's merge, and that review runs under the base's copy of the file.
   A test pins that its do-not-flag list never names a gate, soundness or data
   input; edits to the do-not-flag entries deserve owner scrutiny.
+- From Theseus v0.2.12 four more settings are on:
+  - `brief.structured_findings` asks reviewers to write each defect as
+    `Problem:`, `Impact:` and `Fix:` paragraphs with short titles, and a gate
+    review opens with a one-sentence decision.
+  - `brief.suggestions` lets a reviewer attach a one-click suggestion block to a
+    mechanical fix. It is never offered on gate or soundness paths, on files under
+    `.github/`, or on files the policy names, and the committed change is reviewed
+    like any other.
+  - `dashboard_comment` keeps one App comment per pull request, edited in place,
+    listing the verdict and open findings.
+  - `check_run_mirror` publishes findings that have no thread as annotations on a
+    neutral `review-findings` check run. It only warns until the App is granted
+    `checks: write`.
+
+  The dashboard comment and the annotations are non-authoritative mirrors: the
+  review, its protocol record and the `review-verdict` status stay the record, and
+  no reader, the gate or the digest parses either mirror. Each flag can be turned
+  off on its own.
 
 ### Credential gateway
 
@@ -1863,8 +1888,9 @@ sparsely (gate, predicate, reviewers policy), run the script with pinned
 does, from the same `oracle` environment and secrets. If the reviewers policy
 cannot load, the script errors rather than deciding with empty rules; the sweep
 records every per-PR error and fails if any PR errored. Runs evaluating a PR
-share one concurrency group keyed by its number, with cancel-in-progress, so a
-newer run cancels an older one instead of racing.
+share one concurrency group keyed by its number that queues rather than cancels, so
+runs are serialized instead of racing and a newer pending run replaces an older pending
+one before it starts.
 
 When evaluation fails after the head SHA is known, whatever the cause (API,
 network, malformed payload, policy), the script posts `failure` for that head

@@ -79,6 +79,7 @@ class DataFusionDataFrameAdapter(ExpressionFamilyAdapter[DataFusionDF, DataFusio
         batch_size: int = 8192,
         memory_limit: str | None = None,
         temp_dir: str | Path | None = None,
+        allow_third_party_extensions: bool = False,
     ) -> None:
         if not DATAFUSION_DF_AVAILABLE:
             raise ImportError("DataFusion not installed. Install with: pip install datafusion pyarrow")
@@ -96,6 +97,7 @@ class DataFusionDataFrameAdapter(ExpressionFamilyAdapter[DataFusionDF, DataFusio
         self._batch_size = batch_size
         self._memory_limit = memory_limit
         self._temp_dir = str(temp_dir) if temp_dir else None
+        self.allow_third_party_extensions = bool(allow_third_party_extensions)
 
         self._session_ctx: SessionContext | None = None
 
@@ -704,6 +706,7 @@ class DataFusionDataFrameAdapter(ExpressionFamilyAdapter[DataFusionDF, DataFusio
             self.driver_version_actual = live_version
 
         self._enrich_with_driver_metadata(info)
+        self._enrich_with_extension_options(info)
         return info
 
     def get_tuning_summary(self) -> dict[str, Any]:

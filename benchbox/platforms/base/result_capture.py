@@ -416,7 +416,8 @@ class ResultCaptureMixin:
             platform_info=platform_info,
         )
 
-    def _collect_resource_utilization(self) -> dict[str, Any]:
+    @staticmethod
+    def _collect_resource_utilization() -> dict[str, Any]:
         snapshot: dict[str, Any] = {
             "available": False,
             "platform": platform.platform(),
@@ -1068,6 +1069,12 @@ class ResultCaptureMixin:
                 row_count_validation["status"] = "SKIPPED"
                 if validation_result.warning_message:
                     row_count_validation["warning"] = validation_result.warning_message
+            elif validation_result.is_valid and validation_result.expected_row_count not in (None, actual_row_count):
+                row_count_validation["status"] = "SKIPPED"
+                row_count_validation["warning"] = (
+                    f"Row count {actual_row_count} is within tolerance of the reference count "
+                    f"{validation_result.expected_row_count} but is not an exact match"
+                )
             elif validation_result.is_valid:
                 row_count_validation["status"] = "PASSED"
             else:

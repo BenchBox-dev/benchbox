@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import re
 import uuid
-import warnings
 from collections.abc import Sequence
 from datetime import timedelta
 from pathlib import Path
@@ -21,7 +20,11 @@ from benchbox.core.errors import PlanCaptureError
 from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW, FETCH_MODE_ROWS
 from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY, RequestLedger, outside_query_timer
 from benchbox.utils.cloud_storage import get_cloud_path_info, is_cloud_path
-from benchbox.utils.duckdb_extensions import apply_single_arrow_lambda
+from benchbox.utils.duckdb_extensions import (
+    apply_single_arrow_lambda,
+    duckdb_relation_arrow_supported,
+    finish_unfinished_result,
+)
 from benchbox.utils.printing import emit
 
 from .base import DriverIsolationCapability, PlatformAdapter
@@ -39,17 +42,8 @@ _DUCKDB_MEMORY_SIZE_PATTERN = (
 )
 
 
-def _dbapi_arrow_fetcher(result: Any) -> Any:
-    method = getattr(result, "to_arrow_table", None)
-    if method is None:
-        return None
-
-    def fetch() -> Any:
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", message="Arrow output on a DB-API result", category=UserWarning)
-            return method()
-
-    return fetch
+def _legacy_arrow_fetcher(result: Any) -> Any:
+    return getattr(result, "fetch_arrow_table", None)
 
 
 def _as_bool(value: Any) -> bool:
@@ -1132,19 +1126,34 @@ class DuckDBAdapter(PlatformAdapter):
                     connection.execute("PRAGMA enable_profiling = 'query_tree'")
                 logger.debug("DuckDB query profiling enabled for this query")
 
+            via_relation = self.fetch_mode == FETCH_MODE_ARROW and duckdb_relation_arrow_supported(
+                getattr(self._duckdb_module, "__version__", None)
+            )
+            if via_relation:
+                finish_unfinished_result(connection)
+
             start_time = mono_time()
             ledger.add_request()
-            result = connection.execute(query)
-            fetched = fetch_result(
-                self.fetch_mode,
-                fetch_rows=result.fetchall,
-                fetch_arrow=_dbapi_arrow_fetcher(result),
-            )
+            if via_relation:
+                result = connection.sql(query)
+                if result is None:
+                    fetched = fetch_result(FETCH_MODE_ROWS, fetch_rows=list)
+                else:
+                    fetched = fetch_result(
+                        FETCH_MODE_ARROW, fetch_rows=result.fetchall, fetch_arrow=result.to_arrow_table
+                    )
+            else:
+                result = connection.execute(query)
+                fetched = fetch_result(
+                    self.fetch_mode,
+                    fetch_rows=result.fetchall,
+                    fetch_arrow=_legacy_arrow_fetcher(result),
+                )
 
             execution_time = elapsed_seconds(start_time)
             actual_row_count = fetched.row_count
             if isinstance(fetched.rows, ArrowRows):
-                fetched.rows.convert_columns(_duckdb_arrow_converters(result.description))
+                fetched.rows.convert_columns(_duckdb_arrow_converters(getattr(result, "description", None)))
             logger.debug(f"Query {query_id} completed in {execution_time:.3f}s, returned {actual_row_count} rows")
 
             validation_result = None

@@ -457,6 +457,15 @@ def directory_bytes(path: Path) -> int:
     return total
 
 
+POLARS_TEMP_SUBDIR = "polars-temp"
+PROCESS_TEMP_SUBDIR = "tmp"
+
+
+def spill_bytes(cell_temp_dir: Path) -> int:
+    out_of_core = sum(directory_bytes(path) for path in (cell_temp_dir / PROCESS_TEMP_SUBDIR).glob("polars-*/spill"))
+    return directory_bytes(cell_temp_dir / POLARS_TEMP_SUBDIR) + out_of_core
+
+
 def host_state(path: Path) -> dict[str, Any]:
     load = os.getloadavg()
     return {
@@ -507,8 +516,8 @@ def monitor(
             peak_rss = max(peak_rss, total)
         except psutil.NoSuchProcess:
             pass
+        peak_spill = max(peak_spill, spill_bytes(spill_dir))
         if samples % 5 == 0:
-            peak_spill = max(peak_spill, directory_bytes(spill_dir))
             level = pressure_level()
             max_pressure = max(max_pressure, level)
             critical = critical + 1 if level >= CRITICAL_PRESSURE else 0
@@ -525,7 +534,7 @@ def monitor(
     process.wait()
     return {
         "peak_rss_bytes": peak_rss,
-        "peak_spill_bytes": max(peak_spill, directory_bytes(spill_dir)),
+        "peak_spill_bytes": max(peak_spill, spill_bytes(spill_dir)),
         "max_pressure": max_pressure,
         "timed_out": timed_out,
         "safety_abort": safety_abort,
@@ -640,8 +649,14 @@ def run_cell(
     spill_dir = output_dir / "spill" / f"round{round_index}-{cell.benchmark}-{cell.version}-{cell.setup}"
     if spill_dir.exists():
         shutil.rmtree(spill_dir)
-    spill_dir.mkdir(parents=True)
-    cell_env = {**env, "POLARS_TEMP_DIR": str(spill_dir), "POLARS_MAX_THREADS": str(spec.thread_count)}
+    for subdir in (POLARS_TEMP_SUBDIR, PROCESS_TEMP_SUBDIR):
+        (spill_dir / subdir).mkdir(parents=True)
+    cell_env = {
+        **env,
+        "POLARS_TEMP_DIR": str(spill_dir / POLARS_TEMP_SUBDIR),
+        "TMPDIR": str(spill_dir / PROCESS_TEMP_SUBDIR),
+        "POLARS_MAX_THREADS": str(spec.thread_count),
+    }
     command = cell_command(spec, cell)
     _append_log(log_path, f"$ {shlex.join(command)}\n")
     before = host_state(output_dir)

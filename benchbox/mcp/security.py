@@ -7,7 +7,7 @@ import logging
 import math
 import sqlite3
 import uuid
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,6 +23,14 @@ from mcp.shared.exceptions import MCPError
 from mcp.types import CallToolResult, TextContent
 from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from benchbox.core.billable_platforms import (
+    SOURCE_MCP_SERVER_ENVIRONMENT,
+    BillableAssessment,
+    assess_platform,
+    billable_platform_names,
+    environment_acknowledged,
+)
+from benchbox.core.constants import GENERIC_POWER_DEFAULT_MEASUREMENT_ITERATIONS
 from benchbox.utils.clock import mono_time, utc_now
 
 AUTHORIZATION_ERROR = -32003
@@ -30,6 +38,10 @@ ADMISSION_ERROR = -32004
 READ_SCOPE = "benchbox:read"
 EXECUTE_SCOPE = "benchbox:execute"
 WRITE_SCOPE = "benchbox:write"
+
+
+def normalize_policy_names(value: Iterable[str]) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(item.strip().lower() for item in value if item.strip()))
 
 
 def _boot_identity() -> str:
@@ -90,6 +102,7 @@ class RemoteSecurityConfig(BaseModel):
     allowed_platforms: tuple[str, ...] = ()
     allowed_benchmarks: tuple[str, ...] = ()
     max_scale_factor: float = Field(default=1.0, gt=0.0)
+    max_iterations: int = Field(default=10, ge=GENERIC_POWER_DEFAULT_MEASUREMENT_ITERATIONS, le=1000)
     admission: AdmissionLimits = Field(default_factory=AdmissionLimits)
     jobs: JobLimits = Field(default_factory=JobLimits)
 
@@ -102,8 +115,8 @@ class RemoteSecurityConfig(BaseModel):
 
     @field_validator("allowed_platforms", "allowed_benchmarks")
     @classmethod
-    def normalize_policy_names(cls, value: tuple[str, ...]) -> tuple[str, ...]:
-        return tuple(dict.fromkeys(item.strip().lower() for item in value if item.strip()))
+    def normalize_names(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        return normalize_policy_names(value)
 
     @model_validator(mode="after")
     def reject_ambiguous_token_digests(self) -> RemoteSecurityConfig:
@@ -522,6 +535,12 @@ class RemoteSecurityMiddleware:
             raise MCPError(AUTHORIZATION_ERROR, "Benchmark scale factor must be finite and positive")
         if scale_factor > self.config.max_scale_factor:
             raise MCPError(AUTHORIZATION_ERROR, "Benchmark scale factor exceeds policy")
+        iterations = arguments.get("iterations")
+        if iterations is not None:
+            if isinstance(iterations, bool) or not isinstance(iterations, int):
+                raise MCPError(AUTHORIZATION_ERROR, "Benchmark iterations must be an integer")
+            if iterations > self.config.max_iterations:
+                raise MCPError(AUTHORIZATION_ERROR, "Benchmark iterations exceed policy")
 
     @staticmethod
     def _tool_call(ctx: ServerRequestContext[Any, Any]) -> tuple[str, Mapping[str, Any]] | None:
@@ -699,3 +718,37 @@ def resolve_path_provider(provider: PathProvider) -> Path:
 
 def token_sha256(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+@dataclass(frozen=True, slots=True)
+class LocalPlatformPolicy:
+    allowed_platforms: tuple[str, ...] = ()
+    source: str = SOURCE_MCP_SERVER_ENVIRONMENT
+
+    @classmethod
+    def from_environment(cls, env: Mapping[str, str] | None = None) -> LocalPlatformPolicy:
+        if environment_acknowledged(env):
+            return cls(allowed_platforms=normalize_policy_names(billable_platform_names()))
+        return cls()
+
+    def refusal(
+        self,
+        platform: str,
+        deployment: str | None = None,
+        options: Mapping[str, object] | None = None,
+    ) -> BillableAssessment | None:
+        assessment = assess_platform(platform, deployment, options)
+        if assessment.billable and assessment.platform not in self.allowed_platforms:
+            return assessment
+        return None
+
+    def acknowledgement_record(
+        self,
+        platform: str,
+        deployment: str | None = None,
+        options: Mapping[str, object] | None = None,
+    ) -> dict[str, object] | None:
+        assessment = assess_platform(platform, deployment, options)
+        if assessment.billable and assessment.platform in self.allowed_platforms:
+            return {"acknowledged": True, "source": self.source}
+        return None

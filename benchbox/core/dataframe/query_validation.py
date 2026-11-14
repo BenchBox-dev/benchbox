@@ -374,6 +374,13 @@ def _apply_row_count_oracle(
             if result.warning_message:
                 row_count_validation["warning"] = _bounded_message(result.warning_message)
             evidence["skipped"] += 1
+        elif result.is_valid and result.expected_row_count not in (None, actual_row_count):
+            row_count_validation["status"] = "SKIPPED"
+            row_count_validation["warning"] = (
+                f"Row count {actual_row_count} is within tolerance of the reference count "
+                f"{result.expected_row_count} but is not an exact match"
+            )
+            evidence["skipped"] += 1
         elif result.is_valid:
             row_count_validation["status"] = "PASSED"
             evidence["checked"] += 1

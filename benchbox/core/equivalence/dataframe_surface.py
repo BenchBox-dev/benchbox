@@ -11,6 +11,8 @@ from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Any
 
+from benchbox.utils.duckdb_extensions import fetch_duckdb_arrow_table
+
 DATAFRAME_BACKENDS = ("expression", "pandas")
 
 _MIDNIGHT = time(0, 0, 0)
@@ -44,7 +46,7 @@ def build_dataframe_contexts_from_specs(
             f"CAST({column} AS DOUBLE) AS {column}" if str(sql_type).upper().startswith("DECIMAL") else column
             for column, sql_type in columns
         ]
-        arrow = connection.execute(f"SELECT {', '.join(projections)} FROM {table_name.lower()}").to_arrow_table()
+        arrow = fetch_duckdb_arrow_table(connection, f"SELECT {', '.join(projections)} FROM {table_name.lower()}")
         expression_ctx.register_table(table_name, pl.from_arrow(arrow).lazy())
         pandas_ctx.register_table(table_name, arrow.to_pandas(types_mapper=pd.ArrowDtype))
     return {"expression": expression_ctx, "pandas": pandas_ctx}

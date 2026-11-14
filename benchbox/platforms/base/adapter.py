@@ -542,6 +542,7 @@ class PlatformAdapter(
         execution_id = str(uuid.uuid4())[:8]
         self._reset_run_scoped_state()
         plan_capture_config = self._apply_run_plan_flags(run_config)
+        resource_start_snapshot = self._collect_resource_utilization()
 
         try:
             data_generation_phase = self._create_enhanced_data_generation_phase(benchmark)
@@ -697,6 +698,7 @@ class PlatformAdapter(
             data_size_mb = self._calculate_data_size(benchmark.output_dir) if hasattr(benchmark, "output_dir") else 0.0
 
             resource_snapshot = self._collect_resource_utilization()
+            execution_metadata["resource_utilization_start"] = resource_start_snapshot
             performance_summary = self._summarize_performance_characteristics(
                 query_results=query_results,
                 total_duration=total_duration,

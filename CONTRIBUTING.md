@@ -207,9 +207,9 @@ independently to each member.
    make branch-prune-merged
    ```
 
-   `make worktree-remove` removes the linked worktree. `make branch-prune-merged DRY_RUN=1` previews branches with
-   complete historical merge evidence (it requires `gh`); without `DRY_RUN` it deletes only exact, merge-reachable
-   historical heads.
+   `make worktree-remove` removes the linked worktree. `make branch-prune-merged DRY_RUN=1` previews branches proven
+   merged into `origin/develop`, from local history or from GitHub merge evidence (`gh` is needed only for branches local
+   history cannot settle); without `DRY_RUN` it deletes them. The rules are in `docs/internal/dev-loop-worktrees.md`.
 
    For a feature batch, ordinary worktree cleanup is not a substitute for finishing the
    active batch. Only after every member is `done`, the batch is completed, and the final

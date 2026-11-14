@@ -316,6 +316,7 @@ def get_platform_adapter(platform_name: str, **config) -> PlatformAdapter:
             requested_version=requested_version,
             auto_install=driver_auto_install,
             install_hint=install_hint,
+            allow_install=not config.get("dry_run"),
         )
 
     check_isolation_capability(adapter_class, canonical_name, resolution.runtime_strategy)
@@ -715,21 +716,26 @@ singlestore|password|SingleStore password|{}
 polars|streaming|Enable streaming mode for large datasets|{'parser': 'parse_bool', 'default': 'false'}
 polars|rechunk|Rechunk data for better memory layout|{'parser': 'parse_bool', 'default': 'true'}
 polars|n_rows|Limit number of rows to read (for testing)|{'parser': 'int'}
+polars|allow_third_party_extensions|Allow SKETCH operations in the write-primitives DataFrame workload on DuckDB 2.x to install the datasketches extension from the third-party Query.Farm repository (https://duckdb-extensions.query.farm); without it they are skipped|{'parser': 'parse_bool', 'default': False}
 pandas|dtype_backend|Backend for nullable dtypes|{'choices': ('numpy', 'numpy_nullable', 'pyarrow'), 'default': 'numpy_nullable'}
+pandas|allow_third_party_extensions|Allow SKETCH operations in the write-primitives DataFrame workload on DuckDB 2.x to install the datasketches extension from the third-party Query.Farm repository (https://duckdb-extensions.query.farm); without it they are skipped|{'parser': 'parse_bool', 'default': False}
 cudf|device_id|CUDA device ID to use|{'parser': 'int', 'default': '0'}
 cudf|spill_to_host|Enable GPU memory spilling to host RAM|{'parser': 'parse_bool', 'default': 'true'}
+cudf|allow_third_party_extensions|Allow SKETCH operations in the write-primitives DataFrame workload on DuckDB 2.x to install the datasketches extension from the third-party Query.Farm repository (https://duckdb-extensions.query.farm); without it they are skipped|{'parser': 'parse_bool', 'default': False}
 dask|n_workers|Number of worker processes|{'parser': 'int'}
 dask|threads_per_worker|Threads per worker process|{'parser': 'int'}
 dask|use_distributed|Deprecated alias: true selects distributed, false selects threaded|{'parser': 'parse_bool'}
 dask|scheduler_address|Connect to existing scheduler (e.g., 'tcp://...')|{}
 dask|memory_limit|Memory limit per local Dask worker (e.g., '4GB')|{}
 dask|spill_directory|Directory for Dask spill files; explicit directories are not deleted by close()|{}
+dask|allow_third_party_extensions|Allow SKETCH operations in the write-primitives DataFrame workload on DuckDB 2.x to install the datasketches extension from the third-party Query.Farm repository (https://duckdb-extensions.query.farm); without it they are skipped|{'parser': 'parse_bool', 'default': False}
 datafusion|target_partitions|Number of target partitions for parallelism (default: CPU count)|{'parser': 'int'}
 datafusion|repartition_joins|Enable automatic repartitioning for joins|{'parser': 'parse_bool', 'default': 'true'}
 datafusion|parquet_pushdown|Enable predicate/projection pushdown for Parquet files|{'parser': 'parse_bool', 'default': 'true'}
 datafusion|batch_size|Batch size for query execution|{'parser': 'int', 'default': '8192'}
 datafusion|memory_limit|Memory limit for fair spill pool (e.g., '8G', '16GB')|{}
 datafusion|temp_dir|Temporary directory for disk spilling (default: system temp)|{}
+datafusion|allow_third_party_extensions|Allow SKETCH operations in the write-primitives DataFrame workload on DuckDB 2.x to install the datasketches extension from the third-party Query.Farm repository (https://duckdb-extensions.query.farm); without it they are skipped|{'parser': 'parse_bool', 'default': False}
 clickhouse|deployment_mode|Deprecated alias of the platform selector: deployment mode for ClickHouse (server or local).|{'parser': 'clickhouse_mode', 'default': 'server', 'choices': ('server', 'local'), 'aliases': ('mode',)}
 clickhouse|host|ClickHouse server hostname (server mode only).|{'default': 'localhost'}
 clickhouse|port|ClickHouse native protocol port.|{'parser': 'int', 'default': 9000}
@@ -760,6 +766,7 @@ spark|java_home|Path to the JDK Spark should run under|{}
 spark|driver_memory|Spark driver JVM heap, e.g. 4g or 8g (default 4g)|{}
 pyspark|driver_memory|PySpark driver JVM heap, e.g. 4g or 8g (default 4g)|{}
 pyspark|shuffle_partitions|Number of PySpark shuffle partitions|{'parser': 'int'}
+pyspark|allow_third_party_extensions|Allow SKETCH operations in the write-primitives DataFrame workload on DuckDB 2.x to install the datasketches extension from the third-party Query.Farm repository (https://duckdb-extensions.query.farm); without it they are skipped|{'parser': 'parse_bool', 'default': False}
 athena|aws_profile|Named AWS CLI profile to authenticate with|{}
 athena|s3_bucket|S3 bucket for query results and data staging|{}
 athena|s3_staging_dir|S3 URI Athena writes query results to (e.g., s3://bucket/path)|{}
@@ -789,6 +796,7 @@ influxdb|ssl|Use SSL/TLS connection (true/false)|{'parser': 'parse_bool', 'defau
 lakesail|endpoint|Spark Connect server endpoint (for example, sc://localhost:50051)|{'default': 'sc://localhost:50051'}
 lakesail|adaptive_enabled|Enable or disable LakeSail Adaptive Query Execution (AQE)|{'parser': 'parse_bool'}
 lakesail|deployment_mode|Deprecated alias of the platform selector: 'local' for single-node, 'distributed' to connect to an external Sail server without starting one|{'choices': ('local', 'distributed'), 'aliases': ('sail_mode',)}
+lakesail|allow_third_party_extensions|Allow SKETCH operations in the write-primitives DataFrame workload on DuckDB 2.x to install the datasketches extension from the third-party Query.Farm repository (https://duckdb-extensions.query.farm); without it they are skipped|{'parser': 'parse_bool', 'default': False}
 velox|deployment|Deprecated alias of the platform selector: 'local' (in-process SparkSession, Linux only) or 'remote' (Spark-Connect server)|{'choices': ('local', 'remote'), 'default': 'local'}
 velox|endpoint|Spark-Connect endpoint for remote mode (e.g., sc://localhost:50051)|{'default': 'sc://localhost:50051'}
 velox|gluten_jar_path|Absolute path to the Gluten Velox bundle jar (required for local mode)|{'aliases': ('jar',)}

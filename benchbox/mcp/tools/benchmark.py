@@ -20,12 +20,15 @@ from benchbox.core.benchmark_registry import (
     get_public_benchmark_class,
     nonstandard_scale_note,
 )
+from benchbox.core.billable_platforms import ACKNOWLEDGEMENT_ENV_VAR, refusal_message
 from benchbox.core.constants import VALID_PHASES
 from benchbox.core.deprecation_notices import begin_run
+from benchbox.core.hooks.benchmark_hooks import BenchmarkHookRegistry
 from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
 from benchbox.core.results.exporter import ResultExporter
 from benchbox.core.results.schema import build_result_payload
 from benchbox.core.run_selection import RunSelection, resolve_run_selection
+from benchbox.core.tuning import modes as tuning_modes
 from benchbox.mcp.deprecations import attach_deprecations
 from benchbox.mcp.errors import (
     ErrorCode,
@@ -39,16 +42,27 @@ from benchbox.mcp.schemas import (
     MCPValidationError,
     resolve_clickhouse_connection_profile,
     validate_execution_engine,
+    validate_iterations,
     validate_phases,
     validate_platform_options,
+    validate_seed,
 )
-from benchbox.mcp.security import PathProvider, resolve_path_provider
+from benchbox.mcp.security import LocalPlatformPolicy, PathProvider, resolve_path_provider
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dependencies import BENCHMARK_LOAD_ERRORS
 from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
 from benchbox.utils.printing import get_quiet_console, silence_output
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_LOCAL_PLATFORM_POLICY = LocalPlatformPolicy()
+
+INACTIVE_RUN_FLAGS: Mapping[str, object] = {
+    "force_recreate": False,
+    "force_upload": False,
+    "show_query_plans": False,
+    "normalize_plan_literals": False,
+}
 
 RUN_BENCHMARK_ANNOTATIONS = ToolAnnotations(
     title="Execute benchmark",
@@ -96,10 +110,10 @@ def register_benchmark_tools(
     results_dir: PathProvider,
     allow_synchronous_execution: bool = True,
     anonymize_results: bool = False,
+    platform_policy: LocalPlatformPolicy = DEFAULT_LOCAL_PLATFORM_POLICY,
 ) -> None:
-
     @mcp.tool(
-        description="Run a benchmark on a database platform.\n\n        Args:\n            platform: Target platform (duckdb, polars-df, snowflake, etc.)\n            benchmark: Benchmark to run (tpch, tpcds, tpcds_obt, ssb, joinorder, clickbench, nyctaxi, tsbs_devops, h2odb, amplab, coffeeshop, tpch_skew, datavault, tpcdi, write_primitives, read_primitives, and more)\n            scale_factor: Data scale factor (0.01 for testing, 1+ for production; joinorder uses canonical IMDb 2013 data and only accepts 1.0)\n            queries: Comma-separated query IDs to run (e.g., \"1,3,6\")\n            phases: Comma-separated phases (default: \"load,power\")\n            mode: Execution mode: 'sql', 'dataframe', or 'data_only'\n            capture_plans: Capture query execution plans (3-8%% overhead). Supported: DuckDB, PostgreSQL, DataFusion.\n            dry_run: Preview execution plan without running\n            validate_only: Validate configuration without running\n            link_probe: Measure post-benchmark statement overhead (6 metered SELECT 1 statements on billable warehouses). Set false to skip; equivalent to the CLI --no-link-probe flag.\n            platform_options: Bounded, non-secret platform settings approved for the selected platform.\n\n        Returns:\n            Benchmark results, dry-run preview, or validation status.\n\n        Platform options are a deliberately smaller MCP contract than the CLI\n        ``--platform-option`` surface. Only bounded, non-secret execution\n        settings are accepted; credentials, endpoints, paths, and package\n        installation controls must remain server configuration.\n\n        JoinOrder note:\n            The public joinorder benchmark downloads and verifies the canonical IMDb 2013\n            Parquet archive on first use, then reuses BENCHBOX_OUTPUT_DIR/benchmark_runs/datagen/joinorder_sf1/.\n        ",
+        description="Run a benchmark on a database platform.\n\n        Args:\n            platform: Target platform (duckdb, polars-df, snowflake, etc.)\n            benchmark: Benchmark to run (tpch, tpcds, tpcds_obt, ssb, joinorder, clickbench, nyctaxi, tsbs_devops, h2odb, amplab, coffeeshop, tpch_skew, datavault, tpcdi, write_primitives, read_primitives, and more)\n            scale_factor: Data scale factor (0.01 for testing, 1+ for production; joinorder uses canonical IMDb 2013 data and only accepts 1.0)\n            queries: Comma-separated query IDs to run (e.g., \"1,3,6\")\n            phases: Comma-separated phases (default: \"load,power\")\n            mode: Execution mode: 'sql', 'dataframe', or 'data_only'\n            capture_plans: Capture query execution plans (3-8%% overhead). Supported: DuckDB, PostgreSQL, DataFusion.\n            dry_run: Preview execution plan without running\n            validate_only: Validate configuration without running\n            link_probe: Measure post-benchmark statement overhead (6 metered SELECT 1 statements on billable warehouses). Set false to skip; equivalent to the CLI --no-link-probe flag.\n            platform_options: Bounded, non-secret platform settings approved for the selected platform.\n            seed: RNG seed for query parameter generation, 0 to 2147483647 (default: unset; same as the CLI --seed). The effective value is reported in mcp_metadata.\n            iterations: Power test measurement iterations, at least 1 (default: 3; power or standard phase only; same as the CLI --iterations). The effective value is reported in mcp_metadata.\n\n        Returns:\n            Benchmark results, dry-run preview, or validation status.\n\n        Before reporting a run, call validate_results on its result file and report the WARN and FAIL findings. Compare two results only when their benchmark, scale, phase, configuration, tuning, hardware and evidence are compatible; a shared benchmark name alone is not enough.\n\n        Platform options are a deliberately smaller MCP contract than the CLI\n        ``--platform-option`` surface. Only bounded, non-secret execution\n        settings are accepted; credentials, endpoints, paths, and package\n        installation controls must remain server configuration.\n\n        JoinOrder note:\n            The public joinorder benchmark downloads and verifies the canonical IMDb 2013\n            Parquet archive on first use, then reuses BENCHBOX_OUTPUT_DIR/benchmark_runs/datagen/joinorder_sf1/.\n        ",
         annotations=RUN_BENCHMARK_ANNOTATIONS,
     )
     def run_benchmark(
@@ -115,12 +129,16 @@ def register_benchmark_tools(
         validate_only: bool = False,
         link_probe: bool = True,
         platform_options: dict[str, object] | None = None,
+        seed: int | None = None,
+        iterations: int | None = None,
     ) -> dict[str, Any]:
         begin_run()
         try:
             normalized_platform_options = validate_platform_options(platform, platform_options)
             resolved_execution_engine = validate_execution_engine(platform, execution_engine)
             selection = resolve_run_selection(platform, resolved_execution_engine, normalized_platform_options)
+            validate_seed(seed)
+            validate_iterations(iterations)
         except ValueError as exc:
             response = make_error(ErrorCode.VALIDATION_ERROR, str(exc), details={"platform": platform})
             response["status"] = "failed"
@@ -167,24 +185,26 @@ def register_benchmark_tools(
             response["status"] = "failed"
             return attach_deprecations(response)
 
-        scale_note, _ = _check_scale_factor(benchmark, scale_factor)
-        response = _run_benchmark_impl(
-            platform,
-            benchmark,
-            scale_factor,
-            queries,
-            phases,
-            mode,
-            capture_plans,
-            link_probe=link_probe,
-            execution_engine=resolved_execution_engine,
-            platform_options=normalized_platform_options,
-            results_dir=resolve_path_provider(results_dir),
-            anonymize=anonymize_results,
+        return attach_deprecations(
+            _run_under_platform_policy(
+                platform_policy,
+                selection,
+                platform,
+                benchmark,
+                scale_factor,
+                queries,
+                phases,
+                mode,
+                capture_plans,
+                link_probe=link_probe,
+                execution_engine=resolved_execution_engine,
+                platform_options=normalized_platform_options,
+                seed=seed,
+                iterations=iterations,
+                results_dir=resolve_path_provider(results_dir),
+                anonymize=anonymize_results,
+            )
         )
-        if scale_note and response.get("status") not in ("error", "failed"):
-            response.setdefault("warnings", []).append(scale_note)
-        return attach_deprecations(response)
 
     @mcp.tool(
         description="Get detailed information about a specific query.\n\n        Args:\n            benchmark: Benchmark name (tpch, tpcds, ssb, clickbench, nyctaxi, tsbs_devops, h2odb, amplab, coffeeshop, tpch_skew, datavault, and more)\n            query_id: Query identifier (e.g., '1', 'Q1', '17')\n            platform: Target platform for dialect translation\n            mode: Execution mode: 'sql' or 'dataframe'\n\n        Returns:\n            Query details including SQL text or DataFrame source code.\n        ",
@@ -238,6 +258,76 @@ def register_benchmark_tools(
                 f"Failed to get query details: {e}",
                 details={"benchmark": benchmark, "query_id": query_id, "exception_type": type(e).__name__},
             )
+
+
+def _run_under_platform_policy(
+    policy: LocalPlatformPolicy,
+    selection: RunSelection,
+    platform: str,
+    benchmark: str,
+    scale_factor: float,
+    queries: str | None,
+    phases: str | None,
+    mode: str | None,
+    capture_plans: bool,
+    *,
+    link_probe: bool,
+    execution_engine: str,
+    platform_options: Mapping[str, object],
+    seed: int | None,
+    iterations: int | None,
+    results_dir: Path,
+    anonymize: bool,
+) -> dict[str, Any]:
+    refused, acknowledgement = _apply_platform_policy(policy, selection, platform, mode, platform_options)
+    if refused is not None:
+        return refused
+    scale_note, _ = _check_scale_factor(benchmark, scale_factor)
+    response = _run_benchmark_impl(
+        platform,
+        benchmark,
+        scale_factor,
+        queries,
+        phases,
+        mode,
+        capture_plans,
+        link_probe=link_probe,
+        execution_engine=execution_engine,
+        platform_options=platform_options,
+        seed=seed,
+        iterations=iterations,
+        results_dir=results_dir,
+        anonymize=anonymize,
+        billable_acknowledgement=acknowledgement,
+    )
+    if scale_note and response.get("status") not in ("error", "failed"):
+        response.setdefault("warnings", []).append(scale_note)
+    return response
+
+
+def _apply_platform_policy(
+    policy: LocalPlatformPolicy,
+    selection: RunSelection,
+    platform: str,
+    mode: str | None,
+    platform_options: Mapping[str, object],
+) -> tuple[dict[str, Any] | None, dict[str, object] | None]:
+    if mode == "data_only":
+        return None, None
+    denied = policy.refusal(selection.platform, selection.deployment, platform_options)
+    if denied is not None:
+        response = make_error(
+            ErrorCode.RESOURCE_ACCESS_DENIED,
+            refusal_message(denied),
+            details={"platform": platform, "billable_reasons": list(denied.reasons)},
+            suggestion=(
+                f"The operator must start the MCP server with {ACKNOWLEDGEMENT_ENV_VAR}=1; "
+                "no tool argument can grant this."
+            ),
+        )
+        response["status"] = "failed"
+        return response, None
+    return None, policy.acknowledgement_record(selection.platform, selection.deployment, platform_options)
 
 
 def _make_failed_response(error_response: dict[str, Any], execution_id: str) -> dict[str, Any]:
@@ -313,16 +403,20 @@ def _execute_mcp_run_via_core(
     capture_plans: bool,
     execution_engine: str = "default",
     link_probe: bool = True,
+    seed: int | None = None,
+    iterations: int | None = None,
     normalized_platform_options: Mapping[str, object],
     results_dir: Path,
     execution_id: str,
     start_time: float,
     anonymize: bool,
+    billable_acknowledgement: Mapping[str, object] | None = None,
 ) -> dict[str, Any]:
     from benchbox.core.run_service import (
         SilentVerbosity,
         execute_run,
         map_phases_to_execution_type,
+        resolve_configured_compression,
         translate_platform_options_for_adapter,
     )
     from benchbox.core.schemas import BenchmarkConfig, DatabaseConfig, ExecutionContext
@@ -340,10 +434,17 @@ def _execute_mcp_run_via_core(
 
     data_only = resolved_mode == "data_only"
     data_dir = get_benchmark_runs_datagen_path(benchmark, scale_factor, results_dir / "datagen") if data_only else None
+    seed_kwargs = _benchmark_seed_kwargs(benchmark, seed)
+    compression_enabled, compression_type, compression_level = resolve_configured_compression()
+    compression_kwargs = {
+        "compress_data": compression_enabled,
+        "compression_type": compression_type,
+        "compression_level": compression_level,
+    }
     benchmark_instance = (
-        benchmark_class(scale_factor=scale_factor, output_dir=data_dir)
+        benchmark_class(scale_factor=scale_factor, output_dir=data_dir, **compression_kwargs, **seed_kwargs)
         if data_only
-        else benchmark_class(scale_factor=scale_factor)
+        else benchmark_class(scale_factor=scale_factor, **compression_kwargs, **seed_kwargs)
     )
 
     adapter_options: dict[str, object] = {}
@@ -359,7 +460,10 @@ def _execute_mcp_run_via_core(
                 adapter_input["port"] = profile["port"]
                 adapter_input["secure"] = profile["secure"]
                 adapter_input.pop("connection_profile", None)
-            adapter_options = translate_platform_options_for_adapter(platform_key, adapter_input)
+            adapter_options = {
+                **PlatformHookRegistry.get_applied_default_options(platform_key),
+                **translate_platform_options_for_adapter(platform_key, adapter_input),
+            }
             if selection.selector_deployment is not None:
                 adapter_options["_deployment_selector"] = selection.selector_deployment
         except MCPValidationError as exc:
@@ -372,8 +476,13 @@ def _execute_mcp_run_via_core(
     execution_context = ExecutionContext(
         entry_point="mcp",
         phases=phases,
+        seed=seed,
+        compression_enabled=compression_enabled,
+        compression_type=compression_type,
+        compression_level=compression_level,
         query_subset=query_subset,
         mode=resolved_mode if resolved_mode in ("sql", "dataframe") else "sql",
+        billable_platform_acknowledgement=dict(billable_acknowledgement) if billable_acknowledgement else None,
     )
     all_benchmarks = get_all_benchmarks()
     metadata = all_benchmarks[benchmark]
@@ -384,6 +493,13 @@ def _execute_mcp_run_via_core(
         queries=query_subset,
         capture_plans=capture_plans,
         link_probe=link_probe,
+        compress_data=compression_enabled,
+        compression_type=compression_type,
+        compression_level=compression_level,
+        options={
+            **({"seed": seed} if seed is not None else {}),
+            **({"power_iterations": iterations} if iterations is not None else {}),
+        },
     )
     benchmark_config.test_execution_type = map_phases_to_execution_type(phases)
     if "statistics" in phases:
@@ -398,7 +514,8 @@ def _execute_mcp_run_via_core(
             name=f"mcp_{platform_key}",
             execution_mode=resolved_mode,
             execution_engine=resolved_execution_engine,
-            options=dict(adapter_options),
+            options={**adapter_options, **INACTIVE_RUN_FLAGS},
+            tuning_source=None if adapter_options.get("tuning_enabled") else tuning_modes.BASELINE_SOURCE,
         )
     profiler = SystemProfiler()
     system_profile = profiler.get_system_profile()
@@ -424,9 +541,9 @@ def _execute_mcp_run_via_core(
         if execution_mode == "dataframe":
             registered = PlatformHookRegistry.list_option_specs(database_config.type)
             dataframe_options = (
-                {key: value for key, value in database_config.options.items() if key in registered}
+                {key: value for key, value in adapter_options.items() if key in registered}
                 if registered
-                else dict(database_config.options)
+                else dict(adapter_options)
             )
             from benchbox.platforms import get_adapter
 
@@ -483,7 +600,7 @@ def _execute_mcp_run_via_core(
             data_dir=data_dir,
         )
 
-    return _build_run_response(
+    response = _build_run_response(
         result,
         execution_id=execution_id,
         results_dir=results_dir,
@@ -493,7 +610,17 @@ def _execute_mcp_run_via_core(
         benchmark=benchmark,
         scale_factor=scale_factor,
         resolved_mode=resolved_mode,
+        seed=seed,
     )
+    if iterations is not None and not {"power", "standard"} & set(phases):
+        response.setdefault("warnings", []).append("iterations has no effect without a power or standard phase")
+    return response
+
+
+def _benchmark_seed_kwargs(benchmark: str, seed: int | None) -> dict[str, int]:
+    if seed is not None and "seed" in BenchmarkHookRegistry.list_option_specs(benchmark):
+        return {"seed": seed}
+    return {}
 
 
 def _result_outstanding_work(result: Any) -> dict[str, Any] | None:
@@ -513,6 +640,7 @@ def _build_run_response(
     benchmark: str,
     scale_factor: float,
     resolved_mode: str,
+    seed: int | None,
 ) -> dict[str, Any]:
     execution_time = elapsed_seconds(start_time)
     result_file_path, result_payload = (
@@ -531,6 +659,8 @@ def _build_run_response(
         "benchmark_requested": benchmark,
         "scale_factor_requested": scale_factor,
         "execution_mode": resolved_mode,
+        "seed": seed,
+        "iterations": (response.get("run") or {}).get("iterations"),
         "execution_time_seconds": round(execution_time, 2),
         "result_file": result_file_path,
     }
@@ -548,11 +678,14 @@ def _run_benchmark_impl(
     capture_plans: bool = False,
     link_probe: bool = True,
     *,
+    seed: int | None = None,
+    iterations: int | None = None,
     execution_engine: str = "default",
     platform_options: Mapping[str, object] | None = None,
     results_dir: Path,
     execution_id: str | None = None,
     anonymize: bool,
+    billable_acknowledgement: Mapping[str, object] | None = None,
 ) -> dict[str, Any]:
     execution_id = execution_id or f"mcp_{uuid.uuid4().hex[:8]}"
     start_time = mono_time()
@@ -594,11 +727,14 @@ def _run_benchmark_impl(
             capture_plans=capture_plans,
             execution_engine=resolved_execution_engine,
             link_probe=link_probe,
+            seed=seed,
+            iterations=iterations,
             normalized_platform_options=normalized_platform_options,
             results_dir=results_dir,
             execution_id=execution_id,
             start_time=start_time,
             anonymize=anonymize,
+            billable_acknowledgement=billable_acknowledgement,
         )
 
     except Exception as e:

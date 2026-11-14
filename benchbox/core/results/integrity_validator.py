@@ -61,6 +61,7 @@ _VALID_PHASE_STATUSES = frozenset(
         "FAILED",
         "SKIPPED",
         "NOT_RUN",
+        "PARTIAL",
         "ERROR",
         "TIMEOUT",
     }
@@ -68,9 +69,10 @@ _VALID_PHASE_STATUSES = frozenset(
 
 _TPC_METRICS_BENCHMARKS = frozenset({"tpch", "tpcds", "tpchavoc", "tpch_skew"})
 
+_SCHEMA_VERSION_KEYS = frozenset({"version", "result_schema_version"})
+
 _REQUIRED_KEYS = frozenset(
     {
-        "version",
         "run",
         "benchmark",
         "platform",
@@ -85,6 +87,8 @@ _REQUIRED_KEYS = frozenset(
 )
 
 _NO_LOAD_BENCHMARKS = frozenset({"metadata_primitives"})
+
+RESULT_COMPANION_SUFFIXES = (".plans.json", ".tuning.json", ".applied.json", ".override.json", ".manifest.json")
 
 _STRUCTURAL = CheckCategory.STRUCTURAL
 _COMPLETENESS = CheckCategory.COMPLETENESS
@@ -198,6 +202,7 @@ class ResultIntegrityValidator:
         self._check_timing_outliers(raw, checks)
         self._check_no_duplicate_executions(raw, checks)
         self._check_load_time_nonzero(raw, benchmark_id, checks)
+        self._check_host_load(raw, checks)
 
         status_counts = dict.fromkeys(CheckStatus, 0)
         for c in checks:
@@ -227,6 +232,8 @@ class ResultIntegrityValidator:
     def _check_required_keys(self, raw: dict[str, Any], checks: list[CheckResult]) -> None:
         present = set(raw.keys())
         missing = _REQUIRED_KEYS - present
+        if not present & _SCHEMA_VERSION_KEYS:
+            missing = missing | {"result_schema_version"}
         if missing:
             _fail(
                 checks,
@@ -236,7 +243,7 @@ class ResultIntegrityValidator:
                 {"missing": sorted(missing)},
             )
             return
-        _pass(checks, _STRUCTURAL, "required_keys", f"All {len(_REQUIRED_KEYS)} required keys present")
+        _pass(checks, _STRUCTURAL, "required_keys", f"All {len(_REQUIRED_KEYS) + 1} required keys present")
 
     def _check_query_count_math(self, raw: dict[str, Any], checks: list[CheckResult]) -> None:
         sq = raw.get("summary", {}).get("queries", {})
@@ -546,20 +553,20 @@ class ResultIntegrityValidator:
         if isinstance(tables, list):
             for t in tables:
                 if isinstance(t, dict) and "name" in t:
-                    table_rows[t["name"]] = t.get("rows", 0)
+                    table_rows[str(t["name"]).lower()] = t.get("rows", 0)
         elif isinstance(tables, dict):
             for name, info in tables.items():
                 if isinstance(info, dict):
-                    table_rows[name] = info.get("rows", 0)
+                    table_rows[str(name).lower()] = info.get("rows", 0)
                 elif isinstance(info, int):
-                    table_rows[name] = info
+                    table_rows[str(name).lower()] = info
 
         tolerance = 0.01
 
         mismatches = {}
         missing_tables = []
         for table_name, expected_rows in spec.sf1_row_counts.items():
-            actual = table_rows.get(table_name)
+            actual = table_rows.get(table_name.lower())
             if actual is None:
                 missing_tables.append(table_name)
                 continue
@@ -656,6 +663,25 @@ class ResultIntegrityValidator:
                 "Load time is non-zero" if load_time else "No load time recorded",
             )
 
+    def _check_host_load(self, raw: dict[str, Any], checks: list[CheckResult]) -> None:
+        environment = raw.get("environment")
+        host_load = environment.get("host_load") if isinstance(environment, dict) else None
+        if not isinstance(host_load, dict):
+            _info(checks, _BELIEVABILITY, "host_load", "Host load not recorded")
+            return
+        parts = []
+        for point in ("start", "end"):
+            sample = host_load.get(point)
+            load = sample.get("load_average") if isinstance(sample, dict) else None
+            if not isinstance(load, list) or not all(
+                isinstance(v, int | float) and not isinstance(v, bool) for v in load
+            ):
+                load = None
+            parts.append(
+                f"{point} load average " + (", ".join(f"{value:g}" for value in load) if load else "unavailable")
+            )
+        _info(checks, _BELIEVABILITY, "host_load", "; ".join(parts))
+
 
 def _validate_path(path: Path, validator: ResultIntegrityValidator) -> IntegrityReport:
     try:
@@ -679,5 +705,45 @@ def validate_directory(
     return [
         _validate_path(filepath, validator)
         for filepath in sorted(path.glob(pattern))
-        if not filepath.name.endswith((".plans.json", ".tuning.json", ".applied.json", ".override.json"))
+        if not filepath.name.endswith(RESULT_COMPANION_SUFFIXES)
     ]
+
+
+def check_payload(check: CheckResult) -> dict[str, Any]:
+    return {
+        "category": check.category.value,
+        "name": check.name,
+        "status": check.status.value,
+        "message": check.message,
+        "details": check.details,
+    }
+
+
+def report_payload(report: IntegrityReport, *, verbose: bool = False) -> dict[str, Any]:
+    return {
+        "file": report.file,
+        "benchmark_id": report.benchmark_id,
+        "platform": report.platform,
+        "scale_factor": report.scale_factor,
+        "overall_status": report.overall_status.value,
+        "summary": report.summary,
+        "checks": [check_payload(c) for c in report.checks if verbose or c.status != CheckStatus.PASS],
+    }
+
+
+def directory_payload(reports: list[IntegrityReport]) -> dict[str, Any]:
+    return {
+        "total": len(reports),
+        "pass": sum(1 for r in reports if r.overall_status == CheckStatus.PASS),
+        "warn": sum(1 for r in reports if r.overall_status == CheckStatus.WARN),
+        "fail": sum(1 for r in reports if r.overall_status == CheckStatus.FAIL),
+        "files": [
+            {
+                "file": r.file,
+                "benchmark_id": r.benchmark_id,
+                "platform": r.platform,
+                "overall_status": r.overall_status.value,
+            }
+            for r in reports
+        ],
+    }

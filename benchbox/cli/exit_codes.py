@@ -1,0 +1,37 @@
+from __future__ import annotations
+
+from enum import IntEnum
+
+
+class ExitCode(IntEnum):
+    SUCCESS = 0
+    ERROR = 1
+    USAGE = 2
+    REGRESSION = 3
+    NOT_COMPARABLE = 4
+    VALIDATION_FAILED = 5
+    ACKNOWLEDGEMENT_REQUIRED = 6
+
+
+RESERVED_BY_HOST_LOCK = range(75, 80)
+
+EXIT_CODE_MEANINGS: dict[ExitCode, str] = {
+    ExitCode.SUCCESS: "success",
+    ExitCode.ERROR: "error: the command failed or an input could not be read",
+    ExitCode.USAGE: "usage error: invalid options or arguments",
+    ExitCode.REGRESSION: "compare: a regression exceeded the --fail-on-regression threshold",
+    ExitCode.NOT_COMPARABLE: "compare: the results cannot be compared (different variants or timing modes)",
+    ExitCode.VALIDATION_FAILED: "results validate: a result file has a FAIL finding (or a WARN with --fail-on-warn)",
+    ExitCode.ACKNOWLEDGEMENT_REQUIRED: (
+        "run, run-official, compare: a non-interactive run of a billable platform was refused without an "
+        "acknowledgement; run, run-official: a non-interactive driver auto-install was refused without "
+        "BENCHBOX_DRIVER_AUTO_INSTALL=1; submit --service: a non-interactive hosted upload was refused without "
+        "an acknowledgement; publish: the maintainer-run label was refused without "
+        "BENCHBOX_ALLOW_MAINTAINER_LABEL=1; setup --remove, export, publish remove: a confirmation prompt had "
+        "no terminal to answer it"
+    ),
+}
+
+
+def exit_code_help(codes: tuple[ExitCode, ...]) -> str:
+    return "\n".join(f"    {int(code)}  {EXIT_CODE_MEANINGS[code]}" for code in codes)

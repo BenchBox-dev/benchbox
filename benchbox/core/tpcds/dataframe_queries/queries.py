@@ -15,6 +15,7 @@ import yaml
 
 from benchbox.core.dataframe.compat import _to_list
 from benchbox.core.dataframe.context import DataFrameContext
+from benchbox.core.dataframe.engine import DataFrameEngine
 from benchbox.core.dataframe.pandas_ops import materialize, to_datetime as pandas_to_datetime
 from benchbox.core.dataframe.query import DataFrameQuery, QueryCategory
 
@@ -3722,7 +3723,7 @@ def q41_pandas_impl(ctx: DataFrameContext) -> Any:
 def _sql_rank_expression(ctx: DataFrameContext, column: str, partition_by: list[str], *, descending: bool) -> Any:
     value = ctx.col(column)
     rank = value.rank(method="min", descending=descending).over(partition_by)
-    if ctx.platform != "Polars":
+    if DataFrameEngine.from_platform_name(ctx.platform) is not DataFrameEngine.POLARS:
         return rank
     if descending:
         null_count = value.is_null().sum().over(partition_by)

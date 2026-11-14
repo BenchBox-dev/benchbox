@@ -154,7 +154,7 @@ class TestOfficialModeValidation:
         with pytest.raises(SystemExit):
             self._enforce(**overrides)
 
-        assert message in capsys.readouterr().out.replace("\n", " ")
+        assert message in capsys.readouterr().err.replace("\n", " ")
 
     def test_official_mode_refuses_without_refresh_functions(self, capsys):
         from benchbox.cli.commands.run import _enforce_full_spec
@@ -165,7 +165,7 @@ class TestOfficialModeValidation:
         with pytest.raises(SystemExit):
             _enforce_full_spec(state)
 
-        assert "RF1/RF2" in capsys.readouterr().out.replace("\n", " ")
+        assert "RF1/RF2" in capsys.readouterr().err.replace("\n", " ")
 
     def test_data_only_official_run_is_unchecked(self):
         self._enforce(phases=("generate",), seed=None)

@@ -21,7 +21,7 @@ from mcp.types import DiscoverResult, RequestParams
 from benchbox.core.runtime_paths import resolve_runtime_paths
 from benchbox.mcp.prompts import register_all_prompts
 from benchbox.mcp.resources import register_all_resources
-from benchbox.mcp.security import RemoteSecurityRuntime, configure_transport_security_logging
+from benchbox.mcp.security import LocalPlatformPolicy, RemoteSecurityRuntime, configure_transport_security_logging
 from benchbox.mcp.telemetry import RedactedTelemetryMiddleware, TelemetrySettings, configure_telemetry
 from benchbox.mcp.tools.analytics import register_analytics_tools
 from benchbox.mcp.tools.benchmark import register_benchmark_tools
@@ -172,6 +172,18 @@ external textcharts MCP server if that server is configured separately.
 To capture query execution plans, use the capture_plans parameter:
   run_benchmark(platform="datafusion", benchmark="tpch", capture_plans=True)
 Then inspect plans: get_query_plan(result_file="...", query_id="19")
+
+To repeat a run exactly, pass seed (query parameter generation); iterations sets the power test measurement
+iterations (default 3). Both are reported in the response mcp_metadata.
+
+Before reporting any run, call validate_results(result_file="<result_file>") and report its WARN and FAIL findings.
+Compare two results only when their benchmark, scale, phase, configuration, tuning, hardware and evidence are
+compatible; a shared benchmark name alone is not enough.
+TPC-H and TPC-DS runs below scale factor 1 are unofficial subscale results: they remain ranked, but never as
+official results.
+
+On an authenticated remote server (remote mode only), run_benchmark does not execute; queue work with
+start_benchmark, then read get_benchmark_status and get_benchmark_result.
 """,
         **server_kwargs,
     )
@@ -192,6 +204,7 @@ Then inspect plans: get_query_plan(result_file="...", query_id="19")
         results_dir=results_provider,
         allow_synchronous_execution=remote_security is None,
         anonymize_results=remote_security is not None,
+        platform_policy=LocalPlatformPolicy.from_environment(env),
     )
     if job_runtime is not None:
         from benchbox.mcp.jobs import register_durable_job_tools

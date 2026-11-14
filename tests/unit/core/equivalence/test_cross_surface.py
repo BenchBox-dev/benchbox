@@ -184,10 +184,18 @@ def test_dtype_cell_collects_with_the_requested_engine(monkeypatch, tmp_path):
             return lambda ctx: ctx.get_table("t")
 
     class _Connection:
-        def execute(self, sql):
+        def complete(self):
+            return None
+
+        def sql(self, sql):
             import pyarrow as pa
 
             return type("R", (), {"to_arrow_table": lambda self: pa.table({"value": [1]})})()
+
+        def execute(self, sql):
+            import pyarrow as pa
+
+            return type("R", (), {"fetch_arrow_table": lambda self: pa.table({"value": [1]})})()
 
     divergences, compared = cross_surface.find_cross_surface_dtype_divergences(
         _Connection(),
@@ -853,19 +861,12 @@ def test_approximate_sketch_cell_still_fails_on_new_divergence_kind(capsys):
     assert "unclassified cross-surface divergences" in capsys.readouterr().out
 
 
-def test_only_approximate_sketch_cells_tolerate_matching_in_read_primitives():
+def test_only_approximate_quantile_cells_tolerate_matching_in_read_primitives():
     from benchbox.core.equivalence.cross_surface import GATES
 
     known = GATES["read_primitives"].known_divergences
     tolerant = {key for key, entry in known.items() if not entry.requires_live_divergence}
-    assert tolerant == {
-        "approx_count_distinct_simple_expression",
-        "approx_count_distinct_simple_pandas",
-        "approx_count_distinct_groupby_expression",
-        "approx_count_distinct_groupby_pandas",
-        "approx_quantile_groupby_expression",
-        "approx_quantile_groupby_pandas",
-    }
+    assert tolerant == {"approx_quantile_groupby_expression", "approx_quantile_groupby_pandas"}
 
 
 def test_known_divergence_baseline_accepts_live_entry(capsys):
