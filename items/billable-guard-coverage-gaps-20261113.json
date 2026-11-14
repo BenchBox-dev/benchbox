@@ -5,7 +5,7 @@
     "Paths left unguarded are named in the guard's help text and documentation.",
     "Databricks dry-run makes no network call unless the owner decides otherwise."
   ],
-  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Owner decision on 2026-11-13: dry-run stays exempt and run-official unchanged for PR #4203; this item revisits both with the full list. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\nOwner decision (2026-11-14): fix the two real leaks only: (1) a Databricks dry run makes no network call; (2) run-official accepts --acknowledge-billable-platform. Document, without code change, setup --validate-only and --diagnose (the user asked to connect), remote start_benchmark (gated by the operator allow-list) and shell with an md: path.",
+  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Owner decision on 2026-11-13: dry-run stays exempt and run-official unchanged for PR #4203; this item revisits both with the full list. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\nOwner decision (2026-11-14): fix the two real leaks only: (1) a Databricks dry run makes no network call; (2) run-official accepts --acknowledge-billable-platform. Document, without code change, setup --validate-only and --diagnose (the user asked to connect), remote start_benchmark (gated by the operator allow-list) and shell with an md: path.\n\nCloseout (2026-11-14): https://github.com/BenchBox-dev/benchbox/pull/4227 merged (cfeec2d04b). Databricks dry run no longer auto-detects credentials over the network; run-official takes --acknowledge-billable-platform; unguarded paths named in the flag help and docs/operations/run-safety.md. Dry runs never install drivers; auto-install prints package==version and refuses non-interactively (exit 6) unless BENCHBOX_DRIVER_AUTO_INSTALL=1; driver_version must parse as a version (invalid exits 2). platforms install help says it prints instructions. run --help states what each --force value deletes, including the Snowflake and Databricks in-place variants. Open questions are filed separately.",
   "description": "Problem: the guard added in PR #4203 covers run, compare and local MCP run_benchmark. These paths still reach a cloud platform without it: run --dry-run (reads credentials, can install a driver, and Databricks from_config calls WorkspaceClient and lists warehouses); setup --validate-only and --diagnose (connect, and a Snowflake SELECT 1 can resume a warehouse); durable start_benchmark (gated only by the remote allow-list, no acknowledgement plumbing); shell with an md: MotherDuck path; and run-official, which can acknowledge only through the environment variable. A terminal run proceeds with no prompt at all.\n\nOutcome: an owner decision per path (guard it, or document why not), then the change.",
   "sessions": [
     {
@@ -39,6 +39,14 @@
       "generation": "489d1a7495484c58a37871e762aaaf43",
       "op": "take",
       "op_id": "d3ad80e52a974dbeb8de3c5f49012224",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T06:02:10Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4cd942aa923943e1ac2e6df495ea1731",
       "session_id": "ac67b069b7864c4699843546272d3701"
     }
   ]
