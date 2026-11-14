@@ -129,9 +129,12 @@ without waiting for the integration test. It never rewrites the evidence.
 
 After the upgrade merges, in this order:
 
-1. Restart the tractable MCP server and every session still on the old runtime, and reinstall any globally installed
-   tractable tool with the `[mcp]` extra (`tractable[mcp]`, as `_project/scripts/pyproject.toml` requires). Dropping
-   the extra has broken the MCP server for several sessions.
-2. Only after every session on the old runtime has restarted, the owner runs `uv sync --project _project/scripts --locked`
-   in the primary clone, after checking the change first with `--dry-run`. `uv sync` is exact by default, so it removes
-   what the lock no longer lists. Never run it while any session still uses the old runtime.
+1. Stop the tractable MCP server and every session still on the old runtime. `.mcp.json` starts the server with
+   `uv run --project _project/scripts --locked` and no `--no-sync`, so the first server to start would otherwise sync
+   the environment under sessions that are still running.
+2. With no session left on the old runtime, the owner checks the change with `uv sync --project _project/scripts --locked --dry-run`,
+   then runs `uv sync --project _project/scripts --locked` in the primary clone. `uv sync` is exact by default, so it
+   removes what the lock no longer lists. Never run it while any session still uses the old runtime.
+3. Reinstall any globally installed tractable tool with the `[mcp]` extra (`tractable[mcp]`, as
+   `_project/scripts/pyproject.toml` requires), then start the sessions and the MCP server again. Dropping the extra
+   has broken the MCP server for several sessions.
