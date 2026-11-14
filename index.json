@@ -13866,6 +13866,13 @@
       "status": "open",
       "title": "benchbox setup for BigQuery accepts only a service-account key file, not Application Default Credentials"
     },
+    "billable-guard-coverage-gaps-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Close or document the paths that reach a cloud platform outside the billable-platform guard"
+    },
     "blind-spot-command-protocol-alignment-20260724": {
       "claim": null,
       "needs": [],
