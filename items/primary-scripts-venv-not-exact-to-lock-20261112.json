@@ -1,9 +1,13 @@
 {
   "acceptance": [
-    "After a runtime move lands and sessions restart, the primary _project/scripts venv contains only what uv.lock resolves (checked by `uv pip list` against the lock).",
-    "The chosen mechanism does not remove packages from a venv that a running tracker server is using, or the docs say when to run it."
+    "The BenchBox doc that describes moving the vendored tracker runtime has the post-restart exact-sync step with the --dry-run check; the PR is merged.",
+    "`uv sync --project _project/scripts --locked --dry-run` in the primary reports no changes (observed 2026-11-14 and recorded here)."
   ],
-  "description": "Gap. Every tracker entry point runs `uv run --project _project/scripts --locked -- ...`, which installs what the lock needs but never removes extras. On 2026-11-12 the primary clone's _project/scripts/.venv still held todo_db 0.15.0 next to tractable 1.1.1, months of runtime moves after it was last needed. The venv therefore does not match uv.lock: a stale import of a retired package succeeds locally while failing in CI and in fresh worktrees, and checks that probe the installed runtime can pass for the wrong reason. Making entry points exact (`uv run --exact`, or an exact `uv sync` at a safe point) would fix it, but an exact sync removes packages from under running MCP servers, so it must happen at a point that does not break live sessions.",
+  "description": "Gap. Tracker entry points run `uv run --project _project/scripts --locked -- ...`, which installs what the lock needs but never removes extras. On 2026-11-12 the primary clone's _project/scripts/.venv still held todo_db 0.15.0 next to tractable 1.1.1. todo_db had been BenchBox's runtime until #4013 merged on 2026-11-07, so it lingered for five days and two runtime moves. A venv that does not match uv.lock lets a stale import of a retired package succeed locally while it fails in CI and in fresh worktrees. By 2026-11-14 the venv had been synced: `uv sync --project _project/scripts --locked --dry-run` in the primary reports \"Would make no changes\".\n\nDecision (owner, 2026-11-14): add one step to the documented runtime-move procedure. After the move lands and every session on the old runtime has restarted, run `uv sync --project _project/scripts --locked` (exact by default) in the primary clone, checking first with --dry-run. No change to the uv run calls.\n\nGuardrails:\n- The step is an owner step in the primary clone; agents keep no write path there.\n- It runs only after sessions on the old runtime have restarted, so no running server loses a package it imports.\n- uv.lock is not changed.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4013",
+    "https://github.com/BenchBox-dev/benchbox/pull/4122"
+  ],
   "sessions": [
     {
       "actor": "joe-tractable-followups",
@@ -12,6 +16,14 @@
       "op": "create",
       "op_id": "d7f52e6e88ae48e48dcfd46885f5230b",
       "session_id": "f2d490b3e67f4a799a2cdcae340365d1"
+    },
+    {
+      "actor": "joe-tractable-followups",
+      "at": "2026-11-14T21:06:49Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "9ab1e9149b9b4ea0af69b6986aeca6ac",
+      "session_id": "5b2617602b274625909e4834eb179a80"
     }
   ]
 }
