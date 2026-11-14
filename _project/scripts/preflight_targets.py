@@ -37,7 +37,13 @@ REVIEW_CONSUMER_TESTS = (
 )
 WORKFLOW_TESTS_ROOT = "tests/unit/workflows/"
 SOURCE_GUARD_TESTS: dict[str, tuple[str, ...]] = {
-    "benchbox/": ("tests/system/test_module_size_thresholds.py",),
+    "benchbox/": (
+        "tests/system/test_module_size_thresholds.py",
+        "tests/unit/cli/test_output_control_static.py",
+        "tests/unit/cli/test_shipped_docs_urls.py",
+        "tests/unit/core/tpcdi/test_tpcdi_no_values_row_source.py",
+        "tests/unit/platforms/test_credential_error_messages.py",
+    ),
     "benchbox/cli/": ("tests/uat/test_no_cli_surface_drift.py",),
     "benchbox/core/tuning/": (
         "tests/unit/core/tuning/test_capability_registry_parity.py",
