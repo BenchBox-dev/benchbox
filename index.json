@@ -36544,6 +36544,13 @@
       "status": "done",
       "title": "Commit the review output format proposal that 16 tracker items cite from a session folder"
     },
+    "review-gate-cancelled-run-leaves-red-checks-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "A cancelled review-gate run leaves five failed gate checks on the pull request"
+    },
     "review-gate-cannot-resolve-pr-number-20261107": {
       "claim": null,
       "needs": [],

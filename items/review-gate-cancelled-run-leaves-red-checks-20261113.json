@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "The cause is shown from the workflow definition and run logs.",
+    "After the fix, superseding a gate run on a test PR leaves no failed gate check on the head; evidence in the PR."
+  ],
+  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Related reliability item: ci-oracle-reviewer-availability-and-head-race. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "description": "Problem: on PR #4203, the review-gate run for the final head (run 43504881252) was cancelled when another run superseded it, and its 'gate posting check' failed with 'no gate status was posted for the handled head'. Five gate checks stayed red on the merged PR although review-gate and review-verdict statuses were success. Red checks that do not matter train people and agents to ignore red checks.\n\nOutcome: a superseded or cancelled gate run does not leave failing checks, or they are replaced by the successful run's checks on the same head.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T01:18:44Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "dea8d634b253402791bcb7b18b76bc96",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}
