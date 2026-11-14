@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "The cause is reproduced and identified; whether it predates or follows PR #4228 (CLI and MCP parity) is stated.",
+    "MCP SF1 DuckDB TPC-H completes like the CLI, verified with a real stdio client under make heavy-run.",
+    "Any run that ends without a result returns an MCP error (is_error true) with the cause; a test covers it."
+  ],
+  "context": "Found while measuring MCP run times for PR #4230 on 2026-11-14. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "description": "Problem: through a real MCP stdio client, run_benchmark for DuckDB TPC-H SF1 returned status 'incomplete', no result file and is_error false in three runs (also with a fresh HOME). The server log shows row_count_validation.actual (56) must match rows_returned (0), then QueryExecutionContractError. The same request through the CLI completes. Two defects: the run fails, and the failure is not reported as an error, so an agent may treat it as success.\n\nPossibly related: stale-shared-output-dir-tpch-q18-mismatch-20261114 saw TPC-H SF1 Q18 return 56 rows against 57 expected when reusing data from the shared output directory.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T06:33:09Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1c77cb913c144646b6c7db13621ab3ad",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}

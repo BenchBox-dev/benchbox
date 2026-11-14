@@ -27618,6 +27618,13 @@
       "status": "done",
       "title": "MCP Server Comprehensive Improvements"
     },
+    "mcp-sf1-run-incomplete-without-error-20261114": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "MCP run_benchmark at TPC-H SF1 on DuckDB returns 'incomplete' with no error flag while the CLI succeeds"
+    },
     "mcp-start-benchmark-nonstandard-scale-note-20261111": {
       "claim": null,
       "needs": [],
