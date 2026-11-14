@@ -1,0 +1,7833 @@
+{
+  "benchmark": {
+    "data_generation_hash": "a3d4867993df7a580ced7a429356856daff442d282b1d36b1f5ad79e3245d703",
+    "data_generation_version": 1,
+    "id": "read_primitives",
+    "name": "Read Primitives",
+    "scale_factor": 0.01,
+    "test_type": "power"
+  },
+  "config": {
+    "compression": {
+      "level": null,
+      "type": "zstd"
+    },
+    "execution_engine": "default",
+    "mode": "sql",
+    "phases": [
+      "generate",
+      "load",
+      "power"
+    ],
+    "platform_option_sources": {
+      "force_recreate": "saved_config",
+      "force_upload": "saved_config",
+      "normalize_plan_literals": "saved_config",
+      "optimize_after_load": "saved_config",
+      "show_query_plans": "saved_config",
+      "tuning_source": "saved_config"
+    },
+    "platform_options": {
+      "force_recreate": false,
+      "force_upload": false,
+      "normalize_plan_literals": false,
+      "optimize_after_load": false,
+      "show_query_plans": false,
+      "tuning_source": "baseline"
+    },
+    "seed": 42
+  },
+  "cost": {
+    "model": "actual",
+    "total_usd": 0
+  },
+  "environment": {
+    "arch": "aarch64",
+    "client_host": {
+      "arch": "aarch64",
+      "container_host_os": "macOS",
+      "cpu_count": 4,
+      "cpu_vendor": "Apple",
+      "execution_class": "container",
+      "execution_class_source": "inferred",
+      "memory_gb": 5.928184509277344,
+      "os": "Linux 6.18.15",
+      "python": "3.14.9"
+    },
+    "client_link": {
+      "collection_error_class": "AttributeError",
+      "collection_error_message": "AttributeError: statement overhead probe failed",
+      "collection_status": "unavailable",
+      "probed_at": "2026-11-12T16:00:13.724103+00:00",
+      "source": "unavailable"
+    },
+    "container_host_os": "macOS",
+    "cpu_count": 4,
+    "cpu_vendor": "Apple",
+    "execution_class": "container",
+    "execution_class_source": "inferred",
+    "memory_gb": 5.928184509277344,
+    "os": "Linux 6.18.15",
+    "platform_runtime": {
+      "collection_status": "partial",
+      "runtime_type": "local_process",
+      "source": "inferred"
+    },
+    "python": "3.14.9"
+  },
+  "execution": {
+    "compression": {
+      "type": "zstd"
+    },
+    "driver_package": "chdb",
+    "driver_runtime_strategy": "current-process",
+    "driver_version_actual": "4.1.6",
+    "driver_version_resolved": "4.1.6",
+    "entry_point": "cli",
+    "mode": "sql",
+    "non_interactive": true,
+    "phases": [
+      "generate",
+      "load",
+      "power"
+    ],
+    "seed": 42,
+    "timestamp": "2026-11-12T15:59:48.265590",
+    "translation": {
+      "attempt_count": 834,
+      "failed_count": 0,
+      "fallback_count": 0,
+      "outcomes": [
+        {
+          "calls": 588,
+          "count": 588,
+          "normalized_source_dialect": "clickhouse",
+          "normalized_target_dialect": "clickhouse",
+          "parser_grammar": "clickhouse",
+          "scope": "workload_query",
+          "source_dialect": "clickhouse",
+          "status": "success",
+          "strict_mode": false,
+          "target_dialect": "clickhouse",
+          "translator": "sqlglot_rewrite"
+        },
+        {
+          "calls": 8,
+          "count": 8,
+          "normalized_source_dialect": "duckdb",
+          "normalized_target_dialect": "clickhouse",
+          "parser_grammar": "duckdb",
+          "scope": "schema_ddl",
+          "source_dialect": "duckdb",
+          "status": "success",
+          "strict_mode": false,
+          "target_dialect": "clickhouse",
+          "translator": "sqlglot",
+          "unique_queries": 8
+        },
+        {
+          "calls": 238,
+          "count": 238,
+          "normalized_source_dialect": "netezza",
+          "normalized_target_dialect": "clickhouse",
+          "parser_grammar": "netezza",
+          "scope": "workload_query",
+          "source_dialect": "netezza",
+          "status": "success",
+          "strict_mode": false,
+          "target_dialect": "clickhouse",
+          "translator": "sqlglot",
+          "unique_queries": 118
+        }
+      ],
+      "runtime": {
+        "distribution": "benchbox-sqlglot",
+        "fork_sha": "945aced55e0e25e83fed1f51f11af45c54e94318",
+        "upstream_sha": "447a8a8929835a82ead76d7c6d7e104df344ab36",
+        "version": "30.31.0.1",
+        "wheel_sha256": "cd2453520b31aa442a5b85f8f7c35b0d8a9aa401fe3a62bcd061167c47aa0d03"
+      },
+      "schema_statements_translated": 8,
+      "source_dialects": [
+        "clickhouse",
+        "duckdb",
+        "netezza"
+      ],
+      "status": "success",
+      "strict_mode": false,
+      "success_count": 834,
+      "target_dialects": [
+        "clickhouse"
+      ],
+      "total_transpilation_calls": 834,
+      "translators": [
+        "sqlglot",
+        "sqlglot_rewrite"
+      ],
+      "unique_queries_translated": 118
+    },
+    "tuning_mode": "notuning",
+    "variant_comparability": {
+      "comparable": true,
+      "issue_count": 0,
+      "per_query": {
+        "aggregation_distinct": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "aggregation_distinct_groupby": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "aggregation_groupby_large": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "aggregation_groupby_small": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "aggregation_materialize": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "aggregation_materialize_subquery": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "aggregation_partition": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "aggregation_selective": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "aggregation_simple": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "any_value_simple": {
+          "has_variants": true,
+          "variant_dialects": [
+            "clickhouse"
+          ]
+        },
+        "any_value_with_filter": {
+          "has_variants": true,
+          "variant_dialects": [
+            "clickhouse"
+          ]
+        },
+        "approx_count_distinct_groupby": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "approx_count_distinct_simple": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "approx_quantile_groupby": {
+          "has_variants": true,
+          "variant_dialects": [
+            "bigquery",
+            "clickhouse",
+            "datafusion",
+            "doris",
+            "redshift",
+            "starrocks"
+          ]
+        },
+        "approx_quantiles_array": {
+          "has_variants": true,
+          "variant_dialects": [
+            "bigquery",
+            "clickhouse",
+            "doris",
+            "questdb",
+            "singlestore",
+            "snowflake",
+            "starrocks"
+          ]
+        },
+        "approx_top_k_lineitem": {
+          "has_variants": true,
+          "variant_dialects": [
+            "clickhouse",
+            "doris",
+            "presto",
+            "singlestore",
+            "trino"
+          ]
+        },
+        "array_agg_distinct": {
+          "has_variants": true,
+          "variant_dialects": [
+            "clickhouse",
+            "doris",
+            "questdb",
+            "singlestore"
+          ]
+        },
+        "array_agg_simple": {
+          "has_variants": true,
+          "variant_dialects": [
+            "clickhouse",
+            "doris",
+            "questdb"
+          ]
+        },
+        "array_contains": {
+          "has_variants": true,
+          "variant_dialects": [
+            "bigquery",
+            "clickhouse",
+            "duckdb",
+            "questdb",
+            "singlestore"
+          ]
+        },
+        "array_distinct": {
+          "has_variants": true,
+          "variant_dialects": [
+            "clickhouse",
+            "duckdb",
+            "postgres",
+            "singlestore"
+          ]
+        },
+        "array_length": {
+          "has_variants": true,
+          "variant_dialects": [
+            "bigquery",
+            "clickhouse",
+            "duckdb",
+            "questdb",
+            "singlestore",
+            "snowflake"
+          ]
+        },
+        "array_min_max": {
+          "has_variants": true,
+          "variant_dialects": [
+            "clickhouse",
+            "duckdb",
+            "postgres",
+            "singlestore"
+          ]
+        },
+        "array_of_struct": {
+          "has_variants": true,
+          "variant_dialects": [
+            "clickhouse",
+            "doris",
+            "duckdb",
+            "postgres",
+            "singlestore"
+          ]
+        },
+        "array_slice": {
+          "has_variants": true,
+          "variant_dialects": [
+            "clickhouse",
+            "doris",
+            "duckdb",
+            "postgres",
+            "questdb",
+            "singlestore"
+          ]
+        },
+        "array_sort": {
+          "has_variants": true,
+          "variant_dialects": [
+            "clickhouse",
+            "duckdb",
+            "singlestore"
+          ]
+        },
+        "array_unnest": {
+          "has_variants": true,
+          "variant_dialects": [
+            "bigquery",
+            "clickhouse",
+            "doris",
+            "questdb",
+            "singlestore",
+            "starrocks"
+          ]
+        },
+        "asof_join_basic": {
+          "has_variants": true,
+          "variant_dialects": [
+            "doris",
+            "postgres",
+            "presto",
+            "questdb",
+            "singlestore",
+            "snowflake",
+            "starrocks",
+            "trino"
+          ]
+        },
+        "broadcast_join_four_tables": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "broadcast_join_three_tables": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "broadcast_join_two_tables": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "count_star": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "decimal_arithmetic": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "empty_build_join": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "exchange_broadcast": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "exchange_merge": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "exchange_shuffle": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "filter_bigint_in_list_selective": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "filter_bigint_non_selective": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "filter_bigint_selective": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "filter_decimal_in_list_selective": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "filter_decimal_non_selective": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "filter_decimal_selective": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "filter_in_predicate_selective": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "filter_non_selective": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "filter_selective": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "filter_string_like": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "filter_string_non_selective": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "filter_string_selective": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "fulltext_boolean_search": {
+          "has_variants": true,
+          "variant_dialects": [
+            "doris"
+          ]
+        },
+        "fulltext_phrase_search": {
+          "has_variants": true,
+          "variant_dialects": [
+            "doris"
+          ]
+        },
+        "fulltext_simple_search": {
+          "has_variants": true,
+          "variant_dialects": [
+            "doris"
+          ]
+        },
+        "groupby_all_complex": {
+          "has_variants": true,
+          "variant_dialects": [
+            "datafusion",
+            "doris",
+            "postgres",
+            "presto",
+            "sqlite",
+            "starrocks",
+            "trino"
+          ]
+        },
+        "groupby_all_simple": {
+          "has_variants": true,
+          "variant_dialects": [
+            "doris",
+            "postgres",
+            "presto",
+            "sqlite",
+            "starrocks",
+            "trino"
+          ]
+        },
+        "groupby_bigint_highndv": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "groupby_bigint_lowndv": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "groupby_bigint_pk": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "groupby_decimal_highndv": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "groupby_decimal_lowndv": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "intrinsic_to_date": {
+          "has_variants": true,
+          "variant_dialects": [
+            "datafusion",
+            "sqlite"
+          ]
+        },
+        "json_aggregates": {
+          "has_variants": true,
+          "variant_dialects": [
+            "bigquery",
+            "clickhouse",
+            "doris",
+            "duckdb",
+            "postgres",
+            "presto",
+            "singlestore",
+            "snowflake",
+            "spark",
+            "sqlite",
+            "starrocks",
+            "trino"
+          ]
+        },
+        "json_extract_nested": {
+          "has_variants": true,
+          "variant_dialects": [
+            "clickhouse",
+            "postgres",
+            "presto",
+            "questdb",
+            "singlestore",
+            "starrocks",
+            "trino"
+          ]
+        },
+        "json_extract_simple": {
+          "has_variants": true,
+          "variant_dialects": [
+            "postgres",
+            "questdb",
+            "starrocks"
+          ]
+        },
+        "limit": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "limit_ordered": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "list_filter": {
+          "has_variants": true,
+          "variant_dialects": [
+            "clickhouse",
+            "doris",
+            "duckdb",
+            "singlestore"
+          ]
+        },
+        "list_reduce": {
+          "has_variants": true,
+          "variant_dialects": [
+            "clickhouse",
+            "doris",
+            "duckdb",
+            "postgres",
+            "presto",
+            "questdb",
+            "singlestore",
+            "spark",
+            "starrocks",
+            "trino"
+          ]
+        },
+        "list_transform": {
+          "has_variants": true,
+          "variant_dialects": [
+            "clickhouse",
+            "doris",
+            "duckdb",
+            "postgres",
+            "questdb",
+            "singlestore"
+          ]
+        },
+        "long_predicate": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "map_access": {
+          "has_variants": true,
+          "variant_dialects": [
+            "clickhouse",
+            "datafusion",
+            "doris",
+            "presto",
+            "singlestore",
+            "starrocks",
+            "trino"
+          ]
+        },
+        "map_construction": {
+          "has_variants": true,
+          "variant_dialects": [
+            "clickhouse",
+            "datafusion",
+            "doris",
+            "duckdb",
+            "singlestore",
+            "starrocks"
+          ]
+        },
+        "map_keys_values": {
+          "has_variants": true,
+          "variant_dialects": [
+            "clickhouse",
+            "datafusion",
+            "doris",
+            "singlestore",
+            "starrocks"
+          ]
+        },
+        "max_by_complex": {
+          "has_variants": true,
+          "variant_dialects": [
+            "datafusion",
+            "postgres",
+            "redshift",
+            "singlestore",
+            "sqlite"
+          ]
+        },
+        "max_by_simple": {
+          "has_variants": true,
+          "variant_dialects": [
+            "datafusion",
+            "postgres",
+            "redshift",
+            "singlestore",
+            "sqlite"
+          ]
+        },
+        "max_by_with_ties": {
+          "has_variants": true,
+          "variant_dialects": [
+            "datafusion",
+            "postgres",
+            "redshift",
+            "singlestore",
+            "sqlite"
+          ]
+        },
+        "min_by_complex": {
+          "has_variants": true,
+          "variant_dialects": [
+            "datafusion",
+            "postgres",
+            "questdb",
+            "redshift",
+            "singlestore",
+            "sqlite"
+          ]
+        },
+        "min_by_simple": {
+          "has_variants": true,
+          "variant_dialects": [
+            "datafusion",
+            "postgres",
+            "questdb",
+            "redshift",
+            "singlestore",
+            "sqlite"
+          ]
+        },
+        "min_by_with_ties": {
+          "has_variants": true,
+          "variant_dialects": [
+            "datafusion",
+            "postgres",
+            "questdb",
+            "redshift",
+            "singlestore",
+            "sqlite"
+          ]
+        },
+        "min_max_runtime_filter": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "olap_cube_analysis": {
+          "has_variants": true,
+          "variant_dialects": [
+            "presto",
+            "sqlite",
+            "trino"
+          ]
+        },
+        "olap_rollup_analysis": {
+          "has_variants": true,
+          "variant_dialects": [
+            "singlestore",
+            "spark"
+          ]
+        },
+        "optimizer_aggregate_pushdown": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "optimizer_column_pruning": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "optimizer_common_subexpression": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "optimizer_constant_folding": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "optimizer_distinct_elimination": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "optimizer_exists_to_semijoin": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "optimizer_groupjoin": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "optimizer_in_to_exists": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "optimizer_join_reordering": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "optimizer_limit_pushdown": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "optimizer_predicate_pushdown": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "optimizer_runtime_filter": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "optimizer_scalar_subquery_flattening": {
+          "has_variants": true,
+          "variant_dialects": [
+            "doris",
+            "singlestore",
+            "starrocks"
+          ]
+        },
+        "optimizer_union_optimization": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "orderby_all": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "orderby_all_desc": {
+          "has_variants": true,
+          "variant_dialects": [
+            "bigquery",
+            "datafusion",
+            "doris",
+            "postgres",
+            "presto",
+            "redshift",
+            "singlestore",
+            "starrocks",
+            "trino"
+          ]
+        },
+        "orderby_all_simple": {
+          "has_variants": true,
+          "variant_dialects": [
+            "bigquery",
+            "datafusion",
+            "doris",
+            "postgres",
+            "presto",
+            "redshift",
+            "singlestore",
+            "starrocks",
+            "trino"
+          ]
+        },
+        "orderby_bigint": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "orderby_bigint_expression": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "orderby_decimal16": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "orderby_desc": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "orderby_multi": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "orderby_multicol": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "orderby_shortstrings": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "orderby_simple": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "pivot_basic": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "predicate_ordering_aggregation": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "predicate_ordering_aggregation_groupby": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "predicate_ordering_costs": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "predicate_ordering_subquery": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "qualify_cume_dist": {
+          "has_variants": true,
+          "variant_dialects": [
+            "clickhouse",
+            "singlestore"
+          ]
+        },
+        "qualify_dense_rank": {
+          "has_variants": true,
+          "variant_dialects": [
+            "redshift"
+          ]
+        },
+        "qualify_lag_lead": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "qualify_ntile": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "qualify_percentile": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "qualify_row_number": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "shuffle_1mb_rows": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "shuffle_full_join_one_to_many_string_with_groupby": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "shuffle_inner_join_one_to_many_string_with_groupby": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "shuffle_inner_join_union_all_with_groupby": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "shuffle_join": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "shuffle_left_join_one_to_many_string_with_groupby": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "statistical_correlation": {
+          "has_variants": true,
+          "variant_dialects": [
+            "bigquery",
+            "clickhouse",
+            "doris",
+            "singlestore",
+            "sqlite",
+            "starrocks",
+            "trino"
+          ]
+        },
+        "statistical_percentiles": {
+          "has_variants": true,
+          "variant_dialects": [
+            "bigquery",
+            "doris",
+            "questdb",
+            "redshift",
+            "sqlite",
+            "starrocks"
+          ]
+        },
+        "statistical_variance_stddev": {
+          "has_variants": true,
+          "variant_dialects": [
+            "sqlite"
+          ]
+        },
+        "string_concat": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "string_ends_with": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "string_equal_predicate": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "string_equal_predicate_lower": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "string_ilike_predicate_end": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "string_ilike_predicate_multi": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "string_ilike_predicate_start": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "string_in_predicate": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "string_like": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "string_like_predicate_center": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "string_like_predicate_center_insensitive": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "string_like_predicate_end": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "string_like_predicate_multi": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "string_like_predicate_start": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "string_starts_with": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "string_substring": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "struct_access": {
+          "has_variants": true,
+          "variant_dialects": [
+            "clickhouse",
+            "doris",
+            "postgres",
+            "presto",
+            "singlestore",
+            "snowflake",
+            "starrocks",
+            "trino"
+          ]
+        },
+        "struct_construction": {
+          "has_variants": true,
+          "variant_dialects": [
+            "clickhouse",
+            "duckdb",
+            "postgres",
+            "singlestore"
+          ]
+        },
+        "timeseries_trend_analysis": {
+          "has_variants": true,
+          "variant_dialects": [
+            "bigquery",
+            "clickhouse",
+            "datafusion",
+            "duckdb",
+            "questdb",
+            "singlestore",
+            "spark",
+            "sqlite",
+            "starrocks"
+          ]
+        },
+        "topn": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "topn_aggregate_2columns": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "topn_ordered_allcols": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "unpivot_basic": {
+          "has_variants": true,
+          "variant_dialects": [
+            "datafusion",
+            "doris",
+            "postgres",
+            "presto",
+            "questdb",
+            "singlestore",
+            "starrocks",
+            "trino"
+          ]
+        },
+        "window_growing_frame": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "window_lead_lag_same_frame": {
+          "has_variants": true,
+          "variant_dialects": [
+            "clickhouse"
+          ]
+        },
+        "window_moving_frame": {
+          "has_variants": true,
+          "variant_dialects": [
+            "bigquery",
+            "doris",
+            "questdb",
+            "singlestore",
+            "sqlite",
+            "starrocks"
+          ]
+        },
+        "window_multiple_orderings": {
+          "has_variants": true,
+          "variant_dialects": [
+            "clickhouse",
+            "singlestore"
+          ]
+        },
+        "window_rank": {
+          "has_variants": true,
+          "variant_dialects": [
+            "datafusion",
+            "redshift"
+          ]
+        },
+        "window_row_number": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "window_running_sum": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "window_sum": {
+          "has_variants": false,
+          "variant_dialects": []
+        },
+        "window_unbounded_frame": {
+          "has_variants": false,
+          "variant_dialects": []
+        }
+      },
+      "queries_with_variants": 55,
+      "total_queries": 157
+    }
+  },
+  "export": {
+    "anonymized": true,
+    "benchbox_version": "0.5.1",
+    "timestamp": "2026-11-12T16:00:15.092212",
+    "tool": "benchbox-exporter"
+  },
+  "normalized_cost": {
+    "billing_unit": "not_applicable",
+    "cost_model_source": "benchbox.core.cost.pricing",
+    "cost_model_version": "2026.09",
+    "cost_scope": "compute_only",
+    "cost_status": "not_applicable_local",
+    "cost_usd": null,
+    "deployment": {
+      "cloud_provider": null,
+      "cloud_region": null,
+      "cluster_size": null,
+      "instance_type": null,
+      "node_count": null,
+      "storage_format": null,
+      "storage_tier": null,
+      "warehouse_size": null
+    },
+    "normalized_cost_usd": "0",
+    "pricing_region": "not_applicable"
+  },
+  "phases": {
+    "data_generation": {
+      "duration_ms": 0,
+      "status": "SUCCESS"
+    },
+    "data_loading": {
+      "duration_ms": 834,
+      "status": "SUCCESS"
+    },
+    "power_test": {
+      "duration_ms": 9749,
+      "geometric_mean_time": 0.012556889164966,
+      "power_at_size": 0.0,
+      "query_count": 588,
+      "status": "COMPLETED"
+    },
+    "schema_creation": {
+      "duration_ms": 521,
+      "status": "SUCCESS"
+    },
+    "throughput_test": {
+      "status": "NOT_RUN"
+    },
+    "validation": {
+      "duration_ms": 50,
+      "status": "PASSED"
+    }
+  },
+  "platform": {
+    "client_version": "26.1.0",
+    "cloud": {
+      "collection_status": "unavailable",
+      "source": "unavailable"
+    },
+    "compute": {
+      "collection_status": "partial",
+      "result_cache_enabled": false,
+      "source": "requested"
+    },
+    "config": {
+      "connection_mode": "local",
+      "deployment_mode": "local",
+      "driver_package": "chdb",
+      "driver_runtime_strategy": "current-process",
+      "driver_version_actual": "4.1.6",
+      "driver_version_resolved": "4.1.6",
+      "execution_mode": "sql",
+      "mode": "local",
+      "result_cache_enabled": false
+    },
+    "deployment": {
+      "collection_status": "partial",
+      "connection_mode": "local",
+      "deployment_type": "embedded",
+      "endpoint_class": "unknown",
+      "metadata_source": "inferred"
+    },
+    "driver_actual_version": "4.1.6",
+    "driver_package": "chdb",
+    "driver_resolved_version": "4.1.6",
+    "driver_runtime_strategy": "current-process",
+    "execution_engine": {
+      "applied": null,
+      "applied_class": null,
+      "observed": "not_captured",
+      "observed_source": "none",
+      "requested": "default",
+      "resolution": "platform_default"
+    },
+    "name": "ClickHouse Local",
+    "raw_config": {
+      "deployment_mode": "local",
+      "mode": "local",
+      "optimize_after_load": false,
+      "result_cache_enabled": false,
+      "tuning_source": "baseline",
+      "type": "clickhouse-local"
+    },
+    "storage": {
+      "collection_status": "unavailable",
+      "source": "unavailable"
+    },
+    "tuning": {
+      "applied": {
+        "dropped": [],
+        "statements": [
+          {
+            "phase": "session",
+            "statement_redacted": true,
+            "status": "harness_default"
+          },
+          {
+            "phase": "session",
+            "statement_redacted": true,
+            "status": "harness_default"
+          },
+          {
+            "phase": "session",
+            "statement_redacted": true,
+            "status": "harness_default"
+          },
+          {
+            "phase": "session",
+            "statement_redacted": true,
+            "status": "harness_default"
+          },
+          {
+            "phase": "session",
+            "statement_redacted": true,
+            "status": "harness_default"
+          },
+          {
+            "phase": "session",
+            "statement_redacted": true,
+            "status": "harness_default"
+          },
+          {
+            "phase": "session",
+            "statement_redacted": true,
+            "status": "harness_default"
+          },
+          {
+            "phase": "session",
+            "statement_redacted": true,
+            "status": "harness_default"
+          },
+          {
+            "phase": "session",
+            "statement_redacted": true,
+            "status": "harness_default"
+          },
+          {
+            "phase": "session",
+            "statement_redacted": true,
+            "status": "harness_default"
+          }
+        ],
+        "status": "not_applicable"
+      },
+      "source": "auto",
+      "tuning_source": "baseline",
+      "validation_status": "not_applicable"
+    },
+    "variant": "clickhouse-local",
+    "version": "unknown"
+  },
+  "queries": [
+    {
+      "id": "aggregation_distinct",
+      "iter": 0,
+      "ms": 27.51683,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "aggregation_distinct_groupby",
+      "iter": 0,
+      "ms": 51.39342,
+      "request_count": 1,
+      "result_bytes": 104,
+      "rows": 4,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "approx_count_distinct_simple",
+      "iter": 0,
+      "ms": 6.628209,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "approx_count_distinct_groupby",
+      "iter": 0,
+      "ms": 20.38113,
+      "request_count": 1,
+      "result_bytes": 104,
+      "rows": 4,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "aggregation_groupby_large",
+      "iter": 0,
+      "ms": 56.25775,
+      "request_count": 1,
+      "result_bytes": 2165832,
+      "rows": 60162,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "aggregation_groupby_small",
+      "iter": 0,
+      "ms": 9.38025,
+      "request_count": 1,
+      "result_bytes": 136,
+      "rows": 5,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "aggregation_materialize",
+      "iter": 0,
+      "ms": 10.27087,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "aggregation_materialize_subquery",
+      "iter": 0,
+      "ms": 95.88637,
+      "request_count": 1,
+      "result_bytes": 105,
+      "rows": 5,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "aggregation_partition",
+      "iter": 0,
+      "ms": 37.03408,
+      "request_count": 1,
+      "result_bytes": 90041,
+      "rows": 2482,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "aggregation_selective",
+      "iter": 0,
+      "ms": 24.08592,
+      "request_count": 1,
+      "result_bytes": 16,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "aggregation_simple",
+      "iter": 0,
+      "ms": 5.392834,
+      "request_count": 1,
+      "result_bytes": 24,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "broadcast_join_two_tables",
+      "iter": 0,
+      "ms": 3.803667,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "broadcast_join_three_tables",
+      "iter": 0,
+      "ms": 4.535958,
+      "request_count": 1,
+      "result_bytes": 747,
+      "rows": 25,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "broadcast_join_four_tables",
+      "iter": 0,
+      "ms": 23.17658,
+      "request_count": 1,
+      "result_bytes": 3429,
+      "rows": 67,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "predicate_ordering_aggregation",
+      "iter": 0,
+      "ms": 30.04371,
+      "request_count": 1,
+      "result_bytes": 16,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "predicate_ordering_aggregation_groupby",
+      "iter": 0,
+      "ms": 31.28908,
+      "request_count": 1,
+      "result_bytes": 63,
+      "rows": 3,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "predicate_ordering_costs",
+      "iter": 0,
+      "ms": 108.532,
+      "request_count": 1,
+      "result_bytes": 14007,
+      "rows": 88,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "predicate_ordering_subquery",
+      "iter": 0,
+      "ms": 42.76292,
+      "request_count": 1,
+      "result_bytes": 1480,
+      "rows": 74,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "count_star",
+      "iter": 0,
+      "ms": 2.394084,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "decimal_arithmetic",
+      "iter": 0,
+      "ms": 26.01992,
+      "request_count": 1,
+      "result_bytes": 28000,
+      "rows": 1000,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "empty_build_join",
+      "iter": 0,
+      "ms": 297.0378,
+      "request_count": 1,
+      "result_bytes": 9422637,
+      "rows": 60175,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "exchange_broadcast",
+      "iter": 0,
+      "ms": 57.517,
+      "request_count": 1,
+      "result_bytes": 28980,
+      "rows": 1449,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "exchange_merge",
+      "iter": 0,
+      "ms": 109.8142,
+      "request_count": 1,
+      "result_bytes": 1444200,
+      "rows": 60175,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "exchange_shuffle",
+      "iter": 0,
+      "ms": 21.68446,
+      "request_count": 1,
+      "result_bytes": 130080,
+      "rows": 10840,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "filter_bigint_in_list_selective",
+      "iter": 0,
+      "ms": 15.04658,
+      "request_count": 1,
+      "result_bytes": 225,
+      "rows": 2,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "filter_bigint_non_selective",
+      "iter": 0,
+      "ms": 12.27692,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "filter_bigint_selective",
+      "iter": 0,
+      "ms": 3.300916,
+      "request_count": 1,
+      "result_bytes": 0,
+      "rows": 0,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "filter_decimal_in_list_selective",
+      "iter": 0,
+      "ms": 11.75092,
+      "request_count": 1,
+      "result_bytes": 0,
+      "rows": 0,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "filter_decimal_non_selective",
+      "iter": 0,
+      "ms": 8.799,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "filter_decimal_selective",
+      "iter": 0,
+      "ms": 10.96496,
+      "request_count": 1,
+      "result_bytes": 0,
+      "rows": 0,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "filter_in_predicate_selective",
+      "iter": 0,
+      "ms": 16.88592,
+      "request_count": 1,
+      "result_bytes": 273853,
+      "rows": 1900,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "filter_string_like",
+      "iter": 0,
+      "ms": 5.891125,
+      "request_count": 1,
+      "result_bytes": 15347,
+      "rows": 107,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "filter_string_non_selective",
+      "iter": 0,
+      "ms": 4.644958,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "filter_string_selective",
+      "iter": 0,
+      "ms": 4.777541,
+      "request_count": 1,
+      "result_bytes": 204,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "groupby_bigint_highndv",
+      "iter": 0,
+      "ms": 17.23892,
+      "request_count": 1,
+      "result_bytes": 180000,
+      "rows": 15000,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "groupby_bigint_lowndv",
+      "iter": 0,
+      "ms": 27.10546,
+      "request_count": 1,
+      "result_bytes": 102,
+      "rows": 5,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "groupby_bigint_pk",
+      "iter": 0,
+      "ms": 8.785833,
+      "request_count": 1,
+      "result_bytes": 39000,
+      "rows": 1500,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "groupby_decimal_highndv",
+      "iter": 0,
+      "ms": 25.37513,
+      "request_count": 1,
+      "result_bytes": 862104,
+      "rows": 35921,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "groupby_decimal_lowndv",
+      "iter": 0,
+      "ms": 19.97742,
+      "request_count": 1,
+      "result_bytes": 352,
+      "rows": 11,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "approx_quantile_groupby",
+      "iter": 0,
+      "ms": 67.29358,
+      "request_count": 1,
+      "result_bytes": 86,
+      "rows": 7,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "intrinsic_to_date",
+      "iter": 0,
+      "ms": 8.844958,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "limit",
+      "iter": 0,
+      "ms": 8.682625,
+      "request_count": 1,
+      "result_bytes": 15599,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "long_predicate",
+      "iter": 0,
+      "ms": 48.03254,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "min_max_runtime_filter",
+      "iter": 0,
+      "ms": 31.10308,
+      "request_count": 1,
+      "result_bytes": 316907,
+      "rows": 2027,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "orderby_all",
+      "iter": 0,
+      "ms": 6.031667,
+      "request_count": 1,
+      "result_bytes": 275420,
+      "rows": 1500,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "orderby_bigint",
+      "iter": 0,
+      "ms": 23.12242,
+      "request_count": 1,
+      "result_bytes": 300000,
+      "rows": 15000,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "orderby_bigint_expression",
+      "iter": 0,
+      "ms": 42.81904,
+      "request_count": 1,
+      "result_bytes": 2400,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "orderby_decimal16",
+      "iter": 0,
+      "ms": 51.13225,
+      "request_count": 1,
+      "result_bytes": 3600,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "orderby_multicol",
+      "iter": 0,
+      "ms": 40.10125,
+      "request_count": 1,
+      "result_bytes": 12008,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "orderby_shortstrings",
+      "iter": 0,
+      "ms": 42.92696,
+      "request_count": 1,
+      "result_bytes": 40,
+      "rows": 4,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "shuffle_1mb_rows",
+      "iter": 0,
+      "ms": 322.3808,
+      "request_count": 1,
+      "result_bytes": 8400,
+      "rows": 700,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "shuffle_full_join_one_to_many_string_with_groupby",
+      "iter": 0,
+      "ms": 48.19379,
+      "request_count": 1,
+      "result_bytes": 145,
+      "rows": 5,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "shuffle_inner_join_one_to_many_string_with_groupby",
+      "iter": 0,
+      "ms": 15.69117,
+      "request_count": 1,
+      "result_bytes": 185,
+      "rows": 5,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "shuffle_inner_join_union_all_with_groupby",
+      "iter": 0,
+      "ms": 21.27158,
+      "request_count": 1,
+      "result_bytes": 37,
+      "rows": 2,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "shuffle_left_join_one_to_many_string_with_groupby",
+      "iter": 0,
+      "ms": 27.2565,
+      "request_count": 1,
+      "result_bytes": 145,
+      "rows": 5,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "string_equal_predicate",
+      "iter": 0,
+      "ms": 4.380167,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "string_equal_predicate_lower",
+      "iter": 0,
+      "ms": 4.108041,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "string_in_predicate",
+      "iter": 0,
+      "ms": 5.63375,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "string_like_predicate_center",
+      "iter": 0,
+      "ms": 6.545375,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "string_like_predicate_center_insensitive",
+      "iter": 0,
+      "ms": 4.573084,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "string_like_predicate_multi",
+      "iter": 0,
+      "ms": 3.389333,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "string_ilike_predicate_multi",
+      "iter": 0,
+      "ms": 3.477791,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "string_like_predicate_end",
+      "iter": 0,
+      "ms": 6.815583,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "string_ilike_predicate_end",
+      "iter": 0,
+      "ms": 6.927916,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "string_like_predicate_start",
+      "iter": 0,
+      "ms": 6.05675,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "string_ilike_predicate_start",
+      "iter": 0,
+      "ms": 6.645541,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "topn_ordered_allcols",
+      "iter": 0,
+      "ms": 59.71417,
+      "request_count": 1,
+      "result_bytes": 1531,
+      "rows": 10,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "topn_aggregate_2columns",
+      "iter": 0,
+      "ms": 15.9025,
+      "request_count": 1,
+      "result_bytes": 200,
+      "rows": 10,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "approx_top_k_lineitem",
+      "iter": 0,
+      "ms": 21.51942,
+      "request_count": 1,
+      "result_bytes": 47,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "window_growing_frame",
+      "iter": 0,
+      "ms": 8.357875,
+      "request_count": 1,
+      "result_bytes": 40160,
+      "rows": 1004,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "window_lead_lag_same_frame",
+      "iter": 0,
+      "ms": 11.17733,
+      "request_count": 1,
+      "result_bytes": 123976,
+      "rows": 2204,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "window_row_number",
+      "iter": 0,
+      "ms": 7.657708,
+      "request_count": 1,
+      "result_bytes": 70528,
+      "rows": 2204,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "window_unbounded_frame",
+      "iter": 0,
+      "ms": 11.45775,
+      "request_count": 1,
+      "result_bytes": 303960,
+      "rows": 5066,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "json_extract_simple",
+      "iter": 0,
+      "ms": 11.88442,
+      "request_count": 1,
+      "result_bytes": 12000,
+      "rows": 1000,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "json_extract_nested",
+      "iter": 0,
+      "ms": 3.591375,
+      "request_count": 1,
+      "result_bytes": 0,
+      "rows": 0,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "json_aggregates",
+      "iter": 0,
+      "ms": 24.05483,
+      "request_count": 1,
+      "result_bytes": 21661,
+      "rows": 25,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "approx_quantiles_array",
+      "iter": 0,
+      "ms": 62.02429,
+      "request_count": 1,
+      "result_bytes": 120,
+      "rows": 4,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "statistical_variance_stddev",
+      "iter": 0,
+      "ms": 12.57288,
+      "request_count": 1,
+      "result_bytes": 302,
+      "rows": 5,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "statistical_correlation",
+      "iter": 0,
+      "ms": 146.9406,
+      "request_count": 1,
+      "result_bytes": 48,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "olap_cube_analysis",
+      "iter": 0,
+      "ms": 42.24692,
+      "request_count": 1,
+      "result_bytes": 44625,
+      "rows": 840,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "olap_rollup_analysis",
+      "iter": 0,
+      "ms": 16.26971,
+      "request_count": 1,
+      "result_bytes": 11413,
+      "rows": 156,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "timeseries_trend_analysis",
+      "iter": 0,
+      "ms": 50.96763,
+      "request_count": 1,
+      "result_bytes": 1254,
+      "rows": 24,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "max_by_simple",
+      "iter": 0,
+      "ms": 6.635042,
+      "request_count": 1,
+      "result_bytes": 1227,
+      "rows": 25,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "min_by_simple",
+      "iter": 0,
+      "ms": 5.956041,
+      "request_count": 1,
+      "result_bytes": 1227,
+      "rows": 25,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "max_by_complex",
+      "iter": 0,
+      "ms": 7.670041,
+      "request_count": 1,
+      "result_bytes": 185,
+      "rows": 5,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "min_by_complex",
+      "iter": 0,
+      "ms": 5.154458,
+      "request_count": 1,
+      "result_bytes": 2226,
+      "rows": 25,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "max_by_with_ties",
+      "iter": 0,
+      "ms": 8.756542,
+      "request_count": 1,
+      "result_bytes": 7875,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "min_by_with_ties",
+      "iter": 0,
+      "ms": 6.5655,
+      "request_count": 1,
+      "result_bytes": 7794,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "qualify_row_number",
+      "iter": 0,
+      "ms": 8.796583,
+      "request_count": 1,
+      "result_bytes": 171274,
+      "rows": 2953,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "qualify_dense_rank",
+      "iter": 0,
+      "ms": 6.434875,
+      "request_count": 1,
+      "result_bytes": 25667,
+      "rows": 301,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "qualify_percentile",
+      "iter": 0,
+      "ms": 6.925584,
+      "request_count": 1,
+      "result_bytes": 32982,
+      "rows": 816,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "qualify_ntile",
+      "iter": 0,
+      "ms": 5.543125,
+      "request_count": 1,
+      "result_bytes": 83210,
+      "rows": 2032,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "qualify_lag_lead",
+      "iter": 0,
+      "ms": 8.023708,
+      "request_count": 1,
+      "result_bytes": 231660,
+      "rows": 3510,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "optimizer_exists_to_semijoin",
+      "iter": 0,
+      "ms": 31.84521,
+      "request_count": 1,
+      "result_bytes": 31025,
+      "rows": 722,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "optimizer_distinct_elimination",
+      "iter": 0,
+      "ms": 11.41329,
+      "request_count": 1,
+      "result_bytes": 52416,
+      "rows": 1872,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "optimizer_common_subexpression",
+      "iter": 0,
+      "ms": 36.87854,
+      "request_count": 1,
+      "result_bytes": 310000,
+      "rows": 5000,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "optimizer_predicate_pushdown",
+      "iter": 0,
+      "ms": 11.5975,
+      "request_count": 1,
+      "result_bytes": 1458,
+      "rows": 27,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "optimizer_join_reordering",
+      "iter": 0,
+      "ms": 18.54417,
+      "request_count": 1,
+      "result_bytes": 685,
+      "rows": 12,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "optimizer_limit_pushdown",
+      "iter": 0,
+      "ms": 9.054541,
+      "request_count": 1,
+      "result_bytes": 6623,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "optimizer_aggregate_pushdown",
+      "iter": 0,
+      "ms": 9.240666,
+      "request_count": 1,
+      "result_bytes": 923,
+      "rows": 13,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "optimizer_constant_folding",
+      "iter": 0,
+      "ms": 34.40958,
+      "request_count": 1,
+      "result_bytes": 88000,
+      "rows": 1000,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "optimizer_column_pruning",
+      "iter": 0,
+      "ms": 19.2275,
+      "request_count": 1,
+      "result_bytes": 1958,
+      "rows": 89,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "optimizer_in_to_exists",
+      "iter": 0,
+      "ms": 11.13221,
+      "request_count": 1,
+      "result_bytes": 8967,
+      "rows": 163,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "optimizer_union_optimization",
+      "iter": 0,
+      "ms": 10.51992,
+      "request_count": 1,
+      "result_bytes": 10141,
+      "rows": 155,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "optimizer_runtime_filter",
+      "iter": 0,
+      "ms": 28.13708,
+      "request_count": 1,
+      "result_bytes": 27004,
+      "rows": 254,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "optimizer_groupjoin",
+      "iter": 0,
+      "ms": 21.87033,
+      "request_count": 1,
+      "result_bytes": 3600,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "any_value_simple",
+      "iter": 0,
+      "ms": 5.984833,
+      "request_count": 1,
+      "result_bytes": 215,
+      "rows": 5,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "any_value_with_filter",
+      "iter": 0,
+      "ms": 3.679375,
+      "request_count": 1,
+      "result_bytes": 460,
+      "rows": 5,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "groupby_all_simple",
+      "iter": 0,
+      "ms": 10.86729,
+      "request_count": 1,
+      "result_bytes": 136,
+      "rows": 4,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "groupby_all_complex",
+      "iter": 0,
+      "ms": 9.749125,
+      "request_count": 1,
+      "result_bytes": 8850,
+      "rows": 219,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "orderby_all_simple",
+      "iter": 0,
+      "ms": 11.96408,
+      "request_count": 1,
+      "result_bytes": 747,
+      "rows": 25,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "orderby_all_desc",
+      "iter": 0,
+      "ms": 8.35975,
+      "request_count": 1,
+      "result_bytes": 4447,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "array_agg_simple",
+      "iter": 0,
+      "ms": 9.421291,
+      "request_count": 1,
+      "result_bytes": 33600,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "array_agg_distinct",
+      "iter": 0,
+      "ms": 11.03104,
+      "request_count": 1,
+      "result_bytes": 585,
+      "rows": 5,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "array_unnest",
+      "iter": 0,
+      "ms": 11.34612,
+      "request_count": 1,
+      "result_bytes": 6400,
+      "rows": 800,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "array_contains",
+      "iter": 0,
+      "ms": 8.787833,
+      "request_count": 1,
+      "result_bytes": 500,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "array_length",
+      "iter": 0,
+      "ms": 6.255083,
+      "request_count": 1,
+      "result_bytes": 1200,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "array_slice",
+      "iter": 0,
+      "ms": 20.59996,
+      "request_count": 1,
+      "result_bytes": 5600,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "array_min_max",
+      "iter": 0,
+      "ms": 6.586333,
+      "request_count": 1,
+      "result_bytes": 3600,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "array_sort",
+      "iter": 0,
+      "ms": 5.131042,
+      "request_count": 1,
+      "result_bytes": 8400,
+      "rows": 25,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "array_distinct",
+      "iter": 0,
+      "ms": 17.21546,
+      "request_count": 1,
+      "result_bytes": 3342,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "struct_construction",
+      "iter": 0,
+      "ms": 5.050375,
+      "request_count": 1,
+      "result_bytes": 5315,
+      "rows": 59,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "struct_access",
+      "iter": 0,
+      "ms": 7.198417,
+      "request_count": 1,
+      "result_bytes": 1092,
+      "rows": 26,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "array_of_struct",
+      "iter": 0,
+      "ms": 20.02554,
+      "request_count": 1,
+      "result_bytes": 360,
+      "rows": 5,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "map_construction",
+      "iter": 0,
+      "ms": 7.913083,
+      "request_count": 1,
+      "result_bytes": 18834,
+      "rows": 10,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "map_access",
+      "iter": 0,
+      "ms": 10.08117,
+      "request_count": 1,
+      "result_bytes": 364,
+      "rows": 10,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "map_keys_values",
+      "iter": 0,
+      "ms": 4.985,
+      "request_count": 1,
+      "result_bytes": 9439,
+      "rows": 5,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "list_transform",
+      "iter": 0,
+      "ms": 5.060917,
+      "request_count": 1,
+      "result_bytes": 16400,
+      "rows": 25,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "list_filter",
+      "iter": 0,
+      "ms": 6.414542,
+      "request_count": 1,
+      "result_bytes": 16496,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "list_reduce",
+      "iter": 0,
+      "ms": 13.49721,
+      "request_count": 1,
+      "result_bytes": 2000,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "asof_join_basic",
+      "iter": 0,
+      "ms": 23.41288,
+      "request_count": 1,
+      "result_bytes": 3200,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "filter_selective",
+      "iter": 0,
+      "ms": 14.37825,
+      "request_count": 1,
+      "result_bytes": 94760,
+      "rows": 2369,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "filter_non_selective",
+      "iter": 0,
+      "ms": 25.89971,
+      "request_count": 1,
+      "result_bytes": 2358720,
+      "rows": 58968,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "orderby_simple",
+      "iter": 0,
+      "ms": 14.04367,
+      "request_count": 1,
+      "result_bytes": 2400,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "orderby_multi",
+      "iter": 0,
+      "ms": 27.35821,
+      "request_count": 1,
+      "result_bytes": 2800,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "orderby_desc",
+      "iter": 0,
+      "ms": 7.271167,
+      "request_count": 1,
+      "result_bytes": 2400,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "string_like",
+      "iter": 0,
+      "ms": 5.404625,
+      "request_count": 1,
+      "result_bytes": 6307,
+      "rows": 99,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "string_starts_with",
+      "iter": 0,
+      "ms": 4.381167,
+      "request_count": 1,
+      "result_bytes": 24345,
+      "rows": 361,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "string_ends_with",
+      "iter": 0,
+      "ms": 4.343,
+      "request_count": 1,
+      "result_bytes": 24548,
+      "rows": 376,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "string_concat",
+      "iter": 0,
+      "ms": 4.218,
+      "request_count": 1,
+      "result_bytes": 3801,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "string_substring",
+      "iter": 0,
+      "ms": 11.1435,
+      "request_count": 1,
+      "result_bytes": 1100,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "shuffle_join",
+      "iter": 0,
+      "ms": 18.02183,
+      "request_count": 1,
+      "result_bytes": 300000,
+      "rows": 15000,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "topn",
+      "iter": 0,
+      "ms": 14.54275,
+      "request_count": 1,
+      "result_bytes": 240,
+      "rows": 10,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "window_rank",
+      "iter": 0,
+      "ms": 27.32621,
+      "request_count": 1,
+      "result_bytes": 39336,
+      "rows": 1192,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "window_sum",
+      "iter": 0,
+      "ms": 33.43875,
+      "request_count": 1,
+      "result_bytes": 2407000,
+      "rows": 60175,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "window_running_sum",
+      "iter": 0,
+      "ms": 9.382042,
+      "request_count": 1,
+      "result_bytes": 4000,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "limit_ordered",
+      "iter": 0,
+      "ms": 14.61567,
+      "request_count": 1,
+      "result_bytes": 15599,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "aggregation_distinct",
+      "iter": 1,
+      "ms": 6.85525,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "aggregation_distinct_groupby",
+      "iter": 1,
+      "ms": 39.02837,
+      "request_count": 1,
+      "result_bytes": 104,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "approx_count_distinct_simple",
+      "iter": 1,
+      "ms": 8.165,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "approx_count_distinct_groupby",
+      "iter": 1,
+      "ms": 18.90817,
+      "request_count": 1,
+      "result_bytes": 104,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "aggregation_groupby_large",
+      "iter": 1,
+      "ms": 53.77688,
+      "request_count": 1,
+      "result_bytes": 2165832,
+      "rows": 60162,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "aggregation_groupby_small",
+      "iter": 1,
+      "ms": 4.795541,
+      "request_count": 1,
+      "result_bytes": 136,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "aggregation_materialize",
+      "iter": 1,
+      "ms": 5.804625,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "aggregation_materialize_subquery",
+      "iter": 1,
+      "ms": 23.36571,
+      "request_count": 1,
+      "result_bytes": 105,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "aggregation_partition",
+      "iter": 1,
+      "ms": 14.37633,
+      "request_count": 1,
+      "result_bytes": 90041,
+      "rows": 2482,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "aggregation_selective",
+      "iter": 1,
+      "ms": 11.99567,
+      "request_count": 1,
+      "result_bytes": 16,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "aggregation_simple",
+      "iter": 1,
+      "ms": 4.248667,
+      "request_count": 1,
+      "result_bytes": 24,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "broadcast_join_two_tables",
+      "iter": 1,
+      "ms": 5.367208,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "broadcast_join_three_tables",
+      "iter": 1,
+      "ms": 7.727416,
+      "request_count": 1,
+      "result_bytes": 747,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "broadcast_join_four_tables",
+      "iter": 1,
+      "ms": 14.21438,
+      "request_count": 1,
+      "result_bytes": 3429,
+      "rows": 67,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "predicate_ordering_aggregation",
+      "iter": 1,
+      "ms": 16.49013,
+      "request_count": 1,
+      "result_bytes": 16,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "predicate_ordering_aggregation_groupby",
+      "iter": 1,
+      "ms": 26.57463,
+      "request_count": 1,
+      "result_bytes": 63,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "predicate_ordering_costs",
+      "iter": 1,
+      "ms": 49.191,
+      "request_count": 1,
+      "result_bytes": 14007,
+      "rows": 88,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "predicate_ordering_subquery",
+      "iter": 1,
+      "ms": 21.28121,
+      "request_count": 1,
+      "result_bytes": 1480,
+      "rows": 74,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "count_star",
+      "iter": 1,
+      "ms": 3.071,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "decimal_arithmetic",
+      "iter": 1,
+      "ms": 7.964625,
+      "request_count": 1,
+      "result_bytes": 28000,
+      "rows": 1000,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "empty_build_join",
+      "iter": 1,
+      "ms": 118.405,
+      "request_count": 1,
+      "result_bytes": 9422637,
+      "rows": 60175,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "exchange_broadcast",
+      "iter": 1,
+      "ms": 10.14508,
+      "request_count": 1,
+      "result_bytes": 28980,
+      "rows": 1449,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "exchange_merge",
+      "iter": 1,
+      "ms": 23.26625,
+      "request_count": 1,
+      "result_bytes": 1444200,
+      "rows": 60175,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "exchange_shuffle",
+      "iter": 1,
+      "ms": 13.59325,
+      "request_count": 1,
+      "result_bytes": 130080,
+      "rows": 10840,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "filter_bigint_in_list_selective",
+      "iter": 1,
+      "ms": 7.727083,
+      "request_count": 1,
+      "result_bytes": 225,
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "filter_bigint_non_selective",
+      "iter": 1,
+      "ms": 5.055708,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "filter_bigint_selective",
+      "iter": 1,
+      "ms": 2.523959,
+      "request_count": 1,
+      "result_bytes": 0,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "filter_decimal_in_list_selective",
+      "iter": 1,
+      "ms": 7.157917,
+      "request_count": 1,
+      "result_bytes": 0,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "filter_decimal_non_selective",
+      "iter": 1,
+      "ms": 6.763625,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "filter_decimal_selective",
+      "iter": 1,
+      "ms": 8.4825,
+      "request_count": 1,
+      "result_bytes": 0,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "filter_in_predicate_selective",
+      "iter": 1,
+      "ms": 50.36496,
+      "request_count": 1,
+      "result_bytes": 273853,
+      "rows": 1900,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "filter_string_like",
+      "iter": 1,
+      "ms": 4.51675,
+      "request_count": 1,
+      "result_bytes": 15347,
+      "rows": 107,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "filter_string_non_selective",
+      "iter": 1,
+      "ms": 3.014292,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "filter_string_selective",
+      "iter": 1,
+      "ms": 5.01075,
+      "request_count": 1,
+      "result_bytes": 204,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "groupby_bigint_highndv",
+      "iter": 1,
+      "ms": 8.465208,
+      "request_count": 1,
+      "result_bytes": 180000,
+      "rows": 15000,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "groupby_bigint_lowndv",
+      "iter": 1,
+      "ms": 6.592959,
+      "request_count": 1,
+      "result_bytes": 102,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "groupby_bigint_pk",
+      "iter": 1,
+      "ms": 4.962917,
+      "request_count": 1,
+      "result_bytes": 39000,
+      "rows": 1500,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "groupby_decimal_highndv",
+      "iter": 1,
+      "ms": 23.87721,
+      "request_count": 1,
+      "result_bytes": 862104,
+      "rows": 35921,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "groupby_decimal_lowndv",
+      "iter": 1,
+      "ms": 8.876,
+      "request_count": 1,
+      "result_bytes": 352,
+      "rows": 11,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "approx_quantile_groupby",
+      "iter": 1,
+      "ms": 10.49733,
+      "request_count": 1,
+      "result_bytes": 86,
+      "rows": 7,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "intrinsic_to_date",
+      "iter": 1,
+      "ms": 8.445417,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "limit",
+      "iter": 1,
+      "ms": 6.055334,
+      "request_count": 1,
+      "result_bytes": 15599,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "long_predicate",
+      "iter": 1,
+      "ms": 20.09554,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "min_max_runtime_filter",
+      "iter": 1,
+      "ms": 21.89521,
+      "request_count": 1,
+      "result_bytes": 316907,
+      "rows": 2027,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "orderby_all",
+      "iter": 1,
+      "ms": 4.186417,
+      "request_count": 1,
+      "result_bytes": 275420,
+      "rows": 1500,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "orderby_bigint",
+      "iter": 1,
+      "ms": 5.848041,
+      "request_count": 1,
+      "result_bytes": 300000,
+      "rows": 15000,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "orderby_bigint_expression",
+      "iter": 1,
+      "ms": 10.41108,
+      "request_count": 1,
+      "result_bytes": 2400,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "orderby_decimal16",
+      "iter": 1,
+      "ms": 8.618208,
+      "request_count": 1,
+      "result_bytes": 3600,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "orderby_multicol",
+      "iter": 1,
+      "ms": 7.853333,
+      "request_count": 1,
+      "result_bytes": 12008,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "orderby_shortstrings",
+      "iter": 1,
+      "ms": 10.35321,
+      "request_count": 1,
+      "result_bytes": 40,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "shuffle_1mb_rows",
+      "iter": 1,
+      "ms": 43.41787,
+      "request_count": 1,
+      "result_bytes": 8400,
+      "rows": 700,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "shuffle_full_join_one_to_many_string_with_groupby",
+      "iter": 1,
+      "ms": 11.18033,
+      "request_count": 1,
+      "result_bytes": 145,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "shuffle_inner_join_one_to_many_string_with_groupby",
+      "iter": 1,
+      "ms": 19.36833,
+      "request_count": 1,
+      "result_bytes": 185,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "shuffle_inner_join_union_all_with_groupby",
+      "iter": 1,
+      "ms": 36.00854,
+      "request_count": 1,
+      "result_bytes": 37,
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "shuffle_left_join_one_to_many_string_with_groupby",
+      "iter": 1,
+      "ms": 9.518542,
+      "request_count": 1,
+      "result_bytes": 145,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "string_equal_predicate",
+      "iter": 1,
+      "ms": 4.285792,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "string_equal_predicate_lower",
+      "iter": 1,
+      "ms": 2.7295,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "string_in_predicate",
+      "iter": 1,
+      "ms": 18.04887,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "string_like_predicate_center",
+      "iter": 1,
+      "ms": 7.818667,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "string_like_predicate_center_insensitive",
+      "iter": 1,
+      "ms": 3.230791,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "string_like_predicate_multi",
+      "iter": 1,
+      "ms": 7.805375,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "string_ilike_predicate_multi",
+      "iter": 1,
+      "ms": 4.064959,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "string_like_predicate_end",
+      "iter": 1,
+      "ms": 3.729042,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "string_ilike_predicate_end",
+      "iter": 1,
+      "ms": 3.870125,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "string_like_predicate_start",
+      "iter": 1,
+      "ms": 3.761459,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "string_ilike_predicate_start",
+      "iter": 1,
+      "ms": 4.524916,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "topn_ordered_allcols",
+      "iter": 1,
+      "ms": 18.05363,
+      "request_count": 1,
+      "result_bytes": 1531,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "topn_aggregate_2columns",
+      "iter": 1,
+      "ms": 10.01658,
+      "request_count": 1,
+      "result_bytes": 200,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "approx_top_k_lineitem",
+      "iter": 1,
+      "ms": 12.38775,
+      "request_count": 1,
+      "result_bytes": 47,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "window_growing_frame",
+      "iter": 1,
+      "ms": 4.693417,
+      "request_count": 1,
+      "result_bytes": 40160,
+      "rows": 1004,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "window_lead_lag_same_frame",
+      "iter": 1,
+      "ms": 16.36717,
+      "request_count": 1,
+      "result_bytes": 123976,
+      "rows": 2204,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "window_row_number",
+      "iter": 1,
+      "ms": 7.210333,
+      "request_count": 1,
+      "result_bytes": 70528,
+      "rows": 2204,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "window_unbounded_frame",
+      "iter": 1,
+      "ms": 9.171417,
+      "request_count": 1,
+      "result_bytes": 303960,
+      "rows": 5066,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "json_extract_simple",
+      "iter": 1,
+      "ms": 5.384708,
+      "request_count": 1,
+      "result_bytes": 12000,
+      "rows": 1000,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "json_extract_nested",
+      "iter": 1,
+      "ms": 3.105584,
+      "request_count": 1,
+      "result_bytes": 0,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "json_aggregates",
+      "iter": 1,
+      "ms": 6.553458,
+      "request_count": 1,
+      "result_bytes": 21661,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "approx_quantiles_array",
+      "iter": 1,
+      "ms": 13.21979,
+      "request_count": 1,
+      "result_bytes": 120,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "statistical_variance_stddev",
+      "iter": 1,
+      "ms": 6.633251,
+      "request_count": 1,
+      "result_bytes": 302,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "statistical_correlation",
+      "iter": 1,
+      "ms": 39.65521,
+      "request_count": 1,
+      "result_bytes": 48,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "olap_cube_analysis",
+      "iter": 1,
+      "ms": 16.341,
+      "request_count": 1,
+      "result_bytes": 44625,
+      "rows": 840,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "olap_rollup_analysis",
+      "iter": 1,
+      "ms": 15.9885,
+      "request_count": 1,
+      "result_bytes": 11413,
+      "rows": 156,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "timeseries_trend_analysis",
+      "iter": 1,
+      "ms": 36.20563,
+      "request_count": 1,
+      "result_bytes": 1254,
+      "rows": 24,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "max_by_simple",
+      "iter": 1,
+      "ms": 6.069958,
+      "request_count": 1,
+      "result_bytes": 1227,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "min_by_simple",
+      "iter": 1,
+      "ms": 6.442375,
+      "request_count": 1,
+      "result_bytes": 1227,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "max_by_complex",
+      "iter": 1,
+      "ms": 9.0535,
+      "request_count": 1,
+      "result_bytes": 185,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "min_by_complex",
+      "iter": 1,
+      "ms": 5.782708,
+      "request_count": 1,
+      "result_bytes": 2226,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "max_by_with_ties",
+      "iter": 1,
+      "ms": 11.06212,
+      "request_count": 1,
+      "result_bytes": 7875,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "min_by_with_ties",
+      "iter": 1,
+      "ms": 9.307709,
+      "request_count": 1,
+      "result_bytes": 7794,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "qualify_row_number",
+      "iter": 1,
+      "ms": 11.64942,
+      "request_count": 1,
+      "result_bytes": 171274,
+      "rows": 2953,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "qualify_dense_rank",
+      "iter": 1,
+      "ms": 7.900084,
+      "request_count": 1,
+      "result_bytes": 25667,
+      "rows": 301,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "qualify_percentile",
+      "iter": 1,
+      "ms": 10.301,
+      "request_count": 1,
+      "result_bytes": 32982,
+      "rows": 816,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "qualify_ntile",
+      "iter": 1,
+      "ms": 9.305458,
+      "request_count": 1,
+      "result_bytes": 83210,
+      "rows": 2032,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "qualify_lag_lead",
+      "iter": 1,
+      "ms": 7.928958,
+      "request_count": 1,
+      "result_bytes": 231660,
+      "rows": 3510,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "optimizer_exists_to_semijoin",
+      "iter": 1,
+      "ms": 24.57008,
+      "request_count": 1,
+      "result_bytes": 31025,
+      "rows": 722,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "optimizer_distinct_elimination",
+      "iter": 1,
+      "ms": 7.075125,
+      "request_count": 1,
+      "result_bytes": 52416,
+      "rows": 1872,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "optimizer_common_subexpression",
+      "iter": 1,
+      "ms": 47.47929,
+      "request_count": 1,
+      "result_bytes": 310000,
+      "rows": 5000,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "optimizer_predicate_pushdown",
+      "iter": 1,
+      "ms": 11.66288,
+      "request_count": 1,
+      "result_bytes": 1458,
+      "rows": 27,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "optimizer_join_reordering",
+      "iter": 1,
+      "ms": 15.41267,
+      "request_count": 1,
+      "result_bytes": 685,
+      "rows": 12,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "optimizer_limit_pushdown",
+      "iter": 1,
+      "ms": 11.94388,
+      "request_count": 1,
+      "result_bytes": 6623,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "optimizer_aggregate_pushdown",
+      "iter": 1,
+      "ms": 14.31312,
+      "request_count": 1,
+      "result_bytes": 923,
+      "rows": 13,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "optimizer_constant_folding",
+      "iter": 1,
+      "ms": 34.39529,
+      "request_count": 1,
+      "result_bytes": 88000,
+      "rows": 1000,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "optimizer_column_pruning",
+      "iter": 1,
+      "ms": 21.22871,
+      "request_count": 1,
+      "result_bytes": 1958,
+      "rows": 89,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "optimizer_in_to_exists",
+      "iter": 1,
+      "ms": 13.40171,
+      "request_count": 1,
+      "result_bytes": 8967,
+      "rows": 163,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "optimizer_union_optimization",
+      "iter": 1,
+      "ms": 14.32688,
+      "request_count": 1,
+      "result_bytes": 10141,
+      "rows": 155,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "optimizer_runtime_filter",
+      "iter": 1,
+      "ms": 18.93196,
+      "request_count": 1,
+      "result_bytes": 27004,
+      "rows": 254,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "optimizer_groupjoin",
+      "iter": 1,
+      "ms": 33.75617,
+      "request_count": 1,
+      "result_bytes": 3600,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "any_value_simple",
+      "iter": 1,
+      "ms": 6.49975,
+      "request_count": 1,
+      "result_bytes": 215,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "any_value_with_filter",
+      "iter": 1,
+      "ms": 5.112,
+      "request_count": 1,
+      "result_bytes": 460,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "groupby_all_simple",
+      "iter": 1,
+      "ms": 20.38242,
+      "request_count": 1,
+      "result_bytes": 136,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "groupby_all_complex",
+      "iter": 1,
+      "ms": 11.652,
+      "request_count": 1,
+      "result_bytes": 8850,
+      "rows": 219,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "orderby_all_simple",
+      "iter": 1,
+      "ms": 6.695042,
+      "request_count": 1,
+      "result_bytes": 747,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "orderby_all_desc",
+      "iter": 1,
+      "ms": 10.19962,
+      "request_count": 1,
+      "result_bytes": 4447,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "array_agg_simple",
+      "iter": 1,
+      "ms": 4.296709,
+      "request_count": 1,
+      "result_bytes": 33600,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "array_agg_distinct",
+      "iter": 1,
+      "ms": 5.652084,
+      "request_count": 1,
+      "result_bytes": 585,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "array_unnest",
+      "iter": 1,
+      "ms": 4.671208,
+      "request_count": 1,
+      "result_bytes": 6400,
+      "rows": 800,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "array_contains",
+      "iter": 1,
+      "ms": 5.534625,
+      "request_count": 1,
+      "result_bytes": 500,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "array_length",
+      "iter": 1,
+      "ms": 5.136416,
+      "request_count": 1,
+      "result_bytes": 1200,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "array_slice",
+      "iter": 1,
+      "ms": 9.152333,
+      "request_count": 1,
+      "result_bytes": 5600,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "array_min_max",
+      "iter": 1,
+      "ms": 5.548042,
+      "request_count": 1,
+      "result_bytes": 3600,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "array_sort",
+      "iter": 1,
+      "ms": 4.962375,
+      "request_count": 1,
+      "result_bytes": 8400,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "array_distinct",
+      "iter": 1,
+      "ms": 14.18971,
+      "request_count": 1,
+      "result_bytes": 3342,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "struct_construction",
+      "iter": 1,
+      "ms": 6.456,
+      "request_count": 1,
+      "result_bytes": 5315,
+      "rows": 59,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "struct_access",
+      "iter": 1,
+      "ms": 5.696584,
+      "request_count": 1,
+      "result_bytes": 1092,
+      "rows": 26,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "array_of_struct",
+      "iter": 1,
+      "ms": 25.32212,
+      "request_count": 1,
+      "result_bytes": 360,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "map_construction",
+      "iter": 1,
+      "ms": 5.347542,
+      "request_count": 1,
+      "result_bytes": 18834,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "map_access",
+      "iter": 1,
+      "ms": 4.734958,
+      "request_count": 1,
+      "result_bytes": 364,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "map_keys_values",
+      "iter": 1,
+      "ms": 9.859541,
+      "request_count": 1,
+      "result_bytes": 9439,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "list_transform",
+      "iter": 1,
+      "ms": 7.668667,
+      "request_count": 1,
+      "result_bytes": 16400,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "list_filter",
+      "iter": 1,
+      "ms": 7.807,
+      "request_count": 1,
+      "result_bytes": 16496,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "list_reduce",
+      "iter": 1,
+      "ms": 20.55404,
+      "request_count": 1,
+      "result_bytes": 2000,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "asof_join_basic",
+      "iter": 1,
+      "ms": 27.95025,
+      "request_count": 1,
+      "result_bytes": 3200,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "filter_selective",
+      "iter": 1,
+      "ms": 15.30013,
+      "request_count": 1,
+      "result_bytes": 94760,
+      "rows": 2369,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "filter_non_selective",
+      "iter": 1,
+      "ms": 19.95163,
+      "request_count": 1,
+      "result_bytes": 2358720,
+      "rows": 58968,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "orderby_simple",
+      "iter": 1,
+      "ms": 5.717833,
+      "request_count": 1,
+      "result_bytes": 2400,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "orderby_multi",
+      "iter": 1,
+      "ms": 10.98813,
+      "request_count": 1,
+      "result_bytes": 2800,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "orderby_desc",
+      "iter": 1,
+      "ms": 4.20075,
+      "request_count": 1,
+      "result_bytes": 2400,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "string_like",
+      "iter": 1,
+      "ms": 3.334833,
+      "request_count": 1,
+      "result_bytes": 6307,
+      "rows": 99,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "string_starts_with",
+      "iter": 1,
+      "ms": 2.769417,
+      "request_count": 1,
+      "result_bytes": 24345,
+      "rows": 361,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "string_ends_with",
+      "iter": 1,
+      "ms": 2.748959,
+      "request_count": 1,
+      "result_bytes": 24548,
+      "rows": 376,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "string_concat",
+      "iter": 1,
+      "ms": 1.532541,
+      "request_count": 1,
+      "result_bytes": 3801,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "string_substring",
+      "iter": 1,
+      "ms": 1.25475,
+      "request_count": 1,
+      "result_bytes": 1100,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "shuffle_join",
+      "iter": 1,
+      "ms": 7.320584,
+      "request_count": 1,
+      "result_bytes": 300000,
+      "rows": 15000,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "topn",
+      "iter": 1,
+      "ms": 7.516208,
+      "request_count": 1,
+      "result_bytes": 240,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "window_rank",
+      "iter": 1,
+      "ms": 9.95925,
+      "request_count": 1,
+      "result_bytes": 39336,
+      "rows": 1192,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "window_sum",
+      "iter": 1,
+      "ms": 16.24738,
+      "request_count": 1,
+      "result_bytes": 2407000,
+      "rows": 60175,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "window_running_sum",
+      "iter": 1,
+      "ms": 7.700958,
+      "request_count": 1,
+      "result_bytes": 4000,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "limit_ordered",
+      "iter": 1,
+      "ms": 8.096542,
+      "request_count": 1,
+      "result_bytes": 15599,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "aggregation_distinct",
+      "iter": 2,
+      "ms": 8.349292,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "aggregation_distinct_groupby",
+      "iter": 2,
+      "ms": 19.06212,
+      "request_count": 1,
+      "result_bytes": 104,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "approx_count_distinct_simple",
+      "iter": 2,
+      "ms": 9.357917,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "approx_count_distinct_groupby",
+      "iter": 2,
+      "ms": 24.89692,
+      "request_count": 1,
+      "result_bytes": 104,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "aggregation_groupby_large",
+      "iter": 2,
+      "ms": 47.89188,
+      "request_count": 1,
+      "result_bytes": 2165832,
+      "rows": 60162,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "aggregation_groupby_small",
+      "iter": 2,
+      "ms": 6.617459,
+      "request_count": 1,
+      "result_bytes": 136,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "aggregation_materialize",
+      "iter": 2,
+      "ms": 5.074333,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "aggregation_materialize_subquery",
+      "iter": 2,
+      "ms": 29.49721,
+      "request_count": 1,
+      "result_bytes": 105,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "aggregation_partition",
+      "iter": 2,
+      "ms": 12.12679,
+      "request_count": 1,
+      "result_bytes": 90041,
+      "rows": 2482,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "aggregation_selective",
+      "iter": 2,
+      "ms": 9.985708,
+      "request_count": 1,
+      "result_bytes": 16,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "aggregation_simple",
+      "iter": 2,
+      "ms": 3.216792,
+      "request_count": 1,
+      "result_bytes": 24,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "broadcast_join_two_tables",
+      "iter": 2,
+      "ms": 4.853625,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "broadcast_join_three_tables",
+      "iter": 2,
+      "ms": 7.205292,
+      "request_count": 1,
+      "result_bytes": 747,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "broadcast_join_four_tables",
+      "iter": 2,
+      "ms": 7.785833,
+      "request_count": 1,
+      "result_bytes": 3429,
+      "rows": 67,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "predicate_ordering_aggregation",
+      "iter": 2,
+      "ms": 5.492958,
+      "request_count": 1,
+      "result_bytes": 16,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "predicate_ordering_aggregation_groupby",
+      "iter": 2,
+      "ms": 14.34042,
+      "request_count": 1,
+      "result_bytes": 63,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "predicate_ordering_costs",
+      "iter": 2,
+      "ms": 24.75462,
+      "request_count": 1,
+      "result_bytes": 14007,
+      "rows": 88,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "predicate_ordering_subquery",
+      "iter": 2,
+      "ms": 5.26675,
+      "request_count": 1,
+      "result_bytes": 1480,
+      "rows": 74,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "count_star",
+      "iter": 2,
+      "ms": 1.104208,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "decimal_arithmetic",
+      "iter": 2,
+      "ms": 5.365209,
+      "request_count": 1,
+      "result_bytes": 28000,
+      "rows": 1000,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "empty_build_join",
+      "iter": 2,
+      "ms": 49.29608,
+      "request_count": 1,
+      "result_bytes": 9422637,
+      "rows": 60175,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "exchange_broadcast",
+      "iter": 2,
+      "ms": 26.05038,
+      "request_count": 1,
+      "result_bytes": 28980,
+      "rows": 1449,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "exchange_merge",
+      "iter": 2,
+      "ms": 24.04258,
+      "request_count": 1,
+      "result_bytes": 1444200,
+      "rows": 60175,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "exchange_shuffle",
+      "iter": 2,
+      "ms": 7.477208,
+      "request_count": 1,
+      "result_bytes": 130080,
+      "rows": 10840,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "filter_bigint_in_list_selective",
+      "iter": 2,
+      "ms": 4.334958,
+      "request_count": 1,
+      "result_bytes": 225,
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "filter_bigint_non_selective",
+      "iter": 2,
+      "ms": 3.843292,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "filter_bigint_selective",
+      "iter": 2,
+      "ms": 1.331291,
+      "request_count": 1,
+      "result_bytes": 0,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "filter_decimal_in_list_selective",
+      "iter": 2,
+      "ms": 6.200084,
+      "request_count": 1,
+      "result_bytes": 0,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "filter_decimal_non_selective",
+      "iter": 2,
+      "ms": 5.594709,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "filter_decimal_selective",
+      "iter": 2,
+      "ms": 6.30525,
+      "request_count": 1,
+      "result_bytes": 0,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "filter_in_predicate_selective",
+      "iter": 2,
+      "ms": 12.07217,
+      "request_count": 1,
+      "result_bytes": 273853,
+      "rows": 1900,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "filter_string_like",
+      "iter": 2,
+      "ms": 3.621333,
+      "request_count": 1,
+      "result_bytes": 15347,
+      "rows": 107,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "filter_string_non_selective",
+      "iter": 2,
+      "ms": 2.313333,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "filter_string_selective",
+      "iter": 2,
+      "ms": 3.443208,
+      "request_count": 1,
+      "result_bytes": 204,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "groupby_bigint_highndv",
+      "iter": 2,
+      "ms": 8.961042,
+      "request_count": 1,
+      "result_bytes": 180000,
+      "rows": 15000,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "groupby_bigint_lowndv",
+      "iter": 2,
+      "ms": 3.048208,
+      "request_count": 1,
+      "result_bytes": 102,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "groupby_bigint_pk",
+      "iter": 2,
+      "ms": 5.189417,
+      "request_count": 1,
+      "result_bytes": 39000,
+      "rows": 1500,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "groupby_decimal_highndv",
+      "iter": 2,
+      "ms": 5.402791,
+      "request_count": 1,
+      "result_bytes": 862104,
+      "rows": 35921,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "groupby_decimal_lowndv",
+      "iter": 2,
+      "ms": 4.386166,
+      "request_count": 1,
+      "result_bytes": 352,
+      "rows": 11,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "approx_quantile_groupby",
+      "iter": 2,
+      "ms": 6.051,
+      "request_count": 1,
+      "result_bytes": 86,
+      "rows": 7,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "intrinsic_to_date",
+      "iter": 2,
+      "ms": 2.271708,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "limit",
+      "iter": 2,
+      "ms": 3.913958,
+      "request_count": 1,
+      "result_bytes": 15599,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "long_predicate",
+      "iter": 2,
+      "ms": 18.04888,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "min_max_runtime_filter",
+      "iter": 2,
+      "ms": 15.14154,
+      "request_count": 1,
+      "result_bytes": 316907,
+      "rows": 2027,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "orderby_all",
+      "iter": 2,
+      "ms": 2.153541,
+      "request_count": 1,
+      "result_bytes": 275420,
+      "rows": 1500,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "orderby_bigint",
+      "iter": 2,
+      "ms": 4.284209,
+      "request_count": 1,
+      "result_bytes": 300000,
+      "rows": 15000,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "orderby_bigint_expression",
+      "iter": 2,
+      "ms": 7.813792,
+      "request_count": 1,
+      "result_bytes": 2400,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "orderby_decimal16",
+      "iter": 2,
+      "ms": 8.523917,
+      "request_count": 1,
+      "result_bytes": 3600,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "orderby_multicol",
+      "iter": 2,
+      "ms": 9.653625,
+      "request_count": 1,
+      "result_bytes": 12008,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "orderby_shortstrings",
+      "iter": 2,
+      "ms": 6.994333,
+      "request_count": 1,
+      "result_bytes": 40,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "shuffle_1mb_rows",
+      "iter": 2,
+      "ms": 70.01292,
+      "request_count": 1,
+      "result_bytes": 8400,
+      "rows": 700,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "shuffle_full_join_one_to_many_string_with_groupby",
+      "iter": 2,
+      "ms": 9.421625,
+      "request_count": 1,
+      "result_bytes": 145,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "shuffle_inner_join_one_to_many_string_with_groupby",
+      "iter": 2,
+      "ms": 4.384417,
+      "request_count": 1,
+      "result_bytes": 185,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "shuffle_inner_join_union_all_with_groupby",
+      "iter": 2,
+      "ms": 7.013792,
+      "request_count": 1,
+      "result_bytes": 37,
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "shuffle_left_join_one_to_many_string_with_groupby",
+      "iter": 2,
+      "ms": 2.792875,
+      "request_count": 1,
+      "result_bytes": 145,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "string_equal_predicate",
+      "iter": 2,
+      "ms": 1.122458,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "string_equal_predicate_lower",
+      "iter": 2,
+      "ms": 1.220375,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "string_in_predicate",
+      "iter": 2,
+      "ms": 1.782416,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "string_like_predicate_center",
+      "iter": 2,
+      "ms": 1.248209,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "string_like_predicate_center_insensitive",
+      "iter": 2,
+      "ms": 1.295833,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "string_like_predicate_multi",
+      "iter": 2,
+      "ms": 1.285167,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "string_ilike_predicate_multi",
+      "iter": 2,
+      "ms": 1.244583,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "string_like_predicate_end",
+      "iter": 2,
+      "ms": 1.06725,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "string_ilike_predicate_end",
+      "iter": 2,
+      "ms": 1.011958,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "string_like_predicate_start",
+      "iter": 2,
+      "ms": 1.14925,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "string_ilike_predicate_start",
+      "iter": 2,
+      "ms": 1.242542,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "topn_ordered_allcols",
+      "iter": 2,
+      "ms": 10.8445,
+      "request_count": 1,
+      "result_bytes": 1531,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "topn_aggregate_2columns",
+      "iter": 2,
+      "ms": 6.475959,
+      "request_count": 1,
+      "result_bytes": 200,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "approx_top_k_lineitem",
+      "iter": 2,
+      "ms": 7.409542,
+      "request_count": 1,
+      "result_bytes": 47,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "window_growing_frame",
+      "iter": 2,
+      "ms": 2.04925,
+      "request_count": 1,
+      "result_bytes": 40160,
+      "rows": 1004,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "window_lead_lag_same_frame",
+      "iter": 2,
+      "ms": 7.341458,
+      "request_count": 1,
+      "result_bytes": 123976,
+      "rows": 2204,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "window_row_number",
+      "iter": 2,
+      "ms": 6.247583,
+      "request_count": 1,
+      "result_bytes": 70528,
+      "rows": 2204,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "window_unbounded_frame",
+      "iter": 2,
+      "ms": 6.864291,
+      "request_count": 1,
+      "result_bytes": 303960,
+      "rows": 5066,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "json_extract_simple",
+      "iter": 2,
+      "ms": 4.581,
+      "request_count": 1,
+      "result_bytes": 12000,
+      "rows": 1000,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "json_extract_nested",
+      "iter": 2,
+      "ms": 4.99375,
+      "request_count": 1,
+      "result_bytes": 0,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "json_aggregates",
+      "iter": 2,
+      "ms": 12.20279,
+      "request_count": 1,
+      "result_bytes": 21661,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "approx_quantiles_array",
+      "iter": 2,
+      "ms": 9.520417,
+      "request_count": 1,
+      "result_bytes": 120,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "statistical_variance_stddev",
+      "iter": 2,
+      "ms": 3.074625,
+      "request_count": 1,
+      "result_bytes": 302,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "statistical_correlation",
+      "iter": 2,
+      "ms": 5.406541,
+      "request_count": 1,
+      "result_bytes": 48,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "olap_cube_analysis",
+      "iter": 2,
+      "ms": 18.83004,
+      "request_count": 1,
+      "result_bytes": 44625,
+      "rows": 840,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "olap_rollup_analysis",
+      "iter": 2,
+      "ms": 6.504292,
+      "request_count": 1,
+      "result_bytes": 11413,
+      "rows": 156,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "timeseries_trend_analysis",
+      "iter": 2,
+      "ms": 5.825708,
+      "request_count": 1,
+      "result_bytes": 1254,
+      "rows": 24,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "max_by_simple",
+      "iter": 2,
+      "ms": 2.898166,
+      "request_count": 1,
+      "result_bytes": 1227,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "min_by_simple",
+      "iter": 2,
+      "ms": 3.0235,
+      "request_count": 1,
+      "result_bytes": 1227,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "max_by_complex",
+      "iter": 2,
+      "ms": 3.694125,
+      "request_count": 1,
+      "result_bytes": 185,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "min_by_complex",
+      "iter": 2,
+      "ms": 2.177,
+      "request_count": 1,
+      "result_bytes": 2226,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "max_by_with_ties",
+      "iter": 2,
+      "ms": 4.322958,
+      "request_count": 1,
+      "result_bytes": 7875,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "min_by_with_ties",
+      "iter": 2,
+      "ms": 4.821583,
+      "request_count": 1,
+      "result_bytes": 7794,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "qualify_row_number",
+      "iter": 2,
+      "ms": 4.690959,
+      "request_count": 1,
+      "result_bytes": 171274,
+      "rows": 2953,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "qualify_dense_rank",
+      "iter": 2,
+      "ms": 2.15075,
+      "request_count": 1,
+      "result_bytes": 25667,
+      "rows": 301,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "qualify_percentile",
+      "iter": 2,
+      "ms": 2.742917,
+      "request_count": 1,
+      "result_bytes": 32982,
+      "rows": 816,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "qualify_ntile",
+      "iter": 2,
+      "ms": 3.711416,
+      "request_count": 1,
+      "result_bytes": 83210,
+      "rows": 2032,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "qualify_lag_lead",
+      "iter": 2,
+      "ms": 3.840167,
+      "request_count": 1,
+      "result_bytes": 231660,
+      "rows": 3510,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "optimizer_exists_to_semijoin",
+      "iter": 2,
+      "ms": 9.808084,
+      "request_count": 1,
+      "result_bytes": 31025,
+      "rows": 722,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "optimizer_distinct_elimination",
+      "iter": 2,
+      "ms": 2.814583,
+      "request_count": 1,
+      "result_bytes": 52416,
+      "rows": 1872,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "optimizer_common_subexpression",
+      "iter": 2,
+      "ms": 13.76092,
+      "request_count": 1,
+      "result_bytes": 310000,
+      "rows": 5000,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "optimizer_predicate_pushdown",
+      "iter": 2,
+      "ms": 5.666875,
+      "request_count": 1,
+      "result_bytes": 1458,
+      "rows": 27,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "optimizer_join_reordering",
+      "iter": 2,
+      "ms": 8.631417,
+      "request_count": 1,
+      "result_bytes": 685,
+      "rows": 12,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "optimizer_limit_pushdown",
+      "iter": 2,
+      "ms": 3.614708,
+      "request_count": 1,
+      "result_bytes": 6623,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "optimizer_aggregate_pushdown",
+      "iter": 2,
+      "ms": 4.547,
+      "request_count": 1,
+      "result_bytes": 923,
+      "rows": 13,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "optimizer_constant_folding",
+      "iter": 2,
+      "ms": 13.45429,
+      "request_count": 1,
+      "result_bytes": 88000,
+      "rows": 1000,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "optimizer_column_pruning",
+      "iter": 2,
+      "ms": 6.857125,
+      "request_count": 1,
+      "result_bytes": 1958,
+      "rows": 89,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "optimizer_in_to_exists",
+      "iter": 2,
+      "ms": 5.7245,
+      "request_count": 1,
+      "result_bytes": 8967,
+      "rows": 163,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "optimizer_union_optimization",
+      "iter": 2,
+      "ms": 4.69175,
+      "request_count": 1,
+      "result_bytes": 10141,
+      "rows": 155,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "optimizer_runtime_filter",
+      "iter": 2,
+      "ms": 5.836291,
+      "request_count": 1,
+      "result_bytes": 27004,
+      "rows": 254,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "optimizer_groupjoin",
+      "iter": 2,
+      "ms": 6.729916,
+      "request_count": 1,
+      "result_bytes": 3600,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "any_value_simple",
+      "iter": 2,
+      "ms": 1.645667,
+      "request_count": 1,
+      "result_bytes": 215,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "any_value_with_filter",
+      "iter": 2,
+      "ms": 1.631959,
+      "request_count": 1,
+      "result_bytes": 460,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "groupby_all_simple",
+      "iter": 2,
+      "ms": 9.060417,
+      "request_count": 1,
+      "result_bytes": 136,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "groupby_all_complex",
+      "iter": 2,
+      "ms": 6.84075,
+      "request_count": 1,
+      "result_bytes": 8850,
+      "rows": 219,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "orderby_all_simple",
+      "iter": 2,
+      "ms": 2.556083,
+      "request_count": 1,
+      "result_bytes": 747,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "orderby_all_desc",
+      "iter": 2,
+      "ms": 1.947375,
+      "request_count": 1,
+      "result_bytes": 4447,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "array_agg_simple",
+      "iter": 2,
+      "ms": 2.055375,
+      "request_count": 1,
+      "result_bytes": 33600,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "array_agg_distinct",
+      "iter": 2,
+      "ms": 1.765292,
+      "request_count": 1,
+      "result_bytes": 585,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "array_unnest",
+      "iter": 2,
+      "ms": 2.116459,
+      "request_count": 1,
+      "result_bytes": 6400,
+      "rows": 800,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "array_contains",
+      "iter": 2,
+      "ms": 1.879333,
+      "request_count": 1,
+      "result_bytes": 500,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "array_length",
+      "iter": 2,
+      "ms": 1.7435,
+      "request_count": 1,
+      "result_bytes": 1200,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "array_slice",
+      "iter": 2,
+      "ms": 2.769291,
+      "request_count": 1,
+      "result_bytes": 5600,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "array_min_max",
+      "iter": 2,
+      "ms": 2.61375,
+      "request_count": 1,
+      "result_bytes": 3600,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "array_sort",
+      "iter": 2,
+      "ms": 1.954291,
+      "request_count": 1,
+      "result_bytes": 8400,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "array_distinct",
+      "iter": 2,
+      "ms": 6.391209,
+      "request_count": 1,
+      "result_bytes": 3342,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "struct_construction",
+      "iter": 2,
+      "ms": 1.823209,
+      "request_count": 1,
+      "result_bytes": 5315,
+      "rows": 59,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "struct_access",
+      "iter": 2,
+      "ms": 1.707792,
+      "request_count": 1,
+      "result_bytes": 1092,
+      "rows": 26,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "array_of_struct",
+      "iter": 2,
+      "ms": 5.699625,
+      "request_count": 1,
+      "result_bytes": 360,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "map_construction",
+      "iter": 2,
+      "ms": 2.273333,
+      "request_count": 1,
+      "result_bytes": 18834,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "map_access",
+      "iter": 2,
+      "ms": 2.326292,
+      "request_count": 1,
+      "result_bytes": 364,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "map_keys_values",
+      "iter": 2,
+      "ms": 1.827625,
+      "request_count": 1,
+      "result_bytes": 9439,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "list_transform",
+      "iter": 2,
+      "ms": 1.439416,
+      "request_count": 1,
+      "result_bytes": 16400,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "list_filter",
+      "iter": 2,
+      "ms": 1.960583,
+      "request_count": 1,
+      "result_bytes": 16496,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "list_reduce",
+      "iter": 2,
+      "ms": 3.859167,
+      "request_count": 1,
+      "result_bytes": 2000,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "asof_join_basic",
+      "iter": 2,
+      "ms": 5.20525,
+      "request_count": 1,
+      "result_bytes": 3200,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "filter_selective",
+      "iter": 2,
+      "ms": 4.587958,
+      "request_count": 1,
+      "result_bytes": 94760,
+      "rows": 2369,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "filter_non_selective",
+      "iter": 2,
+      "ms": 7.943959,
+      "request_count": 1,
+      "result_bytes": 2358720,
+      "rows": 58968,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "orderby_simple",
+      "iter": 2,
+      "ms": 2.055375,
+      "request_count": 1,
+      "result_bytes": 2400,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "orderby_multi",
+      "iter": 2,
+      "ms": 3.816,
+      "request_count": 1,
+      "result_bytes": 2800,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "orderby_desc",
+      "iter": 2,
+      "ms": 1.761167,
+      "request_count": 1,
+      "result_bytes": 2400,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "string_like",
+      "iter": 2,
+      "ms": 0.9915,
+      "request_count": 1,
+      "result_bytes": 6307,
+      "rows": 99,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "string_starts_with",
+      "iter": 2,
+      "ms": 0.941292,
+      "request_count": 1,
+      "result_bytes": 24345,
+      "rows": 361,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "string_ends_with",
+      "iter": 2,
+      "ms": 2.137875,
+      "request_count": 1,
+      "result_bytes": 24548,
+      "rows": 376,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "string_concat",
+      "iter": 2,
+      "ms": 0.702291,
+      "request_count": 1,
+      "result_bytes": 3801,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "string_substring",
+      "iter": 2,
+      "ms": 0.735458,
+      "request_count": 1,
+      "result_bytes": 1100,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "shuffle_join",
+      "iter": 2,
+      "ms": 4.49775,
+      "request_count": 1,
+      "result_bytes": 300000,
+      "rows": 15000,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "topn",
+      "iter": 2,
+      "ms": 3.634291,
+      "request_count": 1,
+      "result_bytes": 240,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "window_rank",
+      "iter": 2,
+      "ms": 6.915209,
+      "request_count": 1,
+      "result_bytes": 39336,
+      "rows": 1192,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "window_sum",
+      "iter": 2,
+      "ms": 6.629208,
+      "request_count": 1,
+      "result_bytes": 2407000,
+      "rows": 60175,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "window_running_sum",
+      "iter": 2,
+      "ms": 1.857333,
+      "request_count": 1,
+      "result_bytes": 4000,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "limit_ordered",
+      "iter": 2,
+      "ms": 1.892292,
+      "request_count": 1,
+      "result_bytes": 15599,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "aggregation_distinct",
+      "iter": 3,
+      "ms": 1.429667,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "aggregation_distinct_groupby",
+      "iter": 3,
+      "ms": 5.904875,
+      "request_count": 1,
+      "result_bytes": 104,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "approx_count_distinct_simple",
+      "iter": 3,
+      "ms": 1.497083,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "approx_count_distinct_groupby",
+      "iter": 3,
+      "ms": 5.017417,
+      "request_count": 1,
+      "result_bytes": 104,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "aggregation_groupby_large",
+      "iter": 3,
+      "ms": 28.79388,
+      "request_count": 1,
+      "result_bytes": 2165832,
+      "rows": 60162,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "aggregation_groupby_small",
+      "iter": 3,
+      "ms": 1.150583,
+      "request_count": 1,
+      "result_bytes": 136,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "aggregation_materialize",
+      "iter": 3,
+      "ms": 1.689334,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "aggregation_materialize_subquery",
+      "iter": 3,
+      "ms": 8.193417,
+      "request_count": 1,
+      "result_bytes": 105,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "aggregation_partition",
+      "iter": 3,
+      "ms": 4.405667,
+      "request_count": 1,
+      "result_bytes": 90041,
+      "rows": 2482,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "aggregation_selective",
+      "iter": 3,
+      "ms": 5.932292,
+      "request_count": 1,
+      "result_bytes": 16,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "aggregation_simple",
+      "iter": 3,
+      "ms": 1.237583,
+      "request_count": 1,
+      "result_bytes": 24,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "broadcast_join_two_tables",
+      "iter": 3,
+      "ms": 1.208084,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "broadcast_join_three_tables",
+      "iter": 3,
+      "ms": 1.690667,
+      "request_count": 1,
+      "result_bytes": 747,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "broadcast_join_four_tables",
+      "iter": 3,
+      "ms": 3.989375,
+      "request_count": 1,
+      "result_bytes": 3429,
+      "rows": 67,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "predicate_ordering_aggregation",
+      "iter": 3,
+      "ms": 6.867791,
+      "request_count": 1,
+      "result_bytes": 16,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "predicate_ordering_aggregation_groupby",
+      "iter": 3,
+      "ms": 6.572333,
+      "request_count": 1,
+      "result_bytes": 63,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "predicate_ordering_costs",
+      "iter": 3,
+      "ms": 10.76304,
+      "request_count": 1,
+      "result_bytes": 14007,
+      "rows": 88,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "predicate_ordering_subquery",
+      "iter": 3,
+      "ms": 2.723416,
+      "request_count": 1,
+      "result_bytes": 1480,
+      "rows": 74,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "count_star",
+      "iter": 3,
+      "ms": 0.585084,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "decimal_arithmetic",
+      "iter": 3,
+      "ms": 3.289667,
+      "request_count": 1,
+      "result_bytes": 28000,
+      "rows": 1000,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "empty_build_join",
+      "iter": 3,
+      "ms": 21.91367,
+      "request_count": 1,
+      "result_bytes": 9422637,
+      "rows": 60175,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "exchange_broadcast",
+      "iter": 3,
+      "ms": 3.26375,
+      "request_count": 1,
+      "result_bytes": 28980,
+      "rows": 1449,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "exchange_merge",
+      "iter": 3,
+      "ms": 4.7495,
+      "request_count": 1,
+      "result_bytes": 1444200,
+      "rows": 60175,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "exchange_shuffle",
+      "iter": 3,
+      "ms": 2.474625,
+      "request_count": 1,
+      "result_bytes": 130080,
+      "rows": 10840,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "filter_bigint_in_list_selective",
+      "iter": 3,
+      "ms": 1.818084,
+      "request_count": 1,
+      "result_bytes": 225,
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "filter_bigint_non_selective",
+      "iter": 3,
+      "ms": 1.095958,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "filter_bigint_selective",
+      "iter": 3,
+      "ms": 0.603042,
+      "request_count": 1,
+      "result_bytes": 0,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "filter_decimal_in_list_selective",
+      "iter": 3,
+      "ms": 1.982791,
+      "request_count": 1,
+      "result_bytes": 0,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "filter_decimal_non_selective",
+      "iter": 3,
+      "ms": 1.78975,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "filter_decimal_selective",
+      "iter": 3,
+      "ms": 2.065917,
+      "request_count": 1,
+      "result_bytes": 0,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "filter_in_predicate_selective",
+      "iter": 3,
+      "ms": 3.359541,
+      "request_count": 1,
+      "result_bytes": 273853,
+      "rows": 1900,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "filter_string_like",
+      "iter": 3,
+      "ms": 1.234541,
+      "request_count": 1,
+      "result_bytes": 15347,
+      "rows": 107,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "filter_string_non_selective",
+      "iter": 3,
+      "ms": 0.851875,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "filter_string_selective",
+      "iter": 3,
+      "ms": 1.128291,
+      "request_count": 1,
+      "result_bytes": 204,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "groupby_bigint_highndv",
+      "iter": 3,
+      "ms": 2.120792,
+      "request_count": 1,
+      "result_bytes": 180000,
+      "rows": 15000,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "groupby_bigint_lowndv",
+      "iter": 3,
+      "ms": 1.035833,
+      "request_count": 1,
+      "result_bytes": 102,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "groupby_bigint_pk",
+      "iter": 3,
+      "ms": 0.939333,
+      "request_count": 1,
+      "result_bytes": 39000,
+      "rows": 1500,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "groupby_decimal_highndv",
+      "iter": 3,
+      "ms": 4.907625,
+      "request_count": 1,
+      "result_bytes": 862104,
+      "rows": 35921,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "groupby_decimal_lowndv",
+      "iter": 3,
+      "ms": 2.693458,
+      "request_count": 1,
+      "result_bytes": 352,
+      "rows": 11,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "approx_quantile_groupby",
+      "iter": 3,
+      "ms": 3.552,
+      "request_count": 1,
+      "result_bytes": 86,
+      "rows": 7,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "intrinsic_to_date",
+      "iter": 3,
+      "ms": 1.222916,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "limit",
+      "iter": 3,
+      "ms": 1.93675,
+      "request_count": 1,
+      "result_bytes": 15599,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "long_predicate",
+      "iter": 3,
+      "ms": 7.780833,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "min_max_runtime_filter",
+      "iter": 3,
+      "ms": 9.175959,
+      "request_count": 1,
+      "result_bytes": 316907,
+      "rows": 2027,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "orderby_all",
+      "iter": 3,
+      "ms": 1.560042,
+      "request_count": 1,
+      "result_bytes": 275420,
+      "rows": 1500,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "orderby_bigint",
+      "iter": 3,
+      "ms": 2.936042,
+      "request_count": 1,
+      "result_bytes": 300000,
+      "rows": 15000,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "orderby_bigint_expression",
+      "iter": 3,
+      "ms": 4.099667,
+      "request_count": 1,
+      "result_bytes": 2400,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "orderby_decimal16",
+      "iter": 3,
+      "ms": 2.573625,
+      "request_count": 1,
+      "result_bytes": 3600,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "orderby_multicol",
+      "iter": 3,
+      "ms": 2.705375,
+      "request_count": 1,
+      "result_bytes": 12008,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "orderby_shortstrings",
+      "iter": 3,
+      "ms": 5.154459,
+      "request_count": 1,
+      "result_bytes": 40,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "shuffle_1mb_rows",
+      "iter": 3,
+      "ms": 85.69946,
+      "request_count": 1,
+      "result_bytes": 8400,
+      "rows": 700,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "shuffle_full_join_one_to_many_string_with_groupby",
+      "iter": 3,
+      "ms": 6.972417,
+      "request_count": 1,
+      "result_bytes": 145,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "shuffle_inner_join_one_to_many_string_with_groupby",
+      "iter": 3,
+      "ms": 2.111334,
+      "request_count": 1,
+      "result_bytes": 185,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "shuffle_inner_join_union_all_with_groupby",
+      "iter": 3,
+      "ms": 4.39425,
+      "request_count": 1,
+      "result_bytes": 37,
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "shuffle_left_join_one_to_many_string_with_groupby",
+      "iter": 3,
+      "ms": 2.19675,
+      "request_count": 1,
+      "result_bytes": 145,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "string_equal_predicate",
+      "iter": 3,
+      "ms": 0.902084,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "string_equal_predicate_lower",
+      "iter": 3,
+      "ms": 0.886209,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "string_in_predicate",
+      "iter": 3,
+      "ms": 1.140708,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "string_like_predicate_center",
+      "iter": 3,
+      "ms": 0.818375,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "string_like_predicate_center_insensitive",
+      "iter": 3,
+      "ms": 0.807917,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "string_like_predicate_multi",
+      "iter": 3,
+      "ms": 0.785209,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "string_ilike_predicate_multi",
+      "iter": 3,
+      "ms": 0.783125,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "string_like_predicate_end",
+      "iter": 3,
+      "ms": 0.770875,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "string_ilike_predicate_end",
+      "iter": 3,
+      "ms": 0.848125,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "string_like_predicate_start",
+      "iter": 3,
+      "ms": 0.883708,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "string_ilike_predicate_start",
+      "iter": 3,
+      "ms": 1.041833,
+      "request_count": 1,
+      "result_bytes": 8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "topn_ordered_allcols",
+      "iter": 3,
+      "ms": 7.235833,
+      "request_count": 1,
+      "result_bytes": 1531,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "topn_aggregate_2columns",
+      "iter": 3,
+      "ms": 3.18475,
+      "request_count": 1,
+      "result_bytes": 200,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "approx_top_k_lineitem",
+      "iter": 3,
+      "ms": 2.532875,
+      "request_count": 1,
+      "result_bytes": 47,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "window_growing_frame",
+      "iter": 3,
+      "ms": 1.316042,
+      "request_count": 1,
+      "result_bytes": 40160,
+      "rows": 1004,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "window_lead_lag_same_frame",
+      "iter": 3,
+      "ms": 2.004458,
+      "request_count": 1,
+      "result_bytes": 123976,
+      "rows": 2204,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "window_row_number",
+      "iter": 3,
+      "ms": 1.674834,
+      "request_count": 1,
+      "result_bytes": 70528,
+      "rows": 2204,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "window_unbounded_frame",
+      "iter": 3,
+      "ms": 1.91725,
+      "request_count": 1,
+      "result_bytes": 303960,
+      "rows": 5066,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "json_extract_simple",
+      "iter": 3,
+      "ms": 2.205666,
+      "request_count": 1,
+      "result_bytes": 12000,
+      "rows": 1000,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "json_extract_nested",
+      "iter": 3,
+      "ms": 0.967375,
+      "request_count": 1,
+      "result_bytes": 0,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "json_aggregates",
+      "iter": 3,
+      "ms": 2.036209,
+      "request_count": 1,
+      "result_bytes": 21661,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "approx_quantiles_array",
+      "iter": 3,
+      "ms": 6.194292,
+      "request_count": 1,
+      "result_bytes": 120,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "statistical_variance_stddev",
+      "iter": 3,
+      "ms": 2.128042,
+      "request_count": 1,
+      "result_bytes": 302,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "statistical_correlation",
+      "iter": 3,
+      "ms": 4.983792,
+      "request_count": 1,
+      "result_bytes": 48,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "olap_cube_analysis",
+      "iter": 3,
+      "ms": 6.06675,
+      "request_count": 1,
+      "result_bytes": 44625,
+      "rows": 840,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "olap_rollup_analysis",
+      "iter": 3,
+      "ms": 4.290916,
+      "request_count": 1,
+      "result_bytes": 11413,
+      "rows": 156,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "timeseries_trend_analysis",
+      "iter": 3,
+      "ms": 3.602292,
+      "request_count": 1,
+      "result_bytes": 1254,
+      "rows": 24,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "max_by_simple",
+      "iter": 3,
+      "ms": 1.613958,
+      "request_count": 1,
+      "result_bytes": 1227,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "min_by_simple",
+      "iter": 3,
+      "ms": 1.508916,
+      "request_count": 1,
+      "result_bytes": 1227,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "max_by_complex",
+      "iter": 3,
+      "ms": 2.295375,
+      "request_count": 1,
+      "result_bytes": 185,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "min_by_complex",
+      "iter": 3,
+      "ms": 1.355292,
+      "request_count": 1,
+      "result_bytes": 2226,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "max_by_with_ties",
+      "iter": 3,
+      "ms": 2.714958,
+      "request_count": 1,
+      "result_bytes": 7875,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "min_by_with_ties",
+      "iter": 3,
+      "ms": 2.640208,
+      "request_count": 1,
+      "result_bytes": 7794,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "qualify_row_number",
+      "iter": 3,
+      "ms": 3.08075,
+      "request_count": 1,
+      "result_bytes": 171274,
+      "rows": 2953,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "qualify_dense_rank",
+      "iter": 3,
+      "ms": 1.5585,
+      "request_count": 1,
+      "result_bytes": 25667,
+      "rows": 301,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "qualify_percentile",
+      "iter": 3,
+      "ms": 2.19825,
+      "request_count": 1,
+      "result_bytes": 32982,
+      "rows": 816,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "qualify_ntile",
+      "iter": 3,
+      "ms": 3.200959,
+      "request_count": 1,
+      "result_bytes": 83210,
+      "rows": 2032,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "qualify_lag_lead",
+      "iter": 3,
+      "ms": 4.43975,
+      "request_count": 1,
+      "result_bytes": 231660,
+      "rows": 3510,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "optimizer_exists_to_semijoin",
+      "iter": 3,
+      "ms": 7.264583,
+      "request_count": 1,
+      "result_bytes": 31025,
+      "rows": 722,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "optimizer_distinct_elimination",
+      "iter": 3,
+      "ms": 2.2965,
+      "request_count": 1,
+      "result_bytes": 52416,
+      "rows": 1872,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "optimizer_common_subexpression",
+      "iter": 3,
+      "ms": 8.875125,
+      "request_count": 1,
+      "result_bytes": 310000,
+      "rows": 5000,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "optimizer_predicate_pushdown",
+      "iter": 3,
+      "ms": 3.440541,
+      "request_count": 1,
+      "result_bytes": 1458,
+      "rows": 27,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "optimizer_join_reordering",
+      "iter": 3,
+      "ms": 4.643708,
+      "request_count": 1,
+      "result_bytes": 685,
+      "rows": 12,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "optimizer_limit_pushdown",
+      "iter": 3,
+      "ms": 3.586541,
+      "request_count": 1,
+      "result_bytes": 6623,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "optimizer_aggregate_pushdown",
+      "iter": 3,
+      "ms": 7.071333,
+      "request_count": 1,
+      "result_bytes": 923,
+      "rows": 13,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "optimizer_constant_folding",
+      "iter": 3,
+      "ms": 40.60604,
+      "request_count": 1,
+      "result_bytes": 88000,
+      "rows": 1000,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "optimizer_column_pruning",
+      "iter": 3,
+      "ms": 19.13208,
+      "request_count": 1,
+      "result_bytes": 1958,
+      "rows": 89,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "optimizer_in_to_exists",
+      "iter": 3,
+      "ms": 15.29042,
+      "request_count": 1,
+      "result_bytes": 8967,
+      "rows": 163,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "optimizer_union_optimization",
+      "iter": 3,
+      "ms": 8.590209,
+      "request_count": 1,
+      "result_bytes": 10141,
+      "rows": 155,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "optimizer_runtime_filter",
+      "iter": 3,
+      "ms": 18.55446,
+      "request_count": 1,
+      "result_bytes": 27004,
+      "rows": 254,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "optimizer_groupjoin",
+      "iter": 3,
+      "ms": 31.54942,
+      "request_count": 1,
+      "result_bytes": 3600,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "any_value_simple",
+      "iter": 3,
+      "ms": 4.837084,
+      "request_count": 1,
+      "result_bytes": 215,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "any_value_with_filter",
+      "iter": 3,
+      "ms": 14.38983,
+      "request_count": 1,
+      "result_bytes": 460,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "groupby_all_simple",
+      "iter": 3,
+      "ms": 19.01479,
+      "request_count": 1,
+      "result_bytes": 136,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "groupby_all_complex",
+      "iter": 3,
+      "ms": 7.954167,
+      "request_count": 1,
+      "result_bytes": 8850,
+      "rows": 219,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "orderby_all_simple",
+      "iter": 3,
+      "ms": 7.852291,
+      "request_count": 1,
+      "result_bytes": 747,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "orderby_all_desc",
+      "iter": 3,
+      "ms": 5.237875,
+      "request_count": 1,
+      "result_bytes": 4447,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "array_agg_simple",
+      "iter": 3,
+      "ms": 6.420666,
+      "request_count": 1,
+      "result_bytes": 33600,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "array_agg_distinct",
+      "iter": 3,
+      "ms": 6.787208,
+      "request_count": 1,
+      "result_bytes": 585,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "array_unnest",
+      "iter": 3,
+      "ms": 7.882333,
+      "request_count": 1,
+      "result_bytes": 6400,
+      "rows": 800,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "array_contains",
+      "iter": 3,
+      "ms": 7.186542,
+      "request_count": 1,
+      "result_bytes": 500,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "array_length",
+      "iter": 3,
+      "ms": 7.38575,
+      "request_count": 1,
+      "result_bytes": 1200,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "array_slice",
+      "iter": 3,
+      "ms": 11.54921,
+      "request_count": 1,
+      "result_bytes": 5600,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "array_min_max",
+      "iter": 3,
+      "ms": 8.856125,
+      "request_count": 1,
+      "result_bytes": 3600,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "array_sort",
+      "iter": 3,
+      "ms": 8.194667,
+      "request_count": 1,
+      "result_bytes": 8400,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "array_distinct",
+      "iter": 3,
+      "ms": 23.33988,
+      "request_count": 1,
+      "result_bytes": 3342,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "struct_construction",
+      "iter": 3,
+      "ms": 11.55271,
+      "request_count": 1,
+      "result_bytes": 5315,
+      "rows": 59,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "struct_access",
+      "iter": 3,
+      "ms": 8.548208,
+      "request_count": 1,
+      "result_bytes": 1092,
+      "rows": 26,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "array_of_struct",
+      "iter": 3,
+      "ms": 23.09067,
+      "request_count": 1,
+      "result_bytes": 360,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "map_construction",
+      "iter": 3,
+      "ms": 7.815708,
+      "request_count": 1,
+      "result_bytes": 18834,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "map_access",
+      "iter": 3,
+      "ms": 9.893291,
+      "request_count": 1,
+      "result_bytes": 364,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "map_keys_values",
+      "iter": 3,
+      "ms": 7.134208,
+      "request_count": 1,
+      "result_bytes": 9439,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "list_transform",
+      "iter": 3,
+      "ms": 7.8425,
+      "request_count": 1,
+      "result_bytes": 16400,
+      "rows": 25,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "list_filter",
+      "iter": 3,
+      "ms": 8.045292,
+      "request_count": 1,
+      "result_bytes": 16496,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "list_reduce",
+      "iter": 3,
+      "ms": 16.21529,
+      "request_count": 1,
+      "result_bytes": 2000,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "asof_join_basic",
+      "iter": 3,
+      "ms": 23.45604,
+      "request_count": 1,
+      "result_bytes": 3200,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "filter_selective",
+      "iter": 3,
+      "ms": 20.69467,
+      "request_count": 1,
+      "result_bytes": 94760,
+      "rows": 2369,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "filter_non_selective",
+      "iter": 3,
+      "ms": 13.85813,
+      "request_count": 1,
+      "result_bytes": 2358720,
+      "rows": 58968,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "orderby_simple",
+      "iter": 3,
+      "ms": 5.740042,
+      "request_count": 1,
+      "result_bytes": 2400,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "orderby_multi",
+      "iter": 3,
+      "ms": 16.10017,
+      "request_count": 1,
+      "result_bytes": 2800,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "orderby_desc",
+      "iter": 3,
+      "ms": 3.067541,
+      "request_count": 1,
+      "result_bytes": 2400,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "string_like",
+      "iter": 3,
+      "ms": 4.037833,
+      "request_count": 1,
+      "result_bytes": 6307,
+      "rows": 99,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "string_starts_with",
+      "iter": 3,
+      "ms": 2.301708,
+      "request_count": 1,
+      "result_bytes": 24345,
+      "rows": 361,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "string_ends_with",
+      "iter": 3,
+      "ms": 3.186,
+      "request_count": 1,
+      "result_bytes": 24548,
+      "rows": 376,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "string_concat",
+      "iter": 3,
+      "ms": 3.455708,
+      "request_count": 1,
+      "result_bytes": 3801,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "string_substring",
+      "iter": 3,
+      "ms": 4.919125,
+      "request_count": 1,
+      "result_bytes": 1100,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "shuffle_join",
+      "iter": 3,
+      "ms": 12.66242,
+      "request_count": 1,
+      "result_bytes": 300000,
+      "rows": 15000,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "topn",
+      "iter": 3,
+      "ms": 12.58454,
+      "request_count": 1,
+      "result_bytes": 240,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "window_rank",
+      "iter": 3,
+      "ms": 22.68038,
+      "request_count": 1,
+      "result_bytes": 39336,
+      "rows": 1192,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "window_sum",
+      "iter": 3,
+      "ms": 13.87438,
+      "request_count": 1,
+      "result_bytes": 2407000,
+      "rows": 60175,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "window_running_sum",
+      "iter": 3,
+      "ms": 5.460042,
+      "request_count": 1,
+      "result_bytes": 4000,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "limit_ordered",
+      "iter": 3,
+      "ms": 8.116458,
+      "request_count": 1,
+      "result_bytes": 15599,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    }
+  ],
+  "result_schema_version": "2.4",
+  "run": {
+    "id": "8c2401a3",
+    "iterations": 3,
+    "net_estimate_status": "endpoint_unknown",
+    "query_time_ms": 3901,
+    "streams": 4,
+    "timestamp": "2026-11-12T16:00:14.920759",
+    "timing_method": 2,
+    "total_duration_ms": 11760
+  },
+  "summary": {
+    "data": {
+      "load_time_ms": 834.6,
+      "rows_loaded": 86805
+    },
+    "queries": {
+      "failed": 0,
+      "passed": 441,
+      "total": 441
+    },
+    "timing": {
+      "avg_ms": 8.8,
+      "geometric_mean_ms": 5.5,
+      "max_ms": 118.4,
+      "min_ms": 0.6,
+      "p90_ms": 19.4,
+      "p95_ms": 26.1,
+      "p99_ms": 50.4,
+      "stdev_ms": 11.2,
+      "total_ms": 3901.3
+    },
+    "validation": "passed"
+  },
+  "tables": {
+    "customer": {
+      "rows": 1500
+    },
+    "lineitem": {
+      "rows": 60175
+    },
+    "nation": {
+      "rows": 25
+    },
+    "orders": {
+      "rows": 15000
+    },
+    "part": {
+      "rows": 2000
+    },
+    "partsupp": {
+      "rows": 8000
+    },
+    "region": {
+      "rows": 5
+    },
+    "supplier": {
+      "rows": 100
+    }
+  },
+  "version": "2.4"
+}
