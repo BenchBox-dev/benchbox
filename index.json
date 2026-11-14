@@ -28834,6 +28834,13 @@
       "status": "done",
       "title": "Increase core, CLI, platform, and utils test coverage to 80%"
     },
+    "noninteractive-prompts-fail-instead-of-skip-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Remaining prompts abort or crash when stdin is not a terminal"
+    },
     "noninteractive-safeguard-audit-20261113": {
       "claim": null,
       "needs": [],
