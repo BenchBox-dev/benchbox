@@ -4,7 +4,7 @@
     "The documented or observed tool-call timeout of at least two MCP clients is cited.",
     "The recommendation (no change, document a limit, or enable local job tools) is recorded for the owner."
   ],
-  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\nCloseout (2026-11-14): https://github.com/BenchBox-dev/benchbox/pull/4230 merged (0c95ff5659). Conformance script accepts both npm view shapes and passed end to end with a real npm 12.2.1 (no shim). Fresh venv with the built wheel and [duckdb]: the README first command completes 22/22 at SF 0.01; a step now runs it in package-smoke and make test-package, but package-smoke triggers only on packaging paths (filed separately). MCP timing via a real stdio client: SF 0.01 6-7 s and SF 0.1 6-9 s complete; SF 1 returns 'incomplete' with no error flag (filed as a defect). Client timeouts: Codex tool_timeout_sec default 60 s; Claude Code long wall clock. Recommendation: no behaviour change and no local job tools now; document using SF 0.1 or lower over local MCP or raising the client timeout; revisit after the SF 1 defect. README and docs/tpc-licensing-analysis.md link to the methodology page.",
   "description": "Problem: in local mode run_benchmark runs synchronously; durable job tools register only in authenticated remote mode. A long run may exceed a client's tool-call timeout and return nothing. This is a hypothesis with no observation yet.\n\nOutcome: measured run times for typical requests against documented timeouts of the main MCP clients, and a recommendation on enabling job tools locally.",
   "sessions": [
     {
@@ -30,6 +30,14 @@
       "generation": "64ffbc5ab6b549729e618c3af406a5bd",
       "op": "take",
       "op_id": "ff06c1c4849540458bcd4f82304e2a8d",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T06:32:38Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "affd484c3b6c4a938de000eea75b7bf9",
       "session_id": "ac67b069b7864c4699843546272d3701"
     }
   ]
