@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The wizard exits with a clear message and documented code when no answer can be read; a closed-stdin test covers it."
+  ],
+  "context": "Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "description": "Problem: after PR #4229, the listed prompts fail cleanly without a terminal, but the interactive `benchbox setup --platform <name>` wizard prompts still have no closed-stdin handling and may fail with a traceback or accept defaults from piped input.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T07:36:39Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f4d055fd543b4d5f99771c7c6da58b88",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}

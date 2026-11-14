@@ -37669,6 +37669,13 @@
       "status": "done",
       "title": "Set a CI LOC-budget guard that fails when UAT exceeds the agreed budget"
     },
+    "setup-wizard-closed-stdin-20261114": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "benchbox setup --platform wizard prompts do not handle a closed stdin"
+    },
     "share-tpch-datagen-with-primitives": {
       "claim": null,
       "needs": [],
