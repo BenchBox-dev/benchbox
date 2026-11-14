@@ -5,7 +5,7 @@
     "A transient failure on one branch (5xx, rate limit) skips or retries that branch and does not discard deletions already proven for others; the exit code still reports the incomplete run.",
     "A test covers a run with one failing lookup among several branches."
   ],
-  "context": "The offline classification used on 2026-11-12, per branch without a worktree: if git merge-base --is-ancestor <tip> origin/develop then merged; else t=$(git commit-tree <tip>^{tree} -p $(git merge-base origin/develop <tip>) -m x) and merged when git cherry origin/develop $t prints a line starting with '-'. A list of every branch and commit from before that prune is in ~/.cache/benchbox/branches-before-prune-20261112.txt on the owner's machine.",
+  "context": "The offline classification used on 2026-11-12, per branch without a worktree: if git merge-base --is-ancestor <tip> origin/develop then merged; else t=$(git commit-tree <tip>^{tree} -p $(git merge-base origin/develop <tip>) -m x) and merged when git cherry origin/develop $t prints a line starting with '-'. A list of every branch and commit from before that prune is in ~/.cache/benchbox/branches-before-prune-20261112.txt on the owner's machine.\n\nMerged in PR #4210 as 804ae302bc: branches provable from local history (ancestor, or byte-exact verbatim patch-id match over --binary diffs read as raw bytes) are settled before any GitHub request; one paginated pull request listing replaces per-branch listings; a failed lookup, rate limit or quota probe skips only the affected branches and the run exits 1 while proven deletions still happen.",
   "description": "scripts/branch_prune_merged.py asks GitHub for the pull requests of every local branch, one request per branch (gh api repos/<repo>/pulls -f head=<owner>:<branch>). On 2026-11-12 the primary clone had 664 local branches. One run stopped on a single HTTP 502; the next ran for about ten minutes, used the whole hourly API quota for the account and stopped on 'API rate limit exceeded'. Both runs deleted nothing, because one failed request aborts the run. The quota is shared, so other agent sessions could not call GitHub until it reset. In the same clone, a local check with no network calls proved 450 of the 664 branches merged: 41 whose tip is an ancestor of origin/develop, and 409 whose whole change, replayed as one commit on the merge base, is patch-equivalent to a commit on origin/develop (git commit-tree plus git cherry). 155 branches without a worktree were left for GitHub to settle.",
   "links": [
     "scripts/branch_prune_merged.py",
@@ -18,6 +18,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "d96e1772a55547eebc70c3761c152902",
+      "session_id": "8e07c6e3a10b49bb94ae7e31664ce4b9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a250daff95b91a4eb6cd2504",
+      "at": "2026-11-14T01:44:43Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "dacfa6f48b8b4baca2e246477e9b3a25",
       "session_id": "8e07c6e3a10b49bb94ae7e31664ce4b9"
     }
   ]
