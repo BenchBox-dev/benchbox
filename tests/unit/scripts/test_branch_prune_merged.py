@@ -558,6 +558,26 @@ def test_insufficient_quota_refuses_remote_lookups(repo: Path, monkeypatch: pyte
     assert _git(repo, "show-ref", "--verify", f"refs/heads/{branch}")
 
 
+def test_failed_quota_probe_still_deletes_proven_branches(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _git(repo, "switch", "-q", "-c", "fix/contained")
+    _commit(repo, "contained.txt", "c\n")
+    _git(repo, "switch", "-q", "develop")
+    _git(repo, "merge", "-q", "--ff-only", "fix/contained")
+    branch = "fix/candidate"
+    head, merge_commit = _add_merged_candidate(repo, branch)
+    _stub_evidence(monkeypatch, {branch: [_pr(branch, head, merge_commit)]}, {100: head})
+
+    def probe_fails(repo_root: Path) -> int | None:
+        raise mod.PruneError("gh api rate_limit timed out")
+
+    monkeypatch.setattr(mod, "remaining_request_quota", probe_fails)
+
+    result = mod.prune_merged_branches(repo, dry_run=False, out=io.StringIO())
+
+    assert result.deleted == 2
+    assert result.exit_code == 0
+
+
 def test_historical_head_requires_timeline_commit_list_and_merge_commit_agreement(
     repo: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

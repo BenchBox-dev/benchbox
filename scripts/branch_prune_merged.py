@@ -430,7 +430,10 @@ def _plan_candidates(repo_root: Path, out: TextIO) -> tuple[list[Candidate], int
         return candidates, kept, failed
 
     with_merged = [name for name in pending if any(pr.get("merged_at") for pr in prs_by_branch.get(name, []))]
-    quota = remaining_request_quota(repo_root)
+    try:
+        quota = remaining_request_quota(repo_root)
+    except PruneError:
+        quota = None
     needed = len(with_merged) * REQUESTS_PER_LOOKUP
     if quota is not None and quota < needed:
         failed += skip_unchecked(
