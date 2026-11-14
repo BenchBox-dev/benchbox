@@ -17919,6 +17919,13 @@
       "status": "done",
       "title": "Warn on core PRs that change the documented contract the site checks"
     },
+    "core-docs-link-methodology-page-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Link the core README and TPC licensing analysis to the methodology page"
+    },
     "core-docs-plan-fingerprint-variation-fields-20261107": {
       "claim": null,
       "needs": [],
