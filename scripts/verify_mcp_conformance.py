@@ -138,21 +138,28 @@ def _run_protocol_gate(url: str, protocol_version: str, workspace: Path) -> None
                 sys.stdout.write(output)
 
 
+def _inspector_pin_matches(npm_view_output: str) -> bool:
+    metadata = json.loads(npm_view_output)
+    if isinstance(metadata, list):
+        if len(metadata) != 1:
+            return False
+        metadata = metadata[0]
+    return metadata == {"dist.integrity": INSPECTOR_INTEGRITY, "gitHead": INSPECTOR_REVISION}
+
+
 def _run_inspector(url: str) -> None:
-    metadata = json.loads(
-        subprocess.check_output(
-            [
-                "npm",
-                "view",
-                f"@modelcontextprotocol/inspector@{INSPECTOR_VERSION}",
-                "dist.integrity",
-                "gitHead",
-                "--json",
-            ],
-            text=True,
-        )
+    npm_view_output = subprocess.check_output(
+        [
+            "npm",
+            "view",
+            f"@modelcontextprotocol/inspector@{INSPECTOR_VERSION}",
+            "dist.integrity",
+            "gitHead",
+            "--json",
+        ],
+        text=True,
     )
-    if metadata != {"dist.integrity": INSPECTOR_INTEGRITY, "gitHead": INSPECTOR_REVISION}:
+    if not _inspector_pin_matches(npm_view_output):
         raise RuntimeError("Inspector package metadata does not match the pinned revision and integrity")
     _run(
         [

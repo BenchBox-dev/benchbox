@@ -95,7 +95,12 @@ from benchbox.core.benchmark_registry import (
     presort_capable_benchmarks,
 )
 from benchbox.core.config import DatabaseConfig
-from benchbox.core.constants import RUN_MODES, VALID_PHASES
+from benchbox.core.constants import (
+    DEFAULT_OUTPUT_COMPRESSION_TYPE,
+    NO_COMPRESSION_ENV_VAR,
+    RUN_MODES,
+    VALID_PHASES,
+)
 from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.core.results.provenance import FUNDING_SOURCES, RESULT_SOURCES
 from benchbox.core.results.status import result_cli_failure_reason, result_non_clean_reason
@@ -929,7 +934,7 @@ def _resolve_compression_settings(s: types.SimpleNamespace) -> None:
         if s.logger:
             s.logger.debug("Compression disabled via --no-compression flag")
     else:
-        env_no_compression = os.getenv("BENCHBOX_NO_COMPRESSION", "").lower() in ["true", "1", "yes", "on"]
+        env_no_compression = os.getenv(NO_COMPRESSION_ENV_VAR, "").lower() in ["true", "1", "yes", "on"]
         if env_no_compression:
             s.compress_data = False
             s.compression_type = "none"
@@ -947,7 +952,7 @@ def _resolve_compression_settings(s: types.SimpleNamespace) -> None:
         else:
             config_compression_enabled = s.config.get("output.compression.enabled", False)
             s.compress_data = config_compression_enabled
-            s.compression_type = s.config.get("output.compression.type", "zstd")
+            s.compression_type = s.config.get("output.compression.type", DEFAULT_OUTPUT_COMPRESSION_TYPE)
             s.compression_level = s.config.get("output.compression.level", None)
             if s.logger:
                 s.logger.debug(f"Compression enabled: type={s.compression_type}, level={s.compression_level}")

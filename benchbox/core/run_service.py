@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
 from benchbox.core.config import BenchmarkConfig, RunConfig
+from benchbox.core.config_utils import load_config_file
 from benchbox.core.constants import (
+    DEFAULT_OUTPUT_COMPRESSION_TYPE,
     GENERIC_POWER_DEFAULT_MEASUREMENT_ITERATIONS,
     GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS,
+    NO_COMPRESSION_ENV_VAR,
     QUERY_PHASES,
 )
 
@@ -98,6 +102,7 @@ from benchbox.core.runner.runner import (
 )
 from benchbox.core.schemas import reject_single_stream_throughput
 from benchbox.core.tpc_spec import min_streams_for_scale, refresh_functions_enabled, require_full_spec
+from benchbox.utils.compression import CompressionManager
 from benchbox.utils.disk_guard import ensure_run_output_space
 from benchbox.utils.toggles import is_probe_requested
 
@@ -337,6 +342,33 @@ def translate_platform_options_for_adapter(platform: str, options: dict) -> dict
     return normalized
 
 
+def _saved_compression_settings() -> Mapping[str, Any]:
+    config_path = Path("benchbox.yaml")
+    if not config_path.exists():
+        config_path = Path.home() / ".benchbox" / "config.yaml"
+    try:
+        saved = load_config_file(config_path)
+    except (FileNotFoundError, ValueError):
+        return {}
+    output = saved.get("output") if isinstance(saved, dict) else None
+    compression = output.get("compression") if isinstance(output, dict) else None
+    return compression if isinstance(compression, dict) else {}
+
+
+def resolve_configured_compression() -> tuple[bool, str, int | None]:
+    saved = _saved_compression_settings()
+    compression_type = str(saved.get("type", DEFAULT_OUTPUT_COMPRESSION_TYPE))
+    disabled = os.getenv(NO_COMPRESSION_ENV_VAR, "").lower() in {"true", "1", "yes", "on"}
+    usable = (
+        bool(saved.get("enabled", True))
+        and compression_type != "none"
+        and compression_type in CompressionManager().get_available_compressors()
+    )
+    if disabled or not usable:
+        return False, "none", None
+    return True, compression_type, saved.get("level")
+
+
 def build_databricks_clustering_intent(options: dict[str, object]):
     strategy = options.get("databricks_clustering_strategy")
     columns = options.get("liquid_clustering_columns")
@@ -425,6 +457,7 @@ __all__ = [
     "is_dataframe_execution",
     "map_phases_to_execution_type",
     "reject_unsupported_dataframe_phases",
+    "resolve_configured_compression",
     "resolve_execution_mode",
     "resolve_lifecycle_phases",
     "resolve_mode_with_registry",

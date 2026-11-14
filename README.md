@@ -16,7 +16,8 @@
 
 BenchBox is an open-source Python toolkit for benchmarking analytical data
 platforms. It generates and loads data, runs repeatable workloads, validates
-execution, and records comparable results through one workflow.
+execution, and records [comparable results](https://benchbox.dev/docs/concepts/benchmark-methodology.html#when-two-results-are-comparable)
+through one workflow.
 
 Use BenchBox to evaluate local databases, cloud data warehouses, and DataFrame
 runtimes with the same benchmark definitions. It is built for data engineers,

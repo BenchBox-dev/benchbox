@@ -105,7 +105,7 @@ class TuningSource(Enum):
     AUTO_DISCOVERED = "auto_discovered"
     PACKAGED_RESOURCE = "packaged_resource"
     SMART_DEFAULTS = "smart_defaults"
-    BASELINE = "baseline"
+    BASELINE = tuning_modes.BASELINE_SOURCE
     INTERACTIVE_WIZARD = "wizard"
     FALLBACK = "fallback"
 

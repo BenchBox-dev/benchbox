@@ -74,6 +74,7 @@
     "docs/compat/capability-matrix.md": "core-generated",
     "docs/compat/skip-reference.md": "core-generated",
     "docs/concepts/architecture.md": "site-owned",
+    "docs/concepts/benchmark-methodology.md": "site-owned",
     "docs/concepts/benchmarking-tools-compared.md": "site-owned",
     "docs/concepts/data-model.md": "site-owned",
     "docs/concepts/glossary.md": "site-owned",

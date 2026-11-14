@@ -355,11 +355,7 @@ class DatabaseManager:
             },
         )
 
-        defaults = {
-            name: value
-            for name, value in PlatformHookRegistry.get_default_options(platform_lower).items()
-            if value is not None
-        }
+        defaults = PlatformHookRegistry.get_applied_default_options(platform_lower)
         options = defaults
         if platform_options:
             options = {**defaults, **platform_options}
