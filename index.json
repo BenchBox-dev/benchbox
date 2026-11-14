@@ -25416,17 +25416,12 @@
       "title": "Document how to clear a carried review finding and a stalled hosted review"
     },
     "hosted-submit-and-publish-without-confirmation-20261113": {
-      "claim": {
-        "expires_at": "2026-11-15T07:35:55Z",
-        "generation": "5420a63c1ed847368c6549a406acb2a3",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
-      },
+      "claim": null,
       "needs": [
         "umbrella-credentials-publication-safety-20261114"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Decide whether submit --service and publish should need a human step when run non-interactively"
     },
     "http-tls-certificate-validation": {
