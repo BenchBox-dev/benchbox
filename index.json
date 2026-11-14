@@ -21825,6 +21825,13 @@
       "status": "done",
       "title": "Doris: query failures across seven benchmarks in release UAT"
     },
+    "driver-auto-install-from-cli-flag-20261113": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "A platform option can make benchbox run pip install a package, including during a dry run"
+    },
     "drop-chdb-core-from-core-dependencies": {
       "claim": null,
       "needs": [],

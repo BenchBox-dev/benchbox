@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "A dry run never installs a package; a test proves it.",
+    "Auto-install prints the exact package and version before installing and is refused non-interactively unless explicitly enabled by the environment variable, with the behaviour documented.",
+    "The version string is validated against a package-version pattern before reaching the installer.",
+    "platforms install help says it prints instructions only, or the command is renamed with an alias, per the owner's choice."
+  ],
+  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "description": "Problem: `--platform-option driver_version=X --platform-option driver_auto_install=true`, or BENCHBOX_DRIVER_AUTO_INSTALL=1, makes ensure_driver_version (benchbox/utils/runtime_env.py) run `uv pip install` or `pip install` for the named version, reachable from run and run --dry-run. MCP cannot set it (allow-list). Separately, `benchbox platforms install` only prints guidance, which its name does not suggest.\n\nOutcome: installing a package is an explicit, visible step, and the dry run installs nothing.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T01:17:42Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "251ac795672745638b136282ece7ac6b",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}
