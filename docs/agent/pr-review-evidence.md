@@ -35,8 +35,8 @@ enumerated instances, node IDs, control outcomes, and the seam trace.
 
 ## Hosted review recovery
 
-Checked against Theseus 0.2.12 (`origin/main` at `a9acebe`, six commits after
-tag `v0.2.11`): `report.py` (`REPOST_NOTE`), `cli.py` (`_dispute_replies`),
+Checked against Theseus 0.2.13 (`origin/main` at `312ece0`, tag `v0.2.13`):
+`report.py` (`REPOST_NOTE`), `cli.py` (`_dispute_replies`),
 `status_text.py` (`STOPPED`) and `docs/consumer-policy.md` ("Disputing a
 finding"). Recheck these when the pinned Theseus version changes.
 
@@ -56,7 +56,9 @@ finding"). Recheck these when the pinned Theseus version changes.
    finding, and the finding is still open; any other top-level comment is not
    a dispute. Two dispute re-reviews of one patch that leave a finding open
    escalate it; then only an attester's
-   `Review adjudication: WITHDRAW|MAINTAIN D<n> - <reason>` settles it.
+   `Review adjudication: WITHDRAW|MAINTAIN D<n> - <reason>` settles it. The same
+   comment settles a finding carried as a claimed prior from the local record
+   without escalation.
 3. **"Reviewer process is blocked".** A review reporting "review stopped, a
    reviewer process is blocked" does not retry by itself. Comment `/review` to
    restart it.
