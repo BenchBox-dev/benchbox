@@ -13742,10 +13742,15 @@
       "title": "✅ Benchmark Management Boundaries"
     },
     "benchmark-methodology-page-20261112": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-15T01:19:25Z",
+        "generation": "2a7927437aa640d7940874e85cf09c46",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Publish one methodology page: how to run a sound benchmark and what a result supports"
     },
     "benchmark-option-cli-support": {
