@@ -4,11 +4,12 @@
     "A non-adoption CI or review completion starts no run of this workflow.",
     "An adoption PR's CI and review completions still trigger the arm job, shown by the workflow contract tests."
   ],
-  "context": "Decision gate: none needed for the trigger filter. If the branches filter cannot express the trust root's branchPrefix exactly, stop and ask the owner before changing the arm job's condition.\n\nVerification rubric: (1) workflow contract tests, including the branchPrefix drift test, extended to the new branches filter, fail before and pass after; (2) actionlint shows no new findings (the existing queue and SC2086 findings are pre-existing); (3) confirm from GitHub's docs that workflow_run branches filters on the triggering run's head branch; (4) after merge, record the delivery run count for 24 hours before and after: non-adoption CI and review completions start no run, and a dry-run dispatch still passes readiness with state current.\n\nGuardrails: schedule and workflow_dispatch triggers, the readiness, prepare and publish jobs, and the arm job's if stay unchanged; no new permission or secret; ship through the core PR flow (make worktree-create, make pr-preflight, make pr-open, make pr-arm) with a changelog fragment marked internal.",
+  "context": "Decision gate: none needed for the trigger filter. If the branches filter cannot express the trust root's branchPrefix exactly, stop and ask the owner before changing the arm job's condition.\n\nVerification rubric: (1) workflow contract tests, including the branchPrefix drift test, extended to the new branches filter, fail before and pass after; (2) actionlint shows no new findings (the existing queue and SC2086 findings are pre-existing); (3) confirm from GitHub's docs that workflow_run branches filters on the triggering run's head branch; (4) after merge, record the delivery run count for 24 hours before and after: non-adoption CI and review completions start no run, and a dry-run dispatch still passes readiness with state current.\n\nGuardrails: schedule and workflow_dispatch triggers, the readiness, prepare and publish jobs, and the arm job's if stay unchanged; no new permission or secret; ship through the core PR flow (make worktree-create, make pr-preflight, make pr-open, make pr-arm) with a changelog fragment marked internal.\n\n2026-11-14: delivered in https://github.com/BenchBox-dev/benchbox/pull/4233, merged as 1a9b75f96ec0a3f9b1329a222de73e7d12e9261d at 14:40Z. Diff: workflow_run gains branches: [\"chore/sqlglot-**\"] (GitHub docs: the filter matches the triggering run's head branch; * does not match /, ** does, so the filter admits exactly the arm job's startsWith('chore/sqlglot-') set); the arm job if, schedule/dispatch triggers, other jobs, permissions and secrets unchanged. Rubric (1): new test test_the_workflow_run_trigger_only_fires_for_branches_with_the_trust_root_branch_prefix checks the trigger patterns against the trust root branchPrefix with GitHub glob semantics (chore/sqlglot-1.2.3 and chore/sqlglot-nested/branch match; develop, chore/sqlglot, feature/chore/sqlglot-1.2.3 do not); fails before (KeyError: 'branches'), passes after; tests/unit/workflows 1234 passed; preflight 1244 passed. (2) actionlint: only the pre-existing queue and SC2086 findings. (3) docs confirmed as above. (4) partial: post-merge dry-run dispatch run 43606450333 succeeded, readiness passed, state current; 1 hour before merge had 21 delivery workflow_run runs; from merge to 15:10Z no CI/review-verdict/review-gate run completed, so no live non-adoption trigger was observable yet. Remaining before finish: after the hold, count delivery workflow_run runs and CI/review completions since 2026-11-14T14:41Z; expect zero delivery workflow_run runs for non-adoption branches. The PR's first push briefly carried an unrelated amended commit; it was removed (reset and force-push) before review cleared and the merged diff is the two files above.",
   "description": "sqlglot-delivery.yml triggers on workflow_run completion of CI, review-verdict and review-gate with no branches filter; the arm job's if (startsWith(head_branch, 'chore/sqlglot-')) is the only scope. The workflow therefore starts a run for every such completion in the repository: 780 runs between 2026-11-11T15:00Z and 2026-11-12T15:00Z, all skipped. The 200 most recent runs were all skipped workflow_run runs, which buried the scheduled and dispatched runs (finding the four 2026-11-11 dispatch startup_failures needed --event filters), and each run enters the workflow-level concurrency group sqlglot-delivery (queue: max) ahead of or behind real schedule and dispatch runs. Introduced with event-driven arming in #4075.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4075"
   ],
+  "not_before": "2026-11-15T15:00:00Z",
   "sessions": [
     {
       "actor": "omp:sqlglot-delivery-hardening-leader",
@@ -25,6 +26,14 @@
       "op": "update",
       "op_id": "fc22a1b658e64dbab4c20f9ae99f5197",
       "session_id": "b5bbdccf008f4ffea393206edd986580"
+    },
+    {
+      "actor": "omp:sqlglot-delivery-hardening-leader",
+      "at": "2026-11-14T15:15:56Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "0f55e7ca0b654acabcaf512c0dfc83af",
+      "session_id": "257159110f094bdea94f05ca405f8936"
     }
   ]
 }
