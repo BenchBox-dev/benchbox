@@ -51,6 +51,7 @@ from benchbox.cli.platform_checks import check_and_setup_platform_credentials
 from benchbox.cli.platform_hooks import PlatformOptionError
 from benchbox.cli.presentation.system import display_system_recommendations
 from benchbox.cli.progress import BenchmarkProgress, should_show_progress
+from benchbox.cli.publication_guard import PUBLISH_LABEL_HELP, enforce_maintainer_label
 from benchbox.cli.run_platform_resolution import (
     BENCHMARK_ALIASES as BENCHMARK_ALIASES,
     _apply_benchmark_default_scale,
@@ -2847,11 +2848,7 @@ def _interactive_handle_result(s: types.SimpleNamespace, result: Any, orchestrat
     "--publish-label",
     default="maintainer-run",
     show_default=True,
-    help=(
-        "Trust label for --publish (maintainer-run, community-submission, "
-        "vendor-supplied, ci, local, unofficial-research). maintainer-run is refused with exit 6 "
-        "unless BENCHBOX_ALLOW_MAINTAINER_LABEL=1 is set."
-    ),
+    help=PUBLISH_LABEL_HELP,
 )
 @click.option(
     "--funding",
@@ -2950,8 +2947,6 @@ def run(
     from benchbox.core.run_service import apply_polars_streaming_flag, begin_run
 
     if publish:
-        from benchbox.cli.publication_guard import enforce_maintainer_label
-
         enforce_maintainer_label(publish_label)
 
     begin_run()

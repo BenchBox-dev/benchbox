@@ -23,6 +23,12 @@ HOSTED_SUBMISSION_FLAG_HELP = (
 )
 
 
+PUBLISH_LABEL_HELP = (
+    "Trust label for --publish (maintainer-run, community-submission, vendor-supplied, ci, local, "
+    f"unofficial-research). maintainer-run is refused with exit 6 unless {MAINTAINER_LABEL_ENV_VAR}=1 is set."
+)
+
+
 def _env_enabled(name: str) -> bool:
     return os.environ.get(name, "").strip().lower() in _TRUTHY
 
