@@ -21857,17 +21857,12 @@
       "title": "Doris: query failures across seven benchmarks in release UAT"
     },
     "driver-auto-install-from-cli-flag-20261113": {
-      "claim": {
-        "expires_at": "2026-11-15T06:02:23Z",
-        "generation": "92a8e6d635cd489ab7227bbca49fc274",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
-      },
+      "claim": null,
       "needs": [
         "umbrella-run-path-safety-20261114"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "A platform option can make benchbox run pip install a package, including during a dry run"
     },
     "drop-chdb-core-from-core-dependencies": {
