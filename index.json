@@ -45630,6 +45630,13 @@
       "status": "done",
       "title": "Umbrella: CLI contract for scripts and CI, one branch and one PR"
     },
+    "umbrella-core-tooling-docs-20261114": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Umbrella: conformance script, fresh-install check, MCP timing and doc links, one branch and one PR"
+    },
     "umbrella-credentials-publication-safety-20261114": {
       "claim": null,
       "needs": [],

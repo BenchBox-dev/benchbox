@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The branch's PR has merged, and each member's acceptance criteria are evidenced on it."
+  ],
+  "context": "Guardrails: one linked worktree and one feature branch, one PR to develop; follow AGENTS.md; no live-cloud runs; heavy work only via lock-taking targets; comment policy; changelog.d fragments. Delivered by one delegated agent; the planning session is the only tracker writer and finishes this umbrella and its members after the PR merges.",
+  "description": "Feature-branch umbrella. Members: mcp-conformance-script-npm12-20261113, verify-fresh-install-first-command-20261113, mcp-local-run-timeout-measure-20261113, core-docs-link-methodology-page-20261113.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T03:33:04Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "3d477d2563904e7697b6a5b218d33137",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}
