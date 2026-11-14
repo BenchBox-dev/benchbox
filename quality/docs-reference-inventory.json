@@ -2601,7 +2601,7 @@
    "targets": [
     {
      "kind": "unresolved",
-     "target": "docs/tidy-perms/todo/shared-change-framework/shared-investigation-framework/shared-review-protocol"
+     "target": "docs/todo/shared-change-framework/shared-investigation-framework/shared-review-protocol"
     }
    ]
   },

@@ -55,7 +55,6 @@ EXPECTED_GROUPS = [
             "code",
             "test",
             "docs",
-            "tidy-perms",
             "todo",
             "shared-change-framework",
             "shared-investigation-framework",
