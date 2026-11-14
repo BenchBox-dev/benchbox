@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from unittest.mock import patch
 
 from tests.uat.config import VALID_TERMINAL_STATES, UATConfig
 from tests.uat.phases import PhaseResult
@@ -54,16 +56,7 @@ def _build_submit_argv(
     service: str | None,
 ) -> list[str]:
     if state in ("local-stage", "draft-pr", "merged-to-published-results"):
-        return [
-            "benchbox",
-            "publish",
-            "run",
-            str(result_path),
-            "--target",
-            str(submissions_dir),
-            "--label",
-            "local",
-        ]
+        return ["benchbox", "publish", "run", str(result_path), "--target", str(submissions_dir)]
     if state == "cloud-uploaded":
         assert service is not None
         return ["benchbox", "submit", str(result_path), "--service", service, "--acknowledge-hosted-submission"]
@@ -135,7 +128,8 @@ def run_package(
             service=service,
         )
         invocations.append(tuple(argv))
-        completed = runner(argv, check=False)
+        with patch.dict(os.environ, {"BENCHBOX_ALLOW_MAINTAINER_LABEL": "1"}):
+            completed = runner(argv, check=False)
         if getattr(completed, "returncode", 0) == 0:
             success += 1
         else:

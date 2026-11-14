@@ -21,6 +21,11 @@ PRIVATE_FILE_MODE = 0o600
 _GROUP_OTHER_BITS = 0o077
 
 
+def require_private_mode(mode: int, location: Path) -> None:
+    if os.name == "posix" and mode & _GROUP_OTHER_BITS:
+        raise PermissionError(f"Could not create a private credentials file in {location} (mode {mode:04o})")
+
+
 class CredentialStatus(Enum):
     VALID = "valid"
     INVALID = "invalid"
@@ -88,6 +93,19 @@ class CredentialManager:
                 PRIVATE_FILE_MODE,
             )
 
+    def _create_private_temporary(self, parent: Path) -> tuple[int, str]:
+        descriptor, name = tempfile.mkstemp(dir=parent, prefix=".credentials-", suffix=".tmp")
+        try:
+            require_private_mode(stat.S_IMODE(os.fstat(descriptor).st_mode), parent)
+        except BaseException:
+            os.close(descriptor)
+            Path(name).unlink(missing_ok=True)
+            raise
+        return descriptor, name
+
+    def _install(self, temporary: str) -> None:
+        os.replace(temporary, self.credentials_path)
+
     def save_credentials(self) -> None:
         parent = self.credentials_path.parent
         parent.mkdir(mode=PRIVATE_DIRECTORY_MODE, parents=True, exist_ok=True)
@@ -99,15 +117,13 @@ class CredentialManager:
             "last_updated": datetime.now().isoformat(),
         }
 
-        descriptor, temp_name = tempfile.mkstemp(dir=parent, prefix=".credentials-", suffix=".tmp")
+        descriptor, temp_name = self._create_private_temporary(parent)
         try:
-            if os.name == "posix" and stat.S_IMODE(os.fstat(descriptor).st_mode) & _GROUP_OTHER_BITS:
-                raise PermissionError(f"Could not create a private credentials file in {parent}")
             with os.fdopen(descriptor, "w", encoding="utf-8") as f:
                 yaml.dump(data_to_save, f, default_flow_style=False, sort_keys=False)
                 f.flush()
                 os.fsync(f.fileno())
-            os.replace(temp_name, self.credentials_path)
+            self._install(temp_name)
         except BaseException:
             Path(temp_name).unlink(missing_ok=True)
             raise

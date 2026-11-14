@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from benchbox.security.credentials import CredentialManager, CredentialStatus
+from benchbox.security.credentials import CredentialManager, CredentialStatus, require_private_mode
 
 pytestmark = [
     pytest.mark.unit,
@@ -38,19 +38,20 @@ def test_directory_and_file_are_private_from_creation(tmp_path: Path, umask: int
     assert _mode(target) == 0o600
 
 
-def test_file_is_never_visible_at_a_wider_mode(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_file_is_never_visible_at_a_wider_mode(tmp_path: Path) -> None:
     target = tmp_path / "credentials.yaml"
     seen: list[int] = []
-    real_replace = os.replace
 
-    def spying_replace(source, destination):
-        seen.append(_mode(Path(source)))
-        real_replace(source, destination)
+    class Recording(CredentialManager):
+        def _install(self, temporary: str) -> None:
+            seen.append(_mode(Path(temporary)))
+            super()._install(temporary)
 
-    monkeypatch.setattr(os, "replace", spying_replace)
+    manager = Recording(credentials_path=target)
+    manager.set_platform_credentials("snowflake", {"password": "hunter2"}, CredentialStatus.VALID)
     previous = os.umask(0o000)
     try:
-        _saved_manager(target).save_credentials()
+        manager.save_credentials()
     finally:
         os.umask(previous)
 
@@ -84,38 +85,39 @@ def test_private_existing_file_saves_without_warning(tmp_path: Path, caplog: pyt
     assert caplog.records == []
 
 
-def test_failure_to_create_private_file_is_an_error_and_leaves_no_file(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+@pytest.mark.parametrize("mode", [0o644, 0o640, 0o604, 0o666])
+def test_a_wider_mode_is_an_error(tmp_path: Path, mode: int) -> None:
+    with pytest.raises(PermissionError, match=f"{mode:04o}"):
+        require_private_mode(mode, tmp_path)
+
+
+@pytest.mark.parametrize("mode", [0o600, 0o400, 0o700])
+def test_an_owner_only_mode_is_accepted(tmp_path: Path, mode: int) -> None:
+    require_private_mode(mode, tmp_path)
+
+
+def test_temporary_file_is_created_private_under_a_permissive_umask(tmp_path: Path) -> None:
+    manager = CredentialManager(credentials_path=tmp_path / "credentials.yaml")
+    previous = os.umask(0o000)
+    try:
+        descriptor, name = manager._create_private_temporary(tmp_path)
+    finally:
+        os.umask(previous)
+    os.close(descriptor)
+
+    assert _mode(Path(name)) == 0o600
+
+
+def test_write_failure_propagates_and_removes_the_temporary_file(tmp_path: Path) -> None:
     target = tmp_path / "credentials.yaml"
-    real_fstat = os.fstat
+    manager = _saved_manager(target)
+    target.mkdir()
+    (target / "occupied").write_text("x", encoding="utf-8")
 
-    def wide_fstat(descriptor):
-        info = real_fstat(descriptor)
-        return os.stat_result((stat.S_IFREG | 0o644, *info[1:]))
+    with pytest.raises(OSError):
+        manager.save_credentials()
 
-    monkeypatch.setattr(os, "fstat", wide_fstat)
-
-    with pytest.raises(PermissionError):
-        _saved_manager(target).save_credentials()
-
-    assert list(tmp_path.iterdir()) == []
-
-
-def test_write_failure_propagates_and_removes_the_temporary_file(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    target = tmp_path / "credentials.yaml"
-
-    def failing_replace(source, destination):
-        raise OSError("disk full")
-
-    monkeypatch.setattr(os, "replace", failing_replace)
-
-    with pytest.raises(OSError, match="disk full"):
-        _saved_manager(target).save_credentials()
-
-    assert list(tmp_path.iterdir()) == []
+    assert [path.name for path in tmp_path.iterdir()] == ["credentials.yaml"]
 
 
 def test_environment_references_survive_a_save(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

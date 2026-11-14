@@ -170,12 +170,26 @@ class TestMaintainerLabelRestriction:
 
         assert result.exit_code == 0
 
-    def test_publish_bundle_used_by_run_publish_refuses_the_label(
-        self, source: Path, monkeypatch: pytest.MonkeyPatch
+    def test_publish_bundle_refuses_the_label_before_redacting_anything(
+        self, source: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        monkeypatch.setattr(pub, "BundlePublisher", lambda **_kw: (_ for _ in ()).throw(AssertionError("published")))
+        reached: list[Path] = []
+        monkeypatch.setattr(pub, "_redacted_publish_source", lambda path: reached.append(path) or (None, None))
 
         assert pub.publish_bundle(source, label="maintainer-run") is None
+
+        assert reached == []
+        assert MAINTAINER_LABEL_ENV_VAR in capsys.readouterr().out
+
+    def test_publish_bundle_proceeds_past_the_label_with_the_variable(
+        self, source: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv(MAINTAINER_LABEL_ENV_VAR, "1")
+        reached: list[Path] = []
+        monkeypatch.setattr(pub, "_redacted_publish_source", lambda path: reached.append(path) or (None, None))
+
+        assert pub.publish_bundle(source, label="maintainer-run") is None
+        assert reached == [source]
 
     def test_run_publish_refuses_before_running_anything(self) -> None:
         from benchbox.cli.app import cli
@@ -338,3 +352,33 @@ class TestOrchestratorCredentialPrompt:
 
         assert isinstance(result.exception, Stop), result.output
         assert seen == [expected]
+
+
+class TestInteractiveCancel:
+    def test_ctrl_c_at_a_real_terminal_is_a_cancel_not_a_refusal(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import click
+
+        from benchbox.cli import prompt_guard
+
+        monkeypatch.setattr(prompt_guard, "is_non_interactive_session", lambda *_a, **_k: False)
+
+        def cancelled() -> bool:
+            raise click.Abort
+
+        with pytest.raises(click.Abort):
+            prompt_guard.confirm_or_refuse("removing a record", flag="--yes", ask=cancelled)
+
+    def test_missing_answer_without_a_terminal_is_a_refusal(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import click
+
+        from benchbox.cli import prompt_guard
+
+        monkeypatch.setattr(prompt_guard, "is_non_interactive_session", lambda *_a, **_k: True)
+
+        def unanswered() -> bool:
+            raise click.Abort
+
+        with pytest.raises(SystemExit) as exit_info:
+            prompt_guard.confirm_or_refuse("removing a record", flag="--yes", ask=unanswered)
+
+        assert exit_info.value.code == REFUSED
