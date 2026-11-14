@@ -1,8 +1,13 @@
 {
   "acceptance": [
-    "A scan of /Users/joe/Developer/BenchBox.wt-*/.mcp.json finds no `todo-db` registration, or each remaining one is listed with the owner's reason to keep it."
+    "Each clean worktree is removed and its branch still exists; the removal list with head SHAs, and the method used for each, is appended to this item.",
+    "A rescan of /Users/joe/Developer/BenchBox.wt-*/.mcp.json finds todo-db only in the worktrees listed here as holding local work, each with its dirty and unpushed counts."
   ],
-  "description": "Cleanup gap from the tractable switch (#4013, merged 2026-11-07). On 2026-11-11, 42 BenchBox.wt-* worktrees were still on branches cut before #4013: their .mcp.json registers `todo-db` through their pinned todo-db runtime and their copy of the todo skill tells agents to run bare `todo-db` CLI commands (bootstrap, validate, list). The global todo-db tool was uninstalled on 2026-11-11, so those bare commands now fail with command not found; the MCP server still works through each worktree's own pinned wheel. Work resumed in such a worktree also runs an old tracker version against the live store (schema 4 is compatible, but claim rules differ from 1.1.x). Each needs merging origin/develop if still live, or retiring through make worktree-finish. Related: worktree-reap-leaves-malformed-and-closed-pr-worktrees-20261112, which covers why the reaper cannot remove some of them.",
+  "description": "Cleanup gap from the tractable switch (#4013, merged 2026-11-07). On 2026-11-14, 42 BenchBox.wt-* worktrees were on branches cut before #4013. Their .mcp.json registers todo-db through each worktree's own pinned todo-db wheel, and their copy of the todo skill tells agents to run bare todo-db CLI commands, which fail since the global todo-db was uninstalled on 2026-11-11. Worktrees pinned to todo-db 0.9.1-0.13.0 also get E_SCHEMA from their own server: schema 4 arrived in 0.14.0 and older clients refuse a schema-4 store, so they have no working tracker at all. Those on 0.14.0 or 0.15.0 work but follow older claim rules.\n\nCensus 2026-11-14 (dirty = uncommitted changes; unpushed = commits not on origin): 29 clean (dirty 0, unpushed 0), 13 with local work.\n\nDecision (owner, 2026-11-14): remove the 29 clean worktrees with BenchBox's worktree tooling, keeping their branches; leave the 13 with local work and list them in this item for the owner.\n\nGuardrails:\n- Never remove a worktree with uncommitted changes or commits that are not on origin; recheck both immediately before each removal.\n- Keep every branch.\n- Use the repository's worktree tooling (make worktree-finish or worktree-reap, with the expected head). Fall back to plain `git worktree remove` (never --force) only when the tooling refuses a clean worktree for provenance reasons, and record that.\n- Never patch .mcp.json in place; never force-push; no change to any branch or PR.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4013",
+    "worktree-reap-leaves-malformed-and-closed-pr-worktrees-20261112"
+  ],
   "sessions": [
     {
       "actor": "joe-tractable-followups",
@@ -11,6 +16,14 @@
       "op": "create",
       "op_id": "e9b7574a9cc64a0d94ca725320740377",
       "session_id": "f2d490b3e67f4a799a2cdcae340365d1"
+    },
+    {
+      "actor": "joe-tractable-followups",
+      "at": "2026-11-14T21:06:54Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "dc143bfdf3004d13a47e6e7f8d8fe141",
+      "session_id": "5b2617602b274625909e4834eb179a80"
     }
   ]
 }
