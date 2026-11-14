@@ -17925,7 +17925,9 @@
     },
     "core-docs-link-methodology-page-20261113": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "umbrella-core-tooling-docs-20261114"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Link the core README and TPC licensing analysis to the methodology page"
