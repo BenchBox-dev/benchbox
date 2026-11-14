@@ -81,6 +81,10 @@ class BenchmarkOrchestrator:
         self.directory_manager = DirectoryManager(base_dir)
         self.custom_output_dir = None
         self._verbosity = VerbositySettings.default()
+        self._non_interactive = False
+
+    def set_non_interactive(self, non_interactive: bool) -> None:
+        self._non_interactive = non_interactive
 
     def set_verbosity(self, settings: VerbositySettings) -> None:
 
@@ -396,10 +400,22 @@ class BenchmarkOrchestrator:
 
         self.console.print(f"\n[yellow]⚠️  {platform.capitalize()} credentials not found[/yellow]")
         self.console.print(f"\nTo use {platform.capitalize()}, you need to configure credentials.")
+        setup_hint = f"\n[dim]To set up, run: benchbox setup --platform {platform}[/dim]"
 
-        if not Confirm.ask("\n🔧 Would you like to set up credentials now?", default=True):
+        if self._non_interactive:
+            self.console.print(setup_hint)
+            return False
+
+        try:
+            wants_setup = Confirm.ask("\n🔧 Would you like to set up credentials now?", default=True)
+        except EOFError:
+            self.console.print("[yellow]No terminal to answer on; skipping credential setup[/yellow]")
+            self.console.print(setup_hint)
+            return False
+
+        if not wants_setup:
             self.console.print("[yellow]Skipping credential setup[/yellow]")
-            self.console.print(f"\n[dim]To set up later, run: benchbox setup --platform {platform}[/dim]")
+            self.console.print(setup_hint)
             return False
 
         success = run_platform_credential_setup(platform, self.console, show_welcome=True)

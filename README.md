@@ -233,6 +233,27 @@ uv run -- benchbox check-deps --platform databricks
 Platform guides cover credentials, connection settings, and platform-specific
 options. Do not put credentials in configuration files that you commit.
 
+### Saved platform credentials
+
+`benchbox setup --platform <name>` saves credentials to `~/.benchbox/credentials.yaml`. The file is
+**not encrypted**: Snowflake, Redshift, SingleStore and Athena secrets, AWS keys and the Databricks token are
+stored as plain YAML text. BenchBox creates `~/.benchbox` with mode `0700` and the file with mode `0600`, and
+tightens a wider existing file on the next write with a warning, but any process you run can still read it.
+
+To keep a secret out of the file, write an environment reference as the value instead:
+
+```yaml
+snowflake:
+  account: myorg-myaccount
+  username: benchmark_user
+  password: ${SNOWFLAKE_PASSWORD}
+```
+
+The reference is expanded from the environment each time the file is read, and is kept as written when
+BenchBox saves the file again. `benchbox run` reads Snowflake settings only from this file and ignores
+`SNOWFLAKE_*` variables on their own; `benchbox setup` can read them for you, and `${VAR}` references are how
+`run` picks them up. The hosted-submit token is the one secret stored in the operating system keyring.
+
 ## Project status
 
 > **BenchBox is BETA software.** The CLI and core workflows are usable, but

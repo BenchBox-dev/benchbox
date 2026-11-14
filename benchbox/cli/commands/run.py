@@ -1436,6 +1436,7 @@ def _run_direct(s: types.SimpleNamespace) -> None:
 
     orchestrator = BenchmarkOrchestrator()
     orchestrator.set_verbosity(s.verbosity_settings)
+    orchestrator.set_non_interactive(s.non_interactive)
 
     if s.output:
         normalized_output = normalize_output_root(s.output, s.benchmark, s.scale)
@@ -1640,6 +1641,7 @@ def _run_data_or_load_only(s: types.SimpleNamespace) -> None:
 
     orchestrator = BenchmarkOrchestrator()
     orchestrator.set_verbosity(s.verbosity_settings)
+    orchestrator.set_non_interactive(s.non_interactive)
 
     if s.output:
         normalized_output = normalize_output_root(s.output, s.benchmark, s.scale)
@@ -2375,6 +2377,7 @@ def _interactive_preflight_and_execute(s: types.SimpleNamespace, system_profile:
 
     orchestrator = BenchmarkOrchestrator()
     orchestrator.set_verbosity(s.verbosity_settings)
+    orchestrator.set_non_interactive(s.non_interactive)
 
     if s.output:
         normalized_output = normalize_output_root(s.output, s.benchmark_config.name, s.benchmark_config.scale_factor)
@@ -2832,7 +2835,8 @@ def _interactive_handle_result(s: types.SimpleNamespace, result: Any, orchestrat
     show_default=True,
     help=(
         "Trust label for --publish (maintainer-run, community-submission, "
-        "vendor-supplied, ci, local, unofficial-research)."
+        "vendor-supplied, ci, local, unofficial-research). maintainer-run is refused with exit 6 "
+        "unless BENCHBOX_ALLOW_MAINTAINER_LABEL=1 is set."
     ),
 )
 @click.option(
@@ -2930,6 +2934,11 @@ def run(
     acknowledge_billable_platform: bool = False,
 ) -> None:
     from benchbox.core.run_service import apply_polars_streaming_flag, begin_run
+
+    if publish:
+        from benchbox.cli.publication_guard import enforce_maintainer_label
+
+        enforce_maintainer_label(publish_label)
 
     begin_run()
     if polars_streaming:

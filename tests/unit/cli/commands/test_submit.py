@@ -26,6 +26,11 @@ def _community_publish_salt(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("BENCHBOX_MACHINE_ID_SALT", "unit-test-community-publish-salt")
 
 
+@pytest.fixture(autouse=True)
+def _acknowledge_hosted_submission(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("BENCHBOX_ACKNOWLEDGE_HOSTED_SUBMISSION", "1")
+
+
 def _fake_result() -> SimpleNamespace:
     return SimpleNamespace(
         benchmark_name="tpch",

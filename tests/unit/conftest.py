@@ -133,6 +133,7 @@ def cli_benchmark_mocks():
 
         mock_orchestrator_instance = type("MockOrchestrator", (), {})()
         mock_orchestrator_instance.set_verbosity = lambda *_args, **_kwargs: None
+        mock_orchestrator_instance.set_non_interactive = lambda *_args, **_kwargs: None
         mock_orchestrator_instance.set_custom_output_dir = lambda *_args, **_kwargs: None
         mock_orchestrator.return_value = mock_orchestrator_instance
         mock_run_orchestrator.return_value = mock_orchestrator_instance
