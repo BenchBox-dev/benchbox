@@ -45778,10 +45778,15 @@
       "title": "Umbrella: run-path safety fixes, one branch and one PR"
     },
     "umbrella-site-docs-accuracy-20261114": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-15T07:37:13Z",
+        "generation": "763e2cac22a54571bd8985bfd189e089",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Umbrella: site documentation accuracy (BenchBox-dev/benchbox-site)"
     },
     "unattributed-update-branch-commits-block-merge-20261008": {
