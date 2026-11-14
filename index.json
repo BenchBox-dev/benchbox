@@ -45673,10 +45673,15 @@
       "title": "Umbrella: CLI and MCP result parity and DataFrame host load, one branch and one PR"
     },
     "umbrella-results-validation-soundness-20261114": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-15T04:35:40Z",
+        "generation": "19586ef49450453680b361d22300c257",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Umbrella: validator false failures and the TPC-DS subscale contract, one branch and one PR"
     },
     "umbrella-run-path-safety-20261114": {
