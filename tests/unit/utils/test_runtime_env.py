@@ -560,3 +560,83 @@ class TestIterSitePackages:
         result = list(_iter_site_packages(tmp_path))
         assert unix_sp in result
         assert win_sp in result
+
+
+class TestAutoInstallGate:
+    @pytest.fixture
+    def installer(self, monkeypatch):
+        commands: list[list[str]] = []
+        state = {"version": "1.0.0"}
+
+        def fake_install(command):
+            commands.append(command)
+            state["version"] = "2.0.0"
+
+        monkeypatch.setattr(runtime_env, "_get_installed_version", lambda _: state["version"])
+        monkeypatch.setattr(runtime_env, "_run_install_command", fake_install)
+        monkeypatch.setattr(runtime_env, "discover_isolated_runtime", lambda **_: None)
+        monkeypatch.delenv("BENCHBOX_DRIVER_AUTO_INSTALL", raising=False)
+        return commands
+
+    @staticmethod
+    def _session(monkeypatch, *, non_interactive: bool):
+        monkeypatch.setattr(
+            "benchbox.core.billable_platforms.is_non_interactive_session", lambda flag=False: non_interactive
+        )
+
+    def test_platform_option_alone_is_refused_non_interactively(self, installer, monkeypatch):
+        self._session(monkeypatch, non_interactive=True)
+
+        with pytest.raises(runtime_env.DriverAutoInstallRefused, match="BENCHBOX_DRIVER_AUTO_INSTALL=1"):
+            ensure_driver_version(package_name="duckdb", requested_version="2.0.0", auto_install=True)
+
+        assert installer == []
+
+    def test_environment_variable_allows_install_and_names_package_first(self, installer, monkeypatch, capsys):
+        self._session(monkeypatch, non_interactive=True)
+        monkeypatch.setenv("BENCHBOX_DRIVER_AUTO_INSTALL", "1")
+
+        resolution = ensure_driver_version(package_name="duckdb", requested_version="2.0.0")
+
+        assert resolution.auto_install_used is True
+        assert len(installer) == 1
+        assert "duckdb==2.0.0" in capsys.readouterr().err
+
+    def test_platform_option_installs_in_a_terminal_session(self, installer, monkeypatch, capsys):
+        self._session(monkeypatch, non_interactive=False)
+
+        resolution = ensure_driver_version(package_name="duckdb", requested_version="2.0.0", auto_install=True)
+
+        assert resolution.auto_install_used is True
+        assert "duckdb==2.0.0" in capsys.readouterr().err
+
+    def test_install_not_allowed_never_installs_even_with_environment_variable(self, installer, monkeypatch):
+        self._session(monkeypatch, non_interactive=False)
+        monkeypatch.setenv("BENCHBOX_DRIVER_AUTO_INSTALL", "1")
+
+        with pytest.raises(RuntimeError, match="was requested"):
+            ensure_driver_version(
+                package_name="duckdb", requested_version="2.0.0", auto_install=True, allow_install=False
+            )
+
+        assert installer == []
+
+    @pytest.mark.parametrize(
+        "version", ["--index-url=https://evil.example", "2.0.0; rm -rf /", "2.0 0", "latest", "../x", "2.0.0 --pre"]
+    )
+    def test_invalid_version_never_reaches_the_installer(self, installer, monkeypatch, version):
+        self._session(monkeypatch, non_interactive=False)
+        monkeypatch.setenv("BENCHBOX_DRIVER_AUTO_INSTALL", "1")
+
+        with pytest.raises(RuntimeError, match="not a valid package version"):
+            ensure_driver_version(package_name="duckdb", requested_version=version, auto_install=True)
+
+        assert installer == []
+
+    @pytest.mark.parametrize("version", ["2.0.0", "1.2.3.post1", "2.0.0rc1", "1!2.0", "2.0.0+local"])
+    def test_valid_versions_are_accepted(self, installer, monkeypatch, version):
+        self._session(monkeypatch, non_interactive=False)
+        monkeypatch.setenv("BENCHBOX_DRIVER_AUTO_INSTALL", "1")
+        monkeypatch.setattr(runtime_env, "_get_installed_version", lambda _: version)
+
+        assert ensure_driver_version(package_name="duckdb", requested_version=version).requested == version

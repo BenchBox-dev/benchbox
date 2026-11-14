@@ -748,9 +748,19 @@ def disable_platform(platform: str):
         sys.exit(1)
 
 
-@platforms.command("install", help=("Guide installation of platform dependencies."))
+@platforms.command(
+    "install",
+    help=(
+        "Print installation instructions for a platform's dependencies. It only prints instructions and never "
+        "installs anything: run the printed command yourself."
+    ),
+)
 @click.argument("platform")
-@click.option("--dry-run", is_flag=True, help="Show installation commands without executing")
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Accepted for compatibility; the command never installs anything, with or without this flag",
+)
 def install_platform(platform: str, dry_run: bool):
     platform = normalize_platform_name(platform)
     manager = get_platform_manager()

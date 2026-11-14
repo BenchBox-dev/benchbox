@@ -136,15 +136,17 @@ class AdapterReached(Exception):
 def _drivers_resolved(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "benchbox.cli.database.ensure_driver_version",
-        lambda package_name, requested_version, auto_install=False, install_hint=None: DriverResolution(
-            package=package_name or "",
-            requested=requested_version,
-            resolved=requested_version or "local-dev",
-            actual=requested_version or "local-dev",
-            auto_install_used=False,
-            runtime_strategy="current-process",
-            runtime_path=None,
-            runtime_python_executable=sys.executable,
+        lambda package_name, requested_version, auto_install=False, install_hint=None, allow_install=True: (
+            DriverResolution(
+                package=package_name or "",
+                requested=requested_version,
+                resolved=requested_version or "local-dev",
+                actual=requested_version or "local-dev",
+                auto_install_used=False,
+                runtime_strategy="current-process",
+                runtime_path=None,
+                runtime_python_executable=sys.executable,
+            )
         ),
     )
 
