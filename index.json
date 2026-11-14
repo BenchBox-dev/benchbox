@@ -25390,7 +25390,9 @@
     },
     "hosted-submit-and-publish-without-confirmation-20261113": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "umbrella-credentials-publication-safety-20261114"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Decide whether submit --service and publish should need a human step when run non-interactively"
