@@ -61,6 +61,7 @@ _VALID_PHASE_STATUSES = frozenset(
         "FAILED",
         "SKIPPED",
         "NOT_RUN",
+        "PARTIAL",
         "ERROR",
         "TIMEOUT",
     }
@@ -68,9 +69,10 @@ _VALID_PHASE_STATUSES = frozenset(
 
 _TPC_METRICS_BENCHMARKS = frozenset({"tpch", "tpcds", "tpchavoc", "tpch_skew"})
 
+_SCHEMA_VERSION_KEYS = frozenset({"version", "result_schema_version"})
+
 _REQUIRED_KEYS = frozenset(
     {
-        "version",
         "run",
         "benchmark",
         "platform",
@@ -230,6 +232,8 @@ class ResultIntegrityValidator:
     def _check_required_keys(self, raw: dict[str, Any], checks: list[CheckResult]) -> None:
         present = set(raw.keys())
         missing = _REQUIRED_KEYS - present
+        if not present & _SCHEMA_VERSION_KEYS:
+            missing = missing | {"result_schema_version"}
         if missing:
             _fail(
                 checks,
@@ -239,7 +243,7 @@ class ResultIntegrityValidator:
                 {"missing": sorted(missing)},
             )
             return
-        _pass(checks, _STRUCTURAL, "required_keys", f"All {len(_REQUIRED_KEYS)} required keys present")
+        _pass(checks, _STRUCTURAL, "required_keys", f"All {len(_REQUIRED_KEYS) + 1} required keys present")
 
     def _check_query_count_math(self, raw: dict[str, Any], checks: list[CheckResult]) -> None:
         sq = raw.get("summary", {}).get("queries", {})
@@ -549,20 +553,20 @@ class ResultIntegrityValidator:
         if isinstance(tables, list):
             for t in tables:
                 if isinstance(t, dict) and "name" in t:
-                    table_rows[t["name"]] = t.get("rows", 0)
+                    table_rows[str(t["name"]).lower()] = t.get("rows", 0)
         elif isinstance(tables, dict):
             for name, info in tables.items():
                 if isinstance(info, dict):
-                    table_rows[name] = info.get("rows", 0)
+                    table_rows[str(name).lower()] = info.get("rows", 0)
                 elif isinstance(info, int):
-                    table_rows[name] = info
+                    table_rows[str(name).lower()] = info
 
         tolerance = 0.01
 
         mismatches = {}
         missing_tables = []
         for table_name, expected_rows in spec.sf1_row_counts.items():
-            actual = table_rows.get(table_name)
+            actual = table_rows.get(table_name.lower())
             if actual is None:
                 missing_tables.append(table_name)
                 continue

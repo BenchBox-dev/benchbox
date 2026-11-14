@@ -311,6 +311,85 @@ class TestIntegrityValidatorSyntheticData:
         assert check.status == CheckStatus.FAIL
         assert "missing" in check.message.lower()
 
+    @pytest.mark.parametrize("transform", [str.upper, str.lower, str.title], ids=["upper", "lower", "title"])
+    def test_sf1_row_counts_match_table_names_case_insensitively(self, transform: Any) -> None:
+        data = _make_valid_tpch_result()
+        for t in data["tables"]:
+            t["name"] = transform(t["name"])
+        report = ResultIntegrityValidator().validate(data)
+        check = next(c for c in report.checks if c.name == "sf1_row_counts")
+        assert check.status == CheckStatus.PASS
+
+    def test_sf1_row_counts_case_insensitive_dict_tables(self) -> None:
+        data = _make_valid_tpch_result()
+        data["tables"] = {t["name"].upper(): {"rows": t["rows"]} for t in data["tables"]}
+        report = ResultIntegrityValidator().validate(data)
+        check = next(c for c in report.checks if c.name == "sf1_row_counts")
+        assert check.status == CheckStatus.PASS
+
+    def test_sf1_row_counts_uppercase_wrong_count_still_fails(self) -> None:
+        data = _make_valid_tpch_result()
+        for t in data["tables"]:
+            t["name"] = t["name"].upper()
+            if t["name"] == "LINEITEM":
+                t["rows"] = 1000
+        report = ResultIntegrityValidator().validate(data)
+        check = next(c for c in report.checks if c.name == "sf1_row_counts")
+        assert check.status == CheckStatus.FAIL
+        assert "lineitem" in check.details["mismatches"]
+
+    def test_sf1_row_counts_uppercase_missing_table_still_fails(self) -> None:
+        data = _make_valid_tpch_result()
+        data["tables"] = [{**t, "name": t["name"].upper()} for t in data["tables"] if t["name"] != "lineitem"]
+        report = ResultIntegrityValidator().validate(data)
+        check = next(c for c in report.checks if c.name == "sf1_row_counts")
+        assert check.status == CheckStatus.FAIL
+        assert check.details["missing"] == ["lineitem"]
+
+    def test_required_keys_accept_result_schema_version_without_version(self) -> None:
+        data = _make_valid_tpch_result()
+        data["result_schema_version"] = data.pop("version")
+        report = ResultIntegrityValidator().validate(data)
+        check = next(c for c in report.checks if c.name == "required_keys")
+        assert check.status == CheckStatus.PASS
+        assert report.overall_status == CheckStatus.PASS
+
+    def test_required_keys_accept_legacy_version_alone(self) -> None:
+        report = ResultIntegrityValidator().validate(_make_valid_tpch_result())
+        check = next(c for c in report.checks if c.name == "required_keys")
+        assert check.status == CheckStatus.PASS
+
+    @pytest.mark.parametrize("key", ["run", "benchmark", "platform", "config", "summary", "phases", "queries"])
+    def test_required_keys_still_fail_when_truly_required_key_missing(self, key: str) -> None:
+        data = _make_valid_tpch_result()
+        data["result_schema_version"] = data.pop("version")
+        del data[key]
+        report = ResultIntegrityValidator().validate(data)
+        assert report.overall_status == CheckStatus.FAIL
+
+    @pytest.mark.parametrize("key", ["execution", "environment", "export"])
+    def test_required_keys_check_fails_on_missing_section(self, key: str) -> None:
+        data = _make_valid_tpch_result()
+        data["result_schema_version"] = data.pop("version")
+        del data[key]
+        report = ResultIntegrityValidator().validate(data)
+        check = next(c for c in report.checks if c.name == "required_keys")
+        assert check.status == CheckStatus.FAIL
+        assert key in check.details["missing"]
+
+    def test_required_keys_fail_without_any_schema_version(self) -> None:
+        data = _make_valid_tpch_result()
+        del data["version"]
+        report = ResultIntegrityValidator().validate(data)
+        assert report.overall_status == CheckStatus.FAIL
+
+    def test_partial_phase_status_accepted(self) -> None:
+        data = _make_valid_tpch_result()
+        data["phases"]["power_test"]["status"] = "PARTIAL"
+        report = ResultIntegrityValidator().validate(data)
+        check = next(c for c in report.checks if c.name == "phase_status_values")
+        assert check.status == CheckStatus.PASS
+
     def test_timing_outlier(self) -> None:
         data = _make_valid_tpch_result()
         data["queries"][0]["ms"] = 2_000_000
@@ -392,6 +471,35 @@ class TestIntegrityValidatorSyntheticData:
         report = validate_file(bad_file)
         assert report.overall_status == CheckStatus.FAIL
         assert report.checks[0].name == "file_readable"
+
+
+class TestBenchmarkSpecPins:
+    def test_clickbench_hits_matches_generator_at_sf1(self) -> None:
+        from benchbox.core.clickbench.generator import ClickBenchDataGenerator
+
+        generator = ClickBenchDataGenerator(scale_factor=1.0)
+        assert get_spec("clickbench").sf1_row_counts == {"hits": generator.base_records} == {"hits": 1_000_000}
+
+    def test_joinorder_counts_match_pinned_imdb_manifest(self) -> None:
+        from benchbox.core.data_fetch import load_manifest
+        from benchbox.core.joinorder import benchmark as joinorder_benchmark
+
+        manifest = load_manifest(joinorder_benchmark.JoinOrderBenchmark.data_manifest_path)
+        assert get_spec("joinorder").sf1_row_counts == {t.name: t.row_count for t in manifest.tables}
+
+    def test_flightdata_reference_tables_match_shipped_reference_data(self) -> None:
+        import csv
+
+        import benchbox.core.flightdata as flightdata
+
+        reference_dir = Path(flightdata.__file__).parent / "reference_data"
+        counts = get_spec("flightdata").sf1_row_counts
+        for table in ("airlines", "airports"):
+            with open(reference_dir / f"{table}.csv", encoding="utf-8", newline="") as handle:
+                assert counts[table] == sum(1 for _ in csv.DictReader(handle))
+
+    def test_flightdata_flights_pinned_to_bts_2021_08_through_2024_12(self) -> None:
+        assert get_spec("flightdata").sf1_row_counts["flights"] == 23_437_547
 
 
 def _make_vector_search_result() -> BenchmarkResults:

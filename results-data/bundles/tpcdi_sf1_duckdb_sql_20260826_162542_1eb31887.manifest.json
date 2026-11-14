@@ -1,0 +1,11 @@
+{
+  "bundle_file": "tpcdi_sf1_duckdb_sql_20260826_162542_1eb31887.json",
+  "bundle_hash": "995ebac81101656fcd14ddcb77ba70ed9855354bfe5fd80189db96cb82ccdcab",
+  "funding": "unspecified",
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer",
+  "known_defects": [
+    "defective-variant-or-loader-wrong-result"
+  ]
+}
