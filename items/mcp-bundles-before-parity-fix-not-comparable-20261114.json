@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "compare flags or refuses a pair where one side is an MCP bundle from before the fix (identifiable by entry point and version or missing fields), using the not-comparable exit code, or the owner decides the risk is acceptable and it is documented.",
+    "The source label is renamed or documented so it does not claim a saved config."
+  ],
+  "context": "Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "description": "Problem: MCP bundles written before PR #4228 (merged 2026-11-14) used uncompressed data and system-profile memory limits instead of the registered platform defaults, so they are not like-for-like with CLI bundles or newer MCP bundles. compare does not detect this. Also, the platform-option source label 'saved_config' is misleading: it means registered defaults plus runtime overrides.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T06:28:08Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a839097cc23e450a84fa9c045c0e2bc8",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}

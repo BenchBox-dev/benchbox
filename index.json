@@ -27193,6 +27193,13 @@
       "status": "done",
       "title": "Fix MCP adversarial review runtime, packaging, and parity defects"
     },
+    "mcp-bundles-before-parity-fix-not-comparable-20261114": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "compare does not detect MCP bundles produced before the CLI and MCP parity fix"
+    },
     "mcp-conformance-baseline-followup-v2": {
       "claim": null,
       "needs": [],
