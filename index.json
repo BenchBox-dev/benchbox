@@ -27398,7 +27398,9 @@
     },
     "mcp-local-run-timeout-measure-20261113": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "umbrella-core-tooling-docs-20261114"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Measure whether synchronous MCP run_benchmark calls exceed common client tool-call timeouts"
