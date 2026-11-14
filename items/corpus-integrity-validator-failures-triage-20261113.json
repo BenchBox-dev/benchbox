@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Every one of the 89 FAIL bundles is listed with its failing checks and a verdict (data defect, validator defect, or unknown with the reason), reproduced by running the command, not copied from this item.",
+    "For sf1_row_counts and required_keys, the record shows on at least two bundles what the validator expected and what the bundle holds, and states which side is wrong.",
+    "Data defects are mapped to existing items (rerun-cloud-bundles-defective-dbgen, duckdb-sf10-tpch-defective-datagen-rerun, corpus-tpch-shallow-cohort-replacements-20261018) or to a new item; ranked defective results are raised with the owner for withdrawal or exclusion.",
+    "Validator defects are filed as one item with failing test cases; the validator is not changed under this item."
+  ],
+  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Read-only triage; no corpus, ranking or validator change here. Do this before the corpus reruns, because it may change what needs rerunning. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "description": "Problem: running the new `benchbox results validate` over results-data/bundles gave 491 bundles: 379 PASS, 23 WARN, 89 FAIL. 74 of the 89 FAIL bundles are ranking-eligible by the Explorer pipeline's own functions. 47 fail only sf1_row_counts, 15 only required_keys, 12 both; by platform BigQuery 25, Snowflake 25, ClickHouse Local 6, DataFusion 6, DuckDB 6, Databricks 4, SQLite 2. Either ranked public results are defective, or the validator raises false failures. Both matter: the first misleads readers, the second makes the new command untrustworthy.\n\nOutcome: each failing check classified as a real data defect or a validator defect, with evidence, and the follow-up routed: reruns or withdrawals through the existing corpus items and takedown process, validator fixes as a separate change.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T01:17:10Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1205b19fc5b747a2b7e7f70fe508632a",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}
