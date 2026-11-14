@@ -4,7 +4,7 @@
     "The submission examples use a scale that submit accepts, run end to end with --dry-run.",
     "The site docs check passes and the PR merges under the site repository's rules."
   ],
-  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Can share a branch with site-docs-cli-contract-changes-20261113, which documents the new exit codes, validate command, guard and host-load fields. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Can share a branch with site-docs-cli-contract-changes-20261113, which documents the new exit codes, validate command, guard and host-load fields. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\nCloseout (2026-11-14): https://github.com/BenchBox-dev/benchbox-site/pull/156 merged to main (deploy queued at closeout) and cherry-picked into next via #157. Five contradictions corrected against v0.5.0: the submission example now uses --official --scale 1 --seed 42; loose tolerance 50 percent; power-run defaults documented as 3 and 1 through the CLI and 4 and 0 without a config provider (both true); integrity-validator severities, names, counts and INFO status; MCP resources tabled (four static, two templates).",
   "description": "Problem: while writing the methodology page, these contradictions were found on benchbox.dev (site repository BenchBox-dev/benchbox-site): contributing-results and hosted-submission use --scale 0.01 as the submission example, but submit refuses unofficial subscale results; reference/cli/run.md omits --iterations and states loose validation tolerance as 5 percent where the code uses 50 percent; utilities.md says power_run defaults to 4 iterations and 0 warm-up where 3 and 1 are observed; the integrity-validator page and the code disagree on check severities; and the MCP reference says resources are reached only through tools while also listing static resources.\n\nOutcome: each page states current behaviour, verified by running the command.",
   "sessions": [
     {
@@ -30,6 +30,14 @@
       "generation": "904cc429037240af80dd7d5271d3648a",
       "op": "take",
       "op_id": "c60cfa35df904ba78c464d15c3871a82",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T05:14:58Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1f1f39dd12984899b08f0db2007ee00f",
       "session_id": "ac67b069b7864c4699843546272d3701"
     }
   ]
