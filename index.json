@@ -43191,7 +43191,9 @@
     },
     "tpcds-subscale-contract-conflicts-with-adr-20261113": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "umbrella-results-validation-soundness-20261114"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "The TPC-DS subscale contract in core conflicts with the subscale ranking ADR"
