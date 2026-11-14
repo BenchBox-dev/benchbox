@@ -1112,9 +1112,11 @@ _READ_PRIMITIVES_KNOWN_DIVERGENCES: dict[str, str | ClassifiedDivergence] = {
             "approx_count_distinct_simple_pandas",
             "approx_count_distinct_groupby_expression",
             "approx_count_distinct_groupby_pandas",
-            "approx_quantile_groupby_expression",
-            "approx_quantile_groupby_pandas",
         ),
+        ClassifiedDivergence(_READ_PRIMITIVES_APPROX, _read_primitives_sketch_residue),
+    ),
+    **dict.fromkeys(
+        ("approx_quantile_groupby_expression", "approx_quantile_groupby_pandas"),
         ClassifiedDivergence(_READ_PRIMITIVES_APPROX, _read_primitives_sketch_residue, requires_live_divergence=False),
     ),
     **dict.fromkeys(
