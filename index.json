@@ -46207,15 +46207,10 @@
       "title": "Gate vendor-supplied bundles: reject non-maintainer vendor/ additions on published-results"
     },
     "vendored-tracker-bump-before-index-distribution-20261112": {
-      "claim": {
-        "expires_at": "2026-11-15T22:12:40Z",
-        "generation": "a4d75574a40845b0babdd1896dccbb16",
-        "renewals": 0,
-        "worker": "joe-tractable-followups"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Decide whether a vendored tracker-runtime bump must wait for PyPI distribution"
     },
     "verification-export-grep-self-match-guard": {
