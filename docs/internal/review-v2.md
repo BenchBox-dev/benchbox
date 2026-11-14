@@ -1888,8 +1888,9 @@ sparsely (gate, predicate, reviewers policy), run the script with pinned
 does, from the same `oracle` environment and secrets. If the reviewers policy
 cannot load, the script errors rather than deciding with empty rules; the sweep
 records every per-PR error and fails if any PR errored. Runs evaluating a PR
-share one concurrency group keyed by its number, with cancel-in-progress, so a
-newer run cancels an older one instead of racing.
+share one concurrency group keyed by its number that queues rather than cancels, so
+runs are serialized instead of racing and a newer pending run replaces an older pending
+one before it starts.
 
 When evaluation fails after the head SHA is known, whatever the cause (API,
 network, malformed payload, policy), the script posts `failure` for that head
