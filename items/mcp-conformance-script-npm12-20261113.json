@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "The pin check accepts both the scalar and the one-element-array output, with unit tests for each shape.",
+    "The script passes end to end on the host's npm 12 without a PATH shim; output is in the PR.",
+    "Any CI job that runs the script uses the fixed version."
+  ],
+  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "description": "Problem: under npm 12.2.1, `npm view` prints a one-element array, and the conformance script's Inspector pin check fails; it passed during PR #4202 only with a PATH shim pointing npm view at npm 10. The script is part of MCP release evidence, so the check is broken on current npm.\n\nOutcome: the script parses both output shapes and passes on npm 10 and npm 12 without a shim.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
+      "at": "2026-11-14T01:17:56Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0dad84ea530c413db4829b950bac9194",
+      "session_id": "ac67b069b7864c4699843546272d3701"
+    }
+  ]
+}
