@@ -272,6 +272,28 @@ def test_the_arm_branch_filter_matches_the_trust_root_branch_prefix() -> None:
     assert f"startsWith(github.event.workflow_run.head_branch, '{prefix}')" in job("arm")["if"]
 
 
+def _branch_filter_matches(patterns: list[str], branch: str) -> bool:
+    for pattern in patterns:
+        regex = "".join(
+            ".*" if part == "**" else "[^/]*" if part == "*" else re.escape(part)
+            for part in re.split(r"(\*\*|\*)", pattern)
+        )
+        if re.fullmatch(regex, branch):
+            return True
+    return False
+
+
+def test_the_workflow_run_trigger_only_fires_for_branches_with_the_trust_root_branch_prefix() -> None:
+    trust_root = json.loads((WORKFLOWS.parent / "sqlglot-delivery.json").read_text(encoding="utf-8"))
+    prefix = trust_root["consumer"]["branchPrefix"]
+    patterns = load()[True]["workflow_run"]["branches"]
+    assert _branch_filter_matches(patterns, f"{prefix}1.2.3")
+    assert _branch_filter_matches(patterns, f"{prefix}nested/branch")
+    assert not _branch_filter_matches(patterns, prefix.rstrip("-"))
+    assert not _branch_filter_matches(patterns, "develop")
+    assert not _branch_filter_matches(patterns, f"feature/{prefix}1.2.3")
+
+
 def test_the_readiness_job_is_isolated_from_the_repository_and_prepared_artifacts() -> None:
     readiness = job("readiness")
     assert readiness["permissions"] == {}
