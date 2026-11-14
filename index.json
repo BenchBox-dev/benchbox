@@ -19146,17 +19146,12 @@
       "title": "DataFrame adapters export an empty applied ledger (datafusion-df, dask-df publish noop for tuned runs)"
     },
     "dataframe-adapters-host-load-null-20261113": {
-      "claim": {
-        "expires_at": "2026-11-15T06:27:39Z",
-        "generation": "293b4b96bcf0400cbded47e2c8a160ed",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce"
-      },
+      "claim": null,
       "needs": [
         "umbrella-result-capture-parity-20261114"
       ],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "DataFrame adapters never take the resource snapshot, so their bundles record no host load"
     },
     "dataframe-ai-primitives": {
