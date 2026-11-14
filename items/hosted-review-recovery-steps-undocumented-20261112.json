@@ -4,7 +4,7 @@
     "The text is checked against the reviewer's current behaviour in the Theseus repository before it is written, and names the Theseus version it was checked against.",
     "If the instruction-file byte budget has no room, the text goes in a linked reference page, not in the six budgeted instruction files."
   ],
-  "context": "Correction to the description, checked against Theseus 0.2.12: a top-level pull request comment `Dispute: D<n> - <reason>` does clear a finding when its author is listed in consumer.attesters, the comment is unedited, posted after the review that listed the finding, and the finding is still open. A thread reply works only while the thread is unresolved. The recovery page documents both.",
+  "context": "Correction to the description, checked against Theseus 0.2.12: a top-level pull request comment `Dispute: D<n> - <reason>` does clear a finding when its author is listed in consumer.attesters, the comment is unedited, posted after the review that listed the finding, and the finding is still open. A thread reply works only while the thread is unresolved. The recovery page documents both.\n\nMerged in PR #4214 as b06127878f. Correction to the description: a top-level 'Dispute: D<n> - <reason>' comment also works when its author is listed in consumer.attesters (.github/review.yml) and the other conditions in docs/agent/pr-review-evidence.md hold.",
   "description": "Three behaviours of the hosted reviewer cost several wasted review rounds on 2026-11-11 and 2026-11-12 and are written down nowhere under docs/ on develop. (1) Commenting /review on a head that has not changed only reposts the previous verdict; it does not re-evaluate. (2) A finding carried forward from an earlier head clears only when the author replies 'Dispute: D<n> - <reason>' on the finding's thread while that thread is still unresolved, and then comments /review. Resolving the thread first, or disputing in a top-level comment, leaves the finding in force. (3) A review that reports 'reviewer process is blocked' does not recover by itself; a /review comment restarts it. Agents currently rediscover these by trial, and each wrong attempt spends a review run. Related open item oracle-review-comment-skipped-on-backoff-after-dispute-20261101 covers one failure after a dispute, not the procedure.",
   "links": [
     "docs/agent/review-protocol.md",
@@ -25,6 +25,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "314b93aa87384d47907aef5d237f0b0b",
+      "session_id": "8e07c6e3a10b49bb94ae7e31664ce4b9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a250daff95b91a4eb6cd2504",
+      "at": "2026-11-14T00:37:59Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f1600a889aaa434aabd6e509a97b2d1a",
       "session_id": "8e07c6e3a10b49bb94ae7e31664ce4b9"
     }
   ]
