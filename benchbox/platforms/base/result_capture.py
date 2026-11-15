@@ -416,7 +416,8 @@ class ResultCaptureMixin:
             platform_info=platform_info,
         )
 
-    def _collect_resource_utilization(self) -> dict[str, Any]:
+    @staticmethod
+    def _collect_resource_utilization() -> dict[str, Any]:
         snapshot: dict[str, Any] = {
             "available": False,
             "platform": platform.platform(),

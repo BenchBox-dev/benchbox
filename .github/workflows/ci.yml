@@ -1556,6 +1556,18 @@ jobs:
           uv run --isolated --no-project --with "$wheel" -- benchbox --help
           uv run --isolated --no-project --with "$wheel" -- python -c "from benchbox import TPCDSOBT; benchmark = TPCDSOBT(scale_factor=1.0); queries = benchmark.get_queries(); assert queries, 'expected OBT queries from wheel install'; assert benchmark.get_query(next(iter(queries))); print(f'TPC-DS-OBT wheel smoke: {len(queries)} queries')"
 
+      - name: Run the README first command from the built wheel
+        shell: bash
+        run: |
+          set -euo pipefail
+          wheel=$(find "$PWD/dist" -maxdepth 1 -name '*.whl' -print -quit)
+          tmpdir=$(mktemp -d)
+          cd "$tmpdir"
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv/bin/python "$wheel[duckdb]"
+          .venv/bin/benchbox run --platform duckdb --benchmark tpch --scale 0.01
+          test -n "$(find benchmark_runs/results -name '*.json' -print -quit)"
+
   dependency-audit:
     name: dependency-audit
     needs: ci-paths

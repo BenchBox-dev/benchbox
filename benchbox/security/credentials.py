@@ -2,14 +2,28 @@
 
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
+import logging
 import os
 import re
+import stat
+import tempfile
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
 
 import yaml
+
+logger = logging.getLogger(__name__)
+
+PRIVATE_DIRECTORY_MODE = 0o700
+PRIVATE_FILE_MODE = 0o600
+_GROUP_OTHER_BITS = 0o077
+
+
+def require_private_mode(mode: int, location: Path) -> None:
+    if os.name == "posix" and mode & _GROUP_OTHER_BITS:
+        raise PermissionError(f"Could not create a private credentials file in {location} (mode {mode:04o})")
 
 
 class CredentialStatus(Enum):
@@ -23,6 +37,7 @@ class CredentialStatus(Enum):
 class CredentialManager:
     def __init__(self, credentials_path: Optional[Path] = None):
         self.credentials_path = credentials_path or self._get_default_credentials_path()
+        self._raw_credentials: dict[str, Any] = {}
         self.credentials = self._load_credentials()
 
     def _get_default_credentials_path(self) -> Path:
@@ -36,6 +51,7 @@ class CredentialManager:
             with open(self.credentials_path, encoding="utf-8") as f:
                 raw_data = yaml.safe_load(f) or {}
 
+            self._raw_credentials = raw_data if isinstance(raw_data, dict) else {}
             return self._substitute_env_vars(raw_data)
 
         except Exception as e:
@@ -57,22 +73,61 @@ class CredentialManager:
         else:
             return data
 
-    def save_credentials(self) -> None:
-        self.credentials_path.parent.mkdir(parents=True, exist_ok=True)
+    def _restore_references(self, current: Any, raw: Any) -> Any:
+        if isinstance(current, dict) and isinstance(raw, dict):
+            return {key: self._restore_references(value, raw.get(key)) for key, value in current.items()}
+        if raw is not None and self._substitute_env_vars(raw) == current:
+            return raw
+        return current
 
-        data_to_save = dict(self.credentials)
+    def _warn_if_too_open(self) -> None:
+        try:
+            mode = stat.S_IMODE(self.credentials_path.stat().st_mode)
+        except FileNotFoundError:
+            return
+        if os.name == "posix" and mode & _GROUP_OTHER_BITS:
+            logger.warning(
+                "Credentials file %s had mode %04o; restricting it to %04o.",
+                self.credentials_path,
+                mode,
+                PRIVATE_FILE_MODE,
+            )
+
+    def _create_private_temporary(self, parent: Path) -> tuple[int, str]:
+        descriptor, name = tempfile.mkstemp(dir=parent, prefix=".credentials-", suffix=".tmp")
+        try:
+            require_private_mode(stat.S_IMODE(os.fstat(descriptor).st_mode), parent)
+        except BaseException:
+            os.close(descriptor)
+            Path(name).unlink(missing_ok=True)
+            raise
+        return descriptor, name
+
+    def _install(self, temporary: str) -> None:
+        os.replace(temporary, self.credentials_path)
+
+    def save_credentials(self) -> None:
+        parent = self.credentials_path.parent
+        parent.mkdir(mode=PRIVATE_DIRECTORY_MODE, parents=True, exist_ok=True)
+        self._warn_if_too_open()
+
+        data_to_save = self._restore_references(dict(self.credentials), self._raw_credentials)
         data_to_save["_metadata"] = {
             "version": "1.0",
             "last_updated": datetime.now().isoformat(),
         }
 
-        with open(self.credentials_path, "w", encoding="utf-8") as f:
-            yaml.dump(data_to_save, f, default_flow_style=False, sort_keys=False)
-
+        descriptor, temp_name = self._create_private_temporary(parent)
         try:
-            self.credentials_path.chmod(0o600)
-        except Exception:
-            pass
+            with os.fdopen(descriptor, "w", encoding="utf-8") as f:
+                yaml.dump(data_to_save, f, default_flow_style=False, sort_keys=False)
+                f.flush()
+                os.fsync(f.fileno())
+            self._install(temp_name)
+        except BaseException:
+            Path(temp_name).unlink(missing_ok=True)
+            raise
+        self._raw_credentials = data_to_save
 
     def get_platform_credentials(self, platform: str) -> Optional[dict[str, Any]]:
         return self.credentials.get(platform.lower())

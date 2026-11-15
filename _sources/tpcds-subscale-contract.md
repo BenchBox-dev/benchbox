@@ -115,11 +115,21 @@ schema export, import, and storage (see w5 for pipeline requirements).
 
 ## Comparability Rules
 
-Subscale TPC-DS runs are **never comparable** to official TPC-DS results:
+Subscale TPC-DS runs are **never comparable** to official TPC-DS results, but they are ranked
+among themselves. The governing decision is the accepted
+ADR "Rank Subscale TPC-H and TPC-DS Results as Unofficial" (`adr-subscale-tpc-ranking-policy`,
+in the BenchBox site repository's development ADR directory), enforced by
+`benchbox/core/results/subscale_policy.py`:
 
-- `power_at_size`, `throughput_at_size`, and `qph_at_size` metrics must not be computed or
-  displayed for `compliance_class == "unofficial_subscale"` runs.
-- Subscale results must not appear in official TPC-DS rankings or cohorts.
+- Runs with `compliance_class == "unofficial_subscale"` record `power_at_size` (and
+  `throughput_at_size` when present) under `summary.tpc_metrics`, together with
+  `"unofficial": true` and `"reason": "compliance_class=unofficial_subscale"`.
+- `qph_at_size` stays unavailable for subscale runs, and `benchbox submit` and
+  `benchbox publish` refuse them, so no official TPC metric can be produced from a subscale bundle.
+- Subscale results stay ranked by Power@Size, in their own unofficial cohort per scale factor.
+  They never appear in, and are never ranked against, official TPC-DS results at SF 1 and above.
+  Only `unofficial_nonstandard` runs are excluded from ranking.
+- Every surface that shows a subscale result labels it "Subscale · Unofficial".
 - The `compliance_class` field propagates through result JSON, schema export, historical
   database storage, and publication metadata.
 

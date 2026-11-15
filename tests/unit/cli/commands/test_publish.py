@@ -15,6 +15,11 @@ pytestmark = [
 ]
 
 
+@pytest.fixture(autouse=True)
+def _allow_maintainer_label(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("BENCHBOX_ALLOW_MAINTAINER_LABEL", "1")
+
+
 def _fake_result(compliance_class: str | None = None, benchmark_name: str = "tpcds") -> SimpleNamespace:
     ns = SimpleNamespace(
         benchmark_name=benchmark_name,

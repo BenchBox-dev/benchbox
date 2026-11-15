@@ -529,7 +529,7 @@ class DatabricksAdapter(PlatformAdapter):
                     "gateway hostname and access_token to a personal access token; BenchBox does not fall back to "
                     "the auto-detected workspace, which would bypass the gateway."
                 )
-        elif not explicit_credentials_complete:
+        elif not explicit_credentials_complete and not config.get("dry_run"):
             auto_config = cls._auto_detect_databricks_config(very_verbose=very_verbose)
             if auto_config:
                 adapter_config.update(auto_config)

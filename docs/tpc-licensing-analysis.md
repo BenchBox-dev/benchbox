@@ -4,6 +4,9 @@
 **Author:** Research for TODO `patch-and-redistribute-tpcds-dsdgen-subscale-support` w2
 **Source:** TPC End User License Agreement v2.2 (`_sources/tpc-ds/EULA.txt`)
 
+For how BenchBox labels and limits published TPC-derived results, see
+[Publication limits](https://benchbox.dev/docs/concepts/benchmark-methodology.html#publication-limits).
+
 ## Question
 
 Can BenchBox legally redistribute patched (modified) `dsdgen` and `dsqgen` binaries

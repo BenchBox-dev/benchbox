@@ -209,6 +209,13 @@ earlier run satisfies it: a green `posting-check` proves the pin only for a head
 status before the run. Dispatch the checks above on such heads and record the run links in
 the tracker item that carried the bump.
 
+`review-gate.yml` never cancels a run in flight: runs for one pull request queue in one
+concurrency group and a newer pending run replaces an older pending one before it starts,
+so it leaves no check. A run cancelled while it executed would leave its `gate / *` checks
+and `gate posting check` red on the head it handled, and a dispatch or comment run that
+cancelled it reports on the default-branch commit, so nothing ever replaced them. A
+`posting-check` that sees a cancelled gate job still fails by design.
+
 ### Rollback
 
 Rollback is a revert of the pin commit. Trigger it when a post-merge check fails or when
@@ -764,6 +771,20 @@ names the PR, head, finding and decision in the current request, after an
 `Owner instruction` comment. The merge digest lists adjudications and flags one
 with no preceding `Owner instruction` comment. `review-gate` never parses
 findings.
+
+The same owner comment also settles an open finding carried as a claimed prior from
+the local findings record (its title begins `(claimed `), with no escalation needed:
+`WITHDRAW` removes it from the open set and `MAINTAIN` keeps it open. The ruling needs
+the head's latest review to be SHIP WITH FIXES, the finding to be open on it, and the
+finding to be either escalated or claimed; reviewer-written titles that begin
+`(claimed ` are rewritten so a reviewer cannot make a finding look claimed. The local
+record's claims still never close a finding or count as a strike. A comment starting
+`Review adjudication:` that cannot apply (not from an attester, edited, malformed,
+unknown or already closed id, or a finding that is neither escalated nor claimed) changes
+nothing, and the gate's blocked message names the reason and the comment (for example
+`Blocked · owner adjudication ignored · D9 is not an open finding on this head
+(joeharris76: 'WITHDRAW D9 - ...')`) instead of dropping it silently; a ruling aimed at
+another head is reported only in the verdict plan summary.
 
 The reviewer never resolves a thread: a follow-up lists defects it verified fixed,
 and the author resolves those. Each new thread carries a hidden `review-defect:
@@ -1421,8 +1442,9 @@ and posts nothing to GitHub.
   confirms count toward the defect-count overflow up to one short of the limit, so they never force a
   DO NOT SHIP alone, the record carries no strike data, and the
   CI id counter starts above the claimed ids, so a forged or edited record can only
-  create work. A local adjudication does not clear a finding in CI; CI escalation
-  still needs the owner's `Review adjudication:` comment on the PR.
+  create work. A local adjudication does not clear a finding in CI; only the owner's
+  `Review adjudication:` comment on the PR does, and it applies to a claimed prior
+  without escalation (see the escalation section).
 - **Pinned head.** `pr-open` records `HEAD` before the review and passes it as
   `--head`. It pushes exactly that commit (`git push origin <reviewed>:refs/heads/<branch>`)
   and arms that commit, even when the branch ref moved while the review ran; the
@@ -1881,8 +1903,9 @@ sparsely (gate, predicate, reviewers policy), run the script with pinned
 does, from the same `oracle` environment and secrets. If the reviewers policy
 cannot load, the script errors rather than deciding with empty rules; the sweep
 records every per-PR error and fails if any PR errored. Runs evaluating a PR
-share one concurrency group keyed by its number, with cancel-in-progress, so a
-newer run cancels an older one instead of racing.
+share one concurrency group keyed by its number that queues rather than cancels, so
+runs are serialized instead of racing and a newer pending run replaces an older pending
+one before it starts.
 
 When evaluation fails after the head SHA is known, whatever the cause (API,
 network, malformed payload, policy), the script posts `failure` for that head

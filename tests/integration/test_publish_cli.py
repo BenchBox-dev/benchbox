@@ -19,6 +19,11 @@ pytestmark = [
 ]
 
 
+@pytest.fixture(autouse=True)
+def _allow_maintainer_label(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("BENCHBOX_ALLOW_MAINTAINER_LABEL", "1")
+
+
 @pytest.fixture
 def runner():
     return CliRunner()

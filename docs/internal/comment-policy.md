@@ -300,6 +300,9 @@ pull request.
   file and delete the old one, point `[tool.uv.sources]` at it, run `uv lock`
   in that project, change only `path` in the policy entry, and commit them
   together.
+- **Vendored tracker-runtime bumps:** a bump of the vendored tractable wheel
+  depends only on the GitHub release, whose `SHA256SUMS` the ratchet verifies.
+  It does not wait for PyPI publication.
 - Generated first-party code and `_sources/compilation` scripts are in scope.
   TPC templates and catalog-owned skill mirrors are not; they have their own
   provenance.

@@ -194,6 +194,7 @@ def test_hosted_and_pr_manifest_built_via_dispatch_call_sites(tmp_path: Path, mo
     sub = importlib.import_module("benchbox.cli.commands.submit")
 
     monkeypatch.setenv("BENCHBOX_MACHINE_ID_SALT", "integration-test-community-publish-salt")
+    monkeypatch.setenv("BENCHBOX_ACKNOWLEDGE_HOSTED_SUBMISSION", "1")
 
     src = tmp_path / "tpch_duckdb.json"
     src.write_text(json.dumps(_minimal_schema_v2_bundle()), encoding="utf-8")

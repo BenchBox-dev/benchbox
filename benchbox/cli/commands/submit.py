@@ -11,7 +11,13 @@ import click
 from rich.markup import escape
 
 import benchbox
+from benchbox.cli.exit_codes import ExitCode, exit_code_help
 from benchbox.cli.pseudonym_salt import ensure_publication_salt
+from benchbox.cli.publication_guard import (
+    HOSTED_SUBMISSION_ACKNOWLEDGEMENT_ENV_VAR,
+    HOSTED_SUBMISSION_FLAG_HELP,
+    enforce_hosted_submission_acknowledgement,
+)
 from benchbox.cli.shared import console
 from benchbox.cli.submit_auth import (
     DEFAULT_SERVICE_URL as _DEFAULT_SERVICE_URL,
@@ -67,6 +73,8 @@ from benchbox.validation.bundle import (
 )
 
 _SUBMISSION_PHASE = 2
+
+SUBMIT_EXIT_CODES = (ExitCode.SUCCESS, ExitCode.ERROR, ExitCode.ACKNOWLEDGEMENT_REQUIRED)
 
 _VISIBILITY_CHOICES = ("public", "unlisted", "private")
 
@@ -587,9 +595,11 @@ def _print_submission_summary(
         "\n"
         "  --service [URL]\n"
         "    Upload the canonical bundle to a hosted ingest API. Requires\n"
-        "    authentication via 'benchbox auth login'. With --dry-run, validates\n"
-        "    the bundle and prints what would be uploaded - no credentials\n"
-        "    needed for the dry-run path.\n"
+        "    authentication via 'benchbox auth login'. Run non-interactively,\n"
+        "    it is refused with exit 6 unless --acknowledge-hosted-submission or\n"
+        f"    {HOSTED_SUBMISSION_ACKNOWLEDGEMENT_ENV_VAR}=1 is set. With --dry-run,\n"
+        "    validates the bundle and prints what would be uploaded - no\n"
+        "    credentials or acknowledgement needed for the dry-run path.\n"
         "\n"
         "RESULT_FILE: Path to result JSON file (optional; with --last, picked\n"
         "from history).\n"
@@ -617,7 +627,11 @@ def _print_submission_summary(
         "    benchbox submit --last --service --dry-run\n"
         "\n"
         "Note: benchbox submit shares results publicly. To copy a result to\n"
-        "storage you control (local path, S3, etc.), use 'benchbox publish'."
+        "storage you control (local path, S3, etc.), use 'benchbox publish'.\n"
+        "\n"
+        "\b\n"
+        "Exit codes:\n"
+        f"{exit_code_help(SUBMIT_EXIT_CODES)}"
     ),
 )
 @click.argument("result_file", required=False, type=click.Path(exists=True))
@@ -654,6 +668,13 @@ def _print_submission_summary(
         "Hosted mode: submit to the hosted ingest API. Without a value, "
         f"uses {_DEFAULT_SERVICE_URL}. Without this flag, --output runs."
     ),
+)
+@click.option(
+    "--acknowledge-hosted-submission",
+    "acknowledge_hosted_submission",
+    is_flag=True,
+    default=False,
+    help=HOSTED_SUBMISSION_FLAG_HELP,
 )
 @click.option(
     "--visibility",
@@ -762,7 +783,11 @@ def submit(
     vendor_notice_date,
     vendor_notice_ref,
     self_run,
+    acknowledge_hosted_submission,
 ):
+    if service_url is not None:
+        enforce_hosted_submission_acknowledgement(flag=acknowledge_hosted_submission, dry_run=dry_run)
+
     if submission_notes is not None and len(submission_notes) > SUBMISSION_NOTES_MAX_LEN:
         console.print(
             f"[red]--notes exceeds {SUBMISSION_NOTES_MAX_LEN} characters "

@@ -1,5 +1,33 @@
 # Corpus Generation Notes - 2026-04-03
 
+## TPC-DI SF1 bundles built before the scale correction (2026-11-14)
+
+Six TPC-DI SF1 bundles were generated before #4149 and #4171 corrected the
+TPC-DI scale. Their data is about ten times the specification's SF1, so the
+result integrity validator correctly fails each one on `sf1_row_counts`. Each
+now carries `known_defects: ["defective-variant-or-loader-wrong-result"]` in its
+`.manifest.json` sidecar, which the explorer pipeline turns into
+`ranking_exclusion_reason=known_defective_data`; they appear under "Runs not
+included in rankings" instead of in the ranking. No bundle file changed, and
+the DuckDB bundle's sidecar was created with `result_source: internal` so its
+trust label is unchanged. The existing id was reused because it is the
+corpus's general wrong-result label; no new id was added.
+
+| Platform | Bundle |
+|---|---|
+| BigQuery | `tpcdi_sf1_bigquery_sql_20260920_064220_bc5850d1` |
+| ClickHouse Local | `tpcdi_sf1_clickhouse_local_sql_20261028_140913_30a5c9d1` |
+| Databricks | `tpcdi_sf1_databricks_sql_20261003_201821_dbfb95fb` |
+| DataFusion | `tpcdi_sf1_datafusion_sql_20261028_100615_ffe633e9` |
+| DuckDB | `tpcdi_sf1_duckdb_sql_20260826_162542_1eb31887` |
+| Snowflake | `tpcdi_sf1_snowflake_sql_20261003_134837_b45dfad3` |
+
+The two earlier ClickHouse Local and DataFusion SF1 bundles already carry
+defect ids for other reasons and are unchanged. With all eight flagged, the
+TPC-DI SF1 cohort has no rankable bundle and publishes no ranking until
+replacement bundles built with the current generator are ingested; the
+regeneration and ingestion is a follow-up.
+
 ## ClickHouse Local Read Primitives reruns after the `map_access` fix (2026-11-12)
 
 Two replacement bundles (`result_source: internal`) rerun Read Primitives on

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import click
+from rich.markup import escape
 from rich.panel import Panel
 from rich.prompt import Confirm
 from rich.text import Text
@@ -36,6 +37,7 @@ from benchbox.cli.exceptions import (
     ValidationRules,
     create_error_handler,
 )
+from benchbox.cli.exit_codes import ExitCode
 from benchbox.cli.help import BenchBoxCommand, advanced_option
 from benchbox.cli.host_lock_optin import host_guarded
 from benchbox.cli.logo import rich_logo
@@ -49,6 +51,7 @@ from benchbox.cli.platform_checks import check_and_setup_platform_credentials
 from benchbox.cli.platform_hooks import PlatformOptionError
 from benchbox.cli.presentation.system import display_system_recommendations
 from benchbox.cli.progress import BenchmarkProgress, should_show_progress
+from benchbox.cli.publication_guard import PUBLISH_LABEL_HELP, enforce_maintainer_label
 from benchbox.cli.run_platform_resolution import (
     BENCHMARK_ALIASES as BENCHMARK_ALIASES,
     _apply_benchmark_default_scale,
@@ -93,7 +96,12 @@ from benchbox.core.benchmark_registry import (
     presort_capable_benchmarks,
 )
 from benchbox.core.config import DatabaseConfig
-from benchbox.core.constants import RUN_MODES, VALID_PHASES
+from benchbox.core.constants import (
+    DEFAULT_OUTPUT_COMPRESSION_TYPE,
+    NO_COMPRESSION_ENV_VAR,
+    RUN_MODES,
+    VALID_PHASES,
+)
 from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.core.results.provenance import FUNDING_SOURCES, RESULT_SOURCES
 from benchbox.core.results.status import result_cli_failure_reason, result_non_clean_reason
@@ -106,6 +114,7 @@ from benchbox.utils.compression import CompressionManager
 from benchbox.utils.input_validation import MAX_QUERY_ID_LENGTH
 from benchbox.utils.output_path import normalize_output_root
 from benchbox.utils.printing import fatal
+from benchbox.utils.runtime_env import DriverAutoInstallRefused, InvalidDriverVersion
 from benchbox.utils.verbosity import VerbositySettings
 
 logger = logging.getLogger(__name__)
@@ -926,7 +935,7 @@ def _resolve_compression_settings(s: types.SimpleNamespace) -> None:
         if s.logger:
             s.logger.debug("Compression disabled via --no-compression flag")
     else:
-        env_no_compression = os.getenv("BENCHBOX_NO_COMPRESSION", "").lower() in ["true", "1", "yes", "on"]
+        env_no_compression = os.getenv(NO_COMPRESSION_ENV_VAR, "").lower() in ["true", "1", "yes", "on"]
         if env_no_compression:
             s.compress_data = False
             s.compression_type = "none"
@@ -944,7 +953,7 @@ def _resolve_compression_settings(s: types.SimpleNamespace) -> None:
         else:
             config_compression_enabled = s.config.get("output.compression.enabled", False)
             s.compress_data = config_compression_enabled
-            s.compression_type = s.config.get("output.compression.type", "zstd")
+            s.compression_type = s.config.get("output.compression.type", DEFAULT_OUTPUT_COMPRESSION_TYPE)
             s.compression_level = s.config.get("output.compression.level", None)
             if s.logger:
                 s.logger.debug(f"Compression enabled: type={s.compression_type}, level={s.compression_level}")
@@ -1339,6 +1348,7 @@ def _dry_run_build_db_config(s: types.SimpleNamespace, db_manager: DatabaseManag
             deployment_selector=getattr(s, "deployment_selector", None),
             gateway_selector=getattr(s, "gateway", None),
             explicit_option_keys=getattr(s, "explicit_platform_option_keys", ()),
+            allow_driver_install=False,
         )
     except PlatformOptionError as exc:
         console.print(f"[red]❌ {exc}[/red]")
@@ -1434,7 +1444,7 @@ def _run_direct(s: types.SimpleNamespace) -> None:
 
     execution_context = _build_execution_context_from_plan(s)
 
-    orchestrator = BenchmarkOrchestrator()
+    orchestrator = BenchmarkOrchestrator(non_interactive=s.non_interactive)
     orchestrator.set_verbosity(s.verbosity_settings)
 
     if s.output:
@@ -1638,7 +1648,7 @@ def _run_data_or_load_only(s: types.SimpleNamespace) -> None:
 
     execution_context = _build_execution_context_from_plan(s)
 
-    orchestrator = BenchmarkOrchestrator()
+    orchestrator = BenchmarkOrchestrator(non_interactive=s.non_interactive)
     orchestrator.set_verbosity(s.verbosity_settings)
 
     if s.output:
@@ -2373,7 +2383,7 @@ def _interactive_preflight_and_execute(s: types.SimpleNamespace, system_profile:
 
     execution_context = _build_execution_context_from_plan(s)
 
-    orchestrator = BenchmarkOrchestrator()
+    orchestrator = BenchmarkOrchestrator(non_interactive=s.non_interactive)
     orchestrator.set_verbosity(s.verbosity_settings)
 
     if s.output:
@@ -2607,7 +2617,15 @@ def _interactive_handle_result(s: types.SimpleNamespace, result: Any, orchestrat
     default=None,
     is_flag=False,
     flag_value="all",
-    help="Force regeneration: all, datagen, upload, or datagen,upload",
+    help=(
+        "Force a rerun: all, datagen, upload, or datagen,upload (bare --force means all). "
+        "datagen: regenerates the local data files and deletes the existing target database before the run, "
+        "the same as --platform-option force_recreate=true: a local database file or directory is deleted; on a "
+        "remote platform the database is dropped (Snowflake drops only this benchmark's tables and its tuning "
+        "metadata; Databricks truncates every table in the schema); platforms that cannot drop a database refuse. "
+        "upload: re-uploads data to remote storage even when a valid copy exists; deletes no database and no local "
+        "data. all: both."
+    ),
 )
 @click.option("-v", "--verbose", count=True, help="Verbose output (-vv for debug)")
 @click.option("-q", "--quiet", is_flag=True, help="Suppress output")
@@ -2830,10 +2848,7 @@ def _interactive_handle_result(s: types.SimpleNamespace, result: Any, orchestrat
     "--publish-label",
     default="maintainer-run",
     show_default=True,
-    help=(
-        "Trust label for --publish (maintainer-run, community-submission, "
-        "vendor-supplied, ci, local, unofficial-research)."
-    ),
+    help=PUBLISH_LABEL_HELP,
 )
 @click.option(
     "--funding",
@@ -2931,6 +2946,9 @@ def run(
 ) -> None:
     from benchbox.core.run_service import apply_polars_streaming_flag, begin_run
 
+    if publish:
+        enforce_maintainer_label(publish_label)
+
     begin_run()
     if polars_streaming:
         try:
@@ -2991,21 +3009,28 @@ def run(
         allow_greybeam_inline_load=allow_greybeam_inline_load,
         acknowledge_billable_platform=acknowledge_billable_platform,
     )
-    _prepare_run_state(s)
+    try:
+        _prepare_run_state(s)
 
-    if s.dry_run:
-        _run_dry_run(s)
-        return
+        if s.dry_run:
+            _run_dry_run(s)
+            return
 
-    if s.test_execution_type not in {"data_only", "load_only"} and s.platform and s.benchmark:
-        _run_direct(s)
-        return
+        if s.test_execution_type not in {"data_only", "load_only"} and s.platform and s.benchmark:
+            _run_direct(s)
+            return
 
-    if s.test_execution_type in {"data_only", "load_only"}:
-        _run_data_or_load_only(s)
-        return
+        if s.test_execution_type in {"data_only", "load_only"}:
+            _run_data_or_load_only(s)
+            return
 
-    _run_interactive(s)
+        _run_interactive(s)
+    except DriverAutoInstallRefused as exc:
+        console.print(f"[red]❌ {escape(str(exc))}[/red]")
+        sys.exit(ExitCode.ACKNOWLEDGEMENT_REQUIRED)
+    except InvalidDriverVersion as exc:
+        console.print(f"[red]❌ {escape(str(exc))}[/red]")
+        sys.exit(ExitCode.USAGE)
 
 
 __all__ = ["run", "BenchmarkOptionParamType", "PlatformOptionParamType", "setup_verbose_logging"]

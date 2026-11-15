@@ -26,5 +26,6 @@ design/future-state/remove-release-tooling-from-wheel/README.md
 design/future-state/benchmark-family-plugin-seam/README.md
 platforms/workaround-index.md
 operations/heavy-work-guard.md
+operations/run-safety.md
 reference/threat-model.md
 tpc-licensing-analysis.md

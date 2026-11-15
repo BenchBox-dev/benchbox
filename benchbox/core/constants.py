@@ -1,6 +1,9 @@
 # Copyright 2026 Joe Harris / BenchBox Project
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
+DEFAULT_OUTPUT_COMPRESSION_TYPE = "zstd"
+NO_COMPRESSION_ENV_VAR = "BENCHBOX_NO_COMPRESSION"
+
 TPCH_POWER_DEFAULT_WARMUP_ITERATIONS = 1
 TPCH_POWER_DEFAULT_MEASUREMENT_ITERATIONS = 3
 

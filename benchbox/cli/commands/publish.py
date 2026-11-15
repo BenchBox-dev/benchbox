@@ -12,8 +12,15 @@ from tempfile import TemporaryDirectory
 import click
 from rich.markup import escape
 
+from benchbox.cli.exit_codes import ExitCode, exit_code_help
 from benchbox.cli.output import ResultExporter
+from benchbox.cli.prompt_guard import confirm_or_refuse
 from benchbox.cli.pseudonym_salt import ensure_publication_salt
+from benchbox.cli.publication_guard import (
+    MAINTAINER_LABEL_ENV_VAR,
+    enforce_maintainer_label,
+    maintainer_label_refusal,
+)
 from benchbox.cli.shared import console
 from benchbox.core.publishing.admission import is_tpcds_result, publish_admission, unofficial_result_subject
 from benchbox.core.publishing.bundle_publisher import COMPANION_SUFFIXES, VALID_LABELS, BundlePublisher
@@ -29,6 +36,8 @@ from benchbox.core.results.loader import ResultLoadError, UnsupportedSchemaError
 from benchbox.validation.bundle import OVERRIDE_SUFFIX, unanonymized_plans_findings, unanonymized_tuning_findings
 
 PLANS_SUFFIX = ".plans.json"
+
+PUBLISH_EXIT_CODES = (ExitCode.SUCCESS, ExitCode.ERROR, ExitCode.ACKNOWLEDGEMENT_REQUIRED)
 
 
 @click.group(
@@ -48,13 +57,22 @@ PLANS_SUFFIX = ".plans.json"
         "  abfss://...        -> abfss://.../bundle.json\n"
         "\n"
         "\b\n"
+        "The 'maintainer-run' trust label is restricted: it is refused unless\n"
+        f"{MAINTAINER_LABEL_ENV_VAR}=1 is set. Choose another label otherwise.\n"
+        "\n"
+        "\b\n"
         "Examples:\n"
-        "  benchbox publish results/tpch_sf1_duckdb.json\n"
-        "  benchbox publish results/tpch_sf1_duckdb.json --target /mnt/shared/benchbox\n"
-        "  benchbox publish results/tpch_sf1_duckdb.json --target s3://my-bucket/benchbox\n"
+        "  benchbox publish run results/tpch_sf1_duckdb.json\n"
+        "  benchbox publish run results/tpch_sf1_duckdb.json --target /mnt/shared/benchbox\n"
+        "  benchbox publish run results/tpch_sf1_duckdb.json --target s3://my-bucket/benchbox\n"
+        "  benchbox publish run results/tpch_sf1_duckdb.json --label community-submission\n"
         "  benchbox publish list\n"
         "  benchbox publish show abc123def456\n"
-        "  benchbox publish remove abc123def456"
+        "  benchbox publish remove abc123def456\n"
+        "\n"
+        "\b\n"
+        "Exit codes:\n"
+        f"{exit_code_help(PUBLISH_EXIT_CODES)}"
     ),
 )
 def publish() -> None:
@@ -66,7 +84,9 @@ def publish() -> None:
     help=(
         "Publish a schema-v2 result bundle to a storage destination.\n"
         "\n"
-        "RESULT_FILE: Path to the primary .json result file (optional; use --last for auto-select)."
+        "RESULT_FILE: Path to the primary .json result file (optional; use --last for auto-select).\n"
+        "\n"
+        f"The 'maintainer-run' label needs {MAINTAINER_LABEL_ENV_VAR}=1; without it publish exits 6."
     ),
 )
 @click.argument("result_file", required=False, type=click.Path())
@@ -93,6 +113,7 @@ def publish() -> None:
 @click.option("--dry-run", is_flag=True, help="Preview without publishing.")
 @click.pass_context
 def publish_run(ctx, result_file, target, label, last, benchmark, platform, dry_run):
+    enforce_maintainer_label(label.lower())
     source_path = _resolve_source(result_file, last, benchmark, platform)
     if source_path is None:
         return
@@ -176,7 +197,7 @@ def publish_list(benchmark, platform, label):
 
     if not records:
         console.print("[yellow]No publications found.[/yellow]")
-        console.print("[dim]Tip: Use 'benchbox publish results/your-result.json' to publish a result.[/dim]")
+        console.print("[dim]Tip: Use 'benchbox publish run results/your-result.json' to publish a result.[/dim]")
         return
 
     console.print(f"\n[bold]Published artifacts ({len(records)} total)[/bold]")
@@ -257,7 +278,11 @@ def publish_remove(pub_id, yes):
     console.print("[dim]Note: artifact files are NOT deleted from the destination.[/dim]")
 
     if not yes:
-        if not click.confirm("\nRemove this publication record?", default=False):
+        if not confirm_or_refuse(
+            "removing a publication record",
+            flag="--yes",
+            ask=lambda: click.confirm("\nRemove this publication record?", default=False),
+        ):
             console.print("[yellow]Cancelled.[/yellow]")
             return
 
@@ -490,6 +515,11 @@ def publish_bundle(
         console.print(
             f"[red]Publish refused:[/red] invalid trust label '{label}'. Must be one of: {', '.join(VALID_LABELS)}."
         )
+        return None
+
+    refusal = maintainer_label_refusal(label)
+    if refusal is not None:
+        console.print(f"[red]Publish refused:[/red] {escape(refusal)}")
         return None
 
     try:

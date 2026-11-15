@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "MCP benchmark runs now apply the same compression and platform-option defaults as the CLI: generated data is compressed with zstd when available, registered platform defaults such as the DuckDB memory limit are applied and recorded, and the bundle config block matches a CLI run of the same request."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "DataFrame runs now record the same host-load start and end samples as SQL runs in environment.host_load, taken outside the measured intervals."
+    }
+  ]
+}

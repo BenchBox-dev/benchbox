@@ -106,12 +106,14 @@ provider the owner disabled; the owner's `disabled-providers` file decides.
 
 ## Owner adjudication
 
-The owner resolves an escalated finding with a top-level PR comment that is
+The owner resolves an escalated finding, or a finding carried as a claimed prior
+from the local findings record, with a top-level PR comment that is
 exactly `Review adjudication: WITHDRAW D<n> - <reason>` or `Review adjudication:
-MAINTAIN D<n> - <reason>`, posted from an attester account after the escalating
+MAINTAIN D<n> - <reason>`, posted from an attester account after the latest
 review of the current head and never edited. The comment re-runs the
 verdict workflow without a reviewer: `WITHDRAW` stops the finding blocking,
-`MAINTAIN` closes the dispute and keeps the finding open until a fix lands.
+`MAINTAIN` closes the dispute and keeps the finding open until a fix lands. A
+comment that cannot apply is named, with its reason, in the gate's blocked message.
 
 Post an adjudication only when the owner names the PR, the head, the finding and
 the decision in the current request. Quote that instruction first in a separate

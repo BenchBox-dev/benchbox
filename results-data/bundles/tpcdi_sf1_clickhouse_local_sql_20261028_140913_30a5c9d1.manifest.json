@@ -12,5 +12,8 @@
     "version": "30.25.0.2",
     "wheel_sha256": "6207c3526bbaf1d90c6c69aec133496d0a4af2b3e2d1d06d2bb52c8c77ec8fa2"
   },
-  "submitted_by": "maintainer"
+  "submitted_by": "maintainer",
+  "known_defects": [
+    "defective-variant-or-loader-wrong-result"
+  ]
 }

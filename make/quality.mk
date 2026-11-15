@@ -383,7 +383,11 @@ test-package:
 	trap 'rm -rf "$$tmpdir"' EXIT; \
 	cd "$$tmpdir"; \
 	uv run --isolated --no-project --with "$$wheel" -- python -c "import benchbox; print('Package installation successful')"; \
-	uv run --isolated --no-project --with "$$wheel" -- benchbox --help > /dev/null
+	uv run --isolated --no-project --with "$$wheel" -- benchbox --help > /dev/null; \
+	uv venv --python 3.12 .venv; \
+	uv pip install --python .venv/bin/python "$$wheel[duckdb]"; \
+	.venv/bin/benchbox run --platform duckdb --benchmark tpch --scale 0.01; \
+	test -n "$$(find benchmark_runs/results -name '*.json' -print -quit)"
 	@echo "✅ Package test passed"
 
 .PHONY: test-integration-smoke

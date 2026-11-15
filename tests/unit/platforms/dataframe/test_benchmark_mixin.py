@@ -767,3 +767,81 @@ class TestResolveColumnNamesAndDelimiter:
         benchmark = SimpleNamespace(csv_delimiter=";", tables={})
         _, delimiter = adapter._resolve_column_names_and_delimiter(self._config(), benchmark)
         assert delimiter == ";"
+
+
+def _host_load_snapshot(marker: int) -> dict:
+    return {
+        "available": True,
+        "timestamp": f"2026-01-01T00:00:0{marker}",
+        "cpu": {"load_average": [1.0 + marker, 2.0, 3.0], "frequency_mhz": 3000.0},
+        "memory": {"available_mb": 1000.0 + marker},
+        "swap": {"used_mb": 10.0, "percent": 1.0},
+    }
+
+
+class _EventRecordingAdapter(DummyAdapter):
+    def __init__(self, events: list[str]) -> None:
+        super().__init__()
+        self.events = events
+
+    def execute_query(self, ctx, query, query_id=None):
+        self.events.append("query")
+        return super().execute_query(ctx, query, query_id)
+
+
+def _sampler_recording(events: list[str]):
+    def sample() -> dict:
+        events.append("sample")
+        return _host_load_snapshot(len([event for event in events if event == "sample"]))
+
+    return patch(
+        "benchbox.platforms.base.result_capture.ResultCaptureMixin._collect_resource_utilization", side_effect=sample
+    )
+
+
+def test_dataframe_run_records_host_load_samples_outside_the_measured_interval() -> None:
+    events: list[str] = []
+    adapter = _EventRecordingAdapter(events)
+    config = BenchmarkConfig(
+        name="dummy",
+        display_name="Dummy",
+        scale_factor=1.0,
+        options={"power_warmup_iterations": 0, "power_iterations": 1},
+    )
+
+    with _sampler_recording(events):
+        result = adapter.run_benchmark(
+            DummyBenchmark({}),
+            benchmark_config=config,
+            phases=DataFramePhases(load=False, execute=True),
+            options=DataFrameRunOptions(prefer_parquet=False),
+        )
+
+    assert events == ["sample", "query", "sample"]
+    host_load = build_result_payload(result)["environment"]["host_load"]
+    assert host_load["start"]["load_average"] == [2.0, 2.0, 3.0]
+    assert host_load["end"]["load_average"] == [3.0, 2.0, 3.0]
+    assert host_load["start"]["memory_available_mb"] == 1001.0
+    assert host_load["end"]["memory_available_mb"] == 1002.0
+    assert host_load["start"]["sampled_at"] != host_load["end"]["sampled_at"]
+
+
+def test_dataframe_run_with_failed_load_still_records_host_load_samples(tmp_path) -> None:
+    events: list[str] = []
+    adapter = FailingLoadAdapter()
+    tbl_path = tmp_path / "customer.tbl"
+    tbl_path.write_text("1|Alice|\n")
+    config = BenchmarkConfig(name="dummy", display_name="Dummy", scale_factor=1.0)
+
+    with _sampler_recording(events):
+        result = adapter.run_benchmark(
+            DummyBenchmark({"customer": tbl_path}),
+            benchmark_config=config,
+            phases=DataFramePhases(load=True, execute=False),
+            options=DataFrameRunOptions(prefer_parquet=False),
+        )
+
+    assert events == ["sample", "sample"]
+    host_load = build_result_payload(result)["environment"]["host_load"]
+    assert host_load["start"]["load_average"] is not None
+    assert host_load["end"]["load_average"] is not None

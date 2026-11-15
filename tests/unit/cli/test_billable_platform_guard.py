@@ -17,6 +17,7 @@ from benchbox.core.billable_platforms import (
 )
 from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.core.schemas import ExecutionContext
+from benchbox.utils import session
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -181,7 +182,6 @@ class TestAcknowledgement:
         assert reached == ["snowflake"]
 
     def test_interactive_terminal_session_is_not_refused(self, monkeypatch):
-        monkeypatch.setattr(billable_platforms, "is_non_interactive_session", lambda flag=False: False)
         monkeypatch.setattr(billable_guard, "is_non_interactive_session", lambda flag=False: False)
 
         assert billable_guard.enforce_billable_acknowledgement("snowflake") is None
@@ -190,10 +190,10 @@ class TestAcknowledgement:
         monkeypatch.setattr("sys.stdin", MagicMock(isatty=lambda: True))
         monkeypatch.setattr("sys.stdout", MagicMock(isatty=lambda: True))
 
-        assert not billable_platforms.is_non_interactive_session()
-        assert billable_platforms.is_non_interactive_session(True)
+        assert not session.is_non_interactive_session()
+        assert session.is_non_interactive_session(True)
         monkeypatch.setenv("BENCHBOX_NON_INTERACTIVE", "true")
-        assert billable_platforms.is_non_interactive_session()
+        assert session.is_non_interactive_session()
 
 
 class TestBundleRecordsAcknowledgement:
@@ -234,3 +234,74 @@ def test_legacy_clickhouse_cloud_selector_is_billable():
     assert assess_platform("clickhouse:cloud").billable
     assert not assess_platform("clickhouse:local").billable
     assert not assess_platform("clickhouse:server").billable
+
+
+class TestRunOfficialAcknowledgement:
+    @pytest.fixture
+    def tripwires(self, monkeypatch):
+        calls: list[str] = []
+
+        def trip(name: str):
+            def raiser(*_args, **_kwargs):
+                calls.append(name)
+                raise AssertionError(f"{name} must not be reached")
+
+            return raiser
+
+        from benchbox.cli.database import DatabaseManager
+        from benchbox.cli.orchestrator import BenchmarkOrchestrator
+        from benchbox.security.credentials import CredentialManager
+
+        monkeypatch.setattr(DatabaseManager, "create_config", trip("create_config"))
+        monkeypatch.setattr(BenchmarkOrchestrator, "execute_benchmark", trip("execute_benchmark"))
+        monkeypatch.setattr(CredentialManager, "get_platform_credentials", trip("get_platform_credentials"))
+        monkeypatch.setattr("benchbox.platforms.get_platform_adapter", trip("get_platform_adapter"))
+        return calls
+
+    def _official(self, platform: str, *extra: str):
+        return CliRunner().invoke(
+            cli,
+            [
+                "run-official",
+                "tpch",
+                "--platform",
+                platform,
+                "--scale",
+                "1",
+                "--phases",
+                "power,throughput",
+                "--streams",
+                "2",
+                "--seed",
+                "1",
+                *extra,
+            ],
+        )
+
+    def test_billable_platform_is_refused_without_acknowledgement(self, tripwires):
+        result = self._official("snowflake")
+
+        assert result.exit_code == ExitCode.ACKNOWLEDGEMENT_REQUIRED, result.output
+        assert tripwires == []
+        assert ACKNOWLEDGEMENT_ENV_VAR in result.output
+
+    def test_flag_is_accepted_and_recorded(self, monkeypatch):
+        seen = {}
+        monkeypatch.setattr(
+            run_module, "_run_direct", lambda s: seen.update(acknowledgement=s.billable_acknowledgement)
+        )
+        monkeypatch.setattr(
+            run_module,
+            "_resolve_platform_mode",
+            lambda s: (setattr(s, "resolved_mode", "sql"), setattr(s, "resolved_execution_engine", "default")),
+        )
+
+        result = self._official("snowflake", "--acknowledge-billable-platform")
+
+        assert result.exit_code == 0, result.output
+        assert seen["acknowledgement"] == {"acknowledged": True, "source": "cli_flag"}
+
+    def test_help_lists_the_flag(self):
+        result = CliRunner().invoke(cli, ["run-official", "--help"])
+
+        assert "--acknowledge-billable-platform" in result.output

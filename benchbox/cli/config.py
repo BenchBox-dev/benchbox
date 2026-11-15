@@ -16,6 +16,7 @@ from benchbox.core.config_utils import (
     load_config_file,
     save_config_file,
 )
+from benchbox.core.constants import DEFAULT_OUTPUT_COMPRESSION_TYPE
 from benchbox.core.tuning.interface import (
     BenchmarkTunings,
     TableTuning,
@@ -223,7 +224,7 @@ class ConfigManager:
                 "service_url": "https://api.benchbox.dev/v1",
                 "compression": {
                     "enabled": True,
-                    "type": "zstd",
+                    "type": DEFAULT_OUTPUT_COMPRESSION_TYPE,
                     "level": None,
                 },
             },

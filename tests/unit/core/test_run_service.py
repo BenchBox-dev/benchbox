@@ -435,3 +435,44 @@ class TestTheExportedSurface:
                     )
 
         assert offenders == [], f"surfaces importing private core symbols: {offenders}"
+
+
+class TestResolveConfiguredCompression:
+    @staticmethod
+    def _saved_config(tmp_path, monkeypatch, body: str | None):
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("HOME", str(tmp_path))
+        monkeypatch.delenv("BENCHBOX_NO_COMPRESSION", raising=False)
+        if body is not None:
+            (tmp_path / "benchbox.yaml").write_text(body, encoding="utf-8")
+
+    def test_no_saved_config_uses_the_shipped_default(self, tmp_path, monkeypatch):
+        from benchbox.core.run_service import resolve_configured_compression
+
+        self._saved_config(tmp_path, monkeypatch, None)
+        assert resolve_configured_compression() == (True, "zstd", None)
+
+    def test_saved_level_is_returned(self, tmp_path, monkeypatch):
+        from benchbox.core.run_service import resolve_configured_compression
+
+        self._saved_config(tmp_path, monkeypatch, "output:\n  compression:\n    type: zstd\n    level: 5\n")
+        assert resolve_configured_compression() == (True, "zstd", 5)
+
+    def test_disabled_in_saved_config_means_no_compression(self, tmp_path, monkeypatch):
+        from benchbox.core.run_service import resolve_configured_compression
+
+        self._saved_config(tmp_path, monkeypatch, "output:\n  compression:\n    enabled: false\n")
+        assert resolve_configured_compression() == (False, "none", None)
+
+    def test_environment_switch_overrides_saved_config(self, tmp_path, monkeypatch):
+        from benchbox.core.run_service import resolve_configured_compression
+
+        self._saved_config(tmp_path, monkeypatch, None)
+        monkeypatch.setenv("BENCHBOX_NO_COMPRESSION", "1")
+        assert resolve_configured_compression() == (False, "none", None)
+
+    def test_unavailable_codec_falls_back_to_no_compression(self, tmp_path, monkeypatch):
+        from benchbox.core.run_service import resolve_configured_compression
+
+        self._saved_config(tmp_path, monkeypatch, "output:\n  compression:\n    type: not-installed\n")
+        assert resolve_configured_compression() == (False, "none", None)

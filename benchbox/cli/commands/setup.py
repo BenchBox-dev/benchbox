@@ -10,6 +10,7 @@ from rich.panel import Panel
 from rich.prompt import Confirm
 from rich.table import Table
 
+from benchbox.cli.prompt_guard import confirm_or_refuse
 from benchbox.cli.shared import console
 from benchbox.security.credentials import CredentialManager, CredentialStatus
 
@@ -40,9 +41,10 @@ PLATFORM_DISPLAY_NAMES = {
         "Interactive setup for cloud platform credentials.\n"
         "\n"
         "Guides you through setting up authentication for Databricks, Snowflake,\n"
-        "BigQuery, Redshift, Athena, MotherDuck, and SingleStore platforms. Most platforms use\n"
-        "secure local credential storage; MotherDuck validates MOTHERDUCK_TOKEN\n"
-        "without storing the token.\n"
+        "BigQuery, Redshift, Athena, MotherDuck, and SingleStore platforms. Saved credentials\n"
+        "are written UNENCRYPTED to ~/.benchbox/credentials.yaml (directory 0700, file 0600);\n"
+        "use ${VAR} references in that file to keep secrets in the environment. MotherDuck\n"
+        "validates MOTHERDUCK_TOKEN without storing the token.\n"
         "\n"
         "This is about CREDENTIALS. `benchbox platforms setup` is a different\n"
         "command that enables and installs local platform adapters. The two share\n"
@@ -57,7 +59,7 @@ PLATFORM_DISPLAY_NAMES = {
         "    benchbox setup --status                 # Check credential status\n"
         "    benchbox setup --platform databricks --validate-only  # Validate only\n"
         "    benchbox setup --platform redshift --diagnose         # Run connectivity diagnostics\n"
-        "    benchbox setup --platform databricks --remove         # Remove credentials"
+        "    benchbox setup --platform databricks --remove         # Remove credentials (--yes skips the prompt)"
     ),
 )
 @click.option(
@@ -69,9 +71,10 @@ PLATFORM_DISPLAY_NAMES = {
 @click.option("--list-platforms", "list_platforms_flag", is_flag=True, help="List platforms requiring credentials")
 @click.option("--status", "show_status", is_flag=True, help="Show credential status for all platforms")
 @click.option("--remove", is_flag=True, help="Remove credentials for the specified platform")
+@click.option("--yes", "-y", is_flag=True, help="With --remove, skip the confirmation prompt")
 @click.option("--diagnose", is_flag=True, help="Run diagnostics on platform connectivity (Redshift only)")
 @click.pass_context
-def setup_credentials(ctx, platform, validate_only, list_platforms_flag, show_status, remove, diagnose):
+def setup_credentials(ctx, platform, validate_only, list_platforms_flag, show_status, remove, diagnose, yes):
     from benchbox.utils.dependencies import DEPENDENCY_GROUPS
 
     cred_manager = CredentialManager()
@@ -94,7 +97,7 @@ def setup_credentials(ctx, platform, validate_only, list_platforms_flag, show_st
     platform_lower = platform.lower()
 
     if remove:
-        _remove_credentials(cred_manager, platform_lower)
+        _remove_credentials(cred_manager, platform_lower, assume_yes=yes)
         return
 
     if diagnose:
@@ -228,12 +231,16 @@ def _show_credential_status(cred_manager: CredentialManager):
     console.print("\n[dim]Validate credentials: benchbox setup --platform <name> --validate-only[/dim]")
 
 
-def _remove_credentials(cred_manager: CredentialManager, platform: str):
+def _remove_credentials(cred_manager: CredentialManager, platform: str, assume_yes: bool = False):
     if not cred_manager.has_credentials(platform):
         console.print(f"[yellow]No credentials found for {platform}[/yellow]")
         return
 
-    if not Confirm.ask(f"Remove credentials for {platform}?"):
+    if not assume_yes and not confirm_or_refuse(
+        f"removing credentials for {platform}",
+        flag="--yes",
+        ask=lambda: Confirm.ask(f"Remove credentials for {platform}?"),
+    ):
         console.print("[yellow]Cancelled[/yellow]")
         return
 
