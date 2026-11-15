@@ -202,12 +202,23 @@ no status from `benchbox-oracle[bot]` in `review-verdict` (verdict) or
 `review-gate` (gate), so an empty secret mapping can no longer end green while
 posting nothing on a head that has no status yet. It asserts only for `pull_request_target`
 and `workflow_dispatch` runs, and skips the runs the callee skips by design: sweeps and
-comment events, closed or draft pull requests, a base other than `develop`, a head that has
+comment events, closed or draft pull requests, a base other than `develop` or `release/*`, a head that has
 since moved, and a title edit for the verdict. It cannot tell a run that posted nothing from
 a run the callee skipped because the head already had a decision, so a status left by an
 earlier run satisfies it: a green `posting-check` proves the pin only for a head that had no
 status before the run. Dispatch the checks above on such heads and record the run links in
 the tracker item that carried the bump.
+
+A `pull_request_target` run takes its policy from the branch the workflow runs on, and Theseus
+posts the gate and the verdict only from the policy of the pull request's own base. For a pull
+request into a `release/X.Y.x` line the run reads `develop`'s policy and posts nothing, so the
+`posting-check` job dispatches the same caller (`workflow_dispatch`, `--ref release/X.Y.x`)
+for the handled head, and the dispatched run decides it from the line's own policy and lock. The
+job holds `actions: write` for that one call and no other grant beyond reading statuses. The pull
+request run ends green once the dispatch is accepted; the required `review-gate` and
+`review-verdict` statuses stay unposted, and merging stays blocked, until the dispatched run posts
+them, and that run's own `posting-check` asserts the statuses exist. A callee that ended `failure` or
+`cancelled` keeps the run red, and a failed dispatch fails the job.
 
 `review-gate.yml` never cancels a run in flight: runs for one pull request queue in one
 concurrency group and a newer pending run replaces an older pending one before it starts,
