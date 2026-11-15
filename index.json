@@ -39478,10 +39478,15 @@
       "title": "SQL execution gate and OBT equivalence accept vacuous results (empty or all-zero/NULL aggregate rows) as proof of correct translation"
     },
     "sql-family-timing-contract-test-wall-clock-flake-20261113": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-16T15:01:24Z",
+        "generation": "a8b2c55d58c34c79bde29e8a1084ecb1",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7222c9e9c0af3b11fd0d6a9c"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "`test_psycopg_validation_runs_outside_the_query_timer` asserts a 50 ms wall-clock bound and fails on slow CI runners"
     },
     "sql-query-generation-consistency-tpc-h-tpc-ds": {
