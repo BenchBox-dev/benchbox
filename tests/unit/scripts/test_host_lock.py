@@ -737,9 +737,13 @@ def test_a_wrapper_outside_the_terminal_foreground_gives_the_child_no_stdin(lock
 @posix_only
 @pytest.mark.skipif(shutil.which("bash") is None, reason="bash is required")
 def test_ctrl_z_returns_the_terminal_to_the_shell_and_fg_resumes_the_child(lock_file: Path) -> None:
+    import fcntl
     import pty
+    import struct
+    import termios
 
     master, slave = pty.openpty()
+    fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 1000, 0, 0))
     shell = subprocess.Popen(
         ["bash", "--norc", "--noprofile", "-i"],
         stdin=slave,
