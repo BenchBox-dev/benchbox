@@ -54,6 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
+      actions: write
       contents: read
       pull-requests: read
       statuses: read
@@ -67,6 +68,8 @@ jobs:
       JOB_RESULT: ${{ needs.gate.result }}
       GATED_BASE: "develop,release/*"
       POSTER: benchbox-oracle[bot]
+      REF_NAME: ${{ github.ref_name }}
+      WORKFLOW_REF: ${{ github.workflow_ref }}
       CONTEXTS: review-gate
     steps:
       - name: Fail when no gate status was posted for the handled head
@@ -126,6 +129,16 @@ jobs:
           fi
           if [ -n "$handled" ] && [ "$handled" != "$head" ]; then
             echo "#$pr moved from $handled to $head; the run for the current head covers it."
+            exit 0
+          fi
+          if [ "$EVENT_NAME" = pull_request_target ] && [ "$base" != "$REF_NAME" ]; then
+            if [ "$JOB_RESULT" = failure ] || [ "$JOB_RESULT" = cancelled ]; then
+              echo "::error::the gate job ended '$JOB_RESULT'"
+              exit 1
+            fi
+            echo "#$pr targets $base but this run reads the policy of $REF_NAME; $base decides it, so its own gate run is dispatched for head $head."
+            workflow="${WORKFLOW_REF#"$REPO"/.github/workflows/}"
+            gh workflow run "${workflow%%@*}" --repo "$REPO" --ref "$base" -f pr="$pr" -f head_sha="$head"
             exit 0
           fi
           posted="$(gh api --paginate "repos/$REPO/commits/$head/statuses?per_page=100" | jq -s --arg poster "$POSTER" --arg contexts "$CONTEXTS" '[.[][] | select(.creator.login == $poster and (.context as $context | ($contexts | split(" ") | index($context)) != null))] | length')"
