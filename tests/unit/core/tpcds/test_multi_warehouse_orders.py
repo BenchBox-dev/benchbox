@@ -6,7 +6,8 @@ import pytest
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
-FAMILIES = ["polars", "datafusion", "pandas"]
+PANDAS_FAMILIES = ["pandas", "dask", "modin", "cudf"]
+FAMILIES = ["polars", "datafusion", *PANDAS_FAMILIES]
 WAREHOUSES = [1, 2, 1, None, None, None, 1, 2, None]
 ORDERS = [1, 1, 2, 2, 3, 3, 4, 4, 4]
 EXPECTED = {16: [(2, 2002.0, 6006.0)], 94: [(2, 2002.0, 6006.0)], 95: [(2, 3002.0, 9006.0)]}
@@ -41,6 +42,61 @@ def _tables(returned):
     }
 
 
+def _loaded_frame(pd, data, *, arrow_dates=True):
+    frame = pd.DataFrame(data)
+    if "d_date" in frame:
+        frame["d_date"] = pd.to_datetime(frame["d_date"])
+        if arrow_dates:
+            import pyarrow as pa
+
+            frame["d_date"] = frame["d_date"].astype(pd.ArrowDtype(pa.date32()))
+    return frame
+
+
+def _pandas_family_context(family, tables):
+    pd = pytest.importorskip("pandas")
+    if family == "pandas":
+        from benchbox.platforms.dataframe.pandas_df import PandasDataFrameAdapter
+
+        ctx = PandasDataFrameAdapter().create_context()
+
+        def convert(data):
+            return _loaded_frame(pd, data)
+
+    elif family == "dask":
+        dd = pytest.importorskip("dask.dataframe")
+        from benchbox.platforms.dataframe.dask_df import DaskDataFrameAdapter
+
+        ctx = DaskDataFrameAdapter(execution_engine="threaded").create_context()
+
+        def convert(data):
+            return dd.from_pandas(_loaded_frame(pd, data), npartitions=2)
+
+    elif family == "modin":
+        pytest.importorskip("modin.pandas")
+        import modin.pandas as mpd
+
+        from benchbox.platforms.dataframe.pandas_df import PandasDataFrameAdapter
+
+        ctx = PandasDataFrameAdapter().create_context()
+
+        def convert(data):
+            return mpd.DataFrame(_loaded_frame(pd, data))
+
+    else:
+        cudf = pytest.importorskip("cudf")
+        from benchbox.platforms.dataframe.cudf_df import CuDFDataFrameAdapter
+
+        ctx = CuDFDataFrameAdapter().create_context()
+
+        def convert(data):
+            return cudf.DataFrame.from_pandas(_loaded_frame(pd, data, arrow_dates=False))
+
+    for name, data in tables.items():
+        ctx.register_table(name, convert(data))
+    return ctx
+
+
 def _context(family, tables):
     if family == "polars":
         pl = pytest.importorskip("polars")
@@ -63,13 +119,7 @@ def _context(family, tables):
             adapter.session_ctx.register_record_batches(name, [pa.table(columns).to_batches()])
             ctx.register_table(name, adapter.session_ctx.sql(f"SELECT * FROM {name}"))
     else:
-        import pandas as pd
-
-        from benchbox.platforms.dataframe.pandas_df import PandasDataFrameAdapter
-
-        ctx = PandasDataFrameAdapter().create_context()
-        for name, data in tables.items():
-            ctx.register_table(name, pd.DataFrame(data))
+        ctx = _pandas_family_context(family, tables)
     return ctx
 
 
@@ -83,7 +133,7 @@ def _run(family, number):
         94: {"year": 2000, "month": 3, "states": ["TX"]},
         95: {"year": 2000, "month": 3, "states": ["TX"]},
     }
-    impl_family = "pandas" if family == "pandas" else "expression"
+    impl_family = "pandas" if family in PANDAS_FAMILIES else "expression"
     with parameter_overrides({number: parameters[number]}):
         result = getattr(queries, f"q{number}_{impl_family}_impl")(
             _context(family, _tables([1, 2, 3, 4] if number == 95 else [999]))

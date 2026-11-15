@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import errno
+import json
 import os
 import select
 import shutil
@@ -620,6 +621,84 @@ def test_a_failed_spawn_restores_the_signal_handlers() -> None:
     assert {sig: signal.getsignal(sig) for sig in hl._FORWARDED_SIGNALS} == before
 
 
+@posix_only
+def test_processes_left_in_the_command_group_are_stopped(tmp_path: Path) -> None:
+    pid_file = tmp_path / "background.pid"
+    code = hl._supervise_posix(["bash", "-c", f"sleep 120 & echo $! > {pid_file}; exit 0"], dict(os.environ))
+    assert code == 0
+    background = int(pid_file.read_text(encoding="utf-8"))
+    assert not psutil.pid_exists(background) or psutil.Process(background).status() == psutil.STATUS_ZOMBIE
+
+
+@posix_only
+def test_a_command_that_spawns_after_its_child_is_killed_leaves_nothing_running(tmp_path: Path) -> None:
+    pid_file = tmp_path / "late.pid"
+    script = f"sleep 120 & echo $! > {pid_file}; kill -TERM $$"
+    code = hl._supervise_posix(["bash", "-c", script], dict(os.environ))
+    assert code != 0
+    late = int(pid_file.read_text(encoding="utf-8"))
+    assert not psutil.pid_exists(late) or psutil.Process(late).status() == psutil.STATUS_ZOMBIE
+
+
+@posix_only
+def test_a_clean_command_logs_no_survivors(capfd: pytest.CaptureFixture[str]) -> None:
+    assert hl._supervise_posix(["true"], dict(os.environ)) == 0
+    assert "still running in its process group" not in capfd.readouterr().err
+
+
+@posix_only
+def test_stopped_survivors_are_recorded_under_the_run_id(tmp_path: Path) -> None:
+    runs = tmp_path / "runs.jsonl"
+    env = dict(os.environ, **{hl.RUNS_FILE_ENV: str(runs), hl.RUN_ID_ENV: "abc123"})
+    assert hl._supervise_posix(["bash", "-c", "sleep 120 & exit 0"], env) == 0
+    record = json.loads(runs.read_text(encoding="utf-8").splitlines()[-1])
+    assert record["event"] == "group_survivors_stopped"
+    assert record["run_id"] == "abc123"
+
+
+def _stuck_reap(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, kill: object) -> tuple[list[tuple[int, str]], dict]:
+    runs = tmp_path / "runs.jsonl"
+    env = dict(os.environ, **{hl.RUNS_FILE_ENV: str(runs), hl.RUN_ID_ENV: "abc123"})
+    monkeypatch.setattr(hl, "_group_members", lambda pgid: [(4242, "stuck")])
+    monkeypatch.setattr(hl, "GROUP_GRACE_SECONDS", 0.0)
+    monkeypatch.setattr(hl, "_kill_group", kill)
+    remaining = hl._reap_process_group(999999, env)
+    return remaining, json.loads(runs.read_text(encoding="utf-8").splitlines()[-1])
+
+
+@posix_only
+def test_survivors_that_cannot_be_signalled_are_recorded_as_remaining(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
+) -> None:
+    def deny(pgid: int, sig: signal.Signals) -> None:
+        raise PermissionError
+
+    remaining, record = _stuck_reap(tmp_path, monkeypatch, deny)
+    assert remaining == [(4242, "stuck")]
+    assert record["event"] == "group_survivors_remaining"
+    assert record["outcome"] == "survivors_remaining"
+    assert record["details"]["last_signal_delivered"] is None
+    assert "could not be signalled" in capfd.readouterr().err
+
+
+@posix_only
+def test_a_denied_sigterm_still_escalates_to_sigkill(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
+) -> None:
+    sent: list[signal.Signals] = []
+
+    def term_denied(pgid: int, sig: signal.Signals) -> None:
+        if sig == signal.Signals["SIGTERM"]:
+            raise PermissionError
+        sent.append(sig)
+
+    remaining, record = _stuck_reap(tmp_path, monkeypatch, term_denied)
+    assert sent == [signal.Signals["SIGKILL"]]
+    assert remaining == [(4242, "stuck")]
+    assert record["details"]["last_signal_delivered"] == "SIGKILL"
+    assert "survived SIGKILL" in capfd.readouterr().err
+
+
 def _read_pty(master: int, deadline: float) -> bytes:
     chunks: list[bytes] = []
     while time.monotonic() < deadline:
@@ -712,9 +791,13 @@ def test_a_wrapper_outside_the_terminal_foreground_gives_the_child_no_stdin(lock
 @posix_only
 @pytest.mark.skipif(shutil.which("bash") is None, reason="bash is required")
 def test_ctrl_z_returns_the_terminal_to_the_shell_and_fg_resumes_the_child(lock_file: Path) -> None:
+    import fcntl
     import pty
+    import struct
+    import termios
 
     master, slave = pty.openpty()
+    fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 1000, 0, 0))
     shell = subprocess.Popen(
         ["bash", "--norc", "--noprofile", "-i"],
         stdin=slave,

@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed TPC-DS Q94 and Q95 returning unevaluated lazy values on the Dask DataFrame platform.",
+      "platforms": ["dask"],
+      "benchmarks": ["tpcds"]
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed the Polars read-primitives OLAP rollup counting NULL as a distinct customer.",
+      "platforms": ["polars"],
+      "benchmarks": ["read_primitives"]
+    }
+  ]
+}
