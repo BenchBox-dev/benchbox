@@ -62,7 +62,10 @@ Classify each open PR into one of three execution paths:
      service token. Validate identity per
      `shared-change-framework/SKILL.md [COMMIT-IDENTITY-001]` for any commit the
      agent authors.
-  2. Merge with `gh pr merge <N> --match-head-commit <head.sha>` and the
+  2. Merge through the repository's own merge or arming command when its
+     agent instructions name one; its gates still apply, and a raw merge that
+     bypasses them is not allowed. Only when the repository names none, merge
+     with `gh pr merge <N> --match-head-commit <head.sha>` and the
      repository's merge method (`--squash`, `--merge`, or `--rebase`) to
      prevent race conditions from intervening pushes.
   3. Delete the feature branch if repository policy configures branch cleanup.
