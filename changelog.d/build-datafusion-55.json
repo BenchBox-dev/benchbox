@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "The locked DataFusion version moves from 54.0.0 to 55.0.0 for the DataFusion SQL and DataFrame platforms; the SQL engine reports 55.2.0 while the Python package reports 55.0.0.",
+      "platforms": ["datafusion", "datafusion-df"]
+    }
+  ]
+}
