@@ -512,15 +512,18 @@ CREATION_SOURCE_TRAILER = "Develop-Source"
 CREATION_REVIEW_PATHS = (
     ".github/review.yml",
     ".github/review-omp-config.yml",
+    ".github/review-guidance.md",
     ".github/theseus-lock.json",
     ".github/soundness-paths.txt",
     ".github/inert-paths.txt",
     "scripts/theseus_cli.py",
     "scripts/theseus_release_check.py",
     "_project/scripts/theseus_bootstrap.py",
+    "_project/scripts/soundness_paths.py",
+    "_project/scripts/review_gateway_host.sh",
 )
 CREATION_REVIEW_TESTS = (
-    "tests/unit/scripts/test_inert_paths.py",
+    "tests/fixtures/review_provider_diversity/omp_catalog_windows.json",
     "tests/unit/scripts/test_review_gateway_host.py",
     "tests/unit/scripts/test_review_policy_pin.py",
     "tests/unit/scripts/test_review_provider_diversity.py",

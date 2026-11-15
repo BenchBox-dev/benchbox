@@ -13,8 +13,11 @@ ROOT = Path(__file__).resolve().parents[3]
 
 NOT_CARRIED = {
     "tests/integration/worktree/batch_loop_support.py": "builds a scratch repository from fixtures",
+    "tests/unit/scripts/test_changelog_fragments.py": "tests the changelog fragment script",
+    "tests/unit/scripts/test_changelog_gate_cli.py": "tests the changelog gate script",
     "tests/unit/scripts/test_comment_policy.py": "tests the comment-policy scripts",
     "tests/unit/scripts/test_heavy_tier_needed.py": "tests the heavy-tier selector",
+    "tests/unit/scripts/test_inert_paths.py": "checks every tracked path of the tree against the inert manifest",
     "tests/unit/scripts/test_local_review.py": "tests the local review driver",
     "tests/unit/scripts/test_pr_arm.py": "tests the arming script",
     "tests/unit/scripts/test_pr_landing.py": "tests the landing script",
@@ -25,6 +28,7 @@ NOT_CARRIED = {
     "tests/unit/scripts/test_soundness_merge_digest_dispatch.py": "tests the merge digest dispatch",
     "tests/unit/test_cloud_builder_scripts.py": "tests the cloud builder scripts",
     "tests/unit/workflows/test_batch_loop_e2e_workflow.py": "tests the batch-loop workflow",
+    "tests/unit/workflows/test_ci_changelog_gate.py": "tests the changelog gate workflow",
     "tests/unit/workflows/test_omp_pin_bump_workflow.py": "tests the pin-bump workflow",
     "tests/unit/workflows/test_omp_pin_watch_workflow.py": "tests the pin-watch workflow",
 }
@@ -65,8 +69,16 @@ def test_the_declarations_do_not_overlap_or_go_stale() -> None:
     carried = set(consumer.CREATION_REVIEW_TESTS)
     assert len(carried) == len(consumer.CREATION_REVIEW_TESTS)
     assert not carried & set(NOT_CARRIED)
-    assert carried <= referencing, sorted(carried - referencing)
+    carried_tests = {path for path in carried if path.endswith(".py")}
+    assert carried_tests <= referencing, sorted(carried_tests - referencing)
     assert set(NOT_CARRIED) <= referencing, sorted(set(NOT_CARRIED) - referencing)
+
+
+def test_every_carried_fixture_is_read_by_a_carried_test() -> None:
+    carried = set(consumer.CREATION_REVIEW_TESTS)
+    texts = [(ROOT / path).read_text(encoding="utf-8") for path in carried if path.endswith(".py")]
+    unread = [path for path in carried if not path.endswith(".py") and not any(Path(path).name in t for t in texts)]
+    assert not unread, unread
 
 
 def test_every_carried_test_exists_on_develop() -> None:
