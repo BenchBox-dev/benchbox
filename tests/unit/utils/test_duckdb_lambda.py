@@ -38,6 +38,9 @@ NO_LAMBDA = (
     "SELECT 1",
     "SELECT doc -> 'key' FROM docs",
     "SELECT doc->'a'->'b' FROM docs",
+    "SELECT count(doc -> 'k'), lower(doc -> '$.a'), coalesce(a, doc -> 'k') FROM docs",
+    "SELECT json_extract_string(doc -> 'k', '$.x') FROM docs",
+    "SELECT f(doc -> 0) FROM docs",
     "SELECT LIST_TRANSFORM(xs, lambda x: x + 1) FROM t",
 )
 

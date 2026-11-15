@@ -16,6 +16,13 @@ def duckdb_python_lambda_supported(version: str | None = None) -> bool:
     return (int(parts[0]), int(parts[1])) >= PYTHON_LAMBDA_FROM_VERSION
 
 
+def _uses_parameters(lambda_node: Any) -> bool:
+    from benchbox._vendor.sqlglot import exp
+
+    names = {parameter.name.lower() for parameter in lambda_node.expressions}
+    return any(column.name.lower() in names for column in lambda_node.this.find_all(exp.Column, exp.Identifier))
+
+
 def rewrite_arrow_lambdas(sql: str) -> str:
     if "->" not in sql:
         return sql
@@ -36,7 +43,7 @@ def rewrite_arrow_lambdas(sql: str) -> str:
         for statement in statements
         if statement is not None
         for lambda_node in statement.find_all(exp.Lambda)
-        if lambda_node.expressions and "start" in lambda_node.expressions[0].meta
+        if lambda_node.expressions and "start" in lambda_node.expressions[0].meta and _uses_parameters(lambda_node)
     }
     if not first_parameter_offsets:
         return sql
