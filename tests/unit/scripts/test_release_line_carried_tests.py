@@ -84,3 +84,27 @@ def test_every_carried_fixture_is_read_by_a_carried_test() -> None:
 def test_every_carried_test_exists_on_develop() -> None:
     missing = [path for path in consumer.CREATION_REVIEW_TESTS if not (ROOT / path).is_file()]
     assert not missing, missing
+
+
+_READ_FROM_ROOT = re.compile(r'\b(ROOT|REPO_ROOT|SCRIPTS)\s*((?:/\s*"[^"]+"\s*)+)')
+
+
+def test_every_file_a_carried_test_reads_from_the_tree_is_carried_too() -> None:
+    carried = set(consumer.CREATION_REVIEW_PATHS) | set(consumer.CREATION_REVIEW_TESTS)
+    uncarried = []
+    for test in consumer.CREATION_REVIEW_TESTS:
+        if not test.endswith(".py"):
+            continue
+        text = (ROOT / test).read_text(encoding="utf-8")
+        for base, chain in _READ_FROM_ROOT.findall(text):
+            path = "/".join(re.findall(r'"([^"]+)"', chain))
+            if base == "SCRIPTS":
+                path = f"_project/scripts/{path}"
+            is_review_workflow = consumer.CREATION_REVIEW_WORKFLOW.fullmatch(path) is not None
+            if (ROOT / path).is_file() and path not in carried and not is_review_workflow:
+                uncarried.append((test, path))
+    assert not uncarried, (
+        f"{uncarried}: carried tests read these files, so a line that takes the carried files at "
+        "develop's state would pair them with the tag's older copy; add each to CREATION_REVIEW_PATHS "
+        "or CREATION_REVIEW_TESTS in scripts/release_artifact_consumer.py"
+    )
