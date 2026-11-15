@@ -3140,9 +3140,9 @@ _PLATFORM_MANIFEST_JSON = """[
       }
     ],
     "requirements": [
-      "pyspark>=3.5.0"
+      "pyspark>=3.5.0,<4.3"
     ],
-    "installation_command": "uv add pyspark",
+    "installation_command": "uv add 'pyspark>=3.5.0,<4.3'",
     "adoption": "mainstream",
     "supports": [
       "olap",
@@ -3178,7 +3178,7 @@ _PLATFORM_MANIFEST_JSON = """[
       }
     ],
     "requirements": [
-      "pyspark>=3.5.0"
+      "pyspark>=3.5.0,<4.3"
     ],
     "installation_command": "uv add benchbox --extra velox",
     "adoption": "emerging",
@@ -3270,9 +3270,9 @@ _PLATFORM_MANIFEST_JSON = """[
       }
     ],
     "requirements": [
-      "pyspark>=3.4.0"
+      "pyspark>=3.4.0,<4.3"
     ],
-    "installation_command": "uv add pyspark",
+    "installation_command": "uv add 'pyspark>=3.4.0,<4.3'",
     "adoption": "emerging",
     "supports": [
       "olap",
@@ -3591,9 +3591,9 @@ _PLATFORM_MANIFEST_JSON = """[
       }
     ],
     "requirements": [
-      "pyspark>=3.5.0"
+      "pyspark>=3.5.0,<4.3"
     ],
-    "installation_command": "uv add pyspark",
+    "installation_command": "uv add 'pyspark>=3.5.0,<4.3'",
     "adoption": "established",
     "supports": [
       "dataframe",
