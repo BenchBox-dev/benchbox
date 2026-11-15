@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "Polars 2 is supported and the lock moves to Polars 2.1.0. Polars-backed DataFrame runs keep the Polars version default execution engine, which is the auto engine; use --execution-engine in-memory or streaming to pin one."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed the NYC Taxi DataFrame airport-trips and weekday-weekend-comparison queries failing on Polars 2, which no longer coerces integer list values to float columns in is_in."
+    }
+  ]
+}
