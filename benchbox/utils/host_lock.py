@@ -1054,7 +1054,7 @@ def _group_members(pgid: int) -> list[tuple[int, str]]:
     return members
 
 
-def _reap_process_group(pgid: int) -> list[tuple[int, str]]:
+def _reap_process_group(pgid: int, env: Mapping[str, str]) -> list[tuple[int, str]]:
     survivors = _group_members(pgid)
     if not survivors:
         return []
@@ -1076,6 +1076,8 @@ def _reap_process_group(pgid: int) -> list[tuple[int, str]]:
         _load_sibling("heavy_run_events").record_event(
             "group_survivors_stopped",
             details={"pgid": pgid, "processes": [{"pid": pid, "name": name} for pid, name in survivors]},
+            environ=env,
+            run_id=env.get(RUN_ID_ENV),
         )
     except Exception:
         pass
@@ -1161,7 +1163,7 @@ def _supervise_posix(command: Sequence[str], env: Mapping[str, str]) -> int:
         return _wait_for_child(child, foreground)
     finally:
         if child is not None:
-            _reap_process_group(child.pid)
+            _reap_process_group(child.pid, env)
         if foreground:
             try:
                 os.tcsetpgrp(0, os.getpgrp())

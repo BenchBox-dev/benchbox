@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import errno
+import json
 import os
 import select
 import shutil
@@ -643,6 +644,16 @@ def test_a_command_that_spawns_after_its_child_is_killed_leaves_nothing_running(
 def test_a_clean_command_logs_no_survivors(capfd: pytest.CaptureFixture[str]) -> None:
     assert hl._supervise_posix(["true"], dict(os.environ)) == 0
     assert "still running in its process group" not in capfd.readouterr().err
+
+
+@posix_only
+def test_stopped_survivors_are_recorded_under_the_run_id(tmp_path: Path) -> None:
+    runs = tmp_path / "runs.jsonl"
+    env = dict(os.environ, **{hl.RUNS_FILE_ENV: str(runs), hl.RUN_ID_ENV: "abc123"})
+    assert hl._supervise_posix(["bash", "-c", "sleep 120 & exit 0"], env) == 0
+    record = json.loads(runs.read_text(encoding="utf-8").splitlines()[-1])
+    assert record["event"] == "group_survivors_stopped"
+    assert record["run_id"] == "abc123"
 
 
 def _read_pty(master: int, deadline: float) -> bytes:
