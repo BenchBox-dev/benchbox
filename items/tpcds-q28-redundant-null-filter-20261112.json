@@ -3,6 +3,7 @@
     "Q28 reference-answer and equivalence tests pass unchanged on every DataFrame platform the unit and fast tiers exercise.",
     "Before and after timings for Q28 are recorded in this item."
   ],
+  "context": "FINAL 2026-11-15. PR #4239 merged as eee5d7a859 (review SHIP, no threads; preflight 1641 passed). Q28 now `col(\"ss_list_price\").n_unique()`. SF1 best of 5 alternating (mono_time): Polars 1.44.2 0.0504 -> 0.0469 s (-7%); DataFusion 54.0.0 0.0618 -> 0.0602 s (-2.5%, 3 reps); PySpark 4.2.0 0.4220 -> 0.4387 s (+3.9%). Kept. DataFusion plan identical before/after (logical 40 nodes, physical 46, `count(DISTINCT ss_list_price)`): `_DataFusionDeferredFilter` has no `n_unique`, so the old filter was silently ignored on DataFusion. Filed as df-datafusion-deferred-filter-dropped-on-n-unique-20261115. Reference-answer and equivalence tests unchanged.",
   "description": "Cleanup. TPC-DS DataFrame Q28 in `benchbox/core/tpcds/dataframe_queries/queries.py` computes `col(\"ss_list_price\").filter(col(\"ss_list_price\").is_not_null()).n_unique()`. Since PR #4169, `n_unique()` skips NULL on every platform, so the filter does nothing and adds an operation to a timed query on all engines. It was left alone in that change because no batch member owned it.\n\nExpected: the filter is removed and Q28 answers are unchanged.\n\nGuardrails: Q28 is a timed query; record before and after timing on Polars, DataFusion and PySpark and keep the change only if no platform is more than 10% slower. On DataFusion the `.filter(...)` form goes through a deferred-filter path in `unified_frame.py`; confirm the plan really gets simpler there.",
   "links": [
     "benchbox/core/tpcds/dataframe_queries/queries.py"
@@ -32,6 +33,14 @@
       "generation": "9f4f5b165a354a9fb1b0762c366b935d",
       "op": "release",
       "op_id": "05abbc1afd5a4e16b25d009cb434b52f",
+      "session_id": "0171c65ed8c64989adf7cdd0332f0ed2"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7222c9e9c0af3b11fd0d6a9c",
+      "at": "2026-11-15T15:48:46Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ce0e7e11d67944c18791b2c1406b974b",
       "session_id": "0171c65ed8c64989adf7cdd0332f0ed2"
     }
   ]
