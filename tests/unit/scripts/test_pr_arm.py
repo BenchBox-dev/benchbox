@@ -1748,3 +1748,139 @@ def test_an_unreadable_stale_base_listing_refuses_with_the_unverified_outcome(
     assert _arm_with_default_stale_guard(gh) == 1
     assert gh.merged() == []
     assert "outcome: refused: live state could not be verified" in capsys.readouterr().out
+
+
+LINE = "release/0.5.x"
+
+
+def _arm_on(gh: FakeGh, base: str, pr: str | None = "7", **hooks):
+    options = {
+        "unpublished": lambda _checkout: [],
+        "threads": lambda _run, _repo, _number: [],
+        "suites": lambda _run, _repo, _base, _head: [],
+        "gate": lambda _run, _repo, _number, _head: [],
+    }
+    return pr_arm.arm(pr, None, run=gh, base=base, **(options | hooks))
+
+
+def test_a_pull_request_into_a_release_line_is_armed_when_the_base_is_named() -> None:
+    gh = FakeGh(view=_view(baseRefName=LINE))
+    assert _arm_on(gh, LINE) == 0
+    assert gh.merged() == [
+        ["gh", "pr", "merge", "7", "--repo", pr_arm.REPOSITORY, "--squash", "--auto", "--match-head-commit", HEAD]
+    ]
+
+
+def test_every_live_check_is_made_against_the_named_base() -> None:
+    seen: dict[str, str] = {}
+    gh = FakeGh(view=_view(baseRefName=LINE))
+
+    def record(name: str):
+        def check(_run, _repo, base: str, _head: str, *_rest) -> list[str]:
+            seen[name] = base
+            return []
+
+        return check
+
+    def stale(_run, _repo, _number, _head, base: str, _checkout) -> list[str]:
+        seen["stale"] = base
+        return []
+
+    assert _arm_on(gh, LINE, suites=record("suites"), visible=record("visible"), stale_base=stale) == 0
+    assert seen == {"suites": LINE, "visible": LINE, "stale": LINE}
+
+
+def test_the_default_gate_evaluation_is_made_from_the_named_base(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[str] = []
+    monkeypatch.setattr(
+        pr_arm.theseus_cli, "gate_refusals", lambda _run, _repo, _number, _head, _label, base: seen.append(base) or []
+    )
+    gh = FakeGh(view=_view(baseRefName=LINE))
+    assert (
+        pr_arm.arm(
+            "7",
+            None,
+            run=gh,
+            base=LINE,
+            unpublished=lambda _c: [],
+            threads=lambda *_a: [],
+            suites=lambda *_a: [],
+        )
+        == 0
+    )
+    assert seen == [LINE]
+
+
+def test_the_current_branch_pull_request_is_looked_up_on_the_named_base() -> None:
+    gh = FakeGh(view=_view(baseRefName=LINE), listed=[7])
+    assert _arm_on(gh, LINE, pr=None) == 0
+    listing = next(call for call in gh.calls if call[:3] == ["gh", "pr", "list"])
+    assert listing[listing.index("--base") + 1] == LINE
+
+
+@pytest.mark.parametrize(
+    ("actual", "requested", "expected"),
+    [
+        (LINE, "develop", f"arms only PRs into 'develop'; pass BASE={LINE} to arm it"),
+        ("develop", LINE, f"arms only PRs into '{LINE}'; pass BASE=develop to arm it"),
+        ("release/0.6.x", LINE, f"arms only PRs into '{LINE}'; pass BASE=release/0.6.x to arm it"),
+        ("feature/x", LINE, "the only other bases it arms are 'develop' and release/X.Y.x lines"),
+        ("release", "develop", "the only other bases it arms are 'develop' and release/X.Y.x lines"),
+    ],
+)
+def test_a_pull_request_whose_base_is_not_the_named_one_is_refused(
+    actual: str, requested: str, expected: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gh = FakeGh(view=_view(baseRefName=actual))
+    assert _arm_on(gh, requested) == 2
+    assert gh.merged() == []
+    assert expected in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("base", ["feature/x", "release", "release/0.5", "main", "release/0.5.x/extra"])
+def test_a_base_that_is_neither_develop_nor_a_line_is_refused_before_any_command(
+    base: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gh = FakeGh(view=_view(baseRefName=base))
+    assert _arm_on(gh, base) == 2
+    assert gh.calls == []
+    assert "not 'develop' or a release/X.Y.x maintenance line" in capsys.readouterr().err
+
+
+def test_the_gate_evaluation_of_a_line_pull_request_reads_the_policy_of_its_own_base() -> None:
+    seen: list[list[str]] = []
+
+    def run(cmd: Sequence[str]) -> tuple[int, str]:
+        seen.append(list(cmd))
+        return 0, ""
+
+    assert pr_arm.gate_refusals(run, "o/r", 7, HEAD, base=LINE) == []
+    command = seen[0]
+    assert "theseus_cli.py" in " ".join(command)
+    assert command[-11:] == [
+        "--trusted-ref",
+        f"origin/{LINE}",
+        "gate",
+        "--base",
+        LINE,
+        "--repo",
+        "o/r",
+        "--pr",
+        "7",
+        "--head-sha",
+        HEAD,
+    ]
+    assert "--post" not in command
+
+
+def test_main_passes_the_named_base_to_arm_and_refuses_an_unknown_one(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[dict] = []
+    monkeypatch.setattr(pr_arm, "arm", lambda pr, head, repo, **options: seen.append(options) or 0)
+    assert pr_arm.main([], env={"PR_ARM_BASE": LINE}) == 0
+    assert pr_arm.main(["--base", LINE], env={}) == 0
+    assert pr_arm.main([], env={"PR_ARM_BASE": "develop"}) == 0
+    assert pr_arm.main([], env={"PR_ARM_BASE": ""}) == 0
+    assert seen == [{"base": LINE}, {"base": LINE}, {}, {}]
+    seen.clear()
+    assert pr_arm.main([], env={"PR_ARM_BASE": "feature/x"}) == 2
+    assert seen == []

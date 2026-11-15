@@ -358,6 +358,7 @@ def _receipt_status(repo: Path, env: dict[str, str], tmp_path: Path, stage: Path
 STUB_UV = """#!/bin/sh
 echo "$*" >> "$STUB_LOG"
 case "$*" in
+*pr_base.py*) echo "${PR_OPEN_BASE:-develop}" ;;
 *pr_open_rest.py*)
   while [ "$#" -gt 0 ]; do
     if [ "$1" = --receipt-file ]; then cp "$2" "$STUB_RECEIPT_COPY"; fi

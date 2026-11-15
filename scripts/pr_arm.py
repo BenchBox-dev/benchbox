@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import os
 import re
@@ -17,6 +18,7 @@ from typing import Any, NamedTuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ci_text_edit_verdict
+import pr_base
 import pr_landing
 import pr_stale_base
 import theseus_cli
@@ -327,8 +329,18 @@ def duration_verdict_refusals(run: Runner, repo: str, number: int, head: str, la
     ]
 
 
-def gate_refusals(run: Runner, repo: str, number: int, head: str, label: str = "pr-arm") -> list[str]:
-    return theseus_cli.gate_refusals(run, repo, number, head, label)
+def gate_refusals(
+    run: Runner, repo: str, number: int, head: str, label: str = "pr-arm", base: str = BASE_BRANCH
+) -> list[str]:
+    return theseus_cli.gate_refusals(run, repo, number, head, label, base)
+
+
+def _base_hint(actual: object, requested: str) -> str:
+    try:
+        pr_base.validate(str(actual))
+    except ValueError:
+        return "; the only other bases it arms are 'develop' and release/X.Y.x lines, named by BASE"
+    return f"; pass BASE={actual} to arm it" if actual != requested else ""
 
 
 def refusals(
@@ -338,14 +350,18 @@ def refusals(
     unpublished: Sequence[str],
     unresolved_threads: Sequence[dict] = (),
     hidden_failures: Sequence[str] = (),
+    base: str = BASE_BRANCH,
 ) -> list[str]:
     reasons: list[str] = []
     if view.get("state") != "OPEN":
         reasons.append(f"PR is {view.get('state')!r}, not OPEN")
     if view.get("isDraft"):
         reasons.append("PR is a draft")
-    if view.get("baseRefName") != BASE_BRANCH:
-        reasons.append(f"PR targets {view.get('baseRefName')!r}; this path arms only PRs into {BASE_BRANCH!r}")
+    if view.get("baseRefName") != base:
+        reasons.append(
+            f"PR targets {view.get('baseRefName')!r}; this path arms only PRs into {base!r}"
+            f"{_base_hint(view.get('baseRefName'), base)}"
+        )
     labels = {label.get("name") for label in view.get("labels") or []}
     if HOLD_LABEL in labels:
         reasons.append(f"durable hold label {HOLD_LABEL!r} is present; remove it deliberately to release the hold")
@@ -360,12 +376,12 @@ def refusals(
     return reasons
 
 
-def _current_branch_pr(run: Runner, repo: str) -> str:
+def _current_branch_pr(run: Runner, repo: str, base: str = BASE_BRANCH) -> str:
     code, branch = run(["git", "rev-parse", "--abbrev-ref", "HEAD"])
     if code != 0 or not branch.strip() or branch.strip() == "HEAD":
         raise pr_landing.LandingError("cannot resolve the current branch; pass PR=<number>")
     code, out = run(
-        ["gh", "pr", "list", "--repo", repo, "--head", branch.strip(), "--base", BASE_BRANCH, "--state", "open"]
+        ["gh", "pr", "list", "--repo", repo, "--head", branch.strip(), "--base", base, "--state", "open"]
         + ["--json", "number"]
     )
     if code != 0:
@@ -373,7 +389,7 @@ def _current_branch_pr(run: Runner, repo: str) -> str:
     numbers = [item["number"] for item in json.loads(out)]
     if len(numbers) != 1:
         raise pr_landing.LandingError(
-            f"expected exactly one open PR into {BASE_BRANCH!r} from {branch.strip()!r}, found {len(numbers)}; pass PR=<number>"
+            f"expected exactly one open PR into {base!r} from {branch.strip()!r}, found {len(numbers)}; pass PR=<number>"
         )
     return str(numbers[0])
 
@@ -475,17 +491,23 @@ def arm(
     suites: Callable[[Runner, str, str, str], list[str]] = suite_refusals,
     duration: Callable[[Runner, str, int, str], list[str]] = duration_verdict_refusals,
     visible: Callable[[Runner, str, str, str], list[str]] = visible_refusals,
-    gate: Callable[[Runner, str, int, str], list[str]] = gate_refusals,
+    gate: Callable[[Runner, str, int, str], list[str]] | None = None,
     batch: Callable[..., list[str]] = batch_refusals,
     require_batch: bool = False,
     discover: Callable[..., tuple[str | None, str]] | None = None,
     wait_on_pending_review: bool = False,
     stale_base: Callable[..., list[str]] | None = None,
+    base: str = BASE_BRANCH,
 ) -> int:
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         return _refused(f"--repo must be owner/name, got {repo!r}", 2)
     if head is not None and not re.fullmatch(r"[0-9a-f]{40}", head):
         return _refused(f"--head must be a full lowercase commit SHA, got {head!r}", 2)
+    try:
+        base = pr_base.validate(base)
+    except ValueError as exc:
+        return _refused(str(exc), 2)
+    gate = gate or functools.partial(gate_refusals, base=base)
     try:
         code, out = run(["git", "rev-parse", "HEAD"])
         if code != 0:
@@ -495,7 +517,7 @@ def arm(
             return _refused(f"requested head {head[:9]} is not local HEAD {local_head[:9]}", 2)
         if pr is not None and not re.fullmatch(r"[1-9][0-9]*", pr):
             return _refused(f"--pr must be a plain PR number, got {pr!r}", 2)
-        number = pr or _current_branch_pr(run, repo)
+        number = pr or _current_branch_pr(run, repo, base)
         code, out = run(["gh", "pr", "view", number, "--repo", repo, "--json", VIEW_FIELDS])
         if code != 0:
             return _refused(f"cannot read the pull request: {out.strip()}", 1)
@@ -504,11 +526,12 @@ def arm(
             view,
             local_head,
             unpublished=unpublished(checkout),
+            base=base,
             unresolved_threads=threads(run, repo, int(view["number"])),
             hidden_failures=[
-                *suites(run, repo, BASE_BRANCH, local_head),
+                *suites(run, repo, base, local_head),
                 *(duration(run, repo, int(view["number"]), local_head) if view.get("headRefOid") == local_head else []),
-                *visible(run, repo, BASE_BRANCH, local_head),
+                *visible(run, repo, base, local_head),
                 *(gate(run, repo, int(view["number"]), local_head) if view.get("headRefOid") == local_head else []),
                 *(
                     batch(run, checkout, local_head, int(view["number"]), view, require_batch, discover, repo)
@@ -524,7 +547,7 @@ def arm(
                 return _outcome(f"waiting: PR #{view['number']} is not armed yet: {' | '.join(reasons)}", 2)
             return _outcome(f"refused: PR #{view['number']} was not armed: {' | '.join(reasons)}", 2)
         stale = (stale_base or pr_stale_base.stale_base_refusals)(
-            run, repo, int(view["number"]), local_head, BASE_BRANCH, checkout
+            run, repo, int(view["number"]), local_head, base, checkout
         )
         if stale:
             for reason in stale:
@@ -619,6 +642,7 @@ def _environment_selection(env: Mapping[str, str]) -> dict[str, Any]:
         "repo": env.get("PR_ARM_REPO") if env.get("PR_ARM_REPO_SET") == "1" else None,
         "wait": env.get("PR_ARM_WAIT") if env.get("PR_ARM_WAIT_SET") == "1" else None,
         "require_batch": env.get("PR_ARM_REQUIRE_BATCH") == "1",
+        "base": env.get("PR_ARM_BASE") or None,
     }
 
 
@@ -639,18 +663,26 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
         default=selected["require_batch"],
         help="assert that the PR is a registered batch PR",
     )
+    parser.add_argument(
+        "--base",
+        default=selected["base"],
+        help="base branch of the pull request: develop (default) or a release/X.Y.x maintenance line",
+    )
     args = parser.parse_args(argv)
     try:
         minutes = wait_minutes(args.wait_minutes)
+        base = pr_base.validate(args.base)
     except ValueError as exc:
         return _refused(str(exc), 2)
 
     def attempt() -> int:
-        options: dict[str, bool] = {}
+        options: dict[str, Any] = {}
         if args.require_batch:
             options["require_batch"] = True
         if minutes is not None:
             options["wait_on_pending_review"] = True
+        if base != BASE_BRANCH:
+            options["base"] = base
         return arm(args.pr, args.head, args.repo, **options)
 
     if minutes is None:
