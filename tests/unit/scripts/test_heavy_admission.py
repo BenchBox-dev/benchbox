@@ -75,6 +75,13 @@ def test_the_load_ratio_is_read_from_the_environment() -> None:
     assert rl.admission_policy_from_env({}).max_load_ratio == rl.DEFAULT_MAX_LOAD_RATIO
 
 
+@pytest.mark.parametrize("ci", ["true", "1", "True", "yes"])
+def test_the_load_check_is_off_by_default_on_ci_runners(ci: str) -> None:
+    assert rl.admission_policy_from_env({"CI": ci}).max_load_ratio == 0.0
+    assert rl.admission_policy_from_env({"CI": ci, rl.MAX_LOAD_RATIO_ENV: "3"}).max_load_ratio == 3.0
+    assert rl.admission_policy_from_env({"CI": "false"}).max_load_ratio == rl.DEFAULT_MAX_LOAD_RATIO
+
+
 def test_unmeasured_signals_never_refuse() -> None:
     blind = healthy(
         total_gib=None,

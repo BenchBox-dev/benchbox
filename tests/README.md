@@ -525,7 +525,7 @@ refusal (exit 76) as `Linux not verified -- admission refused` and does not fail
 | `BENCHBOX_HEAVY_MIN_LEVEL` | 35 | Minimum `kern.memorystatus_level` |
 | `BENCHBOX_HEAVY_MIN_FREE_DISK_GIB` | 50 | Minimum free disk per root |
 | `BENCHBOX_HEAVY_MEMORY_BUDGET_GIB` | 50% of RAM | Shared memory budget resolver (`resource_limits.heavy_memory_budget_gib`) |
-| `BENCHBOX_HEAVY_MAX_LOAD_RATIO` | 5 | Refuse admission when the 5-minute load average exceeds this multiple of the CPU count; 0 disables. Set to catch runaway processes, not to throttle busy hosts |
+| `BENCHBOX_HEAVY_MAX_LOAD_RATIO` | 5 (0 when `CI` is set) | Refuse admission when the 5-minute load average exceeds this multiple of the CPU count; 0 disables. Set to catch runaway processes on a shared host, not to throttle busy hosts; hosted CI runners are dedicated and routinely run above any such ratio |
 | `BENCHBOX_HEAVY_ADMIT` | unset | `force` admits despite refusals, with a stderr warning |
 
 `make heavy-status` (`python -m benchbox.utils.host_lock status`) is read-only and never takes the lock. It prints the

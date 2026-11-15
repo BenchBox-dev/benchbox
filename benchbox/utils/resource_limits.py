@@ -545,6 +545,10 @@ def _float_setting(environ: Mapping[str, str], name: str, default: float) -> flo
     return value
 
 
+def _default_load_ratio(env: Mapping[str, str]) -> float:
+    return 0.0 if env.get("CI", "").strip().lower() in {"1", "true", "yes"} else DEFAULT_MAX_LOAD_RATIO
+
+
 def admission_policy_from_env(
     environ: Mapping[str, str] | None = None, *, need_gib: float | None = None
 ) -> AdmissionPolicy:
@@ -553,7 +557,7 @@ def admission_policy_from_env(
         need_gib=_float_setting(env, ADMIT_MIN_GIB_ENV, DEFAULT_ADMIT_MIN_GIB) if need_gib is None else need_gib,
         min_level=_float_setting(env, MIN_LEVEL_ENV, DEFAULT_MIN_LEVEL),
         min_free_disk_gib=_float_setting(env, MIN_FREE_DISK_GIB_ENV, DEFAULT_MIN_FREE_DISK_GIB),
-        max_load_ratio=_float_setting(env, MAX_LOAD_RATIO_ENV, DEFAULT_MAX_LOAD_RATIO),
+        max_load_ratio=_float_setting(env, MAX_LOAD_RATIO_ENV, _default_load_ratio(env)),
     )
 
 
@@ -769,7 +773,7 @@ def format_admission_report(result: AdmissionResult, policy: AdmissionPolicy) ->
         f"  total memory: {_fmt(pressure.total_gib, ' GiB')}; swap used (reported only): "
         f"{_fmt(pressure.swap_used_percent, '%')}",
         f"  5-minute load average: {_fmt(pressure.load_average_5m)} on {_fmt(pressure.cpu_count)} CPUs "
-        f"(refuse above {policy.max_load_ratio:g} x CPUs)",
+        f"({f'refuse above {policy.max_load_ratio:g} x CPUs' if policy.max_load_ratio > 0 else 'not enforced'})",
     ]
     for disk in pressure.disks:
         lines.append(
