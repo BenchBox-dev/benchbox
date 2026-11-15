@@ -292,14 +292,14 @@ class TestReleaseInfrastructure:
 
     def test_pr_open_publishes_behind_branches_without_a_queue_check(self):
         recipe = _make_target_recipe("pr-open")
-        assert "git merge-base --is-ancestor origin/develop HEAD" in recipe
-        assert "git merge-tree --write-tree origin/develop HEAD" in recipe
+        assert 'git merge-base --is-ancestor "$$BASE_REMOTE" HEAD' in recipe
+        assert 'git merge-tree --write-tree "$$BASE_REMOTE" HEAD' in recipe
         assert "queue-policy" not in recipe
         assert "ruleset_drift_check" not in recipe
         assert "git merge --no-edit origin/develop" not in recipe
-        fetch_at = recipe.find("git fetch origin develop --quiet")
-        gate_at = recipe.find("git merge-base --is-ancestor origin/develop HEAD")
-        conflict_at = recipe.find("git merge-tree --write-tree origin/develop HEAD")
+        fetch_at = recipe.find('git fetch origin "$$BASE_BRANCH" --quiet')
+        gate_at = recipe.find('git merge-base --is-ancestor "$$BASE_REMOTE" HEAD')
+        conflict_at = recipe.find('git merge-tree --write-tree "$$BASE_REMOTE" HEAD')
         trunk_at = recipe.find("scripts/trunk_revert.py gate")
         push_at = recipe.find('git push origin "$$REVIEWED:refs/heads/')
         assert fetch_at != -1 and gate_at != -1 and conflict_at != -1 and trunk_at != -1 and push_at != -1
@@ -906,8 +906,9 @@ class TestPrConflictScanScope:
         assert "textual conflict with PR #7 (other) in data.txt" in result.stdout
 
     def test_pr_open_keeps_the_scan_advisory(self):
-        assert '$(MAKE) -s pr-conflict-scan BRANCH="$$CURRENT" REPO="$$REPOSITORY" || true' in _make_target_recipe(
-            "pr-open"
+        assert (
+            '$(MAKE) -s pr-conflict-scan BRANCH="$$CURRENT" REPO="$$REPOSITORY" BASE="$$BASE_BRANCH" || true'
+            in _make_target_recipe("pr-open")
         )
 
 

@@ -154,3 +154,11 @@ def test_pr_preflight_light_steps_ignore_an_unrelated_lock_holder(tmp_path: Path
         handle.release()
 
     assert {line.split()[-1] for line in selections} == {"abc1234"}
+
+
+@pytest.mark.parametrize("branch", ["develop", "release/0.5.x"])
+def test_pr_preflight_takes_a_branch_name_as_that_branchs_fetched_origin_ref(tmp_path: Path, branch: str) -> None:
+    selections, fetches = _run_preflight(tmp_path, branch)
+
+    assert {line.split()[-1] for line in selections} == {f"origin/{branch}"}
+    assert fetches.split() == ["fetch", "origin", branch, "--quiet"]

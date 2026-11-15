@@ -1299,6 +1299,9 @@ _RECORDER = """#!{python}
 import json, os, sys
 with open(os.environ["CALLS"], "a", encoding="utf-8") as handle:
     handle.write(json.dumps([os.path.basename(sys.argv[0]), sys.argv[1:]]) + "\\n")
+if "scripts/pr_base.py" in sys.argv:
+    print(os.environ.get("PR_OPEN_BASE") or "develop")
+    sys.exit(0)
 if "--verify-parent" in sys.argv:
     sys.exit(int(os.environ.get("VERIFY_EXIT", "0")))
 if "scripts/local_review.py" in sys.argv:

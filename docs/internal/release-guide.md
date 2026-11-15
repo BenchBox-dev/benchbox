@@ -191,13 +191,37 @@ The procedure:
    `scripts/release_canary_freshness.py` (and whatever they need) from
    `develop`; `ci.yml` accepts a `release/X.Y.x` base.
 4. Land the fix by pull request into `release/X.Y.x`; the pull request
-   squash-merges like any other. Land the same fix on `develop` through its own
-   pull request when `develop` has the defect too. Add a `changelog.d` fragment
-   on each branch.
+   squash-merges like any other. Branch the worktree from the line
+   (`make worktree-create BRANCH=fix/<name> WORKTREE_PATH=../BenchBox.wt-<name>
+   BASE=origin/release/X.Y.x`) and name the line in every close-out command:
+
+   ```bash
+   make pr-preflight BASE=release/X.Y.x
+   make pr-open BASE=release/X.Y.x
+   make pr-arm BASE=release/X.Y.x
+   ```
+
+   `pr-open` and `pr-arm` take `BASE` as `develop` (the default) or one
+   `release/X.Y.x` line and refuse any other value. `pr-preflight` reads
+   `BASE` as a ref, as before, and takes the branch names `develop` and
+   `release/*` as the fetched `origin/<branch>`; it refuses nothing, and
+   `pr-open` refuses a receipt that does not cover its base. `pr-open` takes the branch-point check, the
+   changelog check, the preflight receipt and the local review against that
+   line, opens the pull request into it, and arms it with the same `BASE`, and
+   `pr-arm` runs its live checks (required statuses, stale base, review gate
+   from the line's own policy) against the line. A pull request into a line is
+   decided by a `review-gate` and `review-verdict` run dispatched on the line,
+   which its `posting-check` jobs start themselves (see "Checks after the
+   merge" in [review-v2.md](review-v2.md)); nothing is dispatched by hand.
+   `READY=1 EVIDENCE=...` and `pr-ready` with `EVIDENCE` arm only `develop`
+   pull requests. Arming still reads the trunk state of `develop`. Land the
+   same fix on `develop` through its own pull request when `develop` has the
+   defect too. Add a `changelog.d` fragment on each branch.
 5. Prepare the release on the branch, as for `develop`: from a worktree on
    `release/X.Y.x`, `make release-prep VERSION=X.Y.Z` and
    `make release-check VERSION=X.Y.Z RELEASE_PRE_TAG=1`, committed as one pull
-   request into the branch. The lock-revision baseline is the newest final tag
+   request into the branch (`make pr-open BASE=release/X.Y.x`). The
+   lock-revision baseline is the newest final tag
    older than `X.Y.Z`, so `0.5.1` compares with `v0.5.0` even when `v0.6.0`
    exists.
 6. Wait for the `trunk.yml` push run of the merged commit on `release/X.Y.x`:

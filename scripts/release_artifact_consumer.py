@@ -528,6 +528,7 @@ CREATION_REVIEW_TESTS = (
     "tests/unit/scripts/test_review_policy_pin.py",
     "tests/unit/scripts/test_review_provider_diversity.py",
     "tests/unit/scripts/test_soundness_manifest.py",
+    "tests/unit/scripts/test_theseus_cli_base.py",
     "tests/unit/scripts/test_theseus_lock.py",
     "tests/unit/scripts/test_theseus_release_check.py",
     "tests/unit/scripts/test_theseus_release_tree.py",
