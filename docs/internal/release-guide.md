@@ -49,7 +49,7 @@ make release-check VERSION=X.Y.Z RELEASE_PRE_TAG=1
    before reporting the release complete.
 
 Choose an unused version and resolve any existing `vX.Y.Z` tag before starting.
-Never retag or force-push a published tag.
+Never retag or force-push a published tag, on `develop` or on a release line.
 
 ## Maintenance releases
 
