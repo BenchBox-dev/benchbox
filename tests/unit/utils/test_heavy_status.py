@@ -212,7 +212,7 @@ def test_unmeasured_sections_render_explicitly() -> None:
     reading = hs.StatusReading(Path("x/test.lock"), None, 0, None, None, None, None, SENT)
     text = hs.render(reading)
     assert "host readings: unmeasured" in text
-    assert text.count("unmeasured") == 4
+    assert text.count("unmeasured") == 5
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX shell stub")
@@ -244,3 +244,22 @@ def test_render_shows_a_git_flood_warning_with_the_top_processes() -> None:
     assert "WARNING git flood: 3 git processes >= 2" in text
     assert "pid 102 0.75 GiB cwd /work/BenchBox.wt-a cmd git status" in text
     assert "unmeasured" in hs.render(collect(git_flood_reader=lambda: None))
+
+
+def test_top_cpu_lists_the_busiest_processes_above_the_floor() -> None:
+    listing = "\n".join(
+        ["  10   0.4 /bin/idle", "  11  99.5 bash /tmp/spin.sh", "  12  42.0 /usr/bin/python3 job.py", "bad line"]
+    )
+    assert hs.parse_top_cpu(listing) == ((11, 99.5, "bash /tmp/spin.sh"), (12, 42.0, "/usr/bin/python3 job.py"))
+
+
+def test_top_cpu_is_capped_at_the_display_count() -> None:
+    listing = "\n".join(f"{n} {10 + n}.0 cmd{n}" for n in range(1, 12))
+    assert len(hs.parse_top_cpu(listing)) == hs.TOP_CPU_COUNT
+
+
+def test_a_shell_orphaned_to_init_is_an_orphan_candidate() -> None:
+    table = "\n".join(
+        ["500     1 bash /tmp/hl-smoke.sh", "501   500 bash /tmp/hl-smoke.sh", "502     1 /usr/bin/vim notes"]
+    )
+    assert hs._parse_ps(table) == [(500, "bash /tmp/hl-smoke.sh")]
