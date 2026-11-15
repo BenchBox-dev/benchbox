@@ -656,19 +656,46 @@ def test_stopped_survivors_are_recorded_under_the_run_id(tmp_path: Path) -> None
     assert record["run_id"] == "abc123"
 
 
-@posix_only
-def test_survivors_that_cannot_be_stopped_are_recorded_as_remaining(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
-) -> None:
+def _stuck_reap(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, kill: object) -> tuple[list[tuple[int, str]], dict]:
     runs = tmp_path / "runs.jsonl"
     env = dict(os.environ, **{hl.RUNS_FILE_ENV: str(runs), hl.RUN_ID_ENV: "abc123"})
     monkeypatch.setattr(hl, "_group_members", lambda pgid: [(4242, "stuck")])
     monkeypatch.setattr(hl, "GROUP_GRACE_SECONDS", 0.0)
-    monkeypatch.setattr(hl.os, "killpg", lambda pgid, sig: (_ for _ in ()).throw(PermissionError()))
-    assert hl._reap_process_group(999999, env) == [(4242, "stuck")]
-    record = json.loads(runs.read_text(encoding="utf-8").splitlines()[-1])
+    monkeypatch.setattr(hl, "_kill_group", kill)
+    remaining = hl._reap_process_group(999999, env)
+    return remaining, json.loads(runs.read_text(encoding="utf-8").splitlines()[-1])
+
+
+@posix_only
+def test_survivors_that_cannot_be_signalled_are_recorded_as_remaining(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
+) -> None:
+    def deny(pgid: int, sig: signal.Signals) -> None:
+        raise PermissionError
+
+    remaining, record = _stuck_reap(tmp_path, monkeypatch, deny)
+    assert remaining == [(4242, "stuck")]
     assert record["event"] == "group_survivors_remaining"
     assert record["outcome"] == "survivors_remaining"
+    assert record["details"]["last_signal_delivered"] is None
+    assert "could not be signalled" in capfd.readouterr().err
+
+
+@posix_only
+def test_a_denied_sigterm_still_escalates_to_sigkill(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
+) -> None:
+    sent: list[signal.Signals] = []
+
+    def term_denied(pgid: int, sig: signal.Signals) -> None:
+        if sig == signal.Signals["SIGTERM"]:
+            raise PermissionError
+        sent.append(sig)
+
+    remaining, record = _stuck_reap(tmp_path, monkeypatch, term_denied)
+    assert sent == [signal.Signals["SIGKILL"]]
+    assert remaining == [(4242, "stuck")]
+    assert record["details"]["last_signal_delivered"] == "SIGKILL"
     assert "survived SIGKILL" in capfd.readouterr().err
 
 

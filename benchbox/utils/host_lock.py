@@ -1039,6 +1039,7 @@ def _prepare_child(take_foreground: bool) -> None:
 
 
 GROUP_GRACE_SECONDS = 3.0
+_kill_group = os.killpg if hasattr(os, "killpg") else None
 
 
 def _group_members(pgid: int) -> list[tuple[int, str]]:
@@ -1062,11 +1063,15 @@ def _reap_process_group(pgid: int, env: Mapping[str, str]) -> list[tuple[int, st
         f"the command ended with {len(survivors)} process(es) still running in its process group; stopping them: "
         + ", ".join(f"{pid} {name}" for pid, name in survivors)
     )
+    last_delivered = None
     for sig in (_SIGTERM, _SIGKILL):
         try:
-            os.killpg(pgid, sig)
-        except OSError:
+            _kill_group(pgid, sig)
+        except ProcessLookupError:
             break
+        except OSError:
+            continue
+        last_delivered = sig
         deadline = _now() + GROUP_GRACE_SECONDS
         while _now() < deadline and _group_members(pgid):
             _sleep(0.1)
@@ -1074,8 +1079,9 @@ def _reap_process_group(pgid: int, env: Mapping[str, str]) -> list[tuple[int, st
             break
     remaining = _group_members(pgid)
     if remaining:
+        reached = "could not be signalled" if last_delivered is None else f"survived {last_delivered.name}"
         _log(
-            f"ERROR: {len(remaining)} process(es) survived SIGKILL and are still running: "
+            f"ERROR: {len(remaining)} process(es) {reached} and are still running: "
             + ", ".join(f"{pid} {name}" for pid, name in remaining)
         )
     try:
@@ -1084,6 +1090,7 @@ def _reap_process_group(pgid: int, env: Mapping[str, str]) -> list[tuple[int, st
             outcome="survivors_remaining" if remaining else "stopped",
             details={
                 "pgid": pgid,
+                "last_signal_delivered": None if last_delivered is None else last_delivered.name,
                 "found": [{"pid": pid, "name": name} for pid, name in survivors],
                 "remaining": [{"pid": pid, "name": name} for pid, name in remaining],
             },
