@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 import types
 from pathlib import Path
 
@@ -47,11 +48,30 @@ def _gate_args(*extra: str):
 
 def _stub_gate(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> dict:
     seen: dict = {}
+    (tmp_path / ".github").mkdir()
+    (tmp_path / ".github" / "review.yml").write_text("policy\n", encoding="utf-8")
+    for args in (
+        ["init", "-q"],
+        ["add", "."],
+        [
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@example.com",
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "-q",
+            "-m",
+            "x",
+        ],
+    ):
+        subprocess.run(["git", *args], cwd=tmp_path, check=True, capture_output=True)
+    seen["sha"] = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=tmp_path, check=True, capture_output=True, encoding="utf-8"
+    ).stdout.strip()
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(theseus_cli, "resolve_commit", lambda _root, ref: seen.setdefault("ref", ref) and SHA)
-    monkeypatch.setattr(
-        theseus_cli.subprocess, "run", lambda *_a, **_k: types.SimpleNamespace(stdout=b"", returncode=0)
-    )
+    monkeypatch.setattr(theseus_cli, "resolve_commit", lambda _root, ref: seen.setdefault("ref", ref) and seen["sha"])
 
     def run(_root: Path, commit: str, command: list[str], env=None) -> types.SimpleNamespace:
         seen.update(commit=commit, command=command, env=env)
@@ -70,7 +90,7 @@ def test_the_gate_of_a_line_pull_request_names_the_line_as_the_trusted_base(
     assert theseus_cli.gate(_gate_args("--base", LINE)) == 0
 
     assert seen["ref"] == f"origin/{LINE}"
-    assert seen["commit"] == SHA
+    assert seen["commit"] == seen["sha"]
     assert seen["env"]["REVIEW_TRUSTED_BASE"] == LINE
     assert seen["env"]["GITHUB_TOKEN"] == "token"
     assert "--no-post" in seen["command"]
