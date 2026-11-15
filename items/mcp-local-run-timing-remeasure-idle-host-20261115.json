@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Each timing records the 5-minute load average at start, taken from make heavy-status, and is refused if it is above the CPU count.",
+    "The scale factor 1 run completes or its failure is explained; mcp-sf1-run-incomplete-without-error-20261114 is referenced.",
+    "The recommendation states whether any run exceeds Codex's 60 s default tool timeout, with the numbers.",
+    "The host-load smoke for PR #4203 is not repeated with real load; the unit tests that fake the sampler are cited as the evidence."
+  ],
+  "context": "Found during a retrospective on 2026-11-15. Guardrails: linked worktree, one PR; no live-cloud runs; heavy work only via lock-taking entry points; re-verify cited facts before acting.",
+  "description": "Problem: mcp-local-run-timeout-measure-20261113 was closed on timings measured while 20 leaked spin loops held the host at load 60 to 80 (a heavy-work guard gap fixed in PR #4236). Its 6 to 14 second figures and its recommendation (no local job tools; document a limit) rest on invalid numbers. The same window also invalidates the quiet and loaded host-load smoke for bundle-record-host-load-20261113.\n\nOutcome: valid timings for TPC-H on DuckDB through a real MCP stdio client at scale factors 0.01, 0.1 and 1, taken when make heavy-status shows a 5-minute load average below the CPU count, and a recommendation that replaces the earlier one.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:769ef947e95eb114e9d51acf",
+      "at": "2026-11-15T15:57:20Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "2c926c9cbb5c4daab6eac87de79a190b",
+      "session_id": "2269c734a94a419ea939cd33fee21860"
+    }
+  ]
+}
