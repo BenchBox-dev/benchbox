@@ -1,9 +1,9 @@
 # Adversarial Review
 
 Review completed work skeptically and use evidence for every conclusion.
-This is read-only under `shared-review-protocol/SKILL.md`
-[REVIEW-AUTH-001] when the user asks only for the review: report findings without editing files, closing tracker
-items, committing, or publishing, with fixes requiring a later user message authorizing them. A request that explicitly asks for both review and remediation authorizes both in the same turn.
+Authorization follows `shared-review-protocol/SKILL.md` §1 [REVIEW-AUTH-001]:
+a review-only request ends at findings, with no edits, tracker closes,
+commits, or publication.
 
 ## Scope
 

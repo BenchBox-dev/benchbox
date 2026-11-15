@@ -9,22 +9,6 @@
   {
    "disposition": "prose-link-pinned",
    "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": ".claude/skills/benchbox/SKILL.md",
-   "rule": "agent-and-contributor-prose",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/operations/uat-framework.md"
-    }
-   ]
-  },
-  {
-   "disposition": "prose-link-pinned",
-   "kinds": {
     "unresolved": 1
    },
    "occurrences": 1,
@@ -41,36 +25,16 @@
   {
    "disposition": "prose-link-pinned",
    "kinds": {
-    "unresolved": 7
+    "unresolved": 2
    },
-   "occurrences": 7,
+   "occurrences": 2,
    "path": ".claude/skills/skill-sync.manifest",
    "rule": "agent-and-contributor-prose",
-   "target_count": 7,
+   "target_count": 2,
    "targets": [
     {
      "kind": "unresolved",
      "target": "docs/SKILL.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/references/adversarial.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/references/build.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/references/commit.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/references/create.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/references/review.md"
     },
     {
      "kind": "unresolved",
@@ -81,36 +45,16 @@
   {
    "disposition": "prose-link-pinned",
    "kinds": {
-    "unresolved": 7
+    "unresolved": 2
    },
-   "occurrences": 7,
+   "occurrences": 2,
    "path": ".claude/skills/skill-sync.receipt",
    "rule": "agent-and-contributor-prose",
-   "target_count": 7,
+   "target_count": 2,
    "targets": [
     {
      "kind": "unresolved",
      "target": "docs/SKILL.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/references/adversarial.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/references/build.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/references/commit.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/references/create.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/references/review.md"
     },
     {
      "kind": "unresolved",
@@ -4371,22 +4315,22 @@
    "governance-stays": 11,
    "historical-record": 118,
    "lock-test": 4,
-   "prose-link-pinned": 12,
+   "prose-link-pinned": 11,
    "site-pipeline-cutover": 4,
    "wiring-updated": 34
   },
-  "files": 230,
+  "files": 229,
   "kinds": {
    "built-url": 29037,
    "dir": 163,
    "extra": 39,
-   "file": 1381,
+   "file": 1380,
    "generated": 3,
    "pattern": 335,
    "root": 202,
-   "unresolved": 2080
+   "unresolved": 2070
   },
-  "references": 33240,
+  "references": 33229,
   "unclassified": 0
  }
 }

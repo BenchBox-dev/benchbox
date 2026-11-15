@@ -21,19 +21,21 @@ prepare them, hand the exact commands to the owner, and stop.
    RELEASE_PRE_TAG=1`, and merge the result as an ordinary pull request to
    `develop`.
 2. Wait for the `trunk.yml` push run on the merged commit to finish green with
-   a `dist-<sha>-attempt-N` artifact. A commit whose trunk run was replaced
-   while waiting, or failed, cannot be released; use a commit that has one.
+   a `dist-<sha>-attempt-N` artifact. A commit whose trunk run failed, or whose
+   dist artifact expired, cannot be released; `uv run -- python
+   scripts/release_releasable.py newest` names the newest releasable commit.
 3. Before tagging, on that exact commit:
    - `make release-check VERSION=X.Y.Z RELEASE_PRE_TAG=1` passes;
    - the latest `release-canary.yml` run is green, under 48 hours old, and ran
      on an ancestor of the commit; report a red or stale canary to the owner
      before tagging.
-4. Tag with an annotated PEP 440 tag (`git tag -a vX.Y.Z <sha> -m vX.Y.Z`) and
+4. Tag with an annotated PEP 440 tag (`git tag -a vX.Y.Z <sha> -m "BenchBox X.Y.Z"`) and
    push it. A release candidate goes to TestPyPI; a final goes to PyPI after the
    owner approves the `pypi` environment.
-5. Follow the `release-v2.yml` run. A final tag may reuse its release
-   candidate's UAT evidence (`UAT evidence reuse` job); if it falls back to a
-   full UAT run instead, report why before the owner approves.
+5. Follow the `release-v2.yml` run. Any tag may reuse qualifying UAT evidence
+   (nightly `trunk-uat.yml`, or for a final its release candidate's run) in the
+   `UAT evidence reuse` job; if it falls back to the full UAT instead, report
+   why before the owner approves.
 
 ## Hard rules
 

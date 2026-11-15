@@ -2,7 +2,7 @@
 
 ## Research
 
-Read the target, callers, tests, and data/control flow. Do not edit.
+Apply `shared-investigation-framework/SKILL.md` §2 (Research). Do not edit.
 
 ## To-spec
 

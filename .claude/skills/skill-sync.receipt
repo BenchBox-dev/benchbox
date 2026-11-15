@@ -3,12 +3,12 @@
 # carries no hashes and attests nothing about the current contents.
 
 source = https://github.com/joeharris76/skill-sync-skills.git
-rev = e04b1a717c6e4c5f341115166281e9398f27f951
+rev = 8ec55e5b43f3c47a3d8c2132d55907ef32433eb4
 dir = skills
 skill = benchbox
 
 source = https://github.com/joeharris76/skill-sync-skills.git
-rev = e04b1a717c6e4c5f341115166281e9398f27f951
+rev = 8ec55e5b43f3c47a3d8c2132d55907ef32433eb4
 dir = skills
 skill = blog
 skill = code
@@ -20,7 +20,7 @@ skill = test
 skill = todo
 
 source = https://github.com/joeharris76/skill-sync-skills.git
-rev = 89da990e08f6f4b7f4a03a251f86b550daa8b48a
+rev = 8ec55e5b43f3c47a3d8c2132d55907ef32433eb4
 dir = skills
 skill = shared-agent-execution
 
@@ -63,11 +63,6 @@ file = code/references/pr-sweep.md
 file = code/references/shrink.md
 file = code/skill.yaml
 file = docs/SKILL.md
-file = docs/references/adversarial.md
-file = docs/references/build.md
-file = docs/references/commit.md
-file = docs/references/create.md
-file = docs/references/review.md
 file = docs/skill.yaml
 file = shared-agent-execution/SKILL.md
 file = shared-agent-execution/references/external-harnesses.md
@@ -84,10 +79,6 @@ file = skill-sync/SKILL.md
 file = skill-sync/references/operations.md
 file = skill-sync/skill.yaml
 file = test/SKILL.md
-file = test/references/cleanup.md
-file = test/references/coverage.md
-file = test/references/create.md
-file = test/references/fix.md
 file = test/references/perf.md
 file = test/references/run.md
 file = test/skill.yaml

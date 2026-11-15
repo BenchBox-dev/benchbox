@@ -13,9 +13,8 @@ For an adversarial review, also read
 own rubric.
 
 To adjudicate findings already received, read
-`references/review-response.md`. It owns the disposition vocabulary and the
-evidence each disposition requires. A domain wrapper may keep its own labels
-and storage bindings; it maps them onto that contract and does not weaken it.
+`references/review-response.md`. It owns the disposition vocabulary, the
+evidence each disposition requires, and how wrapper labels map onto them.
 
 ## 1. Scope [REVIEW-AUTH-001]
 
@@ -89,20 +88,10 @@ A later user authorization starts a distinct write-shaped action. It does not
 convert the completed review, or an Independent Reviewer dispatched inside the
 authorized work, into a writer.
 
-In an integration-branch batch (the `todo` skill's prepared delivery), review
-happens at two points inside the authorized write: at each member's landing,
-and on the combined change before publication. Members run scoped checks; a
-member review, where the repository's protocol asks for one, is early feedback
-only. Before landing, the leader invokes the trusted reviewer against
-the exact captured base/head with executable and policy pinned to the same full
-trusted revision.
-Consume that invocation's accepted result and retain it in the prepared receipt;
-a member's claimed outcome or another range does not count. Later acceptance
-validates that historical receipt binding, not a separate member-result cache.
-Ordinary findings/disputes and reviewer carry/cache rules remain; acceptance is
-not necessarily a fresh model call. Review the combined integration diff before
-publication, then the complete leader-fix intervals made afterward. These are
-stages of authorized work, not separate review-shaped actions.
+In a `todo` integration-branch batch, member reviews, the leader's review
+before each landing, and the review of the combined change before publication
+are stages of the authorized write, not separate review-shaped actions. The
+landing procedure is in `todo/references/batch.md`.
 
 Capture authorizes only the local file write. End with `Recorded: <path>`; the
 user decides whether to open a PR.
@@ -138,7 +127,6 @@ Apply these layers before committing to a plan or interpretation:
 
 Layer 2 captures gaps in the review framework, not defects already found.
 
-- Findings already in the severity table stay there.
 - Critical/Required defects need an owner/action item even if L2 also captures a broader class.
 - New concrete defects found during L2 become Required action items, not blind-spots.
 

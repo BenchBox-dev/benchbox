@@ -7,26 +7,25 @@ tools: Bash, Read, Write, Edit, Task
 
 # Test Workflow
 
-Route the request below, read the selected action file, and prefer
-project-defined commands.
+Route the request below, read the selected action file or follow the table
+entry, and prefer project-defined commands.
 
 ## Resolve
 
-Read `.claude/skills/skill-sync.config.yaml` `test` first. Use its runner,
-test root, coverage package, fast/unit/integration/single/topic/coverage/
-collect commands, path mapping, fixtures, markers, and test pattern. If absent,
-discover them from repo config and nearby tests.
+Read `.claude/skills/skill-sync.config.yaml` `test` (`runner`, `coverage`)
+first; discover other commands, the test root, fixtures, markers, and path
+mapping from repo config and nearby tests.
 
 ## Actions
 
-| Action | Trigger | Read |
+| Action | Trigger | Read or do |
 |---|---|---|
 | `run` | run tests/test X | `references/run.md` |
-| `create` | create/add tests | `references/create.md` |
-| `fix` | fix failing test | `references/fix.md` |
-| `coverage` | add coverage/coverage gaps | `references/coverage.md` |
+| `create` | create/add tests | follow the global rules below |
+| `fix` | fix failing test | `shared-investigation-framework/SKILL.md` (Debug and Context Guide sections) |
+| `coverage` | add coverage/coverage gaps | run the configured coverage command; prioritize untested behavior and error paths over line chasing; add focused tests and verify the gain |
 | `perf` | slow/optimize tests | `references/perf.md` |
-| `cleanup` | commit test changes | `references/cleanup.md` |
+| `cleanup` | commit test changes | `shared-change-framework/SKILL.md` §4 for the modified tests: prefix `test`, verify with the configured test command |
 | `help` | help/list actions | this table |
 
 ## Global rules

@@ -1,15 +1,15 @@
 ---
 name: benchbox
-description: Use when the user asks to "test TPC-H", "check compliance", "review architecture", "run quality checks", "check binaries", "test dialect translation", "compare implementations", "run live platform tests", "cut a release", "finalize a release", or "plan and execute" a benchmark feature.
+description: Use only in the BenchBox repository, when the user asks to "test TPC-H", "check compliance", "review architecture", "run quality checks", "check binaries", "test dialect translation", "compare implementations", "run live platform tests", "cut a release", "finalize a release", or "plan and execute" a benchmark feature.
 version: 0.3.0
 tools: Bash, Read, Write, Edit, Glob, Grep, Task
 ---
 
 # BenchBox Workflow
 
-Route the request below and read the selected action file. Detect the runner,
-honor non-interactive mode, and produce human-readable and machine-readable
-artifacts when supported.
+Route the request below and read the selected action file. Keep
+machine-readable output (JSON, result files) alongside the human summary when
+the command produces it.
 
 ## Actions
 
@@ -26,22 +26,15 @@ artifacts when supported.
 | `plan` | `references/plan.md` |
 | `release` | `references/release.md` |
 
-Aliases remain accepted: `benchmark-test`, `quality-check`, `qa`,
-`tpc-compliance`, `dialect-translation`, `sql`, `binary-check`, `binaries`,
-`compare-impl`, `live-test`, `platform-test`, `arch`, `arch-review`,
-`plan-execute`, and `implement`.
-
 ## Hard rules
 
-- Use `uv run --` for Python; Makefile wrappers are fine.
-- Pass `generate`, `load`, `power`, `throughput`, and `maintenance` through
-  `--phases`. Smoke scale defaults to `0.01`; scales >=1 are whole integers.
+- Repository rules (`uv run --` for Python, repository `make` targets, the
+  timing clock, DDL rewrite registration, heavy-work lock, UAT output
+  directory) are in the BenchBox `AGENTS.md`; follow it.
+- Pass phases through `--phases` (comma-separated; valid names are
+  `benchbox.core.constants.VALID_PHASES`). Smoke scale defaults to `0.01`;
+  scales >=1 are whole integers.
 - Do not run live cloud tests without explicit approval and credentials.
-- Use `benchbox.utils.clock.mono_time()` / `elapsed_seconds()` for durations.
-- Register adapter DDL rewrites under
-  `benchbox/sql_compat/rules/ddl_optimize/`.
-- UAT/long-run sweeps follow AGENTS.md "Long-Running UAT" and
-  `docs/operations/uat-framework.md`.
 
 ## Output
 

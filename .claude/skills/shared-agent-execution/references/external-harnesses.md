@@ -6,9 +6,8 @@ directly. Only after an actual command failure may reactive diagnosis use
 `command -v` and the installed `--help` output to distinguish a missing binary
 from flag drift. Do not run those checks proactively.
 
-- Worker commands require already-authorized write scope bounded by a sandbox,
-  workspace, or dedicated worktree. Confirmation automation in a documented
-  Worker command is allowed only within that bounded scope.
+- Worker commands run only within the authorized write scope (see
+  [Agent Execution](../SKILL.md)).
 - Reviewer commands use the declared **Hard Read-Only** or **Soft Read-Only**
   classification. Reinforce Soft Read-Only with findings-only instructions that
   forbid edits, commits, pushes, and other mutations.
@@ -17,17 +16,15 @@ from flag drift. Do not run those checks proactively.
 ## Roles, CLI IDs, and effort
 
 Use the workload roles and fallback order in [Agent Execution](../SKILL.md).
-Live OMP assignments take precedence over those portable defaults. Resolve
-the selected model to the external harness's ID before dispatch; do not copy
-an OMP thinking suffix such as `:auto` into a non-OMP CLI `--model` argument.
-External `omp` is the exception: it accepts OMP selectors natively, including
-`--thinking auto` and a configured `@alias` (see the OMP section below).
+External `omp` accepts OMP selectors natively, including a configured `@alias`
+(see the OMP section below), and accepts `--thinking auto` when the user
+explicitly requests adaptive effort.
 
 ### Model identifiers
 
 | OMP selector | External harness | CLI model ID |
 |---|---|---|
-| `anthropic/claude-fable-5-1` | `claude` | `claude-fable-5-1` |
+| `anthropic/claude-fable-5-2` | `claude` | `claude-fable-5-2` |
 | `anthropic/claude-opus-5-5` | `claude` | `claude-opus-5-5` |
 | `anthropic/claude-sonnet-5-5` | `claude` | `claude-sonnet-5-5` |
 | `anthropic/claude-haiku-5-5` | `claude` | `claude-haiku-5-5` |
@@ -35,63 +32,44 @@ External `omp` is the exception: it accepts OMP selectors natively, including
 | `openai-codex/gpt-6.1-sol` | `codex` | `gpt-6.1-sol` |
 | `openai-codex/gpt-6-luna` | `codex` | `gpt-6-luna` |
 | `google-antigravity/gemini-3.8-flash` | `agy` | `gemini-3.8-flash-low`, `gemini-3.8-flash-medium`, `gemini-3.8-flash-high` |
-| `google-antigravity/gemini-4-argon` | `agy` | `gemini-4-argon-high` (recognized; completion unverified) |
+| `google-antigravity/gemini-4-argon` | `agy` | `gemini-4-argon-low`, `gemini-4-argon-medium`, `gemini-4-argon-high` (recognized; completion unverified) |
 
-Only contributor-variant Muse models are selected. Argon's OMP support does
-not prove external CLI completion support. Other harnesses have separate
-catalogs; do not infer that stripping a provider prefix makes a valid ID.
-
-### Judgment runners
-
-The `judge` role uses Jev over a judgment API, not any CLI below. Primary
-`typesafe/jev-1.14.0` (direct TypeSafe route); fallback is the OpenRouter
-Jev ID on the same version. No effort flag or suffix applies, and chat
-fallback, quota, and reviewer-panel rules do not transfer. Image-carrying
-judgments are experimental: prefer text-only state.
+Other harnesses have separate catalogs; do not infer that stripping a provider
+prefix makes a valid ID.
 
 ### Effort translation
 
-Do not assume a non-OMP external CLI implements adaptive effort. Use the
-concrete effort the routing table in `SKILL.md` names for the selected role.
-This is a fixed approximation, not adaptive reasoning. Explicit user effort
-overrides win. External `omp` uses the same concrete `--thinking` value unless
-the user explicitly requests adaptive effort.
+Use the concrete effort the routing table in `SKILL.md` names for the selected
+role. Non-OMP CLIs do not implement adaptive effort, so this is a fixed
+approximation. A user-set effort overrides it.
 
 | Harness | Effort argument | Supported values |
 |---|---|---|
 | `omp` | `--thinking "$EFFORT"` | `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, `auto` (`auto` only here) |
 | `codex` | `-c model_reasoning_effort="$EFFORT"` | `low`, `medium`, `high`, `xhigh`, `max`, `ultra` |
 | `claude` | `--effort "$EFFORT"` | `low`, `medium`, `high`, `xhigh`, `max` |
-| `muse` | `--reasoning-effort "$EFFORT"` | `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `ultra` |
+| `muse` | `--reasoning-effort "$EFFORT"` | `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, `ultra` |
 | `agy` | Model suffix; omit `--effort` | `-low`, `-medium`, `-high` where the model lists that variant |
 | `grok` | `--reasoning-effort "$EFFORT"` | `low`, `medium`, `high`, `xhigh` |
 | `pi`, `prime-agent` | `--thinking "$EFFORT"` | `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max` |
 
-Select only values supported by the chosen model, not merely its harness.
-Maximum effort is reserved for an explicitly required final adversarial
-review; use the chosen model's documented maximum. `agy` never gains an
-invented maximum suffix: its highest listed variant is `-high`.
+Select only values the chosen model supports. For `agy`, use only the suffixes
+`agy models` lists for that model; never invent one.
 
 Non-OMP external processes do not inherit OMP retry or quota settings. An
 external `omp` dispatch DOES run under the live local settings (retry,
 fallback chains, quota handling): constrain it per run with a `--config`
-overlay (see the OMP section below). For ordinary
-dispatches, attempt the role's eligible fallbacks explicitly. For a named
-reviewer panel, report a failed member as absent rather than silently
-replacing it. Filter the author family from every independent-review
-candidate, including the primary and every fallback hop, and stop if no
-eligible candidate remains.
-
-Model roles do not grant permissions, enter plan mode, or enable an advisor.
-Those capabilities require the command boundaries and dispatch modes below.
+overlay (see the OMP section below). For ordinary (non-review) dispatches,
+attempt the role's eligible fallbacks explicitly. Reviewer fallback, family
+filtering, and absent members follow Reviewer panels below.
 
 ## OMP (first-class external harness)
 
 External `omp` is OMP itself invoked headless from another process: same model
-catalog, same role names, same native `--thinking auto`, and the same live
-local settings (retry, fallback chains, quota handling). It is separate from
-`pi`: never substitute one for the other. Precedence is explicit user choice,
-then live OMP settings, then the portable role defaults in Agent Execution.
+catalog, same role names, native `--thinking` (including `auto`, used only when
+the user explicitly requests adaptive effort), and the same live local
+settings (retry, fallback chains, quota handling). It is separate from `pi`:
+never substitute one for the other.
 
 ### Model identifiers and role aliases
 
@@ -101,7 +79,6 @@ then live OMP settings, then the portable role defaults in Agent Execution.
 - `@alias` selectors resolve only when that alias is configured in live OMP
   `modelRoles`. When the alias is absent, dispatch the role's full
   `provider/model` portable default instead of failing or guessing.
-- Every Muse model MUST be the contributor variant.
 - Independent reviewers disable the advisor in their overlay, rather than
   relying on the caller's current setting or omitting `--advisor`.
 
@@ -109,9 +86,6 @@ then live OMP settings, then the portable role defaults in Agent Execution.
 
 - **Worker (Write):**
   `omp --cwd "$WORKSPACE" --print --model "$MODEL" --thinking "$EFFORT" --no-title --no-session --max-time "$TIMEOUT" "$PROMPT"`
-  - `$WORKSPACE` MUST be an authorized dedicated worktree. `--cwd` selects the
-    working directory; it is not a sandbox, so scope and authorization come
-    from the worktree itself.
   - Confirmation automation (`--approval-mode`, `--auto-approve`) is allowed
     only within that already-bounded write scope.
 - **Reviewer (Soft Read-Only, neutral launch directory and isolation overlay):**
@@ -156,13 +130,10 @@ then live OMP settings, then the portable role defaults in Agent Execution.
 
 ### Invocation limits and Manager boundary
 
-- Headless `omp --print` processes prompts and exits. It does not expose the
-  continuation and coordination channel required for a Manager.
-- `omp --mode rpc` and `acp` are continuation channels, not Manager proof.
-  Use them for a Manager only after verifying identity, resume, live status,
-  interrupt, and worker/reviewer coordination for that process. RPC goals
-  do not continue unless `goal.continuationModes` includes `"rpc"`.
-- Tool restriction is not a process or filesystem sandbox.
+- `omp --print` is Worker/Reviewer only, and `omp --mode rpc` and `acp` are
+  continuation channels, not Manager proof (see
+  [Agent Execution](../SKILL.md)). RPC goals do not continue unless
+  `goal.continuationModes` includes `"rpc"`.
 
 ### Reviewer tool-inventory preflight
 
@@ -195,7 +166,7 @@ printf '%s\n' true
 - **claude**
   - Worker (Write): `(cd "$WORKSPACE" && claude --print --model "$MODEL" --effort "$EFFORT" "$PROMPT")`
   - Reviewer (Hard Read-Only): `(cd "$WORKSPACE" && claude --print --tools Read,Grep,Glob --model "$MODEL" --effort "$EFFORT" "$PROMPT")`
-  - Known-good models: `claude-fable-5-1`, `claude-opus-5-5`, `claude-sonnet-5-5`
+  - Known-good models: `claude-fable-5-2`, `claude-opus-5-5`, `claude-sonnet-5-5`
 - **agy**
   - Worker (Write): `(cd "$WORKSPACE" && agy --model "$MODEL" --print="$PROMPT")`
   - Reviewer (Soft Read-Only): `(cd "$WORKSPACE" && agy --model "$MODEL" --mode plan --print="$PROMPT")`
@@ -203,10 +174,11 @@ printf '%s\n' true
   - Note: Effort is the `-low` / `-medium` / `-high` model suffix. Never pass
     `--effort` alongside a suffixed model: `agy` rejects the pair
     (`--model X conflicts with --effort=Y`), including `--effort max`.
-  - Recognized model ID: `gemini-4-argon-high`. Model selection accepts it,
-    but external completion remains unverified. Report a blocked response
-    and apply the dispatch's explicit fallback or named-reviewer failure
-    policy; do not treat native OMP completion as proof for this harness.
+  - Recognized argon IDs: `gemini-4-argon-low`, `gemini-4-argon-medium`,
+    `gemini-4-argon-high`. Model selection accepts them, but external
+    completion is unverified. Report a blocked response and apply the
+    dispatch's explicit fallback or named-reviewer failure policy; do not
+    treat native OMP completion as proof for this harness.
   - Note: Headless `--print` runs cannot approve tool use. A prompt that needs
     the reviewer to run commands (read the repo, run `git`) is auto-denied and
     returns nothing with exit 0, so keep `agy` prompts self-contained with the
@@ -339,17 +311,16 @@ just the primary: an external `omp` reviewer inherits the global
 `retry.fallbackChains`, whose entries can belong to the author's family even
 when the primary is safe, so the reviewer overlay MUST set
 `retry.modelFallback: false` and a failed reviewer is reported absent rather
-than retried into an excluded family. The `review` chain
-is `codex` `gpt-6.1-sol` then `agy` `gemini-4-argon-high`; the family filter
-applies when the author is a Claude, Codex, or Gemini model. Fail closed: if the filter leaves no eligible model, report the panel
-as blocked instead of reviewing with an excluded family member.
+than retried into an excluded family. For a Claude author the `review` chain
+reduces to `codex` `gpt-6.1-sol` then `agy` `gemini-4-argon-medium`; apply the
+same filter for Codex or Gemini authors. Fail closed: if the filter leaves no
+eligible model, report the panel as blocked instead of reviewing with an
+excluded family member.
 
-Match effort to the work: `high` for deep or adversarial review, `medium` for
-routine review, `maximum` only when the user explicitly requires a final
-adversarial gate. A user-named reviewer or a user-set effort overrides these
-defaults, but a user-named reviewer from the author's own family is still
-ineligible: report it as a gate blocker and offer a substitute rather than
-running it.
+Use the `review` role's routed effort; use maximum only when the user
+explicitly requires a final adversarial gate. A user-set effort overrides it. A
+user-named reviewer from the author's own family stays ineligible: report it
+as a gate blocker and offer a substitute rather than running it.
 
 ### Brief delivery
 

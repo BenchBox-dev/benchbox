@@ -9,9 +9,8 @@ A complete specification defines:
 
 1. **Objective**: A clear statement of what the change accomplishes, plus the
    assumptions it rests on and the success criteria that close it.
-2. **Prior art**: Examine existing patterns in the codebase by file path. State
-   whether this work extends an existing pattern, supersedes it, or introduces
-   a new one. For new infrastructure this section is required.
+2. **Prior art** (AGENTS.md): existing patterns by file path,
+   and whether this work extends, supersedes, or introduces a new one.
 3. **Item breakdown**: Define fields matching the `create_item` schema:
    - `id`: Kebab-case identifier (for example, `mcp-logging-refactor`).
    - `title`: Short imperative sentence, 1–200 characters.
@@ -27,5 +26,5 @@ Split work so each item is independently implementable and closable; use
 
 ## Before finalizing
 
-Apply **L3** of `shared-review-protocol/SKILL.md`. Include a reframe only if it
-changes the specification. Save only after the user confirms.
+Include a reframe only if it changes the specification. Save only after the
+user confirms.
