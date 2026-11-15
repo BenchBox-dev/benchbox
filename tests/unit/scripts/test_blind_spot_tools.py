@@ -42,6 +42,12 @@ def test_blind_spot_command_uses_active_protocol() -> None:
     assert (REPO_ROOT / "docs" / "agent" / "review-protocol.md").is_file()
 
 
+def test_validator_default_drafts_dir_matches_capture_command() -> None:
+    command_text = (REPO_ROOT / ".claude" / "commands" / "blind-spot.md").read_text(encoding="utf-8")
+
+    assert validate_blind_spot.DEFAULT_DRAFTS_DIR in command_text
+
+
 def test_superseded_protocol_doc_is_demoted() -> None:
     legacy = REPO_ROOT / "docs" / "agent" / "review-protocol-legacy.md"
     if not legacy.is_file():
