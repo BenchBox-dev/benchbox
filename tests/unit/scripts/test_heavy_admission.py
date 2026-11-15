@@ -158,6 +158,7 @@ def test_a_hung_container_cli_degrades_to_unmeasured_within_six_seconds(
             available_gib=8.0,
             pressure_level=1,
             memorystatus_level=60,
+            load_average_5m=0.0,
         ),
     )
     assert rl.elapsed_seconds(started) < 6.0
