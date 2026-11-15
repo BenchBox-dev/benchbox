@@ -33224,6 +33224,13 @@
       "status": "done",
       "title": "Add a PyPI-latest installability canary and document the rollback runbook"
     },
+    "pyspark-4-3-cap-raise-after-delta-20261115": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Raise the PySpark `<4.3` cap once delta-spark supports Spark 4.3"
+    },
     "pyspark-aggregate-state-dispatch-unit-tests": {
       "claim": null,
       "needs": [],
