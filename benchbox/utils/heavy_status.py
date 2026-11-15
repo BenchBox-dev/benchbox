@@ -56,6 +56,11 @@ class Orphan:
     cwd: str
 
 
+TOP_CPU_COUNT = 5
+TOP_CPU_MIN_PERCENT = 1.0
+SHELL_NAMES = frozenset({"bash", "sh", "zsh", "dash", "fish"})
+
+
 @dataclass(frozen=True)
 class SentinelState:
     running: bool
@@ -77,6 +82,7 @@ class StatusReading:
     git_flood: git_flood_module.GitFlood | None = None
     vm: linux_machine.VmAssessment | None = None
     vm_line: str | None = None
+    top_cpu: tuple[tuple[int, float, str], ...] | None = None
 
 
 def _holder_age(record: str) -> float | None:
@@ -108,7 +114,9 @@ def _command_name(command: str) -> str:
 
 
 def _is_server_candidate(command: str) -> bool:
-    return _command_name(command) in SERVER_NAMES or "questdb" in command.lower()
+    return (
+        _command_name(command) in SERVER_NAMES or _command_name(command) in SHELL_NAMES or "questdb" in command.lower()
+    )
 
 
 def _in_worktree(cwd: str) -> bool:
@@ -329,6 +337,27 @@ def _read_vm_line(
     return None if found is None else describe_vm_footprint(found)
 
 
+def parse_top_cpu(text: str) -> tuple[tuple[int, float, str], ...]:
+    rows: list[tuple[int, float, str]] = []
+    for line in text.splitlines():
+        fields = line.split(None, 2)
+        if len(fields) < 3 or not fields[0].isdigit():
+            continue
+        try:
+            cpu = float(fields[1])
+        except ValueError:
+            continue
+        if cpu >= TOP_CPU_MIN_PERCENT:
+            rows.append((int(fields[0]), cpu, fields[2]))
+    rows.sort(key=lambda row: row[1], reverse=True)
+    return tuple(rows[:TOP_CPU_COUNT])
+
+
+def _read_top_cpu(runner: Runner) -> tuple[tuple[int, float, str], ...] | None:
+    listing = runner(["ps", "-axo", "pid=,pcpu=,command="], EXTERNAL_TIMEOUT_SECONDS)
+    return None if listing is None else parse_top_cpu(listing)
+
+
 def collect(
     environ: Mapping[str, str] | None = None,
     *,
@@ -347,6 +376,7 @@ def collect(
         orphan_future = pool.submit(find_orphans, runner, footprint)
         vm_future = pool.submit(vm_reader or (lambda: _read_vm(environ, runner, which)))
         top = top_reader()
+        top_cpu = _read_top_cpu(runner)
         holder = read_holder_state(path)
         waiters = host_lock.live_waiter_count(path)
         pressure = pressure_future.result()
@@ -360,6 +390,7 @@ def collect(
         budget_gib=resource_limits.heavy_memory_budget_gib(environ),
         top=top,
         orphans=orphans,
+        top_cpu=top_cpu,
         sentinel=read_sentinel_state(environ),
         git_flood=(git_flood_reader or (lambda: _read_git_flood(environ, footprint)))(),
         vm=vm,
@@ -418,8 +449,18 @@ def _render_top(reading: StatusReading) -> list[str]:
     return lines
 
 
+def _render_top_cpu(reading: StatusReading) -> list[str]:
+    lines = [f"top {TOP_CPU_COUNT} processes by CPU use:"]
+    if reading.top_cpu is None:
+        return [*lines, "  unmeasured"]
+    if not reading.top_cpu:
+        return [*lines, "  none above 1%"]
+    lines.extend(f"  {pid:>7}  {cpu:>6.1f}%  {command[:120]}" for pid, cpu, command in reading.top_cpu)
+    return lines
+
+
 def _render_orphans(reading: StatusReading) -> list[str]:
-    lines = ["orphaned servers (ppid 1, cwd in a BenchBox worktree):"]
+    lines = ["orphaned servers and shells (ppid 1, cwd in a BenchBox worktree):"]
     if reading.orphans is None:
         return [*lines, "  unmeasured"]
     if not reading.orphans:
@@ -479,6 +520,7 @@ def render(reading: StatusReading, environ: Mapping[str, str] | None = None) -> 
         _render_vm(reading),
         _render_git_flood(reading),
         _render_top(reading),
+        _render_top_cpu(reading),
         _render_orphans(reading),
     )
     return "\n".join(line for section in sections for line in section)

@@ -620,6 +620,31 @@ def test_a_failed_spawn_restores_the_signal_handlers() -> None:
     assert {sig: signal.getsignal(sig) for sig in hl._FORWARDED_SIGNALS} == before
 
 
+@posix_only
+def test_processes_left_in_the_command_group_are_stopped(tmp_path: Path) -> None:
+    pid_file = tmp_path / "background.pid"
+    code = hl._supervise_posix(["bash", "-c", f"sleep 120 & echo $! > {pid_file}; exit 0"], dict(os.environ))
+    assert code == 0
+    background = int(pid_file.read_text(encoding="utf-8"))
+    assert not psutil.pid_exists(background) or psutil.Process(background).status() == psutil.STATUS_ZOMBIE
+
+
+@posix_only
+def test_a_command_that_spawns_after_its_child_is_killed_leaves_nothing_running(tmp_path: Path) -> None:
+    pid_file = tmp_path / "late.pid"
+    script = f"sleep 120 & echo $! > {pid_file}; kill -TERM $$"
+    code = hl._supervise_posix(["bash", "-c", script], dict(os.environ))
+    assert code != 0
+    late = int(pid_file.read_text(encoding="utf-8"))
+    assert not psutil.pid_exists(late) or psutil.Process(late).status() == psutil.STATUS_ZOMBIE
+
+
+@posix_only
+def test_a_clean_command_logs_no_survivors(capfd: pytest.CaptureFixture[str]) -> None:
+    assert hl._supervise_posix(["true"], dict(os.environ)) == 0
+    assert "still running in its process group" not in capfd.readouterr().err
+
+
 def _read_pty(master: int, deadline: float) -> bytes:
     chunks: list[bytes] = []
     while time.monotonic() < deadline:

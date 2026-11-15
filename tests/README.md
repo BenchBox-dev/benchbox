@@ -525,13 +525,18 @@ refusal (exit 76) as `Linux not verified -- admission refused` and does not fail
 | `BENCHBOX_HEAVY_MIN_LEVEL` | 35 | Minimum `kern.memorystatus_level` |
 | `BENCHBOX_HEAVY_MIN_FREE_DISK_GIB` | 50 | Minimum free disk per root |
 | `BENCHBOX_HEAVY_MEMORY_BUDGET_GIB` | 50% of RAM | Shared memory budget resolver (`resource_limits.heavy_memory_budget_gib`) |
+| `BENCHBOX_HEAVY_MAX_LOAD_RATIO` | 2 | Refuse admission when the 5-minute load average exceeds this multiple of the CPU count; 0 disables |
 | `BENCHBOX_HEAVY_ADMIT` | unset | `force` admits despite refusals, with a stderr warning |
 
 `make heavy-status` (`python -m benchbox.utils.host_lock status`) is read-only and never takes the lock. It prints the
-holder and its age, live waiters, the admission readings, VM inventory, the top 10 processes by physical footprint
-and orphaned servers (ppid 1, working directory in a BenchBox worktree); each external command is cut off at 5 s and
+holder and its age, live waiters, the admission readings (including load average), VM inventory, the top 10 processes by physical footprint,
+the top 5 by CPU use and orphaned servers and shells (ppid 1, working directory in a BenchBox worktree); each external command is cut off at 5 s and
 shown as `unmeasured`. `make heavy-run CMD='...'` is `run --admit --guard -- sh -c "$CMD"`. Agent rules and known limits:
 `docs/agent/heavy-work.md`.
+
+When the command under `make heavy-run` ends, every process still running in its process group is stopped (SIGTERM, then
+SIGKILL after 3 s), logged to stderr and recorded as a `group_survivors_stopped` event in the heavy-run ledger. A process
+that starts its own session is not covered; it is reported as a surviving descendant.
 
 ### Heavy-work watchdog
 
