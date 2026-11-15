@@ -1,13 +1,13 @@
 # BenchBox Quality Reference
 
-Run the local gate closest to CI.
+Run `make ci-lint` and `make ci-test` (the ci.yml code-lint and code-test
+equivalents), or `make ci-local` for every CI unit.
 
 ## Checks
 
-- Lint/format/typecheck via project Makefile or configured commands.
-- Fast tests with `uv run -- python -m pytest -m fast -q` or `make test-fast`.
-- Timing policy when touching measured durations.
-- DDL drift lint when touching platform CREATE TABLE rewrites.
+- `make ci-lint` covers lint, format, typecheck, timing policy, and DDL drift
+  (`compat-inventory-check`).
+- `make test-fast` for fast tests.
 
 ## Output
 

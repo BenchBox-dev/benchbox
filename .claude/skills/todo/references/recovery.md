@@ -2,56 +2,45 @@
 
 ## A gate is not a failure
 
-`kind: "gate"` results are the tracker working. Read `recovery`, act on it, and
-continue. Do not retry the same call unchanged.
+Do not retry the same call unchanged after a gate.
 
 ## Lost claim or restarted session
 
-Re-adopting your own claim with `take` mints a fresh generation and refreshes its
-lease. A default MCP identity changes across server restarts: before a planned
-reconnect, checkpoint and release an ordinary task's claim; confirm the intended
-store/runtime after reconnect, then take it again. A stable unique actor supports
-identity-preserving restart only after its previous server stops.
-
-If someone else holds the claim, inspect it with `show_item`. Use `takeover` only
-when that exact holder's session cannot resume, naming the holder and reason.
-Never share an actor across concurrent servers or take a live claim to avoid
-coordination.
-
-`E_MULTIPLE_CLAIMS` means you already hold a live claim on another task. Finish
-or `release` it first — one live claim per worker.
+Claim identity, re-adopting a claim after a restart, `takeover`, and
+`E_MULTIPLE_CLAIMS`: SKILL.md, Critical rules.
 
 ## Conflicts
 
-`E_CONFLICT` means a competing writer changed the task first. Re-read with
-`show_item`, re-evaluate whether your operation still applies, and only then
-retry. Retries re-apply the logical operation; they never merge or overwrite
-the newer state.
+After `E_CONFLICT`, re-read with `show_item` and re-evaluate before retrying.
+Retries re-apply the logical operation; they never merge or overwrite the newer
+state.
 
-## Offline and unknown outcomes
+## Unknown outcomes
 
-- `E_OFFLINE`: the remote is unreachable. `list_items` / `show_item` may serve a
-  cached revision marked `stale`; mutations fail rather than succeeding locally.
-  Retry when reachable.
 - `E_UNKNOWN`: a push reply was lost and the outcome is undetermined. The
   `recovery` list carries the operation ID. A human reconciles with
   `tractable recover --op-id <id>` before anyone re-applies the work.
 
-## Schema and state errors
+## Open deferrals
 
-`E_SCHEMA` means the state format is newer than the installed package; a human
-upgrades. On a batch call it also means the store is below schema 4 (register
-with `confirm_schema3_cutover=true` first) or a legacy receipt sits under a v2
-batch. `E_STATE` explains itself in the message — a malformed request, an
-unknown task, or a rejected transition. `E_CURSOR_STALE` means restart listing
-from the first page.
+`E_OPEN_DEFERRALS` means `finish` refused because the task has open deferrals;
+the response names the blocking ids, and `show_item` reports them as
+`open_deferrals`. Read them with `list_deferrals(from_item=<id>)`, then resolve
+each one: `promote_deferral(id=<item>, deferral_id=<n>)` creates a linked
+planning item (pass `to_item` to link an existing one instead), and
+`dismiss_deferral(id=<item>, deferral_id=<n>, reason=...)` drops it with a
+recorded reason. Then retry `finish`.
+
+## Schema errors on a batch call
+
+`E_SCHEMA` on a batch call (the store is below schema 4, or a legacy receipt is
+under a v2 batch): follow `references/batch.md`, Register and dispatch. Do not
+work around it.
 
 ## Batch recovery
 
-Prepared delivery requires the actual installed runtime's `tractable_batch` version
-2 capability and supported store/receipt schemas. Read live state with
-`show_batch`/`show_item`; ledger hints are not acceptance proof, and private
-generation material is not recoverable from the redacted batch read.
+Read live state with `show_batch`/`show_item`; ledger hints are not acceptance
+proof, and the redacted batch read never returns generation material.
 
 - **`E_BATCH_OWNER`**: you are not the batch owner, and only the owner may
   `take`, `takeover`, `prepare`, or `finish` a member of an active batch. The
@@ -99,32 +88,17 @@ generation material is not recoverable from the redacted batch read.
   checks at the destination. An active partial closeout may relocate at unchanged
   integration/final-PR head, but cannot advance, reprepare, reopen or rebind
   finished work. This does not upgrade legacy review attestations.
-- **Review revisions**: withdraw auto-merge before publication. Commit and verify
-  the complete leader-fix interval, submit the expected-head tracker advance,
-  push the captured head, and CAS-rebind the same PR. A helper must not push
-  before the tracker advance. If interrupted between those steps, reconcile the
-  exact current heads and repeat only the missing operation. After a head or
-  binding change, run new final evidence/review/CI before rearming. Once any
-  member is done, heads and bindings cannot change; resume closeout.
-- **Receipt invalidated by an edit**: only `context`/`context_append` edits keep a
-  receipt; any other edit of a member deletes it and its dependents' receipts.
-  Registered batch metadata edits are refused, and once any member is `done`
-  invalidating edits are refused (`E_STATE`, "closeout has started"). Before
-  closeout, prepare the member again (re-prepare): `take` it, then `prepare` at
-  the current integration head; its accepted head is already contained, so no new
-  commit is needed. Dependents are re-prepared the same way.
-- **`E_SCHEMA` on a batch call**: the store is below schema 4, or a legacy
-  receipt is under a v2 batch. A human upgrades the clients and the first
-  `register_batch` with `confirm_schema3_cutover=true` performs the cutover; do
-  not work around it.
+- **Interrupted review revision**: if interrupted between the fix commit, the
+  tracker advance, the push and the PR rebind (`references/batch.md`, Publish
+  and review), reconcile the exact current heads and repeat only the missing
+  operation. A helper must not push before the tracker advance.
+- **Receipt invalidated by an edit** (after any member is `done` the edit is
+  refused with `E_STATE`, "closeout has started"): before closeout, re-prepare:
+  `take` the member, then `prepare` at the current integration head; no new
+  commit is needed. Re-prepare dependents the same way. Which edits invalidate a
+  receipt: SKILL.md, Planning.
 
 ## Prepared receipt recovery
-
-Prepared mode is unavailable when the `tractable_batch` version 2 capability is
-absent or the store schema is outside the advertised `supported_schema_versions`:
-stop and use the serial claim/finish loop. A store below schema 4 is cut over by
-the first `register_batch` with `confirm_schema3_cutover=true`. Do not migrate a legacy per-item receipt into a
-registered batch by assertion.
 
 If a prepared batch is abandoned, release every live member claim and have the
 registered owner call `abort_batch` with the batch owner generation. Abort

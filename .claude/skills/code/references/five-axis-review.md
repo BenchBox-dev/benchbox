@@ -12,13 +12,13 @@ planning depth, defect handling, capture, and remediation.
   Classify a failing required check as Critical when the change caused it;
   distinguish infrastructure failures and pending protected gates explicitly.
 - For multi-PR work, run `gh pr diff <N> --name-only` and perform that blocker
-  triage for every PR; avoid `--json body,files` unless needed.
-- Load project-specific checks, such as SQLGlot dialect checks, only from
-  `code.review_checklist` (`code/skill.yaml:28`) when `skill-sync.config.yaml`
-  configures it. Do not add them here.
-- `review --chain` remains read-only under [REVIEW-AUTH-001]. After a later
-  message authorizes remediation, fix only non-structural issues, verify them,
-  then use the commit framework and project PR flow.
+  triage for every PR; fetch `gh pr view <N> --json body,files` only when
+  needed.
+- Load project-specific checks only from `code.review_checklist` when
+  `skill-sync.config.yaml` configures it. Do not add them here.
+- A review-only request stays read-only under [REVIEW-AUTH-001]; a request that
+  explicitly asks for review and fix does both in that turn, fixing only
+  non-structural issues, then verifies and follows the commit framework.
 
 ## The Five Axes
 
@@ -27,8 +27,6 @@ planning depth, defect handling, capture, and remediation.
 - Does it handle null, empty, boundary, and error cases?
 - Do tests cover the correct behavior?
 - Are there off-by-one errors, races, or inconsistent states?
-- For changed measured values, add a checked-in smoke or Make target that
-  reproduces the measurement and a test that detects catalog/document drift.
 
 ### 2. Readability & Simplicity
 - Are names clear and consistent with project conventions?
@@ -65,11 +63,6 @@ planning depth, defect handling, capture, and remediation.
 | **Nit** | Minor, optional | May ignore |
 | **Consider** | Suggestion worth evaluating | Not required |
 
-Critical and Required findings that meet the defect gate are defects under the
-shared protocol. Put them in the severity table and action items, never in
-blind-spots. A solution-fit finding with no accompanying defect routes as an
-action item under [REVIEW-FIT-001], not into the severity table.
-
 ## Change Sizing
 
 - About 100 lines: reviewable in one sitting.
@@ -100,20 +93,8 @@ tables.
 other data artifacts.
 
 - Assess each component's reversibility.
-- If tooling hides a data defect, require a follow-up TODO for the upstream fix.
-
-### Repo-shape ADR branch
-**Trigger:** An ADR changes branch shape, moves CI, or vendors across branches.
-
-- List CI, contributor, automation, and downstream consumers.
-- Verify each consumer under the allowlist. Undocumented exceptions block the
-  ADR.
-
-### Multi-W spec branch
-**Trigger:** A specification is divided into W1 through Wn.
-
-- Estimate lines per work unit from the module breakdown.
-- Before approval, require a split or rationale for any unit over 300 lines.
+- If tooling hides a data defect, require the upstream fix to be named as a
+  follow-up.
 
 ### Defect follow-up branch
 **Trigger:** One orchestration phase parses artifacts from another.

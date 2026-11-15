@@ -1,12 +1,10 @@
 # BenchBox Test Reference
 
-Use `uv run --` for Python and prefer Makefile targets.
-
 ## Targets
 
-- Fast smoke: `uv run -- python -m pytest -m fast -q`
+- Fast smoke: `make test-fast`
 - Standards: `uv run -- python -m pytest -m "tpch or tpcds" --tb=short`
-- TPC-H/TPC-DS/SSB/ClickBench: use matching Makefile or focused pytest target.
+- One benchmark: `make test-marker TEST_MARKER=<tpch|tpcds|ssb|clickbench>` or a focused pytest path.
 - DataFrame platforms: compare against DuckDB SQL at smoke scale when validating behavior.
 
 ## Rules

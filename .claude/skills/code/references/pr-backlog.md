@@ -58,10 +58,12 @@ Classify each open PR into one of three execution paths:
 - **Condition:** All required CI checks green on current `head.sha`, no open
   unresolved review threads, approvals met, no merge conflicts.
 - **Action:**
-  1. Validate commit identity against `shared-change-framework/SKILL.md
-     [COMMIT-IDENTITY-001]`.
-  2. Merge the PR using the pinned `head.sha` via the merge API (e.g. `gh api
-     -X PUT /repos/{owner}/{repo}/pulls/{number}/merge -f sha=<head.sha>`) to
+  1. Confirm the merge runs as the user's own GitHub account, not a bot or
+     service token. Validate identity per
+     `shared-change-framework/SKILL.md [COMMIT-IDENTITY-001]` for any commit the
+     agent authors.
+  2. Merge with `gh pr merge <N> --match-head-commit <head.sha>` and the
+     repository's merge method (`--squash`, `--merge`, or `--rebase`) to
      prevent race conditions from intervening pushes.
   3. Delete the feature branch if repository policy configures branch cleanup.
 
@@ -103,7 +105,8 @@ Classify each open PR into one of three execution paths:
   6. Run repository-configured verification (`code.verify`, `code.fast_test`, or
      the repository test suite) per `shared-change-framework/SKILL.md`.
   7. Push to the PR branch with `--force-with-lease` and `--force-if-includes`
-     where supported.
+     where supported, per the history-rewrite exception in
+     `shared-change-framework/SKILL.md` step 6.
   8. Post durable replies citing the newly pushed commit SHA to all addressed
      review threads and resolve the threads.
   9. Enable auto-merge, or wait for CI checks to pass and complete the merge
@@ -111,9 +114,9 @@ Classify each open PR into one of three execution paths:
 
 ### 3. Review follow-up sweep chaining
 
-After clearing open PRs, invoke `references/pr-sweep.md` to sweep and resolve
-any post-merge review findings left on newly merged commits. To prevent infinite
-cycles, bound chaining to a single sweep pass per backlog run.
+After clearing open PRs, run the read-only inventory of `references/pr-sweep.md`
+on newly merged PRs and report it. Fix findings only when the request asked for
+findings to be fixed. Run at most one sweep per backlog run.
 
 ## Resume and report
 

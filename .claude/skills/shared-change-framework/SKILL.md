@@ -1,6 +1,6 @@
 ---
 name: change-framework
-description: "Unified source-code selection and change-execution workflow: reuse ladder, vertical slicing, post-edit verification, named branches, commits, and authorized-write PRs."
+description: "Use before editing source code, and for every authorized commit, push, or draft PR: reuse ladder, slicing, post-edit verification, task branch, commit identity, and publication. Skip for read-only review or Q&A."
 ---
 
 # Change Framework
@@ -30,7 +30,7 @@ Use for multi-file work, features, refactors, or changes likely to exceed about
   touching."
 - Prefer vertical slices. Use contract-first slices for parallel components and
   risk-first slices for uncertainty.
-- Each slice must implement, test, and verify one logical behavior. Commit each
+- Each slice implements and verifies one logical behavior; commit each
   verified slice separately.
 - Keep the project buildable and each increment independently revertible.
 - New incomplete code stays disabled by default.
@@ -41,8 +41,8 @@ Run before returning, staging, or committing changes.
 
 ### Checks
 
-1. Read edited regions with five surrounding lines. Check indentation, nesting,
-   stale imports, and orphaned lines.
+1. If the edit tool did not show the edited region, re-read it. Check
+   indentation, nesting, stale imports, and orphaned lines.
 2. Run project lint if available.
 3. Run project typecheck if available.
 4. Run targeted tests, then fast/default suite for meaningful code changes.
@@ -81,9 +81,7 @@ capture remains local under `shared-review-protocol/SKILL.md`.
 
 | Parameter | Meaning |
 |---|---|
-| `file_scope` | Exact file discovery rule |
 | `prefix` | Conventional type: `feat`, `fix`, `refactor`, `docs`, `test`, `chore` |
-| `verify_cmd` | Required pre-commit verification |
 
 ### Steps
 
@@ -92,7 +90,7 @@ capture remains local under `shared-review-protocol/SKILL.md`.
 2. Create or reuse a clearly named non-default branch for this task before
    editing. Reuse it only when its name matches the scope. If edits began on
    the default branch, switch before further edits.
-3. Discover files from `file_scope`. If none exist, report "No files to commit."
+3. List the files this task changed. If none, report "No files to commit."
    Inspect `git status --porcelain {files}` and `git diff {files}`.
 4. Run Section 3. Fix failures or stop without committing.
 5. Stage and commit the explicit files in one shell command.
@@ -101,24 +99,22 @@ capture remains local under `shared-review-protocol/SKILL.md`.
    remote host, owner, and repository match an authorized repository or an
    authorized fork of it, then push the branch. Use `-u origin {branch}` when it
    has no upstream. Stop on an unknown remote, a push to a default or protected
-   branch, or a history rewrite. A PR that targets the default branch is normal
-   and is not a stop.
+   branch, or a history rewrite. One exception: a `--force-with-lease` push to
+   a non-default PR branch is allowed when the user's request explicitly
+   invokes a workflow that names rebasing that branch (the `code` skill's
+   backlog clearance). Every other history rewrite still stops. A PR that
+   targets the default branch is normal and is not a stop.
 7. Create the branch's draft PR, or update the existing PR for that branch, as
    part of the same repository-write authorization unless the user explicitly
    requires local-only work, another publication mode, or the exception below
    applies.
 
-**Exception: delegated batch member.** A worker delegated one member of an
-active integration-branch batch (the `todo` skill's prepared delivery) ends at
-step 5: a committed, checked change in its own member worktree, handed to the
-batch leader as a landing request. It does not push for publication and does
-not create or update a PR; the leader lands the member and publishes the one
-final PR. This narrows steps 6-7 only for that delegation; the steps above 6,
-the Section 3 gate rules (including the delegated gate-runner rules), and every
-other rule here still apply to the member, except that its terminal state is the
-landing request, not the repository's terminal state or a pushed branch and PR;
-the leader follows steps 6-7 for
-the final branch.
+**Exception: delegated batch member.** A worker given one member of a `todo`
+prepared-delivery batch stops after step 5 and hands the committed, checked
+change in its member worktree to the batch leader as a landing request. It does
+not push or create or update a PR; the leader does steps 6-7 for the final
+branch. Every other rule here, including Section 3 and the delegated
+gate-runner rules, still applies.
 
 ### Rules
 
@@ -140,7 +136,7 @@ the final branch.
   identity is part of the acceptance criteria.
 - Never `git add -A`.
 - Commit only authorized/session-modified files.
-- Use Conventional Commits.
+- Use Conventional Commits unless repository policy names another style.
 - Do not commit if verification fails or scope is ambiguous.
 - Branch creation and commits are required close-out steps for completed
   repository write actions, not separate permissions. The authorizing user
@@ -156,15 +152,11 @@ the final branch.
   linked worktree.
 - If a required push or PR is mechanically unavailable, keep the verified
   commit and report the blocker; do not describe the workflow as complete.
-- The workflow ends at the terminal state the repository's agent instructions
-  name, or at a pushed branch and its created or updated draft PR when they
-  name none. The authority boundary that ends it there, and the actions it does
-  not authorize (deployment, activation, production publication, writes to an
-  unnamed repository), is owned by `shared-review-protocol/SKILL.md` §1; do not
-  restate it here. Repository policy may choose how an already-authorized step
-  is performed, such as commit style, required checks, or PR template. Report
-  the state reached per surface; never describe local-only work as applied or
-  shipped.
+- The workflow ends at the terminal state set by
+  `shared-review-protocol/SKILL.md` §1 [REVIEW-AUTH-001]. Repository policy
+  may choose how an authorized step is performed (commit style, required
+  checks, PR template). Report the state reached on each surface; never
+  describe local-only work as applied or shipped.
 
 ## 5. Capability removal and replacement [CHANGE-REMOVAL-001]
 

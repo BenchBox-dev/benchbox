@@ -3,14 +3,6 @@
 Rank open items by topic without changing tracker state. There is no
 `prioritize` tool; this is a skill-only workflow driven by the read tools.
 
-## Before you start
-
-1. Call `get_instructions` with `expect_store` set to the project's
-   `owner/repo` to confirm the protocol, the bound store, and your identity.
-2. If the tracker is unreachable or reports a schema problem, stop. Do not
-   reconstruct the backlog from files or chat history — the state branch is the
-   only source.
-
 ## Inputs
 
 | Input | Default | Notes |
@@ -47,9 +39,9 @@ candidate, compute:
 | Signal | How to get it |
 |---|---|
 | Severity | `critical` > `high` > `medium-high` > `medium` > `low` |
-| Ready | `status` is `open`, unclaimed, and `unmet_needs` is empty |
+| Ready | Listed by `list_items(ready_only=true)` |
 | Unlock value | `show_item` → `unlocks` |
-| In-flight | open but absent from `ready_only` with no unmet needs — a live claim; small boost only |
+| In-flight | `show_item` shows a live `claim`; small boost only |
 | Risk keywords | Title/description terms suggesting privacy, security, or correctness risk, such as leak, secret, credential, egress, provenance, or silent |
 | Human-only | Maintainer/admin work; demote from the agent-actionable top N but note critical items |
 
@@ -61,8 +53,6 @@ Default order:
 4. unlock value
 5. claimed
 6. stable tie-break on `id`
-
-A claim gives only a small boost; it never outranks a higher-severity ready item.
 
 ### Topic groups
 
@@ -85,18 +75,14 @@ Include:
 4. High or critical demotions and their reasons.
 5. User-owned blocked criticals.
 
-Ranks are session recommendations and do not change tracker state.
-
 ### Write-back — only when the user asks
 
-Only when the user asks to apply the ranking:
-
 1. Update only items whose stored priority differs from the recommended band,
-   with `update_item(id=..., priority=..., reason=...)`.
-2. Give a one-line reason per update. Prefer band moves (`medium` → `high`)
-   over invented ranks the schema cannot store.
+   with `update_item(id=..., priority=...)`; give each change's one-line reason
+   in the report.
+2. Prefer band moves (`medium` → `high`) over invented ranks the schema cannot
+   store.
 3. Re-page `list_items` and show before/after counts.
 
-Never change priorities, block, or claim during read-only ranking. Respect `N`
-and requested grouping; do not dump all medium items, create one topic per item,
-or return a flat list when groups were requested.
+Respect `N` and requested grouping; do not dump all medium items, create one
+topic per item, or return a flat list when groups were requested.

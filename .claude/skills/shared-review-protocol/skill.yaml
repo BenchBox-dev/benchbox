@@ -1,5 +1,6 @@
 depends:
   - shared-agent-execution
+  - shared-change-framework
 tags:
   - framework
   - review

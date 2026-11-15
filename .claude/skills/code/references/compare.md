@@ -1,7 +1,5 @@
 # Code Compare Reference
 
-Compare behavioral contracts, not formatting.
-
 ## Extract
 
 - Public functions/classes/CLI/API surfaces and inputs/outputs.

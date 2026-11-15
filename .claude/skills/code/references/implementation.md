@@ -2,19 +2,15 @@
 
 ## Implement
 
-Follow configured project conventions and checks.
+Apply the configured checks above and `shared-change-framework/SKILL.md`.
 
 ## Commit
 
-Discover session files, inspect `git status --porcelain` and the diff, verify,
-make a conventional commit, and push through the commit framework. A delegated
-batch member instead stops at the committed, checked change and hands it to its
-leader: see the delegated batch member exception in
-`shared-change-framework/SKILL.md` §4.
+Apply `shared-change-framework/SKILL.md` §4 to the files changed in this
+session.
 
 ## Fix
 
-- Lint: use configured lint/fix commands.
 - Type: run typecheck and add annotations where needed.
 - Runtime: apply the investigation framework's Debug workflow.
 

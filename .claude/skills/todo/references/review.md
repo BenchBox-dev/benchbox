@@ -19,14 +19,14 @@ implementation. Read the item with `show_item(id=...)`, then apply **L2** of
 - Is the item free of circular dependency chains (creation rejects them)?
 
 ### 4. Readiness
-- Is the item `open` and unclaimed, with all `needs` done?
+- Is it listed by `list_items(ready_only=true)`? If not, is the reason (claim,
+  unmet need, `not_before` hold, batch reservation) intended?
 - If `blocked`, is the reason recorded in the description or context?
 
 Report gaps concretely; fix them with `update_item` when authorized.
 
-## Own-edit-target freshness
+## Quoted-document freshness
 
-When the task description quotes a living policy, specification, or goal
-document, re-read the current text of that document and diff it against the
-quotes before implementing. Line-number citations are not durable evidence —
-treat evidence durability as zero when that re-read is absent.
+When the item quotes a living policy, specification, or goal document, re-read
+the current text and compare it with the quotes before implementing.
+Line-number citations are not durable; report drift as a gap.
