@@ -108,7 +108,7 @@ def _expr_extra(name: str) -> Any:
         "distance_0_30": lambda col, lit: (col("trip_distance") >= lit(0), col("trip_distance") <= lit(30)),
         "passenger_1_6": lambda col, lit: (col("passenger_count") >= lit(1), col("passenger_count") <= lit(6)),
         "duration_positive": lambda col, _lit: col("dropoff_datetime") > col("pickup_datetime"),
-        "airport_rate": lambda col, _lit: col("rate_code_id").is_in([2, 3]),
+        "airport_rate": lambda col, _lit: col("rate_code_id").is_in([2.0, 3.0]),
     }[name]
 
 
@@ -178,7 +178,7 @@ def _expr_derive(ctx: DataFrameContext, frame: Any, names: str) -> Any:
             dow = dowi - (dowi / lit(7)).floor() * lit(7)
             frame = frame.with_columns(
                 col("pickup_datetime").dt.hour().alias("hour"),
-                ctx.when(dow.is_in([0, 6])).then(lit("weekend")).otherwise(lit("weekday")).alias("day_type"),
+                ctx.when(dow.is_in([0.0, 6.0])).then(lit("weekend")).otherwise(lit("weekday")).alias("day_type"),
             )
         elif name == "period":
             frame = frame.with_columns(

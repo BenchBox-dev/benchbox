@@ -583,9 +583,9 @@ _PLATFORM_MANIFEST_JSON = """[
       }
     ],
     "requirements": [
-      "polars>=0.20.0"
+      "polars>=1.35.2,<3.0.0"
     ],
-    "installation_command": "uv add polars",
+    "installation_command": "uv add 'polars>=1.35.2,<3'",
     "adoption": "established",
     "supports": [
       "olap",

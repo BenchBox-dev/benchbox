@@ -101,7 +101,7 @@ all = [
     "pymysql>=1.1.0",
     "singlestoredb>=1.0.0",
     "adbc-driver-gizmosql>=2.0.13,<3",
-    "polars>=1.35.2",
+    "polars>=1.35.2,<3.0.0",
     "dask[distributed]>=2025.1.0",
     "pyspark[connect]>=3.5.0,<4.3",
 ]
@@ -201,9 +201,9 @@ cudf = []
 dataframe-cudf = [
 ]
 
-polars = ["polars>=1.35.2"]
+polars = ["polars>=1.35.2,<3.0.0"]
 dataframe-polars = [
-    "polars>=1.35.2",
+    "polars>=1.35.2,<3.0.0",
 ]
 pyspark = ["pyspark>=3.5.0,<4.3"]
 lakesail = ["pyspark[connect]>=3.5.0,<4.3", "grpcio>=1.84.1"]
@@ -221,20 +221,20 @@ dataframe-pandas-family = [
     "dask[distributed]>=2025.1.0",
 ]
 dataframe-expression-family = [
-    "polars>=1.35.2",
+    "polars>=1.35.2,<3.0.0",
     "pyspark>=3.5.0,<4.3",
     "datafusion>=54.0.0",
 ]
 dataframe-all = [
     "pandas>=3.0.0",
     "dask[distributed]>=2025.1.0",
-    "polars>=1.35.2",
+    "polars>=1.35.2,<3.0.0",
     "pyspark>=3.5.0,<4.3",
     "datafusion>=54.0.0",
 ]
 
 quick-start = [
-    "polars>=1.35.2",
+    "polars>=1.35.2,<3.0.0",
 ]
 
 cloud-spark-aws = [
@@ -342,7 +342,7 @@ dev = [
     "ruff==0.16.7",
     "ty>=0.0.1a14",
     "duckdb>=1.5.0,<3.0.0",
-    "polars>=1.35.2",
+    "polars>=1.35.2,<3.0.0",
     "clickhouse-connect>=0.10.0",
     "psycopg[binary]>=3.1",
     "adbc-driver-gizmosql>=2.0.13,<3",
