@@ -73,6 +73,14 @@ def test_python_lambda_form_is_used_from_the_first_accepting_version(version, su
             "SELECT list_filter(a, x -> list_sum(list_transform(x, y -> y -> 'k')) > 1)",
             "SELECT list_filter(a, lambda x: list_sum(list_transform(x, lambda y: y -> 'k')) > 1)",
         ),
+        (
+            "SELECT list_transform(a, x -> x + 1), f(g(y -> y)) -> 'k'",
+            "SELECT list_transform(a, lambda x: x + 1), f(g(lambda y: y)) -> 'k'",
+        ),
+        (
+            "SELECT list_transform(a, (x) -> x + 1), json_extract(f(a, b), '$') -> 'k'",
+            "SELECT list_transform(a, lambda x: x + 1), json_extract(f(a, b), '$') -> 'k'",
+        ),
     ],
 )
 def test_arrow_lambdas_become_python_lambdas_and_json_arrows_are_untouched(source, expected):

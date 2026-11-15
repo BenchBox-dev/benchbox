@@ -48,16 +48,22 @@ def rewrite_arrow_lambdas(sql: str) -> str:
         previous = tokens[index - 1]
         if previous.token_type == TokenType.R_PAREN:
             opener = index - 2
-            while opener >= 0 and tokens[opener].token_type != TokenType.L_PAREN:
+            depth = 1
+            while opener >= 0:
+                kind = tokens[opener].token_type
+                depth += (kind == TokenType.R_PAREN) - (kind == TokenType.L_PAREN)
+                if depth == 0:
+                    break
                 opener -= 1
-            if opener < 0:
+            if opener < 0 or opener + 1 >= index - 1:
                 continue
             start = tokens[opener].start
+            first = tokens[opener + 1].start
             parameters = sql[tokens[opener].end + 1 : previous.start].strip()
         else:
-            start = previous.start
+            start = first = previous.start
             parameters = sql[previous.start : previous.end + 1]
-        if not any(start <= offset <= token.start for offset in first_parameter_offsets):
+        if first not in first_parameter_offsets:
             continue
         replacements.append((start, token.end + 1, f"lambda {parameters}:"))
 
