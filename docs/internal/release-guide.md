@@ -201,9 +201,11 @@ The procedure:
    make pr-arm BASE=release/X.Y.x
    ```
 
-   `BASE` is `develop` (the default) or one `release/X.Y.x` line; any other
-   value is refused. `pr-preflight` selects its checks against the fetched
-   `origin/release/X.Y.x`, `pr-open` takes the branch-point check, the
+   `pr-open` and `pr-arm` take `BASE` as `develop` (the default) or one
+   `release/X.Y.x` line and refuse any other value. `pr-preflight` reads
+   `BASE` as a ref, as before, and takes the branch names `develop` and
+   `release/*` as the fetched `origin/<branch>`; it refuses nothing, and
+   `pr-open` refuses a receipt that does not cover its base. `pr-open` takes the branch-point check, the
    changelog check, the preflight receipt and the local review against that
    line, opens the pull request into it, and arms it with the same `BASE`, and
    `pr-arm` runs its live checks (required statuses, stale base, review gate
