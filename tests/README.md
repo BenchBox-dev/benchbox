@@ -535,8 +535,10 @@ shown as `unmeasured`. `make heavy-run CMD='...'` is `run --admit --guard -- sh 
 `docs/agent/heavy-work.md`.
 
 When the command under `make heavy-run` ends, every process still running in its process group is stopped (SIGTERM, then
-SIGKILL after 3 s), logged to stderr and recorded as a `group_survivors_stopped` event in the heavy-run ledger. A process
-that starts its own session is not covered; it is reported as a surviving descendant.
+SIGKILL after 3 s), logged to stderr and recorded as a `group_survivors_stopped` event in the heavy-run ledger; if any
+survive SIGKILL the event is `group_survivors_remaining` and stderr carries an error. The command's own exit status is
+unchanged. A process that starts its own session, or is re-parented out of the group before the command ends, is not
+stopped and may not be reported at all.
 
 ### Heavy-work watchdog
 

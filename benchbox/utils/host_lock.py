@@ -1072,16 +1072,27 @@ def _reap_process_group(pgid: int, env: Mapping[str, str]) -> list[tuple[int, st
             _sleep(0.1)
         if not _group_members(pgid):
             break
+    remaining = _group_members(pgid)
+    if remaining:
+        _log(
+            f"ERROR: {len(remaining)} process(es) survived SIGKILL and are still running: "
+            + ", ".join(f"{pid} {name}" for pid, name in remaining)
+        )
     try:
         _load_sibling("heavy_run_events").record_event(
-            "group_survivors_stopped",
-            details={"pgid": pgid, "processes": [{"pid": pid, "name": name} for pid, name in survivors]},
+            "group_survivors_remaining" if remaining else "group_survivors_stopped",
+            outcome="survivors_remaining" if remaining else "stopped",
+            details={
+                "pgid": pgid,
+                "found": [{"pid": pid, "name": name} for pid, name in survivors],
+                "remaining": [{"pid": pid, "name": name} for pid, name in remaining],
+            },
             environ=env,
             run_id=env.get(RUN_ID_ENV),
         )
     except Exception:
         pass
-    return survivors
+    return remaining
 
 
 def _exit_code(returncode: int) -> int:

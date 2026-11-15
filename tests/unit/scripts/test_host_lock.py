@@ -656,6 +656,22 @@ def test_stopped_survivors_are_recorded_under_the_run_id(tmp_path: Path) -> None
     assert record["run_id"] == "abc123"
 
 
+@posix_only
+def test_survivors_that_cannot_be_stopped_are_recorded_as_remaining(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
+) -> None:
+    runs = tmp_path / "runs.jsonl"
+    env = dict(os.environ, **{hl.RUNS_FILE_ENV: str(runs), hl.RUN_ID_ENV: "abc123"})
+    monkeypatch.setattr(hl, "_group_members", lambda pgid: [(4242, "stuck")])
+    monkeypatch.setattr(hl, "GROUP_GRACE_SECONDS", 0.0)
+    monkeypatch.setattr(hl.os, "killpg", lambda pgid, sig: (_ for _ in ()).throw(PermissionError()))
+    assert hl._reap_process_group(999999, env) == [(4242, "stuck")]
+    record = json.loads(runs.read_text(encoding="utf-8").splitlines()[-1])
+    assert record["event"] == "group_survivors_remaining"
+    assert record["outcome"] == "survivors_remaining"
+    assert "survived SIGKILL" in capfd.readouterr().err
+
+
 def _read_pty(master: int, deadline: float) -> bytes:
     chunks: list[bytes] = []
     while time.monotonic() < deadline:
