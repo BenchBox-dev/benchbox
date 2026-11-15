@@ -159,9 +159,14 @@ The procedure:
    The first command only verifies; `--push` creates `release/X.Y.x`. The
    reviewer file set comes from `CREATION_REVIEW_PATHS` and the `review-*` and
    `oracle-*` workflows in `scripts/release_artifact_consumer.py`, the same
-   constants admission checks, so the two cannot drift. Creation commits are
-   immutable, so check the line again from `develop` after the push, and any
-   time before a tag, without a tag in hand:
+   constants admission checks, so the two cannot drift. The commit also carries
+   the tests in `CREATION_REVIEW_TESTS`, which pin those files; without them
+   the line's required CI runs the tag's older tests against develop's newer
+   reviewer files and fails.
+   `tests/unit/scripts/test_release_line_carried_tests.py` fails when a test
+   names a carried file and is neither listed there nor declared unrelated.
+   Creation commits are immutable, so check the line again from `develop`
+   after the push, and any time before a tag, without a tag in hand:
 
    ```bash
    uv run -- python scripts/release_artifact_consumer.py verify-line \

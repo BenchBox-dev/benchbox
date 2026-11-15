@@ -519,6 +519,21 @@ CREATION_REVIEW_PATHS = (
     "scripts/theseus_release_check.py",
     "_project/scripts/theseus_bootstrap.py",
 )
+CREATION_REVIEW_TESTS = (
+    "tests/unit/scripts/test_inert_paths.py",
+    "tests/unit/scripts/test_review_gateway_host.py",
+    "tests/unit/scripts/test_review_policy_pin.py",
+    "tests/unit/scripts/test_review_provider_diversity.py",
+    "tests/unit/scripts/test_soundness_manifest.py",
+    "tests/unit/scripts/test_theseus_lock.py",
+    "tests/unit/scripts/test_theseus_release_check.py",
+    "tests/unit/scripts/test_theseus_release_tree.py",
+    "tests/unit/workflows/test_review_gate_workflow.py",
+    "tests/unit/workflows/test_review_posting_detector.py",
+    "tests/unit/workflows/test_review_verdict_workflow.py",
+    "tests/unit/workflows/test_review_workflow.py",
+    "tests/unit/workflows/test_theseus_pin_consistency.py",
+)
 CREATION_REVIEW_WORKFLOW = re.compile(r"\.github/workflows/(review|oracle)-[^/]+")
 
 
@@ -566,7 +581,7 @@ def _state_at(root: Path, revision: str, path: str) -> str:
 
 
 def creation_review_paths(root: Path, *revisions: str) -> set[str]:
-    paths = set(CREATION_REVIEW_PATHS)
+    paths = {*CREATION_REVIEW_PATHS, *CREATION_REVIEW_TESTS}
     for revision in revisions:
         listing = _git_text(root, "ls-tree", "-r", "-z", "--name-only", revision, "--", ".github/workflows")
         paths.update(path for path in listing.split("\0") if CREATION_REVIEW_WORKFLOW.fullmatch(path))

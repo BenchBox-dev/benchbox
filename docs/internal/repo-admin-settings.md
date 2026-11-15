@@ -562,8 +562,10 @@ instead and refuses a tag on a maintenance line unless:
   policy and its omp config, the Theseus lock, the soundness and inert path
   manifests, `scripts/theseus_cli.py`, `scripts/theseus_release_check.py`,
   `_project/scripts/theseus_bootstrap.py`, and every `review-*` or `oracle-*`
-  workflow in either tree. A line therefore cannot keep the tag's older reviewer
-  workflows or carry only some of develop's.
+  workflow in either tree, and every test in `CREATION_REVIEW_TESTS` that pins
+  one of those files. A line therefore cannot keep the tag's older reviewer
+  workflows, carry only some of develop's, or carry develop's files without the
+  tests that pin them, which the line's own CI would then fail.
 
 `scripts/release_line_create.py` builds the creation commit and runs these
 creation checks before pushing. `release_artifact_consumer.py verify-line

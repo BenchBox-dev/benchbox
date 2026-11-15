@@ -90,7 +90,7 @@ def create_line(root: Path, tag: str, fetch: Fetch = consumer.fetch_hosted_refs)
         "-p",
         base,
         "-m",
-        f"chore(release): carry {consumer.PRODUCER_BRANCH}'s reviewer files onto {branch}",
+        f"chore(release): carry {consumer.PRODUCER_BRANCH}'s reviewer files and their tests onto {branch}",
         "-m",
         f"{consumer.CREATION_SOURCE_TRAILER}: {source}",
     )
