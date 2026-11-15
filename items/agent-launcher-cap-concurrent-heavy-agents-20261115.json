@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "The record names where subagents are launched and whether the limit can be enforced there; if the launcher is outside this repository, the owner is told exactly what to change.",
+    "The proposed limit is justified from the ledger: queue depth and watchdog kills against agent count over 13 to 15 November.",
+    "No agent-facing instruction text is added."
+  ],
+  "context": "Found during a retrospective on 2026-11-15. The guard-side fixes are in PR BenchBox-dev/benchbox#4236. Guardrails: linked worktree, one PR; no live-cloud runs; heavy work only via lock-taking entry points; re-verify cited facts before acting.",
+  "description": "Problem: on 13 and 14 November, three and then nine subagents ran on a 16 GiB, 10-CPU host with swap near 95 percent. The heavy-work ledger shows four watchdog kills in eight minutes, and at times more than six heavy-run commands queued. Agents treated 'Error 79' and refusals as noise to retry past. Throughput was lost to queueing and to results taken under load.\n\nOutcome: a decision on a concurrency limit derived from host capacity (memory and CPUs, for example the admission check's own readings), applied where agents are dispatched, and a record of where that dispatch code lives. This is not an instruction to agents.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:769ef947e95eb114e9d51acf",
+      "at": "2026-11-15T15:57:27Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0db3df347ccf41d2b975243f2a006dc6",
+      "session_id": "2269c734a94a419ea939cd33fee21860"
+    }
+  ]
+}
