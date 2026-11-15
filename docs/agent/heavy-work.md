@@ -69,9 +69,9 @@ Shell variables in `CMD` reach the shell unchanged: a `CMD` of `echo $HOME > $HO
 
 `make heavy-status` reports the lock holder and its age, live waiters, the
 admission readings (pressure level, available memory, disk), VM inventory,
-the top 10 processes by physical footprint, and orphans: server processes
-(JVMs, ClickHouse, PostgreSQL and similar) with parent pid 1 whose working
-directory is inside a BenchBox worktree. It never signals or modifies a
+the top 10 processes by physical footprint, the top 5 by CPU use, and orphans:
+server processes (JVMs, ClickHouse, PostgreSQL and similar) and shells with
+parent pid 1 whose working directory is inside a BenchBox worktree. It never signals or modifies a
 process, VM, or the lock file. Stopping an orphan is the owner's call or the
 task that started it.
 
