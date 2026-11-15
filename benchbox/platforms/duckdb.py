@@ -1097,6 +1097,8 @@ class DuckDBAdapter(PlatformAdapter):
         self.log_verbose(f"Executing query {query_id}")
         self.log_very_verbose(f"Query SQL (first 200 chars): {query[:200]}{'...' if len(query) > 200 else ''}")
 
+        query = duckdb_query_text(query, getattr(self._duckdb_module, "__version__", None))
+
         if self.dry_run_mode:
             self.capture_sql(query, "query", None)
             self.log_very_verbose(f"Captured query {query_id} for dry-run")
@@ -1111,7 +1113,6 @@ class DuckDBAdapter(PlatformAdapter):
                 "dry_run": True,
             }
 
-        query = duckdb_query_text(query, getattr(self._duckdb_module, "__version__", None))
         ledger = RequestLedger()
         start_time = mono_time()
 
