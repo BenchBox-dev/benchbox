@@ -32500,6 +32500,13 @@
       "status": "done",
       "title": "Confirm vendor pricing data may be redistributed in the BenchBox wheel"
     },
+    "primary-clone-agents-skills-materialization-stale-20261115": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "The primary clone's .agents/skills copy goes stale because only an agent-forbidden write there refreshes it"
+    },
     "primary-clone-dirty-edit-guard-20261020": {
       "claim": null,
       "needs": [],
