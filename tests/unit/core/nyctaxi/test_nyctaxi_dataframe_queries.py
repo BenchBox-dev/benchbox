@@ -286,6 +286,50 @@ class TestNYCTaxiParameters:
         assert ctx.get_table("trips").native.collect_schema()["pickup_datetime"] == pl.Datetime("us")
         assert result.collect().height == 1
 
+    def test_airport_rate_filter_selects_float_rate_codes_on_polars(self):
+        pl = pytest.importorskip("polars")
+
+        from benchbox.core.nyctaxi.dataframe_queries.queries import _expr_extra, _expression_window
+        from benchbox.platforms.dataframe.polars_df import PolarsDataFrameAdapter
+
+        ctx = PolarsDataFrameAdapter().create_context()
+        ctx.register_table(
+            "trips",
+            pl.DataFrame(
+                {
+                    "pickup_datetime": [datetime(2019, 1, 2)] * 5,
+                    "rate_code_id": [1.0, 2.0, 3.0, 5.0, None],
+                    "trip_id": [1, 2, 3, 4, 5],
+                }
+            ),
+        )
+
+        result, _, _ = _expression_window(ctx, "Q17", "2019-01-01", "2019-03-31", _expr_extra("airport_rate"))
+
+        assert sorted(result.collect()["trip_id"].to_list()) == [2, 3]
+
+    def test_day_type_classifies_weekends_on_polars(self):
+        pl = pytest.importorskip("polars")
+
+        from benchbox.core.nyctaxi.dataframe_queries.queries import _expr_derive
+        from benchbox.platforms.dataframe.polars_df import PolarsDataFrameAdapter
+
+        ctx = PolarsDataFrameAdapter().create_context()
+        days = [datetime(2019, 1, day, 12) for day in range(1, 8)]
+        ctx.register_table("trips", pl.DataFrame({"pickup_datetime": days}))
+
+        result = _expr_derive(ctx, ctx.get_table("trips"), "day_type").collect().sort("pickup_datetime")
+
+        assert result["day_type"].to_list() == [
+            "weekday",
+            "weekday",
+            "weekday",
+            "weekday",
+            "weekend",
+            "weekend",
+            "weekday",
+        ]
+
 
 class TestNYCTaxiBenchmarkRegistry:
     def test_nyctaxi_supports_dataframe(self):
