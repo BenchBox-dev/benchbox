@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "A test shows `.filter(col > k).n_unique()` on DataFusion equals the Polars and SQL answer, failing before the fix.",
+    "Every aggregate method on UnifiedExpr is either implemented on the deferred filter or raises on DataFusion; a test enumerates them.",
+    "The list of DataFrame queries using `.filter(...)` before an aggregate, and whether each answer changed, is recorded here."
+  ],
+  "description": "Correctness defect found while removing the redundant Q28 filter (PR #4239). In `benchbox/platforms/dataframe/unified_frame.py` the DataFusion path wraps `expr.filter(cond)` in `_DataFusionDeferredFilter`, which has no `n_unique`. The call falls through to the unfiltered `UnifiedExpr.n_unique()`, so the condition is dropped: TPC-DS Q28's old `col(\"ss_list_price\").filter(is_not_null()).n_unique()` produced the same plan as plain `n_unique()` (logical 40 nodes, physical 46). For Q28 the answer was right only because `n_unique()` already skips NULL. Any `.filter(cond)` with another condition followed by an aggregate the deferred wrapper does not implement would return a wrong answer on DataFusion with no error.\n\nExpected: every aggregate reachable after `.filter(...)` on DataFusion either applies the filter (e.g. `count(DISTINCT CASE WHEN cond THEN x END)` or the DataFusion aggregate FILTER clause) or raises; no silent fall-through. Audit which aggregates the wrapper implements against those UnifiedExpr exposes, and grep DataFrame query modules (TPC-H, TPC-DS, read primitives, others) for `.filter(` followed by an aggregate to find affected queries.\n\nGuardrails: a query whose answer changes is a defect fix, not a reference update: check it against SQL/other engines. Timed queries touched follow the 10% rule with before/after timings.",
+  "links": [
+    "benchbox/platforms/dataframe/unified_frame.py",
+    "https://github.com/BenchBox-dev/benchbox/pull/4239"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7222c9e9c0af3b11fd0d6a9c",
+      "at": "2026-11-15T15:49:14Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6018be6961604e5c970c19635b7e45f7",
+      "session_id": "0171c65ed8c64989adf7cdd0332f0ed2"
+    }
+  ]
+}
