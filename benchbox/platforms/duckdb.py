@@ -21,10 +21,10 @@ from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW, FETCH_MODE_ROWS
 from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY, RequestLedger, outside_query_timer
 from benchbox.utils.cloud_storage import get_cloud_path_info, is_cloud_path
 from benchbox.utils.duckdb_extensions import (
-    apply_single_arrow_lambda,
     duckdb_relation_arrow_supported,
     finish_unfinished_result,
 )
+from benchbox.utils.duckdb_lambda import duckdb_query_text
 from benchbox.utils.printing import emit
 
 from .base import DriverIsolationCapability, PlatformAdapter
@@ -725,8 +725,6 @@ class DuckDBAdapter(PlatformAdapter):
         }
         if self.allow_third_party_extensions:
             platform_info["configuration"]["allow_third_party_extensions"] = True
-        if self.lambda_syntax_setting:
-            platform_info["configuration"]["lambda_syntax"] = "ENABLE_SINGLE_ARROW"
         if self.temp_directory:
             platform_info["configuration"]["temp_directory"] = self.temp_directory
 
@@ -789,7 +787,6 @@ class DuckDBAdapter(PlatformAdapter):
         self.thread_limit = raw_threads
         self.enable_progress_bar = config.get("progress_bar", False)
         self.allow_third_party_extensions = _as_bool(config.get("allow_third_party_extensions"))
-        self.lambda_syntax_setting: str | None = None
 
     def _initialize_duckdb_runtime(self, config: dict[str, Any]):
         global duckdb
@@ -920,9 +917,6 @@ class DuckDBAdapter(PlatformAdapter):
             config_applied.append("progress_bar=enabled")
             self.log_very_verbose("DuckDB progress bar enabled")
 
-        self.lambda_syntax_setting = apply_single_arrow_lambda(conn, getattr(self._duckdb_module, "__version__", None))
-        if self.lambda_syntax_setting:
-            config_applied.append(self.lambda_syntax_setting)
         conn.execute("SET default_order = 'ASC'")
         config_applied.append("OLAP optimizations")
         self.log_very_verbose("DuckDB OLAP optimizations applied")
@@ -1117,6 +1111,7 @@ class DuckDBAdapter(PlatformAdapter):
                 "dry_run": True,
             }
 
+        query = duckdb_query_text(query, getattr(self._duckdb_module, "__version__", None))
         ledger = RequestLedger()
         start_time = mono_time()
 

@@ -5,9 +5,6 @@ from typing import Any
 THIRD_PARTY_EXTENSION_OPTION = "allow_third_party_extensions"
 QUERY_FARM_HOST = "duckdb-extensions.query.farm"
 THIRD_PARTY_ENABLE_HINT = f"set --platform-option {THIRD_PARTY_EXTENSION_OPTION}=true to allow BenchBox to contact that host and load the extension"
-SINGLE_ARROW_LAMBDA_STATEMENT = "SET lambda_syntax = 'ENABLE_SINGLE_ARROW'"
-SINGLE_ARROW_LAMBDA_SETTING = "lambda_syntax=ENABLE_SINGLE_ARROW"
-SINGLE_ARROW_REJECTED_FROM_MAJOR = 2
 RELATION_ARROW_FROM_MAJOR = 2
 
 DATASKETCHES_COMMUNITY_STATEMENTS: tuple[str, ...] = (
@@ -82,18 +79,3 @@ def datasketches_skip_reason(sql: str, allow_third_party: bool, version: str | N
         "the datasketches extension for DuckDB 2.x is only available from the third-party Query.Farm repository "
         f"(https://{QUERY_FARM_HOST}); {THIRD_PARTY_ENABLE_HINT}"
     )
-
-
-def single_arrow_lambda_statement(version: str | None = None) -> str | None:
-    major = duckdb_major_version(version)
-    if major is not None and major >= SINGLE_ARROW_REJECTED_FROM_MAJOR:
-        return SINGLE_ARROW_LAMBDA_STATEMENT
-    return None
-
-
-def apply_single_arrow_lambda(connection: Any, version: str | None = None) -> str | None:
-    statement = single_arrow_lambda_statement(version)
-    if statement is not None:
-        connection.execute(statement)
-        return SINGLE_ARROW_LAMBDA_SETTING
-    return None
