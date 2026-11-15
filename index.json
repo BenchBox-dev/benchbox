@@ -41038,6 +41038,13 @@
       "status": "done",
       "title": "Structural debt: extract TPC harnesses out of platforms/base/execution.py and split the cross_surface god-module"
     },
+    "subagent-worktree-ownership-takeover-undocumented-20261115": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "A parent session is locked out of a worktree after its subagent writes there, and no agent-facing page says how to recover"
+    },
     "submission-cache-correctness-evidence": {
       "claim": null,
       "needs": [],

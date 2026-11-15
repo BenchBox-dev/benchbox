@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "An agent that reads only `AGENTS.md` and the pages it links can find: why the refusal happens after a subagent writes, the recovery command, and when not to use it.",
+    "The refusal message printed by the write preflight names that page, or already prints the takeover command with the same condition; shown by a test of the message.",
+    "If option (b) is chosen instead: a test shows a live second session is still refused and a finished same-process subagent is not.",
+    "`make agent-instructions-check` passes."
+  ],
+  "description": "Observed 2026-11-13 on pull request #4208. A session created a worktree with `make worktree-create`, handed it to a subagent to implement in, and then ran `make pr-open` there itself. It was refused: 'Worktree ... is owned by live session <subagent session> (pid ...); this session is <parent session> ... Refusing BenchBox write preflight: worktree ownership check failed.' The subagent had finished, but subagents share the harness pid, so its claim never goes stale. Recovery was `BENCHBOX_WORKTREE_TAKEOVER=1 make agent-write-preflight`.\n\n`docs/internal/dev-loop-worktrees.md` describes exactly this and says a parent prompt that hands a worktree to a subagent should include the takeover command. But `AGENTS.md` and every page under `docs/agent/` are silent, and `AGENTS.md` tells agents to read `docs/agent/`, not `docs/internal/`. `AGENTS.md` also encourages low-effort subagents for gate runs, which hits the same refusal in the other direction (a subagent sent into the parent's worktree).\n\nNot affected: registered batch members. On 2026-11-13 batch `member-rule-docs` landed and finished two subagent-owned member worktrees with no takeover, because the leader never writes in a member worktree.\n\nDecision gates.\n- Choose: (a) document the takeover on an agent-facing page that `AGENTS.md` links; or (b) make the ownership check treat a claim by a finished subagent of the same harness process as released. Prefer (a) unless the check can tell a finished subagent from a live one; if it cannot, (b) would let two live writers into one worktree, which is what the check exists to stop.\n- `AGENTS.md` is within about 30 bytes of its instruction budget (agent-instruction-budget-headroom), so the text goes on a linked page.\n\nGuardrails.\n- The takeover stays an explicit act: nothing sets `BENCHBOX_WORKTREE_TAKEOVER` by default, in a make target or in a hook.\n- The doc says when takeover is legitimate (the other claimant is this session's own finished subagent, or a session confirmed gone) and that it is never used against another live session.\n- No change to `scripts/agent_write_preflight.sh` refusal behaviour under option (a).",
+  "links": [
+    "docs/internal/dev-loop-worktrees.md",
+    "scripts/agent_write_preflight.sh",
+    "AGENTS.md",
+    "https://github.com/BenchBox-dev/benchbox/pull/4208",
+    "worktree-claim-subagent-shared-pid-doc-20261111"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6ad2e982f6f787f0078b79be",
+      "at": "2026-11-15T14:07:27Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "bef3f26e564149c695efb763ec29127b",
+      "session_id": "591869e3bc094f789799bcf43ff5f966"
+    }
+  ]
+}
