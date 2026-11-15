@@ -24,6 +24,7 @@ creating tracker items.
 
 ## Before recommending
 
+Apply **L2 and L3** of `shared-review-protocol/SKILL.md`. Record any reframe.
 Save only after the user confirms.
 
 ## Next step

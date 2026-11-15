@@ -226,10 +226,13 @@ For each landing request, one member at a time, in dependency order:
 1. For a member with implementation edges, `take` it now and keep its claim
    generation for preparation. Independently capture its base and accepted head;
    check cleanliness, unchanged head and frozen scope before expensive review.
-2. Review the exact captured base..head with the repository's trusted
-   reviewer, run by the leader. A member's own config or claimed result is not
-   authorization. Require an accepted outcome (`clear`, `not-reviewed`, or
-   `override`) bound to that base and head.
+2. The leader invokes the trusted reviewer for that exact range. Pin executable
+   and policy to the same full trusted revision, bounded by the registered start
+   and fetched integration-base history. Consume that invocation's fresh result;
+   a member's config or claimed `clear` is not authorization. Require matching
+   base/head/trusted revision and an accepted outcome. Existing history/cache
+   carry and adjudication remain valid; exempt-only `not-reviewed` is not a claim
+   that a model reviewed the patch.
 3. Merge the captured accepted OID, never a moving branch name, with a merge
    commit whose tree equals the member tree. A moved integration base requires
    the member to merge and recheck it first.
@@ -239,8 +242,11 @@ For each landing request, one member at a time, in dependency order:
    Retain the leader-accepted structured review in `verification.review`.
    Preparation releases the claim and leaves the member `open`.
 
-The receipt is the review record. Later evidence and arming check its binding;
-they do not re-review.
+The receipt is the historical review record. Final evidence and arming validate
+its binding without reopening a separate member-result cache or recomputing the
+old review environment from the current checkout. Keep ordinary review findings,
+disputes and outcome caching; do not introduce signatures or a second attestation
+store under the cooperative same-user trust model.
 
 Every commit on the integration branch outside a member's own range (a leader
 fix, a merge of the integration base) must be recorded first with
@@ -256,14 +262,18 @@ Use one canonical sequence:
    and a combined review.
 2. Publish the one final PR and bind its repository, number, node ID and exact
    integration head with `bind_batch_pr`.
-3. Run final verification on the captured clean head: every member's receipt
-   command plus the combined checks. Confirm HEAD and cleanliness before and
-   after, then revalidate receipt, ownership, and PR bindings. Record success
-   only after every command passes.
-4. Before arming auto-merge on any PR, check the tracker for a registered batch
-   that owns it. If the tracker is unreachable or the answer is ambiguous, do
-   not arm. A batch PR always needs full batch evidence, whatever local markers
-   say.
+3. Run final verification: every member's receipt command and the combined
+   checks execute on the captured clean head. Check HEAD and cleanliness before
+   and after commands, then revalidate relevant receipt/ownership/PR bindings.
+   Invalidate an earlier usable success at the start of every new invocation;
+   publish success atomically only after all required commands pass. Keep
+   prepublication preflight separate rather than claiming or repeating it here.
+4. Before every arming route, discover registered batch membership from an
+   authoritative snapshot independent of local markers or caller delivery mode.
+   A true ordinary PR skips full batch evidence, not discovery. Offline,
+   malformed or ambiguous discovery refuses. Validate every summary and
+   continuation page as authoritative at the same revision, with bounded
+   advancing continuations. Never relabel cached data as live.
 5. For a batch, require the successful final run, every receipt/review binding,
    scope/ancestry and the current final-PR identity/head, plus unchanged hosted
    review, CI, oracle and authority gates.
