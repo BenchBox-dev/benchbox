@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "`benchbox run --platform duckdb --platform-option driver_version=1.5.6 ...` on a venv with DuckDB 2.x runs and records DuckDB 1.5.6 in the result.",
+    "A test fails before the fix and passes after, covering a process that imported the DuckDB adapter first.",
+    "`make platform-manifest-check` passes."
+  ],
+  "description": "Defect found while timing DuckDB 1.5.6 against 2.0.0. `PlatformRegistry._detect_library` and the DuckDB adapter's module-level `import duckdb` load the venv's DuckDB (2.0.0) before the isolated loader runs. The loader purges `duckdb` from `sys.modules` but not the top-level native `_duckdb` module, so a run requesting `driver_version=1.5.6` fails with \"loaded version 2.0.0, requested 1.5.6\". Also purging `_duckdb` segfaults on the first DDL (native module cannot be reloaded in-process), so that is not a fix. `tests/integration/test_duckdb_version_isolation.py` only covers 0.9.2 and 1.2.2 and never hits this path.\n\nExpected: either library detection and the adapter import become lazy so the requested version is the first DuckDB loaded in the process, or a version other than the venv's runs in a subprocess; and the documented option works for any released version, including the one immediately below the locked major.\n\nGuardrails: AGENTS.md requires adapter SDK imports to stay lazy; this is that rule being broken. Do not purge native modules. The version-isolation test must cover a requested version different from the venv version in a process that has already imported benchbox's DuckDB adapter.",
+  "links": [
+    "benchbox/platforms/duckdb.py",
+    "tests/integration/test_duckdb_version_isolation.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7222c9e9c0af3b11fd0d6a9c",
+      "at": "2026-11-15T15:57:31Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "024c82b1a59842f49beda6f8d02d313a",
+      "session_id": "0171c65ed8c64989adf7cdd0332f0ed2"
+    }
+  ]
+}

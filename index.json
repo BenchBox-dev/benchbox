@@ -22025,6 +22025,13 @@
       "status": "done",
       "title": "Add CI smoke for required DuckDB datasketches families and decide vendoring vs HLL fallback"
     },
+    "duckdb-driver-version-isolation-in-process-20261115": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "`--platform-option driver_version=X` cannot switch DuckDB versions once the venv's DuckDB is imported"
+    },
     "duckdb-example-modernization-completed": {
       "claim": null,
       "needs": [],
