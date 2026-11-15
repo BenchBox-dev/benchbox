@@ -166,14 +166,14 @@ in the TODO)**.
 Findings may have been filed during the same review window by local review
 paths. PR-review threads will not surface them. The tracked
 `_project/blind-spots/` corpus is frozen; current authority is the hosted
-findings domain plus unsynced drafts under `~/.benchbox/finding-drafts/`.
+findings domain plus unsynced drafts under `~/.tractable/finding-drafts/benchbox/`.
 
 Both reads go through the `todo-db` skill. They are MCP tools, not shell commands:
 
 - Hosted findings: `finding_list`, then filter the returned `created_at`
   timestamps to the exact inclusive window. The tool has no date arguments.
 - Zero-credential local drafts not yet landed in the tracker: the drafts under
-  `~/.benchbox/finding-drafts/`. Land them with the floor CLI:
+  `~/.tractable/finding-drafts/benchbox/`. Land them with the floor CLI:
 
 ```bash
 uv run --project _project/scripts --locked -- todo-db finding sync
