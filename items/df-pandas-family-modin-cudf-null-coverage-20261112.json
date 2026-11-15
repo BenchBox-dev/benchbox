@@ -3,6 +3,7 @@
     "The multi-warehouse NULL test runs on Dask and Modin where installed and reports a skip, not a pass, where a backend is absent.",
     "Any backend that returns a different answer is fixed in the helper, not special-cased by platform name."
   ],
+  "context": "FINAL 2026-11-15. PR #4239 merged as eee5d7a859 (review SHIP, no threads; preflight 1641 passed). tests/unit/core/tpcds/test_multi_warehouse_orders.py parametrised over pandas, Dask, Modin, cuDF. Locally ran pandas, Dask (threaded), Polars, DataFusion for Q16/Q94/Q95; Modin (not installed) and cuDF (no GPU) report skips. The Dask case exposed a real defect: the shared Q94/Q95 pandas helper returned unevaluated Dask scalars; it now materialises its three aggregates as Q16 already did (helper fix, no platform-name special case; changelog fragment). Unverified: Modin and cuDF branches never ran; on cuDF `d_date` is a plain datetime and Q16 compares it with a Python date, so it may fail on a GPU host. Modin is not a supported BenchBox platform (factory says removed); the Modin case reuses the pandas adapter.",
   "description": "Gap. PR #4169 fixed NULL handling in the pandas-family helpers for TPC-DS Q16, Q94 and Q95 (`_multi_warehouse_orders_pandas`, and the non-NULL row filter in Q94). The new test `tests/unit/core/tpcds/test_multi_warehouse_orders.py` runs pandas only; existing Dask unit tests pass. Modin and cuDF share the helper through `ctx.groupby_agg` and were not exercised. The helper relies on `min`/`max` skipping NULL and on `NaN != NaN` being true, guarded by `notnull()`; those are the points where another backend could differ.\n\nExpected: either the test is parametrised over every pandas-family adapter importable in the test environment (skipping cleanly when absent), or user documentation states which backends the NULL behaviour is verified on.\n\nGuardrails: no GPU or cloud dependency in the unit tier; cuDF may stay skip-only locally.",
   "links": [
     "tests/unit/core/tpcds/test_multi_warehouse_orders.py"
@@ -15,6 +16,14 @@
       "op": "create",
       "op_id": "cf858677ed364b17808871eeea20cb00",
       "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7222c9e9c0af3b11fd0d6a9c",
+      "at": "2026-11-15T15:49:05Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "496d74be6205463fae28c0fb50872cae",
+      "session_id": "0171c65ed8c64989adf7cdd0332f0ed2"
     }
   ]
 }
