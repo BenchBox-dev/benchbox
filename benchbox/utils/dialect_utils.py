@@ -989,6 +989,65 @@ def rewrite_sql_tree(
     return result
 
 
+def _duckdb_lambda_uses_parameters(lambda_node: Any) -> bool:
+    from benchbox._vendor.sqlglot import exp
+
+    names = {parameter.name.lower() for parameter in lambda_node.expressions}
+    return any(column.name.lower() in names for column in lambda_node.this.find_all(exp.Column, exp.Identifier))
+
+
+def duckdb_arrow_lambda_replacements(sql: str) -> list[tuple[int, int, str]]:
+    from benchbox._vendor.sqlglot import exp, parse
+    from benchbox._vendor.sqlglot.dialects.duckdb import DuckDB
+    from benchbox._vendor.sqlglot.errors import SqlglotError
+    from benchbox._vendor.sqlglot.tokens import TokenType
+
+    try:
+        tokens = DuckDB().tokenize(sql)
+        statements = parse(sql, read="duckdb")
+    except SqlglotError:
+        return []
+
+    first_parameter_offsets = {
+        lambda_node.expressions[0].meta["start"]
+        for statement in statements
+        if statement is not None
+        for lambda_node in statement.find_all(exp.Lambda)
+        if lambda_node.expressions
+        and "start" in lambda_node.expressions[0].meta
+        and _duckdb_lambda_uses_parameters(lambda_node)
+    }
+    if not first_parameter_offsets:
+        return []
+
+    replacements: list[tuple[int, int, str]] = []
+    for index, token in enumerate(tokens):
+        if token.token_type != TokenType.ARROW or index == 0:
+            continue
+        previous = tokens[index - 1]
+        if previous.token_type == TokenType.R_PAREN:
+            opener = index - 2
+            depth = 1
+            while opener >= 0:
+                kind = tokens[opener].token_type
+                depth += (kind == TokenType.R_PAREN) - (kind == TokenType.L_PAREN)
+                if depth == 0:
+                    break
+                opener -= 1
+            if opener < 0 or opener + 1 >= index - 1:
+                continue
+            start = tokens[opener].start
+            first = tokens[opener + 1].start
+            parameters = sql[tokens[opener].end + 1 : previous.start].strip()
+        else:
+            start = first = previous.start
+            parameters = sql[previous.start : previous.end + 1]
+        if first not in first_parameter_offsets:
+            continue
+        replacements.append((start, token.end + 1, f"lambda {parameters}:"))
+    return replacements
+
+
 def unqualified_table_names(sql: str, dialect: str) -> list[str] | None:
     import importlib
 
