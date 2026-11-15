@@ -2314,7 +2314,7 @@ def olap_rollup_analysis_expression_impl(ctx: DataFrameContext) -> Any:
     )
     dims = ["region", "nation", "market_segment"]
     measures = [
-        pl.col("o_custkey").n_unique().alias("customer_count"),
+        pl.col("o_custkey").drop_nulls().n_unique().alias("customer_count"),
         pl.len().alias("order_count"),
         pl.col("o_totalprice").sum().alias("total_revenue"),
         pl.col("o_totalprice").mean().alias("avg_order_value"),
