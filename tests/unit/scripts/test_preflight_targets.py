@@ -223,8 +223,8 @@ def test_any_benchbox_source_change_selects_the_path_scanning_guards(repo: Path)
     [
         "README.md",
         "CONTRIBUTING.md",
-        "docs/usage/new.md",
-        "docs/internal/table.tsv",
+        "docs/README.md",
+        "docs/publish-allowlist.txt",
         "examples/quickstart.py",
         "examples/notes.md",
         "docker/velox/README.md",
