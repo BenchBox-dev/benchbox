@@ -27487,10 +27487,15 @@
       "title": "Measure whether synchronous MCP run_benchmark calls exceed common client tool-call timeouts"
     },
     "mcp-local-run-timing-remeasure-idle-host-20261115": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-17T01:17:06Z",
+        "generation": "190c41ee5951411baff8f3949a7938b7",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:769ef947e95eb114e9d51acf"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Re-measure local MCP run times on an idle host; the earlier figures were taken under a 20-hour CPU leak"
     },
     "mcp-multiworker-acceptance-flaky-under-load-20261004": {
