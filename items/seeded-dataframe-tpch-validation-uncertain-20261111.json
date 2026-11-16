@@ -3,7 +3,7 @@
     "The intended validation status for a seeded DataFrame TPC-H run with skipped parameter-sensitive counts is decided and recorded",
     "SQL and DataFrame paths either agree or the difference is documented where maintainers stage bundles"
   ],
-  "context": "2026-11-12: owner decision: do not start this until PR 4154 (fix/correctness-gates, another session) merges; it rewrites the same row-count validation files (benchbox/core/validation/query_validation.py, benchbox/core/dataframe/query_validation.py, benchbox/core/results/query_execution.py). Re-diagnose on develop after it lands.",
+  "context": "2026-11-12: owner decision: do not start this until PR 4154 (fix/correctness-gates, another session) merges; it rewrites the same row-count validation files (benchbox/core/validation/query_validation.py, benchbox/core/dataframe/query_validation.py, benchbox/core/results/query_execution.py). Re-diagnose on develop after it lands.\n\n2026-11-15 re-diagnosis on develop 21b0b2beb7 (after PR 4154). Five whys: (1) A seeded TPC-H bundle cannot be published: the DataFrame bundle says `uncertain` and staging skips it; the SQL bundle says `passed` but validate_submission.py rejects it with `summary.validation='passed' contradicts queries[i].row_count_validation.status='SKIPPED'` (20 such errors on a seeded DuckDB SF 1 bundle made today). (2) The rows are SKIPPED because the only reference row counts are for qgen default parameters and a seed changes the parameters. (3) The SQL summary still says passed because ResultBuilder.build and the runner start at PASSED and lower it only for a failure or an UNVALIDATED row; they never look at SKIPPED. The DataFrame summary (PR 1886) and the bundle validator (_validate_execution_consistency) each carry their own rule, and those two agree: passed means every row count was checked. (4) The three rules never met: 431 of 435 `passed` bundles in results-data carry no row_count_validation at all, so the validator rule had only ever seen DataFrame evidence until SQL rows began carrying it. (5) Nothing ties what a producer may summarise as passed to what the validator accepts; each side is tested alone. Root cause: the run-level meaning of passed is defined three times and not enforced at production time. Owner first chose to loosen the DataFrame rule; that produced a bundle that stages and then fails validation, so it was dropped. Owner then asked for the root cause to be corrected: the SQL builder and runner now record UNCERTAIN when a row count was SKIPPED or ERROR, with a test that runs a built payload through the validator check.",
   "description": "Found 2026-11-11. With `--seed 42` at SF 0.01, DuckDB (SQL) and Polars DataFrame both skip the 8 parameter-sensitive row counts (Q2, Q9, Q11, Q13, Q16, Q18, Q20, Q21). The SQL bundle records summary.validation `passed`; the DataFrame bundle records `uncertain` (benchbox/core/dataframe/query_validation.py: any skipped row gives UNCERTAIN), so corpus staging skips it as validation_not_clean. At SF 1 a seeded DataFrame run has no reference at all, and `--official` requires a seed, so no DataFrame TPC-H bundle can be both official and stageable. The live corpus shows the effect: every Polars TPC-H result is unranked. Without a seed the Polars SF 0.1 run validates 22 of 22 and stages. Decide whether the stricter DataFrame rule is intended; if so document that DataFrame corpus runs must use default parameters, and if not align the two paths.",
   "links": [
     "BenchBox-dev/BenchBox: benchbox/core/dataframe/query_validation.py",
@@ -25,6 +25,14 @@
       "op": "update",
       "op_id": "10efb1d9c1014f10b266904025eaa26c",
       "session_id": "32e4db9816694cfb9be59807549223c7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2eea77f9ada682154d121605",
+      "at": "2026-11-16T03:44:37Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a4f6c40b77024c3c93b4d2b5e7caf314",
+      "session_id": "c8cd206fad4d4a0fa8cd67b754e31bb9"
     }
   ]
 }
