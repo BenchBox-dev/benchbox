@@ -92,10 +92,28 @@ def stored_timing_method(metadata: Mapping[str, Any]) -> int:
     return int(_timing_method_label(metadata.get("timing_method")))
 
 
+CONFIG_CAPTURE_CURRENT = "current"
+CONFIG_CAPTURE_MCP_BEFORE_PARITY = "mcp-before-config-parity"
+
+
+def bundle_config_capture(bundle: Mapping[str, Any]) -> str:
+    if _mapping(bundle.get("execution")).get("entry_point") != "mcp":
+        return CONFIG_CAPTURE_CURRENT
+    config = _mapping(bundle.get("config"))
+    if config.get("compression") or config.get("platform_options"):
+        return CONFIG_CAPTURE_CURRENT
+    return CONFIG_CAPTURE_MCP_BEFORE_PARITY
+
+
+def results_config_capture(results: Any) -> str:
+    return CONFIG_CAPTURE_CURRENT
+
+
 RUN_MODE_FIELDS: tuple[ModeField, ...] = (
     ModeField("fetch mode", bundle_fetch_mode, results_fetch_mode),
     ModeField("timing method", bundle_timing_method, results_timing_method),
     ModeField("maintenance method", bundle_maintenance_method, results_maintenance_method),
+    ModeField("run configuration capture", bundle_config_capture, results_config_capture),
 )
 
 

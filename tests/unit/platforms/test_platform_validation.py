@@ -314,7 +314,30 @@ class TestRowCountStrategies:
         lineitem_range = strategy.get_expected_range("lineitem")
         assert lineitem_range is not None
         assert lineitem_range[0] < lineitem_range[1]
-        assert lineitem_range[0] == 6000000 * 0.8
+        assert lineitem_range[0] == 6000000 * 0.995
+        assert lineitem_range[1] == 6000000 * 1.005
+
+    @pytest.mark.parametrize(
+        ("table", "scale", "expected"),
+        [
+            ("orders", 1.0, 1_500_000),
+            ("ORDERS", 0.01, 15_000),
+            ("customer", 1.0, 150_000),
+            ("part", 1.0, 200_000),
+            ("partsupp", 0.01, 8_000),
+            ("supplier", 0.01, 100),
+            ("nation", 10.0, 25),
+            ("region", 0.01, 5),
+        ],
+    )
+    def test_tpch_strategy_exact_counts_for_fixed_cardinality_tables(self, table, scale, expected):
+        assert TPCHRowCountStrategy(scale_factor=scale).get_expected_range(table) == (float(expected), float(expected))
+
+    def test_tpch_strategy_rejects_orders_changed_by_refresh(self):
+        expected_range = TPCHRowCountStrategy(scale_factor=1.0).get_expected_range("orders")
+        assert expected_range is not None
+        low, high = expected_range
+        assert not low <= 1_506_000 <= high
 
     def test_tpcds_strategy_sample_tables(self):
 
@@ -657,6 +680,45 @@ class TestRowCountValidator:
         assert result.is_valid is False
         assert len(result.errors) == 1
         assert "expected" in result.errors[0].lower()
+
+    def test_validate_tpch_database_with_refresh_inserted_orders_fails(self):
+
+        mock_adapter = Mock()
+        mock_adapter.scale_factor = 1.0
+        mock_benchmark = Mock()
+        mock_benchmark.__class__.__name__ = "TPCHBenchmark"
+        mock_adapter.benchmark_instance = mock_benchmark
+        counts = {"orders": 1_506_000, "lineitem": 6_001_215, "customer": 150_000, "nation": 25}
+        mock_adapter.get_table_row_count = Mock(side_effect=lambda _connection, table: counts[table])
+
+        result = RowCountValidator(mock_adapter, {}).validate(Mock(), set(counts))
+
+        assert result.is_valid is False
+        assert len(result.errors) == 1
+        assert "orders" in result.errors[0]
+
+    def test_validate_tpch_database_with_base_counts_passes(self):
+
+        mock_adapter = Mock()
+        mock_adapter.scale_factor = 1.0
+        mock_benchmark = Mock()
+        mock_benchmark.__class__.__name__ = "TPCHBenchmark"
+        mock_adapter.benchmark_instance = mock_benchmark
+        counts = {
+            "orders": 1_500_000,
+            "lineitem": 6_001_215,
+            "customer": 150_000,
+            "part": 200_000,
+            "partsupp": 800_000,
+            "supplier": 10_000,
+            "nation": 25,
+            "region": 5,
+        }
+        mock_adapter.get_table_row_count = Mock(side_effect=lambda _connection, table: counts[table])
+
+        result = RowCountValidator(mock_adapter, {}).validate(Mock(), set(counts))
+
+        assert result.is_valid is True
 
     def test_validate_table_empty(self):
 
