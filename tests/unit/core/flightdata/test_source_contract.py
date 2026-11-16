@@ -117,7 +117,7 @@ def test_pinned_checksum_mismatch_fails_instead_of_falling_back(tmp_path, monkey
         def read(self):
             return b"provider drift"
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", lambda *_args, **_kwargs: _Response())
+    monkeypatch.setattr(module.tls, "urlopen", lambda *_args, **_kwargs: _Response())
     downloader = FlightDataDownloader(scale_factor=0.1, output_dir=tmp_path)
     with pytest.raises(ChecksumMismatchError):
         downloader._process_month(csv.writer(io.StringIO()), 2024, 12, 0)
@@ -183,7 +183,7 @@ def test_unparseable_download_fails_closed_unless_fallback_is_explicit(tmp_path,
         def read(self):
             return b"not a zip"
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", lambda *_args, **_kwargs: _Response())
+    monkeypatch.setattr(module.tls, "urlopen", lambda *_args, **_kwargs: _Response())
     monkeypatch.setattr(module, "PINNED_SOURCE_SHA256", {})
     downloader = FlightDataDownloader(scale_factor=0.1, output_dir=tmp_path)
     with pytest.raises(RuntimeError, match="2024-12.*real data is required"):
@@ -223,7 +223,7 @@ def test_valid_zip_without_csv_routes_through_fallback_cleanup(tmp_path, monkeyp
         def read(self):
             return payload
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", lambda *_args, **_kwargs: _Response())
+    monkeypatch.setattr(module.tls, "urlopen", lambda *_args, **_kwargs: _Response())
     monkeypatch.setattr(module, "PINNED_SOURCE_SHA256", {})
     downloader = FlightDataDownloader(scale_factor=0.1, output_dir=tmp_path)
     with pytest.raises(RuntimeError, match="2024-12.*real data is required"):
