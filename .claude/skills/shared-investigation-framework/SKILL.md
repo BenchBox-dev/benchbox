@@ -1,6 +1,6 @@
 ---
 name: investigation-framework
-description: "Unified investigation workflow: comparing artifacts, pre-edit research, context trust/authority handling, root-cause debugging, and validation-driven compression."
+description: "Use to find why something fails or behaves unexpectedly, and before editing unread code. Also for comparing artifacts, context trust and authority handling, and validation-driven compression."
 ---
 
 # Investigation Framework

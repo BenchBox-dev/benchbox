@@ -148,6 +148,48 @@ class TestJsonOutput:
 
         assert _payload(str(tmp_path), "--json")["total"] == 1
 
+    def test_corpus_inventory_is_not_validated_as_a_result(self, tmp_path: Path):
+        _passing(tmp_path)
+        _write(
+            tmp_path / "corpus-inventory.json",
+            {"schema_version": "2.3", "generated_at": "2026-11-12T00:00:00Z", "bundles": [], "summary": {}},
+        )
+
+        payload = _payload(str(tmp_path), "--json")
+
+        assert (payload["total"], payload["pass"], payload["fail"]) == (1, 1, 0)
+        assert [Path(entry["file"]).name for entry in payload["files"]] == ["ok.json"]
+
+    @pytest.mark.parametrize("content", ["{}", "null", "[1, 2, 3]", '{"schema_version": "2.3"}'])
+    def test_other_unrecognised_json_in_a_directory_still_fails(self, tmp_path: Path, content: str):
+        _passing(tmp_path)
+        (tmp_path / "odd.json").write_text(content, encoding="utf-8")
+
+        payload = _payload(str(tmp_path), "--json")
+
+        assert (payload["total"], payload["fail"]) == (2, 1)
+
+    def test_malformed_bundle_in_a_directory_still_fails(self, tmp_path: Path):
+        _passing(tmp_path)
+        _failing(tmp_path)
+
+        payload = _payload(str(tmp_path), "--json")
+
+        assert (payload["total"], payload["fail"]) == (2, 1)
+
+    def test_corrupt_json_in_a_directory_still_fails(self, tmp_path: Path):
+        _passing(tmp_path)
+        (tmp_path / "corrupt.json").write_text("{not json", encoding="utf-8")
+
+        payload = _payload(str(tmp_path), "--json")
+
+        assert (payload["total"], payload["fail"]) == (2, 1)
+
+    def test_an_explicit_non_bundle_file_still_fails(self, tmp_path: Path):
+        inventory = _write(tmp_path / "corpus-inventory.json", {"schema_version": "2.3", "bundles": []})
+
+        assert _validate(str(inventory)).exit_code == 5
+
 
 class TestAgreesWithMcpValidateResults:
     @pytest.fixture

@@ -83,7 +83,7 @@ def test_synchronous_mcp_surface_delegates_to_execute_run(tmp_path):
         patch("benchbox.core.system.SystemProfiler") as profiler_cls,
         patch("benchbox.core.platform_config.get_platform_config", return_value={}),
         patch("benchbox.core.run_service.execute_run", return_value=core_result) as execute_run,
-        patch.object(benchmark_tools, "_export_and_build_payload", return_value=("result.json", {})),
+        patch.object(benchmark_tools, "_export_and_build_payload", return_value=("result.json", {}, None)),
     ):
         profiler_cls.return_value.get_system_profile.return_value = None
         response = benchmark_tools._run_benchmark_impl(

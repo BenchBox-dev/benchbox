@@ -23,13 +23,13 @@
   "catalog": {
     "repository": "https://github.com/joeharris76/skill-sync-skills",
     "canonical_branch": "main",
-    "merge_revision": "8ec55e5b43f3c47a3d8c2132d55907ef32433eb4",
-    "parent_revision": "80e18e32b9df4cdbed2689b12102315881f2c5ec",
+    "merge_revision": "7625613714c5fd11e15ba97f96d33ef64e88ffe6",
+    "parent_revision": "06f00edbfe89fd40e76a4239a51e79c7b90ad83d",
     "canonical_path": "skills/todo",
     "pr": {
-      "number": 129,
-      "url": "https://github.com/joeharris76/skill-sync-skills/pull/129",
-      "merge_revision": "8ec55e5b43f3c47a3d8c2132d55907ef32433eb4"
+      "number": 135,
+      "url": "https://github.com/joeharris76/skill-sync-skills/pull/135",
+      "merge_revision": "7625613714c5fd11e15ba97f96d33ef64e88ffe6"
     }
   },
   "artifact": {
@@ -129,14 +129,14 @@
   },
   "benchbox_pin": {
     "before": "e04b1a717c6e4c5f341115166281e9398f27f951",
-    "after": "8ec55e5b43f3c47a3d8c2132d55907ef32433eb4",
+    "after": "7625613714c5fd11e15ba97f96d33ef64e88ffe6",
     "config": "skill-sync.conf",
     "apply": "./tools/skill-sync apply"
   },
   "mirrors": {
     "tracked_target": {
       "root": ".claude/skills/todo",
-      "receipt_revision": "8ec55e5b43f3c47a3d8c2132d55907ef32433eb4",
+      "receipt_revision": "7625613714c5fd11e15ba97f96d33ef64e88ffe6",
       "files": {
         "SKILL.md": "dc1e329146b31b813e78f06e9a1212ca1bd15d0195daee459ec847e8fd9f2ec7",
         "references/batch.md": "2ee57c4ff9c8a93675892d9ff8137e56535eff5a597a244fae9f9acc23ce2d6f",
@@ -156,7 +156,7 @@
     "agents_target": {
       "root": ".agents/skills/todo",
       "materialized": true,
-      "receipt_revision": "8ec55e5b43f3c47a3d8c2132d55907ef32433eb4",
+      "receipt_revision": "7625613714c5fd11e15ba97f96d33ef64e88ffe6",
       "files": {
         "SKILL.md": "dc1e329146b31b813e78f06e9a1212ca1bd15d0195daee459ec847e8fd9f2ec7",
         "references/batch.md": "2ee57c4ff9c8a93675892d9ff8137e56535eff5a597a244fae9f9acc23ce2d6f",

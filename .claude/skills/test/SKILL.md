@@ -1,6 +1,6 @@
 ---
 name: test
-description: Use when the user asks to "run tests", "create tests", "fix failing test", "add test coverage", "fix slow tests", or "commit test changes".
+description: "Use before writing, running or fixing any test. Also for coverage gaps, slow tests and committing test changes."
 version: 0.2.0
 tools: Bash, Read, Write, Edit, Task
 ---

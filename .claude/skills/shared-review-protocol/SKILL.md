@@ -1,6 +1,6 @@
 ---
 name: review-protocol
-description: Shared protocol for review-shaped actions, authorization scope, defect routing, solution-fit assessment, L1/L2/L3 planning-depth layers, local-only capture, and plan prior-decision reconciliation.
+description: "Use before any review, audit or investigation: it changes no files unless asked to fix. Also covers authorization scope, defect routing, solution-fit assessment, L1/L2/L3 planning-depth layers, local-only capture, and plan prior-decision reconciliation."
 ---
 
 # Review Protocol

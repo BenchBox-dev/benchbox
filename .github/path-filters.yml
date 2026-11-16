@@ -63,7 +63,6 @@ code-ci:
   - ".omp/**"
   - "CLAUDE.md"
   - "GEMINI.md"
-  - "ANTIGRAVITY.md"
   - "AGENTS.md"
   - "README.md"
   - "docs/README.md"
