@@ -2,7 +2,7 @@
   "acceptance": [
     "The message names the actual benchmark; a test covers TPC-H and TPC-DS."
   ],
-  "context": "Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "context": "Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\nCloseout 2026-11-16: core BenchBox-dev/benchbox#4273 (69a6416c6f). Refusal names the actual benchmark; TPC-DS contract mentioned only for TPC-DS.",
   "description": "Problem: refusing an unofficial TPC-H result, benchbox submit says 'unofficial TPC-DS configuration'. Observed 2026-11-14 at v0.5.0 and develop.",
   "sessions": [
     {
@@ -20,6 +20,14 @@
       "generation": "623b5a5e81004091962557efcdadd25d",
       "op": "take",
       "op_id": "a82db5aea8994b7da6c7f1a943612c78",
+      "session_id": "1b9bc1b29dcb4d48a0911fca4a479d47"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:961d26faca155954d64951f4",
+      "at": "2026-11-16T15:06:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4ad193ef59434c2b9f3f8a4882ab1a3c",
       "session_id": "1b9bc1b29dcb4d48a0911fca4a479d47"
     }
   ]
