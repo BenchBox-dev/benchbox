@@ -33,6 +33,7 @@ from benchbox.core.results.query_plan_models import (
     DEFAULT_RAW_OUTPUT_MAX_BYTES,
     DEFAULT_RAW_OUTPUT_POLICY,
 )
+from benchbox.core.results.query_status import within_tolerance_warning
 from benchbox.core.results.timer_scope import excluded_from_query_timer
 from benchbox.platforms.base.models import (
     MaintenanceOperation,
@@ -1071,9 +1072,8 @@ class ResultCaptureMixin:
                     row_count_validation["warning"] = validation_result.warning_message
             elif validation_result.is_valid and validation_result.expected_row_count not in (None, actual_row_count):
                 row_count_validation["status"] = "SKIPPED"
-                row_count_validation["warning"] = (
-                    f"Row count {actual_row_count} is within tolerance of the reference count "
-                    f"{validation_result.expected_row_count} but is not an exact match"
+                row_count_validation["warning"] = within_tolerance_warning(
+                    actual_row_count, validation_result.expected_row_count
                 )
             elif validation_result.is_valid:
                 row_count_validation["status"] = "PASSED"

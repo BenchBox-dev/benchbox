@@ -28,6 +28,7 @@ class CedarDBAdapter(PostgreSQLAdapter):
     forced_partition_strategy = "HASH"
     post_load_index_cluster_supported = False
     supports_refresh_functions = True
+    tpcds_maintenance_unsupported_reason = "not verified on CedarDB; only TPC-H refresh functions are"
     plan_capture_phase_eligible = True
 
     @property

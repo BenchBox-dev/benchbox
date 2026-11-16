@@ -11,6 +11,7 @@ from benchbox.core.expected_results.tpcds_results import (
     tpcds_subscale_expected_row_counts,
     tpcds_subscale_reference_seed,
 )
+from benchbox.core.results.query_status import within_tolerance_warning
 from benchbox.core.validation.query_validation import (
     QueryValidator,
     get_reference_seed_context,
@@ -376,10 +377,7 @@ def _apply_row_count_oracle(
             evidence["skipped"] += 1
         elif result.is_valid and result.expected_row_count not in (None, actual_row_count):
             row_count_validation["status"] = "SKIPPED"
-            row_count_validation["warning"] = (
-                f"Row count {actual_row_count} is within tolerance of the reference count "
-                f"{result.expected_row_count} but is not an exact match"
-            )
+            row_count_validation["warning"] = within_tolerance_warning(actual_row_count, result.expected_row_count)
             evidence["skipped"] += 1
         elif result.is_valid:
             row_count_validation["status"] = "PASSED"

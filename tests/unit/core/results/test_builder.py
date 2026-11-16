@@ -873,7 +873,12 @@ def _skipped_row_count_query(query_id: str, status: str, expected: int | None, a
             "iteration": 1,
             "execution_time_seconds": 0.5,
             "rows_returned": actual,
-            "row_count_validation": {"status": status, "expected": expected, "actual": actual},
+            "row_count_validation": {
+                "status": status,
+                "expected": expected,
+                "actual": actual,
+                **({"warning": "data refreshed: base-data answers do not apply"} if status == "SKIPPED" else {}),
+            },
         }
     )
 

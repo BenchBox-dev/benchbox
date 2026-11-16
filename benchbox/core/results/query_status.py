@@ -11,6 +11,33 @@ DOCUMENTED_PLATFORM_QUERY_EXCLUSIONS: dict[tuple[str, str], dict[str, frozenset[
 }
 
 
+DATA_REFRESHED_REASON = "data refreshed"
+WITHIN_TOLERANCE_REASON = "within tolerance"
+WITHIN_RANGE_REASON = "within range"
+DOCUMENTED_ROW_COUNT_SKIP_REASONS: tuple[str, ...] = (
+    DATA_REFRESHED_REASON,
+    WITHIN_TOLERANCE_REASON,
+    WITHIN_RANGE_REASON,
+)
+
+
+def within_tolerance_warning(actual: int, expected: int) -> str:
+    return f"{WITHIN_TOLERANCE_REASON}: row count {actual} against reference count {expected} is not an exact match"
+
+
+def within_range_warning(actual: int) -> str:
+    return (
+        f"{WITHIN_RANGE_REASON}: row count {actual} passed the accepted range check; no single reference count applies"
+    )
+
+
+def row_count_skip_is_documented(evidence: Any) -> bool:
+    warning = evidence.get("warning") if isinstance(evidence, dict) else None
+    return isinstance(warning, str) and warning.startswith(
+        tuple(f"{reason}:" for reason in DOCUMENTED_ROW_COUNT_SKIP_REASONS)
+    )
+
+
 def _driver_versions(data: dict[str, Any]) -> set[str]:
     versions: set[str] = set()
     execution = data.get("execution")

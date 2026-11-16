@@ -72,6 +72,7 @@ _query_status = _load_query_status_module()
 bundle_failed_query_count = _query_status.bundle_failed_query_count
 documented_exclusions_cover_failures = _query_status.documented_exclusions_cover_failures
 unchecked_row_count_evidence = _query_status.unchecked_row_count_evidence
+row_count_skip_is_documented = _query_status.row_count_skip_is_documented
 
 
 def _load_timing_field_helpers():
@@ -2743,7 +2744,9 @@ def _validate_execution_consistency(data: dict[str, Any], vr: ValidationResult) 
                         f"summary.validation='passed' counts queries[{i}] as validated, but its row count is "
                         "unvalidated (no reference answers for this benchmark and scale factor)"
                     )
-                elif rcv_status is not None and rcv_status not in {"PASSED", "SKIPPED"}:
+                elif rcv_status is not None and not (
+                    rcv_status == "PASSED" or (rcv_status == "SKIPPED" and row_count_skip_is_documented(rcv))
+                ):
                     vr.error(
                         f"summary.validation='passed' contradicts queries[{i}].row_count_validation.status={rcv_status!r}"
                     )
