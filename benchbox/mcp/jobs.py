@@ -40,6 +40,7 @@ from benchbox.mcp.security import (
     authenticated_principal,
 )
 from benchbox.mcp.tools.benchmark import (
+    _check_scale_factor,
     _execute_mcp_run_via_core,
     _resolve_mcp_mode_with_registry,
 )
@@ -1507,6 +1508,8 @@ def _public_status(job: JobRecord) -> dict[str, Any]:
     }
     status["outcome"] = _public_outcome(job)
     status["deprecations"] = request_deprecations(job.request)
+    scale_note, _ = _check_scale_factor(str(job.request.get("benchmark", "")), job.request.get("scale_factor", 0.01))
+    status["warnings"] = [scale_note] if scale_note else []
     if job.state == "unknown":
         status["outcome_note"] = (
             "A prior attempt lost its lease and may still have executed database work. "
