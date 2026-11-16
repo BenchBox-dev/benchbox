@@ -374,11 +374,6 @@ _CEDARDB_VECTOR_SEARCH_REASON = (
     "cedardb Vector Search SF{scale} aborts at setup: 'Failed to configure vector extension: CREATE EXTENSION not "
     "implemented yet', so CedarDB has no vector extension to configure (trunk UAT run 43154678095)."
 )
-_TPCDI_SF1_FACT_GROWTH_REASON = (
-    "{platform} TPC-DI SF1 cannot meet the 1200s release-gate cell contract: scaling the four secondary fact tables "
-    "linearly (#4149) grew the SF1 facts from 275k to 6.77M rows, and the join-heavy analytic queries (AQ2, "
-    "AQ4-AQ7, AQ10) now exceed the cell budget; {measurement} (trunk UAT run 43154678095); root cause open."
-)
 _TRINO_PRESTO_TRUNK_UAT_REASONS = {
     ("trino", "tpcds"): (
         "Trino TPC-DS SF0.01 fails queries 16, 32, 58, 72, 83, 92, 94 and 95 with TYPE_MISMATCH: date literals and "
@@ -501,12 +496,6 @@ _TRUNK_UAT_PRUNES = {
     **{
         (platform, benchmark, 0.01): reason for (platform, benchmark), reason in _TRINO_PRESTO_TRUNK_UAT_REASONS.items()
     },
-    ("spark", "tpcdi", 1.0): _TPCDI_SF1_FACT_GROWTH_REASON.format(
-        platform="spark", measurement="the cell took 311s before the change and timed out at 1200s after it"
-    ),
-    ("datafusion", "tpcdi", 1.0): _TPCDI_SF1_FACT_GROWTH_REASON.format(
-        platform="datafusion", measurement="the cell took 62s before the change and timed out at 1200s twice after it"
-    ),
 }
 
 
