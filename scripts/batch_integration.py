@@ -1102,7 +1102,7 @@ def _stale_base_refusal(
         return f"the check base {base} is not a recorded integration head"
     drift = _changed_files(repo, base, head)
     member_changed = set(_changed_files(repo, base, facts["member_head"]))
-    patterns = ledger["scope"][member]
+    patterns = [pattern for pattern in ledger["scope"][member] if pattern not in COMPANION_SCOPE]
     touched = sorted(set(drift) & member_changed)
     if touched:
         return f"landings since the check changed files the member changed: {', '.join(touched[:5])}"
