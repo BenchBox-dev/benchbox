@@ -231,11 +231,12 @@ You are a member of batch <batch>. Your worktree is <absolute path>.
    tree. A member whose check ran at an older integration head still lands,
    without a new check, when it has no implementation dependency and every
    change since that head (landings, leader fixes, develop merges) is outside
-   the member's frozen scope, outside the files the member changed, not a
+   the member's frozen scope (the companion files every scope carries are
+   shared by design and excepted), outside the files the member changed, not a
    shared test input (`pyproject.toml`, `uv.lock`, `Makefile`, lint and pytest
    configuration, any `conftest.py`), not a module in the transitive import
-   closure of the member's verification tests, not a non-Python file outside
-   `docs/` and `changelog.d/`, and maps to none of the member's verification
+   closure of the member's verification tests, not a non-Python file other
+   than a companion file, and maps to none of the member's verification
    tests. The merged tree then differs from the member tree only
    by those intervening changes, the merge must change exactly the member's own
    paths, and the tests mapped from the member's change at the merged head
