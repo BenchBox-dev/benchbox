@@ -334,7 +334,9 @@ class TestRowCountStrategies:
         assert TPCHRowCountStrategy(scale_factor=scale).get_expected_range(table) == (float(expected), float(expected))
 
     def test_tpch_strategy_rejects_orders_changed_by_refresh(self):
-        low, high = TPCHRowCountStrategy(scale_factor=1.0).get_expected_range("orders")
+        expected_range = TPCHRowCountStrategy(scale_factor=1.0).get_expected_range("orders")
+        assert expected_range is not None
+        low, high = expected_range
         assert not low <= 1_506_000 <= high
 
     def test_tpcds_strategy_sample_tables(self):
