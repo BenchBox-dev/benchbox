@@ -76,7 +76,6 @@ code-ci:
   - "COPYRIGHT.md"
   - "docs/internal/adr/adr-independent-publication-authorities.md"
   - "docs/internal/adr/adr-published-results-slim-corpus-branch.md"
-  - "docs/internal/adr/adr-result-bundle-json-schema.md"
   - "docs/internal/dev-loop-property-ledger.md"
   - "docs/internal/hosted-results-planning.md"
   - "docs/internal/independent-publication-contract.md"

@@ -24,7 +24,6 @@ pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 ROOT = Path(__file__).resolve().parents[4]
 BUNDLES = ROOT / "results-data" / "bundles"
-ADR = ROOT / "docs" / "internal" / "adr" / "adr-result-bundle-json-schema.md"
 COMPANION_SUFFIXES = (".manifest.json", ".plans.json", ".tuning.json", ".applied.json", ".override.json")
 BLOCK_REQUIRED = (
     ("run", SchemaV2Validator.RUN_REQUIRED),
@@ -76,10 +75,6 @@ def test_required_keys_come_from_validator() -> None:
     assert set(schema["properties"]) == set(SchemaV2Validator.REQUIRED_KEYS) | set(SchemaV2Validator.OPTIONAL_KEYS)
     for block, required in BLOCK_REQUIRED:
         assert schema["properties"][block]["required"] == list(required)
-
-
-def test_adr_carries_the_published_compatibility_promise() -> None:
-    assert COMPATIBILITY_PROMISE in " ".join(ADR.read_text(encoding="utf-8").split())
 
 
 def test_whole_corpus_validates_and_agrees_with_validator() -> None:

@@ -30,7 +30,6 @@ core:
   - "docs/README.md"
   - "docs/internal/adr/adr-independent-publication-authorities.md"
   - "docs/internal/adr/adr-published-results-slim-corpus-branch.md"
-  - "docs/internal/adr/adr-result-bundle-json-schema.md"
   - "docs/internal/dev-loop-property-ledger.md"
   - "docs/internal/dev-loop-worktrees.md"
   - "docs/internal/hosted-results-planning.md"
