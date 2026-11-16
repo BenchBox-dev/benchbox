@@ -41128,15 +41128,10 @@
       "title": "Structural debt: extract TPC harnesses out of platforms/base/execution.py and split the cross_surface god-module"
     },
     "subagent-worktree-ownership-takeover-undocumented-20261115": {
-      "claim": {
-        "expires_at": "2026-11-17T00:26:18Z",
-        "generation": "f965f159f7f5411f9feed330dbf968f3",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6ad2e982f6f787f0078b79be"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "A parent session is locked out of a worktree after its subagent writes there, and no agent-facing page says how to recover"
     },
     "submission-cache-correctness-evidence": {
