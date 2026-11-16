@@ -41,8 +41,7 @@ try:
         driver_runtime_path=runtime_path,
     )
 except ImportError as exc:
-    cause = exc.__cause__
-    print("ERROR::" + type(cause).__name__ + "::" + str(cause.__cause__ or cause))
+    print("ERROR::" + type(exc.__cause__).__name__ + "::" + str(exc))
 else:
     print("VERSION::" + adapter.driver_version_actual)
 """

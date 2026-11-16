@@ -828,7 +828,7 @@ class DuckDBAdapter(PlatformAdapter):
             )
         except Exception as exc:
             raise ImportError(
-                "DuckDB runtime initialization failed. "
+                f"DuckDB runtime initialization failed: {exc} "
                 "Install duckdb or provide a valid isolated runtime for the requested version."
             ) from exc
 
