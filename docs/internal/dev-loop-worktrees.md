@@ -187,6 +187,25 @@ Finish preview performs comprehensive live revalidation:
 - **Preview is the default / no worktree or branch mutation**: without APPLY=1, emits human or JSON previews naming the exact proposed worktree removal and atomic expected-OID ref deletion commands, while making no changes to worktrees, local branches, locks, or tracker state. It does refresh the remote-tracking ref of the merged PR's target branch (`git fetch origin <base>:refs/remotes/origin/<base>`) to check integration.
 - **Separately gated apply**: `APPLY=1 make worktree-finish ...` re-evaluates fresh evidence in the same invocation, then executes normal `git worktree remove` on the canonical path followed by `git update-ref -d` on the local branch with the expected OID. A held target, a moved branch, or a failed removal stops the sequence; partial success (worktree removed, branch preserved) is reported explicitly.
 
+### Remove a never-published scratch worktree
+
+A baseline or scratch worktree whose branch never had a PR has no merged-PR evidence, so the default path holds it with `No PRs found`. Remove it with `UNPUBLISHED=1`:
+
+```bash
+make worktree-finish WORKTREE_PATH="$WORKTREE_PATH" EXPECTED_HEAD_OID="$OID" UNPUBLISHED=1
+APPLY=1 make worktree-finish WORKTREE_PATH="$WORKTREE_PATH" EXPECTED_HEAD_OID="$OID" UNPUBLISHED=1
+```
+
+The dry run stays the default and the expected-head check, managed provenance, lock, detached and controller holds all still apply. In place of merged-PR evidence it requires all of:
+- GitHub reports no PR of any state for the branch (a lookup failure holds).
+- After `git fetch --prune origin`, the tip is reachable from a `refs/remotes/origin/*` ref, so no commit is lost. The remote branch is never deleted.
+- No tracked file is modified or staged.
+- Every untracked file matches a known tool temp path (`.tmp/duckdb_temp_storage*` and `.tmp/duckdb_temp_attach*`, DuckDB spill files written to `.tmp/` of the working directory). Any other untracked file is listed in the hold reason and the target is kept.
+
+Apply deletes the listed temp files, then runs the normal `git worktree remove` (no `--force`, so a file that appears meanwhile still blocks removal) and the expected-OID `git update-ref -d`. `worktree-reap` does not use this path.
+
+DuckDB temp storage is tolerated by this check rather than cleaned by the run that creates it: the spill directory is chosen by DuckDB per connection and is created from many entry points, so a central cleanup would be broad and could delete files of a concurrent run.
+
 To sweep every registered worktree at once, run the reaper from any worktree:
 
 ```bash
