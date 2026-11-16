@@ -1,4 +1,5 @@
 {
+  "context": "Closeout 2026-11-16: core BenchBox-dev/benchbox#4273 (69a6416c6f). Owner decided yes: completed runs carry an additive 'integrity' block (PASS/WARN/FAIL plus non-passing checks); file path omitted deliberately.",
   "description": "Promoted from deferral 1 on mcp-run-benchmark-seed-iterations-20261112: The run response carries summary.validation, phases.validation.status and per-query row-count validation, but no PASS/WARN/FAIL verdict from ResultIntegrityValidator, so an agent must call validate_results separately. Left out of the seed and iterations change by design; the owner decides whether to add it.",
   "sessions": [
     {
@@ -16,6 +17,14 @@
       "generation": "483ae502f12b48f689cae32cc2e0f5e1",
       "op": "take",
       "op_id": "7c40ffba61de420ca3e5dd23a830dcb5",
+      "session_id": "1b9bc1b29dcb4d48a0911fca4a479d47"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:961d26faca155954d64951f4",
+      "at": "2026-11-16T15:06:01Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "393dc84161ef4d5097e62e315c32f7d6",
       "session_id": "1b9bc1b29dcb4d48a0911fca4a479d47"
     }
   ]
