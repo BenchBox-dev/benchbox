@@ -4,7 +4,7 @@
     "A workflow_dispatch of seed-corpus for TPC-H SF 1 DuckDB produces an eligible bundle or the cell is removed",
     "results-data/SEED_CORPUS_SPEC.md matches the workflow"
   ],
-  "context": "2026-11-15: second blocker for these cells, independent of the full-spec refusal. A TPC-H SF 1 run with --seed 42 records SKIPPED row counts (Q16 returns 18150 against a reference of 18314, within tolerance; 20 of 88 rows SKIPPED in a seeded DuckDB run on develop 21b0b2beb7). The submission validator rejects `passed` with any SKIPPED row, and the result builder is being changed to record such a run as `uncertain`, which staging skips as validation_not_clean. So a seeded SF 1 bundle is not admissible either way until there is a decision on how a seeded run is validated: reference counts for the seed's parameters, or an explicit admitted class for runs whose parameter-sensitive counts are excluded. Not yet confirmed for TPC-DS SF 1.",
+  "context": "2026-11-15: second blocker for these cells, independent of the full-spec refusal. A TPC-H SF 1 run with --seed 42 records SKIPPED row counts (Q16 returns 18150 against a reference of 18314, within tolerance; 20 of 88 rows SKIPPED in a seeded DuckDB run on develop 21b0b2beb7). The submission validator rejects `passed` with any SKIPPED row, and the result builder is being changed to record such a run as `uncertain`, which staging skips as validation_not_clean. So a seeded SF 1 bundle is not admissible either way until there is a decision on how a seeded run is validated: reference counts for the seed's parameters, or an explicit admitted class for runs whose parameter-sensitive counts are excluded. Not yet confirmed for TPC-DS SF 1.\n\n2026-11-16 correction to the previous note: PR 4260 made within-tolerance and data-refreshed skips acceptable under a passed summary, so seeded SF 1 row-count skips such as Q16 are no longer a second blocker. The full-spec refusal is the remaining one.",
   "description": "Found 2026-11-15 on develop 21b0b2beb7. `.github/workflows/seed-corpus.yml` runs its six `official: true` cells (TPC-H SF 1 and TPC-DS SF 1 on duckdb, datafusion, clickhouse-local) as `benchbox run ... --phases generate,load,power --compression zstd:9 --official --seed 42`. Since PR 4137 (merged 2026-11-12, benchbox/core/tpc_spec.py full_spec_violations) `--official` refuses that command before any query runs. Reproduced locally for TPC-H SF 1 DuckDB: `--official requires the full TPC-H specification; this run does not meet it: partial runs are not allowed; missing phases: throughput (required: power, throughput); --streams is required; TPC-H scale factor 1 needs at least 2 streams; TPC-H refresh functions RF1/RF2 must run in the power and throughput tests`. The last scheduled run (2026-11-01) predates the change; the next is 2026-12-01 07:00 UTC and all six cells will fail, so the SF 1 cohorts get no new rankable bundle. results-data/SEED_CORPUS_SPEC.md still documents power-only official cells ('Official runs' and 'Execution phases'). Options: make the cells full-spec runs (power + throughput, streams, refresh functions; longer CI and a different comparison surface), drop --official (SF 1 bundles become unofficial_nonstandard and are never admitted), or define a rankable power-only class. This is an owner decision and ties into tpc-full-spec-cli-and-api-names and tpc-full-spec-result-schema.",
   "links": [
     "BenchBox-dev/BenchBox: .github/workflows/seed-corpus.yml",
@@ -26,6 +26,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "86fbb2319be748ec862efc1089571ce6",
+      "session_id": "c8cd206fad4d4a0fa8cd67b754e31bb9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2eea77f9ada682154d121605",
+      "at": "2026-11-16T05:16:15Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "65bebdfb38fe4429837ccb42356b82d8",
       "session_id": "c8cd206fad4d4a0fa8cd67b754e31bb9"
     }
   ]
