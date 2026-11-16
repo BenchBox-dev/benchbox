@@ -75,6 +75,20 @@ class TestExportFailureIsAnError:
         assert "disk full" in response["details"]["exception_message"]
         assert "integrity" not in response
 
+    def test_unreadable_written_file_is_an_incomplete_run_without_a_verdict(self, tmp_path: Path) -> None:
+        result_path = tmp_path / "result.json"
+        result_path.write_text("{not json", encoding="utf-8")
+        exporter = MagicMock()
+        exporter.export_result.return_value = {"json": result_path}
+
+        with patch("benchbox.mcp.tools.benchmark.ResultExporter", return_value=exporter):
+            response = _build(_result(), tmp_path)
+
+        assert response["mcp_metadata"]["status"] == "incomplete"
+        assert response["error"] is True
+        assert response["details"]["exception_type"] == "JSONDecodeError"
+        assert "integrity" not in response
+
     def test_a_run_without_a_result_is_an_error(self, tmp_path: Path) -> None:
         response = _build(None, tmp_path)
 

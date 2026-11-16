@@ -684,7 +684,7 @@ def _build_run_response(
         else (None, None, None)
     )
     response: dict[str, Any] = result_payload or {}
-    export_failed = bool(result) and result_file_path is None
+    export_failed = bool(result) and (result_file_path is None or export_error is not None)
     if export_failed:
         outstanding_work = _result_outstanding_work(result)
         if outstanding_work is not None:
