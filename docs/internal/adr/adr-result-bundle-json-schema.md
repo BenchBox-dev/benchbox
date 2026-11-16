@@ -27,7 +27,8 @@ nothing machine-readable to validate against.
 2. `environment.host_load` is derived from the constants `build_host_load_block` uses.
    `HOST_LOAD_SAMPLE_FIELDS` is now `tuple(HOST_LOAD_SAMPLE_FIELD_TYPES)`, so the required field
    set and the per-field types live next to the builder.
-3. `make result-schema` regenerates the file. `make result-schema-check` (part of `make ci-lint`
+3. `uv run -- python -m benchbox.core.results.bundle_json_schema` regenerates the file; the same
+   command with `--check` (part of `make ci-lint`
    and a `guard-result-schema` step in the lint guard job of `ci.yml`) fails when the committed
    file differs from generation. Generation is deterministic.
 4. The file name is `result-bundle.schema.json`, deliberately different from
@@ -81,6 +82,6 @@ type of an existing key, narrowing an accepted value set, changing the meaning o
 
 ## Consequences
 
-- Changing the validator without regenerating the schema fails `result-schema-check`.
+- Changing the validator without regenerating the schema fails the `--check` run.
 - A deliberate schema change must bump `CURRENT_SCHEMA_VERSION` according to the promise above.
 - Every bundle under `results-data/bundles` must validate; a unit test enforces it.

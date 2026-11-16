@@ -703,7 +703,7 @@ jobs:
       - name: Result bundle schema drift check
         id: guard-result-schema
         continue-on-error: true
-        run: make result-schema-check
+        run: uv run -- python -m benchbox.core.results.bundle_json_schema --check
 
       - name: Pricing data drift check
         id: guard-pricing-data

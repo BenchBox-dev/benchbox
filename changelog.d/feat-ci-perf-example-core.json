@@ -4,7 +4,7 @@
     {
       "category": "added",
       "breaking": false,
-      "text": "Added an example GitHub Actions workflow (examples/ci/perf-regression.yml) and baseline builder (examples/ci/build-perf-baseline.sh) that gate CI on DuckDB TPC-H performance with benchbox compare, and a pointer to the guide in the compare help."
+      "text": "Added an example GitHub Actions workflow (examples/ci/perf-regression.yml) and baseline builder (examples/ci/build-perf-baseline.sh) that gate CI on DuckDB TPC-H performance with benchbox compare."
     }
   ]
 }

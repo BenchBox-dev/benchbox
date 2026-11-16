@@ -340,9 +340,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.check:
         if check_result_bundle_schema(args.output):
             return 0
-        print(
-            f"{args.output} is out of date with SchemaV2Validator; run 'make result-schema' and commit the result.",
-            file=sys.stderr,
+        sys.stderr.write(
+            f"{args.output} is out of date with SchemaV2Validator; regenerate it with 'python -m benchbox.core.results.bundle_json_schema' and commit the result.\n"
         )
         return 1
     args.output.write_text(render_result_bundle_schema(), encoding="utf-8")

@@ -222,9 +222,7 @@ def _discover_result_files_with_metadata(
         "\b\n"
         "Exit status:\n"
         f"{exit_code_help(COMPARE_EXIT_CODES)}\n"
-        "    Exit codes 75 to 79 belong to the heavy-work host lock.\n"
-        "\n"
-        "Gating CI on performance: https://benchbox.dev/docs/guides/ci-performance-regression/"
+        "    Exit codes 75 to 79 belong to the heavy-work host lock."
     ),
 )
 @click.argument("result_files", nargs=-1, type=click.Path(path_type=str))

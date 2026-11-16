@@ -30,8 +30,8 @@ selectable. The publication workflow never passes a profile. `exact3` emits the 
 bundle. The site verifier accepts only schemas 4, 5 and 6, so an `exact3` bundle cannot be deployed.
 
 `result-bundle.schema.json` is generated from `SchemaV2Validator` by
-`benchbox/core/results/bundle_json_schema.py` (`make result-schema` regenerates
-`quality/result-bundle.schema.json`; `make result-schema-check` is the drift gate in `make ci-lint`
+`benchbox/core/results/bundle_json_schema.py` (`uv run -- python -m benchbox.core.results.bundle_json_schema` regenerates
+`quality/result-bundle.schema.json`; the same command with `--check` is the drift gate in `make ci-lint`
 and the lint guards of `ci.yml`). `build` writes a fresh generation into the bundle and `verify`
 requires the member to parse, carry `$id` `https://benchbox.dev/schemas/result-bundle-2.schema.json`
 and the current `result_schema_version`, and be byte-equal to a regeneration. The site publishes

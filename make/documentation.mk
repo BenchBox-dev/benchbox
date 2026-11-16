@@ -83,14 +83,6 @@ platform-manifest:
 platform-manifest-check:
 	uv run -- python _project/scripts/platform_manifest.py --check
 
-.PHONY: result-schema
-result-schema:
-	uv run -- python -m benchbox.core.results.bundle_json_schema
-
-.PHONY: result-schema-check
-result-schema-check:
-	uv run -- python -m benchbox.core.results.bundle_json_schema --check
-
 .PHONY: parity-check
 parity-check:
 	@tmpdir=$$(mktemp -d) && \
