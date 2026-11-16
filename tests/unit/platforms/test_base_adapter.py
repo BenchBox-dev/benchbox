@@ -3372,7 +3372,7 @@ class TestExceptionPathsForThroughputAndMaintenance:
             ("benchbox.platforms.singlestore", "SingleStoreAdapter", True),
             ("benchbox.platforms.snowflake", "SnowflakeAdapter", True),
             ("benchbox.platforms.redshift", "RedshiftAdapter", False),
-            ("benchbox.platforms.cedardb", "CedarDBAdapter", False),
+            ("benchbox.platforms.cedardb", "CedarDBAdapter", True),
             ("benchbox.platforms.citus", "CitusAdapter", False),
             ("benchbox.platforms.paradedb", "ParadeDBAdapter", False),
             ("benchbox.platforms.pg_duckdb", "PgDuckDBAdapter", False),

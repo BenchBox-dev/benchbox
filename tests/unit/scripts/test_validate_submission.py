@@ -381,7 +381,7 @@ class TestValidateBundle:
         assert not vr.ok
         assert any("row_count_validation" in error for error in vr.errors)
 
-    @pytest.mark.parametrize("status", ["FAILED", "SKIPPED", "ERROR"])
+    @pytest.mark.parametrize("status", ["FAILED", "ERROR"])
     def test_non_passed_row_count_validation_rejected_when_summary_validation_passed(self, status: str):
         data = _minimal_bundle()
         data["version"] = "2.2"
@@ -398,6 +398,42 @@ class TestValidateBundle:
 
         assert not vr.ok
         assert any("summary.validation='passed' contradicts" in error for error in vr.errors)
+
+    def test_skipped_row_counts_beside_passed_row_counts_are_consistent_with_summary_passed(self):
+        data = _minimal_bundle()
+        data["version"] = "2.2"
+        data["summary"]["validation"] = "passed"
+        data["queries"][0].update({"rows": 4, "row_count_validation": {"status": "PASSED", "expected": 4, "actual": 4}})
+        data["queries"][1].update(
+            {
+                "rows": 5,
+                "row_count_validation": {
+                    "status": "SKIPPED",
+                    "expected": None,
+                    "actual": 5,
+                    "warning": "data refreshed",
+                },
+            }
+        )
+        vr = ValidationResult("test")
+
+        _validate_bundle(data, vr)
+
+        assert vr.ok, vr.errors
+
+    def test_summary_passed_is_rejected_when_every_row_count_was_skipped(self):
+        data = _minimal_bundle()
+        data["version"] = "2.2"
+        data["summary"]["validation"] = "passed"
+        data["queries"][0].update(
+            {"rows": 4, "row_count_validation": {"status": "SKIPPED", "expected": None, "actual": 4}}
+        )
+        vr = ValidationResult("test")
+
+        _validate_bundle(data, vr)
+
+        assert not vr.ok
+        assert any("every recorded row count was skipped" in error for error in vr.errors)
 
     def test_unvalidated_row_count_is_named_distinctly_when_summary_validation_passed(self):
         data = _minimal_bundle()
