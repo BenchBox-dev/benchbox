@@ -349,6 +349,32 @@ def test_start_and_status_report_deprecations_and_accept_deployment_selectors(tm
     anyio.run(exercise)
 
 
+def test_start_and_status_warn_about_a_nonstandard_scale_factor(tmp_path: Path, monkeypatch) -> None:
+    token = "tenant-scale-note-token"
+    config = write_security_config(tmp_path, tokens={token: ("tenant-a", ("benchbox:read", "benchbox:execute"))})
+    monkeypatch.setattr(DurableJobWorker, "_execute_benchmark", staticmethod(_executor))
+
+    async def call(client, tool_name: str, arguments: dict[str, object]) -> dict[str, object]:
+        result = await client.call_tool(tool_name, arguments)
+        assert not result.is_error
+        assert isinstance(result.content[0], TextContent)
+        return json.loads(result.content[0].text)
+
+    async def exercise() -> None:
+        async with authenticated_http_client(config, token) as (client, _):
+            request = {"platform": "duckdb", "benchmark": "tpch"}
+            nonstandard = await call(client, "start_benchmark", {**request, "scale_factor": 0.05})
+            assert len(nonstandard["warnings"]) == 1
+            assert "not a standard scale for tpch" in nonstandard["warnings"][0]
+            observed = await call(client, "get_benchmark_status", {"execution_id": nonstandard["execution_id"]})
+            assert observed["warnings"] == nonstandard["warnings"]
+
+            standard = await call(client, "start_benchmark", {**request, "scale_factor": 0.01})
+            assert standard["warnings"] == []
+
+    anyio.run(exercise)
+
+
 def test_worker_response_carries_the_deprecations_of_the_run(monkeypatch) -> None:
     from benchbox.core.deprecation_notices import warn_deprecated_alias
 
