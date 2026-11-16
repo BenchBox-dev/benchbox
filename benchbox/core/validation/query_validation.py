@@ -322,7 +322,6 @@ class QueryValidator:
                     f"parameters; the '{benchmark_type}' reference count holds only for qgen default parameters. "
                     f"Row-count validation excluded. Actual rows returned: {actual_row_count}"
                 ),
-                parameter_sensitive=True,
             )
 
         if get_reference_seed_context() is False and query_id_normalized in get_parameter_sensitive_query_ids(

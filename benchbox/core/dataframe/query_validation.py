@@ -98,17 +98,14 @@ def validate_dataframe_query_results(
         return DataFrameQueryValidationSummary(status, evidence)
 
     evidence["skipped"] += selected_skips
-    parameter_sensitive_skips = evidence.get("parameter_sensitive_skips", 0)
     if evidence["failed"]:
         status = "FAILED"
     elif execution_failures:
         status = "PARTIAL"
-    elif evidence["skipped"] > parameter_sensitive_skips or evidence["errors"]:
+    elif evidence["skipped"] or evidence["errors"]:
         status = "UNCERTAIN"
-    elif evidence["checked"] and evidence["checked"] + parameter_sensitive_skips == len(successful_rows):
+    elif evidence["checked"] and evidence["checked"] == len(successful_rows):
         status = "PASSED"
-    elif parameter_sensitive_skips:
-        status = "UNCERTAIN"
     else:
         status = "NOT_RUN"
     return DataFrameQueryValidationSummary(status, evidence)
@@ -377,8 +374,6 @@ def _apply_row_count_oracle(
             if result.warning_message:
                 row_count_validation["warning"] = _bounded_message(result.warning_message)
             evidence["skipped"] += 1
-            if result.parameter_sensitive:
-                evidence["parameter_sensitive_skips"] = evidence.get("parameter_sensitive_skips", 0) + 1
         elif result.is_valid and result.expected_row_count not in (None, actual_row_count):
             row_count_validation["status"] = "SKIPPED"
             row_count_validation["warning"] = (

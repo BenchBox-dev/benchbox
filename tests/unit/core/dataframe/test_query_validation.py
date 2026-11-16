@@ -399,35 +399,11 @@ def test_seeded_subscale_run_checks_fixed_queries_and_skips_parameter_sensitive_
     summary = validate_dataframe_query_results(measurements, benchmark_name="tpch", scale_factor=0.01, seed=7)
 
     statuses = {row["query_id"]: row["row_count_validation"]["status"] for row in measurements}
-    assert summary.status == "PASSED"
+    assert summary.status == "UNCERTAIN"
     assert summary.details["skipped"] == len(reference.parameter_sensitive_query_ids)
-    assert summary.details["parameter_sensitive_skips"] == len(reference.parameter_sensitive_query_ids)
     assert summary.details["checked"] == 22 - len(reference.parameter_sensitive_query_ids)
     assert statuses["Q2"] == "SKIPPED"
     assert statuses["Q4"] == "PASSED"
-
-
-def test_seeded_subscale_run_with_only_parameter_sensitive_queries_is_not_a_pass() -> None:
-    summary = validate_dataframe_query_results(
-        [_measurement(query_id="Q2", rows=3)], benchmark_name="tpch", scale_factor=0.01, seed=7
-    )
-
-    assert summary.status == "UNCERTAIN"
-    assert summary.details["checked"] == 0
-
-
-def test_seeded_subscale_run_with_a_deselected_query_stays_uncertain() -> None:
-    from benchbox.core.expected_results.loader import load_tpch_subscale_row_counts
-
-    reference = load_tpch_subscale_row_counts(0.01)
-    measurements = [_measurement(query_id=f"Q{qid}", rows=rows) for qid, rows in reference.row_counts.items()]
-    deselected = {"query_id": "Q23", "status": "SKIPPED", "run_type": "metadata"}
-
-    summary = validate_dataframe_query_results(
-        [*measurements, deselected], benchmark_name="tpch", scale_factor=0.01, seed=7
-    )
-
-    assert summary.status == "UNCERTAIN"
 
 
 def test_seeded_subscale_run_fails_a_wrong_fixed_cardinality_count() -> None:
