@@ -28372,10 +28372,15 @@
       "title": "Metadata Primitives Complexity Enhancements"
     },
     "methodology-open-questions-owner-20261113": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-17T13:51:11Z",
+        "generation": "3a0c2352f1eb4e5f89e15a17a7339c05",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:961d26faca155954d64951f4"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Owner: answer the open questions left out of the methodology page"
     },
     "metrics-command-group": {
