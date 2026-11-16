@@ -19,27 +19,12 @@
     {
       "category": "fixed",
       "breaking": false,
-      "text": "compare now refuses, with the not-comparable exit code, a pair where one side is an MCP result from before MCP and CLI runs shared compression and platform-option defaults."
-    },
-    {
-      "category": "changed",
-      "breaking": false,
-      "text": "Platform option values taken from the applied run configuration are now labelled applied_defaults in platform_option_sources. Earlier results keep the saved_config label, which still reads as before."
+      "text": "compare now refuses, with the not-comparable exit code, a pair where one side is an MCP result from before MCP and CLI runs shared compression and platform-option defaults. Platform option values taken from the applied run configuration are now labelled applied_defaults; earlier results keep the saved_config label."
     },
     {
       "category": "fixed",
       "breaking": false,
-      "text": "benchbox results validate on a directory no longer reports non-result JSON files, such as an inventory index, as FAIL; a malformed result or unreadable JSON still fails."
-    },
-    {
-      "category": "fixed",
-      "breaking": false,
-      "text": "benchbox submit now names the actual benchmark when it refuses an unofficial result, instead of always naming TPC-DS."
-    },
-    {
-      "category": "added",
-      "breaking": false,
-      "text": "A manifest sidecar can carry a known_defect_reason beside known_defects, and each known defect id has a default reason; the explorer pipeline records it as known_defect_reason on excluded results."
+      "text": "benchbox results validate on a directory no longer reports non-result JSON files, such as an inventory index, as FAIL, and benchbox submit names the actual benchmark when it refuses an unofficial result. A manifest sidecar can now carry a known_defect_reason beside known_defects, which the explorer pipeline records on excluded results."
     }
   ]
 }
