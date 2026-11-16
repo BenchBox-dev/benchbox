@@ -883,6 +883,32 @@ def test_a_stale_check_is_refused_when_a_landing_changes_a_non_python_file(world
         world.land("alpha")
 
 
+def test_a_stale_check_is_refused_when_a_landing_changes_a_non_companion_docs_file(world: World) -> None:
+    world.start(scope={**DISJOINT_SCOPE, "zeta": ["docs/internal/read-by-tests.md"]})
+    world.deliver("zeta", {"docs/internal/read-by-tests.md": "text\n"}, tests=["tests/test_zeta.py"])
+    world.deliver("alpha", {"src/a_new.py": "a = 1\n"})
+    world.land_and_prepare("zeta")
+    with _raises("non-Python files tests may read"):
+        world.land("alpha")
+
+
+def test_a_stale_check_accepts_a_landing_that_only_adds_a_changelog_fragment(world: World) -> None:
+    world.start(scope={**DISJOINT_SCOPE, "zeta": ["changelog.d/*"]})
+    world.deliver("zeta", {"changelog.d/zeta.json": "{}\n"}, tests=["tests/test_zeta.py"])
+    world.deliver("alpha", {"src/a_new.py": "a = 1\n"})
+    world.land_and_prepare("zeta")
+    assert world.land("alpha")["status"] == "merged"
+
+
+def test_a_stale_check_is_refused_when_a_landing_changes_code_only_the_conftest_chain_imports(world: World) -> None:
+    world.start(scope={**DISJOINT_SCOPE, "zeta": ["src/b.py"], "alpha": ["src/a_new.py", "tests/conftest.py"]})
+    world.deliver("zeta", {"src/b.py": "b = 2\n"})
+    world.deliver("alpha", {"src/a_new.py": "a = 1\n", "tests/conftest.py": "import src.b\n"})
+    world.land_and_prepare("zeta")
+    with _raises("code the member's verification tests import"):
+        world.land("alpha")
+
+
 def test_a_stale_landing_is_undone_when_the_merge_maps_tests_the_member_never_ran(world: World) -> None:
     world.start(scope=DISJOINT_SCOPE)
     world.deliver("zeta", {"src/z_new.py": "z = 1\n"})

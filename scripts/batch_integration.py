@@ -995,7 +995,6 @@ def _covered_tests(tests: set[str], verification: dict) -> set[str]:
 
 DOTTED_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+$")
 IMPORT_ROOTS = ("", "scripts/", "_project/scripts/")
-DRIFT_NEUTRAL_ROOTS = frozenset(pattern.split("/", 1)[0] for pattern in COMPANION_SCOPE)
 
 
 def _resolve_import(worktree: Path, dotted: str) -> str | None:
@@ -1036,6 +1035,12 @@ def _test_import_closure(worktree: Path, verification: dict) -> set[str]:
             pending.extend(line for line in _git(worktree, "ls-files", "--", path).splitlines() if line.endswith(".py"))
         else:
             pending.append(path)
+    pending.extend(
+        f"{parent}/conftest.py" if parent != "." else "conftest.py"
+        for path in list(pending)
+        for parent in map(str, Path(path).parents)
+        if (worktree / parent / "conftest.py").is_file()
+    )
     closure: set[str] = set()
     while pending:
         path = pending.pop()
@@ -1110,7 +1115,9 @@ def _stale_base_refusal(
     reached = sorted(set(drift) & _test_import_closure(facts["worktree"], check["verification"]))
     if reached:
         return f"landings since the check changed code the member's verification tests import: {', '.join(reached[:5])}"
-    data = sorted(path for path in drift if not path.endswith(".py") and Path(path).parts[0] not in DRIFT_NEUTRAL_ROOTS)
+    data = sorted(
+        path for path in drift if not path.endswith(".py") and not _matches_scope(path, list(COMPANION_SCOPE))
+    )
     if data:
         return f"landings since the check changed non-Python files tests may read: {', '.join(data[:5])}"
     mapped = _mapped_tests(repo, base)
