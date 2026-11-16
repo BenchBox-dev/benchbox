@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 import yaml
 from click.testing import CliRunner
+from packaging.version import Version
 
 from benchbox.cli.app import cli
 from benchbox.cli.exit_codes import ExitCode
@@ -20,6 +21,8 @@ EXAMPLE_WORKFLOW = REPO_ROOT / "examples" / "ci" / "perf-regression.yml"
 BASELINE_BUILDER = REPO_ROOT / "examples" / "ci" / "build-perf-baseline.sh"
 NIGHTLY_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "nightly-v2.yml"
 FIXTURES = REPO_ROOT / "tests" / "fixtures" / "ci_perf_example"
+MIN_RELEASE_WITH_EXIT_CODE_CONTRACT = "0.5.2"
+MIN_RELEASE_REASON = "compare exit codes 3 and 4 and host-load first ship in 0.5.2; 0.5.1 lacks them"
 COMPARE_OPTIONS = ("--fail-on-regression", "--min-regression-delta", "--min-aggregate-regression-delta")
 
 
@@ -165,3 +168,8 @@ class TestExampleWorkflowGateAgainstFixtures:
         )
 
         assert result.exit_code == ExitCode.SUCCESS, result.output
+
+
+def test_example_pins_a_release_that_ships_the_exit_code_contract() -> None:
+    pinned = Version(str(_load(EXAMPLE_WORKFLOW)["env"]["BENCHBOX_VERSION"]))
+    assert pinned >= Version(MIN_RELEASE_WITH_EXIT_CODE_CONTRACT), MIN_RELEASE_REASON

@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 env:
-  BENCHBOX_VERSION: "0.5.1"
+  BENCHBOX_VERSION: "0.5.2"
   BASELINE_PATH: perf/baselines/duckdb_tpch_sf001.json
   FAIL_ON_REGRESSION: 10%
   MIN_REGRESSION_DELTA: 7ms

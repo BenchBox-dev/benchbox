@@ -62,7 +62,9 @@ Checks the BenchBox validator (SchemaV2Validator) enforces that JSON Schema cann
 this schema therefore omits: row_count_validation.actual must equal the query's rows, and a PASSED
 row_count_validation with an integer expected must have equal expected and actual (both compare two
 values in the instance); the validator matches row_count_validation.status case-insensitively while
-this schema lists only the normalised upper-case form.
+this schema lists only the normalised upper-case form; JSON Schema cannot tell 2 from 2.0, while the
+validator rejects a float for run.timing_method (including the net-estimate check), request_count
+and result_bytes.
 
 ## Compatibility promise
 

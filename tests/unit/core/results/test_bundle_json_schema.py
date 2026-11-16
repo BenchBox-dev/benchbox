@@ -286,3 +286,12 @@ def test_version_and_result_schema_version_must_match() -> None:
     assert not _validator().is_valid(data)
     with pytest.raises(ValueError):
         SchemaV2Validator().validate(data)
+
+
+def test_null_run_and_client_link_platform_timing_are_accepted_by_both() -> None:
+    data = _current_bundle()
+    data["run"]["platform_timing"] = None
+    data.setdefault("environment", {})["client_link"] = {"probed_at": None, "platform_timing": None}
+    _assert_both_accept(data)
+    data["queries"][0]["platform_timing"] = {"status": "valid", "platform_ms": 1}
+    _assert_both_reject(data)

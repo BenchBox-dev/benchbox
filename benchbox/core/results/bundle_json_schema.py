@@ -59,7 +59,8 @@ VALIDATOR_ONLY_RULES = (
     "schema therefore omits: row_count_validation.actual must equal the query's rows, and a PASSED "
     "row_count_validation with an integer expected must have equal expected and actual (both compare two values "
     "in the instance); the validator matches row_count_validation.status case-insensitively while this schema "
-    "lists only the normalised upper-case form."
+    "lists only the normalised upper-case form; JSON Schema cannot tell 2 from 2.0, while the validator rejects a "
+    "float for run.timing_method (including the net-estimate check), request_count and result_bytes."
 )
 
 _NON_EMPTY_STRING = {"type": "string", "pattern": "\\S"}
@@ -156,7 +157,7 @@ def _run_schema(validator: type[SchemaV2Validator]) -> dict[str, Any]:
         {
             "timing_method": {"enum": sorted(KNOWN_TIMING_METHODS)},
             "net_estimate_status": {"enum": sorted(NET_ESTIMATE_STATUSES)},
-            "platform_timing": _run_platform_timing_schema(),
+            "platform_timing": _nullable(_run_platform_timing_schema()),
         },
     )
 
@@ -200,8 +201,8 @@ def _environment_schema() -> dict[str, Any]:
     client_link = _object(
         (),
         {
-            "probed_at": _NON_EMPTY_STRING,
-            "platform_timing": _platform_timing_schema(),
+            "probed_at": _nullable(_NON_EMPTY_STRING),
+            "platform_timing": _nullable(_platform_timing_schema()),
         },
     )
     return _object((), {"host_load": host_load, "client_link": client_link})
