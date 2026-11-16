@@ -218,6 +218,32 @@ def test_any_benchbox_source_change_selects_the_path_scanning_guards(repo: Path)
     assert pt.map_tests(repo, ["benchbox/core/equivalence/cross_surface.py"]) == guards
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        "README.md",
+        "CONTRIBUTING.md",
+        "docs/usage/new.md",
+        "docs/internal/table.tsv",
+        "examples/quickstart.py",
+        "examples/notes.md",
+        "docker/velox/README.md",
+        "results-data/README.md",
+        "quality/docs-ownership.json",
+    ],
+)
+def test_link_surface_changes_select_the_shipped_docs_url_test(repo: Path, path: str) -> None:
+    _write(repo, "tests/unit/cli/test_shipped_docs_urls.py")
+
+    assert pt.map_tests(repo, [path]) == ["tests/unit/cli/test_shipped_docs_urls.py"]
+
+
+def test_unrelated_documents_do_not_select_the_shipped_docs_url_test(repo: Path) -> None:
+    _write(repo, "tests/unit/cli/test_shipped_docs_urls.py")
+
+    assert pt.map_tests(repo, ["AGENTS.md", "landing/index.html"]) == []
+
+
 def test_source_guard_tests_exist() -> None:
     root = SCRIPT.parents[2]
     missing = [test for tests in pt.SOURCE_GUARD_TESTS.values() for test in tests if not (root / test).is_file()]
@@ -789,6 +815,8 @@ def test_a_test_change_that_keeps_its_doc_reads_skips_the_reader_index_check(rep
         (["benchbox/_vendor/archive.whl.zip"], ["docs-reference-inventory", "project-references"]),
         (["docs/internal/new.md"], ["docs-reference-inventory", "project-references", "docs-ownership"]),
         (["docs/operations/table.tsv"], ["docs-reference-inventory", "project-references", "docs-ownership"]),
+        (["README.md"], ["docs-reference-inventory", "project-references", "docs-ownership"]),
+        (["quality/docs-ownership.json"], ["docs-reference-inventory", "project-references", "docs-ownership"]),
         ([], []),
     ],
 )

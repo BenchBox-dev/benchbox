@@ -15,6 +15,8 @@ from benchbox.cli.main import cli
 
 __import__("benchbox.cli.commands.run")
 _run_module = _sys.modules["benchbox.cli.commands.run"]
+__import__("benchbox.cli.run_interactive")
+_interactive_module = _sys.modules["benchbox.cli.run_interactive"]
 
 pytestmark = [
     pytest.mark.unit,
@@ -58,6 +60,7 @@ def _mock_quick_restart(saved_config):
     with (
         _mock_run_command_components(include_db_manager=True) as mocks,
         patch.object(_run_module, "sys", mock_sys),
+        patch.object(_interactive_module, "sys", mock_sys),
         patch("benchbox.cli.onboarding.check_and_run_first_time_setup", return_value=False),
         patch("benchbox.cli.preferences.load_last_run_config", return_value=saved_config),
         patch("benchbox.cli.preferences.format_last_run_summary", return_value="saved run"),
@@ -291,6 +294,7 @@ class TestCLIDataLoadModes:
         with (
             _mock_run_command_components(include_db_manager=True) as mocks,
             patch.object(_run_module, "sys", mock_sys),
+            patch.object(_interactive_module, "sys", mock_sys),
             patch("benchbox.cli.onboarding.check_and_run_first_time_setup", return_value=False),
             patch(
                 "benchbox.cli.preferences.load_last_run_config",
@@ -527,6 +531,7 @@ class TestCLIDataLoadModes:
         with (
             _mock_run_command_components(include_db_manager=True) as mocks,
             patch.object(_run_module, "sys", mock_sys),
+            patch.object(_interactive_module, "sys", mock_sys),
             patch("benchbox.cli.onboarding.check_and_run_first_time_setup", return_value=False),
             patch(
                 "benchbox.cli.preferences.load_last_run_config",

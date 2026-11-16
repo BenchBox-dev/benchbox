@@ -249,6 +249,20 @@ def test_native_binary_framing_remains_required_before_merge() -> None:
     assert "framing-needed" in _jobs("ci.yml")["ci-paths"]["outputs"]
 
 
+def test_package_smoke_runs_the_first_command_on_any_package_source_change() -> None:
+    jobs = _jobs("ci.yml")
+    condition = (
+        "needs.ci-paths.outputs.packaging-needed == 'true' || needs.ci-paths.outputs.first-command-needed == 'true'"
+    )
+    assert jobs["package-smoke"]["if"] == f"${{{{ {condition} }}}}"
+    assert jobs["dependency-audit"]["if"] == "${{ needs.ci-paths.outputs.packaging-needed == 'true' }}"
+    assert "first-command-needed" in jobs["ci-paths"]["outputs"]
+    core_text = "\n".join(step.get("run", "") for step in jobs["core"]["steps"])
+    assert f"--expect package-smoke=${{{{ {condition} }}}}" in core_text
+    steps = [step["name"] for step in jobs["package-smoke"]["steps"]]
+    assert "Run the README first command from the built wheel" in steps
+
+
 def test_three_os_nightly_cells_retain_raw_framing_guard() -> None:
     matrix = _jobs("nightly-v2.yml")["matrix"]
     assert set(matrix["strategy"]["matrix"]["os"]) == {"ubuntu-latest", "macos-latest", "windows-latest"}

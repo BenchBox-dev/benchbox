@@ -3,7 +3,90 @@ csv_encoding: cp1252
 pinned_source:
   end_year: 2024
   end_month: 12
-  sha256: {}
+  sha256:
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_12.zip: a324577aa76d1f0aa36239f8010b6b5270fea0ff5ac846177753b76a42c5d01c
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_11.zip: 26b6e89e7c1f66163a412380c743c648eb470a9017074de4efbd209f1e09860a
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_10.zip: a417136d6c1663736437dfeeacefa5b93b82e9db322c863c2f57b19bdd3f04fb
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_9.zip: c0df7503b0050ca46099dab1edfffa33464a0a1031ad712c542af6a4ecece24c
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_8.zip: 58d651379af90cc44635657e95fe098567ff954046aec21d6d2cd18424a317f9
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_7.zip: 4d992fee134137b3fa43094d7e8cf4a8e6feaa6a422cffb4063f1ed6c7f3f731
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_6.zip: 4f329439fd6892aaf89b32908191b2a007e70f775e2551181a22e704ef28a0ab
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_5.zip: 03e4ae26c2d1247de02d0b9a4d87160f8021718abf475a1421de9c45b7d68b04
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_4.zip: d8b1e88626a7375d351962917fe5ec132660c1636dc8b91f778627c769e0e15a
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_3.zip: e2c5021406f480e813a52a2ed795c251eb1169613da6a416daf88236db8c9013
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_2.zip: 8463683d100504a97847497d2f2281008fd9add9639bf7436a9747032df15f9a
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_1.zip: fe089b45523f9d4ac0ccd0e176a543d274e914ee5ae5bd384dbaafc7dc06ebfd
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2023_12.zip: c8391a3f06749b6ee4dec493fb7974f398b9d066a4e731c4cbb8932eddb774ce
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2023_11.zip: 9ad54595568704a1cb7d821908611c220cf36da4d9a5ccea03b4deb9053b5025
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2023_10.zip: a92cc51c6bb1e7fcf2732e27ac36ebbc92293acf8e3c0b33126abe28698ecf51
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2023_9.zip: 4e7bc3f76857accd1d4e493f03fb5ba2c1f68e82496cf16fd61addf4d8464cfa
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2023_8.zip: d374aa3ec2b844d47c675d17cf71f2ade0af07b20670f9b8a2c6c1f5fe5d57bd
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2023_7.zip: b1b73635dcb2add363bb001d95c3f951e0ce4fc32130cbc76b565a531ced2146
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2023_6.zip: 67dc6b993ba2e7c2175a874da7a8fbf12081c23c87523c0a5cd7d2f3e50450a1
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2023_5.zip: aec2e926b11e55f88dd0ac48b649492048b4eba0983f1a564e746546568185b4
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2023_4.zip: adf3ecf6e3763a55c2acfc1fcf1c0ee0ac5a7ca079cb16cf15be5e39b921f7b4
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2023_3.zip: 1a61dce7c50e5c4f074ebff69a833840f4c6be4e71d4a4707be540ace9e6d58b
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2023_2.zip: bfa6eb7bebb53f10603110aa11bdebf00a89f51d870b331f6565181bb943ddbf
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2023_1.zip: 327924faa362d360747e9e4cf37f461c877441916321754f1789fadd61fd403a
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_12.zip: 93ef0f6ede001547b748ca3b20cabc26d7360d728fa73c32242a385a80688bd1
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_11.zip: 3a4343f5a2e59d000a9e69bda1888fbc0be6ab18d48076d20b44fb15b1895499
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_10.zip: 4133e6e526a038cebeadb7858a5dc3711e859801ba78aacd0c51d2c0da14715e
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_9.zip: f158ff276b75d42e4e81a95a27ac7a452bf736269fd7012d3d2736bfb8954810
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_8.zip: e8903c63285608c34578805a33c66b96215d191ec3c350be4f4dc019d94c5b3e
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_7.zip: edcdae5b306b609ea0b821389e293ae04f3ff9d99fecee623b88e111ce4e9f1a
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_6.zip: c92a18dc11037422eab8131029e3f45c63509f1d491a0bc0d1212ab298b85265
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_5.zip: cf67d5b1da3fbdcea72a969ff3276a9eda8db6d03089e7704be1747ed8dce054
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_4.zip: a6ebfb5e37929860fcb447a24b516972585bc922e459f9cb0c12b40ff1e22b60
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_3.zip: 90ed43e200ba70e19c9817c7e08125245518fd083815b348ec0799aff0fd00c5
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_2.zip: e9124a0af49f69fdf3354de28c929ed03ddf3e685b86820d08bff5230e786b8b
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_1.zip: ca1ae860eaa54f1f5dca6764ae594359bd13bee5a98a9e1d39082733e2fffeeb
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2021_12.zip: 7d2a51f0b91ac0e6ebcfd1fdc6003033e0c1db177a9ee94949763fa1c28f5e32
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2021_11.zip: 2a809f9c05610a5d88fd1d8c0186028a7cafe1feb2dc0de1f92cbe501fa9888f
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2021_10.zip: 0cf734917438db10c46ddaea5af565f6ce9d01efd5f7f7dd58b506ed46a3a1e1
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2021_9.zip: 6c883fa9768260f8d3cb65bcb5c9a19e5ba62ba74d69a281200ac9e49d22c369
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2021_8.zip: c46387fe04caed6a3a5118962499c32a02552edac3986f305ebbb994e89b169b
+  rows:
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_12.zip: 590581
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_11.zip: 575404
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_10.zip: 615497
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_9.zip: 582622
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_8.zip: 619025
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_7.zip: 634613
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_6.zip: 611132
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_5.zip: 609743
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_4.zip: 582185
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_3.zip: 591767
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_2.zip: 519221
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_1.zip: 547271
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2023_12.zip: 570394
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2023_11.zip: 563777
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2023_10.zip: 598968
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2023_9.zip: 569338
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2023_8.zip: 602987
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2023_7.zip: 601866
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2023_6.zip: 577262
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2023_5.zip: 579958
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2023_4.zip: 561441
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2023_3.zip: 580322
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2023_2.zip: 502749
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2023_1.zip: 538837
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_12.zip: 557095
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_11.zip: 546410
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_10.zip: 572287
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_9.zip: 557494
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_8.zip: 589810
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_7.zip: 594957
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_6.zip: 577283
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_5.zip: 578819
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_4.zip: 556502
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_3.zip: 564853
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_2.zip: 495713
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_1.zip: 537902
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2021_12.zip: 551885
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2021_11.zip: 547559
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2021_10.zip: 564788
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2021_9.zip: 538051
+    https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2021_8.zip: 579179
 data_coverage:
   first_available_year: 1987
   last_available_year: 2024

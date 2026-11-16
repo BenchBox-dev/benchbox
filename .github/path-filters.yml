@@ -108,6 +108,9 @@ packaging:
   - "uv.lock"
   - "benchbox/_vendor/**"
 
+first-command:
+  - "benchbox/**"
+
 framing:
   - "tests/utilities/**"
   - "conftest.py"

@@ -127,6 +127,18 @@ def test_checksum_mismatch_fails_at_once(tmp_path, monkeypatch):
     assert len(calls) == 1
 
 
+def test_a_republished_pinned_month_is_refused(tmp_path, monkeypatch):
+    url = dl.BTS_BASE_URL.format(year=2024, month=12)
+    assert url in dl.PINNED_SOURCE_SHA256
+    calls = _script(monkeypatch, [b"republished-bytes"])
+
+    with pytest.raises(dl.ChecksumMismatchError) as caught:
+        _make(tmp_path)._fetch_bts_zip(url)
+
+    assert caught.value.expected_sha256 == dl.PINNED_SOURCE_SHA256[url]
+    assert len(calls) == 1
+
+
 def test_backoff_doubles_between_attempts_and_totals_at_most_two_minutes(tmp_path, monkeypatch):
     sleeps = _record_sleeps(monkeypatch, lambda _low, high: high)
     err = urllib.error.URLError("reset")

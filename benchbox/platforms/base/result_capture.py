@@ -391,6 +391,19 @@ def _accumulate_query_metrics(
     )
 
 
+def _reported_cpu_frequency_mhz(psutil_module: Any) -> float | None:
+    if platform.system() == "Darwin" and platform.machine() == "arm64":
+        return None
+    try:
+        freq = psutil_module.cpu_freq()
+        current = freq.current if freq else None
+    except Exception:
+        return None
+    if not isinstance(current, (int, float)) or current <= 0:
+        return None
+    return current
+
+
 class ResultCaptureMixin:
     logger: logging.Logger
 
@@ -460,11 +473,7 @@ class ResultCaptureMixin:
             load_avg = None
         snapshot["cpu"]["load_average"] = load_avg
 
-        try:
-            freq = psutil.cpu_freq()
-            snapshot["cpu"]["frequency_mhz"] = freq.current if freq else None
-        except Exception:
-            snapshot["cpu"]["frequency_mhz"] = None
+        snapshot["cpu"]["frequency_mhz"] = _reported_cpu_frequency_mhz(psutil)
 
         try:
             counted = psutil.cpu_count()

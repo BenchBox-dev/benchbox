@@ -225,6 +225,19 @@ class TestPromptsWithoutATerminal:
         assert not isinstance(result.exception, (EOFError, OSError))
         assert "snowflake" in creds.read_text(encoding="utf-8")
 
+    @pytest.mark.parametrize("platform", ["snowflake", "databricks", "bigquery", "redshift", "athena", "singlestore"])
+    def test_setup_wizard_exits_cleanly_with_closed_stdin(self, tmp_path: Path, monkeypatch, platform: str) -> None:
+        monkeypatch.setattr("benchbox.utils.dependencies.check_platform_dependencies", lambda _platform: (True, []))
+
+        result = CliRunner().invoke(setup_credentials, ["--platform", platform], input="")
+
+        assert result.exit_code == REFUSED
+        assert "no answer could be read" in " ".join(result.output.split())
+        assert "credentials.yaml" in result.output
+        assert "Traceback" not in result.output
+        assert not isinstance(result.exception, (EOFError, OSError))
+        assert not (tmp_path / "home" / ".benchbox" / "credentials.yaml").exists()
+
     def test_setup_remove_with_yes_proceeds(self, tmp_path: Path) -> None:
         creds = tmp_path / "home" / ".benchbox" / "credentials.yaml"
         creds.parent.mkdir()

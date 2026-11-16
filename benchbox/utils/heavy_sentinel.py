@@ -22,6 +22,7 @@ from benchbox.utils import (
     heavy_watchdog,
     host_lock,
     linux_machine,
+    orphan_spin,
     process_tree,
     resource_limits,
     vm_footprint,
@@ -599,6 +600,7 @@ class Sentinel:
         clock: Callable[[], float] = mono_time,
         git_reader: Callable[[Sequence[str]], Sequence[git_flood.GitProc]] = git_flood.read_git_processes,
         total_ram: Callable[[], int | None] = git_flood.total_ram_bytes,
+        orphan_reader: Callable[[Sequence[str]], Sequence[orphan_spin.OrphanShell]] = orphan_spin.read_orphan_shells,
         environ: Mapping[str, str] | None = None,
         exclude: Sequence[int] = (),
         vm_watch: VmWatch | None = None,
@@ -617,6 +619,8 @@ class Sentinel:
         self._git_reader = git_reader
         self._total_ram = total_ram
         self._environ = os.environ if environ is None else environ
+        self._orphan_reader = orphan_reader
+        self._spin = orphan_spin.SpinTracker(self._environ)
         self._roots: tuple[str, ...] = ()
         self._root_count = 0
         self._roots_at: float | None = None
@@ -733,6 +737,26 @@ class Sentinel:
         self._flooded = flood.breached
         return flood.breached
 
+    def _check_orphans(self) -> None:
+        if not self._roots:
+            return
+        try:
+            shells = self._orphan_reader(self._roots)
+            reports, ended = self._spin.observe(shells, self._clock())
+        except Exception as exc:
+            self._log(f"could not read orphaned shells: {exc}")
+            return
+        for report in reports:
+            shell = report.shell
+            self._log(
+                f"WARNING orphaned CPU-bound shell: pid {shell.pid} {shell.name} at {report.cpu_fraction:.0%} CPU "
+                f"for {report.busy_seconds:.0f}s (threshold {self._spin.cpu_fraction:.0%} for "
+                f"{self._spin.sustain_seconds:.0f}s), parent pid 1, cwd {shell.cwd} cmd {shell.command}; "
+                "shells are never signalled by the sentinel, stop it with kill if it is not yours to keep"
+            )
+        for pid in ended:
+            self._log(f"orphaned CPU-bound shell pid {pid} is gone")
+
     def _check_vm(self) -> None:
         if self._vm_watch is None:
             return
@@ -753,6 +777,7 @@ class Sentinel:
             measured = [Measured(m.proc, m.footprint_bytes, m.scope, m.proc.pid in held) for m in measured]
         evaluation = evaluate(measured, pressure, self.policy.budget_bytes)
         flooded = self._check_git()
+        self._check_orphans()
         self._summarize(measured, unreadable, pressure, flooded)
         offender = evaluation.offender
         if offender is None:
