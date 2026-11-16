@@ -36602,15 +36602,10 @@
       "title": "benchbox results validate reports corpus-inventory.json as a failing bundle"
     },
     "results-vendor-publication-terms-review-20261113": {
-      "claim": {
-        "expires_at": "2026-11-17T13:51:37Z",
-        "generation": "60c02b5a14a34411a5ee17dc2da56e80",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:961d26faca155954d64951f4"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Owner: check cloud vendors' terms on publishing benchmark results"
     },
     "resync-tpch-darwin-x86-64-binaries": {
