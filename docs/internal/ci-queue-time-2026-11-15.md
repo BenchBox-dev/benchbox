@@ -118,5 +118,3 @@ cost:
    of one run's footprint, at no spend. Not applied here: it changes required
    check names.
 3. Larger runners do not help: run time is constant; only queue time varies.
-
-📁 [`missing_short_checks_probe.py`](../../examples/missing_short_checks_probe.py)
