@@ -13,6 +13,14 @@ the DuckDB bundle's sidecar was created with `result_source: internal` so its
 trust label is unchanged. The existing id was reused because it is the
 corpus's general wrong-result label; no new id was added.
 
+Each of the six sidecars also carries `known_defect_reason` ("Generated before the
+TPC-DI scale correction; the data is about ten times the specification's SF1."). A
+sidecar's `known_defect_reason` is an optional short text (at most 200 characters,
+only valid alongside `known_defects`); without it, the pipeline falls back to a
+default text for each defect id (`KNOWN_DEFECT_REASONS` in
+`benchbox/validation/bundle.py`). The pipeline emits it as `known_defect_reason` on
+the manifest entry and detail result.
+
 | Platform | Bundle |
 |---|---|
 | BigQuery | `tpcdi_sf1_bigquery_sql_20260920_064220_bc5850d1` |

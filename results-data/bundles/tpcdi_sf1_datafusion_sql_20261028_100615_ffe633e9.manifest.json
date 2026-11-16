@@ -15,5 +15,6 @@
   "submitted_by": "maintainer",
   "known_defects": [
     "defective-variant-or-loader-wrong-result"
-  ]
+  ],
+  "known_defect_reason": "Generated before the TPC-DI scale correction; the data is about ten times the specification's SF1."
 }
