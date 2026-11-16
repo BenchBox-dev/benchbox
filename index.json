@@ -27586,10 +27586,15 @@
       "title": "Expose seed and iterations on MCP run_benchmark and start_benchmark"
     },
     "mcp-run-benchmark-seed-iterations-20261112-deferral-1": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-17T15:05:54Z",
+        "generation": "483ae502f12b48f689cae32cc2e0f5e1",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:961d26faca155954d64951f4"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Decide whether MCP run_benchmark should return the integrity-validator verdict"
     },
     "mcp-scrub-structured-and-prose-secret-material": {
