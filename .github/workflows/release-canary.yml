@@ -17,6 +17,7 @@ env:
   BENCHBOX_TEST_LOCK_WAIT_SECONDS: "0"
   BENCHBOX_HEAVY_ADMIT_MIN_GIB: "1.5"
   BENCHBOX_HEAVY_MIN_FREE_DISK_GIB: "5"
+  BENCHBOX_HEAVY_MAX_LOAD_RATIO: "0"
   RELEASE_CANARY_REF: ${{ startsWith(github.ref, 'refs/heads/release/') && github.ref_name || 'develop' }}
   RELEASE_CANARY_SHARD_COUNT: 6
 
