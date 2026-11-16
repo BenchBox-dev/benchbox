@@ -10,6 +10,7 @@ from benchbox.core.tpch.dataframe_queries import (
     get_query,
     get_tpch_dataframe_queries,
     list_query_ids,
+    q21_final_join_how,
 )
 
 pytestmark = [
@@ -515,3 +516,18 @@ class TestQueryCategories:
         for query_id in ["Q2", "Q4", "Q11", "Q13", "Q15", "Q16", "Q17", "Q18", "Q20", "Q21", "Q22"]:
             query = get_query(query_id)
             assert QueryCategory.SUBQUERY in query.categories, f"{query_id} should have SUBQUERY"
+
+
+class TestQ21FinalJoinForm:
+    @pytest.mark.parametrize(
+        ("platform", "expected"),
+        [("PySpark", "inner"), ("LakeSail", "inner"), ("Polars", "semi"), ("DataFusion", "semi")],
+    )
+    def test_final_join_form_follows_engine(self, platform, expected):
+        class _Ctx:
+            pass
+
+        ctx = _Ctx()
+        ctx.platform = platform
+
+        assert q21_final_join_how(ctx) == expected
