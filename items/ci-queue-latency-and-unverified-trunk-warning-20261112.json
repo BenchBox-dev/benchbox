@@ -4,6 +4,7 @@
     "The `continuing anyway` behaviour in the trunk arm gate has a written rationale or is changed, with a test for the chosen behaviour.",
     "If runner capacity is the cause, the owner's decision on capacity is recorded here."
   ],
+  "context": "2026-11-15. PR #4254 merged as e701d17740. Measurement (ci.yml pull_request runs, jobs API; full tables in docs/internal/ci-queue-time-2026-11-15.md): wall median/p90 2026-11-15 30 runs 17.6/20.9 min; 2026-11-12 40 runs 49.9/89.0 min. Run times unchanged between days (test 13.8 vs 15.9 min, medium shards 7.7 vs 7.5); only queue moved (2026-11-12 queue median/p90: medium shard 5.1/23.7, test 4.1/20.6, tooling 8.0/25.4, spellcheck 8.4/25.8 min; quiet day 0.0-0.1). Cause: runner capacity (Free plan 20-job pool; a PR run is ~19 jobs, a trunk run ~12), not workflow ordering. Gate: stale-trunk check stays warn-only per recorded owner decisions (_project/decisions/trunk-per-commit-runs-2026-10-27.md, trunk-latest-head-runs-2026-10-30.md); rationale now in docs/internal/merge-queue-governance.md; tests pin it (pending trunk run of any age never refuses; arm-gate exits 0 with warning). Remaining acceptance: owner decision on capacity. Options: GitHub Team (60 concurrent jobs, expected to bring slow days toward the 17.6 min quiet median; spend); or merge four sub-minute jobs (spellcheck, results-data-check, example-validation, comment-policy) to free ~3 slots per run (renames required checks); larger runners would not help.",
   "description": "Operational gap observed on 2026-11-12 across PRs #4169, #4175 and #4196. A full CI round took 60-90 minutes, most of it jobs waiting in the queue (required checks `core`, `docs` and `tooling` sat `QUEUED` after their placeholder failures; medium-test shards were pending for over 40 minutes). During one arm, `trunk-arm-gate` printed `the newest trunk.yml run on develop ... has been queued for 40 minutes (over 30), so develop may be unverified; continuing anyway` and the PR was armed. So a PR can be armed, and merge, on top of a `develop` head whose trunk verification has not run.\n\nNot established: whether the queueing was runner capacity on that day or a standing limit, and whether the 30-minute warning was chosen deliberately as warn-only.\n\nExpected: a recorded decision on the warning (keep warn-only with the reason, or refuse to arm past a stated age), and a measurement of where the CI time goes so the queue can be sized or the workflow reordered.\n\nGuardrails: no change that lets a PR merge with fewer required checks; no skipping of the trunk gate. Runner settings and spend are owner decisions.",
   "links": [
     "scripts/trunk_revert.py"
@@ -16,6 +17,14 @@
       "op": "create",
       "op_id": "ba988282586b4d50bf633f12269a51ce",
       "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7222c9e9c0af3b11fd0d6a9c",
+      "at": "2026-11-16T02:42:34Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8681956a46ff4184bb82cddff73bdec0",
+      "session_id": "0171c65ed8c64989adf7cdd0332f0ed2"
     }
   ]
 }
