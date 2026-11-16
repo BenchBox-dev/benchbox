@@ -83,8 +83,8 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
         "text-edit-verdict",
         "Re-check the changelog entry against the edited title",
     ): "changelog-check",
-    ("ci.yml", "comment-policy", "Enforce comment and docstring policy"): "comment-policy-check",
-    ("ci.yml", "comment-policy", "Enforce pinned notice drift"): "comment-policy-check",
+    ("ci.yml", "short-checks", "Enforce comment and docstring policy"): "comment-policy-check",
+    ("ci.yml", "short-checks", "Enforce pinned notice drift"): "comment-policy-check",
     ("ci.yml", "api-contract-check", "Verify public API symbols against the released wheel"): "api-contract-check",
     ("ci.yml", "content-guard", "Validate YAML hygiene"): "pr-content-guard",
     ("ci.yml", "content-guard", "Validate artifact hygiene"): "pr-content-guard",
@@ -115,12 +115,12 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
         "polars-df-compat-check"
     ),
     ("ci.yml", "parity-check", "Verify parity fixtures match Python source"): "parity-check",
-    ("ci.yml", "example-validation", "Validate examples and docs references"): "docs-validate",
-    ("ci.yml", "example-validation", "Generate documentation inputs"): "docs-generate",
+    ("ci.yml", "short-checks", "Validate examples and docs references"): "docs-validate",
+    ("ci.yml", "short-checks", "Generate documentation inputs"): "docs-generate",
 }
 
 MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
-    ("ci.yml", "example-validation", "Check user-facing text for contributor references"): (
+    ("ci.yml", "short-checks", "Check user-facing text for contributor references"): (
         "A fast unit test, tests/unit/cli/test_shipped_docs_urls.py, that make test-fast and "
         "pr-preflight already run; the hosted step exists only so Markdown-only changes run it."
     ),
@@ -250,16 +250,16 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
         "Hosted governance check reads the live ruleset via the API with a "
         "secret token; covered locally by tests/unit/test_ruleset_drift.py."
     ),
-    ("ci.yml", "results-data-check", "Corpus inventory is current"): (
+    ("ci.yml", "short-checks", "Corpus inventory is current"): (
         "Covered by the corpus inventory check inside the results-data unit; no separate local target."
     ),
-    ("ci.yml", "results-data-check", "Corpus validation"): (
+    ("ci.yml", "short-checks", "Corpus validation"): (
         "Covered by results-data/validate_corpus.py run in the results-data unit; no separate local target."
     ),
-    ("ci.yml", "results-data-check", "Submission validator stays in sync"): (
+    ("ci.yml", "short-checks", "Submission validator stays in sync"): (
         "Hosted branch-copy comparison against published-results; the checker logic is covered by its unit tests."
     ),
-    ("ci.yml", "results-data-check", "Corpus, submission, and explorer-pipeline contract tests"): (
+    ("ci.yml", "short-checks", "Corpus, submission, and explorer-pipeline contract tests"): (
         "Covered by the local unit test lane running the same test files."
     ),
 }
@@ -427,7 +427,7 @@ def test_pinned_notice_gate_fails_closed_without_running_candidate_checker(
     step = next(
         step
         for job_name, step in _workflow_steps(PR_WORKFLOW)
-        if job_name == "comment-policy" and step.get("name") == "Enforce pinned notice drift"
+        if job_name == "short-checks" and step.get("name") == "Enforce pinned notice drift"
     )
 
     def git(*args: str) -> str:
