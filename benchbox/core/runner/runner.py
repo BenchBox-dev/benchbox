@@ -35,7 +35,7 @@ from benchbox.core.results.models import (
     SetupPhase,
 )
 from benchbox.core.results.platform_options import build_platform_options_capture
-from benchbox.core.results.query_status import unvalidated_measurement_query_ids
+from benchbox.core.results.query_status import unchecked_row_count_evidence, unvalidated_measurement_query_ids
 from benchbox.core.runner.conversion import FormatConversionOrchestrator
 from benchbox.core.schemas import (
     BenchmarkConfig,
@@ -214,7 +214,8 @@ def _run_postload_validation(
 
 def _mark_unvalidated_queries(result: BenchmarkResults) -> BenchmarkResults:
     unvalidated = unvalidated_measurement_query_ids(result.query_results)
-    if not unvalidated:
+    all_skipped = unchecked_row_count_evidence(result.query_results)
+    if not unvalidated and not all_skipped:
         return result
     if (result.validation_status or "").upper() not in {"PASSED", "WARNINGS"}:
         return result
@@ -222,11 +223,16 @@ def _mark_unvalidated_queries(result: BenchmarkResults) -> BenchmarkResults:
     result.validation_details = result.validation_details or {}
     warnings = result.validation_details.setdefault("warnings", [])
     if isinstance(warnings, list):
-        noun = "query" if len(unvalidated) == 1 else "queries"
-        warnings.append(
-            f"{len(unvalidated)} {noun} unvalidated: no reference answers for this benchmark and scale factor; "
-            "row counts were not checked and are not counted as passed."
-        )
+        if unvalidated:
+            noun = "query" if len(unvalidated) == 1 else "queries"
+            warnings.append(
+                f"{len(unvalidated)} {noun} unvalidated: no reference answers for this benchmark and scale factor; "
+                "row counts were not checked and are not counted as passed."
+            )
+        else:
+            warnings.append(
+                "Every recorded row count was skipped; row counts were not checked and are not counted as passed."
+            )
     return result
 
 

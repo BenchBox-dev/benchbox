@@ -17,6 +17,7 @@ from benchbox.core.expected_results.tpcds_results import (
 from benchbox.core.expected_results.tpch_results import (
     PARAMETER_SENSITIVE_QUERY_IDS as _TPCH_PARAMETER_SENSITIVE_QUERY_IDS,
 )
+from benchbox.core.results.query_status import DATA_REFRESHED_REASON
 
 logger = logging.getLogger(__name__)
 
@@ -76,8 +77,6 @@ def get_reference_seed_context() -> bool | None:
 def clear_reference_seed_context() -> None:
     _reference_seed_state.is_reference_seed = None
 
-
-DATA_REFRESHED_REASON = "data refreshed"
 
 _data_state_state = threading.local()
 

@@ -399,6 +399,75 @@ class TestValidateBundle:
         assert not vr.ok
         assert any("summary.validation='passed' contradicts" in error for error in vr.errors)
 
+    @pytest.mark.parametrize(
+        "warning",
+        [
+            "data refreshed: query '2' ran after refresh functions changed the 'tpch' data",
+            "within tolerance: row count 18233 against reference count 18314 is not an exact match",
+            "within range: row count 42 passed the accepted range check; no single reference count applies",
+        ],
+    )
+    def test_documented_skipped_row_counts_beside_passed_row_counts_are_consistent_with_summary_passed(
+        self, warning: str
+    ):
+        data = _minimal_bundle()
+        data["version"] = "2.2"
+        data["summary"]["validation"] = "passed"
+        data["queries"][0].update({"rows": 4, "row_count_validation": {"status": "PASSED", "expected": 4, "actual": 4}})
+        data["queries"][1].update(
+            {
+                "rows": 5,
+                "row_count_validation": {
+                    "status": "SKIPPED",
+                    "expected": None,
+                    "actual": 5,
+                    "warning": warning,
+                },
+            }
+        )
+        vr = ValidationResult("test")
+
+        _validate_bundle(data, vr)
+
+        assert vr.ok, vr.errors
+
+    @pytest.mark.parametrize(
+        "warning",
+        [
+            None,
+            "Validation skipped for query '2' (marked as skip in expected results)",
+            "Query '2' ran with stream-seeded parameters that differ from the answer-set parameters.",
+        ],
+    )
+    def test_undocumented_skipped_row_count_contradicts_summary_passed_beside_passed_ones(self, warning):
+        data = _minimal_bundle()
+        data["version"] = "2.2"
+        data["summary"]["validation"] = "passed"
+        data["queries"][0].update({"rows": 4, "row_count_validation": {"status": "PASSED", "expected": 4, "actual": 4}})
+        skipped = {"status": "SKIPPED", "expected": None, "actual": 5}
+        if warning is not None:
+            skipped["warning"] = warning
+        data["queries"][1].update({"rows": 5, "row_count_validation": skipped})
+        vr = ValidationResult("test")
+
+        _validate_bundle(data, vr)
+
+        assert any("queries[1].row_count_validation.status='SKIPPED'" in error for error in vr.errors)
+
+    def test_summary_passed_is_rejected_when_every_row_count_was_skipped(self):
+        data = _minimal_bundle()
+        data["version"] = "2.2"
+        data["summary"]["validation"] = "passed"
+        data["queries"][0].update(
+            {"rows": 4, "row_count_validation": {"status": "SKIPPED", "expected": None, "actual": 4}}
+        )
+        vr = ValidationResult("test")
+
+        _validate_bundle(data, vr)
+
+        assert not vr.ok
+        assert any("every recorded row count was skipped" in error for error in vr.errors)
+
     def test_unvalidated_row_count_is_named_distinctly_when_summary_validation_passed(self):
         data = _minimal_bundle()
         data["version"] = "2.2"

@@ -256,6 +256,8 @@ def _require_chunk_size(chunk_size: int) -> None:
 
 
 def _begin_transaction(connection: Any) -> None:
+    if getattr(getattr(connection, "connection", connection), "autocommit", None) is False:
+        return
     execute = getattr(connection, "execute", None)
     if not callable(execute):
         raise TypeError("TPC-H refresh functions require a connection with execute()")
