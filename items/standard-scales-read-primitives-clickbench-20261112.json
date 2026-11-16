@@ -3,7 +3,7 @@
     "Each of the three values has a recorded passing DuckDB run, or a recorded reason it stays outside the standard set.",
     "`tests/unit/core/test_scale_factor_validation.py` covers any value added, and the site tables agree with the registry."
   ],
-  "context": "Filed 2026-11-12 from the scale-factor follow-up and TPC-DI generator work of 2026-11-11 and 2026-11-12: identified during that work and not addressed.",
+  "context": "Filed 2026-11-12 from the scale-factor follow-up and TPC-DI generator work of 2026-11-11 and 2026-11-12: identified during that work and not addressed.\n\n2026-11-15 passing DuckDB runs on develop 3f8cf88f4a (generate, load, power; through make heavy-run): read_primitives SF 1: 612/612 executions, 31 s wall. clickbench SF 0.01: 172/172, 3 s. clickbench SF 0.1: 172/172, 7 s. The registry was not changed: `tests/uat/matrix.py filter_scales_by_registry` intersects each UAT config's requested scales with the standard list, so adding these values adds release-gate cells on every platform (and moves the cross-scale floors in tests/uat/test_config.py). Only DuckDB is proven. Owner decision needed: widen the lists and accept the extra gate cells, or keep the site notes.",
   "description": "## Problem\n`read_primitives` lists 0.01 and 0.1 as standard while its siblings `write_primitives` and `transaction_primitives` list 1.0 on the same TPC-H data. `clickbench` lists only 1.0. The site tables present `read_primitives` 1.0 and `clickbench` 0.01 and 0.1 as ordinary use cases, so following the docs prints the note that results are not comparable with published results. The site now marks those rows as outside the standard set (benchbox-site#142), but the lists were not widened: both DuckDB attempts on 2026-11-11 were stopped by the heavy-work watchdog under host memory pressure, so no passing run exists.\n\n## Change\nRun `read_primitives` at SF 1 and `clickbench` at SF 0.01 and 0.1 on DuckDB through `make heavy-run`. If they pass, add the values to `scale_options` in `benchbox/core/benchmark_registry.yaml` and remove the three site notes.\n\n## Guardrails\n- A new standard value joins the interactive options and the UAT matrix filter (`tests/uat/matrix.py` `filter_scales_by_registry`); check the UAT time budget.\n- Site edits go through a benchbox-site pull request.",
   "links": [
     "benchbox/core/benchmark_registry.yaml",
@@ -18,6 +18,14 @@
       "op": "create",
       "op_id": "555c39512c164f55bb19c9a3de018b6d",
       "session_id": "3f84b7b72a6a4389855a4c2d913fb7f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3da1603d55770b4822e4311c",
+      "at": "2026-11-16T01:33:04Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d00fddc687844800add23a87834c5790",
+      "session_id": "74b8e1c46d2d409db57fea9e85188bc5"
     }
   ]
 }
