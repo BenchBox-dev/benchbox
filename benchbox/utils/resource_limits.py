@@ -546,7 +546,7 @@ def _float_setting(environ: Mapping[str, str], name: str, default: float) -> flo
 
 
 def _default_load_ratio(env: Mapping[str, str]) -> float:
-    return 0.0 if env.get("CI", "").strip().lower() in {"1", "true", "yes"} else DEFAULT_MAX_LOAD_RATIO
+    return 0.0 if env.get("GITHUB_ACTIONS") == "true" else DEFAULT_MAX_LOAD_RATIO
 
 
 def admission_policy_from_env(
