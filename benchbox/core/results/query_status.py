@@ -103,30 +103,26 @@ def has_failed_query_validation(query_rows: Any) -> bool:
     )
 
 
-def unvalidated_measurement_query_ids(query_rows: Any) -> list[str]:
+def _row_count_status_query_ids(query_rows: Any, statuses: frozenset[str], *, measurement_only: bool) -> list[str]:
     if not isinstance(query_rows, list):
         return []
     return [
         str(query.get("query_id") or query.get("id"))
         for query in query_rows
         if isinstance(query, dict)
-        and str(query.get("run_type") or "measurement").strip().lower() == "measurement"
+        and (not measurement_only or str(query.get("run_type") or "measurement").strip().lower() == "measurement")
         and isinstance(evidence := query.get("row_count_validation"), dict)
-        and str(evidence.get("status") or "").strip().upper() == "UNVALIDATED"
+        and str(evidence.get("status") or "").strip().upper() in statuses
     ]
 
 
+def unvalidated_measurement_query_ids(query_rows: Any) -> list[str]:
+    return _row_count_status_query_ids(query_rows, frozenset({"UNVALIDATED"}), measurement_only=True)
+
+
 def unchecked_row_count_query_ids(query_rows: Any) -> list[str]:
-    if not isinstance(query_rows, list):
-        return []
     return list(
-        dict.fromkeys(
-            str(query.get("query_id") or query.get("id"))
-            for query in query_rows
-            if isinstance(query, dict)
-            and isinstance(evidence := query.get("row_count_validation"), dict)
-            and str(evidence.get("status") or "").strip().upper() in {"SKIPPED", "ERROR"}
-        )
+        dict.fromkeys(_row_count_status_query_ids(query_rows, frozenset({"SKIPPED", "ERROR"}), measurement_only=False))
     )
 
 

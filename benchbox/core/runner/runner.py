@@ -212,46 +212,36 @@ def _run_postload_validation(
                 pass
 
 
-def _mark_unvalidated_queries(result: BenchmarkResults) -> BenchmarkResults:
-    unvalidated = unvalidated_measurement_query_ids(result.query_results)
-    if not unvalidated:
+def _lower_passed_status(result: BenchmarkResults, query_ids: list[str], status: str, reason: str) -> BenchmarkResults:
+    if not query_ids:
         return result
     if (result.validation_status or "").upper() not in {"PASSED", "WARNINGS"}:
         return result
-    result.validation_status = "NOT_VALIDATED"
+    result.validation_status = status
     result.validation_details = result.validation_details or {}
     warnings = result.validation_details.setdefault("warnings", [])
     if isinstance(warnings, list):
-        noun = "query" if len(unvalidated) == 1 else "queries"
-        warnings.append(
-            f"{len(unvalidated)} {noun} unvalidated: no reference answers for this benchmark and scale factor; "
-            "row counts were not checked and are not counted as passed."
-        )
-    return result
-
-
-def _mark_unchecked_row_counts(result: BenchmarkResults) -> BenchmarkResults:
-    unchecked = unchecked_row_count_query_ids(result.query_results)
-    if not unchecked:
-        return result
-    if (result.validation_status or "").upper() not in {"PASSED", "WARNINGS"}:
-        return result
-    result.validation_status = "UNCERTAIN"
-    result.validation_details = result.validation_details or {}
-    warnings = result.validation_details.setdefault("warnings", [])
-    if isinstance(warnings, list):
-        noun = "query" if len(unchecked) == 1 else "queries"
-        warnings.append(
-            f"{len(unchecked)} {noun} had a row count that was skipped or could not be checked; "
-            "the run is not counted as passed."
-        )
+        noun = "query" if len(query_ids) == 1 else "queries"
+        warnings.append(f"{len(query_ids)} {noun} {reason}")
     return result
 
 
 def _finalize_validation_metadata(
     result: BenchmarkResults, records: list[tuple[str, ValidationResult]]
 ) -> BenchmarkResults:
-    return _mark_unchecked_row_counts(_mark_unvalidated_queries(_aggregate_validation_records(result, records)))
+    result = _lower_passed_status(
+        _aggregate_validation_records(result, records),
+        unvalidated_measurement_query_ids(result.query_results),
+        "NOT_VALIDATED",
+        "unvalidated: no reference answers for this benchmark and scale factor; "
+        "row counts were not checked and are not counted as passed.",
+    )
+    return _lower_passed_status(
+        result,
+        unchecked_row_count_query_ids(result.query_results),
+        "UNCERTAIN",
+        "had a row count that was skipped or could not be checked; the run is not counted as passed.",
+    )
 
 
 def _aggregate_validation_records(
