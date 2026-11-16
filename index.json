@@ -15235,6 +15235,13 @@
       "status": "done",
       "title": "Compare soundness-flag against the merge commit's first parent, not the stale event base"
     },
+    "ci-spurious-failures-under-runner-congestion-20261115": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Three unrelated CI failures hit small PRs during a runner backlog: release-v2 probe wait, fast-tier duration gate, and a flaky watchdog test"
+    },
     "ci-sql-evidence-postgres-ecr-rate-limit-20261022": {
       "claim": null,
       "needs": [],
