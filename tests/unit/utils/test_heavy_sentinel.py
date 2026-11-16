@@ -446,9 +446,7 @@ def fake_shell(
     )
 
 
-def test_the_process_table_filter_selects_only_orphaned_shells_of_this_user_in_a_checkout(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_the_process_table_filter_selects_only_orphaned_shells_of_this_user_in_a_checkout() -> None:
     table = [
         fake_shell(10),
         fake_shell(11, ppid=500),
@@ -459,9 +457,7 @@ def test_the_process_table_filter_selects_only_orphaned_shells_of_this_user_in_a
         fake_shell(16, cwd="/work/BenchBox.wt-ab"),
         fake_shell(17, name="zsh", cwd="/work/BenchBox.wt-a/deep/sub"),
     ]
-    monkeypatch.setattr(orphan_spin.psutil, "process_iter", lambda attrs: iter(table))
-    monkeypatch.setattr(orphan_spin.os, "getuid", lambda: 501)
-    found = orphan_spin.read_orphan_shells(("/work/BenchBox.wt-a",))
+    found = orphan_spin.read_orphan_shells(("/work/BenchBox.wt-a",), processes=lambda attrs: iter(table), uid=501)
     assert [shell.pid for shell in found] == [10, 17]
     assert found[0].cpu_seconds == 42.0
     assert found[0].command == "bash -c spin"

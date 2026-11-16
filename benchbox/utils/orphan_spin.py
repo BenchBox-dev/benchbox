@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from typing import Any
 
 import psutil
 
@@ -53,10 +54,16 @@ def _under(path: str, roots: Sequence[str]) -> bool:
     return any(normal == root or normal.startswith(root + os.sep) for root in roots)
 
 
-def read_orphan_shells(roots: Sequence[str]) -> list[OrphanShell]:
-    uid = os.getuid() if hasattr(os, "getuid") else None
+def read_orphan_shells(
+    roots: Sequence[str],
+    *,
+    processes: Callable[[list[str]], Iterable[Any]] = psutil.process_iter,
+    uid: int | None = None,
+) -> list[OrphanShell]:
+    if uid is None and hasattr(os, "getuid"):
+        uid = os.getuid()
     found: list[OrphanShell] = []
-    for proc in psutil.process_iter(["pid", "ppid", "name", "create_time", "uids"]):
+    for proc in processes(["pid", "ppid", "name", "create_time", "uids"]):
         info = proc.info
         if info["pid"] is None or info["create_time"] is None or info["ppid"] != 1 or info["name"] not in SHELL_NAMES:
             continue
