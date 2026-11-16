@@ -38163,15 +38163,10 @@
       "title": "Check that site docs links to core directories resolve against every ancestor directory, as repo-files.json now lists them"
     },
     "site-deploy-validator-parity-after-superseded-bundle-20261112": {
-      "claim": {
-        "expires_at": "2026-11-17T03:45:18Z",
-        "generation": "107a485014e0425f84bc884abcd4ee7b",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2eea77f9ada682154d121605"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "A corpus change is not deployed when a later develop merge supersedes its bundle and the next bundle's parity parent is not the deployed core"
     },
     "site-deploy-validator-parity-range-refusal-20261111": {
