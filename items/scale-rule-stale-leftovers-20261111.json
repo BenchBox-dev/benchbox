@@ -4,7 +4,7 @@
     "`rg -n 'test_validate_scale_choice_rejects_below_minimum' tests` finds nothing.",
     "`make pr-preflight` passes."
   ],
-  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.",
+  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.\n\nMerged as BenchBox-dev/benchbox#4258 (3c09c2a1e0): removed `ValidationRules.validate_scale_factor`, and `validate_scale_factor`, `MIN_SCALE_FACTOR` and `MAX_SCALE_FACTOR` from `benchbox/mcp/schemas.py`, with the tests that exercised only them. The stale entries in `tests/fixtures/fast_tier_baseline/*.json` were left alone: that fixture is the fast-tier duration baseline, refreshed by its own workflow, and it carries entries for many tests that no longer exist (13 for test_scale_factor_validation.py alone); a hand edit is not the right fix.",
   "description": "## Problem\nThree leftovers contradict or outlive the scale-factor rule from BenchBox#4126:\n- `benchbox/cli/exceptions.py`, `ValidationRules.validate_scale_factor`: rejects values above 100 with 'very large'. No production code calls it; only its own unit tests do.\n- `benchbox/mcp/schemas.py`: `MIN_SCALE_FACTOR = 0.001`, `MAX_SCALE_FACTOR = 10000` and `validate_scale_factor`. No caller outside tests. The minimum contradicts the 0.01 floor, and the maximum is not the limit MCP enforces (that is `max_scale_factor` in `benchbox/mcp/security.py`).\n- `tests/fixtures/fast_tier_baseline/tests-02.json` still names `test_validate_scale_choice_rejects_below_minimum`, which was replaced.\n\n## Change\nConfirm with a references search that the two validators have no production caller, then delete them and their tests. Regenerate the fast-tier baseline with the repository's own target rather than editing it by hand.\n\n## Guardrails\n- `ValidationRules` has other methods that are used (`validate_output_directory`, `validate_dry_run_output_dir`, `validate_benchmark_name`); remove only the scale method.\n- If either validator turns out to be part of a documented public surface, stop and report.",
   "links": [
     "benchbox/cli/exceptions.py",
@@ -28,6 +28,14 @@
       "generation": "593dade2c61c4059936b271f9ffd4fe9",
       "op": "take",
       "op_id": "6a196003b2d9484db7ac029fb6440d04",
+      "session_id": "74b8e1c46d2d409db57fea9e85188bc5"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3da1603d55770b4822e4311c",
+      "at": "2026-11-16T04:40:02Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "15c93749f5904513947d0142bb32edec",
       "session_id": "74b8e1c46d2d409db57fea9e85188bc5"
     }
   ]
