@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Maintenance release from the release/0.5.x line with no functional change from 0.5.1.
 
+### Security
+
+- Refreshed the locked development dependencies tornado (6.6.1) and opentelemetry-api (1.45.2) to clear CVE-2026-126347 and CVE-2026-126360.
+
 ## [0.5.1] - 2026-11-11
 
 ### Before you upgrade
