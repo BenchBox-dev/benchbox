@@ -13162,15 +13162,10 @@
       "title": "Feature batches cannot run members as subagents of the leader without overriding the identity rule"
     },
     "batch-member-remerge-recheck-cost-20261112": {
-      "claim": {
-        "expires_at": "2026-11-17T04:22:57Z",
-        "generation": "64aa07f6cb574ec5b39d4624b2d58d92",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7222c9e9c0af3b11fd0d6a9c"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "In a feature batch every pending member must re-merge and re-run its full check after each other member lands"
     },
     "batch-member-side-tooling-20261101": {
