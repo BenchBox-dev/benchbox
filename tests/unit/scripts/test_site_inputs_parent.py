@@ -627,13 +627,28 @@ def test_in_flight_site_deploys_unreadable_is_refused_with_recovery_instruction(
 def test_automatic_run_parents_on_the_core_the_site_deployed_while_the_bundle_waited(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    events: list[str] = []
     in_flight = [1, 1, 0, 0]
-    deployed = [OTHER, PARENT]
-    monkeypatch.setattr(parent_mod.time, "sleep", lambda seconds: None)
-    monkeypatch.setattr(parent_mod, "site_deploys_in_flight", lambda repo: in_flight.pop(0))
-    monkeypatch.setattr(parent_mod, "site_deployed_core_sha", lambda repo: deployed.pop(0))
+
+    def count_in_flight(repo: str) -> int:
+        events.append("in_flight")
+        return in_flight.pop(0)
+
+    def read_deployed(repo: str) -> str:
+        events.append("deployed")
+        return OTHER
+
+    settle = parent_mod.settled_site_deployed_core_sha
+    monkeypatch.setattr(
+        parent_mod,
+        "settled_site_deployed_core_sha",
+        lambda repo: settle(repo, sleep_fn=lambda seconds: events.append("sleep")),
+    )
+    monkeypatch.setattr(parent_mod, "site_deploys_in_flight", count_in_flight)
+    monkeypatch.setattr(parent_mod, "site_deployed_core_sha", read_deployed)
     monkeypatch.setattr(parent_mod, "is_ancestor", lambda parent, core: True)
     monkeypatch.setattr(parent_mod, "parent_bundle_state", lambda sha, repo: "bundle")
     monkeypatch.setattr(parent_mod, "recent_trunk_runs", lambda repo: [])
     parent_sha, parent_source, certified = parent_mod.resolve_and_decide(CORE, "", "o/r", 100, "123")
     assert (parent_sha, parent_source) == (OTHER, "bundle")
+    assert events == ["in_flight", "sleep", "in_flight", "sleep", "in_flight", "deployed", "in_flight"]
