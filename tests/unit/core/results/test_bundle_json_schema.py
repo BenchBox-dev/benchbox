@@ -18,6 +18,7 @@ from benchbox.core.results.bundle_json_schema import (
 from benchbox.core.results.environment import HOST_LOAD_SAMPLE_FIELDS, build_host_load_block, host_load_sample
 from benchbox.core.results.schema import SchemaV2ValidationError, SchemaV2Validator
 from benchbox.core.results.schema_policy import CURRENT_SCHEMA_VERSION, KNOWN_SCHEMA_V2_VERSIONS
+from benchbox.core.results.timing_fields import PLATFORM_TIMING_REASON_STATUSES
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
@@ -195,3 +196,98 @@ def test_drift_check_fails_on_stale_file(tmp_path: Path) -> None:
     assert bundle_json_schema.main(["--check", "--output", str(stale)]) == 1
     assert bundle_json_schema.main(["--output", str(stale)]) == 0
     assert bundle_json_schema.main(["--check", "--output", str(stale)]) == 0
+
+
+def _timing_bundle() -> dict:
+    data = _current_bundle()
+    data["run"]["timing_method"] = 2
+    data["run"]["net_estimate_status"] = "embedded"
+    data["platform"].pop("deployment", None)
+    return data
+
+
+def _assert_both_reject(data: dict) -> None:
+    assert not _validator().is_valid(data)
+    with pytest.raises(SchemaV2ValidationError):
+        SchemaV2Validator().validate(data)
+
+
+def _assert_both_accept(data: dict) -> None:
+    errors = [error.message for error in _validator().iter_errors(data)]
+    assert not errors, errors
+    SchemaV2Validator().validate(data)
+
+
+def test_eligible_net_estimate_requires_networked_endpoint_and_timing_method_2() -> None:
+    data = _timing_bundle()
+    data["run"]["net_estimate_status"] = "eligible"
+    data["platform"]["deployment"] = {"endpoint_class": "embedded"}
+    _assert_both_reject(data)
+    data["platform"]["deployment"] = {"endpoint_class": "remote_host"}
+    _assert_both_accept(data)
+    data["run"]["timing_method"] = 1
+    _assert_both_reject(data)
+    data["run"]["timing_method"] = 2
+    del data["platform"]["deployment"]
+    _assert_both_reject(data)
+
+
+def test_valid_platform_timing_requires_platform_ms() -> None:
+    data = _timing_bundle()
+    data["run"]["platform_timing"] = {"source": "s", "definition": "server_complete", "coverage": 1}
+    data["queries"][0]["platform_timing"] = {"status": "valid"}
+    _assert_both_reject(data)
+    data["queries"][0]["platform_timing"] = {"status": "valid", "platform_ms": None}
+    _assert_both_reject(data)
+    data["queries"][0]["platform_timing"] = {"status": "valid", "platform_ms": 3.5}
+    _assert_both_accept(data)
+
+
+@pytest.mark.parametrize("status", sorted(PLATFORM_TIMING_REASON_STATUSES))
+def test_suspect_and_unavailable_platform_timing_require_a_reason(status: str) -> None:
+    data = _timing_bundle()
+    data["run"]["platform_timing"] = {"source": "s", "definition": "server_complete", "coverage": 1}
+    data["queries"][0]["platform_timing"] = {"status": status}
+    _assert_both_reject(data)
+    data["queries"][0]["platform_timing"] = {"status": status, "reason": "   "}
+    _assert_both_reject(data)
+    data["queries"][0]["platform_timing"] = {"status": status, "reason": "probe failed"}
+    _assert_both_accept(data)
+
+
+def test_run_platform_timing_is_required_when_a_query_carries_platform_timing() -> None:
+    data = _timing_bundle()
+    data["queries"][0]["platform_timing"] = {"status": "valid", "platform_ms": 1}
+    _assert_both_reject(data)
+    data["run"]["platform_timing"] = {"source": "s", "definition": "includes_fetch", "coverage": 0.5}
+    _assert_both_accept(data)
+
+
+@pytest.mark.parametrize("field", ["probed_at", "platform_timing"])
+def test_client_link_timing_fields_require_schema_2_4(field: str) -> None:
+    value = {"probed_at": "2026-11-16T10:00:00", "platform_timing": {"status": "valid", "platform_ms": 1}}[field]
+    legacy = _current_bundle()
+    for key in ("timing_method", "net_estimate_status", "platform_timing"):
+        legacy["run"].pop(key, None)
+    for query in legacy["queries"]:
+        for key in ("request_count", "result_bytes", "platform_timing"):
+            query.pop(key, None)
+    legacy["result_schema_version"] = legacy["version"] = "2.3"
+    legacy.setdefault("environment", {})["client_link"] = {}
+    _assert_both_accept(legacy)
+    legacy["environment"]["client_link"] = {field: value}
+    _assert_both_reject(legacy)
+
+    current = _current_bundle()
+    current.setdefault("environment", {})["client_link"] = {field: value}
+    _assert_both_accept(current)
+    assert not _validator().is_valid({**current, "environment": {"client_link": {field: ""}}})
+
+
+def test_version_and_result_schema_version_must_match() -> None:
+    data = _current_bundle()
+    data["result_schema_version"] = "2.4"
+    data["version"] = "2.3"
+    assert not _validator().is_valid(data)
+    with pytest.raises(ValueError):
+        SchemaV2Validator().validate(data)

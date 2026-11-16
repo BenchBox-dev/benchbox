@@ -3,7 +3,7 @@
   "$id": "https://benchbox.dev/schemas/result-bundle-2.schema.json",
   "title": "BenchBox result bundle",
   "result_schema_version": "2.4",
-  "description": "Compatibility promise for major version 2. Within major version 2 the schema changes only in ways that keep every bundle that was valid under an earlier 2.x version valid: new optional keys, new optional blocks, and new enum values on fields that consumers are told to treat as open. Such a change raises the minor version (2.4 to 2.5) and is published at this same URL. A change that removes or renames a required key, changes the type of an existing key, narrows an accepted value set, or changes the meaning of an existing key requires major version 3, which is published at a new URL with a 3 in its name; this URL keeps serving major version 2. Consumers of major version 2 must ignore keys they do not recognise and must not rely on key order. Checks the BenchBox validator (SchemaV2Validator) enforces that JSON Schema cannot express and that this schema therefore omits: result_schema_version and version must be equal when both are present; row_count_validation.actual must equal the query's rows, and a PASSED row_count_validation with an integer expected must have equal expected and actual; row_count_validation.status is matched case-insensitively by the validator and is listed here in its normalised upper-case form; run.platform_timing is required when any query carries platform_timing; run.net_estimate_status 'eligible' requires run.timing_method of 2 or later and a networked platform.deployment.endpoint_class; platform_timing status 'valid' requires platform_ms and status 'suspect' or 'unavailable' requires a reason.",
+  "description": "Compatibility promise for major version 2. Within major version 2 the schema changes only in ways that keep every bundle that was valid under an earlier 2.x version valid: new optional keys, new optional blocks, and new enum values on fields that consumers are told to treat as open. Such a change raises the minor version (2.4 to 2.5) and is published at this same URL. A change that removes or renames a required key, changes the type of an existing key, narrows an accepted value set, or changes the meaning of an existing key requires major version 3, which is published at a new URL with a 3 in its name; this URL keeps serving major version 2. Consumers of major version 2 must ignore keys they do not recognise and must not rely on key order. Checks the BenchBox validator (SchemaV2Validator) enforces that JSON Schema cannot express and that this schema therefore omits: row_count_validation.actual must equal the query's rows, and a PASSED row_count_validation with an integer expected must have equal expected and actual (both compare two values in the instance); the validator matches row_count_validation.status case-insensitively while this schema lists only the normalised upper-case form.",
   "type": "object",
   "required": [
     "run",
@@ -159,7 +159,7 @@
           "properties": {
             "probed_at": {
               "type": "string",
-              "minLength": 1
+              "pattern": "\\S"
             },
             "platform_timing": {
               "type": "object",
@@ -171,7 +171,7 @@
                   "anyOf": [
                     {
                       "type": "string",
-                      "minLength": 1
+                      "pattern": "\\S"
                     },
                     {
                       "type": "null"
@@ -194,7 +194,7 @@
                             "anyOf": [
                               {
                                 "type": "string",
-                                "minLength": 1
+                                "pattern": "\\S"
                               },
                               {
                                 "type": "null"
@@ -253,7 +253,7 @@
                   "anyOf": [
                     {
                       "type": "string",
-                      "minLength": 1
+                      "pattern": "\\S"
                     },
                     {
                       "type": "null"
@@ -305,7 +305,58 @@
                   ]
                 }
               },
-              "additionalProperties": false
+              "additionalProperties": false,
+              "allOf": [
+                {
+                  "if": {
+                    "required": [
+                      "status"
+                    ],
+                    "properties": {
+                      "status": {
+                        "const": "valid"
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "platform_ms"
+                    ],
+                    "properties": {
+                      "platform_ms": {
+                        "type": "number",
+                        "minimum": 0
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "required": [
+                      "status"
+                    ],
+                    "properties": {
+                      "status": {
+                        "enum": [
+                          "suspect",
+                          "unavailable"
+                        ]
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "reason"
+                    ],
+                    "properties": {
+                      "reason": {
+                        "type": "string",
+                        "pattern": "\\S"
+                      }
+                    }
+                  }
+                }
+              ]
             }
           }
         }
@@ -362,7 +413,7 @@
                     "anyOf": [
                       {
                         "type": "string",
-                        "minLength": 1
+                        "pattern": "\\S"
                       },
                       {
                         "type": "null"
@@ -385,7 +436,7 @@
                               "anyOf": [
                                 {
                                   "type": "string",
-                                  "minLength": 1
+                                  "pattern": "\\S"
                                 },
                                 {
                                   "type": "null"
@@ -444,7 +495,7 @@
                     "anyOf": [
                       {
                         "type": "string",
-                        "minLength": 1
+                        "pattern": "\\S"
                       },
                       {
                         "type": "null"
@@ -496,7 +547,58 @@
                     ]
                   }
                 },
-                "additionalProperties": false
+                "additionalProperties": false,
+                "allOf": [
+                  {
+                    "if": {
+                      "required": [
+                        "status"
+                      ],
+                      "properties": {
+                        "status": {
+                          "const": "valid"
+                        }
+                      }
+                    },
+                    "then": {
+                      "required": [
+                        "platform_ms"
+                      ],
+                      "properties": {
+                        "platform_ms": {
+                          "type": "number",
+                          "minimum": 0
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "required": [
+                        "status"
+                      ],
+                      "properties": {
+                        "status": {
+                          "enum": [
+                            "suspect",
+                            "unavailable"
+                          ]
+                        }
+                      }
+                    },
+                    "then": {
+                      "required": [
+                        "reason"
+                      ],
+                      "properties": {
+                        "reason": {
+                          "type": "string",
+                          "pattern": "\\S"
+                        }
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "type": "null"
@@ -609,7 +711,7 @@
           "properties": {
             "source": {
               "type": "string",
-              "minLength": 1
+              "pattern": "\\S"
             },
             "definition": {
               "enum": [
@@ -785,6 +887,26 @@
                 ]
               }
             }
+          },
+          "environment": {
+            "properties": {
+              "client_link": {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "probed_at"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "platform_timing"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -854,6 +976,41 @@
         "allOf": [
           {
             "if": {
+              "required": [
+                "queries"
+              ],
+              "properties": {
+                "queries": {
+                  "contains": {
+                    "required": [
+                      "platform_timing"
+                    ],
+                    "properties": {
+                      "platform_timing": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "run": {
+                  "required": [
+                    "platform_timing"
+                  ],
+                  "properties": {
+                    "platform_timing": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
               "properties": {
                 "run": {
                   "required": [
@@ -908,6 +1065,165 @@
             }
           }
         ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "run"
+        ],
+        "properties": {
+          "run": {
+            "required": [
+              "net_estimate_status"
+            ],
+            "properties": {
+              "net_estimate_status": {
+                "const": "eligible"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "platform"
+        ],
+        "properties": {
+          "run": {
+            "required": [
+              "timing_method"
+            ],
+            "properties": {
+              "timing_method": {
+                "type": "integer",
+                "minimum": 2
+              }
+            }
+          },
+          "platform": {
+            "required": [
+              "deployment"
+            ],
+            "properties": {
+              "deployment": {
+                "type": "object",
+                "required": [
+                  "endpoint_class"
+                ],
+                "properties": {
+                  "endpoint_class": {
+                    "enum": [
+                      "cloud_endpoint",
+                      "localhost_port",
+                      "remote_host"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "result_schema_version",
+          "version"
+        ],
+        "properties": {
+          "result_schema_version": {
+            "const": "2.0"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "version": {
+            "const": "2.0"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "result_schema_version",
+          "version"
+        ],
+        "properties": {
+          "result_schema_version": {
+            "const": "2.1"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "version": {
+            "const": "2.1"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "result_schema_version",
+          "version"
+        ],
+        "properties": {
+          "result_schema_version": {
+            "const": "2.2"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "version": {
+            "const": "2.2"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "result_schema_version",
+          "version"
+        ],
+        "properties": {
+          "result_schema_version": {
+            "const": "2.3"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "version": {
+            "const": "2.3"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "result_schema_version",
+          "version"
+        ],
+        "properties": {
+          "result_schema_version": {
+            "const": "2.4"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "version": {
+            "const": "2.4"
+          }
+        }
       }
     }
   ]

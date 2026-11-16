@@ -4,7 +4,7 @@
     {
       "category": "added",
       "breaking": false,
-      "text": "Result bundles now ship a generated JSON Schema (result-bundle.schema.json, id https://benchbox.dev/schemas/result-bundle-2.schema.json) with a stated compatibility promise for major version 2. make result-schema regenerates it and make result-schema-check fails when it drifts from the validator."
+      "text": "Result bundles now ship a generated JSON Schema (result-bundle.schema.json, id https://benchbox.dev/schemas/result-bundle-2.schema.json) with a stated compatibility promise for major version 2. python -m benchbox.core.results.bundle_json_schema regenerates it and --check fails when it drifts from the validator."
     }
   ]
 }

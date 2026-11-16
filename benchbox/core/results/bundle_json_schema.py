@@ -21,15 +21,22 @@ from benchbox.core.results.schema_policy import (
     supports_row_count_validation,
 )
 from benchbox.core.results.timing_fields import (
+    CLIENT_LINK_TIMING_FIELDS,
     KNOWN_TIMING_METHODS,
+    NET_ESTIMATE_ELIGIBLE_STATUS,
     NET_ESTIMATE_MIN_TIMING_METHOD,
     NET_ESTIMATE_STATUSES,
+    NETWORKED_ENDPOINT_CLASSES,
     PLATFORM_REQUEST_KINDS,
     PLATFORM_TIMING_DEFINITIONS,
     PLATFORM_TIMING_DURATION_FIELDS,
     PLATFORM_TIMING_FIELDS,
+    PLATFORM_TIMING_REASON_STATUSES,
     PLATFORM_TIMING_STATUSES,
+    PLATFORM_TIMING_VALID_STATUS,
+    QUERY_TIMING_FIELDS,
     RUN_PLATFORM_TIMING_FIELDS,
+    RUN_TIMING_FIELDS,
 )
 
 SCHEMA_ID = "https://benchbox.dev/schemas/result-bundle-2.schema.json"
@@ -49,16 +56,13 @@ COMPATIBILITY_PROMISE = (
 
 VALIDATOR_ONLY_RULES = (
     "Checks the BenchBox validator (SchemaV2Validator) enforces that JSON Schema cannot express and that this "
-    "schema therefore omits: result_schema_version and version must be equal when both are present; "
-    "row_count_validation.actual must equal the query's rows, and a PASSED row_count_validation with an integer "
-    "expected must have equal expected and actual; row_count_validation.status is matched case-insensitively by "
-    "the validator and is listed here in its normalised upper-case form; run.platform_timing is required when any "
-    "query carries platform_timing; run.net_estimate_status 'eligible' requires run.timing_method of "
-    f"{NET_ESTIMATE_MIN_TIMING_METHOD} or later and a networked platform.deployment.endpoint_class; "
-    "platform_timing status 'valid' requires platform_ms and status 'suspect' or 'unavailable' requires a reason."
+    "schema therefore omits: row_count_validation.actual must equal the query's rows, and a PASSED "
+    "row_count_validation with an integer expected must have equal expected and actual (both compare two values "
+    "in the instance); the validator matches row_count_validation.status case-insensitively while this schema "
+    "lists only the normalised upper-case form."
 )
 
-_STRING = {"type": "string"}
+_NON_EMPTY_STRING = {"type": "string", "pattern": "\\S"}
 _NON_NEGATIVE_NUMBER = {"type": "number", "minimum": 0}
 _NON_NEGATIVE_INT = {"type": "integer", "minimum": 0}
 
@@ -103,7 +107,7 @@ def _platform_timing_schema() -> dict[str, Any]:
     request = _object(
         ("attempt", "kind", "fields"),
         {
-            "id": _nullable({"type": "string", "minLength": 1}),
+            "id": _nullable(_NON_EMPTY_STRING),
             "attempt": {"type": "integer", "minimum": 1},
             "kind": {"enum": sorted(PLATFORM_REQUEST_KINDS)},
             "fields": {
@@ -114,20 +118,31 @@ def _platform_timing_schema() -> dict[str, Any]:
         closed=True,
     )
     properties = {
-        "source": _nullable({"type": "string", "minLength": 1}),
+        "source": _nullable(_NON_EMPTY_STRING),
         "requests": _nullable({"type": "array", "items": request}),
         "cache_hit": _nullable({"type": "boolean"}),
         "status": {"enum": sorted(PLATFORM_TIMING_STATUSES)},
-        "reason": _nullable({"type": "string", "minLength": 1}),
+        "reason": _nullable(_NON_EMPTY_STRING),
         **durations,
     }
     assert set(properties) == set(PLATFORM_TIMING_FIELDS)
-    return _object(("status",), properties, closed=True)
+    block = _object(("status",), properties, closed=True)
+    block["allOf"] = [
+        {
+            "if": {"required": ["status"], "properties": {"status": {"const": PLATFORM_TIMING_VALID_STATUS}}},
+            "then": {"required": ["platform_ms"], "properties": {"platform_ms": _NON_NEGATIVE_NUMBER}},
+        },
+        {
+            "if": {"required": ["status"], "properties": {"status": {"enum": sorted(PLATFORM_TIMING_REASON_STATUSES)}}},
+            "then": {"required": ["reason"], "properties": {"reason": _NON_EMPTY_STRING}},
+        },
+    ]
+    return block
 
 
 def _run_platform_timing_schema() -> dict[str, Any]:
     properties = {
-        "source": {"type": "string", "minLength": 1},
+        "source": _NON_EMPTY_STRING,
         "definition": {"enum": sorted(PLATFORM_TIMING_DEFINITIONS)},
         "coverage": {"type": "number", "minimum": 0, "maximum": 1},
     }
@@ -185,11 +200,18 @@ def _environment_schema() -> dict[str, Any]:
     client_link = _object(
         (),
         {
-            "probed_at": {"type": "string", "minLength": 1},
+            "probed_at": _NON_EMPTY_STRING,
             "platform_timing": _platform_timing_schema(),
         },
     )
     return _object((), {"host_load": host_load, "client_link": client_link})
+
+
+def _forbid_keys(keys: tuple[str, ...], *, under: str | None = None) -> dict[str, Any]:
+    forbidden = {"not": {"anyOf": [{"required": [key]} for key in keys]}}
+    if under is None:
+        return forbidden
+    return {"properties": {under: forbidden}}
 
 
 def _version_gates() -> list[dict[str, Any]]:
@@ -214,26 +236,9 @@ def _version_gates() -> list[dict[str, Any]]:
                 "if": _version_in(without_timing),
                 "then": {
                     "properties": {
-                        "run": {
-                            "not": {
-                                "anyOf": [
-                                    {"required": ["timing_method"]},
-                                    {"required": ["net_estimate_status"]},
-                                    {"required": ["platform_timing"]},
-                                ]
-                            }
-                        },
-                        "queries": {
-                            "items": {
-                                "not": {
-                                    "anyOf": [
-                                        {"required": ["request_count"]},
-                                        {"required": ["result_bytes"]},
-                                        {"required": ["platform_timing"]},
-                                    ]
-                                }
-                            }
-                        },
+                        "run": _forbid_keys(RUN_TIMING_FIELDS),
+                        "queries": {"items": _forbid_keys(QUERY_TIMING_FIELDS)},
+                        "environment": _forbid_keys(CLIENT_LINK_TIMING_FIELDS, under="client_link"),
                     }
                 },
             }
@@ -271,6 +276,27 @@ def _version_gates() -> list[dict[str, Any]]:
                     "allOf": [
                         {
                             "if": {
+                                "required": ["queries"],
+                                "properties": {
+                                    "queries": {
+                                        "contains": {
+                                            "required": ["platform_timing"],
+                                            "properties": {"platform_timing": {"type": "object"}},
+                                        }
+                                    }
+                                },
+                            },
+                            "then": {
+                                "properties": {
+                                    "run": {
+                                        "required": ["platform_timing"],
+                                        "properties": {"platform_timing": {"type": "object"}},
+                                    }
+                                }
+                            },
+                        },
+                        {
+                            "if": {
                                 "properties": {
                                     "run": {
                                         "required": ["timing_method"],
@@ -279,12 +305,58 @@ def _version_gates() -> list[dict[str, Any]]:
                                 }
                             },
                             "then": {"properties": {"queries": {"items": networked_request_fields}}},
-                        }
+                        },
                     ],
                 },
             }
         )
     return gates
+
+
+def _net_estimate_gate() -> dict[str, Any]:
+    return {
+        "if": {
+            "required": ["run"],
+            "properties": {
+                "run": {
+                    "required": ["net_estimate_status"],
+                    "properties": {"net_estimate_status": {"const": NET_ESTIMATE_ELIGIBLE_STATUS}},
+                }
+            },
+        },
+        "then": {
+            "required": ["platform"],
+            "properties": {
+                "run": {
+                    "required": ["timing_method"],
+                    "properties": {"timing_method": {"type": "integer", "minimum": NET_ESTIMATE_MIN_TIMING_METHOD}},
+                },
+                "platform": {
+                    "required": ["deployment"],
+                    "properties": {
+                        "deployment": {
+                            "type": "object",
+                            "required": ["endpoint_class"],
+                            "properties": {"endpoint_class": {"enum": sorted(NETWORKED_ENDPOINT_CLASSES)}},
+                        }
+                    },
+                },
+            },
+        },
+    }
+
+
+def _version_equality_gates() -> list[dict[str, Any]]:
+    return [
+        {
+            "if": {
+                "required": ["result_schema_version", "version"],
+                "properties": {"result_schema_version": {"const": version}},
+            },
+            "then": {"properties": {"version": {"const": version}}},
+        }
+        for version in KNOWN_SCHEMA_V2_VERSIONS
+    ]
 
 
 def build_result_bundle_schema() -> dict[str, Any]:
@@ -320,7 +392,7 @@ def build_result_bundle_schema() -> dict[str, Any]:
         "anyOf": [{"required": ["result_schema_version"]}, {"required": ["version"]}],
         "properties": properties,
         "additionalProperties": False,
-        "allOf": _version_gates(),
+        "allOf": [*_version_gates(), _net_estimate_gate(), *_version_equality_gates()],
     }
 
 

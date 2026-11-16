@@ -46,21 +46,23 @@ nothing machine-readable to validate against.
 
 The schema encodes required keys at the top level and in `run`, `benchmark`, `platform` and
 `summary`; the closed top-level key set; version gating (row-count validation from 2.2, round-trip
-timing fields from 2.4, required `timing_method`, `net_estimate_status` and per-query
-`request_count`/`result_bytes` rules from 2.4); the `row_count_validation` field set, statuses and
-message length; `platform_timing`; and `environment.host_load` and `environment.client_link`. The
-validator enforces more than JSON Schema can express. That residue is stated in the schema
+timing fields in `run`, `queries` and `environment.client_link` from 2.4, required `timing_method`,
+`net_estimate_status` and per-query `request_count`/`result_bytes` rules from 2.4); equality of
+`version` and `result_schema_version` when both are present; the `row_count_validation` field set,
+statuses and message length; `platform_timing` including the `valid` (requires `platform_ms`) and
+`suspect`/`unavailable` (require a `reason`) rules; `run.platform_timing` required when any query
+carries one; `net_estimate_status` `eligible` requiring `timing_method` 2 or later and a networked
+`platform.deployment.endpoint_class`; and `environment.host_load` and `environment.client_link`.
+The cross-field rules are emitted as `if`/`then` gates built from the same constants the validator
+uses. The validator also enforces rules JSON Schema cannot express, because they compare two values
+in the instance or normalise a value before comparing. That residue is stated in the schema
 `description` and reproduced here:
 
 Checks the BenchBox validator (SchemaV2Validator) enforces that JSON Schema cannot express and that
-this schema therefore omits: result_schema_version and version must be equal when both are present;
-row_count_validation.actual must equal the query's rows, and a PASSED row_count_validation with an
-integer expected must have equal expected and actual; row_count_validation.status is matched case-
-insensitively by the validator and is listed here in its normalised upper-case form;
-run.platform_timing is required when any query carries platform_timing; run.net_estimate_status
-'eligible' requires run.timing_method of 2 or later and a networked
-platform.deployment.endpoint_class; platform_timing status 'valid' requires platform_ms and status
-'suspect' or 'unavailable' requires a reason.
+this schema therefore omits: row_count_validation.actual must equal the query's rows, and a PASSED
+row_count_validation with an integer expected must have equal expected and actual (both compare two
+values in the instance); the validator matches row_count_validation.status case-insensitively while
+this schema lists only the normalised upper-case form.
 
 ## Compatibility promise
 
