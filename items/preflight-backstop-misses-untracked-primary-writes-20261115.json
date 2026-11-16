@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "make agent-write-preflight reports an untracked, non-ignored file that appeared in the primary clone since the session snapshot, naming the path and the recovery.",
+    "Files present when the snapshot was taken and gitignored files do not trigger it.",
+    "A test covers a new untracked file (reported) and a pre-existing untracked file (silent).",
+    "docs/agent/primary-clone-guard.md and primary-clone-update.md describe the new coverage."
+  ],
+  "description": "The primary-clone write guard has two layers: a pre-tool hook, and a per-session snapshot check in make agent-write-preflight that reports writes after the fact. The snapshot ignores untracked files (docs/agent/primary-clone-guard.md). On 2026-11-15 a live probe showed Codex 0.162.1 and 0.169.0 never call the PreToolUse hook for apply_patch (openai/codex#27833), and Gemini CLI cannot be run to prove its hook. So a new file such an agent creates in the primary clone is caught by neither layer; only edits to tracked files reach the backstop. Untracked files were excluded originally because the primary clone legitimately holds ignored and local files, so a naive inclusion would be noisy.",
+  "links": [
+    "scripts/primary_clone_write_guard.py",
+    "docs/agent/primary-clone-guard.md",
+    "https://github.com/BenchBox-dev/benchbox/pull/4252",
+    "https://github.com/openai/codex/issues/27833"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:019255ea6c3ae4adcc24ae71",
+      "at": "2026-11-16T00:43:20Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "811819e5338e41ed9f213597fbe0eb4a",
+      "session_id": "aaf759f71b16410dbe08056803454f0b"
+    }
+  ]
+}

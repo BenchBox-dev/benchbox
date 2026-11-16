@@ -32349,6 +32349,13 @@
       "status": "done",
       "title": "Address pre-existing issues surfaced by complexity batch 8-10 review"
     },
+    "preflight-backstop-misses-untracked-primary-writes-20261115": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Write preflight does not detect new untracked files written into the primary clone"
+    },
     "preflight-misses-source-scanning-guard-tests-20261112": {
       "claim": null,
       "needs": [],
