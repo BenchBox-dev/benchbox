@@ -5,7 +5,7 @@
     "The nightly throughput configs run a phase set the official gate accepts, or use the non-official run path if a partial run is intended, without weakening the gate",
     "t3:throughput duckdb and cedardb green in the next nightly"
   ],
-  "context": "2026-11-12: PR #4220 merged (9e1f9208d7 2026-11-14T03:13:05Z). Root cause: uat-throughput-{duckdb,cedardb}-nightly.yaml ran official TPC-H with phases load,throughput; #4137's gate requires power and throughput, and the refusal went to the silenced console under --quiet (run_official also relabelled the exit as 'Benchmark execution failed: 1'). Fix: refusals print via fatal() to stderr under --quiet with a test; configs use load,power,throughput; gate unchanged. Second bug found and fixed: a TPC-H Q16 row count inside the loose non-reference-seed tolerance was recorded as an exact PASSED and failed export; now SKIPPED with a warning (result_capture and DataFrame validation, tests for both). Local: duckdb cell exit 0 at SF1, 132 queries passed, refresh included, validate_throughput_result ok for 3 streams. Remaining: close when the next nightly shows t3:throughput duckdb and cedardb green (CedarDB not run locally).",
+  "context": "2026-11-12: PR #4220 merged (9e1f9208d7 2026-11-14T03:13:05Z). Root cause: uat-throughput-{duckdb,cedardb}-nightly.yaml ran official TPC-H with phases load,throughput; #4137's gate requires power and throughput, and the refusal went to the silenced console under --quiet (run_official also relabelled the exit as 'Benchmark execution failed: 1'). Fix: refusals print via fatal() to stderr under --quiet with a test; configs use load,power,throughput; gate unchanged. Second bug found and fixed: a TPC-H Q16 row count inside the loose non-reference-seed tolerance was recorded as an exact PASSED and failed export; now SKIPPED with a warning (result_capture and DataFrame validation, tests for both). Local: duckdb cell exit 0 at SF1, 132 queries passed, refresh included, validate_throughput_result ok for 3 streams. Remaining: close when the next nightly shows t3:throughput duckdb and cedardb green (CedarDB not run locally).\n\n2026-11-15: nightlies 43604460150 (3f8cf88f4a) and 43726725879 (f5a9646d7e), both after #4220, still fail t3:throughput, now for new reasons. DuckDB: the cell passes (exit 0) but the validator reports 37 errors, first 'summary.validation=passed contradicts queries[3].row_count_validation.status=SKIPPED' — #4220's change recording loose-tolerance row counts as SKIPPED is inconsistent with the run-level validation summary, so validator_clean_rate is 0% against a 1.0 floor. CedarDB: the result JSON is written but the cell exits 1, and the throughput assertion reports 'stream count mismatch: requested 3, executed 1'.",
   "description": "Nightly-v2 runs 43254687916 (2026-11-12) and 43453477982 (2026-11-13): t3:throughput duckdb and cedardb cells run `benchbox run-official tpch --scale 1.0 --phases load,throughput --streams 3 --seed 20260709 --quiet` and exit 1 after the banner with no error text (terminal_state no_json_nonzero, 'recorded no result_path'). Last green before PR #4137 (f4ffb30eaf, 2026-11-12), which made --official refuse partial phases and TPC-H runs without refresh functions. Likely two defects: the nightly throughput configs request a phase set the official gate now refuses, and the refusal is not printed under --quiet.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/actions/runs/43453477982",
@@ -27,6 +27,14 @@
       "op": "update",
       "op_id": "4a6ff6b98205493d91ae79e475d35ac9",
       "session_id": "4fc38207b51b48f682c92ef4be5cc6b0"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:52e03da886dd06ef9f18ada4",
+      "at": "2026-11-16T00:41:49Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d77cf982930e42479b224ac5e23cf401",
+      "session_id": "0d475b8311364f0a9428c30d199cc669"
     }
   ]
 }
