@@ -15,6 +15,7 @@ from typing import Any
 
 from benchbox.core.dataframe.compat import _to_list
 from benchbox.core.dataframe.context import DataFrameContext
+from benchbox.core.dataframe.engine import SPARK_ENGINES, DataFrameEngine
 from benchbox.core.dataframe.query import DataFrameQuery, QueryCategory, QueryRegistry
 
 TPCH_DEFAULT_PARAMS: dict[int, dict[str, Any]] = {
@@ -780,7 +781,14 @@ def q20_expression_impl(ctx: DataFrameContext) -> Any:
     )
 
 
+def q21_final_join_how(ctx: DataFrameContext) -> str:
+    if DataFrameEngine.from_platform_name(ctx.platform) in SPARK_ENGINES:
+        return "inner"
+    return "semi"
+
+
 def q21_expression_impl(ctx: DataFrameContext) -> Any:
+    join_how = q21_final_join_how(ctx)
     supplier = ctx.get_table("supplier")
     lineitem = ctx.get_table("lineitem")
     orders = ctx.get_table("orders")
@@ -812,7 +820,8 @@ def q21_expression_impl(ctx: DataFrameContext) -> Any:
         lineitem.join(candidate_orders, left_on="l_orderkey", right_on="cand_orderkey", how="semi")
         .group_by("l_orderkey")
         .agg(col("l_suppkey").min().alias("min_supp"), col("l_suppkey").max().alias("max_supp"))
-        .select(col("l_orderkey").alias("supp_orderkey"), col("min_supp"), col("max_supp"))
+        .filter(col("min_supp") != col("max_supp"))
+        .select(col("l_orderkey").alias("supp_orderkey"))
     )
 
     late_suppliers_per_order = (
@@ -820,14 +829,13 @@ def q21_expression_impl(ctx: DataFrameContext) -> Any:
         .join(candidate_orders, left_on="l_orderkey", right_on="cand_orderkey", how="semi")
         .group_by("l_orderkey")
         .agg(col("l_suppkey").min().alias("min_late_supp"), col("l_suppkey").max().alias("max_late_supp"))
-        .select(col("l_orderkey").alias("late_orderkey"), col("min_late_supp"), col("max_late_supp"))
+        .filter(col("min_late_supp") == col("max_late_supp"))
+        .select(col("l_orderkey").alias("late_orderkey"))
     )
 
     return (
-        candidates.join(suppliers_per_order, left_on="l_orderkey", right_on="supp_orderkey")
-        .join(late_suppliers_per_order, left_on="l_orderkey", right_on="late_orderkey")
-        .filter(col("min_supp") != col("max_supp"))
-        .filter(col("min_late_supp") == col("max_late_supp"))
+        candidates.join(suppliers_per_order, left_on="l_orderkey", right_on="supp_orderkey", how=join_how)
+        .join(late_suppliers_per_order, left_on="l_orderkey", right_on="late_orderkey", how=join_how)
         .group_by("s_name")
         .agg(col("l_orderkey").count().alias("numwait"))
         .sort(["numwait", "s_name"], descending=[True, False])
