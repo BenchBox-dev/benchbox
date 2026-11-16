@@ -41718,6 +41718,13 @@
       "status": "done",
       "title": "Prove trusted hosted review and separate gate resolution without live gateway access"
     },
+    "theseus-infra-setup-and-rotate-20261115": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Theseus: `theseus infra setup` and `theseus infra rotate` recreate and rotate a consumer's review infrastructure without manual steps"
+    },
     "theseus-known-defect-base-reproduction-proof-20261109": {
       "claim": null,
       "needs": [

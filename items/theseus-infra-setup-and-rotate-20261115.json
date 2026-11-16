@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Research findings recorded here with documentation links, and the design adjusted for anything not possible by API.",
+    "`theseus infra setup --dry-run` renders every action for BenchBox and Theseus from consumer config; a real run on a host with a seeded store creates environment `review` with its branch policy and all eight secrets, and the Tailscale tag, grant, ACL test and OAuth client, with no prompts. Re-running changes nothing.",
+    "`theseus infra rotate` rotates the gateway token, Tailscale OAuth client, OpenAI key and Typesafe key (or reports why one cannot be rotated), health-checks after each, rolls back on failure (tests for each failure point), and reports the App key's age with the manual step when due.",
+    "No secret value appears in output, logs, the plan rendering or test fixtures (tests).",
+    "Keychain and file store backends pass the same contract tests.",
+    "Docs: consumer-policy.md or a new infra doc covers config, seeding the store, the one-time owner actions and recovery.",
+    "Released; BenchBox #4201's owner steps 1 and 2 were performed by `theseus infra setup` (evidence recorded), then BenchBox and Theseus adopt the make targets."
+  ],
+  "context": "Prior art: BenchBox _project/scripts/review_gateway_host.sh (gateway install, named client tokens, `secrets` subcommand, health checks) and docs/internal/review-gateway-host.md (rotation steps done by hand today). Host facts 2026-11-15: gh has repo and admin:org scope; tailscale and macOS `security` are installed; the 1Password CLI is not; no Tailscale API credential exists yet. Unblocks benchbox-oracle-infra-names-20261108.",
+  "description": "Owner request 2026-11-15: one command must recreate the whole review setup, and one must rotate every credential, without human intervention. Owner decisions (choice dialogs):\n- Both are Theseus features, not BenchBox scripts: `theseus infra setup` (create or repair, safe to re-run) and `theseus infra rotate`. BenchBox and Theseus's own repository add only config and thin make targets.\n- They run on a trusted host, never in GitHub Actions, because they need root credentials.\n- Root credentials live behind a small store interface with two backends: macOS Keychain (default on macOS) and mode-0600 files (fallback).\n- Scope: BenchBox's `review` environment, Theseus's own `theseus` environment, and the gateway's named client tokens.\n- Built-in rotators: GitHub environment and secrets, the Tailscale tag/grant/ACL test and OAuth client, the gateway token and URL, OpenAI and Typesafe keys.\n- The GitHub App private key has no creation API. Rotate reports its age; past a configured limit it prints the manual step and picks up the new .pem automatically from a configured directory. The App rename and App permission grants stay one-time owner actions.\n- On demand only for now: dry run by default, a health check after each credential, and automatic rollback of that credential if the check fails.\n- Order: build setup first and use it to perform the owner steps for the BenchBox cutover PR #4201, after the owner seeds the store once.\nFirst step (read-only research, before any code): confirm with documentation links (a) the Tailscale API can create and delete OAuth clients and edit the policy file, and which scopes the root credential needs; (b) the OpenAI Admin API can mint and revoke a project or service-account key; (c) whether Typesafe has a key-management API, and if not, how its key is handled (store only, age report); (d) the GitHub API calls for environments, deployment branch policies and encrypted secrets; (e) that no GitHub API creates App private keys.\nGuardrails: never print, log or write a secret value (redaction tests); never store values in the repository or the tracker; every mutation has a dry-run rendering; rotate creates the new credential, sets it, health-checks, and only then revokes the old one; a failure leaves the old credential working; no change to gate, verdict or policy trust; network calls go through a fakeable transport with full unit tests; G7 merge rule plus independent review (security-sensitive); no live rotation without owner go-ahead for the first run.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4201"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9db5597ef0689bc0b6b38cf1",
+      "at": "2026-11-16T02:27:41Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "965b2427a8804f179fb782ca67834b6f",
+      "session_id": "2e51924ede484dec9de7ede001339cd0"
+    }
+  ]
+}
