@@ -22012,15 +22012,10 @@
       "title": "Audit BenchBox product code for DuckDB 2.0 behaviour changes the pin lift only fixed where tests failed"
     },
     "duckdb-2-followups-20261112": {
-      "claim": {
-        "expires_at": "2026-11-17T00:52:02Z",
-        "generation": "2a1c53dcfa02454181b2432c1f939744",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7222c9e9c0af3b11fd0d6a9c"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "After the DuckDB 2.x pin lift: time TPC-DS Q16/Q94/Q95 SQL and explain the nanobind leak warnings"
     },
     "duckdb-architecture-verification": {
