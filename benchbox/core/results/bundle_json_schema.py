@@ -60,7 +60,9 @@ VALIDATOR_ONLY_RULES = (
     "row_count_validation with an integer expected must have equal expected and actual (both compare two values "
     "in the instance); the validator matches row_count_validation.status case-insensitively while this schema "
     "lists only the normalised upper-case form; JSON Schema cannot tell 2 from 2.0, while the validator rejects a "
-    "float for run.timing_method (including the net-estimate check), request_count and result_bytes."
+    "float for run.timing_method (including the net-estimate check), request_count, result_bytes and "
+    "platform_timing.requests[].attempt; row_count_validation.expected and actual are the reverse, because the "
+    "validator also coerces integral floats and numeric strings while this schema requires JSON integers."
 )
 
 _NON_EMPTY_STRING = {"type": "string", "pattern": "\\S"}

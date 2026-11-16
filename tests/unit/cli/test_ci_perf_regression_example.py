@@ -125,6 +125,13 @@ class TestExampleWorkflowFile:
         assert "statistics" not in text
         assert (REPO_ROOT / "scripts" / "perf_smoke_baseline.py").exists()
 
+    def test_baseline_builder_replays_only_in_baseline_runs_and_reports_failures(self):
+        text = BASELINE_BUILDER.read_text(encoding="utf-8")
+
+        assert "select(.in_baseline) | .workflow_run_id" in text
+        assert "replay of run $run_id failed the gate" in text
+        assert ">/dev/null" not in text
+
 
 class TestExampleWorkflowGateAgainstFixtures:
     def test_within_noise_result_passes(self):

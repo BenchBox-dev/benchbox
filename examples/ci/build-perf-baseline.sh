@@ -12,7 +12,7 @@ usage() {
 usage: build-perf-baseline.sh RUN_ID RUN_ID RUN_ID RUN_ID RUN_ID [RUN_ID ...]
 
 Builds the stored baseline from at least five completed runs of the perf-regression
-workflow, each downloaded from its own run, then replays every source result through
+workflow, each downloaded from its own run, then replays every in-baseline source result through
 the gate and prints the two floors to set in the workflow.
 
 Requires: gh (authenticated for this repository), jq, python3, curl, and benchbox on PATH.
@@ -53,13 +53,23 @@ python3 "$work/perf_smoke_baseline.py" "${sources[@]}" \
 query_floor="$(jq -r '.regression_floor.floor_ms' "$SOURCES_OUTPUT")"
 aggregate_floor="$(jq -r '[.source_runs[] | select(.in_baseline) | .total_ms] | (max - min) * 1.25 | ceil' "$SOURCES_OUTPUT")"
 
-for source in "${sources[@]}"; do
-  benchbox compare "$BASELINE_OUTPUT" "${source#*=}" \
+while IFS= read -r run_id; do
+  source_result=""
+  for source in "${sources[@]}"; do
+    if [[ "${source%%=*}" == "$run_id" ]]; then
+      source_result="${source#*=}"
+    fi
+  done
+  if ! replay_output="$(benchbox compare "$BASELINE_OUTPUT" "$source_result" \
     --fail-on-regression 10% \
     --min-regression-delta "${query_floor}ms" \
     --min-aggregate-regression-delta "${aggregate_floor}ms" \
-    --non-interactive >/dev/null
-done
+    --non-interactive 2>&1)"; then
+    echo "replay of run $run_id failed the gate:" >&2
+    echo "$replay_output" >&2
+    exit 1
+  fi
+done < <(jq -r '.source_runs[] | select(.in_baseline) | .workflow_run_id' "$SOURCES_OUTPUT")
 
 echo "MIN_REGRESSION_DELTA: ${query_floor}ms"
 echo "MIN_AGGREGATE_REGRESSION_DELTA: ${aggregate_floor}ms"
