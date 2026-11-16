@@ -85,11 +85,11 @@ jobs:
               exit 1
               ;;
             2)
-              echo "::error::Invalid compare options. Check FAIL_ON_REGRESSION and the two minimum-delta values."
+              echo "::error::Invalid compare options: the minimum-delta options require --fail-on-regression."
               exit 1
               ;;
             1)
-              echo "::error::compare failed to read ${BASELINE_PATH} or the current result."
+              echo "::error::compare failed: unreadable result file or invalid FAIL_ON_REGRESSION or minimum-delta value."
               exit 1
               ;;
             *)
