@@ -948,6 +948,8 @@ def test_preflight_refuses_live_foreign_session_and_takeover_replaces_it(tmp_pat
     assert second.returncode == 1
     assert "worktree ownership check failed" in second.stderr
     assert "session-one" in second.stderr
+    assert "BENCHBOX_WORKTREE_TAKEOVER=1 make agent-write-preflight" in second.stderr
+    assert "docs/agent/handoffs.md" in second.stderr
     assert renewed.returncode == 0, renewed.stderr
     assert taken.returncode == 0, taken.stderr
     assert previous_owner_now.returncode == 1
