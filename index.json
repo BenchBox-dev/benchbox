@@ -20117,10 +20117,15 @@
       "title": "make trunk-revert unusable from inside a managed linked worktree"
     },
     "df-datafusion-deferred-filter-dropped-on-n-unique-20261115": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-17T02:57:14Z",
+        "generation": "4ca8cccd88904d5d8104a760446ca540",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7222c9e9c0af3b11fd0d6a9c"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "DataFusion DataFrame `.filter(cond).n_unique()` silently ignores the filter"
     },
     "df-distinct-pyspark-sf10-timing-20261113": {
