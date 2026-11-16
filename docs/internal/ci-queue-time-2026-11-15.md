@@ -41,6 +41,12 @@ those figures are an upper bound on pure runner wait.
 | windows-tests (windows-latest, py3.12) | 27 | 1.7 | 8.3 | 3.6 | 14.8 |
 | TPC-H binary framing (macos-latest) | 30 | 1.7 | 11.6 | 1.4 | 1.6 |
 | TPC-H binary framing (windows-latest) | 30 | 1.2 | 4.8 | 1.6 | 1.8 |
+| sql-execution-evidence | 13 | 5.2 | 15.8 | 2.1 | 2.3 |
+| parity-check | 8 | 4.9 | 10.2 | 0.7 | 0.7 |
+| skill-integrity | 9 | 3.8 | 12.1 | 1.1 | 1.1 |
+| package-smoke | 8 | 3.3 | 6.7 | 1.0 | 1.0 |
+| dependency-audit | 8 | 2.2 | 12.4 | 0.7 | 0.8 |
+| audit-sha | 8 | 2.3 | 19.5 | 0.6 | 0.7 |
 | comment-policy | 30 | 3.6 | 12.4 | 0.7 | 0.8 |
 | ci-paths | 30 | 3.3 | 12.4 | 1.0 | 1.4 |
 | core | 39 | 1.2 | 7.7 | 0.2 | 0.2 |
@@ -95,8 +101,8 @@ required-check rules are unchanged, so no PR merges with fewer checks.
 ## Capacity recommendation (owner decision, not applied)
 
 The 20-concurrent-job pool of the Free plan is the bottleneck. One PR run
-creates about 20 jobs (this sample: 820 timed jobs across 40 runs, counting
-medium shards and excluding skipped ones) and one trunk run about 12, so a
+creates about 19 jobs (this sample: 768 timed jobs across 40 runs, the sum of
+the n column above, counting medium shards and excluding skipped ones) and one trunk run about 12, so a
 single PR run can fill the pool and any overlap queues. Options in order of
 cost:
 
