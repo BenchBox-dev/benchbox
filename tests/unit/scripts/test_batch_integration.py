@@ -836,6 +836,16 @@ def test_a_stale_check_is_refused_when_a_landing_affects_the_members_tests(world
     assert world.land("alpha")["status"] == "merged"
 
 
+def test_a_stale_check_is_refused_when_a_landing_affects_a_node_of_a_test_the_member_ran(world: World) -> None:
+    world.start(scope=DISJOINT_SCOPE)
+    world.deliver("zeta", {"src/z_new.py": "z = 1\n"})
+    world.deliver("alpha", {"src/a_new.py": "a = 1\n"})
+    world.land_and_prepare("zeta")
+    world.mapped_tests = ["tests/test_alpha.py::test_a"]
+    with _raises("affect the member's verification tests"):
+        world.land("alpha")
+
+
 def test_a_stale_check_is_refused_when_a_landing_affects_a_test_inside_a_directory_the_member_ran(
     world: World,
 ) -> None:

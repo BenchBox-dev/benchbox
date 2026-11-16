@@ -986,7 +986,11 @@ def _verification_tests(verification: dict) -> set[str]:
 
 def _covered_tests(tests: set[str], verification: dict) -> set[str]:
     ran = _verification_tests(verification)
-    return {test for test in tests if any(test == path or test.startswith(f"{path.rstrip('/')}/") for path in ran)}
+    return {
+        test
+        for test in tests
+        if any((file := test.split("::", 1)[0]) == path or file.startswith(f"{path.rstrip('/')}/") for path in ran)
+    }
 
 
 DOTTED_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+$")
