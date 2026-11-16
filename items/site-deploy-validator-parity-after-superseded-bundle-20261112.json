@@ -3,6 +3,7 @@
     "Two develop merges in quick succession, one of them a corpus change, reach production without a manual dispatch",
     "A test covers parent selection when the newest bundled ancestor was not deployed"
   ],
+  "context": "2026-11-16: PR 4261 merged. Root cause differed from the description: the automatic path already parents on the site's deployed core, but sampled it while the previous bundle's site deploy was still running, so the deploy that finished in between moved the site past the recorded parent. scripts/site_inputs_parent.py now reads the deployed core only while no site deploy.yml run is queued or in progress (30 s poll, 20 minute limit, then the existing recovery instruction). Unit tests cover the wait, the re-read and the timeout. Not observed live: needs two close develop merges, one a corpus change. Residual race: if the previous bundle's deploy run has not been created yet when the check runs, nothing is seen in flight; closing that fully needs the benchbox-site gate to accept a parity range starting at an ancestor of the deployed core.",
   "description": "Found 2026-11-12. Corpus commit 5a2250e918 and code commit 0eeec0d5bd merged to develop about a minute apart. The site deploy for the 5a2250e918 bundle was cancelled as superseded. The deploy for the 0eeec0d5bd bundle was then refused by the benchbox-site gate: `deploy: corpus changed but validator_parity covers 21f671030625..0eeec0d5bd19, not the deployed 01a15152ba09; dispatch core site-inputs.yml with parent_core_sha=01a15152ba09...`. The site stayed on the old corpus until `gh workflow run site-inputs.yml --ref develop -f parent_core_sha=<deployed core>` was dispatched by hand (run 43235517354, deploy 43237076470). scripts/site_inputs_parent.py picks the newest bundled ancestor on develop as the parity parent; when that ancestor's bundle was never deployed (its deploy was superseded or still queued), the range does not start at the deployed core and every corpus-changing deploy is refused until someone dispatches. Decide whether the parent should be the last deployed core (from the site's deploy receipt), or whether the site should dispatch the corrective build itself.",
   "links": [
     "BenchBox-dev/BenchBox: scripts/site_inputs_parent.py",
@@ -17,6 +18,14 @@
       "op": "create",
       "op_id": "9a5d12f4f28d46a2b79d658bf60a3c7f",
       "session_id": "32e4db9816694cfb9be59807549223c7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2eea77f9ada682154d121605",
+      "at": "2026-11-16T03:45:15Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1a639fa85d8f44739547d6101c0a5705",
+      "session_id": "c8cd206fad4d4a0fa8cd67b754e31bb9"
     }
   ]
 }
