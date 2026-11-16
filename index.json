@@ -30755,15 +30755,10 @@
       "title": "Clear the two remaining orphans on test/freeze-bulk-path-coverage"
     },
     "outside-issue-3446-response-20261113": {
-      "claim": {
-        "expires_at": "2026-11-17T13:24:18Z",
-        "generation": "d11f25026c454748a5ced4dfe52080a4",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:961d26faca155954d64951f4"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Respond to outside issue #3446 (R data.table request)"
     },
     "overlay-guard-scans-untracked-venv": {
