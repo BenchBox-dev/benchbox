@@ -233,8 +233,10 @@ You are a member of batch <batch>. Your worktree is <absolute path>.
    change since that head (landings, leader fixes, develop merges) is outside
    the member's frozen scope, outside the files the member changed, not a
    shared test input (`pyproject.toml`, `uv.lock`, `Makefile`, lint and pytest
-   configuration, any `conftest.py`), and maps to none of the member's
-   verification tests. The merged tree then differs from the member tree only
+   configuration, any `conftest.py`), not a module in the transitive import
+   closure of the member's verification tests, not a non-Python file outside
+   `docs/` and `changelog.d/`, and maps to none of the member's verification
+   tests. The merged tree then differs from the member tree only
    by those intervening changes, the merge must change exactly the member's own
    paths, and the tests mapped from the member's change at the merged head
    must all be tests its check ran; any other result undoes the merge. In every

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import fnmatch
 import hashlib
 import json
@@ -988,6 +989,67 @@ def _covered_tests(tests: set[str], verification: dict) -> set[str]:
     return {test for test in tests if any(test == path or test.startswith(f"{path.rstrip('/')}/") for path in ran)}
 
 
+DOTTED_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+$")
+IMPORT_ROOTS = ("", "scripts/", "_project/scripts/")
+DRIFT_NEUTRAL_PREFIXES = ("changelog.d/", "docs/")
+
+
+def _resolve_import(worktree: Path, dotted: str) -> str | None:
+    parts = dotted.split(".")
+    for end in range(len(parts), 0, -1):
+        base = "/".join(parts[:end])
+        for root in IMPORT_ROOTS:
+            for candidate in (f"{root}{base}.py", f"{root}{base}/__init__.py"):
+                if (worktree / candidate).is_file():
+                    return candidate
+    return None
+
+
+def _referenced_modules(worktree: Path, path: str) -> set[str]:
+    try:
+        tree = ast.parse((worktree / path).read_text(encoding="utf-8"))
+    except (OSError, SyntaxError, ValueError):
+        return set()
+    package = Path(path).parent.parts
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            prefix = package[: len(package) - node.level + 1] if node.level else ()
+            base = ".".join([*prefix, *(node.module.split(".") if node.module else [])])
+            names.add(base)
+            names.update(f"{base}.{alias.name}" for alias in node.names)
+        elif isinstance(node, ast.Constant) and isinstance(node.value, str) and DOTTED_NAME.match(node.value):
+            names.add(node.value)
+    return names
+
+
+def _test_import_closure(worktree: Path, verification: dict) -> set[str]:
+    pending = []
+    for path in sorted(_verification_tests(verification)):
+        if (worktree / path).is_dir():
+            pending.extend(line for line in _git(worktree, "ls-files", "--", path).splitlines() if line.endswith(".py"))
+        else:
+            pending.append(path)
+    closure: set[str] = set()
+    while pending:
+        path = pending.pop()
+        if path in closure:
+            continue
+        closure.add(path)
+        for name in _referenced_modules(worktree, path):
+            resolved = _resolve_import(worktree, name)
+            if resolved is not None:
+                pending.append(resolved)
+                pending.extend(
+                    f"{parent}/__init__.py"
+                    for parent in map(str, Path(resolved).parents)
+                    if parent != "." and (worktree / parent / "__init__.py").is_file()
+                )
+    return closure
+
+
 def _mapped_tests(repo: Path, base: str) -> set[str] | None:
     proc = _run(
         ["uv", "run", "--", "python", "_project/scripts/preflight_targets.py", "tests", "--base-ref", base], repo
@@ -1041,6 +1103,12 @@ def _stale_base_refusal(
     shared = sorted(path for path in drift if path in GLOBAL_INPUT_FILES or Path(path).name == "conftest.py")
     if shared:
         return f"landings since the check changed shared test inputs: {', '.join(shared[:5])}"
+    reached = sorted(set(drift) & _test_import_closure(facts["worktree"], check["verification"]))
+    if reached:
+        return f"landings since the check changed code the member's verification tests import: {', '.join(reached[:5])}"
+    data = sorted(path for path in drift if not path.endswith(".py") and not path.startswith(DRIFT_NEUTRAL_PREFIXES))
+    if data:
+        return f"landings since the check changed non-Python files tests may read: {', '.join(data[:5])}"
     mapped = _mapped_tests(repo, base)
     if mapped is None:
         return "the tests affected by the landings since the check could not be determined"

@@ -848,6 +848,31 @@ def test_a_stale_check_is_refused_when_a_landing_affects_a_test_inside_a_directo
         world.land("alpha")
 
 
+def test_a_stale_check_is_refused_when_a_landing_changes_code_the_members_tests_import(world: World) -> None:
+    world.start(scope={**DISJOINT_SCOPE, "zeta": ["src/b.py"], "alpha": ["src/a_new.py", "tests/test_alpha.py"]})
+    world.deliver("zeta", {"src/b.py": "b = 2\n"})
+    alpha = world.deliver(
+        "alpha", {"src/a_new.py": "a = 1\n", "tests/test_alpha.py": "import src.b\n\n\ndef test_a():\n    pass\n"}
+    )
+    world.land_and_prepare("zeta")
+    before = world.head()
+    with _raises("code the member's verification tests import"):
+        world.land("alpha")
+    assert world.head() == before
+    world.sync(alpha)
+    world.check(alpha, ["tests/test_alpha.py"])
+    assert world.land("alpha")["status"] == "merged"
+
+
+def test_a_stale_check_is_refused_when_a_landing_changes_a_non_python_file(world: World) -> None:
+    world.start(scope={**DISJOINT_SCOPE, "zeta": ["data/*"]})
+    world.deliver("zeta", {"data/answers.csv": "1,2\n"}, tests=["tests/test_zeta.py"])
+    world.deliver("alpha", {"src/a_new.py": "a = 1\n"})
+    world.land_and_prepare("zeta")
+    with _raises("non-Python files tests may read"):
+        world.land("alpha")
+
+
 def test_a_stale_landing_is_undone_when_the_merge_maps_tests_the_member_never_ran(world: World) -> None:
     world.start(scope=DISJOINT_SCOPE)
     world.deliver("zeta", {"src/z_new.py": "z = 1\n"})
