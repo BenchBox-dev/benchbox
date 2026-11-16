@@ -3264,13 +3264,17 @@
   {
    "disposition": "fixture-data",
    "kinds": {
-    "unresolved": 1
+    "unresolved": 2
    },
-   "occurrences": 4,
+   "occurrences": 6,
    "path": "tests/unit/scripts/test_batch_integration.py",
    "rule": "test-sample-data",
-   "target_count": 1,
+   "target_count": 2,
    "targets": [
+    {
+     "kind": "unresolved",
+     "target": "docs/internal/read-by-tests.md"
+    },
     {
      "kind": "unresolved",
      "target": "docs/note.md"
@@ -4328,9 +4332,9 @@
    "generated": 3,
    "pattern": 335,
    "root": 202,
-   "unresolved": 2070
+   "unresolved": 2072
   },
-  "references": 33229,
+  "references": 33231,
   "unclassified": 0
  }
 }

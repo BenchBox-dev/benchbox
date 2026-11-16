@@ -228,7 +228,24 @@ You are a member of batch <batch>. Your worktree is <absolute path>.
    invocation lands; the member's own result, config, or claimed outcome never
    does. The accepted result is retained in the receipt.
 3. It merges with `--no-ff` and requires the merged tree to equal the member
-   tree; anything else means the head moved and the member merges again. It
+   tree. A member whose check ran at an older integration head still lands,
+   without a new check, when it has no implementation dependency and every
+   change since that head (landings, leader fixes, develop merges) is outside
+   the member's frozen scope (the companion files every scope carries are
+   shared by design and excepted), outside the files the member changed, not a
+   shared test input (`pyproject.toml`, `uv.lock`, `Makefile`, lint and pytest
+   configuration, any `conftest.py`), not a module in the transitive import
+   closure of the member's verification tests, not a non-Python file other
+   than a companion file, and maps to none of the member's verification
+   tests. The merged tree then differs from the member tree only
+   by those intervening changes, the merge must change exactly the member's own
+   paths, and the tests mapped from the member's change at the merged head
+   must all be tests its check ran; any other result undoes the merge. In every
+   other case the head moved and the member merges again and re-checks. A
+   crash after such a merge is recovered by resetting to the recorded base and
+   landing again. Final evidence still runs every member's command on the final
+   tree, so a semantic interaction the file-level rules cannot see is caught
+   there, not at landing. It
    reruns the recorded verification of every earlier member whose files
    overlap, prints warnings for suspicious hunks and for a member preflight that
    was not the default command, and only then pushes a backup of the
