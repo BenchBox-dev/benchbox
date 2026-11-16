@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import logging
 import re
 import uuid
@@ -11,10 +12,7 @@ from typing import TYPE_CHECKING, Any
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.runtime_env import DriverResolution, DriverRuntimeStrategy, load_driver_module
 
-try:
-    import duckdb
-except ImportError:
-    duckdb = None
+duckdb: Any = None
 
 from benchbox.core.errors import PlanCaptureError
 from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW, FETCH_MODE_ROWS
@@ -804,9 +802,12 @@ class DuckDBAdapter(PlatformAdapter):
         )
 
         if not has_runtime_contract:
-            if duckdb is not None:
-                return duckdb
-            raise ImportError("DuckDB not installed. Install with: pip install duckdb")
+            if duckdb is None:
+                try:
+                    duckdb = importlib.import_module("duckdb")
+                except ImportError as exc:
+                    raise ImportError("DuckDB not installed. Install with: pip install duckdb") from exc
+            return duckdb
 
         resolution = DriverResolution(
             package=(config.get("driver_package") or "duckdb"),
@@ -827,7 +828,7 @@ class DuckDBAdapter(PlatformAdapter):
             )
         except Exception as exc:
             raise ImportError(
-                "DuckDB runtime initialization failed. "
+                f"DuckDB runtime initialization failed: {exc} "
                 "Install duckdb or provide a valid isolated runtime for the requested version."
             ) from exc
 

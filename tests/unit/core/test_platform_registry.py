@@ -3,6 +3,7 @@
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
 import os
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -168,6 +169,30 @@ class TestPlatformRegistry:
             "capability-poison-dependency"
             not in fresh_metadata["capabilities"]["deployment_modes"]["local"]["dependencies"]
         )
+
+    def test_detect_library_probes_isolatable_driver_without_importing(self):
+        with (
+            patch.dict("sys.modules"),
+            patch("benchbox.core.platform_registry.probe_unloaded_driver", return_value=(True, "7.7.7")) as probe,
+            patch("benchbox.core.platform_registry.importlib.import_module") as mock_import,
+        ):
+            sys.modules.pop("duckdb", None)
+            info = PlatformRegistry.detect_library({"name": "duckdb"})
+
+        probe.assert_called_once_with("duckdb", "duckdb")
+        mock_import.assert_not_called()
+        assert (info.installed, info.version) == (True, "7.7.7")
+
+    def test_detect_library_reports_isolatable_driver_missing(self):
+        with (
+            patch.dict("sys.modules"),
+            patch("benchbox.core.platform_registry.probe_unloaded_driver", return_value=(False, None)),
+        ):
+            sys.modules.pop("duckdb", None)
+            info = PlatformRegistry.detect_library({"name": "duckdb"})
+
+        assert info.installed is False
+        assert "duckdb" in info.import_error
 
     @patch("benchbox.core.platform_registry.importlib.import_module")
     def test_detect_library_success(self, mock_import):

@@ -638,3 +638,47 @@ class TestAutoInstallGate:
         monkeypatch.setattr(runtime_env, "_get_installed_version", lambda _: version)
 
         assert ensure_driver_version(package_name="duckdb", requested_version=version).requested == version
+
+
+def test_probe_unloaded_driver_reports_metadata_version_without_importing(monkeypatch):
+    monkeypatch.setattr(runtime_env.importlib.util, "find_spec", lambda name: object())
+    monkeypatch.setattr(runtime_env.importlib_metadata, "version", lambda dist: "9.9.9")
+    with patch("importlib.import_module") as import_module:
+        assert runtime_env.probe_unloaded_driver("duckdb", "duckdb") == (True, "9.9.9")
+    import_module.assert_not_called()
+
+
+def test_probe_unloaded_driver_reports_missing_module(monkeypatch):
+    monkeypatch.setattr(runtime_env.importlib.util, "find_spec", lambda name: None)
+    assert runtime_env.probe_unloaded_driver("duckdb", "duckdb") == (False, None)
+
+
+def test_probe_unloaded_driver_tolerates_missing_distribution_metadata(monkeypatch):
+    def missing(dist):
+        raise runtime_env.importlib_metadata.PackageNotFoundError(dist)
+
+    monkeypatch.setattr(runtime_env.importlib.util, "find_spec", lambda name: object())
+    monkeypatch.setattr(runtime_env.importlib_metadata, "version", missing)
+    assert runtime_env.probe_unloaded_driver("duckdb", "duckdb") == (True, None)
+
+
+def test_load_driver_module_refuses_isolated_runtime_when_native_driver_already_loaded(monkeypatch, tmp_path):
+    loaded = type(sys)("fake_native_driver")
+    loaded.__version__ = "2.0.0"
+    loaded.__file__ = str(tmp_path / "venv" / "fake_native_driver.py")
+    monkeypatch.setitem(sys.modules, "fake_native_driver", loaded)
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    resolution = DriverResolution(
+        package="fake-native-driver",
+        requested="1.5.6",
+        resolved="1.5.6",
+        auto_install_used=False,
+        runtime_strategy=DriverRuntimeStrategy.ISOLATED_SITE_PACKAGES.value,
+        runtime_path=str(runtime),
+    )
+
+    with pytest.raises(RuntimeError, match=r"version 2\.0\.0 was already loaded.*first one imported"):
+        load_driver_module(import_name="fake_native_driver", resolution=resolution)
+
+    assert sys.modules["fake_native_driver"] is loaded

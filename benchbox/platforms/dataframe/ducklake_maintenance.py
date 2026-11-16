@@ -4,17 +4,14 @@
 
 from __future__ import annotations
 
+import importlib
+import importlib.util
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-try:
-    import duckdb
-
-    DUCKDB_AVAILABLE = True
-except ImportError:
-    duckdb = None
-    DUCKDB_AVAILABLE = False
+duckdb: Any = None
+DUCKDB_AVAILABLE = importlib.util.find_spec("duckdb") is not None
 
 try:
     import pyarrow as pa
@@ -79,6 +76,9 @@ class DuckLakeMaintenanceOperations(BaseDataFrameMaintenanceOperations):
     def _get_connection(self, table_path: Path | str) -> Any:
         table_path = Path(table_path)
 
+        global duckdb
+        if duckdb is None:
+            duckdb = importlib.import_module("duckdb")
         conn = duckdb.connect(":memory:")
 
         try:

@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import importlib
 import logging
 import os
 import re
@@ -18,10 +19,7 @@ from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY, RequestL
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dependencies import get_package_install_message
 
-try:
-    import duckdb
-except ImportError:
-    duckdb = None
+duckdb: Any = None
 
 from .base import DriverIsolationCapability, PlatformAdapter
 from .base.config_utils import make_platform_config_builder
@@ -62,12 +60,16 @@ class MotherDuckAdapter(PlatformAdapter):
     def __init__(self, **config):
         super().__init__(**config)
 
+        global duckdb
         if duckdb is None:
-            raise ImportError(
-                "MotherDuck requires the duckdb package.\n"
-                + get_package_install_message("duckdb", "")
-                + "\n\nNote: MotherDuck support requires DuckDB >= 0.9.0"
-            )
+            try:
+                duckdb = importlib.import_module("duckdb")
+            except ImportError as exc:
+                raise ImportError(
+                    "MotherDuck requires the duckdb package.\n"
+                    + get_package_install_message("duckdb", "")
+                    + "\n\nNote: MotherDuck support requires DuckDB >= 0.9.0"
+                ) from exc
 
         self._dialect = "duckdb"
 
