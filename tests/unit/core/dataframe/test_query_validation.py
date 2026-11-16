@@ -399,11 +399,61 @@ def test_seeded_subscale_run_checks_fixed_queries_and_skips_parameter_sensitive_
     summary = validate_dataframe_query_results(measurements, benchmark_name="tpch", scale_factor=0.01, seed=7)
 
     statuses = {row["query_id"]: row["row_count_validation"]["status"] for row in measurements}
-    assert summary.status == "UNCERTAIN"
+    assert summary.status == "PASSED"
     assert summary.details["skipped"] == len(reference.parameter_sensitive_query_ids)
+    assert summary.details["documented_skips"] == len(reference.parameter_sensitive_query_ids)
     assert summary.details["checked"] == 22 - len(reference.parameter_sensitive_query_ids)
     assert statuses["Q2"] == "SKIPPED"
     assert statuses["Q4"] == "PASSED"
+
+
+def test_seeded_subscale_run_with_only_parameter_sensitive_queries_is_not_a_pass() -> None:
+    summary = validate_dataframe_query_results(
+        [_measurement(query_id="Q2", rows=3)], benchmark_name="tpch", scale_factor=0.01, seed=7
+    )
+
+    assert summary.status == "UNCERTAIN"
+    assert summary.details["checked"] == 0
+
+
+def test_seeded_subscale_run_with_a_deselected_query_stays_uncertain() -> None:
+    from benchbox.core.expected_results.loader import load_tpch_subscale_row_counts
+
+    reference = load_tpch_subscale_row_counts(0.01)
+    measurements = [_measurement(query_id=f"Q{qid}", rows=rows) for qid, rows in reference.row_counts.items()]
+    deselected = {"query_id": "Q23", "status": "SKIPPED", "run_type": "metadata"}
+
+    summary = validate_dataframe_query_results(
+        [*measurements, deselected], benchmark_name="tpch", scale_factor=0.01, seed=7
+    )
+
+    assert summary.status == "UNCERTAIN"
+
+
+def test_seeded_subscale_sql_rows_pass_the_bundle_consistency_check() -> None:
+    from benchbox.core.expected_results.loader import load_tpch_subscale_row_counts
+    from benchbox.core.results.builder import BenchmarkInfoInput, ResultBuilder
+    from benchbox.core.results.platform_info import PlatformInfoInput
+    from benchbox.core.results.query_normalizer import normalize_query_result
+    from benchbox.core.results.schema import build_result_payload
+    from benchbox.validation.bundle import ValidationResult as BundleValidationResult, _validate_execution_consistency
+
+    reference = load_tpch_subscale_row_counts(0.01)
+    measurements = [_measurement(query_id=f"Q{qid}", rows=rows) for qid, rows in reference.row_counts.items()]
+    validate_dataframe_query_results(measurements, benchmark_name="tpch", scale_factor=0.01, seed=7)
+    builder = ResultBuilder(
+        benchmark=BenchmarkInfoInput(name="TPC-H", scale_factor=0.01),
+        platform=PlatformInfoInput(name="duckdb", platform_version="1.3.2"),
+    )
+    builder.add_query_results(
+        [normalize_query_result({**row, "iteration": 1, "execution_time_seconds": 0.5}) for row in measurements]
+    )
+    payload = build_result_payload(builder.build())
+    check = BundleValidationResult("test")
+    _validate_execution_consistency(payload, check)
+
+    assert payload["summary"]["validation"] == "passed"
+    assert check.errors == []
 
 
 def test_seeded_subscale_run_fails_a_wrong_fixed_cardinality_count() -> None:
@@ -454,4 +504,4 @@ def test_loose_tolerance_match_is_not_recorded_as_passed() -> None:
     assert validation["status"] == "SKIPPED"
     assert (validation["expected"], validation["actual"]) == (18314, 17900)
     assert "not an exact match" in validation["warning"]
-    assert evidence == {"checked": 0, "passed": 0, "failed": 0, "skipped": 1, "errors": 0}
+    assert evidence == {"checked": 0, "passed": 0, "failed": 0, "skipped": 1, "errors": 0, "documented_skips": 1}

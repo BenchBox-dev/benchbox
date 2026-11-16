@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed seeded TPC-H runs at SF 0.01 and 0.1 producing bundles that could not be submitted: a row count skipped because it depends on the substitution parameters no longer contradicts a passed summary, and a DataFrame run with such skips is summarised as passed when every other query was checked, as a SQL run is.",
+      "benchmarks": ["tpch"]
+    }
+  ]
+}

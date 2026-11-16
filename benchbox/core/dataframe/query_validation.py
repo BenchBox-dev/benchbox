@@ -11,7 +11,7 @@ from benchbox.core.expected_results.tpcds_results import (
     tpcds_subscale_expected_row_counts,
     tpcds_subscale_reference_seed,
 )
-from benchbox.core.results.query_status import within_tolerance_warning
+from benchbox.core.results.query_status import row_count_skip_is_documented, within_tolerance_warning
 from benchbox.core.validation.query_validation import (
     QueryValidator,
     get_reference_seed_context,
@@ -99,14 +99,17 @@ def validate_dataframe_query_results(
         return DataFrameQueryValidationSummary(status, evidence)
 
     evidence["skipped"] += selected_skips
+    documented_skips = evidence.get("documented_skips", 0)
     if evidence["failed"]:
         status = "FAILED"
     elif execution_failures:
         status = "PARTIAL"
-    elif evidence["skipped"] or evidence["errors"]:
+    elif evidence["skipped"] > documented_skips or evidence["errors"]:
         status = "UNCERTAIN"
-    elif evidence["checked"] and evidence["checked"] == len(successful_rows):
+    elif evidence["checked"] and evidence["checked"] + documented_skips == len(successful_rows):
         status = "PASSED"
+    elif documented_skips:
+        status = "UNCERTAIN"
     else:
         status = "NOT_RUN"
     return DataFrameQueryValidationSummary(status, evidence)
@@ -391,6 +394,8 @@ def _apply_row_count_oracle(
             row["error"] = message
             evidence["checked"] += 1
             evidence["failed"] += 1
+        if row_count_validation["status"] == "SKIPPED" and row_count_skip_is_documented(row_count_validation):
+            evidence["documented_skips"] = evidence.get("documented_skips", 0) + 1
         row["row_count_validation"] = row_count_validation
 
 
