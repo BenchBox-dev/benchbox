@@ -4,7 +4,7 @@
     "MCP SF1 DuckDB TPC-H completes like the CLI, verified with a real stdio client under make heavy-run.",
     "Any run that ends without a result returns an MCP error (is_error true) with the cause; a test covers it."
   ],
-  "context": "Found while measuring MCP run times for PR #4230 on 2026-11-14. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\n2026-11-15: did not reproduce on an idle host. Four TPC-H SF 1 DuckDB calls through a stdio client (one cold, three warm; develop at 21b0b2beb7 plus PR #4251) each returned mcp_metadata.status 'completed', 66 of 66 queries. The original observation was made under a CPU leak with load 60 to 80; the 'incomplete' branch is export_failed (benchbox/mcp/tools/benchmark.py:657), so check whether a slow or failed export under load, or a stale shared output directory, was the trigger before changing code.",
+  "context": "Found while measuring MCP run times for PR #4230 on 2026-11-14. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\n2026-11-15: did not reproduce on an idle host. Four TPC-H SF 1 DuckDB calls through a stdio client (one cold, three warm; develop at 21b0b2beb7 plus PR #4251) each returned mcp_metadata.status 'completed', 66 of 66 queries. The original observation was made under a CPU leak with load 60 to 80; the 'incomplete' branch is export_failed (benchbox/mcp/tools/benchmark.py:657), so check whether a slow or failed export under load, or a stale shared output directory, was the trigger before changing code.\n\nCloseout 2026-11-16: core BenchBox-dev/benchbox#4273 (69a6416c6f). Original trigger not reproduced (SF1 DuckDB completes in ~32 s cold, integrity PASS). 'incomplete', 'no_results' and execution exceptions now return is_error=True with error, error_code and exception details; tests inject an export failure. Unknown: whether the original failure predates #4228.",
   "description": "Problem: through a real MCP stdio client, run_benchmark for DuckDB TPC-H SF1 returned status 'incomplete', no result file and is_error false in three runs (also with a fresh HOME). The server log shows row_count_validation.actual (56) must match rows_returned (0), then QueryExecutionContractError. The same request through the CLI completes. Two defects: the run fails, and the failure is not reported as an error, so an agent may treat it as success.\n\nPossibly related: stale-shared-output-dir-tpch-q18-mismatch-20261114 saw TPC-H SF1 Q18 return 56 rows against 57 expected when reusing data from the shared output directory.",
   "sessions": [
     {
@@ -30,6 +30,14 @@
       "generation": "e51377614f104ef9a6f8f450c98686ce",
       "op": "take",
       "op_id": "dd86e1584ca54ea4888f99606baffaa6",
+      "session_id": "1b9bc1b29dcb4d48a0911fca4a479d47"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:961d26faca155954d64951f4",
+      "at": "2026-11-16T15:05:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b2907ff9fd004dd38b0c66f543e666df",
       "session_id": "1b9bc1b29dcb4d48a0911fca4a479d47"
     }
   ]
