@@ -199,6 +199,7 @@ class ValidationResult:
     difference: int | None = None
     difference_percent: float | None = None
     unvalidated: bool = False
+    parameter_sensitive: bool = False
 
     def __post_init__(self):
         if self.expected_row_count is not None and self.actual_row_count is not None:
