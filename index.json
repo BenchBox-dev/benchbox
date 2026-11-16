@@ -25371,6 +25371,13 @@
       "status": "open",
       "title": "`make heavy-run` refuses at once when the host is under pressure; give it a bounded wait mode"
     },
+    "heavy-sentinel-cpu-bound-orphans-20261115": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Decide whether the heavy-work sentinel should act on CPU-bound orphaned shells"
+    },
     "heavy-tier-merge-group-dead-code-20261009": {
       "claim": null,
       "needs": [],

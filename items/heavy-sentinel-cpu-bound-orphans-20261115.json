@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "The decision records which processes would match on the current host and why a user's own long-running shell is not hit.",
+    "If implemented, tests inject the process table; no test starts real CPU load."
+  ],
+  "context": "Found during a retrospective on 2026-11-15. Guardrails: linked worktree, one PR; no live-cloud runs; heavy work only via lock-taking entry points; re-verify cited facts before acting.",
+  "description": "Problem: the sentinel reads memory only and keeps shells on its deny list, so 20 orphaned bash spin loops (ppid 1, working directory in a BenchBox worktree) ran about 20 hours unnoticed. PR BenchBox-dev/benchbox#4236 stops such processes when the guarded command ends and lists orphaned shells in make heavy-status, but nothing acts on an orphan that escapes the process group (for example via setsid).\n\nOutcome: a decision, with the false-positive risk stated, on whether the sentinel should report or stop orphans that hold sustained CPU, and the change if the answer is yes.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:769ef947e95eb114e9d51acf",
+      "at": "2026-11-16T00:25:08Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0a37fd126a59484697b796cf9664e9c0",
+      "session_id": "2269c734a94a419ea939cd33fee21860"
+    }
+  ]
+}
