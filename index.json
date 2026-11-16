@@ -27236,15 +27236,10 @@
       "title": "Fix MCP adversarial review runtime, packaging, and parity defects"
     },
     "mcp-bundles-before-parity-fix-not-comparable-20261114": {
-      "claim": {
-        "expires_at": "2026-11-17T15:06:18Z",
-        "generation": "4189bd1e7cf84b5a93fb60df2f9d7b44",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:961d26faca155954d64951f4"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "compare does not detect MCP bundles produced before the CLI and MCP parity fix"
     },
     "mcp-conformance-baseline-followup-v2": {
