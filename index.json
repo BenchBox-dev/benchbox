@@ -33006,7 +33006,7 @@
         "agent-demand-signals-baseline-20261113"
       ],
       "priority": "low",
-      "status": "blocked",
+      "status": "open",
       "title": "Publish a versioned JSON Schema for the result bundle, generated from the validator's source"
     },
     "publish-run-rewrites-plans-companion-keys-20261111": {
