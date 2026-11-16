@@ -3,7 +3,7 @@
     "compare flags or refuses a pair where one side is an MCP bundle from before the fix (identifiable by entry point and version or missing fields), using the not-comparable exit code, or the owner decides the risk is acceptable and it is documented.",
     "The source label is renamed or documented so it does not claim a saved config."
   ],
-  "context": "Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "context": "Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\nCloseout 2026-11-16: core BenchBox-dev/benchbox#4273 (69a6416c6f). compare refuses (exit 4) a pair where one side is an MCP bundle with no recorded config.compression or platform_options; heuristic can falsely flag a post-fix run with compression off on a platform without registered defaults. 'saved_config' label kept on read; new runs emit 'applied_defaults'.",
   "description": "Problem: MCP bundles written before PR #4228 (merged 2026-11-14) used uncompressed data and system-profile memory limits instead of the registered platform defaults, so they are not like-for-like with CLI bundles or newer MCP bundles. compare does not detect this. Also, the platform-option source label 'saved_config' is misleading: it means registered defaults plus runtime overrides.",
   "sessions": [
     {
@@ -21,6 +21,14 @@
       "generation": "4189bd1e7cf84b5a93fb60df2f9d7b44",
       "op": "take",
       "op_id": "8444bee3786f4a7ba4963d7aa5896741",
+      "session_id": "1b9bc1b29dcb4d48a0911fca4a479d47"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:961d26faca155954d64951f4",
+      "at": "2026-11-16T15:06:22Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5dca185006364728b618bdf74a4907e7",
       "session_id": "1b9bc1b29dcb4d48a0911fca4a479d47"
     }
   ]
