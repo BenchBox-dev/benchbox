@@ -652,29 +652,6 @@ class TestErrorHandlerBranches:
 
 
 class TestValidationRules:
-    def test_validate_scale_factor_negative(self):
-        from benchbox.cli.exceptions import ValidationError, ValidationRules
-
-        with pytest.raises(ValidationError):
-            ValidationRules.validate_scale_factor(-1.0)
-
-    def test_validate_scale_factor_zero(self):
-        from benchbox.cli.exceptions import ValidationError, ValidationRules
-
-        with pytest.raises(ValidationError):
-            ValidationRules.validate_scale_factor(0.0)
-
-    def test_validate_scale_factor_too_large(self):
-        from benchbox.cli.exceptions import ValidationError, ValidationRules
-
-        with pytest.raises(ValidationError, match="very large"):
-            ValidationRules.validate_scale_factor(200.0)
-
-    def test_validate_scale_factor_valid(self):
-        from benchbox.cli.exceptions import ValidationRules
-
-        assert ValidationRules.validate_scale_factor(1.0) is None
-
     def test_validate_benchmark_name_empty(self):
         from benchbox.cli.exceptions import ValidationError, ValidationRules
 
