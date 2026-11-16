@@ -284,14 +284,16 @@ def test_snapshot_records_changed_tracked_paths_with_hashes(tmp_path: Path) -> N
     assert (primary / "README.md").read_text(encoding="utf-8") == "pre-existing owner edit\n"
 
 
-def test_snapshot_of_clean_primary_is_empty_and_report_is_silent(tmp_path: Path) -> None:
+def test_preexisting_untracked_file_is_recorded_and_report_is_silent(tmp_path: Path) -> None:
     primary, linked = _linked_worktree(tmp_path)
     (primary / "untracked.txt").write_text("scratch\n", encoding="utf-8")
 
     assert _run_check_in(linked, primary, "snapshot").returncode == 0
     result = _run_check_in(linked, primary, "report")
 
-    assert _snapshot_path(linked).read_text(encoding="utf-8") == ""
+    assert [line.split("\t")[1] for line in _snapshot_path(linked).read_text(encoding="utf-8").splitlines()] == [
+        "untracked.txt"
+    ]
     assert result.returncode == 0
     assert result.stderr == ""
 
@@ -400,11 +402,26 @@ def test_write_preflight_fails_when_primary_gains_tracked_changes_after_snapshot
     assert (primary / "README.md").read_text(encoding="utf-8") == "stray write\n"
 
 
-def test_write_preflight_ignores_untracked_primary_files_and_preexisting_dirt(tmp_path: Path) -> None:
+def test_write_preflight_fails_when_primary_gains_an_untracked_file_after_snapshot(tmp_path: Path) -> None:
     primary, linked = _dirty_primary_with_linked(tmp_path)
     _write_generated_hook(primary, sys.executable)
     assert _write_preflight_in(linked, primary).returncode == 0
-    (primary / "scratch.txt").write_text("untracked\n", encoding="utf-8")
+    (primary / "scratch.txt").write_text("stray new file\n", encoding="utf-8")
+
+    result = _write_preflight_in(linked, primary)
+
+    assert result.returncode == 1
+    assert "scratch.txt" in result.stderr
+    assert (primary / "scratch.txt").read_text(encoding="utf-8") == "stray new file\n"
+
+
+def test_write_preflight_ignores_preexisting_and_gitignored_untracked_primary_files(tmp_path: Path) -> None:
+    primary, linked = _dirty_primary_with_linked(tmp_path)
+    _write_generated_hook(primary, sys.executable)
+    (primary / "local-notes.txt").write_text("owner's file\n", encoding="utf-8")
+    (primary / ".git" / "info" / "exclude").write_text("*.log\n", encoding="utf-8")
+    assert _write_preflight_in(linked, primary).returncode == 0
+    (primary / "run.log").write_text("ignored output\n", encoding="utf-8")
 
     assert _write_preflight_in(linked, primary).returncode == 0
 

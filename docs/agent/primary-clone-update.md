@@ -58,5 +58,5 @@ probes (a non-interactive session with the primary clone as working directory,
 asked to create `guard-probe-<agent>.txt` through the edit tool) show omp and
 Claude Code blocked by the hook. Codex does not call the hook for `apply_patch`,
 and Gemini CLI could not be run, so for both only the preflight backstop
-applies. It detects changes to tracked files only; a new untracked file
-created in the primary clone is not detected.
+applies: it reports, after the fact, a tracked file changed or a new
+non-ignored file created in the primary clone.
