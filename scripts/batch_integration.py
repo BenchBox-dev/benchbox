@@ -991,7 +991,7 @@ def _covered_tests(tests: set[str], verification: dict) -> set[str]:
 
 DOTTED_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+$")
 IMPORT_ROOTS = ("", "scripts/", "_project/scripts/")
-DRIFT_NEUTRAL_ROOTS = frozenset({"changelog.d", "docs"})
+DRIFT_NEUTRAL_ROOTS = frozenset(pattern.split("/", 1)[0] for pattern in COMPANION_SCOPE)
 
 
 def _resolve_import(worktree: Path, dotted: str) -> str | None:
