@@ -314,10 +314,12 @@ module docstrings are transition debt, not an example.
 
 ## How CI protects the check
 
-The `comment-policy` job runs on every pull request and feeds the required
-tooling result. Its exit status decides the result; the log is for information
-only. The job stops a pull request from weakening the check
-that judges it:
+The comment-policy check runs on every pull request as the first two steps of
+the `short-checks` job in `ci.yml`, after `ci-paths` and whatever it decides,
+and feeds the required tooling result through the job's `comment-policy`
+output. The steps' exit status decides the result; the log is for information
+only. They run before any command from the pull request, and they stop a pull
+request from weakening the check that judges it:
 
 - **Fixed base.** The base SHA comes from the GitHub event and cannot be
   overridden. A pull request compares against the first parent of the merge

@@ -65,5 +65,5 @@ def test_nightly_uses_the_same_pinned_actions_as_the_pull_request_job() -> None:
         steps = jobs[job]["steps"] if job else [s for j in jobs.values() for s in j["steps"]]
         return {step["uses"] for step in steps if step.get("uses", "").split("/")[0] in {"actions", "astral-sh"}}
 
-    ci_pins = pins(CI, "comment-policy")
+    ci_pins = pins(CI, "short-checks")
     assert pins(NIGHTLY, "whole-tree") <= ci_pins

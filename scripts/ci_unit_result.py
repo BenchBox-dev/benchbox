@@ -29,12 +29,41 @@ CLI_DESCRIPTION = (
     "``SUPERSEDED_EXIT_CODE`` and cancel their own run, which flips the aggregate\n"
     "job's conclusion from failure to cancelled. Any ``failure`` alongside a\n"
     "cancellation still fails the unit.\n"
+    "\n"
+    "A name written ``JOB.CHECK`` reads one check inside a job that runs several:\n"
+    "its result is the job's ``CHECK`` output (``success``, ``failure`` or\n"
+    "``skipped``). The job's own result is then ignored, so one check's failure\n"
+    "fails only the unit that names it. A cancelled or skipped job passes that\n"
+    "result to each of its checks, and an absent or unknown output is ``missing``,\n"
+    "which never passes.\n"
     ""
 )
 
 OK_WHEN_NOT_REQUIRED = {"skipped", "success"}
 
 SUPERSEDED_EXIT_CODE = 3
+
+CHECK_SEPARATOR = "."
+CHECK_RESULTS = {"success", "failure", "skipped"}
+JOB_RESULTS_INHERITED_BY_CHECKS = {"cancelled", "skipped"}
+
+
+def split_checks(needs: dict[str, dict], names: list[str]) -> dict[str, dict]:
+    checked = [name for name in names if CHECK_SEPARATOR in name]
+    multi_check_jobs = {name.partition(CHECK_SEPARATOR)[0] for name in checked}
+    resolved = {job: info for job, info in needs.items() if job not in multi_check_jobs}
+    for name in checked:
+        job, _, check = name.partition(CHECK_SEPARATOR)
+        if job not in needs:
+            continue
+        job_result = str(needs[job].get("result", ""))
+        if job_result in JOB_RESULTS_INHERITED_BY_CHECKS:
+            result = job_result
+        else:
+            reported = str((needs[job].get("outputs") or {}).get(check, ""))
+            result = reported if reported in CHECK_RESULTS else "missing"
+        resolved[name] = {"result": result}
+    return resolved
 
 
 def evaluate(needs: dict[str, dict], expectations: dict[str, bool], always: list[str]) -> tuple[list[str], list[str]]:
@@ -101,6 +130,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{args.unit}: needs must be a JSON object", file=sys.stderr)
         return 1
 
+    names = [name for name, _ in args.expect] + list(args.always)
+    needs = split_checks(needs, names)
     problems, cancelled = evaluate(needs, dict(args.expect), list(args.always))
     if problems:
         print(f"{args.unit}: FAILED")

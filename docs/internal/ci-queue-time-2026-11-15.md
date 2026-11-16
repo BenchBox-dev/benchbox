@@ -115,6 +115,33 @@ cost:
    is under a minute (`spellcheck`, `results-data-check`, `example-validation`
    and `comment-policy` each hold a runner slot for under 1 minute of work).
    Folding them into one job would cut about 3 slots per run, roughly 15 percent
-   of one run's footprint, at no spend. Not applied here: it changes required
-   check names.
+   of one run's footprint, at no spend. Applied on 2026-11-16 without changing
+   a required check name; see the note below.
 3. Larger runners do not help: run time is constant; only queue time varies.
+
+## After: the four short checks in one job (2026-11-16)
+
+`comment-policy`, `spellcheck`, `results-data-check` and `example-validation`
+now run as steps of one `short-checks` job. The `docs`, `results-data` and
+`tooling` gates read one result per check from that job, so the required check
+names and what each gate enforces are unchanged.
+
+Measured on the change's own pull request runs, counting jobs that ran:
+
+| Run | Changed paths | Jobs before | Jobs after | `short-checks` queue | `short-checks` run |
+|---|---|---|---|---|---|
+| [43894241317](https://github.com/BenchBox-dev/benchbox/actions/runs/43894241317) | workflow, docs, tests | 23 | 20 | 0.3 min | 2.9 min |
+| [43897810483](https://github.com/BenchBox-dev/benchbox/actions/runs/43897810483) | one test file | 18 | 18 | 0.2 min | 0.5 min |
+
+"Jobs before" is the same run with the four checks as separate jobs. The saving
+is three slots when both the docs and results-data checks run, two when only
+the docs checks run, and none when neither runs, because `comment-policy` ran
+alone in that case already. In the 2026-11-12 sample above the docs checks ran
+in 29 of 30 runs and `results-data-check` in 17, so most runs save two or three.
+
+The merged job takes about 3 minutes when every check runs, against a longest
+single check of 1.6 minutes before. It is still far off the critical path
+(`test`, about 14 minutes), and wall time for the first run was 18.5 minutes,
+within the quiet-day range above. These runs were on a quiet day, so they show
+the job count, not the effect on busy-day queue time. That needs a sample from
+a day with the 2026-11-12 load.
