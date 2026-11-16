@@ -3,7 +3,7 @@
     "Each managed vendor with published results has a row: the clause, its source and date read, and the owner's decision.",
     "Any result the owner decides to withdraw is handled through the existing takedown process, not by editing pages."
   ],
-  "context": "Listed for the owner; see also human-action-required. Guardrails: work only in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items are delivered together on one feature branch and one PR, as their umbrella item names (site work: BenchBox-dev/benchbox-site); squash-merged. Add a changelog.d fragment for any user-facing change. No live-cloud runs and no credentials in Git or logs. Heavy work (benchmarks, test tiers) runs only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy (make comment-policy-check). Stop and report instead of widening scope; scope removed during review must be re-homed to a named item or dropped by the owner with a reason.",
+  "context": "Listed for the owner; see also human-action-required. Guardrails: work only in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items are delivered together on one feature branch and one PR, as their umbrella item names (site work: BenchBox-dev/benchbox-site); squash-merged. Add a changelog.d fragment for any user-facing change. No live-cloud runs and no credentials in Git or logs. Heavy work (benchmarks, test tiers) runs only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy (make comment-policy-check). Stop and report instead of widening scope; scope removed during review must be re-homed to a named item or dropped by the owner with a reason.\n\nCloseout 2026-11-16: core BenchBox-dev/benchbox#4272 (8af71b0051). docs/internal/results-vendor-publication-terms.md records BigQuery, Snowflake, Databricks and others; no legal conclusion; every decision pending for the owner. Findings: 101 published managed-vendor manifests record none of plan_tier/vendor_permission/vendor_notice/self_run and funding is unspecified; ClickHouse Cloud addendum version and a few terms not read (see record).",
   "description": "Problem: the published corpus includes results for Snowflake, Databricks, BigQuery and other managed services. No document in the repository records whether each vendor's terms allow publishing benchmark results; docs/tpc-licensing-analysis.md covers redistributing the TPC tools, not publishing results. The results are already public in the static summaries and bundle files, and static result pages will make each one indexable.\n\nOutcome: a short record, per vendor in the corpus, of what its terms say about publishing benchmark results and what BenchBox does about it. This is a legal judgement for the owner; an agent can gather the texts but must not decide.\n\nOwner decision (2026-11-13): static result pages include every published result meanwhile.",
   "sessions": [
     {
@@ -21,6 +21,14 @@
       "generation": "60c02b5a14a34411a5ee17dc2da56e80",
       "op": "take",
       "op_id": "7ba4ee36592b4c7dac5f42cee2a658de",
+      "session_id": "1b9bc1b29dcb4d48a0911fca4a479d47"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:961d26faca155954d64951f4",
+      "at": "2026-11-16T13:51:40Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "47b46f7e329e4adf8f7e8bc92fd1cce1",
       "session_id": "1b9bc1b29dcb4d48a0911fca4a479d47"
     }
   ]
