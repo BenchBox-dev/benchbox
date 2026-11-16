@@ -453,14 +453,15 @@ __all__ = [
 ]
 
 
-HOST_LOAD_SAMPLE_FIELDS = (
-    "load_average",
-    "cpu_frequency_mhz",
-    "memory_available_mb",
-    "swap_used_mb",
-    "swap_percent",
-    "sampled_at",
-)
+HOST_LOAD_SAMPLE_FIELD_TYPES = {
+    "load_average": ("array", "null"),
+    "cpu_frequency_mhz": ("number", "null"),
+    "memory_available_mb": ("number", "null"),
+    "swap_used_mb": ("number", "null"),
+    "swap_percent": ("number", "null"),
+    "sampled_at": ("string", "null"),
+}
+HOST_LOAD_SAMPLE_FIELDS = tuple(HOST_LOAD_SAMPLE_FIELD_TYPES)
 
 
 def host_load_sample(snapshot: Mapping[str, Any] | None) -> dict[str, Any]:

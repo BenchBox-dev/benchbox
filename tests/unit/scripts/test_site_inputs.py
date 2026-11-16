@@ -360,13 +360,16 @@ def test_legacy_profile_builds_explain_the_relocated_sources(profile: str, tmp_p
         site_inputs.cmd_build(args)
 
 
-def test_default_profile_emits_exactly_eleven_members() -> None:
-    assert site_inputs.DEFAULT_PROFILE == "schema5"
-    assert site_inputs.PROFILE_SCHEMAS["schema5"] == 5
-    assert site_inputs.PROFILE_SCHEMAS["candidate5"] == 5
+def test_default_profile_emits_exactly_twelve_members() -> None:
+    assert site_inputs.DEFAULT_PROFILE == "schema6"
+    assert site_inputs.PROFILE_SCHEMAS["schema6"] == 6
+    assert site_inputs.PROFILE_SCHEMAS["candidate6"] == 6
+    assert len(site_inputs.MEMBERS_BY_SCHEMA[6]) == 12
     assert len(site_inputs.MEMBERS_BY_SCHEMA[5]) == 11
-    assert "docs-data" in site_inputs.MEMBERS_BY_SCHEMA[5]
-    assert "doc-contracts.json" in site_inputs.MEMBERS_BY_SCHEMA[5]
+    assert "docs-data" in site_inputs.MEMBERS_BY_SCHEMA[6]
+    assert "doc-contracts.json" in site_inputs.MEMBERS_BY_SCHEMA[6]
+    assert "result-bundle.schema.json" in site_inputs.MEMBERS_BY_SCHEMA[6]
+    assert "result-bundle.schema.json" not in site_inputs.MEMBERS_BY_SCHEMA[5]
 
 
 def _fake_explorer_publish(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, bundles: bool) -> Path:
@@ -403,9 +406,11 @@ def _candidate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, schema: int, cer
     monkeypatch.setattr(site_inputs, "DOC_CONTRACTS_SCHEMA", tiny)
     _write(out / "docs-data" / site_inputs.DOCS_DATA_FILE, '{"schema_version": 1}\n')
     _write(out / "doc-contracts.json", '{"schema_version": 1}\n')
-    if schema == 5:
+    if schema in (5, 6):
         shutil.rmtree(out / "docs")
         shutil.rmtree(out / "downloads")
+    if schema == 6:
+        site_inputs.build_result_schema(out / site_inputs.RESULT_SCHEMA_MEMBER)
     names = site_inputs.MEMBERS_BY_SCHEMA[schema]
     manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
     manifest["schema"] = schema
@@ -425,9 +430,12 @@ def test_member_sets_per_schema_are_exact() -> None:
     assert site_inputs.PROFILE_SCHEMAS["schema5"] == 5
     assert site_inputs.PROFILE_SCHEMAS["candidate4"] == 4
     assert site_inputs.PROFILE_SCHEMAS["candidate5"] == 5
+    assert set(site_inputs.MEMBERS_BY_SCHEMA[6]) == set(site_inputs.MEMBERS_BY_SCHEMA[5]) | {
+        "result-bundle.schema.json"
+    }
 
 
-def test_default_profile_is_the_published_schema5() -> None:
+def test_default_profile_is_the_published_schema6() -> None:
     parser_args = []
 
     def capture(args: argparse.Namespace) -> int:
@@ -440,12 +448,12 @@ def test_default_profile_is_the_published_schema5() -> None:
         site_inputs.main(["build", "--out", "x"])
     finally:
         site_inputs.cmd_build = original
-    assert parser_args[0].profile == "schema5"
-    assert site_inputs.PROFILE_SCHEMAS[parser_args[0].profile] == 5
+    assert parser_args[0].profile == "schema6"
+    assert site_inputs.PROFILE_SCHEMAS[parser_args[0].profile] == 6
     assert parser_args[0].certified_by is None
 
 
-@pytest.mark.parametrize("schema", [4, 5])
+@pytest.mark.parametrize("schema", [4, 5, 6])
 def test_verify_accepts_candidate_bundles(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], schema: int
 ) -> None:
@@ -459,6 +467,70 @@ def test_exact3_verify_rejects_added_contract_members(tmp_path: Path, monkeypatc
     manifest["schema"] = 3
     _write(out / "manifest.json", json.dumps(manifest) + "\n")
     assert site_inputs.cmd_verify(out) == 1
+
+
+def _reseal(out: Path) -> None:
+    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    manifest["members"][site_inputs.RESULT_SCHEMA_MEMBER] = site_inputs.member_digest(
+        out / site_inputs.RESULT_SCHEMA_MEMBER
+    )
+    _write(out / "manifest.json", json.dumps(manifest) + "\n")
+
+
+def test_schema6_rejects_a_missing_result_schema_member(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    out = _candidate(tmp_path, monkeypatch, 6)
+    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    manifest["members"].pop(site_inputs.RESULT_SCHEMA_MEMBER)
+    _write(out / "manifest.json", json.dumps(manifest) + "\n")
+    assert site_inputs.cmd_verify(out) == 1
+
+
+def test_schema5_rejects_the_result_schema_member(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    out = _candidate(tmp_path, monkeypatch, 5)
+    _write(out / site_inputs.RESULT_SCHEMA_MEMBER, "{}\n")
+    _reseal(out)
+    assert site_inputs.cmd_verify(out) == 1
+
+
+def test_schema6_rejects_a_result_schema_that_is_not_the_generated_one(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    out = _candidate(tmp_path, monkeypatch, 6)
+    path = out / site_inputs.RESULT_SCHEMA_MEMBER
+    document = json.loads(path.read_text(encoding="utf-8"))
+    document["title"] = "tampered"
+    _write(path, json.dumps(document, indent=2) + "\n")
+    _reseal(out)
+    assert site_inputs.cmd_verify(out) == 1
+    assert "differs from the schema generated" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("field", ["$id", "result_schema_version"])
+def test_schema6_rejects_a_result_schema_without_its_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], field: str
+) -> None:
+    out = _candidate(tmp_path, monkeypatch, 6)
+    path = out / site_inputs.RESULT_SCHEMA_MEMBER
+    document = json.loads(path.read_text(encoding="utf-8"))
+    document[field] = "9.9"
+    _write(path, json.dumps(document, indent=2) + "\n")
+    _reseal(out)
+    assert site_inputs.cmd_verify(out) == 1
+    assert field in capsys.readouterr().out
+
+
+def test_schema6_rejects_an_unreadable_result_schema(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    out = _candidate(tmp_path, monkeypatch, 6)
+    _write(out / site_inputs.RESULT_SCHEMA_MEMBER, "not json")
+    _reseal(out)
+    assert site_inputs.cmd_verify(out) == 1
+
+
+def test_build_result_schema_writes_the_generated_document(tmp_path: Path) -> None:
+    target = tmp_path / site_inputs.RESULT_SCHEMA_MEMBER
+    site_inputs.build_result_schema(target)
+    assert target.read_bytes() == (ROOT / "quality" / "result-bundle.schema.json").read_bytes()
+    assert site_inputs.result_schema_errors(tmp_path) == []
 
 
 def test_schema5_rejects_docs_member(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -505,11 +577,12 @@ def test_schema4_verify_rejects_a_numeric_certifier_stored_as_a_number(
     assert site_inputs.cmd_verify(out) == 1
 
 
+@pytest.mark.parametrize("schema", [5, 6])
 @pytest.mark.parametrize("certified_by", ["local", "", "12a", "-1", "1 ", "\u0663", "latest"])
-def test_schema5_verify_rejects_other_certifiers(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], certified_by: str
+def test_schema5_and_6_verify_reject_other_certifiers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], certified_by: str, schema: int
 ) -> None:
-    out = _candidate(tmp_path, monkeypatch, 5, certified_by=certified_by)
+    out = _candidate(tmp_path, monkeypatch, schema, certified_by=certified_by)
     assert site_inputs.cmd_verify(out) == 1
     assert "certified_by" in capsys.readouterr().out
 
@@ -563,13 +636,16 @@ def test_certifier_rules_match_the_site_verifier() -> None:
     assert site_inputs.certifier_errors(4, "local")
     assert site_inputs.certifier_errors(5, "candidate") == []
     assert site_inputs.certifier_errors(5, "42") == []
+    assert site_inputs.certifier_errors(6, "42") == []
+    assert site_inputs.certifier_errors(6, "candidate") == []
+    assert site_inputs.certifier_errors(6, "local")
     assert site_inputs.certifier_errors(5, 42)
     assert site_inputs.certifier_errors(5, "local")
 
 
 def test_default_certifier_is_never_local_for_schema4() -> None:
     assert site_inputs.default_certifier("exact3") == "local"
-    for profile in ("schema4", "schema5", "candidate4", "candidate5"):
+    for profile in ("schema4", "schema5", "schema6", "candidate4", "candidate5", "candidate6"):
         assert (
             site_inputs.certifier_errors(site_inputs.PROFILE_SCHEMAS[profile], site_inputs.default_certifier(profile))
             == []
@@ -594,7 +670,7 @@ def test_candidate_rejects_extra_docs_data_entry(tmp_path: Path, monkeypatch: py
     assert site_inputs.cmd_verify(out) == 1
 
 
-@pytest.mark.parametrize("profile", ["candidate4", "candidate5"])
+@pytest.mark.parametrize("profile", ["candidate4", "candidate5", "candidate6"])
 def test_candidate_build_refuses_a_certifier(profile: str) -> None:
     args = argparse.Namespace(profile=profile, certified_by="123", out="unused")
     with pytest.raises(RuntimeError, match="cannot carry a certifier"):

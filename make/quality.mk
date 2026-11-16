@@ -293,6 +293,8 @@ ci-lint:
 	[ $$? -eq 0 ] || failed="$$failed platform-manifest-check"; \
 	$(MAKE) oracle-coverage-map-check; \
 	[ $$? -eq 0 ] || failed="$$failed oracle-coverage-map-check"; \
+	$(MAKE) result-schema-check; \
+	[ $$? -eq 0 ] || failed="$$failed result-schema-check"; \
 	$(MAKE) pricing-data-check; \
 	[ $$? -eq 0 ] || failed="$$failed pricing-data-check"; \
 	uv run -- python scripts/check_public_contract_drift.py; \
