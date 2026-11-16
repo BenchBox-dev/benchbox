@@ -37483,15 +37483,10 @@
       "title": "Accept any in-range scale factor and keep scale lists as the recommended set"
     },
     "scale-rule-stale-leftovers-20261111": {
-      "claim": {
-        "expires_at": "2026-11-17T04:39:58Z",
-        "generation": "593dade2c61c4059936b271f9ffd4fe9",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3da1603d55770b4822e4311c"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Remove unused scale validators and a stale test baseline entry left behind by the scale-factor rule"
     },
     "scd2-basic-idempotency-and-cleanup-scoping": {
