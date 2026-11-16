@@ -28373,9 +28373,9 @@
     },
     "methodology-open-questions-owner-20261113": {
       "claim": {
-        "expires_at": "2026-11-17T13:51:18Z",
-        "generation": "5dffb4bdb9684aef83cd23575ee4df3f",
-        "renewals": 1,
+        "expires_at": "2026-11-17T13:51:27Z",
+        "generation": "ed51739590224a1898584606118a91fa",
+        "renewals": 2,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:961d26faca155954d64951f4"
       },
       "needs": [],
