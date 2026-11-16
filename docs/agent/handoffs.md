@@ -73,8 +73,9 @@ parent's worktree, is therefore refused.
 BENCHBOX_WORKTREE_TAKEOVER=1 make agent-write-preflight
 ```
 
-Run it, once, only when the recorded owner is this session's own subagent or
-parent and that agent has stopped writing there, or when the other session is
+Run it, once, only when the recorded owner is an agent of the same harness
+session (this session's subagent, its parent, or an earlier subagent of the
+same parent) that has stopped writing there, or when the other session is
 confirmed gone. Never take a worktree from a session that may still be
 working: create your own with `make worktree-create`. A prompt that hands a
 worktree to a subagent should include the command. A batch leader does not
