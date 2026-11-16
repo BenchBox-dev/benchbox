@@ -306,9 +306,12 @@ class TestDuckDBAdapter:
             assert ".duckdb" in adapter.database_path
 
     def test_initialization_missing_driver(self):
-        with patch("benchbox.platforms.duckdb.duckdb", None):
-            with pytest.raises(ImportError, match="DuckDB not installed"):
-                DuckDBAdapter()
+        with (
+            patch("benchbox.platforms.duckdb.duckdb", None),
+            patch("benchbox.platforms.duckdb.importlib.import_module", side_effect=ImportError("no duckdb")),
+            pytest.raises(ImportError, match="DuckDB not installed"),
+        ):
+            DuckDBAdapter()
 
     @patch("benchbox.platforms.duckdb.load_driver_module")
     def test_initialization_with_runtime_contract_uses_materialized_module(self, mock_load_driver_module):

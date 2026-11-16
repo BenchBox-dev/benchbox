@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Requesting a DuckDB driver_version that differs from the installed package now loads the requested version, because DuckDB is no longer imported during platform detection or adapter import; if a different DuckDB is already loaded, the run fails with an error naming the loaded version instead of reporting the wrong one.",
+      "platforms": ["duckdb"]
+    }
+  ]
+}

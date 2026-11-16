@@ -37,6 +37,15 @@ installs a package: a missing or mismatched driver is reported and the preview c
 
 `benchbox platforms install` prints installation instructions only; it never installs.
 
+## DuckDB version isolation
+
+An isolated DuckDB runtime is a virtualenv under a directory listed in `BENCHBOX_DRIVER_RUNTIME_ROOTS` (default
+`benchmark_runs/driver_envs`) whose installed `duckdb` matches `driver_version`. DuckDB is a native module that
+cannot be reloaded in a running process, so the requested version must be the first DuckDB the process loads.
+Platform detection and the DuckDB adapter therefore avoid importing it until the adapter is created. If another
+DuckDB was already loaded, the run fails with an error naming the loaded version and path instead of continuing on
+the wrong one.
+
 ## What --force deletes
 
 | Value | Local data | Target database |

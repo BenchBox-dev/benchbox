@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import importlib
 import importlib.machinery
+import importlib.util
 import logging
 import os
 import re
@@ -191,6 +192,38 @@ def _purge_module_tree(module_name: str) -> None:
             sys.modules.pop(loaded, None)
 
 
+ISOLATABLE_NATIVE_DRIVER_IMPORTS = frozenset({"duckdb"})
+
+
+def probe_unloaded_driver(import_name: str, distribution: str) -> tuple[bool, str | None]:
+    try:
+        spec = importlib.util.find_spec(import_name)
+    except (ImportError, ValueError):
+        return False, None
+    if spec is None:
+        return False, None
+    try:
+        return True, importlib_metadata.version(distribution)
+    except importlib_metadata.PackageNotFoundError:
+        return True, None
+
+
+def _reject_already_loaded_native_driver(import_name: str, runtime_path: str, requested: str | None) -> None:
+    loaded = sys.modules.get(import_name)
+    if loaded is None:
+        return
+    if _module_is_from_runtime(loaded, runtime_path):
+        return
+    raise RuntimeError(
+        f"Module '{import_name}' version {getattr(loaded, '__version__', 'unknown')} was already loaded from "
+        f"'{_module_origin(loaded) or 'unknown'}' before the isolated runtime '{runtime_path}'"
+        + (f" for version {requested}" if requested else "")
+        + " could be selected. Native driver modules cannot be reloaded in-process, so the requested version "
+        "must be the first one imported; start a new process and avoid importing the driver before the platform "
+        "adapter is created."
+    )
+
+
 def _module_origin(module: object) -> str | None:
     return str(getattr(module, "__file__", "")) or None
 
@@ -233,7 +266,7 @@ def load_driver_module(
         if not runtime_dir.exists():
             raise RuntimeError(f"Runtime path does not exist for module '{import_name}': {runtime_path}")
 
-        _purge_module_tree(import_name)
+        _reject_already_loaded_native_driver(import_name, runtime_path, resolution.requested)
         sys.path.insert(0, runtime_path)
         try:
             module = importlib.import_module(import_name)
