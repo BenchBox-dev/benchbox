@@ -946,9 +946,10 @@ def _already_merged(
     )
     save_ledger(repo, ledger)
     if failures:
+        parent = _git(repo, "rev-parse", f"{landing['merge_head']}^1")
         raise BatchError(
             f"member {member!r} is merged at {landing['merge_head']} but the overlap rerun failed for {failures}; "
-            f"reset the integration branch to {landing.get('source_base')} and land again once the combination "
+            f"reset the integration branch to {parent} and land again once the combination "
             f"passes; do not prepare {member!r} until the reruns pass"
         )
     if head != landing["merge_head"] and head != tracker.get("integration_head"):
@@ -982,6 +983,11 @@ def _verification_tests(verification: dict) -> set[str]:
     return {part.split("::", 1)[0] for part in command[command.index("-q") + 1 :]}
 
 
+def _covered_tests(tests: set[str], verification: dict) -> set[str]:
+    ran = _verification_tests(verification)
+    return {test for test in tests if any(test == path or test.startswith(f"{path.rstrip('/')}/") for path in ran)}
+
+
 def _mapped_tests(repo: Path, base: str) -> set[str] | None:
     proc = _run(
         ["uv", "run", "--", "python", "_project/scripts/preflight_targets.py", "tests", "--base-ref", base], repo
@@ -1009,7 +1015,7 @@ def _check_bases(worktree: Path, member_head: str) -> list[dict]:
 
 
 def _stale_base_refusal(
-    repo: Path, ledger: dict, check: dict, facts: dict, head: str, dependencies: list[str]
+    repo: Path, ledger: dict, tracker: dict, check: dict, facts: dict, head: str, dependencies: list[str]
 ) -> str | None:
     base = str(check.get("integration_head", ""))
     member = str(check.get("member", ""))
@@ -1021,6 +1027,8 @@ def _stale_base_refusal(
         or not _is_ancestor(repo, base, facts["member_head"])
     ):
         return f"the check base {base} is not an ancestor of both the integration head and the member"
+    if base not in tracker_heads(tracker):
+        return f"the check base {base} is not a recorded integration head"
     drift = _changed_files(repo, base, head)
     member_changed = set(_changed_files(repo, base, facts["member_head"]))
     patterns = ledger["scope"][member]
@@ -1036,7 +1044,7 @@ def _stale_base_refusal(
     mapped = _mapped_tests(repo, base)
     if mapped is None:
         return "the tests affected by the landings since the check could not be determined"
-    overlap = sorted(mapped & _verification_tests(check["verification"]))
+    overlap = sorted(_covered_tests(mapped, check["verification"]))
     if overlap:
         return f"landings since the check affect the member's verification tests: {', '.join(overlap[:5])}"
     return None
@@ -1054,19 +1062,19 @@ def _stale_merge_refusal(repo: Path, check: dict, head: str, merged: str, member
     mapped = _mapped_tests(repo, head)
     if mapped is None:
         return "the tests affected by the member could not be determined"
-    extra = sorted(mapped - _verification_tests(check["verification"]))
+    extra = sorted(mapped - _covered_tests(mapped, check["verification"]))
     if extra:
         return f"the merged tree maps tests the member never ran: {', '.join(extra[:5])}"
     return None
 
 
-def _landing_check(repo: Path, ledger: dict, facts: dict, head: str, dependencies: list[str]) -> dict:
+def _landing_check(repo: Path, ledger: dict, tracker: dict, facts: dict, head: str, dependencies: list[str]) -> dict:
     exact = _read_check(facts["worktree"], facts["member_head"], head)
     if exact is not None:
         return exact
     reasons = []
     for record in sorted(_check_bases(facts["worktree"], facts["member_head"]), key=lambda r: str(r.get("checked_at"))):
-        reason = _stale_base_refusal(repo, ledger, record, facts, head, dependencies)
+        reason = _stale_base_refusal(repo, ledger, tracker, record, facts, head, dependencies)
         if reason is None:
             return record
         reasons.append(reason)
@@ -1091,7 +1099,7 @@ def _landing_preconditions(
         raise BatchError(
             f"tracker integration head {tracker.get('integration_head')} differs from {head}; run batch-status"
         )
-    check = _landing_check(repo, ledger, facts, head, dependencies)
+    check = _landing_check(repo, ledger, tracker, facts, head, dependencies)
     base = str(check["integration_head"])
     if not _is_ancestor(repo, base, facts["member_head"]):
         raise BatchError("member does not contain the integration head its check ran at")
@@ -1358,7 +1366,7 @@ def land_member(repo: Path, member: str, *, push: bool = True, accepted_writes: 
         "member_branch": facts["branch"],
         "member_worktree": str(facts["worktree"]),
         "member_head": facts["member_head"],
-        "source_base": head,
+        "source_base": gate["base"],
         "merge_head": merged,
         "changed_files": gate["changed"],
         "trusted_sha": gate["trusted"],
