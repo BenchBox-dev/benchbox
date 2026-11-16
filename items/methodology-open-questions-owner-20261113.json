@@ -3,7 +3,7 @@
     "Each question from PR #153's open-questions list has an answer or an explicit 'no policy', recorded in the repository.",
     "Answers that become rules are added to the methodology page in a follow-up PR with their source."
   ],
-  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). The authoritative list is the open-questions section of https://github.com/BenchBox-dev/benchbox-site/pull/153. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "context": "Source: found on 2026-11-13 while delivering the agent-facing work (PRs BenchBox-dev/benchbox#4202, #4203 and BenchBox-dev/benchbox-site#152, #153, #154). The authoritative list is the open-questions section of https://github.com/BenchBox-dev/benchbox-site/pull/153. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\nCloseout 2026-11-16: core BenchBox-dev/benchbox#4272 (8af71b0051), site BenchBox-dev/benchbox-site#166 (7ae39b8739, merged to next). Provisional answers adopted per owner decision; ADR docs/internal/adr/adr-benchmark-methodology-provisional-policy.md. Still the owner's: EULA 4c(3) wording, third-party citation format, and confirming the provisional answers (3-iteration minimum, hardware not a ranking facet, warm-only).",
   "description": "Problem: the methodology page (site PR #153, merged) states only recorded policy. Questions with no recorded policy were left off it: minimum iterations, how to aggregate repeated runs, noise thresholds, cold against warm runs, seed cohorts, whether hardware and tuning define a cohort, non-standard scales for non-TPC benchmarks, which scale suits which purpose, regression thresholds, whether the EULA clause 4c wording is sufficient, and how third parties should cite results.\n\nOutcome: an owner answer for each, recorded as policy (an ADR or the methodology page), so tools and documentation can rely on it.",
   "sessions": [
     {
@@ -39,6 +39,14 @@
       "generation": "ed51739590224a1898584606118a91fa",
       "op": "take",
       "op_id": "7568856846db423b8411354d740762b9",
+      "session_id": "1b9bc1b29dcb4d48a0911fca4a479d47"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:961d26faca155954d64951f4",
+      "at": "2026-11-16T13:51:30Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0bcd71b81a09410d91a5595b686073b1",
       "session_id": "1b9bc1b29dcb4d48a0911fca4a479d47"
     }
   ]
