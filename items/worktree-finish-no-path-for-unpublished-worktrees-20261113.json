@@ -4,6 +4,7 @@
     "The same target refuses when the tip has a commit not on the remote or when tracked files are modified, naming the reason.",
     "`.tmp/` DuckDB temp storage left by benchmark runs is either cleaned by the run or ignored by the cleanliness check, with the choice recorded."
   ],
+  "context": "FINAL 2026-11-15. PR #4255 merged as 53d1b3cd83. New `make worktree-finish UNPUBLISHED=1` (dry run default, expected-head check kept): requires no PR of any state for the branch (lookup failure holds), tip reachable from refs/remotes/origin/* after `git fetch --prune`, no tracked modifications, untracked files only `.tmp/duckdb_temp_storage*` / `.tmp/duckdb_temp_attach*` (others listed in the hold). Apply deletes listed temp files, runs plain `git worktree remove` (no --force) and expected-OID `git update-ref -d`; remote branch never touched; worktree-reap unchanged. Evidence contract gains section 7.2 (unpublished basis proves no commit lost, not integration). Decision: tolerate DuckDB .tmp spill files only in UNPUBLISHED mode rather than cleaning at creation (spill dir is chosen per connection from many call sites; central cleanup could delete another run's files); documented in docs/internal/dev-loop-worktrees.md. Tests: 91 passed (refusals for unpushed commits, modified tracked file, unknown untracked files, branch with PR, head mismatch; deleted remote branch not accepted as proof). Found and fixed a git-status parsing bug (leading space stripped). Demonstrated on a real scratch worktree with a 5 MB temp file.",
   "description": "Gap. `make worktree-create` is the required way to make any worktree, including throwaway ones (a baseline checkout for timing, a scratch checkout to reproduce a bug). `make worktree-finish` and `make worktree-reap` only remove a worktree whose branch has a merged pull request: for a branch with none they report `HOLD ... No PRs found on GitHub for branch` and `keep`. A worktree with untracked files is held too, even when the files are tool temp output (684 MB of `duckdb_temp_storage_*.tmp` under `.tmp/` in one case on 2026-11-13). The only remaining route is `git worktree remove --force` and deleting the branch ref by hand, which the agent guide classes as destructive commands needing owner approval each time. Such worktrees therefore accumulate.\n\nExpected: a supported removal path for a worktree that was never published: for example `make worktree-finish UNPUBLISHED=1`, allowed only when the branch has no upstream, its tip is reachable from a ref on the remote (so no commit is lost), and untracked files are limited to known tool temp paths or are listed for confirmation.\n\nGuardrails: never remove a worktree holding commits that exist nowhere else, or tracked modifications. Keep the dry-run default and the expected-head check. The evidence contract in `_project/specs/worktree-lifecycle-evidence-contract.md` governs what proof removal needs; extend it, do not bypass it.",
   "links": [
     "scripts/worktree_lifecycle.sh",
@@ -18,6 +19,14 @@
       "op": "create",
       "op_id": "616260d26cea49b09531d915fd61cc7e",
       "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7222c9e9c0af3b11fd0d6a9c",
+      "at": "2026-11-16T02:41:36Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "44a1ff49594b4459af3de741aebb2bff",
+      "session_id": "0171c65ed8c64989adf7cdd0332f0ed2"
     }
   ]
 }
