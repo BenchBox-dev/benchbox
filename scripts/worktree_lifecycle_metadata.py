@@ -249,8 +249,9 @@ def _claim_locked(worktree_path: Path, takeover: bool) -> str:
             raise MetadataError(
                 f"Worktree {worktree_path} is owned by live session {record['session']} "
                 f"(pid {record['pid']}); this session is {session}.\n"
-                "Create your own worktree (make worktree-create), or, if the other session is gone, "
-                "take it over with BENCHBOX_WORKTREE_TAKEOVER=1 make agent-write-preflight."
+                "Create your own worktree (make worktree-create). If the other session is gone, or is this "
+                "session's own subagent or parent and has stopped writing here, take it over with "
+                "BENCHBOX_WORKTREE_TAKEOVER=1 make agent-write-preflight (docs/agent/handoffs.md)."
             )
         if record["session"] == session and alive:
             return "renewed"
