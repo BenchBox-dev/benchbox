@@ -11237,15 +11237,10 @@
       "title": "Accelerate slow and resource-heavy test suites by 4x without coverage loss"
     },
     "acceptance-criteria-no-real-host-load-20261115": {
-      "claim": {
-        "expires_at": "2026-11-17T13:26:05Z",
-        "generation": "a97722ec93304aafb44f8cf12dae7e39",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:961d26faca155954d64951f4"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Remove acceptance criteria that ask for a run beside deliberate CPU or memory load"
     },
     "acl-benchmark-enhancement": {
