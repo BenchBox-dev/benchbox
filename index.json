@@ -27675,15 +27675,10 @@
       "title": "MCP run_benchmark at TPC-H SF1 on DuckDB returns 'incomplete' with no error flag while the CLI succeeds"
     },
     "mcp-start-benchmark-nonstandard-scale-note-20261111": {
-      "claim": {
-        "expires_at": "2026-11-17T03:08:57Z",
-        "generation": "7c86d77c056846d788c40e3d0610ca68",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3da1603d55770b4822e4311c"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "MCP start_benchmark returns no note for a non-standard scale factor"
     },
     "mcp-stateless-external-deployment-acceptance-v2": {
