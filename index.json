@@ -38717,7 +38717,7 @@
         "agent-demand-signals-baseline-20261113"
       ],
       "priority": "medium",
-      "status": "blocked",
+      "status": "open",
       "title": "Add execution environment, tuning mode and trust label columns to the static result summaries"
     },
     "site-todo-state-scheduled-validation-20261030": {
