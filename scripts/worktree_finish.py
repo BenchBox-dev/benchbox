@@ -39,6 +39,7 @@ from scripts.worktree_lifecycle_metadata import (
 )
 
 HEX_40_RE = re.compile(r"^[0-9a-fA-F]{40}$")
+TOOL_TEMP_UNTRACKED_RE = re.compile(r"^\.tmp/duckdb_temp_(?:storage|attach)[^/]*$")
 
 PrLookup = Callable[[str], Tuple[List[Dict[str, Any]], Optional[str]]]
 TargetRefresher = Callable[[str], Optional[str]]
@@ -73,6 +74,9 @@ class FinishPreviewResult:
     proposed_actions: List[Dict[str, str]]
     timestamp: str
     open_pr_numbers: Tuple[int, ...] = ()
+    unpublished: bool = False
+    remote_refs: Tuple[str, ...] = ()
+    tool_temp_files: Tuple[str, ...] = ()
 
     def to_dict(self) -> Dict[str, Any]:
         return dataclasses.asdict(self)
@@ -106,6 +110,23 @@ def apply_finish_actions(
             }
         )
         return False, None, executed
+    for rel_path in res.tool_temp_files:
+        temp_file = Path(res.target_path) / rel_path
+        try:
+            temp_file.unlink()
+            outcome = "removed"
+        except FileNotFoundError:
+            outcome = "already absent"
+        except OSError as err:
+            executed.append(
+                {
+                    "action": "tool_temp_cleanup",
+                    "command": f"unlink {temp_file}",
+                    "outcome": f"failed: {err} - no further mutation performed",
+                }
+            )
+            return False, None, executed
+        executed.append({"action": "tool_temp_cleanup", "command": f"unlink {temp_file}", "outcome": outcome})
     code, _, stderr = _run_git(["worktree", "remove", res.target_path], git_cwd)
     executed.append(
         {
@@ -256,11 +277,48 @@ def _make_hold_result(
     )
 
 
+def _dirty_reason(target_path: Path, tool_temp_files: Optional[List[str]]) -> Optional[str]:
+    if tool_temp_files is None:
+        status_code, status_out, _ = _run_git(["status", "--porcelain"], target_path)
+        if status_code != 0 or status_out:
+            return "Worktree has uncommitted modifications, staged changes, or untracked files"
+        return None
+    proc = subprocess.run(
+        ["git", "status", "--porcelain", "--untracked-files=all"],
+        cwd=target_path,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if proc.returncode != 0:
+        return "Worktree status could not be read"
+    tracked_changes: List[str] = []
+    foreign_untracked: List[str] = []
+    for line in proc.stdout.splitlines():
+        rel_path = line[3:]
+        if not line.startswith("?? "):
+            tracked_changes.append(rel_path)
+        elif TOOL_TEMP_UNTRACKED_RE.match(rel_path):
+            tool_temp_files.append(rel_path)
+        else:
+            foreign_untracked.append(rel_path)
+    details = []
+    if tracked_changes:
+        details.append(f"tracked files modified or staged: {', '.join(tracked_changes)}")
+    if foreign_untracked:
+        details.append(f"untracked files outside known tool temp paths: {', '.join(foreign_untracked)}")
+    if not details:
+        return None
+    return "Worktree is not removable as unpublished: " + "; ".join(details)
+
+
 def _check_worktree_structure(
     target_path: Path,
     expected_head_oid: str,
     repo_root: Path,
     timestamp: str,
+    tool_temp_files: Optional[List[str]] = None,
 ) -> Tuple[Optional[Dict[str, Any]], Optional[str], Optional[FinishPreviewResult]]:
     primary_clone = get_primary_clone_path(repo_root)
     if primary_clone and target_path == primary_clone:
@@ -345,15 +403,15 @@ def _check_worktree_structure(
             ),
         )
 
-    status_code, status_out, _ = _run_git(["status", "--porcelain"], target_path)
-    if status_code != 0 or len(status_out) > 0:
+    dirty_reason = _dirty_reason(target_path, tool_temp_files)
+    if dirty_reason:
         return (
             None,
             None,
             _make_hold_result(
                 target_path,
                 expected_head_oid,
-                "Worktree has uncommitted modifications, staged changes, or untracked files",
+                dirty_reason,
                 timestamp,
                 hold_code="dirty",
                 branch=branch,
@@ -658,6 +716,142 @@ def _evaluate_pr_integration(
     return (latest, historical_head), None
 
 
+def _actionable_result(
+    target_path: Path,
+    expected_head_oid: str,
+    actual_head: str,
+    branch: str,
+    meta: WorktreeLifecycleMetadata,
+    timestamp: str,
+    *,
+    latest_pr: Optional[Dict[str, Any]] = None,
+    merged_head: Optional[str] = None,
+    open_pr_numbers: Tuple[int, ...] = (),
+    unpublished: bool = False,
+    remote_refs: Tuple[str, ...] = (),
+    tool_temp_files: Tuple[str, ...] = (),
+) -> FinishPreviewResult:
+    action_remove = " ".join(["git", "worktree", "remove"])
+    action_delete_ref = " ".join(["git", "update-ref", "-d"])
+
+    proposed = [
+        {
+            "action": "tool_temp_cleanup",
+            "description": f"Delete untracked tool temp file {rel_path} inside the worktree",
+            "command": f"unlink {shlex.quote(str(target_path / rel_path))}",
+        }
+        for rel_path in tool_temp_files
+    ]
+    proposed += [
+        {
+            "action": "worktree_removal",
+            "description": f"Remove linked worktree directory and Git registration at {target_path}",
+            "command": f"{action_remove} {shlex.quote(str(target_path))}",
+        },
+        {
+            "action": "branch_deletion",
+            "description": f"Atomically delete local branch ref refs/heads/{branch} with expected old OID {expected_head_oid}",
+            "command": f"{action_delete_ref} {_branch_ref_argument(branch)} {expected_head_oid}",
+        },
+    ]
+
+    return FinishPreviewResult(
+        target_path=str(target_path),
+        branch=branch,
+        current_head=actual_head,
+        expected_head=expected_head_oid,
+        status="actionable",
+        hold_reason=None,
+        hold_code=None,
+        provenance_state=meta.provenance_state,
+        owner_state=meta.owner_state,
+        controller_kind=meta.controller_kind,
+        controller_id=meta.controller_id,
+        manual_released=bool(meta.manual_released_at),
+        clean=True,
+        locked=False,
+        detached=False,
+        pr_number=latest_pr.get("number") if latest_pr else None,
+        pr_base=latest_pr.get("base", {}).get("ref") if latest_pr else None,
+        merged_head=merged_head,
+        pr_merged=latest_pr is not None,
+        merge_commit_reachable=latest_pr is not None,
+        proposed_actions=proposed,
+        timestamp=timestamp,
+        open_pr_numbers=open_pr_numbers,
+        unpublished=unpublished,
+        remote_refs=remote_refs,
+        tool_temp_files=tool_temp_files,
+    )
+
+
+def _remote_refs_containing(commit: str, repo_root: Path) -> Tuple[Tuple[str, ...], Optional[str]]:
+    code, _, stderr = _run_git(["fetch", "--quiet", "--prune", "origin"], repo_root)
+    if code != 0:
+        return (), stderr or "git fetch --prune origin failed"
+    code, stdout, stderr = _run_git(
+        ["for-each-ref", "--contains", commit, "--format=%(refname)", "refs/remotes/origin"], repo_root
+    )
+    if code != 0:
+        return (), stderr or "git for-each-ref failed"
+    refs = tuple(ref for ref in stdout.splitlines() if ref and ref != "refs/remotes/origin/HEAD")
+    return refs, None
+
+
+def _evaluate_unpublished(
+    prs: List[Dict[str, Any]],
+    target_path: Path,
+    expected_head_oid: str,
+    actual_head: str,
+    branch: str,
+    meta: WorktreeLifecycleMetadata,
+    repo_root: Path,
+    timestamp: str,
+) -> Tuple[Tuple[str, ...], Optional[FinishPreviewResult]]:
+    common = {
+        "branch": branch,
+        "current_head": actual_head,
+        "provenance_state": meta.provenance_state,
+        "owner_state": meta.owner_state,
+        "controller_kind": meta.controller_kind,
+        "controller_id": meta.controller_id,
+        "manual_released": bool(meta.manual_released_at),
+        "clean": True,
+    }
+    if prs:
+        numbers = ", ".join(f"#{p.get('number')}" for p in prs)
+        return (), _make_hold_result(
+            target_path,
+            expected_head_oid,
+            f"Branch '{branch}' has upstream PR(s) {numbers}; unpublished removal applies only to branches with no PR",
+            timestamp,
+            hold_code="published_branch",
+            pr_number=prs[0].get("number"),
+            pr_base=prs[0].get("base", {}).get("ref"),
+            **common,
+        )
+    refs, err = _remote_refs_containing(actual_head, repo_root)
+    if err:
+        return (), _make_hold_result(
+            target_path,
+            expected_head_oid,
+            f"Remote refs could not be refreshed to prove the tip is preserved: {err}",
+            timestamp,
+            hold_code="remote_refresh_failed",
+            **common,
+        )
+    if not refs:
+        return (), _make_hold_result(
+            target_path,
+            expected_head_oid,
+            f"Branch tip {actual_head[:12]} is not reachable from any ref on origin; removing it would lose commits",
+            timestamp,
+            hold_code="unpushed_commits",
+            **common,
+        )
+    return refs, None
+
+
 def evaluate_finish_preview(
     target_path: Path,
     expected_head_oid: str,
@@ -666,10 +860,14 @@ def evaluate_finish_preview(
     evidence_file: Optional[Path] = None,
     pr_lookup: Optional[PrLookup] = None,
     refresh_target: Optional[TargetRefresher] = None,
+    unpublished: bool = False,
 ) -> FinishPreviewResult:
     now_utc = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    entry, actual_head, hold_res = _check_worktree_structure(target_path, expected_head_oid, repo_root, now_utc)
+    tool_temp_files: Optional[List[str]] = [] if unpublished else None
+    entry, actual_head, hold_res = _check_worktree_structure(
+        target_path, expected_head_oid, repo_root, now_utc, tool_temp_files
+    )
     if hold_res or not entry or not actual_head:
         return hold_res or _make_hold_result(
             target_path, expected_head_oid, "Unknown structural failure", now_utc, hold_code="unknown"
@@ -699,6 +897,25 @@ def evaluate_finish_preview(
             clean=True,
         )
 
+    remote_refs: Tuple[str, ...] = ()
+    if unpublished:
+        remote_refs, unpublished_hold = _evaluate_unpublished(
+            prs, target_path, expected_head_oid, actual_head, branch, meta, repo_root, now_utc
+        )
+        if unpublished_hold:
+            return unpublished_hold
+        return _actionable_result(
+            target_path,
+            expected_head_oid,
+            actual_head,
+            branch,
+            meta,
+            now_utc,
+            unpublished=True,
+            remote_refs=remote_refs,
+            tool_temp_files=tuple(sorted(tool_temp_files or [])),
+        )
+
     merged, pr_hold = _evaluate_pr_integration(
         prs,
         target_path,
@@ -716,46 +933,15 @@ def evaluate_finish_preview(
             target_path, expected_head_oid, "PR integration hold", now_utc, hold_code="unknown"
         )
     latest_pr, merged_head = merged
-
-    action_remove = " ".join(["git", "worktree", "remove"])
-    action_delete_ref = " ".join(["git", "update-ref", "-d"])
-
-    proposed = [
-        {
-            "action": "worktree_removal",
-            "description": f"Remove linked worktree directory and Git registration at {target_path}",
-            "command": f"{action_remove} {shlex.quote(str(target_path))}",
-        },
-        {
-            "action": "branch_deletion",
-            "description": f"Atomically delete local branch ref refs/heads/{branch} with expected old OID {expected_head_oid}",
-            "command": f"{action_delete_ref} {_branch_ref_argument(branch)} {expected_head_oid}",
-        },
-    ]
-
-    return FinishPreviewResult(
-        target_path=str(target_path),
-        branch=branch,
-        current_head=actual_head,
-        expected_head=expected_head_oid,
-        status="actionable",
-        hold_reason=None,
-        hold_code=None,
-        provenance_state=meta.provenance_state,
-        owner_state=meta.owner_state,
-        controller_kind=meta.controller_kind,
-        controller_id=meta.controller_id,
-        manual_released=bool(meta.manual_released_at),
-        clean=True,
-        locked=False,
-        detached=False,
-        pr_number=latest_pr.get("number"),
-        pr_base=latest_pr.get("base", {}).get("ref"),
+    return _actionable_result(
+        target_path,
+        expected_head_oid,
+        actual_head,
+        branch,
+        meta,
+        now_utc,
+        latest_pr=latest_pr,
         merged_head=merged_head,
-        pr_merged=True,
-        merge_commit_reachable=True,
-        proposed_actions=proposed,
-        timestamp=now_utc,
         open_pr_numbers=tuple(p.get("number") for p in prs if p.get("state") == "open"),
     )
 
@@ -773,7 +959,13 @@ def format_human_report(res: FinishPreviewResult) -> str:
         f"Owner state:       {res.owner_state} (manual_released={res.manual_released})",
         f"Cleanliness:       clean={res.clean}, locked={res.locked}, detached={res.detached}",
     ]
-    if res.pr_number:
+    if res.unpublished:
+        shown = ", ".join(res.remote_refs[:3])
+        extra = len(res.remote_refs) - 3
+        lines.append(f"Unpublished:       no PR; tip preserved on {shown}" + (f" (+{extra} more)" if extra > 0 else ""))
+        if res.tool_temp_files:
+            lines.append(f"Tool temp files:   {len(res.tool_temp_files)} untracked, deleted on apply")
+    elif res.pr_number:
         lines.append(
             f"PR Integration:    PR #{res.pr_number} (base={res.pr_base}, merged={res.pr_merged}, merge_reachable={res.merge_commit_reachable})"
         )
@@ -826,6 +1018,14 @@ def main() -> int:
         help="Execute the proposed removal and ref deletion after fresh revalidation. Preview stays the default.",
     )
     parser.add_argument(
+        "--unpublished",
+        action="store_true",
+        help=(
+            "Remove a never-published worktree: no PR for the branch, tip reachable from a ref on origin, "
+            "no tracked changes, untracked files limited to known tool temp paths."
+        ),
+    )
+    parser.add_argument(
         "--evidence-file",
         type=Path,
         default=None,
@@ -848,6 +1048,7 @@ def main() -> int:
             repo_root=args.repo_root,
             repo_slug=args.repo,
             evidence_file=args.evidence_file,
+            unpublished=args.unpublished,
         )
     except FinishError as err:
         print(f"Error: {err}", file=sys.stderr)

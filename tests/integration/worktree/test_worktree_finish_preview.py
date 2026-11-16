@@ -679,3 +679,169 @@ def test_apply_from_inside_target_worktree_still_deletes_ref(tmp_path: Path, mon
         text=True,
     )
     assert proc.returncode != 0
+
+
+def _unpublished_worktree(tmp_path: Path, branch: str = "scratch/baseline") -> tuple[Path, Path, str]:
+    repo = init_repo_with_origin(tmp_path / "repo")
+    wt = add_linked_worktree(repo, branch, tmp_path / "wt_scratch")
+    head_oid = _git(["rev-parse", "HEAD"], wt)
+    init_metadata(wt, branch=branch, base_ref="origin/develop", base_oid=head_oid)
+    return repo, wt, head_oid
+
+
+def test_unpublished_requires_flag(tmp_path: Path):
+    repo, wt, head_oid = _unpublished_worktree(tmp_path)
+    evidence = write_canned_evidence(tmp_path / "evidence.json", [])
+    res = evaluate_finish_preview(target_path=wt, expected_head_oid=head_oid, repo_root=repo, evidence_file=evidence)
+    assert res.status == "hold"
+    assert res.hold_code == "no_pr"
+
+
+def test_unpublished_removes_scratch_worktree_with_tool_temp_files(tmp_path: Path):
+    repo, wt, head_oid = _unpublished_worktree(tmp_path)
+    temp_dir = wt / ".tmp"
+    temp_dir.mkdir()
+    (temp_dir / "duckdb_temp_storage_DEFAULT-0.tmp").write_bytes(b"spill")
+    (temp_dir / "duckdb_temp_storage_ZSTD-1.tmp").write_bytes(b"spill")
+    evidence = write_canned_evidence(tmp_path / "evidence.json", [])
+
+    res = evaluate_finish_preview(
+        target_path=wt, expected_head_oid=head_oid, repo_root=repo, evidence_file=evidence, unpublished=True
+    )
+    assert res.status == "actionable"
+    assert res.unpublished is True
+    assert "refs/remotes/origin/develop" in res.remote_refs
+    assert res.tool_temp_files == (
+        ".tmp/duckdb_temp_storage_DEFAULT-0.tmp",
+        ".tmp/duckdb_temp_storage_ZSTD-1.tmp",
+    )
+    assert [a["action"] for a in res.proposed_actions] == [
+        "tool_temp_cleanup",
+        "tool_temp_cleanup",
+        "worktree_removal",
+        "branch_deletion",
+    ]
+    assert wt.exists()
+
+    removed, deleted, executed = apply_finish_actions(res, repo)
+    assert removed is True
+    assert deleted == "scratch/baseline"
+    assert not wt.exists()
+    proc = subprocess.run(
+        ["git", "rev-parse", "--verify", "refs/heads/scratch/baseline"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    assert proc.returncode != 0
+
+
+def test_unpublished_refuses_commit_not_on_remote(tmp_path: Path):
+    repo, wt, _ = _unpublished_worktree(tmp_path)
+    (wt / "local.txt").write_text("only here\n", encoding="utf-8")
+    _git(["add", "local.txt"], wt)
+    _git(["commit", "-m", "local only"], wt)
+    tip = _git(["rev-parse", "HEAD"], wt)
+    evidence = write_canned_evidence(tmp_path / "evidence.json", [])
+
+    res = evaluate_finish_preview(
+        target_path=wt, expected_head_oid=tip, repo_root=repo, evidence_file=evidence, unpublished=True
+    )
+    assert res.status == "hold"
+    assert res.hold_code == "unpushed_commits"
+    assert "not reachable from any ref on origin" in res.hold_reason
+    assert wt.exists()
+
+
+def test_unpublished_accepts_tip_pushed_on_own_branch(tmp_path: Path):
+    repo, wt, _ = _unpublished_worktree(tmp_path)
+    (wt / "pushed.txt").write_text("pushed\n", encoding="utf-8")
+    _git(["add", "pushed.txt"], wt)
+    _git(["commit", "-m", "pushed"], wt)
+    _git(["push", "-q", "origin", "scratch/baseline"], wt)
+    tip = _git(["rev-parse", "HEAD"], wt)
+    evidence = write_canned_evidence(tmp_path / "evidence.json", [])
+
+    res = evaluate_finish_preview(
+        target_path=wt, expected_head_oid=tip, repo_root=repo, evidence_file=evidence, unpublished=True
+    )
+    assert res.status == "actionable"
+    assert res.remote_refs == ("refs/remotes/origin/scratch/baseline",)
+
+
+def test_unpublished_refuses_deleted_remote_branch_as_proof(tmp_path: Path):
+    repo, wt, _ = _unpublished_worktree(tmp_path)
+    (wt / "pushed.txt").write_text("pushed\n", encoding="utf-8")
+    _git(["add", "pushed.txt"], wt)
+    _git(["commit", "-m", "pushed"], wt)
+    _git(["push", "-q", "origin", "scratch/baseline"], wt)
+    tip = _git(["rev-parse", "HEAD"], wt)
+    _git(["fetch", "-q", "origin"], repo)
+    origin = tmp_path / "repo-origin.git"
+    _git(["update-ref", "-d", "refs/heads/scratch/baseline"], origin)
+    evidence = write_canned_evidence(tmp_path / "evidence.json", [])
+
+    res = evaluate_finish_preview(
+        target_path=wt, expected_head_oid=tip, repo_root=repo, evidence_file=evidence, unpublished=True
+    )
+    assert res.status == "hold"
+    assert res.hold_code == "unpushed_commits"
+
+
+def test_unpublished_refuses_tracked_modification(tmp_path: Path):
+    repo, wt, head_oid = _unpublished_worktree(tmp_path)
+    (wt / "README.md").write_text("changed\n", encoding="utf-8")
+    evidence = write_canned_evidence(tmp_path / "evidence.json", [])
+
+    res = evaluate_finish_preview(
+        target_path=wt, expected_head_oid=head_oid, repo_root=repo, evidence_file=evidence, unpublished=True
+    )
+    assert res.status == "hold"
+    assert res.hold_code == "dirty"
+    assert "tracked files modified or staged: README.md" in res.hold_reason
+
+
+def test_unpublished_refuses_unknown_untracked_files_and_lists_them(tmp_path: Path):
+    repo, wt, head_oid = _unpublished_worktree(tmp_path)
+    (wt / ".tmp").mkdir()
+    (wt / ".tmp" / "duckdb_temp_storage_DEFAULT-0.tmp").write_bytes(b"spill")
+    (wt / ".tmp" / "notes.txt").write_text("keep me\n", encoding="utf-8")
+    (wt / "results.json").write_text("{}\n", encoding="utf-8")
+    evidence = write_canned_evidence(tmp_path / "evidence.json", [])
+
+    res = evaluate_finish_preview(
+        target_path=wt, expected_head_oid=head_oid, repo_root=repo, evidence_file=evidence, unpublished=True
+    )
+    assert res.status == "hold"
+    assert res.hold_code == "dirty"
+    assert ".tmp/notes.txt" in res.hold_reason
+    assert "results.json" in res.hold_reason
+    assert "duckdb_temp_storage" not in res.hold_reason
+    assert (wt / ".tmp" / "duckdb_temp_storage_DEFAULT-0.tmp").exists()
+
+
+def test_unpublished_refuses_branch_with_pr(tmp_path: Path):
+    repo, wt, head_oid = _unpublished_worktree(tmp_path)
+    evidence = write_canned_evidence(
+        tmp_path / "evidence.json",
+        [{"number": 7, "state": "open", "base": {"ref": "develop"}, "head": {"sha": head_oid}}],
+    )
+
+    res = evaluate_finish_preview(
+        target_path=wt, expected_head_oid=head_oid, repo_root=repo, evidence_file=evidence, unpublished=True
+    )
+    assert res.status == "hold"
+    assert res.hold_code == "published_branch"
+    assert "#7" in res.hold_reason
+
+
+def test_unpublished_still_requires_expected_head(tmp_path: Path):
+    repo, wt, _ = _unpublished_worktree(tmp_path)
+    evidence = write_canned_evidence(tmp_path / "evidence.json", [])
+
+    res = evaluate_finish_preview(
+        target_path=wt, expected_head_oid="b" * 40, repo_root=repo, evidence_file=evidence, unpublished=True
+    )
+    assert res.status == "hold"
+    assert res.hold_code == "head_mismatch"

@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Add make worktree-finish UNPUBLISHED=1 to remove never-published scratch worktrees whose tip is on origin, tolerating DuckDB temp files"
+}
