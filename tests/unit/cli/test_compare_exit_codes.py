@@ -15,7 +15,15 @@ from tests.fixtures.result_dict_fixtures import make_v2_result_dict
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 
-def _bundle(path: Path, query_ms: float, *, gateway: str | None = None, fetch_mode: str | None = None) -> str:
+def _bundle(
+    path: Path,
+    query_ms: float,
+    *,
+    gateway: str | None = None,
+    fetch_mode: str | None = None,
+    execution: dict | None = None,
+    config: dict | None = None,
+) -> str:
     platform: dict = {"name": "snowflake"}
     if gateway:
         platform["gateway"] = {"name": gateway, "routed": True}
@@ -29,6 +37,10 @@ def _bundle(path: Path, query_ms: float, *, gateway: str | None = None, fetch_mo
         "run": run,
         "queries": [{"id": "Q1", "ms": query_ms, "status": "SUCCESS", "run_type": "measurement"}],
     }
+    if execution is not None:
+        payload["execution"] = execution
+    if config is not None:
+        payload["config"] = config
     path.write_text(json.dumps(payload), encoding="utf-8")
     return str(path)
 
@@ -102,6 +114,20 @@ class TestResultFileMode:
 
         assert result.exit_code == 4
         assert "fetch mode differs" in " ".join(result.output.split())
+
+    def test_mcp_bundle_from_before_config_parity_exits_four(self, tmp_path: Path):
+        result = _compare(
+            _bundle(tmp_path / "a.json", 100.0, execution={"entry_point": "mcp"}),
+            _bundle(
+                tmp_path / "b.json",
+                100.0,
+                execution={"entry_point": "cli"},
+                config={"compression": {"type": "zstd"}},
+            ),
+        )
+
+        assert result.exit_code == 4
+        assert "run configuration capture differs" in " ".join(result.output.split())
 
     def test_missing_result_file_exits_one(self, tmp_path: Path):
         result = _compare(_bundle(tmp_path / "a.json", 100.0), str(tmp_path / "absent.json"))

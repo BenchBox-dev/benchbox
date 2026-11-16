@@ -156,6 +156,7 @@ class ManifestEntry(BaseModel):
     display_exclusion_reason: str | None = None
     comparison_exclusion_reason: str | None = None
     ranking_exclusion_reason: str | None = None
+    known_defect_reason: str | None = None
     trust_label: str
     visibility: str
     funding: str = "unspecified"
@@ -404,6 +405,7 @@ class DetailResult(BaseModel):
     display_exclusion_reason: str | None = None
     comparison_exclusion_reason: str | None = None
     ranking_exclusion_reason: str | None = None
+    known_defect_reason: str | None = None
     environment: ExplorerEnvironment
     queries: list[QueryTiming]
     display_timings: list[QueryDisplayTiming] = []

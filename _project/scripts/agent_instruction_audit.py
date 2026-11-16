@@ -15,7 +15,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CORPUS = ROOT / "_project/evals/agent-instructions/scenarios.json"
-ADAPTERS = ("CLAUDE.md", "GEMINI.md", "ANTIGRAVITY.md")
+ADAPTERS = ("CLAUDE.md", "GEMINI.md")
 ACTIVE_REVIEW_PROTOCOL = "docs/agent/review-protocol.md"
 ACTIVE_TEXT = ("AGENTS.md", *ADAPTERS, ".claude/commands/pr.md", ACTIVE_REVIEW_PROTOCOL)
 CANONICAL_REVIEW_SKILL = ".claude/skills/shared-review-protocol/SKILL.md"

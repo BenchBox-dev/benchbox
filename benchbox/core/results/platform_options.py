@@ -143,7 +143,7 @@ def build_platform_options_capture(
 
     for key, value in _iter_public_options(database_options):
         values[key] = value
-        sources[key] = "saved_config"
+        sources[key] = "applied_defaults"
 
     for key, value in _iter_public_options(requested_options):
         requested_source = source_map.get(key, "requested")

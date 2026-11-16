@@ -8,6 +8,9 @@ import pytest
 
 import benchbox.validation.bundle as bundle_module
 from benchbox.validation.bundle import (
+    KNOWN_DEFECT_IDS,
+    KNOWN_DEFECT_REASON_MAX_LEN,
+    KNOWN_DEFECT_REASONS,
     SUBMISSION_NOTES_MAX_LEN,
     ValidationResult,
     _validate_bundle,
@@ -17,6 +20,7 @@ from benchbox.validation.bundle import (
     discover_bundles,
     format_pr_comment,
     format_summary,
+    known_defect_reason,
     validate_bundles,
 )
 from scripts.validate_submission import main
@@ -131,6 +135,40 @@ class TestManifestProvenance:
 
     def test_variant_or_loader_wrong_result_defect_ok(self):
         assert self._run({"known_defects": ["defective-variant-or-loader-wrong-result"]}).ok
+
+    def test_known_defect_reason_ok(self):
+        assert self._run(
+            {"known_defects": ["defective-variant-or-loader-wrong-result"], "known_defect_reason": "Old scale."}
+        ).ok
+
+    @pytest.mark.parametrize("reason", ["", "   ", 5, "x" * (KNOWN_DEFECT_REASON_MAX_LEN + 1)])
+    def test_invalid_known_defect_reason_rejected(self, reason):
+        vr = self._run({"known_defects": ["defective-variant-or-loader-wrong-result"], "known_defect_reason": reason})
+        assert not vr.ok
+        assert any("known_defect_reason" in e for e in vr.errors)
+
+    def test_known_defect_reason_without_known_defects_rejected(self):
+        vr = self._run({"known_defect_reason": "Old scale."})
+        assert not vr.ok
+        assert any("requires known_defects" in e for e in vr.errors)
+
+    def test_every_known_defect_id_has_a_default_reason(self):
+        assert set(KNOWN_DEFECT_REASONS) == set(KNOWN_DEFECT_IDS)
+        assert all(0 < len(reason) <= KNOWN_DEFECT_REASON_MAX_LEN for reason in KNOWN_DEFECT_REASONS.values())
+
+    def test_known_defect_reason_prefers_the_recorded_text(self):
+        payload = {"known_defects": ["defective-macdbgen-addresses"], "known_defect_reason": " Custom reason. "}
+        assert known_defect_reason(payload) == "Custom reason."
+
+    def test_known_defect_reason_falls_back_to_the_id_text(self):
+        payload = {"known_defects": ["defective-macdbgen-addresses", "defective-windows-dsdgen-scale"]}
+        reason = known_defect_reason(payload)
+        assert KNOWN_DEFECT_REASONS["defective-macdbgen-addresses"] in reason
+        assert KNOWN_DEFECT_REASONS["defective-windows-dsdgen-scale"] in reason
+
+    def test_known_defect_reason_is_absent_without_a_known_defect(self):
+        assert known_defect_reason({"known_defect_reason": "Old scale."}) is None
+        assert known_defect_reason({"known_defects": ["future-defect"]}) is None
 
     def test_sqlite_clickbench_row_count_defect_ok(self):
         assert self._run({"known_defects": ["defective-sqlite-clickbench-row-counts"]}).ok

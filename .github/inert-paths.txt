@@ -17,7 +17,6 @@ except	_project/scripts/prompts/**
 except	benchbox/*.md
 except	_project/scripts/*.md
 except	.github/*.md
-except	ANTIGRAVITY.md
 except	CHANGELOG.md
 except	CONTRIBUTING.md
 except	COPYRIGHT.md

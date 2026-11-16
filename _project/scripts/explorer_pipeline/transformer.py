@@ -68,6 +68,7 @@ from benchbox.validation.bundle import (
     OVERRIDE_SUFFIX,
     TRANSLATOR_VERSION_NOT_APPLICABLE,
     accepted_override_rules,
+    manifest_known_defect_reason,
     resolve_translator_version,
     throughput_stream_defects,
 )
@@ -1785,9 +1786,11 @@ class BundleTransformer:
         )
         reason = ranking_exclusion_reason(entry)
         reason = _throughput_stream_exclusion(bundle, bundle_data, test_type, reason)
+        defect_reason = None
         if _sidecar_known_defects(bundle_path):
             reason = KNOWN_DEFECT_RANKING_EXCLUSION
-        return entry.model_copy(update={"ranking_exclusion_reason": reason})
+            defect_reason = manifest_known_defect_reason(bundle_path)
+        return entry.model_copy(update={"ranking_exclusion_reason": reason, "known_defect_reason": defect_reason})
 
     def to_detail_result(
         self,
@@ -1921,9 +1924,11 @@ class BundleTransformer:
         )
         reason = ranking_exclusion_reason(manifest_peer)
         reason = _throughput_stream_exclusion(bundle, bundle_data, test_type, reason)
+        defect_reason = None
         if _sidecar_known_defects(bundle_path):
             reason = KNOWN_DEFECT_RANKING_EXCLUSION
-        return detail.model_copy(update={"ranking_exclusion_reason": reason})
+            defect_reason = manifest_known_defect_reason(bundle_path)
+        return detail.model_copy(update={"ranking_exclusion_reason": reason, "known_defect_reason": defect_reason})
 
 
 __all__ = ["BundleTransformer"]

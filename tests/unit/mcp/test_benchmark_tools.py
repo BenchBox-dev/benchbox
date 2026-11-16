@@ -802,13 +802,14 @@ class TestBenchmarkResultExportPath:
             exporter = exporter_cls.return_value
             exporter.export_result.return_value = {"json": exported_json}
 
-            result_file_path, result_payload = _export_and_build_payload(
+            result_file_path, result_payload, export_error = _export_and_build_payload(
                 result, execution_id, tmp_path, anonymize=False
             )
 
         assert result.execution_id == execution_id
         assert result_file_path == str(exported_json)
         assert result_payload == {}
+        assert export_error is None
         assert exporter_cls.call_args.kwargs["output_dir"] == tmp_path
 
     @pytest.mark.parametrize("anonymize", [False, True])
@@ -871,7 +872,9 @@ class TestMcpCoreRunOutputRoots:
         with (
             patch.object(benchmark_tools, "get_all_benchmarks", return_value={"tpch": {"display_name": "TPC-H"}}),
             patch("benchbox.core.system.SystemProfiler") as profiler_cls,
-            patch.object(benchmark_tools, "_export_and_build_payload", return_value=("result.json", {})) as export,
+            patch.object(
+                benchmark_tools, "_export_and_build_payload", return_value=("result.json", {}, None)
+            ) as export,
             patch.object(benchmark_tools, "_attach_summary_charts"),
             patch("benchbox.core.platform_config.get_platform_config", return_value={}),
             patch("benchbox.core.run_service.execute_run", return_value=result) as execute,
