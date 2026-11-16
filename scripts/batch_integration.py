@@ -991,7 +991,7 @@ def _covered_tests(tests: set[str], verification: dict) -> set[str]:
 
 DOTTED_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+$")
 IMPORT_ROOTS = ("", "scripts/", "_project/scripts/")
-DRIFT_NEUTRAL_PREFIXES = ("changelog.d/", "docs/")
+DRIFT_NEUTRAL_ROOTS = frozenset({"changelog.d", "docs"})
 
 
 def _resolve_import(worktree: Path, dotted: str) -> str | None:
@@ -1106,7 +1106,7 @@ def _stale_base_refusal(
     reached = sorted(set(drift) & _test_import_closure(facts["worktree"], check["verification"]))
     if reached:
         return f"landings since the check changed code the member's verification tests import: {', '.join(reached[:5])}"
-    data = sorted(path for path in drift if not path.endswith(".py") and not path.startswith(DRIFT_NEUTRAL_PREFIXES))
+    data = sorted(path for path in drift if not path.endswith(".py") and Path(path).parts[0] not in DRIFT_NEUTRAL_ROOTS)
     if data:
         return f"landings since the check changed non-Python files tests may read: {', '.join(data[:5])}"
     mapped = _mapped_tests(repo, base)
