@@ -38195,10 +38195,15 @@
       "title": "Fix the 15 broken fragment links that are live on benchbox.dev today"
     },
     "site-docs-cli-contract-changes-20261113": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-17T13:51:47Z",
+        "generation": "7d333047c9344fada5aafa60ce22fd02",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:961d26faca155954d64951f4"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Document compare exit codes, results validate, the cloud-platform guard and host-load fields on the site"
     },
     "site-docs-contradict-cli-behaviour-20261113": {
