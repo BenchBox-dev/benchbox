@@ -189,3 +189,19 @@ def test_non_aggregate_operations_on_filtered_expression_raise():
         filtered.over("k")
     with pytest.raises(NotImplementedError):
         _ = filtered.str
+
+
+def test_filtered_expression_cannot_leak_as_operand_argument_or_native():
+    df_frame, df_ctx = _frames()
+    filtered = df_ctx.col("v").filter(df_ctx.col("x") > 30)
+    with pytest.raises(NotImplementedError, match="silently ignore the filter"):
+        _ = filtered.native
+    with pytest.raises(NotImplementedError, match="silently ignore the filter"):
+        _ = df_ctx.col("x") * filtered
+    with pytest.raises(NotImplementedError, match="silently ignore the filter"):
+        _ = df_ctx.lit(100.0) * filtered
+    with pytest.raises(NotImplementedError, match="silently ignore the filter"):
+        df_frame.select(filtered)
+    with pytest.raises(NotImplementedError, match="silently ignore the filter"):
+        filtered.filter(df_ctx.col("x") > 50)
+    assert "filtered" in repr(filtered)

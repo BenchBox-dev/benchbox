@@ -1338,6 +1338,13 @@ class _DataFusionDeferredCumulative(UnifiedExpr):
         return UnifiedExpr(aggregate.over(window))
 
 
+_FILTERED_EXPRESSION_ERROR = (
+    "DataFusion expression filter(...) is only valid directly before an aggregate terminal "
+    "(sum, mean, avg, count, min, max, first, last, std, var, quantile, n_unique, approx_n_unique); "
+    "using it any other way would silently ignore the filter condition"
+)
+
+
 class _DataFusionDeferredFilter(UnifiedExpr):
     _FILTERED_AGGREGATES = frozenset(
         {
@@ -1361,10 +1368,25 @@ class _DataFusionDeferredFilter(UnifiedExpr):
         super().__init__(expr)
         self._filter_condition = condition
 
+    @property
+    def _expr(self) -> Any:
+        raise NotImplementedError(_FILTERED_EXPRESSION_ERROR)
+
+    @_expr.setter
+    def _expr(self, value: Any) -> None:
+        self._unfiltered_expr = value
+
+    @property
+    def native(self) -> Any:
+        raise NotImplementedError(_FILTERED_EXPRESSION_ERROR)
+
+    def __repr__(self) -> str:
+        return f"UnifiedExpr(filtered {self._unfiltered_expr})"
+
     def _apply_filtered_agg(self, name: str, *args: Any, **kwargs: Any) -> UnifiedExpr:
         from datafusion import functions as df_f
 
-        return UnifiedExpr(getattr(df_f, name)(self._expr, *args, filter=self._filter_condition, **kwargs))
+        return UnifiedExpr(getattr(df_f, name)(self._unfiltered_expr, *args, filter=self._filter_condition, **kwargs))
 
     def sum(self) -> UnifiedExpr:
         return self._apply_filtered_agg("sum")
@@ -1396,7 +1418,7 @@ class _DataFusionDeferredFilter(UnifiedExpr):
     def _case_filtered_value(self) -> Any:
         from datafusion import functions as df_f, lit as df_lit
 
-        return df_f.case(self._filter_condition).when(df_lit(True), self._expr).end()
+        return df_f.case(self._filter_condition).when(df_lit(True), self._unfiltered_expr).end()
 
     def var(self) -> UnifiedExpr:
         from datafusion import functions as df_f
@@ -1411,13 +1433,13 @@ class _DataFusionDeferredFilter(UnifiedExpr):
     def n_unique(self) -> UnifiedExpr:
         from datafusion import functions as df_f
 
-        return UnifiedExpr(df_f.count(self._expr, distinct=True, filter=self._filter_condition))
+        return UnifiedExpr(df_f.count(self._unfiltered_expr, distinct=True, filter=self._filter_condition))
 
     def approx_n_unique(self) -> UnifiedExpr:
         return self._apply_filtered_agg("approx_distinct")
 
 
-_DEFERRED_FILTER_PASSTHROUGH = frozenset({"native"}) | _DataFusionDeferredFilter._FILTERED_AGGREGATES
+_DEFERRED_FILTER_PASSTHROUGH = _DataFusionDeferredFilter._FILTERED_AGGREGATES
 
 
 def _reject_unfiltered_operation(name: str) -> Callable[..., Any]:
