@@ -2954,13 +2954,13 @@
   {
    "disposition": "fixture-data",
    "kinds": {
-    "pattern": 7,
+    "pattern": 9,
     "unresolved": 8
    },
-   "occurrences": 15,
+   "occurrences": 17,
    "path": "tests/fixtures/medium_shard_durations.json",
    "rule": "test-sample-data",
-   "target_count": 15,
+   "target_count": 17,
    "targets": [
     {
      "kind": "unresolved",
@@ -3012,11 +3012,19 @@
     },
     {
      "kind": "pattern",
+     "target": "docs/internal/dev-loop-property-ledger.md]"
+    },
+    {
+     "kind": "pattern",
      "target": "docs/internal/pr-triage.md]"
     },
     {
      "kind": "pattern",
      "target": "docs/internal/repo-admin-settings.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/notes/a.md]"
     },
     {
      "kind": "pattern",
@@ -4330,11 +4338,11 @@
    "extra": 39,
    "file": 1380,
    "generated": 3,
-   "pattern": 335,
+   "pattern": 337,
    "root": 202,
    "unresolved": 2072
   },
-  "references": 33231,
+  "references": 33233,
   "unclassified": 0
  }
 }
