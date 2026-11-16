@@ -40985,6 +40985,13 @@
       "status": "done",
       "title": "Starburst Platform Adapter"
     },
+    "starrocks-backend-blacklisted-tpchavoc-sf1": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "StarRocks backend blacklisted mid-run during TPC-Havoc SF1 query 9 variants in UAT"
+    },
     "starrocks-distribute-by-clause-contract-20260724": {
       "claim": null,
       "needs": [],

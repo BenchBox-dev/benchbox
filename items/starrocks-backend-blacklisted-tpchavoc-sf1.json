@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The backend's own logs (be.WARNING, memory usage) captured for a recurrence",
+    "Cause identified, e.g. a BE memory limit versus container size, or the heartbeat/blacklist timeout, and fixed or documented"
+  ],
+  "description": "release-v2 43782246418 (v0.5.2rc1, release/0.5.x): starrocks tpchavoc 1.0 failed after about 104 s. Variants 9_v3 to 9_v9 failed with (1064, 'Backend node not found. Check if any backend node is down.backend: [127.0.0.1 alive: true inBlacklist: true]'). The other 52 of 53 shard cells passed, and the same StarRocks code passed in trunk UAT 43451522754. Likely the single backend stalled or ran out of memory on the hosted runner and the frontend blacklisted it.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cdf5cbeb2c796ff8953540c9",
+      "at": "2026-11-16T03:41:11Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ed3a1bbb9af04a2686f776b9c537937b",
+      "session_id": "e765b129a3244aa3bcd841f0d5e00904"
+    }
+  ]
+}
