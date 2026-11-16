@@ -46941,10 +46941,15 @@
       "title": "Let make worktree-create accept the test/ branch prefix or document the allowed set"
     },
     "worktree-finish-no-path-for-unpublished-worktrees-20261113": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-17T02:41:39Z",
+        "generation": "b3a6ddf8f21a4f22b80415868549b3e1",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7222c9e9c0af3b11fd0d6a9c"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Worktree lifecycle tooling has no way to remove a worktree whose branch never had a pull request"
     },
     "worktree-maintenance-bossmode-adapter": {
