@@ -11706,7 +11706,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Cap how many agents the launcher runs at once from host capacity, not from the number of branches"
     },
     "agent-leftover-branches-and-clone-drift-20261109": {

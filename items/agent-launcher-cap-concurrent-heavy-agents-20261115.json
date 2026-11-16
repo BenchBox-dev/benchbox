@@ -6,6 +6,7 @@
   ],
   "context": "Found during a retrospective on 2026-11-15. The guard-side fixes are in PR BenchBox-dev/benchbox#4236. Guardrails: linked worktree, one PR; no live-cloud runs; heavy work only via lock-taking entry points; re-verify cited facts before acting.",
   "description": "Problem: on 13 and 14 November, three and then nine subagents ran on a 16 GiB, 10-CPU host with swap near 95 percent. The heavy-work ledger shows four watchdog kills in eight minutes, and at times more than six heavy-run commands queued. Agents treated 'Error 79' and refusals as noise to retry past. Throughput was lost to queueing and to results taken under load.\n\nOutcome: a decision on a concurrency limit derived from host capacity (memory and CPUs, for example the admission check's own readings), applied where agents are dispatched, and a record of where that dispatch code lives. This is not an instruction to agents.",
+  "drop_reason": "Owner decision 2026-11-16: no concurrency cap; rely on the existing admission check, which now also refuses on load (PR 4236, 4251).",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:769ef947e95eb114e9d51acf",
@@ -14,6 +15,14 @@
       "op": "create",
       "op_id": "0db3df347ccf41d2b975243f2a006dc6",
       "session_id": "2269c734a94a419ea939cd33fee21860"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:961d26faca155954d64951f4",
+      "at": "2026-11-16T13:24:25Z",
+      "client": "omp-coding-agent",
+      "op": "drop",
+      "op_id": "9c89ce56e0364e7b83cbc48102fb237b",
+      "session_id": "1b9bc1b29dcb4d48a0911fca4a479d47"
     }
   ]
 }
