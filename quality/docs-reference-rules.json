@@ -262,6 +262,7 @@
         "tests/unit/test_artifact_hygiene_guardrails.py",
         "tests/unit/test_ruleset_drift.py",
         "tests/unit/workflows/test_ci_aggregate_cancelled.py",
+        "tests/unit/workflows/test_ci_short_checks.py",
         "tests/unit/workflows/test_ci_text_edit_skip.py"
       ],
       "disposition": "fixture-data",

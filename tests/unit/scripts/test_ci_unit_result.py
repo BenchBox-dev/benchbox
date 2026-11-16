@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from ci_unit_result import SUPERSEDED_EXIT_CODE, evaluate, parse_expectation
+from ci_unit_result import SUPERSEDED_EXIT_CODE, evaluate, parse_expectation, split_checks
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -77,6 +77,42 @@ def test_always_jobs_must_succeed_even_when_skipped() -> None:
 def test_problem_list_is_deduplicated() -> None:
     problems, _ = evaluate(needs(lint="failure"), {"lint": True}, [])
     assert len(problems) == len(set(problems))
+
+
+def checks(result: str, **outputs: str) -> dict[str, dict]:
+    return {"classify": {"result": "success"}, "short": {"result": result, "outputs": outputs}}
+
+
+def test_one_failed_check_fails_only_the_unit_that_names_it() -> None:
+    job = checks("failure", spelling="success", corpus="failure")
+    assert evaluate(split_checks(job, ["short.spelling"]), {"short.spelling": True}, ["classify"]) == ([], [])
+    problems, _ = evaluate(split_checks(job, ["short.corpus"]), {"short.corpus": True}, ["classify"])
+    assert problems[0] == "short.corpus=failure"
+
+
+def test_a_skipped_check_counts_as_skipped_not_passed() -> None:
+    job = checks("success", spelling="skipped")
+    assert evaluate(split_checks(job, ["short.spelling"]), {"short.spelling": False}, []) == ([], [])
+    problems, _ = evaluate(split_checks(job, ["short.spelling"]), {"short.spelling": True}, [])
+    assert problems == ["short.spelling=skipped (required for this change; expected success)"]
+    problems, _ = evaluate(split_checks(job, ["short.spelling"]), {}, ["short.spelling"])
+    assert problems == ["short.spelling=skipped (must succeed on every run)"]
+
+
+@pytest.mark.parametrize("outputs", [{}, {"spelling": ""}, {"spelling": "passed"}])
+def test_a_check_without_a_known_result_never_passes(outputs: dict[str, str]) -> None:
+    resolved = split_checks(checks("success", **outputs), ["short.spelling"])
+    assert evaluate(resolved, {"short.spelling": False}, [])[0]
+    assert evaluate(resolved, {}, ["short.spelling"])[0]
+
+
+def test_a_cancelled_or_absent_multi_check_job_reaches_its_checks() -> None:
+    cancelled = split_checks(checks("cancelled", spelling="success"), ["short.spelling"])
+    assert evaluate(cancelled, {"short.spelling": True}, []) == ([], ["short.spelling=cancelled"])
+    absent = split_checks(needs(classify="success"), ["short.spelling"])
+    assert evaluate(absent, {"short.spelling": True}, [])[0] == [
+        "short.spelling: not in needs (job missing from the result job's needs list)"
+    ]
 
 
 def test_parse_expectation() -> None:
