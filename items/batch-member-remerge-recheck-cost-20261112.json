@@ -3,6 +3,7 @@
     "A batch of three independent members lands with one check per member, or `docs/agent/batch-feature-delivery.md` explains with a concrete failure case why each must re-check.",
     "If the rule is relaxed, a test shows a member with an overlapping scope or an implementation edge is still refused until it re-checks."
   ],
+  "context": "FINAL 2026-11-15. PR #4263 merged as 7e9dbc5122. Option (a): batch-land accepts a member checked at an older recorded integration head when nothing landed since can affect what it checked. Always refused: implementation edge; base not ancestor of head and member; base not a recorded integration head. Refused if any intervening landing changed a member-changed file, touched its frozen scope (companion patterns excepted), changed a shared test input (pyproject.toml, uv.lock, Makefile, lint/pytest config, any conftest.py), changed a module in the transitive import closure of its verification tests (incl. conftest chain, dotted strings), changed a non-Python non-companion file, or affects its tests per preflight_targets.py (path::node and directory names). Post-merge: merge must change exactly the member's paths, differ from the member tree only by intervening changes, and map no test the member never ran, else undone. Receipt records the checked base as source_base. Final evidence unchanged (every member's command on the final tree). Docs: docs/agent/batch-feature-delivery.md. Tests: 9 new in tests/unit/scripts/test_batch_integration.py incl. three independent members landing with exactly three checks, and refusals for overlapping scope, implementation edge, test-affecting landings, import/conftest closure, non-Python and shared inputs. Review: 5 valid findings over 3 rounds fixed; final SHIP. Known limit: file-level rules cannot see runtime coupling through data; final-tree evidence is the backstop.",
   "description": "Process cost observed on batch `df-distinct-remediation` (2026-11-12, three members with disjoint scopes and no implementation edges). After the first member landed, `make batch-land` refused the second with `the integration head moved since the member synced`; the member had to merge the integration branch and re-run `make batch-member-check` (preflight plus mapped tests) although no file it touched had changed. The third member repeated this after the second. With N independent members that is on the order of N squared member checks, each taking the host test lock, and each needs the member session to be revived.\n\nThe rule protects against a member being checked on a tree that differs from what lands. For members whose frozen scopes do not overlap and whose mapped tests do not cover the newly landed files, the re-check verifies nothing new; the leader already re-runs overlap checks from receipts at landing and every member's command at final evidence.\n\nExpected: either landing accepts a member whose check ran on an older recorded integration head when the intervening landings are outside its scope and outside its mapped tests' inputs (merging at landing, with the existing tree-equality and overlap checks), or the protocol document states why the re-check is required even then.\n\nGuardrails: batch-loop changes are delivered serially and cannot use a batch to certify themselves. Do not weaken the rule for overlapping scopes or for members with implementation edges. Final evidence must still run every member's command on the final tree.",
   "links": [
     "docs/agent/batch-feature-delivery.md",
@@ -16,6 +17,14 @@
       "op": "create",
       "op_id": "44140b6e001c40a68cb3f571b0475c73",
       "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7222c9e9c0af3b11fd0d6a9c",
+      "at": "2026-11-16T04:22:54Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f080941965214982b57941f87afcb2b3",
+      "session_id": "0171c65ed8c64989adf7cdd0332f0ed2"
     }
   ]
 }
