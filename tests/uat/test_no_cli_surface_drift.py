@@ -60,6 +60,7 @@ ALLOWED_INTERNAL_CLI_FILES = {
     "benchbox/cli/platform.py",
     "benchbox/cli/run_resolution.py",
     "benchbox/cli/run_platform_resolution.py",
+    "benchbox/cli/run_interactive.py",
     "benchbox/cli/preferences.py",
     "benchbox/cli/commands/benchmarks.py",
     "benchbox/cli/commands/config.py",
