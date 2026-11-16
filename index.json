@@ -36595,10 +36595,15 @@
       "title": "Results-publishing coverage work"
     },
     "results-validate-skips-non-bundle-json-20261114": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-17T15:06:29Z",
+        "generation": "d7a53b4e3dcb4e1a9af47b4e64f881c3",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:961d26faca155954d64951f4"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "benchbox results validate reports corpus-inventory.json as a failing bundle"
     },
     "results-vendor-publication-terms-review-20261113": {
