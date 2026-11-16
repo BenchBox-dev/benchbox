@@ -5,6 +5,7 @@
     "A test covers a new untracked file (reported) and a pre-existing untracked file (silent).",
     "docs/agent/primary-clone-guard.md and primary-clone-update.md describe the new coverage."
   ],
+  "context": "Merged in PR #4265 as 04929364fb: the primary-clone snapshot check records untracked, non-ignored files with hashes and reports ones that appear or change after the snapshot; gitignored and pre-existing files stay silent. Independent review found no Critical/Required issues; the live primary clone had 0 untracked non-ignored files, so no false failures on rollout. Optional follow-up noted by review, not done: one git hash-object per file makes the check slow (~6.7 ms/file) if thousands of untracked files ever accumulate; batching via --stdin-paths would fix it.",
   "description": "The primary-clone write guard has two layers: a pre-tool hook, and a per-session snapshot check in make agent-write-preflight that reports writes after the fact. The snapshot ignores untracked files (docs/agent/primary-clone-guard.md). On 2026-11-15 a live probe showed Codex 0.162.1 and 0.169.0 never call the PreToolUse hook for apply_patch (openai/codex#27833), and Gemini CLI cannot be run to prove its hook. So a new file such an agent creates in the primary clone is caught by neither layer; only edits to tracked files reach the backstop. Untracked files were excluded originally because the primary clone legitimately holds ignored and local files, so a naive inclusion would be noisy.",
   "links": [
     "scripts/primary_clone_write_guard.py",
@@ -28,6 +29,14 @@
       "generation": "d3b0d8cbe7da4b49a47ca4210c958d80",
       "op": "take",
       "op_id": "6ae1ffea8701447ca72fee9286ee7d34",
+      "session_id": "aaf759f71b16410dbe08056803454f0b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:019255ea6c3ae4adcc24ae71",
+      "at": "2026-11-16T04:20:44Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a0858e39c26f454283dc0f6a4df84a55",
       "session_id": "aaf759f71b16410dbe08056803454f0b"
     }
   ]
