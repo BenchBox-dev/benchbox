@@ -1,4 +1,5 @@
 {
+  "context": "2026-11-15 evidence: Spark TPC-DI SF 1 under `make uat-cell` on a 16 GiB host. `bounded_default_driver_memory` sized the heap from the 8 GiB budget less a 3 GiB allowance, yet the JVM footprint reached 7.80 GiB and the watchdog killed the tree at 8.08 GiB after 452 s. The same workload with `driver_memory=3g` finished in 451 s with all queries passing. The 3 GiB JVM-and-Python allowance in `benchbox/platforms/spark.py` is too small for this workload.",
   "description": "Promoted from deferral 1 on heavy-guard-watchdog-20261030: Removed from the guard plan during review; watchdog bounds the tree but engines should fail gracefully before it fires.",
   "sessions": [
     {
@@ -8,6 +9,14 @@
       "op": "promote",
       "op_id": "84aa981d8a4340fb8e8bb81a0e00434d",
       "session_id": "6f8f4a28707f4702ad48cd7b8d6aaabb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3da1603d55770b4822e4311c",
+      "at": "2026-11-16T01:18:09Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a9b355ae948a431297650979ae3a23a3",
+      "session_id": "74b8e1c46d2d409db57fea9e85188bc5"
     }
   ]
 }
