@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 import tomllib
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -21,6 +22,9 @@ RELEASE_TAG_RE = re.compile(r"^v\d+\.\d+\.\d+$")
 RECOVERY_SUFFIX = "dispatch site-inputs.yml with parent_core_sha set to the last deployed core_sha"
 SITE_REPO = "BenchBox-dev/benchbox-site"
 SITE_ENVIRONMENT = "github-pages"
+SITE_DEPLOY_WORKFLOW = "deploy.yml"
+SITE_SETTLE_TIMEOUT_SECONDS = 1200.0
+SITE_SETTLE_POLL_SECONDS = 30.0
 PRODUCTION_TARGET = "production"
 TRUNK_BRANCH = "develop"
 SITE_INPUTS_WORKFLOW_PATH = ".github/workflows/site-inputs.yml"
@@ -370,6 +374,46 @@ def site_deployed_core_sha(
     raise ParentResolutionError(f"no production deployment is recorded on the site; {RECOVERY_SUFFIX}")
 
 
+def site_deploys_in_flight(site_repo: str, api_fn: Callable[[Sequence[str]], str] = _gh) -> int:
+    try:
+        raw = api_fn(
+            [
+                "api",
+                f"repos/{site_repo}/actions/workflows/{SITE_DEPLOY_WORKFLOW}/runs?per_page=100",
+                "-q",
+                '.workflow_runs[] | select(.status != "completed") | .id',
+            ]
+        )
+    except ParentResolutionError as error:
+        raise ParentResolutionError(f"cannot read the site deploy runs; {RECOVERY_SUFFIX}") from error
+    return len(raw.split())
+
+
+def settled_site_deployed_core_sha(
+    site_repo: str,
+    in_flight_fn: Callable[[str], int] | None = None,
+    deployed_fn: Callable[[str], str] | None = None,
+    sleep_fn: Callable[[float], None] | None = None,
+    clock_fn: Callable[[], float] = time.monotonic,
+    timeout_seconds: float = SITE_SETTLE_TIMEOUT_SECONDS,
+    poll_seconds: float = SITE_SETTLE_POLL_SECONDS,
+) -> str:
+    count_in_flight = in_flight_fn if in_flight_fn is not None else site_deploys_in_flight
+    read_deployed = deployed_fn if deployed_fn is not None else site_deployed_core_sha
+    sleep = sleep_fn if sleep_fn is not None else time.sleep
+    deadline = clock_fn() + timeout_seconds
+    while True:
+        if count_in_flight(site_repo) == 0:
+            deployed_sha = read_deployed(site_repo)
+            if count_in_flight(site_repo) == 0:
+                return deployed_sha
+        if clock_fn() >= deadline:
+            raise ParentResolutionError(
+                f"site deploys were still running after {int(timeout_seconds)} seconds; {RECOVERY_SUFFIX}"
+            )
+        sleep(poll_seconds)
+
+
 def decide_deployed_parent(
     core_sha: str,
     deployed_sha: str,
@@ -406,7 +450,7 @@ def resolve_and_decide(
         )
         return (parent_sha, parent_source, certified_by)
     if dispatch_parent is None:
-        deployed_sha = site_deployed_core_sha(SITE_REPO)
+        deployed_sha = settled_site_deployed_core_sha(SITE_REPO)
         parent_sha, parent_source = decide_deployed_parent(
             core_sha, deployed_sha, is_ancestor, lambda sha: parent_bundle_state(sha, repo)
         )

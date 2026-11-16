@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "The site-inputs bundle parent is read from the site only after its in-flight deploys finish, so back-to-back develop merges no longer attest a parity range that starts behind the deployed core"
+}

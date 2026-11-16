@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       parent_core_sha:
-        description: "Base SHA for the validator_parity attestation (default: the newest bundled ancestor on develop)"
+        description: "Base SHA for the validator_parity attestation (default: the core commit the site has deployed, read once no site deploy is running)"
         required: false
         default: ""
       core_sha:
