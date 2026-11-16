@@ -3,6 +3,7 @@ name: Docker integration
 env:
   BENCHBOX_HEAVY_ADMIT_MIN_GIB: "1.5"
   BENCHBOX_HEAVY_MIN_FREE_DISK_GIB: "5"
+  BENCHBOX_HEAVY_MAX_LOAD_RATIO: "0"
 
 on:
   workflow_dispatch:
