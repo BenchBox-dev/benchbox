@@ -308,9 +308,10 @@ class TestDuckDBAdapter:
     def test_initialization_missing_driver(self):
         with (
             patch("benchbox.platforms.duckdb.duckdb", None),
-            patch("benchbox.platforms.duckdb.importlib.import_module", side_effect=ImportError("no duckdb")),
+            patch("benchbox.platforms.duckdb.importlib") as importlib_mock,
             pytest.raises(ImportError, match="DuckDB not installed"),
         ):
+            importlib_mock.import_module.side_effect = ImportError("no duckdb")
             DuckDBAdapter()
 
     @patch("benchbox.platforms.duckdb.load_driver_module")

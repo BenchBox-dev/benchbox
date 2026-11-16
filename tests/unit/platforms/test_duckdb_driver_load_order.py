@@ -20,6 +20,8 @@ if mode == "detect":
     from benchbox.core.platform_registry import PlatformRegistry
 
     assert PlatformRegistry.is_platform_available("duckdb")
+    assert "duckdb" in PlatformRegistry.get_available_platforms()
+    assert "motherduck" in PlatformRegistry.get_available_platforms()
     import benchbox.platforms.duckdb
 
     assert "duckdb" not in sys.modules and "_duckdb" not in sys.modules
