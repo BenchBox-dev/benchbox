@@ -402,9 +402,11 @@ def _export_and_build_payload(
     return result_file_path, result_payload, export_error
 
 
-def _integrity_verdict(result_payload: dict[str, Any], result_file_path: str) -> dict[str, Any]:
+def _integrity_verdict(result_payload: dict[str, Any]) -> dict[str, Any]:
     try:
-        return report_payload(ResultIntegrityValidator().validate(result_payload, filepath=result_file_path))
+        verdict = report_payload(ResultIntegrityValidator().validate(result_payload))
+        verdict.pop("file", None)
+        return verdict
     except Exception as validator_err:
         logger.warning("Result integrity validation failed (%s)", type(validator_err).__name__)
         return {"overall_status": "UNAVAILABLE", "error": type(validator_err).__name__}
@@ -709,7 +711,7 @@ def _build_run_response(
             )
         )
     elif result_payload:
-        response["integrity"] = _integrity_verdict(result_payload, str(result_file_path))
+        response["integrity"] = _integrity_verdict(result_payload)
     response["mcp_metadata"] = {
         "execution_id": execution_id,
         "status": "incomplete" if export_failed else ("completed" if result else "no_results"),

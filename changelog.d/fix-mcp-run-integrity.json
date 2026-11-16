@@ -24,7 +24,7 @@
     {
       "category": "fixed",
       "breaking": false,
-      "text": "benchbox results validate on a directory no longer reports non-result JSON files, such as an inventory index, as FAIL, and benchbox submit names the actual benchmark when it refuses an unofficial result. A manifest sidecar can now carry a known_defect_reason beside known_defects, which the explorer pipeline records on excluded results."
+      "text": "benchbox results validate on a directory no longer reports the corpus inventory index as FAIL, and benchbox submit names the actual benchmark when it refuses an unofficial result. A manifest sidecar can now carry a known_defect_reason beside known_defects, which the explorer pipeline records on excluded results."
     }
   ]
 }

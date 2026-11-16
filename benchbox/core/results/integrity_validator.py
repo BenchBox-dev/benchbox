@@ -683,16 +683,19 @@ class ResultIntegrityValidator:
         _info(checks, _BELIEVABILITY, "host_load", "; ".join(parts))
 
 
-_RESULT_BUNDLE_MARKER_KEYS = frozenset({"benchmark", "platform", "queries", "phases", "run", "result_schema_version"})
-
-
-def _is_result_bundle_candidate(raw: Any) -> bool:
-    return isinstance(raw, dict) and not _RESULT_BUNDLE_MARKER_KEYS.isdisjoint(raw)
+def _is_corpus_inventory(raw: Any) -> bool:
+    return isinstance(raw, dict) and "schema_version" in raw and isinstance(raw.get("bundles"), list)
 
 
 def _load_json(path: Path) -> Any:
     with open(path, encoding="utf-8") as f:
         return json.load(f)
+
+
+def _validate_loaded(validator: ResultIntegrityValidator, raw: Any, path: Path) -> IntegrityReport:
+    if not isinstance(raw, dict):
+        return _unreadable_report(path)
+    return validator.validate(raw, filepath=str(path))
 
 
 def validate_file(path: Path | str) -> IntegrityReport:
@@ -701,7 +704,7 @@ def validate_file(path: Path | str) -> IntegrityReport:
         raw = _load_json(path)
     except (json.JSONDecodeError, OSError):
         return _unreadable_report(path)
-    return ResultIntegrityValidator().validate(raw, filepath=str(path))
+    return _validate_loaded(ResultIntegrityValidator(), raw, path)
 
 
 def validate_directory(
@@ -719,8 +722,8 @@ def validate_directory(
         except (json.JSONDecodeError, OSError):
             reports.append(_unreadable_report(filepath))
             continue
-        if _is_result_bundle_candidate(raw):
-            reports.append(validator.validate(raw, filepath=str(filepath)))
+        if not _is_corpus_inventory(raw):
+            reports.append(_validate_loaded(validator, raw, filepath))
     return reports
 
 

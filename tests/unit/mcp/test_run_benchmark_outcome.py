@@ -149,7 +149,7 @@ class TestIntegrityVerdict:
 
         integrity = response["integrity"]
         assert integrity["overall_status"] in {"PASS", "WARN", "FAIL"}
-        assert integrity["file"] == str(result_path)
+        assert "file" not in integrity
         assert {"PASS", "WARN", "FAIL"} <= set(integrity["summary"])
         assert all(check["status"] != "PASS" for check in integrity["checks"])
         assert response["benchmark"]["id"] == payload["benchmark"]["id"]
@@ -179,7 +179,7 @@ class TestIntegrityVerdict:
         with patch("benchbox.mcp.tools.benchmark.ResultExporter", return_value=exporter):
             response = _build(_result(), tmp_path)
 
-        assert response["integrity"] == report_payload(validate_file(result_path))
+        assert {"file": str(result_path), **response["integrity"]} == report_payload(validate_file(result_path))
 
     def test_validator_crash_is_reported_not_raised(self, tmp_path: Path) -> None:
         result_path = tmp_path / "result.json"
