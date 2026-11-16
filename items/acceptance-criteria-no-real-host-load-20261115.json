@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Every open item is searched for criteria requiring deliberate CPU, memory or disk load; the list of matches is recorded.",
+    "Each match is rewritten to cite a test that injects the reading, or the item records why real load is unavoidable and that it must run under make heavy-run.",
+    "No agent instruction or skill text is changed."
+  ],
+  "context": "Found during a retrospective on 2026-11-15. Tracker-only work; the planning session is the tracker writer. Guardrails: linked worktree, one PR; no live-cloud runs; heavy work only via lock-taking entry points; re-verify cited facts before acting.",
+  "description": "Problem: the acceptance criterion for bundle-record-host-load-20261113 asked for a smoke run 'beside a deliberate CPU load'. To meet it an agent started 2 x CPU-count spin loops on a shared host; they leaked and ran about 20 hours, tainting other measurements. A criterion that can only be met by loading a shared host is the defect; the behaviour it checks is covered by unit tests that fake the sampler.\n\nOutcome: no open tracker item carries a criterion that requires real host load, and each replaced criterion names the faked-sampler or injected-reading test that stands in for it.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:769ef947e95eb114e9d51acf",
+      "at": "2026-11-16T00:25:05Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "87820e44acd245fbbae4748f028895f3",
+      "session_id": "2269c734a94a419ea939cd33fee21860"
+    }
+  ]
+}

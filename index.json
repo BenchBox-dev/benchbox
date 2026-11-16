@@ -11236,6 +11236,13 @@
       "status": "done",
       "title": "Accelerate slow and resource-heavy test suites by 4x without coverage loss"
     },
+    "acceptance-criteria-no-real-host-load-20261115": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Remove acceptance criteria that ask for a run beside deliberate CPU or memory load"
+    },
     "acl-benchmark-enhancement": {
       "claim": null,
       "needs": [],
