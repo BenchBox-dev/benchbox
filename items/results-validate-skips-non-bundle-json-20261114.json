@@ -3,7 +3,7 @@
     "A directory run over results-data reports no non-bundle file as FAIL; a test covers the inventory file.",
     "A file that is a malformed bundle still fails."
   ],
-  "context": "Found while fixing integrity-validator-false-failures-20261114. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "context": "Found while fixing integrity-validator-false-failures-20261114. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\nCloseout 2026-11-16: core BenchBox-dev/benchbox#4273 (69a6416c6f). Directory runs skip only the corpus inventory (schema_version plus bundles list); other unrecognised JSON still FAILs; explicitly named files are always validated.",
   "description": "Problem: a directory run of `benchbox results validate` over results-data includes results-data/corpus-inventory.json, which is an index, not a result bundle, so it always shows as FAIL. The command already skips *.manifest.json; it should also skip, or recognise, other non-bundle JSON.",
   "sessions": [
     {
@@ -21,6 +21,14 @@
       "generation": "d7a53b4e3dcb4e1a9af47b4e64f881c3",
       "op": "take",
       "op_id": "bacd40ad69024a50955418f00a7df35c",
+      "session_id": "1b9bc1b29dcb4d48a0911fca4a479d47"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:961d26faca155954d64951f4",
+      "at": "2026-11-16T15:06:34Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7c38d4bdf16743039f0708534886db0b",
       "session_id": "1b9bc1b29dcb4d48a0911fca4a479d47"
     }
   ]
