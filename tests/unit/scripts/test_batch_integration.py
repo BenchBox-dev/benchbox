@@ -746,6 +746,124 @@ def test_land_refuses_a_member_that_synced_before_the_integration_head_moved(wor
     assert world.land("zeta")["status"] == "merged"
 
 
+DISJOINT_SCOPE = {
+    "zeta": ["src/z_new.py"],
+    "alpha": ["src/a_new.py"],
+    "mid": ["src/m_new.py"],
+}
+
+
+def _verification_runs(world: World) -> int:
+    return len(world.calls_matching("pytest"))
+
+
+def test_independent_members_land_on_a_moved_head_with_one_check_each(world: World) -> None:
+    world.start(scope=DISJOINT_SCOPE)
+    members = {
+        "zeta": world.deliver("zeta", {"src/z_new.py": "z = 1\n"}),
+        "alpha": world.deliver("alpha", {"src/a_new.py": "a = 1\n"}),
+        "mid": world.deliver("mid", {"src/m_new.py": "m = 1\n"}),
+    }
+    assert _verification_runs(world) == 3
+    for member in members:
+        world.land_and_prepare(member)
+    assert _verification_runs(world) == 3
+    tree = git(world.integration, "rev-parse", "HEAD^{tree}")
+    for member, worktree in members.items():
+        assert bi._is_ancestor(world.integration, git(worktree, "rev-parse", "HEAD"), world.head())
+        assert git(world.integration, "show", f"HEAD:src/{member[0]}_new.py")
+    assert git(world.integration, "rev-parse", "HEAD^{tree}") == tree
+    assert set(bi._changed_files(world.integration, world.payload["arguments"]["start_head"], world.head())) == {
+        "src/z_new.py",
+        "src/a_new.py",
+        "src/m_new.py",
+    }
+
+
+def test_a_stale_check_is_refused_when_the_member_scope_overlaps_a_landing(world: World) -> None:
+    world.start(scope={**DISJOINT_SCOPE, "alpha": ["src/*"]})
+    world.deliver("zeta", {"src/z_new.py": "z = 1\n"})
+    alpha = world.deliver("alpha", {"src/a_new.py": "a = 1\n"})
+    world.land_and_prepare("zeta")
+    before = world.head()
+    with _raises("inside the member's frozen scope"):
+        world.land("alpha")
+    assert world.head() == before
+    world.sync(alpha)
+    world.check(alpha, ["tests/test_alpha.py"])
+    assert world.land("alpha")["status"] == "merged"
+
+
+def test_a_stale_check_is_refused_when_a_landing_changed_a_file_the_member_changed(world: World) -> None:
+    world.start(scope={**DISJOINT_SCOPE, "zeta": ["src/*"], "alpha": ["src/z_new.py"]})
+    world.deliver("zeta", {"src/z_new.py": "z = 1\n"})
+    world.deliver("alpha", {"src/z_new.py": "z = 2\n"})
+    world.land_and_prepare("zeta")
+    with _raises("changed files the member changed"):
+        world.land("alpha")
+
+
+def test_a_stale_check_is_refused_for_a_member_with_an_implementation_edge(world: World) -> None:
+    world.start(scope=DISJOINT_SCOPE, dependencies={"alpha": ["zeta"]})
+    world.deliver("zeta", {"src/z_new.py": "z = 1\n"})
+    alpha = world.deliver("alpha", {"src/a_new.py": "a = 1\n"})
+    world.land_and_prepare("zeta")
+    world.tracker.claims["alpha"] = "leader"
+    before = world.head()
+    with _raises("implementation dependencies, so its check must run at the current head"):
+        world.land("alpha")
+    assert world.head() == before
+    world.sync(alpha)
+    world.check(alpha, ["tests/test_alpha.py"])
+    assert world.land("alpha")["status"] == "merged"
+
+
+def test_a_stale_check_is_refused_when_a_landing_affects_the_members_tests(world: World) -> None:
+    world.start(scope=DISJOINT_SCOPE)
+    world.deliver("zeta", {"src/z_new.py": "z = 1\n"})
+    alpha = world.deliver("alpha", {"src/a_new.py": "a = 1\n"})
+    world.land_and_prepare("zeta")
+    world.mapped_tests = ["tests/test_alpha.py"]
+    before = world.head()
+    with _raises("affect the member's verification tests"):
+        world.land("alpha")
+    assert world.head() == before
+    world.sync(alpha)
+    world.check(alpha, ["tests/test_alpha.py"])
+    assert world.land("alpha")["status"] == "merged"
+
+
+def test_a_stale_landing_is_undone_when_the_merge_maps_tests_the_member_never_ran(world: World) -> None:
+    world.start(scope=DISJOINT_SCOPE)
+    world.deliver("zeta", {"src/z_new.py": "z = 1\n"})
+    world.deliver("alpha", {"src/a_new.py": "a = 1\n"})
+    world.land_and_prepare("zeta")
+    world.mapped_tests = ["tests/test_mid.py"]
+    before = world.head()
+    with _raises("maps tests the member never ran"):
+        world.land("alpha")
+    assert world.head() == before and bi._is_clean(world.integration)
+
+
+def test_a_stale_check_is_refused_when_a_landing_changed_a_shared_test_input(world: World) -> None:
+    integration = world.start(scope=DISJOINT_SCOPE)
+    alpha = world.deliver("alpha", {"src/a_new.py": "a = 1\n"})
+    world.commit(integration, {"pyproject.toml": "[tool.ruff]\n"}, "shared config")
+    world.tracker.advance(
+        {
+            "reason": "fix",
+            "expected_head": world.tracker.head,
+            "head": world.head(),
+            "changed_files": ["pyproject.toml"],
+        }
+    )
+    with _raises("shared test inputs"):
+        world.land("alpha")
+    world.sync(alpha)
+    world.check(alpha, ["tests/test_alpha.py"])
+    assert world.land("alpha")["status"] == "merged"
+
+
 def test_land_refuses_a_findings_result(world: World) -> None:
     world.start()
     world.deliver("zeta", {"src/a.py": "member\n"})
