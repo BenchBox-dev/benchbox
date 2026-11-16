@@ -61,6 +61,13 @@ never modified.
 the validator answers `only compliance_class=official may be submitted`.
 `benchbox publish run` is not needed for the corpus path.
 
+Staging skips a bundle whose `summary.validation` is not `passed`
+(`validation_not_clean`), and `passed` means every row count was checked and
+matched. A run with `--seed` uses parameters the reference counts do not cover,
+so some row counts are recorded as `SKIPPED` and the run is `uncertain`, for
+SQL and DataFrame platforms alike. Run TPC-H below SF 1 without `--seed` to get
+a bundle that stages.
+
 ## Guard refusals
 
 A guard refusal is never worked around: no bypass flag, no edited guard, no

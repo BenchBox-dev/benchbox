@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "A SQL run whose row count was skipped or could not be checked for any query now records validation as uncertain instead of passed, matching DataFrame runs and the submission validator. This affects seeded TPC-H and TPC-DS runs, throughput streams and runs with refresh functions. The console shows such a run as UNVALIDATED rather than FAILED.",
+      "benchmarks": ["tpch", "tpcds"]
+    }
+  ]
+}

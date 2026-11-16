@@ -35,7 +35,7 @@ from benchbox.core.results.models import (
     SetupPhase,
 )
 from benchbox.core.results.platform_options import build_platform_options_capture
-from benchbox.core.results.query_status import unvalidated_measurement_query_ids
+from benchbox.core.results.query_status import unchecked_row_count_query_ids, unvalidated_measurement_query_ids
 from benchbox.core.runner.conversion import FormatConversionOrchestrator
 from benchbox.core.schemas import (
     BenchmarkConfig,
@@ -230,10 +230,28 @@ def _mark_unvalidated_queries(result: BenchmarkResults) -> BenchmarkResults:
     return result
 
 
+def _mark_unchecked_row_counts(result: BenchmarkResults) -> BenchmarkResults:
+    unchecked = unchecked_row_count_query_ids(result.query_results)
+    if not unchecked:
+        return result
+    if (result.validation_status or "").upper() not in {"PASSED", "WARNINGS"}:
+        return result
+    result.validation_status = "UNCERTAIN"
+    result.validation_details = result.validation_details or {}
+    warnings = result.validation_details.setdefault("warnings", [])
+    if isinstance(warnings, list):
+        noun = "query" if len(unchecked) == 1 else "queries"
+        warnings.append(
+            f"{len(unchecked)} {noun} had a row count that was skipped or could not be checked; "
+            "the run is not counted as passed."
+        )
+    return result
+
+
 def _finalize_validation_metadata(
     result: BenchmarkResults, records: list[tuple[str, ValidationResult]]
 ) -> BenchmarkResults:
-    return _mark_unvalidated_queries(_aggregate_validation_records(result, records))
+    return _mark_unchecked_row_counts(_mark_unvalidated_queries(_aggregate_validation_records(result, records)))
 
 
 def _aggregate_validation_records(

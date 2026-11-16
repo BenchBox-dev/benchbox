@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
 PathLike = Union[Path, "CloudPath", "DatabricksPath"]
 from benchbox.core.results.models import BenchmarkResults
+from benchbox.core.results.status import result_unvalidated_reason
 from benchbox.core.results.subscale_policy import (
     NONSTANDARD_COMPLIANCE_CLASS,
     SUBSCALE_COMPLIANCE_CLASS,
@@ -133,7 +134,11 @@ class ConsoleResultFormatter:
         query_success = results.successful_queries == results.total_queries
         validation_success = getattr(results, "validation_status", "PASSED") in ["PASSED", "PARTIAL"]
 
-        if not validation_success or not query_success:
+        if not query_success:
+            return "FAILED", "red"
+        if result_unvalidated_reason(results):
+            return "UNVALIDATED", "yellow"
+        if not validation_success:
             return "FAILED", "red"
         if getattr(results, "validation_status", "PASSED") == "PARTIAL":
             return "PARTIAL", "yellow"

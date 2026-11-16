@@ -39,7 +39,11 @@ from benchbox.core.results.query_normalizer import (
     QueryResultInput,
     format_query_id,
 )
-from benchbox.core.results.query_status import has_failed_query_validation, unvalidated_measurement_query_ids
+from benchbox.core.results.query_status import (
+    has_failed_query_validation,
+    unchecked_row_count_query_ids,
+    unvalidated_measurement_query_ids,
+)
 from benchbox.core.results.subscale_policy import (
     NONSTANDARD_COMPLIANCE_CLASS,
     platform_info_gateway,
@@ -421,6 +425,8 @@ class ResultBuilder:
             validation_status = "PARTIAL"
         elif validation_status == "PASSED" and unvalidated_measurement_query_ids(query_results_list):
             validation_status = "NOT_VALIDATED"
+        elif validation_status == "PASSED" and unchecked_row_count_query_ids(query_results_list):
+            validation_status = "UNCERTAIN"
 
         return BenchmarkResults(
             benchmark_name=self._benchmark.display_name or self._benchmark.name,
