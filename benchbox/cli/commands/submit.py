@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import secrets
 import subprocess
 from datetime import datetime, timezone
@@ -322,6 +323,25 @@ def _stage_submission_bundle(
         staged_companions.append(staged_comp)
 
     return staged_source_path, staged_companions
+
+
+_TPC_BENCHMARK_NAME = re.compile(r"^tpc-?(h|ds)(?: benchmark)?$")
+
+
+def _unofficial_refusal_message(result: object) -> str:
+    compliance_class = result_compliance_class(result)
+    raw_name = str(getattr(result, "benchmark_name", "") or "").strip()
+    match = _TPC_BENCHMARK_NAME.match(raw_name.lower())
+    name = f"TPC-{match.group(1).upper()}" if match else (raw_name or "benchmark")
+    message = (
+        f"\n[red]❌ Submission refused: compliance_class={compliance_class}[/red]\n"
+        f"   This result was produced with an unofficial {name} configuration and\n"
+        "   must not be submitted as a comparable result. Only results with\n"
+        "   compliance_class=official may be submitted."
+    )
+    if name == "TPC-DS":
+        message += "\n   See _sources/tpcds-subscale-contract.md for details."
+    return message
 
 
 def _refuse_non_submittable_result(ctx: click.Context, result: object, submit_state: SubmitTerminalState) -> None:
@@ -857,14 +877,7 @@ def submit(
     submit_state = classify_loaded_result(result)
 
     if submit_state is SubmitTerminalState.unofficial:
-        _compliance_class = result_compliance_class(result)
-        console.print(
-            f"\n[red]❌ Submission refused: compliance_class={_compliance_class}[/red]\n"
-            "   This result was produced with an unofficial TPC-DS configuration and\n"
-            "   must not be submitted as a comparable result. Only results with\n"
-            "   compliance_class=official may be submitted.\n"
-            "   See _sources/tpcds-subscale-contract.md for details."
-        )
+        console.print(_unofficial_refusal_message(result))
         ctx.exit(1)
         return
 

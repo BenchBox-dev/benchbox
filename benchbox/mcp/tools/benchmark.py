@@ -9,10 +9,10 @@ import logging
 import uuid
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from mcp.server.mcpserver import MCPServer
-from mcp.types import ToolAnnotations
+from mcp.types import CallToolResult, TextContent, ToolAnnotations
 
 from benchbox.core.benchmark_registry import (
     get_all_benchmarks,
@@ -26,6 +26,7 @@ from benchbox.core.deprecation_notices import begin_run
 from benchbox.core.hooks.benchmark_hooks import BenchmarkHookRegistry
 from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
 from benchbox.core.results.exporter import ResultExporter
+from benchbox.core.results.integrity_validator import ResultIntegrityValidator, report_payload
 from benchbox.core.results.schema import build_result_payload
 from benchbox.core.run_selection import RunSelection, resolve_run_selection
 from benchbox.core.tuning import modes as tuning_modes
@@ -37,6 +38,7 @@ from benchbox.mcp.errors import (
     make_execution_error,
     make_not_found_error,
     make_unsupported_mode_error,
+    scrub_secret_material,
 )
 from benchbox.mcp.schemas import (
     MCPValidationError,
@@ -113,7 +115,7 @@ def register_benchmark_tools(
     platform_policy: LocalPlatformPolicy = DEFAULT_LOCAL_PLATFORM_POLICY,
 ) -> None:
     @mcp.tool(
-        description="Run a benchmark on a database platform.\n\n        Args:\n            platform: Target platform (duckdb, polars-df, snowflake, etc.)\n            benchmark: Benchmark to run (tpch, tpcds, tpcds_obt, ssb, joinorder, clickbench, nyctaxi, tsbs_devops, h2odb, amplab, coffeeshop, tpch_skew, datavault, tpcdi, write_primitives, read_primitives, and more)\n            scale_factor: Data scale factor (0.01 for testing, 1+ for production; joinorder uses canonical IMDb 2013 data and only accepts 1.0)\n            queries: Comma-separated query IDs to run (e.g., \"1,3,6\")\n            phases: Comma-separated phases (default: \"load,power\")\n            mode: Execution mode: 'sql', 'dataframe', or 'data_only'\n            capture_plans: Capture query execution plans (3-8%% overhead). Supported: DuckDB, PostgreSQL, DataFusion.\n            dry_run: Preview execution plan without running\n            validate_only: Validate configuration without running\n            link_probe: Measure post-benchmark statement overhead (6 metered SELECT 1 statements on billable warehouses). Set false to skip; equivalent to the CLI --no-link-probe flag.\n            platform_options: Bounded, non-secret platform settings approved for the selected platform.\n            seed: RNG seed for query parameter generation, 0 to 2147483647 (default: unset; same as the CLI --seed). The effective value is reported in mcp_metadata.\n            iterations: Power test measurement iterations, at least 1 (default: 3; power or standard phase only; same as the CLI --iterations). The effective value is reported in mcp_metadata.\n\n        Returns:\n            Benchmark results, dry-run preview, or validation status.\n\n        Before reporting a run, call validate_results on its result file and report the WARN and FAIL findings. Compare two results only when their benchmark, scale, phase, configuration, tuning, hardware and evidence are compatible; a shared benchmark name alone is not enough.\n\n        Platform options are a deliberately smaller MCP contract than the CLI\n        ``--platform-option`` surface. Only bounded, non-secret execution\n        settings are accepted; credentials, endpoints, paths, and package\n        installation controls must remain server configuration.\n\n        JoinOrder note:\n            The public joinorder benchmark downloads and verifies the canonical IMDb 2013\n            Parquet archive on first use, then reuses BENCHBOX_OUTPUT_DIR/benchmark_runs/datagen/joinorder_sf1/.\n        ",
+        description="Run a benchmark on a database platform.\n\n        Args:\n            platform: Target platform (duckdb, polars-df, snowflake, etc.)\n            benchmark: Benchmark to run (tpch, tpcds, tpcds_obt, ssb, joinorder, clickbench, nyctaxi, tsbs_devops, h2odb, amplab, coffeeshop, tpch_skew, datavault, tpcdi, write_primitives, read_primitives, and more)\n            scale_factor: Data scale factor (0.01 for testing, 1+ for production; joinorder uses canonical IMDb 2013 data and only accepts 1.0)\n            queries: Comma-separated query IDs to run (e.g., \"1,3,6\")\n            phases: Comma-separated phases (default: \"load,power\")\n            mode: Execution mode: 'sql', 'dataframe', or 'data_only'\n            capture_plans: Capture query execution plans (3-8%% overhead). Supported: DuckDB, PostgreSQL, DataFusion.\n            dry_run: Preview execution plan without running\n            validate_only: Validate configuration without running\n            link_probe: Measure post-benchmark statement overhead (6 metered SELECT 1 statements on billable warehouses). Set false to skip; equivalent to the CLI --no-link-probe flag.\n            platform_options: Bounded, non-secret platform settings approved for the selected platform.\n            seed: RNG seed for query parameter generation, 0 to 2147483647 (default: unset; same as the CLI --seed). The effective value is reported in mcp_metadata.\n            iterations: Power test measurement iterations, at least 1 (default: 3; power or standard phase only; same as the CLI --iterations). The effective value is reported in mcp_metadata.\n\n        Returns:\n            Benchmark results, dry-run preview, or validation status.\n\n        Before reporting a run, call validate_results on its result file and report the WARN and FAIL findings. A completed run also carries that validator's verdict in its integrity field (overall_status PASS, WARN or FAIL, with the non-passing checks). A run that ends without a result file returns an MCP error (is_error true) with the cause. Compare two results only when their benchmark, scale, phase, configuration, tuning, hardware and evidence are compatible; a shared benchmark name alone is not enough.\n\n        Platform options are a deliberately smaller MCP contract than the CLI\n        ``--platform-option`` surface. Only bounded, non-secret execution\n        settings are accepted; credentials, endpoints, paths, and package\n        installation controls must remain server configuration.\n\n        JoinOrder note:\n            The public joinorder benchmark downloads and verifies the canonical IMDb 2013\n            Parquet archive on first use, then reuses BENCHBOX_OUTPUT_DIR/benchmark_runs/datagen/joinorder_sf1/.\n        ",
         annotations=RUN_BENCHMARK_ANNOTATIONS,
     )
     def run_benchmark(
@@ -185,7 +187,7 @@ def register_benchmark_tools(
             response["status"] = "failed"
             return attach_deprecations(response)
 
-        return attach_deprecations(
+        return _as_tool_result(
             _run_under_platform_policy(
                 platform_policy,
                 selection,
@@ -330,6 +332,29 @@ def _apply_platform_policy(
     return None, policy.acknowledgement_record(selection.platform, selection.deployment, platform_options)
 
 
+_RUN_ERROR_STATUSES = frozenset({"incomplete", "no_results"})
+
+
+def _as_tool_result(response: dict[str, Any]) -> dict[str, Any]:
+    response = attach_deprecations(response)
+    metadata = response.get("mcp_metadata")
+    status = metadata.get("status") if isinstance(metadata, Mapping) else None
+    ended_without_result = status in _RUN_ERROR_STATUSES or (
+        response.get("status") == "failed" and response.get("error_code") == ErrorCode.BENCHMARK_EXECUTION_FAILED.value
+    )
+    if not ended_without_result:
+        return response
+    text = json.dumps(response, default=str)
+    return cast(
+        "dict[str, Any]",
+        CallToolResult(
+            content=[TextContent(type="text", text=text)],
+            structured_content=json.loads(text),
+            is_error=True,
+        ),
+    )
+
+
 def _make_failed_response(error_response: dict[str, Any], execution_id: str) -> dict[str, Any]:
     error_response["execution_id"] = execution_id
     error_response["status"] = "failed"
@@ -351,9 +376,10 @@ def _export_and_build_payload(
     results_dir: Path,
     *,
     anonymize: bool,
-) -> tuple[str | None, dict[str, Any] | None]:
+) -> tuple[str | None, dict[str, Any] | None, Exception | None]:
     result_file_path = None
     result_payload: dict[str, Any] | None = None
+    export_error: Exception | None = None
     try:
         result.execution_id = execution_id
         exporter = ResultExporter(
@@ -367,12 +393,21 @@ def _export_and_build_payload(
             with open(result_file_path, encoding="utf-8") as handle:
                 result_payload = json.load(handle)
     except Exception as export_err:
+        export_error = export_err
         logger.warning("Failed to export benchmark results (%s)", type(export_err).__name__)
         try:
             result_payload = build_result_payload(result)
         except Exception as payload_err:
             logger.warning("Failed to build benchmark payload (%s)", type(payload_err).__name__)
-    return result_file_path, result_payload
+    return result_file_path, result_payload, export_error
+
+
+def _integrity_verdict(result_payload: dict[str, Any], result_file_path: str) -> dict[str, Any]:
+    try:
+        return report_payload(ResultIntegrityValidator().validate(result_payload, filepath=result_file_path))
+    except Exception as validator_err:
+        logger.warning("Result integrity validation failed (%s)", type(validator_err).__name__)
+        return {"overall_status": "UNAVAILABLE", "error": type(validator_err).__name__}
 
 
 def _attach_summary_charts(response: dict[str, Any], result: Any) -> None:
@@ -643,8 +678,10 @@ def _build_run_response(
     seed: int | None,
 ) -> dict[str, Any]:
     execution_time = elapsed_seconds(start_time)
-    result_file_path, result_payload = (
-        _export_and_build_payload(result, execution_id, results_dir, anonymize=anonymize) if result else (None, None)
+    result_file_path, result_payload, export_error = (
+        _export_and_build_payload(result, execution_id, results_dir, anonymize=anonymize)
+        if result
+        else (None, None, None)
     )
     response: dict[str, Any] = result_payload or {}
     export_failed = bool(result) and result_file_path is None
@@ -652,6 +689,27 @@ def _build_run_response(
         outstanding_work = _result_outstanding_work(result)
         if outstanding_work is not None:
             response["phases"] = {"throughput_test": {"outstanding_work": outstanding_work}}
+        details: dict[str, Any] = {"execution_id": execution_id, "result_file": None}
+        if export_error is not None:
+            details["exception_type"] = type(export_error).__name__
+            details["exception_message"] = scrub_secret_material(str(export_error))
+        response.update(
+            make_error(
+                ErrorCode.BENCHMARK_EXECUTION_FAILED,
+                "The run finished but its result file was not written; the run is incomplete and has no result file",
+                details=details,
+            )
+        )
+    elif not result:
+        response.update(
+            make_error(
+                ErrorCode.BENCHMARK_EXECUTION_FAILED,
+                "The run ended without producing a result",
+                details={"execution_id": execution_id},
+            )
+        )
+    elif result_payload:
+        response["integrity"] = _integrity_verdict(result_payload, str(result_file_path))
     response["mcp_metadata"] = {
         "execution_id": execution_id,
         "status": "incomplete" if export_failed else ("completed" if result else "no_results"),

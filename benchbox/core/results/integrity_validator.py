@@ -683,17 +683,25 @@ class ResultIntegrityValidator:
         _info(checks, _BELIEVABILITY, "host_load", "; ".join(parts))
 
 
-def _validate_path(path: Path, validator: ResultIntegrityValidator) -> IntegrityReport:
-    try:
-        with open(path, encoding="utf-8") as f:
-            raw = json.load(f)
-    except (json.JSONDecodeError, OSError):
-        return _unreadable_report(path)
-    return validator.validate(raw, filepath=str(path))
+_RESULT_BUNDLE_MARKER_KEYS = frozenset({"benchmark", "platform", "queries", "phases", "run", "result_schema_version"})
+
+
+def _is_result_bundle_candidate(raw: Any) -> bool:
+    return isinstance(raw, dict) and not _RESULT_BUNDLE_MARKER_KEYS.isdisjoint(raw)
+
+
+def _load_json(path: Path) -> Any:
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
 
 
 def validate_file(path: Path | str) -> IntegrityReport:
-    return _validate_path(Path(path), ResultIntegrityValidator())
+    path = Path(path)
+    try:
+        raw = _load_json(path)
+    except (json.JSONDecodeError, OSError):
+        return _unreadable_report(path)
+    return ResultIntegrityValidator().validate(raw, filepath=str(path))
 
 
 def validate_directory(
@@ -702,11 +710,18 @@ def validate_directory(
 ) -> list[IntegrityReport]:
     path = Path(path)
     validator = ResultIntegrityValidator()
-    return [
-        _validate_path(filepath, validator)
-        for filepath in sorted(path.glob(pattern))
-        if not filepath.name.endswith(RESULT_COMPANION_SUFFIXES)
-    ]
+    reports: list[IntegrityReport] = []
+    for filepath in sorted(path.glob(pattern)):
+        if filepath.name.endswith(RESULT_COMPANION_SUFFIXES):
+            continue
+        try:
+            raw = _load_json(filepath)
+        except (json.JSONDecodeError, OSError):
+            reports.append(_unreadable_report(filepath))
+            continue
+        if _is_result_bundle_candidate(raw):
+            reports.append(validator.validate(raw, filepath=str(filepath)))
+    return reports
 
 
 def check_payload(check: CheckResult) -> dict[str, Any]:

@@ -10,6 +10,7 @@ from benchbox.utils.environment import detect_execution_class
 
 MetadataSource: TypeAlias = Literal[
     "registered_default",
+    "applied_defaults",
     "saved_config",
     "environment_variable",
     "cli_option",

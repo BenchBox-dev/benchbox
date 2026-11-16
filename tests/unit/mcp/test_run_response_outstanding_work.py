@@ -107,7 +107,7 @@ def test_double_export_failure_without_outstanding_work_is_incomplete(tmp_path: 
 
 
 def test_an_exported_but_empty_payload_is_not_an_export_failure(tmp_path: Path) -> None:
-    with patch("benchbox.mcp.tools.benchmark._export_and_build_payload", return_value=("result.json", {})):
+    with patch("benchbox.mcp.tools.benchmark._export_and_build_payload", return_value=("result.json", {}, None)):
         response = _build(_result(None), tmp_path)
 
     assert response["mcp_metadata"]["status"] == "completed"
