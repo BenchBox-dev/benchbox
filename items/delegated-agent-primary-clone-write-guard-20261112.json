@@ -4,6 +4,7 @@
     "The chosen mechanism is documented in `docs/agent/primary-clone-guard.md`, including why the alternatives were not chosen.",
     "The owner's edits in the primary clone and the emergency override still work."
   ],
+  "context": "2026-11-17: related coverage since this item was filed: PR #4143 added the pre-tool write guard hook (enforced in omp and Claude Code, not called by Codex for apply_patch: codex-apply-patch-skips-pretooluse-hook-20261117), and PR #4265 (04929364fb) made make agent-write-preflight also report new untracked, non-ignored files in the primary clone. A subagent whose file tool bypasses the hook is still caught only after the fact.",
   "description": "Defect in the safety net. On 2026-11-12 a subagent working in its own worktree edited `tests/unit/scripts/explorer_pipeline/test_duckdb_builder.py` in the primary clone, because its file tool resolved a relative path against the session directory. `docs/agent/primary-clone-guard.md` describes this hazard, and `scripts/check_primary_clone_clean.sh report` only reports. The edit was found by chance through `git status` before a batch step that refuses a dirty primary clone; the same change was also missing from the agent's worktree, so its tests had been passing without it.\n\nExpected: an agent write to a tracked path in the primary clone is refused or surfaced at the time of the write, not at a later unrelated gate. Options to evaluate: make the primary clone's tracked files read-only for agent sessions, a file-tool hook that refuses relative or primary-clone paths when a worktree is active, or a cheap check at the start and end of every delegated task.\n\nGuardrails: must not block the owner's own edits or the documented `BENCHBOX_ALLOW_MAIN_CLONE_WRITE=1` emergency path. Must not rely on the agent remembering an instruction; the instruction was given and still failed.",
   "links": [
     "docs/agent/primary-clone-guard.md",
@@ -17,6 +18,14 @@
       "op": "create",
       "op_id": "b9da89a541ec421a9f015f215be94f80",
       "session_id": "512d9ad0b25247538901b68a758a6fbb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f00380ac381b3b759bd4b6a8",
+      "at": "2026-11-17T21:22:35Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "70df755b974c4a93b2aa66cc082b079b",
+      "session_id": "a8b952a2353a43c5b8b6461d5901abad"
     }
   ]
 }
