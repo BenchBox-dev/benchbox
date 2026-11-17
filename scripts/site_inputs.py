@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-DEFAULT_PROFILE = "schema5"
+DEFAULT_PROFILE = "schema6"
 PARENT_SOURCES = ("bundle", "dispatch", "local")
 
 
@@ -61,14 +61,24 @@ REQUIRED_MEMBERS = (
     "attestations.json",
 )
 CONTRACT_MEMBERS = ("docs-data", "doc-contracts.json")
+RESULT_SCHEMA_MEMBER = "result-bundle.schema.json"
 MEMBERS_BY_SCHEMA: dict[int, tuple[str, ...]] = {
     3: REQUIRED_MEMBERS,
     4: REQUIRED_MEMBERS + CONTRACT_MEMBERS,
     5: tuple(name for name in REQUIRED_MEMBERS if name not in ("docs", "downloads")) + CONTRACT_MEMBERS,
 }
-PROFILE_SCHEMAS = {"exact3": 3, "schema4": 4, "schema5": 5, "candidate4": 4, "candidate5": 5}
+MEMBERS_BY_SCHEMA[6] = MEMBERS_BY_SCHEMA[5] + (RESULT_SCHEMA_MEMBER,)
+PROFILE_SCHEMAS = {
+    "exact3": 3,
+    "schema4": 4,
+    "schema5": 5,
+    "schema6": 6,
+    "candidate4": 4,
+    "candidate5": 5,
+    "candidate6": 6,
+}
 RELOCATED_MEMBERS = ("docs", "downloads")
-CANDIDATE_PROFILES = ("candidate4", "candidate5")
+CANDIDATE_PROFILES = ("candidate4", "candidate5", "candidate6")
 CANDIDATE_CERTIFIER = "candidate"
 RUN_ID = re.compile(r"[0-9]+")
 DOCS_DATA_FILE = "docs-data.json"
@@ -360,6 +370,31 @@ def build_doc_contracts(out: Path) -> None:
     must_run("uv", "run", "--", "python", "scripts/doc_contracts.py", "--output", str(out))
 
 
+def build_result_schema(out: Path) -> None:
+    from benchbox.core.results.bundle_json_schema import render_result_bundle_schema
+
+    out.write_text(render_result_bundle_schema(), encoding="utf-8")
+
+
+def result_schema_errors(out: Path) -> list[str]:
+    from benchbox.core.results.bundle_json_schema import SCHEMA_ID, render_result_bundle_schema
+    from benchbox.core.results.schema_policy import CURRENT_SCHEMA_VERSION
+
+    path = out / RESULT_SCHEMA_MEMBER
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return [f"{RESULT_SCHEMA_MEMBER} is not readable JSON: {exc}"]
+    problems: list[str] = []
+    if not isinstance(document, dict) or document.get("$id") != SCHEMA_ID:
+        problems.append(f"{RESULT_SCHEMA_MEMBER} $id is not {SCHEMA_ID}")
+    if not isinstance(document, dict) or document.get("result_schema_version") != CURRENT_SCHEMA_VERSION:
+        problems.append(f"{RESULT_SCHEMA_MEMBER} does not carry result_schema_version {CURRENT_SCHEMA_VERSION}")
+    if path.read_text(encoding="utf-8") != render_result_bundle_schema():
+        problems.append(f"{RESULT_SCHEMA_MEMBER} differs from the schema generated from SchemaV2Validator")
+    return problems
+
+
 def schema_errors(instance: object, schema_path: Path) -> list[str]:
     import jsonschema
 
@@ -376,7 +411,7 @@ def certifier_errors(schema: int, certified_by: object) -> list[str]:
         return []
     if certified_by == CANDIDATE_CERTIFIER:
         return []
-    if schema in (4, 5) and isinstance(certified_by, str) and RUN_ID.fullmatch(certified_by):
+    if schema in (4, 5, 6) and isinstance(certified_by, str) and RUN_ID.fullmatch(certified_by):
         return []
     return [f"schema {schema} requires certified_by candidate or a run id, got {certified_by!r}"]
 
@@ -422,6 +457,8 @@ def cmd_build(args: argparse.Namespace) -> int:
     shutil.copy2(ROOT / "_project/design/api-public-symbols.json", out / "api-public-symbols.json")
     build_docs_data(out / "docs-data")
     build_doc_contracts(out / "doc-contracts.json")
+    if RESULT_SCHEMA_MEMBER in wanted:
+        build_result_schema(out / RESULT_SCHEMA_MEMBER)
     build_attestations(out / "attestations.json", out, core_sha, parent_sha)
     members = {name: member_digest(out / name) for name in wanted}
     manifest = {
@@ -478,6 +515,8 @@ def cmd_verify(out: Path) -> int:
         return 1
     if schema != 3:
         problems = certifier_errors(schema, manifest.get("certified_by")) + contract_errors(out)
+        if RESULT_SCHEMA_MEMBER in MEMBERS_BY_SCHEMA[schema]:
+            problems += result_schema_errors(out)
         if problems:
             print(f"schema {schema} invalid: {'; '.join(problems[:5])}")
             return 1

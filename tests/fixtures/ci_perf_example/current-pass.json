@@ -1,0 +1,701 @@
+{
+  "result_schema_version": "2.4",
+  "version": "2.4",
+  "benchmark": {
+    "id": "tpch",
+    "name": "TPC-H",
+    "scale_factor": 0.01,
+    "test_type": "power"
+  },
+  "platform": {
+    "name": "duckdb",
+    "version": "1.5.5"
+  },
+  "run": {
+    "id": "current-pass",
+    "timestamp": "2026-10-08T15:08:46",
+    "total_duration_ms": 1728,
+    "query_time_ms": 553,
+    "iterations": 3,
+    "streams": 1
+  },
+  "config": {
+    "mode": "sql",
+    "phases": [
+      "power"
+    ]
+  },
+  "summary": {
+    "queries": {
+      "total": 66,
+      "passed": 66,
+      "failed": 0
+    },
+    "timing": {
+      "total_ms": 553.4,
+      "avg_ms": 8.4
+    }
+  },
+  "queries": [
+    {
+      "id": "14",
+      "iter": 1,
+      "ms": 5.9,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "2",
+      "iter": 1,
+      "ms": 8.8,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "9",
+      "iter": 1,
+      "ms": 10.3,
+      "rows": 173,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "20",
+      "iter": 1,
+      "ms": 8.8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "6",
+      "iter": 1,
+      "ms": 4.1,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "17",
+      "iter": 1,
+      "ms": 5.6,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "18",
+      "iter": 1,
+      "ms": 9.4,
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "8",
+      "iter": 1,
+      "ms": 11.0,
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "21",
+      "iter": 1,
+      "ms": 12.6,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "13",
+      "iter": 1,
+      "ms": 6.7,
+      "rows": 33,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "3",
+      "iter": 1,
+      "ms": 5.2,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "22",
+      "iter": 1,
+      "ms": 7.6,
+      "rows": 7,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "16",
+      "iter": 1,
+      "ms": 7.2,
+      "rows": 296,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "4",
+      "iter": 1,
+      "ms": 6.9,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "11",
+      "iter": 1,
+      "ms": 6.9,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "15",
+      "iter": 1,
+      "ms": 7.6,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "1",
+      "iter": 1,
+      "ms": 10.6,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "10",
+      "iter": 1,
+      "ms": 9.8,
+      "rows": 20,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "19",
+      "iter": 1,
+      "ms": 9.2,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "5",
+      "iter": 1,
+      "ms": 9.3,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "7",
+      "iter": 1,
+      "ms": 13.6,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "12",
+      "iter": 1,
+      "ms": 8.2,
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "14",
+      "iter": 2,
+      "ms": 5.2,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "2",
+      "iter": 2,
+      "ms": 8.5,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "9",
+      "iter": 2,
+      "ms": 12.0,
+      "rows": 173,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "20",
+      "iter": 2,
+      "ms": 9.0,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "6",
+      "iter": 2,
+      "ms": 4.3,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "17",
+      "iter": 2,
+      "ms": 5.7,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "18",
+      "iter": 2,
+      "ms": 9.4,
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "8",
+      "iter": 2,
+      "ms": 10.0,
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "21",
+      "iter": 2,
+      "ms": 12.0,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "13",
+      "iter": 2,
+      "ms": 6.8,
+      "rows": 33,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "3",
+      "iter": 2,
+      "ms": 5.3,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "22",
+      "iter": 2,
+      "ms": 7.6,
+      "rows": 7,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "16",
+      "iter": 2,
+      "ms": 6.4,
+      "rows": 296,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "4",
+      "iter": 2,
+      "ms": 6.6,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "11",
+      "iter": 2,
+      "ms": 7.1,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "15",
+      "iter": 2,
+      "ms": 7.8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "1",
+      "iter": 2,
+      "ms": 10.6,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "10",
+      "iter": 2,
+      "ms": 9.1,
+      "rows": 20,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "19",
+      "iter": 2,
+      "ms": 9.1,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "5",
+      "iter": 2,
+      "ms": 9.6,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "7",
+      "iter": 2,
+      "ms": 12.7,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "12",
+      "iter": 2,
+      "ms": 7.7,
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "14",
+      "iter": 3,
+      "ms": 5.5,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "2",
+      "iter": 3,
+      "ms": 8.5,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "9",
+      "iter": 3,
+      "ms": 10.5,
+      "rows": 173,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "20",
+      "iter": 3,
+      "ms": 10.1,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "6",
+      "iter": 3,
+      "ms": 3.9,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "17",
+      "iter": 3,
+      "ms": 5.6,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "18",
+      "iter": 3,
+      "ms": 10.1,
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "8",
+      "iter": 3,
+      "ms": 10.8,
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "21",
+      "iter": 3,
+      "ms": 12.8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "13",
+      "iter": 3,
+      "ms": 6.8,
+      "rows": 33,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "3",
+      "iter": 3,
+      "ms": 5.2,
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "22",
+      "iter": 3,
+      "ms": 7.7,
+      "rows": 7,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "16",
+      "iter": 3,
+      "ms": 6.7,
+      "rows": 296,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "4",
+      "iter": 3,
+      "ms": 6.8,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "11",
+      "iter": 3,
+      "ms": 6.9,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "15",
+      "iter": 3,
+      "ms": 7.7,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "1",
+      "iter": 3,
+      "ms": 10.5,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "10",
+      "iter": 3,
+      "ms": 10.2,
+      "rows": 20,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "19",
+      "iter": 3,
+      "ms": 9.1,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "5",
+      "iter": 3,
+      "ms": 9.5,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "7",
+      "iter": 3,
+      "ms": 12.7,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "12",
+      "iter": 3,
+      "ms": 8.0,
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    }
+  ]
+}

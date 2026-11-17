@@ -20,20 +20,29 @@ live only in the site repository. Change them there by pull request.
 
 ## Bundle profiles
 
-The published bundle is schema 5. `scripts/site_inputs.py build` takes
-`--profile schema5|schema4|exact3|candidate5|candidate4`, and `schema5` is the
-default: the schema 4 members minus `docs` and `downloads` (11 members:
+The published bundle is schema 6. `scripts/site_inputs.py build` takes
+`--profile schema6|schema5|schema4|exact3|candidate6|candidate5|candidate4`, and `schema6` is the
+default: the schema 5 members plus `result-bundle.schema.json` (12 members:
 `repo-files.json`, the five `explorer/` members, `landing/prompt-catalog.json`,
-`api-public-symbols.json`, `attestations.json`, plus `docs-data` and
-`doc-contracts.json`). The publication workflow never passes a profile.
-`exact3` emits the retired schema 3 bundle. The site verifier accepts only
-schemas 4 and 5, so an `exact3` bundle cannot be deployed.
+`api-public-symbols.json`, `attestations.json`, `docs-data`, `doc-contracts.json`, and the
+result bundle JSON Schema). Schema 5 is the same set without the schema member and stays
+selectable. The publication workflow never passes a profile. `exact3` emits the retired schema 3
+bundle. The site verifier accepts only schemas 4, 5 and 6, so an `exact3` bundle cannot be deployed.
 
-Schema 5 keeps the schema 4 contract checks: `verify` selects the exact member
+`result-bundle.schema.json` is generated from `SchemaV2Validator` by
+`benchbox/core/results/bundle_json_schema.py` (`uv run -- python -m benchbox.core.results.bundle_json_schema` regenerates
+`quality/result-bundle.schema.json`; the same command with `--check` is the drift gate in `make ci-lint`
+and the lint guards of `ci.yml`). `build` writes a fresh generation into the bundle and `verify`
+requires the member to parse, carry `$id` `https://benchbox.dev/schemas/result-bundle-2.schema.json`
+and the current `result_schema_version`, and be byte-equal to a regeneration. The site publishes
+it at `/schemas/result-bundle-2.schema.json`. The decision and the compatibility promise for
+major version 2 are in `docs/internal/adr/adr-result-bundle-json-schema.md`.
+
+Schemas 5 and 6 keep the schema 4 contract checks: `verify` selects the exact member
 set from `manifest.schema` and rejects any other set, validates
 `docs-data/docs-data.json` against `quality/docs-data.schema.json` and
 `doc-contracts.json` against `quality/doc-contracts.schema.json` (including its `path_privacy` detector contract), and checks
-`certified_by` the way the site's verifier does (schemas 4 and 5 take
+`certified_by` the way the site's verifier does (schemas 4, 5 and 6 take
 `candidate` or a numeric run id string). `build` records
 `candidate` when no `--certified-by` is given (schema 3 keeps `local`). The
 site's deploy additionally requires a numeric run id whose run is the
@@ -42,7 +51,7 @@ built bundle never deploys. The publication workflow's certifier wiring lives
 in `.github/workflows/site-inputs.yml`.
 
 The consumer must accept a schema before core emits it: a site that predates
-schema 5 rejects the default bundle, so deploy the site first. Rollback after
+schema 6 rejects the default bundle, so deploy the site first. Rollback after
 the docs removal is a site operation, not a bundle rebuild: dispatch the site
 deploy workflow with `mode=rollback` and the `receipt_run_id` of a deploy from
 before the removal, which restores that run's built artifact. Building a
