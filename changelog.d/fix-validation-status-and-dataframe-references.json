@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed the console benchmark status showing a red FAILED for a run whose queries all succeeded but whose validation was unverified; it now shows UNVALIDATED in yellow, matching the exit code."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Seeded DataFrame TPC-H runs at scale factor 1 now check row counts against the reference: fixed-count queries exactly, parameter-sensitive ones by their recorded range."
+    }
+  ]
+}

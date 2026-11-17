@@ -421,6 +421,12 @@ def _export_orchestrated_result(
     return exported_files
 
 
+def _print_results_location(exported_files: dict[str, Any]) -> None:
+    for filepath in exported_files.values():
+        console.print(f"Results directory: [dim]{Path(str(filepath)).expanduser().resolve().parent}[/dim]")
+        return
+
+
 def _print_tuning_verification_summary(result: Any, *, quiet: bool) -> None:
     if quiet:
         return
@@ -1493,6 +1499,7 @@ def _direct_handle_result(
                 console.print(f"\n[green]✅ Benchmark completed: {result.validation_status}[/green]")
             for format_name, filepath in exported_files.items():
                 console.print(f"{format_name.upper()}: [dim]{filepath}[/dim]")
+            _print_results_location(exported_files)
 
         _render_post_run_charts(result, console, s.quiet)
 
@@ -1712,6 +1719,7 @@ def _data_or_load_handle_result(
             console.print(f"\n[green]✅ {operation_name} completed: {operation_status}[/green]")
             for format_name, filepath in exported_files.items():
                 console.print(f"{format_name.upper()}: {filepath}")
+            _print_results_location(exported_files)
 
         from benchbox.cli.preferences import save_last_run_config
 
@@ -1780,7 +1788,12 @@ def _data_or_load_handle_result(
 @click.option(
     "--output",
     type=str,
-    help="Output directory (required for cloud platforms). Supports: s3://, gs://, abfss://, dbfs:/Volumes/",
+    help=(
+        "Directory for generated data and databases (required for cloud platforms; supports s3://, gs://, "
+        "abfss://, dbfs:/Volumes/). Result JSON is not written here: it goes to <benchmark_runs>/results, "
+        "where benchmark_runs is $BENCHBOX_OUTPUT_DIR or the default benchmark_runs directory. "
+        "The absolute result path is printed when the run finishes."
+    ),
 )
 @click.option(
     "--phases",
