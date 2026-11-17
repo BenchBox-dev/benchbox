@@ -3,7 +3,7 @@
     "Page inventory states constructor versus run-time checks accurately for the documented version, including fixed-scale and TPC-DS exceptions.",
     "Every applicable API page links or states the matching runtime contract; branch-appropriate docs checks/lint and rendered links/examples pass."
   ],
-  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.\n\n2026-11-17 TODO review: clarified decision gates, observable pass/fail rubric and safety boundaries. Existing historical evidence is retained; this is tracker planning only, not implementation, spend, publication or closeout approval.",
+  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.\n\n2026-11-17 TODO review: clarified decision gates, observable pass/fail rubric and safety boundaries. Existing historical evidence is retained; this is tracker planning only, not implementation, spend, publication or closeout approval.\n\n2026-11-17 owner decision: link each page to the shared Scale factors section rather than repeating the limits.",
   "description": "## Problem\nSeventeen pages under benchbox-site `docs/reference/python-api/benchmarks/` describe the constructor's `scale_factor` as 'Must be positive'. Constructing a benchmark class directly does accept any positive value for most benchmarks, but every supported run path (command line, runner, MCP) applies the range rule from BenchBox#4126: 0.01 to 100000, whole numbers from 1, and a fixed value for `joinorder` and `metadata_primitives`. The pages do not say that a value the constructor accepts can still be refused when the benchmark is run.\n\nThis is site-only work. It is filed here because the session that found it was bound to the core tracker; move it to the benchbox-site tracker if preferred.\n\n## Change\nOn each page, state the constructor's own check accurately and add one sentence, or a link to the Scale factors section of `docs/benchmarks/index.md`, giving the range that applies when the benchmark is run. For TPC-DS and TPC-DS-OBT the constructor itself enforces 0.01; those two pages are already correct.\n\n## Guardrails\n- Verify each page's statement against the class constructor on current core `develop`; do not copy one sentence to all pages unchecked.\n- The Python API headings are contract-checked; keep headings unchanged.\n\n## Decision gates\nRe-read constructors and run validators for the branch being documented. Main follows its live release pin; next follows develop. Decide whether a shared scale-factor contract link suffices instead of repeating limits seventeen times.\n\n## Verification rubric\nPass: inventory all applicable API pages and compare constructor acceptance against run-time validation, fixed-scale exceptions and TPC-DS minimum. docs:check and lint:docs run with matching bundles; inspect rendered examples/links on affected pages.\n\n## Additional guardrails\nDo not change constructors to match prose, flatten intentional exceptions, edit contract headings or place unreleased behavior on main. Site PR only, no deployment/pin change.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox-site/tree/main/docs/reference/python-api/benchmarks",
@@ -25,6 +25,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "12b8be236f0644668b0bb23f259ab79e",
+      "session_id": "989657b059c44ae4bade82cb666c453c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1fad3edb102f5d3974476660",
+      "at": "2026-11-17T15:23:18Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9356d0c1244849e299ee57848183a11f",
       "session_id": "989657b059c44ae4bade82cb666c453c"
     }
   ]
