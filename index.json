@@ -32367,15 +32367,10 @@
       "title": "Make make pr-arm refuse until the PR head's fast-duration verdict exists"
     },
     "pr-arm-waits-out-budget-on-conflicting-pr-20261117": {
-      "claim": {
-        "expires_at": "2026-11-18T20:41:08Z",
-        "generation": "c68d1bceaad64d27a767c12c60cd4e4f",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c24f66fe7cb6e536d5c6efdb"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "make pr-arm waits its whole WAIT budget on a PR that conflicts with develop instead of reporting the conflict"
     },
     "pr-changed-tests-miss-name-mismatched-tests": {
