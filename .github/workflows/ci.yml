@@ -1193,6 +1193,7 @@ jobs:
           path: coverage-selection
 
       - name: Run medium tests for changed paths
+        timeout-minutes: 25
         if: needs.ci-paths.outputs.heavy-needed != 'true'
         shell: bash
         env:
@@ -1264,6 +1265,7 @@ jobs:
             --durations tests/fixtures/medium_shard_durations.json
 
       - name: Run medium speed tier
+        timeout-minutes: 25
         if: needs.ci-paths.outputs.heavy-needed == 'true'
         shell: bash
         env:

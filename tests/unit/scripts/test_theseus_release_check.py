@@ -394,3 +394,30 @@ def test_every_workflow_step_running_the_check_outlasts_the_wait_within_its_job(
             assert step_timeout > wait_minutes, workflow.name
             assert job_timeout > step_timeout, workflow.name
     assert found == 4
+
+
+def test_the_longer_job_timeout_is_not_a_longer_test_budget() -> None:
+    import re
+
+    root = Path(__file__).resolve().parents[3] / ".github" / "workflows"
+    test_steps = {
+        "ci.yml": ("Run medium tests for changed paths", "Run medium speed tier"),
+        "trunk.yml": ("Run medium speed tier",),
+        "trunk-coverage.yml": ("Run medium speed tier",),
+        "nightly-v2.yml": ("Run core integration tests", "Run table-format integration tests"),
+    }
+    for name, steps in test_steps.items():
+        text = (root / name).read_text(encoding="utf-8")
+        job = next(
+            j for j in re.split(r"(?m)^  (?=[A-Za-z0-9_-]+:\s*$)", text) if "scripts/theseus_release_check.py" in j
+        )
+        job_timeout = int(re.search(r"(?m)^    timeout-minutes: (\d+)", job).group(1))
+        wait_minutes = int(check.PENDING_WAIT_SECONDS // 60)
+        for step in steps:
+            body = job[job.index(f"      - name: {step}\n") :].split("\n      - name:", 2)[0]
+            assert (
+                int(re.search(r"(?m)^        timeout-minutes: (\d+)", body).group(1)) <= job_timeout - wait_minutes - 5
+            ), (
+                name,
+                step,
+            )

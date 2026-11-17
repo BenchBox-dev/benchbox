@@ -214,6 +214,7 @@ jobs:
             --durations tests/fixtures/medium_shard_durations.json
 
       - name: Run medium speed tier
+        timeout-minutes: 25
         shell: bash
         env:
           SHARD_INDEX: ${{ matrix.shard_index }}
