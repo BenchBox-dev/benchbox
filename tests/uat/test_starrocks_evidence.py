@@ -86,10 +86,15 @@ def test_capture_file_size_is_bounded_and_truncation_visible(capture, monkeypatc
     def oversized(argv, **kwargs):
         if "-q" in argv:
             return runner(argv, **kwargs)
-        return docker_assets.DockerCommandResult(tuple(argv), 0, "x" * 16384, "")
+        return docker_assets.DockerCommandResult(
+            tuple(argv), 0, "header\n" + "x" * 16384 + "\nlatest backend failure", ""
+        )
 
     run(oversized)
     assert (destination / "fe.log").stat().st_size == 8192
+    saved_log = (destination / "fe.log").read_text(encoding="utf-8")
+    assert saved_log.startswith("header\n")
+    assert "latest backend failure" in saved_log
     assert all(path.stat().st_size <= 8192 for path in destination.iterdir())
     manifest = json.loads((destination / "manifest.json").read_text(encoding="utf-8"))
     assert any(record.get("truncated") for record in manifest["commands"])

@@ -69,7 +69,11 @@ def capture_starrocks_evidence(
     def save(name: str, text: str) -> bool:
         encoded = scrub_secret_material(text).encode("utf-8")
         truncated = len(encoded) > _FILE_BYTES
-        (destination / name).write_bytes(encoded[:_FILE_BYTES])
+        if truncated:
+            marker = b"\n[bounded output omitted]\n"
+            prefix = encoded[:512]
+            encoded = prefix + marker + encoded[-(_FILE_BYTES - len(prefix) - len(marker)) :]
+        (destination / name).write_bytes(encoded)
         return truncated
 
     save("host.json", json.dumps(_host_metadata(), indent=2))
