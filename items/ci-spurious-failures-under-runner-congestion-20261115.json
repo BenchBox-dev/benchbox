@@ -3,7 +3,7 @@
     "The watchdog test passes 200 consecutive runs under load, or the race is identified and fixed with a test.",
     "A recorded decision on the probe wait and the duration-gate message."
   ],
-  "context": "Filed 2026-11-16 while landing the TPC-DI release-gate restore and two small follow-ups: identified during that work and not addressed.",
+  "context": "Filed 2026-11-16 while landing the TPC-DI release-gate restore and two small follow-ups: identified during that work and not addressed.\n\n2026-11-16/17 recurrences: release-v2 probe timed out four times on PR #4251 ('did not finish within 1177s' and once 181s; once 'no release-v2.yml run appeared') with 20-35 runs queued, passing on the fifth attempt; PR #4274 needed a core re-run; develop trunk run 43910721968 failed in medium-test shard 0 at PR #4280 and passed on a failed-jobs re-run, which blocked arming for about a day. Failing test id in that shard not recorded.",
   "description": "## Problem\nOn 2026-11-15 and 2026-11-16, with 40 to 58 workflow runs queued, three pull requests that touched only tests or deleted code needed five manual re-runs to merge:\n- `release-v2 probe` failed three times on BenchBox-dev/benchbox#4257 with 'run <id> did not finish within 1177s': the probe dispatches a Release v2 run and waits about 20 minutes, and the dispatched run stayed queued behind the backlog.\n- The fast-tier duration gate failed on #4258 with summed ratio 1.381 and delta +728.4 s, on a change that only removes code and tests. Re-running the failed job repeated the same numbers because it re-reads the recorded durations; only a full re-run of the workflow re-measured, and that passed.\n- `tests/unit/utils/test_heavy_watchdog.py::test_run_guard_subprocess_stops_a_runaway_command_with_the_watchdog_status` failed once in medium-test shard 2 on #4257 with `ValueError: invalid literal for int() with base 10: ''` and passed on re-run.\nA fourth failure was GitHub's artifact service ('Failed to FinalizeArtifact'), which is external.\n\n## Change\n- Probe: wait for the dispatched run to start before starting the completion clock, or scale the wait with queue depth.\n- Duration gate: say in the failure message that a job re-run reuses the measurement and a full re-run is needed; consider normalising for runner load.\n- Watchdog test: find the empty-string read (probably a pid or status file read before it is written) and make it wait for the value.\n\n## Guardrails\n- Do not loosen the duration thresholds to hide real regressions.\n- The probe must still fail when the dispatched run fails.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4257",
@@ -18,6 +18,14 @@
       "op": "create",
       "op_id": "881ebe8ccc5e4982afd169d7e6bdc4fd",
       "session_id": "74b8e1c46d2d409db57fea9e85188bc5"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019",
+      "at": "2026-11-17T13:49:21Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b42931516d884361aa64bf2585b76157",
+      "session_id": "14462ffc9066466ca32d151c57f6a5de"
     }
   ]
 }
