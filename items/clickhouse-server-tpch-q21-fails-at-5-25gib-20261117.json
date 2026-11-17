@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "The Q21 failure is recorded with error text, peak memory and join algorithm per arm",
+    "Either Q21 passes with the reference row count in notuning and tuned arms at SF1 under 5.25 GiB, with the setting declared and recorded per query, or a documented envelope reason with measured peak memory exists and is cited by the evidence",
+    "template_evidence.yaml TPC-H ClickHouse entry states whether Q21 is in the denominator"
+  ],
+  "description": "## Problem\nIn the 2026-11-12 tuning evidence (PR #4191, _project/analysis/clickhouse-tuning-evidence-sf1/), TPC-H Q21 failed in all four arms (notuning, A/A copy, layout-only, full tuned) on ClickHouse 25.8.33.6 under the macOS 27 Mocker path with a 5.25 GiB guest limit, so every TPC-H SF1 ClickHouse verdict covers 21 of 22 queries. PR #4162 already applies a statement-level join_algorithm for Q21 in all modes as a harness requirement; Q21 still fails. No tracker item owns this; clickhouse-server-tpcds-q10-memory-20261008 is the TPC-DS analogue.\n\n## Decision gate\nCapture the failure first: error code and message, peak memory from system.query_log, and the join algorithm actually used. Then:\n- If a ClickHouse setting (spill, join algorithm, max_bytes_before_external_*) lets Q21 finish within 5.25 GiB in every mode, declare it as a harness requirement the way #4162 did (applied in all modes, recorded per query), not as tuning.\n- If Q21 needs more memory than the release envelope, record a documented envelope reason that cites the measured peak, and keep it out of verdict denominators explicitly.\n- If ClickHouse returns a wrong result or crashes, file it as an engine defect with a reproducer.\n\n## Guardrails\n- Q21 must return the reference row count wherever it is reported as passing.\n- No change that applies only to the tuned arm (that would bias the benefit rule).\n- Runs go through make heavy-run; see heavy-work-host-capacity-owner-decision-20261117 if the host cannot hold them.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/4191",
+    "https://github.com/BenchBox-dev/BenchBox/pull/4162"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1213c3129d7753c9fd6512c0",
+      "at": "2026-11-17T15:18:25Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "cdcf1d07c0434cc184e1d18fa32bb627",
+      "session_id": "71cadb46eee448f8a6d2019016ddc6eb"
+    }
+  ]
+}
