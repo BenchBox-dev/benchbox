@@ -4,6 +4,7 @@
     "Every recorded peak is below the guard's estimate on merged develop, or a merged PR raised the model and is linked here.",
     "Or: the owner's narrowed acceptance and reason are recorded (host option 3)."
   ],
+  "context": "Owner decision 2026-11-17 (choice dialog): measure in the quiet window 2026-11-18 00:00-06:00 EST (2026-11-18T05:00Z-11:00Z). PySpark SF10 subsets are accepted as unmeasured on the supported host (needs >16 GiB free); record them as not run with the guard's stated requirement. Pre-approved: if any measured peak reaches the estimate, raise the model and merge without asking; lowering any estimate still needs the owner.",
   "description": "## Problem\nPR #4299 (merge 3a47e5692a) makes the DataFrame memory guard estimate a `--queries` subset from the tables it reads. It was validated on 25 query sets (all peaks below estimate, worst 0.79), but not on the case that motivated it: TPC-DS Q16/Q94/Q95 at SF10. Its new estimates — Polars 9.1, DataFusion 8.19, PySpark 13.65 GiB — exceeded the 3.3-5.4 GiB free on the shared 16 GiB host, so the guard refused. PySpark at SF10 was measured only for TPC-DS Q1; Q83, Q94, TPC-H Q2, Q11 and Q13 were refused. Raw data: ~/Developer/benchmark_runs/df-memory-guard-subset/results.jsonl and table.md; full table in the PR body.\n\n## Method\nOn the host chosen in heavy-work-host-capacity-owner-decision-20261117, measure peak RSS of the whole run process tree (CLI, engine and JVM children) for: TPC-DS Q16,Q94,Q95 at SF10 on Polars, DataFusion and PySpark; and at least three PySpark SF10 subsets from the refused list. Record engine versions, host memory/CPU class and free memory at start. Reuse the measure.py harness in the directory above (throwaway; not committed). Co-schedule with df-distinct-pyspark-sf10-timing-20261113, which needs the same data and host.\n\n## Decision gate\n- Every peak < new estimate: record and close.\n- Any peak >= new estimate: raise the model (multiplier or floor) in one PR until every recorded peak is below the estimate, with a test pinning the case; report the gap here.\n- Host choice 3 (accept the gap): the owner narrows this item's acceptance; agents do not.\n\n## Guardrails\nTiming and memory runs only through `make heavy-run` after `make heavy-status`; never force admission, set BENCHBOX_SKIP_TEST_LOCK, disable the watchdog, or pass `--ignore-memory-warnings` without the owner's approval in that task. Never kill processes by pattern; the host is shared. Measurements on a different host record that host's class and are not merged with the macOS figures without saying so. Do not lower any estimate based on these runs without owner approval.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "90a91acad53c48218222bcfa0b536a75",
+      "session_id": "584fe5162b994f91904666adf0c5e183"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:baf9996c1c86fb9c9b5547f3",
+      "at": "2026-11-17T21:32:10Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4b5bc1f123a94732b67f54972d8e1782",
       "session_id": "584fe5162b994f91904666adf0c5e183"
     }
   ]
