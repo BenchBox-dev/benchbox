@@ -15267,7 +15267,9 @@
     },
     "ci-spurious-failures-under-runner-congestion-20261115": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "feature-fix-ci-congestion-diagnostics-and-generator-gate-20261117"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Three unrelated CI failures hit small PRs during a runner backlog: release-v2 probe wait, fast-tier duration gate, and a flaky watchdog test"
