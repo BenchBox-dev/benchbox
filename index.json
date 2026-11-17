@@ -14484,7 +14484,7 @@
       "needs": [],
       "priority": "medium",
       "status": "open",
-      "title": "CedarDB has no TPC-DS maintenance (data maintenance) support, so official TPC-DS runs cannot run there"
+      "title": "CedarDB TPC-DS maintenance is unverified and disabled, so official TPC-DS runs are refused there"
     },
     "centralize-ddl-translation-phase": {
       "claim": null,
