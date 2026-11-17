@@ -2,7 +2,7 @@
   "acceptance": [
     "The test mapping selects test_shipped_docs_urls.py (and the docs-ownership check) when README or docs files change; shown on a sample change."
   ],
-  "context": "Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "context": "Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\nCloseout 2026-11-17: core BenchBox-dev/benchbox#4276 merged (20d8ac12af). README, CONTRIBUTING, docs, examples, results-data and the ownership manifest now select test_shipped_docs_urls.py; mapping tests added.",
   "description": "Problem: on PR #4230, tests/unit/cli/test_shipped_docs_urls.py failed in CI but was not selected by make pr-preflight, and docs-ownership changes were needed that preflight did not catch. Local preflight should catch what CI's example validation catches for documentation changes.",
   "sessions": [
     {
@@ -20,6 +20,14 @@
       "generation": "abecafb9613c4902b02232a758111f9d",
       "op": "take",
       "op_id": "9c8332dfd3fd4d1db47120ebd7b48bea",
+      "session_id": "14462ffc9066466ca32d151c57f6a5de"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019",
+      "at": "2026-11-17T13:46:28Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "2cab3445d6dc4eddb224411290100367",
       "session_id": "14462ffc9066466ca32d151c57f6a5de"
     }
   ]
