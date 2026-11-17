@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "A per-manifest table (platform, run date, fields present, evidence available) is recorded in docs/internal/results-vendor-publication-terms.md",
+    "The owner's choice is recorded with date",
+    "After the change, the validator run over the whole published corpus reports no unexplained vendor-condition failure, and a new submission without the fields is still refused (test)",
+    "t3:drift is green on the next nightly after the corpus change"
+  ],
+  "description": "## Problem\nPR #4272 found that none of the 101 published BigQuery, Snowflake and Databricks manifests on published-results records plan_tier, vendor_permission, vendor_notice or self_run, and all have funding 'unspecified'. These results predate the vendor-condition fields from PR #4137. The site therefore shows results whose compliance with the vendor terms (free-tier, preview-feature and notice conditions) cannot be shown from the bundle, while new submissions must carry the fields.\n\n## Decision gate (owner)\nChoose one, recorded with date:\n1. Backfill: fill a field only where a run record proves the value (account tier, features used); leave it absent otherwise.\n2. Label as pre-policy: keep the results, mark them visibly as published before vendor-condition checks, and exempt them by manifest date in the validator.\n3. Withdraw: remove results whose compliance cannot be shown.\nAn agent may prepare the per-manifest evidence table for the decision but must not choose.\n\n## Guardrails\n- Never infer or guess a plan_tier, permission or notice value; absent evidence stays absent.\n- Timings, digests and query results in the manifests do not change.\n- Corpus changes go through the published-results mirror flow, not direct pushes; t3:drift must be green after.\n- A validator exemption, if chosen, is keyed on a fixed cutoff, not on a missing field (otherwise new submissions could skip the fields).",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/4272",
+    "https://github.com/BenchBox-dev/BenchBox/pull/4137"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bfa5e7eb7cd30f69e1fe2571",
+      "at": "2026-11-17T21:18:53Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "04b3dc0bdb8841bebea85b21bb363a73",
+      "session_id": "0362803867fb4929927e576283fffc32"
+    }
+  ]
+}

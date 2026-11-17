@@ -33429,6 +33429,13 @@
       "status": "done",
       "title": "Publish TPC-DS OBT SF 0.01 and SF 0.1 results to the corpus and Explorer"
     },
+    "published-corpus-lacks-vendor-publication-fields-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "None of the 101 published BigQuery, Snowflake and Databricks results records plan tier, vendor permission, vendor notice or self-run"
+    },
     "published-history-retention-premise-predates-oracle": {
       "claim": null,
       "needs": [
