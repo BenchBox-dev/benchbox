@@ -5722,6 +5722,7 @@
     "nightly-remediation": {
       "accepted_members": {
         "corpus-drift-mirror-grace-20261117": "0f5124ffaba68f569d32f74af48044ac1865b60d",
+        "gateway-probe-served-providers-20261117": "c41e339163d7c68be4c64fac99066dd56929cc28",
         "green-sweep-clears-hidden-failures-20261117": "b0a5c1fb2f9576e276bf49d023d082e112c177d2",
         "perf-smoke-method2-baseline-20261117": "a7f125d41862c1ec38f63f7bb79440398fc0fe1d"
       },
@@ -5744,6 +5745,16 @@
           ],
           "integration_head": "c5b5eebe7280391e07569fc239efdbc4d94ab7f5",
           "integration_seq": 3
+        },
+        "gateway-probe-served-providers-20261117": {
+          "accepted_head": "c41e339163d7c68be4c64fac99066dd56929cc28",
+          "changed_files": [
+            "_project/scripts/review_gateway_host.sh",
+            "docs/internal/review-gateway-host.md",
+            "tests/unit/scripts/test_review_gateway_host.py"
+          ],
+          "integration_head": "5009338e935df9f6fead9a9ab7a16afeaf5ac81b",
+          "integration_seq": 4
         },
         "green-sweep-clears-hidden-failures-20261117": {
           "accepted_head": "b0a5c1fb2f9576e276bf49d023d082e112c177d2",
@@ -5770,7 +5781,7 @@
         }
       },
       "integration_branch": "feat/nightly-remediation",
-      "integration_head": "c5b5eebe7280391e07569fc239efdbc4d94ab7f5",
+      "integration_head": "5009338e935df9f6fead9a9ab7a16afeaf5ac81b",
       "integration_log": [
         {
           "at": "2026-11-17T17:50:03Z",
@@ -5804,6 +5815,15 @@
           "op_id": "e6b47598ecdc4a7aa8d9e71d1c01b374",
           "previous_head": "d06acde550ce83feee1fb7287157692271bb68bb",
           "seq": 3
+        },
+        {
+          "at": "2026-11-17T22:32:29Z",
+          "head": "5009338e935df9f6fead9a9ab7a16afeaf5ac81b",
+          "kind": "prepare",
+          "member": "gateway-probe-served-providers-20261117",
+          "op_id": "691fc400118c414db075bdd3c9f6913e",
+          "previous_head": "c5b5eebe7280391e07569fc239efdbc4d94ab7f5",
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-nightly-remediation",
@@ -25043,15 +25063,10 @@
       "title": "Gate monitoring behind a benchbox[monitoring] optional extra"
     },
     "gateway-probe-served-providers-20261117": {
-      "claim": {
-        "expires_at": "2026-11-18T22:32:22Z",
-        "generation": "576538c92d05480583b81f73dadff81d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:daba6966dbafa9d0ecd0bd8b"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Degrade the review gateway only for served providers and debounce monitor alarms"
     },
     "gcloud-emsign-ca-workaround-revert": {

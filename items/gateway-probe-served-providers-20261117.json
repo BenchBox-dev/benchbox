@@ -12,6 +12,68 @@
   },
   "context": "Guardrails: work only in linked worktrees; never git add -A; Joe Harris identity, no agent trailers; no explanatory code/YAML comments (make comment-policy-check); no new CI skips, no required-check renames, no ruleset/settings/secret changes; no weakening of an existing check beyond the rule this item names; durable commit text without tracker ids. Do not change credentials, the broker, gateway clients or secrets. Host reinstall happens only after merge, from origin/develop.",
   "description": "_project/scripts/review_gateway_host.sh check_usage_probes marks the whole gateway degraded when \"omp auth-gateway check\" fails for any broker login. Today it fails only for antigravity-cli (OAuth refresh 500), which the gateway does not serve; anthropic, openai-codex and google-antigravity are ok. cmd_monitor publishes on every state change, so brief failures opened and closed four issues (#4231, #4232, #4271, #4275) in two days.\n\nChange: read the probe output per provider; a failure for a provider the gateway serves stays degraded, a failure for any other provider becomes a notice naming it. In cmd_monitor, publish (notify and issue) only when the same new signature is seen on two consecutive runs; keep a pending signature in the state directory. Keep the rule that an unfiled issue leaves the state unrecorded.\n\nScope: _project/scripts/review_gateway_host.sh, tests/unit/scripts/test_review_gateway_host.py, docs/internal/review-gateway-host.md.",
+  "prepared": {
+    "accepted_head": "c41e339163d7c68be4c64fac99066dd56929cc28",
+    "batch_id": "nightly-remediation",
+    "changed_files": [
+      "_project/scripts/review_gateway_host.sh",
+      "docs/internal/review-gateway-host.md",
+      "tests/unit/scripts/test_review_gateway_host.py"
+    ],
+    "integration_head": "5009338e935df9f6fead9a9ab7a16afeaf5ac81b",
+    "integration_seq": 4,
+    "member_id": "gateway-probe-served-providers-20261117",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "108ac4bd475cc2202bbfe71df4a9ba55baabdda5b6f715bd70fa8b01458cd68b",
+    "source_base": "c5b5eebe7280391e07569fc239efdbc4d94ab7f5",
+    "source_revision": "c41e339163d7c68be4c64fac99066dd56929cc28",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-nr-gateway-probe-served-providers",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/review/test_curated_capture_fixtures.py",
+        "tests/unit/cli/test_shipped_docs_urls.py",
+        "tests/unit/scripts/test_local_review.py",
+        "tests/unit/scripts/test_pr_arm.py",
+        "tests/unit/scripts/test_pr_landing.py",
+        "tests/unit/scripts/test_remote_closeout.py",
+        "tests/unit/scripts/test_review_gateway_host.py",
+        "tests/unit/scripts/test_review_policy_pin.py",
+        "tests/unit/scripts/test_soundness_merge_digest.py",
+        "tests/unit/scripts/test_soundness_merge_digest_dispatch.py",
+        "tests/unit/scripts/test_theseus_lock.py",
+        "tests/unit/scripts/test_theseus_release_check.py",
+        "tests/unit/test_ledger_coverage.py",
+        "tests/unit/workflows/test_review_gate_workflow.py",
+        "tests/unit/workflows/test_review_verdict_workflow.py",
+        "tests/unit/workflows/test_review_workflow.py"
+      ],
+      "review": {
+        "base_sha": "c5b5eebe7280391e07569fc239efdbc4d94ab7f5",
+        "head_sha": "c41e339163d7c68be4c64fac99066dd56929cc28",
+        "head_tree": "9848ef7bb115e0bd667a5ee6ae9876b32d2fa555",
+        "outcome": "clear",
+        "patch_digest": "3f073bf1d9c6e381e4fab48d9725cd6d",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "823c7ec05d66ae062b8d5c147c45bda0b77cb4ba"
+      },
+      "revision": "c41e339163d7c68be4c64fac99066dd56929cc28",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:daba6966dbafa9d0ecd0bd8b",
@@ -44,6 +106,15 @@
       "generation": "576538c92d05480583b81f73dadff81d",
       "op": "take",
       "op_id": "c95366f4f62340f3a250f1e6265b162a",
+      "session_id": "b833d84af4ae4e4b999f435d3c8fd25e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:daba6966dbafa9d0ecd0bd8b",
+      "at": "2026-11-17T22:32:30Z",
+      "client": "omp-coding-agent",
+      "generation": "576538c92d05480583b81f73dadff81d",
+      "op": "prepare",
+      "op_id": "691fc400118c414db075bdd3c9f6913e",
       "session_id": "b833d84af4ae4e4b999f435d3c8fd25e"
     }
   ]
