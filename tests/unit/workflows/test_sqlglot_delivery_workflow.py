@@ -34,13 +34,25 @@ def job_text(name: str) -> str:
     return yaml.safe_dump(job(name))
 
 
-def test_the_workflow_runs_daily_on_demand_and_after_ci_and_review_with_dry_run_on_by_default() -> None:
+def test_the_workflow_runs_on_a_schedule_on_demand_and_after_ci_and_review_with_dry_run_on_by_default() -> None:
     triggers = load()[True]
     assert set(triggers) == {"schedule", "workflow_dispatch", "workflow_run"}
     inputs = triggers["workflow_dispatch"]["inputs"]
     assert inputs["dry_run"]["default"] is True
     assert inputs["retry"]["default"] is False
     assert triggers["workflow_run"]["types"] == ["completed"]
+
+
+def test_the_schedule_runs_at_least_every_six_hours() -> None:
+    crons = [entry["cron"] for entry in load()[True]["schedule"]]
+    hours: set[int] = set()
+    for cron in crons:
+        minute, hour, day, month, weekday = cron.split()
+        assert (day, month, weekday) == ("*", "*", "*")
+        hours.update(range(24) if hour == "*" else {int(h) for h in hour.split(",")})
+    ordered = sorted(hours)
+    gaps = [(b - a) for a, b in zip(ordered, ordered[1:] + [ordered[0] + 24])]
+    assert hours and max(gaps) <= 6
 
 
 def test_every_workflow_that_triggers_arming_exists_by_that_name() -> None:
