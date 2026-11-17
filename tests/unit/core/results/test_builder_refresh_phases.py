@@ -20,10 +20,18 @@ def _builder(test_type: str = "combined") -> ResultBuilder:
     )
 
 
-def _row(query: int, *, iteration: int, test_type: str, stream_id: int = 0, run_type: str = "measurement"):
+def _row(
+    query: int,
+    *,
+    iteration: int,
+    test_type: str,
+    stream_id: int = 0,
+    run_type: str = "measurement",
+    seconds: float = POWER_SECONDS,
+):
     return QueryResultInput(
         query_id=f"Q{query}",
-        execution_time_seconds=POWER_SECONDS,
+        execution_time_seconds=seconds,
         rows_returned=1,
         status="SUCCESS",
         iteration=iteration,
@@ -157,3 +165,36 @@ class TestRefreshPhases:
         assert result.execution_phases.power_test is None
         assert result.execution_phases.throughput_test is not None
         assert result.throughput_at_size == 123.0
+
+    def test_a_failed_throughput_row_suppresses_the_power_phase_metric_too(self) -> None:
+        builder = _builder()
+        _full_run(builder)
+        builder.add_query_result(
+            QueryResultInput(
+                query_id="Q1",
+                execution_time_seconds=0.0,
+                rows_returned=0,
+                status="FAILED",
+                iteration=1,
+                run_type="measurement",
+                test_type="throughput",
+                stream_id=1,
+            )
+        )
+
+        result = builder.build()
+
+        assert not result.power_at_size
+        assert result.execution_phases.power_test.power_at_size == 0.0
+
+    def test_the_power_phase_geometric_mean_ignores_warmup_rows(self) -> None:
+        builder = _builder()
+        for query in range(1, 23):
+            builder.add_query_result(_row(query, iteration=0, test_type="power", run_type="warmup", seconds=50.0))
+            builder.add_query_result(_row(query, iteration=1, test_type="power"))
+        builder.set_power_refresh(1, _functions(1))
+        builder.set_throughput_phase(_throughput())
+
+        power = builder.build().execution_phases.power_test
+
+        assert power.geometric_mean_time == pytest.approx(POWER_SECONDS)

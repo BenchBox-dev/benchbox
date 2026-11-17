@@ -7,6 +7,7 @@ from typing import Any
 
 from benchbox.core.plan_capture_phase import propagate_query_execution_metadata
 from benchbox.core.results.models import ThroughputTestPhase
+from benchbox.core.schemas import MIN_THROUGHPUT_STREAMS
 from benchbox.core.throughput.entrypoints import finalize_throughput_metrics
 from benchbox.core.tpc_spec import refresh_functions_enabled
 from benchbox.core.tpch.dataframe_refresh import DataFrameRefresher, execute_refresh_function
@@ -39,31 +40,37 @@ class TpchRefreshPlan:
 class PowerRefresh:
     def __init__(self, plan: TpchRefreshPlan) -> None:
         self._plan = plan
+        self._started = False
         self._rf2_attempted = False
+        self.error: str | None = None
 
-    def start(self) -> None:
+    def start(self) -> bool:
+        self._started = True
         rf1 = self._run("RF1")
-        if rf1["status"] != "SUCCESS":
-            self._plan.power_functions.append(
-                {
-                    "function": "RF2",
-                    "update_set": self._plan.first_set,
-                    "duration_ms": 0,
-                    "rows": 0,
-                    "status": "SKIPPED",
-                    "check_status": "NOT_RUN",
-                    "error": "RF1 failed; RF2 was not run",
-                }
-            )
-            raise RuntimeError(f"TPC-H Power Test refresh RF1 failed: {rf1['error']}")
+        if rf1["status"] == "SUCCESS":
+            return True
+        self._rf2_attempted = True
+        self._plan.power_functions.append(
+            {
+                "function": "RF2",
+                "update_set": self._plan.first_set,
+                "duration_ms": 0,
+                "rows": 0,
+                "status": "SKIPPED",
+                "check_status": "NOT_RUN",
+                "error": "RF1 failed; RF2 was not run",
+            }
+        )
+        self.error = f"TPC-H Power Test refresh RF1 failed: {rf1['error']}"
+        return False
 
     def finish(self) -> None:
-        if self._rf2_attempted:
+        if not self._started or self._rf2_attempted:
             return
         self._rf2_attempted = True
         rf2 = self._run("RF2")
         if rf2["status"] != "SUCCESS":
-            raise RuntimeError(f"TPC-H Power Test refresh RF2 failed: {rf2['error']}")
+            self.error = f"TPC-H Power Test refresh RF2 failed: {rf2['error']}"
 
     def _run(self, function: str) -> dict[str, Any]:
         result = execute_refresh_function(self._plan.refresher, function, self._plan.power_update_set, check=True)
@@ -104,6 +111,29 @@ def resolve_refresh_plan(adapter: Any, benchmark: Any, benchmark_config: Any, ct
     return TpchRefreshPlan(DataFrameRefresher(ctx, backend), first_set, update_set, directory)
 
 
+def resolve_stream_count(benchmark_config: Any) -> int:
+    streams = getattr(benchmark_config, "concurrency", None)
+    if streams is None:
+        return MIN_THROUGHPUT_STREAMS
+    if isinstance(streams, bool) or not isinstance(streams, int) or streams < MIN_THROUGHPUT_STREAMS:
+        raise ValueError(f"--streams must be an integer of at least {MIN_THROUGHPUT_STREAMS}; got {streams!r}")
+    return streams
+
+
+def failed_power_row(error: str) -> dict[str, Any]:
+    return {
+        "query_id": "power_test_error",
+        "execution_time_seconds": 0.0,
+        "status": "FAILED",
+        "rows_returned": 0,
+        "error": error,
+        "test_type": "power",
+        "iteration": 1,
+        "run_type": "measurement",
+        "stream_id": 0,
+    }
+
+
 def run_throughput(
     adapter: Any,
     ctx: Any,
@@ -112,9 +142,7 @@ def run_throughput(
     verbose: bool,
 ) -> tuple[ThroughputTestPhase, list[dict[str, Any]]]:
     options = getattr(benchmark_config, "options", None) or {}
-    streams = getattr(benchmark_config, "concurrency", None)
-    if not isinstance(streams, int) or isinstance(streams, bool) or streams < 1:
-        raise ValueError("the DataFrame throughput phase requires --streams")
+    streams = resolve_stream_count(benchmark_config)
     run_config = {
         "verbose": verbose,
         "cancel_on_timeout": options.get("cancel_on_timeout", False),

@@ -874,7 +874,13 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
             builder.set_phase_status("power_test", "COMPLETED")
             return results
 
-        from benchbox.platforms.dataframe.tpch_full_spec import PowerRefresh, resolve_refresh_plan, run_throughput
+        from benchbox.platforms.dataframe.tpch_full_spec import (
+            PowerRefresh,
+            failed_power_row,
+            resolve_refresh_plan,
+            resolve_stream_count,
+            run_throughput,
+        )
 
         if phases.throughput and not (
             self.supports_dataframe_throughput and normalize_benchmark_id(benchmark_config.name) == "tpch"
@@ -883,21 +889,26 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                 f"The throughput phase is not supported for {benchmark_config.name} on DataFrame platform "
                 f"'{self.platform_name}'"
             )
+        if phases.throughput:
+            resolve_stream_count(benchmark_config)
         plan = resolve_refresh_plan(self, benchmark_instance, benchmark_config, ctx)
         try:
             query_results: list[dict[str, Any]] = []
             if phases.power:
+                power_refresh = PowerRefresh(plan) if plan is not None else None
                 query_results = self._execute_queries_phase(
                     ctx=ctx,
                     benchmark_config=benchmark_config,
                     benchmark_instance=benchmark_instance,
                     monitor=monitor,
                     run_options=run_options,
-                    power_refresh=PowerRefresh(plan) if plan is not None else None,
+                    power_refresh=power_refresh,
                 )
                 builder.set_phase_status("power_test", "COMPLETED")
                 if plan is not None:
                     builder.set_power_refresh(plan.first_set, plan.power_functions)
+                if power_refresh is not None and power_refresh.error:
+                    query_results.append(failed_power_row(power_refresh.error))
             if phases.throughput:
                 console.print("\n[cyan]Running throughput phase...[/cyan]")
                 phase, throughput_rows = run_throughput(
@@ -1235,8 +1246,8 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
 
             iteration_results: list[dict[str, Any]] = []
             refresh = power_refresh if iteration == measurement_iterations - 1 else None
-            if refresh is not None:
-                refresh.start()
+            if refresh is not None and not refresh.start():
+                break
             try:
                 with self._stream_parameter_scope(benchmark_config, measurement_stream_id):
                     for i, query in enumerate(measurement_queries, 1):

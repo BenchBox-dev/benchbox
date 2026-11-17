@@ -300,15 +300,13 @@ class TestDataFrameThroughputIsRejected:
         )
 
     def test_throughput_is_refused_for_a_benchmark_without_a_dataframe_stream_runner(self):
-        from types import SimpleNamespace
+        from benchbox.core.run_service import reject_unsupported_dataframe_benchmark
 
-        from benchbox.core.run_service import reject_unsupported_dataframe_phases
-
-        adapter = SimpleNamespace(platform_name="polars-df", supports_dataframe_throughput=True)
-
-        reject_unsupported_dataframe_phases("dataframe", ["throughput"], adapter, "tpch")
+        reject_unsupported_dataframe_benchmark("dataframe", ["throughput"], "tpch")
+        reject_unsupported_dataframe_benchmark("dataframe", ["power"], "tpcds")
+        reject_unsupported_dataframe_benchmark("sql", ["throughput"], "tpcds")
         with pytest.raises(ValueError, match="implemented for TPC-H only"):
-            reject_unsupported_dataframe_phases("dataframe", ["throughput"], adapter, "tpcds")
+            reject_unsupported_dataframe_benchmark("dataframe", ["throughput"], "tpcds")
 
     def test_adapter_without_support_is_named_in_the_refusal(self):
         from types import SimpleNamespace

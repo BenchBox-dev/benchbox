@@ -318,16 +318,55 @@ class TestPowerRefresh:
         assert valid and first_set == 1
         plan.close()
 
-    def test_a_failed_rf1_skips_rf2_and_stops_the_iteration(self, adapter: Any, ctx: Any, tmp_path: Path) -> None:
+    def test_a_failed_rf1_records_a_skipped_rf2_and_reports_the_error(
+        self, adapter: Any, ctx: Any, tmp_path: Path
+    ) -> None:
         update_set = _update_set(tmp_path, 1, [101], [1])
         update_set.orders_path.write_text("not|a|valid|row\n", encoding="utf-8")
         plan = self._plan(adapter, ctx, update_set)
+        refresh = PowerRefresh(plan)
 
-        with pytest.raises(RuntimeError, match="RF1 failed"):
-            PowerRefresh(plan).start()
+        assert refresh.start() is False
+        refresh.finish()
 
         assert [function["status"] for function in plan.power_functions] == ["FAILED", "SKIPPED"]
+        assert refresh.error is not None and "RF1 failed" in refresh.error
         plan.close()
+
+    def test_a_failed_rf2_is_recorded_without_raising(self, adapter: Any, ctx: Any, tmp_path: Path) -> None:
+        update_set = _update_set(tmp_path, 1, [101], [1, 999])
+        plan = self._plan(adapter, ctx, update_set)
+        refresh = PowerRefresh(plan)
+
+        assert refresh.start() is True
+        refresh.finish()
+
+        assert [function["status"] for function in plan.power_functions] == ["SUCCESS", "FAILED"]
+        assert refresh.error is not None and "RF2 failed" in refresh.error
+        plan.close()
+
+    def test_finish_without_start_does_nothing(self, adapter: Any, ctx: Any, tmp_path: Path) -> None:
+        plan = self._plan(adapter, ctx, _update_set(tmp_path, 1, [101], [1]))
+
+        PowerRefresh(plan).finish()
+
+        assert plan.power_functions == []
+        plan.close()
+
+
+class TestStreamCount:
+    def test_omitting_streams_uses_the_tpc_minimum(self) -> None:
+        from benchbox.platforms.dataframe.tpch_full_spec import resolve_stream_count
+
+        assert resolve_stream_count(SimpleNamespace(concurrency=None)) == 2
+        assert resolve_stream_count(SimpleNamespace(concurrency=4)) == 4
+
+    @pytest.mark.parametrize("value", [0, 1, True, "2"])
+    def test_an_invalid_stream_count_is_refused(self, value: Any) -> None:
+        from benchbox.platforms.dataframe.tpch_full_spec import resolve_stream_count
+
+        with pytest.raises(ValueError, match="--streams"):
+            resolve_stream_count(SimpleNamespace(concurrency=value))
 
 
 def _legal_states() -> set[tuple[int, int]]:

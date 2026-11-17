@@ -186,6 +186,18 @@ class TestExtractQueriesBranches:
         assert result == {"Q1": "plan"}
         extract.assert_called_once()
 
+    def test_dataframe_combined_tpch_with_maintenance_is_not_supported(self):
+        bm = MagicMock()
+        cfg = MagicMock()
+        cfg.name = "tpch"
+        cfg.test_execution_type = "combined"
+        cfg.options = {"requested_phases": ["power", "maintenance"]}
+        result = self.executor._extract_queries(
+            bm, cfg, platform_adapter=None, execution_mode="dataframe", platform_type="polars-df"
+        )
+
+        assert "_maintenance_not_supported" in result
+
 
 class TestGenerateDataframeSchema:
     def setup_method(self):

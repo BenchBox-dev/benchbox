@@ -78,28 +78,33 @@ def validate_stream_count(
             )
 
 
-def reject_unsupported_dataframe_phases(
-    execution_mode: str | None,
-    phases_to_run: list[str] | None,
-    adapter: Any = None,
-    benchmark: str | None = None,
+def reject_unsupported_dataframe_benchmark(
+    execution_mode: str | None, phases_to_run: list[str] | None, benchmark: str | None
 ) -> None:
     if execution_mode != "dataframe" or not phases_to_run or "throughput" not in phases_to_run:
         return
-    if getattr(adapter, "supports_dataframe_throughput", False) is not True:
-        platform_name = getattr(adapter, "platform_name", None) or "this DataFrame platform"
-        raise ValueError(
-            f"The throughput phase is not supported by {platform_name} in DataFrame mode. It declares no "
-            "concurrent query-stream support, so a throughput request would only repeat the power-test "
-            "iterations under a throughput label and ignore --streams. Use --phases power for "
-            "this platform, or run the throughput phase on a SQL platform or on a DataFrame platform "
-            "that supports it (polars-df, datafusion-df)."
-        )
     if benchmark is not None and benchmark.lower() != "tpch":
         raise ValueError(
             f"The DataFrame throughput phase is implemented for TPC-H only; {benchmark} has no DataFrame "
             "stream runner. Use --phases power, or run the throughput phase on a SQL platform."
         )
+
+
+def reject_unsupported_dataframe_phases(
+    execution_mode: str | None, phases_to_run: list[str] | None, adapter: Any = None
+) -> None:
+    if execution_mode != "dataframe" or not phases_to_run or "throughput" not in phases_to_run:
+        return
+    if getattr(adapter, "supports_dataframe_throughput", False) is True:
+        return
+    platform_name = getattr(adapter, "platform_name", None) or "this DataFrame platform"
+    raise ValueError(
+        f"The throughput phase is not supported by {platform_name} in DataFrame mode. It declares no "
+        "concurrent query-stream support, so a throughput request would only repeat the power-test "
+        "iterations under a throughput label and ignore --streams. Use --phases power for "
+        "this platform, or run the throughput phase on a SQL platform or on a DataFrame platform "
+        "that supports it (polars-df, datafusion-df)."
+    )
 
 
 from benchbox.core.execution_engine import reject_engine_bypassing_benchmark
@@ -306,10 +311,11 @@ def execute_run(
     phases = resolve_lifecycle_phases(phases_to_run)
     validation = resolve_validation_options(getattr(config, "options", None))
     execution_mode = resolve_execution_mode(database_config)
+    reject_unsupported_dataframe_benchmark(execution_mode, phases_to_run, config.name)
     ensure_run_output_space(output_root)
 
     adapter = adapter_factory(execution_mode=execution_mode, output_root=output_root, phases=phases)
-    reject_unsupported_dataframe_phases(execution_mode, phases_to_run, adapter, config.name)
+    reject_unsupported_dataframe_phases(execution_mode, phases_to_run, adapter)
     if execution_mode == "dataframe" and adapter is not None:
         reject_engine_bypassing_benchmark(
             benchmark_instance,

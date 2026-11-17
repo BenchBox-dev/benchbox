@@ -384,8 +384,6 @@ class ResultBuilder:
 
     def build(self) -> BenchmarkResults:
         duration_seconds = self._calculate_duration()
-        if self._execution_phases_override is None and (self._power_refresh or self._throughput_phase):
-            self._execution_phases_override = self._compose_refresh_phases()
 
         measurement_results = [r for r in self._query_results if r.run_type == "measurement" and r.iteration > 0]
         results_for_stats = measurement_results if measurement_results else self._query_results
@@ -405,7 +403,10 @@ class ResultBuilder:
         compliance_class = routed_compliance_class(
             self._benchmark.compliance_class, platform_info_gateway(platform_info)
         )
-        if failed_queries or compliance_class == NONSTANDARD_COMPLIANCE_CLASS:
+        metrics_suppressed = bool(failed_queries) or compliance_class == NONSTANDARD_COMPLIANCE_CLASS
+        if self._execution_phases_override is None and (self._power_refresh or self._throughput_phase):
+            self._execution_phases_override = self._compose_refresh_phases(metrics_suppressed)
+        if metrics_suppressed:
             tpc_metrics = {
                 "power_at_size": None,
                 "throughput_at_size": None,
@@ -686,16 +687,20 @@ class ResultBuilder:
             times = [refresh_times[0], *times, refresh_times[1]]
         return TPCMetricsCalculator.calculate_power_at_size(times, self._benchmark.scale_factor)
 
-    def _compose_refresh_phases(self) -> ExecutionPhases:
+    def _compose_refresh_phases(self, metrics_suppressed: bool) -> ExecutionPhases:
         power_rows = [r for r in self._query_results if r.test_type not in NON_POWER_TEST_TYPES]
         power_test = None
         if self._benchmark.test_type != "throughput" and power_rows:
             exec_times = [
-                seconds for r in power_rows if (seconds := r.execution_time_seconds) is not None and seconds > 0
+                seconds
+                for r in power_rows
+                if r.run_type == "measurement"
+                and r.iteration > 0
+                and (seconds := r.execution_time_seconds) is not None
+                and seconds > 0
             ]
-            power_test = self._build_power_test_phase(
-                exec_times, {"power_at_size": self._calculate_power_at_size()}, power_rows
-            )
+            power_at_size = None if metrics_suppressed else self._calculate_power_at_size()
+            power_test = self._build_power_test_phase(exec_times, {"power_at_size": power_at_size}, power_rows)
             if power_test is not None and self._power_refresh is not None:
                 final_iter = max((r.iteration for r in power_rows if r.run_type == "measurement"), default=0)
                 final_rows = [r for r in power_rows if r.run_type == "measurement" and r.iteration == final_iter]

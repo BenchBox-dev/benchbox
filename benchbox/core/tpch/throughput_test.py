@@ -323,9 +323,6 @@ class TPCHThroughputTest:
         else:
             check_rf2_applied(connection, update_set, function_result["orders_deleted"])
 
-    def _open_stream_connection(self, stream_id: int) -> Any:
-        return self.connection_factory()
-
     def _execute_refresh_stream(
         self,
         update_sets: dict[int, TPCHRefreshUpdateSet],
@@ -539,7 +536,7 @@ class TPCHThroughputTest:
         try:
             if config.verbose:
                 self.logger.info(f"Starting stream {stream_id} with seed {seed}")
-            connection = self._open_stream_connection(stream_id)
+            connection = self.connection_factory()
             stream_result.start_time = mono_time()
             stream_result.start_wall_time = datetime.now().isoformat()
 
