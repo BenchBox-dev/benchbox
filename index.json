@@ -29049,6 +29049,19 @@
       "status": "open",
       "title": "Post nightly cause notes, close throwaway PRs and release expired claims"
     },
+    "nightly-remediation-verify-20261117": {
+      "claim": null,
+      "needs": [
+        "perf-smoke-method2-baseline-20261117",
+        "corpus-drift-mirror-grace-20261117",
+        "gateway-probe-served-providers-20261117",
+        "green-sweep-clears-hidden-failures-20261117",
+        "nightly-remediation-housekeeping-20261117"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Verify the remediation on develop and close the nightly issues"
+    },
     "nightly-throughput-gate-restoration": {
       "claim": null,
       "needs": [
