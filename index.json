@@ -29037,7 +29037,9 @@
     },
     "nightly-remediation-2026-11-17": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "nightly-remediation-verify-20261117"
+      ],
       "priority": "high",
       "status": "open",
       "title": "Restore nightly T3 signal and quiet false alarms (umbrella)"
