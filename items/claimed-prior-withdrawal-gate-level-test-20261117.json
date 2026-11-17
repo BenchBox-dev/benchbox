@@ -3,6 +3,7 @@
     "A test drives the same gate evaluation pr-arm uses on a fixture with a claimed prior D1 and an owner WITHDRAW D1 comment, and the gate passes; with the comment from a non-owner it fails naming D1.",
     "The test runs in the repository's normal CI and passes."
   ],
+  "context": "2026-11-17 done in Theseus https://github.com/joeharris76/theseus/pull/90 (squash e4606c7, head 53f42d0; test-only, no release). Placement: BenchBox pr-arm runs scripts/pr_arm.py:gate_refusals -> scripts/theseus_cli.py:gate_refusals -> `theseus gate --repo ... --pr ... --head-sha ... --no-post` from the locked 0.2.13 install, i.e. theseus_reviewer/gate.py main -> gate.evaluate -> review_check.decide; Theseus owns it, so the tests are in tests/unit/reviewer/test_dispute_escalation.py, offline (GitHub fetches stubbed, post_status fails the test if called).\n(a) test_the_gate_evaluation_pr_arm_runs_passes_after_an_owner_withdraws_a_claimed_prior: claimed prior D1, SHIP WITH FIXES review and failure status on the current head, owner `Review adjudication: WITHDRAW D1 - ...`, plus the adjudication run's review and status built by the real report.adjudicated -> exit 0, \"Pass · review-verdict: SHIP\". The comment alone leaves the gate WAITING until the adjudication run posts (already pinned by test_a_usable_adjudication_awaiting_its_run_is_not_reported_as_ignored); this is by design, not a defect.\n(b) test_the_gate_evaluation_pr_arm_runs_fails_and_names_the_claimed_prior_for_a_non_owner_withdrawal -> exit 3, \"owner adjudication ignored ... it is not from the repository owner\", naming D1.\nNo adjudication rule changed; no defect found. Checks: focused file 39 passed; unit suite 4723 passed, 4 skipped; ruff check and format clean; PR CI green (py3.11, py3.13, windows py3.12, wheel smoke, review eval, gate and verdict checks).\n",
   "description": "Coverage gap left by the claimed-prior adjudication fix (Theseus #86, release 0.2.13, adopted by BenchBox #4235). Its key test, test_an_owner_withdrawal_clears_a_claimed_prior_without_escalation, checks the verdict record and the review-gate status description, not a fresh evaluation of the gate that make pr-arm consults (\"a fresh review-gate evaluation of <head> does not pass\"). The #4013 failure was in that path, so wiring between the verdict, the gate and pr-arm is still untested for this case.\n\nDecision gate (implementer): place the test where the gate evaluation lives (Theseus, if pr-arm's gate call is a Theseus entry point; otherwise BenchBox scripts), recorded here.\n\nGuardrails:\n- Test only; no change to adjudication rules.\n- No live GitHub calls: use the existing fixtures or fakes for comments, reviews and check runs.\n- No real PR is used to exercise it.",
   "links": [
     "https://github.com/joeharris76/theseus/pull/86",
@@ -26,6 +27,14 @@
       "generation": "a967295cad2c4f4ba1ac3a43282a0b1c",
       "op": "take",
       "op_id": "05d9f61a3b894202afd2b670d7fb70d1",
+      "session_id": "514fda7378da4b8e8c98e58d674affac"
+    },
+    {
+      "actor": "joe-tractable-followups",
+      "at": "2026-11-17T14:40:02Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "39a4b04d10604b1481f841605e33d97a",
       "session_id": "514fda7378da4b8e8c98e58d674affac"
     }
   ]
