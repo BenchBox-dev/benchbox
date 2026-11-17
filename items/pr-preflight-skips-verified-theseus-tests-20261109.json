@@ -3,6 +3,7 @@
     "Either preflight provides the verified install to those tests (warm cache or an allowed fetch) so they run, or the receipt and output name the skipped Theseus tests as unrun locally.",
     "A test or check shows the skip count for that group in the receipt."
   ],
+  "context": "2026-11-17: recurred on BenchBox PR #4235 (Theseus lock 0.2.12 -> 0.2.13, 2026-11-14): make pr-preflight passed 2329 and skipped 510, the skips again caused by the verified Theseus install failing with \"Connection refused\" through Python's urlopen for the v0.2.13 wheel URLs, while curl downloaded the same wheel and hosted CI checked the lock. This is the second re-lock PR with no local coverage of the install path.",
   "description": "A preflight run on a re-lock tree passed 2037 tests and skipped 451. The skips include tests/unit/scripts/test_soundness_merge_digest_dispatch.py and test_theseus_lock.py with `the verified Theseus install ... was refused: ... Connection refused` for both release wheel URLs. The same install works outside the test run (the wheels download and hash correctly, `theseus promotion-check` passes), so the tests run only in CI. A re-lock PR therefore gets no local coverage of the install path, and the preflight receipt does not say that.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4059",
@@ -16,6 +17,14 @@
       "op": "create",
       "op_id": "183a24f93cfa438db972ed4f474fca65",
       "session_id": "02c14526fd7648f49c893339d8cfcf9e"
+    },
+    {
+      "actor": "joe-tractable-followups",
+      "at": "2026-11-17T13:52:37Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "dcebd55ed0e2459d828db9827fce737a",
+      "session_id": "9fcef8070b9d4fcdb341814073ddadd4"
     }
   ]
 }
