@@ -31860,6 +31860,13 @@
       "status": "open",
       "title": "#2761 merged while its head carried a hollow oracle success; review it after merge"
     },
+    "pr-arm-cut-repeated-github-reads-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Make pr-arm's wait loop read slow-changing GitHub state once per wait and use conditional requests for the rest"
+    },
     "pr-arm-dispatch-missing-verdict-20261025": {
       "claim": null,
       "needs": [
