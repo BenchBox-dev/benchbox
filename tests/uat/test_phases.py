@@ -2833,7 +2833,7 @@ def test_starrocks_evidence_survives_teardown_without_changing_cell_outcome(tmp_
         if "-q" in argv:
             sequence.append("capture")
             return docker_assets.DockerCommandResult(tuple(argv), 0, "abc123", "")
-        if "exec" in argv and argv[-1].startswith("found=0;"):
+        if "exec" in argv and "tail -c " in argv[-1]:
             return docker_assets.DockerCommandResult(tuple(argv), 0, "first backend blacklist event", "")
         if "down" in argv:
             sequence.append("down")
