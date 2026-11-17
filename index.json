@@ -25088,6 +25088,13 @@
       "status": "done",
       "title": "Graduate Results Explorer browser evidence to blocking release gates"
     },
+    "green-sweep-clears-hidden-failures-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Refresh the green-unmerged digest when its hidden-failure list clears"
+    },
     "green-unmerged-sweep-all-ruleset-required-checks-20260805": {
       "claim": null,
       "needs": [],
