@@ -12,7 +12,7 @@ benchmark DuckDB itself.
 1. CI runs `benchbox run --platform duckdb --benchmark tpch --scale 0.01 --phases power`.
 2. CI calls `benchbox compare` against the checked-in baseline at
    `_project/baselines/perf_smoke_duckdb_tpch_001.json` with
-   `--fail-on-regression 10% --min-regression-delta 7ms --min-aggregate-regression-delta 82ms`.
+   `--fail-on-regression 10% --min-regression-delta 5ms --min-aggregate-regression-delta 31ms`.
 3. Result JSON (baseline + current) is uploaded as a 14-day artifact.
 
 The gate runs in the nightly T3 perf domain of `.github/workflows/nightly-v2.yml`.
@@ -29,29 +29,33 @@ regressed only when it is more than 10% slower **and** more than 7 ms
 slower than the baseline. Totals and other aggregates count as regressed
 only when they are more than 10% slower **and** more than 82 ms slower.
 
-The per-query floor comes from the nine `t3-perf-result` artifacts retained from
-scheduled nightly runs between 2026-09-30 and 2026-10-08. `benchbox compare`
+The per-query floor comes from the five `t3-perf-result` artifacts of nightly runs
+43254687916, 43453477982, 43604460150, 43726725879 and 43916000915 (2026-11-12 to
+2026-11-16), all recorded with `run.timing_method` 2. `benchbox compare`
 judges each query by its last recorded execution, so the spread is measured
 on that value: for each query, the difference between its highest and
-lowest value across those runs. The largest spread was 5.4 ms (Q18). That is
-above the 4 ms level at which a flat 5 ms floor stops being safe, so the
-floor is 1.25 times the largest spread rounded up to a whole millisecond:
-7 ms. Recompute it from fresh artifacts whenever the baseline is refreshed.
+lowest value across those runs. The largest spread was 2.7 ms (Q18). That is
+below the 4 ms level at which a flat 5 ms floor stops being safe, so the
+floor is the flat 5 ms. Recompute it from fresh artifacts whenever the baseline is refreshed.
 
-The aggregate floor uses the same 1.25 rule on the same-runner-class totals.
-Five come from the sources ledger next to the baseline (highest 586.1 ms); the sixth,
-604.7 ms, is the `t3-perf-result` of dispatched nightly-v2 verification run 37991400931,
-also on AMD EPYC 7763. Together they span 539.8 to 604.7 ms, a spread of 64.9 ms, so the
-floor is 1.25 times 64.9 rounded up to a whole millisecond: 82 ms. With the 547 ms
-baseline it lets the noisiest observed night (+57.7 ms) pass while a uniform 2x slowdown
-still fails.
+The aggregate floor uses the same 1.25 rule on the totals of those five runs:
+261.1 to 285.7 ms, a spread of 24.6 ms, so the floor is 1.25 times 24.6 rounded
+up to a whole millisecond: 31 ms. The baseline total is 308.6 ms (per-query
+maximum, below), so every source night passes and a uniform 2x slowdown still fails.
 
 ## Refreshing the baseline
 
 The baseline is rebuilt from several CI runs, never from one run. A single
 run carries its own noise, so copying it over the baseline only moves the
 noise problem. The checked-in file is the per-query median of retained
-`t3-perf-result` artifacts from scheduled nightly runs on `develop`.
+`t3-perf-result` artifacts from scheduled nightly runs on `develop`, or the per-query
+maximum when no CPU model has enough results (see below).
+
+Every source must record the same `run.timing_method`; the builder refuses
+results that mix methods or record none, and writes that method into the
+baseline's `run` block. `benchbox compare` refuses to compare results of
+different timing methods, so refresh the baseline whenever the timing method
+of the nightly result changes.
 
 Hosted runners come from several CPU models, and a night's total time can
 differ by up to 25% between them (in the first refresh: EPYC 9V74 about
@@ -59,7 +63,11 @@ differ by up to 25% between them (in the first refresh: EPYC 9V74 about
 mixed pool fails the nights that land on the slower hardware, so the
 builder uses only the results from the slowest CPU model that has at least
 five of them. A slower or equal night then compares cleanly, and a faster
-night cannot fail. The cost is sensitivity: a regression smaller than the
+night cannot fail. When no CPU model has five results, the builder falls
+back to the per-query maximum over at least five results of any CPU model
+(each query entry is the highest value seen), so a faster night cannot fail
+there either; the current baseline was built this way from four CPU models
+(EPYC 7763, Xeon Platinum 8573C, Xeon 6975P-C, EPYC 9V74). The cost is sensitivity: a regression smaller than the
 speed difference can pass on the fastest hardware. The floor is the one
 value still derived from all retained runs, because a night on any CPU
 model is compared with the baseline.
@@ -103,8 +111,10 @@ uv run -- benchbox compare _project/baselines/perf_smoke_duckdb_tpch_001.json \
 #    the old baseline.
 ```
 
-The script chooses the CPU model itself and refuses to build when none has
-five results; pass `--cpu-model` to override it. It prints the largest
+The script chooses the CPU model itself and falls back to the per-query maximum
+when none has five results (it still refuses fewer than five results in total);
+pass `--cpu-model` to require one model. The rule used is recorded as
+`selection_rule` in the sources record. It prints the largest
 per-query spread across all the sources and the floor that follows from it. If either floor changes, update
 `--min-regression-delta` and `--min-aggregate-regression-delta` in `.github/workflows/nightly-v2.yml` and the Noise floor section above.
 
