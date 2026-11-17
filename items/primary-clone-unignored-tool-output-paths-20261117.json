@@ -6,6 +6,7 @@
     "tests/unit/test_agent_write_preflight.py and make pr-preflight pass.",
     "Guardrails: ignoring belongs in .gitignore only. No allowlist or exemption is added to scripts/check_primary_clone_clean.sh, and the check's coverage of tracked and untracked files is not reduced. No path that holds source, docs or test fixtures is ignored."
   ],
+  "context": "Owner decision 2026-11-17: ignore the eight tool-cache paths plus *.log and tmp/. Leave output/ and results/ reported, because they are generic names that may later hold work the owner wants Git to show.",
   "description": "Since PR #4265 (merged as 04929364fb), a new untracked file in the primary clone that .gitignore does not cover fails make agent-write-preflight for every session whose snapshot was taken earlier, until the file is removed or the session re-records its snapshot with BENCHBOX_PRIMARY_SNAPSHOT_REFRESH=1. On 2026-11-17, git check-ignore --no-index showed these tool-output paths are not ignored, and no tracked file lives under any of them: .mypy_cache/, .ty_cache/, .dmypy.json, .serena/, .cursor/, .playwright-mcp/, .benchmarks/ (pytest-benchmark is a dev dependency), .ipynb_checkpoints/, and the scratch paths tmp/, output/, results/ and *.log. Type checkers, MCP servers, editors, notebooks and ad-hoc runs create them. None exist in the primary clone today, and the live check reports nothing, so this is a latent false failure, not a current one. Related one-time effect, not a separate defect: sessions whose snapshot predates #4265 recorded no untracked files, so any untracked, non-ignored file then present would be reported once; BENCHBOX_PRIMARY_SNAPSHOT_REFRESH=1 or a new session clears it, and none exist today.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4265",
@@ -28,6 +29,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "16990af56e3940d294c47f3576cc9780",
+      "session_id": "a8b952a2353a43c5b8b6461d5901abad"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f00380ac381b3b759bd4b6a8",
+      "at": "2026-11-17T22:32:59Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5858cba29b1c4256a29b251c0c0b9a5b",
       "session_id": "a8b952a2353a43c5b8b6461d5901abad"
     }
   ]
