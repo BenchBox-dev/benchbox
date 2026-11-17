@@ -25141,10 +25141,15 @@
       "title": "Graduate Results Explorer browser evidence to blocking release gates"
     },
     "green-sweep-clears-hidden-failures-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-18T18:45:04Z",
+        "generation": "eb404afa86f647a58e8983c1f5821224",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:daba6966dbafa9d0ecd0bd8b"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Refresh the green-unmerged digest when its hidden-failure list clears"
     },
     "green-unmerged-sweep-all-ruleset-required-checks-20260805": {
