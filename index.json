@@ -38190,6 +38190,13 @@
       "status": "dropped",
       "title": "Check that site docs links to core directories resolve against every ancestor directory, as repo-files.json now lists them"
     },
+    "site-deploy-artifact-retention-egress-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "benchbox-site deploy keeps a 126 MB artifact for 90 days and downloads it again in the same workflow"
+    },
     "site-deploy-validator-parity-after-superseded-bundle-20261112": {
       "claim": null,
       "needs": [],

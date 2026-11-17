@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Retention for site-artifact and receipts is set to the period any consumer reads them, with the consumer named.",
+    "Storage measured before and two weeks after; deploys still pass end to end on the real workflow."
+  ],
+  "context": "Found 2026-11-17 by the egress root-cause investigation. Site work: BenchBox-dev/benchbox-site. Guardrails: linked worktree (make worktree-create, then make agent-write-preflight), never the primary clone; one PR per repo; no live-cloud runs or credentials in Git or logs; heavy work only via lock-taking entry points or make heavy-run after make heavy-status; never start deliberate host load; comment policy; changelog.d fragment for user-facing change. Re-verify every cited file and line before acting; they are hints.",
+  "description": "Problem: each BenchBox-dev/benchbox-site deploy uploads site-artifact (~126 MB, 90-day retention), downloads it again (deploy.yml:84 `gh run download`, :142), uploads a ~120 MB github-pages artifact and restores a ~236 MB npm cache (setup-node cache npm, deploy.yml:57,140), about 8 deploys a day. Site Actions storage grew from 73.9 to 105.7 GB between 2026-11-01 and 2026-11-16. Egress estimate 5-15 GB/day [inference].\n\nOutcome: retention matches how long the artifact is read, the build output is not re-downloaded where a job can pass it directly, and the npm cache is restored only by jobs that run npm.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019",
+      "at": "2026-11-17T13:48:39Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a1c1be012a304fa49be1851f07ccb6bd",
+      "session_id": "14462ffc9066466ca32d151c57f6a5de"
+    }
+  ]
+}
