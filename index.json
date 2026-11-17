@@ -20280,15 +20280,10 @@
       "title": "Use min/max for the multi-supplier test in TPC-H, Data Vault and TPC-Havoc DataFrame Q21 if timing supports it"
     },
     "df-q21-semi-join-pyspark-safe": {
-      "claim": {
-        "expires_at": "2026-11-18T13:30:23Z",
-        "generation": "2e1b8069212545d58eef63a8988b32b7",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5b73def5e2f68f403e9eefd8"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Reintroduce the DataFrame Q21 filter-before-join optimisation without breaking PySpark"
     },
     "df-suffix-platform-options-unreachable": {
