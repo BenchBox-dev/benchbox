@@ -33749,7 +33749,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "Raise the PySpark `<4.3` cap once delta-spark supports Spark 4.3"
     },
     "pyspark-aggregate-state-dispatch-unit-tests": {
