@@ -43366,7 +43366,9 @@
     },
     "tpcds-dsqgen-q9-timeout-sf10000-20261111": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "feature-fix-tpcds-scale-bounds-20261117"
+      ],
       "priority": "low",
       "status": "open",
       "title": "TPC-DS and TPC-DS-OBT accept SF 10000 and above, where dsqgen times out on Q9"
