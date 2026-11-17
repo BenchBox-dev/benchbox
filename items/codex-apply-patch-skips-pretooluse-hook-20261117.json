@@ -6,6 +6,7 @@
     "The Codex row in docs/agent/primary-clone-guard.md states the enforced version. If the hook now fires but does not refuse, a fix to the guard or to .codex/hooks.json merges with a test that feeds the real apply_patch payload.",
     "Guardrails: probes create only guard-probe-<agent>.txt in the primary clone and delete it at once; nothing is ever committed in the primary clone; the hook wiring for other agents is not changed."
   ],
+  "context": "Blocked 2026-11-17: openai/codex#27833 is open and 0.169.0 is the latest @openai/codex release, a version already shown not to call the hook.",
   "description": "On 2026-11-15, codex-cli 0.162.1 and 0.169.0 never called a PreToolUse hook for apply_patch. The test used a scratch repository with a catch-all hook that exits 2, and from the primary clone Codex created a probe file through apply_patch (the file was deleted). The upstream issue is openai/codex#27833. On 2026-11-17 it was still open and 0.169.0 was the latest @openai/codex release. scripts/primary_clone_write_guard.py refuses the apply_patch payload when given it directly, so the gap is in Codex, not in the guard. Until Codex calls the hook, a Codex write to the primary clone is caught only afterwards: make agent-write-preflight reports changed tracked files and, since PR #4265, new untracked files that are not gitignored. docs/agent/primary-clone-guard.md (PR #4252) records this. This item is the separate upstream-limitation item that write-guard-unproven-outside-omp-20261112 requires.",
   "links": [
     "https://github.com/openai/codex/issues/27833",
@@ -21,6 +22,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "ed131f8fa8e341e5932a5bf17de607f9",
+      "session_id": "a8b952a2353a43c5b8b6461d5901abad"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f00380ac381b3b759bd4b6a8",
+      "at": "2026-11-17T21:21:36Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8b54d7238dbf4e99a153d57c871a1d8b",
       "session_id": "a8b952a2353a43c5b8b6461d5901abad"
     }
   ]

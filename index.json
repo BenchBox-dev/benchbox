@@ -16428,7 +16428,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Prove the primary-clone guard in Codex once apply_patch calls PreToolUse hooks"
     },
     "codex-memory-provenance-cursor-and-summary-treatment": {
