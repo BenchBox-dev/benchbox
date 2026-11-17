@@ -19680,6 +19680,13 @@
       "status": "done",
       "title": "Reconcile the merged DataFusion Seed Corpus path normalization fix"
     },
+    "datafusion-select-var-quantile-aggregate-routing-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "DataFusion `select` runs ungrouped `var` and `quantile` as a projection and fails"
+    },
     "datafusion-sql-query-transformer": {
       "claim": null,
       "needs": [

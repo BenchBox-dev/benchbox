@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "A unit test on DataFusion covering ungrouped `select` of `var`, `quantile`, `std`, and their `filter(...)` forms returns the same values as Polars on the same data, and fails on current develop.",
+    "Existing DataFusion select tests for plain projections still pass (no projection is routed to `aggregate`).",
+    "PR merged; its body lists every aggregate terminal checked and the detection approach chosen."
+  ],
+  "description": "## Problem\n`UnifiedLazyFrame.select` on DataFusion sends an expression to `DataFrame.aggregate([], ...)` only when its text contains a pattern in `_DATAFUSION_AGGREGATE_PATTERNS` (`benchbox/platforms/dataframe/unified_frame.py`): sum, avg, count, min, max, first_value, last_value, stddev, approx_distinct. `var` renders as `var(x)` and `quantile` as `approx_percentile_cont(...)`, so both go to `DataFrame.select` and DataFusion 55.0.0 fails with `This feature is not implemented: Physical plan does not support logical expression AggregateFunction(...)`. The filtered forms (`expr.filter(cond).var()` / `.quantile()`, which wrap the value in CASE) fail the same way. Grouped `agg` is unaffected.\n\n## Evidence (2026-11-17, datafusion 55.0.0)\n`df.select(f.var_samp(col(\"x\")))` fails; `df.aggregate([], [f.var_samp(col(\"x\"))])` returns 1.6667. Same for `approx_percentile_cont` (aggregate returns 2.5) and for the CASE-wrapped filtered variance.\n\n## Change\nMake aggregate detection in `select` cover every aggregate terminal `UnifiedExpr` can produce on DataFusion, including var and quantile, aliased and filtered forms. Prefer detecting the expression's variant (AggregateFunction anywhere in the tree) over extending the text pattern list; if the variant walk is not available through the Python API, extend the patterns and say why in the PR.\n\n## Decision gate\nIf a select mixes aggregate and non-aggregate expressions, keep today's behaviour (whatever it is) and record it; do not widen scope to new semantics.\n\n## Guardrails\nNo platform-name branches in benchmark query code; no reference-answer, fixture or SQL changes. One PR.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:baf9996c1c86fb9c9b5547f3",
+      "at": "2026-11-17T21:20:01Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f4fd14adb5264048ae87393615246c02",
+      "session_id": "584fe5162b994f91904666adf0c5e183"
+    }
+  ]
+}
