@@ -5,6 +5,7 @@
     "Workflow timeouts for the jobs that run the check are above the wait bound (option a).",
     "Merged through the BenchBox close-out with required checks green."
   ],
+  "context": "2026-11-17 owner decision: option (a). Wait up to 15 minutes for queued or in-progress required Theseus runs, then judge them as now; raise the timeouts of the jobs that run the check to fit.",
   "description": "Defect. scripts/theseus_release_check.py (run from ci.yml, trunk.yml, trunk-coverage.yml and nightly-v2.yml) reads the check runs on the locked Theseus commit and, in _judge, reports any required check whose conclusion is not \"success\". A check that is still running has conclusion null, so it is reported as a failure (\"concluded None\") exactly like a real failure. Observed 2026-11-14 on BenchBox PR #4235 (Theseus lock 0.2.12 -> 0.2.13): core and four medium-test shards failed because the release check ran while Theseus's own test (py3.11) and test (py3.13) on the release commit were still in progress; both later concluded success and a rerun of the failed jobs passed. Every Theseus promotion opened soon after a Theseus merge can hit this.\n\nDecision gate (implementer, recorded here): either (a) treat queued or in-progress required runs as pending and poll them with a bounded wait (for example up to 15 minutes) before judging, or (b) fail fast with a distinct, clearly worded \"Theseus checks still running on <sha>; rerun when they finish\" message. Recommendation: (a), because it removes the manual rerun; (b) is the fallback if job time is a concern.\n\nGuardrails:\n- A failed, cancelled, skipped or missing required run still fails the check.\n- The wait is bounded, and the job's timeout stays above it.\n- No change to REQUIRED_CHECKS, the reachability check or the tree check.\n- No new network dependency beyond the GitHub API calls already made.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4235",
@@ -18,6 +19,14 @@
       "op": "create",
       "op_id": "a40a7b5b9f5246cbabf0a068b3049379",
       "session_id": "9fcef8070b9d4fcdb341814073ddadd4"
+    },
+    {
+      "actor": "joe-tractable-followups",
+      "at": "2026-11-17T14:01:22Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "9904b2ee8a0b45d09665ce6dcf2f7f84",
+      "session_id": "52a25003d5984d9bb40e7e9ce876ad50"
     }
   ]
 }
