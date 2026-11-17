@@ -15440,6 +15440,13 @@
       "status": "done",
       "title": "Claim leases expire on elapsed time alone, with no way to renew one"
     },
+    "claimed-prior-withdrawal-gate-level-test-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Prove an owner withdrawal of a claimed finding passes the real review gate end to end"
+    },
     "clarify-alpha-status-and-set-user-expectations": {
       "claim": null,
       "needs": [],

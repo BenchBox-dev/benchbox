@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "A test drives the same gate evaluation pr-arm uses on a fixture with a claimed prior D1 and an owner WITHDRAW D1 comment, and the gate passes; with the comment from a non-owner it fails naming D1.",
+    "The test runs in the repository's normal CI and passes."
+  ],
+  "description": "Coverage gap left by the claimed-prior adjudication fix (Theseus #86, release 0.2.13, adopted by BenchBox #4235). Its key test, test_an_owner_withdrawal_clears_a_claimed_prior_without_escalation, checks the verdict record and the review-gate status description, not a fresh evaluation of the gate that make pr-arm consults (\"a fresh review-gate evaluation of <head> does not pass\"). The #4013 failure was in that path, so wiring between the verdict, the gate and pr-arm is still untested for this case.\n\nDecision gate (implementer): place the test where the gate evaluation lives (Theseus, if pr-arm's gate call is a Theseus entry point; otherwise BenchBox scripts), recorded here.\n\nGuardrails:\n- Test only; no change to adjudication rules.\n- No live GitHub calls: use the existing fixtures or fakes for comments, reviews and check runs.\n- No real PR is used to exercise it.",
+  "links": [
+    "https://github.com/joeharris76/theseus/pull/86",
+    "https://github.com/BenchBox-dev/benchbox/pull/4235",
+    "https://github.com/BenchBox-dev/benchbox/pull/4013",
+    "oracle-claimed-local-finding-cannot-be-withdrawn-20261112"
+  ],
+  "sessions": [
+    {
+      "actor": "joe-tractable-followups",
+      "at": "2026-11-17T13:52:32Z",
+      "client": "mcp",
+      "op": "create",
+      "op_id": "51f7b4b3359046ca9029a5da294f7fc3",
+      "session_id": "9fcef8070b9d4fcdb341814073ddadd4"
+    }
+  ]
+}
