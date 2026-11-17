@@ -3,6 +3,7 @@
     "A DataFrame run of TPC-DS, SSB and ClickBench reports PASSED or FAILED, not UNCERTAIN or NOT_RUN, at the scales the provider supports",
     "The supported benchmark and scale combinations are documented, and unsupported ones still report UNCERTAIN"
   ],
+  "context": "2026-11-17 freshness check: the description is partly out of date. On develop, DataFrame validation now has references for TPC-H SF 0.01 and 0.1 (since #3068), SSB at recorded scales, and TPC-DS subscale at the reference seed; seeded subscale TPC-H passes with documented parameter-sensitive skips (#4269). Still missing: TPC-H above SF 1, TPC-DS SF 1 and above without the subscale table, ClickBench, and seeded TPC-H SF 1 (split out as seeded-dataframe-tpch-sf1-has-no-row-count-validation-20261117). Re-scope the description to the remaining combinations before implementing.",
   "description": "query_validation.py returns UNCERTAIN for TPC-DS and for TPC-H at scales other than 1, and NOT_RUN for SSB and ClickBench. DataFrame runs on those benchmarks therefore never produce a validated result, and correctness has to be established by other means (the cross-surface gate at SF 0.1 against a DuckDB SQL reference). Add a validation provider, for example a reference row-count or result-hash oracle per benchmark and scale, so a DataFrame run can report PASSED where it is correct. Recorded as an out-of-scope follow-up of the Polars matrix work.",
   "links": [
     "benchbox/core/dataframe/query_validation.py",
@@ -16,6 +17,14 @@
       "op": "create",
       "op_id": "11b06248d95944eea113e4a1914a575f",
       "session_id": "1f74fac6df92445cbacc470514ed2645"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0deceae4762d30cfd4f4d362",
+      "at": "2026-11-17T14:21:00Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3d4b02e6c1be4acfa2f652a0c518e8d0",
+      "session_id": "4cc6c844a24e43ca9e1fc9cb409a70e6"
     }
   ]
 }
