@@ -4,7 +4,7 @@
     "If a question was asked, the text that prompted it is identified and a correcting pull request is merged, or an owner decision is recorded.",
     "If members ran as separate sessions instead of subagents, that is recorded and the item stays blocked for the next batch."
   ],
-  "context": "Blocked 2026-11-13: waits for the owner to name the next feature batch. Unblock when one is registered.\n\n2026-11-13: registered batch `member-rule-docs` (final pull request #4209, merged as 9fcfe7c934a32d3a0d91f7bcf64624e4c6c5573b) ran with two members dispatched as subagents of the leader, using the pasted dispatch prompt. No authorization question was put to the owner, both landings passed the tracker-write guard with zero member writes, and the batch completed. This does NOT satisfy this item: the leader was the session that wrote the rule, and the owner had already chosen subagent members when naming the batch. The item stays blocked for a batch led by an independent session.",
+  "context": "Blocked 2026-11-13: waits for the owner to name the next feature batch. Unblock when one is registered.\n\n2026-11-13: registered batch `member-rule-docs` (final pull request #4209, merged as 9fcfe7c934a32d3a0d91f7bcf64624e4c6c5573b) ran with two members dispatched as subagents of the leader, using the pasted dispatch prompt. No authorization question was put to the owner, both landings passed the tracker-write guard with zero member writes, and the batch completed. This does NOT satisfy this item: the leader was the session that wrote the rule, and the owner had already chosen subagent members when naming the batch. The item stays blocked for a batch led by an independent session.\n\n2026-11-17 TODO review: needs (batch-member-dispatch-prompt-20261113) is done; the item stays blocked by design until a batch led by an independent session runs. Verification rubric: pass = the acceptance record from a batch whose leader did not write the rule and was not told by the owner which member form to use; fail = evidence from a simulated, self-led or owner-steered batch. No change needed.",
   "description": "The rule change of 2026-11-12 (PR #4170, catalog pull request #116, global skills applied the same day) was made to stop leader sessions asking the owner whether their subagents may be batch members. No batch has run since, so the outcome is unproven.\n\nThis item is an observation and is blocked until the owner names a feature batch. The work that can be done now is in batch-member-dispatch-prompt-20261113.\n\nDecision gate. After the batch: if no authorization question was asked, finish this item. If one was asked, record its exact wording and which text the leader was reading (repository doc, project skill mirror, global skill), then either correct that text in a serial pull request or, if the question shows the rule itself is wrong, stop and report to the owner.\n\nGuardrails.\n- Do not start, register or simulate a batch to satisfy this item; the protocol forbids using the loop to prove itself.\n- Do not unblock this item until a batch has been named by the owner.\n- Evidence comes from the leader's own transcript or report, read after the fact; the observer makes no tracker write on the batch's items.",
   "links": [
     "docs/agent/batch-feature-delivery.md",
@@ -43,6 +43,14 @@
       "op": "update",
       "op_id": "9093eb5d935c44f18977e3e5533194f9",
       "session_id": "570099c30e51431ebfbca6042d41ee8f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:018071991691f1918967a0cb",
+      "at": "2026-11-17T15:29:28Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "14b0844fd9bd476b9bda789e42760d73",
+      "session_id": "218a128d0f8a45baa26cfaa946b2d790"
     }
   ]
 }
