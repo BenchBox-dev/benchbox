@@ -46825,6 +46825,13 @@
       "status": "done",
       "title": "Gate vendor-supplied bundles: reject non-maintainer vendor/ additions on published-results"
     },
+    "vendor-terms-unread-sources-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Six vendor terms documents behind the publication-conditions table have never been read, and three cited dates or clauses differ"
+    },
     "vendored-tracker-bump-before-index-distribution-20261112": {
       "claim": null,
       "needs": [],

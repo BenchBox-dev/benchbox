@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Each of the listed documents has a URL, retrieval date and quoted relevant clauses (or 'no relevant clause' / 'unreachable behind login') in docs/internal/results-vendor-publication-terms.md",
+    "The AWS 2.3/2.5 attribution and both Google dates are corrected in the ADR table through a benchbox-site PR targeting the branch its pin requires",
+    "Every new condition has an owner decision recorded in context, and each decided validator change has a passing test in tests/unit/scripts/test_vendor_publication_conditions.py"
+  ],
+  "description": "## Problem\ndocs/internal/results-vendor-publication-terms.md (PR #4272, 2026-11-17) found that the vendor-terms table in the locality ADR (benchbox-site docs/development/adr/adr-client-link-locality-disclosure.md) rests on documents nobody has read:\n- ClickHouse Cloud addendum (page shows 2026-04-10; a v20260917 PDF exists)\n- Databricks Free Edition Terms\n- Starburst Enterprise EULA and Galaxy Early Access Agreement\n- CedarDB Enterprise and Trial terms, and Community Exhibits 1-2\nIt also found that the AWS Service Terms attribution (2.3/2.5) and two Google terms dates differ from the 2026-10-22 table. evaluate_vendor_conditions (benchbox/validation/bundle.py) and the site publishing checklist enforce only what the table says, so an unread condition is unenforced.\n\n## Decision gate\n- Agent: read each document from the vendor's live site, quote every clause about benchmarking, publishing results, free/trial tiers or pre-release features, with URL and retrieval date, and correct the three mismatches.\n- Owner: for each new condition found, choose how it is met (checklist step, bundle field, or validator refusal), the same choice made on vendor-benchmark-publication-conditions-20261022. A document with no such clause needs no decision.\n\n## Guardrails\n- Quote the vendor's own text; no paraphrase without the quote, no secondary sources (resellers, government copies) except as a pointer to the live page.\n- No legal conclusions beyond what the text says; ambiguous clauses go to the owner.\n- No code change before the owner decision for that condition.\n- No live-cloud accounts are created to reach gated terms; a document behind a login is recorded as unreachable.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/4272"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bfa5e7eb7cd30f69e1fe2571",
+      "at": "2026-11-17T21:18:43Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6c3199562c834d329728eb5dcdb60394",
+      "session_id": "0362803867fb4929927e576283fffc32"
+    }
+  ]
+}
