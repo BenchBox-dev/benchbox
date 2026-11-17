@@ -28425,6 +28425,13 @@
       "status": "done",
       "title": "Metadata Primitives Complexity Enhancements"
     },
+    "methodology-finalize-hardware-facet-and-citation-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Make hardware a ranking facet, publish the citation format, and finalize the methodology policy"
+    },
     "methodology-open-questions-owner-20261113": {
       "claim": null,
       "needs": [],

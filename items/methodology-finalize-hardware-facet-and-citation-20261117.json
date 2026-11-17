@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Hardware key defined and recorded in the ADR: CPU model plus logical core count for self-run results; for managed services the recorded service tier or warehouse size; results with neither are unranked and labelled 'hardware not recorded'.",
+    "The explorer pipeline and site rankings group cohorts by benchmark, scale, phase, tuning mode and hardware key; a test with bundles on two CPU models shows two cohorts; a test shows a result without a key is unranked with the label.",
+    "Before and after counts recorded on this item: ranked results, cohorts, and cohorts below the 3-identity minimum.",
+    "ADR status changes from provisional to accepted for answers 1-12, with 7 rewritten for the hardware facet, 11 recording the accepted EULA wording and 12 the citation format; the site methodology page matches.",
+    "Each result page and summary shows the citation line with the real version, id and permalink; a test checks one rendered page."
+  ],
+  "context": "Decision gate: if a managed service records neither tier nor size in existing bundles, it is unranked rather than guessed; the owner may later approve a tier mapping. Any corpus result whose rank changes is listed in the PR, not silently re-labelled.\n\nItem guardrails: no edit to published bundles or sidecars; follow the explorer read-model version migration path (bump read_model_version, no hand-edited results.duckdb); site PR opens only after the core change merges and site inputs are republished; core and site one PR each.\n\nVerification rubric: pass = all five acceptance points, the before/after counts, and the rehearsal site URL showing split cohorts and a citation. Fail = any result ranked without a hardware key, or a page without the citation.\n\nBase guardrails: linked worktree, never the primary clone; no live-cloud runs or credentials; heavy work only via make heavy-run after make heavy-status; no deliberate host load; comment policy; changelog.d fragment.",
+  "description": "Owner decisions 2026-11-17 on owner-confirm-provisional-decisions-20261117: the provisional methodology answers are confirmed, except hardware, which becomes a full ranking facet; the 'Derived from' wording is accepted as meeting EULA clause 4c(3); third parties cite as 'BenchBox <version>, result <public_result_id>, <permalink>, accessed <date>. Not an official TPC result.'\n\nCorpus at 2026-11-17 (507 published results): 381 on one Apple M4 (10 cores), the rest on four cloud runner CPU models or with no recorded hardware (61, mostly managed services); 40 of 64 cohorts mix hardware, so the facet splits them and many fall below the 3-identity ranking minimum.\n\nOutcome: rankings and comparisons group by hardware key; the ADR and site methodology page drop the provisional label and state the hardware rule, the EULA answer and the citation format; result pages show the citation.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4272",
+    "https://github.com/BenchBox-dev/benchbox-site/pull/166",
+    "docs/internal/adr/adr-benchmark-methodology-provisional-policy.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019",
+      "at": "2026-11-17T15:08:34Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "39294538c189449e9e2e97bbdc4c10db",
+      "session_id": "14462ffc9066466ca32d151c57f6a5de"
+    }
+  ]
+}
