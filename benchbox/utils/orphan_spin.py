@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import json
 import os
+import time
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import psutil
@@ -14,6 +17,7 @@ SECONDS_ENV = "BENCHBOX_ORPHAN_SPIN_SECONDS"
 DEFAULT_CPU_FRACTION = 0.5
 DEFAULT_SECONDS = 300.0
 COMMAND_WIDTH = 200
+ACTIVE_NAME = "orphan-spin.json"
 
 
 @dataclass(frozen=True)
@@ -39,6 +43,7 @@ class _Track:
     cpu_seconds: float
     busy_since: float | None = None
     reported: bool = False
+    report: SpinReport | None = None
 
 
 def _positive(environ: Mapping[str, str], key: str, default: float) -> float:
@@ -104,6 +109,9 @@ class SpinTracker:
     def sustain_seconds(self) -> float:
         return self._sustain_seconds
 
+    def active(self) -> list[SpinReport]:
+        return [track.report for track in self._tracks.values() if track.reported and track.report is not None]
+
     def observe(self, shells: Sequence[OrphanShell], now: float) -> tuple[list[SpinReport], list[int]]:
         seen = {(shell.pid, shell.created): shell for shell in shells}
         gone = [key for key in self._tracks if key not in seen]
@@ -130,5 +138,56 @@ class SpinTracker:
             track.cpu_seconds = shell.cpu_seconds
             if track.busy_since is not None and not track.reported and now - track.busy_since >= self._sustain_seconds:
                 track.reported = True
-                reports.append(SpinReport(shell, fraction, now - track.busy_since))
+                track.report = SpinReport(shell, fraction, now - track.busy_since)
+                reports.append(track.report)
         return reports, ended
+
+
+@dataclass(frozen=True)
+class ActiveSpin:
+    pid: int
+    created: float
+    name: str
+    cwd: str
+    command: str
+    cpu_fraction: float
+    busy_since: float
+
+
+def write_active(path: Path, spins: Sequence[ActiveSpin]) -> None:
+    if not spins:
+        path.unlink(missing_ok=True)
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    scratch = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    scratch.write_text(json.dumps([vars(spin) for spin in spins]), encoding="utf-8")
+    os.replace(scratch, path)
+
+
+def read_active(
+    path: Path,
+    *,
+    processes: Callable[[list[str]], Iterable[Any]] | None = None,
+) -> list[ActiveSpin]:
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        recorded = [ActiveSpin(**item) for item in raw]
+    except (OSError, ValueError, TypeError):
+        return []
+    if not recorded:
+        return []
+    live = {
+        (shell.pid, shell.created)
+        for shell in read_orphan_shells(
+            sorted({spin.cwd for spin in recorded}), processes=processes or psutil.process_iter
+        )
+    }
+    return [spin for spin in recorded if (spin.pid, spin.created) in live]
+
+
+def describe_active(spin: ActiveSpin, now: float | None = None) -> list[str]:
+    busy = max(0.0, (time.time() if now is None else now) - spin.busy_since)
+    return [
+        f"  ORPHAN SPIN pid {spin.pid}  {spin.name}  {spin.cpu_fraction:.0%} CPU  busy {busy:.0f}s  cwd {spin.cwd}",
+        f"    {spin.command[:COMMAND_WIDTH]}",
+    ]

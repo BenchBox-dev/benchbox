@@ -880,9 +880,12 @@ def start_guard(handle: HostLock, *, environ: Mapping[str, str] | None = None) -
 def check_admission(
     *, need_gib: float | None = None, environ: Mapping[str, str] | None = None, echo: bool = True
 ) -> str:
-    from benchbox.utils import resource_limits
+    from benchbox.utils import heavy_status, resource_limits
 
     env = os.environ if environ is None else environ
+    if echo:
+        for line in heavy_status.active_spin_lines(env):
+            _log(line)
     force = env.get(ADMIT_ENV, "").strip().lower() == "force"
     policy = resource_limits.admission_policy_from_env(env, need_gib=need_gib)
     result = resource_limits.admit_heavy_work(policy, force=force)

@@ -5,6 +5,7 @@ import os
 import stat
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -263,3 +264,86 @@ def test_a_shell_orphaned_to_init_is_an_orphan_candidate() -> None:
         ["500     1 bash /tmp/hl-smoke.sh", "501   500 bash /tmp/hl-smoke.sh", "502     1 /usr/bin/vim notes"]
     )
     assert hs._parse_ps(table) == [(500, "bash /tmp/hl-smoke.sh")]
+
+
+ADMITTED = SimpleNamespace(admitted=True, refusals=(), forced=False)
+SPIN_CWD = "/work/BenchBox.wt-spin"
+
+
+def spin_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, alive: bool = True) -> None:
+    from benchbox.utils import orphan_spin
+
+    spin = orphan_spin.ActiveSpin(
+        pid=4242,
+        created=4242.0,
+        name="bash",
+        cwd=SPIN_CWD,
+        command="bash -c while true; do :; done",
+        cpu_fraction=0.97,
+        busy_since=1000.0,
+    )
+    orphan_spin.write_active(hs.orphan_spin_path(), [spin])
+
+    class Proc:
+        info = {
+            "pid": 4242,
+            "ppid": 1,
+            "name": "bash",
+            "create_time": 4242.0,
+            "uids": SimpleNamespace(real=os.getuid()),
+        }
+
+        def as_dict(self, attrs, ad_value=None):
+            return {
+                "cwd": SPIN_CWD,
+                "cmdline": ["bash", "-c", "while true; do :; done"],
+                "cpu_times": SimpleNamespace(user=1.0, system=0.0),
+            }
+
+    monkeypatch.setattr(orphan_spin.psutil, "process_iter", lambda attrs: iter([Proc()] if alive else []))
+    monkeypatch.setattr(orphan_spin.time, "time", lambda: 1600.0)
+
+
+def test_status_prints_an_active_orphan_report_with_pid_cwd_cpu_share_and_age(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    spin_fixture(tmp_path, monkeypatch)
+    text = hs.render(collect(spin_reader=None))
+    assert "ORPHAN SPIN pid 4242" in text
+    assert "97% CPU" in text
+    assert "busy 600s" in text
+    assert f"cwd {SPIN_CWD}" in text
+    assert "never signalled" in text
+
+
+def test_status_is_unchanged_without_an_active_orphan_report(tmp_path: Path) -> None:
+    assert "ORPHAN SPIN" not in hs.render(collect())
+    assert hs.active_spin_lines() == []
+
+
+def test_a_report_for_an_exited_shell_is_not_printed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    spin_fixture(tmp_path, monkeypatch, alive=False)
+    assert "ORPHAN SPIN" not in hs.render(collect())
+
+
+def test_admission_prints_the_report_and_still_admits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from benchbox.utils import resource_limits
+
+    spin_fixture(tmp_path, monkeypatch)
+    monkeypatch.setattr(resource_limits, "admit_heavy_work", lambda policy, force=False: ADMITTED)
+    monkeypatch.setattr(resource_limits, "format_admission_report", lambda result, policy: "admitted")
+    assert hl.check_admission(environ=dict(os.environ)) == "admitted"
+    assert "ORPHAN SPIN pid 4242" in capsys.readouterr().err
+
+
+def test_admission_prints_nothing_extra_without_a_report(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from benchbox.utils import resource_limits
+
+    monkeypatch.setattr(resource_limits, "admit_heavy_work", lambda policy, force=False: ADMITTED)
+    monkeypatch.setattr(resource_limits, "format_admission_report", lambda result, policy: "admitted")
+    hl.check_admission(environ=dict(os.environ))
+    assert "ORPHAN SPIN" not in capsys.readouterr().err
