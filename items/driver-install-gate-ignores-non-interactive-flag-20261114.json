@@ -3,7 +3,7 @@
     "Owner decision recorded on whether --non-interactive should count; if yes, a test shows the gate refuses with the flag in a terminal.",
     "Dry run and real run treat an invalid driver_version consistently, or the difference is documented."
   ],
-  "context": "Found while delivering PR #4227. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "context": "Found while delivering PR #4227. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\nCloseout 2026-11-17: core BenchBox-dev/benchbox#4276 merged (20d8ac12af). Premise not reproduced: --non-interactive already sets BENCHBOX_NON_INTERACTIVE before driver work; regression test added. The real defect found, dry-run vs real-run disagreeing on an invalid driver_version, is fixed (both exit 2).",
   "description": "Problem: the driver auto-install gate added in PR #4227 detects non-interactive sessions from the terminal and BENCHBOX_NON_INTERACTIVE only, so `run --non-interactive` in a terminal still installs without the environment variable. Also, a dry run with an invalid driver_version only warns and continues, while a real run exits 2.",
   "sessions": [
     {
@@ -21,6 +21,14 @@
       "generation": "45b357bb30ae4d499237aa19716af3e4",
       "op": "take",
       "op_id": "c3227d51584a4bd19dfef9c258b666f8",
+      "session_id": "14462ffc9066466ca32d151c57f6a5de"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019",
+      "at": "2026-11-17T13:45:12Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "23e569ca054f414c9bd5d263a5b45292",
       "session_id": "14462ffc9066466ca32d151c57f6a5de"
     }
   ]
