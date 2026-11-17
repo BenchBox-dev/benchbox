@@ -21702,10 +21702,10 @@
     },
     "docs-mig-oracle-diff-decode": {
       "claim": {
-        "expires_at": "2026-10-20T17:15:32Z",
-        "generation": "a9f541decc7340299e7f85dbe92b52ce",
+        "expires_at": "2026-11-18T17:46:28Z",
+        "generation": "1b2dca516e3c4146afc7d8d9f50bdb3c",
         "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7043d4c3f317252a997ee7d2"
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:daba6966dbafa9d0ecd0bd8b"
       },
       "needs": [],
       "priority": "high",
