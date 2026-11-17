@@ -2,7 +2,7 @@
   "acceptance": [
     "The feature pull request is merged and each member item meets its own acceptance or records an owner-approved disposition."
   ],
-  "context": "Created 2026-11-17 to hold the related items on one feature branch.",
+  "context": "Created 2026-11-17 to hold the related items on one feature branch.\n\n2026-11-17: delivered by benchbox-site #178 (35b243da13) and #179 (ce39749465), both merged to `next`.",
   "description": "Umbrella for one feature branch and one pull request (docs/python-api-scale-factor-range (benchbox-site, next)). Members: site-python-api-scale-factor-range-20261111. Owner decisions for every member were recorded on 2026-11-17.",
   "sessions": [
     {
@@ -20,6 +20,14 @@
       "generation": "324c31dbfc3946c7a5f26701aa1ebb3b",
       "op": "take",
       "op_id": "7ef5b5e4f39f411781bc24b70c641146",
+      "session_id": "86b0e4ee68654aa992c62ae76dd23e81"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f7ac14dda5358a7d48d793ed",
+      "at": "2026-11-17T19:34:03Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "58b28f45d4bf4c2192b16264e9c567dd",
       "session_id": "86b0e4ee68654aa992c62ae76dd23e81"
     }
   ]
