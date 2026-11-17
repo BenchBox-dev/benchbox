@@ -1,0 +1,15 @@
+{
+  "bundle_file": "nyctaxi_sf01_datafusion_sql_20260826_170213_7c79a921.json",
+  "bundle_hash": "4af81345b54c50f0b7a9aa86dde2987899350afd941a933b8e5f5edcd39f1b68",
+  "funding": "unspecified",
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer",
+  "cpu_attestation": {
+    "attested_by": "maintainer",
+    "cpu_identity_provenance": "user_attested",
+    "cpu_model": "Apple M4",
+    "cpu_vendor": "Apple",
+    "note": "Operator attestation, not a measurement: the maintainer attests this Darwin arm64 run executed on the project's Apple M4 (10 cores); the bundle recorded no CPU model."
+  }
+}

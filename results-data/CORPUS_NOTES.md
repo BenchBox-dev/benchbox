@@ -1833,3 +1833,15 @@ Read Primitives SF0.01 and SF0.1, TPC-DS OBT SF1, TPC-H SF1, TPC-Havoc SF0.01, S
 `DOCUMENTED_SHALLOW_COHORTS` is unchanged by this note. The validator and Explorer parity and the cohort-depth tests
 (`tests/unit/publication/test_validator_parity.py`, `tests/unit/scripts/test_corpus_cohort_depth.py`) pass, 380 tests, so the
 ranked identities the validator computes agree with the Explorer pipeline.
+
+### Hardware class and the owner's CPU attestation (2026-11-17)
+
+The Explorer read model 19 records a hardware class per result from the pinned CPU class table in
+`benchbox/core/results/hardware_class.py` (table version `2026-11-17.1`). The default ranking is unchanged; the class is an
+optional facet filter. Managed services are one `managed` class, so the client CPU they record is never used.
+
+45 Darwin arm64 bundles recorded no CPU model (ClickHouse Local, DataFusion and DuckDB runs). The owner attests that they ran
+on the project's Apple M4 (10 cores). The attestation is a `cpu_attestation` object in each bundle's `.manifest.json` sidecar
+with `cpu_identity_provenance: user_attested`; no bundle was edited, so no result id moved. 20 of the 45 had no sidecar, and
+a minimal one (`bundle_file`, `bundle_hash`, `manifest_version`, `funding`, `result_source`, `submitted_by`, as on every
+sibling run) was added to carry the attestation. This is an operator attestation, not a measurement.

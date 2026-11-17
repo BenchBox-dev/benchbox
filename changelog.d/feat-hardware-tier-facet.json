@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "Results Explorer read model 19 carries a hardware class for every result (a pinned CPU class table, T0 to T5, plus managed and unclassified), the managed service size, and the known-defect reason, and the BenchBox version (recorded, or inferred from the run date)."
+    },
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "A managed-service result no longer records the client's CPU at the top level of its environment (it stays under environment.client_host), and a container can name its host CPU with BENCHBOX_CONTAINER_HOST_CPU_MODEL."
+    }
+  ]
+}

@@ -170,6 +170,40 @@ class TestManifestProvenance:
         assert known_defect_reason({"known_defect_reason": "Old scale."}) is None
         assert known_defect_reason({"known_defects": ["future-defect"]}) is None
 
+    def test_cpu_attestation_ok(self, tmp_path):
+        primary = tmp_path / "bundle.json"
+        primary.write_text(json.dumps({"environment": {"os": "Darwin 25.0"}}), encoding="utf-8")
+        vr = ValidationResult("test")
+        _validate_manifest_provenance(
+            {"cpu_attestation": {"cpu_model": "Apple M4", "cpu_identity_provenance": "user_attested"}}, primary, vr
+        )
+        assert vr.ok
+
+    @pytest.mark.parametrize(
+        "attestation",
+        [
+            "Apple M4",
+            {"cpu_model": "Apple M4"},
+            {"cpu_model": "", "cpu_identity_provenance": "user_attested"},
+            {"cpu_model": "Apple M4", "cpu_identity_provenance": "measured"},
+            {"cpu_model": "Apple M4", "cpu_identity_provenance": "user_attested", "unknown": "x"},
+        ],
+    )
+    def test_invalid_cpu_attestation_rejected(self, attestation):
+        vr = self._run({"cpu_attestation": attestation})
+        assert not vr.ok
+        assert any("cpu_attestation" in e for e in vr.errors)
+
+    def test_cpu_attestation_is_refused_for_a_bundle_that_records_a_cpu(self, tmp_path):
+        primary = tmp_path / "bundle.json"
+        primary.write_text(json.dumps({"environment": {"cpu_model": "AMD EPYC 7763"}}), encoding="utf-8")
+        vr = ValidationResult("test")
+        _validate_manifest_provenance(
+            {"cpu_attestation": {"cpu_model": "Apple M4", "cpu_identity_provenance": "user_attested"}}, primary, vr
+        )
+        assert not vr.ok
+        assert any("records no cpu_model" in e for e in vr.errors)
+
     def test_sqlite_clickbench_row_count_defect_ok(self):
         assert self._run({"known_defects": ["defective-sqlite-clickbench-row-counts"]}).ok
 
