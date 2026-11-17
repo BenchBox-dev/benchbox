@@ -3,7 +3,7 @@
     "The cause of the refusal in run 43110537127 is recorded with evidence from the core site-inputs runs and the site deploy log.",
     "Either a fix makes the dispatched bundle's parity range start at the deployed commit, or the race is documented as expected with the recovery step."
   ],
-  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.",
+  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.\n\n2026-11-17: two more occurrences on 2026-11-12 point to a race, not a one-off. scripts/site_inputs_parent.py reads the site's deployed core commit when the bundle job runs and uses it as the validator_parity base. Site deploys queue 10 to 20 minutes in the pages-deploy concurrency group, so a deploy already queued can advance the deployed commit before the new bundle is deployed, and the site resolve step refuses the bundle. Failed site deploy runs: 43234165099 (core read 21f6710; 01a1515 deployed at 14:07:51; needed a manual site-inputs dispatch with parent_core_sha) and 43271067621 (core read da5e63f; 644f19d deployed at 17:35:13). Links: https://github.com/BenchBox-dev/benchbox-site/actions/runs/43234165099, scripts/site_inputs_parent.py. Scope for this item: choose core-side or cross-repository fix (for example the site requests a rebuild with the right parent, or core attests parity against every deployed commit between the read and the deploy) before coding; a test must reproduce a deployed commit that moves between core's read and the site's resolve; the site's parity gate is not weakened and any site-side change is linked in the benchbox-site tracker; certification and attestation rules stay as they are. Requested id site-inputs-parity-base-race was not created because this item covers the same defect.",
   "description": "## Problem\nbenchbox-site deploy run 43110537127 (repository_dispatch, 2026-11-11T22:17Z) failed in 'Resolve the bundle and the deployed generation' with: 'corpus changed but validator_parity covers d2e9d7daa8..d704a3e1de, not the deployed 190145d3b1; dispatch core site-inputs.yml with pa...'. The bundle was for core commit d704a3e1de (BenchBox#4126, which edits `results-data/REGENERATION.md`). Two site-inputs runs were produced for that commit (43108480616 at 22:03Z and 43109920375 at 22:13Z). The site had by then deployed 190145d3b1, while the bundle's parity range started at the older d2e9d7daa8. The next deploy, for a later commit at 22:41Z, succeeded, so the site recovered without action, and the cause was not investigated.\n\n## Change\nFind why the bundle's parity base was not the deployed commit: whether a second site-inputs run for the same commit computes its base from a stale deployed generation, or whether an intermediate deploy moved the deployed commit between the bundle build and the dispatch. Decide whether this is an expected race that should retry by itself, or a defect in how the base is chosen.\n\n## Guardrails\n- Investigation first; no change to the parity gate's strictness without a decision.\n- Read the full error text from the run log; the quoted message above is truncated.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox-site/actions/runs/43110537127",
@@ -18,6 +18,14 @@
       "op": "create",
       "op_id": "8d7b22171fd74859b6ea89ec250f5949",
       "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7fccb8e508687d872014d97e",
+      "at": "2026-11-17T14:18:09Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "08eb7843256647b0a60fdc19b30dd1c4",
+      "session_id": "dbe17c06a3924d358ef2ada2c2773ecf"
     }
   ]
 }
