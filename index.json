@@ -5721,7 +5721,8 @@
     },
     "nightly-remediation": {
       "accepted_members": {
-        "green-sweep-clears-hidden-failures-20261117": "b0a5c1fb2f9576e276bf49d023d082e112c177d2"
+        "green-sweep-clears-hidden-failures-20261117": "b0a5c1fb2f9576e276bf49d023d082e112c177d2",
+        "perf-smoke-method2-baseline-20261117": "a7f125d41862c1ec38f63f7bb79440398fc0fe1d"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -5736,10 +5737,24 @@
           ],
           "integration_head": "d128a89a2228c16abdad4bdf3771dc78212e58c2",
           "integration_seq": 1
+        },
+        "perf-smoke-method2-baseline-20261117": {
+          "accepted_head": "a7f125d41862c1ec38f63f7bb79440398fc0fe1d",
+          "changed_files": [
+            ".github/workflows/nightly-v2.yml",
+            "_project/baselines/perf_smoke_duckdb_tpch_001.json",
+            "_project/baselines/perf_smoke_duckdb_tpch_001.sources.json",
+            "docs/internal/perf-smoke.md",
+            "scripts/perf_smoke_baseline.py",
+            "tests/unit/scripts/test_perf_smoke_baseline.py",
+            "tests/unit/workflows/test_nightly_t3_workflow.py"
+          ],
+          "integration_head": "d06acde550ce83feee1fb7287157692271bb68bb",
+          "integration_seq": 2
         }
       },
       "integration_branch": "feat/nightly-remediation",
-      "integration_head": "d128a89a2228c16abdad4bdf3771dc78212e58c2",
+      "integration_head": "d06acde550ce83feee1fb7287157692271bb68bb",
       "integration_log": [
         {
           "at": "2026-11-17T17:50:03Z",
@@ -5755,6 +5770,15 @@
           "op_id": "666cb5609fe44d6783cedbdb1a30e362",
           "previous_head": "028bb5a2ca9074c9a87f3beed237dc8d86297a5d",
           "seq": 1
+        },
+        {
+          "at": "2026-11-17T19:07:36Z",
+          "head": "d06acde550ce83feee1fb7287157692271bb68bb",
+          "kind": "prepare",
+          "member": "perf-smoke-method2-baseline-20261117",
+          "op_id": "b475bf0846c141718073540124113142",
+          "previous_head": "d128a89a2228c16abdad4bdf3771dc78212e58c2",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-nightly-remediation",
@@ -31311,15 +31335,10 @@
       "title": "Remove pandas/Python row steps in QuestDB and InfluxDB loading"
     },
     "perf-smoke-method2-baseline-20261117": {
-      "claim": {
-        "expires_at": "2026-11-18T19:07:30Z",
-        "generation": "a0e1c0a719d641818eb5f8b57848a48a",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:daba6966dbafa9d0ecd0bd8b"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Rebuild the perf-smoke baseline from method-2 nightly results and refuse mixed methods"
     },
     "perf-smoke-rebaseline-after-power-query-generation-20261103": {
