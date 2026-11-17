@@ -1,10 +1,11 @@
 {
   "acceptance": [
-    "The cause of the SF 0.1 failure is recorded with the server and client output.",
-    "Either LakeSail completes TPC-DS-OBT at SF 0.1 and the bundle is published, or the limit is registered with the reason."
+    "First-attempt client/server evidence identifies the failing stage/cause or explicitly establishes an approved reproducible support limitation.",
+    "Accepted fix passes every expected statement and validation at SF 0.1, or owner-approved compatibility limitation is registered with tested matching conditions.",
+    "Any approved corpus addition passes staging/validation and accurately discloses versions/settings."
   ],
-  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.",
-  "description": "## Problem\nIn the UAT sweep of 2026-11-11 that produced the published TPC-DS-OBT results, LakeSail passed SF 0.01 and failed SF 0.1 after about 20 minutes. The original error was not recorded because the harness runs the benchmark with `--quiet`. A diagnostic re-run reported 'Cannot connect to LakeSail Sail at sc://localhost:50051', which may be a consequence (the server had gone) rather than the cause. As a result the published SF 0.1 cohort has three platforms and no LakeSail result. Versions: PySail 0.7.1, PySpark client 4.2.0. Local run outputs for that sweep have been deleted.\n\n## Change\nRe-run LakeSail TPC-DS-OBT at SF 0.1 through the UAT entry point with output kept, and determine whether the server crashed (memory, timeout) or the load or a query failed. Fix or register the limit. If it then passes all 93 statements, stage and publish the bundle so the SF 0.1 cohort has four platforms.\n\n## Guardrails\n- Heavy work only through the UAT entry point or `make heavy-run`.\n- Publish only a run with zero failed statements and validation passed, staged with `make corpus-stage-local`.",
+  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.\n\n2026-11-17 TODO review: clarified decision gates, observable pass/fail rubric and safety boundaries. Existing historical evidence is retained; this is tracker planning only, not implementation, spend, publication or closeout approval.",
+  "description": "## Problem\nIn the UAT sweep of 2026-11-11 that produced the published TPC-DS-OBT results, LakeSail passed SF 0.01 and failed SF 0.1 after about 20 minutes. The original error was not recorded because the harness runs the benchmark with `--quiet`. A diagnostic re-run reported 'Cannot connect to LakeSail Sail at sc://localhost:50051', which may be a consequence (the server had gone) rather than the cause. As a result the published SF 0.1 cohort has three platforms and no LakeSail result. Versions: PySail 0.7.1, PySpark client 4.2.0. Local run outputs for that sweep have been deleted.\n\n## Change\nRe-run LakeSail TPC-DS-OBT at SF 0.1 through the UAT entry point with output kept, and determine whether the server crashed (memory, timeout) or the load or a query failed. Fix or register the limit. If it then passes all 93 statements, stage and publish the bundle so the SF 0.1 cohort has four platforms.\n\n## Guardrails\n- Heavy work only through the UAT entry point or `make heavy-run`.\n- Publish only a run with zero failed statements and validation passed, staged with `make corpus-stage-local`.\n\n## Decision gates\nHistorical root cause is unknown; connection refusal may be a later server-death symptom. Reproduce one bounded cell with first-attempt client/server capture before changing memory, timeout or compatibility support. Owner approves any support/ranking limitation.\n\n## Verification rubric\nPass: identify generation/load/query stage, server exit/resource evidence, exact versions and first failing statement; an accepted fix completes the full current query set with validation at SF 0.1. If unsupported, register precise version/scale condition and retained reason. Any approved publication uses corpus-stage-local and supersession validation.\n\n## Additional guardrails\nKeep heavy lock, redact logs, stop only own LakeSail server. No smaller dataset, longer timeout or unvalidated bundle to disguise failure. Missing original outputs remain declared; do not fabricate them.",
   "links": [
     "tests/uat",
     "results-data/CORPUS_NOTES.md",
@@ -18,6 +19,14 @@
       "op": "create",
       "op_id": "99e30bd1d4894b43b77a91f40a3ed9eb",
       "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1fad3edb102f5d3974476660",
+      "at": "2026-11-17T14:21:25Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "25949fc33fc041dcbe05a40610e2aeb1",
+      "session_id": "989657b059c44ae4bade82cb666c453c"
     }
   ]
 }
