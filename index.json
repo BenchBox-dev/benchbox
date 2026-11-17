@@ -16044,7 +16044,9 @@
     },
     "clickhouse-server-tpch-q21-fails-at-5-25gib-20261117": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "heavy-work-host-capacity-owner-decision-20261117"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "ClickHouse server TPC-H Q21 fails at SF1 in every tuning arm under the 5.25 GiB container limit"
