@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The feature pull request is merged and each member item meets its own acceptance or records an owner-approved disposition."
+  ],
+  "context": "Created 2026-11-17 to hold the related items on one feature branch.",
+  "description": "Umbrella for one feature branch and one pull request (feat/corpus-scale-policy-and-reruns). Members: corpus-nonstandard-scale-submission-policy-20261111, local-tpcdi-bundles-regenerate-current-generator, doris-tpcds-obt-results-capped-parallelism-20261111, lakesail-tpcds-obt-sf01-uat-failure-20261111, ledger-seed-recut-after-published-results-advance-20261111. Owner decisions for every member were recorded on 2026-11-17.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1fad3edb102f5d3974476660",
+      "at": "2026-11-17T15:42:38Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "de6746e491214f65bbfcd06f10f92dfe",
+      "session_id": "989657b059c44ae4bade82cb666c453c"
+    }
+  ]
+}

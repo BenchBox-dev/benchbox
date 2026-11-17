@@ -23974,6 +23974,13 @@
       "status": "done",
       "title": "Agent docs: record the operational facts sessions kept rediscovering"
     },
+    "feature-feat-corpus-scale-policy-and-reruns-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Corpus: non-standard scale policy, TPC-DI local reruns and cloud exclusion, Doris and LakeSail reruns, ledger seed"
+    },
     "feature-feat-tpcdi-current-generator-followups-20261117": {
       "claim": null,
       "needs": [],
