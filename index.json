@@ -39913,6 +39913,13 @@
       "status": "done",
       "title": "Record the selected SQLGlot downstream maintenance strategy and delivery evidence"
     },
+    "sqlglot-adoption-blocked-by-golden-corpus-change-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Automated SQLGlot adoption cannot land a release that changes any golden-corpus output"
+    },
     "sqlglot-bundled-import-startup-cost": {
       "claim": null,
       "needs": [],

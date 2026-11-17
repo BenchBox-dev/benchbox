@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "The owner's chosen handling of a corpus difference on an automation adoption PR is implemented and documented in docs/internal/release-guide.md.",
+    "A test or dry run shows the chosen path on a release that changes a recorded output: either the automation lands it under the owner's rule, or it stops with a clear, owner-routed signal naming the changed cases (not a bare red CI job).",
+    "The ownership and trust checks in scripts/sqlglot_delivery.py are not weakened for anything except the corpus file, if the chosen option touches them."
+  ],
+  "context": "Decision gate: the owner chooses before implementation: (a) keep the corpus as a deliberate human gate, and make the delivery run report the changed cases to the owner (issue or summary) instead of leaving only a red job; (b) the delivery automation re-records the corpus inside its single adoption commit and lists the changed cases in the PR body, with a hold label so the owner approves before arming; (c) accept corpus changes automatically when the fork's real-engine tests passed for the delivered commit. Each changes how much of a release lands without a person; (c) removes an owner gate and needs explicit approval.\n\nVerification rubric: (1) reproduce with the 30.33.0.1 delivery against a develop that still records the old BigQuery output; (2) the chosen path behaves as specified; (3) core workflow and delivery unit tests pass; (4) release-guide documents it.\n\nGuardrails: no weakening of the adoption ownership checks beyond the corpus path; no change to the fork; the corpus stays owner-accepted by some explicit act; heavy runs through make heavy-run.",
+  "description": "tests/unit/sql_compat/test_fork_golden_corpus.py compares legacy and fork SQL output with an owner-accepted recorded set. The delivery App's adoption pull request must carry exactly its one automation commit (scripts/sqlglot_delivery.py ownership check), so it cannot include a re-recorded corpus. Any upstream change that alters a recorded output therefore fails the adoption PR, and landing it needs a person to add a commit, which makes the PR human-owned and stops the automation arming it. This happened on 2026-11-17 with benchbox-sqlglot 30.33.0.1 (PR #4289): upstream d78ad66c changed BigQuery INFORMATION_SCHEMA quoting in bigquery_qualify_17/18. Upstream changes output often, so most releases may need a person, and sqlglot-e2e-first-release-certification can pass only on a release that changes no recorded output.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4289"
+  ],
+  "sessions": [
+    {
+      "actor": "omp:sqlglot-delivery-hardening-leader",
+      "at": "2026-11-17T15:27:17Z",
+      "client": "mcp",
+      "op": "create",
+      "op_id": "4aff441585b149508ce4b24f6905aa48",
+      "session_id": "1bbdf5a4d5e745b9a6078b02d903e27d"
+    }
+  ]
+}
