@@ -1,6 +1,6 @@
 {
   "acceptance": [
-    "Peak memory for TPC-DS Q16/Q94/Q95 SF10 on Polars, DataFusion and PySpark, and three PySpark SF10 subsets, is recorded here with estimate, host class and free memory.",
+    "Peak memory for TPC-DS Q16/Q94/Q95 SF10 on Polars and DataFusion is recorded here with estimate, host class and free memory; PySpark SF10 subsets are recorded as not run with the guard's stated requirement (owner accepted, 2026-11-17).",
     "Every recorded peak is below the guard's estimate on merged develop, or a merged PR raised the model and is linked here.",
     "Or: the owner's narrowed acceptance and reason are recorded (host option 3)."
   ],
@@ -21,6 +21,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "4b5bc1f123a94732b67f54972d8e1782",
+      "session_id": "584fe5162b994f91904666adf0c5e183"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:baf9996c1c86fb9c9b5547f3",
+      "at": "2026-11-17T21:33:56Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "760f589ccc724cee84830fc75d4fd2b6",
       "session_id": "584fe5162b994f91904666adf0c5e183"
     }
   ]
