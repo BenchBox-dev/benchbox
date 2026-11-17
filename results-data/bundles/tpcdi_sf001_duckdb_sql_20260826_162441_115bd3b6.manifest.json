@@ -1,0 +1,12 @@
+{
+  "bundle_file": "tpcdi_sf001_duckdb_sql_20260826_162441_115bd3b6.json",
+  "bundle_hash": "d2855bbe5b6aa5ed3e41d0de2ce1426677f0b115a82c98ed2e2fd7b592827814",
+  "funding": "unspecified",
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer",
+  "known_defects": [
+    "defective-variant-or-loader-wrong-result"
+  ],
+  "known_defect_reason": "Generated before the TPC-DI specification scale unit and linear fact tables; not comparable with current-generator data."
+}
