@@ -4,6 +4,7 @@
     "Both tests pass with LC_CTYPE set and unset, and the reviewer environment is still an explicit allowlist.",
     "`make pr-preflight` passes in a shell with LC_CTYPE set on a branch that selects these tests."
   ],
+  "context": "2026-11-17 cause found. Not LC_CTYPE from the shell: with `env -u LC_CTYPE` the tests still fail. `scripts/remote_review.py` passes the caller's LANG to the reviewer (lines 405 and 572, default C.UTF-8). The agent harness shell had LANG=C, so the fake reviewer, a Python 3.12 script, ran with LANG=C, and Python's locale coercion (PEP 538) added LC_CTYPE=UTF-8 to its own environment, which the fake then dumps to env.json. With LANG=en_US.UTF-8, or LANG unset, both tests pass. So the reviewer launcher does not leak anything; the tests report the fake's own coerced environment. Likely fix: have the fakes exclude interpreter-added variables (as they already exclude __CF_USER_TEXT_ENCODING), or set PYTHONCOERCECLOCALE=0 for the fake; decision gate still applies.",
   "description": "On 2026-11-17 two tests in tests/unit/scripts/test_remote_closeout.py failed on unmodified develop and on a branch that does not touch remote_closeout: `test_the_reviewer_runs_isolated_from_user_config_secrets_and_the_network` and `test_claude_is_confined_to_read_only_tools_and_an_isolated_login`. Each asserts the reviewer's environment is exactly {PATH, HOME, LANG} (plus CODEX_HOME for one), and got LC_CTYPE as well. The shell had `LC_CTYPE=en_US.UTF-8` (a macOS terminal default). With `env -u LC_CTYPE` the tests pass, and `make pr-preflight` fails on every branch whose changes select these tests while the variable is set.\n\nDecision gate: find which side is wrong. If the reviewer launch passes LC_CTYPE through on purpose (or through a locale allowlist), the test should allow it; if the reviewer is meant to get only PATH, HOME and LANG, the launcher leaks it and must drop it. The isolation the test protects is a security property, so do not widen the assertion without that decision.\n\nGuardrails: no entry in the preflight known-failures list; no skip.",
   "links": [
     "tests/unit/scripts/test_remote_closeout.py",
@@ -16,6 +17,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "6209dc30c8ee4c7abe313357ace72efc",
+      "session_id": "218a128d0f8a45baa26cfaa946b2d790"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:018071991691f1918967a0cb",
+      "at": "2026-11-17T14:01:39Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f4a18487150e48f28a618a169de7855d",
       "session_id": "218a128d0f8a45baa26cfaa946b2d790"
     }
   ]

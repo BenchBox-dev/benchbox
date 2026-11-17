@@ -35075,7 +35075,7 @@
       "needs": [],
       "priority": "medium",
       "status": "open",
-      "title": "remote_closeout reviewer environment tests fail when the caller's shell sets LC_CTYPE"
+      "title": "remote_closeout reviewer environment tests fail when the caller's LANG is C"
     },
     "remote-review-claude-fallback-20261019": {
       "claim": null,
