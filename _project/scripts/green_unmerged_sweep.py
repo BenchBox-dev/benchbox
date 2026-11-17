@@ -37,6 +37,7 @@ AUTO_MERGE_HOLD_LABEL = "no-auto-merge"
 
 PINNED_ISSUE_TITLE = "Green-but-unmerged PR sweep"
 DIGEST_BODY_MARKER = "<!-- green-unmerged-sweep -->"
+HIDDEN_FAILURES_HEADING = "Stale failed check suites blocking the merge rollup"
 ARM_INTENT_TIMELINE_EVENTS = frozenset(
     {
         "ready_for_review",
@@ -306,7 +307,7 @@ def build_digest(
     ]
     hidden = [c for c in classified if c.hidden_failures]
     if hidden:
-        lines.append("Stale failed check suites blocking the merge rollup (run `make pr-rerun` on each PR):")
+        lines.append(f"{HIDDEN_FAILURES_HEADING} (run `make pr-rerun` on each PR):")
         for c in hidden:
             lines.append(f"- #{c.number} {c.title} -- {c.html_url}")
             lines.extend(f"  - {reason}" for reason in c.hidden_failures)
@@ -753,7 +754,11 @@ def main(argv: list[str] | None = None) -> int:
         else:
             existing = find_pinned_issue(client, owner, repo, record_mechanism=record_mechanism)
             existing_body = (existing or {}).get("body") or ""
-            stale = "No stranded PRs" not in existing_body or "develop post-merge is RED" in existing_body
+            stale = (
+                "No stranded PRs" not in existing_body
+                or "develop post-merge is RED" in existing_body
+                or HIDDEN_FAILURES_HEADING in existing_body
+            )
             if existing is not None and stale:
                 client.patch(
                     f"repos/{owner}/{repo}/issues/{existing['number']}",
