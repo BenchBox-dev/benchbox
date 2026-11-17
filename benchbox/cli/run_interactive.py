@@ -55,6 +55,7 @@ from benchbox.cli.tuning_runtime import (
     build_baseline_unified_config,
     infer_runtime_tuning_mode,
 )
+from benchbox.cli.vendor_provenance_options import vendor_provenance_kwargs
 from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.utils.verbosity import VerbositySettings
 
@@ -785,8 +786,7 @@ def _interactive_handle_result(s: types.SimpleNamespace, result: Any, orchestrat
             export_formats=export_formats,
             funding=getattr(s, "funding", None),
             result_source=getattr(s, "result_source", None),
-            plan_tier=getattr(s, "plan_tier", None),
-            preview_features=getattr(s, "preview_features", None),
+            **vendor_provenance_kwargs(s),
         )
 
         if s.quiet:

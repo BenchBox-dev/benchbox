@@ -199,3 +199,8 @@ class TuningConfigMixin:
                 "Could not record that TPC-H refresh functions modified this database; "
                 "refusing to run them because a later run could not tell the data had changed"
             )
+        committer = getattr(connection, "commit", None) or getattr(
+            getattr(connection, "connection", None), "commit", None
+        )
+        if callable(committer):
+            committer()
