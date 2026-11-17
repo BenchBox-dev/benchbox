@@ -71,6 +71,8 @@ def _load_query_status_module():
 _query_status = _load_query_status_module()
 bundle_failed_query_count = _query_status.bundle_failed_query_count
 documented_exclusions_cover_failures = _query_status.documented_exclusions_cover_failures
+unchecked_row_count_evidence = _query_status.unchecked_row_count_evidence
+row_count_skip_is_documented = _query_status.row_count_skip_is_documented
 
 
 def _load_timing_field_helpers():
@@ -367,6 +369,17 @@ KNOWN_DEFECT_IDS = frozenset(
         "defective-windows-dsdgen-scale",
     }
 )
+
+KNOWN_DEFECT_REASONS = {
+    "defective-macdbgen-addresses": "Data came from a defective macOS dbgen build that wrote non-canonical addresses.",
+    "defective-sqlite-clickbench-row-counts": "Recorded wrong ClickBench row counts on SQLite.",
+    "defective-superseded-sql-translation": "Recorded wrong results from a SQL translation that has since been fixed.",
+    "defective-tpcds-obt-parameters": "TPC-DS One Big Table query parameters were rendered wrongly, so queries returned wrong rows.",
+    "defective-tpchavoc-variant-divergence": "TPC-Havoc variants of one query returned differing row counts.",
+    "defective-variant-or-loader-wrong-result": "A BenchBox query variant or data loader produced wrong values.",
+    "defective-windows-dsdgen-scale": "Data came from a Windows dsdgen build with a wrong scale factor.",
+}
+KNOWN_DEFECT_REASON_MAX_LEN = 200
 
 APPLIED_RECEIPT_MAX_ENTRIES = 10_000
 APPLIED_COMPANION_MAX_BYTES = 8 * 1024 * 1024
@@ -2643,26 +2656,43 @@ def throughput_stream_defects(data: dict[str, Any]) -> list[str]:
     return vr.errors
 
 
-def _manifest_known_defects(bundle_path: str | Path) -> set[str]:
+def _manifest_sidecar_payload(bundle_path: str | Path) -> dict[str, Any]:
     try:
         candidate = Path(bundle_path)
     except (TypeError, ValueError):
-        return set()
+        return {}
     if candidate.suffix != ".json" or _is_submission_manifest_path(candidate):
-        return set()
+        return {}
     sidecar = candidate.with_name(f"{candidate.stem}{SUBMISSION_MANIFEST_SUFFIX}")
     if not sidecar.is_file():
-        return set()
+        return {}
     try:
         payload = json.loads(sidecar.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        return set()
-    if not isinstance(payload, dict):
-        return set()
-    defects = payload.get("known_defects")
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _manifest_known_defects(bundle_path: str | Path) -> set[str]:
+    defects = _manifest_sidecar_payload(bundle_path).get("known_defects")
     if not isinstance(defects, list):
         return set()
     return {item for item in defects if isinstance(item, str)}
+
+
+def known_defect_reason(payload: dict[str, Any]) -> str | None:
+    defects = payload.get("known_defects")
+    if not isinstance(defects, list) or not any(isinstance(item, str) and item for item in defects):
+        return None
+    recorded = payload.get("known_defect_reason")
+    if isinstance(recorded, str) and recorded.strip():
+        return recorded.strip()
+    reasons = [KNOWN_DEFECT_REASONS[item] for item in defects if isinstance(item, str) and item in KNOWN_DEFECT_REASONS]
+    return " ".join(dict.fromkeys(reasons)) or None
+
+
+def manifest_known_defect_reason(bundle_path: str | Path) -> str | None:
+    return known_defect_reason(_manifest_sidecar_payload(bundle_path))
 
 
 def _validate_tpchavoc_variant_row_counts(
@@ -2742,10 +2772,14 @@ def _validate_execution_consistency(data: dict[str, Any], vr: ValidationResult) 
                         f"summary.validation='passed' counts queries[{i}] as validated, but its row count is "
                         "unvalidated (no reference answers for this benchmark and scale factor)"
                     )
-                elif rcv_status is not None and rcv_status != "PASSED":
+                elif rcv_status is not None and not (
+                    rcv_status == "PASSED" or (rcv_status == "SKIPPED" and row_count_skip_is_documented(rcv))
+                ):
                     vr.error(
                         f"summary.validation='passed' contradicts queries[{i}].row_count_validation.status={rcv_status!r}"
                     )
+    if unchecked_row_count_evidence(queries):
+        vr.error("summary.validation='passed' counts row counts as validated, but every recorded row count was skipped")
     _validate_throughput_stream_completeness(data, vr)
 
 
@@ -3226,6 +3260,34 @@ def _manifest_with_bundle_identity(manifest: dict[str, Any], primary_path: Path)
     return merged
 
 
+def _validate_manifest_known_defects(manifest: dict[str, Any], vr: ValidationResult) -> None:
+    known_defects = manifest.get("known_defects")
+    if known_defects is not None:
+        if (
+            not isinstance(known_defects, list)
+            or not known_defects
+            or any(not isinstance(item, str) for item in known_defects)
+        ):
+            vr.error("Manifest known_defects must be a non-empty list of defect id strings")
+        else:
+            for defect in known_defects:
+                if defect not in KNOWN_DEFECT_IDS:
+                    vr.error(f"Unknown manifest known_defects id {defect!r}: must be one of {sorted(KNOWN_DEFECT_IDS)}")
+
+    defect_reason = manifest.get("known_defect_reason")
+    if defect_reason is not None:
+        if known_defects is None:
+            vr.error("Manifest known_defect_reason requires known_defects")
+        elif (
+            not isinstance(defect_reason, str)
+            or not defect_reason.strip()
+            or len(defect_reason) > KNOWN_DEFECT_REASON_MAX_LEN
+        ):
+            vr.error(
+                f"Manifest known_defect_reason must be a non-empty string of at most {KNOWN_DEFECT_REASON_MAX_LEN} characters"
+            )
+
+
 def _validate_manifest_provenance(manifest: dict[str, Any], primary_path: Path, vr: ValidationResult) -> None:
     funding = manifest.get("funding")
     if funding is not None and funding not in FUNDING_SOURCES:
@@ -3264,18 +3326,7 @@ def _validate_manifest_provenance(manifest: dict[str, Any], primary_path: Path, 
     _validate_manifest_class_matches_bundle(manifest, primary_path, vr)
     _validate_manifest_translator_version(manifest, primary_path, vr)
 
-    known_defects = manifest.get("known_defects")
-    if known_defects is not None:
-        if (
-            not isinstance(known_defects, list)
-            or not known_defects
-            or any(not isinstance(item, str) for item in known_defects)
-        ):
-            vr.error("Manifest known_defects must be a non-empty list of defect id strings")
-        else:
-            for defect in known_defects:
-                if defect not in KNOWN_DEFECT_IDS:
-                    vr.error(f"Unknown manifest known_defects id {defect!r}: must be one of {sorted(KNOWN_DEFECT_IDS)}")
+    _validate_manifest_known_defects(manifest, vr)
 
 
 def discover_bundles(path: Path) -> list[Path]:
