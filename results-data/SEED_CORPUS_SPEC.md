@@ -153,16 +153,22 @@ The authoritative cell list lives in `.github/workflows/seed-corpus.yml`
 (`strategy.matrix.include`). Do not treat a frozen table in this document as the
 source of truth; the workflow drifts as admitted coverage changes.
 
-The supported matrix contains six local, merge-ready cohorts. TPC-H SF 0.01
-and SF 0.1 plus SSB use DuckDB, DataFusion, and Polars DataFrame. TPC-H SF 1
-and TPC-DS SF 1 use DuckDB, DataFusion, and ClickHouse Local. Every cohort has
-three local comparison identities and no cloud dependency. TPC-H SF 1 and TPC-DS SF 1
-run as official seeded runs; see [Official runs](#official-runs).
+The supported matrix contains four local, merge-ready cohorts: TPC-H SF 0.01
+and SF 0.1, and SSB SF 0.01 and SF 0.1. Each uses DuckDB, DataFusion, and
+Polars DataFrame. Every cohort has three local comparison identities and no
+cloud dependency.
+
+The TPC-H SF 1 and TPC-DS SF 1 official cohorts (DuckDB, DataFusion, and
+ClickHouse Local) are not in the monthly matrix. They are frozen at their
+published bundles until DataFusion and ClickHouse Local support full-spec runs
+(throughput plus refresh or maintenance), because `--official` TPC-H and TPC-DS
+runs require those phases and a cohort needs three identities. They return to
+the matrix as full-spec cells once all three engines support it. See
+[Official runs](#official-runs).
 
 | Benchmark | Scale factors |
 |-----------|---------------|
-| TPC-H | 0.01, 0.1, 1 |
-| TPC-DS | 1 |
+| TPC-H | 0.01, 0.1 |
 | SSB | 0.01, 0.1 |
 
 Other checked-in cohorts are historical or operator-restored coverage, not a
@@ -202,19 +208,20 @@ are promoted.
 
 ### Local identity coverage
 
-The workflow includes `polars-df` for TPC-H SF 0.01/0.1 and SSB. TPC-H SF 1
-and TPC-DS use `clickhouse-local` as their local third identity because the
-admitted matrix does not rely on Polars DataFrame support there. Combined
-(full-specification) cohorts take their three identities from DuckDB, ClickHouse
-Local (chDB only) and CedarDB; see [Combined cohorts](#combined-cohorts).
+The workflow includes `polars-df` for TPC-H SF 0.01/0.1 and SSB. The frozen
+TPC-H SF 1 and TPC-DS SF 1 cohorts use `clickhouse-local` as their local third
+identity because the admitted matrix does not rely on Polars DataFrame support there.
+Combined (full-specification) cohorts take their three identities from DuckDB,
+ClickHouse Local (chDB only) and CedarDB; see [Combined cohorts](#combined-cohorts).
 
 ### Official runs
 
 A matrix entry marked `official: true` adds `--official --seed 42` to the
 generic local command. Only a TPC-H or TPC-DS run made with `--official` is
 classed `official`; without the flag a run at SF 1 or above is
-`unofficial_nonstandard` and is never admitted. The TPC-H SF 1 and TPC-DS SF 1
-entries are marked, so those cohorts can rank.
+`unofficial_nonstandard` and is never admitted. No current matrix entry is marked
+`official: true`; the TPC-H SF 1 and TPC-DS SF 1 entries return marked, as
+full-spec cells, once all three engines support it.
 
 The flag applies only at official scale points (SF 1, 10, 30, and so on).
 `benchbox run --official` refuses any other scale factor, and every TPC-H or
