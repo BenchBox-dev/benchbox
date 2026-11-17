@@ -4,6 +4,7 @@
     "Any Modin failure has a merged fix PR or an owner decision recorded.",
     "cuDF is either run on a named GPU host with results recorded, or recorded as not verified with the owner's acceptance."
   ],
+  "context": "Owner decision 2026-11-17 (choice dialog): no GPU host; cuDF is recorded as unverified and that closes the cuDF part. If Modin fails: fix when the change touches only the Modin path, otherwise drop Modin from the two test files' family lists and record why.",
   "description": "## Problem\nThe TPC-DS Q16/Q94/Q95 multi-warehouse rule and the distinct-count NULL fixes (PR #4169) are tested per DataFrame family in `tests/unit/core/tpcds/test_multi_warehouse_orders.py` (families pandas, dask, modin, cudf) and `tests/unit/platforms/dataframe/test_distinct_count_null_parity.py`. The modin and cudf cases `importorskip`, and neither package is installed in CI or locally: pyproject.toml has no modin extra, and `dataframe-cudf` needs an NVIDIA GPU. So those families' results under the fix are unverified.\n\n## Method\n- Modin: run both test files with `uv run --with modin -- pytest ...` (no lock change), on Modin's default execution engine, which must be stated; if it needs Ray or Dask, add that with `--with` too. Record Modin, engine and pandas versions and per-case outcome; confirm from the pytest output that the modin cases ran rather than skipped.\n- cuDF: only on a GPU host the owner names; otherwise record as not run.\n\n## Decision gate\n- Modin passes: record and continue.\n- Modin fails: fix in the Modin path (no platform-name branches in query code) in one PR, or, if Modin is unsupported by policy, ask the owner whether to drop the family from the test.\n- No GPU host named: cuDF recorded as not verified; the owner decides whether that closes the item.\n\n## Guardrails\nNo pyproject or uv.lock changes to add Modin without owner approval. No reference-answer changes. Heavy test runs via `make heavy-run`.",
   "sessions": [
     {
@@ -20,6 +21,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "8da75577fb0c42eab81784565f06bc28",
+      "session_id": "584fe5162b994f91904666adf0c5e183"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:baf9996c1c86fb9c9b5547f3",
+      "at": "2026-11-17T21:32:44Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4c05ee698ae7442f948593093899d1d3",
       "session_id": "584fe5162b994f91904666adf0c5e183"
     }
   ]
