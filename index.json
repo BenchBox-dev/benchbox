@@ -25457,6 +25457,13 @@
       "status": "done",
       "title": "make heavy-run CMD='...' lets make expand $ in the command, so $HOME becomes OME"
     },
+    "heavy-run-exit-79-after-command-completed-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "make heavy-run can report a watchdog kill (exit 79) after the guarded command already finished successfully"
+    },
     "heavy-run-wait-for-admission-20261112": {
       "claim": null,
       "needs": [],
