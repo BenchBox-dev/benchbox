@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "The reason LC_CTYPE reaches the reviewer environment is recorded here.",
+    "Both tests pass with LC_CTYPE set and unset, and the reviewer environment is still an explicit allowlist.",
+    "`make pr-preflight` passes in a shell with LC_CTYPE set on a branch that selects these tests."
+  ],
+  "description": "On 2026-11-17 two tests in tests/unit/scripts/test_remote_closeout.py failed on unmodified develop and on a branch that does not touch remote_closeout: `test_the_reviewer_runs_isolated_from_user_config_secrets_and_the_network` and `test_claude_is_confined_to_read_only_tools_and_an_isolated_login`. Each asserts the reviewer's environment is exactly {PATH, HOME, LANG} (plus CODEX_HOME for one), and got LC_CTYPE as well. The shell had `LC_CTYPE=en_US.UTF-8` (a macOS terminal default). With `env -u LC_CTYPE` the tests pass, and `make pr-preflight` fails on every branch whose changes select these tests while the variable is set.\n\nDecision gate: find which side is wrong. If the reviewer launch passes LC_CTYPE through on purpose (or through a locale allowlist), the test should allow it; if the reviewer is meant to get only PATH, HOME and LANG, the launcher leaks it and must drop it. The isolation the test protects is a security property, so do not widen the assertion without that decision.\n\nGuardrails: no entry in the preflight known-failures list; no skip.",
+  "links": [
+    "tests/unit/scripts/test_remote_closeout.py",
+    "scripts/remote_closeout.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:018071991691f1918967a0cb",
+      "at": "2026-11-17T13:57:14Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6209dc30c8ee4c7abe313357ace72efc",
+      "session_id": "218a128d0f8a45baa26cfaa946b2d790"
+    }
+  ]
+}

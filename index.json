@@ -35068,6 +35068,13 @@
       "status": "done",
       "title": "Remote close-out make wrapper executes make functions in values, so text from a PR must never reach its command line"
     },
+    "remote-closeout-reviewer-env-leaks-lc-ctype-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "remote_closeout reviewer environment tests fail when the caller's shell sets LC_CTYPE"
+    },
     "remote-review-claude-fallback-20261019": {
       "claim": null,
       "needs": [],
