@@ -25774,10 +25774,15 @@
       "title": "Document the admission wait in the operations heavy-work page"
     },
     "heavy-work-host-capacity-owner-decision-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-18T21:34:12Z",
+        "generation": "5f072754e1a74dcbba4a6e6d4d68a380",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:baf9996c1c86fb9c9b5547f3"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Decide where memory-heavy measurements and full-suite runs execute, since the shared 16 GiB host kills them"
     },
     "history-retention-adr-stale-doc-references": {
