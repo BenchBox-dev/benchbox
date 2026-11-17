@@ -7,6 +7,7 @@ import dataclasses
 import datetime
 import json
 import os
+import re
 import subprocess
 import urllib.error
 import urllib.parse
@@ -17,6 +18,13 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 SCHEMA_VERSION = 1
 STRUCTURAL_BASES = {"develop", "release", "published-results"}
+RELEASE_LINE_RE = re.compile(r"^release/\d+\.\d+\.x$")
+
+
+def is_structural_base(ref: str) -> bool:
+    return ref in STRUCTURAL_BASES or bool(RELEASE_LINE_RE.match(ref))
+
+
 _EVIDENCE_SOURCE_KEY = "_benchbox_evidence_source"
 
 REPORT_AUTHORITY = {
@@ -604,13 +612,13 @@ def _evaluate_merged_pr_integration(
     repo_root: Path,
 ) -> Classification:
     latest_base = latest_pr.get("base", {}).get("ref", "")
-    if latest_base not in STRUCTURAL_BASES:
+    if not is_structural_base(latest_base):
         return Classification(
             state="uncertain",
             item_classification="wrong base",
             reason=(
                 f"PR #{latest_pr.get('number')} targets '{latest_base}', which is not a structural "
-                f"integration branch ({', '.join(sorted(STRUCTURAL_BASES))})"
+                f"integration branch ({', '.join(sorted(STRUCTURAL_BASES))}, release/<major>.<minor>.x)"
             ),
             signals=signals,
         )

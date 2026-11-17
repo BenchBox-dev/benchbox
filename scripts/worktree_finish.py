@@ -17,7 +17,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from _project.scripts.worktree_audit import (
-    STRUCTURAL_BASES,
+    RELEASE_LINE_RE,
     _parse_worktree_porcelain_entries,
     are_descendants_integrated,
     fetch_prs_for_branch,
@@ -26,6 +26,7 @@ from _project.scripts.worktree_audit import (
     get_remote_repository_slug,
     is_ancestor,
     is_pr_merged,
+    is_structural_base,
     resolve_github_token,
     resolve_repository_identity,
 )
@@ -35,6 +36,7 @@ from scripts.branch_prune_merged import (
 )
 from scripts.worktree_lifecycle_metadata import (
     WorktreeLifecycleMetadata,
+    live_session_owner,
     read_metadata,
 )
 
@@ -87,7 +89,7 @@ def apply_finish_actions(
     repo_root: Path,
 ) -> Tuple[bool, Optional[str], List[Dict[str, str]]]:
     executed: List[Dict[str, str]] = []
-    if res.status != "actionable" or not res.branch:
+    if res.status != "actionable" or not (res.branch or res.detached):
         return False, None, executed
     code, common_dir, stderr = _run_git(["rev-parse", "--git-common-dir"], repo_root)
     if code != 0:
@@ -100,12 +102,17 @@ def apply_finish_actions(
         )
         return False, None, executed
     git_cwd = Path(common_dir) if Path(common_dir).is_absolute() else repo_root / common_dir
-    code, current_tip, _ = _run_git(["rev-parse", "--verify", f"refs/heads/{res.branch}"], git_cwd)
+    if res.detached:
+        code, current_tip, _ = _run_git(["rev-parse", "HEAD"], Path(res.target_path))
+        command = f"git -C {res.target_path} rev-parse HEAD"
+    else:
+        code, current_tip, _ = _run_git(["rev-parse", "--verify", f"refs/heads/{res.branch}"], git_cwd)
+        command = f"git rev-parse --verify refs/heads/{res.branch}"
     if code != 0 or current_tip.lower() != res.expected_head.lower():
         executed.append(
             {
                 "action": "branch_drift_check",
-                "command": f"git rev-parse --verify refs/heads/{res.branch}",
+                "command": command,
                 "outcome": f"branch moved (expected {res.expected_head}, found {current_tip or 'missing'}) - no mutation performed",
             }
         )
@@ -137,6 +144,8 @@ def apply_finish_actions(
     )
     if code != 0:
         return False, None, executed
+    if res.detached:
+        return True, None, executed
     code, _, stderr = _run_git(["update-ref", "-d", f"refs/heads/{res.branch}", res.expected_head], git_cwd)
     executed.append(
         {
@@ -313,12 +322,45 @@ def _dirty_reason(target_path: Path, tool_temp_files: Optional[List[str]]) -> Op
     return "Worktree is not removable as unpublished: " + "; ".join(details)
 
 
+def _integration_refs(repo_root: Path, refresh_target: Optional[TargetRefresher]) -> List[str]:
+    code, stdout, _ = _run_git(["for-each-ref", "--format=%(refname:short)", "refs/remotes/origin/release"], repo_root)
+    lines = stdout.splitlines() if code == 0 else []
+    bases = ["develop"] + sorted(
+        base for base in (line.removeprefix("origin/") for line in lines) if RELEASE_LINE_RE.match(base)
+    )
+    refresh = refresh_target or (lambda base: refresh_target_ref(base, repo_root))
+    for base in bases:
+        refresh(base)
+    return [f"origin/{base}" for base in bases]
+
+
+def _detached_is_integrated(
+    entry: Dict[str, Any],
+    target_path: Path,
+    repo_root: Path,
+    tool_temp_files: Optional[List[str]],
+    refresh_target: Optional[TargetRefresher],
+) -> bool:
+    head = str(entry.get("HEAD") or "").lower()
+    if not HEX_40_RE.match(head) or entry.get("locked"):
+        return False
+    if _dirty_reason(target_path, tool_temp_files):
+        return False
+    meta = read_metadata(target_path)
+    if meta.provenance_state != "managed" or meta.controller_kind not in (None, "", "none", "manual"):
+        return False
+    if live_session_owner(target_path):
+        return False
+    return any(is_ancestor(head, ref, repo_root) for ref in _integration_refs(repo_root, refresh_target))
+
+
 def _check_worktree_structure(
     target_path: Path,
     expected_head_oid: str,
     repo_root: Path,
     timestamp: str,
     tool_temp_files: Optional[List[str]] = None,
+    refresh_target: Optional[TargetRefresher] = None,
 ) -> Tuple[Optional[Dict[str, Any]], Optional[str], Optional[FinishPreviewResult]]:
     primary_clone = get_primary_clone_path(repo_root)
     if primary_clone and target_path == primary_clone:
@@ -369,20 +411,22 @@ def _check_worktree_structure(
     is_detached = matching.get("detached", False) or "branch" not in matching
     branch = matching.get("branch") if not is_detached else None
     if is_detached or not branch:
-        return (
-            None,
-            None,
-            _make_hold_result(
-                target_path,
-                expected_head_oid,
-                "Worktree is in detached HEAD state (no symbolic branch ref)",
-                timestamp,
-                hold_code="detached",
-                current_head=matching.get("HEAD"),
-                provenance_state="detached",
-                detached=True,
-            ),
-        )
+        if not _detached_is_integrated(matching, target_path, repo_root, tool_temp_files, refresh_target):
+            return (
+                None,
+                None,
+                _make_hold_result(
+                    target_path,
+                    expected_head_oid,
+                    "Worktree is in detached HEAD state (no symbolic branch ref)",
+                    timestamp,
+                    hold_code="detached",
+                    current_head=matching.get("HEAD"),
+                    provenance_state="detached",
+                    detached=True,
+                ),
+            )
+        branch = None
 
     if matching.get("locked"):
         lock_reason = matching.get("lock_reason")
@@ -571,7 +615,7 @@ def _evaluate_pr_integration(
     pr_base = latest.get("base", {}).get("ref", "")
     merge_commit_sha = latest.get("merge_commit_sha")
 
-    if pr_base not in STRUCTURAL_BASES:
+    if not is_structural_base(pr_base):
         return None, _make_hold_result(
             target_path,
             expected_head_oid,
@@ -720,7 +764,7 @@ def _actionable_result(
     target_path: Path,
     expected_head_oid: str,
     actual_head: str,
-    branch: str,
+    branch: Optional[str],
     meta: WorktreeLifecycleMetadata,
     timestamp: str,
     *,
@@ -748,12 +792,15 @@ def _actionable_result(
             "description": f"Remove linked worktree directory and Git registration at {target_path}",
             "command": f"{action_remove} {shlex.quote(str(target_path))}",
         },
-        {
-            "action": "branch_deletion",
-            "description": f"Atomically delete local branch ref refs/heads/{branch} with expected old OID {expected_head_oid}",
-            "command": f"{action_delete_ref} {_branch_ref_argument(branch)} {expected_head_oid}",
-        },
     ]
+    if branch is not None:
+        proposed.append(
+            {
+                "action": "branch_deletion",
+                "description": f"Atomically delete local branch ref refs/heads/{branch} with expected old OID {expected_head_oid}",
+                "command": f"{action_delete_ref} {_branch_ref_argument(branch)} {expected_head_oid}",
+            }
+        )
 
     return FinishPreviewResult(
         target_path=str(target_path),
@@ -770,7 +817,7 @@ def _actionable_result(
         manual_released=bool(meta.manual_released_at),
         clean=True,
         locked=False,
-        detached=False,
+        detached=branch is None,
         pr_number=latest_pr.get("number") if latest_pr else None,
         pr_base=latest_pr.get("base", {}).get("ref") if latest_pr else None,
         merged_head=merged_head,
@@ -866,15 +913,26 @@ def evaluate_finish_preview(
 
     tool_temp_files: Optional[List[str]] = [] if unpublished else None
     entry, actual_head, hold_res = _check_worktree_structure(
-        target_path, expected_head_oid, repo_root, now_utc, tool_temp_files
+        target_path, expected_head_oid, repo_root, now_utc, tool_temp_files, refresh_target
     )
     if hold_res or not entry or not actual_head:
         return hold_res or _make_hold_result(
             target_path, expected_head_oid, "Unknown structural failure", now_utc, hold_code="unknown"
         )
 
-    branch = entry["branch"]
     meta = read_metadata(target_path)
+    if entry.get("detached", False) or "branch" not in entry:
+        return _actionable_result(
+            target_path,
+            expected_head_oid,
+            actual_head,
+            None,
+            meta,
+            now_utc,
+            tool_temp_files=tuple(sorted(tool_temp_files or [])),
+        )
+
+    branch = entry["branch"]
     provenance_hold = _check_provenance_state(target_path, expected_head_oid, actual_head, branch, meta, now_utc)
     if provenance_hold:
         return provenance_hold

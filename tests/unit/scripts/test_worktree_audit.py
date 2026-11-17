@@ -868,3 +868,23 @@ def test_batch_pr_listing_fails_closed_on_truncation_and_api_error(monkeypatch: 
     by_branch, err = mod.fetch_prs_for_branches("owner", "repo", {"feat/a"}, expected_repo_id=123, token=None)
     assert by_branch == {}
     assert err == "HTTP Error 502: Bad Gateway"
+
+
+@pytest.mark.parametrize(
+    ("ref", "expected"),
+    [
+        ("develop", True),
+        ("release", True),
+        ("published-results", True),
+        ("release/0.5.x", True),
+        ("release/10.12.x", True),
+        ("release/foo", False),
+        ("release/0.5", False),
+        ("release/0.5.x/extra", False),
+        ("xrelease/0.5.x", False),
+        ("feature/arbitrary-base", False),
+        ("", False),
+    ],
+)
+def test_is_structural_base(ref: str, expected: bool):
+    assert mod.is_structural_base(ref) is expected

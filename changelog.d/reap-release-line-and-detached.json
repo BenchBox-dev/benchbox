@@ -1,0 +1,1 @@
+{"schema":1,"internal":"Worktree finish, reap and audit now accept release/<major>.<minor>.x merge bases, and reap removes clean managed unowned detached worktrees already integrated into develop or a release line."}

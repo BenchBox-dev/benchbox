@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -8,6 +9,7 @@ from typing import Any
 import pytest
 
 import scripts.worktree_finish as finish
+import scripts.worktree_lifecycle_metadata as lifecycle
 import scripts.worktree_reap as reap
 from scripts.worktree_lifecycle_metadata import init_metadata
 from scripts.worktree_reap import (
@@ -449,3 +451,170 @@ def test_batch_lookup_reports_identity_and_listing_failures(tmp_path: Path, monk
 
     with pytest.raises(ReapError, match="Invalid repository slug"):
         build_batch_pr_lookup(repo, "no-slash", {"feat/a"})
+
+
+def _release_line(repo: Path, line: str = "release/0.5.x") -> None:
+    _git(["branch", line, "develop"], repo)
+    _git(["push", "-q", "origin", line], repo)
+
+
+def _merge_into(repo: Path, line: str, branch: str, number: int) -> dict[str, Any]:
+    tip = _git(["rev-parse", f"refs/heads/{branch}"], repo)
+    _git(["checkout", "-q", line], repo)
+    _git(["merge", "-q", "--no-ff", "-m", f"Merge PR #{number}", branch], repo)
+    merge_oid = _git(["rev-parse", "HEAD"], repo)
+    _git(["push", "-q", "origin", line], repo)
+    _git(["checkout", "-q", "develop"], repo)
+    return {
+        "number": number,
+        "state": "closed",
+        "merged_at": "2026-11-17T00:00:00Z",
+        "base": {"ref": line},
+        "head": {"sha": tip},
+        "merge_commit_sha": merge_oid,
+        "_historical_head_sha": tip,
+    }
+
+
+def test_release_line_base_is_accepted(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    _release_line(repo)
+    wt, branch = _feature_worktree(repo, "line")
+    prs = {branch: [_merge_into(repo, "release/0.5.x", branch, 4249)]}
+
+    verdict = _verdicts(repo, _lookup(prs))[wt.resolve()]
+
+    assert verdict.verdict == REMOVE, verdict.reason
+    assert "into 'release/0.5.x'" in verdict.reason
+
+
+def test_release_line_merge_commit_must_be_reachable_from_the_line(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    _release_line(repo)
+    wt, branch = _feature_worktree(repo, "line-unreachable")
+    pr = _merge_into(repo, "release/0.5.x", branch, 4250)
+    (repo / "develop-only.txt").write_text("develop\n", encoding="utf-8")
+    _git(["add", "develop-only.txt"], repo)
+    _git(["commit", "-q", "-m", "develop only"], repo)
+    _git(["push", "-q", "origin", "develop"], repo)
+    pr["merge_commit_sha"] = _git(["rev-parse", "develop"], repo)
+
+    verdict = _verdicts(repo, _lookup({branch: [pr]}))[wt.resolve()]
+
+    assert verdict.verdict == AMBIGUOUS
+    assert "not reachable from 'release/0.5.x'" in verdict.reason
+
+
+@pytest.mark.parametrize("base", ["release/foo", "feat/other-base"])
+def test_non_release_line_base_is_still_held(tmp_path: Path, base: str) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    _release_line(repo, base)
+    wt, branch = _feature_worktree(repo, "odd-base")
+    prs = {branch: [_merge_into(repo, base, branch, 4251)]}
+
+    verdict = _verdicts(repo, _lookup(prs))[wt.resolve()]
+
+    assert verdict.verdict == AMBIGUOUS
+    assert "not a structural integration branch" in verdict.reason
+
+
+def _detached_worktree(repo: Path, name: str, rev: str, *, managed: bool = True) -> Path:
+    wt = repo.parent / f"wt-{name}"
+    _git(["worktree", "add", "-q", "--detach", str(wt), rev], repo)
+    _git(["config", "user.email", "test@example.com"], wt)
+    _git(["config", "user.name", "BenchBox Test"], wt)
+    if managed:
+        init_metadata(
+            wt, branch=f"feat/{name}", base_ref="origin/develop", base_oid=_git(["rev-parse", "develop"], repo)
+        )
+    return wt
+
+
+def test_detached_head_integrated_into_develop_is_removed(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    wt = _detached_worktree(repo, "det-ok", "develop")
+
+    verdict = _verdicts(repo, _lookup({}))[wt.resolve()]
+
+    assert verdict.verdict == REMOVE, verdict.reason
+    assert verdict.branch is None
+
+    refs_before = _git(["for-each-ref"], repo)
+    outcomes = list(remove_worktrees([verdict], repo, SLUG, _lookup({})))
+    assert [o.status for o in outcomes] == ["removed"]
+    assert not wt.exists()
+    assert _git(["for-each-ref"], repo) == refs_before
+
+
+def test_detached_head_integrated_into_release_line_is_removed(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    _release_line(repo)
+    _git(["checkout", "-q", "release/0.5.x"], repo)
+    (repo / "line.txt").write_text("line\n", encoding="utf-8")
+    _git(["add", "line.txt"], repo)
+    _git(["commit", "-q", "-m", "line only"], repo)
+    _git(["push", "-q", "origin", "release/0.5.x"], repo)
+    _git(["checkout", "-q", "develop"], repo)
+    wt = _detached_worktree(repo, "det-line", "release/0.5.x")
+
+    verdict = _verdicts(repo, _lookup({}))[wt.resolve()]
+
+    assert verdict.verdict == REMOVE, verdict.reason
+
+
+def test_detached_head_with_unintegrated_commit_is_never_removed(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    wt = _detached_worktree(repo, "det-work", "develop")
+    (wt / "work.txt").write_text("work\n", encoding="utf-8")
+    _git(["add", "work.txt"], wt)
+    _git(["commit", "-q", "-m", "detached work"], wt)
+
+    verdict = _verdicts(repo, _lookup({}))[wt.resolve()]
+
+    assert verdict.verdict == AMBIGUOUS
+    assert "detached HEAD" in verdict.reason
+
+
+def test_detached_head_with_pushed_non_integration_ref_is_never_removed(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    wt = _detached_worktree(repo, "det-pushed", "develop")
+    (wt / "work.txt").write_text("work\n", encoding="utf-8")
+    _git(["add", "work.txt"], wt)
+    _git(["commit", "-q", "-m", "detached work"], wt)
+    _git(["push", "-q", "origin", "HEAD:refs/heads/feat/elsewhere"], wt)
+
+    assert _verdicts(repo, _lookup({}))[wt.resolve()].verdict == AMBIGUOUS
+
+
+@pytest.mark.parametrize("condition", ["dirty", "untracked", "locked", "unmanaged", "live_session", "controller"])
+def test_detached_integrated_head_is_ambiguous_unless_every_condition_holds(tmp_path: Path, condition: str) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    wt = _detached_worktree(repo, "det-cond", "develop", managed=condition != "unmanaged")
+    if condition == "dirty":
+        (wt / "README.md").write_text("edited\n", encoding="utf-8")
+    elif condition == "untracked":
+        (wt / "scratch.txt").write_text("scratch\n", encoding="utf-8")
+    elif condition == "locked":
+        _git(["worktree", "lock", str(wt)], repo)
+    elif condition == "live_session":
+        lifecycle._write_owner(
+            wt, {"session": "other-session", "pid": os.getpid(), "start": lifecycle.process_start(os.getpid()) or ""}
+        )
+    elif condition == "controller":
+        _git(["config", "--worktree", "benchbox.worktree.controller-kind", "bossmode"], wt)
+
+    verdict = _verdicts(repo, _lookup({}))[wt.resolve()]
+
+    assert verdict.verdict == AMBIGUOUS, verdict.reason
+    assert "detached HEAD" in verdict.reason
+    outcome = remove_worktree(verdict, repo, SLUG, _lookup({}))
+    assert outcome.status == "failed"
+    assert wt.exists()
+
+
+def test_detached_head_with_dead_owner_is_removed(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    wt = _detached_worktree(repo, "det-dead", "develop")
+    lifecycle._write_owner(wt, {"session": "gone", "pid": 2**22 + 12345, "start": "never"})
+
+    assert _verdicts(repo, _lookup({}))[wt.resolve()].verdict == REMOVE

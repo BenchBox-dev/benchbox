@@ -192,6 +192,13 @@ def _read_owner(worktree_path: Path) -> Optional[dict[str, Any]]:
     return None
 
 
+def live_session_owner(worktree_path: Path) -> Optional[dict[str, Any]]:
+    record = _read_owner(worktree_path)
+    if record is None or not _owner_alive(str(record["pid"]), record["start"]):
+        return None
+    return record
+
+
 def _write_owner(worktree_path: Path, record: dict[str, Any]) -> None:
     _set_worktree_config("owner", json.dumps(record, sort_keys=True), worktree_path)
 
