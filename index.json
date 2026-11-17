@@ -38556,7 +38556,9 @@
     },
     "site-python-api-scale-factor-range-20261111": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "feature-docs-python-api-scale-factor-range-20261117"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Site Python API pages say only 'Must be positive' for scale_factor"
