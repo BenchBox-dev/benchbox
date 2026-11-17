@@ -19659,6 +19659,13 @@
       "status": "done",
       "title": "DataFusion DataFrame Adapter Implementation"
     },
+    "datafusion-grouped-filtered-n-unique-two-stage-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Decide whether DataFusion grouped `filter(...).n_unique()` needs the two-stage distinct plan"
+    },
     "datafusion-integer-division-truncates-ratios": {
       "claim": null,
       "needs": [],
