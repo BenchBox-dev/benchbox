@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "The guard and the primary-clone check use the override only when it resolves to a worktree listed by git worktree list for the repository being checked; otherwise they fall back to the common directory's parent. A unit test shows a stray override pointing at an unrelated repository no longer lets a relative write into the real primary clone through.",
+    "agent_write_preflight.sh either applies the same rule or keeps its current behaviour with a recorded reason; its tests that point the override at an unrelated directory (_run_preflight in tests/unit/test_agent_write_preflight.py) are updated to build a matching worktree layout rather than weakened.",
+    "Existing tests in tests/unit/test_primary_clone_write_guard.py and tests/unit/test_agent_write_preflight.py pass.",
+    "Decision gate: none needed if the rule above is kept; any alternative, such as removing the override and using another test seam, needs the owner's approval first.",
+    "Guardrails: BENCHBOX_ALLOW_MAIN_CLONE_WRITE=1 still bypasses; the omp hook module is not changed unless its pinned digest in _project/scripts/agent_instruction_audit.py is updated in the same change; no probe writes are left in the primary clone."
+  ],
+  "description": "scripts/primary_clone_write_guard.py, scripts/check_primary_clone_clean.sh and scripts/agent_write_preflight.sh all take the primary clone from BENCHBOX_AGENT_PRIMARY_CLONE when it is set, and trust it without checking it. The variable exists so tests can point the scripts at a scratch repository. On 2026-11-17 it was left exported in an agent shell after a timing test, and claude -p sessions started from that shell inherited it: the hook then treated the scratch repository as the primary clone, and a Write and an Edit landed in the real primary clone (both reverted at once). The preflight backstop reads the same variable, so it would not have reported them either. docs/agent/primary-clone-guard.md warns against leaving it set; nothing enforces that.",
+  "links": [
+    "scripts/primary_clone_write_guard.py",
+    "scripts/check_primary_clone_clean.sh",
+    "scripts/agent_write_preflight.sh",
+    "docs/agent/primary-clone-guard.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f00380ac381b3b759bd4b6a8",
+      "at": "2026-11-17T22:43:03Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "40d92d8a3e2d478db3def790c64600a0",
+      "session_id": "a8b952a2353a43c5b8b6461d5901abad"
+    }
+  ]
+}

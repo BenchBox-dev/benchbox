@@ -33142,6 +33142,13 @@
       "status": "done",
       "title": "Find who writes to the primary clone and stop them now that the dirty guard blocks commits"
     },
+    "primary-clone-override-env-silences-guard-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Ignore a BENCHBOX_AGENT_PRIMARY_CLONE override that is not a worktree of the repository"
+    },
     "primary-clone-unignored-tool-output-paths-20261117": {
       "claim": null,
       "needs": [],
