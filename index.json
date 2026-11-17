@@ -5721,6 +5721,7 @@
     },
     "nightly-remediation": {
       "accepted_members": {
+        "corpus-drift-mirror-grace-20261117": "0f5124ffaba68f569d32f74af48044ac1865b60d",
         "green-sweep-clears-hidden-failures-20261117": "b0a5c1fb2f9576e276bf49d023d082e112c177d2",
         "perf-smoke-method2-baseline-20261117": "a7f125d41862c1ec38f63f7bb79440398fc0fe1d"
       },
@@ -5729,6 +5730,21 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "corpus-drift-mirror-grace-20261117": {
+          "accepted_head": "0f5124ffaba68f569d32f74af48044ac1865b60d",
+          "changed_files": [
+            ".github/workflows/corpus-drift-check.yml",
+            ".github/workflows/nightly-v2.yml",
+            "docs/internal/nightly-t3.md",
+            "docs/internal/results-phase-2-runbook.md",
+            "scripts/corpus_drift.py",
+            "tests/unit/scripts/test_corpus_drift.py",
+            "tests/unit/scripts/test_corpus_drift_canary.py",
+            "tests/unit/test_sync_results_workflow.py"
+          ],
+          "integration_head": "c5b5eebe7280391e07569fc239efdbc4d94ab7f5",
+          "integration_seq": 3
+        },
         "green-sweep-clears-hidden-failures-20261117": {
           "accepted_head": "b0a5c1fb2f9576e276bf49d023d082e112c177d2",
           "changed_files": [
@@ -5754,7 +5770,7 @@
         }
       },
       "integration_branch": "feat/nightly-remediation",
-      "integration_head": "d06acde550ce83feee1fb7287157692271bb68bb",
+      "integration_head": "c5b5eebe7280391e07569fc239efdbc4d94ab7f5",
       "integration_log": [
         {
           "at": "2026-11-17T17:50:03Z",
@@ -5779,6 +5795,15 @@
           "op_id": "b475bf0846c141718073540124113142",
           "previous_head": "d128a89a2228c16abdad4bdf3771dc78212e58c2",
           "seq": 2
+        },
+        {
+          "at": "2026-11-17T19:40:27Z",
+          "head": "c5b5eebe7280391e07569fc239efdbc4d94ab7f5",
+          "kind": "prepare",
+          "member": "corpus-drift-mirror-grace-20261117",
+          "op_id": "e6b47598ecdc4a7aa8d9e71d1c01b374",
+          "previous_head": "d06acde550ce83feee1fb7287157692271bb68bb",
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-nightly-remediation",
@@ -18324,15 +18349,10 @@
       "title": "Corpus-drift canary reports community submissions as drift and recommends deleting them"
     },
     "corpus-drift-mirror-grace-20261117": {
-      "claim": {
-        "expires_at": "2026-11-18T19:40:23Z",
-        "generation": "7a416f4406784c72a5b343131ea2eb0e",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:daba6966dbafa9d0ecd0bd8b"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Let corpus drift pass for 24 hours while a validated mirror PR covers it"
     },
     "corpus-hardware-aware-ranking-identity": {
