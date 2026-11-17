@@ -22289,6 +22289,13 @@
       "status": "done",
       "title": "Audit BenchBox product code for DuckDB 2.0 behaviour changes the pin lift only fixed where tests failed"
     },
+    "duckdb-2-exists-regression-upstream-retime-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Re-time DuckDB TPC-DS Q16/Q94/Q95 when upstream fixes the 2.0 correlated EXISTS regression"
+    },
     "duckdb-2-followups-20261112": {
       "claim": null,
       "needs": [],
