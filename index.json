@@ -23974,6 +23974,13 @@
       "status": "done",
       "title": "Agent docs: record the operational facts sessions kept rediscovering"
     },
+    "feature-feat-tpcdi-current-generator-followups-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "TPC-DI after the specification unit: registry estimates, SF 100 measurement and documented differences"
+    },
     "feature-pr-landing-guards-20261111": {
       "claim": null,
       "needs": [],

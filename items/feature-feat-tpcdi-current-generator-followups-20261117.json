@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The feature pull request is merged and each member item meets its own acceptance or records an owner-approved disposition."
+  ],
+  "context": "Created 2026-11-17 to hold the related items on one feature branch.",
+  "description": "Umbrella for one feature branch and one pull request (feat/tpcdi-current-generator-followups). Members: tpcdi-remaining-spec-differences-20261112, tpcdi-standard-scales-and-estimates-after-unit-change-20261112, tpcdi-sf10-generation-unmeasured-20261112, generator-validation-large-scales-20261111, standard-scales-read-primitives-clickbench-20261112. Owner decisions for every member were recorded on 2026-11-17.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1fad3edb102f5d3974476660",
+      "at": "2026-11-17T15:41:41Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "adf2026f07d042ac9121a077b1b3882d",
+      "session_id": "989657b059c44ae4bade82cb666c453c"
+    }
+  ]
+}
