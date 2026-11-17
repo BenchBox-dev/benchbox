@@ -35157,7 +35157,7 @@
       "needs": [],
       "priority": "medium",
       "status": "open",
-      "title": "remote_closeout reviewer environment tests fail when the caller's LANG is C"
+      "title": "Reviewer-isolation tests in test_remote_closeout fail when the caller's LANG is C"
     },
     "remote-review-claude-fallback-20261019": {
       "claim": null,

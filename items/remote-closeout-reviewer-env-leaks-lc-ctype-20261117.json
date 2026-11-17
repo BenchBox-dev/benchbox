@@ -1,13 +1,14 @@
 {
   "acceptance": [
-    "The reason LC_CTYPE reaches the reviewer environment is recorded here.",
-    "Both tests pass with LC_CTYPE set and unset, and the reviewer environment is still an explicit allowlist.",
-    "`make pr-preflight` passes in a shell with LC_CTYPE set on a branch that selects these tests."
+    "Both tests pass under each of LANG=C, LANG=en_US.UTF-8 and LANG unset, shown by three pytest runs whose commands and results are recorded here.",
+    "The assertions still require exact key-set equality, and a test fails if the launcher passes any variable outside the allowlist (for example a leaked GH_TOKEN), shown by the existing secret-isolation checks still running.",
+    "`make pr-preflight` passes from a LANG=C shell on a branch that selects test_remote_closeout.py."
   ],
-  "context": "2026-11-17 cause found. Not LC_CTYPE from the shell: with `env -u LC_CTYPE` the tests still fail. `scripts/remote_review.py` passes the caller's LANG to the reviewer (lines 405 and 572, default C.UTF-8). The agent harness shell had LANG=C, so the fake reviewer, a Python 3.12 script, ran with LANG=C, and Python's locale coercion (PEP 538) added LC_CTYPE=UTF-8 to its own environment, which the fake then dumps to env.json. With LANG=en_US.UTF-8, or LANG unset, both tests pass. So the reviewer launcher does not leak anything; the tests report the fake's own coerced environment. Likely fix: have the fakes exclude interpreter-added variables (as they already exclude __CF_USER_TEXT_ENCODING), or set PYTHONCOERCECLOCALE=0 for the fake; decision gate still applies.",
-  "description": "On 2026-11-17 two tests in tests/unit/scripts/test_remote_closeout.py failed on unmodified develop and on a branch that does not touch remote_closeout: `test_the_reviewer_runs_isolated_from_user_config_secrets_and_the_network` and `test_claude_is_confined_to_read_only_tools_and_an_isolated_login`. Each asserts the reviewer's environment is exactly {PATH, HOME, LANG} (plus CODEX_HOME for one), and got LC_CTYPE as well. The shell had `LC_CTYPE=en_US.UTF-8` (a macOS terminal default). With `env -u LC_CTYPE` the tests pass, and `make pr-preflight` fails on every branch whose changes select these tests while the variable is set.\n\nDecision gate: find which side is wrong. If the reviewer launch passes LC_CTYPE through on purpose (or through a locale allowlist), the test should allow it; if the reviewer is meant to get only PATH, HOME and LANG, the launcher leaks it and must drop it. The isolation the test protects is a security property, so do not widen the assertion without that decision.\n\nGuardrails: no entry in the preflight known-failures list; no skip.",
+  "context": "2026-11-17 cause found. Not LC_CTYPE from the shell: with `env -u LC_CTYPE` the tests still fail. `scripts/remote_review.py` passes the caller's LANG to the reviewer (lines 405 and 572, default C.UTF-8). The agent harness shell had LANG=C, so the fake reviewer, a Python 3.12 script, ran with LANG=C, and Python's locale coercion (PEP 538) added LC_CTYPE=UTF-8 to its own environment, which the fake then dumps to env.json. With LANG=en_US.UTF-8, or LANG unset, both tests pass. So the reviewer launcher does not leak anything; the tests report the fake's own coerced environment. Likely fix: have the fakes exclude interpreter-added variables (as they already exclude __CF_USER_TEXT_ENCODING), or set PYTHONCOERCECLOCALE=0 for the fake; decision gate still applies.\n\n2026-11-17 TODO review: description rewritten to the confirmed cause (LANG=C plus PEP 538 coercion inside the fake), not the first guess about LC_CTYPE from the shell. Verification rubric: pass = the three acceptance points with recorded commands; fail = any loosened assertion, skip, known-failures entry, or a launcher allowlist change without option (c)'s evidence. Base guardrails: linked worktree only; one PR; comment policy; no changelog fragment (tests only).",
+  "description": "Two tests in tests/unit/scripts/test_remote_closeout.py fail on unmodified develop when the shell running pytest has `LANG=C` (the omp agent harness default): `test_the_reviewer_runs_isolated_from_user_config_secrets_and_the_network` and `test_claude_is_confined_to_read_only_tools_and_an_isolated_login`. Each asserts the reviewer's environment keys are exactly {PATH, HOME, LANG} (plus CODEX_HOME for the Codex case), minus `__CF_USER_TEXT_ENCODING`, and finds an extra `LC_CTYPE`.\n\nCause, observed 2026-11-17: `scripts/remote_review.py` passes the caller's LANG to the reviewer (`os.environ.get(\"LANG\", \"C.UTF-8\")`, two call sites). The fake reviewers in the test are Python scripts that dump `dict(os.environ)` to env.json. With LANG=C, Python's locale coercion (PEP 538) sets `LC_CTYPE=UTF-8` in the fake's own environment at start-up, so the dump shows a variable the launcher never passed. With `LANG=en_US.UTF-8` or LANG unset, both tests pass; `env -u LC_CTYPE` does not help. Impact: `make pr-preflight` fails for every branch whose changes select these tests (anything importing pr_arm, pr_landing or remote_review) when run from a LANG=C shell, which pushes agents toward known-failures entries or ad-hoc LANG overrides.\n\nDecision gate (implementer decides, records why here):\n(a) start the fakes with `PYTHONCOERCECLOCALE=0` so they report exactly what the launcher passed (recommended: keeps the assertion exact and tests the launcher, not the interpreter);\n(b) have the fake drop variables the interpreter adds, as it already drops `__CF_USER_TEXT_ENCODING`;\n(c) change the launcher's LANG handling. Choose (c) only if the reviewer is shown to misbehave under LANG=C; that is a security-relevant change to an isolation allowlist and needs its own justification.\n\nGuardrails: the reviewer environment stays an explicit allowlist and the assertions stay exact equality; no known-failures entry, skip or xfail; no change to which variables the launcher passes unless option (c) is chosen with the evidence above.",
   "links": [
     "tests/unit/scripts/test_remote_closeout.py",
+    "scripts/remote_review.py",
     "scripts/remote_closeout.py"
   ],
   "sessions": [
@@ -25,6 +26,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "f4a18487150e48f28a618a169de7855d",
+      "session_id": "218a128d0f8a45baa26cfaa946b2d790"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:018071991691f1918967a0cb",
+      "at": "2026-11-17T15:24:02Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "602256c19120435eb71de7744587ee32",
       "session_id": "218a128d0f8a45baa26cfaa946b2d790"
     }
   ]
