@@ -26,6 +26,7 @@ NOT_CARRIED = {
     "tests/unit/scripts/test_release_maintenance_admission.py": "tests the creation and admission scripts",
     "tests/unit/scripts/test_soundness_merge_digest.py": "tests the merge digest script",
     "tests/unit/scripts/test_soundness_merge_digest_dispatch.py": "tests the merge digest dispatch",
+    "tests/unit/scripts/test_theseus_prefetch.py": "tests the preflight prefetch on a scratch lock",
     "tests/unit/test_cloud_builder_scripts.py": "tests the cloud builder scripts",
     "tests/unit/workflows/test_batch_loop_e2e_workflow.py": "tests the batch-loop workflow",
     "tests/unit/workflows/test_ci_changelog_gate.py": "tests the changelog gate workflow",
