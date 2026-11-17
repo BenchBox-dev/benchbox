@@ -139,7 +139,10 @@ def capture_starrocks_evidence(
             ("be.out", "be/log/be.out"),
         ):
             collect(name, [*execute, "sh", "-c", _log_script(pattern)])
-        collect("fe-gc.log", [*execute, "sh", "-c", _log_script("fe/log/fe.gc.log.*", limit=_FILE_BYTES // 8, count=8)])
+        collect(
+            "fe-gc.log",
+            [*execute, "sh", "-c", _log_script("fe/log/fe.gc.log.*", limit=(_FILE_BYTES - 8192) // 8, count=8)],
+        )
         collect(
             "backends.txt",
             [
