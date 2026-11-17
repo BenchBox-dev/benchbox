@@ -1718,16 +1718,21 @@
   {
    "disposition": "wiring-updated",
    "kinds": {
+    "extra": 1,
     "root": 1
    },
-   "occurrences": 1,
+   "occurrences": 4,
    "path": "_project/scripts/preflight_targets.py",
    "rule": "project-tooling",
-   "target_count": 1,
+   "target_count": 2,
    "targets": [
     {
      "kind": "root",
      "target": "docs/"
+    },
+    {
+     "kind": "extra",
+     "target": "quality/docs-ownership.json"
     }
    ]
   },
@@ -3968,14 +3973,20 @@
   {
    "disposition": "fixture-data",
    "kinds": {
+    "extra": 1,
+    "file": 2,
     "pattern": 1,
     "unresolved": 4
    },
-   "occurrences": 10,
+   "occurrences": 14,
    "path": "tests/unit/scripts/test_preflight_targets.py",
    "rule": "test-sample-data",
-   "target_count": 5,
+   "target_count": 8,
    "targets": [
+    {
+     "kind": "file",
+     "target": "docs/README.md"
+    },
     {
      "kind": "unresolved",
      "target": "docs/guide.md"
@@ -3995,6 +4006,14 @@
     {
      "kind": "unresolved",
      "target": "docs/operations/table.tsv"
+    },
+    {
+     "kind": "file",
+     "target": "docs/publish-allowlist.txt"
+    },
+    {
+     "kind": "extra",
+     "target": "quality/docs-ownership.json"
     }
    ]
   },
@@ -4343,14 +4362,14 @@
   "kinds": {
    "built-url": 29037,
    "dir": 163,
-   "extra": 39,
-   "file": 1380,
+   "extra": 43,
+   "file": 1382,
    "generated": 3,
    "pattern": 335,
-   "root": 203,
+   "root": 204,
    "unresolved": 2072
   },
-  "references": 33232,
+  "references": 33239,
   "unclassified": 0
  }
 }

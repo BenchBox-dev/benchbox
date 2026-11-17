@@ -36,11 +36,19 @@ REVIEW_CONSUMER_TESTS = (
     "tests/unit/workflows/test_review_verdict_workflow.py",
 )
 WORKFLOW_TESTS_ROOT = "tests/unit/workflows/"
+SHIPPED_DOCS_URL_TEST = "tests/unit/cli/test_shipped_docs_urls.py"
 SOURCE_GUARD_TESTS: dict[str, tuple[str, ...]] = {
+    "README.md": (SHIPPED_DOCS_URL_TEST,),
+    "CONTRIBUTING.md": (SHIPPED_DOCS_URL_TEST,),
+    "docs/": (SHIPPED_DOCS_URL_TEST,),
+    "examples/": (SHIPPED_DOCS_URL_TEST,),
+    "docker/velox/README.md": (SHIPPED_DOCS_URL_TEST,),
+    "results-data/": (SHIPPED_DOCS_URL_TEST,),
+    "quality/docs-ownership.json": (SHIPPED_DOCS_URL_TEST,),
     "benchbox/": (
         "tests/system/test_module_size_thresholds.py",
         "tests/unit/cli/test_output_control_static.py",
-        "tests/unit/cli/test_shipped_docs_urls.py",
+        SHIPPED_DOCS_URL_TEST,
         "tests/unit/core/tpcdi/test_tpcdi_no_values_row_source.py",
         "tests/unit/platforms/test_credential_error_messages.py",
     ),
@@ -379,6 +387,7 @@ READERS_INDEX_TEST = "tests/unit/scripts/test_inert_paths.py::test_checked_in_re
 REFERENCE_GUARDS = ("docs-reference-inventory", "project-references")
 OWNERSHIP_GUARD = "docs-ownership"
 DOCS_ROOT = "docs/"
+OWNERSHIP_PATHS = ("README.md", "quality/docs-ownership.json")
 
 
 def _load_inert_paths() -> Any:
@@ -444,7 +453,7 @@ def guards(paths: list[str]) -> list[str]:
     selected: list[str] = []
     if paths:
         selected.extend(REFERENCE_GUARDS)
-    if any(path.startswith(DOCS_ROOT) for path in paths):
+    if any(path.startswith(DOCS_ROOT) or path in OWNERSHIP_PATHS for path in paths):
         selected.append(OWNERSHIP_GUARD)
     return selected
 
@@ -487,6 +496,8 @@ def map_tests(repo: Path, paths: list[str], *, doc_readers: bool = False) -> lis
             if module != "__init__":
                 selected.update(index.get(f"test_{module}.py", ()))
             selected.update(_platform_smoke_tests(path, test_files))
+            selected.update(_guard_tests(path, test_files))
+        else:
             selected.update(_guard_tests(path, test_files))
     if doc_readers:
         selected.update(_reader_tests(repo, paths, test_files))

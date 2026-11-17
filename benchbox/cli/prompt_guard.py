@@ -21,6 +21,20 @@ def confirm_or_refuse(action: str, *, flag: str, ask: Callable[[], bool]) -> boo
         _refuse(action, flag)
 
 
+def exit_without_answer(action: str, *, instead: str) -> None:
+    console.print(
+        f"\n[red]❌ Cannot continue: {action} needs answers, and no answer could be read from the terminal.[/red]\n"
+        f"   {instead}"
+    )
+    sys.exit(ExitCode.ACKNOWLEDGEMENT_REQUIRED)
+
+
+def answer_unavailable(error: BaseException) -> bool:
+    if isinstance(error, EOFError):
+        return True
+    return isinstance(error, click.Abort) and is_non_interactive_session()
+
+
 def _refuse(action: str, flag: str) -> None:
     console.print(
         f"\n[red]❌ Refused: {action} needs confirmation, and no answer could be read from the terminal.[/red]\n"

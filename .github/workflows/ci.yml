@@ -206,6 +206,7 @@ jobs:
       trunk-lane-coverage-needed: ${{ steps.path-flags.outputs.trunk-lane-coverage-needed }}
       estimated-runner-minutes-saved: ${{ steps.classify.outputs.estimated-runner-minutes-saved }}
       packaging-needed: ${{ steps.classify.outputs.packaging-needed }}
+      first-command-needed: ${{ steps.classify.outputs.first-command-needed }}
       framing-needed: ${{ steps.classify.outputs.framing-needed }}
       viz-needed: ${{ steps.classify.outputs.viz-needed }}
       heavy-needed: ${{ steps.heavy.outputs.heavy-needed }}
@@ -1620,7 +1621,7 @@ jobs:
   package-smoke:
     name: package-smoke
     needs: ci-paths
-    if: ${{ needs.ci-paths.outputs.packaging-needed == 'true' }}
+    if: ${{ needs.ci-paths.outputs.packaging-needed == 'true' || needs.ci-paths.outputs.first-command-needed == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -1840,7 +1841,7 @@ jobs:
             --expect tuning-liveness=${{ needs.ci-paths.outputs.tuning-paths-changed == 'true' }} \
             --expect sql-execution-evidence=${{ needs.ci-paths.outputs.sql-evidence-paths-changed == 'true' }} \
             --expect windows-tests=${{ needs.ci-paths.outputs.windows-leg-needed == 'true' }} \
-            --expect package-smoke=${{ needs.ci-paths.outputs.packaging-needed == 'true' }} \
+            --expect package-smoke=${{ needs.ci-paths.outputs.packaging-needed == 'true' || needs.ci-paths.outputs.first-command-needed == 'true' }} \
             --expect dependency-audit=${{ needs.ci-paths.outputs.packaging-needed == 'true' }} \
             --expect trunk-lane-plain=${{ needs.ci-paths.outputs.trunk-lane-plain-needed == 'true' }} \
             --expect trunk-lane-coverage=${{ needs.ci-paths.outputs.trunk-lane-coverage-needed == 'true' }} || {

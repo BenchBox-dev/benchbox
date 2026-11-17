@@ -10,9 +10,12 @@ from rich.panel import Panel
 from rich.prompt import Confirm
 from rich.table import Table
 
-from benchbox.cli.prompt_guard import confirm_or_refuse
+from benchbox.cli.exit_codes import ExitCode, exit_code_help
+from benchbox.cli.prompt_guard import answer_unavailable, confirm_or_refuse, exit_without_answer
 from benchbox.cli.shared import console
 from benchbox.security.credentials import CredentialManager, CredentialStatus
+
+SETUP_EXIT_CODES = (ExitCode.SUCCESS, ExitCode.ERROR, ExitCode.ACKNOWLEDGEMENT_REQUIRED)
 
 SUPPORTED_SETUP_PLATFORMS = (
     "databricks",
@@ -59,7 +62,11 @@ PLATFORM_DISPLAY_NAMES = {
         "    benchbox setup --status                 # Check credential status\n"
         "    benchbox setup --platform databricks --validate-only  # Validate only\n"
         "    benchbox setup --platform redshift --diagnose         # Run connectivity diagnostics\n"
-        "    benchbox setup --platform databricks --remove         # Remove credentials (--yes skips the prompt)"
+        "    benchbox setup --platform databricks --remove         # Remove credentials (--yes skips the prompt)\n"
+        "\n"
+        "\b\n"
+        "Exit codes:\n"
+        f"{exit_code_help(SETUP_EXIT_CODES)}"
     ),
 )
 @click.option(
@@ -424,6 +431,13 @@ def run_platform_credential_setup(platform: str, console_obj, show_welcome: bool
             console_obj.print(f"[red]❌ Setup not implemented for {platform}[/red]")
             return False
 
+    except (EOFError, click.Abort) as e:
+        if not answer_unavailable(e):
+            raise
+        exit_without_answer(
+            f"the {platform} credential setup wizard",
+            instead="Run it in a terminal, or edit ~/.benchbox/credentials.yaml directly (see: benchbox setup --help).",
+        )
     except ImportError as e:
         console_obj.print(f"[red]❌ Setup module not available: {e}[/red]")
         console_obj.print("\nThis platform may not have guided setup yet.")

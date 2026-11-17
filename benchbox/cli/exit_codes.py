@@ -28,7 +28,7 @@ EXIT_CODE_MEANINGS: dict[ExitCode, str] = {
         "BENCHBOX_DRIVER_AUTO_INSTALL=1; submit --service: a non-interactive hosted upload was refused without "
         "an acknowledgement; publish: the maintainer-run label was refused without "
         "BENCHBOX_ALLOW_MAINTAINER_LABEL=1; setup --remove, export, publish remove: a confirmation prompt had "
-        "no terminal to answer it"
+        "no terminal to answer it; setup --platform: the credential wizard could read no answer"
     ),
 }
 

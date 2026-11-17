@@ -20,6 +20,8 @@ from benchbox.cli.run_resolution import ResolvedRunPlan, RunRequest, merge_quick
 
 __import__("benchbox.cli.commands.run")
 _run_module = sys.modules["benchbox.cli.commands.run"]
+__import__("benchbox.cli.run_interactive")
+_interactive_module = sys.modules["benchbox.cli.run_interactive"]
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -247,7 +249,7 @@ def test_explicit_field_detection_is_symmetric_for_persisted_concurrency():
         click.core.ParameterSource.COMMANDLINE if field == "concurrency" else click.core.ParameterSource.DEFAULT
     )
 
-    assert _run_module._explicit_run_fields(SimpleNamespace(ctx=ctx)) == frozenset({"concurrency"})
+    assert _interactive_module._explicit_run_fields(SimpleNamespace(ctx=ctx)) == frozenset({"concurrency"})
 
 
 def test_legacy_saved_request_without_iterations_is_compatible_but_non_exact():
@@ -320,7 +322,7 @@ def test_current_request_accounts_for_every_active_non_replayable_execution_cont
         validation=ValidationConfig(mode="full"),
     )
 
-    request = _run_module._current_run_request(state)
+    request = _interactive_module._current_run_request(state)
 
     assert request.iterations == 5
     assert request.non_replayable_options == (
@@ -371,21 +373,21 @@ def _live_state(concurrency):
 
 def test_current_request_rejects_zero_concurrency():
     with pytest.raises(ValueError, match="at least one"):
-        _run_module._current_run_request(_live_state(0))
+        _interactive_module._current_run_request(_live_state(0))
 
 
 def test_current_request_rejects_non_integer_concurrency():
     with pytest.raises(ValueError, match="must be an integer"):
-        _run_module._current_run_request(_live_state("lots"))
+        _interactive_module._current_run_request(_live_state("lots"))
 
 
 def test_current_request_leaves_missing_concurrency_unset():
-    assert _run_module._current_run_request(_live_state(None)).concurrency is None
+    assert _interactive_module._current_run_request(_live_state(None)).concurrency is None
 
 
 def test_current_request_keeps_valid_concurrency():
-    assert _run_module._current_run_request(_live_state(4)).concurrency == 4
-    assert _run_module._current_run_request(_live_state("3")).concurrency == 3
+    assert _interactive_module._current_run_request(_live_state(4)).concurrency == 4
+    assert _interactive_module._current_run_request(_live_state("3")).concurrency == 3
 
 
 @pytest.mark.parametrize(
@@ -512,10 +514,10 @@ def test_failed_quick_restart_resolution_restores_state_and_environment(monkeypa
         os.environ["BENCHBOX_NON_INTERACTIVE"] = "partial"
         raise RuntimeError("resolution failed")
 
-    monkeypatch.setattr(_run_module, "_resolve_run_request", fail_after_partial_write)
+    monkeypatch.setattr(_interactive_module, "_resolve_run_request", fail_after_partial_write)
 
     with pytest.raises(RuntimeError, match="resolution failed"):
-        _run_module._resolve_quick_restart_atomically(
+        _interactive_module._resolve_quick_restart_atomically(
             state,
             {"database": "duckdb", "benchmark": "tpch", "scale": 1, "seed": 7},
         )
@@ -544,9 +546,9 @@ def test_successful_quick_restart_preserves_non_interactive_environment(monkeypa
         os.environ["BENCHBOX_NON_INTERACTIVE"] = "partial"
         subject.resolved_run_plan = resolved_plan
 
-    monkeypatch.setattr(_run_module, "_resolve_run_request", resolve_successfully)
+    monkeypatch.setattr(_interactive_module, "_resolve_run_request", resolve_successfully)
 
-    result = _run_module._resolve_quick_restart_atomically(
+    result = _interactive_module._resolve_quick_restart_atomically(
         state,
         {"database": "duckdb", "benchmark": "tpch", "scale": 1, "seed": 7},
     )
@@ -632,7 +634,7 @@ def test_normal_interactive_finalization_refreshes_plan_when_selectors_and_phase
         stats_reset=None,
         stats_per_table_timing=False,
     )
-    state.run_request = _run_module._current_run_request(state)
+    state.run_request = _interactive_module._current_run_request(state)
     original_plan = _run_module._capture_resolved_run_plan(state)
     state.resolved_run_plan = original_plan
 
@@ -651,7 +653,7 @@ def test_normal_interactive_finalization_refreshes_plan_when_selectors_and_phase
     state.benchmark_config.compression_type = wizard_compression.type
     state.benchmark_config.compression_level = wizard_compression.level
 
-    _run_module._finalize_normal_interactive_plan(state)
+    _interactive_module._finalize_normal_interactive_plan(state)
 
     plan = state.resolved_run_plan
     assert (plan.platform_key, plan.benchmark, plan.scale, plan.phases) == (
@@ -710,7 +712,7 @@ def test_normal_interactive_finalization_refreshes_plan_when_selectors_and_phase
     state.benchmark_option_pairs = ()
     preview = Mock()
     monkeypatch.setattr("benchbox.cli.dryrun.display_interactive_preview", preview)
-    _run_module._interactive_show_preview(state)
+    _interactive_module._interactive_show_preview(state)
     assert preview.call_args.kwargs["phases"] == list(plan.phases)
     assert preview.call_args.kwargs["table_mode"] == plan.table_mode
     assert preview.call_args.kwargs["tuning"] is None
@@ -781,6 +783,6 @@ def test_finalization_propagates_the_wizard_official_choice_into_the_config() ->
     )
     assert state.benchmark_config.official is False
 
-    _run_module._finalize_normal_interactive_plan(state)
+    _interactive_module._finalize_normal_interactive_plan(state)
 
     assert state.benchmark_config.official is True
