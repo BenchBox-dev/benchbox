@@ -4,6 +4,7 @@ import dataclasses
 import os
 import stat
 import sys
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -272,7 +273,7 @@ SPIN_CWD = "/work/BenchBox.wt-spin"
 
 def spin_fixture(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, alive: bool = True, sentinel_running: bool = True
-) -> None:
+) -> Callable[[list[str]], Iterator[object]]:
     from benchbox.utils import orphan_spin
 
     spin = orphan_spin.ActiveSpin(
@@ -306,15 +307,14 @@ def spin_fixture(
                 "cpu_times": SimpleNamespace(user=1.0, system=0.0),
             }
 
-    monkeypatch.setattr(orphan_spin.psutil, "process_iter", lambda attrs: iter([Proc()] if alive else []))
-    monkeypatch.setattr(orphan_spin.time, "time", lambda: 1600.0)
+    return lambda attrs: iter([Proc()] if alive else [])
 
 
 def test_status_prints_an_active_orphan_report_with_pid_cwd_cpu_share_and_age(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    spin_fixture(tmp_path, monkeypatch)
-    text = hs.render(collect(spin_reader=None))
+    table = spin_fixture(tmp_path, monkeypatch)
+    text = hs.render(collect(spin_reader=lambda: hs.read_active_spins(processes=table)), now=1600.0)
     assert "ORPHAN SPIN pid 4242" in text
     assert "97% CPU" in text
     assert "busy 600s" in text
@@ -328,16 +328,15 @@ def test_status_is_unchanged_without_an_active_orphan_report(tmp_path: Path) -> 
 
 
 def test_a_report_for_an_exited_shell_is_not_printed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    spin_fixture(tmp_path, monkeypatch, alive=False)
-    assert "ORPHAN SPIN" not in hs.render(collect())
+    table = spin_fixture(tmp_path, monkeypatch, alive=False)
+    assert "ORPHAN SPIN" not in hs.render(collect(spin_reader=lambda: hs.read_active_spins(processes=table)))
 
 
 def test_a_report_is_not_printed_when_the_sentinel_that_wrote_it_is_gone(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    spin_fixture(tmp_path, monkeypatch, sentinel_running=False)
-    assert "ORPHAN SPIN" not in hs.render(collect())
-    assert hs.active_spin_lines() == []
+    table = spin_fixture(tmp_path, monkeypatch, sentinel_running=False)
+    assert hs.read_active_spins(processes=table) == ()
 
 
 def test_admission_prints_the_report_and_still_admits(
@@ -345,10 +344,14 @@ def test_admission_prints_the_report_and_still_admits(
 ) -> None:
     from benchbox.utils import resource_limits
 
-    spin_fixture(tmp_path, monkeypatch)
+    table = spin_fixture(tmp_path, monkeypatch)
     monkeypatch.setattr(resource_limits, "admit_heavy_work", lambda policy, force=False: ADMITTED)
     monkeypatch.setattr(resource_limits, "format_admission_report", lambda result, policy: "admitted")
-    assert hl.check_admission(environ=dict(os.environ)) == "admitted"
+
+    def spin_lines(environ):
+        return hs._spin_block(hs.read_active_spins(environ, processes=table), 1600.0)
+
+    assert hl.check_admission(environ=dict(os.environ), spin_lines=spin_lines) == "admitted"
     assert "ORPHAN SPIN pid 4242" in capsys.readouterr().err
 
 

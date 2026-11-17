@@ -240,22 +240,26 @@ def orphan_spin_path(environ: Mapping[str, str] | None = None) -> Path:
     return sentinel_state_dir(environ) / orphan_spin.ACTIVE_NAME
 
 
-def read_active_spins(environ: Mapping[str, str] | None = None) -> tuple[Any, ...]:
+def read_active_spins(
+    environ: Mapping[str, str] | None = None,
+    *,
+    processes: Callable[[list[str]], Iterable[Any]] | None = None,
+) -> tuple[Any, ...]:
     from benchbox.utils import orphan_spin
 
     if not read_sentinel_state(environ).running:
         return ()
-    return tuple(orphan_spin.read_active(orphan_spin_path(environ)))
+    return tuple(orphan_spin.read_active(orphan_spin_path(environ), processes=processes))
 
 
-def _spin_block(spins: Sequence[Any]) -> list[str]:
+def _spin_block(spins: Sequence[Any], now: float | None = None) -> list[str]:
     from benchbox.utils import orphan_spin
 
     if not spins:
         return []
     lines = ["WARNING orphaned CPU-bound shells reported by the sentinel (never signalled; stopping one is your call):"]
     for spin in spins:
-        lines.extend(orphan_spin.describe_active(spin))
+        lines.extend(orphan_spin.describe_active(spin, now))
     return lines
 
 
@@ -507,8 +511,8 @@ def _render_orphans(reading: StatusReading) -> list[str]:
     return lines
 
 
-def _render_spins(reading: StatusReading) -> list[str]:
-    return _spin_block(reading.spins)
+def _render_spins(reading: StatusReading, now: float | None) -> list[str]:
+    return _spin_block(reading.spins, now)
 
 
 def _render_sentinel(reading: StatusReading) -> list[str]:
@@ -551,7 +555,7 @@ def _render_git_flood(reading: StatusReading) -> list[str]:
     return lines
 
 
-def render(reading: StatusReading, environ: Mapping[str, str] | None = None) -> str:
+def render(reading: StatusReading, environ: Mapping[str, str] | None = None, *, now: float | None = None) -> str:
     sections = (
         _render_lock(reading),
         _render_pressure(reading, environ),
@@ -561,7 +565,7 @@ def render(reading: StatusReading, environ: Mapping[str, str] | None = None) -> 
         _render_top(reading),
         _render_top_cpu(reading),
         _render_orphans(reading),
-        _render_spins(reading),
+        _render_spins(reading, now),
     )
     return "\n".join(line for section in sections for line in section)
 
