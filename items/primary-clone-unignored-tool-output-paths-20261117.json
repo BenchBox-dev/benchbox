@@ -1,12 +1,12 @@
 {
   "acceptance": [
-    "Decision gate: the owner decides, path by path, whether to ignore tmp/, output/, results/ and *.log, because they may hold output the owner wants Git to show. The recommendation is to ignore the five tool-cache directories (.mypy_cache/, .ty_cache/, .serena/, .cursor/, .playwright-mcp/) without further discussion. The decision is recorded on this item before any edit.",
-    "Each path the owner chose to ignore is added to .gitignore, and git check-ignore --no-index confirms it; each path left out has its reason recorded here.",
-    "git ls-files -ci --exclude-standard is empty after the change, so no tracked file becomes ignored.",
+    "Decision gate: the eight tool-output paths (.mypy_cache/, .ty_cache/, .dmypy.json, .serena/, .cursor/, .playwright-mcp/, .benchmarks/, .ipynb_checkpoints/) may be added to .gitignore without waiting. tmp/, output/, results/ and *.log wait for the owner's decision path by path, recorded here, because they may hold output the owner wants Git to show. If the owner has not decided, ship the eight alone and leave the other four listed as open in the context.",
+    "For each added path, git check-ignore -q --no-index <path> exits 0. Each path left out has its reason recorded here.",
+    "git ls-files -ci --exclude-standard gives identical output before and after the change (121 lines on 2026-11-17; compare with diff), so no tracked file becomes ignored.",
     "tests/unit/test_agent_write_preflight.py and make pr-preflight pass.",
     "Guardrails: ignoring belongs in .gitignore only. No allowlist or exemption is added to scripts/check_primary_clone_clean.sh, and the check's coverage of tracked and untracked files is not reduced. No path that holds source, docs or test fixtures is ignored."
   ],
-  "description": "Since PR #4265 (merged as 04929364fb), a new untracked file in the primary clone that .gitignore does not cover fails make agent-write-preflight for every session whose snapshot was taken earlier, until the file is removed or the session re-records its snapshot with BENCHBOX_PRIMARY_SNAPSHOT_REFRESH=1. On 2026-11-17, git check-ignore --no-index showed these paths are not ignored, and no tracked file lives under any of them: .mypy_cache/, .ty_cache/, .serena/, .cursor/, .playwright-mcp/, tmp/, output/, results/ and *.log. Type checkers, MCP servers, editors and ad-hoc runs create them. None exist in the primary clone today, and the live check reports nothing, so this is a latent false failure, not a current one.",
+  "description": "Since PR #4265 (merged as 04929364fb), a new untracked file in the primary clone that .gitignore does not cover fails make agent-write-preflight for every session whose snapshot was taken earlier, until the file is removed or the session re-records its snapshot with BENCHBOX_PRIMARY_SNAPSHOT_REFRESH=1. On 2026-11-17, git check-ignore --no-index showed these tool-output paths are not ignored, and no tracked file lives under any of them: .mypy_cache/, .ty_cache/, .dmypy.json, .serena/, .cursor/, .playwright-mcp/, .benchmarks/ (pytest-benchmark is a dev dependency), .ipynb_checkpoints/, and the scratch paths tmp/, output/, results/ and *.log. Type checkers, MCP servers, editors, notebooks and ad-hoc runs create them. None exist in the primary clone today, and the live check reports nothing, so this is a latent false failure, not a current one. Related one-time effect, not a separate defect: sessions whose snapshot predates #4265 recorded no untracked files, so any untracked, non-ignored file then present would be reported once; BENCHBOX_PRIMARY_SNAPSHOT_REFRESH=1 or a new session clears it, and none exist today.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4265",
     ".gitignore",
@@ -20,6 +20,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "b1d51e077c2c4a4195f7ded6d3c76370",
+      "session_id": "a8b952a2353a43c5b8b6461d5901abad"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f00380ac381b3b759bd4b6a8",
+      "at": "2026-11-17T21:28:31Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "16990af56e3940d294c47f3576cc9780",
       "session_id": "a8b952a2353a43c5b8b6461d5901abad"
     }
   ]
