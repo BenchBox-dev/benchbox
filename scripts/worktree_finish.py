@@ -17,7 +17,6 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from _project.scripts.worktree_audit import (
-    RELEASE_LINE_RE,
     _parse_worktree_porcelain_entries,
     are_descendants_integrated,
     fetch_prs_for_branch,
@@ -26,6 +25,7 @@ from _project.scripts.worktree_audit import (
     get_remote_repository_slug,
     is_ancestor,
     is_pr_merged,
+    is_release_line,
     is_structural_base,
     resolve_github_token,
     resolve_repository_identity,
@@ -36,7 +36,7 @@ from scripts.branch_prune_merged import (
 )
 from scripts.worktree_lifecycle_metadata import (
     WorktreeLifecycleMetadata,
-    live_session_owner,
+    owner_blocks_removal,
     read_metadata,
 )
 
@@ -134,6 +134,26 @@ def apply_finish_actions(
             )
             return False, None, executed
         executed.append({"action": "tool_temp_cleanup", "command": f"unlink {temp_file}", "outcome": outcome})
+    if res.detached:
+        _run_git(["worktree", "lock", "--reason", "benchbox worktree finish", res.target_path], git_cwd)
+        head_code, locked_head, _ = _run_git(["rev-parse", "HEAD"], Path(res.target_path))
+        safe = (
+            head_code == 0
+            and locked_head.lower() == res.expected_head.lower()
+            and _detached_removal_safe(
+                Path(res.target_path), res.expected_head.lower(), repo_root, None, lambda _b: None
+            )
+        )
+        _run_git(["worktree", "unlock", res.target_path], git_cwd)
+        if not safe:
+            executed.append(
+                {
+                    "action": "detached_recheck",
+                    "command": f"git worktree lock {res.target_path}",
+                    "outcome": "worktree changed or no longer provably integrated - no mutation performed",
+                }
+            )
+            return False, None, executed
     code, _, stderr = _run_git(["worktree", "remove", res.target_path], git_cwd)
     executed.append(
         {
@@ -322,16 +342,41 @@ def _dirty_reason(target_path: Path, tool_temp_files: Optional[List[str]]) -> Op
     return "Worktree is not removable as unpublished: " + "; ".join(details)
 
 
-def _integration_refs(repo_root: Path, refresh_target: Optional[TargetRefresher]) -> List[str]:
+IN_PROGRESS_MARKERS = ("rebase-merge", "rebase-apply", "BISECT_LOG", "MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD")
+IGNORED_CACHE_NAMES = frozenset(
+    {"__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache", ".venv", "node_modules", ".DS_Store"}
+)
+
+
+def _integration_refs(repo_root: Path, refresh_target: Optional[TargetRefresher]) -> Optional[List[str]]:
     code, stdout, _ = _run_git(["for-each-ref", "--format=%(refname:short)", "refs/remotes/origin/release"], repo_root)
-    lines = stdout.splitlines() if code == 0 else []
+    if code != 0:
+        return None
     bases = ["develop"] + sorted(
-        base for base in (line.removeprefix("origin/") for line in lines) if RELEASE_LINE_RE.match(base)
+        base for base in (line.removeprefix("origin/") for line in stdout.splitlines()) if is_release_line(base)
     )
     refresh = refresh_target or (lambda base: refresh_target_ref(base, repo_root))
     for base in bases:
-        refresh(base)
+        if refresh(base):
+            return None
     return [f"origin/{base}" for base in bases]
+
+
+def _operation_in_progress(target_path: Path) -> bool:
+    code, git_dir, _ = _run_git(["rev-parse", "--absolute-git-dir"], target_path)
+    if code != 0 or not git_dir:
+        return True
+    return any((Path(git_dir) / marker).exists() for marker in IN_PROGRESS_MARKERS)
+
+
+def _has_foreign_ignored_files(target_path: Path) -> bool:
+    code, stdout, _ = _run_git(["status", "--porcelain", "--ignored"], target_path)
+    if code != 0:
+        return True
+    for line in stdout.splitlines():
+        if line.startswith("!! ") and not IGNORED_CACHE_NAMES.intersection(Path(line[3:]).parts):
+            return True
+    return False
 
 
 def _detached_is_integrated(
@@ -344,14 +389,33 @@ def _detached_is_integrated(
     head = str(entry.get("HEAD") or "").lower()
     if not HEX_40_RE.match(head) or entry.get("locked"):
         return False
-    if _dirty_reason(target_path, tool_temp_files):
+    return _detached_removal_safe(target_path, head, repo_root, tool_temp_files, refresh_target)
+
+
+def _detached_removal_safe(
+    target_path: Path,
+    head: str,
+    repo_root: Path,
+    tool_temp_files: Optional[List[str]],
+    refresh_target: Optional[TargetRefresher],
+) -> bool:
+    if _dirty_reason(target_path, tool_temp_files) or _has_foreign_ignored_files(target_path):
+        return False
+    if _operation_in_progress(target_path):
         return False
     meta = read_metadata(target_path)
     if meta.provenance_state != "managed" or meta.controller_kind not in (None, "", "none", "manual"):
         return False
-    if live_session_owner(target_path):
+    if owner_blocks_removal(target_path):
         return False
-    return any(is_ancestor(head, ref, repo_root) for ref in _integration_refs(repo_root, refresh_target))
+    refs = _integration_refs(repo_root, refresh_target)
+    if not refs:
+        return False
+    code, stdout, _ = _run_git(["rev-list", "-g", "HEAD"], target_path)
+    if code != 0:
+        return False
+    commits = {head, *(line.strip().lower() for line in stdout.splitlines() if line.strip())}
+    return all(any(is_ancestor(commit, ref, repo_root) for ref in refs) for commit in commits)
 
 
 def _check_worktree_structure(

@@ -18,11 +18,15 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 SCHEMA_VERSION = 1
 STRUCTURAL_BASES = {"develop", "release", "published-results"}
-RELEASE_LINE_RE = re.compile(r"^release/\d+\.\d+\.x$")
+RELEASE_LINE_RE = re.compile(r"release/(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.x", re.ASCII)
+
+
+def is_release_line(ref: str) -> bool:
+    return RELEASE_LINE_RE.fullmatch(ref) is not None
 
 
 def is_structural_base(ref: str) -> bool:
-    return ref in STRUCTURAL_BASES or bool(RELEASE_LINE_RE.match(ref))
+    return ref in STRUCTURAL_BASES or is_release_line(ref)
 
 
 _EVIDENCE_SOURCE_KEY = "_benchbox_evidence_source"

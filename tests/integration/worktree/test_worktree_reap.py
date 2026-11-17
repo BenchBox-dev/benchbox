@@ -618,3 +618,128 @@ def test_detached_head_with_dead_owner_is_removed(tmp_path: Path) -> None:
     lifecycle._write_owner(wt, {"session": "gone", "pid": 2**22 + 12345, "start": "never"})
 
     assert _verdicts(repo, _lookup({}))[wt.resolve()].verdict == REMOVE
+
+
+def _origin(repo: Path) -> Path:
+    return repo.parent / f"{repo.name}-origin.git"
+
+
+def _commit_on_develop(repo: Path, name: str) -> str:
+    (repo / f"{name}.txt").write_text(f"{name}\n", encoding="utf-8")
+    _git(["add", f"{name}.txt"], repo)
+    _git(["commit", "-q", "-m", name], repo)
+    _git(["push", "-q", "origin", "develop"], repo)
+    return _git(["rev-parse", "HEAD"], repo)
+
+
+def _assert_held(repo: Path, wt: Path) -> None:
+    verdict = _verdicts(repo, _lookup({}))[wt.resolve()]
+    assert verdict.verdict == AMBIGUOUS, verdict.reason
+    assert "detached HEAD" in verdict.reason
+    assert remove_worktree(verdict, repo, SLUG, _lookup({})).status == "failed"
+    assert wt.exists()
+
+
+def test_detached_head_is_held_when_an_integration_ref_cannot_be_refreshed_after_force_push(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    _release_line(repo)
+    base = _git(["rev-parse", "release/0.5.x"], repo)
+    _git(["checkout", "-q", "release/0.5.x"], repo)
+    line_commit = _commit_on_develop_like(repo, "line-only", "release/0.5.x")
+    _git(["checkout", "-q", "develop"], repo)
+    wt = _detached_worktree(repo, "det-force", line_commit)
+    assert _verdicts(repo, _lookup({}))[wt.resolve()].verdict == REMOVE
+    _git(["--git-dir", str(_origin(repo)), "update-ref", "refs/heads/release/0.5.x", base], repo)
+
+    _assert_held(repo, wt)
+
+
+def _commit_on_develop_like(repo: Path, name: str, branch: str) -> str:
+    (repo / f"{name}.txt").write_text(f"{name}\n", encoding="utf-8")
+    _git(["add", f"{name}.txt"], repo)
+    _git(["commit", "-q", "-m", name], repo)
+    _git(["push", "-q", "origin", branch], repo)
+    return _git(["rev-parse", "HEAD"], repo)
+
+
+def test_detached_head_is_held_when_the_release_branch_was_deleted_on_origin(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    _release_line(repo)
+    _git(["checkout", "-q", "release/0.5.x"], repo)
+    line_commit = _commit_on_develop_like(repo, "line-only", "release/0.5.x")
+    _git(["checkout", "-q", "develop"], repo)
+    wt = _detached_worktree(repo, "det-deleted", line_commit)
+    _git(["--git-dir", str(_origin(repo)), "branch", "-D", "release/0.5.x"], repo)
+
+    _assert_held(repo, wt)
+
+
+def test_detached_head_is_held_when_the_reflog_holds_an_unintegrated_commit(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    wt = _detached_worktree(repo, "det-reflog", "develop")
+    develop_oid = _git(["rev-parse", "develop"], repo)
+    (wt / "w.txt").write_text("w\n", encoding="utf-8")
+    _git(["add", "w.txt"], wt)
+    _git(["commit", "-q", "-m", "W"], wt)
+    _git(["checkout", "-q", "--detach", develop_oid], wt)
+
+    _assert_held(repo, wt)
+
+
+def test_detached_head_is_held_during_a_paused_bisect(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    wt = _detached_worktree(repo, "det-bisect", "develop")
+    _git(["bisect", "start"], wt)
+
+    _assert_held(repo, wt)
+
+
+def test_detached_head_is_held_during_a_paused_interactive_rebase(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    _commit_on_develop(repo, "second")
+    _commit_on_develop(repo, "third")
+    wt = _detached_worktree(repo, "det-rebase", "develop")
+    env = {**os.environ, "GIT_SEQUENCE_EDITOR": "sed -i.bak s/^pick/edit/"}
+    subprocess.run(["git", "rebase", "-q", "-i", "HEAD~1"], cwd=wt, check=True, env=env, capture_output=True)
+
+    _assert_held(repo, wt)
+
+
+def test_detached_head_is_held_with_an_ignored_data_file(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    (repo / ".gitignore").write_text("data/\n__pycache__/\n", encoding="utf-8")
+    _git(["add", ".gitignore"], repo)
+    _git(["commit", "-q", "-m", "ignore"], repo)
+    _git(["push", "-q", "origin", "develop"], repo)
+    wt = _detached_worktree(repo, "det-ignored", "develop")
+    (wt / "__pycache__").mkdir()
+    (wt / "__pycache__" / "x.pyc").write_text("c", encoding="utf-8")
+    assert _verdicts(repo, _lookup({}))[wt.resolve()].verdict == REMOVE
+    (wt / "data").mkdir()
+    (wt / "data" / "x").write_text("precious\n", encoding="utf-8")
+
+    _assert_held(repo, wt)
+
+
+def test_detached_head_with_a_malformed_owner_record_is_held(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    wt = _detached_worktree(repo, "det-badowner", "develop")
+    _git(["config", "--worktree", "benchbox.worktree.owner", "{not json"], wt)
+
+    _assert_held(repo, wt)
+
+
+def test_detached_apply_rechecks_after_the_preview(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    wt = _detached_worktree(repo, "det-toctou", "develop")
+    head = _git(["rev-parse", "HEAD"], wt)
+    res = finish.evaluate_finish_preview(wt.resolve(), head, repo, SLUG, pr_lookup=_lookup({}))
+    assert res.status == "actionable"
+    (wt / "late.txt").write_text("late\n", encoding="utf-8")
+
+    removed, _, executed = finish.apply_finish_actions(res, repo)
+
+    assert removed is False
+    assert wt.exists()
+    assert executed[-1]["action"] == "detached_recheck"
+    assert "locked" not in _git(["worktree", "list", "--porcelain"], repo)
