@@ -41591,6 +41591,13 @@
       "status": "done",
       "title": "Stop the test leak guard failing whichever test first imports the Snowflake connector"
     },
+    "test-lock-refusal-message-advertises-bypass-and-kill-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "The pytest host-lock refusal tells agents to bypass the lock or kill the holder, against the heavy-work policy"
+    },
     "test-logging-and-session-isolation-leaks-20261014": {
       "claim": null,
       "needs": [],
