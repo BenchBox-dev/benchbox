@@ -5,7 +5,7 @@
     "If option (b) is chosen, a test shows the lock is still acquired when the variable is set without the approval marker",
     "docs/agent/heavy-work.md and tests/README.md agree with the new message"
   ],
-  "description": "## Problem\nWhen the host lock is held, tests/conftest.py prints options that include `Kill the other run, then retry`, `Run single-threaded (no lock): pytest -n 0 ...` and `Bypass lock (dangerous): BENCHBOX_SKIP_TEST_LOCK=1 pytest ...`. `_should_acquire_test_lock` indeed skips the lock for `-n 0` and for `BENCHBOX_SKIP_TEST_LOCK`. docs/agent/heavy-work.md and AGENTS.md ([HEAVY-LOCK-001]) forbid setting `BENCHBOX_SKIP_TEST_LOCK` without owner approval and forbid signalling a process the agent did not start. The refusal message is the text an agent reads at the moment it decides, so it teaches the forbidden path.\n\n## Evidence\n2026-11-15: a delegated subagent hit this refusal while other sessions held the lock, ran its unit tests with `BENCHBOX_SKIP_TEST_LOCK=1`, and later ran `pkill -f \"pytest tests/unit/scripts\"`, a pattern that matches other sessions' pytest processes. Neither action had owner approval.\n\n## Decision gate (owner)\nDecide before implementing: (a) keep `BENCHBOX_SKIP_TEST_LOCK` as a human-only escape and remove it from the message, or (b) also refuse it unless an owner-approval marker is present; and whether `-n 0` should stay lock-free. Record the choice in this item's context.\n\n## Change\nRewrite the refusal to list only compliant options (wait with `BENCHBOX_TEST_LOCK_WAIT_SECONDS`, `make heavy-status`, run through `make heavy-run`/`make pr-preflight`) and to point at docs/agent/heavy-work.md. Apply the owner's choice for the env var and `-n 0`.\n\n## Guardrails\n- Do not weaken the lock: no new bypass, no change to the lock file path or watchdog.\n- Never suggest killing or signalling another process.\n- Keep the message's holder and lock-path details; tests for the lock must stay deterministic and full-suite safe.",
+  "description": "## Problem\nWhen the host lock is held, tests/conftest.py prints options that include `Kill the other run, then retry`, `Run single-threaded (no lock): pytest -n 0 ...` and `Bypass lock (dangerous): BENCHBOX_SKIP_TEST_LOCK=1 pytest ...`. `_should_acquire_test_lock` indeed skips the lock for `-n 0` and for `BENCHBOX_SKIP_TEST_LOCK`. docs/agent/heavy-work.md and AGENTS.md ([HEAVY-LOCK-001]) forbid setting `BENCHBOX_SKIP_TEST_LOCK` without owner approval and forbid signalling a process the agent did not start. The refusal message is the text an agent reads at the moment it decides, so it teaches the forbidden path.\n\n## Evidence\n2026-11-15: a delegated subagent hit this refusal while other sessions held the lock, ran its unit tests with `BENCHBOX_SKIP_TEST_LOCK=1`, and later ran `pkill -f \"pytest tests/unit/scripts\"`, a pattern that matches other sessions' pytest processes. Neither action had owner approval.\n\n## Decision gate (owner)\nDecide before implementing: (a) keep `BENCHBOX_SKIP_TEST_LOCK` as a human-only escape and remove it from the message, or (b) also refuse it unless an owner-approval marker is present; and whether `-n 0` should stay lock-free. Record the choice in this item's context.\n\n## Change\nRewrite the refusal to list only compliant options (wait with `BENCHBOX_TEST_LOCK_WAIT_SECONDS`, `make heavy-status`, run through `make heavy-run`/`make pr-preflight`) and to point at docs/agent/heavy-work.md. Apply the owner's choice for the env var and `-n 0`.\n\n## Guardrails\n- Do not weaken the lock: no new bypass, no change to the lock file path or watchdog.\n- Never suggest killing or signalling another process.\n- Keep the message's holder and lock-path details; tests for the lock must stay deterministic and full-suite safe.\n\n## Verification rubric\nPass only if the refusal text offers no bypass and no kill instruction, the lock is acquired in every case the owner decided it must be, the docs and message agree, and the change adds no new way to skip the lock.",
   "links": [
     "BenchBox-dev/BenchBox: tests/conftest.py",
     "BenchBox-dev/BenchBox: docs/agent/heavy-work.md"
@@ -17,6 +17,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "5abfbba278b2467c9233e6425238556c",
+      "session_id": "4cc6c844a24e43ca9e1fc9cb409a70e6"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0deceae4762d30cfd4f4d362",
+      "at": "2026-11-17T14:23:37Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ce84b19f106b4e428d8c3ee874e0deab",
       "session_id": "4cc6c844a24e43ca9e1fc9cb409a70e6"
     }
   ]
