@@ -20148,7 +20148,7 @@
       ],
       "priority": "medium-high",
       "status": "open",
-      "title": "Three integration tests fail on unmodified develop under `make test-pytest`"
+      "title": "Full suite (make test-all) has never been verified clean on fresh develop"
     },
     "develop-parallel-merge-semantic-conflict-guard-20261101": {
       "claim": null,
