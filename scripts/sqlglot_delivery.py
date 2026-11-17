@@ -71,9 +71,19 @@ def default_budget() -> gh_transient.Budget:
     return gh_transient.Budget(gh_transient.DEFAULT_BUDGET_SECONDS)
 
 
+def run_gh_bytes(command: list[str]) -> tuple[int, bytes, str]:
+    result = subprocess.run(command, capture_output=True, check=False)
+    return result.returncode, result.stdout, result.stderr.decode(errors="replace")
+
+
 class GhApi:
-    def __init__(self, new_budget: Callable[[], gh_transient.Budget] = default_budget) -> None:
+    def __init__(
+        self,
+        new_budget: Callable[[], gh_transient.Budget] = default_budget,
+        run_once: Callable[[list[str]], tuple[int, bytes, str]] = run_gh_bytes,
+    ) -> None:
         self.new_budget = new_budget
+        self.run_once = run_once
 
     def request(
         self,
@@ -100,9 +110,9 @@ class GhApi:
         captured: list[bytes] = []
 
         def run(command: list[str]) -> tuple[int, str]:
-            result = subprocess.run(command, capture_output=True, check=False)
-            captured[:] = [result.stdout]
-            return result.returncode, result.stderr.decode(errors="replace")
+            code, stdout, detail = self.run_once(command)
+            captured[:] = [stdout]
+            return code, detail
 
         code, detail = gh_transient.RetryingRunner(run, self.new_budget())(["gh", "api", path])
         if code:

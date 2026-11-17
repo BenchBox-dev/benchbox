@@ -293,17 +293,15 @@ def _fake_backoff(monkeypatch: pytest.MonkeyPatch) -> _FakeClock:
 
 
 def _scripted_gh(monkeypatch: pytest.MonkeyPatch, replies: list[tuple[int, str, str]]) -> list[list[str]]:
-    import subprocess as subprocess_mod
-
     calls: list[list[str]] = []
     queue = list(replies)
 
-    def run(argv: list[str], **kwargs: object) -> object:
+    def run(argv: list[str]) -> tuple[int, str]:
         calls.append(argv)
         code, out, err = queue.pop(0) if len(queue) > 1 else queue[0]
-        return subprocess_mod.CompletedProcess(argv, code, out, err)
+        return code, out if code == 0 else err
 
-    monkeypatch.setattr(subprocess_mod, "run", run)
+    monkeypatch.setattr(parent_mod, "_gh_once", run)
     return calls
 
 

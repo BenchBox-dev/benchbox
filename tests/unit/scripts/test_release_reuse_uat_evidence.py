@@ -1381,12 +1381,11 @@ def _scripted_gh(monkeypatch, replies):
     calls: list[list[str]] = []
     queue = list(replies)
 
-    def run(command, **kwargs):
+    def run(command):
         calls.append(command)
-        code, stdout, stderr = queue.pop(0) if len(queue) > 1 else queue[0]
-        return subprocess.CompletedProcess(command, code, stdout, stderr.encode())
+        return queue.pop(0) if len(queue) > 1 else queue[0]
 
-    monkeypatch.setattr(reuse.subprocess, "run", run)
+    monkeypatch.setattr(reuse, "_gh_once", run)
     return clock, calls
 
 

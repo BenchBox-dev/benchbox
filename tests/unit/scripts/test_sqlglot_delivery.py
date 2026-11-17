@@ -1291,17 +1291,15 @@ def scripted_download(
     calls: list[list[str]] = []
     queue = list(replies)
 
-    def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[bytes]:
+    def run(command: list[str]) -> tuple[int, bytes, str]:
         calls.append(command)
         code, stdout, stderr = queue.pop(0) if len(queue) > 1 else queue[0]
-        return subprocess.CompletedProcess(command, code, stdout, stderr)
-
-    monkeypatch.setattr(delivery.subprocess, "run", run)
+        return code, stdout, stderr.decode()
 
     def budget() -> delivery.gh_transient.Budget:
         return delivery.gh_transient.Budget(90.0, clock=clock, sleep=clock.sleep)
 
-    return delivery.GhApi(budget), clock, calls
+    return delivery.GhApi(budget, run), clock, calls
 
 
 def test_an_artifact_download_that_hits_the_egress_limit_recovers_after_the_backoff(

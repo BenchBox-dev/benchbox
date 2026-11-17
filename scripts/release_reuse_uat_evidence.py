@@ -387,13 +387,18 @@ def _retry_budget() -> Any:
     return transient.Budget(transient.DEFAULT_BUDGET_SECONDS)
 
 
+def _gh_once(command: list[str]) -> tuple[int, bytes, str]:
+    result = subprocess.run(command, capture_output=True, check=False)
+    return result.returncode, result.stdout, result.stderr.decode("utf-8", "replace")
+
+
 def _gh_bytes(*args: str) -> bytes:
     captured: list[bytes] = []
 
     def run(command: list[str]) -> tuple[int, str]:
-        result = subprocess.run(command, capture_output=True, check=False)
-        captured[:] = [result.stdout]
-        return result.returncode, result.stderr.decode("utf-8", "replace")
+        code, stdout, detail = _gh_once(command)
+        captured[:] = [stdout]
+        return code, detail
 
     code, detail = _transient().RetryingRunner(run, _retry_budget())(["gh", *args])
     if code != 0:
