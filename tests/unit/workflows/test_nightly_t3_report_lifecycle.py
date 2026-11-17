@@ -29,6 +29,8 @@ DOMAIN_JOBS = [
     "install",
     "throughput",
     "throughput-cedardb",
+    "fullspec-chdb",
+    "fullspec-cedardb",
     "drift",
     "quarantine",
     "liveness",

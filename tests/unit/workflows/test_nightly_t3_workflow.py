@@ -31,6 +31,8 @@ DOMAIN_JOBS = {
     "install": "t3:install",
     "throughput": "t3:throughput",
     "throughput-cedardb": "t3:throughput-cedardb",
+    "fullspec-chdb": "t3:fullspec-chdb",
+    "fullspec-cedardb": "t3:fullspec-cedardb",
     "drift": "t3:drift",
     "quarantine": "t3:quarantine",
     "liveness": "t3:liveness",

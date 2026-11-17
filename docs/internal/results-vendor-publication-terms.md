@@ -42,7 +42,7 @@ These are software the submitter runs; there is no vendor service whose terms go
 
 | Platform (bundles) | Licence | URL read | Terms date | Benchmark / performance-publication clause |
 | --- | --- | --- | --- | --- |
-| CedarDB (1) | CedarDB Community Edition General Terms and Conditions (German binding, English for information, s.8); OSS notices page | https://cedardb.com/legal/agreements/community_tcs.pdf ; https://cedardb.com/docs/licensing ; https://cedardb.com/legal/oss_licenses | PDF: no date shown. Licensing page metadata: modified 2026-11-09 | None found in the Community terms (ss.1-8 read; extracted text is garbled bilingual layout and Exhibits 1 and 2 were not in it). OSS notices page: one match for "benchmark", "Some of the benchmark data in testdata/ is licensed differently", a third-party data notice. Enterprise and Enterprise Trial terms were not found and not read. Edition used for the bundle not checked. |
+| CedarDB (1) | CedarDB Community Edition General Terms and Conditions (German binding, English for information, s.8); OSS notices page | https://cedardb.com/legal/agreements/community_tcs.pdf ; https://cedardb.com/docs/licensing ; https://cedardb.com/legal/oss_licenses | PDF: no date shown. Licensing page metadata: modified 2026-11-09 | None found in the Community terms (ss.1-8 read; extracted text is garbled bilingual layout and Exhibits 1 and 2 were not in it). OSS notices page: one match for "benchmark", "Some of the benchmark data in testdata/ is licensed differently", a third-party data notice. Enterprise and Enterprise Trial terms were not found and not read. Owner decision of 2026-11-17: publication of results from the CedarDB Community Edition is approved, on the terms at https://cedardb.com/legal/agreements/community_tcs.pdf. |
 | StarRocks (1) | Apache-2.0 | https://raw.githubusercontent.com/StarRocks/starrocks/main/LICENSE.txt | none shown | None found |
 | Apache Doris (3) | Apache-2.0 (file also bundles third-party licence texts, incl. MIT) | https://raw.githubusercontent.com/apache/doris/master/LICENSE.txt | none shown | None found |
 | LakeSail (2) | Apache-2.0 | https://raw.githubusercontent.com/lakehq/sail/main/LICENSE | none shown | None found |
@@ -173,7 +173,7 @@ Same texts, URLs, dates and BenchBox behaviour as 5.1 (`vendor_platform_key` map
 4. Is the 2026-10-22 acceptance of MotherDuck 13.1 and Databricks 7(b) still the position, given the texts above?
 5. For Snowflake, who sends results to Snowflake "reasonably in advance", and how is that recorded for results the project itself publishes?
 6. For the reciprocity clauses (Google, Databricks, and the AWS, ClickHouse and MotherDuck ones), does the project treat publishing as acceptance, or leave that to submitters?
-7. For CedarDB, is the Community Edition the edition used for the published bundle, and does the project want the Enterprise and Trial terms read?
+7. For CedarDB, does the project want the Enterprise and Trial terms read? (Answered 2026-11-17 for the Community Edition: publication approved; see the CedarDB row.)
 8. Is the project content to rely on each engine's open-source licence text for the self-run engines, given none of the texts read mention benchmarks?
 9. Should Redshift, Athena, ClickHouse Cloud, MotherDuck and Starburst Galaxy be settled before their first published result, or when a result arrives?
 10. Which ClickHouse Cloud Addendum version (April 10 or September 17, 2026) is current, and should it be re-read?

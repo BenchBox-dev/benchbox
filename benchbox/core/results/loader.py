@@ -731,6 +731,7 @@ def _reconstruct_maintenance_phase(data: dict[str, Any]) -> MaintenanceTestPhase
                 refresh_set=operation.get("refresh_set"),
                 staged_rows=operation.get("staged_rows"),
                 rows_by_table=operation.get("rows_by_table"),
+                transactional=operation.get("transactional", True),
             )
             for operation in data.get("operations", [])
         ],

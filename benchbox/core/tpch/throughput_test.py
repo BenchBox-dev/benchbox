@@ -26,6 +26,7 @@ from benchbox.core.tpch.refresh import (
     check_rf1_applied,
     check_rf2_applied,
     generate_refresh_update_sets,
+    refresh_transactional,
 )
 from benchbox.core.validation.query_validation import (
     clear_data_refreshed_context,
@@ -402,6 +403,7 @@ class TPCHThroughputTest:
         return {
             "function": function,
             "update_set": update_set.set_id,
+            "transactional": refresh_transactional(connection),
             "duration_ms": duration_ms if status == "SUCCESS" else 0,
             **counts,
             "status": status,

@@ -1,0 +1,50 @@
+name: "uat-fullspec-clickhouse-local-tpch-nightly"
+description: "Nightly: full-specification TPC-H SF1 on ClickHouse Local (run-official: load, power, 2-stream throughput, RF1/RF2)"
+
+phases:
+  - preflight
+  - execute
+  - validate
+  - report
+
+platforms:
+  include: ["clickhouse-local"]
+
+benchmarks:
+  include: ["tpch"]
+
+scales:
+  rungs: [1]
+
+execute:
+  per_cell_timeout_s: 1800
+  early_stop_after_s: 1800
+  early_stop_on_failure: false
+  phases_arg: "load,power,throughput"
+  skip_unreachable: true
+  parallel_platforms: false
+  official: true
+  streams: 2
+  seed: 20260709
+
+preflight:
+  free_space_min_gib: 5
+  free_space_path: "~/Developer/benchmark_runs"
+  docker_required: false
+
+cleanup:
+  preserve_datagen: true
+  prune_databases: true
+  docker_manage_platforms: false
+  docker_platform_switch: "off"
+
+validate:
+  validator_clean_rate_floor: 1.0
+
+report:
+  matrix_summary_tsv: "matrix_summary.tsv"
+
+output:
+  benchmark_runs_dir_template: "~/Developer/benchmark_runs"
+  logs_dir_template: "~/Developer/benchmark_runs/logs/uat_fullspec_clickhouse_local_tpch_nightly_{date}"
+  submissions_dir_template: "~/Developer/benchmark_runs/submissions/{name}"

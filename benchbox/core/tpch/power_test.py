@@ -24,6 +24,7 @@ from benchbox.core.tpch.refresh import (
     apply_rf2,
     check_rf1_applied,
     check_rf2_applied,
+    refresh_transactional,
 )
 from benchbox.core.validation.query_validation import (
     DATA_REFRESHED_REASON,
@@ -517,6 +518,7 @@ class TPCHPowerTest:
         return {
             "function": function,
             "update_set": self.refresh_update_set.set_id if self.refresh_update_set is not None else None,
+            "transactional": refresh_transactional(connection),
             "duration_ms": duration_ms if status == "SUCCESS" else 0,
             **counts,
             "status": status,

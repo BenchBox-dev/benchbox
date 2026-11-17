@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 import benchbox.platforms.postgresql as postgresql_module
-from benchbox.platforms.cedardb import CedarDBAdapter
+from benchbox.platforms.cedardb import CedarDBAdapter, parse_cedardb_version
 from benchbox.platforms.postgresql import POSTGRES_DIALECT
 
 pytestmark = [
@@ -343,3 +343,64 @@ class TestCedarDBBaselineSessionLedger:
 
             assert all("random_page_cost" not in entry.statement for entry in ledger.statements)
             assert all(entry.status == "executed" for entry in ledger.statements)
+
+
+class TestCedarDBVersion:
+    @pytest.mark.parametrize(
+        ("version_string", "expected"),
+        [
+            ("PostgreSQL 16.3 (CedarDB v2026-09-29)", "v2026-09-29"),
+            ("CedarDB v2026-11-04 on x86_64-pc-linux-gnu", "v2026-11-04"),
+            ("CedarDB 1.0 (formerly Umbra)", "1.0"),
+            ("something else entirely", "something else entirely"),
+        ],
+    )
+    def test_parse_cedardb_version(self, version_string, expected):
+        assert parse_cedardb_version(version_string) == expected
+
+    def test_platform_version_is_recorded_from_the_server(self, cedardb_stubs):
+        adapter = CedarDBAdapter()
+        connection = Mock()
+        cursor = Mock()
+        connection.cursor.return_value = cursor
+        cursor.fetchone.return_value = ("PostgreSQL 16.3 (CedarDB v2026-09-29)",)
+
+        info = adapter.get_platform_info(connection=connection)
+
+        assert info["platform_version"] == "v2026-09-29"
+        assert info["cedardb_version_string"] == "PostgreSQL 16.3 (CedarDB v2026-09-29)"
+
+    def test_version_is_read_after_clearing_a_failed_transaction(self, cedardb_stubs):
+        adapter = CedarDBAdapter()
+        connection = Mock()
+        connection.cursor.return_value.fetchone.return_value = ("CedarDB v2026-09-29",)
+
+        adapter.get_platform_info(connection=connection)
+
+        connection.rollback.assert_called()
+
+
+class TestCedarDBMaintenance:
+    def test_tpcds_maintenance_is_enabled(self, cedardb_stubs):
+        from benchbox.core.tpcds.maintenance_test import maintenance_unsupported_reason
+
+        assert maintenance_unsupported_reason(CedarDBAdapter()) is None
+
+    def test_enforced_primary_keys_use_pg_constraint(self, cedardb_stubs):
+        adapter = CedarDBAdapter()
+        connection = Mock()
+        connection.execute.return_value.fetchall.return_value = [("store_sales",), ("Item",), ("other",)]
+
+        assert adapter.enforced_primary_key_tables(connection, ["store_sales", "item"]) == ["item", "store_sales"]
+        connection.rollback.assert_not_called()
+
+    def test_enforced_primary_keys_fall_back_to_information_schema(self, cedardb_stubs):
+        adapter = CedarDBAdapter()
+        connection = Mock()
+        fallback = Mock()
+        fallback.fetchall.return_value = [("store_sales",)]
+        connection.execute.side_effect = [RuntimeError("relation pg_constraint does not exist"), fallback]
+
+        assert adapter.enforced_primary_key_tables(connection, ["store_sales", "item"]) == ["store_sales"]
+        connection.rollback.assert_called_once()
+        assert "information_schema.table_constraints" in connection.execute.call_args_list[1].args[0]
