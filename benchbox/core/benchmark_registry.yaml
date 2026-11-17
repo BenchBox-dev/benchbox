@@ -184,8 +184,8 @@ benchmark_metadata:
     min_scale: 0.01
     complexity: High
     estimated_time_range:
-    - 5
-    - 30
+    - 1
+    - 2
     base_memory_gb: 1.5
     data_source: null
     supports_dataframe: true

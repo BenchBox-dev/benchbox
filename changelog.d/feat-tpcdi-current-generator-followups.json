@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "The interactive TPC-DI runtime estimate now reads 1-2 minutes at the default scale, measured on the current generator; it previously said 5-30 minutes."
+    }
+  ]
+}
