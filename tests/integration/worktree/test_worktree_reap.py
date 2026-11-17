@@ -743,3 +743,31 @@ def test_detached_apply_rechecks_after_the_preview(tmp_path: Path) -> None:
     assert wt.exists()
     assert executed[-1]["action"] == "detached_recheck"
     assert "locked" not in _git(["worktree", "list", "--porcelain"], repo)
+
+
+def test_detached_apply_keeps_a_worktree_locked_after_the_preview(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    wt = _detached_worktree(repo, "det-lock", "develop")
+    head = _git(["rev-parse", "HEAD"], wt)
+    res = finish.evaluate_finish_preview(wt.resolve(), head, repo, SLUG, pr_lookup=_lookup({}))
+    assert res.status == "actionable"
+    _git(["worktree", "lock", "--reason", "owner keep", str(wt)], repo)
+
+    removed, _, executed = finish.apply_finish_actions(res, repo)
+
+    assert removed is False
+    assert wt.exists()
+    assert executed[-1]["action"] == "detached_recheck"
+    assert "locked owner keep" in _git(["worktree", "list", "--porcelain"], repo)
+
+
+def test_detached_worktree_without_a_head_reflog_is_held(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    wt = _detached_worktree(repo, "det-noreflog", "develop")
+    head = _git(["rev-parse", "HEAD"], wt)
+    (Path(_git(["rev-parse", "--absolute-git-dir"], wt)) / "logs" / "HEAD").unlink()
+
+    res = finish.evaluate_finish_preview(wt.resolve(), head, repo, SLUG, pr_lookup=_lookup({}))
+
+    assert res.status != "actionable"
+    assert wt.exists()

@@ -135,21 +135,19 @@ def apply_finish_actions(
             return False, None, executed
         executed.append({"action": "tool_temp_cleanup", "command": f"unlink {temp_file}", "outcome": outcome})
     if res.detached:
-        _run_git(["worktree", "lock", "--reason", "benchbox worktree finish", res.target_path], git_cwd)
-        head_code, locked_head, _ = _run_git(["rev-parse", "HEAD"], Path(res.target_path))
+        head_code, current_head, _ = _run_git(["rev-parse", "HEAD"], Path(res.target_path))
         safe = (
             head_code == 0
-            and locked_head.lower() == res.expected_head.lower()
+            and current_head.lower() == res.expected_head.lower()
             and _detached_removal_safe(
                 Path(res.target_path), res.expected_head.lower(), repo_root, None, lambda _b: None
             )
         )
-        _run_git(["worktree", "unlock", res.target_path], git_cwd)
         if not safe:
             executed.append(
                 {
                     "action": "detached_recheck",
-                    "command": f"git worktree lock {res.target_path}",
+                    "command": f"recheck {res.target_path}",
                     "outcome": "worktree changed or no longer provably integrated - no mutation performed",
                 }
             )
@@ -400,6 +398,10 @@ def _detached_removal_safe(
     refresh_target: Optional[TargetRefresher],
 ) -> bool:
     if _dirty_reason(target_path, tool_temp_files) or _has_foreign_ignored_files(target_path):
+        return False
+    code, git_dir, _ = _run_git(["rev-parse", "--absolute-git-dir"], target_path)
+    worktree_git_dir = Path(git_dir.strip())
+    if code != 0 or (worktree_git_dir / "locked").exists() or not (worktree_git_dir / "logs" / "HEAD").is_file():
         return False
     if _operation_in_progress(target_path):
         return False
