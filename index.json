@@ -20412,6 +20412,15 @@
       "status": "done",
       "title": "Make the DataFrame memory guard's refusal message state the threshold it applies"
     },
+    "df-memory-guard-sf10-subset-validation-20261117": {
+      "claim": null,
+      "needs": [
+        "heavy-work-host-capacity-owner-decision-20261117"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Validate the DataFrame memory guard's SF10 subset estimates against measured peaks"
+    },
     "df-memory-guard-subset-estimate-20261113": {
       "claim": null,
       "needs": [],
