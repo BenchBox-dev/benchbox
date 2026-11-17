@@ -4,6 +4,7 @@
     "The Windows job's actual test coverage is confirmed and documented.",
     "Merged under G7."
   ],
+  "context": "2026-11-17:\n- The re-run of test (py3.13) on #93 was cancelled again at 35m. GitHub kept no log for the cancelled job (BlobNotFound).\n- The Windows job runs only tests/unit/test_bootstrap.py plus an isolated bootstrap smoke, which explains its 0m.\n- The owner chose to diagnose before merging the release. PR #94 adds pytest-timeout and runs CI with --timeout=300 --durations=25, and raises the Linux job limit to 45m.\n- Making the suite itself faster remains open under this item.",
   "description": "On 2026-11-17 the release PR #93 (v0.2.14, metadata-only diff) hit the 30-minute job limit in `test (py3.13)` (run 44165674647, job 134330933901). It was cancelled inside `uv run -- pytest`. Recent main runs show the Linux test jobs at the edge of that limit:\n- aa4dd538: py3.13 28m, py3.11 27m\n- 9ca458b1: 24m, 21m\n- 03f6b1f7: 28m, 25m\n\nThe suite grows with each feature (5302 tests at v0.2.14), so timeouts will become routine and block merges.\n\nThe Windows py3.12 job reports 0m. Check what it actually runs.\n\nOptions: profile the slowest tests (`--durations`), parallelise with pytest-xdist if the suite is safe for it, split into shards, or raise timeout-minutes with a recorded budget. Prefer making the suite faster over raising the limit.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "6416d2605fde47dca30203f8eef973ce",
+      "session_id": "02427f3e9a9d4e6b8fd746ddd1cb8f32"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b377757d77dcf10df273bc88",
+      "at": "2026-11-17T21:19:41Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "35e27b50b2c54ada8c0e52be756b2681",
       "session_id": "02427f3e9a9d4e6b8fd746ddd1cb8f32"
     }
   ]
