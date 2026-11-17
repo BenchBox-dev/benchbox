@@ -993,10 +993,37 @@ def test_check_reports_a_failed_usage_probe_as_degraded(host: dict) -> None:
     assert "401 from anthropic" not in checked.stdout
 
 
-def _probe_lines(*failing: str) -> tuple[str, ...]:
-    lines = [f"{provider}  ok  5h 10%" for provider in PROVIDERS if provider not in failing]
-    lines += [f"{name}  FAIL  oauth refresh failed: Auth broker request failed: 500" for name in failing]
-    return (*lines, "typesafe  unknown  no usage probe")
+def _probe_lines(*failing: str, missing: tuple[str, ...] = ()) -> tuple[str, ...]:
+    lines = ["broker: http://127.0.0.1:8765", ""]
+    for provider in PROVIDERS:
+        if provider in missing:
+            continue
+        status = (
+            "FAIL     id=  2 oauth  x@example.com — oauth refresh failed: 500"
+            if provider in failing
+            else "ok       id=  1 oauth  x@example.com"
+        )
+        lines += [f"{provider} (1)", f"  {status}", ""]
+    for name in failing:
+        if name not in PROVIDERS:
+            lines += [f"{name} (1)", "  FAIL     id= 10 oauth  x@example.com — oauth refresh failed: 500", ""]
+    lines += ["typesafe (1)", "  unknown  id=  6 api_key — no usage probe configured for provider typesafe", ""]
+    return (*lines, "2 ok, 1 failed, 1 unverifiable, 4 total")
+
+
+def test_a_served_provider_missing_from_a_failed_check_is_degraded(host: dict) -> None:
+    _logins(host, PROVIDERS, probe_lines=_probe_lines("unused-login", missing=(PROVIDERS[1],)), probe_exit=1)
+    checked = _check(host)
+    assert checked.returncode == 3, checked.stdout + checked.stderr
+    assert f"degraded: usage probe: {PROVIDERS[1]} has no passing probe in a failed check" in checked.stdout
+    assert "notice: usage probe for unused-login failed" in checked.stdout
+
+
+def test_a_failed_check_with_only_passing_sections_is_still_degraded(host: dict) -> None:
+    _logins(host, PROVIDERS, probe_lines=_probe_lines(), probe_exit=1)
+    checked = _check(host)
+    assert checked.returncode == 3, checked.stdout + checked.stderr
+    assert "degraded: usage probe: omp auth-gateway check failed" in checked.stdout
 
 
 def test_a_failed_usage_probe_for_an_unserved_login_is_a_notice_not_degraded(host: dict) -> None:
@@ -1069,8 +1096,6 @@ def test_the_monitor_alerts_once_per_confirmed_change_and_closes_the_issue_on_co
 
     _logins(host, PROVIDERS[2:])
     assert _monitor(host).returncode == 0
-    assert log.read_text(encoding="utf-8") == before
-    assert _monitor(host).returncode == 0
     assert "issue edit 7" in log.read_text(encoding="utf-8")
     assert len(host["notifications"].read_text(encoding="utf-8").splitlines()) == 2
 
@@ -1097,6 +1122,17 @@ def test_an_outage_that_clears_before_the_second_run_publishes_nothing(host: dic
     assert "awaiting a second consecutive run" in _monitor(host).stdout
     assert not log.exists() and not host["notifications"].exists()
     assert not (host["dir"] / "monitor.state").exists()
+
+
+def test_a_continuing_outage_whose_detail_changes_is_still_published(host: dict) -> None:
+    log = _fake_gh(host)
+    _logins(host, PROVIDERS[1:])
+    assert "awaiting a second consecutive run" in _monitor(host).stdout
+    _logins(host, PROVIDERS[2:])
+    published = _monitor(host)
+    assert published.returncode == 0, published.stdout + published.stderr
+    assert "issue create" in log.read_text(encoding="utf-8")
+    assert not (host["dir"] / "monitor.pending").exists()
 
 
 def test_a_monitor_run_whose_issue_cannot_be_filed_records_nothing_so_the_next_run_retries(host: dict) -> None:

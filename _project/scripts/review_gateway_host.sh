@@ -557,33 +557,44 @@ health_collect() {
   [ "$DEGRADED_COUNT" -eq 0 ] || return 3
 }
 
-probe_failed_logins() {
-  printf '%s\n' "$1" | awk '{ for (i = 1; i <= NF; i++) if ($i == "FAIL") { print $1; break } }'
+probe_statuses() {
+  printf '%s\n' "$1" | awk '
+    /^[^[:space:]][^[:space:]]* \([0-9]+\)$/ { provider = $1; next }
+    /^[^[:space:]]/ { provider = ""; next }
+    provider != "" && NF > 0 { print provider, $1 }
+  '
 }
 
 check_usage_probes() {
-  local served=$1 output rc=0 failed name served_failures=0
+  local served=$1 output rc=0 statuses name problems=0
   mkdir -p "$GATEWAY_DIR/home"
   output=$(HOME="$GATEWAY_DIR/home" OMP_AUTH_BROKER_URL="http://127.0.0.1:$BROKER_PORT" \
     OMP_AUTH_BROKER_TOKEN=$(cat "$BROKER_TOKEN_FILE") "$OMP" auth-gateway check 2>&1) || rc=$?
-  failed=$(probe_failed_logins "$output")
-  if [ -z "$failed" ]; then
-    if [ "$rc" -eq 0 ]; then
-      echo "usage probes: ok"
-    else
-      note_degraded "usage probe: omp auth-gateway check failed; run it on the host for the provider and cause"
-    fi
+  statuses=$(probe_statuses "$output")
+  if [ "$rc" -ne 0 ] && [ -z "$statuses" ]; then
+    note_degraded "usage probe: omp auth-gateway check failed; run it on the host for the provider and cause"
     return 0
   fi
   while read -r name; do
-    if printf '%s\n' "$served" | grep -qxF -- "$name"; then
+    [ -n "$name" ] || continue
+    if printf '%s\n' "$statuses" | grep -qxF -- "$name FAIL"; then
       note_degraded "usage probe: $name failed; run omp auth-gateway check on the host for the cause"
-      served_failures=$((served_failures + 1))
-    else
-      echo "notice: usage probe for $name failed; $name is not served, so reviews are unaffected"
+      problems=$((problems + 1))
+    elif [ "$rc" -ne 0 ] && ! printf '%s\n' "$statuses" | grep -qxF -- "$name ok"; then
+      note_degraded "usage probe: $name has no passing probe in a failed check; run omp auth-gateway check on the host for the cause"
+      problems=$((problems + 1))
     fi
-  done <<< "$failed"
-  [ "$served_failures" -gt 0 ] || echo "usage probes: ok for every served provider"
+  done <<< "$served"
+  while read -r name; do
+    [ -n "$name" ] || continue
+    printf '%s\n' "$served" | grep -qxF -- "$name" && continue
+    echo "notice: usage probe for $name failed; $name is not served, so reviews are unaffected"
+  done <<< "$(printf '%s\n' "$statuses" | awk '$2 == "FAIL" { print $1 }' | sort -u)"
+  if [ "$rc" -ne 0 ] && [ "$problems" -eq 0 ] && ! printf '%s\n' "$statuses" | grep -q ' FAIL$'; then
+    note_degraded "usage probe: omp auth-gateway check failed; run it on the host for the provider and cause"
+    problems=1
+  fi
+  [ "$problems" -gt 0 ] || echo "usage probes: ok for every served provider"
 }
 
 cmd_check() {
@@ -658,7 +669,7 @@ publish_health() {
 }
 
 cmd_monitor() {
-  local output rc=0 state signature previous pending summary
+  local output rc=0 state signature previous previous_state pending summary
   output=$(health_collect 2>&1) || rc=$?
   state=$(health_state "$rc")
   summary=$(health_lines "$output" 'degraded|error')
@@ -669,11 +680,14 @@ cmd_monitor() {
     echo "monitor: $state, unchanged"
     return 0
   fi
-  pending=$(cat "$PENDING_FILE" 2>/dev/null || true)
-  if [ "$signature" != "$pending" ]; then
-    printf '%s\n' "$signature" > "$PENDING_FILE"
-    echo "monitor: $state, change awaiting a second consecutive run"
-    return 0
+  previous_state=$(printf '%s\n' "$previous" | grep -xE 'healthy|degraded|broken' | head -n 1)
+  if [ "$state" != "$previous_state" ]; then
+    pending=$(cat "$PENDING_FILE" 2>/dev/null || true)
+    if [ "$state" != "$pending" ]; then
+      printf '%s\n' "$state" > "$PENDING_FILE"
+      echo "monitor: $state, change awaiting a second consecutive run"
+      return 0
+    fi
   fi
   if [ "$state" = healthy ]; then
     notify "recovered"

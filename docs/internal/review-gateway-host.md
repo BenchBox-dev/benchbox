@@ -155,10 +155,13 @@ Then:
      `no logged-in broker account`, `stale pin` (a login changed identity, so
      `clients.json` pins accounts the broker no longer has; run `gateway`),
      or `granted but not served`. `omp auth-gateway check` is read per
-     login: a `FAIL` line for a served provider is `degraded: usage probe:
-     <provider> failed`, and a non-zero exit whose output names no failing
-     login is `degraded: usage probe: omp auth-gateway check failed` (the
-     probe fails closed). `unknown` entries are not failures. A gateway that
+     provider section (a `<provider> (<count>)` header followed by one
+     indented status line per login): a `FAIL` line under a served provider
+     is `degraded: usage probe: <provider> failed`. When the check exits
+     non-zero, a served provider with no `ok` line is also degraded, and
+     output with no provider sections, or with no `FAIL` line at all, is
+     `degraded: usage probe: omp auth-gateway check failed` (the probe fails
+     closed). `unknown` entries are not failures. A gateway that
      lists fewer models than `clients.json` grants is also degraded.
    - **Notice** (exit 0): `notice: <provider> removed by owner; develop still
      names <provider>` for each provider on the denylist, and `notice: usage
@@ -241,12 +244,14 @@ checkout or an unreviewed edit cannot run unattended. Run `monitor-install`
 again after a change to the script merges to refresh the snapshot. The launchd `PATH` is the one in effect at install, so run
 it from a shell where `gh`, `jq` and `tailscale` resolve. Each run does the
 read-only part of `check` (no `gh secret list`) and compares the result with
-`~/.omp/review-gateway/monitor.state`. A change is published only when the
-same new state was also seen by the previous run, so it takes two consecutive
-15-minute runs; the pending state is kept in
-`~/.omp/review-gateway/monitor.pending`, and a run that matches the recorded
-state clears it. Recovery to healthy needs two runs too. When a change is
-confirmed, and only then, it:
+`~/.omp/review-gateway/monitor.state`. A move to a different state (healthy,
+degraded or broken) is published only when the previous run also saw that
+state, so it takes two consecutive 15-minute runs, including recovery; the
+pending state is kept in `~/.omp/review-gateway/monitor.pending`, and a run
+that matches the recorded result clears it. The detail lines need not match
+between the two runs, so an outage whose reasons vary is still published. A
+change of detail within an already published state is published at once.
+When a change is published, it:
 
 1. shows a macOS notification (`osascript`);
 2. creates, edits or closes the one open issue labelled
