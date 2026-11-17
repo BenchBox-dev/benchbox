@@ -15,7 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "review-verdict.yml"
 LOCK = REPO_ROOT / ".github" / "theseus-lock.json"
 CALLEE = re.compile(r"^joeharris76/theseus/\.github/workflows/review\.yml@([0-9a-f]{40})$")
-ENGINE_PATHS = ("oracle_reviewers", "oracle_gate", "oracle_review_check", "uv run", "setup-uv")
+ENGINE_PATHS = ("oracle_gate", "oracle_reviewers", "oracle_review_check", "uv run", "setup-uv")
 EXPECTED_SECRETS = {
     "REVIEW_APP_ID": "ORACLE_APP_ID",
     "REVIEW_APP_PRIVATE_KEY": "ORACLE_APP_PRIVATE_KEY",
