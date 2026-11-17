@@ -6,6 +6,11 @@
     "Noise floors recomputed from method-2 data and documented; workflow thresholds match the doc",
     "Decision gate: if a replay shows a >10% regression beyond the floors, or fewer than five method-2 artifacts are usable, stop and report to the owner instead of loosening floors"
   ],
+  "batch": {
+    "batch_id": "nightly-remediation",
+    "implementation_dependencies": [],
+    "member_id": "perf-smoke-method2-baseline-20261117"
+  },
   "context": "Guardrails: work only in linked worktrees; never git add -A; Joe Harris identity, no agent trailers; no explanatory code/YAML comments (make comment-policy-check); no new CI skips, no required-check renames, no ruleset/settings/secret changes; no weakening of an existing check beyond the rule this item names; durable commit text without tracker ids. Do not change benchbox compare semantics or allow cross-method comparison.",
   "description": "t3:perf cannot compare: the baseline is timing method 1 (missing run.timing_method means legacy), DuckDB results are method 2 since PR #4080. Rebuild the baseline under method 2, recompute both noise floors with the documented 1.25x rule, and make scripts/perf_smoke_baseline.py reject sources whose timing methods differ or are missing, recording the method in the baseline.\n\nOwner decision 2026-11-17 (selection rule): the documented rule (slowest CPU model with at least five results) cannot be met: the five method-2 artifacts span four CPU models (EPYC 7763 x2, Xeon 8573C, Xeon 6975P-C, EPYC 9V74; totals 261-286 ms). Add a fallback to the generator and doc: use the slowest model with at least five results when one exists; otherwise take the per-query maximum over at least five method-2 runs of any model, and record which rule was used in the sources ledger. The final PR waits for this member.\n\nInputs: t3-perf-result artifacts of nightly runs 43254687916, 43453477982, 43604460150, 43726725879, 43916000915 (gh run download).\n\nScope: _project/baselines/perf_smoke_duckdb_tpch_001*.json, scripts/perf_smoke_baseline.py, tests/unit/scripts/test_perf_smoke_baseline.py, docs/internal/perf-smoke.md, and the compare thresholds in .github/workflows/nightly-v2.yml only if the recomputed floors differ.",
   "sessions": [
@@ -23,6 +28,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "497cefbf145c4fb19499676b2bc81b04",
+      "session_id": "b833d84af4ae4e4b999f435d3c8fd25e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:daba6966dbafa9d0ecd0bd8b",
+      "at": "2026-11-17T17:50:11Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "01d48b01ff9246498e70f111aeb7c39e",
       "session_id": "b833d84af4ae4e4b999f435d3c8fd25e"
     }
   ]
