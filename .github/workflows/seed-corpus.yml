@@ -79,6 +79,43 @@ jobs:
             extras: clickhouse-local
             official: true
 
+          - benchmark: tpcdi
+            platform: duckdb
+            scale_factor: "0.01"
+            extras: duckdb
+          - benchmark: tpcdi
+            platform: datafusion
+            scale_factor: "0.01"
+            extras: datafusion
+          - benchmark: tpcdi
+            platform: clickhouse-local
+            scale_factor: "0.01"
+            extras: clickhouse-local
+          - benchmark: tpcdi
+            platform: duckdb
+            scale_factor: "0.1"
+            extras: duckdb
+          - benchmark: tpcdi
+            platform: datafusion
+            scale_factor: "0.1"
+            extras: datafusion
+          - benchmark: tpcdi
+            platform: clickhouse-local
+            scale_factor: "0.1"
+            extras: clickhouse-local
+          - benchmark: tpcdi
+            platform: duckdb
+            scale_factor: "1.0"
+            extras: duckdb
+          - benchmark: tpcdi
+            platform: datafusion
+            scale_factor: "1.0"
+            extras: datafusion
+          - benchmark: tpcdi
+            platform: clickhouse-local
+            scale_factor: "1.0"
+            extras: clickhouse-local
+
           - benchmark: ssb
             platform: duckdb
             scale_factor: "0.01"

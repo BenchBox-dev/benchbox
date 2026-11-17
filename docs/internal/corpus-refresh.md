@@ -25,6 +25,7 @@ this calendar.
 | --- | --- | --- | --- |
 | TPC-H | 0.01, 0.1, 1.0 | DuckDB, DataFusion, Polars-DF (SF 0.01/0.1); DuckDB, DataFusion, ClickHouse Local (SF 1.0) | Power phase only |
 | TPC-DS | 1 | DuckDB, DataFusion, ClickHouse Local | Integer SF only |
+| TPC-DI | 0.01, 0.1, 1.0 | DuckDB, DataFusion, ClickHouse Local | Power phase only |
 | SSB | 0.01, 0.1 | DuckDB, DataFusion, Polars-DF | Power phase only |
 
 TPC-H SF10 / SF100 and extra TPC-DS platforms stay operator-run (too large
