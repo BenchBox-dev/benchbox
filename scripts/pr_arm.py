@@ -42,8 +42,44 @@ ALREADY_CLEAN = "clean status"
 WAIT_MAX_MINUTES = 120
 
 _last_outcome = ""
+_last_reasons: tuple[str, ...] = ()
+_last_head = ""
 
 Runner = Callable[[list[str]], tuple[int, str]]
+
+WRITE_FLAGS = frozenset({"-X", "--method", "-f", "-F", "--field", "--raw-field", "--input"})
+PINNED_REF_RE = re.compile(r"[?&]ref=[0-9a-f]{40}(?:&|$)")
+NAMED_RUN_RE = re.compile(r"waiting for (?:full CI run|the placeholder re-run of CI run) (\d+)")
+CORE_PENDING = f"the {PRODUCER_CHECK} job that records it has not finished for "
+OPEN_RUN_STATUSES = frozenset({"queued", "in_progress", "waiting", "pending", "requested"})
+
+
+class AttemptReads:
+    def __init__(self, run: Runner) -> None:
+        self._run = run
+        self._attempt: dict[tuple[str, ...], tuple[int, str]] = {}
+        self._pinned: dict[tuple[str, ...], tuple[int, str]] = {}
+
+    @classmethod
+    def around(cls, run: Runner) -> AttemptReads:
+        return run if isinstance(run, AttemptReads) else cls(run)
+
+    def start_attempt(self) -> AttemptReads:
+        self._attempt = {}
+        return self
+
+    def __call__(self, cmd: list[str]) -> tuple[int, str]:
+        if cmd[:2] != ["gh", "api"] or "graphql" in cmd or WRITE_FLAGS.intersection(cmd):
+            return self._run(cmd)
+        store = self._pinned if any(PINNED_REF_RE.search(part) for part in cmd) else self._attempt
+        key = tuple(cmd)
+        if key not in store:
+            result = self._run(cmd)
+            if result[0] != 0:
+                return result
+            store[key] = result
+        return store[key]
+
 
 CI_RUNS_JQ = r".workflow_runs[] | [.id, .display_title, .status, .conclusion, .updated_at] | @tsv"
 PLACEHOLDER_REFRESH_SECONDS = 600
@@ -508,6 +544,8 @@ def arm(
     except ValueError as exc:
         return _refused(str(exc), 2)
     gate = gate or functools.partial(gate_refusals, base=base)
+    _remember_waiting((), "")
+    run = AttemptReads.around(run)
     try:
         code, out = run(["git", "rev-parse", "HEAD"])
         if code != 0:
@@ -543,7 +581,7 @@ def arm(
         if reasons:
             for reason in reasons:
                 print(f"pr-arm: refusing to arm PR #{view['number']}: {reason}", file=sys.stderr)
-            if all(_is_waiting(reason, local_head, wait_on_pending_review) for reason in reasons):
+            if _held(reasons, local_head, wait_on_pending_review):
                 return _outcome(f"waiting: PR #{view['number']} is not armed yet: {' | '.join(reasons)}", 2)
             return _outcome(f"refused: PR #{view['number']} was not armed: {' | '.join(reasons)}", 2)
         stale = (stale_base or pr_stale_base.stale_base_refusals)(
@@ -552,11 +590,7 @@ def arm(
         if stale:
             for reason in stale:
                 print(f"pr-arm: refusing to arm PR #{view['number']}: {reason}", file=sys.stderr)
-            kind = (
-                "waiting"
-                if all(_is_waiting(reason, local_head, wait_on_pending_review) for reason in stale)
-                else "refused"
-            )
+            kind = "waiting" if _held(stale, local_head, wait_on_pending_review) else "refused"
             return _outcome(f"{kind}: PR #{view['number']} is not armed yet: {' | '.join(stale)}", 2)
         merge = ["gh", "pr", "merge", str(view["number"]), "--repo", repo, "--squash"]
         code, out = run([*merge, "--auto", "--match-head-commit", local_head])
@@ -608,20 +642,76 @@ def trunk_gate_refusal(
         return f"the trunk state could not be read: {exc}"
 
 
+def _remember_waiting(reasons: Sequence[str], head: str) -> None:
+    global _last_reasons, _last_head
+    _last_reasons = tuple(reasons)
+    _last_head = head
+
+
+def _held(reasons: Sequence[str], head: str, wait_on_pending_review: bool) -> bool:
+    waiting = all(_is_waiting(reason, head, wait_on_pending_review) for reason in reasons)
+    if waiting:
+        _remember_waiting(reasons, head)
+    return waiting
+
+
+def _run_status(run: Runner, repo: str, run_id: int) -> str | None:
+    code, out = run(["gh", "api", "--jq", ".status", f"repos/{repo}/actions/runs/{run_id}"])
+    return out.strip() if code == 0 else None
+
+
+def _ci_run_open(run: Runner, repo: str, head: str) -> bool:
+    code, out = run(
+        [
+            "gh",
+            "api",
+            "--jq",
+            ".workflow_runs[].status",
+            f"repos/{repo}/actions/workflows/ci.yml/runs?event=pull_request&head_sha={head}&per_page=100",
+        ]
+    )
+    return code == 0 and any(status.strip() in OPEN_RUN_STATUSES for status in out.splitlines())
+
+
+def still_blocked(run: Runner, repo: str) -> bool:
+    if not _last_reasons or not _last_head:
+        return False
+    code, out = run(["git", "rev-parse", "HEAD"])
+    if code != 0 or out.strip() != _last_head:
+        return False
+    run_ids: set[int] = set()
+    core_pending = False
+    for reason in _last_reasons:
+        named = NAMED_RUN_RE.search(reason)
+        if named is not None:
+            run_ids.add(int(named.group(1)))
+        elif CORE_PENDING in reason:
+            core_pending = True
+        else:
+            return False
+    if any(_run_status(run, repo, run_id) not in OPEN_RUN_STATUSES for run_id in sorted(run_ids)):
+        return False
+    return not core_pending or _ci_run_open(run, repo, _last_head)
+
+
 def arm_waiting(
     attempt: Callable[[], int],
     trunk_gate: Callable[[], str | None],
     minutes: int,
     clock: Callable[[], float] = _mono_time,
     sleep: Callable[[float], None] = time.sleep,
+    blocked: Callable[[], bool] = lambda: False,
 ) -> int:
     deadline = clock() + minutes * 60.0
-    while True:
-        code = attempt()
-        if not _last_outcome.startswith("waiting:"):
-            return code
+    code = attempt()
+    fresh = True
+    while _last_outcome.startswith("waiting:"):
         remaining = deadline - clock()
         if remaining <= 0:
+            if not fresh:
+                code = attempt()
+                fresh = True
+                continue
             return _outcome(f"{_last_outcome} (WAIT={minutes} expired)", code)
         pause = min(WAIT_INTERVAL_SECONDS, remaining)
         print(
@@ -633,6 +723,16 @@ def arm_waiting(
         refusal = trunk_gate()
         if refusal:
             return _refused(f"stopped waiting, the trunk check refuses: {refusal}", 2)
+        if blocked():
+            print(
+                "pr-arm: what it is waiting on has not finished; the other checks are re-read when it does",
+                file=sys.stderr,
+            )
+            fresh = False
+            continue
+        code = attempt()
+        fresh = True
+    return code
 
 
 def _environment_selection(env: Mapping[str, str]) -> dict[str, Any]:
@@ -674,9 +774,10 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
         base = pr_base.validate(args.base)
     except ValueError as exc:
         return _refused(str(exc), 2)
+    reads = AttemptReads(pr_landing.live_run)
 
     def attempt() -> int:
-        options: dict[str, Any] = {}
+        options: dict[str, Any] = {"run": reads.start_attempt()}
         if args.require_batch:
             options["require_batch"] = True
         if minutes is not None:
@@ -687,7 +788,12 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
 
     if minutes is None:
         return attempt()
-    return arm_waiting(attempt, lambda: trunk_gate_refusal(args.pr, args.repo), minutes)
+    return arm_waiting(
+        attempt,
+        lambda: trunk_gate_refusal(args.pr, args.repo),
+        minutes,
+        blocked=lambda: still_blocked(pr_landing.live_run, args.repo),
+    )
 
 
 if __name__ == "__main__":

@@ -552,7 +552,7 @@ def test_the_make_wrapper_tells_an_omitted_variable_from_an_empty_one(tmp_path: 
 
 def test_main_passes_the_raw_environment_values_to_arm(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: list[tuple] = []
-    monkeypatch.setattr(pr_arm, "arm", lambda pr, head, repo: seen.append((pr, head, repo)) or 0)
+    monkeypatch.setattr(pr_arm, "arm", lambda pr, head, repo, **_: seen.append((pr, head, repo)) or 0)
     env = {
         "PR_ARM_PR": "7 --pr 8",
         "PR_ARM_PR_SET": "1",
@@ -1593,8 +1593,12 @@ def test_an_invalid_wait_is_refused_before_any_check(
 def test_main_waits_only_when_wait_is_given(monkeypatch: pytest.MonkeyPatch) -> None:
     waits: list[int] = []
     options: list[dict] = []
-    monkeypatch.setattr(pr_arm, "arm", lambda pr, head, repo, **kwargs: options.append(kwargs) or 0)
-    monkeypatch.setattr(pr_arm, "arm_waiting", lambda attempt, gate, minutes: waits.append(minutes) or attempt())
+    monkeypatch.setattr(
+        pr_arm,
+        "arm",
+        lambda pr, head, repo, **kwargs: options.append({k: v for k, v in kwargs.items() if k != "run"}) or 0,
+    )
+    monkeypatch.setattr(pr_arm, "arm_waiting", lambda attempt, gate, minutes, **_: waits.append(minutes) or attempt())
 
     assert pr_arm.main([], env={}) == 0
     assert pr_arm.main([], env={"PR_ARM_WAIT": "", "PR_ARM_WAIT_SET": "1"}) == 0
@@ -1875,7 +1879,11 @@ def test_the_gate_evaluation_of_a_line_pull_request_reads_the_policy_of_its_own_
 
 def test_main_passes_the_named_base_to_arm_and_refuses_an_unknown_one(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: list[dict] = []
-    monkeypatch.setattr(pr_arm, "arm", lambda pr, head, repo, **options: seen.append(options) or 0)
+    monkeypatch.setattr(
+        pr_arm,
+        "arm",
+        lambda pr, head, repo, **options: seen.append({k: v for k, v in options.items() if k != "run"}) or 0,
+    )
     assert pr_arm.main([], env={"PR_ARM_BASE": LINE}) == 0
     assert pr_arm.main(["--base", LINE], env={}) == 0
     assert pr_arm.main([], env={"PR_ARM_BASE": "develop"}) == 0
@@ -1884,3 +1892,210 @@ def test_main_passes_the_named_base_to_arm_and_refuses_an_unknown_one(monkeypatc
     seen.clear()
     assert pr_arm.main([], env={"PR_ARM_BASE": "feature/x"}) == 2
     assert seen == []
+
+
+class PollingGh(FakeGh):
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.run_status: dict[int, str] = kwargs.get("run_status", {})
+        self.poll_code = kwargs.get("poll_code", 0)
+
+    def __call__(self, cmd: Sequence[str]) -> tuple[int, str]:
+        cmd = list(cmd)
+        if cmd[:3] == ["gh", "api", "--jq"] and "/actions/runs/" in cmd[-1]:
+            self.calls.append(cmd)
+            if self.poll_code != 0:
+                return self.poll_code, "gh: HTTP 502"
+            return 0, self.run_status.get(int(cmd[-1].rsplit("/", 1)[1]), "completed") + "\n"
+        if cmd[:3] == ["gh", "api", "--jq"] and "/check-runs?check_name=core" in cmd[-1]:
+            self.calls.append(cmd)
+            return self.poll_code, self.core[0] + "\n"
+        return super().__call__(cmd)
+
+    def full_attempts(self) -> int:
+        return sum(1 for call in self.calls if call[:3] == ["gh", "pr", "view"])
+
+    def reads(self, fragment: str) -> int:
+        return sum(1 for call in self.calls if call[:2] == ["gh", "api"] and fragment in call[-1])
+
+
+def _waiting_on_run_91(**kwargs) -> PollingGh:
+    return PollingGh(
+        verdict=None,
+        core=("completed", "failure"),
+        core_url=FULL_URL,
+        ci_runs=[(91, "CI", "in_progress")],
+        run_status={91: "in_progress"},
+        **kwargs,
+    )
+
+
+def _finish_run_91(gh: PollingGh, **view_overrides) -> None:
+    gh.run_status[91] = "completed"
+    gh.ci_runs = [(91, "CI", "completed")]
+    gh.core = ("completed", "success")
+    gh.verdict = {"verdict": "pass"}
+    gh.view = _view(**view_overrides)
+
+
+def _wait_with_polling(gh: PollingGh, time: WaitClock, minutes: int = 30, trunk=lambda: None) -> int:
+    return pr_arm.arm_waiting(
+        lambda: _arm_live(gh),
+        trunk,
+        minutes,
+        clock=time.clock,
+        sleep=time.sleep,
+        blocked=lambda: pr_arm.still_blocked(gh, pr_arm.REPOSITORY),
+    )
+
+
+def test_one_attempt_reads_the_ruleset_and_the_check_runs_once() -> None:
+    gh = _waiting_on_run_91()
+
+    assert _arm_live(gh) == 2
+    assert gh.reads("/rules/branches/") == 1
+    assert gh.reads("/check-runs?") == 1
+    assert gh.reads("/actions/workflows/ci.yml/runs") == 1
+
+
+def test_a_wait_on_a_named_run_polls_only_that_run_and_arms_after_a_fresh_full_check() -> None:
+    time = WaitClock()
+    gh = _waiting_on_run_91()
+    time.on_sleep.append(lambda: len(time.sleeps) == 3 and _finish_run_91(gh))
+
+    assert _wait_with_polling(gh, time) == 0
+    assert time.sleeps == [pr_arm.WAIT_INTERVAL_SECONDS] * 3
+    assert gh.full_attempts() == 2
+    assert gh.reads("/actions/runs/91") == 3
+    assert len(gh.merged()) == 1
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"labels": [{"name": pr_arm.HOLD_LABEL}]},
+        {"isDraft": True},
+        {"headRefOid": "b" * 40},
+    ],
+)
+def test_a_refusal_that_appears_while_polling_still_prevents_the_arm(change: dict) -> None:
+    time = WaitClock()
+    gh = _waiting_on_run_91()
+    time.on_sleep.append(lambda: len(time.sleeps) == 2 and _finish_run_91(gh, **change))
+
+    assert _wait_with_polling(gh, time) != 0
+    assert gh.merged() == []
+    assert gh.full_attempts() == 2
+
+
+def test_a_red_trunk_still_ends_a_wait_that_is_only_polling() -> None:
+    time = WaitClock()
+    gh = _waiting_on_run_91()
+    trunk = iter([None, "develop is red: culprit #9"])
+
+    assert _wait_with_polling(gh, time, trunk=lambda: next(trunk)) == 2
+    assert gh.full_attempts() == 1
+    assert gh.merged() == []
+
+
+def test_a_failed_poll_falls_back_to_the_full_check_every_cycle() -> None:
+    time = WaitClock()
+    gh = _waiting_on_run_91(poll_code=1)
+
+    assert _wait_with_polling(gh, time, minutes=7) == 2
+    assert gh.full_attempts() == len(time.sleeps) + 1
+    assert gh.merged() == []
+
+
+def test_a_wait_that_expires_while_polling_ends_with_a_fresh_full_check(capsys: pytest.CaptureFixture[str]) -> None:
+    time = WaitClock()
+    attempts, attempt = _scripted([WAITING, REFUSED])
+
+    code = pr_arm.arm_waiting(attempt, lambda: None, 7, clock=time.clock, sleep=time.sleep, blocked=lambda: True)
+
+    assert code == 2
+    assert len(attempts) == 2
+    assert _last_outcome_line(capsys).startswith("pr-arm: outcome: refused: ")
+
+
+def _blocked_after(reasons: list[str], responses: dict[str, tuple[int, str]], head: str = HEAD) -> bool:
+    pr_arm._remember_waiting(reasons, HEAD)
+
+    def run(cmd: Sequence[str]) -> tuple[int, str]:
+        if list(cmd) == ["git", "rev-parse", "HEAD"]:
+            return 0, head + "\n"
+        return next(value for key, value in responses.items() if key in cmd[-1])
+
+    return pr_arm.still_blocked(run, pr_arm.REPOSITORY)
+
+
+RUN_91 = pr_arm._waiting_reason("core", 91, pr_arm.FULL_RUN)
+
+
+@pytest.mark.parametrize(
+    ("reasons", "responses", "head", "expected"),
+    [
+        ([RUN_91], {"/actions/runs/91": (0, "in_progress\n")}, HEAD, True),
+        ([RUN_91], {"/actions/runs/91": (0, "completed\n")}, HEAD, False),
+        ([RUN_91], {"/actions/runs/91": (1, "gh: HTTP 502")}, HEAD, False),
+        ([RUN_91], {"/actions/runs/91": (0, "in_progress\n")}, "b" * 40, False),
+        (
+            [f"no verify-fast-duration verdict is recorded for {HEAD[:9]}: {pr_arm.CORE_PENDING}{HEAD[:9]}"],
+            {"ci.yml/runs": (0, "completed\nin_progress\n")},
+            HEAD,
+            True,
+        ),
+        (
+            [f"no verify-fast-duration verdict is recorded for {HEAD[:9]}: {pr_arm.CORE_PENDING}{HEAD[:9]}"],
+            {"ci.yml/runs": (0, "completed\n")},
+            HEAD,
+            False,
+        ),
+        (
+            [f"no verify-fast-duration verdict is recorded for {HEAD[:9]}: {pr_arm.CORE_PENDING}{HEAD[:9]}"],
+            {"ci.yml/runs": (0, "")},
+            HEAD,
+            False,
+        ),
+        (
+            [pr_arm._waiting_reason("core", 91, pr_arm.PLACEHOLDER_REFRESH)],
+            {"/actions/runs/91": (0, "in_progress\n")},
+            HEAD,
+            False,
+        ),
+        ([RUN_91, "a fresh review-gate evaluation of aaaaaaaaa does not pass: waiting"], {}, HEAD, False),
+        ([], {}, HEAD, False),
+    ],
+)
+def test_only_a_named_run_or_core_still_running_on_the_same_head_skips_the_full_check(
+    reasons: list[str], responses: dict, head: str, expected: bool
+) -> None:
+    assert _blocked_after(reasons, responses, head) is expected
+
+
+def test_attempt_reads_reuse_only_within_an_attempt_except_for_pinned_content() -> None:
+    calls: list[list[str]] = []
+    results = iter([(1, "gh: HTTP 502"), (0, "ok")])
+
+    def run(cmd: list[str]) -> tuple[int, str]:
+        calls.append(cmd)
+        return (0, "body") if "flaky" not in cmd[-1] else next(results)
+
+    reads = pr_arm.AttemptReads(run)
+    rules = ["gh", "api", "repos/o/r/rules/branches/develop"]
+    pinned = ["gh", "api", f"repos/o/r/contents/index.json?ref={'d' * 40}"]
+    tip = ["gh", "api", "repos/o/r/git/ref/heads/todo-state"]
+    write = ["gh", "api", "-X", "POST", "repos/o/r/dispatches"]
+    flaky = ["gh", "api", "repos/o/r/flaky"]
+    for _ in range(2):
+        attempt = reads.start_attempt()
+        for cmd in (rules, rules, pinned, tip, write, write):
+            attempt(cmd)
+    assert reads.start_attempt()(flaky) == (1, "gh: HTTP 502")
+    assert reads(flaky) == (0, "ok")
+
+    assert calls.count(rules) == 2
+    assert calls.count(tip) == 2
+    assert calls.count(pinned) == 1
+    assert calls.count(write) == 4
+    assert calls.count(flaky) == 2
