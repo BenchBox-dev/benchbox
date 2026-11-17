@@ -18,11 +18,12 @@ Do not add a second nightly UAT gate for this. Generation already lives in
 ## Recurring matrix
 
 The workflow is the canonical matrix. It uses only local DuckDB, DataFusion,
-and Polars DataFrame identities. Cloud warehouses are not on this calendar.
+Polars DataFrame, and ClickHouse Local identities. Cloud warehouses are not on this calendar.
 
 | Benchmark | Scales | Platforms | Notes |
 | --- | --- | --- | --- |
 | TPC-H | 0.01, 0.1 | DuckDB, DataFusion, Polars-DF | Power phase only |
+| TPC-DI | 0.01, 0.1, 1.0 | DuckDB, DataFusion, ClickHouse Local | Power phase only |
 | SSB | 0.01, 0.1 | DuckDB, DataFusion, Polars-DF | Power phase only |
 
 The TPC-H SF 1 and TPC-DS SF 1 official cohorts are not regenerated. They stay

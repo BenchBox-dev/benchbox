@@ -66,8 +66,19 @@ Staging skips a bundle whose `summary.validation` is not `passed`
 skip has a documented reason and at least one row count was checked: the data
 was refreshed, the count was within a tolerance or range, or the query's count
 depends on the substitution parameters and the run used `--seed`. SQL and
-DataFrame runs follow the same rule. A DataFrame TPC-H run with `--seed` at
-SF 1 has no row-count reference and records `uncertain`, so it cannot be staged.
+DataFrame runs follow the same rule.
+
+DataFrame combinations that validate row counts: TPC-H at SF 0.01, 0.1 and 1,
+seeded or not (a seeded run checks fixed-count queries exactly and range-checks
+the parameter-sensitive ones; a count inside a range is recorded as passed, and
+a loose-tolerance query whose count is not exact is recorded as a documented
+skip); SSB at the scale factors
+with recorded counts; TPC-DS at the scale factors with recorded subscale counts
+when the run uses the reference seed. DataFrame TPC-DS at SF 1 records
+`uncertain`: the SF 1 answer files hold the qualification parameters, and the
+SQL path also skips them unless exact mode is forced, so they cannot be matched
+to the dsqgen-bound parameters of a measured stream. Any other combination
+records `uncertain` or `not_run` and cannot be staged.
 
 ## Guard refusals
 

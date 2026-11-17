@@ -78,11 +78,14 @@ def test_supported_matrix_has_three_local_identities_per_cohort() -> None:
     assert cohorts == {
         ("tpch", "0.01"): {"duckdb", "datafusion", "polars-df"},
         ("tpch", "0.1"): {"duckdb", "datafusion", "polars-df"},
+        ("tpcdi", "0.01"): {"duckdb", "datafusion", "clickhouse-local"},
+        ("tpcdi", "0.1"): {"duckdb", "datafusion", "clickhouse-local"},
+        ("tpcdi", "1.0"): {"duckdb", "datafusion", "clickhouse-local"},
         ("ssb", "0.01"): {"duckdb", "datafusion", "polars-df"},
         ("ssb", "0.1"): {"duckdb", "datafusion", "polars-df"},
     }
     assert all(len(platforms) == 3 for platforms in cohorts.values())
-    assert len(entries) == len(cells) == 12
+    assert len(entries) == len(cells) == 21
 
 
 def _stage_bundle(
