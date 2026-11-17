@@ -41068,7 +41068,7 @@
       "needs": [],
       "priority": "low",
       "status": "open",
-      "title": "Add read_primitives SF 1 and ClickBench SF 0.01 and 0.1 to the standard scale lists after passing runs"
+      "title": "Decide whether to widen read_primitives and ClickBench standard scales after measured DuckDB success"
     },
     "standardize-benchmark-constraint-parameter-apis": {
       "claim": null,
