@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "A test runs RF1 and RF2 on a small database, then shows the next run recreates it.",
+    "The 18 bundles without per-table rows are listed with whether any other evidence shows they ran on a fresh database."
+  ],
+  "context": "Remaining limit recorded at closeout of stale-shared-output-dir-tpch-q18-mismatch-20261114. Guardrails: linked worktree (make worktree-create, then make agent-write-preflight), never the primary clone; one PR per repo; no live-cloud runs or credentials in Git or logs; heavy work only via lock-taking entry points or make heavy-run after make heavy-status; never start deliberate host load; comment policy; changelog.d fragment for user-facing change. Re-verify every cited file and line before acting; they are hints.",
+  "description": "Problem: PR #4273 made database reuse require exact counts for orders and the small tables and lineitem within 0.5%. A database that completed an RF1+RF2 pair keeps the orders count, so only lineitem's 0.5% band can catch it, which is loose at SF 1 and above; refreshed rows change data, not counts. 18 published TPC-H-family bundles record no per-table rows, so the corpus scan could not check them.\n\nOutcome: a reused database records whether refresh functions ran against it, and reuse refuses or recreates a refreshed database regardless of counts.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019",
+      "at": "2026-11-17T13:48:44Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "92b30b48ce3745c79e2385aba4fc961c",
+      "session_id": "14462ffc9066466ca32d151c57f6a5de"
+    }
+  ]
+}
