@@ -831,6 +831,82 @@ def test_prepare_bounds_the_listed_corpus_cases_and_says_so(world: World) -> Non
     assert len(body) < 60000
 
 
+def test_the_corpus_section_never_exceeds_its_overall_cap(world: World) -> None:
+    changes = [
+        {
+            "area": "a" * 5000,
+            "case": f"case_{index}" + "c" * 5000,
+            "before": {"fork": "f" * 600, "legacy": "l" * 600, "classification": "x" * 600, "reason": "r" * 600},
+            "after": {"fork": "g" * 600, "legacy": "m" * 600, "classification": "y" * 600, "reason": "s" * 600},
+        }
+        for index in range(delivery.MAX_LISTED_CASES)
+    ]
+    section = delivery.render_corpus_changes(changes)
+    assert len(section) <= delivery.MAX_SECTION_CHARS + 2
+    listed = section.count("### `")
+    assert 0 < listed < len(changes)
+    assert f"the first {listed} follow" in section
+
+
+def test_a_prepared_body_that_hides_the_corpus_changes_is_refused_before_any_mutation(world: World) -> None:
+    seed_corpus(world, "area_adapters", {"case_a": {"fork": "x", "legacy": "y"}})
+    world.deliver(NEW, 2)
+    world.recorder = rewriting("area_adapters", {"case_a": {"fork": "z", "legacy": "y"}})
+    world.prepare()
+    path = world.tmp / "prepared" / delivery.PULL_REQUEST_FILE
+    pull = json.loads(path.read_text(encoding="utf-8"))
+    start = pull["body"].index("## Golden corpus changes")
+    end = pull["body"].index("<!-- sqlglot-delivery:")
+    pull["body"] = pull["body"][:start] + pull["body"][end:]
+    path.write_text(json.dumps(pull))
+    with pytest.raises(DeliveryError, match="does not list the corpus changes"):
+        world.publish()
+    assert not world.api.mutations and world.remote_branches() == ["develop"]
+
+
+def commit_corpus(world: World, prepared: dict[str, Any], text: str) -> None:
+    (world.clone / CORPUS / "area_adapters.json").write_text(text, encoding="utf-8")
+    sh(world.clone, "git", "add", CORPUS)
+    env = {
+        "GIT_AUTHOR_NAME": "b",
+        "GIT_AUTHOR_EMAIL": delivery.BOT_EMAIL,
+        "GIT_COMMITTER_NAME": "b",
+        "GIT_COMMITTER_EMAIL": delivery.BOT_EMAIL,
+    }
+    subprocess.check_call(["git", "commit", "--amend", "--no-edit"], cwd=world.clone, env={**os.environ, **env})
+    head = sh(world.clone, "git", "rev-parse", "HEAD")
+    bundle = world.tmp / "prepared" / delivery.BUNDLE_FILE
+    bundle.unlink()
+    sh(world.clone, "git", "bundle", "create", str(bundle), prepared["branch"], f"^{prepared['base']}")
+    path = world.tmp / "prepared" / delivery.PULL_REQUEST_FILE
+    pull = json.loads(path.read_text(encoding="utf-8"))
+    pull["body"] = pull["body"].replace(prepared["head"], head)
+    pull["head"] = head
+    path.write_text(json.dumps(pull))
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "not json",
+        "[]\n",
+        json.dumps({"c": {"fork": "a"}}, indent=2) + "\n",
+        json.dumps({"c": {"fork": "a", "legacy": 1}}, indent=2) + "\n",
+        json.dumps({"c": {"fork": "a", "legacy": "b"}}),
+        json.dumps({"c": {"legacy": "b", "fork": "a"}}, indent=4) + "\n",
+    ],
+)
+def test_a_prepared_corpus_file_that_is_not_a_canonical_recording_is_refused(world: World, text: str) -> None:
+    seed_corpus(world, "area_adapters", {"case_a": {"fork": "x", "legacy": "y"}})
+    world.deliver(NEW, 2)
+    world.recorder = rewriting("area_adapters", {"case_a": {"fork": "z", "legacy": "y"}})
+    prepared = world.prepare()
+    commit_corpus(world, prepared, text)
+    with pytest.raises(DeliveryError, match="not publishable"):
+        world.publish()
+    assert not world.api.mutations and world.remote_branches() == ["develop"]
+
+
 @pytest.mark.parametrize(
     "path",
     [

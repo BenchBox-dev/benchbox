@@ -27,6 +27,8 @@ CORPUS_DIR = "tests/unit/sql_compat/golden_corpus/recorded"
 CORPUS_MODULE = "tests.unit.sql_compat.golden_corpus"
 MAX_LISTED_CASES = 20
 MAX_OUTPUT_CHARS = 600
+MAX_SECTION_CHARS = 30000
+MAX_NAME_CHARS = 200
 KILL_SWITCH = "SQLGLOT_DELIVERY_ENABLED"
 HOLD_LABEL = "no-auto-merge"
 BOT_NAME = "benchbox-bot"
@@ -475,11 +477,11 @@ def run(
     return subprocess.run(list(args), cwd=cwd, env=environment, capture_output=True, text=True, check=False)
 
 
-def git(clone: Path, *args: str, env: Mapping[str, str] | None = None) -> str:
+def git(clone: Path, *args: str, env: Mapping[str, str] | None = None, strip: bool = True) -> str:
     result = run(["git", *args], clone, env)
     if result.returncode:
         raise DeliveryError(f"git {' '.join(args[:2])} failed: {result.stderr.strip()[-400:]}")
-    return result.stdout.strip()
+    return result.stdout.strip() if strip else result.stdout
 
 
 def authorization(token: str) -> dict[str, str]:
@@ -557,8 +559,8 @@ def fence(text: str) -> str:
     return f"{mark}\n{text}\n{mark}"
 
 
-def clip(text: str) -> str:
-    return text if len(text) <= MAX_OUTPUT_CHARS else f"{text[:MAX_OUTPUT_CHARS]}... ({len(text)} characters in all)"
+def clip(text: str, limit: int = MAX_OUTPUT_CHARS) -> str:
+    return text if len(text) <= limit else f"{text[:limit]}... ({len(text)} characters in all)"
 
 
 def render_corpus_changes(changes: Sequence[CorpusChange]) -> str:
@@ -568,25 +570,35 @@ def render_corpus_changes(changes: Sequence[CorpusChange]) -> str:
     for change in changes:
         per_area[change["area"]] = per_area.get(change["area"], 0) + 1
     counts = ", ".join(f"{area}: {count}" for area, count in sorted(per_area.items()))
-    listed = changes[:MAX_LISTED_CASES]
-    lines = [
-        "## Golden corpus changes\n",
+    head = (
+        "## Golden corpus changes\n\n"
         f"The delivered runtime changes {len(changes)} recorded case(s) of the fork-versus-legacy golden corpus "
-        f"({counts}). The automation re-recorded them in the adoption commit; review each before merging.",
-    ]
-    if len(changes) > len(listed):
-        lines.append(f"\nThere are too many to list: the first {len(listed)} follow, and the rest are in the diff.")
-    for change in listed:
+        f"({counts}). The automation re-recorded them in the adoption commit; review each before merging."
+    )
+    blocks: list[str] = []
+    for change in changes[:MAX_LISTED_CASES]:
         before, after = change["before"], change["after"]
         kind = "added" if before is None else "removed" if after is None else "changed"
-        lines.append(f"\n### `{change['area']}` / `{change['case']}` ({kind})")
+        area, case = clip(change["area"], MAX_NAME_CHARS), clip(change["case"], MAX_NAME_CHARS)
+        lines = [f"\n### `{area}` / `{case}` ({kind})"]
         for field in sorted(set(before or {}) | set(after or {})):
             old, new = (before or {}).get(field), (after or {}).get(field)
             if old == new:
                 continue
             lines.append(f"\n{field}, before:\n{fence(clip(old)) if old is not None else '_absent_'}")
             lines.append(f"\n{field}, after:\n{fence(clip(new)) if new is not None else '_absent_'}")
-    return "\n".join(lines) + "\n\n"
+        blocks.append("\n".join(lines))
+    listed = 0
+    size = len(head)
+    for block in blocks:
+        if size + len(block) > MAX_SECTION_CHARS:
+            break
+        size += len(block)
+        listed += 1
+    note = ""
+    if listed < len(changes):
+        note = f"\n\nThere are too many to list: the first {listed} follow, and the rest are in the diff."
+    return head + note + "".join(blocks[:listed]) + "\n\n"
 
 
 def read_corpus(root: Path) -> dict[str, dict[str, Any]]:
@@ -594,6 +606,33 @@ def read_corpus(root: Path) -> dict[str, dict[str, Any]]:
     if not directory.is_dir():
         return {}
     return {path.stem: json.loads(path.read_text(encoding="utf-8")) for path in sorted(directory.glob("*.json"))}
+
+
+def corpus_text_problem(path: str, text: str) -> str | None:
+    try:
+        parsed = json.loads(text)
+    except ValueError:
+        return f"{path} is not valid JSON"
+    if not isinstance(parsed, dict) or not all(
+        isinstance(case, str)
+        and isinstance(pair, dict)
+        and {"fork", "legacy"} <= set(pair)
+        and all(isinstance(key, str) and isinstance(value, str) for key, value in pair.items())
+        for case, pair in parsed.items()
+    ):
+        return f"{path} is not a recorded corpus (case id to outputs)"
+    if text != json.dumps(parsed, indent=2, sort_keys=True, ensure_ascii=False) + "\n":
+        return f"{path} is not in the recorder's canonical format"
+    return None
+
+
+def corpus_at(clone: Path, rev: str) -> dict[str, dict[str, Any]]:
+    names = [n for n in git(clone, "ls-tree", "-r", "--name-only", "-z", rev, "--", CORPUS_DIR).split("\0") if n]
+    found: dict[str, dict[str, Any]] = {}
+    for name in names:
+        if CORPUS_FILE_RE.fullmatch(name):
+            found[PurePosixPath(name).stem] = json.loads(git(clone, "show", f"{rev}:{name}"))
+    return found
 
 
 def corpus_changes(
@@ -797,6 +836,11 @@ def commit_problem(
             return "the adoption branch carries more than one commit"
         names = git(clone, "diff", "--name-only", "--no-renames", "-z", parent, tip).split("\0")
         check_adoption_paths([name for name in names if name], expected["version"])
+        for name in names:
+            if CORPUS_FILE_RE.fullmatch(name):
+                problem = corpus_text_problem(name, git(clone, "show", f"{tip}:{name}", strip=False))
+                if problem:
+                    return problem
         pin = json.loads(git(clone, "show", f"{tip}:{PIN}"))
         for key, wanted in (
             ("version", expected["version"]),
@@ -972,6 +1016,11 @@ def publish(
     require(head == pull_request["head"], "the prepared bundle tip differs from the prepared pull request")
     problem = commit_problem(clone, head, plan, config, remote, pull_request["base"])
     require(problem is None, f"the prepared adoption is not publishable: {problem}")
+    listing = render_corpus_changes(corpus_changes(corpus_at(clone, pull_request["base"]), corpus_at(clone, head)))
+    require(
+        listing in pull_request["body"],
+        "the prepared pull request body does not list the corpus changes the commit makes",
+    )
 
     owned, foreign = open_adoptions(api, config, repo, login)
     history, free_index = version_history(api, config, repo, version)
