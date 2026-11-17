@@ -785,6 +785,8 @@ def _interactive_handle_result(s: types.SimpleNamespace, result: Any, orchestrat
             export_formats=export_formats,
             funding=getattr(s, "funding", None),
             result_source=getattr(s, "result_source", None),
+            plan_tier=getattr(s, "plan_tier", None),
+            preview_features=getattr(s, "preview_features", None),
         )
 
         if s.quiet:

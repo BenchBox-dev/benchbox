@@ -207,7 +207,9 @@ class _SingleStoreConnection(_Connection):
 def _singlestore_adapter():
     from benchbox.platforms.singlestore import SingleStoreAdapter
 
-    return SingleStoreAdapter.__new__(SingleStoreAdapter)
+    adapter = SingleStoreAdapter.__new__(SingleStoreAdapter)
+    adapter.record_refresh_applied = lambda connection: None
+    return adapter
 
 
 @pytest.mark.parametrize("site", ["power", "throughput", "maintenance"])

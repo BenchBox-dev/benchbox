@@ -400,8 +400,8 @@ def test_exported_sql_and_dataframe_bundles_share_cross_mode_contract(tmp_path):
     assert set(sql_payload) - set(df_payload) <= {"tables"}
     assert set(df_payload) - set(sql_payload) <= {"tables"}
     assert sql_payload["result_schema_version"] == df_payload["result_schema_version"]
-    assert sql_payload["version"] == "2.4"
-    assert df_payload["version"] == "2.4"
+    assert sql_payload["version"] == "2.5"
+    assert df_payload["version"] == "2.5"
     assert sql_payload["benchmark"] == df_payload["benchmark"]
 
     assert sql_payload["config"]["compression"] == df_payload["config"]["compression"]
@@ -431,7 +431,7 @@ def test_exported_sql_and_dataframe_bundles_share_cross_mode_contract(tmp_path):
     assert df_payload["queries"][0]["row_count_validation"]["status"] == "PASSED"
     assert sql_payload.get("errors", []) == df_payload.get("errors", []) == []
 
-    assert set(sql_payload["execution"]) == set(df_payload["execution"]) == {"mode"}
+    assert set(sql_payload["execution"]) == set(df_payload["execution"]) == {"mode", "config_capture"}
     assert sql_payload["execution"]["mode"] == "sql"
     assert df_payload["execution"]["mode"] == "dataframe"
 

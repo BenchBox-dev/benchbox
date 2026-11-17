@@ -23,9 +23,10 @@ def _load_schema_policy_helpers():
         from benchbox.core.results.schema_policy import (
             PUBLIC_SUBMISSION_SCHEMA_POLICY,
             result_schema_version_value,
+            supports_capture_and_vendor_fields,
         )
 
-        return PUBLIC_SUBMISSION_SCHEMA_POLICY, result_schema_version_value
+        return PUBLIC_SUBMISSION_SCHEMA_POLICY, result_schema_version_value, supports_capture_and_vendor_fields
     except ImportError:
         pass
     helper_path = Path(__file__).resolve().parents[1] / "core" / "results" / "schema_policy.py"
@@ -35,16 +36,24 @@ def _load_schema_policy_helpers():
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
-    return module.PUBLIC_SUBMISSION_SCHEMA_POLICY, module.result_schema_version_value
+    return (
+        module.PUBLIC_SUBMISSION_SCHEMA_POLICY,
+        module.result_schema_version_value,
+        module.supports_capture_and_vendor_fields,
+    )
 
 
-PUBLIC_SUBMISSION_SCHEMA_POLICY, result_schema_version_value = _load_schema_policy_helpers()
+PUBLIC_SUBMISSION_SCHEMA_POLICY, result_schema_version_value, supports_capture_and_vendor_fields = (
+    _load_schema_policy_helpers()
+)
 
 
 try:
-    from benchbox.core.results.provenance import FUNDING_SOURCES, RESULT_SOURCES
+    from benchbox.core.results.provenance import FUNDING_SOURCES, PLAN_TIERS, RESULT_SOURCES, VENDOR_PROVENANCE_FIELDS
 except ImportError:
     FUNDING_SOURCES = ("employer", "personal", "free-trial", "vendor-sponsored", "grant", "unspecified")
+    PLAN_TIERS = ("paid", "free", "trial", "unspecified")
+    VENDOR_PROVENANCE_FIELDS = ("plan_tier", "preview_features", "vendor_permission", "vendor_notice", "self_run")
     RESULT_SOURCES = ("internal", "community", "vendor")
 
 try:
@@ -757,8 +766,6 @@ DIRECT_COST_TOTAL_KEYS = ("total_usd", "total_cost")
 TOP_LEVEL_DIRECT_COST_KEYS = ("cost_usd",)
 
 
-PLAN_TIERS: tuple[str, ...] = ("paid", "free", "trial", "unspecified")
-
 VENDOR_NOTICE_PLATFORMS: Mapping[str, str] = {
     "snowflake": "Snowflake Acceptable Use Policy section IV: share the results with Snowflake reasonably in advance of publishing",
     "redshift": "AWS Service Terms section 1.8: send the replication information to AWS",
@@ -1133,6 +1140,49 @@ def _validate_query_timing_fields(index: int, q: dict, vr: ValidationResult) -> 
         return
     for problem in platform_timing_problems(q["platform_timing"]):
         vr.error(f"queries[{index}].platform_timing {problem}")
+
+
+def _validate_capture_and_vendor_fields(data: dict, version: Any, vr: ValidationResult) -> None:
+    gated = supports_capture_and_vendor_fields(version)
+    execution = data.get("execution")
+    capture = execution.get("config_capture") if isinstance(execution, dict) else None
+    if capture is not None:
+        if not gated:
+            vr.error("execution.config_capture requires schema version 2.5 or later")
+        elif isinstance(capture, bool) or not isinstance(capture, int) or capture < 1:
+            vr.error(f"execution.config_capture must be a positive integer, got {capture!r}")
+
+    provenance = data.get("provenance")
+    if not isinstance(provenance, dict):
+        return
+    present = [name for name in VENDOR_PROVENANCE_FIELDS if name in provenance]
+    if not present:
+        return
+    if not gated:
+        vr.error(f"provenance.{present[0]} requires schema version 2.5 or later")
+        return
+    platform = data.get("platform")
+    declared = {
+        "platform": platform.get("name") if isinstance(platform, dict) else None,
+        "funding": provenance.get("funding"),
+        **{name: provenance[name] for name in present},
+    }
+    errors, _ = evaluate_vendor_conditions(declared)
+    for message in errors:
+        vr.error(message.replace("Manifest ", "Bundle provenance ", 1))
+
+
+def merge_bundle_vendor_declarations(manifest: dict[str, Any], provenance: Mapping[str, Any]) -> None:
+    for name in VENDOR_PROVENANCE_FIELDS:
+        if name not in provenance:
+            continue
+        recorded = provenance[name]
+        if name not in manifest:
+            manifest[name] = recorded
+        elif name == "preview_features" and isinstance(recorded, list) and isinstance(manifest[name], list):
+            manifest[name] = [*manifest[name], *(item for item in recorded if item not in manifest[name])]
+        elif name == "plan_tier" and recorded in ("free", "trial") and manifest[name] not in ("free", "trial"):
+            manifest[name] = recorded
 
 
 def _validate_fetch_mode(path: str, block: dict, allowed: tuple[str, ...], vr: ValidationResult) -> None:
@@ -2867,6 +2917,7 @@ def _validate_bundle(
     _validate_timing_field_versions(data, version, vr)
     _validate_net_estimate_status(data, vr)
     _validate_required_timing_fields(data, version, vr)
+    _validate_capture_and_vendor_fields(data, version, vr)
     _warn_empty_result_rows(data, vr)
     _warn_timing_plateau(data, vr)
     _warn_small_scale_floor(data, vr)
@@ -3257,6 +3308,8 @@ def _manifest_with_bundle_identity(manifest: dict[str, Any], primary_path: Path)
     bundle_funding = provenance.get("funding") if isinstance(provenance, dict) else None
     if bundle_funding == "free-trial":
         merged["funding"] = "free-trial"
+    if isinstance(provenance, dict):
+        merge_bundle_vendor_declarations(merged, provenance)
     return merged
 
 

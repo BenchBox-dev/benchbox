@@ -94,7 +94,7 @@ from benchbox.core.constants import (
     RUN_MODES,
     VALID_PHASES,
 )
-from benchbox.core.results.provenance import FUNDING_SOURCES, RESULT_SOURCES
+from benchbox.core.results.provenance import FUNDING_SOURCES, PLAN_TIERS, RESULT_SOURCES
 from benchbox.core.results.status import result_cli_failure_reason, result_non_clean_reason
 from benchbox.core.schemas import ExecutionContext
 from benchbox.core.tpc_disclaimer import official_mode_disclaimer
@@ -391,11 +391,17 @@ def _export_orchestrated_result(
     export_formats: list[str] | None = None,
     funding: str | None = None,
     result_source: str | None = None,
+    plan_tier: str | None = None,
+    preview_features: tuple[str, ...] | None = None,
 ) -> dict[str, Any]:
     from datetime import datetime
 
     if funding:
         result.funding = funding
+    if plan_tier:
+        result.plan_tier = plan_tier.lower()
+    if preview_features:
+        result.preview_features = list(preview_features)
     if result_source:
         result.result_source = result_source
 
@@ -1478,6 +1484,8 @@ def _direct_handle_result(
             export_formats=["json"],
             funding=getattr(s, "funding", None),
             result_source=getattr(s, "result_source", None),
+            plan_tier=getattr(s, "plan_tier", None),
+            preview_features=getattr(s, "preview_features", None),
         )
 
         if s.quiet:
@@ -1701,6 +1709,8 @@ def _data_or_load_handle_result(
             export_formats=["json"],
             funding=getattr(s, "funding", None),
             result_source=getattr(s, "result_source", None),
+            plan_tier=getattr(s, "plan_tier", None),
+            preview_features=getattr(s, "preview_features", None),
         )
 
         operation_status, operation_name = _data_or_load_operation_status(result, s.execution_mode)
@@ -2074,6 +2084,24 @@ def _data_or_load_handle_result(
     ),
 )
 @click.option(
+    "--plan-tier",
+    type=click.Choice(PLAN_TIERS, case_sensitive=False),
+    default=None,
+    help=(
+        "Plan tier of the vendor service the run used (paid, free, trial, unspecified). Recorded in the "
+        "bundle's provenance block; free and trial results cannot be submitted without vendor permission."
+    ),
+)
+@click.option(
+    "--preview-feature",
+    "preview_features",
+    multiple=True,
+    help=(
+        "Beta or Preview vendor feature the run used (repeatable). Recorded in the bundle's provenance "
+        "block; results that use them cannot be submitted without vendor permission."
+    ),
+)
+@click.option(
     "--result-source",
     type=click.Choice(RESULT_SOURCES, case_sensitive=False),
     default=None,
@@ -2149,6 +2177,8 @@ def run(
     publish_target: str,
     publish_label: str,
     funding: str | None,
+    plan_tier: str | None,
+    preview_features: tuple[str, ...],
     result_source: str | None,
     client_region: str | None = None,
     client_cloud: str | None = None,
@@ -2214,6 +2244,8 @@ def run(
         publish_target=publish_target,
         publish_label=publish_label,
         funding=funding,
+        plan_tier=plan_tier,
+        preview_features=preview_features,
         result_source=result_source,
         client_region=client_region,
         client_cloud=client_cloud,

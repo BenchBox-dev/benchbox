@@ -61,12 +61,14 @@ from benchbox.validation.bundle import (
     COMPANION_SUFFIXES,
     PLAN_TIERS,
     SUBMISSION_NOTES_MAX_LEN,
+    VENDOR_PROVENANCE_FIELDS,
     _hash_bytes,
     _hash_file,
     evaluate_vendor_conditions,
     export_anonymized_errors,
     find_public_path_leaks,
     format_summary,
+    merge_bundle_vendor_declarations,
     unanonymized_plans_findings,
     unanonymized_tuning_findings,
     unsatisfied_override_rules,
@@ -219,9 +221,12 @@ def _vendor_condition_fields(
 
 def _enforce_vendor_conditions(ctx: click.Context, result, vendor_conditions: dict, funding: str | None) -> None:
     resolved_funding = normalize_funding(funding or getattr(result, "funding", None))
-    errors, warnings = evaluate_vendor_conditions(
-        {"platform": result.platform, "funding": resolved_funding, **vendor_conditions}
-    )
+    declared = {"platform": result.platform, "funding": resolved_funding, **vendor_conditions}
+    recorded = {
+        name: value for name in VENDOR_PROVENANCE_FIELDS if (value := getattr(result, name, None)) not in (None, [])
+    }
+    merge_bundle_vendor_declarations(declared, recorded)
+    errors, warnings = evaluate_vendor_conditions(declared)
     for message in warnings:
         console.print(f"[yellow]⚠️  Vendor publishing condition not recorded: {escape(message)}[/yellow]")
     if errors:
