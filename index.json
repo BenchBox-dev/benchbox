@@ -23974,6 +23974,13 @@
       "status": "done",
       "title": "Agent docs: record the operational facts sessions kept rediscovering"
     },
+    "feature-docs-python-api-scale-factor-range-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Site Python API pages: link the run-time scale-factor range"
+    },
     "feature-feat-corpus-scale-policy-and-reruns-20261117": {
       "claim": null,
       "needs": [],
