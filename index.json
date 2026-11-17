@@ -25444,10 +25444,15 @@
       "title": "Host disk hit 100% (ENOSPC): tracker and event log degraded"
     },
     "host-load-cpu-frequency-apple-silicon-20261114": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-18T13:45:27Z",
+        "generation": "9dbcd0c6ee404f6c82003f4e7ef33130",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "host_load reports cpu_frequency_mhz as 4 on Apple Silicon"
     },
     "hosted-review-recovery-steps-undocumented-20261112": {
