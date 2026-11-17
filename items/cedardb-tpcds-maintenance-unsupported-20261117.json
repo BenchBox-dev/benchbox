@@ -4,7 +4,7 @@
     "If supported: tpcds_maintenance_unsupported_reason no longer covers CedarDB, a unit test pins the capability, and post-maintenance row counts match DuckDB",
     "If unsupported: the reason string cites the reproduced error"
   ],
-  "description": "## Problem\nPR #4260 enabled TPC-H refresh functions on CedarDB (supports_refresh_functions = True) and fixed RF1's explicit BEGIN inside psycopg's implicit transaction (_begin_transaction now skips BEGIN when autocommit is False). It kept CedarDB TPC-DS maintenance off through tpcds_maintenance_unsupported_reason, because the same capability flag would otherwise have switched it on unverified. Official TPC-DS requires the maintenance phase (tpc_spec._REQUIRED_PHASES['tpcds'] includes maintenance), so official TPC-DS runs are refused on CedarDB.\n\n## Decision gate\nRun TPC-DS maintenance on CedarDB at SF0.01 locally (mocker, pinned image) with the #4260 transaction fix in place:\n- If it passes and data is consistent after maintenance, remove the unsupported reason and add CedarDB to the maintenance-capable set with a test.\n- If CedarDB lacks a needed SQL feature, record the exact error and keep the reason, citing the reproduced error (same standard as the release-gate compatibility skips).\n\n## Guardrails\n- Do not enable maintenance without a passing local run.\n- Verify row counts of the affected fact and dimension tables before and after maintenance against DuckDB on the same data.\n- Do not touch the TPC-H refresh path that #4260 verified.",
+  "description": "## Problem\nPR #4260 enabled TPC-H refresh functions on CedarDB (supports_refresh_functions = True) and fixed RF1's explicit BEGIN inside psycopg's implicit transaction (_begin_transaction now skips BEGIN when autocommit is False). It kept CedarDB TPC-DS maintenance off through tpcds_maintenance_unsupported_reason, because the same capability flag would otherwise have switched it on unverified. Official TPC-DS requires the maintenance phase (tpc_spec._REQUIRED_PHASES['tpcds'] includes maintenance), so official TPC-DS runs are refused on CedarDB.\n\n## Decision gate\nRun TPC-DS maintenance on CedarDB at SF0.01 locally (mocker, pinned image) with the #4260 transaction fix in place:\n- If it passes and data is consistent after maintenance, remove the unsupported reason and add CedarDB to the maintenance-capable set with a test.\n- If CedarDB lacks a needed SQL feature, record the exact error and keep the reason, citing the reproduced error (same standard as the release-gate compatibility skips).\n- If the failure is a BenchBox adapter defect (like the BEGIN bug #4260 fixed), fix it in the adapter with a test, then rerun.\n- A dialect gap shared with release-gate cells is fixed under cedardb-release-gate-cell-restoration and linked here.\n\n## Guardrails\n- Do not enable maintenance without a passing local run.\n- Verify row counts of the affected fact and dimension tables before and after maintenance against DuckDB on the same data.\n- Do not touch the TPC-H refresh path that #4260 verified.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/4260"
   ],
@@ -47,6 +47,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "2bdb0691957549df9e452a8b369449f5",
+      "session_id": "71cadb46eee448f8a6d2019016ddc6eb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1213c3129d7753c9fd6512c0",
+      "at": "2026-11-17T15:47:31Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "345c1c17d76749008d363ef0f269f5b9",
       "session_id": "71cadb46eee448f8a6d2019016ddc6eb"
     }
   ]
