@@ -4,7 +4,7 @@
     "A test asserts a breach during active work still returns 79",
     "docs/agent/heavy-work.md states how a late breach is reported"
   ],
-  "description": "## Problem\nOn 2026-11-12, a ClickHouse TPC-H SF1 tuning-evidence cell run through make heavy-run finished with harness status completed and full results, yet the wrapper exited 79 (watchdog stopped the process tree). An agent reading only the exit status treats a good measurement as killed and retries it, wasting hours on a memory-constrained host; a CI consumer would mark it failed. The kill most likely landed during teardown (container stop, child cleanup) after the command's own work ended.\n\n## Decision gate\nReproduce with a guarded command that finishes, then holds a child briefly during teardown while pressure is induced or simulated. Then decide which status is correct:\n- If the guarded command's own exit status was 0 before the breach, heavy-run returns 0 and logs the late breach as a warning.\n- If the breach interrupted work the command still needed (output not flushed, cleanup incomplete), keep 79 but say so in the message.\n\n## Guardrails\n- A breach during the command's active work must still exit 79.\n- Do not weaken the kill rule itself (that is heavy-run-admitted-then-killed-by-foreign-memory-pressure-20261112).\n- Tests use the existing watchdog test seams; no real memory pressure in unit tests.",
+  "description": "## Problem\nOn 2026-11-12, a ClickHouse TPC-H SF1 tuning-evidence cell run through make heavy-run finished with harness status completed and full results, yet the wrapper exited 79 (watchdog stopped the process tree). An agent reading only the exit status treats a good measurement as killed and retries it, wasting hours on a memory-constrained host; a CI consumer would mark it failed. The kill most likely landed during teardown (container stop, child cleanup) after the command's own work ended.\n\n## Decision gate\nReproduce with a guarded command that finishes, then holds a child briefly during teardown while a breach is simulated through the watchdog test seams. Then decide which status is correct:\n- If the guarded command's own exit status was 0 before the breach, heavy-run returns 0 and logs the late breach as a warning.\n- If the breach interrupted work the command still needed (output not flushed, cleanup incomplete), keep 79 but say so in the message.\n\n## Guardrails\n- A breach during the command's active work must still exit 79.\n- Do not weaken the kill rule itself (that is heavy-run-admitted-then-killed-by-foreign-memory-pressure-20261112).\n- Tests use the existing watchdog test seams; no deliberate CPU or memory load.\n- Retry-after-breach (heavy-run-admitted-then-killed-by-foreign-memory-pressure-20261112) must not replay a command that already exited 0.\n- Exit codes: host_lock run exits 79; make heavy-run exits 2 and prints Error 79.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1213c3129d7753c9fd6512c0",
@@ -12,6 +12,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "77aa7c39437a4659b6f3cc444c530489",
+      "session_id": "71cadb46eee448f8a6d2019016ddc6eb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1213c3129d7753c9fd6512c0",
+      "at": "2026-11-17T15:58:19Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "71f1e0f212e04c4c938b94414c0e05a5",
       "session_id": "71cadb46eee448f8a6d2019016ddc6eb"
     }
   ]
