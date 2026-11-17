@@ -1,4 +1,3 @@
-import getpass
 import json
 import os
 import subprocess
@@ -47,16 +46,14 @@ def inert_scan(tmp_path_factory: pytest.TempPathFactory) -> dict[str, list[str]]
 
 @pytest.fixture(scope="session")
 def theseus_engine():
-    from _project.scripts import soundness_merge_digest as digest
+    from _project.scripts import soundness_merge_digest as digest, theseus_prefetch
 
     unreachable = "http://127.0.0.1:9"
     previous = os.environ.get("REVIEW_PROMOTION_MIRROR")
     cache_previous = os.environ.get("THESEUS_INSTALL_CACHE")
     os.environ["REVIEW_PROMOTION_MIRROR"] = unreachable
     if cache_previous is None:
-        configured_home = os.environ.get("BENCHBOX_TEST_HOST_HOME")
-        account_home = Path(configured_home) if configured_home else Path(os.path.expanduser(f"~{getpass.getuser()}"))
-        os.environ["THESEUS_INSTALL_CACHE"] = str(account_home / ".cache" / "theseus" / "installs")
+        os.environ["THESEUS_INSTALL_CACHE"] = str(theseus_prefetch.install_cache())
     try:
         return digest.load_engine(Path(__file__).resolve().parents[3], "HEAD")
     except digest.ReadError as exc:

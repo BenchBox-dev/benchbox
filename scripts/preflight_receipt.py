@@ -31,7 +31,8 @@ TREE_PATTERN = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
 SUMMARY_LINE = re.compile(r"^\W*(?P<body>.*?\d+ \w+.*?) in (?P<secs>[0-9.]+)s\b")
 COUNT = re.compile(r"(\d+) (passed|failed|skipped|deselected|errors?|xfailed|xpassed|warnings?)")
 FAILED_ID = re.compile(r"^(?:FAILED|ERROR) (?P<id>.+?)(?: - .*)?$")
-UNVERIFIED = re.compile(r"^WARNING: (?P<why>Linux not verified.*)$")
+UNVERIFIED = re.compile(r"^WARNING: (?P<why>(?:Linux|Theseus install) not verified.*)$")
+THESEUS_SKIP = re.compile(r"^SKIPPED \[(?P<count>\d+)\] \S+: the verified Theseus install is unavailable here")
 BLOCK_BEGIN = "<!-- preflight-receipt: v1 begin tree={tree} -->"
 BLOCK_END = "<!-- preflight-receipt: v1 end -->"
 BLOCK_PATTERN = re.compile(
@@ -155,6 +156,7 @@ def run_step(args: argparse.Namespace) -> int:
     tail: collections.deque[str] = collections.deque(maxlen=TAIL_LINES)
     summary: collections.deque[str] = collections.deque(maxlen=200)
     seen: list[str] = []
+    theseus_skipped = 0
     proc = subprocess.Popen(
         command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="utf-8", errors="replace"
     )
@@ -167,6 +169,9 @@ def run_step(args: argparse.Namespace) -> int:
         summary.append(line)
         if FAILED_ID.match(line.strip()) or UNVERIFIED.match(line.strip()):
             seen.append(line)
+        skip = THESEUS_SKIP.match(line.strip())
+        if skip is not None:
+            theseus_skipped += int(skip.group("count"))
     code = proc.wait()
     lines = list(summary)
     counts = parse_counts(lines)
@@ -184,8 +189,18 @@ def run_step(args: argparse.Namespace) -> int:
         "output_tail": list(tail),
         "known_failures": known,
     }
+    if theseus_skipped:
+        record["theseus_skipped"] = theseus_skipped
+        if outcome == "passed":
+            record["outcome"] = "unverified"
     with open(args.stage, "a", encoding="utf-8") as handle:
         handle.write(json.dumps(record, sort_keys=True) + "\n")
+    if theseus_skipped:
+        print(
+            f"preflight-receipt: {theseus_skipped} tests that need the verified Theseus install were skipped; "
+            "the Theseus group was not run locally",
+            file=sys.stderr,
+        )
     if outcome == "known-failure":
         print(
             f"preflight-receipt: {args.name} failed only on allowlisted environment-only failures; "
@@ -361,7 +376,15 @@ def render(receipt: dict[str, object]) -> str:
     unverified = [step for step in steps if step["outcome"] == "unverified"]
     for step in unverified:
         warning = next((line for line in step["output_tail"] if UNVERIFIED.match(line.strip())), "")
-        lines += ["", f"`{step['name']}` was not verified: {_clip(warning.removeprefix('WARNING: '), 200)}"]
+        if warning:
+            lines += ["", f"`{step['name']}` was not verified: {_clip(warning.removeprefix('WARNING: '), 200)}"]
+        skipped = step.get("theseus_skipped")
+        if skipped:
+            lines += [
+                "",
+                f"`{step['name']}`: {skipped} tests that need the verified Theseus install were skipped; "
+                "the Theseus group was not run locally (CI runs it).",
+            ]
     lines.append(BLOCK_END)
     return "\n".join(lines) + "\n"
 
