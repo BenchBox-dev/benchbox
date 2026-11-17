@@ -3,7 +3,7 @@
     "The decision records which processes would match on the current host and why a user's own long-running shell is not hit.",
     "If implemented, tests inject the process table; no test starts real CPU load."
   ],
-  "context": "Found during a retrospective on 2026-11-15. Guardrails: linked worktree, one PR; no live-cloud runs; heavy work only via lock-taking entry points; re-verify cited facts before acting.",
+  "context": "Found during a retrospective on 2026-11-15. Guardrails: linked worktree, one PR; no live-cloud runs; heavy work only via lock-taking entry points; re-verify cited facts before acting.\n\nCloseout 2026-11-17: core BenchBox-dev/benchbox#4276 merged (20d8ac12af). Report-only: benchbox/utils/orphan_spin.py reports shells with ppid 1, same user, cwd in a BenchBox worktree and >=50% CPU for 300 s; never signals. Matched nothing on this host. Remaining gap filed as heavy-orphan-spin-report-has-no-reader-20261117.",
   "description": "Problem: the sentinel reads memory only and keeps shells on its deny list, so 20 orphaned bash spin loops (ppid 1, working directory in a BenchBox worktree) ran about 20 hours unnoticed. PR BenchBox-dev/benchbox#4236 stops such processes when the guarded command ends and lists orphaned shells in make heavy-status, but nothing acts on an orphan that escapes the process group (for example via setsid).\n\nOutcome: a decision, with the false-positive risk stated, on whether the sentinel should report or stop orphans that hold sustained CPU, and the change if the answer is yes.",
   "sessions": [
     {
@@ -21,6 +21,14 @@
       "generation": "3ab87ad10c10411abc0a75fdb928dd02",
       "op": "take",
       "op_id": "f66dd04e8b84460289e667b10eaa452b",
+      "session_id": "14462ffc9066466ca32d151c57f6a5de"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019",
+      "at": "2026-11-17T13:46:41Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ece43cdf2b314dcdbeb33dbd215d3962",
       "session_id": "14462ffc9066466ca32d151c57f6a5de"
     }
   ]
