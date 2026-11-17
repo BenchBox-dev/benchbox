@@ -243,6 +243,8 @@ def orphan_spin_path(environ: Mapping[str, str] | None = None) -> Path:
 def read_active_spins(environ: Mapping[str, str] | None = None) -> tuple[Any, ...]:
     from benchbox.utils import orphan_spin
 
+    if not read_sentinel_state(environ).running:
+        return ()
     return tuple(orphan_spin.read_active(orphan_spin_path(environ)))
 
 

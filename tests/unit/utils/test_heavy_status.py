@@ -270,7 +270,9 @@ ADMITTED = SimpleNamespace(admitted=True, refusals=(), forced=False)
 SPIN_CWD = "/work/BenchBox.wt-spin"
 
 
-def spin_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, alive: bool = True) -> None:
+def spin_fixture(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, alive: bool = True, sentinel_running: bool = True
+) -> None:
     from benchbox.utils import orphan_spin
 
     spin = orphan_spin.ActiveSpin(
@@ -283,6 +285,10 @@ def spin_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, alive: bool
         busy_since=1000.0,
     )
     orphan_spin.write_active(hs.orphan_spin_path(), [spin])
+    if sentinel_running:
+        pid_path = hs.sentinel_pid_path()
+        pid_path.parent.mkdir(parents=True, exist_ok=True)
+        pid_path.write_text(hl.process_identity(), encoding="utf-8")
 
     class Proc:
         info = {
@@ -324,6 +330,14 @@ def test_status_is_unchanged_without_an_active_orphan_report(tmp_path: Path) -> 
 def test_a_report_for_an_exited_shell_is_not_printed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     spin_fixture(tmp_path, monkeypatch, alive=False)
     assert "ORPHAN SPIN" not in hs.render(collect())
+
+
+def test_a_report_is_not_printed_when_the_sentinel_that_wrote_it_is_gone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    spin_fixture(tmp_path, monkeypatch, sentinel_running=False)
+    assert "ORPHAN SPIN" not in hs.render(collect())
+    assert hs.active_spin_lines() == []
 
 
 def test_admission_prints_the_report_and_still_admits(
