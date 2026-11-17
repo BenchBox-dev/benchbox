@@ -3,7 +3,7 @@
     "Bounded query-only evidence distinguishes timeout from nontermination and identifies behavior for both benchmark paths with control and upper-bound cases.",
     "Approved query-generation fix passes both paths at the affected scales, or owner explicitly approves a changed bound with tested diagnostics and matching changelog/site contract."
   ],
-  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.\n\n2026-11-17 TODO review: clarified decision gates, observable pass/fail rubric and safety boundaries. Existing historical evidence is retained; this is tracker planning only, not implementation, spend, publication or closeout approval.",
+  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.\n\n2026-11-17 TODO review: clarified decision gates, observable pass/fail rubric and safety boundaries. Existing historical evidence is retained; this is tracker planning only, not implementation, spend, publication or closeout approval.\n\n2026-11-17 owner decision: fix query generation if quick; otherwise lower the tpcds and tpcds_obt maximum to the largest working scale with a changelog fragment.",
   "description": "## Problem\nDuring the TPC-DS-OBT scale runs of 2026-11-10 query generation at SF 10000 and above failed: dsqgen timed out on Q9. The validator accepts values up to 100000 for `tpcds` and `tpcds_obt`, so the command line accepts scale factors at which query generation is known to fail. Whether plain `tpcds` fails the same way was not tested; it uses the same dsqgen.\n\n## Change\nReproduce with dsqgen alone at SF 10000 for Q9, for both benchmarks, and find the cause (the timeout value, or a real hang). Then either fix query generation at that scale or lower the accepted maximum for the two benchmarks and say so in the error message and docs.\n\n## Guardrails\n- Query generation only; no data generation at these scales is needed to reproduce.\n- A lower maximum is a user-visible change and needs a changelog fragment and the matching site docs edit.\n\n## Decision gates\nDetermine Q9 query-generation timeout versus hang with dsqgen alone and bounded diagnostics, independently through tpcds and tpcds_obt entry points. The owner selected accepted range 0.01–100000: lowering it is a new owner decision, not an automatic fallback.\n\n## Verification rubric\nPass: record binary/version, seed, timeout, output and cause at SF 10000 with smaller control and SF 100000 boundary. Accepted fix returns valid scale-sensitive SQL through both paths; a restricted maximum is allowed only with explicit approval and matching CLI/MCP/docs tests.\n\n## Additional guardrails\nNo data generation at these scales, huge benchmark runs or arbitrary timeout inflation. Do not silently special-case Q9, substitute wrong-scale SQL, or claim both entry points work from only a raw binary test.",
   "links": [
     "benchbox/core/tpcds/compliance.py",
@@ -25,6 +25,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "486fc0fddf414d32a86ba285bed2f2f0",
+      "session_id": "989657b059c44ae4bade82cb666c453c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1fad3edb102f5d3974476660",
+      "at": "2026-11-17T15:20:12Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a167dafb77ba49beac23e5d44e76cc49",
       "session_id": "989657b059c44ae4bade82cb666c453c"
     }
   ]
