@@ -1339,7 +1339,7 @@ jobs:
   integration:
     name: "t3:integration | ${{ matrix.suite }}"
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 50
     env:
       BENCHBOX_TEST_TIER: t2
     strategy:
@@ -1384,6 +1384,7 @@ jobs:
         run: python3 scripts/theseus_release_check.py
         env:
           GITHUB_TOKEN: ${{ github.token }}
+        timeout-minutes: 20
 
       - name: Run core integration tests
         if: matrix.suite == 'core'

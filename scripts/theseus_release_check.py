@@ -19,8 +19,12 @@ REACHABLE = frozenset({"identical", "behind"})
 ATTEMPTS = 6
 BACKOFF_SECONDS = 2.0
 BACKOFF_CAP_SECONDS = 30.0
+PENDING_WAIT_SECONDS = 15 * 60.0
+PENDING_POLL_SECONDS = 30.0
 
 Fetch = Callable[[str], Any]
+Sleep = Callable[[float], None]
+Clock = Callable[[], float]
 
 
 class ReleaseCheckError(Exception):
@@ -66,18 +70,36 @@ def _fetch(path: str, *, sleep: Callable[[float], None] = time.sleep, opener: Ca
     raise ReleaseCheckError(f"GitHub API request {path} failed")
 
 
-def _judge(fetch: Fetch, repo: str, sha: str) -> tuple[list[str], bool]:
+def _latest_required(fetch: Fetch, repo: str, sha: str) -> dict[str, Mapping[str, Any]]:
     payload = fetch(f"/repos/{repo}/commits/{sha}/check-runs?per_page=100")
     latest: dict[str, Mapping[str, Any]] = {}
     for run in payload.get("check_runs", []):
         name = run.get("name")
         if name in REQUIRED_CHECKS and run.get("id", 0) >= latest.get(name, {}).get("id", -1):
             latest[name] = run
+    return latest
+
+
+def _pending(latest: Mapping[str, Mapping[str, Any]]) -> list[str]:
+    return [name for name in REQUIRED_CHECKS if name in latest and latest[name].get("status") != "completed"]
+
+
+def _judge(
+    fetch: Fetch, repo: str, sha: str, sleep: Sleep = time.sleep, clock: Clock = time.monotonic, deadline: float = 0.0
+) -> tuple[list[str], bool]:
+    latest = _latest_required(fetch, repo, sha)
+    while _pending(latest) and clock() < deadline:
+        sleep(min(PENDING_POLL_SECONDS, max(deadline - clock(), 0.0)))
+        latest = _latest_required(fetch, repo, sha)
     problems = []
     for name in REQUIRED_CHECKS:
         run = latest.get(name)
         if run is None:
             problems.append(f"{name}: no check run on {sha}")
+        elif run.get("status") != "completed":
+            problems.append(
+                f"{name}: still {run.get('status')!r} on {sha} after waiting {PENDING_WAIT_SECONDS:.0f}s for it to complete"
+            )
         elif run.get("conclusion") != "success":
             problems.append(f"{name}: concluded {run.get('conclusion')!r} on {sha}")
     return problems, bool(latest)
@@ -87,13 +109,16 @@ def _tree(fetch: Fetch, repo: str, sha: str) -> str | None:
     return (fetch(f"/repos/{repo}/git/commits/{sha}").get("tree") or {}).get("sha")
 
 
-def verify(lock: Mapping[str, Any], fetch: Fetch) -> list[str]:
+def verify(
+    lock: Mapping[str, Any], fetch: Fetch, sleep: Sleep = time.sleep, clock: Clock = time.monotonic
+) -> list[str]:
+    deadline = clock() + PENDING_WAIT_SECONDS
     repo = lock["repository"]
     sha = lock["source_commit"]
     status = fetch(f"/repos/{repo}/compare/{MAIN}...{sha}").get("status")
     if status not in REACHABLE:
         return [f"{sha} is not reachable from {repo} {MAIN} (compare status {status!r})"]
-    direct, present = _judge(fetch, repo, sha)
+    direct, present = _judge(fetch, repo, sha, sleep, clock, deadline)
     if present or not direct:
         return direct
     evidence = list(direct)
@@ -108,7 +133,7 @@ def verify(lock: Mapping[str, Any], fetch: Fetch) -> list[str]:
                 f"pull {pull.get('number')}: head {head} has tree {head_tree!r}, not the locked commit's tree {locked_tree!r}"
             )
             continue
-        problems, _ = _judge(fetch, repo, head)
+        problems, _ = _judge(fetch, repo, head, sleep, clock, deadline)
         if not problems:
             return []
         evidence.extend(f"pull {pull.get('number')}: {item}" for item in problems)
@@ -122,13 +147,13 @@ def _release_tree(root: Path) -> bool:
     return True
 
 
-def main(argv: list[str], fetch: Fetch = _fetch) -> int:
+def main(argv: list[str], fetch: Fetch = _fetch, sleep: Sleep = time.sleep, clock: Clock = time.monotonic) -> int:
     root = Path(argv[1]) if len(argv) > 1 else Path.cwd()
     if _release_tree(root):
         return 0
     try:
         lock = json.loads((root / LOCK_PATH).read_text(encoding="utf-8"))
-        problems = verify(lock, fetch)
+        problems = verify(lock, fetch, sleep, clock)
     except (OSError, ValueError, KeyError, ReleaseCheckError) as exc:
         lock = {}
         problems = [str(exc)]

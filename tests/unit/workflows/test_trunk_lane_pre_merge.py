@@ -200,7 +200,7 @@ def test_the_coverage_lane_runs_the_medium_tier_instrumented_with_scaled_timeout
     assert run_step["env"]["COVERAGE_CORE"] == "ctrace"
     assert "-p scripts.pytest_coverage_timeout" in run_step["run"]
     assert "--cov-config=scripts/coverage_map.ini" in run_step["run"]
-    assert job["timeout-minutes"] == 33
+    assert job["timeout-minutes"] == 53
 
 
 @pytest.mark.parametrize("filename", ["trunk.yml", "trunk-coverage.yml"])
