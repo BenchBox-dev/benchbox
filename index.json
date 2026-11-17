@@ -20377,7 +20377,8 @@
     "df-distinct-pyspark-sf10-timing-20261113": {
       "claim": null,
       "needs": [
-        "df-memory-guard-refusal-message-and-subset-estimate-20261112"
+        "df-memory-guard-refusal-message-and-subset-estimate-20261112",
+        "heavy-work-host-capacity-owner-decision-20261117"
       ],
       "priority": "medium",
       "status": "open",
