@@ -3,7 +3,7 @@
     "A page-by-page inventory records the live release pin and dispositions of all affected statements, including scale rules, TPC-DI rows/sizes and CoffeeShop corrections.",
     "Owner-approved changes leave main accurate for its pin and next accurate for develop; branch-appropriate docs checks, lint and rendered pages are verified."
   ],
-  "context": "Filed 2026-11-12 from the scale-factor follow-up and TPC-DI generator work of 2026-11-11 and 2026-11-12: identified during that work and not addressed.\n\n2026-11-17 TODO review: clarified decision gates, observable pass/fail rubric and safety boundaries. Existing historical evidence is retained; this is tracker planning only, not implementation, spend, publication or closeout approval.",
+  "context": "Filed 2026-11-12 from the scale-factor follow-up and TPC-DI generator work of 2026-11-11 and 2026-11-12: identified during that work and not addressed.\n\n2026-11-17 TODO review: clarified decision gates, observable pass/fail rubric and safety boundaries. Existing historical evidence is retained; this is tracker planning only, not implementation, spend, publication or closeout approval.\n\n2026-11-17 owner decision: leave main unchanged until the next release pin moves (0.5.1 preparation is in flight); then confirm main matches the new pin.",
   "description": "## Problem\nSince benchbox-site#145 (2026-11-12) the site's `main` branch documents the pinned core release (v0.5.0, core `dfe585e094`) and unreleased documentation belongs on `next`. Two documentation pull requests merged to `main` the day before that rule, describing core changes that are on `develop` only:\n- benchbox-site#138: the 0.01 to 100000 scale range, the non-standard note, the fixed `joinorder` and `metadata_primitives` scales, and corrected size tables.\n- benchbox-site#142: TPC-DI fact tables growing linearly with new SF 1 row counts and sizes, the CoffeeShop order counts, and the notes on rows outside the standard set.\n`docs:check` on `main` does not catch this: #145 restored the query counts it checks, but the scale-factor text and the TPC-DI row counts are not contract-checked. A v0.5.0 user reading the live site is told that off-list scales run with a note and that TPC-DI SF 1 has 3,000,000 FactCashBalances rows; neither is true for v0.5.0. The CoffeeShop correction is valid for v0.5.0 and should stay.\n\n## Change\nDecide per page: revert the unreleased statements on `main` and carry them on `next` (where benchbox-site#148 already restates TPC-DI for the specification's scale unit), or leave them until the next release is pinned and say so. Then merge `main` into `next`.\n\n## Guardrails\n- Site-only work: by that repository's rules it belongs in the benchbox-site tracker; filed here because this session's tracker server is bound to core.\n- Fixes to released documentation go to `main`, unreleased documentation to `next`, by pull request.\n\n## Decision gates\nRe-read the live site release pin and branch policy; v0.5.0 is historical evidence, not an assumed current pin. Owner chooses rollback versus explicit next-release qualification for each affected statement.\n\n## Verification rubric\nPass: map every scale/TPC-DI statement from site #138 and #142 to the pinned core behavior; retain valid CoffeeShop corrections. Released main and unreleased next each pass docs:check against their matching bundles plus lint:docs; inspect rendered affected pages. Fail: only query-count checks pass while size/range prose remains wrong.\n\n## Additional guardrails\nSite-only implementation follows site rules and PR workflow. Do not advance the release pin, deploy, or promote next as an incidental fix. Preserve changes by other sessions.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox-site/pull/138",
@@ -26,6 +26,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "6b6b59cbb809401d909d21555ca58fb5",
+      "session_id": "989657b059c44ae4bade82cb666c453c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1fad3edb102f5d3974476660",
+      "at": "2026-11-17T15:19:15Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6d37500f839d464189eb56246fa7b1ca",
       "session_id": "989657b059c44ae4bade82cb666c453c"
     }
   ]
