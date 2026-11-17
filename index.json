@@ -38718,17 +38718,12 @@
       "title": "Rewrite the site's blog publishing guide for the split repos"
     },
     "site-python-api-scale-factor-range-20261111": {
-      "claim": {
-        "expires_at": "2026-11-18T19:34:11Z",
-        "generation": "6fea47663c6b46efb613f697895e65d7",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f7ac14dda5358a7d48d793ed"
-      },
+      "claim": null,
       "needs": [
         "feature-docs-python-api-scale-factor-range-20261117"
       ],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Site Python API pages say only 'Must be positive' for scale_factor"
     },
     "site-release-pinned-docs-20261017": {
