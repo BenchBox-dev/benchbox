@@ -1,10 +1,11 @@
 {
   "acceptance": [
-    "A recorded test shows what `validate_submission` and `validate_corpus` do today with a non-standard-scale bundle.",
-    "The chosen policy is documented in `results-data/CORPUS_NOTES.md` or the submission guide and enforced by a test."
+    "Isolated probes record current validate_submission, validate_corpus and three-platform ranking behavior for standard and non-standard scales.",
+    "Owner policy choice is documented and enforced consistently in both validators/ranking with positive and negative behavioral tests.",
+    "Registry is the sole source of standard-scale rules and existing eligible standard cohorts are unchanged."
   ],
-  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.",
-  "description": "## Problem\nSince BenchBox#4126 a run at any in-range scale factor completes and writes a result bundle, with a note that it is not comparable with published results. A search of `results-data/validate_corpus.py` found no check on the scale factor itself; ranked cohorts are protected only by the rule that a cohort needs three platforms. A bundle at, say, TPC-H SF 2 could therefore be submitted, and three such bundles would form a ranked cohort at a scale the project does not treat as standard. This was observed, not tested: no such bundle was staged.\n\n## Change\nConfirm the behaviour by validating a staged non-standard-scale bundle in a scratch directory. Then decide: reject non-standard scales at submission, accept them unranked with a recorded exclusion reason, or accept them as ordinary cohorts. Record the decision and pin it with a validator test.\n\n## Guardrails\n- Do not add a bundle to `results-data/bundles` to test this.\n- 'Standard' must come from the registry (`get_scale_factor_rule`), not from a second list.",
+  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.\n\n2026-11-17 TODO review: clarified decision gates, observable pass/fail rubric and safety boundaries. Existing historical evidence is retained; this is tracker planning only, not implementation, spend, publication or closeout approval.",
+  "description": "## Problem\nSince BenchBox#4126 a run at any in-range scale factor completes and writes a result bundle, with a note that it is not comparable with published results. A search of `results-data/validate_corpus.py` found no check on the scale factor itself; ranked cohorts are protected only by the rule that a cohort needs three platforms. A bundle at, say, TPC-H SF 2 could therefore be submitted, and three such bundles would form a ranked cohort at a scale the project does not treat as standard. This was observed, not tested: no such bundle was staged.\n\n## Change\nConfirm the behaviour by validating a staged non-standard-scale bundle in a scratch directory. Then decide: reject non-standard scales at submission, accept them unranked with a recorded exclusion reason, or accept them as ordinary cohorts. Record the decision and pin it with a validator test.\n\n## Guardrails\n- Do not add a bundle to `results-data/bundles` to test this.\n- 'Standard' must come from the registry (`get_scale_factor_rule`), not from a second list.\n\n## Decision gates\nFirst demonstrate current submission and corpus behavior in isolated scratch data. Owner chooses reject, unrank with reason, or rank non-standard scales; the existing runtime non-standard warning is not that decision.\n\n## Verification rubric\nPass: use registry rules to exercise standard/non-standard values, boundaries, fixed-scale benchmarks and at least three platforms in an off-list cohort. Both validators and ranking agree with the chosen policy; eligible standard cohorts remain eligible. Check rendered disclosure if accepted unranked.\n\n## Additional guardrails\nDo not insert test bundles in the real corpus or change runtime scale acceptance. No second standard-scale list, inferred policy from three-platform threshold, or claim of reproduction from source search alone.",
   "links": [
     "results-data/validate_corpus.py",
     "benchbox/core/benchmark_registry.py",
@@ -18,6 +19,14 @@
       "op": "create",
       "op_id": "3f96429b41fe464a9af0476b66618846",
       "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1fad3edb102f5d3974476660",
+      "at": "2026-11-17T14:20:57Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f539174d7c4649918d50e60771eae292",
+      "session_id": "989657b059c44ae4bade82cb666c453c"
     }
   ]
 }
