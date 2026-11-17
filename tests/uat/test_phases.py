@@ -2822,3 +2822,102 @@ def test_enumerate_prunes_ai_primitives_on_platforms_without_ai_functions():
         ("spark", "ai_primitives"),
     }
     assert all(c.rule_id.endswith(".ai_primitives.benchmark_gate") for c in result.compatibility_pruned)
+
+
+@pytest.mark.parametrize("cell_failure", [False, True, "exception"])
+def test_starrocks_evidence_survives_teardown_without_changing_cell_outcome(tmp_path, cell_failure):
+    sequence = []
+    destination = tmp_path / "starrocks-evidence"
+
+    def fake_docker(argv, **kwargs):
+        if "-q" in argv:
+            sequence.append("capture")
+            return docker_assets.DockerCommandResult(tuple(argv), 0, "abc123", "")
+        if "exec" in argv and "tail -c " in argv[-1]:
+            return docker_assets.DockerCommandResult(tuple(argv), 0, "first backend blacklist event", "")
+        if "down" in argv:
+            sequence.append("down")
+            assert "first backend blacklist event" in (destination / "fe.log").read_text(encoding="utf-8")
+        if "stats" in argv:
+            return _healthy_stats_result(argv, limit="8GiB")
+        return _healthy_fake_docker(argv, **kwargs)
+
+    def cell_runner(platform, benchmark, scale, **kwargs):
+        if cell_failure == "exception":
+            raise RuntimeError("original cell exception")
+        return CellResult(
+            platform=platform,
+            benchmark=benchmark,
+            scale=scale,
+            status="failed" if cell_failure else "passed",
+            exit_code=1 if cell_failure else 0,
+            elapsed_s=1.0,
+            log_path=tmp_path / "cell.log",
+            result_path=None,
+        )
+
+    cfg = _managed_docker_cfg("starrocks evidence", platforms={"include": ["starrocks"]})
+    with platform_reachability(True):
+        if cell_failure == "exception":
+            with pytest.raises(RuntimeError, match="original cell exception"):
+                exec_phase.run_execute(
+                    cfg,
+                    log_dir=tmp_path,
+                    runner=cell_runner,
+                    docker_runner=fake_docker,
+                    memory_reader=_memory_reader(16.0),
+                    sleep_fn=lambda _: None,
+                )
+        else:
+            outcome = exec_phase.run_execute(
+                cfg,
+                log_dir=tmp_path,
+                runner=cell_runner,
+                docker_runner=fake_docker,
+                memory_reader=_memory_reader(16.0),
+                sleep_fn=lambda _: None,
+            )
+            assert outcome.exit_code() == (1 if cell_failure else 0)
+    assert sequence == ["capture", "down"]
+    assert (destination / "manifest.json").exists()
+
+
+@pytest.mark.parametrize("startup_exception", [False, True])
+def test_starrocks_collector_exception_cannot_strand_container_or_replace_original_error(
+    tmp_path, monkeypatch, capsys, startup_exception
+):
+    sequence = []
+
+    def failing_collector(*args, **kwargs):
+        sequence.append("capture")
+        raise OSError("private detail")
+
+    def original_error(*args, **kwargs):
+        raise RuntimeError("original runtime error")
+
+    def fake_docker(argv, **kwargs):
+        if "down" in argv:
+            sequence.append("down")
+        if "stats" in argv:
+            return _healthy_stats_result(argv, limit="8GiB")
+        return _healthy_fake_docker(argv, **kwargs)
+
+    monkeypatch.setattr(exec_phase.starrocks_evidence, "capture_starrocks_evidence", failing_collector)
+    if startup_exception:
+        monkeypatch.setattr(exec_phase, "_start_docker_platform_if_needed", original_error)
+    cfg = _managed_docker_cfg("evidence error", platforms={"include": ["starrocks"]})
+    with platform_reachability(True), pytest.raises(RuntimeError, match="original runtime error"):
+        exec_phase.run_execute(
+            cfg,
+            log_dir=tmp_path,
+            runner=original_error,
+            docker_runner=fake_docker,
+            memory_reader=_memory_reader(16.0),
+            sleep_fn=lambda _: None,
+        )
+    assert sequence == ["capture", "down"]
+    lifecycle = (tmp_path / "uat_lifecycle.log").read_text(encoding="utf-8")
+    assert "action=evidence status=failed" in lifecycle
+    assert "collector raised OSError" in lifecycle
+    assert "private detail" not in lifecycle
+    assert "evidence capture failed" in capsys.readouterr().err
