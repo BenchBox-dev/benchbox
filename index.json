@@ -39795,10 +39795,15 @@
       "title": "Make core SQLGlot delivery event-driven and verify App readiness"
     },
     "sqlglot-delivery-workflow-run-unfiltered-20261112": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-18T13:43:17Z",
+        "generation": "eea495c941d841edb78ee2757198bced",
+        "renewals": 0,
+        "worker": "omp:sqlglot-delivery-hardening-leader"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "SQLGlot delivery workflow starts a run for every CI and review completion on every branch"
     },
     "sqlglot-delivery-workflow-windows-timeout-20261112": {
