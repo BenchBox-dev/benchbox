@@ -66,7 +66,7 @@ def read_collection_seconds(path: Path) -> list[float]:
     return [json.loads(line)["seconds"] for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
-def build_record(collection_file: Path) -> dict[str, object]:
+def build_record(collection_file: Path, run_id: str | None = None, run_attempt: str | None = None) -> dict[str, object]:
     collection = read_collection_seconds(collection_file)
     return {
         "schema": SCHEMA,
@@ -78,6 +78,7 @@ def build_record(collection_file: Path) -> dict[str, object]:
         },
         "python": platform.python_version(),
         "cpu_count": os.cpu_count(),
+        "measured_in": {"run_id": run_id, "run_attempt": run_attempt},
     }
 
 
@@ -85,8 +86,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Record runner speed calibration and pytest collection time.")
     parser.add_argument("--collection-file", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--run-id", default=None)
+    parser.add_argument("--run-attempt", default=None)
     args = parser.parse_args(argv)
-    record = build_record(args.collection_file)
+    record = build_record(args.collection_file, args.run_id, args.run_attempt)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
     workload = record["workload"]

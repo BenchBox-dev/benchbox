@@ -120,6 +120,10 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
 }
 
 MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
+    ("ci.yml", "generator-volume", "Run the generator volume gate"): (
+        "A heavy SF 1 DuckDB run, so it has no Make target (the target count is capped); run it locally with "
+        "make heavy-run CMD='uv run -- python -m scripts.generator_volume_gate --base-ref origin/develop'."
+    ),
     ("ci.yml", "short-checks", "Check user-facing text for contributor references"): (
         "A fast unit test, tests/unit/cli/test_shipped_docs_urls.py, that make test-fast and "
         "pr-preflight already run; the hosted step exists only so Markdown-only changes run it."

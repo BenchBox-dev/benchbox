@@ -93,7 +93,7 @@ def test_either_variant_failing_fails_the_job(failing, conclusion):
 def test_a_variant_that_never_appears_fails_and_names_the_commit(capsys):
     fake = FakeGh()
     fake.head_sha = "b" * 40
-    with pytest.raises(RuntimeError, match="no release-v2.yml run at aaaaaaaaaa"):
+    with pytest.raises(RuntimeError, match="reuse probe never started: no release-v2.yml run at aaaaaaaaaa"):
         launch.launch(REPOSITORY, BRANCH, HEAD, "reuse", set(), runner=fake, sleep=lambda _: None, attempts=3)
 
 
@@ -266,3 +266,160 @@ def test_dispatch_through_the_real_gh_wrapper_accepts_plain_text_output(fake_gh,
 def test_api_calls_through_the_real_gh_wrapper_still_parse_json(fake_gh, monkeypatch):
     monkeypatch.setenv("FAKE_GH_STDOUT", '{"workflow_runs": []}')
     assert launch.gh("api", "repos/x/y") == {"workflow_runs": []}
+
+
+class ScriptedRun:
+    def __init__(self, statuses: list[tuple[str, str | None]]):
+        self.statuses = statuses
+        self.polls = 0
+
+    def __call__(self, *args: str):
+        status, conclusion = self.statuses[min(self.polls, len(self.statuses) - 1)]
+        self.polls += 1
+        return {"id": 1, "status": status, "conclusion": conclusion, "html_url": "url/1"}
+
+
+class TickClock:
+    def __init__(self):
+        self.now = 0.0
+        self.sleeps = 0
+
+    def __call__(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.sleeps += 1
+        self.now += seconds
+
+
+def _wait(statuses, *, timeout=1000.0, interval=20.0):
+    clock = TickClock()
+    runner = ScriptedRun(statuses)
+    result = launch.wait_for(
+        REPOSITORY, 1, runner=runner, sleep=clock.sleep, clock=clock, timeout=timeout, interval=interval
+    )
+    return result, clock
+
+
+def test_a_run_queued_for_the_whole_wait_reports_still_queued_not_a_run_failure():
+    with pytest.raises(RuntimeError) as caught:
+        _wait([("queued", None)])
+    message = str(caught.value)
+    assert "still queued after 1000s" in message and "never began running" in message
+    assert "not a release-v2 failure" in message
+    assert "did not finish" not in message
+
+
+def test_a_never_started_wait_is_finite():
+    clock = TickClock()
+    runner = ScriptedRun([("queued", None)])
+    with pytest.raises(RuntimeError):
+        launch.wait_for(REPOSITORY, 1, runner=runner, sleep=clock.sleep, clock=clock, timeout=1000.0, interval=20.0)
+    assert clock.now == 1000.0
+    assert runner.polls == 51
+
+
+def test_a_run_that_starts_but_never_ends_reports_queue_and_run_time_separately():
+    statuses = [("queued", None)] * 10 + [("in_progress", None)]
+    with pytest.raises(RuntimeError) as caught:
+        _wait(statuses, timeout=1000.0)
+    message = str(caught.value)
+    assert "started after 200s queued" in message
+    assert "800s of run time" in message
+    assert "1000s total wait" in message
+    assert "never began running" not in message
+
+
+@pytest.mark.parametrize("conclusion", ["success", "failure", "cancelled"])
+def test_a_run_that_queues_then_starts_then_finishes_returns_its_conclusion(conclusion):
+    statuses = [("queued", None)] * 30 + [("in_progress", None)] * 5 + [("completed", conclusion)]
+    run, clock = _wait(statuses, timeout=1000.0)
+    assert run["conclusion"] == conclusion
+    assert clock.now == 700.0
+
+
+@pytest.mark.parametrize("pending", ["waiting", "pending", "requested"])
+def test_every_pre_start_status_counts_as_queued(pending):
+    with pytest.raises(RuntimeError, match=f"still {pending} after"):
+        _wait([(pending, None)], timeout=100.0)
+
+
+def test_a_dispatched_run_that_is_not_listed_at_first_is_found_on_a_later_poll():
+    class Delayed(FakeGh):
+        def __init__(self):
+            super().__init__()
+            self.list_calls = 0
+
+        def __call__(self, *args):
+            if len(args) > 1 and "/actions/workflows/release-v2.yml/runs" in args[1]:
+                self.list_calls += 1
+                if self.list_calls < 4:
+                    return {"workflow_runs": []}
+            return super().__call__(*args)
+
+    fake = Delayed()
+    clock = TickClock()
+    run_id = launch.launch(REPOSITORY, BRANCH, HEAD, "reuse", set(), runner=fake, sleep=clock.sleep)
+    assert run_id == 101
+    assert clock.now == 15.0
+
+
+def test_a_run_that_fails_after_a_long_queue_still_fails_the_job(capsys):
+    class Queued(FakeGh):
+        def __call__(self, *args):
+            result = super().__call__(*args)
+            if isinstance(result, dict) and result.get("status") == "in_progress":
+                return {**result, "status": "queued"}
+            return result
+
+    fake = Queued({"fallback": "failure"}, pending_polls=3)
+    assert _run(fake) == 1
+    assert "fallback probe: failure" in capsys.readouterr().out
+
+
+def test_the_job_reports_a_still_queued_run_as_an_error_and_cancels_it(monkeypatch, capsys):
+    fake = FakeGh(pending_polls=10**6)
+
+    class Queued:
+        def __call__(self, *args):
+            result = fake(*args)
+            if isinstance(result, dict) and result.get("status") == "in_progress":
+                return {**result, "status": "queued"}
+            return result
+
+    ticks = iter(range(0, 10**6, 100))
+    monkeypatch.setattr(launch, "gh", Queued())
+    monkeypatch.setattr(launch.time, "sleep", lambda _: None)
+    monkeypatch.setattr(launch.time, "monotonic", lambda: next(ticks))
+    monkeypatch.setattr(launch, "touches_probed_paths", lambda files: ["Makefile"])
+    monkeypatch.setattr(launch, "changed_files", lambda *a, **k: ["Makefile"])
+    real = launch.run_probes
+    monkeypatch.setattr(launch, "run_probes", lambda *a, **k: real(*a, runner=Queued(), **k))
+    status = launch.main(
+        [
+            "--repository",
+            REPOSITORY,
+            "--branch",
+            BRANCH,
+            "--head-sha",
+            HEAD,
+            "--pull-request",
+            "1",
+            "--timeout-seconds",
+            "250",
+        ]
+    )
+    assert status == 1
+    assert "still queued" in capsys.readouterr().err
+    assert sorted(fake.cancelled) == sorted(fake.variant_of)
+
+
+def test_a_dispatch_that_never_becomes_visible_gives_up_after_a_finite_wait():
+    fake = FakeGh()
+    fake.head_sha = "b" * 40
+    clock = TickClock()
+    with pytest.raises(RuntimeError, match="never started"):
+        launch.launch(
+            REPOSITORY, BRANCH, HEAD, "reuse", set(), runner=fake, sleep=clock.sleep, attempts=30, interval=5.0
+        )
+    assert clock.now == 150.0

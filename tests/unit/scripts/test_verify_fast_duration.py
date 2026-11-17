@@ -496,3 +496,106 @@ def test_zero_baseline_sum_is_neutral() -> None:
     report = baseline.verify_durations({"tests/a.py::test_a": 0.0}, {"tests/a.py::test_a": 5.0})
 
     assert report["verdict"] == "neutral"
+
+
+def stamp_measurement(run: Path, run_id: str, run_attempt: str) -> None:
+    path = run / "calibration.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["measured_in"] = {"run_id": run_id, "run_attempt": run_attempt}
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+
+def slowed_run_args(tmp_path: Path, *, attempt: str, measured_attempt: str) -> tuple[list[str], Path, Path]:
+    baseline_dir = committed_baseline(tmp_path, cases(1000, 0.328))
+    run = write_run(tmp_path, "slowed", cases(1000, 0.328 + 0.713))
+    stamp_measurement(run, "900", measured_attempt)
+    summary = tmp_path / "summary.md"
+    report_out = tmp_path / "report.json"
+    args = [
+        "verify",
+        "--mode",
+        "block",
+        "--baseline",
+        str(baseline_dir),
+        "--run-dir",
+        str(run),
+        "--run-id",
+        "900",
+        "--run-attempt",
+        attempt,
+        "--summary",
+        str(summary),
+        "--report-out",
+        str(report_out),
+    ]
+    return args, summary, report_out
+
+
+def test_a_rerun_attempt_names_the_attempt_the_timings_came_from(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    args, summary, report_out = slowed_run_args(tmp_path, attempt="2", measured_attempt="1")
+
+    assert baseline.main(args) == 1
+
+    text = summary.read_text(encoding="utf-8")
+    assert "measured by attempt 1 of run 900" in text
+    assert "this is attempt 2" in text
+    assert "full workflow re-run" in text
+    report = json.loads(report_out.read_text(encoding="utf-8"))
+    assert report["timings_reused"] is True
+    assert report["measured_run_attempt"] == "1"
+    assert "re-run the whole workflow" in capsys.readouterr().out
+
+
+def test_a_first_attempt_does_not_claim_reuse(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    args, summary, report_out = slowed_run_args(tmp_path, attempt="1", measured_attempt="1")
+
+    assert baseline.main(args) == 1
+
+    assert "Timings were measured in this attempt" in summary.read_text(encoding="utf-8")
+    assert json.loads(report_out.read_text(encoding="utf-8"))["timings_reused"] is False
+    assert "re-run the whole workflow" not in capsys.readouterr().out
+
+
+def test_reuse_never_changes_the_verdict_or_thresholds(tmp_path: Path) -> None:
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    first, _, first_report = slowed_run_args(tmp_path / "a", attempt="1", measured_attempt="1")
+    second, _, second_report = slowed_run_args(tmp_path / "b", attempt="3", measured_attempt="1")
+    assert baseline.main(first) == baseline.main(second) == 1
+    left = json.loads(first_report.read_text(encoding="utf-8"))
+    right = json.loads(second_report.read_text(encoding="utf-8"))
+    for key in ("verdict", "sum_ratio", "delta_seconds", "ratio_threshold", "delta_threshold_seconds"):
+        assert left[key] == right[key]
+
+
+def test_a_run_without_measurement_provenance_adds_no_note(tmp_path: Path) -> None:
+    baseline_dir = committed_baseline(tmp_path, cases(1000, 0.328))
+    run = write_run(tmp_path, "plain", cases(1000, 0.328))
+    summary = tmp_path / "summary.md"
+    assert (
+        baseline.main(
+            [
+                "verify",
+                "--baseline",
+                str(baseline_dir),
+                "--run-dir",
+                str(run),
+                "--run-attempt",
+                "2",
+                "--summary",
+                str(summary),
+            ]
+        )
+        == 0
+    )
+    assert "attempt" not in summary.read_text(encoding="utf-8").lower()
+
+
+def test_tests_missing_from_the_baseline_are_explained_as_possibly_inherited() -> None:
+    report = baseline.verify_durations({"a": 1.0}, {"a": 1.0, "b": 0.1})
+    report |= {"speed_factor": 1.0, "collection_max_seconds": None}
+    text = baseline.verify_markdown(report, mode="block")
+    assert "absent from the committed baseline" in text
+    assert "other merged pull requests" in text

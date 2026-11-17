@@ -14,6 +14,7 @@ VARIANTS = ("reuse", "fallback", "guarded-change")
 WORKFLOW_FILE = "release-v2.yml"
 RUNS_PAGE = 30
 FINISHED = "completed"
+NOT_STARTED = frozenset({"queued", "waiting", "pending", "requested"})
 PROBED_PATHS = (
     ".github/workflows/release-v2.yml",
     ".github/workflows/release-v2-probe.yml",
@@ -110,7 +111,7 @@ def launch(
             return int(run["id"])
         sleep(interval)
     raise RuntimeError(
-        f"no {WORKFLOW_FILE} run at {head_sha[:10]} appeared for the {variant} probe; "
+        f"the {variant} probe never started: no {WORKFLOW_FILE} run at {head_sha[:10]} appeared after dispatch; "
         "the pull request may have moved after the dispatch"
     )
 
@@ -125,14 +126,31 @@ def wait_for(
     timeout: float = 1500.0,
     interval: float = 20.0,
 ) -> dict[str, Any]:
-    deadline = clock() + timeout
+    began = clock()
+    deadline = began + timeout
+    started_at: float | None = None
     while True:
         run = runner("api", f"repos/{repository}/actions/runs/{run_id}")
+        now = clock()
         if run.get("status") == FINISHED:
             return run
-        if clock() >= deadline:
-            raise RuntimeError(f"run {run_id} did not finish within {timeout:g}s")
+        if started_at is None and run.get("status") not in NOT_STARTED:
+            started_at = now
+        if now >= deadline:
+            raise RuntimeError(_timeout_message(run_id, run.get("status"), began, started_at, now))
         sleep(interval)
+
+
+def _timeout_message(run_id: int, status: object, began: float, started_at: float | None, now: float) -> str:
+    if started_at is None:
+        return (
+            f"run {run_id} still {status} after {now - began:g}s of waiting and never began running; "
+            "the runner backlog held it in the queue, so this is not a release-v2 failure"
+        )
+    return (
+        f"run {run_id} started after {started_at - began:g}s queued and did not finish within "
+        f"{now - started_at:g}s of run time ({now - began:g}s total wait)"
+    )
 
 
 def cancel(repository: str, run_id: int, runner: Gh = gh) -> None:
