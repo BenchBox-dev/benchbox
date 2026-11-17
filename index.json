@@ -32042,6 +32042,13 @@
       "status": "done",
       "title": "Make make pr-arm refuse until the PR head's fast-duration verdict exists"
     },
+    "pr-arm-waits-out-budget-on-conflicting-pr-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "make pr-arm waits its whole WAIT budget on a PR that conflicts with develop instead of reporting the conflict"
+    },
     "pr-changed-tests-miss-name-mismatched-tests": {
       "claim": null,
       "needs": [],
