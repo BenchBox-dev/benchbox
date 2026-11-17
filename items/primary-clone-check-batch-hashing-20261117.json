@@ -1,11 +1,12 @@
 {
   "acceptance": [
-    "Measured before and after on the owner's Mac, with 2,000 untracked, non-ignored files in a scratch primary clone: snapshot and enforce each finish in under 2 s, and both sets of numbers are recorded on this item.",
-    "For ordinary file names the snapshot file is byte-identical to the current script's output, so snapshots taken by live sessions stay valid and no spurious report follows the upgrade. Decision gate: any change to the snapshot format needs the owner's approval first, because it would make every live session report once.",
+    "Measured before and after on the owner's Mac with 2,000 untracked, non-ignored files in a scratch clone: time sh scripts/check_primary_clone_clean.sh snapshot and the same with enforce, run from a linked worktree with BENCHBOX_AGENT_PRIMARY_CLONE pointing at the scratch clone. Pass: real time under 2 s for each. Both sets of numbers are recorded on this item.",
+    "The snapshot format is unchanged: one hash<TAB>path record per line, with the path field keeping Git's quoted form for special names. Only the existence check and the hash use the real file name, taken from -z output. For ordinary names the snapshot is byte-identical to the current script's output. Decision gate: any change to the snapshot format needs the owner's approval first, because it would make every live session report once.",
     "A test proves that enforce reports an edit, made after the snapshot, to a pre-existing file whose name contains a tab or a newline.",
     "A missing file or a dangling symlink is still recorded as 'deleted' and does not abort the scan; a test covers it.",
+    "Decision gate for nested repositories: the owner chooses between reporting changes inside a nested repository (with a test) and listing it as a known gap in docs/agent/primary-clone-guard.md. The choice is recorded here and carried out.",
     "Existing tests in tests/unit/test_agent_write_preflight.py pass unchanged.",
-    "Guardrails: the set of scanned files is unchanged (gitignored files stay excluded), the script stays POSIX sh, and no make target is added."
+    "Guardrails: the set of scanned files is unchanged (gitignored files stay excluded); the script stays POSIX sh; no make target is added; the 2,000 test files are never created in the real primary clone."
   ],
   "description": "current_state() in scripts/check_primary_clone_clean.sh runs one git hash-object per changed tracked file and per untracked, non-ignored file. The check runs in make agent-write-preflight (enforce), make pr-preflight (report) and every commit hook (report). In the independent review of PR #4265, a scratch clone with 2,000 untracked files took 13.6 s to snapshot and 13.1 s to enforce, about 6.7 ms per file. The primary clone holds 0 such files today, so the cost is currently negligible. Second defect: Git quotes file names that contain a tab, a double quote, a backslash, a newline or a control character, even with core.quotepath=off. The existence test then fails, so the file is always recorded as 'deleted' and later edits to it are never reported. Nested repositories behave the same way. This already affected tracked files before #4265. One possible fix: list paths with -z and hash the files that exist through a single git hash-object --stdin-paths call. That call aborts on a missing path, so the existence filter must stay in front of it.",
   "links": [
@@ -20,6 +21,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "0b98b5d7fed841ffb94249ff1c4c43d7",
+      "session_id": "a8b952a2353a43c5b8b6461d5901abad"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f00380ac381b3b759bd4b6a8",
+      "at": "2026-11-17T21:28:37Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6609bbf46e534f98826d9e3e1aa50bea",
       "session_id": "a8b952a2353a43c5b8b6461d5901abad"
     }
   ]
