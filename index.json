@@ -38251,17 +38251,12 @@
       "title": "Generate the landing page benchmark cards from the core bundle instead of a hand-kept copy"
     },
     "site-llms-txt-and-markdown-docs-20261113": {
-      "claim": {
-        "expires_at": "2026-11-18T13:47:00Z",
-        "generation": "a85ce4fc658845d9abb28751393115f7",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019"
-      },
+      "claim": null,
       "needs": [
         "agent-demand-signals-baseline-20261113"
       ],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Publish llms.txt and Markdown versions of the documentation pages"
     },
     "site-main-carries-unreleased-scale-and-tpcdi-docs-20261112": {
