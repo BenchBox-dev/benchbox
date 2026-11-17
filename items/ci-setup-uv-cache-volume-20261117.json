@@ -1,12 +1,19 @@
 {
   "acceptance": [
-    "The cause of the ~429 MB keys versus the 218 KB key is identified and recorded.",
-    "Measured before and after on real CI runs: restores per full CI run and bytes per restore; total repo cache under 10 GB a week after the change.",
-    "Pull-request runs no longer save setup-uv caches.",
-    "Retention for dist-*, admitted-* and t2-* artifacts is set explicitly and justified by who reads them."
+    "The cause of the ~429 MB keys versus the 218 KB key is identified from the setup-uv cache contents and recorded here.",
+    "Before and after, on at least 3 real full CI runs each: restores per run, bytes per restore, and each affected job's median wall time; recorded in a table on this item.",
+    "No affected job's median wall time grows more than 10% and the fast-duration gate does not fail because of the change; if a job must not lose its cache, it keeps it with the reason recorded.",
+    "Pull-request runs no longer save setup-uv caches (shown by the cache list after a PR run); total repo cache is under 10 GB one week after merge.",
+    "Retention for dist-*, admitted-* and t2-* artifacts is set explicitly; each value names the consumer that reads the artifact and how late it reads it."
   ],
-  "context": "Found 2026-11-17 by the egress root-cause investigation; numbers from the job, cache and billing APIs. Guardrails: linked worktree (make worktree-create, then make agent-write-preflight), never the primary clone; one PR per repo; no live-cloud runs or credentials in Git or logs; heavy work only via lock-taking entry points or make heavy-run after make heavy-status; never start deliberate host load; comment policy; changelog.d fragment for user-facing change. Re-verify every cited file and line before acting; they are hints.",
-  "description": "Problem: about 95% of BenchBox-dev/benchbox Actions download volume (~104 GB/day measured 2026-11-16/17) is astral-sh/setup-uv cache restores of about 450,0xx,xxx bytes (enable-cache auto). Keys for ubuntu 3.14.x/3.11.18, macOS 3.12.10 and windows 3.12.10 are ~429 MB while the ubuntu 3.12.16 key is 218 KB, so pruning is not shrinking some keys. Restoring jobs per heavy CI run: ci-paths release check (ci.yml:166-168), short-checks, content-guard (ci.yml:401), TPC-H binary framing windows/macOS (ci.yml:375), windows-tests (ci.yml:1382), test 3.14 (ci.yml:874), lint (ci.yml:596). PR merge refs save their own ~450 MB copies (refs/pull/<N>/merge for #4257, 4269, 4272-4284). Repo cache: 34 entries, 10.13 GiB, above GitHub's 10 GB per-repo limit, so entries are evicted and rebuilt. Separately, Actions storage averages ~272 GB, mostly artifacts [inference]; admitted-<tag> (~20 MB) is downloaded once per trunk-uat shard (.github/actions/release-uat-env/action.yml:35). This volume did not cause the 2026-11-17 503, but it is cost and latency on every run.\n\nOutcome: jobs that only need uv do not restore the cache, oversized keys are explained and shrunk, caches are saved only from develop, and the repo cache stays under 10 GB; artifact retention is set per artifact class.",
+  "context": "Decision gate: Per job, decide keep, shrink or drop the cache using the measured restore time against install time without cache; a job keeps its cache when dropping it would exceed the 10% wall-time budget. Decide retention per artifact class from its slowest consumer (release reuse, UAT evidence, baseline refresh); unknown consumer means keep the current value and record it.\n\nItem guardrails: No change to required checks, rulesets, job names or the fast-duration baseline; do not delete existing caches or artifacts by hand; do not shorten retention below what release-v2 evidence reuse and fast-duration-baseline-refresh read; one PR.\n\nVerification rubric: Pass = every acceptance row filled with measured numbers from real runs, not estimates. Fail = a job slower than the budget, or any required check failing on the change.\n\nBase guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight), never the primary clone; one PR per repository; no live-cloud runs and no credentials in Git or logs; heavy work (benchmarks, test tiers, servers) only through lock-taking entry points or make heavy-run after make heavy-status; never start deliberate CPU, memory or disk load, and tests inject readings instead; comment policy (make comment-policy-check); changelog.d fragment for user-facing change. Re-verify every cited file and line on current develop before acting; they are hints and drift. Stop and report instead of widening scope; scope removed during review is re-homed to a named item or dropped by the owner with a reason.\n\nOrigin: Found 2026-11-17 by the egress root-cause investigation; numbers from the job, cache and billing APIs.",
+  "description": "Problem: about 95% of BenchBox-dev/benchbox Actions download volume (~104 GB/day measured 2026-11-16/17) was astral-sh/setup-uv cache restores of about 450,0xx,xxx bytes (enable-cache auto). Keys for ubuntu 3.14.x/3.11.18, macOS 3.12.10 and windows 3.12.10 were ~429 MB while the ubuntu 3.12.16 key was 218 KB, so pruning is not shrinking some keys. Jobs observed restoring the large key per full CI run: ci-paths release check, short-checks, content-guard, TPC-H binary framing (windows, macOS), windows-tests, test 3.14 and lint (232 restores in 24 h). Line numbers are not given because ci.yml changed after the measurement; on develop at 2026-11-17 setup-uv appears at about 19 places (first at ~44). Pull-request merge refs save their own ~450 MB copies (refs/pull/<N>/merge for #4257, 4269, 4272-4284). Repo cache: 34 entries, 10.13 GiB, above GitHub's 10 GB per-repo limit, so entries are evicted and rebuilt. Actions storage averages ~272 GB, mostly artifacts [inference]; admitted-<tag> (~20 MB) is downloaded once per trunk-uat shard. This volume did not cause the 2026-11-17 503 (that was GitHub-side), but it costs time on every run.\n\nOutcome: the large keys are explained and shrunk or not restored where unneeded, caches are saved only from develop, the repo cache stays under 10 GB, and artifact retention is set per artifact class, with no job getting slower beyond the budget below.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4274",
+    "https://github.com/BenchBox-dev/benchbox/pull/4276",
+    ".github/workflows/ci.yml",
+    ".github/actions/release-uat-env/action.yml"
+  ],
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019",
@@ -14,6 +21,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "6cd265afe4b14382adf8855ae5035b00",
+      "session_id": "14462ffc9066466ca32d151c57f6a5de"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019",
+      "at": "2026-11-17T14:00:03Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5c96194575b64c759d4c73eda271eb59",
       "session_id": "14462ffc9066466ca32d151c57f6a5de"
     }
   ]
