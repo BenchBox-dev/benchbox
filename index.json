@@ -46995,7 +46995,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "Two merged fixes were shown only by unit tests: the placeholder re-run and the approximate-sketch tolerance"
     },
     "verify-rungs-contend-on-the-test-lock-20260805": {
