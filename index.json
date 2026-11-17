@@ -39796,9 +39796,9 @@
     },
     "sqlglot-delivery-workflow-run-unfiltered-20261112": {
       "claim": {
-        "expires_at": "2026-11-18T13:43:17Z",
-        "generation": "eea495c941d841edb78ee2757198bced",
-        "renewals": 0,
+        "expires_at": "2026-11-18T13:43:33Z",
+        "generation": "ae326a1533e74acd81333ade43895315",
+        "renewals": 1,
         "worker": "omp:sqlglot-delivery-hardening-leader"
       },
       "needs": [],
