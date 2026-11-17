@@ -2,7 +2,7 @@
   "acceptance": [
     "run.py is split along an existing seam so it is comfortably under the limit, with no behaviour change and tests passing."
   ],
-  "context": "Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "context": "Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\nCloseout 2026-11-17: core BenchBox-dev/benchbox#4276 merged (20d8ac12af). Wizard flow (~780 lines) moved to benchbox/cli/run_interactive.py; run.py 3036 -> 2251 lines and the allowlist lowered to match; no behaviour change.",
   "description": "Problem: run.py is 3036 lines, exactly at its module size limit, so the next change there needs an offset or allowlist entry. Several recent changes (guard, driver gate, non-interactive plumbing) grew it.",
   "sessions": [
     {
@@ -20,6 +20,14 @@
       "generation": "a50e67024bd3417596828149976fe2c1",
       "op": "take",
       "op_id": "082e0a2490a940ccb057d804b7140bf9",
+      "session_id": "14462ffc9066466ca32d151c57f6a5de"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019",
+      "at": "2026-11-17T13:44:45Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "97574d1bf92e42ac8636eb11ab1b6c79",
       "session_id": "14462ffc9066466ca32d151c57f6a5de"
     }
   ]
