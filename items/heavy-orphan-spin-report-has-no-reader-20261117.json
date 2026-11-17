@@ -1,10 +1,19 @@
 {
   "acceptance": [
-    "With an injected process table containing a matching orphan, make heavy-status and heavy-run admission print it.",
+    "With an injected process table containing a matching orphan, make heavy-status prints it with pid, cwd, CPU share and age.",
+    "With the same injection, heavy-run admission prints it before running the command; whether admission also refuses follows the gate decision and is tested.",
+    "With no matching orphan, neither output changes.",
     "Nothing is signalled automatically; no test starts real CPU load."
   ],
-  "context": "Gap recorded at closeout of heavy-sentinel-cpu-bound-orphans-20261115. Guardrails: linked worktree (make worktree-create, then make agent-write-preflight), never the primary clone; one PR per repo; no live-cloud runs or credentials in Git or logs; heavy work only via lock-taking entry points or make heavy-run after make heavy-status; never start deliberate host load; comment policy; changelog.d fragment for user-facing change. Re-verify every cited file and line before acting; they are hints.",
+  "context": "Decision gate: Decide whether heavy-run admission only prints an active orphan report or also refuses until the orphan is gone. Default: print only, because a refusal would block all heavy work on a process the agent cannot safely stop. Record the decision.\n\nItem guardrails: Never signal, renice or kill any process; reuse the existing orphan_spin detector, no second detector; output stays within heavy-status's existing per-command 5 s budget.\n\nVerification rubric: Pass = the four acceptance tests green. Fail = any automatic signal, or a slower heavy-status beyond its budget.\n\nBase guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight), never the primary clone; one PR per repository; no live-cloud runs and no credentials in Git or logs; heavy work (benchmarks, test tiers, servers) only through lock-taking entry points or make heavy-run after make heavy-status; never start deliberate CPU, memory or disk load, and tests inject readings instead; comment policy (make comment-policy-check); changelog.d fragment for user-facing change. Re-verify every cited file and line on current develop before acting; they are hints and drift. Stop and report instead of widening scope; scope removed during review is re-homed to a named item or dropped by the owner with a reason.\n\nOrigin: Gap recorded at closeout of heavy-sentinel-cpu-bound-orphans-20261115 (PR #4276).",
   "description": "Problem: PR #4276 made the heavy-work sentinel report shells with ppid 1 in a BenchBox worktree that hold >=50% CPU for 300 s, report-only. Process-group cleanup (PR #4236) cannot reach a process that started its own session, so this report is the only signal for that case, and it goes to the sentinel log, which no agent or person reads by default. The 2026-11-13 leak ran 20 hours unnoticed for the same reason.\n\nOutcome: an active orphan report reaches the next reader without anyone looking for it, for example make heavy-status and heavy-run admission printing it, and the decision on whether to stop such a process stays with a person.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4236",
+    "https://github.com/BenchBox-dev/benchbox/pull/4276",
+    "benchbox/utils/orphan_spin.py",
+    "benchbox/utils/heavy_status.py",
+    "docs/agent/heavy-work.md"
+  ],
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019",
@@ -12,6 +21,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "36e92686b16e44afbc4efc4d60ef19df",
+      "session_id": "14462ffc9066466ca32d151c57f6a5de"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019",
+      "at": "2026-11-17T14:00:22Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7c61789d01ac4c7cba80d0e4db643157",
       "session_id": "14462ffc9066466ca32d151c57f6a5de"
     }
   ]
