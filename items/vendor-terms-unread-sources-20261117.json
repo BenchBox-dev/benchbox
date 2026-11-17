@@ -1,7 +1,7 @@
 {
   "acceptance": [
     "Each of the listed documents has a URL, retrieval date and quoted relevant clauses (or 'no relevant clause' / 'unreachable behind login') in docs/internal/results-vendor-publication-terms.md",
-    "The AWS 2.3/2.5 attribution and both Google dates are corrected in the ADR table through a benchbox-site PR targeting the branch its pin requires",
+    "The Google Service Specific Terms and AWS Service Terms dates are updated in the ADR table through a benchbox-site PR to main",
     "Every new condition has an owner decision recorded in context, and each decided validator change has a passing test in tests/unit/scripts/test_vendor_publication_conditions.py"
   ],
   "description": "## Problem\ndocs/internal/results-vendor-publication-terms.md (PR #4272, 2026-11-17) found that the vendor-terms table in the locality ADR (benchbox-site docs/development/adr/adr-client-link-locality-disclosure.md) and the self-run licence record (§1 of the record, for CedarDB) rest on documents nobody has read:\n- ClickHouse Cloud addendum (page shows 2026-04-10; a v20260917 PDF exists)\n- Databricks Free Edition Terms\n- Starburst Enterprise EULA and Galaxy Early Access Agreement\n- CedarDB Enterprise and Trial terms, and Community Exhibits 1-2\n- Databricks Agreement (Master Cloud Services Agreement), referenced by AUP 7(b)\nIt also found two dates in the 2026-10-22 ADR table that differ from the live pages: Google Service Specific Terms (table \"modified 2026-10-12\", page \"Last modified April 2, 2026\") and AWS Service Terms (table \"updated 2026-10-13\", page \"Last Updated: November 5, 2026\"). The clauses match in substance (record §2). evaluate_vendor_conditions (benchbox/validation/bundle.py) and the site publishing checklist enforce only what the table says, so an unread condition is unenforced.\n\n## Decision gate\n- Agent: read each document from the vendor's live site, quote every clause about benchmarking, publishing results, free/trial tiers or pre-release features, with URL and retrieval date, and update the two dates.\n- Owner: for each new condition found, choose how it is met (checklist step, bundle field, or validator refusal), the same choice made on vendor-benchmark-publication-conditions-20261022. A document with no such clause needs no decision.\n\n## Guardrails\n- Quote the vendor's own text; no paraphrase without the quote, no secondary sources (resellers, government copies) except as a pointer to the live page.\n- No legal conclusions beyond what the text says; ambiguous clauses go to the owner.\n- No code change before the owner decision for that condition.\n- No live-cloud accounts are created to reach gated terms; a document behind a login is recorded as unreachable.",
@@ -31,6 +31,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "c9a8f83f36624103a0b963e4c3ba547e",
+      "session_id": "0362803867fb4929927e576283fffc32"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bfa5e7eb7cd30f69e1fe2571",
+      "at": "2026-11-17T21:25:52Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5d95f8bfb13446eb89673031b39efcdd",
       "session_id": "0362803867fb4929927e576283fffc32"
     }
   ]
