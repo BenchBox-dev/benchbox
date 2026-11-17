@@ -43237,9 +43237,9 @@
     },
     "tpcdi-sf1-slowdown-after-linear-fact-scaling": {
       "claim": {
-        "expires_at": "2026-11-18T15:24:51Z",
-        "generation": "ef5b3d4e9df649daae7ce515ae886668",
-        "renewals": 0,
+        "expires_at": "2026-11-18T15:25:16Z",
+        "generation": "8bf0d2daba4c4628830217914f2a08e4",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1fad3edb102f5d3974476660"
       },
       "needs": [],
