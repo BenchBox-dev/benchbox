@@ -1,0 +1,2069 @@
+{
+  "benchmark": {
+    "data_generation_hash": "db241cc96e0d3d106b4ff3da415e7c721b5d0996f14dfbf009f29b3cdc85d83e",
+    "data_generation_version": 1,
+    "id": "tpcdi",
+    "name": "TPC-DI",
+    "scale_factor": 0.1,
+    "test_type": "power"
+  },
+  "config": {
+    "compression": {
+      "level": 9,
+      "type": "zstd"
+    },
+    "execution_engine": "default",
+    "mode": "sql",
+    "phases": [
+      "generate",
+      "load",
+      "power"
+    ],
+    "platform_option_sources": {
+      "allow_third_party_extensions": "applied_defaults",
+      "force_recreate": "applied_defaults",
+      "force_upload": "applied_defaults",
+      "memory_limit": "applied_defaults",
+      "normalize_plan_literals": "applied_defaults",
+      "show_query_plans": "applied_defaults",
+      "tuning_source": "applied_defaults"
+    },
+    "platform_options": {
+      "allow_third_party_extensions": false,
+      "force_recreate": false,
+      "force_upload": false,
+      "memory_limit": "8GB",
+      "normalize_plan_literals": false,
+      "show_query_plans": false,
+      "tuning_source": "baseline"
+    }
+  },
+  "cost": {
+    "model": "actual",
+    "total_usd": 0
+  },
+  "environment": {
+    "arch": "x86_64",
+    "client_host": {
+      "arch": "x86_64",
+      "cpu_count": 4,
+      "cpu_identity_provenance": "measured",
+      "cpu_model": "AMD EPYC 9V45 96-Core Processor",
+      "cpu_vendor": "AMD",
+      "execution_class": "native",
+      "execution_class_source": "inferred",
+      "memory_gb": 15.608444213867188,
+      "os": "Linux 7.0.0-1019-azure",
+      "python": "3.12.16"
+    },
+    "client_link": {
+      "client_cloud": "azure",
+      "client_region": "centralus",
+      "collection_status": "available",
+      "probed_at": "2026-11-17T20:35:21.620102+00:00",
+      "source": "observed",
+      "statement_overhead_ms": {
+        "median": 0.123,
+        "min": 0.112,
+        "samples": 5
+      }
+    },
+    "cpu_count": 4,
+    "cpu_identity_provenance": "measured",
+    "cpu_model": "AMD EPYC 9V45 96-Core Processor",
+    "cpu_vendor": "AMD",
+    "execution_class": "native",
+    "execution_class_source": "inferred",
+    "host_load": {
+      "end": {
+        "cpu_frequency_mhz": 4479.2435000000005,
+        "load_average": [
+          0.81,
+          0.29,
+          0.1
+        ],
+        "memory_available_mb": 14720.19,
+        "sampled_at": "2026-11-17T20:35:21.891964",
+        "swap_percent": 0.0,
+        "swap_used_mb": 0.0
+      },
+      "start": {
+        "cpu_frequency_mhz": 4505.135,
+        "load_average": [
+          0.78,
+          0.26,
+          0.09
+        ],
+        "memory_available_mb": 14690.01,
+        "sampled_at": "2026-11-17T20:35:12.969142",
+        "swap_percent": 0.0,
+        "swap_used_mb": 0.0
+      }
+    },
+    "memory_gb": 15.608444213867188,
+    "os": "Linux 7.0.0-1019-azure",
+    "platform_runtime": {
+      "collection_status": "partial",
+      "runtime_type": "local_process",
+      "source": "inferred"
+    },
+    "python": "3.12.16"
+  },
+  "execution": {
+    "compression": {
+      "level": 9,
+      "type": "zstd"
+    },
+    "driver_package": "duckdb",
+    "driver_runtime_strategy": "current-process",
+    "driver_version_actual": "2.0.0",
+    "driver_version_resolved": "2.0.0",
+    "entry_point": "cli",
+    "mode": "sql",
+    "phases": [
+      "generate",
+      "load",
+      "power"
+    ],
+    "timestamp": "2026-11-17T20:35:09.105525",
+    "translation": {
+      "attempt_count": 77,
+      "failed_count": 0,
+      "fallback_count": 0,
+      "outcomes": [
+        {
+          "calls": 76,
+          "count": 76,
+          "normalized_source_dialect": "netezza",
+          "normalized_target_dialect": "duckdb",
+          "parser_grammar": "netezza",
+          "scope": "workload_query",
+          "source_dialect": "netezza",
+          "status": "success",
+          "strict_mode": false,
+          "target_dialect": "duckdb",
+          "translator": "sqlglot",
+          "unique_queries": 38
+        },
+        {
+          "calls": 1,
+          "count": 1,
+          "normalized_source_dialect": "postgres",
+          "normalized_target_dialect": "duckdb",
+          "parser_grammar": "postgres",
+          "scope": "schema_ddl",
+          "source_dialect": "standard",
+          "status": "success",
+          "strict_mode": false,
+          "target_dialect": "duckdb",
+          "translator": "sqlglot",
+          "unique_queries": 1
+        }
+      ],
+      "runtime": {
+        "distribution": "benchbox-sqlglot",
+        "fork_sha": "c28e72ff6d66298fe07b8af4b3b8326919eff15b",
+        "upstream_sha": "0936dbe9192a3b57c6e6992acfcb93d4b429c51f",
+        "version": "30.33.0.1",
+        "wheel_sha256": "27cf37633a15bf75c65691af03109816052bb2792fe8c49b56e1621fa1d4dec1"
+      },
+      "schema_statements_translated": 1,
+      "source_dialects": [
+        "netezza",
+        "standard"
+      ],
+      "status": "success",
+      "strict_mode": false,
+      "success_count": 77,
+      "target_dialects": [
+        "duckdb"
+      ],
+      "total_transpilation_calls": 77,
+      "translators": [
+        "sqlglot"
+      ],
+      "unique_queries_translated": 38
+    },
+    "tuning_mode": "notuning"
+  },
+  "export": {
+    "anonymized": true,
+    "benchbox_version": "0.5.1",
+    "timestamp": "2026-11-17T20:35:21.993830",
+    "tool": "benchbox-exporter"
+  },
+  "normalized_cost": {
+    "billing_unit": "not_applicable",
+    "cost_model_source": "benchbox.core.cost.pricing",
+    "cost_model_version": "2026.09",
+    "cost_scope": "compute_only",
+    "cost_status": "not_applicable_local",
+    "cost_usd": null,
+    "deployment": {
+      "cloud_provider": null,
+      "cloud_region": null,
+      "cluster_size": null,
+      "instance_type": null,
+      "node_count": null,
+      "storage_format": null,
+      "storage_tier": null,
+      "warehouse_size": null
+    },
+    "normalized_cost_usd": "0",
+    "pricing_region": "not_applicable"
+  },
+  "phases": {
+    "data_generation": {
+      "duration_ms": 0,
+      "status": "SUCCESS"
+    },
+    "data_loading": {
+      "duration_ms": 299,
+      "status": "SUCCESS"
+    },
+    "power_test": {
+      "duration_ms": 7230,
+      "geometric_mean_time": 0.045698431263156813,
+      "power_at_size": 0.0,
+      "query_count": 152,
+      "status": "COMPLETED"
+    },
+    "schema_creation": {
+      "duration_ms": 926,
+      "status": "SUCCESS"
+    },
+    "throughput_test": {
+      "status": "NOT_RUN"
+    },
+    "validation": {
+      "duration_ms": 50,
+      "status": "PASSED"
+    }
+  },
+  "platform": {
+    "client_version": "2.0.0",
+    "cloud": {
+      "collection_status": "unavailable",
+      "source": "unavailable"
+    },
+    "compute": {
+      "collection_status": "partial",
+      "result_cache_enabled": false,
+      "source": "requested"
+    },
+    "config": {
+      "connection_mode": "file",
+      "driver_package": "duckdb",
+      "driver_runtime_strategy": "current-process",
+      "driver_version_actual": "2.0.0",
+      "driver_version_resolved": "2.0.0",
+      "enable_progress_bar": false,
+      "engine_version": "2.0.0",
+      "engine_version_source": "sql_query",
+      "execution_mode": "sql",
+      "memory_limit": "8GB",
+      "result_cache_enabled": false,
+      "thread_limit": 4
+    },
+    "deployment": {
+      "collection_status": "partial",
+      "connection_mode": "file",
+      "deployment_type": "embedded",
+      "endpoint_class": "embedded_process",
+      "metadata_source": "inferred"
+    },
+    "driver_actual_version": "2.0.0",
+    "driver_package": "duckdb",
+    "driver_resolved_version": "2.0.0",
+    "driver_runtime_strategy": "current-process",
+    "execution_engine": {
+      "applied": null,
+      "applied_class": null,
+      "observed": "not_captured",
+      "observed_source": "none",
+      "requested": "default",
+      "resolution": "platform_default"
+    },
+    "name": "DuckDB",
+    "raw_config": {
+      "allow_third_party_extensions": false,
+      "enable_progress_bar": false,
+      "force_recreate": false,
+      "memory_limit": "8GB",
+      "result_cache_enabled": false,
+      "thread_limit": 4,
+      "tuning_source": "baseline",
+      "type": "duckdb"
+    },
+    "storage": {
+      "collection_status": "unavailable",
+      "source": "unavailable"
+    },
+    "tuning": {
+      "source": "auto",
+      "tuning_source": "baseline",
+      "validation_status": "not_applicable"
+    },
+    "variant": "duckdb",
+    "version": "2.0.0"
+  },
+  "queries": [
+    {
+      "id": "QV1",
+      "iter": 0,
+      "ms": 2.395669,
+      "request_count": 1,
+      "result_bytes": 35,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QV2",
+      "iter": 0,
+      "ms": 1.738296,
+      "request_count": 1,
+      "result_bytes": 110,
+      "rows": 3,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QV3",
+      "iter": 0,
+      "ms": 2.295037,
+      "request_count": 1,
+      "result_bytes": 1347,
+      "rows": 18,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QA1",
+      "iter": 0,
+      "ms": 2.957168,
+      "request_count": 1,
+      "result_bytes": 128,
+      "rows": 3,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QA2",
+      "iter": 0,
+      "ms": 4.663285,
+      "request_count": 1,
+      "result_bytes": 2672,
+      "rows": 42,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QA3",
+      "iter": 0,
+      "ms": 3.423412,
+      "request_count": 1,
+      "result_bytes": 5456,
+      "rows": 50,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QA4",
+      "iter": 0,
+      "ms": 2.944118,
+      "request_count": 1,
+      "result_bytes": 1298,
+      "rows": 20,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QA5",
+      "iter": 0,
+      "ms": 4.060104,
+      "request_count": 1,
+      "result_bytes": 807,
+      "rows": 15,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QVQ1",
+      "iter": 0,
+      "ms": 2.956827,
+      "request_count": 1,
+      "result_bytes": 64,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QVQ2",
+      "iter": 0,
+      "ms": 3.411494,
+      "request_count": 1,
+      "result_bytes": 64,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QVQ3",
+      "iter": 0,
+      "ms": 3.942326,
+      "request_count": 1,
+      "result_bytes": 411,
+      "rows": 5,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QVQ4",
+      "iter": 0,
+      "ms": 4.938411,
+      "request_count": 1,
+      "result_bytes": 477,
+      "rows": 5,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QVQ5",
+      "iter": 0,
+      "ms": 6.269872,
+      "request_count": 1,
+      "result_bytes": 417,
+      "rows": 5,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QVQ6",
+      "iter": 0,
+      "ms": 3.976748,
+      "request_count": 1,
+      "result_bytes": 0,
+      "rows": 0,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QVQ7",
+      "iter": 0,
+      "ms": 2.794743,
+      "request_count": 1,
+      "result_bytes": 290,
+      "rows": 3,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QVQ8",
+      "iter": 0,
+      "ms": 1.775943,
+      "request_count": 1,
+      "result_bytes": 91,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QVQ9",
+      "iter": 0,
+      "ms": 2.305212,
+      "request_count": 1,
+      "result_bytes": 154,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QVQ10",
+      "iter": 0,
+      "ms": 3.121696,
+      "request_count": 1,
+      "result_bytes": 129,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QVQ11",
+      "iter": 0,
+      "ms": 2.746259,
+      "request_count": 1,
+      "result_bytes": 145,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QVQ12",
+      "iter": 0,
+      "ms": 5.748214,
+      "request_count": 1,
+      "result_bytes": 11191,
+      "rows": 100,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QAQ1",
+      "iter": 0,
+      "ms": 6.025232,
+      "request_count": 1,
+      "result_bytes": 878,
+      "rows": 6,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QAQ2",
+      "iter": 0,
+      "ms": 134.0345,
+      "request_count": 1,
+      "result_bytes": 12989,
+      "rows": 50,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QAQ3",
+      "iter": 0,
+      "ms": 8.463387,
+      "request_count": 1,
+      "result_bytes": 10195,
+      "rows": 50,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QAQ4",
+      "iter": 0,
+      "ms": 11.63338,
+      "request_count": 1,
+      "result_bytes": 13164,
+      "rows": 60,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QAQ5",
+      "iter": 0,
+      "ms": 1071.439,
+      "request_count": 1,
+      "result_bytes": 8862,
+      "rows": 50,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QAQ6",
+      "iter": 0,
+      "ms": 158.7795,
+      "request_count": 1,
+      "result_bytes": 2230,
+      "rows": 12,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QAQ7",
+      "iter": 0,
+      "ms": 157.1329,
+      "request_count": 1,
+      "result_bytes": 122,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QAQ8",
+      "iter": 0,
+      "ms": 18.06402,
+      "request_count": 1,
+      "result_bytes": 241,
+      "rows": 2,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QAQ9",
+      "iter": 0,
+      "ms": 6.319191,
+      "request_count": 1,
+      "result_bytes": 0,
+      "rows": 0,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QAQ10",
+      "iter": 0,
+      "ms": 21.87394,
+      "request_count": 1,
+      "result_bytes": 9005,
+      "rows": 50,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QEQ1",
+      "iter": 0,
+      "ms": 4.290226,
+      "request_count": 1,
+      "result_bytes": 372,
+      "rows": 3,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QEQ2",
+      "iter": 0,
+      "ms": 3.972482,
+      "request_count": 1,
+      "result_bytes": 429,
+      "rows": 3,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QEQ3",
+      "iter": 0,
+      "ms": 4.422433,
+      "request_count": 1,
+      "result_bytes": 417,
+      "rows": 4,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QEQ4",
+      "iter": 0,
+      "ms": 7.020487,
+      "request_count": 1,
+      "result_bytes": 579,
+      "rows": 5,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QEQ5",
+      "iter": 0,
+      "ms": 7.19709,
+      "request_count": 1,
+      "result_bytes": 94,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QEQ6",
+      "iter": 0,
+      "ms": 3.888227,
+      "request_count": 1,
+      "result_bytes": 475,
+      "rows": 4,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QEQ7",
+      "iter": 0,
+      "ms": 8.52547,
+      "request_count": 1,
+      "result_bytes": 509,
+      "rows": 3,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QEQ8",
+      "iter": 0,
+      "ms": 2.556381,
+      "request_count": 1,
+      "result_bytes": 663,
+      "rows": 5,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QV1",
+      "iter": 1,
+      "ms": 1.41516,
+      "request_count": 1,
+      "result_bytes": 35,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QV2",
+      "iter": 1,
+      "ms": 1.255411,
+      "request_count": 1,
+      "result_bytes": 110,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QV3",
+      "iter": 1,
+      "ms": 2.117467,
+      "request_count": 1,
+      "result_bytes": 1347,
+      "rows": 18,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QA1",
+      "iter": 1,
+      "ms": 2.899994,
+      "request_count": 1,
+      "result_bytes": 128,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QA2",
+      "iter": 1,
+      "ms": 4.210568,
+      "request_count": 1,
+      "result_bytes": 2672,
+      "rows": 42,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QA3",
+      "iter": 1,
+      "ms": 3.156315,
+      "request_count": 1,
+      "result_bytes": 5456,
+      "rows": 50,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QA4",
+      "iter": 1,
+      "ms": 2.760135,
+      "request_count": 1,
+      "result_bytes": 1298,
+      "rows": 20,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QA5",
+      "iter": 1,
+      "ms": 4.291548,
+      "request_count": 1,
+      "result_bytes": 807,
+      "rows": 15,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QVQ1",
+      "iter": 1,
+      "ms": 3.163456,
+      "request_count": 1,
+      "result_bytes": 64,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QVQ2",
+      "iter": 1,
+      "ms": 3.423163,
+      "request_count": 1,
+      "result_bytes": 64,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QVQ3",
+      "iter": 1,
+      "ms": 2.988245,
+      "request_count": 1,
+      "result_bytes": 411,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QVQ4",
+      "iter": 1,
+      "ms": 4.498587,
+      "request_count": 1,
+      "result_bytes": 477,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QVQ5",
+      "iter": 1,
+      "ms": 5.631356,
+      "request_count": 1,
+      "result_bytes": 417,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QVQ6",
+      "iter": 1,
+      "ms": 3.437605,
+      "request_count": 1,
+      "result_bytes": 0,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QVQ7",
+      "iter": 1,
+      "ms": 2.449943,
+      "request_count": 1,
+      "result_bytes": 290,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QVQ8",
+      "iter": 1,
+      "ms": 1.546465,
+      "request_count": 1,
+      "result_bytes": 91,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QVQ9",
+      "iter": 1,
+      "ms": 2.021183,
+      "request_count": 1,
+      "result_bytes": 154,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QVQ10",
+      "iter": 1,
+      "ms": 2.787336,
+      "request_count": 1,
+      "result_bytes": 129,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QVQ11",
+      "iter": 1,
+      "ms": 2.555389,
+      "request_count": 1,
+      "result_bytes": 145,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QVQ12",
+      "iter": 1,
+      "ms": 5.535572,
+      "request_count": 1,
+      "result_bytes": 11191,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QAQ1",
+      "iter": 1,
+      "ms": 5.053183,
+      "request_count": 1,
+      "result_bytes": 878,
+      "rows": 6,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QAQ2",
+      "iter": 1,
+      "ms": 171.99,
+      "request_count": 1,
+      "result_bytes": 12989,
+      "rows": 50,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QAQ3",
+      "iter": 1,
+      "ms": 9.861803,
+      "request_count": 1,
+      "result_bytes": 10195,
+      "rows": 50,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QAQ4",
+      "iter": 1,
+      "ms": 12.25235,
+      "request_count": 1,
+      "result_bytes": 13164,
+      "rows": 60,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QAQ5",
+      "iter": 1,
+      "ms": 1082.885,
+      "request_count": 1,
+      "result_bytes": 8862,
+      "rows": 50,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QAQ6",
+      "iter": 1,
+      "ms": 163.7524,
+      "request_count": 1,
+      "result_bytes": 2230,
+      "rows": 12,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QAQ7",
+      "iter": 1,
+      "ms": 162.5144,
+      "request_count": 1,
+      "result_bytes": 122,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QAQ8",
+      "iter": 1,
+      "ms": 16.80934,
+      "request_count": 1,
+      "result_bytes": 241,
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QAQ9",
+      "iter": 1,
+      "ms": 5.767008,
+      "request_count": 1,
+      "result_bytes": 0,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QAQ10",
+      "iter": 1,
+      "ms": 23.54515,
+      "request_count": 1,
+      "result_bytes": 9005,
+      "rows": 50,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QEQ1",
+      "iter": 1,
+      "ms": 4.099502,
+      "request_count": 1,
+      "result_bytes": 372,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QEQ2",
+      "iter": 1,
+      "ms": 5.134174,
+      "request_count": 1,
+      "result_bytes": 429,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QEQ3",
+      "iter": 1,
+      "ms": 5.409354,
+      "request_count": 1,
+      "result_bytes": 417,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QEQ4",
+      "iter": 1,
+      "ms": 8.064854,
+      "request_count": 1,
+      "result_bytes": 579,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QEQ5",
+      "iter": 1,
+      "ms": 7.273464,
+      "request_count": 1,
+      "result_bytes": 94,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QEQ6",
+      "iter": 1,
+      "ms": 4.189466,
+      "request_count": 1,
+      "result_bytes": 475,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QEQ7",
+      "iter": 1,
+      "ms": 9.990695,
+      "request_count": 1,
+      "result_bytes": 509,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QEQ8",
+      "iter": 1,
+      "ms": 3.156726,
+      "request_count": 1,
+      "result_bytes": 663,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QV1",
+      "iter": 2,
+      "ms": 1.663299,
+      "request_count": 1,
+      "result_bytes": 35,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QV2",
+      "iter": 2,
+      "ms": 1.338246,
+      "request_count": 1,
+      "result_bytes": 110,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QV3",
+      "iter": 2,
+      "ms": 2.199829,
+      "request_count": 1,
+      "result_bytes": 1347,
+      "rows": 18,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QA1",
+      "iter": 2,
+      "ms": 2.980083,
+      "request_count": 1,
+      "result_bytes": 128,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QA2",
+      "iter": 2,
+      "ms": 3.983059,
+      "request_count": 1,
+      "result_bytes": 2672,
+      "rows": 42,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QA3",
+      "iter": 2,
+      "ms": 3.508841,
+      "request_count": 1,
+      "result_bytes": 5456,
+      "rows": 50,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QA4",
+      "iter": 2,
+      "ms": 2.989377,
+      "request_count": 1,
+      "result_bytes": 1298,
+      "rows": 20,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QA5",
+      "iter": 2,
+      "ms": 4.377086,
+      "request_count": 1,
+      "result_bytes": 807,
+      "rows": 15,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QVQ1",
+      "iter": 2,
+      "ms": 4.195314,
+      "request_count": 1,
+      "result_bytes": 64,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QVQ2",
+      "iter": 2,
+      "ms": 5.371914,
+      "request_count": 1,
+      "result_bytes": 64,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QVQ3",
+      "iter": 2,
+      "ms": 3.864527,
+      "request_count": 1,
+      "result_bytes": 411,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QVQ4",
+      "iter": 2,
+      "ms": 6.586449,
+      "request_count": 1,
+      "result_bytes": 477,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QVQ5",
+      "iter": 2,
+      "ms": 6.597796,
+      "request_count": 1,
+      "result_bytes": 417,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QVQ6",
+      "iter": 2,
+      "ms": 3.728919,
+      "request_count": 1,
+      "result_bytes": 0,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QVQ7",
+      "iter": 2,
+      "ms": 2.601919,
+      "request_count": 1,
+      "result_bytes": 290,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QVQ8",
+      "iter": 2,
+      "ms": 1.614578,
+      "request_count": 1,
+      "result_bytes": 91,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QVQ9",
+      "iter": 2,
+      "ms": 2.157075,
+      "request_count": 1,
+      "result_bytes": 154,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QVQ10",
+      "iter": 2,
+      "ms": 2.96495,
+      "request_count": 1,
+      "result_bytes": 129,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QVQ11",
+      "iter": 2,
+      "ms": 2.715128,
+      "request_count": 1,
+      "result_bytes": 145,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QVQ12",
+      "iter": 2,
+      "ms": 5.979725,
+      "request_count": 1,
+      "result_bytes": 11191,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QAQ1",
+      "iter": 2,
+      "ms": 6.863702,
+      "request_count": 1,
+      "result_bytes": 878,
+      "rows": 6,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QAQ2",
+      "iter": 2,
+      "ms": 133.5756,
+      "request_count": 1,
+      "result_bytes": 12989,
+      "rows": 50,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QAQ3",
+      "iter": 2,
+      "ms": 7.725828,
+      "request_count": 1,
+      "result_bytes": 10195,
+      "rows": 50,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QAQ4",
+      "iter": 2,
+      "ms": 16.23973,
+      "request_count": 1,
+      "result_bytes": 13164,
+      "rows": 60,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QAQ5",
+      "iter": 2,
+      "ms": 1098.293,
+      "request_count": 1,
+      "result_bytes": 8862,
+      "rows": 50,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QAQ6",
+      "iter": 2,
+      "ms": 166.7684,
+      "request_count": 1,
+      "result_bytes": 2230,
+      "rows": 12,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QAQ7",
+      "iter": 2,
+      "ms": 159.8511,
+      "request_count": 1,
+      "result_bytes": 122,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QAQ8",
+      "iter": 2,
+      "ms": 16.82685,
+      "request_count": 1,
+      "result_bytes": 241,
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QAQ9",
+      "iter": 2,
+      "ms": 5.975479,
+      "request_count": 1,
+      "result_bytes": 0,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QAQ10",
+      "iter": 2,
+      "ms": 22.42072,
+      "request_count": 1,
+      "result_bytes": 9005,
+      "rows": 50,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QEQ1",
+      "iter": 2,
+      "ms": 4.051215,
+      "request_count": 1,
+      "result_bytes": 372,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QEQ2",
+      "iter": 2,
+      "ms": 4.102523,
+      "request_count": 1,
+      "result_bytes": 429,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QEQ3",
+      "iter": 2,
+      "ms": 4.554444,
+      "request_count": 1,
+      "result_bytes": 417,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QEQ4",
+      "iter": 2,
+      "ms": 7.061979,
+      "request_count": 1,
+      "result_bytes": 579,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QEQ5",
+      "iter": 2,
+      "ms": 6.183754,
+      "request_count": 1,
+      "result_bytes": 94,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QEQ6",
+      "iter": 2,
+      "ms": 4.534504,
+      "request_count": 1,
+      "result_bytes": 475,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QEQ7",
+      "iter": 2,
+      "ms": 8.743999,
+      "request_count": 1,
+      "result_bytes": 509,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QEQ8",
+      "iter": 2,
+      "ms": 2.803281,
+      "request_count": 1,
+      "result_bytes": 663,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QV1",
+      "iter": 3,
+      "ms": 1.654097,
+      "request_count": 1,
+      "result_bytes": 35,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QV2",
+      "iter": 3,
+      "ms": 1.383429,
+      "request_count": 1,
+      "result_bytes": 110,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QV3",
+      "iter": 3,
+      "ms": 2.207872,
+      "request_count": 1,
+      "result_bytes": 1347,
+      "rows": 18,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QA1",
+      "iter": 3,
+      "ms": 2.914689,
+      "request_count": 1,
+      "result_bytes": 128,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QA2",
+      "iter": 3,
+      "ms": 3.93517,
+      "request_count": 1,
+      "result_bytes": 2672,
+      "rows": 42,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QA3",
+      "iter": 3,
+      "ms": 2.919356,
+      "request_count": 1,
+      "result_bytes": 5456,
+      "rows": 50,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QA4",
+      "iter": 3,
+      "ms": 2.473704,
+      "request_count": 1,
+      "result_bytes": 1298,
+      "rows": 20,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QA5",
+      "iter": 3,
+      "ms": 3.538771,
+      "request_count": 1,
+      "result_bytes": 807,
+      "rows": 15,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QVQ1",
+      "iter": 3,
+      "ms": 2.52368,
+      "request_count": 1,
+      "result_bytes": 64,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QVQ2",
+      "iter": 3,
+      "ms": 2.963213,
+      "request_count": 1,
+      "result_bytes": 64,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QVQ3",
+      "iter": 3,
+      "ms": 3.003844,
+      "request_count": 1,
+      "result_bytes": 411,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QVQ4",
+      "iter": 3,
+      "ms": 4.264506,
+      "request_count": 1,
+      "result_bytes": 477,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QVQ5",
+      "iter": 3,
+      "ms": 5.471719,
+      "request_count": 1,
+      "result_bytes": 417,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QVQ6",
+      "iter": 3,
+      "ms": 3.592102,
+      "request_count": 1,
+      "result_bytes": 0,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QVQ7",
+      "iter": 3,
+      "ms": 2.432101,
+      "request_count": 1,
+      "result_bytes": 290,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QVQ8",
+      "iter": 3,
+      "ms": 1.65644,
+      "request_count": 1,
+      "result_bytes": 91,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QVQ9",
+      "iter": 3,
+      "ms": 2.282815,
+      "request_count": 1,
+      "result_bytes": 154,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QVQ10",
+      "iter": 3,
+      "ms": 3.082763,
+      "request_count": 1,
+      "result_bytes": 129,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QVQ11",
+      "iter": 3,
+      "ms": 2.693335,
+      "request_count": 1,
+      "result_bytes": 145,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QVQ12",
+      "iter": 3,
+      "ms": 6.718891,
+      "request_count": 1,
+      "result_bytes": 11191,
+      "rows": 100,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QAQ1",
+      "iter": 3,
+      "ms": 6.163272,
+      "request_count": 1,
+      "result_bytes": 878,
+      "rows": 6,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QAQ2",
+      "iter": 3,
+      "ms": 131.6587,
+      "request_count": 1,
+      "result_bytes": 12989,
+      "rows": 50,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QAQ3",
+      "iter": 3,
+      "ms": 8.243703,
+      "request_count": 1,
+      "result_bytes": 10195,
+      "rows": 50,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QAQ4",
+      "iter": 3,
+      "ms": 11.38401,
+      "request_count": 1,
+      "result_bytes": 13164,
+      "rows": 60,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QAQ5",
+      "iter": 3,
+      "ms": 1110.374,
+      "request_count": 1,
+      "result_bytes": 8862,
+      "rows": 50,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QAQ6",
+      "iter": 3,
+      "ms": 158.8389,
+      "request_count": 1,
+      "result_bytes": 2230,
+      "rows": 12,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QAQ7",
+      "iter": 3,
+      "ms": 155.1596,
+      "request_count": 1,
+      "result_bytes": 122,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QAQ8",
+      "iter": 3,
+      "ms": 17.76325,
+      "request_count": 1,
+      "result_bytes": 241,
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QAQ9",
+      "iter": 3,
+      "ms": 5.623989,
+      "request_count": 1,
+      "result_bytes": 0,
+      "rows": 0,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QAQ10",
+      "iter": 3,
+      "ms": 20.86874,
+      "request_count": 1,
+      "result_bytes": 9005,
+      "rows": 50,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QEQ1",
+      "iter": 3,
+      "ms": 4.043554,
+      "request_count": 1,
+      "result_bytes": 372,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QEQ2",
+      "iter": 3,
+      "ms": 4.175091,
+      "request_count": 1,
+      "result_bytes": 429,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QEQ3",
+      "iter": 3,
+      "ms": 4.99569,
+      "request_count": 1,
+      "result_bytes": 417,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QEQ4",
+      "iter": 3,
+      "ms": 7.526631,
+      "request_count": 1,
+      "result_bytes": 579,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QEQ5",
+      "iter": 3,
+      "ms": 6.687304,
+      "request_count": 1,
+      "result_bytes": 94,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QEQ6",
+      "iter": 3,
+      "ms": 3.672342,
+      "request_count": 1,
+      "result_bytes": 475,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QEQ7",
+      "iter": 3,
+      "ms": 8.565699,
+      "request_count": 1,
+      "result_bytes": 509,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QEQ8",
+      "iter": 3,
+      "ms": 2.713566,
+      "request_count": 1,
+      "result_bytes": 663,
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    }
+  ],
+  "result_schema_version": "2.4",
+  "run": {
+    "id": "a2815a70",
+    "iterations": 3,
+    "net_estimate_status": "embedded",
+    "query_time_ms": 5242,
+    "streams": 4,
+    "timestamp": "2026-11-17T20:35:21.907431",
+    "timing_method": 2,
+    "total_duration_ms": 8900
+  },
+  "summary": {
+    "data": {
+      "load_time_ms": 299.1,
+      "rows_loaded": 128626
+    },
+    "queries": {
+      "failed": 0,
+      "passed": 114,
+      "total": 114
+    },
+    "timing": {
+      "avg_ms": 46.0,
+      "geometric_mean_ms": 6.5,
+      "max_ms": 1110.4,
+      "min_ms": 1.3,
+      "p90_ms": 131.7,
+      "p95_ms": 163.8,
+      "p99_ms": 1098.3,
+      "stdev_ms": 178.4,
+      "total_ms": 5242.1
+    },
+    "validation": "passed"
+  },
+  "tables": {
+    "DimAccount": {
+      "rows": 500
+    },
+    "DimBroker": {
+      "rows": 100
+    },
+    "DimCompany": {
+      "rows": 50
+    },
+    "DimCustomer": {
+      "rows": 500
+    },
+    "DimDate": {
+      "rows": 5844
+    },
+    "DimSecurity": {
+      "rows": 80
+    },
+    "DimTime": {
+      "rows": 288
+    },
+    "FactCashBalances": {
+      "rows": 12030
+    },
+    "FactHoldings": {
+      "rows": 12047
+    },
+    "FactMarketHistory": {
+      "rows": 54155
+    },
+    "FactTrade": {
+      "rows": 13000
+    },
+    "FactWatches": {
+      "rows": 30000
+    },
+    "Industry": {
+      "rows": 12
+    },
+    "StatusType": {
+      "rows": 4
+    },
+    "TaxRate": {
+      "rows": 10
+    },
+    "TradeType": {
+      "rows": 6
+    }
+  },
+  "version": "2.4"
+}
