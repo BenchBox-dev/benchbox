@@ -37810,15 +37810,10 @@
       "title": "Warn on shared-clone Git identity drift (successor)"
     },
     "shared-github-quota-and-transient-failure-owner-20261113": {
-      "claim": {
-        "expires_at": "2026-11-18T12:59:35Z",
-        "generation": "1b0038152cf042c5bd650e1466a2057b",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:018071991691f1918967a0cb"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Many agent sessions share one GitHub user's quota and one host, and nothing owns the resulting transient failures as one problem"
     },
     "shared-primitives-loader-validation-parity": {
