@@ -28911,9 +28911,9 @@
     },
     "nightly-throughput-run-official-silent-refusal-20261113": {
       "claim": {
-        "expires_at": "2026-11-18T15:13:37Z",
-        "generation": "f075aa89376043c5814ab2e7cb28ed3f",
-        "renewals": 0,
+        "expires_at": "2026-11-18T15:13:53Z",
+        "generation": "d5fbcb2ed0f14435a59a7071bce9a0b0",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1213c3129d7753c9fd6512c0"
       },
       "needs": [],
