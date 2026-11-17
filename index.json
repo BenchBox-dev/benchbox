@@ -39794,6 +39794,13 @@
       "status": "done",
       "title": "Make core SQLGlot delivery event-driven and verify App readiness"
     },
+    "sqlglot-delivery-schedules-start-hours-late-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "SQLGlot fork and core delivery schedules start 7 to 10 hours after their cron times, and nothing orders core after the fork"
+    },
     "sqlglot-delivery-workflow-run-unfiltered-20261112": {
       "claim": null,
       "needs": [],
