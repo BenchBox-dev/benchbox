@@ -2,7 +2,8 @@
   "acceptance": [
     "Two cause comments posted",
     "#4050-#4052 and #3916 closed unmerged; canary branches deleted",
-    "None of the six items is active; each is open with a release note"
+    "None of the six items is active; each is open with a release note",
+    "Decision gate: a claim that is live, or whose holder has resumed, is skipped and reported, never taken over"
   ],
   "context": "Guardrails: touch no other PR or claim; if a claim is live or its holder resumes, skip it and note why; do not drop or edit item content.",
   "description": "Owner-approved operations (2026-11-17), no code:\n1. Comment on #2471 and #3930 with the root cause, the fix in progress and the expected fix date (nightly-t3.md owner response policy).\n2. Close canary PRs #4050, #4051, #4052 (bodies say throwaway, close without merging) and delete their canary/review-posting-* branches.\n3. Close seed-corpus PR #3916 as stale with a comment to rerun the seed-corpus workflow when new seed bundles are wanted.\n4. Take over and release the six claims whose leases expired between 2026-09-19 and 2026-10-20 (ci-dedupe-11-required-public-site-visual-check, clickhouse-notuning-rerun-table-exists, docs-mig-oracle-diff-decode, ci-docker-hub-unauthenticated-pulls-20261009, uat-clickhouse-tpcds-sf001-runtime-performance, comment-policy-fixture-exception-wording-cleanup), each with a context note; drop none.",
@@ -13,6 +14,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "68f44030c5f943659e9653b0b126f535",
+      "session_id": "b833d84af4ae4e4b999f435d3c8fd25e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:daba6966dbafa9d0ecd0bd8b",
+      "at": "2026-11-17T17:42:21Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e01bdb3e154b458b9f69b0119161c78d",
       "session_id": "b833d84af4ae4e4b999f435d3c8fd25e"
     }
   ]
