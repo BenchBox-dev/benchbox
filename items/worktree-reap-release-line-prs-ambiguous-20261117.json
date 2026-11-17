@@ -7,6 +7,7 @@
     "docs/internal/dev-loop-worktrees.md lists release/<major>.<minor>.x wherever it lists the accepted bases (the structural-branch definition and the reap paragraph).",
     "Guardrails: only the base check in _project/scripts/worktree_audit.py and scripts/worktree_finish.py and its tests change, plus the docs. No other safety condition is relaxed: dirty, unpushed, detached, open PR, locked, the current worktree and the primary clone are still kept. Remote branches are never deleted. Worktrees owned by a live session are not removed by hand while testing."
   ],
+  "context": "Owner decision 2026-11-17: accept the pattern release/<major>.<minor>.x as an integration base in worktree finish, reap and audit; nothing broader.",
   "description": "STRUCTURAL_BASES in _project/scripts/worktree_audit.py is {develop, release, published-results}, and scripts/worktree_finish.py holds any worktree whose merged PR targets another base with hold_code non_structural_base. Maintenance-line work now merges into release/0.5.x (docs/internal/release-guide.md describes release/* lines, and trunk.yml and the review policy already cover release/**). On 2026-11-17 a make worktree-reap dry run classed three clean worktrees as ambiguous for this reason alone: BenchBox.wt-line-noop (PR #4249), BenchBox.wt-release-0.5.2rc1 (PR #4250) and BenchBox.wt-line-starrocks-rc2 (PR #4303), all merged into release/0.5.x. Every future maintenance-line worktree will pile up the same way and need removing by hand.",
   "links": [
     "_project/scripts/worktree_audit.py",
@@ -30,6 +31,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "39a11b8b5bc245628dc5589f4dd75e67",
+      "session_id": "a8b952a2353a43c5b8b6461d5901abad"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f00380ac381b3b759bd4b6a8",
+      "at": "2026-11-17T22:33:08Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "eaa8cdfb2b8944759b123da0bcfab2d9",
       "session_id": "a8b952a2353a43c5b8b6461d5901abad"
     }
   ]
