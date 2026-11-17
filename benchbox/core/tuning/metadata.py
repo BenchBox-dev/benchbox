@@ -412,6 +412,17 @@ class TuningMetadataManager:
         self._table_exists = True
         return True
 
+    def clear_refresh_marker(self) -> bool:
+        if not self._table_exists_check():
+            return True
+        delete_sql = f"DELETE FROM {self._metadata_table_name} WHERE table_name = '{self._REFRESH_STATE_TABLE}'"
+        with self._managed_connection() as conn:
+            self._execute_sql(conn, delete_sql)
+            commit = getattr(conn, "commit", None)
+            if callable(commit):
+                commit()
+        return True
+
     def has_refresh_marker(self) -> bool:
         self.last_load_error = None
         if not self._table_exists_check():

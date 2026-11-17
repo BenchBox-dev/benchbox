@@ -146,6 +146,7 @@ class ConnectionLifecycleMixin:
             tables_exist = self.check_benchmark_tables_exist(**connection_config)
             if tables_exist is False:
                 self.log_verbose("Managed database cannot be safely reused - treating as fresh database")
+                self._clear_stale_refresh_marker(**connection_config)
                 self.database_was_reused = False
                 return
             if tables_exist is True:
@@ -230,10 +231,26 @@ class ConnectionLifecycleMixin:
             )
             self.log_operation_complete("Database validation", details="Database recreated due to incompatibility")
 
+    def _clear_stale_refresh_marker(self, **connection_config) -> None:
+        from benchbox.core.tuning.metadata import TuningMetadataManager
+
+        if getattr(self, "supports_refresh_functions", False) is not True or getattr(
+            self, "_validating_database", False
+        ):
+            return
+        if self.tuning_metadata_unsupported_reason() is not None:
+            return
+        try:
+            TuningMetadataManager(self, connection_config=connection_config).clear_refresh_marker()
+        except Exception as exc:
+            self.logger.warning(f"Could not clear the stale TPC-H refresh marker: {exc}")
+
     def _require_unrefreshed_managed_database(self, **connection_config) -> None:
         from benchbox.core.tuning.metadata import TuningMetadataManager
 
-        if getattr(self, "supports_refresh_functions", False) is not True:
+        if getattr(self, "supports_refresh_functions", False) is not True or getattr(
+            self, "_validating_database", False
+        ):
             return
         if self.tuning_metadata_unsupported_reason() is not None:
             return

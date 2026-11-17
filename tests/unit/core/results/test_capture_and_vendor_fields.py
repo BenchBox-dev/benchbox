@@ -174,6 +174,34 @@ class TestVendorFieldsInBundle:
 
         assert any("self_run is false" in e for e in _errors(payload))
 
+    def test_conditions_are_left_to_the_manifest_when_one_accompanies_the_bundle(self) -> None:
+        payload = _payload(plan_tier="free", preview_features=["new thing"])
+        vr = ValidationResult("bundle.json")
+
+        _validate_capture_and_vendor_fields(payload, payload["result_schema_version"], vr, manifest_present=True)
+
+        assert vr.errors == []
+
+    def test_malformed_vendor_fields_are_still_refused_when_a_manifest_accompanies_the_bundle(self) -> None:
+        payload = _payload(plan_tier="paid")
+        payload["provenance"]["plan_tier"] = "enterprise"
+        payload["provenance"]["preview_features"] = "not-a-list"
+        vr = ValidationResult("bundle.json")
+
+        _validate_capture_and_vendor_fields(payload, payload["result_schema_version"], vr, manifest_present=True)
+
+        assert any("plan_tier" in e for e in vr.errors)
+        assert any("preview_features" in e for e in vr.errors)
+
+    def test_platform_rules_are_left_to_the_manifest_when_one_accompanies_the_bundle(self) -> None:
+        payload = _payload(plan_tier="paid", preview_features=["x"])
+        payload["platform"]["name"] = "databricks"
+        vr = ValidationResult("bundle.json")
+
+        _validate_capture_and_vendor_fields(payload, payload["result_schema_version"], vr, manifest_present=True)
+
+        assert vr.errors == []
+
     def test_the_validator_does_not_change_its_input(self) -> None:
         payload = _payload(plan_tier="free")
         before = copy.deepcopy(payload)
@@ -181,3 +209,37 @@ class TestVendorFieldsInBundle:
         _errors(payload)
 
         assert payload == before
+
+
+class TestSubmissionFlow:
+    @staticmethod
+    def _recorded_flags(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, *, manifest: bool, declared: bool) -> bool:
+        from benchbox.validation import bundle as bundle_module
+
+        seen: list[bool] = []
+        monkeypatch.setattr(
+            bundle_module,
+            "_validate_bundle",
+            lambda data, vr, **kwargs: seen.append(kwargs["manifest_present"]),
+        )
+        path = tmp_path / "result.json"
+        path.write_text("{}", encoding="utf-8")
+        if manifest:
+            (tmp_path / "result.manifest.json").write_text("{}", encoding="utf-8")
+        bundle_module.validate_bundles([path], vendor_conditions_declared=declared)
+        return seen[0]
+
+    def test_a_bundle_on_its_own_carries_its_own_vendor_conditions(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        assert self._recorded_flags(monkeypatch, tmp_path, manifest=False, declared=False) is False
+
+    def test_a_manifest_next_to_the_bundle_takes_over_the_vendor_conditions(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        assert self._recorded_flags(monkeypatch, tmp_path, manifest=True, declared=False) is True
+
+    def test_submit_declares_the_conditions_it_enforces_before_staging(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        assert self._recorded_flags(monkeypatch, tmp_path, manifest=False, declared=True) is True

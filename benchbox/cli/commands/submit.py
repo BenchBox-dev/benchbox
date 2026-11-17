@@ -384,7 +384,7 @@ def _refuse_non_submittable_result(ctx: click.Context, result: object, submit_st
 def _validate_submission_bundle(ctx: click.Context, source_path: Path) -> None:
 
     try:
-        validation_results = validate_bundles([source_path])
+        validation_results = validate_bundles([source_path], vendor_conditions_declared=True)
     except Exception as exc:
         console.print(f"\n[red]Submission validation failed to run:[/red] {exc}")
         ctx.exit(1)

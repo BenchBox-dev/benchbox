@@ -1142,7 +1142,9 @@ def _validate_query_timing_fields(index: int, q: dict, vr: ValidationResult) -> 
         vr.error(f"queries[{index}].platform_timing {problem}")
 
 
-def _validate_capture_and_vendor_fields(data: dict, version: Any, vr: ValidationResult) -> None:
+def _validate_capture_and_vendor_fields(
+    data: dict, version: Any, vr: ValidationResult, *, manifest_present: bool = False
+) -> None:
     gated = supports_capture_and_vendor_fields(version)
     execution = data.get("execution")
     capture = execution.get("config_capture") if isinstance(execution, dict) else None
@@ -1167,6 +1169,11 @@ def _validate_capture_and_vendor_fields(data: dict, version: Any, vr: Validation
         "funding": provenance.get("funding"),
         **{name: provenance[name] for name in present},
     }
+    if manifest_present:
+        declared = {
+            "vendor_permission": "declared in the manifest",
+            **{k: v for k, v in declared.items() if k in present},
+        }
     errors, _ = evaluate_vendor_conditions(declared)
     for message in errors:
         vr.error(message.replace("Manifest ", "Bundle provenance ", 1))
@@ -2864,6 +2871,7 @@ def _validate_bundle(
     *,
     allow_partial_validation: bool = False,
     internal_source: bool = False,
+    manifest_present: bool = False,
 ) -> None:
     _capture_metadata(data, vr)
 
@@ -2917,7 +2925,7 @@ def _validate_bundle(
     _validate_timing_field_versions(data, version, vr)
     _validate_net_estimate_status(data, vr)
     _validate_required_timing_fields(data, version, vr)
-    _validate_capture_and_vendor_fields(data, version, vr)
+    _validate_capture_and_vendor_fields(data, version, vr, manifest_present=manifest_present)
     _warn_empty_result_rows(data, vr)
     _warn_timing_plateau(data, vr)
     _warn_small_scale_floor(data, vr)
@@ -3410,6 +3418,7 @@ def validate_bundles(
     *,
     allow_partial_validation: bool = False,
     trust_internal_source: bool = False,
+    vendor_conditions_declared: bool = False,
 ) -> list[ValidationResult]:
     results = []
     parsed: list[tuple[dict[str, Any], ValidationResult]] = []
@@ -3445,6 +3454,7 @@ def validate_bundles(
             vr,
             allow_partial_validation=allow_partial_validation,
             internal_source=trust_internal_source and _manifest_declares_internal_source(bundle_path),
+            manifest_present=vendor_conditions_declared or _find_manifest_path(bundle_path) is not None,
         )
         parsed.append((data, vr))
 
