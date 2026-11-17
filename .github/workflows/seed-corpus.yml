@@ -25,85 +25,65 @@ jobs:
             platform: duckdb
             scale_factor: "0.01"
             extras: duckdb
+            official: false
           - benchmark: tpch
             platform: datafusion
             scale_factor: "0.01"
             extras: datafusion
+            official: false
           - benchmark: tpch
             platform: polars-df
             scale_factor: "0.01"
             extras: polars
+            official: false
 
           - benchmark: tpch
             platform: duckdb
             scale_factor: "0.1"
             extras: duckdb
+            official: false
           - benchmark: tpch
             platform: datafusion
             scale_factor: "0.1"
             extras: datafusion
+            official: false
           - benchmark: tpch
             platform: polars-df
             scale_factor: "0.1"
             extras: polars
-
-          - benchmark: tpch
-            platform: duckdb
-            scale_factor: "1.0"
-            extras: duckdb
-            official: true
-          - benchmark: tpch
-            platform: datafusion
-            scale_factor: "1.0"
-            extras: datafusion
-            official: true
-          - benchmark: tpch
-            platform: clickhouse-local
-            scale_factor: "1.0"
-            extras: clickhouse-local
-            official: true
-
-          - benchmark: tpcds
-            platform: duckdb
-            scale_factor: "1"
-            extras: duckdb
-            official: true
-          - benchmark: tpcds
-            platform: datafusion
-            scale_factor: "1"
-            extras: datafusion
-            official: true
-          - benchmark: tpcds
-            platform: clickhouse-local
-            scale_factor: "1"
-            extras: clickhouse-local
-            official: true
+            official: false
 
           - benchmark: ssb
             platform: duckdb
             scale_factor: "0.01"
             extras: duckdb
+            official: false
           - benchmark: ssb
             platform: datafusion
             scale_factor: "0.01"
             extras: datafusion
+            official: false
           - benchmark: ssb
             platform: polars-df
             scale_factor: "0.01"
             extras: polars
+            official: false
 
           - benchmark: ssb
             platform: duckdb
             scale_factor: "0.1"
             extras: duckdb
+            official: false
           - benchmark: ssb
             platform: datafusion
             scale_factor: "0.1"
             extras: datafusion
+            official: false
           - benchmark: ssb
             platform: polars-df
             scale_factor: "0.1"
             extras: polars
+            official: false
 
     env:
       SELECTED: ${{ github.event_name == 'schedule' || github.event.inputs.benchmark == '' || github.event.inputs.benchmark == matrix.benchmark }}
