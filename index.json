@@ -5720,20 +5720,41 @@
       "terminal_outcome": "deliver"
     },
     "nightly-remediation": {
-      "accepted_members": {},
+      "accepted_members": {
+        "green-sweep-clears-hidden-failures-20261117": "b0a5c1fb2f9576e276bf49d023d082e112c177d2"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "green-sweep-clears-hidden-failures-20261117": {
+          "accepted_head": "b0a5c1fb2f9576e276bf49d023d082e112c177d2",
+          "changed_files": [
+            "_project/scripts/green_unmerged_sweep.py",
+            "tests/unit/scripts/test_green_unmerged_sweep.py"
+          ],
+          "integration_head": "d128a89a2228c16abdad4bdf3771dc78212e58c2",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/nightly-remediation",
-      "integration_head": "028bb5a2ca9074c9a87f3beed237dc8d86297a5d",
+      "integration_head": "d128a89a2228c16abdad4bdf3771dc78212e58c2",
       "integration_log": [
         {
           "at": "2026-11-17T17:50:03Z",
           "head": "028bb5a2ca9074c9a87f3beed237dc8d86297a5d",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-17T18:45:14Z",
+          "head": "d128a89a2228c16abdad4bdf3771dc78212e58c2",
+          "kind": "prepare",
+          "member": "green-sweep-clears-hidden-failures-20261117",
+          "op_id": "666cb5609fe44d6783cedbdb1a30e362",
+          "previous_head": "028bb5a2ca9074c9a87f3beed237dc8d86297a5d",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-nightly-remediation",
@@ -25141,15 +25162,10 @@
       "title": "Graduate Results Explorer browser evidence to blocking release gates"
     },
     "green-sweep-clears-hidden-failures-20261117": {
-      "claim": {
-        "expires_at": "2026-11-18T18:45:04Z",
-        "generation": "eb404afa86f647a58e8983c1f5821224",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:daba6966dbafa9d0ecd0bd8b"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "open",
       "title": "Refresh the green-unmerged digest when its hidden-failure list clears"
     },
     "green-unmerged-sweep-all-ruleset-required-checks-20260805": {

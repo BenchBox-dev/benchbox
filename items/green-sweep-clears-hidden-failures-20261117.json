@@ -11,6 +11,53 @@
   },
   "context": "Guardrails: work only in linked worktrees; never git add -A; Joe Harris identity, no agent trailers; no explanatory code/YAML comments (make comment-policy-check); no new CI skips, no required-check renames, no ruleset/settings/secret changes; no weakening of an existing check beyond the rule this item names; durable commit text without tracker ids.",
   "description": "_project/scripts/green_unmerged_sweep.py main(): when nothing is stranded and no PR has hidden failures, the issue body is rewritten only if it lacks \"No stranded PRs\" or says \"develop post-merge is RED\". A body with a hidden-failure section also contains \"No stranded PRs\", so it is never refreshed; #1508 still lists merged #4154 as blocking.\n\nChange: treat a body that contains the hidden-failure heading as stale too, so the one-time clear rewrite happens. Keep the sweep silent in steady state.\n\nScope: _project/scripts/green_unmerged_sweep.py, tests/unit/scripts/test_green_unmerged_sweep.py, _project/scripts/fixtures/green_unmerged_fixture.json if needed.",
+  "prepared": {
+    "accepted_head": "b0a5c1fb2f9576e276bf49d023d082e112c177d2",
+    "batch_id": "nightly-remediation",
+    "changed_files": [
+      "_project/scripts/green_unmerged_sweep.py",
+      "tests/unit/scripts/test_green_unmerged_sweep.py"
+    ],
+    "integration_head": "d128a89a2228c16abdad4bdf3771dc78212e58c2",
+    "integration_seq": 1,
+    "member_id": "green-sweep-clears-hidden-failures-20261117",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "108ac4bd475cc2202bbfe71df4a9ba55baabdda5b6f715bd70fa8b01458cd68b",
+    "source_base": "028bb5a2ca9074c9a87f3beed237dc8d86297a5d",
+    "source_revision": "b0a5c1fb2f9576e276bf49d023d082e112c177d2",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-nr-green-sweep-clears-hidden-failures",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/unit/scripts/test_green_unmerged_sweep.py",
+        "tests/unit/test_ledger_coverage.py"
+      ],
+      "review": {
+        "base_sha": "028bb5a2ca9074c9a87f3beed237dc8d86297a5d",
+        "head_sha": "b0a5c1fb2f9576e276bf49d023d082e112c177d2",
+        "head_tree": "bc1c5992aa1171d80efea3c6a86f825df9ae7bfc",
+        "outcome": "clear",
+        "patch_digest": "e94fceed6aa658a35dd67033b15f55fb",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "ef8a8031e1d075cf9310c068e5073baef56217eb"
+      },
+      "revision": "b0a5c1fb2f9576e276bf49d023d082e112c177d2",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:daba6966dbafa9d0ecd0bd8b",
@@ -43,6 +90,15 @@
       "generation": "eb404afa86f647a58e8983c1f5821224",
       "op": "take",
       "op_id": "8acad78c90e741c58bd1e3fa83024ecb",
+      "session_id": "b833d84af4ae4e4b999f435d3c8fd25e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:daba6966dbafa9d0ecd0bd8b",
+      "at": "2026-11-17T18:45:15Z",
+      "client": "omp-coding-agent",
+      "generation": "eb404afa86f647a58e8983c1f5821224",
+      "op": "prepare",
+      "op_id": "666cb5609fe44d6783cedbdb1a30e362",
       "session_id": "b833d84af4ae4e4b999f435d3c8fd25e"
     }
   ]
