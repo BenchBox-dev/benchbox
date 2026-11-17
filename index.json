@@ -33749,6 +33749,13 @@
       "status": "done",
       "title": "PySpark: the existing-database check runs before the Spark session exists, so it always reports no database and force_recreate is a no-op"
     },
+    "pyspark-install-hints-bounded-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Replace unbounded `pip install pyspark` hints with the project's bounded install guidance"
+    },
     "pyspark-manifest-validation-regenerates-fresh-data-20261112": {
       "claim": null,
       "needs": [],

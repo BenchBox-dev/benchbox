@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "`git grep -n -E \"pip install (\\\"|')?pyspark\" -- benchbox docs` returns no unbounded hint.",
+    "Each hint names an extra that exists in pyproject.toml (checked by a test or by `uv run -- python -c` resolving the extra).",
+    "PR merged with a changelog.d fragment."
+  ],
+  "description": "## Problem\nBenchBox caps pyspark `<4.3` (and delta-spark to match), but error messages and the platform registry tell users to run an unbounded `pip install pyspark`, which installs 4.3+ and breaks Delta sessions. Sites on develop (2026-11-17):\n- `benchbox/platforms/__init__.py:380-381` (pyspark-df, lakesail-df registry rows)\n- `benchbox/platforms/dataframe/pyspark_df.py:81`\n- `benchbox/platforms/dataframe/lakesail_df.py:50`\n- `benchbox/platforms/dataframe/pyspark_maintenance.py:115`\n- `benchbox/platforms/dataframe/hudi_maintenance.py:79`\n- `benchbox/core/transaction_primitives/dataframe_operations.py:229` (`pip install pyspark delta-spark`)\n\n## Change\nPoint each hint at the extra (`uv add benchbox --extra pyspark` / `pip install \"benchbox[pyspark]\"`), matching the existing wording in `platforms/__init__.py`, so the cap comes from package metadata. Do not hard-code a version range in messages. Check docs for the same unbounded hint (`git grep \"pip install pyspark\" docs`).\n\n## Guardrails\nMessages only; no dependency or lock changes. Keep any existing tests that assert message text green by updating them to the new contract.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:baf9996c1c86fb9c9b5547f3",
+      "at": "2026-11-17T21:20:16Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ad53f8a2c7df4bfc9160dea75897b228",
+      "session_id": "584fe5162b994f91904666adf0c5e183"
+    }
+  ]
+}
