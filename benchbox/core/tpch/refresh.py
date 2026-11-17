@@ -189,7 +189,6 @@ def check_rf2_applied(
 def apply_rf1(connection: Any, update_set: TPCHRefreshUpdateSet, chunk_size: int = REFRESH_CHUNK_SIZE) -> int:
     _require_chunk_size(chunk_size)
     ingester = resolve_refresh_ingester(getattr(connection, "platform_adapter", None))
-    _record_refresh_applied(connection)
     _begin_transaction(connection)
     try:
         if ingester is None:
@@ -211,7 +210,6 @@ def apply_rf2(
     chunk_size: int = REFRESH_CHUNK_SIZE,
 ) -> TPCHRF2Deletes:
     _require_chunk_size(chunk_size)
-    _record_refresh_applied(connection)
     _begin_transaction(connection)
     try:
         lineitems_deleted = 0
@@ -232,7 +230,7 @@ def apply_rf2(
         raise
 
 
-def _record_refresh_applied(connection: Any) -> None:
+def record_refresh_applied(connection: Any) -> None:
     recorder = getattr(getattr(connection, "platform_adapter", None), "record_refresh_applied", None)
     if callable(recorder):
         recorder(getattr(connection, "connection", connection))

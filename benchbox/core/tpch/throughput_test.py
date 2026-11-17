@@ -26,6 +26,7 @@ from benchbox.core.tpch.refresh import (
     check_rf1_applied,
     check_rf2_applied,
     generate_refresh_update_sets,
+    record_refresh_applied,
 )
 from benchbox.core.validation.query_validation import (
     clear_data_refreshed_context,
@@ -388,6 +389,7 @@ class TPCHThroughputTest:
         error = None
         duration_ms = 0
         try:
+            record_refresh_applied(connection)
             start_time = mono_time()
             if function == "RF1":
                 applied = apply_rf1(connection, update_set)

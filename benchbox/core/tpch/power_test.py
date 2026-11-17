@@ -24,6 +24,7 @@ from benchbox.core.tpch.refresh import (
     apply_rf2,
     check_rf1_applied,
     check_rf2_applied,
+    record_refresh_applied,
 )
 from benchbox.core.validation.query_validation import (
     DATA_REFRESHED_REASON,
@@ -497,6 +498,7 @@ class TPCHPowerTest:
         try:
             if self.refresh_update_set is None or connection is None:
                 raise RuntimeError("TPC-H refresh functions require an update set and a separate session")
+            record_refresh_applied(connection)
             start_time = mono_time()
             if function == "RF1":
                 applied = apply_rf1(connection, self.refresh_update_set)

@@ -2966,6 +2966,19 @@ def _find_manifest_path(bundle_path: Path) -> Path | None:
     return None
 
 
+def _manifest_covers_bundle(bundle_path: Path) -> bool:
+    manifest_path = _find_manifest_path(bundle_path)
+    if manifest_path is None:
+        return False
+    if manifest_path.name == f"{bundle_path.stem}{SUBMISSION_MANIFEST_SUFFIX}":
+        return True
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    return isinstance(manifest, dict) and manifest.get("bundle_file") == bundle_path.name
+
+
 def _manifest_declares_internal_source(bundle_path: Path) -> bool:
     manifest_path = _find_manifest_path(bundle_path)
     if manifest_path is None:
@@ -3454,7 +3467,7 @@ def validate_bundles(
             vr,
             allow_partial_validation=allow_partial_validation,
             internal_source=trust_internal_source and _manifest_declares_internal_source(bundle_path),
-            manifest_present=vendor_conditions_declared or _find_manifest_path(bundle_path) is not None,
+            manifest_present=vendor_conditions_declared or _manifest_covers_bundle(bundle_path),
         )
         parsed.append((data, vr))
 

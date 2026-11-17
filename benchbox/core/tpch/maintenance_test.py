@@ -20,6 +20,7 @@ from benchbox.core.tpch.refresh import (
     check_rf1_applied,
     check_rf2_applied,
     generate_refresh_update_sets,
+    record_refresh_applied,
 )
 from benchbox.core.tpch.schema import LINEITEM, ORDERS
 from benchbox.utils.clock import elapsed_seconds, mono_time
@@ -259,6 +260,7 @@ class TPCHMaintenanceTest:
             if self.verbose:
                 self.logger.info(f"Executing RF1 for pair {pair_id + 1} using update set {update_set.set_id}")
             connection = self.connection_factory()
+            record_refresh_applied(connection)
             operation.start_time = mono_time()
             operation.rows_affected = apply_rf1(connection, update_set)
             operation.end_time = mono_time()
@@ -294,6 +296,7 @@ class TPCHMaintenanceTest:
             if self.verbose:
                 self.logger.info(f"Executing RF2 for pair {pair_id + 1} using update set {update_set.set_id}")
             connection = self.connection_factory()
+            record_refresh_applied(connection)
             operation.start_time = mono_time()
             deletes = apply_rf2(connection, update_set)
             operation.end_time = mono_time()

@@ -239,6 +239,29 @@ class TestSubmissionFlow:
     ) -> None:
         assert self._recorded_flags(monkeypatch, tmp_path, manifest=True, declared=False) is True
 
+    def test_a_shared_legacy_manifest_naming_another_bundle_does_not_take_over(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        from benchbox.validation import bundle as bundle_module
+
+        seen: list[bool] = []
+        monkeypatch.setattr(
+            bundle_module,
+            "_validate_bundle",
+            lambda data, vr, **kwargs: seen.append(kwargs["manifest_present"]),
+        )
+        path = tmp_path / "result.json"
+        path.write_text("{}", encoding="utf-8")
+        legacy = tmp_path / bundle_module.SUBMISSION_MANIFEST_FILENAME
+        legacy.write_text(json.dumps({"bundle_file": "other.json"}), encoding="utf-8")
+
+        bundle_module.validate_bundles([path])
+        assert seen == [False]
+
+        legacy.write_text(json.dumps({"bundle_file": "result.json"}), encoding="utf-8")
+        bundle_module.validate_bundles([path])
+        assert seen == [False, True]
+
     def test_submit_declares_the_conditions_it_enforces_before_staging(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:

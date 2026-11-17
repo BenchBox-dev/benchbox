@@ -184,3 +184,50 @@ def test_throughput_total_time_excludes_refresh_connection_setup() -> None:
 
     assert success is True
     assert result.total_time < 0.1
+
+
+@pytest.mark.parametrize("function", ["RF1", "RF2"])
+def test_the_refresh_marker_is_written_before_the_timer_starts(monkeypatch: pytest.MonkeyPatch, function: str) -> None:
+    from benchbox.core.tpch import maintenance_test, power_test, throughput_test
+    from benchbox.core.tpch.maintenance_test import TPCHMaintenanceTest
+    from benchbox.core.tpch.power_test import TPCHPowerTest
+    from benchbox.core.tpch.refresh import TPCHRF2Deletes
+    from benchbox.core.tpch.throughput_test import TPCHThroughputTest
+
+    update_set = SimpleNamespace(set_id=1)
+    connection = SimpleNamespace(close=lambda: None)
+    events: list[str] = []
+    applied = 1 if function == "RF1" else TPCHRF2Deletes(orders=1, lineitems=1)
+    apply_name = "apply_rf1" if function == "RF1" else "apply_rf2"
+    for module in (power_test, throughput_test, maintenance_test):
+        monkeypatch.setattr(module, "record_refresh_applied", lambda _connection: events.append("marker"))
+        monkeypatch.setattr(module, "mono_time", lambda: events.append("timer") or 0.0)
+        monkeypatch.setattr(module, apply_name, lambda *_args: events.append("apply") or applied)
+    monkeypatch.setattr(power_test, "check_rf1_applied", lambda *_args: None)
+    monkeypatch.setattr(power_test, "check_rf2_applied", lambda *_args: None)
+    monkeypatch.setattr(maintenance_test, "check_rf1_applied", lambda *_args: None)
+    monkeypatch.setattr(maintenance_test, "check_rf2_applied", lambda *_args: None)
+
+    power = TPCHPowerTest(
+        benchmark=object(),
+        connection=connection,
+        refresh_update_set=update_set,
+        refresh_connection_factory=lambda: connection,
+    )
+    throughput = TPCHThroughputTest(
+        benchmark=object(),
+        connection_factory=lambda: connection,
+        refresh_enabled=True,
+        refresh_connection_factory=lambda: connection,
+    )
+    maintenance = TPCHMaintenanceTest(connection_factory=lambda: connection)
+    run_maintenance = maintenance._execute_rf1 if function == "RF1" else maintenance._execute_rf2
+
+    for run in (
+        lambda: power._execute_refresh_function(function, connection),
+        lambda: throughput._execute_refresh_function(function, update_set, connection),
+        lambda: run_maintenance(0, update_set),
+    ):
+        events.clear()
+        run()
+        assert events.index("marker") < events.index("timer") < events.index("apply")

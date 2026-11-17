@@ -9,7 +9,7 @@ import pytest
 
 from benchbox.core.tpch.benchmark import TPCHBenchmark
 from benchbox.core.tpch.generator import TPCHDataGenerator
-from benchbox.core.tpch.refresh import apply_rf1, apply_rf2, generate_refresh_update_sets
+from benchbox.core.tpch.refresh import apply_rf1, apply_rf2, generate_refresh_update_sets, record_refresh_applied
 from benchbox.core.tpch.schema import TABLES
 from benchbox.platforms.base.connection_wrappers import PlatformAdapterConnection
 from benchbox.platforms.duckdb import DuckDBAdapter
@@ -63,6 +63,7 @@ def _refresh(path: Path, update_set, *, rf1: bool = True, rf2: bool = True) -> N
     try:
         adapter = DuckDBAdapter(database_path=str(path))
         refresh_connection = PlatformAdapterConnection(connection.cursor(), adapter, maintenance_mode=True)
+        record_refresh_applied(refresh_connection)
         if rf1:
             apply_rf1(refresh_connection, update_set)
         if rf2:
@@ -118,9 +119,7 @@ def test_refresh_that_kept_every_table_count_is_still_not_reused(pristine_databa
         connection.execute("UPDATE lineitem SET L_QUANTITY = L_QUANTITY + 1")
         adapter = DuckDBAdapter(database_path=str(path))
         apply_rf1_connection = PlatformAdapterConnection(connection.cursor(), adapter, maintenance_mode=True)
-        from benchbox.core.tpch import refresh
-
-        refresh._record_refresh_applied(apply_rf1_connection)
+        record_refresh_applied(apply_rf1_connection)
     finally:
         connection.close()
     assert _counts(path) == before
