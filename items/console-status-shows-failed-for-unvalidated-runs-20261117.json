@@ -4,7 +4,7 @@
     "The console label and the CLI exit code agree for every status in NON_CLEAN_VALIDATION_STATUSES (checked by a test that iterates that set)",
     "A local seeded TPC-H SF 0.01 DuckDB run that records summary.validation other than passed prints the non-failure label and exits 0"
   ],
-  "description": "## Problem\n`ConsoleResultFormatter._determine_benchmark_status` (benchbox/cli/output.py, develop 9ac60f085f) treats every validation status other than PASSED and PARTIAL as a failure. A run whose queries all succeeded but whose row counts could not all be checked (`UNCERTAIN`, `NOT_VALIDATED`, `NOT_RUN`) is printed as `Benchmark Status: FAILED` in red. The exit-code path disagrees: `result_cli_failure_reason` (benchbox/core/results/status.py) does not treat those statuses as failures, and `result_unvalidated_reason` names them as unvalidated. Users see a red FAILED on a run that exited 0.\n\n## Evidence\nSeen 2026-11-15 on seeded TPC-H runs (`--seed 42`) and on SF 10 runs with no reference answers, which record `NOT_VALIDATED`/`UNCERTAIN`. Reproduce with `SimpleNamespace(total_queries=22, successful_queries=22, failed_queries=0, validation_status=\"UNCERTAIN\", query_results=[])` passed to `_determine_benchmark_status`: it returns `(\"FAILED\", \"red\")`.\n\n## Change\nDerive the console status from the same helpers the exit code uses: failed queries or a CLI-failure validation status give FAILED; an unvalidated status (`result_unvalidated_reason`) gives a distinct non-failure label such as UNVALIDATED in yellow; otherwise PASSED or PARTIAL as today. A fix was written and tested on 2026-11-16 in a closed PR (#4266, closed for an unrelated reason) and can be reused.\n\n## Guardrails\n- Do not change exit codes, `summary.validation`, or staging admission; this is display only.\n- A run with any failed query or a FAILED/ERROR/INTERRUPTED/PARTIAL validation must still never print PASSED.\n- Keep one source of truth: no new status list in output.py.",
+  "description": "## Problem\n`ConsoleResultFormatter._determine_benchmark_status` (benchbox/cli/output.py, develop 9ac60f085f) treats every validation status other than PASSED and PARTIAL as a failure. A run whose queries all succeeded but whose row counts could not all be checked (`UNCERTAIN`, `NOT_VALIDATED`, `NOT_RUN`) is printed as `Benchmark Status: FAILED` in red. The exit-code path disagrees: `result_cli_failure_reason` (benchbox/core/results/status.py) does not treat those statuses as failures, and `result_unvalidated_reason` names them as unvalidated. Users see a red FAILED on a run that exited 0.\n\n## Evidence\nSeen 2026-11-15 on seeded TPC-H runs (`--seed 42`) and on SF 10 runs with no reference answers, which record `NOT_VALIDATED`/`UNCERTAIN`. Reproduce with `SimpleNamespace(total_queries=22, successful_queries=22, failed_queries=0, validation_status=\"UNCERTAIN\", query_results=[])` passed to `_determine_benchmark_status`: it returns `(\"FAILED\", \"red\")`.\n\n## Change\nDerive the console status from the same helpers the exit code uses: failed queries or a CLI-failure validation status give FAILED; an unvalidated status (`result_unvalidated_reason`) gives a distinct non-failure label such as UNVALIDATED in yellow; otherwise PASSED or PARTIAL as today. A fix was written and tested on 2026-11-16 in a closed PR (#4266, closed for an unrelated reason) and can be reused.\n\n## Guardrails\n- Do not change exit codes, `summary.validation`, or staging admission; this is display only.\n- A run with any failed query or a FAILED/ERROR/INTERRUPTED/PARTIAL validation must still never print PASSED.\n- Keep one source of truth: no new status list in output.py.\n\n## Decision gate\nNo owner decision is needed for the display fix. Stop and ask if the chosen label would need a new status value in results, the schema, or the Explorer.\n\n## Verification rubric\nPass only if: the console label equals the exit-code classification for every status; no run with a failed query prints anything but FAILED; the unit tests fail on develop without the change.",
   "links": [
     "BenchBox-dev/BenchBox: benchbox/cli/output.py",
     "BenchBox-dev/BenchBox: benchbox/core/results/status.py"
@@ -16,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "459791c7e4f343c38d5b504929570dbf",
+      "session_id": "4cc6c844a24e43ca9e1fc9cb409a70e6"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0deceae4762d30cfd4f4d362",
+      "at": "2026-11-17T14:22:35Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b4820da61976403985c60cb4c434938c",
       "session_id": "4cc6c844a24e43ca9e1fc9cb409a70e6"
     }
   ]
