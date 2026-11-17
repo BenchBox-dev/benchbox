@@ -4,7 +4,7 @@
     "If approved: PR #163 merged, or if changed: the revision merged, with the merge commit recorded.",
     "If closed: the reason is recorded."
   ],
-  "context": "Blocked on the owner's review decision (see Decision gate); agents unblock only after the owner records a decision.\n\nOwner decision 2026-11-17 (choice dialog): approved for agent merge. The agent re-checks the note against DuckDB's storage-compatibility docs, fixes any drift, marks PR #163 ready and merges it through the site repo's normal path. Owner authorises that publish.",
+  "context": "Blocked on the owner's review decision (see Decision gate); agents unblock only after the owner records a decision.\n\nOwner decision 2026-11-17 (choice dialog): approved for agent merge. The agent re-checks the note against DuckDB's storage-compatibility docs, fixes any drift, marks PR #163 ready and merges it through the site repo's normal path. Owner authorises that publish.\n\nFINAL 2026-11-17. Owner decision (choice dialog): agent re-check and merge. benchbox-site PR #163 squash-merged, merge 66cdfd18ed, required `ci` green; repo has no required review. One drift fixed before merge: 1.x error version is 999 only for 1.5.5 and earlier; 1.5.6 reports 69 (DuckDB storage docs, Troubleshooting). Other claims confirmed against https://duckdb.org/docs/2.0/internals/storage.html and https://duckdb.org/docs/2.0/operations_manual/migration.html (1.x cannot open 2.0-format files; 1.x-created files stay 1.x-readable after 2.0 writes; EXPORT/IMPORT DATABASE migration; v0.10.x = storage 64). Not covered by DuckDB docs (BenchBox-specific inference): .wal, DuckLake metadata.ducklake and the write-primitives parity database are treated as 2.0-format when 2.x creates them.",
   "description": "## Problem\nbenchbox-site PR #163 (https://github.com/BenchBox-dev/benchbox-site/pull/163) adds a docs note that DuckDB 1.x and 2.x use different database file formats, following the lift of BenchBox's DuckDB `<2.0.0` pin. It is a draft with all checks passing and has waited for owner review since the pin lift.\n\n## Decision gate (owner only)\nApprove and mark ready (agents then arm and merge per the site repo's process), request changes (agents revise), or close. Agents do not mark it ready, approve it, or merge it without the owner's decision in that task.\n\n## Guardrails\nNo site deploy outside the repo's normal merge path. Facts in the note must match DuckDB's storage compatibility docs at review time; re-check before merge.",
   "sessions": [
     {
@@ -37,6 +37,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "56e20ba7ce1b4050a4af781876daffc2",
+      "session_id": "584fe5162b994f91904666adf0c5e183"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:baf9996c1c86fb9c9b5547f3",
+      "at": "2026-11-17T22:31:10Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a7b75f28e5ab47b7801a4bea3db97adb",
       "session_id": "584fe5162b994f91904666adf0c5e183"
     }
   ]
