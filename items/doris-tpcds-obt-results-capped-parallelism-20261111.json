@@ -1,10 +1,10 @@
 {
   "acceptance": [
-    "A decision is recorded: re-run and replace, exclude from ranking, or keep with caveat.",
-    "If re-run: both Doris bundles are replaced by runs at default parallelism with zero failed statements, and CORPUS_NOTES is updated."
+    "Owner records rerun/exclude/keep choice with exact affected bundles and settings.",
+    "Chosen disposition is verified end to end: validated replacement runs and supersession, actual exclusion from ranks, or visible cap/comparability caveat for retained runs."
   ],
-  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.",
-  "description": "## Problem\nThe Apache Doris 4.0.3 TPC-DS-OBT bundles published on 2026-11-11 (SF 0.01 and SF 0.1) ran with `parallel_pipeline_task_num=1`, which the UAT harness forces so Doris fits its 4 GiB container (`tests/uat/docker_assets.py`). DuckDB ran with 8 threads and DataFusion with 10 partitions in the same cohorts. `results-data/CORPUS_NOTES.md` and the changelog state the cap, but the ranked numbers still compare a single-task Doris with multi-threaded engines.\n\n## Change\nDecide between: re-running Doris with a larger container and default parallelism and replacing the two bundles; excluding the capped runs from ranking with a recorded reason; or keeping them with the documented caveat. If re-running, confirm the container memory needed at SF 0.1 before the sweep.\n\n## Guardrails\n- Replacing a published bundle follows the corpus supersede rules; never edit a bundle in place.\n- Heavy work only through the UAT entry point, within the approved memory budget.",
+  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.\n\n2026-11-17 TODO review: clarified decision gates, observable pass/fail rubric and safety boundaries. Existing historical evidence is retained; this is tracker planning only, not implementation, spend, publication or closeout approval.",
+  "description": "## Problem\nThe Apache Doris 4.0.3 TPC-DS-OBT bundles published on 2026-11-11 (SF 0.01 and SF 0.1) ran with `parallel_pipeline_task_num=1`, which the UAT harness forces so Doris fits its 4 GiB container (`tests/uat/docker_assets.py`). DuckDB ran with 8 threads and DataFusion with 10 partitions in the same cohorts. `results-data/CORPUS_NOTES.md` and the changelog state the cap, but the ranked numbers still compare a single-task Doris with multi-threaded engines.\n\n## Change\nDecide between: re-running Doris with a larger container and default parallelism and replacing the two bundles; excluding the capped runs from ranking with a recorded reason; or keeping them with the documented caveat. If re-running, confirm the container memory needed at SF 0.1 before the sweep.\n\n## Guardrails\n- Replacing a published bundle follows the corpus supersede rules; never edit a bundle in place.\n- Heavy work only through the UAT entry point, within the approved memory budget.\n\n## Decision gates\nOwner chooses default-parallelism rerun with approved resource budget, exclusion, or keep-with-caveat; capped rankings are not automatically invalidated by this item. Confirm live bundle versions and settings first.\n\n## Verification rubric\nPass: identify exact two bundles, thread/task/memory settings and comparison caveat. If rerun, record complete zero-failure SF 0.01/0.1 validation and supersession. If keep/exclude, verify actual ranking and rendered disclosure reflect that decision; documentation alone is insufficient for exclusion.\n\n## Additional guardrails\nUse lock-taking UAT and approved budget, stop own servers, never modify existing bundle bytes or silently change all UAT container limits.",
   "links": [
     "tests/uat/docker_assets.py",
     "results-data/CORPUS_NOTES.md",
@@ -18,6 +18,14 @@
       "op": "create",
       "op_id": "e6b40a6119c84001aac91394abed7deb",
       "session_id": "84d81f109eb348759fdc1c024f00b55b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1fad3edb102f5d3974476660",
+      "at": "2026-11-17T14:21:04Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7849ba06adfb404bbcbc3f5215c2b383",
+      "session_id": "989657b059c44ae4bade82cb666c453c"
     }
   ]
 }
