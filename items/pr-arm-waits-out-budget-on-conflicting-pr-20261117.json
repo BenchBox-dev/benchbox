@@ -4,7 +4,7 @@
     "A test with mergeable UNKNOWN then MERGEABLE keeps waiting and then evaluates the gates as before",
     "docs/agent/merge-authority.md or the pr-arm help names the conflict outcome and the recovery step"
   ],
-  "description": "## Problem\nWhen a pull request conflicts with its base, GitHub does not run the `pull_request` CI workflow, so the core job that records the verify-fast-duration verdict never starts. `scripts/pr_arm.py` reports `waiting: ... no verify-fast-duration verdict is recorded for <head>: the core job that records it has not finished` and keeps polling until WAIT runs out. It never reads `mergeable`/`mergeStateStatus`, so the real cause is never named (no `CONFLICTING`/`DIRTY` handling in scripts/pr_arm.py on develop 9ac60f085f).\n\n## Evidence\n2026-11-16, PR #4266 at head f7ff00f29: two `make pr-arm PR=4266 WAIT=60` invocations waited about 50 minutes on that message. Only `review-gate` and `review-verdict` runs existed for the head; `gh pr view 4266 --json mergeable,mergeStateStatus` returned `CONFLICTING DIRTY` (develop had merged #4260, touching the same files).\n\n## Change\nRead the PR's mergeable state at the start of each wait iteration. When it is `CONFLICTING` (mergeStateStatus `DIRTY`), stop with an outcome line that names the conflict and the next step (merge or rebase develop, push, re-arm). Treat `UNKNOWN` as transient and keep waiting.\n\n## Guardrails\n- Never arm a conflicting PR and never resolve a conflict automatically.\n- An unreadable mergeable state is not a pass; keep the existing refusal semantics for unreadable state.\n- Keep the `pr-arm: outcome:` line contract (see pr-arm-red-develop-refusal-prints-no-outcome-line-20261101).",
+  "description": "## Problem\nWhen a pull request conflicts with its base, GitHub does not run the `pull_request` CI workflow, so the core job that records the verify-fast-duration verdict never starts. `scripts/pr_arm.py` reports `waiting: ... no verify-fast-duration verdict is recorded for <head>: the core job that records it has not finished` and keeps polling until WAIT runs out. It never reads `mergeable`/`mergeStateStatus`, so the real cause is never named (no `CONFLICTING`/`DIRTY` handling in scripts/pr_arm.py on develop 9ac60f085f).\n\n## Evidence\n2026-11-16, PR #4266 at head f7ff00f29: two `make pr-arm PR=4266 WAIT=60` invocations waited about 50 minutes on that message. Only `review-gate` and `review-verdict` runs existed for the head; `gh pr view 4266 --json mergeable,mergeStateStatus` returned `CONFLICTING DIRTY` (develop had merged #4260, touching the same files).\n\n## Change\nRead the PR's mergeable state at the start of each wait iteration. When it is `CONFLICTING` (mergeStateStatus `DIRTY`), stop with an outcome line that names the conflict and the next step (merge or rebase develop, push, re-arm). Treat `UNKNOWN` as transient and keep waiting.\n\n## Guardrails\n- Never arm a conflicting PR and never resolve a conflict automatically.\n- An unreadable mergeable state is not a pass; keep the existing refusal semantics for unreadable state.\n- Keep the `pr-arm: outcome:` line contract (see pr-arm-red-develop-refusal-prints-no-outcome-line-20261101).\n\n## Decision gate\nNo owner decision is needed. Stop and ask if detecting the conflict requires a new GitHub token permission or a change to the merge-queue or auto-merge settings.\n\n## Verification rubric\nPass only if: a conflicting PR produces a conflict outcome within one iteration; no code path arms a CONFLICTING PR; transient UNKNOWN does not end the wait; existing pr-arm tests still pass.",
   "links": [
     "BenchBox-dev/BenchBox: scripts/pr_arm.py"
   ],
@@ -15,6 +15,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "dabbba197ba540fa8fc08c977041ebf8",
+      "session_id": "4cc6c844a24e43ca9e1fc9cb409a70e6"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0deceae4762d30cfd4f4d362",
+      "at": "2026-11-17T14:22:39Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3dddb940a58b4f39b537aa7c4d94cb46",
       "session_id": "4cc6c844a24e43ca9e1fc9cb409a70e6"
     }
   ]
