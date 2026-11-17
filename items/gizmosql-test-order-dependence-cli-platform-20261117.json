@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "The failing test id and the state leaked by test_platform.py are named.",
+    "Both orders pass, shown with pytest -p no:randomly in each order or an equivalent fixed-order run."
+  ],
+  "context": "Seen 2026-11-16 during PR #4276; not reproduced by the planning session. Guardrails: linked worktree (make worktree-create, then make agent-write-preflight), never the primary clone; one PR per repo; no live-cloud runs or credentials in Git or logs; heavy work only via lock-taking entry points or make heavy-run after make heavy-status; never start deliberate host load; comment policy; changelog.d fragment for user-facing change. Re-verify every cited file and line before acting; they are hints.",
+  "description": "Problem: while delivering PR #4276 an agent saw one gizmosql test fail in the cli, mcp and system test sets only when tests/unit/cli/test_platform.py ran first; the PR did not touch that file. The exact test id was not recorded.\n\nOutcome: the leaked state is identified and the test passes in any order.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019",
+      "at": "2026-11-17T13:49:01Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0ebc298085cc4b62a050df2a76715d5d",
+      "session_id": "14462ffc9066466ca32d151c57f6a5de"
+    }
+  ]
+}

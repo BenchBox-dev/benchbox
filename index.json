@@ -24915,6 +24915,13 @@
       "status": "dropped",
       "title": "Re-evaluate can_approve_pull_request_reviews once review enforcement is live"
     },
+    "gizmosql-test-order-dependence-cli-platform-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "A gizmosql unit test fails only when run after tests/unit/cli/test_platform.py"
+    },
     "global-skill-deployment-pin-benchbox-refs-20261111": {
       "claim": null,
       "needs": [],
