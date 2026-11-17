@@ -3,7 +3,7 @@
     "A known-defect label can carry, or map to, a short human-readable reason that the summaries and result pages display.",
     "Existing labels keep working; the TPC-DI SF1 runs show the scale-correction reason after the change."
   ],
-  "context": "Spans core (sidecar schema, validators) and the site (summary rendering). Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "context": "Spans core (sidecar schema, validators) and the site (summary rendering). Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\n2026-11-17: core half delivered in PR #4273 (69a6416c6f): sidecars accept known_defect_reason (<=200 chars), KNOWN_DEFECT_REASONS gives defaults, the explorer pipeline emits the field, the six TPC-DI SF1 sidecars carry the scale-correction reason. Not done, so the item stays open: the site Explorer reads only explorer/results.duckdb, which has no such column. Remaining: (1) core adds known_defect_reason to bench.results and result_detail_metrics in the browser DuckDB schema and bumps read_model_version; (2) site Leaderboard (explorer/src/pages/Leaderboard.tsx, hard-coded text near line 1356) and summaries (formatTimingExclusion) display it, falling back to the generic text.",
   "description": "Problem: sidecar known_defects values are a closed enum in benchbox/validation/bundle.py with no reason text, so the result summaries show the generic 'Known defective data.' for every excluded run. Readers, and assistants quoting the page, cannot tell a loader bug from an old generator scale. The six TPC-DI SF1 bundles unranked on 2026-11-14 are an example: their reason lives only in CORPUS_NOTES.md.",
   "sessions": [
     {
@@ -13,6 +13,14 @@
       "op": "create",
       "op_id": "57115d79a9354c89a5703d325b393874",
       "session_id": "ac67b069b7864c4699843546272d3701"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019",
+      "at": "2026-11-17T13:49:11Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "cc17ec09c48645f3b23ab577d61d8876",
+      "session_id": "14462ffc9066466ca32d151c57f6a5de"
     }
   ]
 }
