@@ -46898,7 +46898,10 @@
     },
     "vendor-benchmark-publication-conditions-20261022": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "vendor-terms-unread-sources-20261117",
+        "published-corpus-lacks-vendor-publication-fields-20261117"
+      ],
       "priority": "medium-high",
       "status": "open",
       "title": "Meet each vendor's benchmark-publication conditions before publishing cloud results"
