@@ -96,8 +96,11 @@ affected, and it never opens or closes the `site-bundle-failed` incident.
 The site deploy refuses a bundle whose corpus differs from the deployed one
 unless the bundle's `validator_parity` attestation covers the change since the
 deployed core commit. The attestation records a `base`, the parent commit
-the bundle was validated against, and certifies that the trusted-base
-validator accepts every submission bundle changed in `base..bundle core`.
+the bundle was compared against. `site_inputs.py` runs `validator_parity.py`
+from the bundle's own checkout with `--base-sha` set to that parent; the
+script validates every submission bundle changed in `base...bundle core` and
+the corpus at the bundle core. `--base-sha` selects the diff range, not the
+validator implementation.
 
 The site accepts a `base` that equals the deployed `core_sha`, and also a
 `base` that is a strict ancestor of it, provided the bundle's core commit is
