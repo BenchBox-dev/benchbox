@@ -33008,12 +33008,17 @@
       "title": "Publish the first query-plan capture bundles to the Results Explorer (PR 4153 awaits the owner lifting its hold)"
     },
     "publish-result-bundle-json-schema-20261112": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-18T13:46:49Z",
+        "generation": "d980fd5c53ac4cbab6f4cf8fe86b6113",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019"
+      },
       "needs": [
         "agent-demand-signals-baseline-20261113"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Publish a versioned JSON Schema for the result bundle, generated from the validator's source"
     },
     "publish-run-rewrites-plans-companion-keys-20261111": {
