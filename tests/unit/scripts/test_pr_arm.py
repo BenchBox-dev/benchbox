@@ -2385,3 +2385,49 @@ def test_a_review_verdict_description_that_names_a_transient_phrase_still_refuse
     assert clock.sleeps == []
     assert gh.merged() == []
     assert pr_arm._last_outcome.startswith("refused: ")
+
+
+def test_a_duration_verdict_reason_that_names_a_timeout_still_refuses() -> None:
+    gh = FakeGh(verdict={"verdict": "rejected", "reason": "pytest timed out after 600 seconds, HTTP 503"})
+    clock = WaitClock()
+
+    code = pr_arm.arm_waiting(lambda: _arm(gh), lambda: None, 30, clock=clock.clock, sleep=clock.sleep)
+
+    assert code == 2
+    assert clock.sleeps == []
+    assert gh.merged() == []
+    assert pr_arm._last_outcome.startswith("refused: ")
+
+
+def test_a_failed_duration_verdict_read_inside_the_wait_is_retried(capsys: pytest.CaptureFixture[str]) -> None:
+    gh = FakeGh(lookup_code=1)
+    gh.lookup_code = 1
+    original = gh.__call__
+    state = {"left": 1}
+
+    def flaky(cmd: Sequence[str]) -> tuple[int, str]:
+        if "/actions/artifacts?" in list(cmd)[-1] and state["left"]:
+            state["left"] -= 1
+            return 1, "gh: HTTP 502 Bad Gateway"
+        gh.lookup_code = 0
+        return original(cmd)
+
+    clock = WaitClock()
+    code = pr_arm.arm_waiting(
+        lambda: pr_arm.arm(
+            "7",
+            None,
+            run=flaky,
+            unpublished=lambda _checkout: [],
+            threads=lambda *_args: [],
+            suites=lambda *_args: [],
+            gate=lambda *_args: [],
+        ),
+        lambda: None,
+        30,
+        clock=clock.clock,
+        sleep=clock.sleep,
+    )
+
+    assert code == 0
+    assert clock.sleeps == [pr_arm.TRANSIENT_BACKOFF_SECONDS]

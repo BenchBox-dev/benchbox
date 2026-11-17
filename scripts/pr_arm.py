@@ -67,6 +67,11 @@ TRANSIENT_PATTERNS = (
     ),
     ("tracker read unparseable", re.compile(r"cannot read tracker batch .*: unparseable output \(exit \d+\)")),
 )
+READ_FAILURE_MARKERS = (
+    "could not look up the verify-fast-duration verdict of ",
+    "could not download the verify-fast-duration verdict of ",
+    " failed (exit ",
+)
 WAIT_INTERVAL_SECONDS = 180.0
 ALREADY_CLEAN = "clean status"
 WAIT_MAX_MINUTES = 120
@@ -697,8 +702,15 @@ def _transient_outcome(subject: str, kind: str, detail: str) -> int:
     return _outcome(f"transient: {subject} is not armed yet, {kind}: {detail}", TRANSIENT_EXIT)
 
 
+def _read_failure_cause(reason: str) -> tuple[str, str] | None:
+    for marker in READ_FAILURE_MARKERS:
+        if marker in reason:
+            return transient_cause(reason.split(marker, 1)[1])
+    return None
+
+
 def _transient_reasons(number: object, reasons: Sequence[str], head: str, wait_on_pending_review: bool) -> int | None:
-    causes = [(reason, None if GATE_NOT_PASSING in reason else transient_cause(reason)) for reason in reasons]
+    causes = [(reason, _read_failure_cause(reason)) for reason in reasons]
     flaky = [cause for _, cause in causes if cause is not None]
     if flaky and all(
         cause is not None or _is_waiting(reason, head, wait_on_pending_review) for reason, cause in causes
