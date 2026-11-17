@@ -151,8 +151,8 @@ def test_rf2_deletes_lineitems_before_orders_in_one_transaction(tmp_path: Path) 
     assert deleted == TPCHRF2Deletes(orders=2, lineitems=3)
     assert deleted.rows == 5
     assert [statement for statement in connection.statements if statement.startswith("DELETE FROM")] == [
-        "DELETE FROM lineitem WHERE L_ORDERKEY IN (121, 122)",
-        "DELETE FROM orders WHERE O_ORDERKEY IN (121, 122)",
+        "DELETE FROM lineitem WHERE l_orderkey IN (121, 122)",
+        "DELETE FROM orders WHERE o_orderkey IN (121, 122)",
     ]
     assert "BEGIN" in connection.statements
     assert connection.commits == 1
@@ -477,7 +477,7 @@ def test_throughput_total_time_excludes_check_execution(monkeypatch: pytest.Monk
     connection = SimpleNamespace(close=lambda: None)
     test = _throughput_refresh_test(connection, update_set, monkeypatch)
     monkeypatch.setattr(throughput_test, "apply_rf1", lambda *_args: 1)
-    monkeypatch.setattr(throughput_test, "apply_rf2", lambda *_args: TPCHRF2Deletes(orders=1, lineitems=0))
+    monkeypatch.setattr(throughput_test, "apply_rf2", lambda *_args, **_kwargs: TPCHRF2Deletes(orders=1, lineitems=0))
     monkeypatch.setattr(throughput_test, "check_rf1_applied", lambda *_args: time.sleep(0.2))
     monkeypatch.setattr(throughput_test, "check_rf2_applied", lambda *_args: time.sleep(0.2))
 
@@ -571,7 +571,7 @@ def test_refresh_stream_stops_before_next_update_set_after_cancellation(monkeypa
         cancel_event.set()
         return 1
 
-    def apply_rf2(_connection, update_set):
+    def apply_rf2(_connection, update_set, precounted=None):
         applied.append(("RF2", update_set.set_id))
         return TPCHRF2Deletes(orders=1, lineitems=0)
 
