@@ -121,10 +121,10 @@ by stream count, because both composite metrics already contain the stream count
   `counted_in_qph` is true for TPC-DS, where load time is the `T_LD` term of QphDS@SF,
   and false for TPC-H. Engines load data in different ways, so compare QphDS@SF
   across engines with the scope in view. The Explorer shows it.
-- **Transactions.** A refresh or maintenance step that ran without a transaction
-  records `transactional: false` on that step (RF1, RF2 or the maintenance operation).
-  Such a bundle still ranks. The Explorer shows a non-transactional disclosure beside
-  the result.
+- **Transactions.** When a bundle records `transactional: false` on a refresh or
+  maintenance step (RF1, RF2 or a maintenance operation), the Explorer shows a
+  non-transactional disclosure beside the result, and the bundle still ranks. Bundles
+  written before non-transactional refresh is supported carry no such flag.
 - **Identities.** The combined cohorts need the same three distinct identities as
   every other cohort. The local identities that can run the full specification are
   DuckDB, ClickHouse Local (chDB only) and CedarDB. DataFusion is not one of them,

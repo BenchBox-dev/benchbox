@@ -253,8 +253,8 @@ def test_cohort_metadata_names_the_composite_as_the_primary_metric(tmp_path: Pat
     assert rows == [("tpch-sf1-combined", "qphh_at_size", "desc")]
 
 
-def test_default_build_omits_the_composite_columns(tmp_path: Path) -> None:
-    db = _build(tmp_path, {"one": _bundle("alpha"), "power": _power_bundle()})
+def test_read_model_18_omits_the_composite_columns(tmp_path: Path) -> None:
+    db = _build(tmp_path, {"one": _bundle("alpha"), "power": _power_bundle()}, read_model_version=18)
 
     with duckdb.connect(str(db), read_only=True) as con:
         results = {row[0] for row in con.execute("DESCRIBE results").fetchall()}
@@ -296,8 +296,8 @@ def test_compat_checker_validates_a_built_read_model_19(tmp_path: Path) -> None:
         assert validate_database_queries(con, 19) == []
 
 
-def test_default_build_leaves_combined_bundles_out(tmp_path: Path) -> None:
-    db = _build(tmp_path, {"combined": _bundle("alpha"), "power": _power_bundle()})
+def test_read_model_18_leaves_combined_bundles_out(tmp_path: Path) -> None:
+    db = _build(tmp_path, {"combined": _bundle("alpha"), "power": _power_bundle()}, read_model_version=18)
 
     with duckdb.connect(str(db), read_only=True) as con:
         phases = {row[0] for row in con.execute("SELECT DISTINCT phase FROM benchmark_rankings").fetchall()}
@@ -311,3 +311,14 @@ def _power_bundle() -> dict:
     payload = json.loads(json.dumps(MINIMAL_BUNDLE))
     payload["run"]["id"] = "power-run"
     return payload
+
+
+def test_default_build_publishes_combined_cohorts(tmp_path: Path) -> None:
+    db = _build(tmp_path, {"combined": _bundle("alpha"), "power": _power_bundle()})
+
+    with duckdb.connect(str(db), read_only=True) as con:
+        version = con.execute("SELECT read_model_version FROM metadata").fetchone()
+        metrics = {row[0] for row in con.execute("SELECT DISTINCT primary_metric FROM benchmark_rankings").fetchall()}
+
+    assert version == (19,)
+    assert metrics == {"power_score", "qphh_at_size"}
