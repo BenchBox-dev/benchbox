@@ -14908,15 +14908,10 @@
       "title": "Require public-site visual acceptance before merging into develop"
     },
     "ci-docker-hub-unauthenticated-pulls-20261009": {
-      "claim": {
-        "expires_at": "2026-11-18T17:47:13Z",
-        "generation": "70402414da19472f8abbdc997fe71ab4",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:daba6966dbafa9d0ecd0bd8b"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Stop CI jobs from failing on Docker Hub's unauthenticated pull rate limit"
     },
     "ci-dockerhub-anonymous-pulls-20261025": {
