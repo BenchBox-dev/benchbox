@@ -31701,15 +31701,10 @@
       "title": "Complete plan-companion privacy coverage for the hosted ingest"
     },
     "plans-loader-drops-plan-without-body-20261117": {
-      "claim": {
-        "expires_at": "2026-11-18T20:14:44Z",
-        "generation": "0ea93a5ab244402886ec6a80fa6fc46d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c24f66fe7cb6e536d5c6efdb"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Investigate: a reloaded result drops a plan entry (and its fingerprint_kind) when the plans payload has a fingerprint but no plan body"
     },
     "plans-publish-boundary-path-validation-20261108": {
