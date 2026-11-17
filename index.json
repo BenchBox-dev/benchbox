@@ -42626,7 +42626,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "About thirty Theseus worktrees have accumulated and the Theseus repository has no reaper"
     },
     "theseus-test-isolation-gaps-20261106": {
