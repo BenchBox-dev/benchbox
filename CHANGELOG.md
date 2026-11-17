@@ -7,11 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.5.2rc1] - 2026-11-15
+## [0.5.2rc2] - 2026-11-16
 
 ### Changed
 
-- Maintenance release from the release/0.5.x line with no functional change from 0.5.1.
+- Maintenance release from the release/0.5.x line; the only functional change from 0.5.1 is the bundled SQLGlot update below.
+- The bundled SQLGlot runtime moves from 30.31.0.1 to 30.33.0.1 (fork commit `c28e72ff6d66`), a verified delivery of the benchbox-sqlglot fork. Translated SQL can differ from 0.5.1: for example, BigQuery `INFORMATION_SCHEMA` references are now rendered unquoted (`proj.ds.INFORMATION_SCHEMA.X`).
 
 ### Security
 
@@ -1077,7 +1078,7 @@ benchbox run --platform polars-df --benchmark tpch --scale 0.01
 - **PyPI**: [pypi.org/project/benchbox](https://pypi.org/project/benchbox/)
 
 [Unreleased]: https://github.com/BenchBox-dev/BenchBox/compare/v0.5.1...HEAD
-[0.5.2rc1]: https://github.com/BenchBox-dev/BenchBox/compare/v0.5.1...v0.5.2rc1
+[0.5.2rc2]: https://github.com/BenchBox-dev/BenchBox/compare/v0.5.1...v0.5.2rc2
 [0.5.1]: https://github.com/BenchBox-dev/BenchBox/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/BenchBox-dev/BenchBox/compare/v0.4.2...v0.5.0
 [0.4.2]: https://github.com/BenchBox-dev/BenchBox/compare/v0.4.1...v0.4.2
