@@ -486,7 +486,10 @@ class DryRunExecutor:
             if test_execution_type == "load_only":
                 return {}
 
-            if execution_mode == "dataframe" and test_execution_type in ("maintenance", "combined"):
+            if execution_mode == "dataframe" and (
+                test_execution_type == "maintenance"
+                or (test_execution_type == "combined" and str(getattr(benchmark_config, "name", "")).lower() != "tpch")
+            ):
                 return {
                     "_maintenance_not_supported": (
                         "-- Maintenance phase is not yet implemented for DataFrame mode.\n"

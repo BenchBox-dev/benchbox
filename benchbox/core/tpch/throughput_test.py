@@ -285,10 +285,7 @@ class TPCHThroughputTest:
                 update_set = update_sets[update_set_id]
                 function_result["check_status"] = "FAILED"
                 try:
-                    if function_result["function"] == "RF1":
-                        check_rf1_applied(connection, update_set, function_result["rows_inserted"])
-                    else:
-                        check_rf2_applied(connection, update_set, function_result["orders_deleted"])
+                    self._check_refresh_function(connection, function_result, update_set)
                 except Exception as exc:
                     function_result["duration_ms"] = 0
                     function_result["status"] = "FAILED"
@@ -317,6 +314,17 @@ class TPCHThroughputTest:
             )
         elif refresh_stream.status == "FAILED":
             result.errors.append(f"Refresh stream failed: {refresh_stream.error}")
+
+    def _check_refresh_function(
+        self, connection: Any, function_result: dict[str, Any], update_set: TPCHRefreshUpdateSet
+    ) -> None:
+        if function_result["function"] == "RF1":
+            check_rf1_applied(connection, update_set, function_result["rows_inserted"])
+        else:
+            check_rf2_applied(connection, update_set, function_result["orders_deleted"])
+
+    def _open_stream_connection(self, stream_id: int) -> Any:
+        return self.connection_factory()
 
     def _execute_refresh_stream(
         self,
@@ -531,7 +539,7 @@ class TPCHThroughputTest:
         try:
             if config.verbose:
                 self.logger.info(f"Starting stream {stream_id} with seed {seed}")
-            connection = self.connection_factory()
+            connection = self._open_stream_connection(stream_id)
             stream_result.start_time = mono_time()
             stream_result.start_wall_time = datetime.now().isoformat()
 

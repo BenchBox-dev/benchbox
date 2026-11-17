@@ -230,6 +230,20 @@ def apply_rf2(
         raise
 
 
+def read_rf2_delete_keys(update_set: TPCHRefreshUpdateSet) -> list[int]:
+    return [key for chunk in _key_chunks(update_set.delete_path, REFRESH_CHUNK_SIZE) for key in chunk]
+
+
+def read_rf1_source_keys(update_set: TPCHRefreshUpdateSet) -> tuple[list[int], int]:
+    order_keys = [
+        int(row[0]) for rows in _source_row_chunks(update_set.orders_path, ORDERS, REFRESH_CHUNK_SIZE) for row in rows
+    ]
+    lineitem_rows = sum(
+        len(rows) for rows in _source_row_chunks(update_set.lineitem_path, LINEITEM, REFRESH_CHUNK_SIZE)
+    )
+    return order_keys, lineitem_rows
+
+
 def _reload_message(update_set: TPCHRefreshUpdateSet, function: str, detail: str) -> str:
     return (
         f"refresh set {update_set.set_id} {function} {detail}; "

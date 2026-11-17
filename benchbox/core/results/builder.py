@@ -27,6 +27,7 @@ from benchbox.core.results.models import (
     QueryExecution,
     SetupPhase,
     TableLoadingStats,
+    ThroughputTestPhase,
 )
 from benchbox.core.results.platform_info import (
     PlatformInfoInput,
@@ -221,6 +222,8 @@ class ResultBuilder:
         self._run_platform_timing: dict[str, Any] | None = None
 
         self._execution_phases_override: ExecutionPhases | None = None
+        self._power_refresh: tuple[int, list[dict[str, Any]]] | None = None
+        self._throughput_phase: ThroughputTestPhase | None = None
         self._total_duration_seconds: float | None = None
 
     @staticmethod
@@ -363,6 +366,12 @@ class ResultBuilder:
     def set_execution_phases(self, phases: ExecutionPhases) -> None:
         self._execution_phases_override = phases
 
+    def set_power_refresh(self, first_set: int, functions: list[dict[str, Any]]) -> None:
+        self._power_refresh = (first_set, list(functions))
+
+    def set_throughput_phase(self, phase: ThroughputTestPhase) -> None:
+        self._throughput_phase = phase
+
     def add_plan_capture_stats(
         self,
         plans_captured: int,
@@ -375,6 +384,8 @@ class ResultBuilder:
 
     def build(self) -> BenchmarkResults:
         duration_seconds = self._calculate_duration()
+        if self._execution_phases_override is None and (self._power_refresh or self._throughput_phase):
+            self._execution_phases_override = self._compose_refresh_phases()
 
         measurement_results = [r for r in self._query_results if r.run_type == "measurement" and r.iteration > 0]
         results_for_stats = measurement_results if measurement_results else self._query_results
@@ -639,6 +650,16 @@ class ResultBuilder:
                 unavailable.append("Power@Size or Throughput@Size could not be derived")
             metrics["qphh_unavailable"] = unavailable
 
+    def _refresh_times_seconds(self) -> list[float] | None:
+        if self._power_refresh is None:
+            return None
+        valid, _first_set = TPCMetricsCalculator._power_refresh_evidence(
+            {"refresh_first_set": self._power_refresh[0], "refresh_functions": self._power_refresh[1]}
+        )
+        if not valid:
+            return None
+        return [max(0.001, function["duration_ms"] / 1000.0) for function in self._power_refresh[1]]
+
     def _calculate_power_at_size(self) -> float | None:
         measurement = [
             r
@@ -658,7 +679,36 @@ class ResultBuilder:
         times = [seconds for r in final_results if (seconds := r.execution_time_seconds) is not None and seconds > 0]
         if not times:
             return None
+        if self._power_refresh is not None:
+            refresh_times = self._refresh_times_seconds()
+            if refresh_times is None or len(times) != 22:
+                return None
+            times = [refresh_times[0], *times, refresh_times[1]]
         return TPCMetricsCalculator.calculate_power_at_size(times, self._benchmark.scale_factor)
+
+    def _compose_refresh_phases(self) -> ExecutionPhases:
+        power_rows = [r for r in self._query_results if r.test_type not in NON_POWER_TEST_TYPES]
+        power_test = None
+        if self._benchmark.test_type != "throughput" and power_rows:
+            exec_times = [
+                seconds for r in power_rows if (seconds := r.execution_time_seconds) is not None and seconds > 0
+            ]
+            power_test = self._build_power_test_phase(
+                exec_times, {"power_at_size": self._calculate_power_at_size()}, power_rows
+            )
+            if power_test is not None and self._power_refresh is not None:
+                final_iter = max((r.iteration for r in power_rows if r.run_type == "measurement"), default=0)
+                final_rows = [r for r in power_rows if r.run_type == "measurement" and r.iteration == final_iter]
+                functions = self._power_refresh[1]
+                power_test.refresh_first_set = self._power_refresh[0]
+                power_test.refresh_functions = functions
+                power_test.query_count = len(final_rows)
+                power_test.success = bool(final_rows) and all(r.status == "SUCCESS" for r in final_rows)
+        return ExecutionPhases(
+            setup=self._build_setup_phase() or SetupPhase(),
+            power_test=power_test,
+            throughput_test=self._throughput_phase,
+        )
 
     def _build_execution_phases(
         self,
@@ -710,15 +760,17 @@ class ResultBuilder:
         self,
         exec_times_seconds: list[float],
         tpc_metrics: dict[str, float | None],
+        query_results: list[QueryResultInput] | None = None,
     ) -> PowerTestPhase | None:
         if self._benchmark.test_type not in ("power", "standard", "combined"):
             return None
 
-        if not self._query_results:
+        query_results = self._query_results if query_results is None else query_results
+        if not query_results:
             return None
 
         query_executions = []
-        for i, result in enumerate(self._query_results):
+        for i, result in enumerate(query_results):
             query_executions.append(
                 QueryExecution(
                     query_id=format_query_id(result.query_id),
@@ -739,7 +791,7 @@ class ResultBuilder:
         if exec_times_seconds:
             geometric_mean = TPCMetricsCalculator.calculate_geometric_mean(exec_times_seconds)
 
-        total_duration_ms = sum(int(r.execution_time_ms or 0.0) for r in self._query_results)
+        total_duration_ms = sum(int(r.execution_time_ms or 0.0) for r in query_results)
 
         now_iso = datetime.now().isoformat()
 

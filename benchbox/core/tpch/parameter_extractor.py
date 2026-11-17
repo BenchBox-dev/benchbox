@@ -28,6 +28,19 @@ def extract_tpch_parameters(
     }
 
 
+_query_cache: dict[tuple[int, int, float], dict[str, Any]] = {}
+
+
+def get_tpch_query_extracted_parameters(query_id: int, seed: int, scale_factor: float = 1.0) -> dict[str, Any]:
+    cache_key = (query_id, seed, scale_factor)
+    if cache_key not in _query_cache:
+        from benchbox.core.tpch.queries import QGenBinary
+
+        sql = QGenBinary().generate(query_id, seed=seed, scale_factor=scale_factor)
+        _query_cache[cache_key] = _extract_query_params(query_id, sql)
+    return _query_cache[cache_key]
+
+
 def _extract_query_params(query_id: int, sql: str) -> dict[str, Any]:
     extractor = _EXTRACTORS.get(query_id)
     if extractor is None:
@@ -272,3 +285,4 @@ def get_tpch_extracted_parameters(
 
 def clear_cache() -> None:
     _cache.clear()
+    _query_cache.clear()

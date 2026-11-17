@@ -275,7 +275,9 @@ class TestDataFrameThroughputIsRejected:
     def test_dataframe_throughput_raises(self, phases: list[str]):
         from benchbox.core.run_service import reject_unsupported_dataframe_phases
 
-        with pytest.raises(ValueError, match="throughput phase is not supported in DataFrame mode"):
+        with pytest.raises(
+            ValueError, match="throughput phase is not supported by this DataFrame platform in DataFrame mode"
+        ):
             reject_unsupported_dataframe_phases("dataframe", phases)
 
     @pytest.mark.parametrize(
@@ -287,7 +289,40 @@ class TestDataFrameThroughputIsRejected:
 
         reject_unsupported_dataframe_phases(mode, phases)
 
-    def test_execute_run_refuses_before_building_an_adapter(self):
+    @pytest.mark.parametrize("phases", [["throughput"], ["power", "throughput"], ["load", "throughput"]])
+    def test_adapter_declaring_support_passes(self, phases: list[str]):
+        from types import SimpleNamespace
+
+        from benchbox.core.run_service import reject_unsupported_dataframe_phases
+
+        reject_unsupported_dataframe_phases(
+            "dataframe", phases, SimpleNamespace(platform_name="polars-df", supports_dataframe_throughput=True)
+        )
+
+    def test_throughput_is_refused_for_a_benchmark_without_a_dataframe_stream_runner(self):
+        from types import SimpleNamespace
+
+        from benchbox.core.run_service import reject_unsupported_dataframe_phases
+
+        adapter = SimpleNamespace(platform_name="polars-df", supports_dataframe_throughput=True)
+
+        reject_unsupported_dataframe_phases("dataframe", ["throughput"], adapter, "tpch")
+        with pytest.raises(ValueError, match="implemented for TPC-H only"):
+            reject_unsupported_dataframe_phases("dataframe", ["throughput"], adapter, "tpcds")
+
+    def test_adapter_without_support_is_named_in_the_refusal(self):
+        from types import SimpleNamespace
+
+        from benchbox.core.run_service import reject_unsupported_dataframe_phases
+
+        with pytest.raises(ValueError, match="not supported by pandas-df in DataFrame mode"):
+            reject_unsupported_dataframe_phases(
+                "dataframe",
+                ["throughput"],
+                SimpleNamespace(platform_name="pandas-df", supports_dataframe_throughput=False),
+            )
+
+    def test_execute_run_refuses_an_adapter_without_throughput_support(self):
         from unittest.mock import patch
 
         from benchbox.core.run_service import execute_run
@@ -296,7 +331,14 @@ class TestDataFrameThroughputIsRejected:
             execution_mode = "dataframe"
             type = "polars-df"
 
+        from types import SimpleNamespace
+
         factory_calls = []
+
+        def _factory(**kwargs):
+            factory_calls.append(kwargs)
+            return SimpleNamespace(platform_name="pandas-df", supports_dataframe_throughput=False)
+
         with patch("benchbox.core.run_service.run_benchmark_lifecycle") as lifecycle:
             with pytest.raises(ValueError, match="DataFrame mode"):
                 execute_run(
@@ -307,11 +349,11 @@ class TestDataFrameThroughputIsRejected:
                     platform_config=None,
                     output_root="/tmp/out",
                     phases_to_run=["load", "throughput"],
-                    adapter_factory=lambda **kwargs: factory_calls.append(kwargs),
+                    adapter_factory=_factory,
                     verbosity=SilentVerbosity(),
                 )
 
-        assert factory_calls == []
+        assert len(factory_calls) == 1
         lifecycle.assert_not_called()
 
 

@@ -59,6 +59,13 @@ def polars_cast_date(column: PolarsExpr) -> PolarsExpr:
 
 
 class PolarsDataFrameAdapter(ExpressionFamilyAdapter[PolarsDF, PolarsLazyDF, PolarsExpr]):
+    supports_dataframe_throughput = True
+
+    def tpch_refresh_backend(self) -> Any:
+        from benchbox.platforms.dataframe.tpch_refresh_backends import PolarsRefreshBackend
+
+        return PolarsRefreshBackend(self)
+
     def __init__(
         self,
         working_dir: str | Path | None = None,
