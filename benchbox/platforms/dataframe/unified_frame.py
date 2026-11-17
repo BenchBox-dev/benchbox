@@ -57,22 +57,25 @@ _TRUNCATE_UNITS = {
 }
 
 
+def _datafusion_text_has_aggregate(expr: Any) -> bool:
+    text = str(expr).lower()
+    return any(pattern in text for pattern in _DATAFUSION_AGGREGATE_PATTERNS)
+
+
 def _datafusion_expr_has_aggregate(expr: Any) -> bool:
     if not hasattr(expr, "variant_name"):
-        return False
+        return _datafusion_text_has_aggregate(expr)
     if expr.variant_name() == "AggregateFunction":
         return True
     try:
         variant = expr.to_variant()
     except ValueError:
-        text = str(expr).lower()
-        return any(pattern in text for pattern in _DATAFUSION_AGGREGATE_PATTERNS)
+        return _datafusion_text_has_aggregate(expr)
     if hasattr(variant, "expr"):
         return _datafusion_expr_has_aggregate(variant.expr())
     if hasattr(variant, "left") and hasattr(variant, "right"):
         return _datafusion_expr_has_aggregate(variant.left()) or _datafusion_expr_has_aggregate(variant.right())
-    text = str(expr).lower()
-    return any(pattern in text for pattern in _DATAFUSION_AGGREGATE_PATTERNS)
+    return _datafusion_text_has_aggregate(expr)
 
 
 def _get_datafusion_type_mapping() -> dict[str, Any]:
