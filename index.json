@@ -15970,6 +15970,13 @@
       "status": "done",
       "title": "Find why TPC-H Q3, Q5 and Q18 slow down under the date-first ClickHouse sort key"
     },
+    "clickhouse-tpch-tuned-q16-q5-per-query-slowdown-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "ClickHouse tuned TPC-H Q16 and Q5 are slower than notuning at SF1 with intervals above 1.0, cause unknown"
+    },
     "clickhouse-tpchavoc-q6-decimal-bug": {
       "claim": null,
       "needs": [],

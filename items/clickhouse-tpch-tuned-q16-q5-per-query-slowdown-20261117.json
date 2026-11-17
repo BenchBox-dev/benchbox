@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Either: Q16 and Q5 have a stated cause backed by plan or ProfileEvents differences, recorded in findings.md",
+    "Or: a second SF1 run with a different seed is recorded, and the item is closed because neither query reaches 1.5x with an interval above 1.0",
+    "No template change is made unless the benefit rule names a loser"
+  ],
+  "description": "## Problem\nPR #4191's TPC-H SF1 cell (9 rounds, seed 42, ClickHouse 25.8.33.6, 5.25 GiB) found the tuned template a benefit overall (G 0.8230 [0.7803, 0.8777]) but two queries are slower under tuning with interval lower bounds above 1.0: Q16 1.485 [1.097, 2.064] and Q5 1.39 [1.085, 1.741]. Both are under the benefit rule's 1.5x named-loser bound, so no template change is required. Q5's plan, join algorithm, join sizes and peak memory are unchanged and fewer rows are read; the lost-order-key join-locality hypothesis is not supported. Q16 was not investigated.\n\n## Decision gate\nInvestigate only if one of these holds; otherwise close with the existing evidence:\n- A rerun (new seed, same host) shows Q16 or Q5 at or above 1.5x with an interval above 1.0 (the rule then names it a loser and requires action).\n- A cheap cause is visible in the stored plans and ProfileEvents (_project/analysis/clickhouse-tuning-evidence-sf1/).\n\n## Guardrails\n- Do not retire a template setting on this evidence alone; the rule's thresholds decide.\n- Compare plans and ProfileEvents between S (layout only) and T (full) before blaming session settings; S and T plans were identical in #4191.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/4191"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1213c3129d7753c9fd6512c0",
+      "at": "2026-11-17T15:18:29Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "34b89394fed44ca692bbd80813ec9a2f",
+      "session_id": "71cadb46eee448f8a6d2019016ddc6eb"
+    }
+  ]
+}
