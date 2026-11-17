@@ -43299,7 +43299,9 @@
     },
     "tpcdi-sf10-generation-unmeasured-20261112": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "feature-feat-tpcdi-current-generator-followups-20261117"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Complete TPC-DI SF 100 generation measurement; retain measured SF 10 evidence"
