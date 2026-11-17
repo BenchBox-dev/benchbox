@@ -5,6 +5,7 @@ import hashlib
 import os
 import socket
 import subprocess
+import sys
 import time
 from collections import defaultdict
 from collections.abc import Callable
@@ -16,7 +17,7 @@ from benchbox.utils.resource_limits import (
     free_space_gib as default_free_space_reader,
     read_memory_snapshot as default_free_memory_reader,
 )
-from tests.uat import docker_assets, managed_runtime, mocker_launch
+from tests.uat import docker_assets, managed_runtime, mocker_launch, starrocks_evidence
 from tests.uat.cleanup import CellKey, can_prune, prune_database_dir, prune_server_database, source_reuse_graph
 from tests.uat.config import OutputConfig, UATConfig
 from tests.uat.ladder import LadderRung, plan_ladder
@@ -109,6 +110,16 @@ FreeMemoryReader = Callable[[], MemorySnapshot]
 SleepFn = Callable[[float], None]
 
 
+def _startup_cleanup_state(config: UATConfig, platform: str, previous: _DockerPlatformState) -> _DockerPlatformState:
+    if platform != "starrocks" or not config.cleanup.docker_manage_platforms:
+        return previous
+    return _DockerPlatformState(
+        spec=docker_assets.docker_platform_spec(platform),
+        project_name=docker_assets.compose_project_name(config.name, platform, config.cleanup.docker_project_prefix),
+        started=True,
+    )
+
+
 def run_execute(
     config: UATConfig,
     *,
@@ -187,6 +198,7 @@ def run_execute(
         docker_startup_failed = False
         try:
             if platform_abort_reason is None:
+                docker_state = _startup_cleanup_state(config, platform, docker_state)
                 docker_state, startup_reason = _start_docker_platform_if_needed(
                     config,
                     platform=platform,
@@ -643,16 +655,46 @@ def _teardown_docker_platform_if_needed(
         return docker_state, None, None
 
     stack_started_successfully = docker_state.cleanup_status == "started"
-
-    cleanup_status, cleanup_abort_reason = _run_docker_teardown(
-        config,
-        platform=platform,
-        docker_state=docker_state,
-        benchmark_runs_dir=benchmark_runs_dir,
-        docker_runner=docker_runner,
-        docker_events=docker_events,
-        log_dir=log_dir,
-    )
+    try:
+        if platform == "starrocks" and not config.dry_run:
+            try:
+                if log_dir is None:
+                    failures = ("UAT log directory unavailable",)
+                else:
+                    failures = starrocks_evidence.capture_starrocks_evidence(
+                        docker_state.spec,
+                        docker_state.project_name,
+                        log_dir=log_dir,
+                        runner=docker_runner,
+                        env=managed_runtime.compose_environment(config, docker_state.spec, benchmark_runs_dir),
+                    )
+            except Exception as exc:
+                failures = (f"collector raised {type(exc).__name__}",)
+            message = "; ".join(failures) if failures else "captured starrocks-evidence before teardown"
+            if failures:
+                print(f"WARNING: StarRocks evidence capture failed: {message}", file=sys.stderr)
+            try:
+                _record_docker_event(
+                    docker_events,
+                    log_dir=log_dir,
+                    platform=platform,
+                    action="evidence",
+                    status="failed" if failures else "ok",
+                    project_name=docker_state.project_name,
+                    message=message,
+                )
+            except OSError as exc:
+                print(f"WARNING: StarRocks evidence lifecycle log failed: {type(exc).__name__}", file=sys.stderr)
+    finally:
+        cleanup_status, cleanup_abort_reason = _run_docker_teardown(
+            config,
+            platform=platform,
+            docker_state=docker_state,
+            benchmark_runs_dir=benchmark_runs_dir,
+            docker_runner=docker_runner,
+            docker_events=docker_events,
+            log_dir=log_dir,
+        )
     state = _DockerPlatformState(
         spec=docker_state.spec,
         project_name=docker_state.project_name,
