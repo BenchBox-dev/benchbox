@@ -4,7 +4,7 @@
     "Each amendment is filed as its own item with the files to change; this item does not change code or docs itself.",
     "EULA 4c(3) wording and third-party citation format are answered, or deferred with a date set as not_before on this item."
   ],
-  "context": "Decision gate: owner only; agents never answer, infer or mark these confirmed. Until answered, the provisional values stay in force as written in the ADR and on the site methodology page.\n\nItem guardrails: no agent edits to the ADR, methodology page or CLI behaviour under this item; amendments go through new items.\n\nVerification rubric: pass = every line answered by the owner in this item's context. Fail = any answer recorded by an agent.\n\nOrigin: collected 2026-11-17 from the policy-docs (PR #4272, site #166) and CLI hygiene (PR #4276) deliveries.",
+  "context": "Decision gate: owner only; agents never answer, infer or mark these confirmed. Until answered, the provisional values stay in force as written in the ADR and on the site methodology page.\n\nItem guardrails: no agent edits to the ADR, methodology page or CLI behaviour under this item; amendments go through new items.\n\nVerification rubric: pass = every line answered by the owner in this item's context. Fail = any answer recorded by an agent.\n\nOrigin: collected 2026-11-17 from the policy-docs (PR #4272, site #166) and CLI hygiene (PR #4276) deliveries.\n\nOwner decision 2026-11-17: Methodology answers confirmed, except hardware: full ranking facet (rank only within the same CPU model and core count). EULA 4c(3): current 'Derived from' wording accepted. Citation format: 'BenchBox <version>, result <public_result_id>, <permalink>, accessed <date>. Not an official TPC result.' CLI: --non-interactive counts for the driver auto-install gate (confirmed); package-smoke runs on any benchbox/** change (confirmed); orphan-spin report at >=50% CPU for 300 s (confirmed). Amendments filed as methodology-finalize-hardware-facet-and-citation-20261117.",
   "description": "Agents made these provisional so work could land; each stands until the owner amends it.\nMethodology (ADR docs/internal/adr/adr-benchmark-methodology-provisional-policy.md, site methodology page): 1 warm-up plus at least 3 measured iterations; median with min/max spread; noise floor 1.25 x largest spread over 5 same-class runs; published results are warm-state only; hardware is not a ranking facet; regression threshold 10% plus floor. Open with no answer: whether the 'Derived from' wording satisfies EULA clause 4c(3), and the citation format for third parties.\nCLI (PR #4276): --non-interactive counts as non-interactive for the driver auto-install gate; package-smoke runs on any benchbox/** change; orphan-spin report thresholds 50% CPU for 300 s.\n\nOutcome: each line is confirmed or amended by the owner, and amendments are filed as items.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4272",
@@ -36,6 +36,14 @@
       "generation": "20263fdcee394b07a597a50fd5766cb4",
       "op": "take",
       "op_id": "02d1b8306fcc49efb77d952ab8bc6489",
+      "session_id": "14462ffc9066466ca32d151c57f6a5de"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019",
+      "at": "2026-11-17T15:08:42Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "74e590ee2509463ead2abdbf6e8d8f1a",
       "session_id": "14462ffc9066466ca32d151c57f6a5de"
     }
   ]
