@@ -4,7 +4,7 @@
     "A unit test runs SF 1 reference row counts through validate_dataframe_query_results with seed=42: fixed-cardinality queries are PASSED, parameter-sensitive ones SKIPPED with a documented reason or checked by range, summary PASSED; a wrong fixed count gives FAILED",
     "A local `benchbox run --platform polars-df --benchmark tpch --scale 1 --seed 42 --phases generate,load,power` (via make heavy-run) stages with make corpus-stage-local and passes validate_submission.py --require-manifest --trust-internal-source"
   ],
-  "description": "## Problem\n`_reference_unavailable_reason` in benchbox/core/dataframe/query_validation.py accepts TPC-H SF 1 only without a seed (qgen default parameters). With `--seed`, every DataFrame row is SKIPPED and the run records `uncertain`, so it cannot be staged. The SQL path validates the same seeded SF 1 run through `QueryValidator`: fixed-cardinality queries are checked exactly and parameter-sensitive ones by loose or range rules (a seeded DuckDB SF 1 run on 2026-11-15 recorded 68 PASSED and 20 SKIPPED rows, summary passed). Since #4269 the DataFrame summary accepts documented skips, so routing seeded SF 1 through the same validator would give DataFrame the same evidence as SQL.\n\n## Decision gate\nConfirm with the owner that seeded DataFrame SF 1 bundles should be stageable. If the seed-corpus decision (seed-corpus-official-cells-refused-by-full-spec-20261115) drops seeded SF 1 cells, this item may be dropped instead.\n\n## Change\nLet a seeded TPC-H SF 1 DataFrame run use `_apply_expected_row_counts` with the reference-seed context set to False, as the SQL path does, instead of marking every row SKIPPED.\n\n## Guardrails\n- No change to SQL validation or to the submission validator.\n- A skip without a documented reason must still keep the run uncertain.\n- Unseeded SF 1 behaviour must not change.",
+  "description": "## Problem\n`_reference_unavailable_reason` in benchbox/core/dataframe/query_validation.py accepts TPC-H SF 1 only without a seed (qgen default parameters). With `--seed`, every DataFrame row is SKIPPED and the run records `uncertain`, so it cannot be staged. The SQL path validates the same seeded SF 1 run through `QueryValidator`: fixed-cardinality queries are checked exactly and parameter-sensitive ones by loose or range rules (a seeded DuckDB SF 1 run on 2026-11-15 recorded 68 PASSED and 20 SKIPPED rows, summary passed). Since #4269 the DataFrame summary accepts documented skips, so routing seeded SF 1 through the same validator would give DataFrame the same evidence as SQL.\n\n## Decision gate\nConfirm with the owner that seeded DataFrame SF 1 bundles should be stageable. If the seed-corpus decision (seed-corpus-official-cells-refused-by-full-spec-20261115) drops seeded SF 1 cells, this item may be dropped instead.\n\n## Change\nLet a seeded TPC-H SF 1 DataFrame run use `_apply_expected_row_counts` with the reference-seed context set to False, as the SQL path does, instead of marking every row SKIPPED.\n\n## Guardrails\n- No change to SQL validation or to the submission validator.\n- A skip without a documented reason must still keep the run uncertain.\n- Unseeded SF 1 behaviour must not change.\n\n## Verification rubric\nPass only if a seeded SF 1 DataFrame run gets the same per-query statuses as the seeded SQL run for the same queries (fixed counts checked, parameter-sensitive skips documented), a wrong fixed count fails the run, and unseeded SF 1 results are unchanged.",
   "links": [
     "BenchBox-dev/BenchBox: benchbox/core/dataframe/query_validation.py"
   ],
@@ -15,6 +15,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "3cb7416b84dd4a558bf4f5a63fd6f653",
+      "session_id": "4cc6c844a24e43ca9e1fc9cb409a70e6"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0deceae4762d30cfd4f4d362",
+      "at": "2026-11-17T14:23:54Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b9a601933f884bcb891e970fed51ed8c",
       "session_id": "4cc6c844a24e43ca9e1fc9cb409a70e6"
     }
   ]
