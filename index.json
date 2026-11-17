@@ -38565,6 +38565,13 @@
       "status": "done",
       "title": "Correct site documentation that contradicts current CLI and MCP behaviour"
     },
+    "site-explorer-major-dev-dependency-upgrades-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "benchbox-site explorer: upgrade vitest, tailwindcss and @preact/preset-vite to clear allowlisted high advisories before 2026-12-17"
+    },
     "site-explorer-vite-high-advisory-blocks-ci-20261020": {
       "claim": null,
       "needs": [],
