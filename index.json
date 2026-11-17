@@ -26954,10 +26954,13 @@
     },
     "local-tpcdi-bundles-regenerate-current-generator": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "tpcdi-remaining-spec-differences-20261112",
+        "tpcdi-standard-scales-and-estimates-after-unit-change-20261112"
+      ],
       "priority": "medium",
       "status": "open",
-      "title": "Rerun local TPC-DI corpus bundles on the current generator; they disagree with cloud results"
+      "title": "Regenerate or explicitly segregate all old-generator TPC-DI corpus bundles"
     },
     "logging-standardization": {
       "claim": null,
