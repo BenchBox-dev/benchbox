@@ -38246,7 +38246,7 @@
       "needs": [],
       "priority": "low",
       "status": "open",
-      "title": "benchbox-site deploy keeps a 126 MB artifact for 90 days and downloads it again in the same workflow"
+      "title": "benchbox-site deploy keeps three artifacts for 90 days; decide the rollback window before cutting retention"
     },
     "site-deploy-validator-parity-after-superseded-bundle-20261112": {
       "claim": null,
