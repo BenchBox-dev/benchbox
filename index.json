@@ -32997,6 +32997,13 @@
       "status": "done",
       "title": "Find who writes to the primary clone and stop them now that the dirty guard blocks commits"
     },
+    "primary-clone-unignored-tool-output-paths-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Ignore tool cache and scratch paths that would now fail the primary-clone preflight"
+    },
     "primary-scripts-venv-not-exact-to-lock-20261112": {
       "claim": null,
       "needs": [],
