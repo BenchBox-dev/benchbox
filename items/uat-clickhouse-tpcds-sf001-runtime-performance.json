@@ -134,5 +134,16 @@
         "wid": "w3"
       }
     ]
-  }
+  },
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:daba6966dbafa9d0ecd0bd8b",
+      "at": "2026-11-17T17:47:38Z",
+      "client": "omp-coding-agent",
+      "generation": "58d9921f8b444bc68850777fcfaa9e1a",
+      "op": "take",
+      "op_id": "867b500eeeec43bb81235c2dd62f436f",
+      "session_id": "b833d84af4ae4e4b999f435d3c8fd25e"
+    }
+  ]
 }
