@@ -27068,7 +27068,8 @@
       "claim": null,
       "needs": [
         "tpcdi-remaining-spec-differences-20261112",
-        "tpcdi-standard-scales-and-estimates-after-unit-change-20261112"
+        "tpcdi-standard-scales-and-estimates-after-unit-change-20261112",
+        "feature-feat-corpus-scale-policy-and-reruns-20261117"
       ],
       "priority": "medium",
       "status": "open",
