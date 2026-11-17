@@ -32983,6 +32983,13 @@
       "status": "done",
       "title": "The primary clone's .agents/skills copy goes stale because only an agent-forbidden write there refreshes it"
     },
+    "primary-clone-check-batch-hashing-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Hash primary-clone files in one git call and detect edits to files with quoted names"
+    },
     "primary-clone-dirty-edit-guard-20261020": {
       "claim": null,
       "needs": [],
