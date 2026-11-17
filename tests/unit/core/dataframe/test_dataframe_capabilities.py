@@ -336,6 +336,13 @@ class TestSubsetEstimate:
         assert pair.tables == ("lineitem", "nation", "partsupp", "supplier")
         assert pair.raw_data_gb > single.raw_data_gb
 
+    def test_comma_separated_selection_is_split_into_query_ids(self):
+        from_string = estimate_memory_required("tpch", 1.0, "polars", "Q6,Q11")
+        from_list = estimate_memory_required("tpch", 1.0, "polars", ["Q6", "Q11"])
+
+        assert from_string.tables == from_list.tables
+        assert from_string.estimated_memory_gb == from_list.estimated_memory_gb
+
     def test_full_benchmark_estimate_is_unchanged(self):
         estimate = estimate_memory_required("tpcds", 10.0, "polars")
 

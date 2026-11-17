@@ -128,6 +128,8 @@ def query_tables(benchmark: str, query_id: object) -> frozenset[str] | None:
 
 
 def subset_tables(benchmark: str, queries: Iterable[object] | None) -> tuple[str, ...] | None:
+    if isinstance(queries, str):
+        queries = [part for part in queries.split(",") if part.strip()]
     if not queries:
         return None
     benchmark = benchmark.lower()
