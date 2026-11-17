@@ -108,26 +108,13 @@ def _default_log_path(log_dir: Path, platform: str, benchmark: str, scale: float
     return candidate
 
 
-DIAGNOSTIC_RERUN_TIMEOUT_S = 180
+def _redact_log_in_place(log_path: Path) -> None:
+    from benchbox.mcp.errors import scrub_secret_material
 
-
-def _append_diagnostic_rerun(log_fh, argv: list[str], *, timeout_s: int, env: dict[str, str]) -> None:
-    log_fh.write("[uat] verbose diagnostic re-run (--quiet suppressed the original error):\n")
-    log_fh.flush()
-    try:
-        rerun = run_with_timeout(
-            argv,
-            timeout_s=timeout_s,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            env=env,
-        )
-        text = _decode_process_output(rerun.stdout)
-        if text:
-            log_fh.write(text if text.endswith("\n") else text + "\n")
-        log_fh.write(f"[uat] diagnostic re-run exit_code={rerun.exit_code} timed_out={rerun.timed_out}\n")
-    except Exception as exc:
-        log_fh.write(f"[uat] diagnostic re-run error {type(exc).__name__}: {exc}\n")
+    text = log_path.read_text(encoding="utf-8", errors="replace")
+    scrubbed = scrub_secret_material(text)
+    if scrubbed != text:
+        log_path.write_text(scrubbed, encoding="utf-8")
 
 
 def _extract_load_failure(log_text: str) -> dict[str, object] | None:
@@ -227,45 +214,6 @@ def _materialize_load_failure_sidecar(
         payload=payload,
     )
     return result_path, sidecar
-
-
-def _diagnostic_rerun_argv(
-    *,
-    official: bool,
-    platform: str,
-    benchmark: str,
-    scale: float,
-    phases: str,
-    compression: str | None,
-    runs_dir: Path,
-    extra_args,
-    local_managed_platform: bool,
-    streams: int | None,
-    seed: int | None,
-) -> list[str]:
-    output_args = ("--output", str(runs_dir / "datagen"), *extra_args)
-    if official:
-        return benchbox_run_official_argv(
-            platform,
-            benchmark,
-            scale,
-            phases=phases,
-            streams=streams,
-            seed=seed,
-            extra_args=output_args,
-            local_managed_platform=local_managed_platform,
-            quiet=False,
-        )
-    return benchbox_run_argv(
-        platform,
-        benchmark,
-        scale,
-        phases=phases,
-        compression=compression,
-        extra_args=output_args,
-        local_managed_platform=local_managed_platform,
-        quiet=False,
-    )
 
 
 def _resolve_cell_result_path(
@@ -381,25 +329,10 @@ def run_cell(
             log_fh.write(stdout_text)
         killed = _write_exit_markers(log_fh, timeout_result, timeout_s, memory_limit_gib)
         if not killed and timeout_result.exit_code != 0 and not stdout_text.strip() and not stderr_has_content:
-            rerun_argv = _diagnostic_rerun_argv(
-                official=official,
-                platform=platform,
-                benchmark=benchmark,
-                scale=scale,
-                phases=phases,
-                compression=compression,
-                runs_dir=runs_dir,
-                extra_args=extra_args,
-                local_managed_platform=local_managed_platform,
-                streams=streams,
-                seed=seed,
-            )
-            _append_diagnostic_rerun(
-                log_fh,
-                rerun_argv,
-                timeout_s=min(timeout_s, DIAGNOSTIC_RERUN_TIMEOUT_S),
-                env=env,
-            )
+            log_fh.write(f"# UAT_NO_OUTPUT exit_code={timeout_result.exit_code} (the first attempt printed nothing)\n")
+
+    if timeout_result.exit_code != 0:
+        _redact_log_in_place(log_path)
 
     if external_root is not None and local_snapshot is not None:
         assert_no_local_growth(local_snapshot, external_root)

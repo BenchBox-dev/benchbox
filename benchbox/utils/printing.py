@@ -59,6 +59,19 @@ def silence_output(enabled: bool = True) -> Iterator[None]:
         sys.stderr = stderr_backup
 
 
+QUIET_REPLAY_MAX_CHARS = 8000
+
+
+def replay_quiet_output(max_chars: int = QUIET_REPLAY_MAX_CHARS) -> None:
+    sink = _SINK_CONSOLE
+    if sink is None or not isinstance(sink.file, io.StringIO):
+        return
+    tail = sink.file.getvalue()[-max_chars:].strip("\n")
+    if tail.strip():
+        sys.stderr.write(f"{tail}\n")
+        sys.stderr.flush()
+
+
 def fatal(msg: Any) -> None:
     get_console(quiet=False, stderr=True).print(msg, markup=False, highlight=False, soft_wrap=True)
 

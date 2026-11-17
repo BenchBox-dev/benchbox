@@ -35,6 +35,10 @@ ADMIT_WAIT_MAX_MINUTES = 60
 LOG_PREFIX = "[host-lock]"
 WATCHDOG_MODE_ENV = "BENCHBOX_HEAVY_WATCHDOG"
 WATCHDOG_FLAG_HOLDER = b"H"
+WATCHDOG_FLAG_RETRYABLE = b"R"
+RETRY_ENV = "BENCHBOX_HEAVY_RETRY_IDEMPOTENT"
+DEFAULT_RETRY_MAX = 2
+DEFAULT_RETRY_TOTAL_MINUTES = 30
 WATCHDOG_STOP_SECONDS = 5.0
 EXIT_WATCHDOG = 79
 RUN_ID_ENV = "BENCHBOX_HEAVY_RUN_ID"
@@ -755,6 +759,11 @@ class Guard:
         self._drain()
         return WATCHDOG_FLAG_HOLDER in self._flags
 
+    @property
+    def retryable(self) -> bool:
+        self._drain()
+        return WATCHDOG_FLAG_RETRYABLE in self._flags and WATCHDOG_FLAG_HOLDER not in self._flags
+
     def install_term_handler(self) -> None:
         if threading.current_thread() is not threading.main_thread() or not hasattr(signal, "SIGTERM"):
             return
@@ -1206,20 +1215,21 @@ def _run_supervised(command: Sequence[str], env: Mapping[str, str]) -> int:
         return 126
 
 
-def run_command(
+def _run_attempt(
     command: Sequence[str],
     *,
-    phase: str = "run",
-    gate: str | None = None,
-    admit: bool = False,
-    admit_need_gib: float | None = None,
-    guard: bool = False,
-    admit_wait_seconds: float = 0.0,
-) -> int:
+    phase: str,
+    gate: str | None,
+    admit: bool,
+    admit_need_gib: float | None,
+    guard: bool,
+    admit_wait_seconds: float,
+    environ: Mapping[str, str],
+) -> tuple[int, bool]:
     rejected = _load_sibling("heavy_preflight_scope").rejection_message(command)
     if rejected is not None:
         _log(rejected)
-        return EXIT_USAGE
+        return EXIT_USAGE, False
     path = lock_path()
     rendered = " ".join(shlex.quote(part) for part in command)
     admit_deadline = _now() + admit_wait_seconds
@@ -1231,7 +1241,7 @@ def run_command(
                 phase=phase,
                 gate=gate,
                 command=rendered,
-                environ=None,
+                environ=environ,
                 admit=admit,
                 admit_need_gib=admit_need_gib,
                 guard=guard,
@@ -1239,15 +1249,15 @@ def run_command(
             break
         except LockOwnershipError as exc:
             _log(str(exc))
-            return EXIT_OWNERSHIP
+            return EXIT_OWNERSHIP, False
         except LockUnavailable as exc:
             _log(f"BLOCKED: {exc}")
-            return EXIT_REFUSED
+            return EXIT_REFUSED, False
         except AdmissionRefused as exc:
             remaining = admit_deadline - _now()
             if remaining <= 0:
                 _log(f"REFUSED: host is not ready for heavy work; lock released\n{exc.report}")
-                return EXIT_ADMISSION
+                return EXIT_ADMISSION, False
             pause = min(ADMIT_RETRY_SECONDS, remaining)
             _log(
                 "admission refused; lock released; "
@@ -1256,9 +1266,9 @@ def run_command(
             try:
                 _sleep(pause)
             except KeyboardInterrupt:
-                return 128 + signal.SIGINT
+                return 128 + signal.SIGINT, False
         except KeyboardInterrupt:
-            return 128 + signal.SIGINT
+            return 128 + signal.SIGINT, False
     env = _with_run_identity(dict(os.environ), handle) if handle.inherited else owner_environment(handle=handle)
     run = handle.run
     watcher = handle.guard
@@ -1284,12 +1294,14 @@ def run_command(
             owned_run.execution_recorded = True
         reported = code
         breached = False
+        retryable = False
         try:
             handle.release()
         finally:
             breached = code is not None and watcher is not None and watcher.breached
             if breached:
                 outcome = "watchdog_kill"
+                retryable = watcher.retryable
                 reported = EXIT_WATCHDOG
             if owned_run is not None:
                 if owned_run.cleanup_error:
@@ -1297,7 +1309,56 @@ def run_command(
                 _finish_run(owned_run, outcome, reported, command_exit_code=code)
     if breached:
         _log(f"watchdog stopped the process tree after a breach; exiting {EXIT_WATCHDOG} (command status was {code})")
-    return reported
+    return reported, retryable and not _forwarded_signals
+
+
+def run_command(
+    command: Sequence[str],
+    *,
+    phase: str = "run",
+    gate: str | None = None,
+    admit: bool = False,
+    admit_need_gib: float | None = None,
+    guard: bool = False,
+    admit_wait_seconds: float = 0.0,
+    retry_idempotent: bool = False,
+    retry_max: int = DEFAULT_RETRY_MAX,
+    retry_total_seconds: float = DEFAULT_RETRY_TOTAL_MINUTES * 60.0,
+) -> int:
+    environ = dict(os.environ)
+    if retry_idempotent:
+        environ[RETRY_ENV] = "1"
+    else:
+        environ.pop(RETRY_ENV, None)
+    started = _now()
+    attempt = 0
+    wait_seconds = admit_wait_seconds
+    while True:
+        code, retryable = _run_attempt(
+            command,
+            phase=phase,
+            gate=gate,
+            admit=admit,
+            admit_need_gib=admit_need_gib,
+            guard=guard,
+            admit_wait_seconds=wait_seconds,
+            environ=environ,
+        )
+        if not (retry_idempotent and retryable):
+            return code
+        attempt += 1
+        remaining = retry_total_seconds - (_now() - started)
+        if attempt > retry_max or remaining <= 0:
+            _log(
+                f"retry budget exhausted after {attempt} attempt(s) "
+                f"(at most {retry_max} retries within {retry_total_seconds:.0f}s); exiting {code}"
+            )
+            return code
+        _log(
+            f"the breach was memory pressure from outside a small holder tree; retrying attempt {attempt + 1} of "
+            f"{retry_max + 1} after admission ({RETRY_ENV}: the command must be idempotent)"
+        )
+        wait_seconds = max(wait_seconds, remaining)
 
 
 def admit_command(need_gib: float | None = None) -> int:
@@ -1356,6 +1417,15 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"with --admit, re-check a refused admission for up to this many minutes (1-{ADMIT_WAIT_MAX_MINUTES})",
     )
     run.add_argument(
+        "--retry-idempotent",
+        action="store_true",
+        help="with --admit, re-run an idempotent command after a watchdog stop caused by outside memory pressure",
+    )
+    run.add_argument("--retry-max", type=int, default=DEFAULT_RETRY_MAX, help="most retries after such a stop")
+    run.add_argument(
+        "--retry-total-minutes", type=float, default=DEFAULT_RETRY_TOTAL_MINUTES, help="time bound for all retries"
+    )
+    run.add_argument(
         "--guard",
         action="store_true",
         help="watch the command's process tree and stop it before it exhausts memory or disk",
@@ -1397,6 +1467,8 @@ def main(argv: list[str] | None = None) -> int:
         command = command[1:]
     if not command:
         parser.error("run requires a command after --")
+    if args.retry_idempotent and not (args.admit and args.guard):
+        parser.error("--retry-idempotent requires --admit and --guard")
     return run_command(
         command,
         phase=args.phase,
@@ -1405,6 +1477,9 @@ def main(argv: list[str] | None = None) -> int:
         admit_need_gib=args.need_gib,
         guard=args.guard,
         admit_wait_seconds=args.admit_wait_minutes * 60.0,
+        retry_idempotent=args.retry_idempotent,
+        retry_max=max(args.retry_max, 0),
+        retry_total_seconds=max(args.retry_total_minutes, 0.0) * 60.0,
     )
 
 

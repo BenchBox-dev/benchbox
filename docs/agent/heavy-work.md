@@ -59,6 +59,7 @@ refuses to start it while the host is already under pressure.
 |---|---|
 | `make heavy-status` | Read-only report; never takes the lock; each external command is cut off at 5 s and shown as `unmeasured` |
 | `make heavy-run CMD='...'` | Admission check, then the command under the host lock and watchdog; make exits 2 and prints `Error 75` (lock refused), `Error 76` (admission refused), `Error 78` (ownership error) or `Error 79` (watchdog stopped the tree) |
+| `make heavy-run CMD='...' HEAVY_RETRY_IDEMPOTENT=1 [HEAVY_RETRY_MAX=<n>] [HEAVY_RETRY_TOTAL_MINUTES=<m>]` | Opt an idempotent command in to a bounded re-run after a watchdog stop caused by outside memory pressure on a small tree (see below); never for other breaches |
 | `make heavy-run CMD='...' HEAVY_ADMIT_WAIT=<minutes>` | The same, but a refused admission is checked again every 60 s for up to that many minutes (1 to 60) with the lock released in between; when the wait runs out it ends as `Error 76` with the last report |
 | `uv run -- python -m benchbox.utils.host_lock run --admit --guard -- sh -c '...'` | The same without make; exits with the raw code 2 (wrapped `make pr-preflight` refused before the lock), 75, 76, 78 or 79; `--admit-wait-minutes N` is the wait |
 | `python -m benchbox.utils.host_lock admit` | Admission check only |
@@ -78,6 +79,128 @@ task that started it.
 On `Error 76`, run the command again with `HEAVY_ADMIT_WAIT`; do not write a
 retry loop, and never set `BENCHBOX_HEAVY_ADMIT=force` to get past it. Time spent queued for the host
 lock counts against `HEAVY_ADMIT_WAIT`, and only `make heavy-run` reads it.
+
+## Admission hold, breach attribution and bounded retry
+
+Admission, the kill rule and the foreign pressure that sometimes drives them
+were far enough apart that a job could be admitted into a host that was about to
+breach and then stopped seconds later for memory it did not use. The policy
+below keeps the hard kill for anything the holder causes and adds evidence,
+patience and an opt-in retry for the rest.
+
+### Evidence inventory
+
+`~/.benchbox/heavy-runs.jsonl` held 143 runs that ended in `watchdog_kill`
+between 2026-11-06 and 2026-11-16; 121 of them executed for less than 180 s and 90
+for less than 60 s. Run records carry timings and exit codes but no signal or
+footprint, so they cannot say which signal fired. Seventeen retained watchdog logs
+report `BREACH memory pressure: measured level 4`. In three of them the holder
+tree's largest process was 0.50, 1.64 and 2.77 GiB, small beside the 8 GiB budget;
+across all seventeen the largest process listed first was 7.94 GiB, so some of those
+level-4 breaches had a large holder and are not foreign-caused. The reports listed
+only holder-tree processes: no log recorded the processes outside the tree, so
+foreign pressure is a hypothesis the logs support only indirectly (small tree,
+level-4 pressure, swap near full in `make heavy-status`), never a measured cause.
+Logs from the 2026-11-11 and 2026-11-12 sessions that were not retained cannot be
+reconstructed. From this change on, a memory-pressure breach also records what the logs were
+missing.
+
+### Attribution
+
+On a `memory pressure` breach the watchdog report adds, after the holder-tree
+processes, one block read from the same single sample: the holder tree's footprint
+and its share of the budget, swap use, and the five largest processes outside the
+tree (pid, name, command prefix, footprint). The block is labelled as a single
+sample that does not prove cause, and outside processes are listed only; they are
+never signalled. Other breach signals (tree footprint, disk, VM) do not read outside
+processes.
+
+### Admission hold
+
+Admission now needs every sample of the condition to be clean for
+`BENCHBOX_HEAVY_ADMIT_HOLD_SECONDS` (default 30, sampled every 5 s) before the job
+starts, instead of passing on the first clean sample. A refusal inside the window
+restarts it; the report says the condition cleared and after how long. With the
+window the total admission budget is the 30 s retry window plus the hold, after
+which admission is refused as before (`Error 76`; `HEAVY_ADMIT_WAIT` still re-checks
+every 60 s). `BENCHBOX_HEAVY_ADMIT=force` skips the hold and remains forbidden
+without owner approval. A hold of 0 restores single-sample admission.
+
+### Bounded stop and retry (opt-in, idempotent commands only)
+
+The watchdog kills at once in every case below, and the stop of a small holder tree
+under foreign pressure ends in `Error 79` unless the caller opted in:
+
+| Breach | Result |
+|---|---|
+| Holder tree over the budget (the holder caused it) | Kill; never retried |
+| Disk below the kill floor, VM over its allowance | Kill; never retried |
+| Swap at 98% or more, or unmeasurable | Kill; never retried |
+| Level 4 pressure, tree above 25% of the budget | Kill; never retried |
+| Level 4 pressure, tree 25% of the budget or less **and** 25% or less of tree plus the five largest outside processes | Kill; retried only if opted in |
+
+Opt in only for a command that can be killed at any point and run again from the start
+with no duplicate effect (a read-only benchmark cell, a generator that rewrites its
+own output directory). Never for a command that appends, publishes, uploads, bills or
+mutates a shared service.
+
+```
+make heavy-run CMD='...' HEAVY_ADMIT_WAIT=30 HEAVY_RETRY_IDEMPOTENT=1
+make heavy-run CMD='...' HEAVY_RETRY_IDEMPOTENT=1 HEAVY_RETRY_MAX=2 HEAVY_RETRY_TOTAL_MINUTES=30
+```
+
+`HEAVY_RETRY_MAX` (default 2 retries) and `HEAVY_RETRY_TOTAL_MINUTES` (default 30) bound the
+replay; each retry goes through lock, admission (including the hold) and a fresh
+watchdog, with the remaining retry time as its admission wait. When either bound is
+spent the last `Error 79` is returned. The opt-in is passed to the watchdog per run
+(`--retry-idempotent`, which also needs `--admit` and `--guard`); an inherited
+`BENCHBOX_HEAVY_RETRY_IDEMPOTENT` without the flag is removed from the watchdog's
+environment. The retry stops the tree (SIGTERM, then SIGKILL, deepest first) rather
+than pausing it with SIGSTOP, because a stopped child would make the wrapper's
+foreground handling resume it.
+
+Operator guidance: on `Error 79`, read the `attribution` block. A holder share near
+the budget means the job is the cause: lower its footprint (for engines, the
+per-engine caps below) rather than retrying. A small holder and large processes
+outside the tree means the host is contended: ask the owners of those sessions to
+stop, use `HEAVY_ADMIT_WAIT`, and use `HEAVY_RETRY_IDEMPOTENT=1` only for an
+idempotent command. Never signal the outside processes yourself.
+
+## Engine memory caps
+
+Engines are capped before the tree watchdog can fire, from the admitted tree budget
+(`BENCHBOX_HEAVY_MEMORY_BUDGET_GIB`, default half the host memory). The caps apply
+only while a heavy-run is active (`BENCHBOX_HEAVY_RUN_ID` set), so ordinary runs are
+unchanged. The equation is `cap + allowance <= budget`, where the allowance is the
+memory the engine uses outside its cap (JVM metaspace, code cache, thread stacks,
+direct buffers and the Python worker processes for Spark; non-buffer-managed
+allocations and the Python process for DuckDB):
+
+| Engine | Cap | Allowance | Default | Source of the allowance |
+|---|---|---|---|---|
+| Spark (local master) | `driver_memory` | 4.5 GiB | `floor(budget - 4.5)` GiB, at most 60% of host memory, at least 1 | 2026-11-15 Spark TPC-DI SF 1 with the 4 GiB default heap: 7.80 GiB JVM and 8.08 GiB tree, so 4.08 GiB outside the heap and Python, rounded up for margin; the earlier 3 GiB allowance was below it |
+| DuckDB | `memory_limit` | 3.5 GiB | `min(4 GiB, floor(budget - 3.5))` GiB | UAT cells at SF 1 with a 4 GB limit peaked at 6.45 to 7.44 GiB of RSS |
+
+Measured with the derived default on the 8 GiB budget (heap `3g`, `make uat-cell PLATFORM=spark
+BENCHMARK=tpcdi SCALE=1` under `make heavy-run`, 2026-11-17, tree sampled every 3 s): the run passed in
+592 s with all 152 query results `SUCCESS` (114 measured queries passed, validation passed), the largest
+JVM was 3.77 GiB, Python workers peaked at 0.49 GiB and the whole tree peaked at 4.22 GiB, 3.78 GiB under the
+budget. The non-heap part of the JVM was 0.77 GiB at that heap, against 4.08 GiB at the 4 GiB heap on
+2026-11-15, so the allowance is a worst case rather than a typical cost; it is kept because the
+larger heap showed what Spark can use outside the heap on this workload. The driver heap was never
+exceeded, so no engine out-of-memory error was provoked; an over-limit heap surfaces as Spark's own
+`OutOfMemoryError` in the cell log, which the UAT first-failure capture keeps.
+
+Precedence: an explicit `driver_memory` or `memory_limit` is never changed, never
+silently raised and never lowered. If it plus the allowance exceeds the budget the
+run fails before the engine starts with an `EngineMemoryBudgetError` that names the
+option, the largest value that fits and the budget variable. A default that cannot fit
+(budget minus allowance below 1 GiB) fails the same way. The DuckDB value `4GB` is
+the built-in default, so a request for exactly `4GB` is treated as the default and
+derived; any other value is explicit. Spark clusters (non-`local` masters) and the
+other engines are not capped by this rule. Container and VM limits are not applied
+here: the Apple container runtime's footprint is not tree-attributed (see the
+sentinel section).
 
 ## Sentinel
 
