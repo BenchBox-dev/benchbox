@@ -15833,10 +15833,10 @@
     },
     "clickhouse-notuning-rerun-table-exists": {
       "claim": {
-        "expires_at": "2026-10-08T19:54:36Z",
-        "generation": "b81cbf663d0d4048b86b5692792aa6d6",
+        "expires_at": "2026-11-18T17:46:05Z",
+        "generation": "75490931fdd142fda51d85fa49cc6d32",
         "renewals": 0,
-        "worker": "mcp:tbh:joe@joe-mac-mini.local:37239ebe83f9fd8040427e24"
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:daba6966dbafa9d0ecd0bd8b"
       },
       "needs": [],
       "priority": "high",
