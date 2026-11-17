@@ -2,7 +2,7 @@
   "acceptance": [
     "The feature pull request is merged and each member item meets its own acceptance or records an owner-approved disposition."
   ],
-  "context": "Created 2026-11-17 to hold the related items on one feature branch.",
+  "context": "Created 2026-11-17 to hold the related items on one feature branch.\n\n2026-11-17: delivered by #4298 (bb7837cd58) and site #178/#179. TPC-DI SF 100 measurement and the generator memory fix it exposed continue on fix/tpcdi-facttrade-bounded-memory under the member items.",
   "description": "Umbrella for one feature branch and one pull request (feat/tpcdi-current-generator-followups). Members: tpcdi-remaining-spec-differences-20261112, tpcdi-standard-scales-and-estimates-after-unit-change-20261112, tpcdi-sf10-generation-unmeasured-20261112, generator-validation-large-scales-20261111, standard-scales-read-primitives-clickbench-20261112. Owner decisions for every member were recorded on 2026-11-17.",
   "sessions": [
     {
@@ -20,6 +20,14 @@
       "generation": "5aed826683d140eca6487a0abca0c651",
       "op": "take",
       "op_id": "b837ea4238b046dbb061673b5c46669b",
+      "session_id": "86b0e4ee68654aa992c62ae76dd23e81"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f7ac14dda5358a7d48d793ed",
+      "at": "2026-11-17T20:22:05Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ea48e501d9e84e8888e14e50e4dd3d2b",
       "session_id": "86b0e4ee68654aa992c62ae76dd23e81"
     }
   ]
