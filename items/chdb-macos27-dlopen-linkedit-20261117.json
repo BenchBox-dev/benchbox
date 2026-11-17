@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "`uv run -- python -c \"import chdb; print(chdb.query('select 1','CSV'))\"` prints 1 on macOS 27.0.1 arm64, with the chdb version recorded",
+    "`benchbox run --platform clickhouse-local --benchmark tpch --scale 0.01` completes on that host",
+    "Linux CI clickhouse-local tests pass on the PR head",
+    "If no chdb release loads: a standalone reproducer and draft upstream report are recorded in context, and BenchBox prints an actionable error naming the chdb version and macOS version (test covers it)"
+  ],
+  "description": "## Problem\nOn macOS 27.0.1 (arm64), `import chdb` fails in the BenchBox environment:\n`ImportError: dlopen(.../chdb/_chdb.abi3.so): mis-aligned LINKEDIT string pool, fileOffset=0x12369CAC`.\nInstalled chdb is 4.1.6; pyproject pins `chdb>=0.10.0` (core, clickhouse-local extra). Upstream chdb has released 4.2.1, 4.3.0 and 4.4.0. Reproduced 2026-11-12 (corpus reruns had to move to the benchbox-agent Linux machine) and again 2026-11-17. ClickHouse Local is therefore unusable for local development, UAT and measurement on the current macOS, and any Mac user on macOS 27 hits the same import error.\n\n## Decision gate\n1. First check whether a newer chdb (4.4.0 or later) loads on macOS 27. If it does, raise the floor to that version (uv add) and verify. \n2. If none loads, this is an upstream defect: build a minimal reproducer (fresh venv, pip install chdb, import), record the upstream issue text for the owner to file, and make BenchBox report a clear, actionable error for clickhouse-local on affected macOS instead of a raw dlopen trace. Do not file upstream without the owner.\n\n## Guardrails\n- Do not vendor or patch the binary.\n- Do not mark ClickHouse Local unsupported on macOS without the owner.\n- CI (Linux) results must not change; check the clickhouse-local test tier on Linux after any version change.",
+  "links": [
+    "https://github.com/chdb-io/chdb/releases"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1213c3129d7753c9fd6512c0",
+      "at": "2026-11-17T15:18:21Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6000ef2155a34300a239744cddb597d5",
+      "session_id": "71cadb46eee448f8a6d2019016ddc6eb"
+    }
+  ]
+}
