@@ -47726,7 +47726,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Prove the primary-clone write guard blocks writes in Claude Code, Codex and Gemini"
     },
     "write-primitives-adversarial-code-review-and-hardening": {
