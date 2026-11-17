@@ -4,7 +4,7 @@
     "Best-time tables for each measured case, with engine version and load average, are recorded here.",
     "The gate outcome (closed without change, implemented with PR number, or escalated) is recorded."
   ],
-  "description": "## Problem\n`_DataFusionGroupBy._datafusion_aggregate` (`benchbox/platforms/dataframe/unified_frame.py`) rewrites a single grouped `count(DISTINCT x)` into two aggregates (distinct pairs, then count) because DataFusion's single-stage distinct is slow on high-cardinality groups. `_single_distinct_count` skips the rewrite when the aggregate text contains `FILTER`, so grouped `expr.filter(cond).n_unique()` (emitted since the deferred-filter change) keeps the single-stage `count(DISTINCT x) FILTER (WHERE ...)` plan. Confirmed by optimized logical plan on datafusion 55.0.0. Cost is unmeasured.\n\n## Method\n1. List the benchmark DataFrame queries that emit grouped filtered n_unique on DataFusion (grep plus a plan dump); record them here.\n2. Time current vs a two-stage form (filter rows, then distinct pairs, then count — equivalent only when the filter references no other aggregate) on those queries at SF1, and a synthetic high-cardinality case (>=1M groups). Best of 5 after one warm-up, alternating arms.\n\n## Decision gate\n- No benchmark query uses the pattern and the synthetic ratio current/two-stage <= 1.10: close with the measurements; no code change.\n- Ratio > 1.10 on any benchmark query: implement the two-stage form for the filtered case with a result-equality test, then re-time.\n- Synthetic-only regression > 1.10: report to the owner; do not implement without approval.\n\n## Guardrails\nTiming and memory runs only through `make heavy-run` after `make heavy-status`; never force admission, set BENCHBOX_SKIP_TEST_LOCK, disable the watchdog, or pass `--ignore-memory-warnings` without the owner's approval in that task. Never kill processes by pattern; the host is shared. Results must be identical to the current plan (row-for-row) before any timing counts. No reference-answer changes.",
+  "description": "## Problem\n`_DataFusionGroupBy._datafusion_aggregate` (`benchbox/platforms/dataframe/unified_frame.py`) rewrites a single grouped `count(DISTINCT x)` into two aggregates (distinct pairs, then count) because DataFusion's single-stage distinct is slow on high-cardinality groups. `_single_distinct_count` skips the rewrite when the aggregate text contains `FILTER`, so grouped `expr.filter(cond).n_unique()` (emitted since the deferred-filter change) keeps the single-stage `count(DISTINCT x) FILTER (WHERE ...)` plan. Confirmed by optimized logical plan on datafusion 55.0.0. Cost is unmeasured.\n\n## Method\n1. List the benchmark DataFrame queries that emit grouped filtered n_unique on DataFusion (grep plus a plan dump); record them here.\n2. Time current vs a two-stage form (distinct (group, x) pairs where the condition holds, then count per group). Filtering rows drops groups with no qualifying row, which must still report 0: the two-stage form must re-attach those groups (e.g. join to the distinct group keys) so its output equals the current plan row for row on those queries at SF1, and a synthetic high-cardinality case (>=1M groups). Best of 5 after one warm-up, alternating arms.\n\n## Decision gate\n- No benchmark query uses the pattern and the synthetic ratio current/two-stage <= 1.10: close with the measurements; no code change.\n- Ratio > 1.10 on any benchmark query: implement the two-stage form for the filtered case with a result-equality test, then re-time.\n- Synthetic-only regression > 1.10: report to the owner; do not implement without approval.\n\n## Guardrails\nTiming and memory runs only through `make heavy-run` after `make heavy-status`; never force admission, set BENCHBOX_SKIP_TEST_LOCK, disable the watchdog, or pass `--ignore-memory-warnings` without the owner's approval in that task. Never kill processes by pattern; the host is shared. Results must be identical to the current plan (row-for-row) before any timing counts. No reference-answer changes.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:baf9996c1c86fb9c9b5547f3",
@@ -12,6 +12,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "d0eb69d94f0c4362b0a8d7d6c268f468",
+      "session_id": "584fe5162b994f91904666adf0c5e183"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:baf9996c1c86fb9c9b5547f3",
+      "at": "2026-11-17T21:22:41Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "db14bb8431b34bcda2e9f3734f5c5f39",
       "session_id": "584fe5162b994f91904666adf0c5e183"
     }
   ]
