@@ -11,6 +11,35 @@ DOCUMENTED_PLATFORM_QUERY_EXCLUSIONS: dict[tuple[str, str], dict[str, frozenset[
 }
 
 
+DATA_REFRESHED_REASON = "data refreshed"
+WITHIN_TOLERANCE_REASON = "within tolerance"
+WITHIN_RANGE_REASON = "within range"
+PARAMETER_SENSITIVE_REASON = "parameter sensitive"
+DOCUMENTED_ROW_COUNT_SKIP_REASONS: tuple[str, ...] = (
+    DATA_REFRESHED_REASON,
+    WITHIN_TOLERANCE_REASON,
+    WITHIN_RANGE_REASON,
+    PARAMETER_SENSITIVE_REASON,
+)
+
+
+def within_tolerance_warning(actual: int, expected: int) -> str:
+    return f"{WITHIN_TOLERANCE_REASON}: row count {actual} against reference count {expected} is not an exact match"
+
+
+def within_range_warning(actual: int) -> str:
+    return (
+        f"{WITHIN_RANGE_REASON}: row count {actual} passed the accepted range check; no single reference count applies"
+    )
+
+
+def row_count_skip_is_documented(evidence: Any) -> bool:
+    warning = evidence.get("warning") if isinstance(evidence, dict) else None
+    return isinstance(warning, str) and warning.startswith(
+        tuple(f"{reason}:" for reason in DOCUMENTED_ROW_COUNT_SKIP_REASONS)
+    )
+
+
 def _driver_versions(data: dict[str, Any]) -> set[str]:
     versions: set[str] = set()
     execution = data.get("execution")
@@ -114,6 +143,19 @@ def unvalidated_measurement_query_ids(query_rows: Any) -> list[str]:
         and isinstance(evidence := query.get("row_count_validation"), dict)
         and str(evidence.get("status") or "").strip().upper() == "UNVALIDATED"
     ]
+
+
+def unchecked_row_count_evidence(query_rows: Any) -> bool:
+    if not isinstance(query_rows, list):
+        return False
+    statuses = [
+        str(evidence.get("status") or "").strip().upper()
+        for query in query_rows
+        if isinstance(query, dict)
+        and str(query.get("run_type") or "measurement").strip().lower() == "measurement"
+        and isinstance(evidence := query.get("row_count_validation"), dict)
+    ]
+    return bool(statuses) and "PASSED" not in statuses and "SKIPPED" in statuses
 
 
 def _query_row_failed(query: Any) -> bool:
