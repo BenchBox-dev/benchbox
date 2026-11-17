@@ -52,7 +52,7 @@ is redacted.
 
 Collection has a 60-second deadline, at most 10 seconds per command and
 16 MiB per output file. Engine logs retain their bounded tail; up to eight
-GC files contribute at most 2 MiB each. Source sizes are included in log files;
+GC files (newest modification times first) contribute at most 2 MiB each. Source sizes are included in log files;
 truncation, unavailable commands and collection failures are recorded in
 `manifest.json`. Use the
 engine timestamps to find the first blacklist insertion, then correlate

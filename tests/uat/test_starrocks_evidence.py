@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 
 import pytest
 
@@ -116,3 +117,21 @@ def test_log_script_preserves_bounded_tail_and_marks_missing_file(tmp_path, monk
         timeout_s=5,
     )
     assert missing.returncode == 1
+
+
+def test_gc_file_limit_retains_newest_files_and_reports_omissions(tmp_path, monkeypatch):
+    monkeypatch.setattr(starrocks_evidence, "_LOG_ROOT", str(tmp_path))
+    for index in range(10):
+        path = tmp_path / f"gc.log.{index}"
+        path.write_text(f"GC event {index}\n", encoding="utf-8")
+        os.utime(path, (index + 1, index + 1))
+    result = docker_assets.run_docker_command(
+        ["sh", "-c", starrocks_evidence._log_script("gc.log.*", limit=32, count=8)],
+        timeout_s=5,
+    )
+    assert result.succeeded
+    assert "TRUNCATED=true" in result.stdout
+    assert "gc.log.0 BYTES" not in result.stdout
+    assert "gc.log.1 BYTES" not in result.stdout
+    assert "gc.log.2 BYTES" in result.stdout
+    assert "gc.log.9 BYTES" in result.stdout

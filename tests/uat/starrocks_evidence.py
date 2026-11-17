@@ -42,7 +42,10 @@ def _host_metadata() -> dict[str, object]:
 
 def _log_script(pattern: str, *, limit: int = _FILE_BYTES, count: int = 1) -> str:
     return (
-        f"found=0; for f in {_LOG_ROOT}/{pattern}; do "
+        f"files=$(ls -1dt -- {_LOG_ROOT}/{pattern} 2>/dev/null) || exit 1; "
+        'file_count=$(printf "%s\\n" "$files" | wc -l); '
+        f'[ "$file_count" -le {count} ] || printf "TRUNCATED=true\\n"; '
+        "IFS='\n'; found=0; for f in $files; do "
         '[ -f "$f" ] || continue; '
         'printf "SOURCE %s BYTES " "$f"; size=$(wc -c < "$f"); echo "$size"; '
         f'[ "$size" -le {limit} ] || printf "TRUNCATED=true\\n"; '
