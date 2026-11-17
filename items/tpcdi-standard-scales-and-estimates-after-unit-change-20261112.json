@@ -1,10 +1,11 @@
 {
   "acceptance": [
-    "A recorded decision on the TPC-DI standard scale list.",
-    "Registry estimates for `tpcdi` are backed by a measured run at the current generator."
+    "Owner records the standard list decision and the complete UAT/cohort impact, including added/removed cells and justified coverage floors.",
+    "Current-generator time/memory measurements support registry estimates; interactive estimates and any changed worker threshold are verified.",
+    "Accepted registry and UAT changes pass affected configuration and cell checks; site next documentation matches, or unchanged values have an explicit reason."
   ],
-  "context": "Filed 2026-11-12 from the scale-factor follow-up and TPC-DI generator work of 2026-11-11 and 2026-11-12: identified during that work and not addressed.",
-  "description": "## Problem\nSince BenchBox-dev/benchbox#4171 a TPC-DI scale-factor unit is a tenth of its former size. Settings chosen for the old unit were not revisited:\n- The standard list is 0.01, 0.1, 1 and 10. SF 0.01 is now 50 customers, 5 companies, 8 securities and 1,300 trades; timings on that are close to noise. Whether the list should move up (for example 1, 3, 10, 30) was not decided.\n- The registry's `estimated_time_range` and `base_memory_gb` for `tpcdi`, which drive the interactive resource estimates, are unchanged.\n- FactTrade's parallel path starts above 100,000 trades, which is now SF 0.77.\n- Spark and DataFusion TPC-DI at SF 1 were pruned from the release gate for timeouts at the previous volume (6.77 million fact rows); SF 1 is now 1.21 million.\n\n## Change\nDecide the standard list, update the registry estimates from a measured run, and re-check the UAT timeouts and the release-gate prune at the new volume.\n\n## Guardrails\n- Changing the standard list changes published cohorts and the UAT smoke scale; decide it together with regenerating the TPC-DI bundles.\n- Related: `tpcdi-sf1-slowdown-after-linear-fact-scaling`, `local-tpcdi-bundles-regenerate-current-generator`.",
+  "context": "Filed 2026-11-12 from the scale-factor follow-up and TPC-DI generator work of 2026-11-11 and 2026-11-12: identified during that work and not addressed.\n\n2026-11-17 TODO review: clarified decision gates, observable pass/fail rubric and safety boundaries. Existing historical evidence is retained; this is tracker planning only, not implementation, spend, publication or closeout approval.",
+  "description": "## Current scope\nThe historical SF 1 compatibility prunes were removed in #4257. Standard scales, estimates and worker threshold review remain here; final trunk confirmation remains in the separate gate item.\n\n## Historical finding (retained for provenance)\n## Problem\nSince BenchBox-dev/benchbox#4171 a TPC-DI scale-factor unit is a tenth of its former size. Settings chosen for the old unit were not revisited:\n- The standard list is 0.01, 0.1, 1 and 10. SF 0.01 is now 50 customers, 5 companies, 8 securities and 1,300 trades; timings on that are close to noise. Whether the list should move up (for example 1, 3, 10, 30) was not decided.\n- The registry's `estimated_time_range` and `base_memory_gb` for `tpcdi`, which drive the interactive resource estimates, are unchanged.\n- FactTrade's parallel path starts above 100,000 trades, which is now SF 0.77.\n- Spark and DataFusion TPC-DI at SF 1 were pruned from the release gate for timeouts at the previous volume (6.77 million fact rows); SF 1 is now 1.21 million.\n\n## Change\nDecide the standard list, update the registry estimates from a measured run, and re-check the UAT timeouts and the release-gate prune at the new volume.\n\n## Guardrails\n- Changing the standard list changes published cohorts and the UAT smoke scale; decide it together with regenerating the TPC-DI bundles.\n- Related: `tpcdi-sf1-slowdown-after-linear-fact-scaling`, `local-tpcdi-bundles-regenerate-current-generator`.\n\n## Decision gates\nOwner chooses standard scales and whether low-scale noise is acceptable; existing list is not automatically replaced by examples. Identify each affected UAT cell and cross-scale floor before a list edit. Spark/DataFusion prune restoration already belongs to the separate gate item.\n\n## Verification rubric\nPass: registry time/memory estimates cite current-generator measurements and uncertainty; inspect interactive estimates. Explain whether the 100000-trade parallel threshold should stay (SF about 0.77), with measurements if changed. Enumerate matrix/floor/cohort impact and validate any accepted list on newly added platform cells.\n\n## Additional guardrails\nDo not claim one engine validates all engines, lower gate floors to conceal failures, or recut corpus before owner decisions. Standard scale selection is distinct from the accepted global run range.",
   "links": [
     "benchbox/core/benchmark_registry.yaml",
     "benchbox/core/tpcdi/generator_specs.yaml",
@@ -18,6 +19,14 @@
       "op": "create",
       "op_id": "6a683e4400714917937e8ceb69070c8c",
       "session_id": "3f84b7b72a6a4389855a4c2d913fb7f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1fad3edb102f5d3974476660",
+      "at": "2026-11-17T14:20:04Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "059c28a32a534f25975621b886de2cfe",
+      "session_id": "989657b059c44ae4bade82cb666c453c"
     }
   ]
 }
