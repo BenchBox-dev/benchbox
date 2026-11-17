@@ -21701,15 +21701,10 @@
       "title": "Replace copied downloads with canonical GitHub links and legacy redirects"
     },
     "docs-mig-oracle-diff-decode": {
-      "claim": {
-        "expires_at": "2026-11-18T17:46:28Z",
-        "generation": "1b2dca516e3c4146afc7d8d9f50bdb3c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:daba6966dbafa9d0ecd0bd8b"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Fix oracle reviewer crash on non-UTF-8 PR diffs"
     },
     "docs-mig-site-baseline-build": {
