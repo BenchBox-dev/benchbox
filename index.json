@@ -21948,7 +21948,9 @@
     },
     "doris-tpcds-obt-results-capped-parallelism-20261111": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "feature-feat-corpus-scale-policy-and-reruns-20261117"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Published Doris TPC-DS-OBT results ran with parallel_pipeline_task_num=1 and understate Doris"
