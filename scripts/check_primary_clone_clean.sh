@@ -130,8 +130,8 @@ case "$mode" in
       exit 0
     fi
     recorded=$(mktemp)
-    LC_ALL=C sort "$snapshot" > "$recorded"
-    changed=$(current_state | LC_ALL=C sort | LC_ALL=C comm -23 - "$recorded" | cut -f2 || true)
+    LC_ALL=C sort -u "$snapshot" > "$recorded"
+    changed=$(current_state | LC_ALL=C sort -u | LC_ALL=C comm -23 - "$recorded" | cut -f2 || true)
     rm -f "$recorded"
     if [ -z "$changed" ]; then
       exit 0
