@@ -27,7 +27,6 @@ ATTEMPTS_EXHAUSTED = "did not clear after"
 BEYOND_BUDGET = "cannot be waited out"
 RATE_LIMIT_COMMAND = ["gh", "api", "rate_limit"]
 TRACKER_SHOW_PREFIX = ("tractable", "batch", "show")
-WRITE_FLAGS = frozenset({"-X", "--method", "-f", "-F", "--field", "--raw-field", "--input"})
 READ_ONLY_GH = frozenset({("run", "download"), ("run", "list"), ("run", "view"), ("pr", "view"), ("pr", "list")})
 
 _PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
@@ -126,13 +125,32 @@ def describe_reset(seconds: float, wall: Callable[[], float] = time.time) -> str
     return f"resets at {stamp} (in {max(seconds, 0.0) / 60:.1f} min)"
 
 
+def _is_write_flag(arg: str) -> bool:
+    if arg.startswith("--"):
+        return arg.split("=", 1)[0] in {"--method", "--field", "--raw-field", "--input"}
+    return arg.startswith(("-X", "-f", "-F"))
+
+
+def _inline_graphql_query(args: Sequence[str]) -> bool:
+    queries = [arg for arg in args if "query=" in arg]
+    if not queries or any("query=@" in arg for arg in queries):
+        return False
+    return not any("mutation" in arg.lower() for arg in args)
+
+
+def _api_is_read(args: Sequence[str]) -> bool:
+    if "graphql" in args:
+        if any(arg.startswith(("--input", "--method", "-X")) for arg in args):
+            return False
+        return _inline_graphql_query(args)
+    return not any(_is_write_flag(arg) for arg in args)
+
+
 def retryable_read(cmd: Sequence[str]) -> bool:
     if len(cmd) < 2:
         return False
     if cmd[0] == "gh" and cmd[1] == "api":
-        if "graphql" in cmd:
-            return not any("mutation" in part.lower() for part in cmd)
-        return not WRITE_FLAGS.intersection(cmd)
+        return _api_is_read(cmd[2:])
     if cmd[0] == "gh" and len(cmd) > 2 and (cmd[1], cmd[2]) in READ_ONLY_GH:
         return True
     return is_tracker_show(cmd)

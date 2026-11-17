@@ -992,12 +992,16 @@ def _retry_budget() -> gh_transient.Budget:
     return gh_transient.Budget(gh_transient.DEFAULT_BUDGET_SECONDS)
 
 
+def _run_gh(command: list[str], repo: Path, timeout: int) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(command, cwd=repo, text=True, capture_output=True, timeout=timeout)
+
+
 def _gh_read(repo: Path, command: list[str], timeout: int) -> tuple[int, str]:
     expired: list[subprocess.TimeoutExpired] = []
 
     def run(attempt: list[str]) -> tuple[int, str]:
         try:
-            proc = subprocess.run(attempt, cwd=repo, text=True, capture_output=True, timeout=timeout)
+            proc = _run_gh(attempt, repo, timeout)
         except subprocess.TimeoutExpired as exc:
             expired.append(exc)
             return 124, "gh read exceeded its deadline"

@@ -1145,12 +1145,12 @@ def _scripted_gh(monkeypatch: pytest.MonkeyPatch, replies: list[tuple[int, str, 
     calls: list[list[str]] = []
     queue = list(replies)
 
-    def _run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+    def _run(command: list[str], repo: Path, timeout: int) -> subprocess.CompletedProcess[str]:
         calls.append(command)
         code, out, err = queue.pop(0) if len(queue) > 1 else queue[0]
         return subprocess.CompletedProcess(command, code, out, err)
 
-    monkeypatch.setattr(sel.subprocess, "run", _run)
+    monkeypatch.setattr(sel, "_run_gh", _run)
     return calls
 
 
