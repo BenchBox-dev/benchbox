@@ -28910,15 +28910,10 @@
       "title": "Operator: confirm nightly throughput-uat green with gating (workflow_dispatch)"
     },
     "nightly-throughput-run-official-silent-refusal-20261113": {
-      "claim": {
-        "expires_at": "2026-11-18T15:13:53Z",
-        "generation": "d5fbcb2ed0f14435a59a7071bce9a0b0",
-        "renewals": 1,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1213c3129d7753c9fd6512c0"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Nightly throughput UAT fails silently: run-official exits 1 with no message since full-spec enforcement"
     },
     "nightly-v2-liveness-port-20261008": {
