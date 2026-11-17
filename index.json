@@ -32975,10 +32975,15 @@
       "title": "Confirm vendor pricing data may be redistributed in the BenchBox wheel"
     },
     "primary-clone-agents-skills-materialization-stale-20261115": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-18T20:27:36Z",
+        "generation": "691c57d0827340329634d4cb0aa20f5b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:dfe7ee30eb6b1e1d97874395"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "The primary clone's .agents/skills copy goes stale because only an agent-forbidden write there refreshes it"
     },
     "primary-clone-dirty-edit-guard-20261020": {
