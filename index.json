@@ -47659,7 +47659,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "worktree-reap has no way to clear worktrees with malformed provenance or a closed, unmerged pull request"
     },
     "worktree-reap-release-line-prs-ambiguous-20261117": {
