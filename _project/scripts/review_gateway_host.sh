@@ -16,6 +16,7 @@ CLIENTS_FILE=$GATEWAY_DIR/clients.json
 DENYLIST_FILE=$GATEWAY_DIR/disabled-providers
 GATEWAY_CONFIG=$GATEWAY_DIR/home/.omp/agent/config.yml
 STATE_FILE=$GATEWAY_DIR/monitor.state
+PENDING_FILE=$GATEWAY_DIR/monitor.pending
 SCRATCH=
 DEVELOP_DIR=
 ACCOUNTS_FILE=
@@ -551,20 +552,38 @@ health_collect() {
   check_gateway_scope "http://127.0.0.1:$GATEWAY_PORT"
   url=$(tailnet_url)
   check_gateway_scope "$url"
-  check_usage_probes
+  check_usage_probes "$(printf '%s' "$report" | jq -r '.providers | to_entries[] | select(.value.granted and .value.served) | .key')"
   [ "$rc" -ne 3 ] || [ "$DEGRADED_COUNT" -gt 0 ] || note_degraded "gateway-providers reports a degraded state with no provider reason"
   [ "$DEGRADED_COUNT" -eq 0 ] || return 3
 }
 
+probe_failed_logins() {
+  printf '%s\n' "$1" | awk '{ for (i = 1; i <= NF; i++) if ($i == "FAIL") { print $1; break } }'
+}
+
 check_usage_probes() {
-  local output
+  local served=$1 output rc=0 failed name served_failures=0
   mkdir -p "$GATEWAY_DIR/home"
-  if output=$(HOME="$GATEWAY_DIR/home" OMP_AUTH_BROKER_URL="http://127.0.0.1:$BROKER_PORT" \
-    OMP_AUTH_BROKER_TOKEN=$(cat "$BROKER_TOKEN_FILE") "$OMP" auth-gateway check 2>&1); then
-    echo "usage probes: ok"
-  else
-    note_degraded "usage probe: omp auth-gateway check failed; run it on the host for the provider and cause"
+  output=$(HOME="$GATEWAY_DIR/home" OMP_AUTH_BROKER_URL="http://127.0.0.1:$BROKER_PORT" \
+    OMP_AUTH_BROKER_TOKEN=$(cat "$BROKER_TOKEN_FILE") "$OMP" auth-gateway check 2>&1) || rc=$?
+  failed=$(probe_failed_logins "$output")
+  if [ -z "$failed" ]; then
+    if [ "$rc" -eq 0 ]; then
+      echo "usage probes: ok"
+    else
+      note_degraded "usage probe: omp auth-gateway check failed; run it on the host for the provider and cause"
+    fi
+    return 0
   fi
+  while read -r name; do
+    if printf '%s\n' "$served" | grep -qxF -- "$name"; then
+      note_degraded "usage probe: $name failed; run omp auth-gateway check on the host for the cause"
+      served_failures=$((served_failures + 1))
+    else
+      echo "notice: usage probe for $name failed; $name is not served, so reviews are unaffected"
+    fi
+  done <<< "$failed"
+  [ "$served_failures" -gt 0 ] || echo "usage probes: ok for every served provider"
 }
 
 cmd_check() {
@@ -639,14 +658,21 @@ publish_health() {
 }
 
 cmd_monitor() {
-  local output rc=0 state signature previous summary
+  local output rc=0 state signature previous pending summary
   output=$(health_collect 2>&1) || rc=$?
   state=$(health_state "$rc")
   summary=$(health_lines "$output" 'degraded|error')
   signature=$(printf '%s\n%s\n' "$state" "$summary" | grep -v '^$' | sort)
   previous=$(cat "$STATE_FILE" 2>/dev/null || echo healthy)
   if [ "$signature" = "$previous" ]; then
+    rm -f "$PENDING_FILE"
     echo "monitor: $state, unchanged"
+    return 0
+  fi
+  pending=$(cat "$PENDING_FILE" 2>/dev/null || true)
+  if [ "$signature" != "$pending" ]; then
+    printf '%s\n' "$signature" > "$PENDING_FILE"
+    echo "monitor: $state, change awaiting a second consecutive run"
     return 0
   fi
   if [ "$state" = healthy ]; then
@@ -657,6 +683,7 @@ cmd_monitor() {
   publish_health "$state" "$(printf 'State: %s\n\n%s\n\nRun "check" on the gateway host for the full report.' \
     "$state" "$(printf '%s\n' "$output" | grep -E '^(degraded|error|notice):' | redact | sed 's/^/- /')")"
   printf '%s\n' "$signature" > "$STATE_FILE"
+  rm -f "$PENDING_FILE"
   echo "monitor: $state"
 }
 

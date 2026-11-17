@@ -231,12 +231,20 @@ def main():
 """
 
 
-def _fake_omp(providers: tuple[str, ...] = PROVIDERS, clients: bool = True, probe_fails: bool = False) -> str:
+def _fake_omp(
+    providers: tuple[str, ...] = PROVIDERS,
+    clients: bool = True,
+    probe_fails: bool = False,
+    probe_lines: tuple[str, ...] = (),
+    probe_exit: int = 0,
+) -> str:
     accounts = ",".join(
         f'{{"provider":"{provider}","identityKey":"email:{provider}@example.com"}}' for provider in providers
     )
     flag = "--clients=<value>" if clients else "--bind=<value>"
     probe = 'echo "401 from anthropic"; exit 1' if probe_fails else "echo ok"
+    if probe_lines:
+        probe = f"printf '%s\\n' {' '.join(shlex.quote(line) for line in probe_lines)}; exit {probe_exit}"
     return (
         "#!/bin/sh\n"
         'case "$*" in\n'
@@ -985,6 +993,30 @@ def test_check_reports_a_failed_usage_probe_as_degraded(host: dict) -> None:
     assert "401 from anthropic" not in checked.stdout
 
 
+def _probe_lines(*failing: str) -> tuple[str, ...]:
+    lines = [f"{provider}  ok  5h 10%" for provider in PROVIDERS if provider not in failing]
+    lines += [f"{name}  FAIL  oauth refresh failed: Auth broker request failed: 500" for name in failing]
+    return (*lines, "typesafe  unknown  no usage probe")
+
+
+def test_a_failed_usage_probe_for_an_unserved_login_is_a_notice_not_degraded(host: dict) -> None:
+    _logins(host, PROVIDERS, probe_lines=_probe_lines("unused-login"), probe_exit=1)
+    checked = _check(host)
+    assert checked.returncode == 0, checked.stdout + checked.stderr
+    assert "notice: usage probe for unused-login failed; unused-login is not served" in checked.stdout
+    assert "degraded:" not in checked.stdout
+    assert "typesafe" not in checked.stdout
+
+
+def test_a_failed_usage_probe_for_a_served_provider_is_degraded_by_name(host: dict) -> None:
+    _logins(host, PROVIDERS, probe_lines=_probe_lines(PROVIDERS[0], "unused-login"), probe_exit=1)
+    checked = _check(host)
+    assert checked.returncode == 3, checked.stdout + checked.stderr
+    assert f"degraded: usage probe: {PROVIDERS[0]} failed" in checked.stdout
+    assert "notice: usage probe for unused-login failed" in checked.stdout
+    assert "500" not in checked.stdout
+
+
 def test_a_degraded_exit_with_no_provider_reason_is_still_degraded(host: dict) -> None:
     _fake_gh(host)
     env = {**host["env"], "FAKE_FORCE_DEGRADED": "1"}
@@ -1013,7 +1045,7 @@ def test_the_broker_command_advises_a_login_for_each_missing_provider(host: dict
     assert f"auth-broker login {PROVIDERS[0]}" not in result.stdout
 
 
-def test_the_monitor_alerts_once_per_change_and_closes_the_issue_on_recovery(host: dict) -> None:
+def test_the_monitor_alerts_once_per_confirmed_change_and_closes_the_issue_on_confirmed_recovery(host: dict) -> None:
     log = _fake_gh(host)
     first = _monitor(host)
     assert first.returncode == 0, first.stdout + first.stderr
@@ -1021,6 +1053,8 @@ def test_the_monitor_alerts_once_per_change_and_closes_the_issue_on_recovery(hos
     assert not log.exists() and not host["notifications"].exists()
 
     _logins(host, PROVIDERS[1:])
+    assert "awaiting a second consecutive run" in _monitor(host).stdout
+    assert not log.exists() and not host["notifications"].exists()
     degraded = _monitor(host)
     assert degraded.returncode == 0, degraded.stdout + degraded.stderr
     gh_calls = log.read_text(encoding="utf-8")
@@ -1035,21 +1069,40 @@ def test_the_monitor_alerts_once_per_change_and_closes_the_issue_on_recovery(hos
 
     _logins(host, PROVIDERS[2:])
     assert _monitor(host).returncode == 0
+    assert log.read_text(encoding="utf-8") == before
+    assert _monitor(host).returncode == 0
     assert "issue edit 7" in log.read_text(encoding="utf-8")
     assert len(host["notifications"].read_text(encoding="utf-8").splitlines()) == 2
 
     _logins(host, PROVIDERS)
+    assert "issue close" not in log.read_text(encoding="utf-8")
+    assert _monitor(host).returncode == 0
+    assert "issue close" not in log.read_text(encoding="utf-8")
     recovered = _monitor(host)
     assert recovered.returncode == 0, recovered.stdout + recovered.stderr
     assert "issue close 7" in log.read_text(encoding="utf-8")
     notifications = host["notifications"].read_text(encoding="utf-8").splitlines()
     assert len(notifications) == 3 and "recovered" in notifications[-1]
     assert (host["dir"] / "monitor.state").read_text(encoding="utf-8") == "healthy\n"
+    assert not (host["dir"] / "monitor.pending").exists()
+
+
+def test_an_outage_that_clears_before_the_second_run_publishes_nothing(host: dict) -> None:
+    log = _fake_gh(host)
+    _logins(host, PROVIDERS[1:])
+    assert "awaiting a second consecutive run" in _monitor(host).stdout
+    _logins(host, PROVIDERS)
+    assert "unchanged" in _monitor(host).stdout
+    _logins(host, PROVIDERS[1:])
+    assert "awaiting a second consecutive run" in _monitor(host).stdout
+    assert not log.exists() and not host["notifications"].exists()
+    assert not (host["dir"] / "monitor.state").exists()
 
 
 def test_a_monitor_run_whose_issue_cannot_be_filed_records_nothing_so_the_next_run_retries(host: dict) -> None:
     _fake_gh(host, GH_FAIL_CREATE="1")
     _logins(host, PROVIDERS[1:])
+    assert _monitor(host).returncode == 0
     result = _monitor(host)
     assert result.returncode != 0
     assert not (host["dir"] / "monitor.state").exists()
@@ -1059,6 +1112,7 @@ def test_a_monitor_run_whose_issue_cannot_be_filed_records_nothing_so_the_next_r
 def test_the_issue_body_carries_no_gateway_url_or_home_path(host: dict) -> None:
     log = _fake_gh(host)
     host["served"].write_text("anthropic/from-develop\nopenai-codex/model-b\n", encoding="utf-8")
+    assert _monitor(host).returncode == 0
     assert _monitor(host).returncode == 0
     gh_calls = log.read_text(encoding="utf-8")
     assert "issue create" in gh_calls and "lists 2 of the 3 granted models" in gh_calls
