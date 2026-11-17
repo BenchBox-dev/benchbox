@@ -135,8 +135,8 @@ def test_read_model_18_leaves_every_other_column_unchanged(tmp_path: Path) -> No
 
 
 def test_an_unsupported_read_model_is_refused(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="unsupported read model version 19"):
-        ExplorerPipeline().run(_corpus(tmp_path), tmp_path / "out", read_model_version=19)
+    with pytest.raises(ValueError, match="unsupported read model version 20"):
+        ExplorerPipeline().run(_corpus(tmp_path), tmp_path / "out", read_model_version=20)
 
 
 def test_the_build_command_selects_the_read_model(tmp_path: Path) -> None:

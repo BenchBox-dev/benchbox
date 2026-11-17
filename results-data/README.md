@@ -86,6 +86,16 @@ use three independent power repetitions per cell and promote one median bundle
 per version/benchmark cell; raw repetitions stay outside the checkout. See
 `CORPUS_NOTES.md` for operator-run details.
 
+Combined cohorts hold full-specification `--official` runs (TPC-H power, throughput
+and RF1/RF2; TPC-DS load, power, throughput and maintenance). They rank on QphH@Size
+(TPC-H) or QphDS@SF (TPC-DS) with Power@Size and Throughput@Size as secondary columns,
+and a bundle ranks only when its throughput and refresh evidence is clean. Each bundle
+records what its load time includes (`summary.tpc_metrics.load_scope`) and marks any
+refresh or maintenance step that ran without a transaction (`transactional: false`).
+Their three identities come from DuckDB, ClickHouse Local (chDB only) and CedarDB.
+Power-only bundles keep their own Power@Size ranking. See `SEED_CORPUS_SPEC.md`,
+"Combined cohorts".
+
 Everything older than 2026-08-23 was withdrawn on 2026-08-28 as a trust
 decision; see `CORPUS_NOTES.md`. The maintainer-run seed lane
 (`.github/workflows/seed-corpus.yml`) runs at 07:00 UTC on the first day of

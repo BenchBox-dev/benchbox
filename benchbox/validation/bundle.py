@@ -2656,6 +2656,87 @@ def throughput_stream_defects(data: dict[str, Any]) -> list[str]:
     return vr.errors
 
 
+COMBINED_THROUGHPUT_NOT_CLEAN = "combined_throughput_not_clean"
+COMBINED_REFRESH_NOT_CLEAN = "combined_refresh_not_clean"
+_COMBINED_THROUGHPUT_PHASES = {"tpch": ("throughput_test",), "tpcds": ("throughput_test", "throughput_test_2")}
+
+
+def _configured_streams(data: dict[str, Any]) -> int | None:
+    for section_name in ("run", "config"):
+        section = data.get(section_name)
+        streams = section.get("streams") if isinstance(section, dict) else None
+        if isinstance(streams, int) and not isinstance(streams, bool):
+            return streams
+    return None
+
+
+def _combined_throughput_block_clean(block: Any, configured: int | None) -> bool:
+    if not isinstance(block, dict) or str(block.get("status") or "").upper() != "COMPLETED":
+        return False
+    streams = block.get("stream_results")
+    if not isinstance(streams, list) or not streams:
+        return False
+    if configured is not None and len(streams) != configured:
+        return False
+    if not all(isinstance(stream, dict) and stream.get("success") is True for stream in streams):
+        return False
+    return not block.get("errors") and not block.get("outstanding_work")
+
+
+def _tpch_refresh_clean(phases: dict[str, Any]) -> bool:
+    power = phases.get("power_test")
+    functions = power.get("refresh_functions") if isinstance(power, dict) else None
+    if (
+        not isinstance(functions, list)
+        or len(functions) != 2
+        or not all(isinstance(function, dict) and function.get("status") == "SUCCESS" for function in functions)
+    ):
+        return False
+    throughput = phases.get("throughput_test")
+    refresh_stream = throughput.get("refresh_stream") if isinstance(throughput, dict) else None
+    if not isinstance(refresh_stream, dict) or refresh_stream.get("status") != "COMPLETED":
+        return False
+    pairs = refresh_stream.get("pairs")
+    return (
+        isinstance(pairs, list)
+        and bool(pairs)
+        and all(isinstance(pair, dict) and pair.get("status") == "SUCCESS" for pair in pairs)
+    )
+
+
+def _tpcds_maintenance_clean(phases: dict[str, Any]) -> bool:
+    for name in ("maintenance_test", "maintenance_test_2"):
+        block = phases.get(name)
+        if not isinstance(block, dict) or str(block.get("status") or "").upper() != "COMPLETED":
+            return False
+        operations = block.get("operations")
+        if not isinstance(operations, list) or not operations:
+            return False
+        if not all(isinstance(op, dict) and str(op.get("status") or "").upper() == "SUCCESS" for op in operations):
+            return False
+    return True
+
+
+def combined_evidence_defects(data: dict[str, Any]) -> list[str]:
+    benchmark_id = _bundle_benchmark_id(data)
+    phase_names = _COMBINED_THROUGHPUT_PHASES.get(benchmark_id or "")
+    if phase_names is None:
+        return []
+    phases = data.get("phases")
+    if not isinstance(phases, dict):
+        phases = {}
+    configured = _configured_streams(data)
+    defects: list[str] = []
+    if not all(_combined_throughput_block_clean(phases.get(name), configured) for name in phase_names) or (
+        throughput_stream_defects(data)
+    ):
+        defects.append(COMBINED_THROUGHPUT_NOT_CLEAN)
+    refresh_clean = _tpch_refresh_clean(phases) if benchmark_id == "tpch" else _tpcds_maintenance_clean(phases)
+    if not refresh_clean:
+        defects.append(COMBINED_REFRESH_NOT_CLEAN)
+    return defects
+
+
 def _manifest_sidecar_payload(bundle_path: str | Path) -> dict[str, Any]:
     try:
         candidate = Path(bundle_path)

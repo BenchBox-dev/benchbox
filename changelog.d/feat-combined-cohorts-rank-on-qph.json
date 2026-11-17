@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "Full-specification TPC-H and TPC-DS results now rank on QphH@Size and QphDS@SF, with Power@Size and Throughput@Size as secondary metrics. A result ranks only when its throughput and refresh or maintenance steps all succeeded, and power-only results keep their Power@Size ranking.",
+      "details": [
+        "Result bundles record what load time includes in summary.tpc_metrics.load_scope.",
+        "The results Explorer snapshot builder can emit read model 19 with the composite metrics, the load scope and any per-step non-transactional disclosure; the default build is unchanged."
+      ],
+      "platforms": ["duckdb", "clickhouse-local", "cedardb"],
+      "benchmarks": ["tpch", "tpcds"]
+    }
+  ]
+}

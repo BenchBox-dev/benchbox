@@ -66,6 +66,17 @@ def _consecutive_windows(first: set[int], second: set[int]) -> bool:
 
 _LOAD_SUCCESS_STATUSES = frozenset({"SUCCESS", "COMPLETED"})
 
+LOAD_SCOPE_COMPONENTS = ("schema_creation", "data_loading", "statistics_gathering", "post_load_maintenance")
+
+
+def load_scope_components(setup: Any) -> list[str] | None:
+    if setup is None or getattr(setup, "data_loading", None) is None:
+        return None
+    components = [name for name in LOAD_SCOPE_COMPONENTS if getattr(setup, name, None) is not None]
+    if getattr(setup, "merge_settle", None) is not None:
+        components.append("merge_settle")
+    return components
+
 
 def _load_seconds(setup: Any) -> tuple[float | None, list[str]]:
     loading = getattr(setup, "data_loading", None)
