@@ -38735,7 +38735,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "Owner review: benchbox-site PR #163, DuckDB 1.x and 2.x database file formats note"
     },
     "site-explorer-major-dev-dependency-upgrades-20261117": {
