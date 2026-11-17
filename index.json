@@ -33873,7 +33873,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "Upgrade pytest-xdist past 3.8.0 and drop --max-worker-restart=0 from the medium tier"
     },
     "python-api-docs-reference-deleted-anonymization-api": {

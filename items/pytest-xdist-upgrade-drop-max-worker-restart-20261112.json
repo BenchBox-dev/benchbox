@@ -1,10 +1,12 @@
 {
   "acceptance": [
-    "A pytest-xdist release containing the fix for #1378 is locked",
-    "A worker killed mid-session under --dist loadscope lets the session finish (reproduce with a test that kills its worker, or cite the upstream test)",
-    "--max-worker-restart=0 is removed from the three workflows, or kept with the reason recorded",
-    "Decision gate: blocked until upstream releases; check the changelog first"
+    "Decision gate: the item stays blocked until a pytest-xdist release after 3.8.0 includes the fix for pytest-dev/pytest-xdist#1378 (#1324 and #1328). Check the PyPI version and the upstream changelog before starting.",
+    "That release is locked with uv lock --upgrade-package pytest-xdist, and the version floor in pyproject.toml is raised to it.",
+    "A worker killed mid-session under --dist loadscope lets the session finish: shown with a test that kills its own worker, or by citing the upstream regression test.",
+    "--max-worker-restart=0 is removed from the medium-tier command in ci.yml, trunk.yml and trunk-coverage.yml, or kept with the reason recorded here.",
+    "Guardrails: medium-tier verification runs only through the heavy-lock entry points; if the release does not contain both fixes, the flag stays and nothing is changed."
   ],
+  "context": "2026-11-17: latest pytest-xdist on PyPI is 3.8.0, already locked. Blocked on an upstream release.",
   "description": "PR #4121 added --max-worker-restart=0 to the medium-tier pytest command in ci.yml, trunk.yml and trunk-coverage.yml because pytest-xdist 3.8.0 with --dist loadscope cannot finish a session after a worker dies (pytest-dev/pytest-xdist#1378; fixed on master by #1324 and #1328, unreleased on 2026-11-11). The flag turns a 25-minute hang into a fast failure that names the test, but it also means one crashed worker ends the shard.",
   "links": [
     ".github/workflows/ci.yml",
@@ -18,6 +20,14 @@
       "op": "create",
       "op_id": "f3f95dd171494021bb77dca5619908cf",
       "session_id": "c16189175abd4e878b3c9ce4c03812e3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f00380ac381b3b759bd4b6a8",
+      "at": "2026-11-17T21:22:31Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a013c5f2ebf24263a47cc68af53a98f6",
+      "session_id": "a8b952a2353a43c5b8b6461d5901abad"
     }
   ]
 }
