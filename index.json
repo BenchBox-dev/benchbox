@@ -24670,6 +24670,13 @@
       "status": "done",
       "title": "test_tpch_generator::test_default_none and test_config_interface::test_default_provider_is_the_simple_one fail intermittently under parallel (-n) runs: find the leaking test"
     },
+    "flaky-process-state-tests-cancellation-and-group-kill-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Two process-state tests fail intermittently in CI: cancellation leaves a zombie, and the heavy VM stop group-kill test"
+    },
     "flight-data-benchmark": {
       "claim": null,
       "needs": [],
