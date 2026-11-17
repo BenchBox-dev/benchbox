@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Linux test jobs finish with at least 30% headroom below their timeout on main.",
+    "The Windows job's actual test coverage is confirmed and documented.",
+    "Merged under G7."
+  ],
+  "description": "On 2026-11-17 the release PR #93 (v0.2.14, metadata-only diff) hit the 30-minute job limit in `test (py3.13)` (run 44165674647, job 134330933901). It was cancelled inside `uv run -- pytest`. Recent main runs show the Linux test jobs at the edge of that limit:\n- aa4dd538: py3.13 28m, py3.11 27m\n- 9ca458b1: 24m, 21m\n- 03f6b1f7: 28m, 25m\n\nThe suite grows with each feature (5302 tests at v0.2.14), so timeouts will become routine and block merges.\n\nThe Windows py3.12 job reports 0m. Check what it actually runs.\n\nOptions: profile the slowest tests (`--durations`), parallelise with pytest-xdist if the suite is safe for it, split into shards, or raise timeout-minutes with a recorded budget. Prefer making the suite faster over raising the limit.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b377757d77dcf10df273bc88",
+      "at": "2026-11-17T20:37:52Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6416d2605fde47dca30203f8eef973ce",
+      "session_id": "02427f3e9a9d4e6b8fd746ddd1cb8f32"
+    }
+  ]
+}
