@@ -32013,7 +32013,7 @@
       "needs": [],
       "priority": "medium",
       "status": "open",
-      "title": "`make pr-arm WAIT=` aborts on a GitHub API rate limit and does not wait for the reset"
+      "title": "pr-arm and pr-open end a wait on a transient GitHub failure (rate limit, 5xx, network timeout) instead of backing off within WAIT"
     },
     "pr-arm-hold-message-reads-as-refusal-20261028": {
       "claim": null,
