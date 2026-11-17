@@ -76,6 +76,36 @@ files (docs, validators) still use per-path checkout / removal. The scheduled
 canary classifies develop-ahead vs published-only and never recommends a
 wipe-based full mirror while published-only paths exist.
 
+**Drift check grace for a pending mirror PR.** A draft mirror PR waiting for a
+maintainer to publish it is the normal state, so the scheduled canary and the
+`t3:drift` job do not fail on develop-ahead or content-changed paths while a
+fresh, validated mirror covers them. Both call `scripts/corpus_drift.py`
+(`--profile canary` and `--profile nightly`, which differ only in pathspec set
+and message text). Stale paths pass only when all of these hold:
+
+- An open pull request created by the sync workflow (head branch
+  `auto/results-mirror-*` in this repository, title starting
+  `chore(corpus): mirror results-data changes from develop@`) targets
+  `published-results`, and its base SHA equals the current `published-results`
+  tip.
+- That PR's head carries develop's exact blob for every stale path.
+- The `corpus-mirror/validate-bundles` commit status on the PR head is
+  `success`. A failing, pending, or missing status fails the check.
+- The oldest unpublished develop change among the stale paths is under 24
+  hours old. The age comes from develop history, not PR creation: for each
+  stale path the script walks the first-parent commits that touched it, newest
+  first, back to the commit whose result equals the published content, and
+  takes the commit time of the commit right after it. A superseding mirror
+  therefore cannot reset the clock. If the published content never appears in
+  the available history, the age is unknown and the check fails. The workflows
+  fetch develop commits from the last 72 hours (plus one parent) for this; a
+  shallow-clone boundary commit is never trusted as a path's origin.
+
+Anything else fails with the same error and remediation as before, preceded by
+`Mirror PR grace not applied:` lines that name the reason. Any GitHub API or
+fetch error fails closed. Published-only paths remain a notice. The jobs need
+only `pull-requests: read` and `statuses: read` on top of `contents: read`.
+
 #### Public deletion / privacy takedown (intentional path removal)
 
 The union overlay **intentionally does not** propagate develop-side deletions
