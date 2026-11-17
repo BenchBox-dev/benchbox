@@ -29020,10 +29020,15 @@
       "title": "Restore nightly T3 signal and quiet false alarms (umbrella)"
     },
     "nightly-remediation-housekeeping-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-18T17:48:24Z",
+        "generation": "d0fa4eb4c1f846338c6ce3dd459b03ae",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:daba6966dbafa9d0ecd0bd8b"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Post nightly cause notes, close throwaway PRs and release expired claims"
     },
     "nightly-remediation-verify-20261117": {
