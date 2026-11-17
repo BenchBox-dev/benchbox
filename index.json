@@ -37067,6 +37067,13 @@
       "status": "done",
       "title": "Consolidate run-official into run --official flag"
     },
+    "run-output-flag-does-not-place-result-files-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "benchbox run --output does not control where result JSON is written; results go to the benchmark_runs results directory"
+    },
     "run-py-module-size-allowlist-growth-20261004": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "The decision is recorded in context",
+    "A CLI test runs a tiny local benchmark with --output to a temp dir and asserts the result JSON location matches the chosen behaviour and the printed path",
+    "`benchbox run --help` and the CLI reference describe what --output contains"
+  ],
+  "description": "## Problem\n`benchbox run --output DIR` is documented as 'Output directory'. Data generation goes under DIR, but the exported result JSON is written to `DirectoryManager.results_dir` (`resolve_benchmark_runs_dir()/results`, i.e. BENCHBOX_OUTPUT_DIR or the default benchmark_runs root), not under DIR.\n\n## Evidence\n2026-11-15: `benchbox run --platform polars-df --benchmark tpch --scale 0.01 --seed 42 ... --output ~/Developer/benchmark_runs/seeded-df` wrote data to `seeded-df/tpch_sf001` and the result to `~/Developer/benchmark_runs/results/tpch_sf001_polars_df_20261115_212929_8079f011.json`. A script that looked for results under the --output directory found none. With BENCHBOX_OUTPUT_DIR set to the same directory the result landed under it.\n\n## Decision gate\nChoose: (a) results follow --output for local runs, or (b) keep the split and make the help text and run summary say where results go. (a) changes a public CLI behaviour and needs a changelog entry; check cloud --output (s3://, dbfs:/) callers before choosing it.\n\n## Guardrails\n- Do not move results for cloud output URIs without checking the export path for remote targets.\n- The end-of-run console must print the absolute result path in either option.",
+  "links": [
+    "BenchBox-dev/BenchBox: benchbox/cli/commands/run.py",
+    "BenchBox-dev/BenchBox: benchbox/cli/config.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0deceae4762d30cfd4f4d362",
+      "at": "2026-11-17T14:19:46Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "595a14dd24fd418b9e7bb807b8d1f3c9",
+      "session_id": "4cc6c844a24e43ca9e1fc9cb409a70e6"
+    }
+  ]
+}
