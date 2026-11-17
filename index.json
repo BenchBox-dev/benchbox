@@ -15152,13 +15152,18 @@
       "title": "Keep the medium-shard duration file current and extend the weighted split to trunk and release workflows"
     },
     "ci-reference-workflow-perf-regression-20261113": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-18T13:47:26Z",
+        "generation": "43d3eb2ed08e42d6b62fcac49b3f872f",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019"
+      },
       "needs": [
         "nightly-perf-gate-sensitivity-review-20261010",
         "compare-exit-codes-distinct-outcomes-20261112"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Publish a tested guide and example workflow for performance regression checks in CI"
     },
     "ci-retry-artifact-collision-breaks-canary-gate": {
