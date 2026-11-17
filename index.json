@@ -16424,6 +16424,13 @@
       "status": "done",
       "title": "Add proposal/spec-doc checks to the /code review checklist"
     },
+    "codex-apply-patch-skips-pretooluse-hook-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Prove the primary-clone guard in Codex once apply_patch calls PreToolUse hooks"
+    },
     "codex-memory-provenance-cursor-and-summary-treatment": {
       "claim": null,
       "needs": [
