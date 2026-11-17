@@ -2706,6 +2706,8 @@ def cpu_attestation(payload: dict[str, Any]) -> dict[str, str] | None:
     model = recorded.get("cpu_model")
     if not isinstance(model, str) or not model.strip() or recorded.get("cpu_identity_provenance") != "user_attested":
         return None
+    if recorded.get("attested_by") != "maintainer" or payload.get("result_source") != "internal":
+        return None
     return {key: value.strip() for key, value in recorded.items() if isinstance(value, str) and value.strip()}
 
 
@@ -2720,6 +2722,9 @@ def _validate_manifest_cpu_attestation(manifest: dict[str, Any], primary_path: P
     if not isinstance(recorded, dict) or set(recorded) - CPU_ATTESTATION_KEYS:
         vr.error(f"Manifest cpu_attestation must be an object with keys from {sorted(CPU_ATTESTATION_KEYS)}")
         return
+    if recorded.get("attested_by") != "maintainer" or manifest.get("result_source") != "internal":
+        vr.error("Manifest cpu_attestation is accepted only from the maintainer on an internal result_source")
+        return
     if cpu_attestation(manifest) is None:
         vr.error("Manifest cpu_attestation needs a non-empty cpu_model and cpu_identity_provenance 'user_attested'")
         return
@@ -2731,9 +2736,13 @@ def _validate_manifest_cpu_attestation(manifest: dict[str, Any], primary_path: P
     except (OSError, ValueError):
         return
     environment = bundle.get("environment") if isinstance(bundle, dict) else None
-    bundle_model = environment.get("cpu_model") if isinstance(environment, dict) else None
-    if isinstance(bundle_model, str) and bundle_model.strip():
-        vr.error("Manifest cpu_attestation is only valid for a bundle that records no cpu_model")
+    environment = environment if isinstance(environment, dict) else {}
+    client_host = environment.get("client_host") if isinstance(environment.get("client_host"), dict) else {}
+    for block in (environment, client_host):
+        bundle_model = block.get("cpu_model")
+        if isinstance(bundle_model, str) and bundle_model.strip():
+            vr.error("Manifest cpu_attestation is only valid for a bundle that records no cpu_model")
+            break
 
 
 def _validate_tpchavoc_variant_row_counts(

@@ -1308,6 +1308,17 @@ def _managed_service_size(bundle_data: Mapping[str, Any]) -> str | None:
     )
 
 
+_SERVER_ENDPOINT_CLASSES = frozenset({"localhost_port", "remote_host", "cloud_endpoint"})
+
+
+def _effective_runtime_type(bundle_data: Mapping[str, Any], environment: Mapping[str, Any]) -> Any:
+    runtime = _mapping(environment.get("platform_runtime")).get("runtime_type")
+    if runtime not in (None, "unknown"):
+        return runtime
+    deployment = _mapping(_mapping(bundle_data.get("platform")).get("deployment"))
+    return "remote_server" if deployment.get("endpoint_class") in _SERVER_ENDPOINT_CLASSES else runtime
+
+
 def _hardware_columns(bundle_data: Mapping[str, Any], bundle_path: Path) -> dict[str, Any]:
     environment = _mapping(bundle_data.get("environment"))
     host = _mapping(environment.get("client_host"))
@@ -1324,7 +1335,7 @@ def _hardware_columns(bundle_data: Mapping[str, Any], bundle_path: Path) -> dict
         cpu_vendor=environment.get("cpu_vendor") or host.get("cpu_vendor"),
         execution_class=execution.get("execution_class"),
         container_host_os=execution.get("container_host_os"),
-        runtime_type=_mapping(environment.get("platform_runtime")).get("runtime_type"),
+        runtime_type=_effective_runtime_type(bundle_data, environment),
         attested_cpu_model=sidecar_model,
     )
     version, version_basis = resolve_benchbox_version(

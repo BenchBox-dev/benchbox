@@ -68,7 +68,12 @@ def _corpus(tmp_path: Path) -> Path:
         bundles,
         "attested",
         _bundle("attested", environment=dict(darwin)),
-        {"bundle_file": "attested.json", "bundle_hash": "h", "cpu_attestation": attestation},
+        {
+            "bundle_file": "attested.json",
+            "bundle_hash": "h",
+            "result_source": "internal",
+            "cpu_attestation": attestation,
+        },
     )
     _write(
         bundles,
@@ -182,3 +187,24 @@ def test_a_user_attested_recorded_model_is_not_reported_as_measured(tmp_path: Pa
         assert con.execute("SELECT hardware_class, hardware_basis FROM results").fetchall() == [
             ("T2", "attested_model")
         ]
+
+
+def test_a_server_engine_with_an_unobserved_runtime_is_not_tiered_by_the_client_cpu(tmp_path: Path) -> None:
+    bundles = tmp_path / "data" / "bundles"
+    bundles.mkdir(parents=True)
+    environment = {
+        "os": "Darwin 25.0",
+        "arch": "arm64",
+        "cpu_model": "Apple M4",
+        "cpu_count": 10,
+        "platform_runtime": {"runtime_type": "unknown"},
+    }
+    payload = _bundle("server", environment=environment)
+    payload["platform"]["deployment"] = {"endpoint_class": "localhost_port"}
+    _write(bundles, "server", payload)
+    out = tmp_path / "out"
+
+    ExplorerPipeline().run(tmp_path / "data", out)
+
+    with duckdb.connect(str(out / "results.duckdb"), read_only=True) as con:
+        assert con.execute("SELECT hardware_class FROM results").fetchall() == [("unclassified",)]
