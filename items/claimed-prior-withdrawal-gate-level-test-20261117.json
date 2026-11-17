@@ -18,6 +18,15 @@
       "op": "create",
       "op_id": "51f7b4b3359046ca9029a5da294f7fc3",
       "session_id": "9fcef8070b9d4fcdb341814073ddadd4"
+    },
+    {
+      "actor": "joe-tractable-followups",
+      "at": "2026-11-17T14:39:51Z",
+      "client": "mcp",
+      "generation": "a967295cad2c4f4ba1ac3a43282a0b1c",
+      "op": "take",
+      "op_id": "05d9f61a3b894202afd2b670d7fb70d1",
+      "session_id": "514fda7378da4b8e8c98e58d674affac"
     }
   ]
 }
