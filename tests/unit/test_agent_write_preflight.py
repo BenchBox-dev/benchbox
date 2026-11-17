@@ -349,6 +349,42 @@ def test_report_without_snapshot_does_not_fail(tmp_path: Path) -> None:
     assert "No primary-clone snapshot" in result.stderr
 
 
+PINNED_REV = "a" * 40
+
+
+def _skills_receipt(primary: Path, revs: list[str] | None, linked: Path) -> None:
+    (linked / "skill-sync.conf").write_text(
+        f"target = .agents/skills\n\nsource = catalog\nrev    = {PINNED_REV}\nskill  = todo\n", encoding="utf-8"
+    )
+    (primary / ".git" / "info" / "exclude").write_text(".agents/\n", encoding="utf-8")
+    if revs is None:
+        return
+    receipt = primary / ".agents" / "skills" / "skill-sync.receipt"
+    receipt.parent.mkdir(parents=True)
+    receipt.write_text("".join(f"source = catalog\nrev = {rev}\nskill = todo\n\n" for rev in revs), encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    ("revs", "stale"),
+    [([PINNED_REV], False), (["b" * 40], True), ([PINNED_REV, "b" * 40], True), (None, False)],
+    ids=["current", "older", "extra-source", "absent"],
+)
+def test_report_warns_when_the_primary_agents_skills_copy_is_not_at_the_pinned_revisions(
+    tmp_path: Path, revs: list[str] | None, stale: bool
+) -> None:
+    primary, linked = _linked_worktree(tmp_path)
+    _skills_receipt(primary, revs, linked)
+    _run_check_in(linked, primary, "snapshot")
+    before = sorted((primary / ".agents").rglob("*")) if revs else []
+
+    result = _run_check_in(linked, primary, "report")
+
+    assert result.returncode == 0
+    assert ("not at the catalog revisions" in result.stderr) is stale
+    assert ("make skill-sync" in result.stderr) is stale
+    assert (sorted((primary / ".agents").rglob("*")) if revs else []) == before
+
+
 def test_write_preflight_records_snapshot_and_passes_with_dirty_primary(tmp_path: Path) -> None:
     primary, linked = _dirty_primary_with_linked(tmp_path)
     _write_generated_hook(primary, sys.executable)

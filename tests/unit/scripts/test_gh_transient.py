@@ -181,7 +181,7 @@ def test_a_rate_limit_reset_beyond_the_budget_names_the_reset_and_does_not_sleep
     )
     code, out = gt.RetryingRunner(run, clock.budget(600))(["gh", "api", "x"])
     assert code == 1
-    assert "transient GitHub API rate limit cannot be waited out" in out
+    assert "transient GitHub rate limit cannot be waited out" in out
     assert "resets at 2027-01-15T08:30:00Z (in 30.0 min)" in out
     assert clock.sleeps == []
 
@@ -224,7 +224,7 @@ def test_a_persistent_unparseable_tracker_read_fails_naming_the_cause() -> None:
     clock = Clock()
     code, out = gt.RetryingRunner(Script((2, "garbage")), clock.budget(600))(["tractable", "batch", "show", "b"])
     assert code == 2
-    assert out.startswith("transient unreadable tracker read did not clear after 4 attempt(s)")
+    assert out.startswith("transient tracker read unparseable did not clear after 4 attempt(s)")
 
 
 @pytest.mark.parametrize(
@@ -232,7 +232,7 @@ def test_a_persistent_unparseable_tracker_read_fails_naming_the_cause() -> None:
     [
         ("transient GitHub server error did not clear after 4 attempt(s) over 65s: HTTP 503", True),
         (
-            "transient GitHub API rate limit cannot be waited out inside the wait budget after 1 attempt(s): HTTP 403: API rate limit exceeded",
+            "transient GitHub rate limit cannot be waited out inside the wait budget after 1 attempt(s): HTTP 403: API rate limit exceeded",
             False,
         ),
         ("cannot read tracker batch b: unparseable output (exit 2)", True),

@@ -13,10 +13,10 @@ from typing import NamedTuple
 
 Runner = Callable[[list[str]], tuple[int, str]]
 
-RATE_LIMIT = "GitHub API rate limit"
+RATE_LIMIT = "GitHub rate limit"
 SERVER_ERROR = "GitHub server error"
-NETWORK = "network timeout"
-TRACKER_READ = "unreadable tracker read"
+NETWORK = "network error"
+TRACKER_READ = "tracker read unparseable"
 
 MAX_ATTEMPTS = 4
 BACKOFF_SECONDS = (5.0, 15.0, 45.0)
@@ -31,11 +31,14 @@ WRITE_FLAGS = frozenset({"-X", "--method", "-f", "-F", "--field", "--raw-field",
 READ_ONLY_GH = frozenset({("run", "download"), ("run", "list"), ("run", "view"), ("pr", "view"), ("pr", "list")})
 
 _PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
-    (RATE_LIMIT, re.compile(r"rate limit|HTTP 429|abuse detection|retry-after", re.IGNORECASE)),
+    (
+        RATE_LIMIT,
+        re.compile(r"API rate limit|secondary rate limit|rate limit exceeded|Retry-After: ?\d|HTTP 429", re.IGNORECASE),
+    ),
     (
         SERVER_ERROR,
         re.compile(
-            r"HTTP 5\d\d|returned 5\d\d|ServerBusy|Egress is over the account limit|Bad Gateway|"
+            r"HTTP 5\d\d\b|returned 5\d\d|\b50[0-4] (?:Bad Gateway|Service Unavailable|Gateway Time-?out)|ServerBusy|Egress is over the account limit|Bad Gateway|"
             r"Service Unavailable|Gateway Time-?out|Internal Server Error",
             re.IGNORECASE,
         ),
@@ -58,6 +61,7 @@ _RETRY_AFTER = re.compile(r"retry-after\D{0,4}(\d+)", re.IGNORECASE)
 class Transient(NamedTuple):
     kind: str
     retry_after: float | None = None
+    line: str = ""
 
 
 class Budget:
@@ -86,9 +90,11 @@ class Budget:
 def classify(text: object) -> Transient | None:
     message = str(text)
     for kind, pattern in _PATTERNS:
-        if pattern.search(message):
+        found = pattern.search(message)
+        if found:
             match = _RETRY_AFTER.search(message)
-            return Transient(kind, float(match.group(1)) if match else None)
+            line = next((item for item in message.splitlines() if found.group(0) in item), message)
+            return Transient(kind, float(match.group(1)) if match else None, line)
     return None
 
 

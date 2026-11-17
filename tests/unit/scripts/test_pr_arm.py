@@ -53,6 +53,8 @@ def _view(**overrides) -> dict:
         "reviewDecision": "",
         "headRefOid": HEAD,
         "baseRefName": "develop",
+        "mergeable": "MERGEABLE",
+        "mergeStateStatus": "CLEAN",
     }
     view.update(overrides)
     return view
@@ -75,7 +77,6 @@ class FakeGh:
         self.download = kwargs.get("download", (0, None))
         self.download_script = list(kwargs.get("download_script", []))
         self.rules_script = list(kwargs.get("rules_script", []))
-        self.rate_limit = kwargs.get("rate_limit")
         self.verdict_head = kwargs.get("verdict_head", self.local_head)
         self.changed_files = kwargs.get("changed_files", ["scripts/x.py"])
         self.rules = kwargs.get("rules", ["core"])
@@ -133,7 +134,7 @@ class FakeGh:
         if cmd[:2] == ["gh", "api"] and "/actions/artifacts?" in cmd[-1]:
             assert cmd[-1].startswith(f"repos/{pr_arm.REPOSITORY}/actions/artifacts?name=fast-duration-verdict-7-")
             if self.lookup_code != 0:
-                return self.lookup_code, "gh: HTTP 502"
+                return self.lookup_code, "gh: HTTP 404"
             return 0, "" if self.verdict is None else f"555 {self.verdict_head}\n"
         if cmd[:3] == ["gh", "run", "download"]:
             code, text = self.download_script.pop(0) if self.download_script else self.download
@@ -144,7 +145,7 @@ class FakeGh:
             )
             return 0, ""
         if cmd[:2] == ["gh", "api"] and "/rules/branches/" in cmd[-1]:
-            return self._rules()
+            return self.rules_script.pop(0) if self.rules_script else (0, "\n".join(self.rules))
         if cmd[:3] == ["gh", "api", "--paginate"] and "/actions/workflows/" in cmd[-1]:
             return self._workflow_runs(cmd)
         if cmd[:3] == ["gh", "api", "--paginate"] and "/check-runs?" in cmd[-1]:
@@ -158,12 +159,7 @@ class FakeGh:
             return handled
         raise AssertionError(f"unexpected command {cmd}")
 
-    def _rules(self) -> tuple[int, str]:
-        return self.rules_script.pop(0) if self.rules_script else (0, "\n".join(self.rules))
-
     def _tracker_call(self, cmd: list[str]) -> tuple[int, str] | None:
-        if cmd == ["gh", "api", "rate_limit"]:
-            return (0, json.dumps(self.rate_limit)) if self.rate_limit is not None else (1, "gh: HTTP 500")
         if cmd[:2] == ["gh", "api"] and cmd[2].endswith("/git/ref/heads/todo-state"):
             return 0, self.tracker_tip + "\n"
         if cmd[:2] == ["gh", "api"] and cmd[-1].endswith(f"/contents/index.json?ref={self.tracker_tip}"):
@@ -683,7 +679,7 @@ def test_a_would_block_verdict_refuses_when_the_changed_files_cannot_be_listed(
     class Broken(FakeGh):
         def __call__(self, cmd: Sequence[str]) -> tuple[int, str]:
             if list(cmd)[:2] == ["gh", "api"] and list(cmd)[-1].endswith("/pulls/7/files"):
-                return 1, "gh: HTTP 502"
+                return 1, "gh: HTTP 404"
             return super().__call__(cmd)
 
     gh = Broken(verdict=WOULD_BLOCK)
@@ -1753,7 +1749,7 @@ def test_an_unreadable_stale_base_listing_refuses_with_the_unverified_outcome(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     def broken(*_a, **_k):
-        raise LandingError("cannot list the develop commits: HTTP 502")
+        raise LandingError("cannot list the develop commits: HTTP 404")
 
     monkeypatch.setattr(pr_arm.pr_stale_base, "stale_base_refusals", broken)
     gh = FakeGh()
@@ -2109,21 +2105,347 @@ def test_attempt_reads_reuse_only_within_an_attempt_except_for_pinned_content() 
     assert calls.count(flaky) == 2
 
 
+class ScriptedView(FakeGh):
+    def __init__(self, views: list[tuple[int, str]], **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.views = list(views)
+        self.view_reads = 0
+
+    def __call__(self, cmd: Sequence[str]) -> tuple[int, str]:
+        if list(cmd)[:3] == ["gh", "pr", "view"]:
+            self.calls.append(list(cmd))
+            self.view_reads += 1
+            return self.views.pop(0) if len(self.views) > 1 else self.views[0]
+        return super().__call__(cmd)
+
+
+def _ok_view(**overrides) -> tuple[int, str]:
+    return 0, json.dumps(_view(**overrides))
+
+
+def _wait_on(gh: FakeGh, clock: WaitClock, minutes: int = 30, **kwargs) -> int:
+    return pr_arm.arm_waiting(lambda: _arm(gh), lambda: None, minutes, clock=clock.clock, sleep=clock.sleep, **kwargs)
+
+
+CONFLICTING = {"mergeable": "CONFLICTING", "mergeStateStatus": "DIRTY"}
+
+
+def test_a_conflicting_pull_request_stops_the_wait_at_once_and_is_never_armed(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    gh = FakeGh(view=_view(**CONFLICTING))
+    clock = WaitClock()
+
+    code = pr_arm.arm_waiting(
+        lambda: _arm(gh, hidden=["the core job that records it has not finished for aaaaaaaaa"]),
+        lambda: None,
+        30,
+        clock=clock.clock,
+        sleep=clock.sleep,
+    )
+
+    assert code == pr_arm.CONFLICT_EXIT
+    assert code not in (1, 2)
+    assert clock.sleeps == []
+    assert gh.merged() == []
+    line = _last_outcome_line(capsys)
+    assert line.startswith("pr-arm: outcome: conflict: PR #7 conflicts with develop")
+    assert "merge or rebase origin/develop into the branch, push, then re-run pr-arm" in line
+
+
+def test_a_dirty_merge_state_alone_is_a_conflict() -> None:
+    gh = FakeGh(view=_view(mergeable="MERGEABLE", mergeStateStatus="DIRTY"))
+    assert _arm(gh) == pr_arm.CONFLICT_EXIT
+    assert gh.merged() == []
+
+
+def test_an_unknown_mergeability_keeps_waiting_until_it_is_computed() -> None:
+    gh = ScriptedView([_ok_view(mergeable="UNKNOWN", mergeStateStatus="UNKNOWN"), _ok_view()])
+    clock = WaitClock()
+
+    assert _wait_on(gh, clock) == 0
+    assert gh.view_reads == 2
+    assert clock.sleeps == [pr_arm.WAIT_INTERVAL_SECONDS]
+    assert len(gh.merged()) == 1
+
+
+@pytest.mark.parametrize("fields", [{"mergeable": None}, {"mergeStateStatus": ""}, {"mergeable": "BOGUS"}])
+def test_an_unreadable_mergeability_is_never_armed(fields: dict) -> None:
+    gh = FakeGh(view=_view(**fields))
+    assert _arm(gh) == 2
+    assert gh.merged() == []
+
+
+RATE_LIMITED = (1, "gh: HTTP 403: API rate limit exceeded for user ID 1. (https://api.github.com/graphql)")
+
+
+def test_a_rate_limit_waits_for_the_reset_then_evaluates_without_arming_in_between() -> None:
+    gh = ScriptedView([RATE_LIMITED, _ok_view()])
+    clock = WaitClock()
+    merged_at_sleep: list[int] = []
+    clock.on_sleep.append(lambda: merged_at_sleep.append(len(gh.merged())))
+
+    assert _wait_on(gh, clock, reset_in=lambda: 400.0) == 0
+    assert clock.sleeps == [401.0]
+    assert merged_at_sleep == [0]
+    assert gh.view_reads == 2
+    assert len(gh.merged()) == 1
+
+
+def test_a_rate_limit_pause_never_outlasts_the_remaining_budget() -> None:
+    gh = ScriptedView([RATE_LIMITED])
+    clock = WaitClock()
+
+    assert _wait_on(gh, clock, minutes=2, reset_in=lambda: 4000.0) == pr_arm.TRANSIENT_EXIT
+    assert clock.sleeps == [120.0]
+    assert gh.merged() == []
+
+
+TRANSIENT_READS = [
+    pytest.param((1, "gh: HTTP 429: too many requests Retry-After: 30"), id="http-429"),
+    pytest.param((1, "gh: HTTP 502 Bad Gateway"), id="http-5xx"),
+    pytest.param((1, 'Post "https://api.github.com/graphql": net/http: TLS handshake timeout'), id="tls-timeout"),
+]
+
+
+@pytest.mark.parametrize("failure", TRANSIENT_READS)
+def test_each_transient_pull_request_read_is_retried_and_never_arms(failure: tuple[int, str]) -> None:
+    gh = ScriptedView([failure, failure, _ok_view()])
+    clock = WaitClock()
+    merged_at_sleep: list[int] = []
+    clock.on_sleep.append(lambda: merged_at_sleep.append(len(gh.merged())))
+
+    assert _wait_on(gh, clock) == 0
+    assert merged_at_sleep == [0, 0]
+    assert clock.sleeps[0] == pr_arm.TRANSIENT_BACKOFF_SECONDS
+    assert clock.sleeps[1] == pr_arm.TRANSIENT_BACKOFF_SECONDS * 2
+    assert len(gh.merged()) == 1
+
+
+def _flaky_attempt(error: str, gh: FakeGh, failures: int = 2):
+    state = {"left": failures}
+
+    def threads(_run, _repo, _number):
+        if state["left"]:
+            state["left"] -= 1
+            raise LandingError(error)
+        return []
+
+    def attempt() -> int:
+        return pr_arm.arm(
+            "7",
+            None,
+            run=gh,
+            unpublished=lambda _checkout: [],
+            threads=threads,
+            suites=lambda *_args: [],
+            gate=lambda *_args: [],
+        )
+
+    return attempt
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        'cannot run the review read: Post "https://api.github.com/graphql": net/http: TLS handshake timeout',
+        "cannot read tracker batch b-1: unparseable output (exit 2)",
+        "cannot run the tracker read: Command '['gh']' timed out after 120 seconds",
+        "live review-thread verification failed: HTTP 503 Service Unavailable",
+        "live review-thread verification failed: HTTP 403: API rate limit exceeded",
+    ],
+)
+def test_transient_failures_inside_the_checks_are_waited_out_and_never_arm(error: str) -> None:
+    gh = FakeGh()
+    clock = WaitClock()
+    merged_at_sleep: list[int] = []
+    clock.on_sleep.append(lambda: merged_at_sleep.append(len(gh.merged())))
+
+    code = pr_arm.arm_waiting(_flaky_attempt(error, gh), lambda: None, 30, clock=clock.clock, sleep=clock.sleep)
+
+    assert code == 0
+    assert merged_at_sleep == [0, 0]
+    assert len(clock.sleeps) == 2
+    assert len(gh.merged()) == 1
+
+
+@pytest.mark.parametrize(
+    ("error", "named"),
+    [
+        ("net/http: TLS handshake timeout", "network error"),
+        ("cannot read tracker batch b-1: unparseable output (exit 2)", "tracker read unparseable"),
+        ("HTTP 500 Internal Server Error", "GitHub server error"),
+    ],
+)
+def test_an_exhausted_budget_names_the_transient_cause_with_a_distinct_status(
+    error: str, named: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gh = FakeGh()
+    clock = WaitClock()
+
+    code = pr_arm.arm_waiting(
+        _flaky_attempt(error, gh, failures=99), lambda: None, 3, clock=clock.clock, sleep=clock.sleep
+    )
+
+    assert code == pr_arm.TRANSIENT_EXIT
+    assert code not in (1, 2, pr_arm.CONFLICT_EXIT)
+    assert gh.merged() == []
+    line = _last_outcome_line(capsys)
+    assert line.startswith("pr-arm: outcome: transient: ")
+    assert named in line
+    assert error in line
+    assert "WAIT=3 expired" in line
+
+
+def test_an_exhausted_rate_limit_wait_names_the_reset_time(capsys: pytest.CaptureFixture[str]) -> None:
+    gh = ScriptedView([RATE_LIMITED])
+    clock = WaitClock()
+
+    code = _wait_on(gh, clock, minutes=1, reset_in=lambda: 1800.0, now=lambda: 1_700_000_000.0)
+
+    assert code == pr_arm.TRANSIENT_EXIT
+    assert gh.merged() == []
+    line = _last_outcome_line(capsys)
+    assert "GitHub rate limit" in line
+    assert "the rate limit resets at 2023-11-14T22:43:20Z" in line
+
+
+def test_other_client_errors_are_not_retried(capsys: pytest.CaptureFixture[str]) -> None:
+    for failure in ((1, "gh: HTTP 404: Not Found"), (1, "gh: HTTP 403: Resource not accessible by integration")):
+        gh = ScriptedView([failure, _ok_view()])
+        clock = WaitClock()
+
+        assert _wait_on(gh, clock) == 1
+        assert gh.view_reads == 1
+        assert clock.sleeps == []
+        assert gh.merged() == []
+        assert _last_outcome_line(capsys).startswith("pr-arm: outcome: refused: ")
+
+
+def test_an_unreadable_trunk_during_a_wait_never_arms_and_ends_with_the_transient_status(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    gh = FakeGh()
+    clock = WaitClock()
+    attempts, attempt = _scripted([WAITING])
+
+    code = pr_arm.arm_waiting(
+        attempt,
+        lambda: "the trunk state could not be read: net/http: TLS handshake timeout",
+        3,
+        clock=clock.clock,
+        sleep=clock.sleep,
+    )
+
+    assert code == pr_arm.TRANSIENT_EXIT
+    assert len(attempts) == 1
+    assert gh.merged() == []
+    line = _last_outcome_line(capsys)
+    assert "transient: the trunk check" in line
+    assert "WAIT=3 expired" in line
+
+
+def test_the_rate_limit_reset_is_read_from_the_github_rate_limit_resource() -> None:
+    seen: list[list[str]] = []
+
+    def run(cmd: list[str]) -> tuple[int, str]:
+        seen.append(cmd)
+        return 0, "1700000900\n"
+
+    assert pr_arm.rate_limit_reset_seconds(run, now=lambda: 1_700_000_000.0) == 900.0
+    assert seen[0][-1] == "rate_limit"
+    assert pr_arm.rate_limit_reset_seconds(lambda _cmd: (0, ""), now=lambda: 0.0) is None
+    assert pr_arm.rate_limit_reset_seconds(lambda _cmd: (1, "boom"), now=lambda: 0.0) is None
+
+
+@pytest.mark.parametrize(
+    "phrase", ["API rate limit exceeded", "timed out after 120 seconds", "HTTP 503 Service Unavailable"]
+)
+def test_a_review_verdict_description_that_names_a_transient_phrase_still_refuses(phrase: str) -> None:
+    gh = FakeGh()
+    reason = f"a fresh review-gate evaluation of aaaaaaaaa does not pass: Blocked · reviewer {phrase}"
+    clock = WaitClock()
+
+    code = pr_arm.arm_waiting(
+        lambda: pr_arm.arm(
+            "7",
+            None,
+            run=gh,
+            unpublished=lambda _checkout: [],
+            threads=lambda *_args: [],
+            suites=lambda *_args: [],
+            gate=lambda *_args: [reason],
+            wait_on_pending_review=True,
+        ),
+        lambda: None,
+        30,
+        clock=clock.clock,
+        sleep=clock.sleep,
+    )
+
+    assert code == 2
+    assert clock.sleeps == []
+    assert gh.merged() == []
+    assert pr_arm._last_outcome.startswith("refused: ")
+
+
+def test_a_duration_verdict_reason_that_names_a_timeout_still_refuses() -> None:
+    gh = FakeGh(verdict={"verdict": "rejected", "reason": "pytest timed out after 600 seconds, HTTP 503"})
+    clock = WaitClock()
+
+    code = pr_arm.arm_waiting(lambda: _arm(gh), lambda: None, 30, clock=clock.clock, sleep=clock.sleep)
+
+    assert code == 2
+    assert clock.sleeps == []
+    assert gh.merged() == []
+    assert pr_arm._last_outcome.startswith("refused: ")
+
+
+def test_a_failed_duration_verdict_read_inside_the_wait_is_retried(capsys: pytest.CaptureFixture[str]) -> None:
+    gh = FakeGh(lookup_code=1)
+    gh.lookup_code = 1
+    original = gh.__call__
+    state = {"left": 1}
+
+    def flaky(cmd: Sequence[str]) -> tuple[int, str]:
+        if "/actions/artifacts?" in list(cmd)[-1] and state["left"]:
+            state["left"] -= 1
+            return 1, "gh: HTTP 502 Bad Gateway"
+        gh.lookup_code = 0
+        return original(cmd)
+
+    clock = WaitClock()
+    code = pr_arm.arm_waiting(
+        lambda: pr_arm.arm(
+            "7",
+            None,
+            run=flaky,
+            unpublished=lambda _checkout: [],
+            threads=lambda *_args: [],
+            suites=lambda *_args: [],
+            gate=lambda *_args: [],
+        ),
+        lambda: None,
+        30,
+        clock=clock.clock,
+        sleep=clock.sleep,
+    )
+
+    assert code == 0
+    assert clock.sleeps == [pr_arm.TRANSIENT_BACKOFF_SECONDS]
+
+
 TRANSIENT_503 = (1, "gh: HTTP 503: Egress is over the account limit")
 TRANSIENT_TIMEOUT = (1, 'Get "https://api.github.com/rules": dial tcp 140.82.1.6:443: i/o timeout')
-RATE_LIMITED = (1, "gh: HTTP 403: API rate limit exceeded for user ID 1")
-WALL_START = 1_800_000_000.0
 
 
 def _retrying(gh: FakeGh, seconds: float = 600.0) -> tuple[object, WaitClock]:
     time = WaitClock()
-    budget = pr_arm.gh_transient.Budget(
-        seconds, clock=time.clock, sleep=time.sleep, wall=lambda: WALL_START + time.now - 100.0
-    )
+    budget = pr_arm.gh_transient.Budget(seconds, clock=time.clock, sleep=time.sleep)
     return pr_arm.gh_transient.RetryingRunner(gh, budget), time
 
 
-def _arm_through(runner: object, **kwargs: object) -> int:
+def _arm_through(runner: object) -> int:
     return pr_arm.arm(
         "7",
         None,
@@ -2131,7 +2453,6 @@ def _arm_through(runner: object, **kwargs: object) -> int:
         unpublished=lambda _checkout: [],
         threads=lambda _run, _repo, _number: [],
         gate=lambda *_a: [],
-        **kwargs,
     )
 
 
@@ -2146,17 +2467,16 @@ def test_a_503_on_the_artifact_download_is_retried_and_the_verdict_is_evaluated(
     assert len(gh.merged()) == 1
 
 
-def test_a_persistent_503_on_the_artifact_download_refuses_after_the_bounded_attempts(capsys) -> None:
+def test_a_persistent_503_on_the_artifact_download_ends_transient_after_the_bounded_attempts(capsys) -> None:
     gh = FakeGh(download=TRANSIENT_503)
     runner, time = _retrying(gh)
 
-    assert _arm_through(runner) == 2
+    assert _arm_through(runner) == pr_arm.TRANSIENT_EXIT
     assert len([call for call in gh.calls if call[:3] == ["gh", "run", "download"]]) == 4
     assert time.sleeps == [5.0, 15.0, 45.0]
     outcome = _last_outcome_line(capsys)
-    assert outcome.startswith("pr-arm: outcome: refused: ")
-    assert "transient GitHub server error did not clear after 4 attempt(s)" in outcome
-    assert "Egress is over the account limit" in outcome
+    assert outcome.startswith("pr-arm: outcome: transient: ")
+    assert "GitHub server error" in outcome and "Egress is over the account limit" in outcome
     assert gh.merged() == []
 
 
@@ -2174,235 +2494,18 @@ def test_a_persistent_network_timeout_on_the_ruleset_read_never_arms(capsys) -> 
     runner, _ = _retrying(gh)
 
     assert _arm_through(runner) != 0
-    assert "transient network timeout did not clear" in _last_outcome_line(capsys)
+    assert "network error" in _last_outcome_line(capsys)
     assert gh.merged() == []
 
 
-def test_a_rate_limit_sleeps_until_the_reported_reset_and_then_reads_again() -> None:
-    reset = WALL_START + 130.0
-    gh = FakeGh(
-        download_script=[RATE_LIMITED],
-        rate_limit={"resources": {"core": {"remaining": 0, "reset": reset}, "graphql": {"remaining": 9, "reset": 1}}},
-    )
+def test_a_permanent_error_on_the_artifact_download_is_not_retried(capsys) -> None:
+    gh = FakeGh(download=(1, "gh: HTTP 404: Not Found"))
     runner, time = _retrying(gh)
-
-    assert _arm_through(runner) == 0
-    assert time.sleeps == [131.0]
-    assert len(gh.merged()) == 1
-
-
-def test_a_rate_limit_that_resets_after_the_wait_budget_refuses_naming_the_reset(capsys) -> None:
-    reset = WALL_START + 3600.0
-    gh = FakeGh(download=RATE_LIMITED, rate_limit={"resources": {"core": {"remaining": 0, "reset": reset}}})
-    runner, time = _retrying(gh, seconds=600.0)
 
     assert _arm_through(runner) == 2
     assert time.sleeps == []
-    outcome = _last_outcome_line(capsys)
-    assert outcome.startswith("pr-arm: outcome: refused: ")
-    assert "cannot be waited out inside the wait budget" in outcome
-    assert "resets at 2027-01-15T09:00:00Z" in outcome
-    assert gh.merged() == []
-
-
-def test_a_secondary_rate_limit_waits_a_minute_and_recovers() -> None:
-    gh = FakeGh(
-        download_script=[(1, "gh: HTTP 403: You have exceeded a secondary rate limit")],
-        rate_limit={"resources": {"core": {"remaining": 4000, "reset": WALL_START + 10}}},
-    )
-    runner, time = _retrying(gh)
-
-    assert _arm_through(runner) == 0
-    assert time.sleeps == [60.0]
-
-
-@pytest.mark.parametrize(
-    "failure",
-    [
-        (1, "gh: HTTP 403: Resource not accessible by integration"),
-        (1, "gh: HTTP 401: Bad credentials"),
-        (1, "gh: HTTP 404: Not Found"),
-    ],
-)
-def test_a_permanent_error_fails_at_once_without_a_retry(failure: tuple[int, str], capsys) -> None:
-    gh = FakeGh(download=failure)
-    runner, time = _retrying(gh)
-
-    assert _arm_through(runner, wait_on_pending_review=True) == 2
-    assert time.sleeps == []
     assert len([call for call in gh.calls if call[:3] == ["gh", "run", "download"]]) == 1
-    assert _last_outcome_line(capsys).startswith("pr-arm: outcome: refused: ")
     assert gh.merged() == []
-
-
-def test_an_exhausted_transient_read_inside_a_wait_is_waiting_not_refused(capsys) -> None:
-    gh = FakeGh(download=TRANSIENT_503)
-    runner, _ = _retrying(gh)
-
-    assert _arm_through(runner, wait_on_pending_review=True) == 2
-    outcome = _last_outcome_line(capsys)
-    assert outcome.startswith("pr-arm: outcome: waiting: ")
-    assert "transient GitHub server error did not clear" in outcome
-    assert gh.merged() == []
-
-
-def test_a_wait_recovers_from_a_transient_read_and_re_reads_the_current_head(capsys) -> None:
-    gh = FakeGh(download=TRANSIENT_503)
-    runner, _ = _retrying(gh, seconds=3600.0)
-    time = WaitClock()
-
-    def recover() -> None:
-        gh.download = (0, None)
-        gh.view = _view(headRefOid="b" * 40)
-
-    time.on_sleep.append(recover)
-    code = pr_arm.arm_waiting(
-        lambda: _arm_through(runner, wait_on_pending_review=True), lambda: None, 30, clock=time.clock, sleep=time.sleep
-    )
-
-    assert code == 2
-    assert "is not local HEAD" in _last_outcome_line(capsys)
-    assert gh.merged() == []
-
-
-def test_a_wait_that_recovers_arms_after_the_transient_read_clears() -> None:
-    gh = FakeGh(download=TRANSIENT_503)
-    runner, _ = _retrying(gh, seconds=3600.0)
-    time = WaitClock()
-    time.on_sleep.append(lambda: setattr(gh, "download", (0, None)))
-
-    code = pr_arm.arm_waiting(
-        lambda: _arm_through(runner, wait_on_pending_review=True), lambda: None, 30, clock=time.clock, sleep=time.sleep
-    )
-
-    assert code == 0
-    assert len(gh.merged()) == 1
-
-
-def test_a_wait_that_never_recovers_expires_naming_the_transient_cause(capsys) -> None:
-    gh = FakeGh(download=TRANSIENT_503)
-    runner, _ = _retrying(gh, seconds=3600.0)
-    time = WaitClock()
-
-    code = pr_arm.arm_waiting(
-        lambda: _arm_through(runner, wait_on_pending_review=True), lambda: None, 7, clock=time.clock, sleep=time.sleep
-    )
-
-    assert code == 2
-    outcome = _last_outcome_line(capsys)
-    assert "WAIT=7 expired" in outcome and "transient GitHub server error" in outcome
-    assert gh.merged() == []
-
-
-@pytest.mark.parametrize(
-    "error",
-    [
-        "cannot read tracker batch plan-capture-followups: unparseable output (exit 2)",
-        'reading PR 4174 failed: Post "https://api.github.com/graphql": net/http: TLS handshake timeout',
-        "could not list the CI runs of aaaaaaaaa: gh: HTTP 502: Bad Gateway",
-    ],
-)
-def test_an_unreadable_state_error_is_waiting_inside_a_wait_and_refused_outside(
-    error: str, capsys: pytest.CaptureFixture[str]
-) -> None:
-    def broken(*_args: object) -> list[str]:
-        raise LandingError(error)
-
-    def run(wait: bool) -> int:
-        gh = FakeGh()
-        code = pr_arm.arm(
-            "7",
-            None,
-            run=gh,
-            unpublished=lambda _checkout: [],
-            threads=lambda _run, _repo, _number: [],
-            suites=lambda *_a: [],
-            gate=lambda *_a: [],
-            batch=broken,
-            wait_on_pending_review=wait,
-        )
-        assert gh.merged() == []
-        return code
-
-    assert run(True) == 2
-    assert _last_outcome_line(capsys).startswith("pr-arm: outcome: waiting: live state could not be read yet")
-    assert run(False) == 1
-    assert _last_outcome_line(capsys).startswith("pr-arm: outcome: refused: live state could not be verified")
-
-
-def test_a_permanent_unreadable_state_error_still_refuses_inside_a_wait(capsys: pytest.CaptureFixture[str]) -> None:
-    def broken(*_args: object) -> list[str]:
-        raise LandingError("cannot read tracker batch x: batch not found")
-
-    gh = FakeGh()
-    code = pr_arm.arm(
-        "7",
-        None,
-        run=gh,
-        unpublished=lambda _checkout: [],
-        threads=lambda _run, _repo, _number: [],
-        suites=lambda *_a: [],
-        gate=lambda *_a: [],
-        batch=broken,
-        wait_on_pending_review=True,
-    )
-
-    assert code == 1
-    assert _last_outcome_line(capsys).startswith("pr-arm: outcome: refused: ")
-    assert gh.merged() == []
-
-
-def test_a_review_gate_server_error_is_waiting_inside_a_wait_and_refused_outside(capsys) -> None:
-    unreadable = (
-        f"a fresh review-gate evaluation of {HEAD[:9]} failed (exit 1): review-gate: error: cannot read #4170 "
-        "after 3 attempts: GitHub returned HTTP 503"
-    )
-
-    assert _arm_with_gate([unreadable], wait=True) == 2
-    assert _last_outcome_line(capsys).startswith("pr-arm: outcome: waiting: ")
-    assert _arm_with_gate([unreadable], wait=False) == 2
-    assert _last_outcome_line(capsys).startswith("pr-arm: outcome: refused: ")
-
-
-def test_a_trunk_read_that_fails_transiently_keeps_the_wait_going_and_never_arms(capsys) -> None:
-    time = WaitClock()
-    attempts, attempt = _scripted([WAITING, ARMED])
-    reads = ["the trunk state could not be read: gh run list failed: HTTP 403: API rate limit exceeded"] * 2 + [None]
-
-    code = pr_arm.arm_waiting(attempt, lambda: reads.pop(0), 60, clock=time.clock, sleep=time.sleep)
-
-    assert reads == []
-    assert len(attempts) == 2
-    assert code == 0
-
-
-def test_a_trunk_read_that_never_recovers_ends_the_wait_naming_the_cause(capsys) -> None:
-    time = WaitClock()
-    attempts, attempt = _scripted([WAITING])
-
-    code = pr_arm.arm_waiting(
-        attempt,
-        lambda: 'the trunk state could not be read: Post "https://api.github.com/graphql": TLS handshake timeout',
-        9,
-        clock=time.clock,
-        sleep=time.sleep,
-    )
-
-    assert code == 2
-    assert len(attempts) == 1
-    outcome = _last_outcome_line(capsys)
-    assert outcome.startswith("pr-arm: outcome: refused: WAIT=9 expired while the trunk check could not read GitHub")
-    assert "TLS handshake timeout" in outcome
-
-
-def test_a_trunk_refusal_that_is_not_transient_still_stops_the_wait(capsys) -> None:
-    time = WaitClock()
-    _, attempt = _scripted([WAITING])
-
-    assert (
-        pr_arm.arm_waiting(attempt, lambda: "develop is red: culprit #9", 60, clock=time.clock, sleep=time.sleep) == 2
-    )
-    assert "stopped waiting, the trunk check refuses" in _last_outcome_line(capsys)
 
 
 def test_main_builds_one_retry_budget_from_the_wait(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -2422,3 +2525,10 @@ def test_main_builds_one_retry_budget_from_the_wait(monkeypatch: pytest.MonkeyPa
 def test_the_retry_budget_is_the_wait_or_a_short_default() -> None:
     assert pr_arm.new_budget(60).remaining() == pytest.approx(3600.0, abs=5.0)
     assert pr_arm.new_budget(None).remaining() == pytest.approx(pr_arm.gh_transient.DEFAULT_BUDGET_SECONDS, abs=5.0)
+
+
+def test_one_classifier_serves_pr_arm_and_the_retry_helper() -> None:
+    for text in ("HTTP 503: ServerBusy", "i/o timeout", "API rate limit exceeded", "unparseable output (exit 2)"):
+        cause = pr_arm.transient_cause(text)
+        assert cause is not None and cause[0] == pr_arm.gh_transient.classify(text).kind
+    assert pr_arm.transient_cause("HTTP 404: Not Found") is None

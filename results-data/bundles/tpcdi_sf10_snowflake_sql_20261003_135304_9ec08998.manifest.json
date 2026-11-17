@@ -4,5 +4,9 @@
   "funding": "unspecified",
   "manifest_version": "1.0",
   "result_source": "internal",
-  "submitted_by": "maintainer"
+  "submitted_by": "maintainer",
+  "known_defects": [
+    "defective-variant-or-loader-wrong-result"
+  ],
+  "known_defect_reason": "Generated before the TPC-DI specification scale unit and linear fact tables; not comparable with current-generator data."
 }

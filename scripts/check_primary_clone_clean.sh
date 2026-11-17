@@ -45,6 +45,23 @@ current_state() {
   done
 }
 
+pinned_revs() {
+  sed -n 's/^rev[[:space:]]*=[[:space:]]*\([0-9a-f]\{40\}\)[[:space:]]*$/\1/p' "$1" | sort -u
+}
+
+report_stale_agent_skills() {
+  receipt="$primary_abs/.agents/skills/skill-sync.receipt"
+  config="$top_abs/skill-sync.conf"
+  [ -f "$receipt" ] && [ -f "$config" ] || return 0
+  [ "$(pinned_revs "$receipt")" = "$(pinned_revs "$config")" ] && return 0
+  cat >&2 <<EOM
+WARNING: the primary clone's .agents/skills copy is not at the catalog revisions
+this branch pins in skill-sync.conf. Codex, Gemini and Antigravity sessions
+started in the primary clone read that copy, so they see outdated skills.
+Agents may not refresh it. Owner: run 'make skill-sync' in $primary_abs.
+EOM
+}
+
 case "$mode" in
   snapshot)
     if [ -f "$snapshot" ] && [ "${BENCHBOX_PRIMARY_SNAPSHOT_REFRESH:-}" != "1" ]; then
@@ -55,6 +72,7 @@ case "$mode" in
     mv "$tmp" "$snapshot"
     ;;
   report | enforce)
+    report_stale_agent_skills
     if [ ! -f "$snapshot" ]; then
       printf 'No primary-clone snapshot at %s; run make agent-write-preflight first. Skipping primary-clone change check.\n' "$snapshot" >&2
       exit 0
