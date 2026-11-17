@@ -53,6 +53,28 @@ except ImportError:
     EXECUTION_CLASSES = ("native", "container")
 
 try:
+    from benchbox.core.benchmark_registry import is_standard_scale_factor
+except ImportError:
+    is_standard_scale_factor = None
+
+NONSTANDARD_COMPLIANCE_CLASS = "unofficial_nonstandard"
+OFFICIAL_CLASS_BENCHMARKS = frozenset({"tpch", "tpcds"})
+
+
+def _is_nonstandard_scale(benchmark_id: Any, scale_factor: Any) -> bool:
+    if is_standard_scale_factor is None or isinstance(scale_factor, bool) or scale_factor is None:
+        return False
+    try:
+        float(scale_factor)
+    except (TypeError, ValueError):
+        return False
+    try:
+        return not is_standard_scale_factor(str(benchmark_id), scale_factor)
+    except ValueError:
+        return False
+
+
+try:
     from benchbox.core.schemas import MIN_THROUGHPUT_STREAMS
 except ImportError:
     MIN_THROUGHPUT_STREAMS = 2
@@ -1589,7 +1611,18 @@ def _validate_compliance_section(
         return
     compliance = benchmark.get("compliance_class")
     if _is_gateway_routed(platform):
-        compliance = "unofficial_nonstandard"
+        compliance = NONSTANDARD_COMPLIANCE_CLASS
+    elif _is_nonstandard_scale(benchmark.get("id"), benchmark.get("scale_factor")) or (
+        is_standard_scale_factor is None
+        and compliance == NONSTANDARD_COMPLIANCE_CLASS
+        and str(benchmark.get("id")).strip().casefold() not in OFFICIAL_CLASS_BENCHMARKS
+    ):
+        vr.warn(
+            f"nonstandard-scale: scale_factor={benchmark.get('scale_factor')!r} is not a standard scale for "
+            f"benchmark {benchmark.get('id')!r}; the bundle is accepted and excluded from ranking "
+            "(exclusion reason: unofficial_compliance)"
+        )
+        return
     if compliance is None:
         return
     if compliance != "official":
