@@ -31865,7 +31865,7 @@
       "needs": [],
       "priority": "medium-high",
       "status": "open",
-      "title": "Make pr-arm's wait loop read slow-changing GitHub state once per wait and use conditional requests for the rest"
+      "title": "Cut pr-arm's repeated GitHub reads while it waits, without ever arming on a reused read"
     },
     "pr-arm-dispatch-missing-verdict-20261025": {
       "claim": null,
