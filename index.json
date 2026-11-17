@@ -43306,7 +43306,9 @@
     },
     "tpcdi-standard-scales-and-estimates-after-unit-change-20261112": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "feature-feat-tpcdi-current-generator-followups-20261117"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Revisit TPC-DI standard scale factors, registry estimates and UAT settings now that one unit is 5,000 customers"
