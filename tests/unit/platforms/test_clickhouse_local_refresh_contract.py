@@ -97,7 +97,30 @@ def test_new_stream_connection_opens_a_session_on_the_same_path_and_applies_sett
         "SET data_type_default_nullable = 1",
         "SET mutations_sync = 2",
         "SET lightweight_deletes_sync = 2",
+        f"SET max_memory_usage = {3 * 1024**3}",
+        f"SET max_bytes_before_external_group_by = {3 * 1024**3 // 2}",
+        f"SET max_bytes_before_external_sort = {3 * 1024**3 // 2}",
     ]
+
+
+def test_stream_memory_budget_is_configurable(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeClient:
+        def __init__(self, db_path=None) -> None:
+            self.statements: list[str] = []
+
+        def execute(self, statement: str):
+            self.statements.append(statement)
+
+        def close(self) -> None:
+            pass
+
+    monkeypatch.setattr("benchbox.platforms.clickhouse_local.ClickHouseLocalClient", FakeClient)
+    adapter = ClickHouseLocalAdapter(stream_max_memory_usage="2GB")
+    monkeypatch.setattr(adapter, "configure_for_benchmark", lambda stream, kind: None)
+
+    stream = adapter.new_stream_connection(SimpleNamespace(db_path="/tmp/r.chdb"))
+
+    assert f"SET max_memory_usage = {2 * 1024**3}" in stream.statements
 
 
 def test_new_stream_connection_closes_the_session_when_a_setting_fails(

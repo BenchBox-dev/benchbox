@@ -22,6 +22,7 @@ from benchbox.core.tpch.refresh import (
     applied_counts,
     apply_rf1,
     apply_rf2,
+    capture_rf2_counts,
     check_rf1_applied,
     check_rf2_applied,
     refresh_transactional,
@@ -498,11 +499,12 @@ class TPCHPowerTest:
         try:
             if self.refresh_update_set is None or connection is None:
                 raise RuntimeError("TPC-H refresh functions require an update set and a separate session")
+            precounted = capture_rf2_counts(connection, self.refresh_update_set) if function == "RF2" else None
             start_time = mono_time()
             if function == "RF1":
                 applied = apply_rf1(connection, self.refresh_update_set)
             else:
-                applied = apply_rf2(connection, self.refresh_update_set)
+                applied = apply_rf2(connection, self.refresh_update_set, precounted=precounted)
             duration_ms = max(1, round(elapsed_seconds(start_time) * 1000))
             counts = applied_counts(applied)
             check_status = "FAILED"

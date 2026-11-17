@@ -211,12 +211,33 @@ def apply_rf1(connection: Any, update_set: TPCHRefreshUpdateSet, chunk_size: int
         raise
 
 
+def capture_rf2_counts(
+    connection: Any, update_set: TPCHRefreshUpdateSet, chunk_size: int = REFRESH_CHUNK_SIZE
+) -> TPCHRF2Deletes | None:
+    if refresh_reports_delete_counts(getattr(connection, "platform_adapter", None)):
+        return None
+    _require_chunk_size(chunk_size)
+    orders = 0
+    lineitems = 0
+    for order_keys in _key_chunks(update_set.delete_path, chunk_size):
+        orders += _count_matching_keys(connection, ORDERS.name, ORDERS_KEY_COLUMN, order_keys)
+        lineitems += _count_matching_keys(connection, LINEITEM.name, LINEITEM_KEY_COLUMN, order_keys)
+    return TPCHRF2Deletes(orders=orders, lineitems=lineitems)
+
+
 def apply_rf2(
     connection: Any,
     update_set: TPCHRefreshUpdateSet,
     chunk_size: int = REFRESH_CHUNK_SIZE,
+    precounted: TPCHRF2Deletes | None = None,
 ) -> TPCHRF2Deletes:
     _require_chunk_size(chunk_size)
+    reports = refresh_reports_delete_counts(getattr(connection, "platform_adapter", None))
+    if not reports and precounted is None:
+        raise RuntimeError(
+            f"refresh set {update_set.set_id} RF2: the driver reports no deleted row count; "
+            "capture_rf2_counts before the timer starts"
+        )
     _begin_transaction(connection)
     try:
         lineitems_deleted = 0
@@ -226,7 +247,7 @@ def apply_rf2(
             orders_deleted += _delete_keys(connection, ORDERS.name, ORDERS_KEY_COLUMN, order_keys, update_set)
 
         _commit(connection)
-        return TPCHRF2Deletes(orders=orders_deleted, lineitems=lineitems_deleted)
+        return TPCHRF2Deletes(orders=orders_deleted, lineitems=lineitems_deleted) if reports else precounted
     except BaseException:
         _rollback(connection)
         raise
@@ -236,12 +257,10 @@ def _delete_keys(
     connection: Any, table_name: str, column_name: str, keys: list[int], update_set: TPCHRefreshUpdateSet
 ) -> int:
     key_list = ", ".join(str(key) for key in keys)
-    statement = f"DELETE FROM {table_name} WHERE {column_name} IN ({key_list})"
+    cursor = connection.execute(f"DELETE FROM {table_name} WHERE {column_name} IN ({key_list})")
     if refresh_reports_delete_counts(getattr(connection, "platform_adapter", None)):
-        return _reported_row_count(connection.execute(statement), update_set)
-    matching = _count_matching_keys(connection, table_name, column_name, keys)
-    connection.execute(statement)
-    return matching
+        return _reported_row_count(cursor, update_set)
+    return 0
 
 
 def _reload_message(update_set: TPCHRefreshUpdateSet, function: str, detail: str) -> str:

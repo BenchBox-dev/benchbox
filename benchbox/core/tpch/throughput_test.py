@@ -23,6 +23,7 @@ from benchbox.core.tpch.refresh import (
     applied_counts,
     apply_rf1,
     apply_rf2,
+    capture_rf2_counts,
     check_rf1_applied,
     check_rf2_applied,
     generate_refresh_update_sets,
@@ -389,11 +390,12 @@ class TPCHThroughputTest:
         error = None
         duration_ms = 0
         try:
+            precounted = capture_rf2_counts(connection, update_set) if function == "RF2" else None
             start_time = mono_time()
             if function == "RF1":
                 applied = apply_rf1(connection, update_set)
             else:
-                applied = apply_rf2(connection, update_set)
+                applied = apply_rf2(connection, update_set, precounted=precounted)
             duration_ms = max(1, round(elapsed_seconds(start_time) * 1000))
             counts = applied_counts(applied)
             status = "SUCCESS"

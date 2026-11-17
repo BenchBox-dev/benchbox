@@ -9,6 +9,7 @@ from benchbox.core.tpch.refresh import (
     TPCHRefreshUpdateSet,
     apply_rf1,
     apply_rf2,
+    capture_rf2_counts,
     check_rf1_applied,
     check_rf2_applied,
 )
@@ -126,7 +127,7 @@ def _check_rf1_rf2_with_expected_counts(
     assert _table_count(connection, ORDERS.name, f"o_orderkey = {delete_keys[0]}") == 1
 
     doomed_lineitems = _table_count(connection, LINEITEM.name, f"l_orderkey IN ({key_list})")
-    deletes = apply_rf2(connection, update_set)
+    deletes = apply_rf2(connection, update_set, precounted=capture_rf2_counts(connection, update_set))
     check_rf2_applied(connection, update_set, deletes.orders)
     assert deletes.orders == len(delete_keys)
     assert deletes.lineitems == doomed_lineitems

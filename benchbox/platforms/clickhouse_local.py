@@ -18,6 +18,7 @@ _IN_MEMORY_REQUIRES_PATH_MESSAGE = (
     "Run with a database path (the default for benchmark runs)."
 )
 _DECIMAL_TYPE = re.compile(r"^DECIMAL\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)$", re.IGNORECASE)
+STREAM_MAX_MEMORY_USAGE = "3GB"
 _STREAM_SESSION_SETTINGS = {
     "join_use_nulls": 1,
     "data_type_default_nullable": 1,
@@ -73,7 +74,16 @@ class ClickHouseLocalAdapter(ClickHouseAdapter):
         stream = ClickHouseLocalClient(db_path=connection.db_path)
         try:
             self.configure_for_benchmark(stream, benchmark_type or "olap")
-            for setting, value in _STREAM_SESSION_SETTINGS.items():
+            budget = self._parse_memory_setting(
+                self.platform_config.get("stream_max_memory_usage", STREAM_MAX_MEMORY_USAGE)
+            )
+            settings = {
+                **_STREAM_SESSION_SETTINGS,
+                "max_memory_usage": budget,
+                "max_bytes_before_external_group_by": budget // 2,
+                "max_bytes_before_external_sort": budget // 2,
+            }
+            for setting, value in settings.items():
                 stream.execute(f"SET {setting} = {value}")
         except Exception:
             stream.close()

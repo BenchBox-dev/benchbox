@@ -12,6 +12,7 @@ from benchbox.core.tpch.refresh import (
     TPCHRF2Deletes,
     apply_rf1,
     apply_rf2,
+    capture_rf2_counts,
     check_rf1_applied,
     check_rf2_applied,
     refresh_transactional,
@@ -143,21 +144,32 @@ def test_transactional_adapter_still_begins_and_commits(tmp_path: Path) -> None:
     assert driver.commits == 1
 
 
-def test_rf2_counts_matching_rows_before_each_delete_when_the_driver_reports_none(tmp_path: Path) -> None:
+def test_rf2_counts_before_the_timer_and_deletes_without_counting(tmp_path: Path) -> None:
     update_set = _update_set(tmp_path, [21, 22])
     driver = _Driver(counts=[5, 2])
     connection = _wrap(driver, supports_refresh_transactions=False, reports_refresh_delete_counts=False)
 
-    deleted = apply_rf2(connection, update_set)
-
-    assert deleted == TPCHRF2Deletes(orders=2, lineitems=5)
+    precounted = capture_rf2_counts(connection, update_set)
     assert driver.statements == [
-        "SELECT COUNT(*) FROM lineitem WHERE l_orderkey IN (21, 22)",
-        "DELETE FROM lineitem WHERE l_orderkey IN (21, 22)",
         "SELECT COUNT(*) FROM orders WHERE o_orderkey IN (21, 22)",
+        "SELECT COUNT(*) FROM lineitem WHERE l_orderkey IN (21, 22)",
+    ]
+    driver.statements.clear()
+    deleted = apply_rf2(connection, update_set, precounted=precounted)
+
+    assert deleted == TPCHRF2Deletes(orders=5, lineitems=2)
+    assert driver.statements == [
+        "DELETE FROM lineitem WHERE l_orderkey IN (21, 22)",
         "DELETE FROM orders WHERE o_orderkey IN (21, 22)",
     ]
-    assert driver.commits == 0
+
+
+def test_rf2_without_reported_counts_refuses_to_run_unprecounted(tmp_path: Path) -> None:
+    update_set = _update_set(tmp_path, [21])
+    connection = _wrap(_Driver(), reports_refresh_delete_counts=False)
+
+    with pytest.raises(RuntimeError, match="capture_rf2_counts"):
+        apply_rf2(connection, update_set)
 
 
 def test_rf2_uses_the_reported_count_when_the_driver_provides_one(tmp_path: Path) -> None:
@@ -177,7 +189,7 @@ def test_refresh_sql_uses_schema_column_names_for_case_sensitive_engines(tmp_pat
     connection = _wrap(driver, supports_refresh_transactions=False, reports_refresh_delete_counts=False)
 
     check_rf1_applied(_Driver(counts=[1, 1]), update_set, 2)
-    apply_rf2(connection, update_set)
+    apply_rf2(connection, update_set, precounted=capture_rf2_counts(connection, update_set))
     check_rf2_applied(driver, update_set, 1)
 
     statements = " ".join(driver.statements)

@@ -17,6 +17,7 @@ from benchbox.core.tpch.refresh import (
     TPCHRefreshUpdateSet,
     apply_rf1,
     apply_rf2,
+    capture_rf2_counts,
     check_rf1_applied,
     check_rf2_applied,
     generate_refresh_update_sets,
@@ -294,8 +295,9 @@ class TPCHMaintenanceTest:
             if self.verbose:
                 self.logger.info(f"Executing RF2 for pair {pair_id + 1} using update set {update_set.set_id}")
             connection = self.connection_factory()
+            precounted = capture_rf2_counts(connection, update_set)
             operation.start_time = mono_time()
-            deletes = apply_rf2(connection, update_set)
+            deletes = apply_rf2(connection, update_set, precounted=precounted)
             operation.end_time = mono_time()
             operation.duration = elapsed_seconds(operation.start_time)
             operation.rows_affected = deletes.rows
