@@ -1,13 +1,15 @@
 {
   "acceptance": [
-    "Decision gate: the item stays blocked until openai/codex#27833 is closed as fixed or a Codex release note says apply_patch runs PreToolUse hooks. Check both, and npm view @openai/codex version, before starting.",
-    "In a scratch repository with a catch-all PreToolUse hook that exits 2, the fixed Codex version refuses an apply_patch; the version and the observed result are recorded here.",
-    "A live probe from the primary clone, asking Codex to create guard-probe-codex.txt through apply_patch, is refused by the hook in .codex/hooks.json; the version and the result are recorded here.",
-    "The Codex row in docs/agent/primary-clone-guard.md states the enforced version. If the hook now fires but does not refuse, a fix to the guard or to .codex/hooks.json merges with a test that feeds the real apply_patch payload.",
-    "Guardrails: probes create only guard-probe-<agent>.txt in the primary clone and delete it at once; nothing is ever committed in the primary clone; the hook wiring for other agents is not changed."
+    "Decision gate: the item stays blocked until a Codex release newer than 0.169.0 exists (npm view @openai/codex version). On each new release, rerun the scratch-repo catch-all probe, and start work when it refuses, whether or not #27833 is closed.",
+    "An upstream issue for the 'hook not called for apply_patch' case is linked here, either an existing one or a newly filed one with the scratch-repo reproduction.",
+    "In a scratch repository with a catch-all PreToolUse hook that exits 2, the new Codex version refuses an apply_patch; the version and the observed result are recorded here.",
+    "A live probe from the primary clone, asking Codex to create guard-probe-codex.txt through apply_patch, is refused by the hook in .codex/hooks.json. Pass: Codex prints the guard message and test ! -e guard-probe-codex.txt holds. The version and the result are recorded here.",
+    "The Codex row in docs/agent/primary-clone-guard.md states the enforced version. If the hook now fires but does not refuse, a fix merges with a test that feeds the real apply_patch payload.",
+    "Exit gate: if Codex still does not refuse on 2027-01-31, the owner chooses between keeping the item blocked and closing it with Codex documented as preflight-only in docs/agent/primary-clone-guard.md. The decision is recorded here.",
+    "Guardrails: probes create only guard-probe-<agent>.txt in the primary clone and delete it at once; nothing is ever committed in the primary clone; any hook change keeps the four agent hook files structurally equal and passes _project/scripts/agent_instruction_audit.py."
   ],
   "context": "Blocked 2026-11-17: openai/codex#27833 is open and 0.169.0 is the latest @openai/codex release, a version already shown not to call the hook.",
-  "description": "On 2026-11-15, codex-cli 0.162.1 and 0.169.0 never called a PreToolUse hook for apply_patch. The test used a scratch repository with a catch-all hook that exits 2, and from the primary clone Codex created a probe file through apply_patch (the file was deleted). The upstream issue is openai/codex#27833. On 2026-11-17 it was still open and 0.169.0 was the latest @openai/codex release. scripts/primary_clone_write_guard.py refuses the apply_patch payload when given it directly, so the gap is in Codex, not in the guard. Until Codex calls the hook, a Codex write to the primary clone is caught only afterwards: make agent-write-preflight reports changed tracked files and, since PR #4265, new untracked files that are not gitignored. docs/agent/primary-clone-guard.md (PR #4252) records this. This item is the separate upstream-limitation item that write-guard-unproven-outside-omp-20261112 requires.",
+  "description": "On 2026-11-15, codex-cli 0.162.1 and 0.169.0 never called a PreToolUse hook for apply_patch. The test used a scratch repository with a catch-all hook that exits 2, and from the primary clone Codex created a probe file through apply_patch (the file was deleted). The nearest upstream report is openai/codex#27833, open on 2026-11-17. It describes a slightly different symptom: the hook fires but its deny is not enforced. Here the hook is not called at all, so #27833 could close without fixing this case. 0.169.0 was the latest @openai/codex release on 2026-11-17. scripts/primary_clone_write_guard.py refuses the apply_patch payload when given it directly, and the .codex/hooks.json matcher is apply_patch|Edit|Write, so the gap is in Codex, not in the guard. Until Codex calls the hook, a Codex write to the primary clone is caught only afterwards: make agent-write-preflight reports changed tracked files and, since PR #4265, new untracked files that are not gitignored. docs/agent/primary-clone-guard.md (PR #4252) records this. This item is the separate upstream-limitation item that write-guard-unproven-outside-omp-20261112 requires.",
   "links": [
     "https://github.com/openai/codex/issues/27833",
     "https://github.com/BenchBox-dev/benchbox/pull/4252",
@@ -30,6 +32,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "8b54d7238dbf4e99a153d57c871a1d8b",
+      "session_id": "a8b952a2353a43c5b8b6461d5901abad"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f00380ac381b3b759bd4b6a8",
+      "at": "2026-11-17T21:28:44Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "091d757360304cf68879ac0a264536d5",
       "session_id": "a8b952a2353a43c5b8b6461d5901abad"
     }
   ]
