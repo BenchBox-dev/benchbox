@@ -70,8 +70,9 @@ DataFrame runs follow the same rule.
 
 DataFrame combinations that validate row counts: TPC-H at SF 0.01, 0.1 and 1,
 seeded or not (a seeded run checks fixed-count queries exactly and range-checks
-the parameter-sensitive ones; a count inside the range but not equal to the
-reference is recorded as a documented skip); SSB at the scale factors
+the parameter-sensitive ones; a count inside a range is recorded as passed, and
+a loose-tolerance query whose count is not exact is recorded as a documented
+skip); SSB at the scale factors
 with recorded counts; TPC-DS at the scale factors with recorded subscale counts
 when the run uses the reference seed. DataFrame TPC-DS at SF 1 records
 `uncertain`: the SF 1 answer files hold the qualification parameters, and the

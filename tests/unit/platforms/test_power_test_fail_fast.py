@@ -569,7 +569,7 @@ class TestConsoleStatusMatchesExitClassification:
         )
 
     @pytest.mark.parametrize("failed_queries", [0, 1])
-    @pytest.mark.parametrize("status", sorted(NON_CLEAN_VALIDATION_STATUSES) + ["passed"])
+    @pytest.mark.parametrize("status", [*sorted(NON_CLEAN_VALIDATION_STATUSES), "passed", "warnings", "bogus"])
     def test_label_agrees_with_exit_code_helpers(self, status, failed_queries):
         from benchbox.cli.output import ConsoleResultFormatter
 
@@ -582,12 +582,15 @@ class TestConsoleStatusMatchesExitClassification:
             assert (label, color) == ("PARTIAL", "yellow")
         elif result_cli_failure_reason(result):
             assert (label, color) == ("FAILED", "red")
-        elif result_unvalidated_reason(result):
-            assert (label, color) == ("UNVALIDATED", "yellow")
-        else:
+        elif status == "passed":
+            assert result_unvalidated_reason(result) is None
             assert (label, color) == ("PASSED", "green")
+        else:
+            assert (label, color) == ("UNVALIDATED", "yellow")
+        if result_unvalidated_reason(result):
+            assert label == "UNVALIDATED"
 
-    @pytest.mark.parametrize("status", ["UNCERTAIN", "NOT_VALIDATED", "NOT_RUN", "UNKNOWN"])
+    @pytest.mark.parametrize("status", ["UNCERTAIN", "NOT_VALIDATED", "NOT_RUN", "UNKNOWN", "WARNINGS"])
     def test_unvalidated_run_with_all_queries_successful_is_not_red(self, status):
         from benchbox.cli.output import ConsoleResultFormatter
 

@@ -21,7 +21,6 @@ from benchbox.core.results.models import BenchmarkResults
 from benchbox.core.results.status import (
     normalize_validation_status,
     result_cli_failure_reason,
-    result_unvalidated_reason,
 )
 from benchbox.core.results.subscale_policy import (
     NONSTANDARD_COMPLIANCE_CLASS,
@@ -140,9 +139,10 @@ class ConsoleResultFormatter:
             return "FAILED", "red"
         if partial:
             return "PARTIAL", "yellow"
-        if result_unvalidated_reason(results):
-            return "UNVALIDATED", "yellow"
-        return "PASSED", "green"
+        status = normalize_validation_status(getattr(results, "validation_status", None))
+        if status in (None, "passed"):
+            return "PASSED", "green"
+        return "UNVALIDATED", "yellow"
 
     @staticmethod
     def _display_validation_status(results: BenchmarkResults, validation_details: dict[str, Any]) -> None:
