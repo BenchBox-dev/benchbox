@@ -660,17 +660,17 @@ def _run_status(run: Runner, repo: str, run_id: int) -> str | None:
     return out.strip() if code == 0 else None
 
 
-def _core_in_progress(run: Runner, repo: str, head: str) -> bool:
+def _ci_run_open(run: Runner, repo: str, head: str) -> bool:
     code, out = run(
         [
             "gh",
             "api",
             "--jq",
-            ".check_runs[].status",
-            f"repos/{repo}/commits/{head}/check-runs?check_name={PRODUCER_CHECK}&filter=latest&per_page=100",
+            ".workflow_runs[].status",
+            f"repos/{repo}/actions/workflows/ci.yml/runs?event=pull_request&head_sha={head}&per_page=100",
         ]
     )
-    return code == 0 and any(status.strip() not in ("", "completed") for status in out.splitlines())
+    return code == 0 and any(status.strip() in OPEN_RUN_STATUSES for status in out.splitlines())
 
 
 def still_blocked(run: Runner, repo: str) -> bool:
@@ -691,7 +691,7 @@ def still_blocked(run: Runner, repo: str) -> bool:
             return False
     if any(_run_status(run, repo, run_id) not in OPEN_RUN_STATUSES for run_id in sorted(run_ids)):
         return False
-    return not core_pending or _core_in_progress(run, repo, _last_head)
+    return not core_pending or _ci_run_open(run, repo, _last_head)
 
 
 def arm_waiting(

@@ -2041,13 +2041,19 @@ RUN_91 = pr_arm._waiting_reason("core", 91, pr_arm.FULL_RUN)
         ([RUN_91], {"/actions/runs/91": (0, "in_progress\n")}, "b" * 40, False),
         (
             [f"no verify-fast-duration verdict is recorded for {HEAD[:9]}: {pr_arm.CORE_PENDING}{HEAD[:9]}"],
-            {"check_name=core": (0, "in_progress\n")},
+            {"ci.yml/runs": (0, "completed\nin_progress\n")},
             HEAD,
             True,
         ),
         (
             [f"no verify-fast-duration verdict is recorded for {HEAD[:9]}: {pr_arm.CORE_PENDING}{HEAD[:9]}"],
-            {"check_name=core": (0, "completed\n")},
+            {"ci.yml/runs": (0, "completed\n")},
+            HEAD,
+            False,
+        ),
+        (
+            [f"no verify-fast-duration verdict is recorded for {HEAD[:9]}: {pr_arm.CORE_PENDING}{HEAD[:9]}"],
+            {"ci.yml/runs": (0, "")},
             HEAD,
             False,
         ),
