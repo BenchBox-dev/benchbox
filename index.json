@@ -5719,6 +5719,83 @@
       "start_head": "3a3ee9826a6ab939d6235d31e69056c789ac365e",
       "terminal_outcome": "deliver"
     },
+    "nightly-remediation": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/nightly-remediation",
+      "integration_head": "028bb5a2ca9074c9a87f3beed237dc8d86297a5d",
+      "integration_log": [
+        {
+          "at": "2026-11-17T17:50:03Z",
+          "head": "028bb5a2ca9074c9a87f3beed237dc8d86297a5d",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-nightly-remediation",
+      "lifecycle": "active",
+      "members": [
+        "perf-smoke-method2-baseline-20261117",
+        "corpus-drift-mirror-grace-20261117",
+        "gateway-probe-served-providers-20261117",
+        "green-sweep-clears-hidden-failures-20261117"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:daba6966dbafa9d0ecd0bd8b",
+      "owner_epoch": 0,
+      "owner_generation": "49fa8b1de7f2486546f4d6a36ae4dd55",
+      "project_id": "benchbox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "corpus-drift-mirror-grace-20261117": [
+          ".github/workflows/nightly-v2.yml",
+          ".github/workflows/corpus-drift-check.yml",
+          "scripts/corpus_drift.py",
+          "tests/unit/scripts/test_corpus_drift.py",
+          "tests/unit/scripts/test_corpus_drift_canary.py",
+          "tests/unit/test_sync_results_workflow.py",
+          "tests/unit/workflows/test_nightly_t3_workflow.py",
+          "docs/internal/nightly-t3.md",
+          "docs/internal/results-phase-2-runbook.md",
+          "quality/docs-reference-rules.json",
+          "quality/docs-reference-inventory.json",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "gateway-probe-served-providers-20261117": [
+          "_project/scripts/review_gateway_host.sh",
+          "tests/unit/scripts/test_review_gateway_host.py",
+          "docs/internal/review-gateway-host.md",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "green-sweep-clears-hidden-failures-20261117": [
+          "_project/scripts/green_unmerged_sweep.py",
+          "tests/unit/scripts/test_green_unmerged_sweep.py",
+          "_project/scripts/fixtures/green_unmerged_fixture.json",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "perf-smoke-method2-baseline-20261117": [
+          "_project/baselines/perf_smoke_duckdb_tpch_001.json",
+          "_project/baselines/perf_smoke_duckdb_tpch_001.sources.json",
+          "scripts/perf_smoke_baseline.py",
+          "tests/unit/scripts/test_perf_smoke_baseline.py",
+          "docs/internal/perf-smoke.md",
+          ".github/workflows/nightly-v2.yml",
+          "tests/unit/workflows/test_nightly_t3_workflow.py",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ]
+      },
+      "scope_hash": "108ac4bd475cc2202bbfe71df4a9ba55baabdda5b6f715bd70fa8b01458cd68b",
+      "start_head": "028bb5a2ca9074c9a87f3beed237dc8d86297a5d",
+      "terminal_outcome": "deliver"
+    },
     "plan-capture-followups": {
       "accepted_members": {
         "heavy-run-cmd-dollar-expansion-20261111": "0dda5876404ca0dbb421e6aaa08f4b1bc627654c",
