@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The feature pull request is merged and each member item meets its own acceptance or records an owner-approved disposition."
+  ],
+  "context": "Created 2026-11-17 to hold the related items on one feature branch.",
+  "description": "Umbrella for one feature branch and one pull request (fix/tpcds-scale-bounds). Members: tpcds-dsdgen-hangs-below-sf001-20261112, tpcds-dsqgen-q9-timeout-sf10000-20261111. Owner decisions for every member were recorded on 2026-11-17.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1fad3edb102f5d3974476660",
+      "at": "2026-11-17T15:42:57Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a790dbe52ed045eeafdd34890af0a0d6",
+      "session_id": "989657b059c44ae4bade82cb666c453c"
+    }
+  ]
+}

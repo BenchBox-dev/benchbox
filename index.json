@@ -23988,6 +23988,13 @@
       "status": "open",
       "title": "TPC-DI after the specification unit: registry estimates, SF 100 measurement and documented differences"
     },
+    "feature-fix-tpcds-scale-bounds-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "TPC-DS scale bounds: dsdgen floor message and dsqgen Q9 at SF 10000"
+    },
     "feature-pr-landing-guards-20261111": {
       "claim": null,
       "needs": [],
