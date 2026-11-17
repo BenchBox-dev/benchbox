@@ -9,6 +9,7 @@ from typing import Any
 
 from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
 from benchbox.core.schemas import DatabaseConfig, SystemProfile
+from benchbox.utils.engine_memory import admitted_budget_gib
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,15 @@ def get_platform_config(
     platform_config.update(db_config_dict)
     options = database_config.options if isinstance(database_config.options, dict) else {}
     lift_explicit_options(database_config.type, options, platform_config)
+    marker = options.get("_explicit_platform_options")
+    if (
+        database_config.type == "duckdb"
+        and isinstance(marker, dict)
+        and "memory_limit" not in marker
+        and admitted_budget_gib() is not None
+    ):
+        platform_config.pop("memory_limit", None)
+        options = {key: value for key, value in options.items() if key != "memory_limit"}
     if options.get("force_recreate"):
         platform_config["force_recreate"] = True
     if platform_config.get("force_recreate"):
@@ -90,7 +100,7 @@ def get_platform_config(
             configured_memory_limit = options.get("memory_limit")
         if configured_memory_limit is not None:
             platform_config["memory_limit"] = configured_memory_limit
-        else:
+        elif not (database_config.type == "duckdb" and admitted_budget_gib() is not None):
             max_memory_limit = options.get("max_memory_limit_gb", 16)
             platform_config["memory_limit"] = f"{min(int(total_memory_gb_val * 0.8), max_memory_limit)}GB"
 

@@ -195,9 +195,11 @@ Precedence: an explicit `driver_memory` or `memory_limit` is never changed, neve
 silently raised and never lowered. If it plus the allowance exceeds the budget the
 run fails before the engine starts with an `EngineMemoryBudgetError` that names the
 option, the largest value that fits and the budget variable. A default that cannot fit
-(budget minus allowance below 1 GiB) fails the same way. The DuckDB value `4GB` is
-the built-in default, so a request for exactly `4GB` is treated as the default and
-derived; any other value is explicit. Spark clusters (non-`local` masters) and the
+(budget minus allowance below 1 GiB) fails the same way. Through the CLI, only a value
+the user passed with `--platform-option memory_limit=...` is explicit; the registry
+default (`8GB`) and the system-profile estimate are replaced by the derived cap. For
+programmatic use, the value `4GB` is the built-in default, so exactly `4GB` is
+treated as the default and derived; any other value is explicit. Spark clusters (non-`local` masters) and the
 other engines are not capped by this rule. Container and VM limits are not applied
 here: the Apple container runtime's footprint is not tree-attributed (see the
 sentinel section).
