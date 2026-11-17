@@ -24087,15 +24087,10 @@
       "title": "Agent docs: record the operational facts sessions kept rediscovering"
     },
     "feature-docs-python-api-scale-factor-range-20261117": {
-      "claim": {
-        "expires_at": "2026-11-18T19:33:58Z",
-        "generation": "324c31dbfc3946c7a5f26701aa1ebb3b",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f7ac14dda5358a7d48d793ed"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Site Python API pages: link the run-time scale-factor range"
     },
     "feature-feat-corpus-scale-policy-and-reruns-20261117": {
