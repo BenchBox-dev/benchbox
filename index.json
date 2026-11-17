@@ -47730,7 +47730,7 @@
       "needs": [],
       "priority": "medium",
       "status": "blocked",
-      "title": "Prove the primary-clone write guard blocks writes in Claude Code, Codex and Gemini"
+      "title": "Prove the primary-clone write guard blocks writes in Gemini CLI"
     },
     "write-primitives-adversarial-code-review-and-hardening": {
       "claim": null,

@@ -2,13 +2,13 @@
   "acceptance": [
     "Claude Code: met. On 2026-11-15, 2.1.323 refused a Write to the primary clone with the guard message.",
     "Codex: met by the separate upstream-limitation item codex-apply-patch-skips-pretooluse-hook-20261117, which owns the apply_patch test from here on.",
-    "Decision gate for Gemini: the item stays blocked until a Gemini CLI gets past setup for the owner's account (0.46.0 fails with IneligibleTierError or a setup-user error before any tool call). Before starting, check gemini --version and that a one-line prompt is answered.",
-    "Gemini: a live session started in the primary clone tries to create guard-probe-gemini.txt through its edit tool. The version and the observed result are recorded here, and the Gemini row in docs/agent/primary-clone-guard.md is updated. If the hook does not refuse, a fix merges, or a separate item names the upstream limitation.",
+    "Decision gate for Gemini: the item stays blocked until a Gemini CLI gets past setup for the owner's account. Before starting, check gemini --version and that a one-line prompt is answered.",
+    "Gemini: a live session started in the primary clone, with the workspace trusted, tries to create guard-probe-gemini.txt through its edit tool. Pass: Gemini prints the guard message and test ! -e guard-probe-gemini.txt holds. The version and the observed result are recorded here, and the Gemini row in docs/agent/primary-clone-guard.md is updated. If the hook does not refuse, a fix merges, or a separate item names the upstream limitation.",
     "Exit gate: if Gemini still cannot run on 2027-01-31, the owner decides whether to keep this item open or remove the Gemini hook wiring (.gemini/settings.json) as unsupported. The decision is recorded here.",
-    "Guardrails: probes create only guard-probe-<agent>.txt in the primary clone and delete it at once; nothing is ever committed in the primary clone; the hook wiring for other agents is not changed."
+    "Guardrails: probes create only guard-probe-<agent>.txt in the primary clone and delete it at once; nothing is ever committed in the primary clone; the hook wiring for other agents is not changed; the owner's Gemini account, tier or authentication is not changed to get past setup without the owner's decision."
   ],
   "context": "Owner decision 2026-11-13: retry a live test in each of Claude Code, Codex and Gemini. Any agent that still cannot be run is documented as relying on the preflight backstop, and this item stays open for that agent only.\n\nPR #4207 (merge 221384f35c). Live probes on 2026-11-13 from the primary clone, none reached an edit tool, no probe file created. Claude Code 2.1.309: claude --version and claude -p print nothing and spin CPU until killed at 60s and 200s. Codex codex-cli 0.162.1: session hooks ran, then 'You've hit your usage limit' before any tool call; the apply_patch case (openai/codex#27833) stays untested. Gemini CLI 0.46.0: announced the primary-clone-write-guard project hook, then IneligibleTierError (client no longer supported for Gemini Code Assist for individuals). All three remain unproven and rely on the preflight backstop; table in docs/agent/primary-clone-guard.md. Item stays open.\n\n2026-11-15 live probes from the primary clone: Claude Code 2.1.323 refused a Write with the guard message (enforced). Codex 0.162.1 created a file with apply_patch (deleted immediately). In a scratch repo with a catch-all PreToolUse hook exiting 2, Codex 0.162.1 and 0.169.0 never called PreToolUse for apply_patch, so the gap is upstream (openai/codex#27833, open); the guard script refuses the apply_patch payload when fed it directly. Gemini CLI 0.46.0 still fails before any tool call (setup-user error). Docs updated in PR #4252. Remaining: Gemini once it runs, and Codex once upstream fires the hook.\n\n2026-11-17: narrowed to Gemini. Claude Code is enforced; Codex moved to codex-apply-patch-skips-pretooluse-hook-20261117. Since PR #4265 (04929364fb) the preflight backstop also catches new untracked, non-ignored files, so an unhooked agent's new file in the primary clone is reported after the fact. Gemini CLI is still 0.46.0. Blocked on Gemini running.",
-  "description": "PR #4143 added scripts/primary_clone_write_guard.py and wired it as a pre-tool hook for four agents: .omp/hooks/pre/primary-clone-write-guard.ts, .claude/settings.json, .codex/hooks.json and .gemini/settings.json. Only the omp hook was exercised against a live agent. The other three could not be tried when the change was made (expired login, usage limit, unsupported tier), so nobody has seen them refuse a write to the primary clone. Known risks: openai/codex#27833 reports Codex not enforcing a hook deny for apply_patch; Gemini runs project hooks only in a trusted workspace. If a hook does not fire, the only protection is the snapshot check in make agent-write-preflight, which reports after the write has happened.",
+  "description": "PR #4143 added scripts/primary_clone_write_guard.py and wired it as a pre-tool hook for four agents: .omp/hooks/pre/primary-clone-write-guard.ts, .claude/settings.json, .codex/hooks.json and .gemini/settings.json. The omp hook was proven when it was added. Claude Code 2.1.323 was proven on 2026-11-15, when it refused a Write. Codex moved to codex-apply-patch-skips-pretooluse-hook-20261117, because Codex does not call the hook for apply_patch. Gemini CLI remains: 0.46.0 fails with IneligibleTierError or a setup-user error before any tool call, and Gemini runs project hooks only in a trusted workspace. Until it is proven, a Gemini write to the primary clone is caught only after the fact by make agent-write-preflight, which since PR #4265 also reports new untracked, non-ignored files.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4143",
     "https://github.com/openai/codex/issues/27833",
@@ -53,6 +53,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "69f04bd5b0b84922b06617d15d33d3c3",
+      "session_id": "a8b952a2353a43c5b8b6461d5901abad"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f00380ac381b3b759bd4b6a8",
+      "at": "2026-11-17T21:31:32Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f55654e8de9341469d14f26158acb8d7",
       "session_id": "a8b952a2353a43c5b8b6461d5901abad"
     }
   ]
