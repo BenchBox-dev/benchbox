@@ -178,6 +178,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          save-cache: ${{ github.event_name != 'pull_request' }}
 
       - name: Install dependencies
         run: uv sync --group dev
@@ -228,6 +230,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          save-cache: ${{ github.event_name != 'pull_request' }}
 
       - name: Install dependencies
         run: uv sync --group dev
@@ -276,6 +280,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          save-cache: ${{ github.event_name != 'pull_request' }}
 
       - name: Install dependencies
         run: uv sync --group dev
@@ -330,6 +336,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          save-cache: ${{ github.event_name != 'pull_request' }}
 
       - name: Install dependencies
         run: uv sync --group dev
@@ -384,6 +392,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          save-cache: ${{ github.event_name != 'pull_request' }}
 
       - name: Install dependencies
         run: uv sync --group dev --extra singlestore
@@ -431,6 +441,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          save-cache: ${{ github.event_name != 'pull_request' }}
 
       - name: Install dependencies
         run: uv sync --group dev --extra firebolt

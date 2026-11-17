@@ -94,6 +94,8 @@ jobs:
         id: uv
         if: ${{ !cancelled() && steps.checkout.conclusion == 'success' && (needs.ci-paths.outputs.unit-docs == 'true' || needs.ci-paths.outputs.unit-results-data == 'true') }}
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
       - name: Run codespell
         id: spellcheck
         if: ${{ !cancelled() && steps.uv.conclusion == 'success' && needs.ci-paths.outputs.unit-docs == 'true' }}
@@ -267,6 +269,8 @@ jobs:
       - name: Install uv for release checks
         if: steps.release.outputs.release-check-needed == 'true'
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
 
       - name: Check release content
         if: steps.release.outputs.release-check-needed == 'true'
@@ -474,6 +478,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
 
       - name: Create virtual environment
         run: uv venv
@@ -500,6 +506,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
 
       - name: Install dependencies
         run: |
@@ -615,6 +623,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
 
       - name: Install focused test dependencies
         run: uv sync --group dev
@@ -649,6 +659,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
 
       - name: Validate changed audit develop SHA stamps
         shell: bash
@@ -695,6 +707,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
 
       - name: Install dependencies
         run: |
@@ -978,6 +992,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
 
       - name: Create virtual environment
         run: uv venv
@@ -1103,6 +1119,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
 
       - name: Install dependencies
         run: uv sync --group dev
@@ -1169,6 +1187,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
 
       - name: Install dependencies
         run: uv sync --group dev
@@ -1361,6 +1381,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
 
       - name: Create virtual environment
         run: uv venv
@@ -1486,6 +1508,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
 
       - name: Install dependencies
         run: uv sync --group dev
@@ -1561,6 +1585,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
 
       - name: Create virtual environment
         run: uv venv
@@ -1610,6 +1636,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
 
       - name: Create virtual environment
         run: uv venv
@@ -1639,6 +1667,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
 
       - name: Build package
         run: |
@@ -1693,6 +1723,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
 
       - name: Install dependencies
         run: |
@@ -1723,6 +1755,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
 
       - name: Install dependencies
         run: uv sync --group dev
@@ -1744,6 +1778,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
 
       - name: Verify public API symbols against the released wheel
         run: make api-contract-check
