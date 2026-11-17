@@ -1,10 +1,11 @@
 {
   "acceptance": [
-    "Decision gate: the owner confirms that release/* maintenance branches count as integration branches for worktree finish and reap. The recommended rule is a pattern, release/<major>.<minor>.x, not a literal list, so new lines need no code change. The decision is recorded here before any edit.",
-    "worktree-finish and worktree-reap give a 'remove' verdict to a clean worktree whose HEAD is exactly the merged head of a PR into release/0.5.x, using the same proofs as for develop (merged head, clean, nothing unpushed, managed provenance). Unit tests cover a release/<x>.x base being accepted and an arbitrary non-integration base (for example a feature branch) still being held.",
-    "A dry run of make worktree-reap no longer classes the three worktrees above as ambiguous because of their base, or each has already been removed by its owning session.",
-    "docs/internal/dev-loop-worktrees.md states the accepted bases.",
-    "Guardrails: no other safety condition is relaxed (dirty, unpushed, detached, open PR, locked, current worktree and primary clone are still kept); the remote branch is never deleted; worktrees owned by a live session are not removed by hand while testing; the release-line machinery other sessions are building is not edited, only the base check."
+    "Decision gate: the owner confirms that release/* maintenance branches count as integration branches for worktree finish, reap and audit. The recommended rule is a pattern, release/<major>.<minor>.x, not a literal list, so new lines need no code change. The decision is recorded here before any edit. If no decision is recorded, release the claim and edit nothing.",
+    "For a clean worktree whose HEAD is exactly the merged head of a PR into release/0.5.x, worktree-finish removes it (its preview shows the removal) using the same proofs as for develop (merged head, clean, nothing unpushed, managed provenance). Unit tests cover a release/<x>.<y>.x base being accepted, and both an arbitrary branch and a non-matching name such as release/foo still being held.",
+    "make worktree-reap dry run: pass = none of BenchBox.wt-line-noop, BenchBox.wt-release-0.5.2rc1 and BenchBox.wt-line-starrocks-rc2 appears with the reason 'not a structural integration branch' (or each has already been removed by its owning session).",
+    "make worktree-audit classes the same worktrees consistently with finish and reap (STRUCTURAL_BASES also drives its 'wrong base' class), or the reason it differs is recorded here.",
+    "docs/internal/dev-loop-worktrees.md lists release/<major>.<minor>.x wherever it lists the accepted bases (the structural-branch definition and the reap paragraph).",
+    "Guardrails: only the base check in _project/scripts/worktree_audit.py and scripts/worktree_finish.py and its tests change, plus the docs. No other safety condition is relaxed: dirty, unpushed, detached, open PR, locked, the current worktree and the primary clone are still kept. Remote branches are never deleted. Worktrees owned by a live session are not removed by hand while testing."
   ],
   "description": "STRUCTURAL_BASES in _project/scripts/worktree_audit.py is {develop, release, published-results}, and scripts/worktree_finish.py holds any worktree whose merged PR targets another base with hold_code non_structural_base. Maintenance-line work now merges into release/0.5.x (docs/internal/release-guide.md describes release/* lines, and trunk.yml and the review policy already cover release/**). On 2026-11-17 a make worktree-reap dry run classed three clean worktrees as ambiguous for this reason alone: BenchBox.wt-line-noop (PR #4249), BenchBox.wt-release-0.5.2rc1 (PR #4250) and BenchBox.wt-line-starrocks-rc2 (PR #4303), all merged into release/0.5.x. Every future maintenance-line worktree will pile up the same way and need removing by hand.",
   "links": [
@@ -21,6 +22,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "317aa9838eb54ae3bb4305bfa7e0d549",
+      "session_id": "a8b952a2353a43c5b8b6461d5901abad"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f00380ac381b3b759bd4b6a8",
+      "at": "2026-11-17T21:30:42Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "39a11b8b5bc245628dc5589f4dd75e67",
       "session_id": "a8b952a2353a43c5b8b6461d5901abad"
     }
   ]
