@@ -177,27 +177,30 @@ class TestStdoutSupport:
         assert result is False
 
 
-@pytest.mark.parametrize(("scale_factor", "streams"), [(0.01, False), (1.0, False), (10.0, True)])
-def test_compressed_generation_streams_per_table_only_above_scale_factor_one(
-    tmp_path: Path, scale_factor: float, streams: bool
+@pytest.mark.parametrize(
+    ("scale_factor", "compress", "parallel", "streams"),
+    [
+        (0.01, True, 1, False),
+        (1.0, True, 1, False),
+        (10.0, True, 1, True),
+        (10.0, False, 1, False),
+        (10.0, True, 4, False),
+    ],
+)
+def test_only_compressed_serial_runs_above_scale_factor_one_stream_each_table(
+    tmp_path: Path, scale_factor: float, compress: bool, parallel: int, streams: bool
 ) -> None:
     gen = TPCHDataGenerator(
-        scale_factor=scale_factor, output_dir=tmp_path, quiet=True, compress_data=True, compression_type="zstd"
+        scale_factor=scale_factor,
+        output_dir=tmp_path,
+        quiet=True,
+        parallel=parallel,
+        compress_data=compress,
+        compression_type="zstd" if compress else "none",
     )
-    gen._dbgen_exe = tmp_path / "dbgen"
     gen._stdout_support_cached = True
-    runs: list[list[str]] = []
 
-    with (
-        patch.object(gen, "_run_streaming_dbgen", return_value={"region": tmp_path / "region.tbl.zst"}) as streaming,
-        patch("benchbox.core.tpch.generator._stage_distributions"),
-        patch("benchbox.core.tpch.generator.flush_filesystem"),
-        patch("benchbox.core.tpch.generator.subprocess.run", side_effect=lambda cmd, **_: runs.append(cmd)),
-    ):
-        gen._run_dbgen_native(tmp_path / "work")
-
-    assert streaming.called is streams
-    assert [cmd[1:] for cmd in runs] == ([] if streams else [["-vf", "-s", str(scale_factor)]])
+    assert gen._streams_per_table() is streams
 
 
 class TestDataOrganizationConfig:
