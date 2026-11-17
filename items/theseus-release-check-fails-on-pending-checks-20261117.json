@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Unit tests with fake check-run payloads: an in-progress run that later succeeds passes (a) or yields the distinct pending message (b); a run that concludes failure, cancelled or skipped fails with its conclusion named; a missing run still fails.",
+    "A test shows the bounded wait ends with a failure naming the pending checks when they never finish (option a).",
+    "Workflow timeouts for the jobs that run the check are above the wait bound (option a).",
+    "Merged through the BenchBox close-out with required checks green."
+  ],
+  "description": "Defect. scripts/theseus_release_check.py (run from ci.yml, trunk.yml, trunk-coverage.yml and nightly-v2.yml) reads the check runs on the locked Theseus commit and, in _judge, reports any required check whose conclusion is not \"success\". A check that is still running has conclusion null, so it is reported as a failure (\"concluded None\") exactly like a real failure. Observed 2026-11-14 on BenchBox PR #4235 (Theseus lock 0.2.12 -> 0.2.13): core and four medium-test shards failed because the release check ran while Theseus's own test (py3.11) and test (py3.13) on the release commit were still in progress; both later concluded success and a rerun of the failed jobs passed. Every Theseus promotion opened soon after a Theseus merge can hit this.\n\nDecision gate (implementer, recorded here): either (a) treat queued or in-progress required runs as pending and poll them with a bounded wait (for example up to 15 minutes) before judging, or (b) fail fast with a distinct, clearly worded \"Theseus checks still running on <sha>; rerun when they finish\" message. Recommendation: (a), because it removes the manual rerun; (b) is the fallback if job time is a concern.\n\nGuardrails:\n- A failed, cancelled, skipped or missing required run still fails the check.\n- The wait is bounded, and the job's timeout stays above it.\n- No change to REQUIRED_CHECKS, the reachability check or the tree check.\n- No new network dependency beyond the GitHub API calls already made.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4235",
+    "scripts/theseus_release_check.py"
+  ],
+  "sessions": [
+    {
+      "actor": "joe-tractable-followups",
+      "at": "2026-11-17T13:52:21Z",
+      "client": "mcp",
+      "op": "create",
+      "op_id": "a40a7b5b9f5246cbabf0a068b3049379",
+      "session_id": "9fcef8070b9d4fcdb341814073ddadd4"
+    }
+  ]
+}

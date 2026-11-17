@@ -41922,6 +41922,13 @@
       "status": "done",
       "title": "Publish the parity-proven Theseus bytes and assemble independently approved first-promotion evidence"
     },
+    "theseus-release-check-fails-on-pending-checks-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Make the Theseus release check wait for, not fail on, Theseus checks still running"
+    },
     "theseus-release-review-record-check-20261113": {
       "claim": null,
       "needs": [],
