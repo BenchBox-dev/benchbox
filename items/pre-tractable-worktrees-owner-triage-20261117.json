@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Each of the 14 worktrees has a recorded owner decision and outcome here.",
+    "A rescan of /Users/joe/Developer/BenchBox.wt-*/.mcp.json finds todo-db only in worktrees recorded as kept, each with its reason."
+  ],
+  "description": "Owner follow-up to pre-tractable-worktrees-still-register-todo-db-20261112 (done 2026-11-14), which removed the 28 clean worktrees and kept the rest. 14 BenchBox.wt-* worktrees still register todo-db: 13 hold local work (uncommitted changes, or commits not on origin) and one, polars-probe, is clean but git-locked with the reason \"polars version probe measurement environment; do not remove\". None has a PR. Their tracker does not work as-is: worktrees pinned to todo-db 0.9.1-0.13.0 get E_SCHEMA from the schema-4 store, and the bare todo-db CLI their skill copy names is gone. The finished item's context lists each one with branch, dirty and unpushed counts and pinned version.\n\nDecision gate (owner, per worktree): keep as is (record why), resume (merge origin/develop so it runs tractable 1.1.1; then push or open a PR), or retire (push or deliberately abandon the local commits, then remove the worktree).\n\nGuardrails:\n- Nothing is removed, pushed, reset or unlocked without the owner's per-worktree decision recorded here.\n- Removal only after the tree is clean and its commits are on origin, or after the owner records that the commits are abandoned.\n- Never patch .mcp.json in place; never force-push.",
+  "links": [
+    "pre-tractable-worktrees-still-register-todo-db-20261112",
+    "worktree-finish-cannot-keep-branch-20261117"
+  ],
+  "sessions": [
+    {
+      "actor": "joe-tractable-followups",
+      "at": "2026-11-17T13:52:28Z",
+      "client": "mcp",
+      "op": "create",
+      "op_id": "48cd3eaa02b34ebabfcf7cc6ae375acd",
+      "session_id": "9fcef8070b9d4fcdb341814073ddadd4"
+    }
+  ]
+}
