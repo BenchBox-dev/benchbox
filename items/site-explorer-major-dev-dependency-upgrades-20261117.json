@@ -3,7 +3,7 @@
     "The allowlist entries added on 2026-11-17 are removed and the audit passes on `next`.",
     "Explorer tests, the site build, the browser suites and the visual comparison pass; any visual change is reviewed."
   ],
-  "context": "Filed 2026-11-17 when a new dependency advisory blocked a site docs PR; the owner chose a patch bump plus a time-limited allowlist and deferred the major upgrades here.",
+  "context": "Filed 2026-11-17 when a new dependency advisory blocked a site docs PR; the owner chose a patch bump plus a time-limited allowlist and deferred the major upgrades here.\n\n2026-11-17: benchbox-site #180 (881d681c86) bumped vite 6.4.4 to 6.4.6 (explorer) and astro 7.3.5 to 7.4.12 (website, fixing GHSA-mh32-jxcr-mh9f and GHSA-r3h5-4585-7x3w). Only GHSA-fc5q-39xc-vjpf (picomatch) is allowlisted, in both explorer/scripts/audit-high-allowlist.json and website/scripts/audit-high-allowlist.json, review_by 2026-12-17. No fixed picomatch release existed then; the website entry was verified build-time only (absent from website/dist). Remaining work: remove both entries once a fixed picomatch is reachable through vitest/tailwindcss/@preact/preset-vite/astro.",
   "description": "## Problem\nOn 2026-11-17 high advisories were published for picomatch (GHSA-fc5q-39xc-vjpf) and vite 6.4.4 (GHSA-8g5g-mxqh-grgj), reached through the explorer's dev and build tooling (vitest, tailwindcss, @preact/preset-vite, sucrase, chokidar). The `dependency audit` CI job on benchbox-site `next` then failed for every PR. By owner decision, vite was bumped to 6.4.6 and the remaining dev-only advisories were allowlisted in `explorer/scripts/audit-high-allowlist.json` with `review_by` 2026-12-17. `npm audit fix` stops on a peer conflict (`vitest@5.0.3` needs vite `^6.4.0 || ^7 || ^8`); the remaining fixes need major upgrades.\n\n## Change\nUpgrade vitest, tailwindcss and @preact/preset-vite (and vite if they require it) to versions without the advisories, fix any breakage, and remove the allowlist entries.\n\n## Decision gates\nThe implementer chooses the target versions. A tailwindcss major that changes generated CSS needs a visual comparison of the site and explorer before merge.\n\n## Verification rubric\nPass: `explorer/scripts/audit-high.mjs` passes with the entries removed; explorer unit tests, the site build, the browser suites and the visual comparison pass in CI. Fail: extending `review_by` without an upgrade, or allowlisting a runtime dependency.\n\n## Guardrails\n- Site repository rules: a PR to `next`, then to `main` with the next release.\n- No change to shipped runtime behaviour beyond what the upgrades require.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox-site/pull/179",
@@ -17,6 +17,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "35e9be4e68b94808acc3e70cd17ca5b9",
+      "session_id": "86b0e4ee68654aa992c62ae76dd23e81"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f7ac14dda5358a7d48d793ed",
+      "at": "2026-11-17T19:34:31Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "294652e33cba40269687745df9d59ecd",
       "session_id": "86b0e4ee68654aa992c62ae76dd23e81"
     }
   ]
