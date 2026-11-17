@@ -25482,7 +25482,9 @@
     },
     "heavy-guard-watchdog-20261030-deferral-1": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "feature-feat-heavy-guard-attribution-engine-caps-20261117"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Engine-level memory caps (DuckDB memory_limit, -Xmx, Spark driver memory) and per-service Apple container limits derived from the budget"
