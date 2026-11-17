@@ -1,7 +1,7 @@
 {
   "acceptance": [
     "The owner's choice (1, 2 or 3) and its date are recorded in this item's context",
-    "For 1 or 2: the window or host, how agents reach it, and its memory and CPU class are recorded here and appended to the context of each dependent item (develop-integration-failures-20261014, duckdb-tuned-template-ablation-20261008, tuning-evidence-benefit-rule-20261008)",
+    "For 1 or 2: the window or host, how agents reach it, and its memory and CPU class are recorded here and appended to the context of each dependent item (develop-integration-failures-20261014, duckdb-tuned-template-ablation-20261008, tuning-evidence-benefit-rule-20261008, clickhouse-server-tpch-q21-fails-at-5-25gib-20261117)",
     "For 3: each dependent item has its acceptance narrowed by the owner, with the reason recorded",
     "No admission or watchdog override is used or authorised by this item"
   ],
@@ -26,6 +26,14 @@
       "op": "update",
       "op_id": "69577687a15c45068957dc6ac8a679dd",
       "session_id": "71cadb46eee448f8a6d2019016ddc6eb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bfa5e7eb7cd30f69e1fe2571",
+      "at": "2026-11-17T21:19:32Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e24621d6daa24f239adcd7c9745af103",
+      "session_id": "0362803867fb4929927e576283fffc32"
     }
   ]
 }
