@@ -37738,6 +37738,13 @@
       "status": "done",
       "title": "Strip applied tuning statements when staging seed corpus bundles"
     },
+    "seeded-dataframe-tpch-sf1-has-no-row-count-validation-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "A seeded DataFrame TPC-H SF 1 run has no row-count validation while the same seeded SQL run is validated"
+    },
     "seeded-dataframe-tpch-validation-uncertain-20261111": {
       "claim": null,
       "needs": [],
