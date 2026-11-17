@@ -922,10 +922,18 @@ problem it finds. It verifies that:
   commit alone, and `scripts/release_releasable.py check --sha <sha>` runs the
   commit check without the release content checks.
 
-The `sqlglot-delivery` workflow adopts verified fork deliveries. It runs daily
-on `develop` in `BenchBox-dev/BenchBox` and on `workflow_dispatch`
-(`dry_run`, default true, and `retry`), and is driven by
-`scripts/sqlglot_delivery.py`.
+The `sqlglot-delivery` workflow adopts verified fork deliveries. It runs every
+6 hours, at :37 past 00, 06, 12 and 18 UTC, on `develop` in
+`BenchBox-dev/BenchBox` and on `workflow_dispatch` (`dry_run`, default true,
+and `retry`), and is driven by `scripts/sqlglot_delivery.py`.
+
+GitHub often starts scheduled runs hours late: between 2026-11-09 and
+2026-11-16 the fork controller (cron 05:41 UTC) started between 12:30Z and
+13:59Z and this workflow (then cron 06:37 UTC) started between 13:46Z and
+16:48Z, 7 to 10 hours late. Nothing orders the two schedules, so a fork release
+could otherwise wait a day for adoption. The expected worst-case adoption delay
+after the fork publishes is about 6 hours plus GitHub's schedule delay. A run
+with nothing new ends at state current in about a minute.
 
 - **Trust root.** `.github/sqlglot-delivery.json` fixes the producer
   repository, workflow path, branch `main`, allowed events, artifact prefix and
@@ -978,7 +986,7 @@ on `develop` in `BenchBox-dev/BenchBox` and on `workflow_dispatch`
   re-arms after a person disabled auto-merge or applied the hold. The one
   automation disarm it recovers from is the trunk-red disarm by
   `github-actions[bot]` (`trunk-red-disarm.yml`). The pull request is usually
-  not green on the run that opens it, so the next daily run arms it.
+  not green on the run that opens it, so a later scheduled run arms it.
 - **Kill switch and dry run.** Every mutating command refuses unless the
   repository variable `SQLGLOT_DELIVERY_ENABLED` is exactly `true`. A manual
   dispatch defaults to `dry_run`: the prepare job verifies the delivery and
