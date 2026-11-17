@@ -9,7 +9,7 @@
     {
       "category": "fixed",
       "breaking": false,
-      "text": "Seeded DataFrame TPC-H runs at scale factor 1 now check row counts against the reference: fixed-count queries exactly, parameter-sensitive ones skipped with a documented reason."
+      "text": "Seeded DataFrame TPC-H runs at scale factor 1 now check row counts against the reference: fixed-count queries exactly, parameter-sensitive ones by their recorded range."
     }
   ]
 }
