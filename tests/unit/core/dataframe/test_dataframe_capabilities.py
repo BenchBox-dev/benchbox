@@ -21,10 +21,8 @@ from benchbox.core.dataframe.capabilities import (
     validate_scale_factor,
 )
 from benchbox.core.dataframe.memory_model import (
-    BASELINE_SOURCE,
     PLATFORM_BASELINE_GB,
     SUBSET_MODEL_MAX_SF,
-    TABLE_SIZE_SOURCE,
 )
 
 pytestmark = [
@@ -366,10 +364,6 @@ class TestSubsetEstimate:
     @pytest.mark.parametrize("benchmark_id", ["ssb", "clickbench", "joinorder"])
     def test_benchmark_without_table_map_falls_back_to_full_estimate(self, benchmark_id):
         assert estimate_memory_required(benchmark_id, 10.0, "polars", ["Q1"]).scope == "full"
-
-    def test_model_inputs_record_their_source(self):
-        assert TABLE_SIZE_SOURCE
-        assert BASELINE_SOURCE
 
     def test_scale_factor_above_validated_range_falls_back_to_full_estimate(self):
         above = SUBSET_MODEL_MAX_SF + 1

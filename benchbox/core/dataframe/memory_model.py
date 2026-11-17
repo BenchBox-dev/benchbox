@@ -63,25 +63,11 @@ TABLE_SIZE_MODELS: dict[str, dict[str, TableSize]] = {
     "tpcds": TPCDS_TABLE_SIZES,
 }
 
-TABLE_SIZE_SOURCE = (
-    "Uncompressed generator output (dbgen .tbl, dsdgen .dat) summed per table at scale factors 1 and 10; "
-    "size at scale factor s is sf10_bytes * (s / 10) ** exponent, with the exponent fitted between SF1 and SF10 "
-    "and capped at 1."
-)
-
 PLATFORM_BASELINE_GB: dict[str, float] = {
     "polars": 2.0,
     "datafusion": 2.0,
     "pyspark": 4.0,
 }
-
-BASELINE_SOURCE = (
-    "Peak summed resident memory of the whole run process tree (CLI process, engine and, for PySpark, the JVM) "
-    "on a 16 GiB macOS arm64 host with Polars 2.1.0, DataFusion 55.0.0 and PySpark 4.2.0 (driver memory 4g). "
-    "Cold parquet-cache runs, which convert every table, peaked at 1.1-1.4 GiB for Polars and DataFusion at "
-    "SF1-SF10 regardless of the query subset, so both floors are 2.0 GiB; PySpark subsets peaked at up to "
-    "3.1 GiB, so its floor is 4.0 GiB. Data generation is a separate phase and is not covered."
-)
 
 _TEMPLATE_LAYOUT: dict[str, tuple[str, str, str, str]] = {
     "tpch": ("tpc-h", "queries", "{number}.sql", r"^Q?(\d+)$"),
