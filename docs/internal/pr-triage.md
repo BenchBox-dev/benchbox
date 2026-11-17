@@ -2,7 +2,7 @@
 
 Durable judgment rules for triaging open PRs against `develop` — the parts
 of PR triage that are stable enough to write down once, rather than
-rediscovered per-session. These are rules, not a walkthrough: they assume
+rediscovered in each session. These are rules, not a walkthrough: they assume
 familiarity with the dev-loop (`AGENTS.md`) and the auto-merge machinery
 (`scripts/pr_arm.py`, `_project/scripts/soundness_paths.py`).
 
