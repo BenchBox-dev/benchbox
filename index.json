@@ -30810,6 +30810,13 @@
       "status": "blocked",
       "title": "Owner: give agents their own GitHub identity so they cannot post stand-ins"
     },
+    "owner-confirm-provisional-decisions-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Owner: confirm or amend the provisional methodology and CLI decisions made on 2026-11-16"
+    },
     "owner-drop-oracle-review-required-20261021": {
       "claim": null,
       "needs": [

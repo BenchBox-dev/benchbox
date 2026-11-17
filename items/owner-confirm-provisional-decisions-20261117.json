@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Each listed decision carries an owner answer in this item.",
+    "EULA 4c(3) wording and citation format are answered or explicitly deferred with a date."
+  ],
+  "context": "Owner-only. Collected 2026-11-17 from the policy-docs and CLI hygiene deliveries.",
+  "description": "Agents made these provisional so work could land; each stands until the owner amends it.\nMethodology (ADR docs/internal/adr/adr-benchmark-methodology-provisional-policy.md, site methodology page): 1 warm-up plus at least 3 measured iterations; median with min/max spread; noise floor 1.25 x largest spread over 5 same-class runs; published results are warm-state only; hardware is not a ranking facet; regression threshold 10% plus floor. Open with no answer: whether the 'Derived from' wording satisfies EULA clause 4c(3), and the citation format for third parties.\nCLI (PR #4276): --non-interactive counts as non-interactive for the driver auto-install gate; package-smoke runs on any benchbox/** change; orphan-spin report thresholds 50% CPU for 300 s.\n\nOutcome: each line is confirmed or amended by the owner, and amendments are filed as items.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019",
+      "at": "2026-11-17T13:49:06Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "4f323daf1eda42ef9b033b3e0cd0a09d",
+      "session_id": "14462ffc9066466ca32d151c57f6a5de"
+    }
+  ]
+}
