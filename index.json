@@ -30837,10 +30837,15 @@
       "title": "Owner: give agents their own GitHub identity so they cannot post stand-ins"
     },
     "owner-confirm-provisional-decisions-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-18T15:08:38Z",
+        "generation": "20263fdcee394b07a597a50fd5766cb4",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Owner: confirm or amend the provisional methodology and CLI decisions made on 2026-11-16"
     },
     "owner-drop-oracle-review-required-20261021": {
