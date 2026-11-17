@@ -229,6 +229,12 @@ def test_oscillating_foreign_pressure_is_never_admitted_and_names_the_unstable_h
     assert sum(clock.sleeps) <= 60.0 + HELD.hold_seconds
 
 
+def test_a_host_that_never_clears_is_refused_at_the_retry_window_without_the_hold(clock: FakeClock) -> None:
+    result = rl.admit_heavy_work(HELD, reader=lambda: healthy(pressure_level=4))
+    assert not result.admitted
+    assert sum(clock.sleeps) == pytest.approx(30.0)
+
+
 def test_force_skips_the_hold_window(clock: FakeClock) -> None:
     result = rl.admit_heavy_work(HELD, reader=lambda: healthy(pressure_level=4), force=True)
     assert result.admitted and result.forced

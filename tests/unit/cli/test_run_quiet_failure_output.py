@@ -54,3 +54,37 @@ def test_replay_prints_only_the_tail_of_what_quiet_mode_suppressed(capsys: pytes
 def test_replay_prints_nothing_when_quiet_mode_suppressed_nothing(capsys: pytest.CaptureFixture[str]) -> None:
     printing.replay_quiet_output()
     assert capsys.readouterr().err == ""
+
+
+@pytest.mark.parametrize(
+    ("raised", "replayed"),
+    [
+        (SystemExit(1), True),
+        (SystemExit(0), False),
+        (SystemExit(None), False),
+        (RuntimeError("boom"), True),
+        (KeyboardInterrupt(), False),
+    ],
+)
+def test_only_failing_exits_replay_the_suppressed_output(
+    capsys: pytest.CaptureFixture[str], raised: BaseException, replayed: bool
+) -> None:
+    printing.set_quiet(True)
+    printing.get_console().print("suppressed detail")
+
+    with pytest.raises(type(raised)):
+        with printing.replay_quiet_output_on_failure(True):
+            raise raised
+
+    assert ("suppressed detail" in capsys.readouterr().err) is replayed
+
+
+def test_a_disabled_replay_guard_never_prints(capsys: pytest.CaptureFixture[str]) -> None:
+    printing.set_quiet(True)
+    printing.get_console().print("suppressed detail")
+
+    with pytest.raises(SystemExit):
+        with printing.replay_quiet_output_on_failure(False):
+            raise SystemExit(1)
+
+    assert capsys.readouterr().err == ""

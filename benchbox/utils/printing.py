@@ -72,6 +72,20 @@ def replay_quiet_output(max_chars: int = QUIET_REPLAY_MAX_CHARS) -> None:
         sys.stderr.flush()
 
 
+@contextlib.contextmanager
+def replay_quiet_output_on_failure(enabled: bool) -> Iterator[None]:
+    if not enabled:
+        yield
+        return
+    try:
+        yield
+    except BaseException as exc:
+        code = getattr(exc, "exit_code", getattr(exc, "code", None))
+        if isinstance(exc, Exception) or (code is not None and code != 0):
+            replay_quiet_output()
+        raise
+
+
 def fatal(msg: Any) -> None:
     get_console(quiet=False, stderr=True).print(msg, markup=False, highlight=False, soft_wrap=True)
 

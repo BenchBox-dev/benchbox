@@ -104,7 +104,7 @@ from benchbox.utils.cloud_storage import is_cloud_path
 from benchbox.utils.compression import CompressionManager
 from benchbox.utils.input_validation import MAX_QUERY_ID_LENGTH
 from benchbox.utils.output_path import normalize_output_root
-from benchbox.utils.printing import fatal, replay_quiet_output
+from benchbox.utils.printing import fatal, replay_quiet_output_on_failure
 from benchbox.utils.runtime_env import DriverAutoInstallRefused, InvalidDriverVersion
 
 logger = logging.getLogger(__name__)
@@ -347,13 +347,6 @@ def _execute_orchestrated_run(
 
 
 LOAD_FAILURE_MARKER = "BENCHBOX_LOAD_FAILURE_JSON="
-
-
-def _exit_status(exc: BaseException) -> int:
-    code = exc.exit_code if isinstance(exc, click.exceptions.Exit) else getattr(exc, "code", None)
-    if code is None:
-        return 0
-    return code if isinstance(code, int) else 1
 
 
 def _print_template_evidence_warning(result: Any, *, quiet: bool) -> None:
@@ -2242,7 +2235,7 @@ def run(
         allow_greybeam_inline_load=allow_greybeam_inline_load,
         acknowledge_billable_platform=acknowledge_billable_platform,
     )
-    try:
+    with replay_quiet_output_on_failure(bool(s.quiet)):
         try:
             _prepare_run_state(s)
 
@@ -2267,14 +2260,6 @@ def run(
         except InvalidDriverVersion as exc:
             console.print(f"[red]❌ {escape(str(exc))}[/red]")
             sys.exit(ExitCode.USAGE)
-    except (click.exceptions.Exit, SystemExit) as exc:
-        if _exit_status(exc) != 0 and s.quiet:
-            replay_quiet_output()
-        raise
-    except Exception:
-        if s.quiet:
-            replay_quiet_output()
-        raise
 
 
 __all__ = ["run", "BenchmarkOptionParamType", "PlatformOptionParamType", "setup_verbose_logging"]

@@ -806,7 +806,7 @@ def admit_heavy_work(
     read = read_host_pressure if reader is None else reader
     now_of = mono_time if clock is None else clock
     started = now_of()
-    deadline = retry_window_seconds + policy.hold_seconds
+    saw_clean = False
     stable_since: float | None = None
     samples = 0
     while True:
@@ -817,6 +817,7 @@ def admit_heavy_work(
         if not refusals:
             if stable_since is None:
                 stable_since = now
+                saw_clean = True
             held = now - stable_since
             if held >= policy.hold_seconds:
                 return AdmissionResult(True, (), pressure, samples)
@@ -828,10 +829,10 @@ def admit_heavy_work(
             refusals = (
                 *refusals,
                 f"condition did not hold for {policy.hold_seconds:g}s ({ADMIT_HOLD_SECONDS_ENV}); "
-                f"it cleared after {now - stable_since:.0f}s",
+                f"it held for {now - stable_since:.0f}s before failing again",
             )
         stable_since = None
-        remaining = deadline - (now - started)
+        remaining = retry_window_seconds + (policy.hold_seconds if saw_clean else 0.0) - (now - started)
         if remaining <= 0:
             return AdmissionResult(False, refusals, pressure, samples)
         _sleep(min(retry_interval_seconds, remaining))
