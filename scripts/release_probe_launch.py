@@ -16,7 +16,7 @@ RUNS_PAGE = 30
 FINISHED = "completed"
 QUEUED = frozenset({"queued", "waiting", "requested", "pending"})
 RUN_TIMEOUT = 1500.0
-QUEUE_TIMEOUT = 600.0
+QUEUE_TIMEOUT = 1200.0
 PROBED_PATHS = (
     ".github/workflows/release-v2.yml",
     ".github/workflows/release-v2-probe.yml",

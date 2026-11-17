@@ -15,7 +15,7 @@ jobs:
   probe:
     name: release-v2 probe
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     permissions:
       contents: read
       actions: write
@@ -53,4 +53,4 @@ jobs:
             --branch "$HEAD_BRANCH" \
             --head-sha "$HEAD_SHA" \
             --timeout-seconds 1500 \
-            --queue-timeout-seconds 600
+            --queue-timeout-seconds 1200
