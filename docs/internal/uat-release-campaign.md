@@ -34,6 +34,38 @@ Run rules:
   from a measured healthy startup (see "Managed Docker startup failures are
   non-fatal") before the stage-2 run.
 
+### StarRocks teardown evidence
+
+Every non-dry-run managed StarRocks shard captures `starrocks-evidence/`
+inside its UAT run-log directory before container teardown, including failed
+cells and runtime/startup exceptions. Existing release and trunk shard uploads
+copy this directory with the other run logs; no separate diagnostic workflow
+or benchmark-path polling is needed.
+
+The bundle contains FE/BE info, warning and output logs, FE GC logs and
+effective heap state, backend/blacklist snapshots, the BE `mem_limit`, FE
+blacklist configuration, allowlisted container state/restarts/memory, cgroup
+memory events/current/peak/limit, and host CPU/kernel/image metadata. Cloud
+provider is inferred from DMI vendor data when available, otherwise `unknown`.
+No environment/configuration dump is collected; credential-like log material
+is redacted.
+
+Collection has a 60-second deadline, at most 10 seconds per command and
+16 MiB per output file. Engine logs retain their bounded tail; up to eight
+GC files (newest modification times first) contribute at most 2 MiB each. Source sizes are included in log files;
+truncation, unavailable commands and collection failures are recorded in
+`manifest.json`. Use the
+engine timestamps to find the first blacklist insertion, then correlate
+FE RPC/GC and BE memory messages; `Alive: true` alone does not rule out a
+blacklisted backend.
+
+An `action=evidence status=failed` lifecycle event and stderr warning make
+incomplete collection visible without changing the original sweep outcome.
+Cleanup still runs if the collector raises. Preserve the uploaded bundle
+before removing a failed run root; do not commit raw engine logs.
+
+### Sweep summaries
+
 Every sweep writes a machine-readable `uat_gate_summary.json` beside
 `cells.jsonl` (versioned schema; verdict `green|red`, or `dry_run` for
 dry-run sweeps): config name, source provenance, container engine,
