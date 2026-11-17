@@ -927,7 +927,8 @@ def test_keep_branch_refuses_locked_worktree(tmp_path: Path):
 
 def test_default_mode_unchanged_without_keep_branch(tmp_path: Path):
     repo, wt, head_oid = _unpublished_worktree(tmp_path, branch="feat/default-mode")
-    res = evaluate_finish_preview(target_path=wt, expected_head_oid=head_oid, repo_root=repo)
+    evidence = write_canned_evidence(tmp_path / "evidence.json", [])
+    res = evaluate_finish_preview(target_path=wt, expected_head_oid=head_oid, repo_root=repo, evidence_file=evidence)
     assert res.status == "hold"
     assert res.hold_code == "no_pr"
     assert res.keep_branch is False
