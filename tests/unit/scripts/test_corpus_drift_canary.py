@@ -112,11 +112,16 @@ def _workflow_run_scripts() -> list[str]:
     return [step.get("run", "") for step in steps if step.get("run")]
 
 
-def _compare_step_script() -> str:
-    for script in _workflow_run_scripts():
-        if "PUBLISHED_ONLY" in script and "STALE_PATHS" in script:
-            return script
+def _compare_step() -> dict[str, object]:
+    workflow = yaml.safe_load(WORKFLOW_PATH.read_text(encoding="utf-8"))
+    for step in workflow["jobs"]["corpus-drift"]["steps"]:
+        if "scripts/corpus_drift.py" in step.get("run", ""):
+            return step
     raise AssertionError("corpus-drift-check.yml has no directional compare step")
+
+
+def _drift_script_text() -> str:
+    return (REPO_ROOT / "scripts" / "corpus_drift.py").read_text(encoding="utf-8")
 
 
 def test_workflow_is_scheduled_and_report_only() -> None:
@@ -129,16 +134,36 @@ def test_workflow_is_scheduled_and_report_only() -> None:
     assert "workflow_dispatch" in on_events
 
 
-def test_workflow_does_not_use_direction_blind_fetch_head_head_diff() -> None:
+def test_workflow_delegates_the_comparison_to_the_shared_script() -> None:
     text = WORKFLOW_PATH.read_text(encoding="utf-8")
     assert "FETCH_HEAD HEAD" not in text
+    step = _compare_step()
+    assert step["run"].strip() == 'python3 scripts/corpus_drift.py --profile canary --repository "${GITHUB_REPOSITORY}"'
+    assert step["env"]["GH_TOKEN"] == "${{ github.token }}"
     scripts = "\n".join(_workflow_run_scripts())
-    assert "--diff-filter=A" in scripts
-    assert "--diff-filter=D" in scripts
-    assert "--diff-filter=M" in scripts
-    assert "published-only" in scripts
-    assert "Do NOT run a full mirror" in scripts
-    assert "gh workflow run sync-results-data-to-published.yml" in scripts
+    assert "--diff-filter" not in scripts
+    assert "STALE_PATHS" not in scripts
+
+
+def test_workflow_requests_only_read_scopes_for_the_mirror_lookup() -> None:
+    workflow = yaml.safe_load(WORKFLOW_PATH.read_text(encoding="utf-8"))
+    assert workflow["permissions"] == {"contents": "read", "pull-requests": "read", "statuses": "read"}
+
+
+def test_workflow_fetches_develop_history_for_the_age_check() -> None:
+    scripts = "\n".join(_workflow_run_scripts())
+    assert '--shallow-since="72 hours ago" origin develop' in scripts
+    assert "--deepen=1 origin develop" in scripts
+
+
+def test_script_diff_filters_and_messages_are_direction_aware() -> None:
+    script = _drift_script_text()
+    assert 'diff_names(repo, "A"' in script
+    assert 'diff_names(repo, "D"' in script
+    assert 'diff_names(repo, "M"' in script
+    assert "published-only" in script
+    assert "Do NOT run a full mirror" in script
+    assert "gh workflow run sync-results-data-to-published.yml" in script
 
 
 def test_workflow_includes_published_tip_privacy_scan() -> None:
@@ -224,17 +249,18 @@ def test_classifier_in_sync_when_trees_match(tmp_path: Path) -> None:
 
 
 def test_mirror_recommendation_only_for_stale_not_published_only() -> None:
-    scripts = "\n".join(_workflow_run_scripts())
-    published_only_block = scripts.split("published-only")[1].split("Develop-ahead")[0]
+    script = _drift_script_text()
+    published_only_block = script.split("def report_published_only")[1].split("def report_in_sync")[0]
     assert "Do NOT run a full mirror" in published_only_block
-    assert "gh workflow run sync-results-data-to-published.yml --ref develop" in scripts
-    assert "union-overlay" in scripts or "union overlay" in scripts.lower()
+    assert "SYNC_WORKFLOW_COMMAND" not in published_only_block
+    assert "gh workflow run sync-results-data-to-published.yml --ref develop" in script
+    assert "union-overlay" in script or "union overlay" in script.lower()
 
 
 def test_canary_mixed_drift_does_not_recommend_wipe_based_full_mirror() -> None:
-    script = _compare_step_script()
-    assert 'if [[ -n "${PUBLISHED_ONLY}" ]]; then' in script
-    stale_section = script.split('if [[ -z "${STALE_PATHS}" ]]')[1]
+    script = _drift_script_text()
+    assert "if published_only:" in script
+    stale_section = script.split("def report_stale_failure")[1].split("def check_corpus")[0]
     assert "wipe-based full mirror" in stale_section
     assert "Do NOT use a wipe-based full mirror" in stale_section
     assert "git rm -rf results-data/bundles" in stale_section

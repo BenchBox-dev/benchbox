@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
+  statuses: read
 
 concurrency:
   group: corpus-drift-check
@@ -24,85 +26,18 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Compare the mirrored corpus paths (directional)
+      - name: Fetch published-results and recent develop history
         run: |
           set -euo pipefail
           git fetch --no-tags --depth=1 origin published-results:refs/remotes/origin/published-results
+          git fetch --no-tags --shallow-since="72 hours ago" origin develop \
+            && git fetch --no-tags --deepen=1 origin develop \
+            || echo "::warning::Could not deepen develop history; mirror grace fails closed for stale paths."
 
-          PUB=origin/published-results
-          DEV=HEAD
-
-          if ! git cat-file -e "${PUB}:results-data" 2>/dev/null; then
-            echo "::error::published-results has no results-data/ tree"
-            exit 2
-          fi
-
-          PATHSPECS=(
-            'results-data/bundles'
-            'results-data/CORPUS_NOTES.md'
-            'results-data/SEED_CORPUS_SPEC.md'
-            'results-data/README.md'
-            'results-data/validate_corpus.py'
-            'benchbox/validation/bundle.py'
-            'benchbox/core/results/query_status.py'
-            'benchbox/core/results/schema_policy.py'
-            'benchbox/core/results/subscale_policy.py'
-            'benchbox/core/results/timing_fields.py'
-            'scripts/validate_submission.py'
-            'scripts/publication/validator_parity.py'
-            'scripts/generate_corpus_inventory.py'
-          )
-
-          DEVELOP_AHEAD=$(git diff --name-only --diff-filter=A "${PUB}" "${DEV}" -- "${PATHSPECS[@]}" || true)
-          PUBLISHED_ONLY=$(git diff --name-only --diff-filter=D "${PUB}" "${DEV}" -- "${PATHSPECS[@]}" || true)
-          CONTENT_CHANGED=$(git diff --name-only --diff-filter=M "${PUB}" "${DEV}" -- "${PATHSPECS[@]}" || true)
-
-          STALE_PATHS=$(printf '%s\n%s\n' "${CONTENT_CHANGED}" "${DEVELOP_AHEAD}" | sed '/^$/d' || true)
-
-          if [[ -n "${PUBLISHED_ONLY}" ]]; then
-            PO_COUNT=$(printf '%s\n' "${PUBLISHED_ONLY}" | sed '/^$/d' | wc -l | tr -d ' ')
-            echo "::notice::published-results has ${PO_COUNT} path(s) not on develop (published-only)."
-            echo "These are expected accepted archive submissions that are not in"
-            echo "develop's curated seed. Do NOT run a full mirror"
-            echo "to clear this list — that would delete public content."
-            echo "Published-only paths (first 40):"
-            printf '%s\n' "${PUBLISHED_ONLY}" | head -40
-            echo ""
-          fi
-
-          if [[ -z "${STALE_PATHS}" ]]; then
-            if [[ -z "${PUBLISHED_ONLY}" ]]; then
-              echo "Corpus is in sync between develop and published-results."
-            else
-              echo "No develop-ahead drift. published-only paths were reported above (non-fatal)."
-            fi
-            exit 0
-          fi
-
-          COUNT=$(printf '%s\n' "${STALE_PATHS}" | wc -l | tr -d ' ')
-          echo "::error::published-results corpus is ${COUNT} path(s) behind develop (develop-ahead or content-changed)."
-          echo "The public corpus is stale. If develop has since sanitized or"
-          echo "corrected bundles, the public branch is still serving the old"
-          echo "content."
-          echo ""
-          echo "Develop-ahead / content-changed paths (first 40):"
-          printf '%s\n' "${STALE_PATHS}" | head -40
-          echo ""
-          if [[ -n "${PUBLISHED_ONLY}" ]]; then
-            echo "Published-only paths also exist (see notice above)."
-            echo "Develop-ahead can be mirrored with the union-overlay sync that"
-            echo "overwrites develop's files under results-data/bundles without"
-            echo "deleting published-only community submissions."
-            echo "Do NOT use a wipe-based full mirror (git rm -rf results-data/bundles)"
-            echo "while published-only paths exist — that would delete public content."
-            echo "Run the non-destructive overlay mirror:"
-            echo "  gh workflow run sync-results-data-to-published.yml --ref develop"
-          else
-            echo "Mirror develop-ahead onto published-results (union overlay for"
-            echo "results-data/bundles; no wipe of published-only content):"
-            echo "  gh workflow run sync-results-data-to-published.yml --ref develop"
-          fi
-          exit 1
+      - name: Compare the mirrored corpus paths (directional)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/corpus_drift.py --profile canary --repository "${GITHUB_REPOSITORY}"
 
       - name: Install uv for the published-tip privacy scan
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
