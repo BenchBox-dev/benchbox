@@ -44461,6 +44461,13 @@
       "status": "done",
       "title": "tractable: update_item with not_before=\"\" does not clear a hold"
     },
+    "tractable-requests-exceed-client-timeout-outcome-unknown-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Tractable show_item and update_item calls take over 30 s and time out in the client, leaving writes in an unknown state"
+    },
     "trailing-delimiter-probe-swallows-read-errors": {
       "claim": null,
       "needs": [],
