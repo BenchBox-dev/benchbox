@@ -42277,6 +42277,13 @@
       "status": "done",
       "title": "Enforce full-delta Theseus promotion review in BenchBox before extracting the reviewer"
     },
+    "theseus-read-classifier-fail-closed-gaps-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Theseus: close the fail-open gaps in the read/write classifiers used for transient retries"
+    },
     "theseus-release-bootstrap-evidence-20261102": {
       "claim": null,
       "needs": [

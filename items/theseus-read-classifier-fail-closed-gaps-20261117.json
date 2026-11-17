@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Each listed shape is classified as a write, with a test.",
+    "review_check's read_only requires a query and shares transient_reads' mutation rule.",
+    "A long compare-path status still contains 'failed' within 140 characters (test).",
+    "Merged under G7 with independent review, released and locked."
+  ],
+  "description": "The independent review of Theseus #91 (transient-read retries) found three P3s. None is reachable by a current caller, but they fail open, and a future caller could reach them:\n1. review_check.py:372 `read_only` is true for any body whose \"query\" does not start with `mutation`, so a REST POST body or `# comment\\nmutation` would be retried. Require a \"query\" key and reuse transient_reads.MUTATION.\n2. transient_reads.py:33-39 classifies some hostile shapes as reads: combined short flags (`-iXPOST`), a multi-operation document with operationName naming a mutation, a document starting with a fragment, and a leading `,`. Treat anything not provably a single read operation as a write.\n3. status_text.py:292: a long /compare/<sha>...<sha> path fills the 140-character status before 'failed'. Shorten the path (for example to its first segments) so the outcome word always survives.\nGuardrails: fail closed (unknown means write, never retried); tests for each shape; G7 merge rule with independent review (gate change).",
+  "links": [
+    "https://github.com/joeharris76/theseus/pull/91"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b377757d77dcf10df273bc88",
+      "at": "2026-11-17T19:37:28Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "13ab4af6211d4e16b6627ec4881dd75f",
+      "session_id": "02427f3e9a9d4e6b8fd746ddd1cb8f32"
+    }
+  ]
+}
