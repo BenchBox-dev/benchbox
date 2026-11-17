@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "The DataFrame memory guard now estimates memory from the tables the selected --queries read (TPC-H and TPC-DS, Polars, DataFusion and PySpark, up to scale factor 10) instead of the whole benchmark, with a per-platform minimum, so small query subsets at larger scale factors are no longer refused for tables they never touch. The refusal message states whether the figure is a subset or a full-benchmark estimate and lists the tables counted; other benchmarks, platforms and scale factors keep the full-benchmark estimate."
+    }
+  ]
+}
