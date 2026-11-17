@@ -13158,7 +13158,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "Feature batches cannot run members as subagents of the leader without overriding the identity rule"
     },
     "batch-member-remerge-recheck-cost-20261112": {

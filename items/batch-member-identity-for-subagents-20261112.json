@@ -5,6 +5,7 @@
   ],
   "context": "2026-11-15, from the session that delivered the rule change. The second acceptance point is met: pull request #4170 (2026-11-12) documents subagent members as policy and states what it gives up, #4205 adds the dispatch prompt, and the todo skill says the same (skill-sync-skills#116). The first point (a subagent member's `take` is refused) was decided against: on 2026-11-13 the owner chose to accept that risk and batch-land-shared-identity-claim-detection-20261112 was dropped with that reason; a test on tractable 1.1.1 confirmed a same-actor `take` succeeds. This item is therefore a candidate to drop as resolved-by-decision unless the owner wants distinct per-subagent identities (`TRACTABLE_ACTOR`) pursued; that needs harness support for a per-subagent MCP server and was not attempted.",
   "description": "Gap. `docs/agent/batch-feature-delivery.md` says a member never runs as a subagent of its leader, because tractable derives a worker's identity from its MCP server process and subagents share the leader's server, so the tracker cannot tell a member's write from the leader's. The batch `df-distinct-remediation` (PR #4169) ran three members as subagents under an explicit owner override; the members were instructed to make no tracker call and made none, but the `E_BATCH_OWNER` guard and the landing-time tracker-write check gave no protection. The only compliant alternative is the owner starting one top-level session per member, which defeats unattended delivery.\n\nExpected: a supported way for one leader session to dispatch members with distinct tracker identities (for example a per-subagent `TRACTABLE_ACTOR`, or a read-only tracker binding for members), or a documented statement that the override is the accepted practice and what it gives up.\n\nGuardrails: changes to the batch loop are delivered serially and cannot use a batch to certify themselves. Do not weaken `E_BATCH_OWNER` for distinct identities.",
+  "drop_reason": "Owner decision 2026-11-17: resolved by the 2026-11-13 decision to accept that a subagent member shares the leader's tracker identity. The documentation half shipped in BenchBox #4170 and #4205 and skill-sync-skills#116. Per-subagent TRACTABLE_ACTOR identities are not pursued; they would need harness support for one MCP server per subagent.",
   "links": [
     "docs/agent/batch-feature-delivery.md"
   ],
@@ -24,6 +25,14 @@
       "op": "update",
       "op_id": "9d1ccc7901d04f84899b1194f5147e36",
       "session_id": "591869e3bc094f789799bcf43ff5f966"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:018071991691f1918967a0cb",
+      "at": "2026-11-17T16:23:36Z",
+      "client": "omp-coding-agent",
+      "op": "drop",
+      "op_id": "091c25593332449eac7c9c60eb3d5942",
+      "session_id": "218a128d0f8a45baa26cfaa946b2d790"
     }
   ]
 }
