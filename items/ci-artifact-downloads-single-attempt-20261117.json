@@ -1,12 +1,25 @@
 {
   "acceptance": [
-    "A unit test feeds a 503 ServerBusy then success to the pr-arm verdict download and shows pr-arm evaluates the verdict; a persistent 503 still refuses after the bounded budget.",
-    "Each listed single-attempt caller either retries transient failures with bounded backoff or records why it must not; nightly-v2.yml:494 no longer hides a failed download.",
-    "If the verdict moves to a check-run output or status, pr-arm reads it there and the artifact path is removed, not kept as a fallback.",
-    "Coordinates with pr-arm-cut-repeated-github-reads-20261117 and pr-arm-github-rate-limit-backoff-20261112 on the shared read helper; no read is cached across wait cycles."
+    "Each listed caller's current behaviour on a failed download is recorded first (retries or not, what the failure leads to), from reading the code on current develop.",
+    "pr-arm: a unit test with a stubbed runner feeds a 503 ServerBusy response then success and shows the verdict is evaluated; a test feeds persistent 503 and shows pr-arm refuses after the bounded budget with an outcome line naming the transient cause; a test shows a network timeout on the ruleset read is retried the same way.",
+    "If the gate decision chooses the check-run or status route, pr-arm reads the verdict there, the artifact read path is removed (no fallback), and a test shows a missing or mismatched-head verdict still refuses.",
+    "Every other caller that gates a decision either retries transient failures with bounded backoff (with a test) or the item records why not; nightly-v2.yml's best-effort read either stays with a recorded reason or fails visibly.",
+    "One real `make pr-arm WAIT=` run on a PR after the change arms normally; its outcome is quoted in the closeout."
   ],
-  "context": "Found 2026-11-17 by a read-only root-cause investigation of the egress 503. Guardrails: linked worktree (make worktree-create, then make agent-write-preflight), never the primary clone; one PR per repo; no live-cloud runs or credentials in Git or logs; heavy work only via lock-taking entry points or make heavy-run after make heavy-status; never start deliberate host load; comment policy; changelog.d fragment for user-facing change. Re-verify every cited file and line before acting; they are hints.",
-  "description": "Problem: on 2026-11-17 `make pr-arm` for PR #4274 refused with `HTTP 503: Egress is over the account limit` while downloading the 535-byte artifact fast-duration-verdict-4274-c6d657102. The 503 is Azure ServerBusy on GitHub's shared multi-tenant results storage (productionresultssa9), not a BenchBox quota; githubstatus showed no incident and a retry about 25 minutes later succeeded. scripts/pr_arm.py:277 runs the download once and lines 279-280 turn any non-zero exit into a refusal. Azure's documented guidance is bounded exponential backoff on 503. The same single-attempt pattern is in scripts/release_artifact_consumer.py:854, scripts/release_reuse_uat_evidence.py:386, scripts/sqlglot_delivery.py:341, scripts/trunk_duration_trend.py:365, scripts/trunk_uat.py:564 and .github/workflows/fast-duration-baseline-refresh.yml:101,247,251; .github/workflows/nightly-v2.yml:494 also hides the failure with `|| true`. Same day, a pr-arm for PR #4276 refused on `dial tcp ...: i/o timeout` reading the develop ruleset; a retry armed at once.\n\nOutcome: transient 5xx, ServerBusy and network timeouts on these reads are retried within a bounded budget, never treated as a pass; a persistent failure still refuses with a clear outcome line. Prefer publishing the fast-duration verdict as a check-run output or commit status so arming does not depend on blob storage at all.",
+  "context": "Decision gate: Before coding, choose between (a) bounded retry around the artifact download and (b) publishing the fast-duration verdict as a check-run output or commit status so arming no longer reads blob storage. Criteria: (b) wins if the verdict can be bound to the exact head SHA and produced by the same job; otherwise (a). Record the choice and reason on this item. This item needs pr-arm-cut-repeated-github-reads-20261117 (actively claimed, same file): wait for it to merge and use its read helper rather than adding a second one.\n\nItem guardrails: An unreadable or failed read is never a pass; retries are bounded inside the existing WAIT budget and never extend it; no read result is cached across wait cycles; no change to required checks, rulesets or the review gate; retry only idempotent GETs.\n\nVerification rubric: Pass = all acceptance tests green in make pr-preflight, plus the real pr-arm run quoted. Fail = any path where a persistent download failure arms the PR.\n\nBase guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight), never the primary clone; one PR per repository; no live-cloud runs and no credentials in Git or logs; heavy work (benchmarks, test tiers, servers) only through lock-taking entry points or make heavy-run after make heavy-status; never start deliberate CPU, memory or disk load, and tests inject readings instead; comment policy (make comment-policy-check); changelog.d fragment for user-facing change. Re-verify every cited file and line on current develop before acting; they are hints and drift. Stop and report instead of widening scope; scope removed during review is re-homed to a named item or dropped by the owner with a reason.\n\nOrigin: Found 2026-11-17 by a read-only root-cause investigation of the egress 503.",
+  "description": "Problem: on 2026-11-17 `make pr-arm` for PR #4274 refused with `HTTP 503: Egress is over the account limit` while downloading the 535-byte artifact fast-duration-verdict-4274-c6d657102. The 503 is Azure ServerBusy on GitHub's shared multi-tenant results storage (productionresultssa9), not a BenchBox quota; githubstatus showed no incident and a retry about 25 minutes later succeeded. In scripts/pr_arm.py (about line 277 on develop at 2026-11-17) `gh run download` runs once and any non-zero exit becomes a refusal. The same day a pr-arm for PR #4276 refused on `dial tcp ...: i/o timeout` reading the develop ruleset; an immediate retry armed. Other artifact readers that may have the same weakness, NOT yet verified per caller: scripts/release_artifact_consumer.py (artifact zip read ~854), scripts/release_reuse_uat_evidence.py (_gh_bytes ~369/386), scripts/sqlglot_delivery.py (~341), scripts/trunk_duration_trend.py (~365; has a sample-attempt loop at ~404 that may or may not retry a failed download), scripts/trunk_uat.py (~564), .github/workflows/fast-duration-baseline-refresh.yml (~101, 247, 251). .github/workflows/nightly-v2.yml (~494) downloads prior throughput baselines with `|| true` and prints the count found; that may be intended best-effort.\n\nOutcome: transient GitHub failures (5xx, ServerBusy, network timeouts) on artifact reads that gate a decision are retried within a bounded budget and never treated as a pass; a persistent failure still refuses with a clear outcome line.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4274",
+    "https://github.com/BenchBox-dev/benchbox/pull/4276",
+    "scripts/pr_arm.py",
+    "scripts/release_artifact_consumer.py",
+    "scripts/release_reuse_uat_evidence.py",
+    "scripts/sqlglot_delivery.py",
+    "scripts/trunk_duration_trend.py",
+    "scripts/trunk_uat.py",
+    ".github/workflows/fast-duration-baseline-refresh.yml",
+    ".github/workflows/nightly-v2.yml"
+  ],
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019",
@@ -14,6 +27,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "b2d14e15cddb440297051141ac0615d1",
+      "session_id": "14462ffc9066466ca32d151c57f6a5de"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019",
+      "at": "2026-11-17T13:59:59Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4e9967ab53d6454b82a8d54c41d6a1fd",
       "session_id": "14462ffc9066466ca32d151c57f6a5de"
     }
   ]
