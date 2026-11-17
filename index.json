@@ -14479,6 +14479,13 @@
       "status": "done",
       "title": "Restore CedarDB to the release UAT gate"
     },
+    "cedardb-tpcds-maintenance-unsupported-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "CedarDB has no TPC-DS maintenance (data maintenance) support, so official TPC-DS runs cannot run there"
+    },
     "centralize-ddl-translation-phase": {
       "claim": null,
       "needs": [

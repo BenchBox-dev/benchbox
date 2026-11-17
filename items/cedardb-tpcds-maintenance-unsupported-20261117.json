@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "A local CedarDB TPC-DS SF0.01 run with load, power, throughput (4 streams) and maintenance is recorded, or the reproduced blocking error is recorded",
+    "If supported: tpcds_maintenance_unsupported_reason no longer covers CedarDB, a unit test pins the capability, and post-maintenance row counts match DuckDB",
+    "If unsupported: the reason string cites the reproduced error"
+  ],
+  "description": "## Problem\nPR #4260 enabled TPC-H refresh functions on CedarDB (supports_refresh_functions = True) and fixed RF1's explicit BEGIN inside psycopg's implicit transaction (_begin_transaction now skips BEGIN when autocommit is False). It kept CedarDB TPC-DS maintenance off through tpcds_maintenance_unsupported_reason, because the same capability flag would otherwise have switched it on unverified. Official TPC-DS requires the maintenance phase (tpc_spec._REQUIRED_PHASES['tpcds'] includes maintenance), so official TPC-DS runs are refused on CedarDB.\n\n## Decision gate\nRun TPC-DS maintenance on CedarDB at SF0.01 locally (mocker, pinned image) with the #4260 transaction fix in place:\n- If it passes and data is consistent after maintenance, remove the unsupported reason and add CedarDB to the maintenance-capable set with a test.\n- If CedarDB lacks a needed SQL feature, record the exact error and keep the reason, citing the reproduced error (same standard as the release-gate compatibility skips).\n\n## Guardrails\n- Do not enable maintenance without a passing local run.\n- Verify row counts of the affected fact and dimension tables before and after maintenance against DuckDB on the same data.\n- Do not touch the TPC-H refresh path that #4260 verified.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/4260"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1213c3129d7753c9fd6512c0",
+      "at": "2026-11-17T15:18:36Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9094e5af1e034854b9140446c587f9a7",
+      "session_id": "71cadb46eee448f8a6d2019016ddc6eb"
+    }
+  ]
+}
