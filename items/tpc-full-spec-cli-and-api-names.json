@@ -4,6 +4,7 @@
     "Tests cover alias equivalence and the deprecation warnings",
     "Guides and help text use full-spec; old guide URLs redirect"
   ],
+  "context": "2026-11-17: the nightly throughput UAT configs (tests/uat/configs/uat-throughput-{duckdb,cedardb}-nightly.yaml) still invoke the deprecated run-official command (official: true). Removing run-official must migrate them to run --official/--full-spec in the same change, keeping phases load,power,throughput and the throughput assertions in tests/uat/throughput.py.",
   "description": "After enforcement lands, name the mode \"full-specification mode\" (\"full-spec\"). Add --full-spec (benchbox/cli/commands/run.py ~2472) and full_spec= (TPCH/TPCDS facades, BenchmarkConfig in core/schemas.py ~245, ~401); keep --official and official= as hidden deprecated aliases for at least one beta minor; give the already-deprecated run-official command (cli/commands/run_official.py) a removal target. Update the replay builder (core/schemas.py ~441), dry-run (cli/dryrun.py ~114), run resolution (cli/run_resolution.py), cli_help_catalog.yaml, docs/reference/cli/run.md, public-contracts.md, and the run-mode prompt and guide titles (rename tpc-h-official-guide.md / tpc-ds-official-guide.md with redirects). Add backward-compatibility registry rows for run-official (currently missing), --official, official=/BenchmarkConfig.official, --label unofficial-research and report import --include-unofficial.",
   "sessions": [
     {
@@ -13,6 +14,14 @@
       "op": "create",
       "op_id": "94e1b2df958746b2821a9af977d7f06e",
       "session_id": "bcebd139f88a4c38a6dc9549b9b03523"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1213c3129d7753c9fd6512c0",
+      "at": "2026-11-17T15:20:34Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1480bc6b21b944beba1f1741580bb6fd",
+      "session_id": "71cadb46eee448f8a6d2019016ddc6eb"
     }
   ]
 }
