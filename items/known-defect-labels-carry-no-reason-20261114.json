@@ -1,10 +1,17 @@
 {
   "acceptance": [
-    "A known-defect label can carry, or map to, a short human-readable reason that the summaries and result pages display.",
-    "Existing labels keep working; the TPC-DI SF1 runs show the scale-correction reason after the change."
+    "Core PR: bench.results and result_detail_metrics in the explorer browser DuckDB carry known_defect_reason, read_model_version is bumped, and a test builds results.duckdb from the TPC-DI SF1 sidecars and reads the scale-correction reason back.",
+    "Site PR, opened only after the core PR merges and the site inputs are republished: the Leaderboard (generic text near Leaderboard.tsx:1357) and the result summaries show the reason, and fall back to the generic text when it is absent; tests cover both.",
+    "An explorer build against the previous read_model_version file either still renders or refuses with the existing version-mismatch message; no blank page.",
+    "Existing labels keep working; the six TPC-DI SF1 runs show the scale-correction reason on the deployed rehearsal site."
   ],
-  "context": "Spans core (sidecar schema, validators) and the site (summary rendering). Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\n2026-11-17: core half delivered in PR #4273 (69a6416c6f): sidecars accept known_defect_reason (<=200 chars), KNOWN_DEFECT_REASONS gives defaults, the explorer pipeline emits the field, the six TPC-DI SF1 sidecars carry the scale-correction reason. Not done, so the item stays open: the site Explorer reads only explorer/results.duckdb, which has no such column. Remaining: (1) core adds known_defect_reason to bench.results and result_detail_metrics in the browser DuckDB schema and bumps read_model_version; (2) site Leaderboard (explorer/src/pages/Leaderboard.tsx, hard-coded text near line 1356) and summaries (formatTimingExclusion) display it, falling back to the generic text.",
+  "context": "Spans core (sidecar schema, validators) and the site (summary rendering). Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\n2026-11-17: core half delivered in PR #4273 (69a6416c6f): sidecars accept known_defect_reason (<=200 chars), KNOWN_DEFECT_REASONS gives defaults, the explorer pipeline emits the field, the six TPC-DI SF1 sidecars carry the scale-correction reason. Not done, so the item stays open: the site Explorer reads only explorer/results.duckdb, which has no such column. Remaining: (1) core adds known_defect_reason to bench.results and result_detail_metrics in the browser DuckDB schema and bumps read_model_version; (2) site Leaderboard (explorer/src/pages/Leaderboard.tsx, hard-coded text near line 1356) and summaries (formatTimingExclusion) display it, falling back to the generic text.\n\n2026-11-17 review fixes. Decision gate: core lands first; the site PR starts only after the republished site inputs carry the new column (check read_model_version in the published bundle). Item guardrails: follow the existing read-model version migration path, no hand-edited results.duckdb; reason text is plain and at most 200 characters, never raw error text; no change to which runs are ranked. Verification rubric: pass = all four acceptance points, with the rehearsal URL quoted. Fail = generic text shown for a run that has a reason, or an explorer error on an older bundle.",
   "description": "Problem: sidecar known_defects values are a closed enum in benchbox/validation/bundle.py with no reason text, so the result summaries show the generic 'Known defective data.' for every excluded run. Readers, and assistants quoting the page, cannot tell a loader bug from an old generator scale. The six TPC-DI SF1 bundles unranked on 2026-11-14 are an example: their reason lives only in CORPUS_NOTES.md.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4273",
+    "https://github.com/BenchBox-dev/benchbox-site/blob/main/explorer/src/pages/Leaderboard.tsx",
+    "benchbox/validation/bundle.py"
+  ],
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:126fbd0495f55925db7e22ce",
@@ -20,6 +27,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "cc17ec09c48645f3b23ab577d61d8876",
+      "session_id": "14462ffc9066466ca32d151c57f6a5de"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019",
+      "at": "2026-11-17T14:00:52Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "fa473d6fede8410ba0b0b1ec6b4b9bfa",
       "session_id": "14462ffc9066466ca32d151c57f6a5de"
     }
   ]
