@@ -14,6 +14,9 @@ VARIANTS = ("reuse", "fallback", "guarded-change")
 WORKFLOW_FILE = "release-v2.yml"
 RUNS_PAGE = 30
 FINISHED = "completed"
+QUEUED = frozenset({"queued", "waiting", "requested", "pending"})
+RUN_TIMEOUT = 1500.0
+QUEUE_TIMEOUT = 600.0
 PROBED_PATHS = (
     ".github/workflows/release-v2.yml",
     ".github/workflows/release-v2-probe.yml",
@@ -117,22 +120,42 @@ def launch(
 
 def wait_for(
     repository: str,
-    run_id: int,
+    run_ids: dict[str, int],
     *,
     runner: Gh = gh,
     sleep: Callable[[float], None] = time.sleep,
     clock: Callable[[], float] = time.monotonic,
-    timeout: float = 1500.0,
+    run_timeout: float = RUN_TIMEOUT,
+    queue_timeout: float = QUEUE_TIMEOUT,
     interval: float = 20.0,
-) -> dict[str, Any]:
-    deadline = clock() + timeout
-    while True:
-        run = runner("api", f"repos/{repository}/actions/runs/{run_id}")
-        if run.get("status") == FINISHED:
-            return run
-        if clock() >= deadline:
-            raise RuntimeError(f"run {run_id} did not finish within {timeout:g}s")
-        sleep(interval)
+    verdicts: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, dict[str, Any]]:
+    queue_deadline = clock() + queue_timeout
+    started_at: dict[str, float] = {}
+    verdicts = {} if verdicts is None else verdicts
+    while len(verdicts) < len(run_ids):
+        for variant, run_id in run_ids.items():
+            if variant in verdicts:
+                continue
+            run = runner("api", f"repos/{repository}/actions/runs/{run_id}")
+            now = clock()
+            if run.get("status") == FINISHED:
+                verdicts[variant] = run
+            elif run.get("status") in QUEUED:
+                if now >= queue_deadline:
+                    raise RuntimeError(
+                        f"run {run_id} for the {variant} probe was still queued after {queue_timeout:g}s and never "
+                        "started; the Actions runner backlog is the cause, not the release workflow"
+                    )
+            else:
+                started_at.setdefault(variant, now)
+                if now - started_at[variant] >= run_timeout:
+                    raise RuntimeError(
+                        f"run {run_id} for the {variant} probe started but did not finish within {run_timeout:g}s"
+                    )
+        if len(verdicts) < len(run_ids):
+            sleep(interval)
+    return verdicts
 
 
 def cancel(repository: str, run_id: int, runner: Gh = gh) -> None:
@@ -150,9 +173,9 @@ def run_probes(
     runner: Gh = gh,
     sleep: Callable[[float], None] = time.sleep,
     clock: Callable[[], float] = time.monotonic,
-    timeout: float = 1500.0,
+    run_timeout: float = RUN_TIMEOUT,
+    queue_timeout: float = QUEUE_TIMEOUT,
 ) -> int:
-    deadline = clock() + timeout
     known = {int(run["id"]) for run in list_runs(repository, branch, runner)}
     started: dict[str, int] = {}
     verdicts: dict[str, dict[str, Any]] = {}
@@ -162,12 +185,19 @@ def run_probes(
             known.add(run_id)
             started[variant] = run_id
             print(f"dispatched the {variant} probe as run {run_id}")
-        for variant, run_id in started.items():
-            remaining = max(deadline - clock(), 0.0)
-            verdicts[variant] = wait_for(repository, run_id, runner=runner, sleep=sleep, clock=clock, timeout=remaining)
+        wait_for(
+            repository,
+            started,
+            verdicts=verdicts,
+            runner=runner,
+            sleep=sleep,
+            clock=clock,
+            run_timeout=run_timeout,
+            queue_timeout=queue_timeout,
+        )
     except BaseException:
-        for run_id in started.values():
-            if run_id not in {int(run["id"]) for run in verdicts.values()}:
+        for variant, run_id in started.items():
+            if variant not in verdicts:
                 cancel(repository, run_id, runner)
         raise
     failed = False
@@ -184,7 +214,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--branch", required=True)
     parser.add_argument("--head-sha", required=True)
     parser.add_argument("--pull-request", type=int)
-    parser.add_argument("--timeout-seconds", type=float, default=1500.0)
+    parser.add_argument("--timeout-seconds", type=float, default=RUN_TIMEOUT)
+    parser.add_argument("--queue-timeout-seconds", type=float, default=QUEUE_TIMEOUT)
     args = parser.parse_args(argv)
     try:
         if args.pull_request is not None:
@@ -193,7 +224,13 @@ def main(argv: list[str] | None = None) -> int:
                 print("no release-v2 probe input changed; nothing to probe")
                 return 0
             print(f"probing because of: {', '.join(touched[:10])}")
-        return run_probes(args.repository, args.branch, args.head_sha, timeout=args.timeout_seconds)
+        return run_probes(
+            args.repository,
+            args.branch,
+            args.head_sha,
+            run_timeout=args.timeout_seconds,
+            queue_timeout=args.queue_timeout_seconds,
+        )
     except RuntimeError as exc:
         print(f"::error::{exc}", file=sys.stderr)
         return 1

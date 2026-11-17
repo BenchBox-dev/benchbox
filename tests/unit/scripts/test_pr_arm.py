@@ -73,6 +73,9 @@ class FakeGh:
         self.core = kwargs.get("core", ("completed", "success"))
         self.lookup_code = kwargs.get("lookup_code", 0)
         self.download = kwargs.get("download", (0, None))
+        self.download_script = list(kwargs.get("download_script", []))
+        self.rules_script = list(kwargs.get("rules_script", []))
+        self.rate_limit = kwargs.get("rate_limit")
         self.verdict_head = kwargs.get("verdict_head", self.local_head)
         self.changed_files = kwargs.get("changed_files", ["scripts/x.py"])
         self.rules = kwargs.get("rules", ["core"])
@@ -133,7 +136,7 @@ class FakeGh:
                 return self.lookup_code, "gh: HTTP 502"
             return 0, "" if self.verdict is None else f"555 {self.verdict_head}\n"
         if cmd[:3] == ["gh", "run", "download"]:
-            code, text = self.download
+            code, text = self.download_script.pop(0) if self.download_script else self.download
             if code != 0:
                 return code, text
             Path(cmd[cmd.index("-D") + 1], "fast-duration-verdict.json").write_text(
@@ -141,7 +144,7 @@ class FakeGh:
             )
             return 0, ""
         if cmd[:2] == ["gh", "api"] and "/rules/branches/" in cmd[-1]:
-            return 0, "\n".join(self.rules)
+            return self._rules()
         if cmd[:3] == ["gh", "api", "--paginate"] and "/actions/workflows/" in cmd[-1]:
             return self._workflow_runs(cmd)
         if cmd[:3] == ["gh", "api", "--paginate"] and "/check-runs?" in cmd[-1]:
@@ -155,7 +158,12 @@ class FakeGh:
             return handled
         raise AssertionError(f"unexpected command {cmd}")
 
+    def _rules(self) -> tuple[int, str]:
+        return self.rules_script.pop(0) if self.rules_script else (0, "\n".join(self.rules))
+
     def _tracker_call(self, cmd: list[str]) -> tuple[int, str] | None:
+        if cmd == ["gh", "api", "rate_limit"]:
+            return (0, json.dumps(self.rate_limit)) if self.rate_limit is not None else (1, "gh: HTTP 500")
         if cmd[:2] == ["gh", "api"] and cmd[2].endswith("/git/ref/heads/todo-state"):
             return 0, self.tracker_tip + "\n"
         if cmd[:2] == ["gh", "api"] and cmd[-1].endswith(f"/contents/index.json?ref={self.tracker_tip}"):
@@ -2099,3 +2107,318 @@ def test_attempt_reads_reuse_only_within_an_attempt_except_for_pinned_content() 
     assert calls.count(pinned) == 1
     assert calls.count(write) == 4
     assert calls.count(flaky) == 2
+
+
+TRANSIENT_503 = (1, "gh: HTTP 503: Egress is over the account limit")
+TRANSIENT_TIMEOUT = (1, 'Get "https://api.github.com/rules": dial tcp 140.82.1.6:443: i/o timeout')
+RATE_LIMITED = (1, "gh: HTTP 403: API rate limit exceeded for user ID 1")
+WALL_START = 1_800_000_000.0
+
+
+def _retrying(gh: FakeGh, seconds: float = 600.0) -> tuple[object, WaitClock]:
+    time = WaitClock()
+    budget = pr_arm.gh_transient.Budget(
+        seconds, clock=time.clock, sleep=time.sleep, wall=lambda: WALL_START + time.now - 100.0
+    )
+    return pr_arm.gh_transient.RetryingRunner(gh, budget), time
+
+
+def _arm_through(runner: object, **kwargs: object) -> int:
+    return pr_arm.arm(
+        "7",
+        None,
+        run=runner,
+        unpublished=lambda _checkout: [],
+        threads=lambda _run, _repo, _number: [],
+        gate=lambda *_a: [],
+        **kwargs,
+    )
+
+
+def test_a_503_on_the_artifact_download_is_retried_and_the_verdict_is_evaluated(capsys) -> None:
+    gh = FakeGh(download_script=[TRANSIENT_503])
+    runner, time = _retrying(gh)
+
+    assert _arm_through(runner) == 0
+    assert len([call for call in gh.calls if call[:3] == ["gh", "run", "download"]]) == 2
+    assert time.sleeps == [5.0]
+    assert "verify-fast-duration verdict for aaaaaaaaa is pass" in capsys.readouterr().out
+    assert len(gh.merged()) == 1
+
+
+def test_a_persistent_503_on_the_artifact_download_refuses_after_the_bounded_attempts(capsys) -> None:
+    gh = FakeGh(download=TRANSIENT_503)
+    runner, time = _retrying(gh)
+
+    assert _arm_through(runner) == 2
+    assert len([call for call in gh.calls if call[:3] == ["gh", "run", "download"]]) == 4
+    assert time.sleeps == [5.0, 15.0, 45.0]
+    outcome = _last_outcome_line(capsys)
+    assert outcome.startswith("pr-arm: outcome: refused: ")
+    assert "transient GitHub server error did not clear after 4 attempt(s)" in outcome
+    assert "Egress is over the account limit" in outcome
+    assert gh.merged() == []
+
+
+def test_a_network_timeout_on_the_ruleset_read_is_retried_the_same_way() -> None:
+    gh = FakeGh(rules_script=[TRANSIENT_TIMEOUT, TRANSIENT_TIMEOUT])
+    runner, time = _retrying(gh)
+
+    assert _arm_through(runner) == 0
+    assert time.sleeps == [5.0, 15.0]
+    assert len(gh.merged()) == 1
+
+
+def test_a_persistent_network_timeout_on_the_ruleset_read_never_arms(capsys) -> None:
+    gh = FakeGh(rules_script=[TRANSIENT_TIMEOUT] * 10)
+    runner, _ = _retrying(gh)
+
+    assert _arm_through(runner) != 0
+    assert "transient network timeout did not clear" in _last_outcome_line(capsys)
+    assert gh.merged() == []
+
+
+def test_a_rate_limit_sleeps_until_the_reported_reset_and_then_reads_again() -> None:
+    reset = WALL_START + 130.0
+    gh = FakeGh(
+        download_script=[RATE_LIMITED],
+        rate_limit={"resources": {"core": {"remaining": 0, "reset": reset}, "graphql": {"remaining": 9, "reset": 1}}},
+    )
+    runner, time = _retrying(gh)
+
+    assert _arm_through(runner) == 0
+    assert time.sleeps == [131.0]
+    assert len(gh.merged()) == 1
+
+
+def test_a_rate_limit_that_resets_after_the_wait_budget_refuses_naming_the_reset(capsys) -> None:
+    reset = WALL_START + 3600.0
+    gh = FakeGh(download=RATE_LIMITED, rate_limit={"resources": {"core": {"remaining": 0, "reset": reset}}})
+    runner, time = _retrying(gh, seconds=600.0)
+
+    assert _arm_through(runner) == 2
+    assert time.sleeps == []
+    outcome = _last_outcome_line(capsys)
+    assert outcome.startswith("pr-arm: outcome: refused: ")
+    assert "cannot be waited out inside the wait budget" in outcome
+    assert "resets at 2027-01-15T09:00:00Z" in outcome
+    assert gh.merged() == []
+
+
+def test_a_secondary_rate_limit_waits_a_minute_and_recovers() -> None:
+    gh = FakeGh(
+        download_script=[(1, "gh: HTTP 403: You have exceeded a secondary rate limit")],
+        rate_limit={"resources": {"core": {"remaining": 4000, "reset": WALL_START + 10}}},
+    )
+    runner, time = _retrying(gh)
+
+    assert _arm_through(runner) == 0
+    assert time.sleeps == [60.0]
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        (1, "gh: HTTP 403: Resource not accessible by integration"),
+        (1, "gh: HTTP 401: Bad credentials"),
+        (1, "gh: HTTP 404: Not Found"),
+    ],
+)
+def test_a_permanent_error_fails_at_once_without_a_retry(failure: tuple[int, str], capsys) -> None:
+    gh = FakeGh(download=failure)
+    runner, time = _retrying(gh)
+
+    assert _arm_through(runner, wait_on_pending_review=True) == 2
+    assert time.sleeps == []
+    assert len([call for call in gh.calls if call[:3] == ["gh", "run", "download"]]) == 1
+    assert _last_outcome_line(capsys).startswith("pr-arm: outcome: refused: ")
+    assert gh.merged() == []
+
+
+def test_an_exhausted_transient_read_inside_a_wait_is_waiting_not_refused(capsys) -> None:
+    gh = FakeGh(download=TRANSIENT_503)
+    runner, _ = _retrying(gh)
+
+    assert _arm_through(runner, wait_on_pending_review=True) == 2
+    outcome = _last_outcome_line(capsys)
+    assert outcome.startswith("pr-arm: outcome: waiting: ")
+    assert "transient GitHub server error did not clear" in outcome
+    assert gh.merged() == []
+
+
+def test_a_wait_recovers_from_a_transient_read_and_re_reads_the_current_head(capsys) -> None:
+    gh = FakeGh(download=TRANSIENT_503)
+    runner, _ = _retrying(gh, seconds=3600.0)
+    time = WaitClock()
+
+    def recover() -> None:
+        gh.download = (0, None)
+        gh.view = _view(headRefOid="b" * 40)
+
+    time.on_sleep.append(recover)
+    code = pr_arm.arm_waiting(
+        lambda: _arm_through(runner, wait_on_pending_review=True), lambda: None, 30, clock=time.clock, sleep=time.sleep
+    )
+
+    assert code == 2
+    assert "is not local HEAD" in _last_outcome_line(capsys)
+    assert gh.merged() == []
+
+
+def test_a_wait_that_recovers_arms_after_the_transient_read_clears() -> None:
+    gh = FakeGh(download=TRANSIENT_503)
+    runner, _ = _retrying(gh, seconds=3600.0)
+    time = WaitClock()
+    time.on_sleep.append(lambda: setattr(gh, "download", (0, None)))
+
+    code = pr_arm.arm_waiting(
+        lambda: _arm_through(runner, wait_on_pending_review=True), lambda: None, 30, clock=time.clock, sleep=time.sleep
+    )
+
+    assert code == 0
+    assert len(gh.merged()) == 1
+
+
+def test_a_wait_that_never_recovers_expires_naming_the_transient_cause(capsys) -> None:
+    gh = FakeGh(download=TRANSIENT_503)
+    runner, _ = _retrying(gh, seconds=3600.0)
+    time = WaitClock()
+
+    code = pr_arm.arm_waiting(
+        lambda: _arm_through(runner, wait_on_pending_review=True), lambda: None, 7, clock=time.clock, sleep=time.sleep
+    )
+
+    assert code == 2
+    outcome = _last_outcome_line(capsys)
+    assert "WAIT=7 expired" in outcome and "transient GitHub server error" in outcome
+    assert gh.merged() == []
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        "cannot read tracker batch plan-capture-followups: unparseable output (exit 2)",
+        'reading PR 4174 failed: Post "https://api.github.com/graphql": net/http: TLS handshake timeout',
+        "could not list the CI runs of aaaaaaaaa: gh: HTTP 502: Bad Gateway",
+    ],
+)
+def test_an_unreadable_state_error_is_waiting_inside_a_wait_and_refused_outside(
+    error: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def broken(*_args: object) -> list[str]:
+        raise LandingError(error)
+
+    def run(wait: bool) -> int:
+        gh = FakeGh()
+        code = pr_arm.arm(
+            "7",
+            None,
+            run=gh,
+            unpublished=lambda _checkout: [],
+            threads=lambda _run, _repo, _number: [],
+            suites=lambda *_a: [],
+            gate=lambda *_a: [],
+            batch=broken,
+            wait_on_pending_review=wait,
+        )
+        assert gh.merged() == []
+        return code
+
+    assert run(True) == 2
+    assert _last_outcome_line(capsys).startswith("pr-arm: outcome: waiting: live state could not be read yet")
+    assert run(False) == 1
+    assert _last_outcome_line(capsys).startswith("pr-arm: outcome: refused: live state could not be verified")
+
+
+def test_a_permanent_unreadable_state_error_still_refuses_inside_a_wait(capsys: pytest.CaptureFixture[str]) -> None:
+    def broken(*_args: object) -> list[str]:
+        raise LandingError("cannot read tracker batch x: batch not found")
+
+    gh = FakeGh()
+    code = pr_arm.arm(
+        "7",
+        None,
+        run=gh,
+        unpublished=lambda _checkout: [],
+        threads=lambda _run, _repo, _number: [],
+        suites=lambda *_a: [],
+        gate=lambda *_a: [],
+        batch=broken,
+        wait_on_pending_review=True,
+    )
+
+    assert code == 1
+    assert _last_outcome_line(capsys).startswith("pr-arm: outcome: refused: ")
+    assert gh.merged() == []
+
+
+def test_a_review_gate_server_error_is_waiting_inside_a_wait_and_refused_outside(capsys) -> None:
+    unreadable = (
+        f"a fresh review-gate evaluation of {HEAD[:9]} failed (exit 1): review-gate: error: cannot read #4170 "
+        "after 3 attempts: GitHub returned HTTP 503"
+    )
+
+    assert _arm_with_gate([unreadable], wait=True) == 2
+    assert _last_outcome_line(capsys).startswith("pr-arm: outcome: waiting: ")
+    assert _arm_with_gate([unreadable], wait=False) == 2
+    assert _last_outcome_line(capsys).startswith("pr-arm: outcome: refused: ")
+
+
+def test_a_trunk_read_that_fails_transiently_keeps_the_wait_going_and_never_arms(capsys) -> None:
+    time = WaitClock()
+    attempts, attempt = _scripted([WAITING, ARMED])
+    reads = ["the trunk state could not be read: gh run list failed: HTTP 403: API rate limit exceeded"] * 2 + [None]
+
+    code = pr_arm.arm_waiting(attempt, lambda: reads.pop(0), 60, clock=time.clock, sleep=time.sleep)
+
+    assert reads == []
+    assert len(attempts) == 2
+    assert code == 0
+
+
+def test_a_trunk_read_that_never_recovers_ends_the_wait_naming_the_cause(capsys) -> None:
+    time = WaitClock()
+    attempts, attempt = _scripted([WAITING])
+
+    code = pr_arm.arm_waiting(
+        attempt,
+        lambda: 'the trunk state could not be read: Post "https://api.github.com/graphql": TLS handshake timeout',
+        9,
+        clock=time.clock,
+        sleep=time.sleep,
+    )
+
+    assert code == 2
+    assert len(attempts) == 1
+    outcome = _last_outcome_line(capsys)
+    assert outcome.startswith("pr-arm: outcome: refused: WAIT=9 expired while the trunk check could not read GitHub")
+    assert "TLS handshake timeout" in outcome
+
+
+def test_a_trunk_refusal_that_is_not_transient_still_stops_the_wait(capsys) -> None:
+    time = WaitClock()
+    _, attempt = _scripted([WAITING])
+
+    assert (
+        pr_arm.arm_waiting(attempt, lambda: "develop is red: culprit #9", 60, clock=time.clock, sleep=time.sleep) == 2
+    )
+    assert "stopped waiting, the trunk check refuses" in _last_outcome_line(capsys)
+
+
+def test_main_builds_one_retry_budget_from_the_wait(monkeypatch: pytest.MonkeyPatch) -> None:
+    runners: list[object] = []
+    budgets: list[object] = []
+    monkeypatch.setattr(pr_arm, "arm", lambda pr, head, repo, **kwargs: runners.append(kwargs["run"]) or 0)
+    monkeypatch.setattr(pr_arm, "arm_waiting", lambda attempt, gate, minutes, **_: attempt())
+    real = pr_arm.new_budget
+    monkeypatch.setattr(pr_arm, "new_budget", lambda minutes: budgets.append(minutes) or real(minutes))
+
+    assert pr_arm.main([], env={"PR_ARM_WAIT": "15", "PR_ARM_WAIT_SET": "1"}) == 0
+    assert pr_arm.main([], env={}) == 0
+    assert budgets == [15, None]
+    assert all(isinstance(r, pr_arm.AttemptReads) for r in runners)
+
+
+def test_the_retry_budget_is_the_wait_or_a_short_default() -> None:
+    assert pr_arm.new_budget(60).remaining() == pytest.approx(3600.0, abs=5.0)
+    assert pr_arm.new_budget(None).remaining() == pytest.approx(pr_arm.gh_transient.DEFAULT_BUDGET_SECONDS, abs=5.0)

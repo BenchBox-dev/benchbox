@@ -18,6 +18,8 @@ from functools import partial
 from pathlib import Path, PurePosixPath
 from typing import Any, Protocol
 
+from scripts import gh_transient
+
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = Path(".github/sqlglot-delivery.json")
 PIN = "benchbox/_vendor/sqlglot.json"
@@ -65,7 +67,14 @@ class Api(Protocol):
     def download(self, path: str) -> bytes: ...
 
 
+def default_budget() -> gh_transient.Budget:
+    return gh_transient.Budget(gh_transient.DEFAULT_BUDGET_SECONDS)
+
+
 class GhApi:
+    def __init__(self, new_budget: Callable[[], gh_transient.Budget] = default_budget) -> None:
+        self.new_budget = new_budget
+
     def request(
         self,
         method: str,
@@ -88,10 +97,17 @@ class GhApi:
         return json.loads(result.stdout) if result.stdout.strip() else None
 
     def download(self, path: str) -> bytes:
-        result = subprocess.run(["gh", "api", path], capture_output=True, check=False)
-        if result.returncode:
-            raise DeliveryError(f"GET {path} failed: {result.stderr.decode(errors='replace').strip()[-400:]}")
-        return result.stdout
+        captured: list[bytes] = []
+
+        def run(command: list[str]) -> tuple[int, str]:
+            result = subprocess.run(command, capture_output=True, check=False)
+            captured[:] = [result.stdout]
+            return result.returncode, result.stderr.decode(errors="replace")
+
+        code, detail = gh_transient.RetryingRunner(run, self.new_budget())(["gh", "api", path])
+        if code:
+            raise DeliveryError(f"GET {path} failed: {detail.strip()[:400]}")
+        return captured[0]
 
 
 @dataclass(frozen=True)

@@ -18,6 +18,7 @@ from typing import Any, NamedTuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ci_text_edit_verdict
+import gh_transient
 import pr_base
 import pr_landing
 import pr_stale_base
@@ -510,10 +511,24 @@ def _review_verdict_pending(reason: str, head: str) -> bool:
     return pr_landing.review_gate_waiting(reason.split(GATE_NOT_PASSING, 1)[1], head)
 
 
+def _review_gate_unreadable(reason: str) -> bool:
+    return (
+        reason.startswith("a fresh review-gate evaluation of ")
+        and " failed (exit " in reason
+        and gh_transient.waiting_on(reason)
+    )
+
+
 def _is_waiting(reason: str, head: str, wait_on_pending_review: bool) -> bool:
     if any(marker in reason for marker in WAITING_MARKERS):
         return True
-    return wait_on_pending_review and _review_verdict_pending(reason, head)
+    if not wait_on_pending_review:
+        return False
+    return (
+        _review_verdict_pending(reason, head)
+        or gh_transient.reason_is_transient(reason)
+        or _review_gate_unreadable(reason)
+    )
 
 
 def arm(
@@ -607,6 +622,9 @@ def arm(
             return _outcome(f"refused: gh pr merge exited {code} for PR #{view['number']}: {out.strip()[:200]}", code)
         return _outcome(f"armed: PR #{view['number']} at head {local_head}", 0)
     except (pr_landing.LandingError, subprocess.SubprocessError, OSError, ValueError, KeyError, TypeError) as exc:
+        if wait_on_pending_review and gh_transient.waiting_on(exc):
+            print(f"pr-arm: not armed, live state could not be read yet: {exc}", file=sys.stderr)
+            return _outcome(f"waiting: live state could not be read yet: {exc}", 2)
         print(f"pr-arm: refusing, live state could not be verified: {exc}", file=sys.stderr)
         return _outcome(f"refused: live state could not be verified: {exc}", 1)
 
@@ -617,6 +635,10 @@ def _mono_time() -> float:
     except ImportError:
         from time import monotonic as mono_time
     return mono_time()
+
+
+def new_budget(minutes: int | None) -> gh_transient.Budget:
+    return gh_transient.Budget(minutes * 60.0 if minutes is not None else gh_transient.DEFAULT_BUDGET_SECONDS)
 
 
 def wait_minutes(raw: str | None) -> int | None:
@@ -705,9 +727,14 @@ def arm_waiting(
     deadline = clock() + minutes * 60.0
     code = attempt()
     fresh = True
+    unread_trunk: str | None = None
     while _last_outcome.startswith("waiting:"):
         remaining = deadline - clock()
         if remaining <= 0:
+            if unread_trunk is not None:
+                return _refused(
+                    f"WAIT={minutes} expired while the trunk check could not read GitHub: {unread_trunk}", 2
+                )
             if not fresh:
                 code = attempt()
                 fresh = True
@@ -721,8 +748,14 @@ def arm_waiting(
         )
         sleep(pause)
         refusal = trunk_gate()
+        if refusal and gh_transient.waiting_on(refusal):
+            print(f"pr-arm: the trunk state could not be read yet, trying again: {refusal}", file=sys.stderr)
+            unread_trunk = refusal
+            fresh = False
+            continue
         if refusal:
             return _refused(f"stopped waiting, the trunk check refuses: {refusal}", 2)
+        unread_trunk = None
         if blocked():
             print(
                 "pr-arm: what it is waiting on has not finished; the other checks are re-read when it does",
@@ -774,7 +807,9 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
         base = pr_base.validate(args.base)
     except ValueError as exc:
         return _refused(str(exc), 2)
-    reads = AttemptReads(pr_landing.live_run)
+    budget = new_budget(minutes)
+    reads = AttemptReads(gh_transient.RetryingRunner(pr_landing.live_run, budget))
+    trunk_run = gh_transient.RetryingRunner(trunk_revert.live_run, budget)
 
     def attempt() -> int:
         options: dict[str, Any] = {"run": reads.start_attempt()}
@@ -790,7 +825,7 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
         return attempt()
     return arm_waiting(
         attempt,
-        lambda: trunk_gate_refusal(args.pr, args.repo),
+        lambda: trunk_gate_refusal(args.pr, args.repo, trunk_run=trunk_run),
         minutes,
         blocked=lambda: still_blocked(pr_landing.live_run, args.repo),
     )

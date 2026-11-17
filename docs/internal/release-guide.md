@@ -382,6 +382,14 @@ gh workflow run release-v2.yml --ref <branch> -f tag=v0.0.0rc0 -f probe=fallback
 gh workflow run release-v2.yml --ref <branch> -f tag=v0.0.0rc0 -f probe=guarded-change
 ```
 
+The required `release-v2 probe` check starts all three variants for a pull
+request (`scripts/release_probe_launch.py`) and times queue and run separately.
+A dispatched run that is still queued after 600 s fails with `still queued ...
+and never started`, naming the Actions runner backlog; a run that has started
+gets 1500 s from its start to finish, and one that fails, is cancelled or times
+out still fails the check. A dispatch that never becomes visible fails after
+150 s naming the commit. Runs that did not finish are cancelled.
+
 `v0.0.0rc0` is the synthetic probe tag and the only tag a probe accepts. In
 probe mode:
 

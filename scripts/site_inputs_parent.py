@@ -14,6 +14,9 @@ import tomllib
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import gh_transient
+
 ROOT = Path(__file__).resolve().parents[1]
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 SITE_RECEIPT_RE = re.compile(r"^site-deploy receipt sha256:([0-9a-f]{64}) run:(\d+)(?: target:(\S+))?$")
@@ -64,11 +67,20 @@ def _git(*cmd: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(["git", *cmd], cwd=str(ROOT), check=False, text=True, capture_output=True)
 
 
+def _retry_budget() -> gh_transient.Budget:
+    return gh_transient.Budget(gh_transient.DEFAULT_BUDGET_SECONDS)
+
+
+def _gh_once(command: list[str]) -> tuple[int, str]:
+    proc = subprocess.run(command, check=False, text=True, capture_output=True)
+    return proc.returncode, proc.stdout if proc.returncode == 0 else proc.stderr
+
+
 def _gh(args: Sequence[str]) -> str:
-    proc = subprocess.run(["gh", *args], check=False, text=True, capture_output=True)
-    if proc.returncode != 0:
-        raise ParentResolutionError(f"gh {' '.join(args)} failed ({proc.returncode}): {proc.stderr[-2000:]}")
-    return proc.stdout
+    code, text = gh_transient.RetryingRunner(_gh_once, _retry_budget())(["gh", *args])
+    if code != 0:
+        raise ParentResolutionError(f"gh {' '.join(args)} failed ({code}): {text[:2000]}")
+    return text
 
 
 def resolve_commit(ref: str, label: str = "parent_core_sha") -> str:
@@ -278,14 +290,11 @@ def receipt_canonical_sha256(receipt: dict) -> str:
 
 def download_site_receipt(site_repo: str, run_id: str) -> dict:
     dest = tempfile.mkdtemp(prefix="site-receipt-")
-    proc = subprocess.run(
-        ["gh", "run", "download", run_id, "-R", site_repo, "-n", f"site-deploy-receipt-{run_id}", "-D", dest],
-        check=False,
-        text=True,
-        capture_output=True,
+    code, text = gh_transient.RetryingRunner(_gh_once, _retry_budget())(
+        ["gh", "run", "download", run_id, "-R", site_repo, "-n", f"site-deploy-receipt-{run_id}", "-D", dest]
     )
-    if proc.returncode != 0:
-        raise ParentResolutionError(f"cannot download the production receipt of run {run_id}: {proc.stderr[-1000:]}")
+    if code != 0:
+        raise ParentResolutionError(f"cannot download the production receipt of run {run_id}: {text[:1000]}")
     candidates = sorted(Path(dest).glob("*.json"))
     if not candidates:
         raise ParentResolutionError(f"the production receipt of run {run_id} holds no JSON")

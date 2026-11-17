@@ -196,6 +196,18 @@ every 3 minutes, and it runs the red-trunk check
 `armed` or `refused`: a verdict that comes back with findings ends the wait. When
 the time runs out it prints the last `waiting` outcome with
 `(WAIT=<minutes> expired)`. It never re-runs a job, rebases, or changes a hold.
+GitHub reads that fail with a rate limit (403/429), a server error (5xx,
+including the `Egress is over the account limit` ServerBusy response on artifact
+downloads) or a network timeout are retried inside the same budget: three
+retries with 5, 15 and 45 s backoff, and a rate limit sleeps until the reset
+that `gh api rate_limit` reports. Without `WAIT` the budget is 90 s; with it the
+budget is `WAIT` and is never extended. A read that still fails is never a pass:
+inside a wait it keeps the outcome `waiting` and the expiry line names the
+transient cause; a rate limit that resets after the budget refuses at once and
+names the reset time. Permanent errors (401, 404, other 403) fail immediately.
+`make pr-open` refuses without pushing when the local review could not look up
+the pull request because of such a failure, and prints the cause and the reset
+or retry guidance instead of opening a draft as if the review were unavailable.
 Do not write a polling loop around `make pr-arm`.
 
 ## Stale base guard

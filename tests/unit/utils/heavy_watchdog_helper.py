@@ -22,9 +22,15 @@ def touch_memory(mib: int) -> bytearray:
     return buffer
 
 
+def publish(path: Path, text: str) -> None:
+    staging = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    staging.write_text(text, encoding="utf-8")
+    os.replace(staging, path)
+
+
 def alloc(mib: str, pid_file: str) -> None:
     held = touch_memory(int(mib))
-    Path(pid_file).write_text(str(os.getpid()), encoding="utf-8")
+    publish(Path(pid_file), str(os.getpid()))
     time.sleep(60)
     del held
 

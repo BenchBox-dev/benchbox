@@ -19,6 +19,7 @@ file	scripts/path_filter_decision.py
 file	.github/path-filters.yml
 file	scripts/pr_arm.py
 file	scripts/pr_landing.py
+file	scripts/gh_transient.py
 file	scripts/local_review.py
 file	scripts/remote_closeout.py
 file	scripts/build_fast_duration_baseline.py

@@ -490,11 +490,28 @@ jobs:
             echo "::warning::could not list prior nightly-v2.yml runs; their Throughput@Size baselines are not counted"
             v2_ids=""
           fi
+          transient_failed=0
           for run_id in ${v2_ids} ${legacy_ids}; do
-            gh run download "${run_id}" --repo "$GITHUB_REPOSITORY" \
-              --pattern 'throughput-baseline-duckdb-tpch-sf1-*' --dir "${history}/${run_id}" 2>/dev/null || true
+            attempt=1
+            until err=$(gh run download "${run_id}" --repo "$GITHUB_REPOSITORY" \
+              --pattern 'throughput-baseline-duckdb-tpch-sf1-*' --dir "${history}/${run_id}" 2>&1); do
+              if ! python3 scripts/gh_transient.py --check "${err}"; then
+                echo "::notice::no Throughput@Size baseline downloaded from run ${run_id}: ${err}"
+                break
+              fi
+              if [ "${attempt}" -ge 3 ]; then
+                echo "::error::Throughput@Size baselines of run ${run_id} could not be downloaded after ${attempt} attempts, so the floor would silently count fewer samples: ${err}"
+                transient_failed=1
+                break
+              fi
+              sleep $((attempt * 10))
+              attempt=$((attempt + 1))
+            done
           done
           echo "Downloaded $(find "$history" -name 'throughput-baseline-*.json' | wc -l) baseline record(s)"
+          if [ "${transient_failed}" -ne 0 ]; then
+            exit 1
+          fi
 
       - name: Assert the requested stream count reached the driver and every stream succeeded
         if: ${{ !cancelled() }}

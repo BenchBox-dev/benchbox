@@ -22,7 +22,15 @@ HEAD = "a" * 40
 
 
 class FakeGh:
-    def __init__(self, conclusions: dict[str, str] | None = None, *, pending_polls: int = 1, cancel_fails=False):
+    def __init__(
+        self,
+        conclusions: dict[str, str] | None = None,
+        *,
+        pending_polls: int = 1,
+        queued_polls: int = 0,
+        visible_after: int = 0,
+        cancel_fails=False,
+    ):
         self.conclusions = {
             "reuse": "success",
             "fallback": "success",
@@ -30,6 +38,9 @@ class FakeGh:
             **(conclusions or {}),
         }
         self.pending_polls = pending_polls
+        self.queued_polls = queued_polls
+        self.visible_after = visible_after
+        self.list_calls = 0
         self.cancel_fails = cancel_fails
         self.runs: dict[int, dict] = {}
         self.variant_of: dict[int, str] = {}
@@ -55,10 +66,15 @@ class FakeGh:
             return None
         path = args[1]
         if "/actions/workflows/release-v2.yml/runs" in path:
+            self.list_calls += 1
+            if self.list_calls <= self.visible_after:
+                return {"workflow_runs": []}
             return {"workflow_runs": list(self.runs.values())}
         run_id = int(path.rsplit("/", 1)[1])
         self.polls[run_id] = self.polls.get(run_id, 0) + 1
-        if self.polls[run_id] <= self.pending_polls:
+        if self.polls[run_id] <= self.queued_polls:
+            return {"id": run_id, "status": "queued"}
+        if self.polls[run_id] <= self.queued_polls + self.pending_polls:
             return {"id": run_id, "status": "in_progress"}
         conclusion = self.conclusions[self.variant_of[run_id]]
         return {"id": run_id, "status": "completed", "conclusion": conclusion, "html_url": f"url/{run_id}"}
@@ -111,42 +127,104 @@ def test_the_variants_never_share_a_run():
     assert sorted(fake.polls) == sorted(fake.variant_of)
 
 
-def test_a_run_that_outlives_the_timeout_fails_and_is_cancelled():
+class FakeClock:
+    def __init__(self):
+        self.now = 0.0
+
+    def __call__(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.now += seconds
+
+
+def _timed(fake: FakeGh, **kwargs) -> int:
+    clock = FakeClock()
+    return launch.run_probes(REPOSITORY, BRANCH, HEAD, runner=fake, sleep=clock.sleep, clock=clock, **kwargs)
+
+
+def test_a_run_that_starts_and_outlives_the_run_limit_fails_and_is_cancelled():
     fake = FakeGh(pending_polls=10**6)
-    ticks = iter(range(0, 10**6, 100))
-    with pytest.raises(RuntimeError, match="did not finish"):
-        launch.run_probes(
-            REPOSITORY, BRANCH, HEAD, runner=fake, sleep=lambda _: None, clock=lambda: next(ticks), timeout=250.0
-        )
+    with pytest.raises(RuntimeError, match="started but did not finish within 100s"):
+        _timed(fake, run_timeout=100.0, queue_timeout=50.0)
     assert sorted(fake.cancelled) == sorted(fake.variant_of)
 
 
-def test_every_variant_is_bounded_by_one_overall_deadline(monkeypatch):
-    fake = FakeGh()
-    budgets: list[float] = []
-    clock_now = [0.0]
+def test_queue_time_does_not_count_against_the_run_limit():
+    fake = FakeGh(queued_polls=20, pending_polls=3)
+    assert _timed(fake, run_timeout=100.0, queue_timeout=600.0) == 0
+    assert fake.cancelled == []
 
-    def waiting(repository, run_id, **kwargs):
-        budgets.append(kwargs["timeout"])
-        clock_now[0] += 400.0
-        return {"status": "completed", "conclusion": "success", "html_url": ""}
 
-    monkeypatch.setattr(launch, "wait_for", waiting)
-    status = launch.run_probes(
-        REPOSITORY, BRANCH, HEAD, runner=fake, sleep=lambda _: None, clock=lambda: clock_now[0], timeout=1000.0
-    )
-    assert status == 0
-    assert budgets == [1000.0, 600.0, 200.0]
+def test_a_run_still_queued_past_the_queue_limit_fails_with_a_distinct_message_and_is_cancelled():
+    fake = FakeGh(queued_polls=10**6)
+    with pytest.raises(RuntimeError, match=r"still queued after 60s and never started") as raised:
+        _timed(fake, run_timeout=10**6, queue_timeout=60.0)
+    assert "did not finish" not in str(raised.value)
+    assert sorted(fake.cancelled) == sorted(fake.variant_of)
+
+
+@pytest.mark.parametrize("status", ["waiting", "requested", "pending"])
+def test_every_not_yet_started_status_counts_as_queued(status):
+    class Fake(FakeGh):
+        def __call__(self, *args):
+            result = super().__call__(*args)
+            if isinstance(result, dict) and result.get("status") == "queued":
+                return {**result, "status": status}
+            return result
+
+    fake = Fake(queued_polls=10**6)
+    with pytest.raises(RuntimeError, match="still queued"):
+        _timed(fake, run_timeout=10**6, queue_timeout=60.0)
+
+
+@pytest.mark.parametrize("conclusion", ["failure", "cancelled", "timed_out"])
+def test_a_run_that_starts_after_queueing_and_fails_still_fails_the_probe(conclusion):
+    fake = FakeGh({"fallback": conclusion}, queued_polls=5, pending_polls=2)
+    assert _timed(fake, run_timeout=500.0, queue_timeout=600.0) == 1
+
+
+def test_a_finished_run_is_not_cancelled_when_another_run_stays_queued():
+    class Fake(FakeGh):
+        def __call__(self, *args):
+            result = super().__call__(*args)
+            if isinstance(result, dict) and "status" in result and self.variant_of[result["id"]] == "guarded-change":
+                return {"id": result["id"], "status": "queued"}
+            return result
+
+    fake = Fake(pending_polls=0)
+    with pytest.raises(RuntimeError, match="still queued"):
+        _timed(fake, run_timeout=500.0, queue_timeout=60.0)
+    assert fake.cancelled == [next(i for i, v in fake.variant_of.items() if v == "guarded-change")]
+
+
+def test_a_dispatch_that_becomes_visible_late_is_still_adopted():
+    fake = FakeGh(visible_after=4)
+    assert _timed(fake, run_timeout=500.0, queue_timeout=600.0) == 0
+
+
+def test_a_dispatch_that_never_becomes_visible_ends_after_a_finite_wait_and_names_the_commit():
+    fake = FakeGh(visible_after=10**6)
+    clock = FakeClock()
+    with pytest.raises(RuntimeError, match="no release-v2.yml run at aaaaaaaaaa"):
+        launch.run_probes(REPOSITORY, BRANCH, HEAD, runner=fake, sleep=clock.sleep, clock=clock)
+    assert clock.now <= 30 * 5.0
+    assert fake.cancelled == []
 
 
 def test_a_failed_cancel_is_reported_without_hiding_the_original_failure(capsys):
     fake = FakeGh(pending_polls=10**6, cancel_fails=True)
-    ticks = iter(range(0, 10**6, 100))
     with pytest.raises(RuntimeError, match="did not finish"):
-        launch.run_probes(
-            REPOSITORY, BRANCH, HEAD, runner=fake, sleep=lambda _: None, clock=lambda: next(ticks), timeout=250.0
-        )
+        _timed(fake, run_timeout=100.0, queue_timeout=50.0)
     assert "could not cancel" in capsys.readouterr().err
+
+
+def test_the_main_command_passes_both_limits_to_the_probe(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(launch, "run_probes", lambda *a, **k: seen.update(k) or 0)
+    argv = ["--repository", REPOSITORY, "--branch", BRANCH, "--head-sha", HEAD]
+    assert launch.main([*argv, "--timeout-seconds", "900", "--queue-timeout-seconds", "300"]) == 0
+    assert seen == {"run_timeout": 900.0, "queue_timeout": 300.0}
 
 
 @pytest.mark.parametrize(

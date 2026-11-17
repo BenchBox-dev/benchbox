@@ -1356,3 +1356,63 @@ def test_a_green_trunk_run_that_fails_a_guarded_input_check_still_allows_the_rel
     reused, outputs, report = rc_world.decide()
     assert "guarded trees changed since the evidence commit" in _failures(report)
     assert any(condition.startswith("release candidate") for condition, _, _ in report.rows)
+
+
+EGRESS = "gh: HTTP 503: Egress is over the account limit. (https://api.github.com/x)"
+
+
+class _FakeClock:
+    def __init__(self) -> None:
+        self.now = 0.0
+        self.sleeps: list[float] = []
+
+    def __call__(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        self.now += seconds
+
+
+def _scripted_gh(monkeypatch, replies):
+    clock = _FakeClock()
+    transient = reuse._transient()
+    monkeypatch.setattr(reuse, "_retry_budget", lambda: transient.Budget(90.0, clock=clock, sleep=clock.sleep))
+    calls: list[list[str]] = []
+    queue = list(replies)
+
+    def run(command, **kwargs):
+        calls.append(command)
+        code, stdout, stderr = queue.pop(0) if len(queue) > 1 else queue[0]
+        return subprocess.CompletedProcess(command, code, stdout, stderr.encode())
+
+    monkeypatch.setattr(reuse.subprocess, "run", run)
+    return clock, calls
+
+
+def test_a_gh_read_that_hits_a_transient_egress_limit_recovers_after_the_backoff(monkeypatch):
+    clock, calls = _scripted_gh(monkeypatch, [(1, b"", EGRESS), (0, b"payload", "")])
+    assert reuse._gh_bytes("api", "repos/o/r/actions/artifacts/7/zip") == b"payload"
+    assert len(calls) == 2 and clock.sleeps == [5.0]
+
+
+def test_a_downloaded_artifact_survives_a_transient_failure(monkeypatch):
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("summary.json", b"{}")
+    _scripted_gh(monkeypatch, [(1, b"", EGRESS), (0, buffer.getvalue(), "")])
+    assert reuse._download_artifact("o/r", 7) == {"summary.json": b"{}"}
+
+
+def test_a_gh_read_that_stays_transient_fails_and_never_returns_bytes(monkeypatch):
+    clock, calls = _scripted_gh(monkeypatch, [(1, b"", EGRESS)])
+    with pytest.raises(ValueError, match="did not clear after 4 attempt"):
+        reuse._gh_bytes("api", "repos/o/r/actions/artifacts/7/zip")
+    assert len(calls) == 4 and clock.sleeps == [5.0, 15.0, 45.0]
+
+
+def test_a_gh_read_with_a_permanent_failure_is_not_retried(monkeypatch):
+    clock, calls = _scripted_gh(monkeypatch, [(1, b"", "gh: HTTP 404: Not Found")])
+    with pytest.raises(ValueError, match="HTTP 404"):
+        reuse._gh_bytes("api", "repos/o/r/actions/artifacts/7/zip")
+    assert len(calls) == 1 and clock.sleeps == []
