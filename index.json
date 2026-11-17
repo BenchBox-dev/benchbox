@@ -18006,10 +18006,15 @@
       "title": "Consider whether other core drivers (polars, clickhouse-connect, psycopg2-binary) should similarly be made optional"
     },
     "console-status-shows-failed-for-unvalidated-runs-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-18T20:14:27Z",
+        "generation": "69cb8b818b4b416d9fcc986397d9a65b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c24f66fe7cb6e536d5c6efdb"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Console 'Benchmark Status' prints FAILED in red for runs whose validation is uncertain or not_validated"
     },
     "consolidate-benchmark-name-detection": {
