@@ -6,12 +6,17 @@ from __future__ import annotations
 
 import logging
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import Literal
 
-if TYPE_CHECKING:
-    pass
+from benchbox.core.dataframe.memory_model import (
+    PLATFORM_BASELINE_GB,
+    SUBSET_MODEL_MAX_SF,
+    subset_tables,
+    tables_raw_gb,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -192,25 +197,41 @@ class MemoryEstimate:
     platform: str
     scale_factor: float
     benchmark: str
+    scope: Literal["full", "subset"] = "full"
+    tables: tuple[str, ...] = ()
 
 
 def estimate_memory_required(
     benchmark: str,
     scale_factor: float,
     platform: str,
+    queries: Iterable[object] | None = None,
 ) -> MemoryEstimate:
     caps = get_platform_capabilities(platform)
+    platform_key = platform.lower().removesuffix("-df")
 
-    if benchmark.lower() == "tpch" or benchmark.lower() == "tpcds":
-        raw_data_gb = scale_factor
-    else:
-        raw_data_gb = scale_factor
+    tables = (
+        subset_tables(benchmark, queries)
+        if platform_key in PLATFORM_BASELINE_GB and scale_factor <= SUBSET_MODEL_MAX_SF
+        else None
+    )
+    if tables is not None:
+        raw_data_gb = tables_raw_gb(benchmark, tables, scale_factor)
+        modeled_gb = raw_data_gb * caps.memory_overhead_factor
+        return MemoryEstimate(
+            raw_data_gb=raw_data_gb,
+            estimated_memory_gb=max(modeled_gb, PLATFORM_BASELINE_GB[platform_key]),
+            platform=caps.platform_name,
+            scale_factor=scale_factor,
+            benchmark=benchmark,
+            scope="subset",
+            tables=tables,
+        )
 
-    estimated_gb = raw_data_gb * caps.memory_overhead_factor
-
+    raw_data_gb = scale_factor
     return MemoryEstimate(
         raw_data_gb=raw_data_gb,
-        estimated_memory_gb=estimated_gb,
+        estimated_memory_gb=raw_data_gb * caps.memory_overhead_factor,
         platform=caps.platform_name,
         scale_factor=scale_factor,
         benchmark=benchmark,
@@ -264,15 +285,30 @@ class MemoryCheckResult:
         return self.is_safe
 
 
+def _describe_estimate_scope(estimate: MemoryEstimate, queries_selected: bool) -> str:
+    if estimate.scope == "subset":
+        return (
+            f"the selected queries (a subset estimate counting only the tables they read: {', '.join(estimate.tables)})"
+        )
+    if queries_selected:
+        return (
+            "the full benchmark (a full-benchmark estimate counting every table, because no table-level "
+            "estimate applies to the selected queries on this platform and scale factor)"
+        )
+    return "the full benchmark (a full-benchmark estimate counting every table)"
+
+
 def check_sufficient_memory(
     benchmark: str,
     scale_factor: float,
     platform: str,
+    queries: Iterable[object] | None = None,
     *,
     safety_margin: float = 0.2,
 ) -> MemoryCheckResult:
     caps = get_platform_capabilities(platform)
-    estimate = estimate_memory_required(benchmark, scale_factor, platform)
+    estimate = estimate_memory_required(benchmark, scale_factor, platform, queries)
+    estimate_scope = _describe_estimate_scope(estimate, bool(queries))
 
     if caps.gpu_required:
         gpu_mem = get_gpu_memory_gb()
@@ -313,7 +349,7 @@ def check_sufficient_memory(
             is_safe=True,
             message=(
                 f"Memory check passed: {available:.1f} GB available, "
-                f"~{estimate.estimated_memory_gb:.1f} GB estimated for the full benchmark at SF {scale_factor} "
+                f"~{estimate.estimated_memory_gb:.1f} GB estimated for {estimate_scope} at SF {scale_factor} "
                 f"(+{safety_margin:.0%} safety margin = {required_with_margin:.1f} GB)."
             ),
             estimated_memory_gb=estimate.estimated_memory_gb,
@@ -357,8 +393,7 @@ def check_sufficient_memory(
         message=(
             f"Insufficient memory: {available_shown:.1f} GB available, but at least {threshold_shown:.1f} GB "
             f"is needed (~{estimate.estimated_memory_gb:.1f} GB estimated + {safety_margin:.0%} safety margin). "
-            f"The estimate is for the full benchmark at scale factor {scale_factor}, "
-            f"even when only a subset of queries is selected.\n"
+            f"The estimate is for {estimate_scope} at scale factor {scale_factor}.\n"
             f"Platform: {caps.platform_name}, Scale Factor: {scale_factor}"
         ),
         estimated_memory_gb=estimate.estimated_memory_gb,

@@ -378,7 +378,8 @@ same module, so it honors the override and the real-home default.
   (`-n 0`) locks only when its selected items, after deselection and before the first test, carry a heavy
   marker: `slow`, `stress`, `resource_heavy`, `live_integration`, `docker_integration` or any `live_*`.
   `make pr-preflight` runs only default-marker `-n 0` targets and a `fast and not (slow or stress ...)`
-  lane, so it never waits. `BENCHBOX_SKIP_TEST_LOCK=1` skips locking entirely.
+  lane, so it never waits. `BENCHBOX_SKIP_TEST_LOCK=1` skips locking entirely and needs owner approval in the current task;
+  the refusal message lists only compliant steps (wait, `make heavy-status`, `make heavy-run`).
 - Admission and the watchdog run only in sessions whose selected items include a heavy marker. A parallel
   session is judged from its `-m` expression, since the controller does not collect: it is heavy when a heavy
   marker it names can be selected, or when a test carrying only an unnamed heavy marker would be (`not stress`
