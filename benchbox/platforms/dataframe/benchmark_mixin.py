@@ -374,7 +374,12 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
 
         try:
             if not options.ignore_memory_warnings:
-                memory_check = check_sufficient_memory(benchmark_config.name, scale_factor, platform_name.lower())
+                memory_check = check_sufficient_memory(
+                    benchmark_config.name,
+                    scale_factor,
+                    platform_name.lower(),
+                    queries=getattr(benchmark_config, "queries", None),
+                )
                 if not memory_check.is_safe:
                     warning = format_memory_warning(memory_check)
                     raise InsufficientMemoryError(warning)
