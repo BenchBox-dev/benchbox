@@ -22,7 +22,8 @@ from tests.unit.scripts.test_adopt_sqlglot_wheel import build_wheel
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
-REAL_CONFIG = Path(__file__).resolve().parents[3] / ".github" / "sqlglot-delivery.json"
+REPO = Path(__file__).resolve().parents[3]
+REAL_CONFIG = REPO / ".github" / "sqlglot-delivery.json"
 CONSUMER = "BenchBox-dev/BenchBox"
 PRODUCER = "BenchBox-dev/benchbox-sqlglot"
 WORKFLOW = ".github/workflows/benchbox-delivery.yml"
@@ -850,6 +851,52 @@ def test_only_the_recorded_corpus_directory_is_allowed_beyond_the_adoption_paths
     delivery.check_adoption_paths([*base, f"{CORPUS}/area_x.json"], NEW)
     with pytest.raises(DeliveryError, match="outside the allowed set"):
         delivery.check_adoption_paths([*base, path], NEW)
+
+
+def recorder_root(world: World, main: str) -> Path:
+    root = world.tmp / "recorder-root"
+    vendor = root / "benchbox" / "_vendor"
+    vendor.mkdir(parents=True)
+    (root / "benchbox" / "__init__.py").write_text("")
+    shutil.copyfile(REPO / "benchbox" / "_vendor" / "__init__.py", vendor / "__init__.py")
+    adopt_wheel(world.build(NEW), vendor)
+    package = root.joinpath(*delivery.CORPUS_MODULE.split("."))
+    package.mkdir(parents=True)
+    for parent in [package, *package.parents]:
+        if parent == root:
+            break
+        (parent / "__init__.py").write_text("")
+    (package / "__main__.py").write_text(main)
+    return root
+
+
+ARCHIVE = f"benchbox_sqlglot-{NEW}-py3-none-any.whl.zip"
+
+
+def test_the_real_recorder_runs_the_corpus_module_from_the_checkout_against_the_pinned_archive(world: World) -> None:
+    root = recorder_root(
+        world,
+        "import json, pathlib\n"
+        "import benchbox._vendor as v\n"
+        "d = pathlib.Path(__file__).parent / 'recorded'\n"
+        "d.mkdir(exist_ok=True)\n"
+        "(d / 'area_x.json').write_text(json.dumps({'case': {'fork': v.__path__[-1], 'legacy': 'l'}}))\n",
+    )
+    delivery.record_corpus(root, ARCHIVE)
+    recorded = json.loads(root.joinpath(CORPUS, "area_x.json").read_text(encoding="utf-8"))
+    assert ARCHIVE in recorded["case"]["fork"] and str(root) in recorded["case"]["fork"]
+
+
+def test_the_real_recorder_refuses_a_runtime_that_is_not_the_delivered_archive(world: World) -> None:
+    root = recorder_root(world, "raise SystemExit(0)\n")
+    with pytest.raises(DeliveryError, match="would not load the delivered runtime"):
+        delivery.record_corpus(root, "benchbox_sqlglot-9.9.9.9-py3-none-any.whl.zip")
+
+
+def test_the_real_recorder_fails_loudly_when_the_corpus_module_fails(world: World) -> None:
+    root = recorder_root(world, "raise RuntimeError('boom')\n")
+    with pytest.raises(DeliveryError, match="(?s)recording the golden corpus failed.*boom"):
+        delivery.record_corpus(root, ARCHIVE)
 
 
 def test_prepare_refuses_a_recorder_that_writes_outside_the_corpus_directory(world: World) -> None:
