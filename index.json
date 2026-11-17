@@ -29014,6 +29014,13 @@
       "status": "dropped",
       "title": "Nightly and Release Canary are chronically red, so the UAT release-gate evidence v0.4.0 needs cannot be produced"
     },
+    "nightly-remediation-2026-11-17": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Restore nightly T3 signal and quiet false alarms (umbrella)"
+    },
     "nightly-throughput-gate-restoration": {
       "claim": null,
       "needs": [
