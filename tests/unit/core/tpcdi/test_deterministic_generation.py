@@ -86,6 +86,37 @@ class TestWorkerCountInvariance:
         assert [int(line.split("|")[0]) for line in content] == list(range(1, NUM_TRADES + 1))
 
 
+class TestBoundedParallelMemory:
+    def test_completed_chunks_waiting_to_be_written_stay_within_the_window(self, tmp_path: Path) -> None:
+        gen = _make_generator(tmp_path, "bounded", max_workers=2)
+        gen.chunk_size = 100
+        generated = 0
+        written = 0
+        backlog: list[int] = []
+        generate = gen._generate_trade_chunk
+        write = gen._write_oldest_trade_chunk
+
+        def counting_generate(*args, **kwargs):
+            nonlocal generated
+            rows = generate(*args, **kwargs)
+            generated += 1
+            backlog.append(generated - written)
+            return rows
+
+        def counting_write(*args, **kwargs):
+            nonlocal written
+            write(*args, **kwargs)
+            written += 1
+
+        gen._generate_trade_chunk = counting_generate
+        gen._write_oldest_trade_chunk = counting_write
+        out = gen._generate_facttrade_parallel(gen.output_dir / "FactTrade.tbl", num_trades=NUM_TRADES, **DIMS)
+
+        assert written == generated == NUM_TRADES // 100
+        assert max(backlog) <= 2 * gen.max_workers
+        assert Path(out).read_bytes() == _serial_bytes(tmp_path)
+
+
 class TestPartitionIndependence:
     def test_split_chunks_concatenate_to_whole(self, tmp_path: Path) -> None:
         gen = _make_generator(tmp_path, "chunks", max_workers=2)
