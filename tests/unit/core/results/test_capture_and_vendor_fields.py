@@ -211,6 +211,27 @@ class TestVendorFieldsInBundle:
         assert payload == before
 
 
+class TestDeclarationMerge:
+    def test_a_bundle_recording_self_run_false_is_not_overridden_by_a_manifest_attesting_true(self) -> None:
+        from benchbox.validation.bundle import evaluate_vendor_conditions, merge_bundle_vendor_declarations
+
+        declared = {"platform": "bigquery", "self_run": True}
+        merge_bundle_vendor_declarations(declared, {"self_run": False})
+
+        errors, _ = evaluate_vendor_conditions(declared)
+
+        assert declared["self_run"] is False
+        assert any("self_run is false" in e for e in errors)
+
+    def test_a_bundle_recording_self_run_true_does_not_override_a_manifest_saying_false(self) -> None:
+        from benchbox.validation.bundle import merge_bundle_vendor_declarations
+
+        declared = {"platform": "bigquery", "self_run": False}
+        merge_bundle_vendor_declarations(declared, {"self_run": True})
+
+        assert declared["self_run"] is False
+
+
 class TestSubmissionFlow:
     @staticmethod
     def _recorded_flags(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, *, manifest: bool, declared: bool) -> bool:
@@ -225,7 +246,7 @@ class TestSubmissionFlow:
         path = tmp_path / "result.json"
         path.write_text("{}", encoding="utf-8")
         if manifest:
-            (tmp_path / "result.manifest.json").write_text("{}", encoding="utf-8")
+            (tmp_path / "result.manifest.json").write_text(json.dumps({"bundle_file": "result.json"}), encoding="utf-8")
         bundle_module.validate_bundles([path], vendor_conditions_declared=declared)
         return seen[0]
 
@@ -238,6 +259,29 @@ class TestSubmissionFlow:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         assert self._recorded_flags(monkeypatch, tmp_path, manifest=True, declared=False) is True
+
+    def test_a_per_bundle_manifest_naming_another_bundle_does_not_take_over(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        from benchbox.validation import bundle as bundle_module
+
+        seen: list[bool] = []
+        monkeypatch.setattr(
+            bundle_module,
+            "_validate_bundle",
+            lambda data, vr, **kwargs: seen.append(kwargs["manifest_present"]),
+        )
+        path = tmp_path / "result.json"
+        path.write_text("{}", encoding="utf-8")
+        manifest = tmp_path / "result.manifest.json"
+        manifest.write_text(json.dumps({"bundle_file": "other.json"}), encoding="utf-8")
+
+        bundle_module.validate_bundles([path])
+        assert seen == [False]
+
+        manifest.write_text(json.dumps({"bundle_file": "result.json"}), encoding="utf-8")
+        bundle_module.validate_bundles([path])
+        assert seen == [False, True]
 
     def test_a_shared_legacy_manifest_naming_another_bundle_does_not_take_over(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path

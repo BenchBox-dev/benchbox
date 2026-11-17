@@ -1190,6 +1190,8 @@ def merge_bundle_vendor_declarations(manifest: dict[str, Any], provenance: Mappi
             manifest[name] = [*manifest[name], *(item for item in recorded if item not in manifest[name])]
         elif name == "plan_tier" and recorded in ("free", "trial") and manifest[name] not in ("free", "trial"):
             manifest[name] = recorded
+        elif name == "self_run" and recorded is False:
+            manifest[name] = False
 
 
 def _validate_fetch_mode(path: str, block: dict, allowed: tuple[str, ...], vr: ValidationResult) -> None:
@@ -2970,8 +2972,6 @@ def _manifest_covers_bundle(bundle_path: Path) -> bool:
     manifest_path = _find_manifest_path(bundle_path)
     if manifest_path is None:
         return False
-    if manifest_path.name == f"{bundle_path.stem}{SUBMISSION_MANIFEST_SUFFIX}":
-        return True
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
