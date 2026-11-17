@@ -29042,6 +29042,13 @@
       "status": "open",
       "title": "Restore nightly T3 signal and quiet false alarms (umbrella)"
     },
+    "nightly-remediation-housekeeping-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Post nightly cause notes, close throwaway PRs and release expired claims"
+    },
     "nightly-throughput-gate-restoration": {
       "claim": null,
       "needs": [
