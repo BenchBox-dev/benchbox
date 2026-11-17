@@ -25379,15 +25379,10 @@
       "title": "`make heavy-run` refuses at once when the host is under pressure; give it a bounded wait mode"
     },
     "heavy-sentinel-cpu-bound-orphans-20261115": {
-      "claim": {
-        "expires_at": "2026-11-18T13:46:37Z",
-        "generation": "3ab87ad10c10411abc0a75fdb928dd02",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Decide whether the heavy-work sentinel should act on CPU-bound orphaned shells"
     },
     "heavy-tier-merge-group-dead-code-20261009": {
