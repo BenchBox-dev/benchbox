@@ -4,7 +4,7 @@
     "A test shows exhausted retries still post failure, with a status naming the request kind in <= 140 chars and no 'to failed' gap.",
     "Shipped in a Theseus release and the BenchBox lock promoted; links recorded."
   ],
-  "context": "Found while landing BenchBox #4172 (Theseus v0.2.11 lock). Gate run 43254778156, job 131315580586.",
+  "context": "Found while landing BenchBox #4172 (Theseus v0.2.11 lock). Gate run 43254778156, job 131315580586.\n\n2026-11-17: Theseus #91 merged as aa4dd538. It retries idempotent GitHub reads up to 3 times on 5xx and connection errors, classifies writes fail-closed, and its status text names the request path. It had a hosted SHIP (run 44150158352, carried to 14d4f81e as run 44160596083) and an independent SHIP at cc061b78 (full suite 5213). It ships in v0.2.14 (release PR #93). The P3 classifier gaps are filed as theseus-read-classifier-fail-closed-gaps-20261117. Remaining: release, then the BenchBox and Theseus lock bumps.",
   "description": "Observed on BenchBox #4172 (head e7617006, 2026-11-12T16:10Z): review-gate posted `failure` with `Gate error · GitHub request to failed: <urlopen error timed out> · see the run log`. The gate job then ended `cancelled`, so the BenchBox `gate posting check` failed ('the gate job ended cancelled') although the next three gate runs posted `Pass · review-verdict: SHIP`. Recovery needed a manual re-run of the failed jobs.\nTwo defects:\n1. No retry on a transient network error. review_check.py:320,468,487 and gate.py:128 raise CheckError on the first urlopen failure. github.py already has a retry/backoff path (`from .retry import State`); the gate's reads do not use it.\n2. The posted status text loses the URL. The source is f\"GitHub request to {url} failed: {exc}\", but the shortened status reads 'GitHub request to failed', which leaves a reader with no endpoint. The status shortener presumably strips the URL and leaves broken grammar.\nFix: retry idempotent GET reads on timeouts, connection resets and 5xx with bounded backoff inside the job time budget; keep posting failure (fail closed) when the retries are exhausted. Make the shortened status name the request kind (for example 'reading PR reviews') instead of a URL.\nGuardrails: an unreadable state must never post success; no retry on 4xx other than 429/403 rate limit with Retry-After; tests with a fake transport for timeout-then-success and timeout-exhausted; status text stays <= 140 chars; G7 merge rule plus independent review (gate change).",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4172"
@@ -17,6 +17,14 @@
       "op": "create",
       "op_id": "8bfa46bf685b4aa880aa2cda58540a6a",
       "session_id": "88f192edfe954a75a195b192ece667bc"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b377757d77dcf10df273bc88",
+      "at": "2026-11-17T20:05:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f9885d75e5384dfbb75c7a9e5490c324",
+      "session_id": "02427f3e9a9d4e6b8fd746ddd1cb8f32"
     }
   ]
 }
