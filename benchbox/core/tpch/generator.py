@@ -51,6 +51,7 @@ _TPCH_BASE_ROW_COUNTS = dict(_GENERATOR_SPECS["base_row_counts"])
 _NORMALIZE_CHUNK_SIZE = 1 << 20
 
 _MEASURED_ROW_COUNTS_SOURCE = "measured"
+_STREAMING_MIN_SCALE_FACTOR = 1.0
 
 
 def _has_trailing_delimiter(path: Path) -> bool:
@@ -498,7 +499,12 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        use_streaming = self.should_use_compression() and self.parallel == 1 and self._check_stdout_support()
+        use_streaming = (
+            self.should_use_compression()
+            and self.parallel == 1
+            and self.scale_factor > _STREAMING_MIN_SCALE_FACTOR
+            and self._check_stdout_support()
+        )
 
         if use_streaming:
             self.log_verbose("Using streaming data generation with -z flag")

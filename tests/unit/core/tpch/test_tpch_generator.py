@@ -177,6 +177,29 @@ class TestStdoutSupport:
         assert result is False
 
 
+@pytest.mark.parametrize(("scale_factor", "streams"), [(0.01, False), (1.0, False), (10.0, True)])
+def test_compressed_generation_streams_per_table_only_above_scale_factor_one(
+    tmp_path: Path, scale_factor: float, streams: bool
+) -> None:
+    gen = TPCHDataGenerator(
+        scale_factor=scale_factor, output_dir=tmp_path, quiet=True, compress_data=True, compression_type="zstd"
+    )
+    gen._dbgen_exe = tmp_path / "dbgen"
+    gen._stdout_support_cached = True
+    runs: list[list[str]] = []
+
+    with (
+        patch.object(gen, "_run_streaming_dbgen", return_value={"region": tmp_path / "region.tbl.zst"}) as streaming,
+        patch("benchbox.core.tpch.generator._stage_distributions"),
+        patch("benchbox.core.tpch.generator.flush_filesystem"),
+        patch("benchbox.core.tpch.generator.subprocess.run", side_effect=lambda cmd, **_: runs.append(cmd)),
+    ):
+        gen._run_dbgen_native(tmp_path / "work")
+
+    assert streaming.called is streams
+    assert [cmd[1:] for cmd in runs] == ([] if streams else [["-vf", "-s", str(scale_factor)]])
+
+
 class TestDataOrganizationConfig:
     def test_default_none(self, tmp_path: Path):
         gen = TPCHDataGenerator(scale_factor=0.01, output_dir=tmp_path, quiet=True)
