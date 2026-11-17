@@ -30801,10 +30801,15 @@
       "title": "✅ Package CoffeeShop Seeds and Restore Reference Parity"
     },
     "package-smoke-first-command-trigger-20261114": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-18T13:46:02Z",
+        "generation": "1ededc997321473fb5f7ff34b3a14975",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "The first-command check in package-smoke runs only when packaging files change"
     },
     "packaging-config-hygiene": {
