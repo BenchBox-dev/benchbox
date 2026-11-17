@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "All TPC-DI corpus bundles built before the current generator are now excluded from rankings, and the monthly seed corpus run produces replacement TPC-DI bundles for DuckDB, DataFusion and ClickHouse Local at SF 0.01, 0.1 and 1."
+    }
+  ]
+}
