@@ -4,6 +4,7 @@
     "Q16/Q94/Q95 best times at SF1 (and SF10 or a recorded reason) for 2.0.0 vs the fixed version are recorded here.",
     "Any lock change is a separate merged PR linked here, or the owner's decision on a won't-fix is recorded."
   ],
+  "context": "2026-11-17: blocked on upstream. duckdb/duckdb#28860 and #28859 both OPEN, no comments.",
   "description": "## Problem\nDuckDB 2.0.0 runs the correlated EXISTS with equality and `<>` used by TPC-DS Q16/Q94/Q95 4x slower than 1.5.6 at SF1 and 17x at SF10 (filed upstream as https://github.com/duckdb/duckdb/issues/28860). BenchBox lifted its `<2.0.0` pin, so DuckDB results on these queries reflect the regression. Separately, `tpcds_answers()` raises \"Don't have TPC-DS answers for SF 10\" in 2.0.0 (https://github.com/duckdb/duckdb/issues/28859), so SF10 answer checks cannot use DuckDB's bundled answers. Both open with no reply as of 2026-11-17.\n\n## Trigger\nBlocked until #28860 is fixed in a released DuckDB version (or closed as won't-fix). Check monthly; append the check date and state to context.\n\n## Method on trigger\nThrough `make heavy-run`, time Q16/Q94/Q95 at SF1 and SF10 (SF10 on a host that can hold it) on the fixed version vs 2.0.0, best of 5 after a warm-up, alternating arms. If faster, raise BenchBox's DuckDB floor or lock only by a separate dependency PR.\n\n## Decision gate\n- Upstream fixed: re-time and record; any lock change is its own PR.\n- Upstream won't-fix: ask the owner whether to note the regression in published DuckDB results; agents do not edit published results.\n- #28859: if BenchBox ever relies on `tpcds_answers()` at SF10, record the alternative used; no reference-answer regeneration.\n\n## Guardrails\nTiming and memory runs only through `make heavy-run` after `make heavy-status`; never force admission, set BENCHBOX_SKIP_TEST_LOCK, disable the watchdog, or pass `--ignore-memory-warnings` without the owner's approval in that task. Never kill processes by pattern; the host is shared. No SQL text changes to work around the regression.",
   "sessions": [
     {
@@ -20,6 +21,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "fee1b8268d0148e0ab82833fdb284a81",
+      "session_id": "584fe5162b994f91904666adf0c5e183"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:baf9996c1c86fb9c9b5547f3",
+      "at": "2026-11-17T21:23:42Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6c7e7fd346924c70a830e1678e6f5445",
       "session_id": "584fe5162b994f91904666adf0c5e183"
     }
   ]
