@@ -32062,7 +32062,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "pr-open and pr-arm fail outright when the shared GitHub API rate limit is exhausted"
     },
     "pr-open-auto-merge-partial-stack-race-20260804": {
