@@ -3,7 +3,7 @@
     "Each monthly BTS file used at SF1 has a sha256 pinned, and the downloader refuses a mismatch.",
     "The SF1 row count in the spec is re-derived from the pinned files."
   ],
-  "context": "Found while fixing integrity-validator-false-failures-20261114. Downloading the files is network access but not cloud spend. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "context": "Found while fixing integrity-validator-false-failures-20261114. Downloading the files is network access but not cloud spend. Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\nCloseout 2026-11-17: core BenchBox-dev/benchbox#4276 merged (20d8ac12af). 41 monthly BTS files (2021-08..2024-12) pinned by sha256 and row count, downloaded under make heavy-run; summed rows 23,437,547 match the spec.",
   "description": "Problem: downloader_specs.yaml has an empty pinned_source.sha256 for flightdata, so the SF1 row count (23437547 flights) rests on agreement between bundles and a local copy rather than on pinned source hashes. If BTS republishes a month, data and counts can drift silently.",
   "sessions": [
     {
@@ -21,6 +21,14 @@
       "generation": "a299df30fbf047d4a44b04367d36026d",
       "op": "take",
       "op_id": "80d21a3a34104dafb028622d2faabfbc",
+      "session_id": "14462ffc9066466ca32d151c57f6a5de"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019",
+      "at": "2026-11-17T13:45:50Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "83b88bad20d342f18946305534ea08b9",
       "session_id": "14462ffc9066466ca32d151c57f6a5de"
     }
   ]
