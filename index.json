@@ -22079,6 +22079,13 @@
       "status": "open",
       "title": "Audit metric/scope truthfulness across all historical DONE items and add a recurrence guard"
     },
+    "doris-fourth-full-spec-identity-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Consider Doris as a fourth local full-spec cohort engine"
+    },
     "doris-load-dead-paths-cleanup-20261107": {
       "claim": null,
       "needs": [],

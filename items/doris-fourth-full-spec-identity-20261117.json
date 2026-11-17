@@ -1,0 +1,13 @@
+{
+  "description": "## Problem\nThe local full-spec SF 1 cohort has exactly three identities (DuckDB, ClickHouse Local, CedarDB). The corpus validator runs before the seed PR opens and needs three, so one failed cell blocks the whole monthly seed PR.\n\n## Evidence\nResearch 2026-11-17: Doris adapter exists (Duplicate Key tables, independent stream connections), SF 0.01 UAT passes (TPC-H 14.5 s, TPC-DS 31.5 s), one local SF 1 TPC-H bundle, Apache-2.0, READ COMMITTED transactions. Refresh is off (supports_refresh_functions=False). Doris transaction rules need staging-table RF1, pre-counted RF2, staging loaded before BEGIN in the TPC-DS harness, and literal-list or INSERT OVERWRITE rewrites for TPC-DS deletes. CI needs a 6 GiB container, vm.max_map_count and a GHCR mirror. QuestDB was rejected (no row-level DELETE, no correlated subqueries, too slow).\n\n## Decision gate\nOwner decides whether to add Doris as a fourth identity once the three-engine cohort has a green monthly run. Doris is also the fallback if CedarDB cannot be published.\n\n## Change\nDoris TPC-H refresh, harness staging-before-BEGIN, TPC-DS delete rewrites with DuckDB equivalence test, SF 1 TPC-DS memory proof within 6 GiB, seed cells and a nightly UAT cell.\n\n## Guardrails\nNo Unique Key switch (refresh sets reuse keys). Non-transactional rebuilds must be disclosed.\n\n## Verification rubric\nFull-spec TPC-H and TPC-DS SF 1 Doris cells pass on the CI runner; maintenance row counts equal DuckDB's.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c24f66fe7cb6e536d5c6efdb",
+      "at": "2026-11-17T20:19:03Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "09f5cbeab66e4baa9e004c001f2bae9b",
+      "session_id": "681da648a77347d084794e62e9154bb1"
+    }
+  ]
+}
