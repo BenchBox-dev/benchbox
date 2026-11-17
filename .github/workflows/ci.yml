@@ -700,6 +700,22 @@ jobs:
         run: |
           uv sync --group dev
 
+      - name: Cache diag
+        run: |
+          d="$(uv cache dir)"
+          echo "dir=$d"
+          du -sh "$d"
+          du -sk "$d"/* | sort -n | tail
+          du -sk "$d"/*/* 2>/dev/null | sort -n | tail -12
+          find "$d" -type f -size +3M -printf '%s %p\n' | sort -n | tail -20
+          echo "--- after prune --ci"
+          uv cache prune --ci
+          du -sh "$d"
+          du -sk "$d"/* | sort -n | tail
+          find "$d" -type f -size +3M -printf '%s %p\n' | sort -n | tail -20
+          uv --version; python -V
+          ls "$d"/archive-v0 | wc -l
+
       - name: Validate uv.lock revision against the PR base
         id: guard-uv-lock-revision
         continue-on-error: true
