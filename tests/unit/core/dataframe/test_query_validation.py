@@ -108,8 +108,6 @@ def test_tpcds_is_uncertain_until_its_parameters_are_seed_aligned() -> None:
         ("clickbench", 1.0, None, "NOT_RUN"),
         ("ssb", 0.5, None, "UNCERTAIN"),
         ("tpch", 0.5, None, "UNCERTAIN"),
-        ("tpch", 1.0, 123, "UNCERTAIN"),
-        ("tpch", 1.0, 17039360, "UNCERTAIN"),
     ],
 )
 def test_unsupported_or_unaligned_oracles_never_claim_passed(
@@ -253,17 +251,6 @@ def test_selected_dataframe_skip_prevents_a_clean_pass() -> None:
     assert summary.status == "UNCERTAIN"
     assert summary.details["checked"] == 1
     assert summary.details["skipped"] == 1
-
-
-@pytest.mark.parametrize("seed", [0, 1, 42, 17039360, 101000000])
-def test_tpch_answer_set_context_is_false_for_any_seed(seed: int) -> None:
-    from benchbox.core.dataframe.query_validation import _tpch_reference_context
-
-    assert _tpch_reference_context(1.0, seed) is False
-    assert _tpch_reference_context(1.0, None) is True
-    assert _tpch_reference_context(0.01, None) is True
-    assert _tpch_reference_context(0.1, None) is True
-    assert _tpch_reference_context(0.5, None) is False
 
 
 @pytest.mark.parametrize("scale_factor", [0.01, 0.1, 1.0, 10.0])
@@ -505,3 +492,63 @@ def test_loose_tolerance_match_is_not_recorded_as_passed() -> None:
     assert (validation["expected"], validation["actual"]) == (18314, 17900)
     assert "not an exact match" in validation["warning"]
     assert evidence == {"checked": 0, "passed": 0, "failed": 0, "skipped": 1, "errors": 0, "documented_skips": 1}
+
+
+def _tpch_sf1_reference_rows() -> list[dict[str, object]]:
+    from benchbox.core.expected_results.tpch_results import get_tpch_expected_results
+
+    reference = get_tpch_expected_results(1.0)
+    return [
+        _measurement(query_id=f"Q{query_id}", rows=result.expected_row_count)
+        for query_id, result in reference.query_results.items()
+    ]
+
+
+@pytest.mark.parametrize("seed", [42, 123, 17039360])
+def test_seeded_sf1_run_validates_through_the_sql_reference(seed: int) -> None:
+    measurements = _tpch_sf1_reference_rows()
+
+    summary = validate_dataframe_query_results(measurements, benchmark_name="tpch", scale_factor=1.0, seed=seed)
+
+    assert summary.status == "PASSED"
+    assert summary.details["failed"] == 0
+    assert summary.details["checked"] == len(measurements)
+    assert {row["row_count_validation"]["status"] for row in measurements} == {"PASSED"}
+
+
+def test_seeded_sf1_parameter_sensitive_query_is_range_checked() -> None:
+    sensitive = _measurement(query_id="Q11", rows=600)
+    fixed = _measurement(query_id="Q4", rows=5)
+
+    summary = validate_dataframe_query_results([sensitive, fixed], benchmark_name="tpch", scale_factor=1.0, seed=42)
+
+    assert summary.status == "PASSED"
+    assert sensitive["row_count_validation"]["status"] == "PASSED"
+    assert fixed["row_count_validation"]["status"] == "PASSED"
+
+
+def test_seeded_sf1_parameter_sensitive_query_outside_its_range_fails() -> None:
+    sensitive = _measurement(query_id="Q11", rows=3)
+
+    summary = validate_dataframe_query_results([sensitive], benchmark_name="tpch", scale_factor=1.0, seed=42)
+
+    assert summary.status == "FAILED"
+
+
+def test_seeded_sf1_run_fails_a_wrong_fixed_count() -> None:
+    measurement = _measurement(query_id="Q4", rows=4)
+
+    summary = validate_dataframe_query_results([measurement], benchmark_name="tpch", scale_factor=1.0, seed=42)
+
+    assert summary.status == "FAILED"
+    assert measurement["row_count_validation"]["status"] == "FAILED"
+    assert measurement["row_count_validation"]["expected"] == 5
+
+
+def test_unseeded_sf1_run_still_checks_every_query_against_the_reference() -> None:
+    measurements = _tpch_sf1_reference_rows()
+
+    summary = validate_dataframe_query_results(measurements, benchmark_name="tpch", scale_factor=1.0)
+
+    assert summary.status == "PASSED"
+    assert summary.details["skipped"] == 0
