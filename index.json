@@ -42422,6 +42422,13 @@
       "status": "done",
       "title": "Fix dropped stream count: user-requested concurrency never reaches the throughput driver"
     },
+    "throughput-stream-coverage-sub-millisecond-query-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Throughput stream-coverage check trips on a sub-millisecond query timing at small scale"
+    },
     "throughput-stream-success-propagation": {
       "claim": null,
       "needs": [

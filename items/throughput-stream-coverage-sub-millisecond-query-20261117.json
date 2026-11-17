@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The rule and the recorded value that tripped it are identified in context",
+    "A unit test shows a successful sub-millisecond execution counts as covered, and a genuinely missing execution still fails",
+    "The CedarDB SF0.01 throughput cell from #4260's evidence passes the coverage check"
+  ],
+  "description": "## Problem\nDuring PR #4260's CedarDB verification (mocker, TPC-H SF0.01, 3 streams, 132/132 queries passed), one sub-millisecond Q6 row tripped the stream-coverage check, so the result stayed unpublishable at that scale. A coverage check that treats a valid very fast query as missing would also misfire on fast engines at larger scales.\n\n## Decision gate\nFind the coverage rule and the timing value it saw (0, missing, or rounded). Then:\n- If the timing was recorded as 0 or rounded to 0 and the rule treats 0 as absent, the rule or the recording is wrong: fix it so an executed query with a successful status counts, regardless of duration.\n- If the query genuinely did not record an execution, that is a recording defect in the CedarDB or shared throughput path: fix that instead.\n\n## Guardrails\n- A missing execution must still fail the coverage check; add a test for that case alongside the fast-query case.\n- Do not lower timing resolution elsewhere.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/4260"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1213c3129d7753c9fd6512c0",
+      "at": "2026-11-17T15:18:41Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6eeddd2e03d54ff29230e26f509833d8",
+      "session_id": "71cadb46eee448f8a6d2019016ddc6eb"
+    }
+  ]
+}
