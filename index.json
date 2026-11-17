@@ -41397,12 +41397,17 @@
       "title": "Decide which documented scale factors count as standard, so documented use cases do not print the non-standard note"
     },
     "standard-scales-read-primitives-clickbench-20261112": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-18T20:21:46Z",
+        "generation": "ffd0dce93215445dac82f9bd8b35d8bd",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f7ac14dda5358a7d48d793ed"
+      },
       "needs": [
         "feature-feat-tpcdi-current-generator-followups-20261117"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Decide whether to widen read_primitives and ClickBench standard scales after measured DuckDB success"
     },
     "standardize-benchmark-constraint-parameter-apis": {
