@@ -47033,6 +47033,13 @@
       "status": "done",
       "title": "Let make worktree-create accept the test/ branch prefix or document the allowed set"
     },
+    "worktree-finish-cannot-keep-branch-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Let worktree-finish retire a clean worktree while keeping its branch"
+    },
     "worktree-finish-no-path-for-unpublished-worktrees-20261113": {
       "claim": null,
       "needs": [],
