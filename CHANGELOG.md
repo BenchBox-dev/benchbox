@@ -11,8 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Maintenance release from the release/0.5.x line with no functional change from 0.5.1.
-- The bundled SQLGlot runtime moves from 30.31.0.1 to 30.33.0.1 (fork commit `c28e72ff6d66`), a verified delivery of the benchbox-sqlglot fork.
+- Maintenance release from the release/0.5.x line; the only functional change from 0.5.1 is the bundled SQLGlot update below.
+- The bundled SQLGlot runtime moves from 30.31.0.1 to 30.33.0.1 (fork commit `c28e72ff6d66`), a verified delivery of the benchbox-sqlglot fork. Translated SQL can differ from 0.5.1: for example, BigQuery `INFORMATION_SCHEMA` references are now rendered unquoted (`proj.ds.INFORMATION_SCHEMA.X`).
 
 ### Security
 
