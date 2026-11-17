@@ -43236,15 +43236,10 @@
       "title": "Make the TPC-DI SCD Type 2 expire step actually update expired rows"
     },
     "tpcdi-sf1-slowdown-after-linear-fact-scaling": {
-      "claim": {
-        "expires_at": "2026-11-18T15:25:16Z",
-        "generation": "8bf0d2daba4c4628830217914f2a08e4",
-        "renewals": 1,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1fad3edb102f5d3974476660"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Find why TPC-DI SF1 analytic queries slowed after linear fact scaling, and restore Spark and DataFusion tpcdi 1.0 to the release gate"
     },
     "tpcdi-sf10-generation-unmeasured-20261112": {
