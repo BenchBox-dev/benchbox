@@ -36,6 +36,9 @@ class _RecordingConnection:
     def execute(self, sql: str) -> _Cursor | None:
         if sql.startswith("SELECT COUNT(*) FROM "):
             table = sql.removeprefix("SELECT COUNT(*) FROM ")
+            if " WHERE " in table:
+                self.events.append(f"count_where:{table.split(' ', 1)[0]}")
+                return _Cursor(3)
             self.events.append(f"count:{table}")
             return _Cursor(self.counts.get(table, 100))
         if sql == "BEGIN":
@@ -157,8 +160,14 @@ def test_delete_function_event_order_covers_every_statement_inside_interval(monk
         "create:s_delete",
         "begin",
         "load:s_delete",
+        "count_where:store_returns",
+        "count:store_returns",
         "statement",
+        "count:store_returns",
+        "count_where:store_sales",
+        "count:store_sales",
         "statement",
+        "count:store_sales",
         "commit",
         "clock",
         "count:store_returns",

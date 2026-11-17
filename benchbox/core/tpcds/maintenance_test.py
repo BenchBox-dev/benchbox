@@ -7,7 +7,11 @@ from typing import Any, Callable, Optional
 
 from benchbox.core.contracts.platform_capabilities import resolve_primary_key_probe
 from benchbox.core.results.maintenance_method import MAINTENANCE_METHOD
-from benchbox.core.tpcds.maintenance_functions import MAINTENANCE_FUNCTIONS, MaintenanceFunction
+from benchbox.core.tpcds.maintenance_functions import (
+    MAINTENANCE_FUNCTIONS,
+    MaintenanceFunction,
+    delete_target_and_count_sql,
+)
 from benchbox.core.tpcds.refresh_data import (
     SOURCE_TABLES_BY_NAME,
     RefreshDataError,
@@ -18,6 +22,8 @@ from benchbox.core.tpcds.refresh_data import (
     load_refresh_file,
 )
 from benchbox.utils.clock import elapsed_seconds, mono_time
+
+_outside_interval_clock = mono_time
 
 
 @dataclass
@@ -250,6 +256,7 @@ class TPCDSMaintenanceTest:
         connection = None
         staging_created = False
         in_transaction = False
+        excluded_seconds = 0.0
         try:
             if self.verbose:
                 self.logger.info(f"Executing {function.name} on refresh set {refresh_set.set_id}")
@@ -268,14 +275,31 @@ class TPCDSMaintenanceTest:
                             connection, table, refresh_set.path_for(table.name), refresh_set.row_counts[table.name]
                         )
                     for statement in function.statements_for(self.target_dialect):
-                        connection.execute(statement)
+                        guard = delete_target_and_count_sql(statement)
+                        if guard is None:
+                            connection.execute(statement)
+                        else:
+                            table, count_sql = guard
+                            count_started = _outside_interval_clock()
+                            expected = self._count_query(connection, count_sql)
+                            total_before = self._count_rows(connection, table)
+                            excluded_seconds += elapsed_seconds(count_started, _outside_interval_clock())
+                            connection.execute(statement)
+                            count_started = _outside_interval_clock()
+                            removed = total_before - self._count_rows(connection, table)
+                            excluded_seconds += elapsed_seconds(count_started, _outside_interval_clock())
+                            if removed != expected:
+                                raise RefreshDataError(
+                                    f"{function.name} removed {removed} rows from {table}; "
+                                    f"its predicate matches {expected} rows"
+                                )
                         operation.statements_executed += 1
                     self._commit(connection)
                 except BaseException:
                     self._rollback(connection)
                     raise
             finally:
-                operation.end_time = mono_time()
+                operation.end_time = mono_time() - excluded_seconds
                 operation.duration = elapsed_seconds(operation.start_time, operation.end_time)
 
             after = {table: self._count_rows(connection, table) for table in function.target_tables}
@@ -320,11 +344,15 @@ class TPCDSMaintenanceTest:
             )
 
     @staticmethod
-    def _count_rows(connection: Any, table: str) -> int:
-        row = connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
+    def _count_query(connection: Any, sql: str) -> int:
+        row = connection.execute(sql).fetchone()
         if row is None or row[0] is None:
-            raise RefreshDataError(f"could not count rows in {table}")
+            raise RefreshDataError(f"could not count rows with: {sql}")
         return int(row[0])
+
+    @classmethod
+    def _count_rows(cls, connection: Any, table: str) -> int:
+        return cls._count_query(connection, f"SELECT COUNT(*) FROM {table}")
 
     @staticmethod
     def _begin(connection: Any) -> None:

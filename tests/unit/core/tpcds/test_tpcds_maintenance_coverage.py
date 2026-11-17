@@ -79,6 +79,8 @@ class _RefreshConnection:
         self.commits += 1
 
     def execute(self, sql):
+        if sql.startswith("SELECT COUNT(*) FROM ") and " WHERE " in sql:
+            return _Cursor(2)
         if sql.startswith("SELECT COUNT(*) FROM "):
             return _Cursor(self.counts.get(sql.removeprefix("SELECT COUNT(*) FROM "), 50))
         if sql.startswith("INSERT INTO "):
