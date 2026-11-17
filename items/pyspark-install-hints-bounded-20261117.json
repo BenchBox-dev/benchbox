@@ -1,6 +1,6 @@
 {
   "acceptance": [
-    "`git grep -n -E \"pip install (\\\"|')?pyspark\" -- benchbox docs` returns no unbounded hint.",
+    "`git grep -n -E \"pip install (\\\"|')?pyspark\" -- benchbox` returns nothing; any remaining match under docs/ is listed in the PR body with why it is intentionally unbounded (e.g. a Databricks or Spark-cluster context).",
     "Each hint names an extra that exists in pyproject.toml (checked by a test or by `uv run -- python -c` resolving the extra).",
     "PR merged with a changelog.d fragment."
   ],
@@ -12,6 +12,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "ad53f8a2c7df4bfc9160dea75897b228",
+      "session_id": "584fe5162b994f91904666adf0c5e183"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:baf9996c1c86fb9c9b5547f3",
+      "at": "2026-11-17T21:22:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e0c979ea57d44e5d96e39396514ea5cd",
       "session_id": "584fe5162b994f91904666adf0c5e183"
     }
   ]
