@@ -47658,6 +47658,13 @@
       "status": "done",
       "title": "Triage the worktrees the reaper could not classify"
     },
+    "worktree-reap-detached-head-on-develop-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Let worktree-reap remove detached worktrees whose HEAD is already on develop"
+    },
     "worktree-reap-leaves-malformed-and-closed-pr-worktrees-20261112": {
       "claim": null,
       "needs": [],

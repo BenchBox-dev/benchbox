@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Decision gate: the owner confirms that a detached worktree may be reaped when all of these hold: it is clean, it has managed provenance, its HEAD is an ancestor of origin/develop (or of an accepted integration branch), no live session owns it, and it is not locked. The decision is recorded here before any edit. If no decision is recorded, release the claim and edit nothing.",
+    "With the decision approved: worktree-finish and the make worktree-reap dry run give 'remove' to such a worktree, and keep 'ambiguous' for a detached worktree whose HEAD is not on develop (as wt-qip-3824 is). Unit tests cover both cases and the live-owner case.",
+    "Pass rubric: a reap dry run lists no detached worktree as ambiguous when its HEAD satisfies git merge-base --is-ancestor <head> origin/develop and its owner session has ended.",
+    "docs/internal/dev-loop-worktrees.md states the rule.",
+    "Guardrails: a detached HEAD with any commit not reachable from an integration branch is never removed; worktrees owned by a live session are never removed; no --force; no remote ref is touched."
+  ],
+  "description": "worktree_finish holds every worktree in detached HEAD state as ambiguous ('no symbolic branch ref'), even when it is clean and its HEAD is already an ancestor of origin/develop, so nothing is lost by removing it. The pattern recurs: wt-qip-3820, wt-qip-3824 and wt-qip-3826 earlier, and on 2026-11-17 BenchBox.wt-fix-review-gate-cancelled-run-checks (HEAD 4f375464) and BenchBox.wt-release-line-machinery (HEAD 21b0b2be), both ancestors of origin/develop and both owned by sessions active that day. Each such worktree needs removing by hand once its session ends.",
+  "links": [
+    "scripts/worktree_finish.py",
+    "scripts/worktree_reap.py",
+    "docs/internal/dev-loop-worktrees.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f00380ac381b3b759bd4b6a8",
+      "at": "2026-11-17T21:31:57Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "67e6a513da874620ab64a73fe2f31417",
+      "session_id": "a8b952a2353a43c5b8b6461d5901abad"
+    }
+  ]
+}
