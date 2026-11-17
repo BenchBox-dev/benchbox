@@ -254,7 +254,7 @@ def test_cohort_metadata_names_the_composite_as_the_primary_metric(tmp_path: Pat
 
 
 def test_default_build_omits_the_composite_columns(tmp_path: Path) -> None:
-    db = _build(tmp_path, {"one": _bundle("alpha")})
+    db = _build(tmp_path, {"one": _bundle("alpha"), "power": _power_bundle()})
 
     with duckdb.connect(str(db), read_only=True) as con:
         results = {row[0] for row in con.execute("DESCRIBE results").fetchall()}
@@ -265,8 +265,8 @@ def test_default_build_omits_the_composite_columns(tmp_path: Path) -> None:
 
 
 def test_read_model_19_adds_exactly_the_composite_columns(tmp_path: Path) -> None:
-    base = _build(tmp_path / "base", {"one": _bundle("alpha")}, read_model_version=18)
-    upgraded = _build(tmp_path / "new", {"one": _bundle("alpha")}, read_model_version=19)
+    base = _build(tmp_path / "base", {"one": _bundle("alpha"), "power": _power_bundle()}, read_model_version=18)
+    upgraded = _build(tmp_path / "new", {"one": _bundle("alpha"), "power": _power_bundle()}, read_model_version=19)
 
     with duckdb.connect(str(base), read_only=True) as old, duckdb.connect(str(upgraded), read_only=True) as new:
         for table in ("results", "benchmark_rankings"):
@@ -289,8 +289,25 @@ def test_compat_checker_accepts_read_model_19() -> None:
 def test_compat_checker_validates_a_built_read_model_19(tmp_path: Path) -> None:
     from scripts.publication.check_explorer_compat import validate_database_schema
 
-    db = _build(tmp_path, {"one": _bundle("alpha")}, read_model_version=19)
+    db = _build(tmp_path, {"one": _bundle("alpha"), "power": _power_bundle()}, read_model_version=19)
 
     with duckdb.connect(str(db), read_only=True) as con:
         assert validate_database_schema(con, expected_version=19) == []
         assert validate_database_queries(con, 19) == []
+
+
+def test_default_build_leaves_combined_bundles_out(tmp_path: Path) -> None:
+    db = _build(tmp_path, {"combined": _bundle("alpha"), "power": _power_bundle()})
+
+    with duckdb.connect(str(db), read_only=True) as con:
+        phases = {row[0] for row in con.execute("SELECT DISTINCT phase FROM benchmark_rankings").fetchall()}
+        metrics = {row[0] for row in con.execute("SELECT DISTINCT primary_metric FROM benchmark_rankings").fetchall()}
+
+    assert phases == {"power"}
+    assert metrics == {"power_score"}
+
+
+def _power_bundle() -> dict:
+    payload = json.loads(json.dumps(MINIMAL_BUNDLE))
+    payload["run"]["id"] = "power-run"
+    return payload
