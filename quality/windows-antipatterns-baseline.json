@@ -136,9 +136,6 @@
     "tests/integration/worktree/test_worktree_audit.py": {
       "WA007": 1
     },
-    "tests/integration/worktree/test_worktree_finish_preview.py": {
-      "WA007": 3
-    },
     "tests/integration/worktree/test_worktree_lifecycle_metadata.py": {
       "WA007": 2
     },

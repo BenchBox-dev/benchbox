@@ -338,11 +338,16 @@ finish_worktree() {
     unpublished_args="--unpublished"
   fi
 
+  keep_branch_args=""
+  if [ "${KEEP_BRANCH:-}" = "1" ]; then
+    keep_branch_args="--keep-branch"
+  fi
+
   $py_runner "$script_dir/worktree_finish.py" \
     --repo-root "$primary_clone" \
     --worktree-path "$target" \
     --expected-head-oid "$oid_input" \
-    $format_args $apply_args $unpublished_args
+    $format_args $apply_args $unpublished_args $keep_branch_args
 }
 
 case "$operation" in
