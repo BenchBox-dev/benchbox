@@ -38717,19 +38717,14 @@
       "title": "Serve a static page with HTTP 200 at every published result permalink"
     },
     "site-summary-pages-comparison-context-20261112": {
-      "claim": {
-        "expires_at": "2026-11-18T13:47:12Z",
-        "generation": "1ed0a98258834a00a97eaf9503e0f495",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019"
-      },
+      "claim": null,
       "needs": [
         "site-static-result-pages-permalink-200-20261112",
         "benchmark-methodology-page-20261112",
         "agent-demand-signals-baseline-20261113"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Add execution environment, tuning mode and trust label columns to the static result summaries"
     },
     "site-todo-state-scheduled-validation-20261030": {
