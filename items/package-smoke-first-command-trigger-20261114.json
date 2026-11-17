@@ -3,7 +3,7 @@
     "Owner decision recorded: widen the trigger, or run the check nightly or on trunk.",
     "The chosen trigger is shown running the check in CI."
   ],
-  "context": "Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "context": "Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\nCloseout 2026-11-17: core BenchBox-dev/benchbox#4276 merged (20d8ac12af). Trigger widened: package-smoke runs on any benchbox/** change via a first-command path group (provisional, owner may narrow).",
   "description": "Problem: PR #4230 added the README first command (benchbox run duckdb tpch 0.01 from a clean wheel install) to the package-smoke job, but that job runs only on packaging path changes (.github/path-filters.yml 'packaging'), so a code change that breaks the first command is not caught.",
   "sessions": [
     {
@@ -21,6 +21,14 @@
       "generation": "1ededc997321473fb5f7ff34b3a14975",
       "op": "take",
       "op_id": "d806349ec1eb4959b97a1c5a1a76a73e",
+      "session_id": "14462ffc9066466ca32d151c57f6a5de"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019",
+      "at": "2026-11-17T13:46:10Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9acba2bf3bcc46a4ae8357a31fae2899",
       "session_id": "14462ffc9066466ca32d151c57f6a5de"
     }
   ]
