@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "The cause of the ~429 MB keys versus the 218 KB key is identified and recorded.",
+    "Measured before and after on real CI runs: restores per full CI run and bytes per restore; total repo cache under 10 GB a week after the change.",
+    "Pull-request runs no longer save setup-uv caches.",
+    "Retention for dist-*, admitted-* and t2-* artifacts is set explicitly and justified by who reads them."
+  ],
+  "context": "Found 2026-11-17 by the egress root-cause investigation; numbers from the job, cache and billing APIs. Guardrails: linked worktree (make worktree-create, then make agent-write-preflight), never the primary clone; one PR per repo; no live-cloud runs or credentials in Git or logs; heavy work only via lock-taking entry points or make heavy-run after make heavy-status; never start deliberate host load; comment policy; changelog.d fragment for user-facing change. Re-verify every cited file and line before acting; they are hints.",
+  "description": "Problem: about 95% of BenchBox-dev/benchbox Actions download volume (~104 GB/day measured 2026-11-16/17) is astral-sh/setup-uv cache restores of about 450,0xx,xxx bytes (enable-cache auto). Keys for ubuntu 3.14.x/3.11.18, macOS 3.12.10 and windows 3.12.10 are ~429 MB while the ubuntu 3.12.16 key is 218 KB, so pruning is not shrinking some keys. Restoring jobs per heavy CI run: ci-paths release check (ci.yml:166-168), short-checks, content-guard (ci.yml:401), TPC-H binary framing windows/macOS (ci.yml:375), windows-tests (ci.yml:1382), test 3.14 (ci.yml:874), lint (ci.yml:596). PR merge refs save their own ~450 MB copies (refs/pull/<N>/merge for #4257, 4269, 4272-4284). Repo cache: 34 entries, 10.13 GiB, above GitHub's 10 GB per-repo limit, so entries are evicted and rebuilt. Separately, Actions storage averages ~272 GB, mostly artifacts [inference]; admitted-<tag> (~20 MB) is downloaded once per trunk-uat shard (.github/actions/release-uat-env/action.yml:35). This volume did not cause the 2026-11-17 503, but it is cost and latency on every run.\n\nOutcome: jobs that only need uv do not restore the cache, oversized keys are explained and shrunk, caches are saved only from develop, and the repo cache stays under 10 GB; artifact retention is set per artifact class.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019",
+      "at": "2026-11-17T13:48:34Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6cd265afe4b14382adf8855ae5035b00",
+      "session_id": "14462ffc9066466ca32d151c57f6a5de"
+    }
+  ]
+}
