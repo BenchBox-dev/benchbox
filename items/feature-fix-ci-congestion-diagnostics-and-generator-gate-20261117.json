@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The feature pull request is merged and each member item meets its own acceptance or records an owner-approved disposition."
+  ],
+  "context": "Created 2026-11-17 to hold the related items on one feature branch.",
+  "description": "Umbrella for one feature branch and one pull request (fix/ci-congestion-diagnostics-and-generator-gate). Members: ci-spurious-failures-under-runner-congestion-20261115, ci-fast-duration-gate-rerun-and-baseline-drift-20261113, generator-volume-changes-pass-pr-ci-unchecked-20261112. Owner decisions for every member were recorded on 2026-11-17.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1fad3edb102f5d3974476660",
+      "at": "2026-11-17T15:43:37Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "36d280cd893948a6b4642b683ccd88da",
+      "session_id": "989657b059c44ae4bade82cb666c453c"
+    }
+  ]
+}

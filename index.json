@@ -23995,6 +23995,13 @@
       "status": "open",
       "title": "TPC-DI after the specification unit: registry estimates, SF 100 measurement and documented differences"
     },
+    "feature-fix-ci-congestion-diagnostics-and-generator-gate-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "CI: release-v2 probe queue time, watchdog test race, duration re-run message, generator volume gate"
+    },
     "feature-fix-tpcds-scale-bounds-20261117": {
       "claim": null,
       "needs": [],
