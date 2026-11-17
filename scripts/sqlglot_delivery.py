@@ -23,6 +23,10 @@ CONFIG = Path(".github/sqlglot-delivery.json")
 PIN = "benchbox/_vendor/sqlglot.json"
 BASELINE = "scripts/sqlglot_runtime_baseline.json"
 LICENSE_NOTICE = "benchbox/_vendor/SQLGLOT_LICENSE.txt"
+CORPUS_DIR = "tests/unit/sql_compat/golden_corpus/recorded"
+CORPUS_MODULE = "tests.unit.sql_compat.golden_corpus"
+MAX_LISTED_CASES = 20
+MAX_OUTPUT_CHARS = 600
 KILL_SWITCH = "SQLGLOT_DELIVERY_ENABLED"
 HOLD_LABEL = "no-auto-merge"
 BOT_NAME = "benchbox-bot"
@@ -39,6 +43,7 @@ VERSION_RE = re.compile(r"^\d+\.\d+\.\d+\.\d+$")
 SHA1_RE = re.compile(r"^[0-9a-f]{40}$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 ARCHIVE_RE = re.compile(r"^benchbox/_vendor/benchbox_sqlglot-\d+\.\d+\.\d+\.\d+-py3-none-any\.whl\.zip$")
+CORPUS_FILE_RE = re.compile(re.escape(CORPUS_DIR) + r"/[A-Za-z0-9_]+\.json")
 MARKER_RE = re.compile(r"<!-- sqlglot-delivery: (\{[^\n]*?\}) -->")
 MARKER_KEYS = ("baseSha", "forkSha", "headSha", "runAttempt", "runId", "sha256", "upstreamSha", "version")
 GREEN_CONCLUSIONS = frozenset({"success", "neutral", "skipped"})
@@ -543,19 +548,91 @@ def marker_for(plan: Mapping[str, Any], head: str, base: str) -> dict[str, Any]:
     }
 
 
-def pull_request_text(plan: Mapping[str, Any], previous: str, head: str, base: str) -> tuple[str, str]:
+CorpusChange = dict[str, Any]
+
+
+def fence(text: str) -> str:
+    longest = max((len(run) for run in re.findall(r"`+", text)), default=0)
+    mark = "`" * max(3, longest + 1)
+    return f"{mark}\n{text}\n{mark}"
+
+
+def clip(text: str) -> str:
+    return text if len(text) <= MAX_OUTPUT_CHARS else f"{text[:MAX_OUTPUT_CHARS]}... ({len(text)} characters in all)"
+
+
+def render_corpus_changes(changes: Sequence[CorpusChange]) -> str:
+    if not changes:
+        return ""
+    per_area: dict[str, int] = {}
+    for change in changes:
+        per_area[change["area"]] = per_area.get(change["area"], 0) + 1
+    counts = ", ".join(f"{area}: {count}" for area, count in sorted(per_area.items()))
+    listed = changes[:MAX_LISTED_CASES]
+    lines = [
+        "## Golden corpus changes\n",
+        f"The delivered runtime changes {len(changes)} recorded case(s) of the fork-versus-legacy golden corpus "
+        f"({counts}). The automation re-recorded them in the adoption commit; review each before merging.",
+    ]
+    if len(changes) > len(listed):
+        lines.append(f"\nThere are too many to list: the first {len(listed)} follow, and the rest are in the diff.")
+    for change in listed:
+        before, after = change["before"], change["after"]
+        kind = "added" if before is None else "removed" if after is None else "changed"
+        lines.append(f"\n### `{change['area']}` / `{change['case']}` ({kind})")
+        for field in sorted(set(before or {}) | set(after or {})):
+            old, new = (before or {}).get(field), (after or {}).get(field)
+            if old == new:
+                continue
+            lines.append(f"\n{field}, before:\n{fence(clip(old)) if old is not None else '_absent_'}")
+            lines.append(f"\n{field}, after:\n{fence(clip(new)) if new is not None else '_absent_'}")
+    return "\n".join(lines) + "\n\n"
+
+
+def read_corpus(root: Path) -> dict[str, dict[str, Any]]:
+    directory = root / CORPUS_DIR
+    if not directory.is_dir():
+        return {}
+    return {path.stem: json.loads(path.read_text(encoding="utf-8")) for path in sorted(directory.glob("*.json"))}
+
+
+def corpus_changes(
+    before: Mapping[str, Mapping[str, Any]], after: Mapping[str, Mapping[str, Any]]
+) -> list[CorpusChange]:
+    changes: list[CorpusChange] = []
+    for area in sorted(set(before) | set(after)):
+        old, new = before.get(area, {}), after.get(area, {})
+        for case in sorted(set(old) | set(new)):
+            if old.get(case) != new.get(case):
+                changes.append({"area": area, "case": case, "before": old.get(case), "after": new.get(case)})
+    return changes
+
+
+def pull_request_text(
+    plan: Mapping[str, Any],
+    previous: str,
+    head: str,
+    base: str,
+    corpus: Sequence[CorpusChange] = (),
+) -> tuple[str, str]:
     expected, producer = plan["expected"], plan["producer"]
+    scope = (
+        "the runtime pin, the bundled wheel archive, its license notice, the runtime baseline identity and the "
+        "recorded golden corpus"
+        if corpus
+        else "the runtime pin, the bundled wheel archive, its license notice and the runtime baseline identity"
+    )
     body = (
         f"Adopts the verified benchbox-sqlglot {expected['version']} runtime wheel (the pin is {previous}).\n\n"
         f"- Wheel SHA-256: `{expected['sha256']}`\n"
         f"- Fork commit: `{expected['forkSha']}`\n"
         f"- Upstream SQLGlot commit: `{expected['upstreamSha']}`\n"
         f"- Producer delivery: {producer['runUrl']} (attempt {producer['runAttempt']})\n\n"
-        "The change touches only the runtime pin, the bundled wheel archive, its license notice and the runtime "
-        "baseline identity. The scheduled SQLGlot delivery workflow opened it and keeps at most one such pull "
+        f"The change touches only {scope}. The scheduled SQLGlot delivery workflow opened it and keeps at most one such pull "
         "request open. It is armed for merge only through the normal arming checks and never after a human "
         "disables auto-merge or applies the `no-auto-merge` hold. To roll the adoption back, revert it and add "
         "its version and wheel hash to `suppressed` in `.github/sqlglot-delivery.json`.\n\n"
+        f"{render_corpus_changes(corpus)}"
         f"{render_marker(marker_for(plan, head, base))}\n"
     )
     return title_for(expected["version"]), body
@@ -585,7 +662,11 @@ def fragment_for(version: str) -> str:
 
 def check_adoption_paths(paths: Sequence[str], version: str) -> None:
     allowed = {PIN, BASELINE, LICENSE_NOTICE, fragment_for(version)}
-    extra = sorted(path for path in paths if path not in allowed and not ARCHIVE_RE.fullmatch(path))
+    extra = sorted(
+        path
+        for path in paths
+        if path not in allowed and not ARCHIVE_RE.fullmatch(path) and not CORPUS_FILE_RE.fullmatch(path)
+    )
     require(not extra, f"adoption changed paths outside the allowed set: {', '.join(extra)}")
     archive = f"benchbox/_vendor/benchbox_sqlglot-{version}-py3-none-any.whl.zip"
     missing = sorted({PIN, BASELINE, fragment_for(version), archive} - set(paths))
@@ -598,12 +679,24 @@ def default_checks(root: Path) -> None:
     adopt_sqlglot_wheel.run_checks(root)
 
 
+def record_corpus(root: Path, archive: str) -> None:
+    env = {"PYTHONPATH": os.pathsep.join(filter(None, [str(root), os.environ.get("PYTHONPATH", "")]))}
+    probe = run([sys.executable, "-c", "import benchbox._vendor as v; print(v.__path__[-1])"], root, env)
+    require(
+        probe.returncode == 0 and archive in probe.stdout,
+        f"the corpus recorder would not load the delivered runtime {archive}",
+    )
+    result = run([sys.executable, "-m", CORPUS_MODULE], root, env)
+    require(result.returncode == 0, f"recording the golden corpus failed: {result.stderr.strip()[-500:]}")
+
+
 def prepare(
     root: Path,
     plan_dir: Path,
     out_dir: Path,
     config: Config,
     checks: Callable[[Path], None] | None = default_checks,
+    recorder: Callable[[Path, str], None] | None = record_corpus,
 ) -> dict[str, Any]:
     plan = json.loads((plan_dir / PLAN_FILE).read_text(encoding="utf-8"))
     require(plan.get("state") == "adopt", f"nothing to prepare: the plan state is {plan.get('state')!r}")
@@ -640,6 +733,11 @@ def prepare(
     fragment = root / fragment_for(expected["version"])
     fragment.parent.mkdir(exist_ok=True)
     fragment.write_text(json.dumps({"schema": 1, "entries": [entry]}, indent=2) + "\n", encoding="utf-8")
+    corpus: list[CorpusChange] = []
+    if recorder is not None:
+        corpus_before = read_corpus(root)
+        recorder(root, f"benchbox_sqlglot-{expected['version']}-py3-none-any.whl.zip")
+        corpus = corpus_changes(corpus_before, read_corpus(root))
     paths = porcelain_paths(root)
     check_adoption_paths(paths, expected["version"])
     outcomes_after = {
@@ -668,7 +766,7 @@ def prepare(
         git(root, "add", "--", path)
     git(root, "-c", "commit.gpgsign=false", "commit", "-m", title, env=identity)
     head = git(root, "rev-parse", "HEAD")
-    title, body = pull_request_text(plan, pinned["version"], head, base)
+    title, body = pull_request_text(plan, pinned["version"], head, base, corpus)
     out_dir.mkdir(parents=True, exist_ok=True)
     bundle = out_dir / BUNDLE_FILE
     bundle.unlink(missing_ok=True)

@@ -237,6 +237,7 @@ class World:
         self.files = tmp_path / "wheels"
         self.files.mkdir()
         self.counter = 0
+        self.recorder: Callable[[Path, str], None] | None = None
         self.config = delivery.load_config(REAL_CONFIG)
         self.bare = tmp_path / "origin.git"
         sh(tmp_path, "git", "init", "--bare", "-b", "develop", str(self.bare))
@@ -382,7 +383,9 @@ class World:
     def prepare(self) -> dict[str, Any]:
         code, plan = self.run_plan()
         assert code == 0 and plan["state"] == "adopt"
-        return delivery.prepare(self.clone, self.tmp / "plan", self.tmp / "prepared", self.config, checks=None)
+        return delivery.prepare(
+            self.clone, self.tmp / "plan", self.tmp / "prepared", self.config, checks=None, recorder=self.recorder
+        )
 
     def publish(self, **options: Any) -> dict[str, Any]:
         options.setdefault("environ", ENABLED)
@@ -701,7 +704,9 @@ def test_prepare_refuses_a_wheel_that_does_not_match_the_plan_and_writes_no_bund
     plan["expected"]["sha256"] = "0" * 64
     (world.tmp / "plan" / delivery.PLAN_FILE).write_text(json.dumps(plan))
     with pytest.raises(DeliveryError, match="plan hash"):
-        delivery.prepare(world.clone, world.tmp / "plan", world.tmp / "prepared", world.config, checks=None)
+        delivery.prepare(
+            world.clone, world.tmp / "plan", world.tmp / "prepared", world.config, checks=None, recorder=None
+        )
     assert not (world.tmp / "prepared" / delivery.BUNDLE_FILE).exists()
 
 
@@ -713,7 +718,9 @@ def test_prepare_refuses_an_adopter_that_touches_anything_else(world: World) -> 
         (root / "scripts" / "stray.py").write_text("print('x')\n")
 
     with pytest.raises(DeliveryError, match="outside the allowed set"):
-        delivery.prepare(world.clone, world.tmp / "plan", world.tmp / "prepared", world.config, checks=stray)
+        delivery.prepare(
+            world.clone, world.tmp / "plan", world.tmp / "prepared", world.config, checks=stray, recorder=None
+        )
     assert not (world.tmp / "prepared" / delivery.BUNDLE_FILE).exists()
 
 
@@ -728,7 +735,135 @@ def test_prepare_refuses_an_adoption_that_changes_expected_outcomes(world: World
         path.write_text(json.dumps(baseline, indent=2) + "\n", encoding="utf-8")
 
     with pytest.raises(DeliveryError, match="expected outcomes"):
-        delivery.prepare(world.clone, world.tmp / "plan", world.tmp / "prepared", world.config, checks=rewrite_outcomes)
+        delivery.prepare(
+            world.clone,
+            world.tmp / "plan",
+            world.tmp / "prepared",
+            world.config,
+            checks=rewrite_outcomes,
+            recorder=None,
+        )
+    assert not (world.tmp / "prepared" / delivery.BUNDLE_FILE).exists()
+
+
+CORPUS = delivery.CORPUS_DIR
+
+
+def seed_corpus(world: World, area: str, recorded: dict[str, Any]) -> None:
+    path = world.clone / CORPUS / f"{area}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(recorded, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    sh(world.clone, "git", "add", CORPUS)
+    sh(world.clone, "git", "commit", "-m", "seed corpus")
+    sh(world.clone, "git", "push", "origin", "develop")
+
+
+def rewriting(area: str, recorded: dict[str, Any]) -> Callable[[Path, str], None]:
+    def record(root: Path, archive: str) -> None:
+        assert archive == f"benchbox_sqlglot-{NEW}-py3-none-any.whl.zip"
+        assert (root / "benchbox" / "_vendor" / archive).is_file()
+        (root / CORPUS / f"{area}.json").write_text(
+            json.dumps(recorded, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+
+    return record
+
+
+def test_prepare_re_records_a_corpus_difference_in_the_one_adoption_commit_and_lists_the_case(world: World) -> None:
+    seed_corpus(world, "area_adapters", {"case_a": {"fork": "SELECT 1 FROM `t`", "legacy": "SELECT 1 FROM t"}})
+    world.deliver(NEW, 2)
+    world.recorder = rewriting("area_adapters", {"case_a": {"fork": "SELECT 1 FROM t", "legacy": "SELECT 1 FROM t"}})
+    prepared = world.prepare()
+    assert f"{CORPUS}/area_adapters.json" in prepared["paths"]
+    assert sh(world.clone, "git", "rev-list", "--count", f"{prepared['base']}..{prepared['head']}") == "1"
+    committed = json.loads(sh(world.clone, "git", "show", f"{prepared['head']}:{CORPUS}/area_adapters.json"))
+    assert committed["case_a"]["fork"] == "SELECT 1 FROM t"
+    body = prepared["body"]
+    assert "## Golden corpus changes" in body
+    assert "`area_adapters` / `case_a` (changed)" in body
+    assert "fork, before:\n```\nSELECT 1 FROM `t`\n```" in body
+    assert "fork, after:\n```\nSELECT 1 FROM t\n```" in body
+    assert "legacy, before" not in body
+    assert delivery.parse_marker(body)["headSha"] == prepared["head"]
+
+
+def test_a_published_adoption_with_a_corpus_change_is_still_owned_and_armable(world: World) -> None:
+    seed_corpus(world, "area_adapters", {"case_a": {"fork": "x", "legacy": "y"}})
+    world.deliver(NEW, 2)
+    world.recorder = rewriting("area_adapters", {"case_a": {"fork": "z", "legacy": "y"}})
+    world.prepare()
+    world.publish()
+    assert len(world.api.pulls) == 1 and "Golden corpus changes" in world.api.pulls[0]["body"]
+    owned, foreign = delivery.open_adoptions(world.api, world.config, CONSUMER, APP)
+    assert len(owned) == 1 and not foreign
+
+
+def test_prepare_with_no_corpus_difference_leaves_the_corpus_and_the_body_untouched(world: World) -> None:
+    recorded = {"case_a": {"fork": "SELECT 1", "legacy": "SELECT 1"}}
+    seed_corpus(world, "area_adapters", recorded)
+    world.deliver(NEW, 2)
+    world.recorder = rewriting("area_adapters", recorded)
+    prepared = world.prepare()
+    assert not [path for path in prepared["paths"] if path.startswith(CORPUS)]
+    assert "Golden corpus" not in prepared["body"]
+    assert "recorded golden corpus" not in prepared["body"]
+
+
+def test_prepare_lists_added_and_removed_cases(world: World) -> None:
+    seed_corpus(world, "area_ddl", {"gone": {"fork": "a", "legacy": "b"}})
+    world.deliver(NEW, 2)
+    world.recorder = rewriting("area_ddl", {"fresh": {"fork": "c", "legacy": "d"}})
+    body = world.prepare()["body"]
+    assert "`area_ddl` / `fresh` (added)" in body and "`area_ddl` / `gone` (removed)" in body
+
+
+def test_prepare_bounds_the_listed_corpus_cases_and_says_so(world: World) -> None:
+    seed_corpus(world, "area_ddl", {})
+    world.deliver(NEW, 2)
+    many = {f"case_{index:03d}": {"fork": "f" * 5000, "legacy": "l"} for index in range(60)}
+    world.recorder = rewriting("area_ddl", many)
+    body = world.prepare()["body"]
+    assert "60 recorded case(s)" in body and "area_ddl: 60" in body
+    assert f"the first {delivery.MAX_LISTED_CASES} follow" in body
+    assert body.count("### `area_ddl`") == delivery.MAX_LISTED_CASES
+    assert "5000 characters in all" in body
+    assert len(body) < 60000
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        f"{CORPUS}/nested/area_x.json",
+        f"{CORPUS}/area_x.py",
+        "tests/unit/sql_compat/golden_corpus/area_adapters.py",
+        "tests/unit/sql_compat/golden_corpus/frozen/area_adapters.json",
+        "tests/unit/sql_compat/recorded/area_x.json",
+    ],
+)
+def test_only_the_recorded_corpus_directory_is_allowed_beyond_the_adoption_paths(path: str) -> None:
+    base = [
+        delivery.PIN,
+        delivery.BASELINE,
+        delivery.fragment_for(NEW),
+        f"benchbox/_vendor/benchbox_sqlglot-{NEW}-py3-none-any.whl.zip",
+    ]
+    delivery.check_adoption_paths([*base, f"{CORPUS}/area_x.json"], NEW)
+    with pytest.raises(DeliveryError, match="outside the allowed set"):
+        delivery.check_adoption_paths([*base, path], NEW)
+
+
+def test_prepare_refuses_a_recorder_that_writes_outside_the_corpus_directory(world: World) -> None:
+    world.deliver(NEW, 2)
+    world.run_plan()
+
+    def stray(root: Path, archive: str) -> None:
+        (root / "tests").mkdir(exist_ok=True)
+        (root / "tests" / "golden.py").write_text("x = 1\n")
+
+    with pytest.raises(DeliveryError, match="outside the allowed set"):
+        delivery.prepare(
+            world.clone, world.tmp / "plan", world.tmp / "prepared", world.config, checks=None, recorder=stray
+        )
     assert not (world.tmp / "prepared" / delivery.BUNDLE_FILE).exists()
 
 
