@@ -38496,7 +38496,7 @@
       "needs": [],
       "priority": "medium",
       "status": "blocked",
-      "title": "benchbox-site main describes unreleased scale-factor and TPC-DI behaviour that the pinned v0.5.0 release does not have"
+      "title": "benchbox-site main describes core behaviour the pinned v0.5.0 release does not have (scale factors, TPC-DI, vendor publishing checks)"
     },
     "site-maintenance-phase-guide-dsdgen-refresh-20261107": {
       "claim": null,
