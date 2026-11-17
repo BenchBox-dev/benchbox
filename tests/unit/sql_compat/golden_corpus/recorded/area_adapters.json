@@ -60,11 +60,11 @@
     "legacy": "SELECT * FROM `proj.ds.MY_CUSTOM_TABLE`"
   },
   "bigquery_qualify_17": {
-    "fork": "SELECT schema_name FROM `proj`.`ds`.`INFORMATION_SCHEMA.SCHEMATA` AS SCHEMATA ORDER BY schema_name",
+    "fork": "SELECT schema_name FROM `proj.ds.INFORMATION_SCHEMA.SCHEMATA` AS SCHEMATA ORDER BY schema_name",
     "legacy": "SELECT schema_name FROM INFORMATION_SCHEMA.SCHEMATA ORDER BY schema_name"
   },
   "bigquery_qualify_18": {
-    "fork": "SELECT table_name FROM `proj`.`ds`.`INFORMATION_SCHEMA.COLUMNS` AS COLUMNS",
+    "fork": "SELECT table_name FROM `proj.ds.INFORMATION_SCHEMA.COLUMNS` AS COLUMNS",
     "legacy": "SELECT table_name FROM `proj.ds.INFORMATION_SCHEMA.COLUMNS`"
   },
   "bigquery_qualify_19": {
