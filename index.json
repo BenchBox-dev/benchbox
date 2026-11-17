@@ -20137,7 +20137,9 @@
     },
     "develop-integration-failures-20261014": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "heavy-work-host-capacity-owner-decision-20261117"
+      ],
       "priority": "medium-high",
       "status": "open",
       "title": "Three integration tests fail on unmodified develop under `make test-pytest`"
