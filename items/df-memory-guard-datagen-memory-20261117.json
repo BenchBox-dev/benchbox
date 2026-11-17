@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "The generation-vs-guard order is recorded with file references.",
+    "Generation peak RSS for TPC-H and TPC-DS at SF1 (and SF10 or a recorded reason) is recorded here.",
+    "The owner's choice and date are recorded; if (a) or (b), a merged PR with a test that refuses an uncached run whose generation estimate exceeds free memory."
+  ],
+  "description": "## Problem\nThe DataFrame memory guard (`check_sufficient_memory`, called in `benchbox/platforms/dataframe/benchmark_mixin.py` before load) estimates query-execution memory only. During the PR #4299 measurements, TPC-H dbgen workers alone summed to 2.6-3.1 GiB resident, which the per-engine floors (Polars/DataFusion 2.0, PySpark 4.0 GiB) do not cover. A run that generates data can exceed the host even when the guard accepts it. Not yet established: whether generation runs inside the same `benchbox run` before the guard, and the generation peak per benchmark and scale factor.\n\n## Method\n1. Trace the order of generation and the guard in one `benchbox run` with no cached data; record it here with file references.\n2. Measure generation peak RSS (all generator processes) for TPC-H and TPC-DS at SF1 and SF10 (SF10 only on a host that can hold it) through `make heavy-run`.\n\n## Decision gate (owner)\nPresent the measurements and these options, with a recommendation: (a) include a generation estimate in the guard when data is not cached; (b) a separate check before generation; (c) document only. Agents implement only the owner's choice.\n\n## Guardrails\nTiming and memory runs only through `make heavy-run` after `make heavy-status`; never force admission, set BENCHBOX_SKIP_TEST_LOCK, disable the watchdog, or pass `--ignore-memory-warnings` without the owner's approval in that task. Never kill processes by pattern; the host is shared. Do not change generator parallelism or output to reduce memory as part of this item.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:baf9996c1c86fb9c9b5547f3",
+      "at": "2026-11-17T21:20:33Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1c0e74b754ad4002b29b65c91b204880",
+      "session_id": "584fe5162b994f91904666adf0c5e183"
+    }
+  ]
+}

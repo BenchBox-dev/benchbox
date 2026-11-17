@@ -20405,6 +20405,13 @@
       "status": "done",
       "title": "Time the DataFrame distinct-count remediation on an idle machine and change or revert any pattern that is slower"
     },
+    "df-memory-guard-datagen-memory-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Decide whether the DataFrame memory guard should account for data-generation memory"
+    },
     "df-memory-guard-refusal-message-and-subset-estimate-20261112": {
       "claim": null,
       "needs": [],
