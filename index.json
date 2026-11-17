@@ -44547,7 +44547,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Tractable show_item and update_item calls take over 30 s and time out in the client, leaving writes in an unknown state"
     },
     "trailing-delimiter-probe-swallows-read-errors": {

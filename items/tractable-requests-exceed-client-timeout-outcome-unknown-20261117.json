@@ -6,6 +6,7 @@
     "BenchBox pins the tractable release that carries the change"
   ],
   "description": "## Problem\nOn 2026-11-17, during a tracker grooming session on this host, at least six tractable calls (show_item, update_item, list_items) exceeded the 30 s MCP client timeout (\"Request timeout after 30000ms ... the request outcome is unknown\"). Re-reading showed some timed-out updates had been applied (the needs of tuning-evidence-benefit-rule-20261008 and the acceptance of databricks-preview-features-refused-beyond-adr-20261117) and some had not (a context_append on perf-smoke-rebaseline-after-power-query-generation-20261103 needed a second call). An agent that retries a timed-out context_append or create can duplicate it; one that does not retry can lose a write. The host was under heavy memory pressure at the time (swap over 90%), so the cause may be host load, the server, or the git-backed store.\n\n## Decision gate\nMeasure first: per-operation server-side latency (time in the store, git commit and push to the state branch, lock waits) for 50 calls of each kind on this host, once idle and once during normal agent load. Then:\n- If the time is in the server or store, fix it in tractable (BenchBox-dev/tractable) and pin the release here.\n- If only host load explains it, record that and make writes safe to retry instead.\nIn either case: writes must be idempotent under retry (a client-supplied operation id that the server deduplicates), because client timeouts cannot be ruled out. Raising the client timeout is an owner choice for the omp settings and is not a fix on its own.\n\n## Guardrails\n- Do not bypass the state branch or edit tracker files by hand to work around latency.\n- No change to tracker semantics (claims, generations, finish evidence).\n- A tractable change ships as a tractable release and a pin bump here, through its own CI.",
+  "drop_reason": "Duplicate of done item tractable-mcp-write-timeout-unknown-outcome-20261113. tractable v1.2.0 adds operation_id write replay, per-stage mutation timing logs and a 20 s lock-wait cap, and BenchBox PR #4308 pins 1.2.0. The 2026-11-17 timeouts came from tractable-mcp processes started before that pin merged. Reopen only if a restarted 1.2.0 server still exceeds the client timeout.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bfa5e7eb7cd30f69e1fe2571",
@@ -13,6 +14,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "8194e94b1dc94ab090e66a34e6942636",
+      "session_id": "0362803867fb4929927e576283fffc32"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bfa5e7eb7cd30f69e1fe2571",
+      "at": "2026-11-17T21:27:32Z",
+      "client": "omp-coding-agent",
+      "op": "drop",
+      "op_id": "4c20a067b1fd42238de92f9a7d9242f4",
       "session_id": "0362803867fb4929927e576283fffc32"
     }
   ]
