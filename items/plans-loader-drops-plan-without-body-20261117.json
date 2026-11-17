@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Evidence recorded: either a producer path that writes fingerprint-only plan entries (with file and function), or a search showing none exists",
+    "If a producer exists, a write -> load -> write test keeps plan_fingerprint and fingerprint_kind for that entry"
+  ],
+  "description": "## Problem (unverified)\nWhile checking `fingerprint_kind` round trips on 2026-11-15, a reviewer noted that `_reconstruct_query_results` in benchbox/core/results/loader.py attaches a plan and fingerprint to a row only when the plans payload carries a plan body. A payload entry with `plan_fingerprint` and `fingerprint_kind` but no plan (for example after sanitizing, or a capture that recorded only the fingerprint) would be lost on load, and the next export would drop the entry. The normal case (plan present) round-trips correctly; a test now pins that.\n\n## Decision gate\nReproduce first. If no producer writes a fingerprint without a plan body, close the item with that evidence. Only if one does, decide whether the loader should keep fingerprint-only entries.\n\n## Guardrails\n- Do not add a second fingerprint_kind convention: the writer derives it in `_build_plan_entry` (schema.py).\n- Do not change published companions.",
+  "links": [
+    "BenchBox-dev/BenchBox: benchbox/core/results/loader.py",
+    "BenchBox-dev/BenchBox: benchbox/core/results/schema.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0deceae4762d30cfd4f4d362",
+      "at": "2026-11-17T14:19:57Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9ed6edab7caa4135b2182359c3248323",
+      "session_id": "4cc6c844a24e43ca9e1fc9cb409a70e6"
+    }
+  ]
+}

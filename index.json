@@ -31392,6 +31392,13 @@
       "status": "blocked",
       "title": "Complete plan-companion privacy coverage for the hosted ingest"
     },
+    "plans-loader-drops-plan-without-body-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Investigate: a reloaded result drops a plan entry (and its fingerprint_kind) when the plans payload has a fingerprint but no plan body"
+    },
     "plans-publish-boundary-path-validation-20261108": {
       "claim": null,
       "needs": [
