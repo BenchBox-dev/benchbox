@@ -18307,7 +18307,9 @@
     },
     "corpus-nonstandard-scale-submission-policy-20261111": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "feature-feat-corpus-scale-policy-and-reruns-20261117"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Decide how the corpus treats a result bundle at a non-standard scale factor"
