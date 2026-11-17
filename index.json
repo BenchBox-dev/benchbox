@@ -38732,10 +38732,15 @@
       "title": "Correct site documentation that contradicts current CLI and MCP behaviour"
     },
     "site-duckdb-file-format-note-review-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-18T22:31:14Z",
+        "generation": "82fbca8a6c46412aa4babb2abe4349f2",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:baf9996c1c86fb9c9b5547f3"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Owner review: benchbox-site PR #163, DuckDB 1.x and 2.x database file formats note"
     },
     "site-explorer-major-dev-dependency-upgrades-20261117": {
