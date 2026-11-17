@@ -129,6 +129,21 @@ def _suppress_xdist_worker_title(start_frame: FrameType | None = None) -> bool:
     return False
 
 
+def _format_lock_refusal(test_lock_path, holder_info, exc, waited_note) -> str:
+    return (
+        f"\n\033[91m[benchbox] BLOCKED: A parallel test run is still active.\033[0m\n"
+        f"  Lock file : {test_lock_path}\n"
+        f"  Holder    : {holder_info}\n"
+        f"  Detail    : {exc}\n"
+        f"{waited_note}\n"
+        f"  Options:\n"
+        f"    \u2022 Wait for the other run to finish and retry; raise BENCHBOX_TEST_LOCK_WAIT_SECONDS to wait longer.\n"
+        f"    \u2022 Check who holds the host lock:  make heavy-status\n"
+        f"    \u2022 Run heavy work through the gate:  make heavy-run CMD='...'\n"
+        f"    \u2022 Rules for heavy work: docs/agent/heavy-work.md\n\n"
+    )
+
+
 def pytest_configure(config) -> None:
     global _test_lock
 
@@ -150,18 +165,7 @@ def pytest_configure(config) -> None:
             waited_note = (
                 f"  Waited    : {wait_seconds:g}s (BENCHBOX_TEST_LOCK_WAIT_SECONDS)\n" if wait_seconds > 0 else ""
             )
-            sys.stderr.write(
-                f"\n\033[91m[benchbox] BLOCKED: A parallel test run is still active.\033[0m\n"
-                f"  Lock file : {test_lock_path}\n"
-                f"  Holder    : {holder_info}\n"
-                f"  Detail    : {exc}\n"
-                f"{waited_note}\n"
-                f"  Options:\n"
-                f"    \u2022 Wait for the other run to finish and retry.\n"
-                f"    \u2022 Kill the other run, then retry.\n"
-                f"    \u2022 Run single-threaded (no lock):  pytest -n 0 ...\n"
-                f"    \u2022 Bypass lock (dangerous):         BENCHBOX_SKIP_TEST_LOCK=1 pytest ...\n\n"
-            )
+            sys.stderr.write(_format_lock_refusal(test_lock_path, holder_info, exc, waited_note))
             sys.stderr.flush()
             os._exit(1)
 

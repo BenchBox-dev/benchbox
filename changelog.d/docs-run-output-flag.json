@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "benchbox run --output help now states that the directory holds generated data and databases while result JSON goes to the benchmark_runs results directory, and the run prints the absolute results directory when it finishes."
+    }
+  ]
+}
