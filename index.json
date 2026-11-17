@@ -47759,15 +47759,10 @@
       "title": "Let worktree-reap remove detached worktrees whose HEAD is already on develop"
     },
     "worktree-reap-leaves-malformed-and-closed-pr-worktrees-20261112": {
-      "claim": {
-        "expires_at": "2026-11-18T22:45:13Z",
-        "generation": "21ada0a932ef4b0abf4cbfef7d0e9b15",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f00380ac381b3b759bd4b6a8"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "worktree-reap has no way to clear worktrees with malformed provenance or a closed, unmerged pull request"
     },
     "worktree-reap-release-line-prs-ambiguous-20261117": {
