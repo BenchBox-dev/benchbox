@@ -24907,7 +24907,8 @@
     "generator-validation-large-scales-20261111": {
       "claim": null,
       "needs": [
-        "scale-factor-registry-caps-vs-docs-20261013"
+        "scale-factor-registry-caps-vs-docs-20261013",
+        "feature-feat-tpcdi-current-generator-followups-20261117"
       ],
       "priority": "low",
       "status": "open",
