@@ -24620,10 +24620,15 @@
       "title": "FlightData DataFrame queries hardcode a 2018 date window the generated data never covers"
     },
     "flightdata-pin-bts-file-hashes-20261114": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-18T13:45:45Z",
+        "generation": "a299df30fbf047d4a44b04367d36026d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Pin per-file hashes for the BTS monthly files behind the flightdata benchmark"
     },
     "flightdata-source-status-and-alternatives": {
