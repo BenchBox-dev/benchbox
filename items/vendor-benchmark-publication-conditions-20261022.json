@@ -9,7 +9,7 @@
   "description": "The locality ADR's terms table (#3266) lists these conditions on publishing benchmark results; #4137 and #4189 added the bundle fields and validator checks, and the site checklist covers the manual steps:\n\n- Snowflake: share results with Snowflake reasonably in advance of publishing (Acceptable Use Policy §IV).\n- AWS (Redshift, Athena), ClickHouse Cloud and MotherDuck: send the replication information to the vendor, not only publish it (AWS Service Terms §1.8, ClickHouse AUP §2, MotherDuck MSA §1.5).\n- Free, trial and preview tiers: do not publish results from Databricks Free Edition (needs express permission), MotherDuck free or trial use, or any Beta or Preview feature on AWS, Snowflake, Databricks or ClickHouse without the vendor's approval.\n- BigQuery: only tests the publisher runs itself, not on behalf of a hyperscale cloud provider.\n\nDecide how each condition is met (publishing checklist, bundle metadata such as the plan tier and preview features used, or a submission validator check), then implement it.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3266",
-    "docs/development/adr/adr-client-link-locality-disclosure.md"
+    "https://github.com/BenchBox-dev/benchbox-site/blob/main/docs/development/adr/adr-client-link-locality-disclosure.md"
   ],
   "sessions": [
     {
@@ -106,6 +106,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "a5fe97ddaeab4022ac54301bb555d312",
+      "session_id": "0362803867fb4929927e576283fffc32"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bfa5e7eb7cd30f69e1fe2571",
+      "at": "2026-11-17T21:28:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7de3418919b64b7492a826f9a332c74c",
       "session_id": "0362803867fb4929927e576283fffc32"
     }
   ]
