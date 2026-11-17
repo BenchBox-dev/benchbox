@@ -18221,6 +18221,13 @@
       "status": "dropped",
       "title": "Corpus-drift canary reports community submissions as drift and recommends deleting them"
     },
+    "corpus-drift-mirror-grace-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Let corpus drift pass for 24 hours while a validated mirror PR covers it"
+    },
     "corpus-hardware-aware-ranking-identity": {
       "claim": null,
       "needs": [],
