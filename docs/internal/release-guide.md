@@ -98,8 +98,9 @@ unless the bundle's `validator_parity` attestation covers the change since the
 deployed core commit. The attestation records a `base`, the parent commit
 the bundle was compared against. `site_inputs.py` runs `validator_parity.py`
 from the bundle's own checkout with `--base-sha` set to that parent; the
-script validates every submission bundle changed in `base...bundle core` and
-the corpus at the bundle core. `--base-sha` selects the diff range, not the
+script validates every submission bundle changed in `base...bundle core`.
+The separate `corpus_validation` attestation validates the whole corpus at the
+bundle core. `--base-sha` selects the diff range, not the
 validator implementation.
 
 The site accepts a `base` that equals the deployed `core_sha`, and also a
