@@ -49,7 +49,10 @@ TRANSIENT_EXIT = 4
 TRANSIENT_BACKOFF_SECONDS = 30.0
 RATE_LIMIT = "GitHub rate limit"
 TRANSIENT_PATTERNS = (
-    (RATE_LIMIT, re.compile(r"rate limit|retry-after|abuse detection|HTTP 429", re.IGNORECASE)),
+    (
+        RATE_LIMIT,
+        re.compile(r"API rate limit|secondary rate limit|rate limit exceeded|Retry-After: ?\d|HTTP 429", re.IGNORECASE),
+    ),
     (
         "GitHub server error",
         re.compile(r"HTTP 5\d\d\b|\b50[0-4] (?:Bad Gateway|Service Unavailable|Gateway Time-?out)", re.I),
@@ -57,7 +60,7 @@ TRANSIENT_PATTERNS = (
     (
         "network error",
         re.compile(
-            r"TLS handshake timeout|i/o timeout|timed out|Client\.Timeout|connection reset|connection refused"
+            r"TLS handshake timeout|i/o timeout|timed out after \d+|Client\.Timeout|connection reset|connection refused"
             r"|unexpected EOF|no such host|temporary failure in name resolution",
             re.IGNORECASE,
         ),
@@ -695,7 +698,7 @@ def _transient_outcome(subject: str, kind: str, detail: str) -> int:
 
 
 def _transient_reasons(number: object, reasons: Sequence[str], head: str, wait_on_pending_review: bool) -> int | None:
-    causes = [(reason, transient_cause(reason)) for reason in reasons]
+    causes = [(reason, None if GATE_NOT_PASSING in reason else transient_cause(reason)) for reason in reasons]
     flaky = [cause for _, cause in causes if cause is not None]
     if flaky and all(
         cause is not None or _is_waiting(reason, head, wait_on_pending_review) for reason, cause in causes

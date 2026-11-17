@@ -2354,3 +2354,34 @@ def test_the_rate_limit_reset_is_read_from_the_github_rate_limit_resource() -> N
     assert seen[0][-1] == "rate_limit"
     assert pr_arm.rate_limit_reset_seconds(lambda _cmd: (0, ""), now=lambda: 0.0) is None
     assert pr_arm.rate_limit_reset_seconds(lambda _cmd: (1, "boom"), now=lambda: 0.0) is None
+
+
+@pytest.mark.parametrize(
+    "phrase", ["API rate limit exceeded", "timed out after 120 seconds", "HTTP 503 Service Unavailable"]
+)
+def test_a_review_verdict_description_that_names_a_transient_phrase_still_refuses(phrase: str) -> None:
+    gh = FakeGh()
+    reason = f"a fresh review-gate evaluation of aaaaaaaaa does not pass: Blocked · reviewer {phrase}"
+    clock = WaitClock()
+
+    code = pr_arm.arm_waiting(
+        lambda: pr_arm.arm(
+            "7",
+            None,
+            run=gh,
+            unpublished=lambda _checkout: [],
+            threads=lambda *_args: [],
+            suites=lambda *_args: [],
+            gate=lambda *_args: [reason],
+            wait_on_pending_review=True,
+        ),
+        lambda: None,
+        30,
+        clock=clock.clock,
+        sleep=clock.sleep,
+    )
+
+    assert code == 2
+    assert clock.sleeps == []
+    assert gh.merged() == []
+    assert pr_arm._last_outcome.startswith("refused: ")
