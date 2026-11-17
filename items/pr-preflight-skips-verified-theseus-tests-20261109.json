@@ -4,7 +4,7 @@
     "A test or check shows the skip count for that group in the receipt."
   ],
   "context": "2026-11-17: recurred on BenchBox PR #4235 (Theseus lock 0.2.12 -> 0.2.13, 2026-11-14): make pr-preflight passed 2329 and skipped 510, the skips again caused by the verified Theseus install failing with \"Connection refused\" through Python's urlopen for the v0.2.13 wheel URLs, while curl downloaded the same wheel and hosted CI checked the lock. This is the second re-lock PR with no local coverage of the install path.",
-  "description": "A preflight run on a re-lock tree passed 2037 tests and skipped 451. The skips include tests/unit/scripts/test_soundness_merge_digest_dispatch.py and test_theseus_lock.py with `the verified Theseus install ... was refused: ... Connection refused` for both release wheel URLs. The same install works outside the test run (the wheels download and hash correctly, `theseus promotion-check` passes), so the tests run only in CI. A re-lock PR therefore gets no local coverage of the install path, and the preflight receipt does not say that.",
+  "description": "A preflight run on a re-lock tree passed 2037 tests and skipped 451. The skips include tests/unit/scripts/test_soundness_merge_digest_dispatch.py and test_theseus_lock.py with `the verified Theseus install ... was refused: ... Connection refused` for both release wheel URLs. The same install works outside the test run (the wheels download and hash correctly, `theseus promotion-check` passes), so the tests run only in CI. A re-lock PR therefore gets no local coverage of the install path, and the preflight receipt does not say that. Recurred on #4235 (2026-11-14): 2329 passed, 510 skipped, same cause; curl fetched the wheel, Python's urlopen got Connection refused.\n\nDecision gate: first find why urlopen is refused while curl succeeds in the same run (for example a proxy or sandbox rule that applies to the preflight environment but not to curl), and record it here. Then choose: (a) preflight pre-fetches and hash-verifies the locked wheels into a cache the tests read, (b) the tests are allowed the fetch, or (c) the receipt and output name the skipped Theseus group as unrun locally. Recommendation: (a) if the cause is the environment's network rule; (c) as the minimum if no fetch can be allowed.\n\nGuardrails:\n- Never install or test against a wheel whose hash does not match theseus-lock.json; no fallback to an unverified or unpinned Theseus.\n- Preflight never reports these tests as passed when they were skipped.\n- No change to CI's own verified-install path.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4059",
     "theseus-wheel-download-asset-api-fallback"
@@ -25,6 +25,14 @@
       "op": "update",
       "op_id": "dcebd55ed0e2459d828db9827fce737a",
       "session_id": "9fcef8070b9d4fcdb341814073ddadd4"
+    },
+    {
+      "actor": "joe-tractable-followups",
+      "at": "2026-11-17T13:53:26Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "74dff55ca3594a53b333623417920475",
+      "session_id": "66111e92bc6d4d89ac29215c601ef582"
     }
   ]
 }
