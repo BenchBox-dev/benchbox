@@ -161,3 +161,24 @@ def test_an_earlier_read_model_still_builds_without_the_new_columns(tmp_path: Pa
         assert con.execute("SELECT read_model_version FROM metadata").fetchone() == (18,)
 
     assert not columns & {"hardware_class", "known_defect_reason", "service_size"}
+
+
+def test_a_user_attested_recorded_model_is_not_reported_as_measured(tmp_path: Path) -> None:
+    bundles = tmp_path / "data" / "bundles"
+    bundles.mkdir(parents=True)
+    environment = {
+        "os": "Darwin 25.0",
+        "arch": "arm64",
+        "cpu_model": "Apple M4",
+        "cpu_count": 10,
+        "cpu_identity_provenance": "user_attested",
+    }
+    _write(bundles, "claimed", _bundle("claimed", environment=environment))
+    out = tmp_path / "out"
+
+    ExplorerPipeline().run(tmp_path / "data", out)
+
+    with duckdb.connect(str(out / "results.duckdb"), read_only=True) as con:
+        assert con.execute("SELECT hardware_class, hardware_basis FROM results").fetchall() == [
+            ("T2", "attested_model")
+        ]

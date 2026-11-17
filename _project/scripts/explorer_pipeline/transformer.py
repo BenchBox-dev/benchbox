@@ -1313,14 +1313,19 @@ def _hardware_columns(bundle_data: Mapping[str, Any], bundle_path: Path) -> dict
     host = _mapping(environment.get("client_host"))
     execution = read_execution_environment(bundle_data, bundle_path)
     attestation = manifest_cpu_attestation(bundle_path)
+    recorded_model = environment.get("cpu_model") or host.get("cpu_model")
+    provenance = environment.get("cpu_identity_provenance") or host.get("cpu_identity_provenance")
+    sidecar_model = attestation["cpu_model"] if attestation else None
+    if provenance in ("user_attested", "inferred") and isinstance(recorded_model, str) and recorded_model.strip():
+        sidecar_model, recorded_model = recorded_model, None
     classified = classify_hardware(
-        cpu_model=environment.get("cpu_model") or host.get("cpu_model"),
+        cpu_model=recorded_model,
         cpu_count=environment.get("cpu_count") or host.get("cpu_count"),
         cpu_vendor=environment.get("cpu_vendor") or host.get("cpu_vendor"),
         execution_class=execution.get("execution_class"),
         container_host_os=execution.get("container_host_os"),
         runtime_type=_mapping(environment.get("platform_runtime")).get("runtime_type"),
-        attested_cpu_model=attestation["cpu_model"] if attestation else None,
+        attested_cpu_model=sidecar_model,
     )
     version, version_basis = resolve_benchbox_version(
         _mapping(bundle_data.get("export")).get("benchbox_version"), _mapping(bundle_data.get("run")).get("timestamp")
