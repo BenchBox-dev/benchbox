@@ -1,10 +1,11 @@
 {
   "acceptance": [
-    "A change that alters a pure-Python generator's SF 1 output size by more than the baseline tolerance fails a required check unless the baseline is updated in the same change (shown with a test or a probe PR).",
-    "The check is wired into required CI."
+    "Required path-filtered CI detects actual output-size drift outside a documented tolerance; mutation/no-drift/unaffected-path cases prove behavior and required wiring.",
+    "The original execution-volume gap has a named premerge viability/evidence gate and failing/passing demonstrations; updating baseline alone cannot silently satisfy it.",
+    "Runtime/resource cost and false-positive/negative scope are measured; required-check policy changes have owner approval and size contracts reach site next."
   ],
-  "context": "Filed 2026-11-12 from the scale-factor follow-up and TPC-DI generator work of 2026-11-11 and 2026-11-12: identified during that work and not addressed.",
-  "description": "## Problem\nBenchBox-dev/benchbox#4149 raised TPC-DI SF 1 fact rows from 275,000 to 6.77 million. PR CI and the local and hosted reviews were green. Two things then went wrong after merge:\n- `tests/unit/generators/sf1_size_baseline.json` still said 160,094,804 bytes for `tpcdi` while the generator produced about three times that. No test compares the baseline with generated data in the fast tier (`test_measure_one_runs_a_lightweight_generator_end_to_end` is marked slow and measures another benchmark), so the site published two different TPC-DI sizes until #4171 corrected the baseline by hand.\n- Trunk UAT 43154678095 timed out on Spark and DataFusion TPC-DI at SF 1 (see `tpcdi-sf1-slowdown-after-linear-fact-scaling`), because nothing before merge ran the benchmark at the new volume.\n\n## Change\nAdd a pre-merge signal for data-volume changes. Options: a path-filtered CI job that re-measures the SF 1 size for a benchmark whose generator or `generator_specs.yaml` changed and fails outside the baseline tolerance; a preflight guard that requires a baseline update when a generator spec file changes; a required DuckDB smoke run at SF 1 for the touched benchmark.\n\n## Guardrails\n- Keep it path-filtered: measuring every benchmark at SF 1 is heavy.\n- The baseline feeds the site through `scripts/doc_contracts.py`, so a baseline change must reach the site page in step.",
+  "context": "Filed 2026-11-12 from the scale-factor follow-up and TPC-DI generator work of 2026-11-11 and 2026-11-12: identified during that work and not addressed.\n\n2026-11-17 TODO review: clarified decision gates, observable pass/fail rubric and safety boundaries. Existing historical evidence is retained; this is tracker planning only, not implementation, spend, publication or closeout approval.",
+  "description": "## Problem\nBenchBox-dev/benchbox#4149 raised TPC-DI SF 1 fact rows from 275,000 to 6.77 million. PR CI and the local and hosted reviews were green. Two things then went wrong after merge:\n- `tests/unit/generators/sf1_size_baseline.json` still said 160,094,804 bytes for `tpcdi` while the generator produced about three times that. No test compares the baseline with generated data in the fast tier (`test_measure_one_runs_a_lightweight_generator_end_to_end` is marked slow and measures another benchmark), so the site published two different TPC-DI sizes until #4171 corrected the baseline by hand.\n- Trunk UAT 43154678095 timed out on Spark and DataFusion TPC-DI at SF 1 (see `tpcdi-sf1-slowdown-after-linear-fact-scaling`), because nothing before merge ran the benchmark at the new volume.\n\n## Change\nAdd a pre-merge signal for data-volume changes. Options: a path-filtered CI job that re-measures the SF 1 size for a benchmark whose generator or `generator_specs.yaml` changed and fails outside the baseline tolerance; a preflight guard that requires a baseline update when a generator spec file changes; a required DuckDB smoke run at SF 1 for the touched benchmark.\n\n## Guardrails\n- Keep it path-filtered: measuring every benchmark at SF 1 is heavy.\n- The baseline feeds the site through `scripts/doc_contracts.py`, so a baseline change must reach the site page in step.\n\n## Decision gates\nChoose the smallest measured path-filtered premerge signal. Separate stale-size detection from execution viability: baseline refresh alone cannot prove Spark/DataFusion complete at new volume. Owner approves required-check configuration and resource budget before adding heavy CI.\n\n## Verification rubric\nPass: mutation probe changes generator output without baseline update and fails required CI; approved baseline update passes. A separate probe that updates baseline but breaks affected SF 1 execution must still be caught by the selected execution check or an explicit evidence gate. Record coverage limits, tolerance, runtime and unaffected-path skip behavior.\n\n## Additional guardrails\nNo file-touch-only tautology, all-benchmark SF 1 runs on every PR, catch-all bypass or baseline update used as correctness certification. Reuse measured output to avoid duplicate generation. Preserve Linux digest generation policy and branch-appropriate site contracts.",
   "links": [
     "tests/unit/generators/sf1_size_baseline.json",
     "scripts/measure_sf1_sizes.py",
@@ -19,6 +20,14 @@
       "op": "create",
       "op_id": "04c8b465140f4c61b8f1eadfcc9011bc",
       "session_id": "3f84b7b72a6a4389855a4c2d913fb7f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1fad3edb102f5d3974476660",
+      "at": "2026-11-17T14:21:52Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "663d845dcffc43cf85daa4733116317c",
+      "session_id": "989657b059c44ae4bade82cb666c453c"
     }
   ]
 }
