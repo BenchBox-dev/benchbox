@@ -7,6 +7,11 @@
     "A dispatch of nightly-v2.yml with run_drift=true or corpus-drift-check.yml on develop after merge shows the expected verdict for the live state",
     "Decision gate: if the lookup needs a token or permission beyond GITHUB_TOKEN read scopes, stop and ask the owner"
   ],
+  "batch": {
+    "batch_id": "nightly-remediation",
+    "implementation_dependencies": [],
+    "member_id": "corpus-drift-mirror-grace-20261117"
+  },
   "context": "Guardrails: work only in linked worktrees; never git add -A; Joe Harris identity, no agent trailers; no explanatory code/YAML comments (make comment-policy-check); no new CI skips, no required-check renames, no ruleset/settings/secret changes; no weakening of an existing check beyond the rule this item names; durable commit text without tracker ids.",
   "description": "The nightly t3:drift corpus subcheck (.github/workflows/nightly-v2.yml) and the duplicate scheduled .github/workflows/corpus-drift-check.yml fail whenever develop's results-data is ahead of published-results, which is normal until a maintainer publishes the draft mirror PR. Owner chose a grace rule.\n\nRule: stale paths (develop-ahead or content-changed, same pathspecs as today) pass only if all hold: an open PR from sync-results-data-to-published.yml targets published-results at its current tip; its head tree has develop's exact blob for every stale path; its corpus-mirror/validate-bundles status is success; and the oldest unpublished develop change among the stale paths is less than 24 hours old. Age comes from develop history, so a newer superseding mirror PR cannot reset it. Anything else fails as today, with the same remediation text. Published-only paths stay a notice.\n\nImplement once in a script (for example scripts/corpus_drift.py) used by both workflows, replacing both inline copies; fail closed on any lookup error.\n\nScope: .github/workflows/nightly-v2.yml (drift step, its permissions and fetch depth), .github/workflows/corpus-drift-check.yml, the new script and its unit tests, tests/unit/scripts/test_corpus_drift_canary.py, workflow tests that pin these steps, docs/internal/nightly-t3.md, docs/internal/results-phase-2-runbook.md.",
   "sessions": [
@@ -16,6 +21,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "0a5424ccb8d34c509ca7d4cea01f85a3",
+      "session_id": "b833d84af4ae4e4b999f435d3c8fd25e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:daba6966dbafa9d0ecd0bd8b",
+      "at": "2026-11-17T17:50:20Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "040166e2c3224dd59ce18a060cf8bde9",
       "session_id": "b833d84af4ae4e4b999f435d3c8fd25e"
     }
   ]
