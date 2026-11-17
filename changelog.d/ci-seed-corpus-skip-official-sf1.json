@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Drop the SF 1 official cells from the monthly seed corpus matrix until DataFusion and ClickHouse Local support full-spec runs"
+}
