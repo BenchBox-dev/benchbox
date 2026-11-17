@@ -43538,12 +43538,17 @@
       "title": "Complete TPC-DI SF 100 generation measurement; retain measured SF 10 evidence"
     },
     "tpcdi-standard-scales-and-estimates-after-unit-change-20261112": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-18T20:21:18Z",
+        "generation": "75f95351e8a24a378fbc2acfb7b91e28",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f7ac14dda5358a7d48d793ed"
+      },
       "needs": [
         "feature-feat-tpcdi-current-generator-followups-20261117"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Revisit TPC-DI standard scale factors, registry estimates and UAT settings now that one unit is 5,000 customers"
     },
     "tpcds-can-never-be-published-official-flag-not-wired": {
