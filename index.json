@@ -18324,10 +18324,15 @@
       "title": "Corpus-drift canary reports community submissions as drift and recommends deleting them"
     },
     "corpus-drift-mirror-grace-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-18T19:40:23Z",
+        "generation": "7a416f4406784c72a5b343131ea2eb0e",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:daba6966dbafa9d0ecd0bd8b"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Let corpus drift pass for 24 hours while a validated mirror PR covers it"
     },
     "corpus-hardware-aware-ranking-identity": {
