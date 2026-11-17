@@ -32205,10 +32205,15 @@
       "title": "`make pr-preflight` selects no tests when a PR changes a CI workflow file"
     },
     "pr-preflight-misses-shipped-docs-urls-test-20261114": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-18T13:46:23Z",
+        "generation": "abecafb9613c4902b02232a758111f9d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "pr-preflight did not run test_shipped_docs_urls, which then failed in CI"
     },
     "pr-preflight-skips-verified-theseus-tests-20261109": {
