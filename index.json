@@ -14899,17 +14899,12 @@
       "title": "Decision gate: choose the public-site visual comparison lane policy"
     },
     "ci-dedupe-11-required-public-site-visual-check": {
-      "claim": {
-        "expires_at": "2026-11-18T17:45:23Z",
-        "generation": "46f57fff10e4444a911dfe173191b750",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:daba6966dbafa9d0ecd0bd8b"
-      },
+      "claim": null,
       "needs": [
         "ci-dedupe-10-docs-visual-lane-decision"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Require public-site visual acceptance before merging into develop"
     },
     "ci-docker-hub-unauthenticated-pulls-20261009": {
