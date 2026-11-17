@@ -1,5 +1,29 @@
 # Corpus Generation Notes - 2026-04-03
 
+## Remaining TPC-DI bundles from earlier generators (2026-11-17)
+
+The TPC-DI generator changed twice in November: the four secondary fact tables
+now grow linearly with the scale factor, and one scale-factor unit is the
+specification's 5,000 customers. Every TPC-DI bundle in the corpus predates both
+changes, so none is comparable with data the current generator produces. The six
+SF 1 bundles were flagged on 2026-11-14 (below). The other twelve unflagged
+bundles now carry `known_defects: ["defective-variant-or-loader-wrong-result"]`
+with a `known_defect_reason` in their `.manifest.json` sidecars and leave the
+rankings; no bundle file changed. Two DuckDB bundles had no sidecar; theirs were
+created with `result_source: internal`.
+
+| Scale | Platforms flagged |
+|---|---|
+| SF 0.01 | ClickHouse Local (`3c9d9330`), DataFusion (`328320ea`), DuckDB (`115bd3b6`) |
+| SF 0.1 | BigQuery (`ca696883`), ClickHouse Local (`61e36e9c`), Databricks (`01329d67`), DataFusion (`fb67aa79`), DuckDB (`1769a68f`), Snowflake (`5dd95d51`) |
+| SF 10 | BigQuery (`5d042935`), Databricks (`92040a00`), Snowflake (`9ec08998`) |
+
+The cloud bundles are not rerun, to avoid cloud spend; they stay in the corpus as
+old-generator data, outside the rankings. Replacement local bundles for DuckDB,
+DataFusion and ClickHouse Local at SF 0.01, 0.1 and 1 come from the monthly seed
+corpus workflow, which now includes TPC-DI. Until they are ingested, the TPC-DI
+cohorts publish no ranking.
+
 ## TPC-DI SF1 bundles built before the scale correction (2026-11-14)
 
 Six TPC-DI SF1 bundles were generated before #4149 and #4171 corrected the
@@ -12,6 +36,14 @@ included in rankings" instead of in the ranking. No bundle file changed, and
 the DuckDB bundle's sidecar was created with `result_source: internal` so its
 trust label is unchanged. The existing id was reused because it is the
 corpus's general wrong-result label; no new id was added.
+
+Each of the six sidecars also carries `known_defect_reason` ("Generated before the
+TPC-DI scale correction; the data is about ten times the specification's SF1."). A
+sidecar's `known_defect_reason` is an optional short text (at most 200 characters,
+only valid alongside `known_defects`); without it, the pipeline falls back to a
+default text for each defect id (`KNOWN_DEFECT_REASONS` in
+`benchbox/validation/bundle.py`). The pipeline emits it as `known_defect_reason` on
+the manifest entry and detail result.
 
 | Platform | Bundle |
 |---|---|
