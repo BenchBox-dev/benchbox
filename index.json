@@ -19680,6 +19680,13 @@
       "status": "done",
       "title": "Add DataFusion SQL query transformer for TPC-H Q11, Q16, Q18, Q20"
     },
+    "datafusion-subquery-dml-over-delete-recheck-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Re-check each DataFusion release for the subquery DELETE/UPDATE over-delete bug"
+    },
     "datafusion-tbl-trailing-delimiter-load": {
       "claim": null,
       "needs": [],

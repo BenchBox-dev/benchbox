@@ -1,0 +1,13 @@
+{
+  "description": "## Problem\nDataFusion 55 executes DELETE or UPDATE whose WHERE uses a subquery (IN (SELECT ...) or correlated EXISTS) by removing every row, with no error. Upstream: apache/datafusion#24657. BenchBox guards against it, and DataFusion was dropped from the local full-spec cohort partly for this reason.\n\n## Change\nFor each new DataFusion release BenchBox pins, re-run the reproduction (a two-table delete with IN (SELECT ...) and with EXISTS; compare remaining rows with DuckDB) and record the result here. When fixed, decide whether to relax the guard and whether DataFusion can rejoin the full-spec cohort.\n\n## Decision gate\nOwner decides cohort re-entry once a release fixes it.\n\n## Guardrails\nNever relax the guard on a release that has not passed the reproduction.\n\n## Verification rubric\nReproduction output for the release: deleted counts equal DuckDB's.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c24f66fe7cb6e536d5c6efdb",
+      "at": "2026-11-17T20:15:02Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "cd04d6b7382e4532ae00aa75e31051e7",
+      "session_id": "681da648a77347d084794e62e9154bb1"
+    }
+  ]
+}
