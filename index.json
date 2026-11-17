@@ -45943,7 +45943,9 @@
     },
     "uat-quiet-hides-first-failure-output-20261111": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "feature-feat-heavy-guard-attribution-engine-caps-20261117"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "UAT runs benchmarks with --quiet, so the first failure's error text is lost"
