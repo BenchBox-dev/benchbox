@@ -4,7 +4,8 @@
     "Recorded client_library_version equals the Spark version actually running.",
     "TPC-H SF1 pyspark-df timings for 4.2.0 vs 4.3.x recorded here."
   ],
-  "description": "BenchBox caps pyspark `<4.3` (PR #4241) because no delta-spark release supports Spark 4.3: with 4.3.0 locked, uv resolves delta-spark 4.1.0 and Delta sessions fail with `unresolved dependency: io.delta#delta-spark_4.3_2.13;4.1.0: not found` (24 live_delta errors). Everything else passed on 4.3.0 (fast tier 39,230; 55 PySpark files 2,084; no answer changes; JDK 17/21/25 work, CI uses 21).\n\nFound while testing 4.3.0, to handle at the raise:\n- The pyspark 4.3.0 wheel reports `pyspark.__version__ == \"4.1.0\"` while its jars are 4.3.0; BenchBox records `pyspark.__version__` as `client_library_version`, so results would show the wrong client version. Read the version from the jars/`SparkContext.version` or package metadata instead.\n- `SUPPORTED_JAVA_VERSIONS` lacks 25, which Spark 4.3 supports.\n- Unbounded `pip install pyspark` hints remain in `benchbox/platforms/__init__.py`, `pyspark_df.py`, `lakesail_df.py`.\n\nTrigger: a delta-spark release on PyPI accepting pyspark 4.3 and a `delta-spark_4.3_2.13` artifact on Maven. Scratch setup: ~/Developer/benchmark_runs/pyspark-4-3/ (venv42, chain.sh, run1.sh).\n\nGuardrails: one engine per PR; no reference-answer regeneration; timings via make heavy-run, TPC-H SF1 pyspark-df 4.2 vs 4.3 best of 3.",
+  "context": "2026-11-17: the unbounded `pip install pyspark` hints moved to pyspark-install-hints-bounded-20261117, which does not wait for the Delta trigger.",
+  "description": "BenchBox caps pyspark `<4.3` (PR #4241) because no delta-spark release supports Spark 4.3: with 4.3.0 locked, uv resolves delta-spark 4.1.0 and Delta sessions fail with `unresolved dependency: io.delta#delta-spark_4.3_2.13;4.1.0: not found` (24 live_delta errors). Everything else passed on 4.3.0 (fast tier 39,230; 55 PySpark files 2,084; no answer changes; JDK 17/21/25 work, CI uses 21).\n\nFound while testing 4.3.0, to handle at the raise:\n- The pyspark 4.3.0 wheel reports `pyspark.__version__ == \"4.1.0\"` while its jars are 4.3.0; BenchBox records `pyspark.__version__` as `client_library_version`, so results would show the wrong client version. Read the version from the jars/`SparkContext.version` or package metadata instead.\n- `SUPPORTED_JAVA_VERSIONS` lacks 25, which Spark 4.3 supports.\n\nTrigger: a delta-spark release on PyPI accepting pyspark 4.3 and a `delta-spark_4.3_2.13` artifact on Maven. Scratch setup: ~/Developer/benchmark_runs/pyspark-4-3/ (venv42, chain.sh, run1.sh).\n\nGuardrails: one engine per PR; no reference-answer regeneration; timings via make heavy-run, TPC-H SF1 pyspark-df 4.2 vs 4.3 best of 3.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4241",
     "pyproject.toml"
@@ -17,6 +18,14 @@
       "op": "create",
       "op_id": "84280bca86a14951aa0a4831effad11c",
       "session_id": "0171c65ed8c64989adf7cdd0332f0ed2"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:baf9996c1c86fb9c9b5547f3",
+      "at": "2026-11-17T21:21:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "37a928c98f8d4717a1f2c8ae4a077a68",
+      "session_id": "584fe5162b994f91904666adf0c5e183"
     }
   ]
 }
