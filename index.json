@@ -25452,6 +25452,13 @@
       "status": "done",
       "title": "Document the admission wait in the operations heavy-work page"
     },
+    "heavy-work-host-capacity-owner-decision-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Decide where memory-heavy measurements and full-suite runs execute, since the shared 16 GiB host kills them"
+    },
     "history-retention-adr-stale-doc-references": {
       "claim": null,
       "needs": [],

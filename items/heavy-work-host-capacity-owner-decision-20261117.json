@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "The owner's choice (1, 2 or 3) and its date are recorded in this item's context",
+    "For 1 or 2: each of the three named deliverables has a completed run on the chosen host, with host class, command and run directory recorded on its own item",
+    "For 3: each of the three items has its acceptance narrowed by the owner, with the reason recorded",
+    "No run in this item used an admission or watchdog override"
+  ],
+  "description": "## Problem\nThree tracker deliverables cannot finish on the shared development host (16 GiB RAM, swap 90-95% used while other sessions run). The heavy-run watchdog kills each attempt at memory pressure level 4:\n- DuckDB TPC-H SF10 four-arm cell: killed 3 times during the lineitem load (2026-11-12, duckdb-tuned-template-ablation-20261008).\n- ClickHouse server TPC-DS SF1 tuned-vs-notuning cell: killed 3 times after the first arm's load (2026-11-12, tuning-evidence-benefit-rule-20261008).\n- `make test-all`: killed 5 times serially and once with -n 8, 2-3 minutes into the t2 stage (2026-11-12, develop-integration-failures-20261014).\nheavy-run-admitted-then-killed-by-foreign-memory-pressure-20261112 covers the admission/kill rule. This item is the capacity decision: no agent can make these runs succeed by retrying.\n\n## Decision gate (owner)\nChoose one, and record the choice and date in context:\n1. Quiet-host window: the owner closes browsers and other sessions for a stated window; agents run the queued cells serially in it.\n2. Larger Linux host: a named machine or runner (memory, CPU class, how agents reach it) for measurement and full-suite runs.\n3. Accept the gap: record each deliverable as unmeasured on the supported host and narrow its acceptance.\nAgents must not pick for the owner.\n\n## Guardrails\n- Never bypass admission, raise the watchdog limit, or set BENCHBOX_HEAVY_ADMIT=force / BENCHBOX_HEAVY_WATCHDOG=off without owner approval in the task.\n- Measurements on a different host record that host's class; they do not merge with evidence from the macOS Mocker path without a new A/A on that host.\n- No live cloud (owner: not now).",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/4176",
+    "https://github.com/BenchBox-dev/BenchBox/pull/4191"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1213c3129d7753c9fd6512c0",
+      "at": "2026-11-17T15:18:16Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "935814804966455bb9fd5b5a22fce074",
+      "session_id": "71cadb46eee448f8a6d2019016ddc6eb"
+    }
+  ]
+}
