@@ -22266,7 +22266,9 @@
     },
     "duckdb-tuned-template-ablation-20261008": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "heavy-work-host-capacity-owner-decision-20261117"
+      ],
       "priority": "medium-high",
       "status": "open",
       "title": "Measure the DuckDB tuned templates at SF1 and SF10, separating constraints from sort order and counting load time"
