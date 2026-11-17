@@ -2,7 +2,7 @@
   "acceptance": [
     "On platforms where psutil cannot report a real frequency, the field is null; a test fakes the Apple Silicon reading."
   ],
-  "context": "Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.",
+  "context": "Guardrails: work in a linked worktree (make worktree-create, then make agent-write-preflight); never edit the primary clone. Related items share one feature branch and PR where their files overlap. No live-cloud runs and no credentials in Git or logs; heavy work only through lock-taking entry points or make heavy-run after make heavy-status. Follow the comment policy and add a changelog.d fragment for user-facing changes. Re-verify every cited file and line before acting; they are hints. Stop and report rather than widen scope.\n\nCloseout 2026-11-17: core BenchBox-dev/benchbox#4276 merged (20d8ac12af). cpu_frequency_mhz is null on Darwin arm64 and for unusable readings; tests fake the reading.",
   "description": "Problem: on Apple Silicon, environment.host_load.cpu_frequency_mhz records 4, a meaningless value from psutil.cpu_freq on that platform. A wrong number is worse than an explicit null.",
   "sessions": [
     {
@@ -20,6 +20,14 @@
       "generation": "9dbcd0c6ee404f6c82003f4e7ef33130",
       "op": "take",
       "op_id": "adccb2ce303748a681c217db0e849697",
+      "session_id": "14462ffc9066466ca32d151c57f6a5de"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ac587b24c99e2c616c001019",
+      "at": "2026-11-17T13:45:32Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9a34d5f7ea5e4d3b93ad1f57b258bdc8",
       "session_id": "14462ffc9066466ca32d151c57f6a5de"
     }
   ]
