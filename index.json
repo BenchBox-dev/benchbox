@@ -32268,15 +32268,10 @@
       "title": "Have make pr-arm dispatch an oracle verdict when the exact head has none"
     },
     "pr-arm-github-rate-limit-backoff-20261112": {
-      "claim": {
-        "expires_at": "2026-11-18T20:41:15Z",
-        "generation": "39f0afdcd41c47af91451f37a1d16d56",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c24f66fe7cb6e536d5c6efdb"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "pr-arm and pr-open end a wait on a transient GitHub failure (rate limit, 5xx, network timeout) instead of backing off within WAIT"
     },
     "pr-arm-hold-message-reads-as-refusal-20261028": {
