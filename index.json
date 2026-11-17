@@ -26757,7 +26757,9 @@
     },
     "ledger-seed-recut-after-published-results-advance-20261111": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "feature-feat-corpus-scale-policy-and-reruns-20261117"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "publication/ledger-seed.json still records published-results at 33e5eeb after the branch advanced"
