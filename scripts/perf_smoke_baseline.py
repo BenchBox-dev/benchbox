@@ -12,7 +12,10 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-CLI_DESCRIPTION = "Build the perf-smoke baseline as per-query medians over several CI result files."
+CLI_DESCRIPTION = "Build the perf-smoke baseline from several CI result files."
+
+RULE_SLOWEST_CPU_MODEL = "slowest_cpu_model_median"
+RULE_PER_QUERY_MAXIMUM = "per_query_maximum_over_all_models"
 
 MIN_SOURCE_RESULTS = 5
 FLAT_FLOOR_MS = 5
@@ -40,10 +43,20 @@ def _require_comparable(results: Sequence[Mapping[str, Any]]) -> None:
     for result in results[1:]:
         if _entry_layout(result) != layout:
             raise BaselineError("result files record different queries or iterations")
+    effective_timing_method(results)
     for result in results:
         failed = [entry for entry in result["queries"] if entry.get("status") != "SUCCESS"]
         if failed:
             raise BaselineError("a source result contains a failed query")
+
+
+def effective_timing_method(results: Sequence[Mapping[str, Any]]) -> int:
+    methods = {result.get("run", {}).get("timing_method") for result in results}
+    if None in methods:
+        raise BaselineError("a source result records no run.timing_method")
+    if len(methods) != 1:
+        raise BaselineError(f"source results mix timing methods {sorted(methods)}")
+    return int(methods.pop())
 
 
 def _final_values(result: Mapping[str, Any]) -> dict[str, float]:
@@ -99,7 +112,20 @@ def select_runner_class(results: Sequence[Mapping[str, Any]], *, cpu_model: str 
     return max(eligible, key=lambda name: statistics.median(_total_ms(result) for result in eligible[name]))
 
 
-def median_result(results: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+def select_sources(
+    results: Sequence[Mapping[str, Any]], *, cpu_model: str | None = None
+) -> tuple[list[Mapping[str, Any]], str, str | None]:
+    try:
+        selected_class = select_runner_class(results, cpu_model=cpu_model)
+    except BaselineError:
+        if cpu_model is not None or len(results) < MIN_SOURCE_RESULTS:
+            raise
+        return list(results), RULE_PER_QUERY_MAXIMUM, None
+    chosen = [result for result in results if runner_class(result) == selected_class]
+    return chosen, RULE_SLOWEST_CPU_MODEL, selected_class
+
+
+def median_result(results: Sequence[Mapping[str, Any]], *, reducer: Any = statistics.median) -> dict[str, Any]:
     _require_comparable(results)
     latest = max(results, key=lambda result: result["execution"]["timestamp"])
     merged = copy.deepcopy(dict(latest))
@@ -108,7 +134,7 @@ def median_result(results: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         for entry in result["queries"]:
             samples.setdefault(_entry_key(entry), []).append(float(entry["ms"]))
     for entry in merged["queries"]:
-        entry["ms"] = round(statistics.median(samples[_entry_key(entry)]), 1)
+        entry["ms"] = round(reducer(samples[_entry_key(entry)]), 1)
     measured = sorted(entry["ms"] for entry in merged["queries"] if entry["run_type"] != "warmup")
     timing = merged["summary"]["timing"]
     timing.update(
@@ -123,7 +149,27 @@ def median_result(results: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         p99_ms=_nearest_rank(measured, 99),
     )
     merged["run"]["query_time_ms"] = round(sum(measured))
+    merged["run"]["timing_method"] = effective_timing_method(results)
     return merged
+
+
+_METHODS = {
+    RULE_SLOWEST_CPU_MODEL: (
+        "Hosted runners come from several CPU models whose totals differ by up to 25%. The baseline uses "
+        "only the source results from the slowest CPU model that has enough of them, so a slower night "
+        "cannot fail the gate for hardware alone. Each query entry (warmup and every measured iteration) is "
+        "the median of the same entry across those results; summary timings are recomputed from the measured "
+        "entries; all other fields come from the newest of them. The floor is derived from every source "
+        "result, because a night on any CPU model is compared with this baseline."
+    ),
+    RULE_PER_QUERY_MAXIMUM: (
+        "No CPU model has enough source results, so the baseline takes every source result of the same "
+        "timing method regardless of CPU model. Each query entry (warmup and every measured iteration) is "
+        "the maximum of the same entry across those results, so a faster night cannot fail the gate; summary "
+        "timings are recomputed from the measured entries; all other fields come from the newest of them. "
+        "The floor is derived from every source result."
+    ),
+}
 
 
 def sources_record(
@@ -131,20 +177,16 @@ def sources_record(
     baseline: Mapping[str, Any],
     spread: float,
     worst: str,
-    selected_class: str,
+    selected_class: str | None,
+    rule: str,
 ) -> dict[str, Any]:
     ordered = sorted(sources.items(), key=lambda item: item[1]["execution"]["timestamp"])
     environment = baseline["environment"]
     return {
-        "method": (
-            "Hosted runners come from several CPU models whose totals differ by up to 25%. The baseline uses "
-            "only the source results from the slowest CPU model that has enough of them, so a slower night "
-            "cannot fail the gate for hardware alone. Each query entry (warmup and every measured iteration) is "
-            "the median of the same entry across those results; summary timings are recomputed from the measured "
-            "entries; all other fields come from the newest of them. The floor is derived from every source "
-            "result, because a night on any CPU model is compared with this baseline."
-        ),
-        "baseline_cpu_model": environment.get("cpu_model"),
+        "method": _METHODS[rule],
+        "selection_rule": rule,
+        "timing_method": baseline["run"]["timing_method"],
+        "baseline_cpu_model": environment.get("cpu_model") if selected_class is not None else None,
         "regression_floor": {
             "largest_spread_ms": round(spread, 2),
             "largest_spread_query": worst,
@@ -158,7 +200,7 @@ def sources_record(
                 "benchbox_timestamp": result["execution"]["timestamp"],
                 "cpu_model": result["environment"].get("cpu_model"),
                 "total_ms": _total_ms(result),
-                "in_baseline": runner_class(result) == selected_class,
+                "in_baseline": selected_class is None or runner_class(result) == selected_class,
             }
             for run_id, result in ordered
         ],
@@ -188,13 +230,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         sources = parse_sources(args.sources)
         results = list(sources.values())
         spread, worst = largest_spread_ms(results)
-        selected_class = select_runner_class(results, cpu_model=args.cpu_model)
-        baseline = median_result([result for result in results if runner_class(result) == selected_class])
+        _require_comparable(results)
+        chosen, rule, selected_class = select_sources(results, cpu_model=args.cpu_model)
+        reducer = max if rule == RULE_PER_QUERY_MAXIMUM else statistics.median
+        baseline = median_result(chosen, reducer=reducer)
     except (BaselineError, OSError, KeyError, ValueError) as error:
         print(f"perf_smoke_baseline: error: {error}", file=sys.stderr)
         return 2
     args.output.write_text(json.dumps(baseline, indent=2) + "\n", encoding="utf-8")
-    record = sources_record(sources, baseline, spread, worst, selected_class)
+    record = sources_record(sources, baseline, spread, worst, selected_class, rule)
     args.sources_output.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
     floor = record["regression_floor"]
     print(
