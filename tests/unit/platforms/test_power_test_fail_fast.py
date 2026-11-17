@@ -5,6 +5,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from benchbox.core.results.status import (
+    NON_CLEAN_VALIDATION_STATUSES,
+    result_cli_failure_reason,
+    result_unvalidated_reason,
+)
+
 pytestmark = [
     pytest.mark.unit,
     pytest.mark.fast,
@@ -549,3 +555,51 @@ class TestDetermineBenchmarkStatusZeroQueries:
         status, color = ConsoleResultFormatter._determine_benchmark_status(result)
         assert status == "FAILED"
         assert color == "red"
+
+
+class TestConsoleStatusMatchesExitClassification:
+    @staticmethod
+    def _result(validation_status, *, failed_queries):
+        return SimpleNamespace(
+            total_queries=3,
+            successful_queries=3 - failed_queries,
+            failed_queries=failed_queries,
+            validation_status=validation_status,
+            query_results=[],
+        )
+
+    @pytest.mark.parametrize("failed_queries", [0, 1])
+    @pytest.mark.parametrize("status", [*sorted(NON_CLEAN_VALIDATION_STATUSES), "passed", "warnings", "bogus"])
+    def test_label_agrees_with_exit_code_helpers(self, status, failed_queries):
+        from benchbox.cli.output import ConsoleResultFormatter
+
+        result = self._result(status.upper(), failed_queries=failed_queries)
+        label, color = ConsoleResultFormatter._determine_benchmark_status(result)
+
+        if failed_queries:
+            assert (label, color) == ("FAILED", "red")
+        elif status == "partial":
+            assert (label, color) == ("PARTIAL", "yellow")
+        elif result_cli_failure_reason(result):
+            assert (label, color) == ("FAILED", "red")
+        elif status == "passed":
+            assert result_unvalidated_reason(result) is None
+            assert (label, color) == ("PASSED", "green")
+        else:
+            assert (label, color) == ("UNVALIDATED", "yellow")
+        if result_unvalidated_reason(result):
+            assert label == "UNVALIDATED"
+
+    @pytest.mark.parametrize("status", ["UNCERTAIN", "NOT_VALIDATED", "NOT_RUN", "UNKNOWN", "WARNINGS"])
+    def test_unvalidated_run_with_all_queries_successful_is_not_red(self, status):
+        from benchbox.cli.output import ConsoleResultFormatter
+
+        result = self._result(status, failed_queries=0)
+        assert ConsoleResultFormatter._determine_benchmark_status(result) == ("UNVALIDATED", "yellow")
+
+    @pytest.mark.parametrize("status", ["FAILED", "ERROR", "INTERRUPTED"])
+    def test_failed_validation_is_red(self, status):
+        from benchbox.cli.output import ConsoleResultFormatter
+
+        result = self._result(status, failed_queries=0)
+        assert ConsoleResultFormatter._determine_benchmark_status(result) == ("FAILED", "red")
