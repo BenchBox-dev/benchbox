@@ -6,14 +6,17 @@ from __future__ import annotations
 
 import logging
 import math
+import os
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Literal
 
 from benchbox.core.dataframe.memory_model import (
+    GENERATION_ESTIMATE_MARGIN,
     PLATFORM_BASELINE_GB,
     SUBSET_MODEL_MAX_SF,
+    generation_estimate_gb,
     subset_tables,
     tables_raw_gb,
 )
@@ -305,10 +308,27 @@ def check_sufficient_memory(
     queries: Iterable[object] | None = None,
     *,
     safety_margin: float = 0.2,
+    generation_required: bool = False,
+    generation_workers: int | None = None,
 ) -> MemoryCheckResult:
     caps = get_platform_capabilities(platform)
     estimate = estimate_memory_required(benchmark, scale_factor, platform, queries)
     estimate_scope = _describe_estimate_scope(estimate, bool(queries))
+    estimated_gb = estimate.estimated_memory_gb
+    generation_bound = False
+
+    if generation_required:
+        workers = generation_workers or os.cpu_count() or 1
+        generation_gb = generation_estimate_gb(benchmark, workers)
+        if generation_gb is not None and generation_gb > estimated_gb:
+            estimated_gb = generation_gb
+            generation_bound = True
+            estimate_scope = (
+                f"data generation (the data is not cached, so the {workers} parallel generator processes run first; "
+                f"the estimate is scaled from measured generator memory with a "
+                f"{GENERATION_ESTIMATE_MARGIN - 1:.0%} margin and replaces the query-execution estimate "
+                f"because the generator processes exit before loading starts)"
+            )
 
     if caps.gpu_required:
         gpu_mem = get_gpu_memory_gb()
@@ -316,7 +336,7 @@ def check_sufficient_memory(
             return MemoryCheckResult(
                 is_safe=False,
                 message=f"{caps.platform_name} requires a GPU but none was detected.",
-                estimated_memory_gb=estimate.estimated_memory_gb,
+                estimated_memory_gb=estimated_gb,
                 available_memory_gb=0,
                 scale_factor=scale_factor,
                 platform=platform,
@@ -335,30 +355,33 @@ def check_sufficient_memory(
         return MemoryCheckResult(
             is_safe=True,
             message=f"Could not determine available {memory_type} memory. Proceeding with caution.",
-            estimated_memory_gb=estimate.estimated_memory_gb,
+            estimated_memory_gb=estimated_gb,
             available_memory_gb=0,
             scale_factor=scale_factor,
             platform=platform,
             suggestions=["Install psutil for memory checks: uv add psutil"],
         )
 
-    required_with_margin = estimate.estimated_memory_gb * (1 + safety_margin)
+    required_with_margin = estimated_gb * (1 + safety_margin)
 
     if available >= required_with_margin:
         return MemoryCheckResult(
             is_safe=True,
             message=(
                 f"Memory check passed: {available:.1f} GB available, "
-                f"~{estimate.estimated_memory_gb:.1f} GB estimated for {estimate_scope} at SF {scale_factor} "
+                f"~{estimated_gb:.1f} GB estimated for {estimate_scope} at SF {scale_factor} "
                 f"(+{safety_margin:.0%} safety margin = {required_with_margin:.1f} GB)."
             ),
-            estimated_memory_gb=estimate.estimated_memory_gb,
+            estimated_memory_gb=estimated_gb,
             available_memory_gb=available,
             scale_factor=scale_factor,
             platform=platform,
         )
 
     suggestions = []
+
+    if generation_bound:
+        suggestions.append("Generate the data on a larger host, then reuse the cached data directory for this run")
 
     if scale_factor > caps.max_recommended_sf:
         suggestions.append(
@@ -392,11 +415,11 @@ def check_sufficient_memory(
         is_safe=False,
         message=(
             f"Insufficient memory: {available_shown:.1f} GB available, but at least {threshold_shown:.1f} GB "
-            f"is needed (~{estimate.estimated_memory_gb:.1f} GB estimated + {safety_margin:.0%} safety margin). "
+            f"is needed (~{estimated_gb:.1f} GB estimated + {safety_margin:.0%} safety margin). "
             f"The estimate is for {estimate_scope} at scale factor {scale_factor}.\n"
             f"Platform: {caps.platform_name}, Scale Factor: {scale_factor}"
         ),
-        estimated_memory_gb=estimate.estimated_memory_gb,
+        estimated_memory_gb=estimated_gb,
         available_memory_gb=available,
         scale_factor=scale_factor,
         platform=platform,
