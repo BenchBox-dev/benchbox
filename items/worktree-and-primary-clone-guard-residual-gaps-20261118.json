@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "Each numbered gap is either fixed with a test that fails before the fix, or closed with a recorded reason it is not worth fixing.",
+    "Gap 1: a branch worktree holding an ignored file that is not a known tool temp file is held by worktree-finish and worktree-reap, as a detached one already is.",
+    "Gap 2: after a force-push to origin/release/<major>.<minor>.x, a detached worktree integrated into the new line tip is removable without a manual git fetch --prune, and one integrated only into the old tip stays held.",
+    "Gap 6: decide whether to accept only the main worktree (the first git worktree list entry) as an override; that changes test_preflight_rejects_primary_clone_without_override, so it needs the owner's approval first.",
+    "Guardrails: never remove a worktree with --force; never unlock a worktree someone else locked; BENCHBOX_ALLOW_MAIN_CLONE_WRITE=1 still bypasses the primary-clone checks; snapshot format stays readable by the current check."
+  ],
+  "description": "Independent reviews of the primary-clone preflight hardening (PR #4323), the stray-override fix (PR #4353) and the release-line and detached-worktree reaping change (PR #4330) found these gaps. They are low risk and none is a regression; the owner chose on 2026-11-18 to track them together, not fix them in those PRs.\n\n1. scripts/worktree_finish.py checks a detached worktree for ignored files that are not tool temp files before removing it, but a branch worktree gets no such check, so ignored data files in a branch worktree are removed with it.\n2. Release-line refs are fetched without a + refspec. After a release branch is force-pushed, the fetch fails, so detached worktrees integrated into that line stay held until git fetch --prune runs. This is safe but leaves them behind.\n3. A gap of a few milliseconds remains between the HEAD re-check at apply time and git worktree remove for a detached worktree; a commit made in that window would be lost from the worktree but stay in the object store until gc.\n4. scripts/check_primary_clone_clean.sh creates temp files without a trap, so an interrupted run leaves them in the temp directory.\n5. Primary-clone snapshots recorded before PR #4323 stored files with quoted names as deleted, so such a file is reported once after the upgrade. BENCHBOX_PRIMARY_SNAPSHOT_REFRESH=1 or a new session clears it.\n6. BENCHBOX_AGENT_PRIMARY_CLONE is still honoured when it names another existing worktree of the same repository, so exporting it from inside an agent's own worktree would hide primary-clone writes. test_preflight_rejects_primary_clone_without_override relies on this.",
+  "links": [
+    "scripts/worktree_finish.py",
+    "scripts/check_primary_clone_clean.sh",
+    "scripts/agent_write_preflight.sh",
+    "scripts/primary_clone_write_guard.py",
+    "docs/agent/primary-clone-guard.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b22c5dfe732da19b798cd911",
+      "at": "2026-11-18T19:36:06Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a1c0e1f2b3c4d5e6f708192a3b4c5d69",
+      "session_id": "ae6f56bfe4e4472baafc364fb85d55f4"
+    }
+  ]
+}

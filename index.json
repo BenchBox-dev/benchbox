@@ -47828,6 +47828,13 @@
       "status": "done",
       "title": "No guard prevents a job-level 'if' from referencing the matrix context (startup failure)"
     },
+    "worktree-and-primary-clone-guard-residual-gaps-20261118": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Close low-risk gaps left in the worktree finish tool and the primary-clone checks"
+    },
     "worktree-build-artifact-not-ignored-20261018": {
       "claim": null,
       "needs": [],
