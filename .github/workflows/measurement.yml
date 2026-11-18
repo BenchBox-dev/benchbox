@@ -43,6 +43,10 @@ env:
   CLICKHOUSE_PASSWORD: benchbox
   HOST_CLASS: github-hosted ubuntu-latest, 4 vCPU, 16 GB RAM
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   measure:
     name: Measure ${{ inputs.cell }}
