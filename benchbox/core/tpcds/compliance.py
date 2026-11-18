@@ -12,6 +12,7 @@ OFFICIAL_SCALE_POINTS: frozenset[float] = frozenset(
 )
 
 TPCDS_MIN_SUBSCALE: float = 0.01
+TPCDS_MAX_SCALE: float = 3000.0
 
 
 def classify_tpcds_run(scale_factor: float, *, official: bool = False) -> TpcdsComplianceClass:
@@ -29,16 +30,21 @@ def validate_tpcds_scale(
 ) -> TpcdsComplianceClass:
     if scale_factor <= 0:
         raise ValueError(f"TPC-DS scale factor must be positive, got {scale_factor}")
-    if scale_factor > 100000:
-        raise ValueError(f"TPC-DS scale factor {scale_factor} exceeds maximum (100000)")
+    if scale_factor > TPCDS_MAX_SCALE:
+        raise ValueError(
+            f"TPC-DS scale factor {scale_factor:g} exceeds maximum ({TPCDS_MAX_SCALE:g}). The bundled dsqgen "
+            "cannot generate query 9 above this scale: it builds a key permutation of rowcount(store_sales)/5 "
+            "entries, which took over 45 s and 3.6 GiB at scale factor 10000 and over 14 GiB at 100000."
+        )
 
     compliance = classify_tpcds_run(scale_factor, official=official)
 
     if compliance is TpcdsComplianceClass.UNOFFICIAL_SUBSCALE and scale_factor < TPCDS_MIN_SUBSCALE:
         raise ValueError(
             f"TPC-DS scale_factor {scale_factor} is below the minimum subscale "
-            f"({TPCDS_MIN_SUBSCALE}). The patched dsdgen provides no row-count "
-            "guarantees below this threshold."
+            f"({TPCDS_MIN_SUBSCALE}). The bundled dsdgen does not finish below this "
+            "scale (it loops in catalog_sales date scaling), so generation is refused "
+            "before dsdgen is started."
         )
 
     return compliance
