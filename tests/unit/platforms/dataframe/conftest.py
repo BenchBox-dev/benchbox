@@ -9,7 +9,7 @@ from benchbox.core.dataframe import MemoryCheckResult
 def sufficient_dataframe_memory(monkeypatch: pytest.MonkeyPatch) -> None:
 
     def _sufficient_memory(
-        _benchmark: str, scale_factor: float, platform: str, queries: object = None
+        _benchmark: str, scale_factor: float, platform: str, queries: object = None, **_options: object
     ) -> MemoryCheckResult:
         return MemoryCheckResult(
             is_safe=True,

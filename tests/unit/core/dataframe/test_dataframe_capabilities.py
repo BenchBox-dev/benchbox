@@ -422,6 +422,71 @@ class TestSubsetEstimate:
         assert "no table-level estimate applies" not in result.message
 
 
+class TestGenerationEstimate:
+    def test_estimate_is_scaled_from_measured_workers_with_margin(self):
+        from benchbox.core.dataframe.memory_model import (
+            GENERATION_BASE_GB,
+            GENERATION_ESTIMATE_MARGIN,
+            GENERATION_GB_PER_WORKER,
+            generation_estimate_gb,
+        )
+
+        expected = (GENERATION_BASE_GB + GENERATION_GB_PER_WORKER["tpch"] * 10) * GENERATION_ESTIMATE_MARGIN
+
+        assert generation_estimate_gb("tpch", 10) == pytest.approx(expected)
+        assert generation_estimate_gb("tpch", 10) > 3.0
+        assert generation_estimate_gb("tpcds", 10) < 0.5
+        assert generation_estimate_gb("ssb", 10) is None
+
+    @pytest.mark.parametrize("platform", ["polars", "datafusion", "pyspark"])
+    def test_uncached_run_whose_generation_exceeds_free_memory_is_refused(self, platform):
+        result = _guarded_generation("tpch", platform, True, 10, 3.5)
+
+        assert result.is_safe is False
+        assert "data generation" in result.message
+        assert "10 parallel generator processes" in result.message
+        assert any("larger host" in suggestion for suggestion in result.suggestions)
+
+    @pytest.mark.parametrize("platform", ["polars", "datafusion"])
+    def test_cached_run_is_unaffected(self, platform):
+        cached = _guarded_generation("tpch", platform, False, 10, 3.5)
+        baseline = _guarded_subset("tpch", 1.0, platform, None, 3.5)
+
+        assert cached.is_safe is True
+        assert cached.message == baseline.message
+        assert cached.estimated_memory_gb == baseline.estimated_memory_gb
+
+    def test_uncached_run_that_fits_is_accepted(self):
+        result = _guarded_generation("tpch", "polars", True, 10, 16.0)
+
+        assert result.is_safe is True
+
+    def test_fewer_workers_lower_the_generation_estimate(self):
+        many = _guarded_generation("tpch", "polars", True, 10, 3.5)
+        few = _guarded_generation("tpch", "polars", True, 2, 3.5)
+
+        assert many.is_safe is False
+        assert few.is_safe is True
+
+    def test_benchmark_without_measured_generator_is_unchanged(self):
+        result = _guarded_generation("ssb", "polars", True, 10, 3.0)
+        baseline = _guarded_subset("ssb", 1.0, "polars", None, 3.0)
+
+        assert result.message == baseline.message
+
+
+def _guarded_generation(benchmark, platform, generation_required, workers, available):
+    target = "benchbox.core.dataframe.capabilities"
+    with patch(f"{target}.get_available_memory_gb", return_value=available):
+        return check_sufficient_memory(
+            benchmark,
+            1.0,
+            platform,
+            generation_required=generation_required,
+            generation_workers=workers,
+        )
+
+
 class TestFormatMemoryWarning:
     def test_formatting(self):
 

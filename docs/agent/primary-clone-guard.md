@@ -70,8 +70,10 @@ runs from a checkout that already contains it, so a primary clone behind
 `origin/develop` has none until it is updated; the Codex and Gemini trust
 prompts can be declined. The preflight below is the backstop for all of these.
 `BENCHBOX_AGENT_PRIMARY_CLONE`, a test override, points both the hook and the
-preflight at another path, so it must never be left set in an agent's
-environment: with it set, writes to the real primary clone go undetected.
+preflight at another worktree of the same repository. They honour it only when
+it names a worktree that `git worktree list` reports; any other value, such as
+a scratch repository left exported after a test, is ignored and the primary
+clone is the common Git directory's parent.
 The preflight also warns when the primary clone is behind `origin/develop`; see
 [primary-clone-update.md](primary-clone-update.md) for the update procedure.
 

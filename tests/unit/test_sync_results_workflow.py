@@ -17,7 +17,6 @@ pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "sync-results-data-to-published.yml"
-DRIFT_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "corpus-drift-check.yml"
 BUNDLES_DIR = "results-data/bundles"
 
 
@@ -305,24 +304,21 @@ def test_runtime_drift_copies_exact_source_and_preserves_published_only_archive(
     assert _run(["git", "diff", "--cached", "--name-only"], cwd=repo) == helper
 
 
+def _drift_script_pathspecs(profile: str) -> list[str]:
+    from scripts import corpus_drift
+
+    return list(corpus_drift.PROFILES[profile])
+
+
 def test_drift_check_ignores_derived_inventory_difference() -> None:
-    workflow = yaml.safe_load(DRIFT_WORKFLOW_PATH.read_text(encoding="utf-8"))
-    steps = workflow["jobs"]["corpus-drift"]["steps"]
-    compare = next(step for step in steps if step.get("name") == "Compare the mirrored corpus paths (directional)")
-    run = compare["run"]
-    path_specs = run.split("PATHSPECS=(", 1)[1].split(")", 1)[0]
-    assert "results-data/bundles" in path_specs
-    assert "results-data/corpus-inventory.json" not in path_specs
+    for profile in ("canary", "nightly"):
+        path_specs = _drift_script_pathspecs(profile)
+        assert "results-data/bundles" in path_specs
+        assert "results-data/corpus-inventory.json" not in path_specs
 
 
 def _drift_check_pathspecs() -> list[str]:
-    workflow = yaml.safe_load(DRIFT_WORKFLOW_PATH.read_text(encoding="utf-8"))
-    compare = next(
-        step
-        for step in workflow["jobs"]["corpus-drift"]["steps"]
-        if step.get("name") == "Compare the mirrored corpus paths (directional)"
-    )
-    return shlex.split(compare["run"].split("PATHSPECS=(", 1)[1].split(")", 1)[0])
+    return _drift_script_pathspecs("canary")
 
 
 def test_drift_check_pathspec_matches_sync_list_except_derived_inventory() -> None:
@@ -333,6 +329,15 @@ def test_drift_check_pathspec_matches_sync_list_except_derived_inventory() -> No
     assert sorted(drift_paths) == sorted(set(compare_paths) - {"results-data/corpus-inventory.json"})
     assert sorted(drift_paths) == sorted([BUNDLES_DIR, *copy_paths])
     assert not [path for path in drift_paths if "*" in path]
+
+
+def test_drift_script_mirror_identity_matches_sync_workflow() -> None:
+    from scripts import corpus_drift
+
+    sync = WORKFLOW_PATH.read_text(encoding="utf-8")
+    assert f'MIRROR_BRANCH="{corpus_drift.MIRROR_BRANCH_PREFIX}$' in sync
+    assert corpus_drift.MIRROR_TITLE_PREFIX in sync
+    assert f'-f context="{corpus_drift.VALIDATE_STATUS_CONTEXT}"' in sync
 
 
 def test_mirror_allowlist_excludes_modules_the_variant_identity_import_needs() -> None:
