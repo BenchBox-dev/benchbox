@@ -4,7 +4,7 @@
     "Generation peak RSS for TPC-H and TPC-DS at SF1 (and SF10 or a recorded reason) is recorded here.",
     "The owner's choice and date are recorded; if (a) or (b), a merged PR with a test that refuses an uncached run whose generation estimate exceeds free memory."
   ],
-  "context": "Owner decision 2026-11-17 (choice dialog): decide by rule after measuring. If generation peak RSS exceeds the platform's floor (Polars/DataFusion 2.0, PySpark 4.0 GiB) for any measured benchmark/SF, implement option (a): include a generation estimate in the guard when data is not cached. Otherwise option (c): document only. SF10 generation measurement may use the quiet window 2026-11-18 00:00-06:00 EST (2026-11-18T05:00Z-11:00Z).",
+  "context": "Owner decision 2026-11-17 (choice dialog): decide by rule after measuring. If generation peak RSS exceeds the platform's floor (Polars/DataFusion 2.0, PySpark 4.0 GiB) for any measured benchmark/SF, implement option (a): include a generation estimate in the guard when data is not cached. Otherwise option (c): document only. SF10 generation measurement may use the quiet window 2026-11-18 00:00-06:00 EST (2026-11-18T05:00Z-11:00Z).\n\nFINAL 2026-11-18: PR #4334 merged as b5b584ef77. Generation runs before the memory guard's query estimate matters, and its memory exceeds the 2.0 GiB Polars/DataFusion floor, so rule outcome (a) applied: the guard now uses a data-generation estimate when data is not cached. Measured generator peaks (sum of RSS across 10 dbgen/dsdgen workers): TPC-H SF1 2.977 GiB (9.5 s), TPC-H SF10 3.027 GiB (57.4 s), TPC-DS SF1 0.093 GiB (54.4 s), TPC-DS SF10 0.095 GiB (400.4 s). Model: (0.1 + per-worker GiB x workers) x 1.1 margin, per-worker TPC-H 0.30 and TPC-DS 0.01; TPC-H at 10 workers estimates 3.41 GiB, above both measured peaks. Cached data and benchmark-managed loading leave the estimate unchanged; force-regenerate counts as generating. Results: ~/Developer/benchmark_runs/df-datagen-mem/results.jsonl.",
   "description": "## Problem\nThe DataFrame memory guard (`check_sufficient_memory`, called in `benchbox/platforms/dataframe/benchmark_mixin.py` before load) estimates query-execution memory only. During the PR #4299 measurements, TPC-H dbgen workers alone summed to 2.6-3.1 GiB resident, which the per-engine floors (Polars/DataFusion 2.0, PySpark 4.0 GiB) do not cover. A run that generates data can exceed the host even when the guard accepts it. Not yet established: whether generation runs inside the same `benchbox run` before the guard, and the generation peak per benchmark and scale factor.\n\n## Method\n1. Trace the order of generation and the guard in one `benchbox run` with no cached data; record it here with file references.\n2. Measure generation peak RSS (all generator processes) for TPC-H and TPC-DS at SF1 and SF10 (SF10 only on a host that can hold it) through `make heavy-run`.\n\n## Decision gate (owner)\nPresent the measurements and these options, with a recommendation: (a) include a generation estimate in the guard when data is not cached; (b) a separate check before generation; (c) document only. Agents implement only the owner's choice.\n\n## Guardrails\nTiming and memory runs only through `make heavy-run` after `make heavy-status`; never force admission, set BENCHBOX_SKIP_TEST_LOCK, disable the watchdog, or pass `--ignore-memory-warnings` without the owner's approval in that task. Never kill processes by pattern; the host is shared. Do not change generator parallelism or output to reduce memory as part of this item.",
   "sessions": [
     {
@@ -22,6 +22,14 @@
       "op": "update",
       "op_id": "e3d632306cf744349dac2239ec1fcdfc",
       "session_id": "584fe5162b994f91904666adf0c5e183"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:43c6657ebf2251468541889f",
+      "at": "2026-11-18T19:54:02Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "112cced913e24f0982171cc1775c492d",
+      "session_id": "481aef7ff9734ee2a66787f104bfbd49"
     }
   ]
 }
