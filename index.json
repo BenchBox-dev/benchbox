@@ -32591,6 +32591,13 @@
       "status": "done",
       "title": "Generate TPC-H and TPC-DS power-test query text before each per-query timer starts"
     },
+    "power-warmup-zero-coerced-to-one": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Let power_warmup_iterations=0 mean no warm-up pass"
+    },
     "pr-1644-fix-commit-nits-20260811": {
       "claim": null,
       "needs": [],

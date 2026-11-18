@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "power_warmup_iterations=0 either runs no warm-up pass and records 0, or is refused with an error naming the minimum",
+    "A test covers the chosen behaviour"
+  ],
+  "context": "Found by an independent review of the site page docs/platforms/snowflake-gateways.md against core v0.5.1 (91d357a); each claim was re-verified by a second reviewer.",
+  "description": "run_service.py:155-158 and runner.py:932-935 use `or` on the configured value, so power_warmup_iterations=0 becomes 1 and a user cannot ask for a power run without a warm-up pass. Either honour 0 or reject it with a clear message; silently changing the value misstates the run.",
+  "links": [
+    "benchbox/core/run_service.py",
+    "benchbox/core/runner.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp:joe@joe-mac-mini.local:64e582df628f30691111dd40",
+      "at": "2026-11-18T21:36:54Z",
+      "client": "omp",
+      "op": "create",
+      "op_id": "a0953d30c4a64480a3c6a0db73fdf1ba",
+      "session_id": "61f73a6f08cd4699913cbb0090203dc7"
+    }
+  ]
+}
