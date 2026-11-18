@@ -222,7 +222,7 @@ jobs:
           branch refreshes develop's curated maintainer subset while preserving
           accepted published-only archive content.
 
-          Maintainer review the diff and flip the PR ready to merge.
+          The mirror workflow merges this PR once its validation passes.
           MSG
           awk '{sub(/^[[:space:]]{10}/,""); print}' "${MSG_FILE}" > "${MSG_FILE}.clean"
           mv "${MSG_FILE}.clean" "${MSG_FILE}"
@@ -320,9 +320,9 @@ jobs:
           Auto-mirror of develop's \`results-data/\` changes onto the slim
           \`published-results\` branch. Triggered by develop@\`${GITHUB_SHA::8}\`.
 
-          **${DIFF_COUNT}** path(s) changed. Review the diff and flip the PR
-          ready to merge when the develop-side change is ready to surface
-          on the public corpus branch. This PR will not auto-merge.
+          **${DIFF_COUNT}** path(s) changed. The content was reviewed when it
+          merged to develop; the mirror workflow merges this PR once the
+          corpus-mirror/validate-bundles status passes and the proposal is fresh.
 
           The mirror was built from published-results@${PUBLISHED_BASE_SHA}
           and has head ${MIRROR_HEAD_SHA}. If the accepted publication moves,
@@ -444,6 +444,17 @@ jobs:
               --comment "Superseded by #${PR_NUMBER}. Each mirror is a full snapshot of develop against published-results, and #${PR_NUMBER} was built from develop@${GITHUB_SHA::8}, which contains develop@${older_sha}." \
               || echo "::warning::Could not close superseded mirror PR #${number}."
           done
+
+      - name: Merge the validated mirror PR
+        if: steps.drift.outputs.has_drift == 'true' && steps.build.outputs.has_changes == 'true' && steps.validate.outputs.state == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          MIRROR_HEAD_SHA: ${{ steps.build.outputs.mirror_head_sha }}
+        run: |
+          set -euo pipefail
+          gh pr ready "${PR_NUMBER}"
+          gh pr merge "${PR_NUMBER}" --squash --match-head-commit "${MIRROR_HEAD_SHA}"
 
       - name: Fail the run if mirrored content failed validation
         if: always() && steps.drift.outputs.has_drift == 'true' && steps.build.outputs.has_changes == 'true' && steps.validate.outputs.state != 'success'
