@@ -84,6 +84,17 @@ def set_parameter_overrides(overrides: dict[int, dict[str, Any]] | None) -> None
 
 
 @contextmanager
+def parameter_scope(overrides: dict[int, dict[str, Any]] | None, scale_factor: float) -> Iterator[None]:
+    parameter_token = _parameter_overrides.set(overrides)
+    scale_token = _scale_factor.set(float(scale_factor))
+    try:
+        yield
+    finally:
+        _scale_factor.reset(scale_token)
+        _parameter_overrides.reset(parameter_token)
+
+
+@contextmanager
 def seeded_parameter_overrides(seed: int | None, scale_factor: float, stream_id: int) -> Iterator[None]:
     scale_factor = float(scale_factor)
     overrides = None
@@ -94,13 +105,8 @@ def seeded_parameter_overrides(seed: int | None, scale_factor: float, stream_id:
         stream_seed = power_stream_seed(seed, stream_id)
         assert stream_seed is not None
         overrides = get_tpch_extracted_parameters(stream_seed, float(scale_factor))
-    parameter_token = _parameter_overrides.set(overrides)
-    scale_token = _scale_factor.set(scale_factor)
-    try:
+    with parameter_scope(overrides, scale_factor):
         yield
-    finally:
-        _scale_factor.reset(scale_token)
-        _parameter_overrides.reset(parameter_token)
 
 
 def set_scale_factor(scale_factor: float | None) -> None:

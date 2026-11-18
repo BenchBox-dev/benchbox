@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import re
+import threading
 from datetime import date, timedelta
 from typing import Any
 
@@ -26,6 +27,29 @@ def extract_tpch_parameters(
         query_id: _extract_query_params(query_id, qgen.generate(query_id, seed=seed, scale_factor=scale_factor))
         for query_id in range(1, 23)
     }
+
+
+_query_cache: dict[tuple[int, int, float], dict[str, Any]] = {}
+_query_qgen: Any = None
+_query_qgen_lock = threading.Lock()
+
+
+def _shared_qgen() -> Any:
+    global _query_qgen
+    with _query_qgen_lock:
+        if _query_qgen is None:
+            from benchbox.core.tpch.queries import QGenBinary
+
+            _query_qgen = QGenBinary()
+        return _query_qgen
+
+
+def get_tpch_query_extracted_parameters(query_id: int, seed: int, scale_factor: float = 1.0) -> dict[str, Any]:
+    cache_key = (query_id, seed, scale_factor)
+    if cache_key not in _query_cache:
+        sql = _shared_qgen().generate(query_id, seed=seed, scale_factor=scale_factor)
+        _query_cache[cache_key] = _extract_query_params(query_id, sql)
+    return _query_cache[cache_key]
 
 
 def _extract_query_params(query_id: int, sql: str) -> dict[str, Any]:
@@ -272,3 +296,4 @@ def get_tpch_extracted_parameters(
 
 def clear_cache() -> None:
     _cache.clear()
+    _query_cache.clear()
