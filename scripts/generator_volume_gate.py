@@ -9,6 +9,7 @@ import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from scripts.measure_sf1_sizes import sum_directory_bytes
@@ -89,7 +90,7 @@ def baseline_tolerance(baseline: dict[str, object]) -> float:
 
 def evaluate_size(
     benchmark: str, measured: int, baseline: dict[str, object], base_baseline: dict[str, object] | None
-) -> dict[str, object]:
+) -> dict[str, Any]:
     expected = baseline_size(baseline, benchmark)
     tolerance = baseline_tolerance(baseline)
     if expected is None:
@@ -100,7 +101,7 @@ def evaluate_size(
             "reason": f"{BASELINE_PATH} has no SF 1 size for {benchmark}",
         }
     drift = (measured - expected) / expected
-    record: dict[str, object] = {
+    record: dict[str, Any] = {
         "benchmark": benchmark,
         "measured_bytes": measured,
         "baseline_bytes": expected,
@@ -190,7 +191,7 @@ def run_gate(
     base_baseline: dict[str, object] | None,
     *,
     smoke: Smoke | None = None,
-) -> dict[str, object]:
+) -> dict[str, Any]:
     measure = run_smoke if smoke is None else smoke
     benchmarks = affected_benchmarks(changed_files)
     if not benchmarks:
@@ -218,7 +219,7 @@ def run_gate(
     }
 
 
-def render_markdown(report: dict[str, object]) -> str:
+def render_markdown(report: dict[str, Any]) -> str:
     lines = ["### generator-volume", "", f"Result: **{report['status']}**", ""]
     if report["status"] == "skipped":
         lines.append(str(report["reason"]))

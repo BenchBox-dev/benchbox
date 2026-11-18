@@ -377,40 +377,20 @@ def test_a_run_that_fails_after_a_long_queue_still_fails_the_job(capsys):
     assert "fallback probe: failure" in capsys.readouterr().out
 
 
-def test_the_job_reports_a_still_queued_run_as_an_error_and_cancels_it(monkeypatch, capsys):
+def test_a_run_still_queued_at_the_deadline_fails_the_job_and_cancels_the_probes():
     fake = FakeGh(pending_polls=10**6)
 
-    class Queued:
-        def __call__(self, *args):
-            result = fake(*args)
-            if isinstance(result, dict) and result.get("status") == "in_progress":
-                return {**result, "status": "queued"}
-            return result
+    def queued(*args):
+        result = fake(*args)
+        if isinstance(result, dict) and result.get("status") == "in_progress":
+            return {**result, "status": "queued"}
+        return result
 
     ticks = iter(range(0, 10**6, 100))
-    monkeypatch.setattr(launch, "gh", Queued())
-    monkeypatch.setattr(launch.time, "sleep", lambda _: None)
-    monkeypatch.setattr(launch.time, "monotonic", lambda: next(ticks))
-    monkeypatch.setattr(launch, "touches_probed_paths", lambda files: ["Makefile"])
-    monkeypatch.setattr(launch, "changed_files", lambda *a, **k: ["Makefile"])
-    real = launch.run_probes
-    monkeypatch.setattr(launch, "run_probes", lambda *a, **k: real(*a, runner=Queued(), **k))
-    status = launch.main(
-        [
-            "--repository",
-            REPOSITORY,
-            "--branch",
-            BRANCH,
-            "--head-sha",
-            HEAD,
-            "--pull-request",
-            "1",
-            "--timeout-seconds",
-            "250",
-        ]
-    )
-    assert status == 1
-    assert "still queued" in capsys.readouterr().err
+    with pytest.raises(RuntimeError, match="still queued after 200s of waiting and never began running"):
+        launch.run_probes(
+            REPOSITORY, BRANCH, HEAD, runner=queued, sleep=lambda _: None, clock=lambda: next(ticks), timeout=250.0
+        )
     assert sorted(fake.cancelled) == sorted(fake.variant_of)
 
 
