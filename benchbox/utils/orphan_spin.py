@@ -179,7 +179,7 @@ def read_active(
     live = {
         (shell.pid, shell.created)
         for shell in read_orphan_shells(
-            sorted({spin.cwd for spin in recorded}), processes=processes or psutil.process_iter
+            sorted({os.path.normpath(spin.cwd) for spin in recorded}), processes=processes or psutil.process_iter
         )
     }
     return [spin for spin in recorded if (spin.pid, spin.created) in live]

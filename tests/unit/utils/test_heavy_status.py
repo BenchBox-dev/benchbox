@@ -297,7 +297,7 @@ def spin_fixture(
             "ppid": 1,
             "name": "bash",
             "create_time": 4242.0,
-            "uids": SimpleNamespace(real=os.getuid()),
+            "uids": SimpleNamespace(real=getattr(os, "getuid", lambda: 0)()),
         }
 
         def as_dict(self, attrs, ad_value=None):
