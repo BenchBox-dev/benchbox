@@ -83,8 +83,9 @@ fresh, validated mirror covers them. Both call `scripts/corpus_drift.py`
 (`--profile canary` and `--profile nightly`, which differ only in pathspec set
 and message text). Stale paths pass only when all of these hold:
 
-- An open pull request created by the sync workflow (head branch
-  `auto/results-mirror-*` in this repository, title starting
+- An open pull request created by the sync workflow (author
+  `github-actions[bot]`, head branch `auto/results-mirror-*` in this
+  repository, title starting
   `chore(corpus): mirror results-data changes from develop@`) targets
   `published-results`, and its base SHA equals the current `published-results`
   tip.

@@ -620,6 +620,10 @@ cmd_check() {
   exit "$rc"
 }
 
+health_class() {
+  if [ "${1:-healthy}" = healthy ]; then echo healthy; else echo unhealthy; fi
+}
+
 health_state() {
   case $1 in
     0) echo healthy ;;
@@ -681,10 +685,10 @@ cmd_monitor() {
     return 0
   fi
   previous_state=$(printf '%s\n' "$previous" | grep -xE 'healthy|degraded|broken' | head -n 1)
-  if [ "$state" != "$previous_state" ]; then
+  if [ "$(health_class "$state")" != "$(health_class "$previous_state")" ]; then
     pending=$(cat "$PENDING_FILE" 2>/dev/null || true)
-    if [ "$state" != "$pending" ]; then
-      printf '%s\n' "$state" > "$PENDING_FILE"
+    if [ "$(health_class "$state")" != "$pending" ]; then
+      health_class "$state" > "$PENDING_FILE"
       echo "monitor: $state, change awaiting a second consecutive run"
       return 0
     fi

@@ -25,9 +25,9 @@ Detection limits of this gate, with measured examples, are recorded in
 
 At SF=0.01 every TPC-H query runs in 3 to 13 ms on a hosted runner, so a
 percentage threshold alone flags scheduling jitter. A query counts as
-regressed only when it is more than 10% slower **and** more than 7 ms
+regressed only when it is more than 10% slower **and** more than 5 ms
 slower than the baseline. Totals and other aggregates count as regressed
-only when they are more than 10% slower **and** more than 82 ms slower.
+only when they are more than 10% slower **and** more than 31 ms slower.
 
 The per-query floor comes from the five `t3-perf-result` artifacts of nightly runs
 43254687916, 43453477982, 43604460150, 43726725879 and 43916000915 (2026-11-12 to

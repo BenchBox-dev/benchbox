@@ -1135,6 +1135,16 @@ def test_a_continuing_outage_whose_detail_changes_is_still_published(host: dict)
     assert not (host["dir"] / "monitor.pending").exists()
 
 
+def test_an_outage_alternating_between_degraded_and_broken_is_published(host: dict) -> None:
+    log = _fake_gh(host)
+    _logins(host, PROVIDERS[1:])
+    assert "awaiting a second consecutive run" in _monitor(host).stdout
+    host["env"] = {**host["env"], "FAKE_SERVED_ERROR": "gateway unreachable"}
+    published = _monitor(host)
+    assert "issue create" in log.read_text(encoding="utf-8"), published.stdout + published.stderr
+    assert not (host["dir"] / "monitor.pending").exists()
+
+
 def test_a_monitor_run_whose_issue_cannot_be_filed_records_nothing_so_the_next_run_retries(host: dict) -> None:
     _fake_gh(host, GH_FAIL_CREATE="1")
     _logins(host, PROVIDERS[1:])

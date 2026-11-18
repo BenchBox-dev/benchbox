@@ -244,14 +244,15 @@ checkout or an unreviewed edit cannot run unattended. Run `monitor-install`
 again after a change to the script merges to refresh the snapshot. The launchd `PATH` is the one in effect at install, so run
 it from a shell where `gh`, `jq` and `tailscale` resolve. Each run does the
 read-only part of `check` (no `gh secret list`) and compares the result with
-`~/.omp/review-gateway/monitor.state`. A move to a different state (healthy,
-degraded or broken) is published only when the previous run also saw that
-state, so it takes two consecutive 15-minute runs, including recovery; the
-pending state is kept in `~/.omp/review-gateway/monitor.pending`, and a run
-that matches the recorded result clears it. The detail lines need not match
-between the two runs, so an outage whose reasons vary is still published. A
-change of detail within an already published state is published at once.
-When a change is published, it:
+`~/.omp/review-gateway/monitor.state`. A move between healthy and unhealthy
+(degraded or broken) is published only when the previous run was also on the
+new side, so it takes two consecutive 15-minute runs, including recovery; the
+pending side is kept in `~/.omp/review-gateway/monitor.pending`, and a run
+that matches the recorded result clears it. The state and detail lines need
+not match between the two runs, so an outage that alternates between degraded
+and broken, or whose reasons vary, is still published. A change within an
+already published unhealthy outage is published at once. When a change is
+published, it:
 
 1. shows a macOS notification (`osascript`);
 2. creates, edits or closes the one open issue labelled

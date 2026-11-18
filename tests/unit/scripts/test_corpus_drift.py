@@ -56,6 +56,7 @@ class FakeGitHub:
         pull: dict[str, Any] = {
             "number": number,
             "title": f"{corpus_drift.MIRROR_TITLE_PREFIX}abcd1234",
+            "user": {"login": corpus_drift.MIRROR_AUTHOR},
             "head": {
                 "ref": f"{corpus_drift.MIRROR_BRANCH_PREFIX}abcd1234",
                 "sha": head_sha,
@@ -272,6 +273,7 @@ def test_no_open_mirror_pr_fails(scenario: Scenario, capsys: pytest.CaptureFixtu
     "override",
     [
         {"title": "feat: something else"},
+        {"user": {"login": "maintainer"}},
         {"head": {"ref": "feature/x", "sha": "0" * 40, "repo": {"full_name": REPO_SLUG}}},
         {"head": {"ref": "auto/results-mirror-abcd1234", "sha": "0" * 40, "repo": {"full_name": "fork/BenchBox"}}},
         {"base": {"ref": "develop", "sha": "0" * 40}},

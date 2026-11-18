@@ -20,6 +20,7 @@ CLI_DESCRIPTION = (
 PUBLISHED_BRANCH = "published-results"
 MIRROR_BRANCH_PREFIX = "auto/results-mirror-"
 MIRROR_TITLE_PREFIX = "chore(corpus): mirror results-data changes from develop@"
+MIRROR_AUTHOR = "github-actions[bot]"
 VALIDATE_STATUS_CONTEXT = "corpus-mirror/validate-bundles"
 DEFAULT_MAX_AGE_HOURS = 24.0
 MAX_LISTED_PATHS = 40
@@ -272,6 +273,7 @@ def open_mirror_candidates(
             is_mirror = (
                 str(head.get("ref", "")).startswith(MIRROR_BRANCH_PREFIX)
                 and str(pull.get("title", "")).startswith(MIRROR_TITLE_PREFIX)
+                and (pull.get("user") or {}).get("login") == MIRROR_AUTHOR
                 and head_repo == repo_slug
                 and base.get("ref") == PUBLISHED_BRANCH
             )
