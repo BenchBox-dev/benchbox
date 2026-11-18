@@ -7,7 +7,7 @@ from benchbox.core.dataframe.query_resolution import get_tpch_dataframe_queries
 from benchbox.core.tpch.dataframe_queries import parameter_scope
 from benchbox.core.tpch.dataframe_refresh import DataFrameRefresher, check_refresh_function, execute_refresh_function
 from benchbox.core.tpch.parameter_extractor import get_tpch_query_extracted_parameters
-from benchbox.core.tpch.refresh import TPCHRefreshUpdateSet
+from benchbox.core.tpch.refresh import TPCHRefreshUpdateSet, TPCHRF2Baseline
 from benchbox.core.tpch.throughput_test import TPCHThroughputTest
 
 
@@ -88,7 +88,23 @@ class DataFrameTPCHThroughputTest(TPCHThroughputTest):
     ) -> dict[str, Any]:
         return execute_refresh_function(connection.refresher, function, update_set, check=False)
 
+    def _capture_rf2_baselines(self, update_sets: dict[int, TPCHRefreshUpdateSet]) -> dict[int, TPCHRF2Baseline]:
+        return {}
+
     def _check_refresh_function(
-        self, connection: DataFrameRefreshSession, function_result: dict[str, Any], update_set: TPCHRefreshUpdateSet
+        self,
+        connection: DataFrameRefreshSession,
+        function_result: dict[str, Any],
+        update_set: TPCHRefreshUpdateSet,
+        baseline: TPCHRF2Baseline | None,
     ) -> None:
         check_refresh_function(connection.refresher, function_result["function"], update_set, function_result)
+
+    def _verify_refresh_totals(
+        self,
+        connection: DataFrameRefreshSession,
+        baselines: dict[int, TPCHRF2Baseline],
+        update_sets: dict[int, TPCHRefreshUpdateSet],
+        committed: list[tuple[dict[str, Any], dict[str, Any]]],
+    ) -> None:
+        return None

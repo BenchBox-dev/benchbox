@@ -10,7 +10,7 @@ can read what ran.
    during the run, produces no receipt.
 2. `make pr-preflight` (never wrapped in `make heavy-run`, see `heavy-work.md`). Each step (`changelog-check`,
    `ruff-check`, `ruff-format`, the guards `docs-reference-inventory`, `project-references` and
-   `docs-ownership`, `pytest`, `linux-pytest`) is recorded with its command, exit code, outcome
+   `docs-ownership`, `theseus-prefetch`, `pytest`, `linux-pytest`) is recorded with its command, exit code, outcome
    (`passed`, `failed`, `unverified`, `known-failure`), pytest counts, duration and the last 40 output
    lines, in `~/.cache/benchbox/preflight/<tree>.json` (`BENCHBOX_PREFLIGHT_RECEIPT_DIR` overrides the
    directory). A failed run still writes a receipt, and it blocks `pr-open`.
@@ -23,6 +23,21 @@ can read what ran.
 4. `make pr-open` renders a short "Preflight receipt" section into the PR body between
    `<!-- preflight-receipt: v1 begin tree=… -->` and `<!-- preflight-receipt: v1 end -->`, replacing the section
    from an earlier push of the same PR.
+
+## Theseus install
+
+The tests that need the verified Theseus install (`theseus_engine` in `tests/unit/scripts/conftest.py`) never touch the
+network: their fixture points the bootstrap's download mirror at an unreachable loopback port and reads wheels only from
+the install cache (`THESEUS_INSTALL_CACHE`, default `~/.cache/theseus/installs`). A re-lock PR names a wheel that cache
+does not hold yet, so every one of those tests skipped with `Connection refused`.
+
+Before pytest, `make pr-preflight` runs the `theseus-prefetch` step (`_project/scripts/theseus_prefetch.py`). It fetches
+the locked wheels with `curl`, accepts a byte source only when its sha256 matches `.github/theseus-lock.json`, and
+stores it in that cache; the bootstrap re-verifies it on install. A hash mismatch fails the step and the preflight. When
+no source is reachable the step prints `WARNING: Theseus install not verified locally` and the receipt records it as
+`unverified`. Whatever the cause, when the pytest step still skips Theseus tests the receipt marks it `unverified`,
+records the count as `theseus_skipped`, and `pr-open` renders "N tests that need the verified Theseus install were
+skipped; the Theseus group was not run locally". Skipped tests are never reported as passed.
 
 ## Local review
 

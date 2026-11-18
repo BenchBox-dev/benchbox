@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import random
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from collections import deque
+from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 
 from benchbox.core.tpcdi.scaling import scaled_rows
@@ -79,41 +80,52 @@ class FactGenerationMixin:
         if self.enable_progress:
             self.logger.info(f"Using parallel generation with {self.max_workers} workers")
 
-        chunks = [(i, min(i + self.chunk_size, num_trades + 1)) for i in range(1, num_trades + 1, self.chunk_size)]
+        chunk_starts = range(1, num_trades + 1, self.chunk_size)
+        window = 2 * self.max_workers
+        pending: deque[tuple[int, int, Future[list[list]]]] = deque()
 
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            future_to_chunk = {}
-
-            for chunk_start, chunk_end in chunks:
-                future = executor.submit(
-                    self._generate_trade_chunk,
-                    chunk_start,
-                    chunk_end,
-                    num_accounts,
-                    num_securities,
-                    num_customers,
-                    num_companies,
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor, PipeRowWriter(file_path) as writer:
+            for chunk_start in chunk_starts:
+                chunk_end = min(chunk_start + self.chunk_size, num_trades + 1)
+                pending.append(
+                    (
+                        chunk_start,
+                        chunk_end,
+                        executor.submit(
+                            self._generate_trade_chunk,
+                            chunk_start,
+                            chunk_end,
+                            num_accounts,
+                            num_securities,
+                            num_customers,
+                            num_companies,
+                        ),
+                    )
                 )
-                future_to_chunk[future] = (chunk_start, chunk_end)
-
-            with PipeRowWriter(file_path) as writer:
-                completed_chunks = []
-                for future in as_completed(future_to_chunk):
-                    chunk_start, chunk_end = future_to_chunk[future]
-                    try:
-                        chunk_data = future.result()
-                        completed_chunks.append((chunk_start, chunk_data))
-                    except Exception as e:
-                        emit(f"Error generating chunk {chunk_start}-{chunk_end}: {e}")
-                        raise
-
-                completed_chunks.sort(key=lambda x: x[0])
-                for _, chunk_data in completed_chunks:
-                    writer.writerows(chunk_data)
+                if len(pending) >= window:
+                    self._write_oldest_trade_chunk(pending, writer)
+            while pending:
+                self._write_oldest_trade_chunk(pending, writer)
 
         self.generation_stats["records_generated"] += num_trades
         file_path = self.compress_existing_file(file_path, remove_original=True)
         return str(file_path)
+
+    def _write_oldest_trade_chunk(
+        self,
+        pending: deque[tuple[int, int, Future[list[list]]]],
+        writer: PipeRowWriter,
+    ) -> None:
+        chunk_start, chunk_end, future = pending.popleft()
+        try:
+            chunk_data = future.result()
+        except Exception as e:
+            emit(f"Error generating chunk {chunk_start}-{chunk_end}: {e}")
+            raise
+        writer.writerows(chunk_data)
+        if self.enable_progress:
+            self.logger.info(f"FactTrade: generated {chunk_end - 1:,} records")
+        self.generation_stats["chunks_processed"] += 1
 
     def _generate_trade_chunk(
         self,

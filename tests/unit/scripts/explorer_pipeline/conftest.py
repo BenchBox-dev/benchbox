@@ -148,6 +148,109 @@ def throughput_bundle(
     return data
 
 
+TPCDS_QUERY_IDS: tuple[str, ...] = tuple(
+    identifier
+    for index in range(1, 100)
+    for identifier in ((f"{index}a", f"{index}b") if index in (14, 23, 24, 39) else (str(index),))
+)
+
+
+def _refresh_function(name: str, update_set: int, **extra: object) -> dict:
+    return {"function": name, "status": "SUCCESS", "update_set": update_set, "duration_ms": 1200.0, **extra}
+
+
+def combined_bundle(
+    platform: str = "duckdb",
+    *,
+    benchmark: str = "tpch",
+    streams: int = 2,
+    qph: float | None = 250.0,
+    transactional: bool | None = None,
+) -> dict:
+    tpcds = benchmark == "tpcds"
+    query_ids = TPCDS_QUERY_IDS if tpcds else THROUGHPUT_QUERY_IDS
+    data = throughput_bundle(
+        platform, benchmark=benchmark, streams=streams, throughput_at_size=3741.26, power_at_size=1234.5
+    )
+    data["benchmark"]["test_type"] = "combined"
+    total_streams = streams * (2 if tpcds else 1)
+    data["queries"] = [
+        {
+            "id": query_id,
+            "ms": 1000.0 + 10.0 * stream + position,
+            "rows": 10,
+            "iter": 1,
+            "stream": stream,
+            "run_type": "measurement",
+            "status": "SUCCESS",
+            "test_type": "throughput",
+        }
+        for stream in range(1, total_streams + 1)
+        for position, query_id in enumerate(query_ids)
+    ]
+    total = len(data["queries"])
+    data["summary"]["queries"] = {"total": total, "passed": total, "failed": 0}
+    phases = data["phases"]
+    metrics = data["summary"]["tpc_metrics"]
+    flag = {} if transactional is None else {"transactional": transactional}
+    if tpcds:
+        phases["power_test"] = {"status": "COMPLETED", "query_count": 99}
+        phases["throughput_test_2"] = {
+            "status": "COMPLETED",
+            "duration_ms": 63508,
+            "stream_results": [
+                {"stream_id": stream, "success": True} for stream in range(streams + 1, 2 * streams + 1)
+            ],
+            "stream_numbering": {"basis": "tpc_spec_throughput_streams_1_to_s", "first_stream_id": streams + 1},
+        }
+        for round_number, name in enumerate(("maintenance_test", "maintenance_test_2"), start=1):
+            phases[name] = {
+                "status": "COMPLETED",
+                "duration_ms": 5000,
+                "operations": [
+                    {
+                        "operation": operation,
+                        "table": table,
+                        "status": "SUCCESS",
+                        "refresh_set": round_number,
+                        "duration_ms": 100.0,
+                        **flag,
+                    }
+                    for operation, table in (("DF_SS", "store_sales"), ("LF_SS", "store_sales"))
+                ],
+            }
+        if qph is not None:
+            metrics["qphds_at_size"] = qph
+    else:
+        phases["power_test"] = {
+            "status": "COMPLETED",
+            "query_count": 22,
+            "refresh_first_set": 1,
+            "refresh_functions": [_refresh_function("RF1", 1, **flag), _refresh_function("RF2", 1, **flag)],
+        }
+        phases["throughput_test"]["refresh_stream"] = {
+            "status": "COMPLETED",
+            "first_set": 2,
+            "pair_count": streams,
+            "pairs": [
+                {
+                    "update_set": 2 + offset,
+                    "status": "SUCCESS",
+                    "functions": [
+                        _refresh_function("RF1", 2 + offset, **flag),
+                        _refresh_function("RF2", 2 + offset, **flag),
+                    ],
+                }
+                for offset in range(streams)
+            ],
+        }
+        metrics["refresh_included"] = True
+        if qph is not None:
+            metrics["qphh_at_size"] = qph
+    metrics["load_scope"] = {"components": ["schema_creation", "data_loading"], "counted_in_qph": tpcds}
+    return data
+
+
 @pytest.fixture()
 def bundle_file(tmp_path: Path) -> Path:
 

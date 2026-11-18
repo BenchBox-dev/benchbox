@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "SQLGlot delivery adoption pull requests now re-record the golden corpus in their single commit and list changed cases in the body"
+}
