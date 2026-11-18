@@ -91,6 +91,48 @@ ancestor. A targeted rebuild only uploads the artifact: it does not send the
 `core-bundle` dispatch to the site, so the Results Explorer deploy is not
 affected, and it never opens or closes the `site-bundle-failed` incident.
 
+### The site deploy parity chain and its recovery
+
+The site deploy refuses a bundle whose corpus differs from the deployed one
+unless the bundle's `validator_parity` attestation covers the change since the
+deployed core commit. The attestation records a `base`, the parent commit
+the bundle was compared against. `site_inputs.py` runs `validator_parity.py`
+from the bundle's own checkout with `--base-sha` set to that parent; the
+script validates every submission bundle changed in `base...bundle core`.
+The separate `corpus_validation` attestation validates the whole corpus at the
+bundle core. `--base-sha` selects the diff range, not the
+validator implementation.
+
+The site accepts a `base` that equals the deployed `core_sha`, and also a
+`base` that is a strict ancestor of it, provided the bundle's core commit is
+the deployed commit or a descendant. The range `base..bundle core` then
+contains `deployed..bundle core`, so every corpus change the deploy introduces
+was validated; the only cost is revalidating bundles that are already live.
+The site reads both ancestry facts through the core compare API and refuses
+when the base is not an ancestor, when the bundle core is not a descendant,
+or when either comparison cannot be read.
+
+`site_inputs_parent.py` waits until no site `deploy.yml` run is in flight before
+it reads the deployed core as the bundle's parent. If the previous bundle's
+site deploy run has not been created yet at that moment, the bundle records an
+older parent. With the ancestor rule that bundle deploys without action. The
+site gate still refuses when the recorded base is not an ancestor of the
+deployed core, for example after a deploy of a commit on another line, and the
+run's message ends with the recovery command.
+
+Rebuild the bundle with the deployed core as its parent:
+
+```bash
+gh workflow run site-inputs.yml --ref develop -f parent_core_sha=<deployed core_sha>
+```
+
+Take `<deployed core_sha>` from the `not the deployed <sha>` text of the
+failed site run or from `npm run deploy -- deployed` in the site repository.
+The commit must be an ancestor of the bundle's target commit; the run refuses
+anything else. Use this only after a site run fails with
+`validator_parity covers ...`; do not dispatch it to preempt a deploy that is
+still running.
+
 ## Maintenance releases
 
 A maintenance line ships a fix on an older minor without shipping everything on
@@ -952,10 +994,26 @@ with nothing new ends at state current in about a minute.
 - **Prepare** has no credentials. It runs the adopter
   (`scripts/adopt_sqlglot_wheel.py`) with the version, fork SHA, upstream SHA
   and hash from the verified record, requires that only the pin, the wheel
-  archive, the license notice and the baseline identity changed, and emits a
-  git bundle and a pull request title and body. The body carries a marker that
+  archive, the license notice, the baseline identity and (below) the recorded
+  golden corpus changed, and emits a git bundle and a pull request title and
+  body. The body carries a marker that
   binds version, fork SHA, upstream SHA, hash, the producer run and attempt,
   and the adoption commit and its parent.
+- **Golden corpus.** After the adopter switches the runtime, prepare runs
+  `python -m tests.unit.sql_compat.golden_corpus` (every area) from the
+  checkout in a fresh interpreter, so it imports the newly pinned wheel from
+  `benchbox/_vendor`; it first checks that interpreter resolves the delivered
+  archive. Changed files under
+  `tests/unit/sql_compat/golden_corpus/recorded/*.json` go into the same single
+  adoption commit, which keeps the one-commit ownership rule. The pull request
+  body gains a "Golden corpus changes" section listing each changed case (area,
+  case id, and the before and after output of each field that differs); past 20
+  cases it gives counts per area and the first 20. A delivery that changes no
+  recorded output adds nothing. Publish and arm accept only the pin, archive,
+  notice, baseline, fragment and `recorded/*.json` paths. Nothing holds the
+  pull request automatically: it takes the normal path (CI including the SQL
+  execution evidence gate, review gate, arm). To stop a release over a corpus
+  change, apply `no-auto-merge` to the pull request.
 - **Publish** runs only when `SQLGLOT_DELIVERY_ENABLED` is `true`, the run is
   not a dry run and the plan says `adopt`. It re-checks the bundle, pushes
   `chore/sqlglot-<version>` and opens the pull request, resuming after an

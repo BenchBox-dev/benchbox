@@ -18,7 +18,6 @@ LEGACY_MANIFEST_NAME = "submission-manifest.json"
 
 MINIMUM_PLATFORMS_PER_COHORT = 3
 DOCUMENTED_SHALLOW_COHORTS = {
-    ("clickbench", "0.1"): frozenset({"bigquery", "snowflake"}),
     ("datavault", "0.01"): frozenset({"clickhouse-local^container"}),
     ("datavault", "0.1"): frozenset({"clickhouse-local^container"}),
     ("read_primitives", "0.01"): frozenset({"clickhouse-local^container", "datafusion"}),
@@ -573,9 +572,29 @@ def _throughput_score(payload: dict) -> float | None:
     return _tpc_metric(payload, "throughput_at_size")
 
 
+COMBINED_PHASE = "combined"
+COMBINED_QPH_METRICS = {"tpch": "qphh_at_size", "tpcds": "qphds_at_size"}
+
+
+def _combined_score(payload: dict, benchmark_id: str) -> float | None:
+    if _combined_evidence_defects(payload):
+        return None
+    metrics = _mapping(_mapping(payload.get("summary")).get("tpc_metrics"))
+    if benchmark_id == "tpch" and metrics.get("refresh_included") is not True:
+        return None
+    return _tpc_metric(payload, COMBINED_QPH_METRICS[benchmark_id])
+
+
+def _combined_evidence_defects(payload: dict) -> list[str]:
+    return _load_bundle_validation().combined_evidence_defects(payload)
+
+
 def _primary_metric_value(payload: dict, display: list[tuple[str, float | None, int]]) -> float | None:
     benchmark_id = str(_mapping(payload.get("benchmark")).get("id", "unknown"))
-    if bundle_phase(payload) == THROUGHPUT_PHASE and benchmark_id in THROUGHPUT_SCORE_BENCHMARKS:
+    phase = bundle_phase(payload)
+    if phase == COMBINED_PHASE and benchmark_id in COMBINED_QPH_METRICS:
+        return _combined_score(payload, benchmark_id)
+    if phase == THROUGHPUT_PHASE and benchmark_id in THROUGHPUT_SCORE_BENCHMARKS:
         return _throughput_score(payload)
     if benchmark_id in POWER_SCORE_BENCHMARKS:
         return _power_score(payload)
@@ -638,6 +657,10 @@ def exclusion_reason(payload: dict, bundle: pathlib.Path | None = None) -> str |
     timing = _timing_exclusion(display, _logical_query_count(payload, display))
     if timing is not None:
         return timing
+    if bundle_phase(payload) == COMBINED_PHASE and _mapping(payload.get("benchmark")).get("id") in COMBINED_QPH_METRICS:
+        defects = _combined_evidence_defects(payload)
+        if defects:
+            return defects[0]
     return _primary_metric_reason(payload, display)
 
 

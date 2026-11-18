@@ -423,6 +423,17 @@ def _is_standard_scale(rule: ScaleFactorRule, scale_factor: float) -> bool:
     return any(abs(scale_factor - opt) < _SCALE_MATCH_TOLERANCE for opt in rule.standard)
 
 
+def is_standard_scale_factor(benchmark_id: str, scale_factor: Any) -> bool:
+    rule = get_scale_factor_rule(benchmark_id)
+    if isinstance(scale_factor, bool):
+        return False
+    try:
+        value = float(scale_factor)
+    except (TypeError, ValueError):
+        return False
+    return math.isfinite(value) and _is_standard_scale(rule, value)
+
+
 def validate_scale_factor(
     benchmark_id: str,
     scale_factor: float,
