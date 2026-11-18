@@ -26052,10 +26052,15 @@
       "title": "make heavy-run CMD='...' lets make expand $ in the command, so $HOME becomes OME"
     },
     "heavy-run-exit-79-after-command-completed-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-19T22:05:49Z",
+        "generation": "1b19f9314a3d4363b944c871a2a13238",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a43b9a4b85fc0a7cdd51f943"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "make heavy-run can report a watchdog kill (exit 79) after the guarded command already finished successfully"
     },
     "heavy-run-wait-for-admission-20261112": {
