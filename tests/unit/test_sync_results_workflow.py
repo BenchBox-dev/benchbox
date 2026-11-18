@@ -114,15 +114,21 @@ def test_sync_workflow_revalidates_publication_after_pr_creation() -> None:
 
 
 def test_sync_workflow_merges_only_a_validated_fresh_mirror_head() -> None:
-    steps = yaml.safe_load(WORKFLOW_PATH.read_text(encoding="utf-8"))["jobs"]["mirror"]["steps"]
+    workflow = yaml.safe_load(WORKFLOW_PATH.read_text(encoding="utf-8"))
+    steps = workflow["jobs"]["mirror"]["steps"]
     names = [step.get("name") for step in steps]
+    validate_step = next(step for step in steps if step.get("id") == "validate")
     merge_step = next(step for step in steps if step.get("name") == "Merge the validated mirror PR")
 
+    assert "scripts/publication/validator_parity.py" in validate_step["run"]
+    assert "--corpus-changed-paths" in validate_step["run"]
     assert "always()" not in merge_step["if"]
     assert "steps.validate.outputs.state == 'success'" in merge_step["if"]
     assert names.index("Verify mirror PR publication freshness") < names.index("Merge the validated mirror PR")
     assert names.index("Close superseded mirror PRs") < names.index("Merge the validated mirror PR")
     assert 'gh pr merge "${PR_NUMBER}" --squash --match-head-commit "${MIRROR_HEAD_SHA}"' in merge_step["run"]
+    assert "gh workflow run corpus-reconciler.yml" in merge_step["run"]
+    assert workflow["permissions"]["actions"] == "write"
 
 
 def test_sync_workflow_references_publication_fixed_point_gate() -> None:

@@ -24,6 +24,7 @@ permissions:
   contents: write
   pull-requests: write
   statuses: write
+  actions: write
 
 concurrency:
   group: sync-results-to-published-${{ github.ref }}
@@ -280,6 +281,28 @@ jobs:
             fi
           fi
 
+          if [[ "${STATE}" == "success" ]]; then
+            CORPUS_PATHS_FILE=$(mktemp)
+            CORPUS_SUBTREE_FILE=$(mktemp)
+            git diff --no-renames --name-only --diff-filter=ACMRD origin/published-results HEAD -- \
+              'results-data/bundles/**' 'results-data/corpus/**' | sort -u > "${CORPUS_PATHS_FILE}"
+            git diff --no-renames --name-only --diff-filter=ACMRD origin/published-results HEAD -- \
+              'results-data/corpus/**' | sort -u > "${CORPUS_SUBTREE_FILE}"
+            if ! uv run --no-project --python 3.11 -- python scripts/validate_submission.py \
+              --corpus-changed-paths "${CORPUS_PATHS_FILE}"; then
+              STATE="failure"
+              DESCRIPTION="The mirror changes corpus paths outside the published-results allowlist."
+            elif ! uv run --no-project --python 3.11 -- python scripts/publication/validator_parity.py \
+              --base-sha "$(git rev-parse origin/published-results)" \
+              --merge-sha "$(git rev-parse HEAD)" \
+              --head-sha "$(git rev-parse HEAD)" \
+              --corpus-changed-paths "${CORPUS_SUBTREE_FILE}" \
+              --allow-partial-validation; then
+              STATE="failure"
+              DESCRIPTION="validator_parity rejected the mirrored bundle content."
+            fi
+          fi
+
           echo "state=${STATE}" >> "$GITHUB_OUTPUT"
           echo "description=${DESCRIPTION}" >> "$GITHUB_OUTPUT"
 
@@ -446,15 +469,22 @@ jobs:
           done
 
       - name: Merge the validated mirror PR
+        id: merge
         if: steps.drift.outputs.has_drift == 'true' && steps.build.outputs.has_changes == 'true' && steps.validate.outputs.state == 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
           MIRROR_HEAD_SHA: ${{ steps.build.outputs.mirror_head_sha }}
+          PUBLISHED_BASE_SHA: ${{ steps.drift.outputs.published_base_sha }}
         run: |
           set -euo pipefail
           gh pr ready "${PR_NUMBER}"
           gh pr merge "${PR_NUMBER}" --squash --match-head-commit "${MIRROR_HEAD_SHA}"
+          MERGE_SHA=$(gh pr view "${PR_NUMBER}" --json mergeCommit --jq '.mergeCommit.oid')
+          gh workflow run corpus-reconciler.yml --ref develop \
+            -f merge-sha="${MERGE_SHA}" \
+            -f base-sha="${PUBLISHED_BASE_SHA}" \
+            -f source="results-mirror-merge"
 
       - name: Fail the run if mirrored content failed validation
         if: always() && steps.drift.outputs.has_drift == 'true' && steps.build.outputs.has_changes == 'true' && steps.validate.outputs.state != 'success'
