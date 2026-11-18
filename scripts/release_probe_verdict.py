@@ -5,9 +5,10 @@ import sys
 from collections.abc import Callable
 from typing import Any
 
-from scripts.release_probe_launch import CHECK_NAME, VARIANTS, gh, run_url
+from scripts.release_probe_launch import CHECK_NAME, VARIANTS, WORKFLOW_FILE, gh, run_url
 
 Gh = Callable[..., Any]
+RELEASE_WORKFLOW_PATH = f".github/workflows/{WORKFLOW_FILE}"
 CHECKS_PAGE = 100
 MAX_PAGES = 30
 IN_PROGRESS = "in_progress"
@@ -65,8 +66,27 @@ def complete_check(repository: str, check_id: int, conclusion: str, title: str, 
     )
 
 
-def judge(repository: str, recorded: dict[str, int], runner: Gh = gh) -> tuple[str, str, str] | None:
+def is_probe_run(run: dict[str, Any], head_sha: str) -> bool:
+    return (
+        str(run.get("path", "")).split("@", 1)[0] == RELEASE_WORKFLOW_PATH
+        and run.get("event") == "workflow_dispatch"
+        and run.get("head_sha") == head_sha
+    )
+
+
+def judge(repository: str, recorded: dict[str, int], head_sha: str, runner: Gh = gh) -> tuple[str, str, str] | None:
     runs = {variant: runner("api", f"repos/{repository}/actions/runs/{run_id}") for variant, run_id in recorded.items()}
+    foreign = [
+        f"- {variant}: {run_url(repository, recorded[variant])}"
+        for variant, run in runs.items()
+        if not is_probe_run(run, head_sha)
+    ]
+    if foreign:
+        return (
+            "failure",
+            "Probe records foreign runs",
+            f"These recorded runs are not release-v2.yml dispatches at {head_sha[:10]}:\n" + "\n".join(foreign),
+        )
     if any(run.get("status") != COMPLETED for run in runs.values()):
         return None
     failed = [
@@ -88,7 +108,7 @@ def settle(repository: str, run_id: int, runner: Gh = gh) -> str:
     if found is None:
         return "ignored: no in-progress probe check records this run"
     check, recorded = found
-    verdict = judge(repository, recorded, runner)
+    verdict = judge(repository, recorded, str(run["head_sha"]), runner)
     if verdict is None:
         return "waiting: probe variants still running"
     conclusion, title, summary = verdict

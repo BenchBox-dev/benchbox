@@ -19,6 +19,7 @@ class FakeGh:
         self.checks = checks if checks is not None else [self.check()]
         self.patched: list[dict] = []
         self.event = "workflow_dispatch"
+        self.overrides: dict[int, dict] = {}
 
     @staticmethod
     def check(status: str = "in_progress", external_id: str | None = EXTERNAL_ID, check_id: int = 9) -> dict:
@@ -47,8 +48,34 @@ class FakeGh:
             "conclusion": conclusion,
             "event": self.event,
             "head_sha": HEAD,
+            "path": ".github/workflows/release-v2.yml",
             "html_url": f"https://github.com/{REPOSITORY}/actions/runs/{run_id}",
+            **self.overrides.get(run_id, {}),
         }
+
+
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"path": ".github/workflows/ci.yml"},
+        {"event": "push"},
+        {"head_sha": "b" * 40},
+    ],
+)
+def test_a_recorded_run_that_is_not_a_release_v2_dispatch_at_the_check_head_fails_the_check(override):
+    fake = FakeGh()
+    fake.overrides[102] = override
+    _settle(fake)
+    (patch,) = fake.patched
+    assert patch["conclusion"] == "failure"
+    assert f"- fallback: https://github.com/{REPOSITORY}/actions/runs/102" in patch["output[summary]"]
+
+
+def test_a_recorded_run_path_carrying_its_ref_still_counts():
+    fake = FakeGh()
+    fake.overrides[102] = {"path": ".github/workflows/release-v2.yml@refs/heads/feat/x"}
+    _settle(fake)
+    assert fake.patched[0]["conclusion"] == "success"
 
 
 def _settle(fake: FakeGh, run_id: int = 103) -> str:
