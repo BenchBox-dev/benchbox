@@ -156,7 +156,8 @@ with maintainer and release-manager escalation as described in
 | `pr-hold.yml` | product-safety | Required `hold` check: fails while the `no-auto-merge` label is present in the PR's live labels, on every label change and on every re-run |
 | `pricing-data-drift-check.yml` | product-safety | Pricing data integrity |
 | `release-v2.yml` | product-safety | Tag-triggered publication of the admitted trunk artifacts: annotated tag, latest-run admission, install matrix, reuse of qualifying trunk or release-candidate UAT evidence re-verified against the admitted digest (full UAT only as the fallback), a fresh green release canary on an ancestor of the tag for every tag, publish-time tag re-check, attestation; a publish-free probe mode runs the same job graph without a tag |
-| `release-v2-probe.yml` | product-safety | Pull-request check that dispatches both `release-v2.yml` probe variants (reuse and fallback) from the branch when a release workflow input changed, and fails unless both succeed |
+| `release-v2-probe.yml` | product-safety | Pull-request job that dispatches the three `release-v2.yml` probe variants (reuse, fallback and guarded-change) from the branch when a release workflow input changed and records the required `release-v2 probe` check run in progress, or completed at once when nothing probed changed; it does not wait for the runs |
+| `release-v2-probe-verdict.yml` | product-safety | Completes the `release-v2 probe` check run when the recorded variant runs finish: success only if all three succeeded, otherwise failure naming each variant that did not; leaves the check alone while any run is unfinished |
 | `release-canary.yml` | product-safety | Release canary protection |
 | `seed-corpus.yml` | product-safety | Corpus seeding |
 | `site-inputs.yml` | product-safety | Versioned site-inputs bundle build, attestation, artifact upload and site dispatch |
