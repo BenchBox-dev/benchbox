@@ -14,7 +14,12 @@ def _write(directory: Path, stem: str, platform: str, run_timestamp: str, manife
     (directory / f"{stem}.json").write_text(
         json.dumps({"platform": {"name": platform}, "run": {"timestamp": run_timestamp}}), encoding="utf-8"
     )
-    manifest = {"bundle_file": f"{stem}.json", "funding": "unspecified", **(manifest_extra or {})}
+    manifest = {
+        "bundle_file": f"{stem}.json",
+        "funding": "unspecified",
+        "result_source": "internal",
+        **(manifest_extra or {}),
+    }
     (directory / f"{stem}.manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
 
 

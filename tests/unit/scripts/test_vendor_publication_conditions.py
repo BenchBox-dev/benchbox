@@ -242,7 +242,7 @@ class TestMandatoryFieldsAfterCutoff:
 class TestPrePolicyLabel:
     @pytest.mark.parametrize("platform", sorted(MANDATORY_VENDOR_PLATFORMS))
     def test_pre_cutoff_manifest_labelled_not_refused(self, platform):
-        manifest = {"platform": platform, BUNDLE_RUN_TIMESTAMP_KEY: PRE_CUTOFF}
+        manifest = {"platform": platform, "result_source": "internal", BUNDLE_RUN_TIMESTAMP_KEY: PRE_CUTOFF}
         errors, warnings = evaluate_vendor_conditions(manifest)
         assert errors == []
         assert len(warnings) == 1
@@ -251,8 +251,23 @@ class TestPrePolicyLabel:
         assert vendor_publication_status(manifest) == VENDOR_STATUS_PRE_POLICY
 
     def test_pre_cutoff_submission_date_labelled(self):
-        manifest = {"platform": "databricks", "submitted_at": "2026-11-17T23:59:59+00:00"}
+        manifest = {"platform": "databricks", "result_source": "internal", "submitted_at": "2026-11-17T23:59:59+00:00"}
         assert vendor_publication_status(manifest) == VENDOR_STATUS_PRE_POLICY
+
+    @pytest.mark.parametrize("source", [None, "vendor"])
+    def test_unstamped_manifest_not_labelled_internal_is_never_exempt(self, source):
+        manifest = {"platform": "databricks", BUNDLE_RUN_TIMESTAMP_KEY: PRE_CUTOFF}
+        if source:
+            manifest["result_source"] = source
+        assert vendor_publication_status(manifest) == VENDOR_STATUS_INCOMPLETE
+
+    @pytest.mark.parametrize("tier", [["paid"], {"tier": "paid"}])
+    @pytest.mark.parametrize("platform", sorted(MANDATORY_VENDOR_PLATFORMS))
+    def test_unhashable_plan_tier_is_reported_not_raised(self, platform, tier):
+        manifest = {"platform": platform, "submitted_at": POST_CUTOFF, "plan_tier": tier}
+        errors, _ = evaluate_vendor_conditions(manifest)
+        assert any("Invalid manifest plan_tier" in e for e in errors)
+        assert vendor_publication_status(manifest) == VENDOR_STATUS_INCOMPLETE
 
     def test_pre_cutoff_manifest_with_fields_is_evidence_backed(self):
         manifest = complete("snowflake", **{BUNDLE_RUN_TIMESTAMP_KEY: PRE_CUTOFF})

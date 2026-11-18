@@ -229,6 +229,7 @@ def _enforce_vendor_conditions(ctx: click.Context, result, vendor_conditions: di
     declared = {
         "platform": result.platform,
         "funding": resolved_funding,
+        "result_source": "community",
         "submitted_at": _submission_timestamp(),
         **vendor_conditions,
     }

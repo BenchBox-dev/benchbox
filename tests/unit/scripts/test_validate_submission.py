@@ -85,7 +85,7 @@ class TestManifestProvenance:
             encoding="utf-8",
         )
         vr = ValidationResult("test")
-        _validate_manifest_provenance({"funding": "unspecified"}, bundle, vr)
+        _validate_manifest_provenance({"funding": "unspecified", "result_source": "internal"}, bundle, vr)
         assert vr.ok
         assert any("pre_policy" in w for w in vr.warnings)
 

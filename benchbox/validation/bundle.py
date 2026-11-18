@@ -814,6 +814,7 @@ SELF_RUN_PLATFORMS: Mapping[str, str] = {
 VENDOR_CONDITIONS_MANDATORY_FROM = "2026-11-18"
 MANDATORY_VENDOR_PLATFORMS: frozenset[str] = frozenset({"bigquery", "snowflake", "databricks"})
 MANDATORY_VENDOR_FIELDS: tuple[str, ...] = ("plan_tier", "vendor_notice", "self_run")
+MANDATORY_PLAN_TIERS: tuple[str, ...] = ("paid", "free", "trial")
 VENDOR_STATUS_PRE_POLICY = "pre_policy"
 VENDOR_STATUS_EVIDENCE_BACKED = "evidence_backed"
 VENDOR_STATUS_INCOMPLETE = "incomplete"
@@ -882,7 +883,10 @@ def _is_submit_stamped(manifest: Mapping[str, Any]) -> bool:
 
 
 def _vendor_manifest_date(manifest: Mapping[str, Any]) -> datetime.date | None:
-    if _is_submit_stamped(manifest) and manifest.get("submitted_at") is None:
+    if _is_submit_stamped(manifest):
+        if manifest.get("submitted_at") is None:
+            return None
+    elif manifest.get("result_source") != "internal":
         return None
     candidates = [
         manifest.get(key) for key in ("submitted_at", BUNDLE_RUN_TIMESTAMP_KEY) if manifest.get(key) is not None
@@ -900,7 +904,7 @@ def _vendor_manifest_date(manifest: Mapping[str, Any]) -> datetime.date | None:
 
 def _mandatory_fields_present(manifest: Mapping[str, Any]) -> bool:
     return (
-        manifest.get("plan_tier") in {"paid", "free", "trial"}
+        manifest.get("plan_tier") in MANDATORY_PLAN_TIERS
         and manifest.get("vendor_notice") is not None
         and manifest.get("self_run") is True
     )
@@ -919,7 +923,7 @@ def vendor_publication_status(manifest: Mapping[str, Any]) -> str:
 
 def _mandatory_field_messages(manifest: Mapping[str, Any], platform: str) -> list[str]:
     missing: list[str] = []
-    if manifest.get("plan_tier") not in {"paid", "free", "trial"}:
+    if manifest.get("plan_tier") not in MANDATORY_PLAN_TIERS:
         missing.append("plan_tier (--plan-tier)")
     if manifest.get("vendor_notice") is None:
         missing.append("vendor_notice (--vendor-notice-date and --vendor-notice-ref)")
