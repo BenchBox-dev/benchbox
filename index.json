@@ -20554,7 +20554,7 @@
         "heavy-work-host-capacity-owner-decision-20261117"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Validate the DataFrame memory guard's SF10 subset estimates against measured peaks"
     },
     "df-memory-guard-subset-estimate-20261113": {
