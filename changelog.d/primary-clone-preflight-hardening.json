@@ -1,0 +1,1 @@
+{"schema":1,"internal":"The primary-clone write preflight hashes files in one batch (2,000 untracked files: about 34 s down to under 1 s), reports edits to files whose names Git quotes, and common tool caches, *.log and tmp/ are gitignored so they no longer trip it."}
