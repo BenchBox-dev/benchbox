@@ -334,8 +334,13 @@ class TPCDSMaintenanceTest:
 
     @classmethod
     def _begin(cls, connection: Any) -> None:
-        if cls._transactional(connection):
-            connection.execute("BEGIN")
+        if not cls._transactional(connection):
+            return
+        cls._commit(connection)
+        driver = getattr(connection, "connection", connection)
+        if getattr(driver, "autocommit", None) is False:
+            return
+        connection.execute("BEGIN")
 
     @classmethod
     def _commit(cls, connection: Any) -> None:

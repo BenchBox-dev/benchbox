@@ -102,6 +102,44 @@ def test_failed_function_on_a_non_transactional_adapter_does_not_roll_back(
     assert connection.rollbacks == 0
 
 
+class _ImplicitTransactionDriver:
+    autocommit = False
+
+    def __init__(self) -> None:
+        self.in_transaction = False
+
+    def begin_statement(self, statement: str) -> None:
+        if statement == "BEGIN" and self.in_transaction:
+            raise RuntimeError("there is already an active transaction")
+        self.in_transaction = True
+
+
+class _ImplicitTransactionConnection(_Connection):
+    def __init__(self, adapter: Any, counts: list[int]) -> None:
+        super().__init__(adapter, counts)
+        self.connection = _ImplicitTransactionDriver()
+
+    def execute(self, statement: str):
+        self.connection.begin_statement(statement)
+        return super().execute(statement)
+
+    def commit(self) -> None:
+        self.connection.in_transaction = False
+        super().commit()
+
+
+def test_a_driver_with_implicit_transactions_gets_no_explicit_begin(stubbed_staging) -> None:
+    connection = _ImplicitTransactionConnection(SimpleNamespace(), [10, 15])
+    harness = TPCDSMaintenanceTest(benchmark=None, connection_factory=lambda: connection, dialect="duckdb")
+
+    operation = harness._execute_function(MAINTENANCE_FUNCTIONS_BY_NAME["LF_I"], _refresh_set())
+
+    assert operation.success is True, operation.error
+    assert operation.rows_by_table == {"inventory": 5}
+    assert "BEGIN" not in connection.statements
+    assert connection.commits >= 2
+
+
 @pytest.mark.skipif(not chdb_usable(), reason=chdb_skip_reason() or "chDB is usable")
 def test_clickhouse_local_and_cedardb_both_run_tpcds_maintenance() -> None:
     assert maintenance_unsupported_reason(ClickHouseLocalAdapter()) is None
