@@ -33827,15 +33827,10 @@
       "title": "Publish TPC-DS OBT SF 0.01 and SF 0.1 results to the corpus and Explorer"
     },
     "published-corpus-lacks-vendor-publication-fields-20261117": {
-      "claim": {
-        "expires_at": "2026-11-19T21:40:00Z",
-        "generation": "2a8a0d8926ee4fbbb87e9ad501476d4a",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a43b9a4b85fc0a7cdd51f943"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "None of the 151 published BigQuery, Snowflake and Databricks results records plan tier, vendor permission, vendor notice or self-run"
     },
     "published-history-retention-premise-predates-oracle": {
