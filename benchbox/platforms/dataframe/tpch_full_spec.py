@@ -181,8 +181,8 @@ def run_throughput(
                 "stream_id": stream.stream_id,
                 "iteration": 1,
                 "run_type": "measurement",
-                "data_refreshed": plan is not None,
             }
+            row["data_refreshed"] = plan is not None
             if not query_result.get("success"):
                 row["error"] = query_result.get("error", "Unknown error")
             propagate_query_execution_metadata(query_result, row)

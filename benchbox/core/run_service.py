@@ -473,6 +473,7 @@ __all__ = [
     "get_execution_mode",
     "is_dataframe_execution",
     "map_phases_to_execution_type",
+    "reject_unsupported_dataframe_benchmark",
     "reject_unsupported_dataframe_phases",
     "resolve_configured_compression",
     "resolve_execution_mode",
