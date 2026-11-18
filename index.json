@@ -20717,15 +20717,10 @@
       "title": "Estimate DataFrame memory from the tables a `--queries` subset reads"
     },
     "df-multi-warehouse-modin-cudf-verification-20261117": {
-      "claim": {
-        "expires_at": "2026-11-19T19:35:04Z",
-        "generation": "a0d1ed21514e4d30ba0b823b35e37678",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:43c6657ebf2251468541889f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Run the TPC-DS multi-warehouse and NULL-parity tests on Modin and cuDF, which CI never exercises"
     },
     "df-n-unique-null-semantics": {
