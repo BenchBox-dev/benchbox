@@ -78,7 +78,9 @@ class PySparkDataFrameAdapter(ExpressionFamilyAdapter[PySparkDF, PySparkLazyDF, 
         **spark_config: Any,
     ) -> None:
         if not PYSPARK_AVAILABLE:
-            raise ImportError("PySpark not installed. Install with: pip install pyspark pyarrow")
+            raise ImportError(
+                'PySpark not installed. Install with: pip install "benchbox[pyspark]"  (or: uv add benchbox --extra pyspark)'
+            )
 
         super().__init__(
             working_dir=working_dir,

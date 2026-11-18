@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import json
 import os
 import plistlib
 import stat
@@ -297,6 +298,13 @@ def test_a_git_flood_is_reported_again_only_after_the_summary_interval() -> None
     assert sum("WARNING git flood" in line for line in lines) == 1
 
 
+@pytest.fixture(autouse=True)
+def isolated_orphan_report(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    path = tmp_path / "state" / orphan_spin.ACTIVE_NAME
+    monkeypatch.setattr(heavy_status, "orphan_spin_path", lambda environ=None: path)
+    return path
+
+
 class SpinRig:
     def __init__(self, *, cpu_per_second: float, mode: str = "warn", environ: dict[str, str] | None = None) -> None:
         self.now = 1000.0
@@ -357,6 +365,35 @@ def test_an_orphaned_shell_holding_sustained_cpu_is_reported_once_and_never_sign
     assert "cwd /work/BenchBox.wt-a/sub" in warnings[0]
     assert "never signalled" in warnings[0]
     assert sent == []
+
+
+def test_a_reported_orphan_is_published_for_the_readers_until_it_goes_idle_or_exits(
+    isolated_orphan_report: Path,
+) -> None:
+    rig = SpinRig(cpu_per_second=1.0)
+    for _ in range(80):
+        rig.tick(5.0)
+    published = orphan_spin.ActiveSpin(**json.loads(isolated_orphan_report.read_text(encoding="utf-8"))[0])
+    assert (published.pid, published.cwd, published.cpu_fraction) == (4242, "/work/BenchBox.wt-a/sub", 1.0)
+    assert published.busy_since < time.time()
+    rig.rate = 0.0
+    rig.tick(5.0)
+    rig.tick(5.0)
+    assert not isolated_orphan_report.exists()
+    rig.rate = 1.0
+    for _ in range(80):
+        rig.tick(5.0)
+    assert isolated_orphan_report.exists()
+    rig.present = False
+    rig.tick(5.0)
+    assert not isolated_orphan_report.exists()
+
+
+def test_nothing_is_published_without_a_report(isolated_orphan_report: Path) -> None:
+    rig = SpinRig(cpu_per_second=0.0)
+    for _ in range(80):
+        rig.tick(5.0)
+    assert not isolated_orphan_report.exists()
 
 
 def test_an_orphaned_shell_is_not_reported_before_the_sustain_window() -> None:

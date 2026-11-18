@@ -104,18 +104,48 @@ def _datafusion_batches_to_table(batches: list[Any], dataframe: Any) -> Any:
     return pa.Table.from_batches(batches)
 
 
+_UNSAFE_DML_PLAN = re.compile(r"\bJoin\b|subquery", re.IGNORECASE)
+
+
+def _refuse_unsafe_dml(statement: str, dataframe: Any) -> None:
+    plan = dataframe.optimized_logical_plan().display_indent()
+    if _UNSAFE_DML_PLAN.search(plan):
+        raise RuntimeError(
+            "Refusing to run a DataFusion DELETE or UPDATE whose WHERE clause plans as a join or subquery: "
+            "DataFusion removes or rewrites every row for such statements without an error "
+            f"(apache/datafusion#24657). Statement: {statement.strip()[:300]}"
+        )
+
+
 class DataFusionConnectionCompat:
     def __init__(self, context: Any):
         self._context = context
 
     @staticmethod
-    def _requires_eager_execution(query: str) -> bool:
+    def _strip_leading_comments(query: str) -> str:
         statement = query.lstrip()
         while statement.startswith("--"):
             newline_pos = statement.find("\n")
             if newline_pos == -1:
-                return False
+                return ""
             statement = statement[newline_pos + 1 :].lstrip()
+        return statement
+
+    @classmethod
+    def _is_row_modifying(cls, query: str) -> bool:
+        return cls._strip_leading_comments(query).upper().startswith(("DELETE", "UPDATE"))
+
+    def _lazy_sql(self, query: str) -> Any:
+        dataframe = self._context.sql(query)
+        if self._is_row_modifying(query):
+            _refuse_unsafe_dml(query, dataframe)
+        return dataframe
+
+    @classmethod
+    def _requires_eager_execution(cls, query: str) -> bool:
+        statement = cls._strip_leading_comments(query)
+        if not statement:
+            return False
 
         upper_statement = statement.upper()
         eager_prefixes = (
@@ -137,17 +167,17 @@ class DataFusionConnectionCompat:
         from benchbox.platforms.base.mysql_wire import split_sql_statements
 
         statements = split_sql_statements(query) or [query]
-        cursor = DataFusionCursorCompat(self._context.sql(statements[0]))
+        cursor = DataFusionCursorCompat(self._lazy_sql(statements[0]))
         if self._requires_eager_execution(statements[0]):
             cursor.fetchall()
         for statement in statements[1:]:
-            cursor = DataFusionCursorCompat(self._context.sql(statement))
+            cursor = DataFusionCursorCompat(self._lazy_sql(statement))
             if self._requires_eager_execution(statement):
                 cursor.fetchall()
         return cursor
 
     def sql(self, query: str) -> Any:
-        return self._context.sql(query)
+        return self._lazy_sql(query)
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._context, name)

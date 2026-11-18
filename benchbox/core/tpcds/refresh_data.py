@@ -307,6 +307,19 @@ def load_refresh_file(connection: Any, table: RefreshSourceTable, path: Path, ex
     return loaded
 
 
+def inline_staging_sql(table: RefreshSourceTable, path: Path) -> str | None:
+    selects = []
+    for fields in _rows(path, table):
+        values = ", ".join(
+            f"CAST({_sql_literal(value, sql_type)} AS {sql_type}) AS {name}"
+            for value, (name, sql_type) in zip(fields, table.column_types, strict=True)
+        )
+        selects.append(f"SELECT {values}")
+    if not selects:
+        return None
+    return f"({' UNION ALL '.join(selects)}) AS {table.name}"
+
+
 def _rows(path: Path, table: RefreshSourceTable) -> Iterator[list[str]]:
     width = len(table.columns)
     with path.open(encoding="utf-8", newline="") as source:

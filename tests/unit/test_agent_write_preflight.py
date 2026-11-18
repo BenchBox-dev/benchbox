@@ -308,6 +308,36 @@ def test_report_ignores_dirt_that_predates_the_snapshot(tmp_path: Path) -> None:
     assert result.stderr == ""
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="tab and newline are not valid in Windows file names")
+@pytest.mark.parametrize("name", ["tab\tname.txt", "new\nline.txt", 'quote"back\\slash.txt'])
+def test_report_names_edit_to_preexisting_file_with_quoted_name(tmp_path: Path, name: str) -> None:
+    primary, linked = _linked_worktree(tmp_path)
+    (primary / name).write_text("before\n", encoding="utf-8")
+    _run_check_in(linked, primary, "snapshot")
+    (primary / name).write_text("after\n", encoding="utf-8")
+
+    result = _run_check_in(linked, primary, "report")
+
+    assert result.returncode == 0
+    assert "changed paths:" in result.stderr
+    assert "deleted" not in _snapshot_path(linked).read_text(encoding="utf-8")
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="symlinks need privileges on Windows")
+def test_dangling_symlink_is_recorded_deleted_without_aborting_the_scan(tmp_path: Path) -> None:
+    primary, linked = _linked_worktree(tmp_path)
+    (primary / "dangling").symlink_to(primary / "missing-target")
+    (primary / "real.txt").write_text("content\n", encoding="utf-8")
+
+    assert _run_check_in(linked, primary, "snapshot").returncode == 0
+
+    entries = dict(
+        reversed(line.split("\t", 1)) for line in _snapshot_path(linked).read_text(encoding="utf-8").splitlines()
+    )
+    assert entries["dangling"] == "deleted"
+    assert len(entries["real.txt"]) == 40
+
+
 def test_report_names_new_and_further_modified_tracked_paths(tmp_path: Path) -> None:
     primary, linked = _dirty_primary_with_linked(tmp_path)
     (primary / "notes.txt").write_text("tracked\n", encoding="utf-8")

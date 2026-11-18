@@ -37,6 +37,11 @@ t2-evidence/
 *.py,cover
 .hypothesis/
 .pytest_cache/
+.mypy_cache/
+.dmypy.json
+.ty_cache/
+.benchmarks/
+.ipynb_checkpoints/
 cover/
 
 venv/
@@ -54,6 +59,9 @@ docs/site/
 
 .idea/
 .vscode/
+.serena/
+.cursor/
+.playwright-mcp/
 *.swp
 *.swo
 .DS_Store
@@ -202,3 +210,6 @@ node_modules/
 .todo-batch/
 
 /quality/sqlglot-typing/benchbox/
+
+*.log
+tmp/

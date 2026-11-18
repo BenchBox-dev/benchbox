@@ -20,12 +20,17 @@ from benchbox.core.throughput.runner import StreamRunner
 from benchbox.core.tpch.power_test import _parse_tpch_query_id
 from benchbox.core.tpch.refresh import (
     TPCHRefreshUpdateSet,
+    TPCHRF2Baseline,
+    TPCHRF2Deletes,
     applied_counts,
     apply_rf1,
     apply_rf2,
+    capture_rf2_baseline,
     check_rf1_applied,
     check_rf2_applied,
     generate_refresh_update_sets,
+    verify_refresh_stream_totals,
+    verify_rf2_reported,
 )
 from benchbox.core.validation.query_validation import (
     clear_data_refreshed_context,
@@ -166,6 +171,7 @@ class TPCHThroughputTest:
                 self.logger.info(f"Scale factor: {config.scale_factor}")
 
             self._pregenerated_queries = self._pregenerate_stream_queries(config)
+            baselines = self._capture_rf2_baselines(update_sets) if config.refresh_functions else {}
             start_time = mono_time()
             result.start_time = datetime.now().isoformat()
             auxiliary_fn = None
@@ -178,7 +184,7 @@ class TPCHThroughputTest:
                 )
 
             StreamRunner.execute(self._execute_stream, config, result, self.logger, auxiliary_fn=auxiliary_fn)
-            self._check_refresh_postconditions(update_sets, result)
+            self._check_refresh_postconditions(update_sets, result, baselines)
 
             if result.refresh_stream is not None and result.refresh_stream.status == "PENDING":
                 result.refresh_stream.status = "FAILED"
@@ -263,8 +269,18 @@ class TPCHThroughputTest:
             with contextlib.suppress(Exception):
                 connection.close()
 
+    def _capture_rf2_baselines(self, update_sets: dict[int, TPCHRefreshUpdateSet]) -> dict[int, TPCHRF2Baseline]:
+        return self._with_refresh_session(
+            lambda connection: {
+                set_id: capture_rf2_baseline(connection, update_set) for set_id, update_set in update_sets.items()
+            }
+        )
+
     def _check_refresh_postconditions(
-        self, update_sets: dict[int, TPCHRefreshUpdateSet], result: TPCHThroughputTestResult
+        self,
+        update_sets: dict[int, TPCHRefreshUpdateSet],
+        result: TPCHThroughputTestResult,
+        baselines: dict[int, TPCHRF2Baseline],
     ) -> None:
         refresh_stream = result.refresh_stream
         if refresh_stream is None or refresh_stream.status not in {"COMPLETED", "FAILED"}:
@@ -288,6 +304,13 @@ class TPCHThroughputTest:
                     if function_result["function"] == "RF1":
                         check_rf1_applied(connection, update_set, function_result["rows_inserted"])
                     else:
+                        verify_rf2_reported(
+                            update_set,
+                            baselines[update_set_id],
+                            TPCHRF2Deletes(
+                                orders=function_result["orders_deleted"], lineitems=function_result["lineitems_deleted"]
+                            ),
+                        )
                         check_rf2_applied(connection, update_set, function_result["orders_deleted"])
                 except Exception as exc:
                     function_result["duration_ms"] = 0
@@ -302,6 +325,20 @@ class TPCHThroughputTest:
                     refresh_stream.status = "FAILED"
                     return
                 function_result["check_status"] = "PASSED"
+            verify_refresh_stream_totals(
+                connection,
+                next(iter(baselines.values())),
+                [
+                    update_sets[pair["update_set"]]
+                    for pair, function_result in committed
+                    if function_result["function"] == "RF1"
+                ],
+                [
+                    baselines[pair["update_set"]]
+                    for pair, function_result in committed
+                    if function_result["function"] == "RF2"
+                ],
+            )
 
         try:
             self._with_refresh_session(check)

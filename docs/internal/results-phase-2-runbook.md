@@ -45,9 +45,12 @@ The
 workflow watches `develop` for changes under the slim-branch allowlist
 paths (`results-data/bundles/`, the corpus docs, the two vendored
 validators, plus `corpus-inventory.json`) and opens a **draft** PR against
-`published-results` mirroring those changes. The mirror PR never
-auto-merges — a maintainer reviews and flips it ready when the develop-side
-change is ready to surface on the public corpus branch.
+`published-results` mirroring those changes. The content was reviewed when it
+merged to `develop`. The mirror run validates the bundles, the corpus-path
+allowlist and validator parity (the checks `Validate Submission` would run,
+which does not start for bot-created PRs), posts `corpus-mirror/validate-bundles`,
+and once that passes with a fresh head, marks the PR ready and squash-merges
+it. A mirror that fails validation stays open and fails the workflow run.
 
 **Publication fixed-point gate.** Before building a mirror branch or opening
 a PR, the sync workflow runs the byte-identity part of
@@ -139,9 +142,10 @@ adds or replaces bundles. Community submissions remain hand-opened PRs against
 gh workflow run sync-results-data-to-published.yml
 ```
 
-Review and merge the resulting `auto/results-mirror-*` PR. A newer mirror
-that passes its own validation closes any older open mirror PR whose
-`develop` commit it contains, so one open mirror PR is the one to review.
+The workflow merges the resulting `auto/results-mirror-*` PR once it passes
+validation. A newer mirror that passes its own validation closes any older open
+mirror PR whose `develop` commit it contains, so at most one mirror PR waits on
+a failed validation at a time.
 Hand-opened *maintainer archive-content* PRs against `published-results` must stay
 deletion-only; do not use them to add maintainer or seed archive content. A
 hand-opened workflow-only PR is the required exception whenever
@@ -242,11 +246,11 @@ silent gap.
 Two honest limits on what the new status does and does not buy, so nobody
 reads more protection into a green badge than is there:
 
-- **It is advisory, not enforcing.** No ruleset targets `published-results` —
-  the repo's rulesets target `develop` and `v*` tags (there is no release branch) — so
-  a maintainer can still flip a mirror PR ready and merge it with the status
-  red. The status makes the verdict *visible*; the maintainer review step the
-  draft state exists for is still what enforces it.
+- **It is enforced by the workflow, not by a ruleset.** No ruleset targets
+  `published-results` — the repo's rulesets target `develop` and `v*` tags
+  (there is no release branch). The mirror workflow merges only when the status
+  is green and the head matches the validated commit; a maintainer could still
+  merge a red mirror by hand, so do not.
 - **It is self-attested.** The run that builds the mirror content is the run
   that validates it and posts the verdict, so it catches bad *content*
   (a bundle that fails schema, hash, or privacy validation; a stale inventory)
