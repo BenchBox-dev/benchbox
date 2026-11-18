@@ -160,6 +160,7 @@ class SnowflakeAdapter(PlatformAdapter):
         self.suppress_nondeterministic_errors = config.get("suppress_nondeterministic_errors", False)
 
         self.modify_warehouse_settings = config.get("modify_warehouse_settings", False)
+        self._warehouse_size_applied = False
 
         self.file_format = config.get("file_format") or "CSV"
         self.compression = config.get("compression") or "AUTO"
@@ -460,7 +461,7 @@ class SnowflakeAdapter(PlatformAdapter):
         return platform_info
 
     def _applied_warehouse_size(self) -> str | None:
-        if self.modify_warehouse_settings and not self.multi_cluster_warehouse:
+        if self._warehouse_size_applied:
             return getattr(self, "warehouse_size", None)
         return None
 
@@ -1341,6 +1342,7 @@ class SnowflakeAdapter(PlatformAdapter):
                             AUTO_SUSPEND = {self.auto_suspend}
                             AUTO_RESUME = {self.auto_resume}
                         """)
+                        self._warehouse_size_applied = True
                 else:
                     self.logger.info("Warehouse modifications skipped (modify_warehouse_settings=False)")
 

@@ -289,7 +289,10 @@ class TestGetPlatformInfoWithWarehouse:
         assert result["compute_configuration"]["collection_error_class"] == "RuntimeError"
 
     def test_normalized_metadata_keeps_requested_compute_when_warehouse_metadata_unavailable(self):
-        adapter = _make_adapter(warehouse="MY_WH", warehouse_size="XLARGE", modify_warehouse_settings=True)
+        adapter = _make_adapter(
+            warehouse="MY_WH", warehouse_size="XLARGE", modify_warehouse_settings=True, disable_result_cache=False
+        )
+        adapter.configure_for_benchmark(_configure_connection(), "olap")
 
         platform_info = adapter.get_platform_info(connection=None)
         platform_info["compute_configuration"] = {
@@ -1638,6 +1641,12 @@ def _connection_reporting_size(observed_size):
     return mock_conn
 
 
+def _configure_connection():
+    conn = Mock()
+    conn.cursor.return_value = Mock()
+    return conn
+
+
 class TestRecordedWarehouseSize:
     def test_unapplied_default_is_not_recorded_as_size_used(self):
         adapter = _make_adapter(warehouse="MY_WH", modify_warehouse_settings=False)
@@ -1661,9 +1670,25 @@ class TestRecordedWarehouseSize:
         assert info["configuration"]["warehouse_size"] == "Large"
 
     def test_applied_resize_without_observation_records_requested_size(self):
-        adapter = _make_adapter(warehouse="MY_WH", warehouse_size="LARGE", modify_warehouse_settings=True)
+        adapter = _make_adapter(
+            warehouse="MY_WH", warehouse_size="LARGE", modify_warehouse_settings=True, disable_result_cache=False
+        )
+        adapter.configure_for_benchmark(_configure_connection(), "olap")
 
         assert adapter.get_platform_info(connection=None)["configuration"]["warehouse_size"] == "LARGE"
+
+    def test_unresized_benchmark_type_does_not_claim_requested_size(self):
+        adapter = _make_adapter(
+            warehouse="MY_WH", warehouse_size="LARGE", modify_warehouse_settings=True, disable_result_cache=False
+        )
+        adapter.configure_for_benchmark(_configure_connection(), "clickbench")
+
+        assert adapter.get_platform_info(connection=None)["configuration"]["warehouse_size"] is None
+
+    def test_modification_enabled_but_not_configured_does_not_claim_requested_size(self):
+        adapter = _make_adapter(warehouse="MY_WH", warehouse_size="LARGE", modify_warehouse_settings=True)
+
+        assert adapter.get_platform_info(connection=None)["configuration"]["warehouse_size"] is None
 
     def test_multi_cluster_modification_does_not_claim_requested_size(self):
         adapter = _make_adapter(
