@@ -27572,19 +27572,14 @@
       "title": "pr-open friction: keyed rebuttals only work for the head that was reviewed, and pr-preflight is killed under host memory pressure"
     },
     "local-tpcdi-bundles-regenerate-current-generator": {
-      "claim": {
-        "expires_at": "2026-11-19T16:39:58Z",
-        "generation": "e2541f5402d14b01b8b586a0900956d4",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c1640335852d926f7b2973b5"
-      },
+      "claim": null,
       "needs": [
         "tpcdi-remaining-spec-differences-20261112",
         "tpcdi-standard-scales-and-estimates-after-unit-change-20261112",
         "feature-feat-corpus-scale-policy-and-reruns-20261117"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Regenerate or explicitly segregate all old-generator TPC-DI corpus bundles"
     },
     "logging-standardization": {
