@@ -2,7 +2,7 @@
   "acceptance": [
     "Decide whether to auto-merge mirror PRs after their checks or make t3:drift tolerate a pending mirror. Triage #3906. State when bot-managed issues #2471 and #3511 may be closed and stay closed."
   ],
-  "context": "Evidence 2026-11-11: mirror PR #4114 was the first mirror merged to published-results since #3656 on 2026-10-28; every mirror in between was superseded unmerged. It carried 137 files (+186,352 lines), most of them unrelated to the change that triggered it, and needed an owner decision to merge. Merged as 4331a43a54. The ledger seed was not recut afterwards; see ledger-seed-recut-after-published-results-advance-20261111.\n\n2026-11-17: nightly-v2 run 43916000915 (2026-11-16) t3:drift failed: 'published-results corpus is 7 path(s) behind develop' (CORPUS_NOTES.md and six tpcdi_sf1 *.manifest.json). The auto mirror PR #4286 (auto/results-mirror-9ac60f08) is open and unmerged; drift stays red until it lands. Same failure mode as this item.",
+  "context": "Evidence 2026-11-11: mirror PR #4114 was the first mirror merged to published-results since #3656 on 2026-10-28; every mirror in between was superseded unmerged. It carried 137 files (+186,352 lines), most of them unrelated to the change that triggered it, and needed an owner decision to merge. Merged as 4331a43a54. The ledger seed was not recut afterwards; see ledger-seed-recut-after-published-results-advance-20261111.\n\n2026-11-17: nightly-v2 run 43916000915 (2026-11-16) t3:drift failed: 'published-results corpus is 7 path(s) behind develop' (CORPUS_NOTES.md and six tpcdi_sf1 *.manifest.json). The auto mirror PR #4286 (auto/results-mirror-9ac60f08) is open and unmerged; drift stays red until it lands. Same failure mode as this item.\n\nOwner decision 2026-11-17: arm auto-merge on results mirror PRs once their required checks pass (the content was reviewed on develop; the mirror is a mechanical copy). Merging the open mirror #4324 is authorized.",
   "description": "Mirror PRs #3629, #3635, #3656, #3790 (closed unmerged) and #3906 (open for develop@cd374960) needed hand merging. Until one merges, the nightly t3:drift corpus step is red and bot issue #2471 reopens (closed 2026-10-28 with evidence, reopened 2026-10-28 and 2026-10-29 by github-actions). Issue #3511 (trunk duration alarm) likewise reopened after closure. #3906 was not merged by this session because the earlier instruction named only #3635 and #3656.",
   "links": [
     "issue #2471",
@@ -33,6 +33,14 @@
       "op": "update",
       "op_id": "a08b89982b9e4936bc29938cbf32e60a",
       "session_id": "71cadb46eee448f8a6d2019016ddc6eb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bfa5e7eb7cd30f69e1fe2571",
+      "at": "2026-11-18T01:50:50Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "62ff5ba4f1a94e448573bf2d4a4db537",
+      "session_id": "0362803867fb4929927e576283fffc32"
     }
   ]
 }
