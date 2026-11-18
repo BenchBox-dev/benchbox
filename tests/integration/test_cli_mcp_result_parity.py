@@ -127,8 +127,8 @@ def test_current_cli_and_mcp_bundles_with_compression_disabled_compare_as_the_sa
 
     result = run_cli_command(["compare", str(cli_path), str(mcp_path)], home=tmp_path / "home")
 
-    assert result.returncode != 4, result.stdout + result.stderr
-    assert "run configuration capture" not in result.stdout + result.stderr
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "run configuration capture" not in " ".join((result.stdout + result.stderr).split())
 
 
 def test_mcp_bundle_with_no_recorded_config_and_no_capture_marker_is_still_refused(
