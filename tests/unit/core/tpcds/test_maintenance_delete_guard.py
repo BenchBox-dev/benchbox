@@ -76,7 +76,9 @@ def _rows(database, table: str) -> int:
 
 
 def test_count_sql_is_derived_from_the_delete_predicate() -> None:
-    table, count_sql = delete_target_and_count_sql("DELETE FROM store_sales WHERE ss_sold_date_sk IN (SELECT 1)")
+    derived = delete_target_and_count_sql("DELETE FROM store_sales WHERE ss_sold_date_sk IN (SELECT 1)")
+    assert derived is not None
+    table, count_sql = derived
     assert table == "store_sales"
     assert count_sql == "SELECT COUNT(*) FROM store_sales WHERE ss_sold_date_sk IN (SELECT 1)"
     assert delete_target_and_count_sql("INSERT INTO store_sales SELECT 1") is None
