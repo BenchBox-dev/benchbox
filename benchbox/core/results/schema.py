@@ -25,6 +25,7 @@ from benchbox.core.results.metrics import UNOFFICIAL_COMPLIANCE_CLASSES, percent
 from benchbox.core.results.platform_options import sanitize_platform_options
 from benchbox.core.results.platform_timing import resolve_net_estimate_status, summarize_run_platform_timing
 from benchbox.core.results.provenance import VENDOR_PROVENANCE_FIELDS
+from benchbox.core.results.qphds import load_scope_components
 from benchbox.core.results.query_execution import (
     QueryExecutionContractError,
     normalize_row_count_validation,
@@ -45,7 +46,7 @@ from benchbox.core.results.schema_policy import (
 from benchbox.core.results.subscale_policy import (
     NONSTANDARD_COMPLIANCE_CLASS,
     platform_info_gateway,
-    result_compliance_class,
+    result_recorded_compliance_class,
     unofficial_metric_marker,
 )
 from benchbox.core.results.timer_scope import TIMING_METHOD_LEGACY
@@ -571,7 +572,7 @@ def _build_benchmark_section(result: BenchmarkResults) -> dict[str, Any]:
         "scale_factor": result.scale_factor,
         "test_type": result.test_execution_type,
     }
-    compliance_class = result_compliance_class(result)
+    compliance_class = result_recorded_compliance_class(result)
     if compliance_class is not None:
         section["compliance_class"] = compliance_class
     if getattr(result, "data_generation_version", None) is not None:
@@ -1754,7 +1755,7 @@ def _compute_timing_stats(times_ms: list[float]) -> dict[str, Any]:
 
 
 def _build_tpc_metrics(result: BenchmarkResults) -> dict[str, Any] | None:
-    compliance_class = result_compliance_class(result)
+    compliance_class = result_recorded_compliance_class(result)
     if compliance_class == NONSTANDARD_COMPLIANCE_CLASS:
         metrics: dict[str, Any] = {"suppressed": True, "reason": f"compliance_class={compliance_class}"}
     else:
@@ -1781,6 +1782,14 @@ def _build_tpc_metrics(result: BenchmarkResults) -> dict[str, Any] | None:
             metrics["qphds_terms"] = dict(result.qphds_terms)
         if getattr(result, "qphds_unavailable", None):
             metrics["qphds_unavailable"] = list(result.qphds_unavailable)
+
+    if getattr(result, "test_execution_type", None) == "combined" and not metrics.get("suppressed"):
+        components = load_scope_components(getattr(result.execution_phases, "setup", None))
+        if components is not None:
+            metrics["load_scope"] = {
+                "components": components,
+                "counted_in_qph": getattr(result, "benchmark_id", None) == "tpcds",
+            }
 
     return metrics if metrics else None
 

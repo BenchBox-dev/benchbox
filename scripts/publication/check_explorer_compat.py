@@ -20,6 +20,7 @@ if str(Path(__file__).resolve().parents[2]) not in sys.path:
 from _project.scripts.explorer_pipeline.contract import (
     EXPLORER_BUILD_CONTRACT_VERSION as _CONTRACT_VERSION,
     EXPLORER_READ_MODEL_VERSION as _READ_MODEL_VERSION,
+    QPH_RESULT_COLUMNS as _QPH_RESULT_COLUMNS,
     SELECTABLE_READ_MODEL_VERSIONS as _SELECTABLE_READ_MODEL_VERSIONS,
     TRANSLATOR_RESULT_COLUMNS as _TRANSLATOR_RESULT_COLUMNS,
 )
@@ -410,6 +411,18 @@ TABLE_COLUMNS_V18: dict[str, dict[str, str]] = {
     },
 }
 
+TABLE_COLUMNS_V19: dict[str, dict[str, str]] = {
+    **TABLE_COLUMNS_V18,
+    "results": {
+        **TABLE_COLUMNS_V18["results"],
+        **dict(_QPH_RESULT_COLUMNS),
+    },
+    "benchmark_rankings": {
+        **TABLE_COLUMNS_V18["benchmark_rankings"],
+        **dict(_QPH_RESULT_COLUMNS),
+    },
+}
+
 
 SCHEMA_REGISTRY: dict[int, dict[str, dict[str, str]]] = {
     9: TABLE_COLUMNS_V9,
@@ -422,6 +435,7 @@ SCHEMA_REGISTRY: dict[int, dict[str, dict[str, str]]] = {
     16: TABLE_COLUMNS_V16,
     17: TABLE_COLUMNS_V17,
     18: TABLE_COLUMNS_V18,
+    19: TABLE_COLUMNS_V19,
 }
 
 REQUIRED_INDEXES_V9: list[tuple[str, str, list[str]]] = [
@@ -753,9 +767,23 @@ def validate_database_schema(con: Any, expected_version: int | None = None) -> l
     return errors
 
 
+QPH_EXPLORER_QUERIES: list[tuple[str, str]] = [
+    (
+        "Combined cohort results query",
+        "SELECT result_id, qphh_at_size, qphds_at_size, load_scope, transactional_steps FROM results LIMIT 24",
+    ),
+    (
+        "Combined cohort rankings query",
+        "SELECT result_id, power_score, throughput_at_size, qphh_at_size, qphds_at_size, load_scope, "
+        "transactional_steps FROM benchmark_rankings LIMIT 50",
+    ),
+]
+
+
 def validate_database_queries(con: Any, version: int) -> list[str]:
     errors: list[str] = []
-    for label, sql in CORE_EXPLORER_QUERIES:
+    queries = CORE_EXPLORER_QUERIES + (QPH_EXPLORER_QUERIES if version >= 19 else [])
+    for label, sql in queries:
         try:
             con.execute(sql).fetchall()
         except Exception as exc:

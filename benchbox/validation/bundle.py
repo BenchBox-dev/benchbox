@@ -62,6 +62,28 @@ except ImportError:
     EXECUTION_CLASSES = ("native", "container")
 
 try:
+    from benchbox.core.benchmark_registry import is_standard_scale_factor
+except ImportError:
+    is_standard_scale_factor = None
+
+NONSTANDARD_COMPLIANCE_CLASS = "unofficial_nonstandard"
+OFFICIAL_CLASS_BENCHMARKS = frozenset({"tpch", "tpcds"})
+
+
+def _is_nonstandard_scale(benchmark_id: Any, scale_factor: Any) -> bool:
+    if is_standard_scale_factor is None or isinstance(scale_factor, bool) or scale_factor is None:
+        return False
+    try:
+        float(scale_factor)
+    except (TypeError, ValueError):
+        return False
+    try:
+        return not is_standard_scale_factor(str(benchmark_id), scale_factor)
+    except ValueError:
+        return False
+
+
+try:
     from benchbox.core.schemas import MIN_THROUGHPUT_STREAMS
 except ImportError:
     MIN_THROUGHPUT_STREAMS = 2
@@ -1648,7 +1670,18 @@ def _validate_compliance_section(
         return
     compliance = benchmark.get("compliance_class")
     if _is_gateway_routed(platform):
-        compliance = "unofficial_nonstandard"
+        compliance = NONSTANDARD_COMPLIANCE_CLASS
+    elif _is_nonstandard_scale(benchmark.get("id"), benchmark.get("scale_factor")) or (
+        is_standard_scale_factor is None
+        and compliance == NONSTANDARD_COMPLIANCE_CLASS
+        and str(benchmark.get("id")).strip().casefold() not in OFFICIAL_CLASS_BENCHMARKS
+    ):
+        vr.warn(
+            f"nonstandard-scale: scale_factor={benchmark.get('scale_factor')!r} is not a standard scale for "
+            f"benchmark {benchmark.get('id')!r}; the bundle is accepted and excluded from ranking "
+            "(exclusion reason: unofficial_compliance)"
+        )
+        return
     if compliance is None:
         return
     if compliance != "official":
@@ -2713,6 +2746,87 @@ def throughput_stream_defects(data: dict[str, Any]) -> list[str]:
     vr = ValidationResult("<in-memory>")
     _validate_throughput_stream_completeness(data, vr)
     return vr.errors
+
+
+COMBINED_THROUGHPUT_NOT_CLEAN = "combined_throughput_not_clean"
+COMBINED_REFRESH_NOT_CLEAN = "combined_refresh_not_clean"
+_COMBINED_THROUGHPUT_PHASES = {"tpch": ("throughput_test",), "tpcds": ("throughput_test", "throughput_test_2")}
+
+
+def _configured_streams(data: dict[str, Any]) -> int | None:
+    for section_name in ("run", "config"):
+        section = data.get(section_name)
+        streams = section.get("streams") if isinstance(section, dict) else None
+        if isinstance(streams, int) and not isinstance(streams, bool):
+            return streams
+    return None
+
+
+def _combined_throughput_block_clean(block: Any, configured: int | None) -> bool:
+    if not isinstance(block, dict) or str(block.get("status") or "").upper() != "COMPLETED":
+        return False
+    streams = block.get("stream_results")
+    if not isinstance(streams, list) or not streams:
+        return False
+    if configured is not None and len(streams) != configured:
+        return False
+    if not all(isinstance(stream, dict) and stream.get("success") is True for stream in streams):
+        return False
+    return not block.get("errors") and not block.get("outstanding_work")
+
+
+def _tpch_refresh_clean(phases: dict[str, Any]) -> bool:
+    power = phases.get("power_test")
+    functions = power.get("refresh_functions") if isinstance(power, dict) else None
+    if (
+        not isinstance(functions, list)
+        or len(functions) != 2
+        or not all(isinstance(function, dict) and function.get("status") == "SUCCESS" for function in functions)
+    ):
+        return False
+    throughput = phases.get("throughput_test")
+    refresh_stream = throughput.get("refresh_stream") if isinstance(throughput, dict) else None
+    if not isinstance(refresh_stream, dict) or refresh_stream.get("status") != "COMPLETED":
+        return False
+    pairs = refresh_stream.get("pairs")
+    return (
+        isinstance(pairs, list)
+        and bool(pairs)
+        and all(isinstance(pair, dict) and pair.get("status") == "SUCCESS" for pair in pairs)
+    )
+
+
+def _tpcds_maintenance_clean(phases: dict[str, Any]) -> bool:
+    for name in ("maintenance_test", "maintenance_test_2"):
+        block = phases.get(name)
+        if not isinstance(block, dict) or str(block.get("status") or "").upper() != "COMPLETED":
+            return False
+        operations = block.get("operations")
+        if not isinstance(operations, list) or not operations:
+            return False
+        if not all(isinstance(op, dict) and str(op.get("status") or "").upper() == "SUCCESS" for op in operations):
+            return False
+    return True
+
+
+def combined_evidence_defects(data: dict[str, Any]) -> list[str]:
+    benchmark_id = _bundle_benchmark_id(data)
+    phase_names = _COMBINED_THROUGHPUT_PHASES.get(benchmark_id or "")
+    if phase_names is None:
+        return []
+    phases = data.get("phases")
+    if not isinstance(phases, dict):
+        phases = {}
+    configured = _configured_streams(data)
+    defects: list[str] = []
+    if not all(_combined_throughput_block_clean(phases.get(name), configured) for name in phase_names) or (
+        throughput_stream_defects(data)
+    ):
+        defects.append(COMBINED_THROUGHPUT_NOT_CLEAN)
+    refresh_clean = _tpch_refresh_clean(phases) if benchmark_id == "tpch" else _tpcds_maintenance_clean(phases)
+    if not refresh_clean:
+        defects.append(COMBINED_REFRESH_NOT_CLEAN)
+    return defects
 
 
 def _manifest_sidecar_payload(bundle_path: str | Path) -> dict[str, Any]:

@@ -118,7 +118,11 @@ CREATE TABLE IF NOT EXISTS results (
     power_score_source   VARCHAR,
     translator_version   VARCHAR,
     translator_fork_sha  VARCHAR,
-    translator_version_source VARCHAR
+    translator_version_source VARCHAR,
+    qphh_at_size         DOUBLE,
+    qphds_at_size        DOUBLE,
+    load_scope           VARCHAR,
+    transactional_steps  VARCHAR
 );
 
 CREATE TABLE IF NOT EXISTS query_display_timings (
@@ -303,6 +307,10 @@ CREATE TABLE IF NOT EXISTS benchmark_rankings (
     throughput_at_size           DOUBLE,
     stream_count                 INTEGER,
     power_score_source           VARCHAR,
+    qphh_at_size                 DOUBLE,
+    qphds_at_size                DOUBLE,
+    load_scope                   VARCHAR,
+    transactional_steps          VARCHAR,
     PRIMARY KEY (benchmark, scale_factor, phase, result_id)
 );
 
@@ -359,7 +367,9 @@ SELECT
     cluster_size,
     storage_format,
     storage_tier,
-    power_score_source
+    power_score_source,
+    qphh_at_size,
+    qphds_at_size
 FROM results;
 
 CREATE TABLE IF NOT EXISTS cohort_metadata (

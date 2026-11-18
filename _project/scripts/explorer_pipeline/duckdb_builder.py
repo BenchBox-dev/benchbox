@@ -9,8 +9,10 @@ from pathlib import Path
 from typing import Any
 
 from _project.scripts.explorer_pipeline.contract import (
+    EXPLORER_QPH_READ_MODEL_VERSION,
     EXPLORER_READ_MODEL_VERSION,
     EXPLORER_TRANSLATOR_READ_MODEL_VERSION,
+    QPH_RESULT_COLUMNS,
     SELECTABLE_READ_MODEL_VERSIONS,
     TRANSLATOR_RESULT_COLUMNS,
 )
@@ -293,7 +295,7 @@ class DuckDBSnapshotBuilder:
                 self._populate_query_executions(con, entries, details_map)
                 self._populate_benchmark_matrix_cells(con, summaries)
                 entries_by_result = {entry.result_id: entry for entry in entries}
-                self._populate_benchmark_rankings(con, summaries, full_to_short, entries_by_result)
+                self._populate_benchmark_rankings(con, summaries, full_to_short, entries_by_result, read_model_version)
                 self._populate_cohort_metadata(con, meta, summaries, entries_by_result)
                 self._populate_meta_leaderboard(con, meta)
                 self._populate_short_ids(con, short_id_map)
@@ -436,6 +438,7 @@ class DuckDBSnapshotBuilder:
                 stream_count         INTEGER,
                 power_score_source   VARCHAR"""
             + self._translator_ddl(read_model_version)
+            + self._qph_ddl(read_model_version)
             + """
             )
         """
@@ -577,7 +580,8 @@ class DuckDBSnapshotBuilder:
             )
         """)
         con.execute("CREATE INDEX idx_matrix_cells_cohort ON benchmark_matrix_cells (benchmark, scale_factor, phase)")
-        con.execute("""
+        con.execute(
+            """
             CREATE TABLE benchmark_rankings (
                 benchmark                    VARCHAR  NOT NULL,
                 scale_factor                 DOUBLE   NOT NULL,
@@ -622,12 +626,16 @@ class DuckDBSnapshotBuilder:
                 speedup_vs_slowest_in_cohort DOUBLE,
                 throughput_at_size           DOUBLE,
                 stream_count                 INTEGER,
-                power_score_source           VARCHAR,
+                power_score_source           VARCHAR"""
+            + self._qph_ddl(read_model_version)
+            + """,
                 PRIMARY KEY (benchmark, scale_factor, phase, result_id)
             )
-        """)
+        """
+        )
         con.execute("CREATE INDEX idx_benchmark_rankings_cohort ON benchmark_rankings (benchmark, scale_factor, phase)")
-        con.execute("""
+        con.execute(
+            """
             CREATE VIEW platform_index_rows AS
             SELECT
                 result_id,
@@ -683,9 +691,12 @@ class DuckDBSnapshotBuilder:
                 cluster_size,
                 storage_format,
                 storage_tier,
-                power_score_source
+                power_score_source"""
+            + self._qph_view_columns(read_model_version)
+            + """
             FROM results
-        """)
+        """
+        )
         con.execute("""
             CREATE TABLE cohort_metadata (
                 cohort_key       VARCHAR  NOT NULL,
@@ -752,6 +763,29 @@ class DuckDBSnapshotBuilder:
         if read_model_version < EXPLORER_TRANSLATOR_READ_MODEL_VERSION:
             return ""
         return "".join(f",\n                {name:<20} {dtype}" for name, dtype in TRANSLATOR_RESULT_COLUMNS)
+
+    @staticmethod
+    def _qph_ddl(read_model_version: int) -> str:
+        if read_model_version < EXPLORER_QPH_READ_MODEL_VERSION:
+            return ""
+        return "".join(f",\n                {name:<20} {dtype}" for name, dtype in QPH_RESULT_COLUMNS)
+
+    @staticmethod
+    def _qph_view_columns(read_model_version: int) -> str:
+        if read_model_version < EXPLORER_QPH_READ_MODEL_VERSION:
+            return ""
+        return ",\n                qphh_at_size,\n                qphds_at_size"
+
+    @staticmethod
+    def _qph_values(source: ManifestEntry | PlatformRow, read_model_version: int) -> tuple:
+        if read_model_version < EXPLORER_QPH_READ_MODEL_VERSION:
+            return ()
+        return (
+            source.qphh_at_size,
+            source.qphds_at_size,
+            json.dumps(source.load_scope) if source.load_scope is not None else None,
+            json.dumps(source.transactional_steps, sort_keys=True) if source.transactional_steps else None,
+        )
 
     def _create_metadata(self, con: Any, read_model_version: int = EXPLORER_READ_MODEL_VERSION) -> None:
         con.execute("""
@@ -919,6 +953,7 @@ class DuckDBSnapshotBuilder:
                     entry.stream_count,
                     entry.power_score_source,
                     *self._translator_values(entry, read_model_version),
+                    *self._qph_values(entry, read_model_version),
                 )
             )
         if rows:
@@ -1043,6 +1078,7 @@ class DuckDBSnapshotBuilder:
         summaries: list[tuple[_SummaryKey, BenchmarkSummary]],
         full_to_short: dict[str, str],
         entries_by_result: dict[str, ManifestEntry],
+        read_model_version: int = EXPLORER_READ_MODEL_VERSION,
     ) -> None:
         rows: list[tuple] = []
         for (benchmark, scale_factor, phase, stream_count), summary in summaries:
@@ -1106,6 +1142,7 @@ class DuckDBSnapshotBuilder:
                         platform_row.throughput_at_size,
                         stream_count,
                         platform_row.power_score_source,
+                        *self._qph_values(platform_row, read_model_version),
                     )
                 )
         if rows:
