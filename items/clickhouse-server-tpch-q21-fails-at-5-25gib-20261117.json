@@ -4,6 +4,7 @@
     "Either Q21 passes with the reference row count in notuning and tuned arms at SF1 under 5.25 GiB, with the setting declared and recorded per query, or a documented envelope reason with measured peak memory exists and is cited by the evidence",
     "The template_evidence.yaml TPC-H ClickHouse entry and findings.md are updated to the new outcome (Q21 passing with its row count, or the cited envelope reason)"
   ],
+  "context": "Owner decision 2026-11-17: Q21 capture runs on GitHub-hosted Linux runners (16 GB) with the server container limited to 5.25 GiB, so the release envelope stays the same.",
   "description": "## Problem\nIn the 2026-11-12 tuning evidence (PR #4191, _project/analysis/clickhouse-tuning-evidence-sf1/), TPC-H Q21 failed in all four arms (notuning, A/A copy, layout-only, full tuned) on ClickHouse 25.8.33.6 under the macOS 27 Mocker path with a 5.25 GiB guest limit, so every TPC-H SF1 ClickHouse verdict covers 21 of 22 queries. PR #4162 already applies a statement-level join_algorithm for Q21 in all modes as a harness requirement; Q21 still fails. No tracker item owns this; clickhouse-server-tpcds-q10-memory-20261008 is the TPC-DS analogue.\n\n## Decision gate\nCapture the failure first: error code and message, peak memory from system.query_log, and the join algorithm actually used. Then:\n- If a ClickHouse setting (spill, join algorithm, max_bytes_before_external_*) lets Q21 finish within 5.25 GiB in every mode, declare it as a harness requirement the way #4162 did (applied in all modes, recorded per query), not as tuning. Change or extend the existing Q21 entry (join_algorithm=hash) in benchbox/platforms/clickhouse/statement_settings.py; do not add a second one.\n- If Q21 needs more memory than the release envelope, record a documented envelope reason that cites the measured peak, and keep it out of verdict denominators explicitly.\n- If ClickHouse returns a wrong result or crashes, file it as an engine defect with a reproducer.\n\n## Guardrails\n- Q21 must return the reference row count wherever it is reported as passing.\n- No change that applies only to the tuned arm (that would bias the benefit rule).\n- Runs go through make heavy-run; see heavy-work-host-capacity-owner-decision-20261117 if the host cannot hold them.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/4191",
@@ -32,6 +33,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "c5230fd2f4a543f8a548e2ca4ff173d2",
+      "session_id": "0362803867fb4929927e576283fffc32"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bfa5e7eb7cd30f69e1fe2571",
+      "at": "2026-11-18T01:58:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "55dc40858d3749fea8dac0431fbc6913",
       "session_id": "0362803867fb4929927e576283fffc32"
     }
   ]
