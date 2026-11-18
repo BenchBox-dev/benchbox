@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The error links the gateways page section that holds the quiescence procedure",
+    "Any test pinning the message is updated"
+  ],
+  "context": "Found by an independent review of the site page docs/platforms/snowflake-gateways.md against core v0.5.1 (91d357a); each claim was re-verified by a second reviewer.",
+  "description": "The Greybeam lifecycle guard error (core/gateway.py:272) tells the user to wait for CDC quiescence and links https://benchbox.dev/docs/platforms/snowflake.html, which has no quiescence text. The procedure is on https://benchbox.dev/docs/platforms/snowflake-gateways.html#greybeam-lifecycle-guardrails.",
+  "links": [
+    "benchbox/core/gateway.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp:joe@joe-mac-mini.local:64e582df628f30691111dd40",
+      "at": "2026-11-18T21:36:57Z",
+      "client": "omp",
+      "op": "create",
+      "op_id": "154b75f3a5304df1a24e62b29a91dbdf",
+      "session_id": "61f73a6f08cd4699913cbb0090203dc7"
+    }
+  ]
+}

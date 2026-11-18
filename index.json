@@ -25602,6 +25602,13 @@
       "status": "done",
       "title": "green_unmerged_sweep classifies intentional auto-merge holds as stranded"
     },
+    "greybeam-error-quiescence-link": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Point the Greybeam guard error at the gateways page"
+    },
     "greyscale-ascii-visualization-fallbacks": {
       "claim": null,
       "needs": [],
