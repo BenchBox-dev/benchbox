@@ -20509,7 +20509,7 @@
         "heavy-work-host-capacity-owner-decision-20261117"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Time the DataFrame distinct-test changes on PySpark at SF1 and on all engines at SF10"
     },
     "df-distinct-remediation-umbrella-20261112": {
