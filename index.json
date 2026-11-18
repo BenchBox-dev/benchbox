@@ -42679,6 +42679,13 @@
       "status": "done",
       "title": "Prove trusted hosted review and separate gate resolution without live gateway access"
     },
+    "theseus-infra-namespace-followups-20261118": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Theseus infra: root-name error hint and gateway namespace test"
+    },
     "theseus-infra-setup-and-rotate-20261115": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The root-name error shows the exact seed command, with the name and --config.",
+    "A two-repository gateway rotation test fails when the gateway's .previous read bypasses the scoped store.",
+    "Merged under G7."
+  ],
+  "description": "Two non-blocking notes from the independent security review of Theseus #98 (infra store namespacing, merged as 051594ce):\n1. config.py:245: the error refusing a root name in `infra.secrets` says only 'theseus infra seed', with no secret name and no `--config PATH`. Every other seed hint shows both.\n2. test_namespace.py does not catch a mutation that reads the gateway rotator's `.previous` from the raw, unscoped backend; only the rotate tests catch it. Add a two-repository gateway rotation case so the namespace suite covers the gateway path on its own.",
+  "links": [
+    "https://github.com/joeharris76/theseus/pull/98"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1b5abc8a4010555c0d8f96bb",
+      "at": "2026-11-18T23:40:38Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e183da25283344008ad0b4db5ca49009",
+      "session_id": "045b6d4d12cf4622b6f5f4ab89e94f4e"
+    }
+  ]
+}
