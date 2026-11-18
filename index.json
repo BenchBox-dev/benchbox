@@ -29088,15 +29088,10 @@
       "title": "Metadata Primitives Complexity Enhancements"
     },
     "methodology-finalize-hardware-facet-and-citation-20261117": {
-      "claim": {
-        "expires_at": "2026-11-19T23:28:56Z",
-        "generation": "2568a15fe72f4b42845728f1c6dffd8a",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1fc3ffdf558b4ae7fa8a5c84"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Make hardware a ranking facet, publish the citation format, and finalize the methodology policy"
     },
     "methodology-open-questions-owner-20261113": {
