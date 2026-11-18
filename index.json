@@ -46947,6 +46947,13 @@
       "status": "done",
       "title": "validate-submission.yml injects empty path args for deleted bundle+manifest pairs, making the validator scan the whole live corpus"
     },
+    "validate-submission-parity-rejects-bundle-paths-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Validate Submission passes bundle paths to validator_parity, which rejects any path outside results-data/corpus/"
+    },
     "validation-missing-count-unvalidated-status-20261111": {
       "claim": null,
       "needs": [],
