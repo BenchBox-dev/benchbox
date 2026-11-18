@@ -20277,15 +20277,10 @@
       "title": "Define BenchBox results platform product boundary and launch strategy"
     },
     "delegated-agent-primary-clone-write-guard-20261112": {
-      "claim": {
-        "expires_at": "2026-11-19T19:35:30Z",
-        "generation": "9d818a72697d40ddb47863abfaed904a",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b22c5dfe732da19b798cd911"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "A delegated agent wrote a tracked file into the primary clone through a relative path and nothing stopped it"
     },
     "delete-aborted-hold-e2e-batch-branches-20261107": {
