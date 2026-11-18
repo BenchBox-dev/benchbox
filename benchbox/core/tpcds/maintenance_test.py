@@ -1,4 +1,5 @@
 import logging
+import re
 import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -19,11 +20,10 @@ from benchbox.core.tpcds.refresh_data import (
     create_staging_tables,
     drop_staging_tables,
     generate_refresh_sets,
+    inline_staging_sql,
     load_refresh_file,
 )
 from benchbox.utils.clock import elapsed_seconds, mono_time
-
-_outside_interval_clock = mono_time
 
 
 @dataclass
@@ -256,12 +256,12 @@ class TPCDSMaintenanceTest:
         connection = None
         staging_created = False
         in_transaction = False
-        excluded_seconds = 0.0
         try:
             if self.verbose:
                 self.logger.info(f"Executing {function.name} on refresh set {refresh_set.set_id}")
             connection = self.connection_factory()
             before = {table: self._count_rows(connection, table) for table in function.target_tables}
+            expected_removals = self._expected_removals(connection, function, refresh_set)
 
             operation.start_time = mono_time()
             try:
@@ -275,37 +275,21 @@ class TPCDSMaintenanceTest:
                             connection, table, refresh_set.path_for(table.name), refresh_set.row_counts[table.name]
                         )
                     for statement in function.statements_for(self.target_dialect):
-                        guard = delete_target_and_count_sql(statement)
-                        if guard is None:
-                            connection.execute(statement)
-                        else:
-                            table, count_sql = guard
-                            count_started = _outside_interval_clock()
-                            expected = self._count_query(connection, count_sql)
-                            total_before = self._count_rows(connection, table)
-                            excluded_seconds += elapsed_seconds(count_started, _outside_interval_clock())
-                            connection.execute(statement)
-                            count_started = _outside_interval_clock()
-                            removed = total_before - self._count_rows(connection, table)
-                            excluded_seconds += elapsed_seconds(count_started, _outside_interval_clock())
-                            if removed != expected:
-                                raise RefreshDataError(
-                                    f"{function.name} removed {removed} rows from {table}; "
-                                    f"its predicate matches {expected} rows"
-                                )
+                        connection.execute(statement)
                         operation.statements_executed += 1
                     self._commit(connection)
                 except BaseException:
                     self._rollback(connection)
                     raise
             finally:
-                operation.end_time = mono_time() - excluded_seconds
+                operation.end_time = mono_time()
                 operation.duration = elapsed_seconds(operation.start_time, operation.end_time)
 
             after = {table: self._count_rows(connection, table) for table in function.target_tables}
             operation.rows_by_table = {table: after[table] - before[table] for table in function.target_tables}
             operation.rows_affected = sum(abs(delta) for delta in operation.rows_by_table.values())
             self._verify_rows(function, operation)
+            self._verify_removals(function, expected_removals, before, after)
             operation.success = True
         except Exception as exc:
             operation.error = str(exc)
@@ -342,6 +326,41 @@ class TPCDSMaintenanceTest:
                 f"{function.name} inserted {inserted} rows; the source schema table {function.expected_rows_table} "
                 f"has {expected}"
             )
+
+    def _expected_removals(
+        self, connection: Any, function: MaintenanceFunction, refresh_set: RefreshSet
+    ) -> dict[str, int]:
+        guards = [
+            guard
+            for guard in map(delete_target_and_count_sql, function.statements_for(self.target_dialect))
+            if guard is not None
+        ]
+        if not guards:
+            return {}
+        inline = {
+            name: inline_staging_sql(SOURCE_TABLES_BY_NAME[name], refresh_set.path_for(name))
+            for name in function.staging_tables
+        }
+        expected: dict[str, int] = {}
+        for table, count_sql in guards:
+            matches = 0
+            if all(derived is not None for derived in inline.values()):
+                for name, derived in inline.items():
+                    count_sql = re.sub(rf"(?<!\w){name}(?!\w)", lambda _match, text=derived: text, count_sql)
+                matches = self._count_query(connection, count_sql)
+            expected[table] = expected.get(table, 0) + matches
+        return expected
+
+    @staticmethod
+    def _verify_removals(
+        function: MaintenanceFunction, expected: dict[str, int], before: dict[str, int], after: dict[str, int]
+    ) -> None:
+        for table, matched in expected.items():
+            removed = before[table] - after[table]
+            if removed != matched:
+                raise RefreshDataError(
+                    f"{function.name} removed {removed} rows from {table}; its predicate matches {matched} rows"
+                )
 
     @staticmethod
     def _count_query(connection: Any, sql: str) -> int:

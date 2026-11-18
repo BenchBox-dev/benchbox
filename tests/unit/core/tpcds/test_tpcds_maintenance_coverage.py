@@ -104,6 +104,14 @@ def _refresh_set(set_id: int = 1) -> RefreshSet:
     )
 
 
+@pytest.fixture(autouse=True)
+def _inline_staging(monkeypatch):
+    monkeypatch.setattr(
+        "benchbox.core.tpcds.maintenance_test.inline_staging_sql",
+        lambda table, path: f"(SELECT 1 AS x) AS {table.name}",
+    )
+
+
 @pytest.fixture
 def refresh_run(monkeypatch):
     generated: list[tuple[Any, ...]] = []
