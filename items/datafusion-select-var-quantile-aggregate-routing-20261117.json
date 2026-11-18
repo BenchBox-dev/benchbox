@@ -4,6 +4,7 @@
     "Existing DataFusion select tests for plain projections still pass (no projection is routed to `aggregate`).",
     "PR merged; its body lists every aggregate terminal checked and the detection approach chosen."
   ],
+  "context": "FINAL 2026-11-17. PR #4321 merged, 5dd17dd234 (reviewer SHIP on 4d8a474, no open findings; pr-preflight 1757 passed). Approach: `_datafusion_expr_has_aggregate` walks the expression variant (AggregateFunction through Alias/BinaryExpr via to_variant()); nodes the Python API cannot walk (scalar functions, CASE, objects without variant_name) fall back to text patterns, which gained var(, var_samp(, approx_percentile_cont(, array_agg(. Mixed aggregate/plain selects unchanged (whole select goes to aggregate). Test tests/unit/platforms/dataframe/test_datafusion_select_aggregate_routing.py: var/std/quantile plain, aliased and filter(...) match Polars to rel 1e-9; on prior develop all var and quantile forms failed (one filtered quantile with an optimize_projections internal error), std already passed - pre-fix failure shown by throwaway script, not pytest (pytest queued behind the host lock). test_plain_projection_is_not_aggregated guards projections. Changelog fragment fix-df-select-aggregate-routing.json.",
   "description": "## Problem\n`UnifiedLazyFrame.select` on DataFusion sends an expression to `DataFrame.aggregate([], ...)` only when its text contains a pattern in `_DATAFUSION_AGGREGATE_PATTERNS` (`benchbox/platforms/dataframe/unified_frame.py`): sum, avg, count, min, max, first_value, last_value, stddev, approx_distinct. `var` renders as `var(x)` and `quantile` as `approx_percentile_cont(...)`, so both go to `DataFrame.select` and DataFusion 55.0.0 fails with `This feature is not implemented: Physical plan does not support logical expression AggregateFunction(...)`. The filtered forms (`expr.filter(cond).var()` / `.quantile()`, which wrap the value in CASE) fail the same way. Grouped `agg` is unaffected.\n\n## Evidence (2026-11-17, datafusion 55.0.0)\n`df.select(f.var_samp(col(\"x\")))` fails; `df.aggregate([], [f.var_samp(col(\"x\"))])` returns 1.6667. Same for `approx_percentile_cont` (aggregate returns 2.5) and for the CASE-wrapped filtered variance.\n\n## Change\nMake aggregate detection in `select` cover every aggregate terminal `UnifiedExpr` can produce on DataFusion, including var and quantile, aliased and filtered forms. Prefer detecting the expression's variant (AggregateFunction anywhere in the tree) over extending the text pattern list; if the variant walk is not available through the Python API, extend the patterns and say why in the PR.\n\n## Decision gate\nIf a select mixes aggregate and non-aggregate expressions, keep today's behaviour (whatever it is) and record it; do not widen scope to new semantics.\n\n## Guardrails\nNo platform-name branches in benchmark query code; no reference-answer, fixture or SQL changes. One PR.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "f4fd14adb5264048ae87393615246c02",
+      "session_id": "584fe5162b994f91904666adf0c5e183"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:baf9996c1c86fb9c9b5547f3",
+      "at": "2026-11-18T02:00:10Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ff003d96d60a414d84c5eee87355b514",
       "session_id": "584fe5162b994f91904666adf0c5e183"
     }
   ]
