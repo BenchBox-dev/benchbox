@@ -20,6 +20,7 @@ if str(Path(__file__).resolve().parents[2]) not in sys.path:
 from _project.scripts.explorer_pipeline.contract import (
     EXPLORER_BUILD_CONTRACT_VERSION as _CONTRACT_VERSION,
     EXPLORER_READ_MODEL_VERSION as _READ_MODEL_VERSION,
+    HARDWARE_RESULT_COLUMNS as _HARDWARE_RESULT_COLUMNS,
     QPH_RESULT_COLUMNS as _QPH_RESULT_COLUMNS,
     SELECTABLE_READ_MODEL_VERSIONS as _SELECTABLE_READ_MODEL_VERSIONS,
     TRANSLATOR_RESULT_COLUMNS as _TRANSLATOR_RESULT_COLUMNS,
@@ -423,6 +424,14 @@ TABLE_COLUMNS_V19: dict[str, dict[str, str]] = {
     },
 }
 
+TABLE_COLUMNS_V20: dict[str, dict[str, str]] = {
+    **TABLE_COLUMNS_V19,
+    "results": {
+        **TABLE_COLUMNS_V19["results"],
+        **dict(_HARDWARE_RESULT_COLUMNS),
+    },
+}
+
 
 SCHEMA_REGISTRY: dict[int, dict[str, dict[str, str]]] = {
     9: TABLE_COLUMNS_V9,
@@ -436,6 +445,7 @@ SCHEMA_REGISTRY: dict[int, dict[str, dict[str, str]]] = {
     17: TABLE_COLUMNS_V17,
     18: TABLE_COLUMNS_V18,
     19: TABLE_COLUMNS_V19,
+    20: TABLE_COLUMNS_V20,
 }
 
 REQUIRED_INDEXES_V9: list[tuple[str, str, list[str]]] = [
@@ -510,7 +520,15 @@ REQUIRED_VIEW_COLUMNS_V17: dict[str, list[str]] = {
     ],
 }
 
+REQUIRED_VIEW_COLUMNS_V20: dict[str, list[str]] = {
+    "result_detail_metrics": [
+        *REQUIRED_VIEW_COLUMNS_V17["result_detail_metrics"],
+        *(name for name, _ in _HARDWARE_RESULT_COLUMNS),
+    ],
+}
+
 _VIEW_COLUMN_REQUIREMENTS_BY_MIN_VERSION: tuple[tuple[int, dict[str, list[str]]], ...] = (
+    (20, REQUIRED_VIEW_COLUMNS_V20),
     (17, REQUIRED_VIEW_COLUMNS_V17),
     (16, REQUIRED_VIEW_COLUMNS_V16),
     (15, REQUIRED_VIEW_COLUMNS_V15),
