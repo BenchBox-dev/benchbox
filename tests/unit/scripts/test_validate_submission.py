@@ -66,15 +66,36 @@ class TestManifestProvenance:
                 "preview_features": ["hybrid tables"],
                 "vendor_permission": "approval 2026-11-01",
                 "vendor_notice": {"sent_on": "2026-11-01", "reference": "ticket"},
+                "self_run": True,
             }
         )
         assert vr.ok
         assert vr.warnings == []
 
-    def test_vendor_platform_without_notice_warns(self):
-        vr = self._run({"platform": "snowflake", "plan_tier": "paid"})
+    def test_mandatory_platform_without_fields_refused_after_cutoff(self):
+        vr = self._run({"platform": "snowflake", "submitted_at": "2026-11-18T00:00:00+00:00"})
+        assert not vr.ok
+        assert any("vendor_notice" in e for e in vr.errors)
+
+    def test_mandatory_platform_without_fields_labelled_pre_policy_from_bundle_run_date(self, tmp_path):
+        bundle = tmp_path / "results-data" / "bundles" / "tpch_result.json"
+        bundle.parent.mkdir(parents=True)
+        bundle.write_text(
+            json.dumps({"platform": {"name": "Snowflake"}, "run": {"timestamp": "2026-09-19T21:11:34.793439"}}),
+            encoding="utf-8",
+        )
+        vr = ValidationResult("test")
+        _validate_manifest_provenance({"funding": "unspecified"}, bundle, vr)
         assert vr.ok
-        assert any("vendor_notice" in w for w in vr.warnings)
+        assert any("pre_policy" in w for w in vr.warnings)
+
+    def test_manifest_cannot_supply_its_own_bundle_run_date(self, tmp_path):
+        bundle = tmp_path / "results-data" / "bundles" / "tpch_result.json"
+        bundle.parent.mkdir(parents=True)
+        bundle.write_text(json.dumps({"platform": {"name": "Snowflake"}}), encoding="utf-8")
+        vr = ValidationResult("test")
+        _validate_manifest_provenance({"bundle_run_timestamp": "2026-01-01T00:00:00"}, bundle, vr)
+        assert not vr.ok
 
     def test_bundle_platform_and_funding_override_manifest(self, tmp_path):
         bundle = tmp_path / "results-data" / "bundles" / "tpch_result.json"

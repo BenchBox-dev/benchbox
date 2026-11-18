@@ -794,6 +794,8 @@ VENDOR_NOTICE_PLATFORMS: Mapping[str, str] = {
     "athena": "AWS Service Terms section 1.8: send the replication information to AWS",
     "clickhouse-cloud": "ClickHouse Acceptable Use Policy section 2: send the replication information to ClickHouse",
     "motherduck": "MotherDuck MSA section 1.5: send the replication information to MotherDuck",
+    "bigquery": "Google Cloud Service Specific Terms section 7: record the notice sent to Google before publishing",
+    "databricks": "Databricks Acceptable Use Policy benchmark paragraph: record the notice sent to Databricks before publishing",
 }
 
 TIERED_PLATFORMS: Mapping[str, str] = {
@@ -808,6 +810,15 @@ TIERED_PLATFORMS: Mapping[str, str] = {
 SELF_RUN_PLATFORMS: Mapping[str, str] = {
     "bigquery": "BigQuery terms: publish only tests you ran yourself, not on behalf of a hyperscale cloud provider",
 }
+
+VENDOR_CONDITIONS_MANDATORY_FROM = "2026-11-18"
+MANDATORY_VENDOR_PLATFORMS: frozenset[str] = frozenset({"bigquery", "snowflake", "databricks"})
+MANDATORY_VENDOR_FIELDS: tuple[str, ...] = ("plan_tier", "vendor_notice", "self_run")
+VENDOR_STATUS_PRE_POLICY = "pre_policy"
+VENDOR_STATUS_EVIDENCE_BACKED = "evidence_backed"
+VENDOR_STATUS_INCOMPLETE = "incomplete"
+VENDOR_STATUS_NOT_APPLICABLE = "not_applicable"
+BUNDLE_RUN_TIMESTAMP_KEY = "bundle_run_timestamp"
 
 _DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -844,6 +855,8 @@ def _notice_errors_and_warnings(manifest: Mapping[str, Any], platform: str) -> t
             return ["Manifest vendor_notice must be an object with sent_on (YYYY-MM-DD) and a reference"], []
         return [], []
     if notice is None:
+        if platform in MANDATORY_VENDOR_PLATFORMS:
+            return [], []
         return [], [f"Manifest has no vendor_notice for {platform}: {VENDOR_NOTICE_PLATFORMS[platform]}"]
     if (
         not isinstance(notice, Mapping)
@@ -857,14 +870,62 @@ def _notice_errors_and_warnings(manifest: Mapping[str, Any], platform: str) -> t
 
 def _self_run_errors_and_warnings(manifest: Mapping[str, Any], platform: str) -> tuple[list[str], list[str]]:
     self_run = manifest.get("self_run")
-    if platform in SELF_RUN_PLATFORMS:
-        if self_run is False:
-            return [f"Manifest self_run is false: {SELF_RUN_PLATFORMS[platform]}"], []
-        if self_run is not True:
-            return [], [f"Manifest does not attest self_run for {platform}: {SELF_RUN_PLATFORMS[platform]}"]
-    elif self_run is not None and not isinstance(self_run, bool):
+    if platform in SELF_RUN_PLATFORMS and self_run is False:
+        return [f"Manifest self_run is false: {SELF_RUN_PLATFORMS[platform]}"], []
+    if self_run is not None and not isinstance(self_run, bool):
         return ["Manifest self_run must be a boolean"], []
     return [], []
+
+
+def _vendor_manifest_date(manifest: Mapping[str, Any]) -> datetime.date | None:
+    candidates = [
+        manifest.get(key) for key in ("submitted_at", BUNDLE_RUN_TIMESTAMP_KEY) if manifest.get(key) is not None
+    ]
+    parsed: list[datetime.date] = []
+    for candidate in candidates:
+        if not isinstance(candidate, str):
+            return None
+        try:
+            parsed.append(datetime.date.fromisoformat(candidate.strip()[:10]))
+        except ValueError:
+            return None
+    return max(parsed) if parsed else None
+
+
+def _mandatory_fields_present(manifest: Mapping[str, Any]) -> bool:
+    return (
+        manifest.get("plan_tier") in {"paid", "free", "trial"}
+        and manifest.get("vendor_notice") is not None
+        and manifest.get("self_run") is True
+    )
+
+
+def vendor_publication_status(manifest: Mapping[str, Any]) -> str:
+    if vendor_platform_key(manifest.get("platform")) not in MANDATORY_VENDOR_PLATFORMS:
+        return VENDOR_STATUS_NOT_APPLICABLE
+    if _mandatory_fields_present(manifest):
+        return VENDOR_STATUS_EVIDENCE_BACKED
+    manifest_date = _vendor_manifest_date(manifest)
+    if manifest_date is not None and manifest_date < datetime.date.fromisoformat(VENDOR_CONDITIONS_MANDATORY_FROM):
+        return VENDOR_STATUS_PRE_POLICY
+    return VENDOR_STATUS_INCOMPLETE
+
+
+def _mandatory_field_messages(manifest: Mapping[str, Any], platform: str) -> list[str]:
+    missing: list[str] = []
+    if manifest.get("plan_tier") not in {"paid", "free", "trial"}:
+        missing.append("plan_tier (--plan-tier)")
+    if manifest.get("vendor_notice") is None:
+        missing.append("vendor_notice (--vendor-notice-date and --vendor-notice-ref)")
+    self_run = manifest.get("self_run")
+    if self_run is None or (self_run is False and platform not in SELF_RUN_PLATFORMS):
+        missing.append("self_run (--self-run)")
+    if not missing:
+        return []
+    return [
+        f"Submissions for {platform} dated on or after {VENDOR_CONDITIONS_MANDATORY_FROM} must record "
+        f"{', '.join(missing)}; a manifest without them is refused"
+    ]
 
 
 def evaluate_vendor_conditions(manifest: Mapping[str, Any]) -> tuple[list[str], list[str]]:
@@ -913,7 +974,8 @@ def evaluate_vendor_conditions(manifest: Mapping[str, Any]) -> tuple[list[str], 
             f"(record it in vendor_permission): {hint}"
         )
 
-    if platform in TIERED_PLATFORMS and tier in (None, "unspecified"):
+    mandatory = platform in MANDATORY_VENDOR_PLATFORMS
+    if platform in TIERED_PLATFORMS and tier in (None, "unspecified") and not mandatory:
         warnings.append(
             f"Manifest does not declare plan_tier for {platform}; free, trial and preview results cannot be "
             f"screened ({TIERED_PLATFORMS[platform]})"
@@ -923,6 +985,16 @@ def evaluate_vendor_conditions(manifest: Mapping[str, Any]) -> tuple[list[str], 
         check_errors, check_warnings = check(manifest, platform)
         errors.extend(check_errors)
         warnings.extend(check_warnings)
+
+    status = vendor_publication_status(manifest)
+    if status == VENDOR_STATUS_INCOMPLETE:
+        errors.extend(_mandatory_field_messages(manifest, platform))
+    elif status == VENDOR_STATUS_PRE_POLICY:
+        warnings.append(
+            f"Status {VENDOR_STATUS_PRE_POLICY}: {platform} result published before vendor-condition checks "
+            f"(manifest date before {VENDOR_CONDITIONS_MANDATORY_FROM}); plan_tier, vendor_notice and self_run "
+            "are not recorded and not required for this manifest"
+        )
 
     return errors, warnings
 
@@ -3428,7 +3500,7 @@ def _validate_manifest_translator_version(manifest: dict[str, Any], primary_path
 
 
 def _manifest_with_bundle_identity(manifest: dict[str, Any], primary_path: Path) -> dict[str, Any]:
-    merged = dict(manifest)
+    merged = {key: value for key, value in manifest.items() if key != BUNDLE_RUN_TIMESTAMP_KEY}
     try:
         bundle = json.loads(primary_path.read_text(encoding="utf-8")) if primary_path.is_file() else {}
     except (OSError, ValueError):
@@ -3445,7 +3517,15 @@ def _manifest_with_bundle_identity(manifest: dict[str, Any], primary_path: Path)
         merged["funding"] = "free-trial"
     if isinstance(provenance, dict):
         merge_bundle_vendor_declarations(merged, provenance)
+    run = bundle.get("run")
+    run_timestamp = run.get("timestamp") if isinstance(run, dict) else None
+    if run_timestamp is not None:
+        merged[BUNDLE_RUN_TIMESTAMP_KEY] = run_timestamp
     return merged
+
+
+def bundle_vendor_publication_status(manifest: dict[str, Any], primary_path: Path) -> str:
+    return vendor_publication_status(_manifest_with_bundle_identity(manifest, primary_path))
 
 
 def _validate_manifest_known_defects(manifest: dict[str, Any], vr: ValidationResult) -> None:

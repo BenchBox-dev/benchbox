@@ -61,6 +61,7 @@ from benchbox.validation.bundle import (
     COMPANION_SUFFIXES,
     PLAN_TIERS,
     SUBMISSION_NOTES_MAX_LEN,
+    VENDOR_CONDITIONS_MANDATORY_FROM,
     VENDOR_PROVENANCE_FIELDS,
     _hash_bytes,
     _hash_file,
@@ -221,7 +222,12 @@ def _vendor_condition_fields(
 
 def _enforce_vendor_conditions(ctx: click.Context, result, vendor_conditions: dict, funding: str | None) -> None:
     resolved_funding = normalize_funding(funding or getattr(result, "funding", None))
-    declared = {"platform": result.platform, "funding": resolved_funding, **vendor_conditions}
+    declared = {
+        "platform": result.platform,
+        "funding": resolved_funding,
+        "submitted_at": datetime.now(timezone.utc).isoformat(),
+        **vendor_conditions,
+    }
     recorded = {
         name: value for name in VENDOR_PROVENANCE_FIELDS if (value := getattr(result, name, None)) not in (None, [])
     }
@@ -784,7 +790,7 @@ def _print_submission_summary(
     "--self-run",
     is_flag=True,
     default=False,
-    help="Attest that you ran the benchmark yourself, not on behalf of a cloud provider (BigQuery).",
+    help=f"Attest that you ran the benchmark yourself, not on behalf of a cloud provider. Required for BigQuery, Snowflake and Databricks submissions dated on or after {VENDOR_CONDITIONS_MANDATORY_FROM}.",
 )
 @click.pass_context
 def submit(

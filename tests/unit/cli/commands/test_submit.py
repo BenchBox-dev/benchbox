@@ -603,6 +603,59 @@ def test_submit_refuses_free_tier_without_permission(monkeypatch: pytest.MonkeyP
     assert not (out_dir / "tpch_duckdb.manifest.json").exists()
 
 
+@pytest.mark.parametrize("platform", ["bigquery", "snowflake", "databricks"])
+def test_submit_refuses_missing_mandatory_vendor_fields(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, platform: str
+) -> None:
+    src = tmp_path / "tpch_duckdb.json"
+    _write_valid_submission_bundle(src)
+    fake = _fake_result()
+    fake.platform = platform
+    monkeypatch.setattr(sub, "load_result_file", lambda *_a, **_k: (fake, {}))
+
+    out_dir = tmp_path / "submission"
+    result = CliRunner().invoke(sub.submit, [str(src), "--output", str(out_dir)])
+
+    assert result.exit_code == 1
+    assert "plan_tier" in result.output
+    assert "vendor_notice" in result.output
+    assert "self_run" in result.output
+    assert not (out_dir / "tpch_duckdb.manifest.json").exists()
+
+
+@pytest.mark.parametrize("platform", ["bigquery", "snowflake", "databricks"])
+def test_submit_accepts_complete_mandatory_vendor_fields(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, platform: str
+) -> None:
+    src = tmp_path / "tpch_duckdb.json"
+    _write_valid_submission_bundle(src)
+    fake = _fake_result()
+    fake.platform = platform
+    monkeypatch.setattr(sub, "load_result_file", lambda *_a, **_k: (fake, {}))
+
+    out_dir = tmp_path / "submission"
+    result = CliRunner().invoke(
+        sub.submit,
+        [
+            str(src),
+            "--output",
+            str(out_dir),
+            "--plan-tier",
+            "paid",
+            "--vendor-notice-date",
+            "2026-11-01",
+            "--vendor-notice-ref",
+            "ticket-1",
+            "--self-run",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    manifest = json.loads((out_dir / "tpch_duckdb.manifest.json").read_text(encoding="utf-8"))
+    assert manifest["self_run"] is True
+    assert manifest["plan_tier"] == "paid"
+
+
 def test_submit_refuses_free_trial_funding_without_permission(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     src = tmp_path / "tpch_duckdb.json"
     _write_valid_submission_bundle(src)
