@@ -40,8 +40,9 @@ floor is the flat 5 ms. Recompute it from fresh artifacts whenever the baseline 
 
 The aggregate floor uses the same 1.25 rule on the totals of those five runs:
 261.1 to 285.7 ms, a spread of 24.6 ms, so the floor is 1.25 times 24.6 rounded
-up to a whole millisecond: 31 ms. The baseline total is 308.6 ms (per-query
-maximum, below), so every source night passes and a uniform 2x slowdown still fails.
+up to a whole millisecond: 31 ms. The baseline total is 270 ms (the pooled
+median, below), so every source night passes (the highest was 286 ms) and a
+night fails only above about 301 ms, 11% over the median baseline.
 
 ## Refreshing the baseline
 
@@ -49,7 +50,7 @@ The baseline is rebuilt from several CI runs, never from one run. A single
 run carries its own noise, so copying it over the baseline only moves the
 noise problem. The checked-in file is the per-query median of retained
 `t3-perf-result` artifacts from scheduled nightly runs on `develop`, or the per-query
-maximum when no CPU model has enough results (see below).
+median over the pooled results when no CPU model has enough of them (see below).
 
 Every source must record the same `run.timing_method`; the builder refuses
 results that mix methods or record none, and writes that method into the
@@ -64,13 +65,17 @@ mixed pool fails the nights that land on the slower hardware, so the
 builder uses only the results from the slowest CPU model that has at least
 five of them. A slower or equal night then compares cleanly, and a faster
 night cannot fail. When no CPU model has five results, the builder falls
-back to the per-query maximum over at least five results of any CPU model
-(each query entry is the highest value seen), so a faster night cannot fail
-there either; the current baseline was built this way from four CPU models
-(EPYC 7763, Xeon Platinum 8573C, Xeon 6975P-C, EPYC 9V74). The cost is sensitivity: a regression smaller than the
-speed difference can pass on the fastest hardware. The floor is the one
-value still derived from all retained runs, because a night on any CPU
-model is compared with the baseline.
+back to the per-query median over at least five results of any CPU model,
+the same aggregation applied to a pool of classes. That baseline is not
+built from the slowest hardware, so a night on the slowest model can sit a
+few percent above it; the 10% threshold and the floors absorb that spread.
+The current baseline was built this way from four CPU models (EPYC 7763,
+Xeon Platinum 8573C, Xeon 6975P-C, EPYC 9V74). The cost is sensitivity: a
+regression smaller than the speed difference can pass on the fastest
+hardware. Rebuild the baseline under the slowest-model rule as soon as one
+CPU model has five results. The floor is the one value still derived from
+all retained runs, because a night on any CPU model is compared with the
+baseline.
 
 Which source runs were used, their CPU models and totals, and the floor
 derivation are recorded next to the baseline in
@@ -111,7 +116,7 @@ uv run -- benchbox compare _project/baselines/perf_smoke_duckdb_tpch_001.json \
 #    the old baseline.
 ```
 
-The script chooses the CPU model itself and falls back to the per-query maximum
+The script chooses the CPU model itself and falls back to the per-query median over the pooled results
 when none has five results (it still refuses fewer than five results in total);
 pass `--cpu-model` to require one model. The rule used is recorded as
 `selection_rule` in the sources record. It prints the largest

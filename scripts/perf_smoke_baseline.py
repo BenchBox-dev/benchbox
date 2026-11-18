@@ -15,7 +15,7 @@ from typing import Any
 CLI_DESCRIPTION = "Build the perf-smoke baseline from several CI result files."
 
 RULE_SLOWEST_CPU_MODEL = "slowest_cpu_model_median"
-RULE_PER_QUERY_MAXIMUM = "per_query_maximum_over_all_models"
+RULE_POOLED_MEDIAN = "pooled_median_over_all_models"
 
 MIN_SOURCE_RESULTS = 5
 FLAT_FLOOR_MS = 5
@@ -120,12 +120,12 @@ def select_sources(
     except BaselineError:
         if cpu_model is not None or len(results) < MIN_SOURCE_RESULTS:
             raise
-        return list(results), RULE_PER_QUERY_MAXIMUM, None
+        return list(results), RULE_POOLED_MEDIAN, None
     chosen = [result for result in results if runner_class(result) == selected_class]
     return chosen, RULE_SLOWEST_CPU_MODEL, selected_class
 
 
-def median_result(results: Sequence[Mapping[str, Any]], *, reducer: Any = statistics.median) -> dict[str, Any]:
+def median_result(results: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     _require_comparable(results)
     latest = max(results, key=lambda result: result["execution"]["timestamp"])
     merged = copy.deepcopy(dict(latest))
@@ -134,7 +134,7 @@ def median_result(results: Sequence[Mapping[str, Any]], *, reducer: Any = statis
         for entry in result["queries"]:
             samples.setdefault(_entry_key(entry), []).append(float(entry["ms"]))
     for entry in merged["queries"]:
-        entry["ms"] = round(reducer(samples[_entry_key(entry)]), 1)
+        entry["ms"] = round(statistics.median(samples[_entry_key(entry)]), 1)
     measured = sorted(entry["ms"] for entry in merged["queries"] if entry["run_type"] != "warmup")
     timing = merged["summary"]["timing"]
     timing.update(
@@ -162,10 +162,10 @@ _METHODS = {
         "entries; all other fields come from the newest of them. The floor is derived from every source "
         "result, because a night on any CPU model is compared with this baseline."
     ),
-    RULE_PER_QUERY_MAXIMUM: (
+    RULE_POOLED_MEDIAN: (
         "No CPU model has enough source results, so the baseline takes every source result of the same "
         "timing method regardless of CPU model. Each query entry (warmup and every measured iteration) is "
-        "the maximum of the same entry across those results, so a faster night cannot fail the gate; summary "
+        "the median of the same entry across those results; summary "
         "timings are recomputed from the measured entries; all other fields come from the newest of them. "
         "The floor is derived from every source result."
     ),
@@ -232,8 +232,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         spread, worst = largest_spread_ms(results)
         _require_comparable(results)
         chosen, rule, selected_class = select_sources(results, cpu_model=args.cpu_model)
-        reducer = max if rule == RULE_PER_QUERY_MAXIMUM else statistics.median
-        baseline = median_result(chosen, reducer=reducer)
+        baseline = median_result(chosen)
     except (BaselineError, OSError, KeyError, ValueError) as error:
         print(f"perf_smoke_baseline: error: {error}", file=sys.stderr)
         return 2

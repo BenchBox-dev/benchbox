@@ -446,7 +446,7 @@
     {
       "id": "14",
       "iter": 0,
-      "ms": 4.0,
+      "ms": 3.8,
       "request_count": 1,
       "result_bytes": 9,
       "row_count_validation": {
@@ -463,7 +463,7 @@
     {
       "id": "2",
       "iter": 0,
-      "ms": 6.5,
+      "ms": 5.8,
       "request_count": 1,
       "result_bytes": 765,
       "row_count_validation": {
@@ -480,7 +480,7 @@
     {
       "id": "9",
       "iter": 0,
-      "ms": 6.5,
+      "ms": 5.8,
       "request_count": 1,
       "result_bytes": 6137,
       "row_count_validation": {
@@ -497,7 +497,7 @@
     {
       "id": "20",
       "iter": 0,
-      "ms": 5.3,
+      "ms": 4.8,
       "request_count": 1,
       "result_bytes": 58,
       "row_count_validation": {
@@ -514,7 +514,7 @@
     {
       "id": "6",
       "iter": 0,
-      "ms": 2.0,
+      "ms": 1.6,
       "request_count": 1,
       "result_bytes": 17,
       "row_count_validation": {
@@ -531,7 +531,7 @@
     {
       "id": "17",
       "iter": 0,
-      "ms": 3.1,
+      "ms": 2.7,
       "request_count": 1,
       "result_bytes": 9,
       "row_count_validation": {
@@ -547,43 +547,43 @@
     },
     {
       "id": "18",
+      "iter": 0,
+      "ms": 4.4,
+      "request_count": 1,
+      "result_bytes": 138,
+      "row_count_validation": {
+        "actual": 2,
+        "expected": 2,
+        "status": "PASSED"
+      },
+      "rows": 2,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "8",
+      "iter": 0,
+      "ms": 5.5,
+      "request_count": 1,
+      "result_bytes": 34,
+      "row_count_validation": {
+        "actual": 2,
+        "expected": 2,
+        "status": "PASSED"
+      },
+      "rows": 2,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "21",
       "iter": 0,
       "ms": 5.9,
       "request_count": 1,
-      "result_bytes": 138,
-      "row_count_validation": {
-        "actual": 2,
-        "expected": 2,
-        "status": "PASSED"
-      },
-      "rows": 2,
-      "run_type": "warmup",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "8",
-      "iter": 0,
-      "ms": 6.6,
-      "request_count": 1,
-      "result_bytes": 34,
-      "row_count_validation": {
-        "actual": 2,
-        "expected": 2,
-        "status": "PASSED"
-      },
-      "rows": 2,
-      "run_type": "warmup",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "21",
-      "iter": 0,
-      "ms": 7.1,
-      "request_count": 1,
       "result_bytes": 32,
       "row_count_validation": {
         "actual": 1,
@@ -616,7 +616,7 @@
     {
       "id": "3",
       "iter": 0,
-      "ms": 3.9,
+      "ms": 3.4,
       "request_count": 1,
       "result_bytes": 288,
       "row_count_validation": {
@@ -633,7 +633,7 @@
     {
       "id": "22",
       "iter": 0,
-      "ms": 5.1,
+      "ms": 4.4,
       "request_count": 1,
       "result_bytes": 213,
       "row_count_validation": {
@@ -650,7 +650,7 @@
     {
       "id": "16",
       "iter": 0,
-      "ms": 4.1,
+      "ms": 3.7,
       "request_count": 1,
       "result_bytes": 14491,
       "row_count_validation": {
@@ -666,145 +666,145 @@
     },
     {
       "id": "4",
+      "iter": 0,
+      "ms": 3.0,
+      "request_count": 1,
+      "result_bytes": 104,
+      "row_count_validation": {
+        "actual": 5,
+        "expected": 5,
+        "status": "PASSED"
+      },
+      "rows": 5,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "11",
+      "iter": 0,
+      "ms": 3.1,
+      "request_count": 1,
+      "result_bytes": 22,
+      "row_count_validation": {
+        "actual": 1,
+        "expected": 1,
+        "status": "PASSED"
+      },
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "15",
+      "iter": 0,
+      "ms": 3.1,
+      "request_count": 1,
+      "result_bytes": 106,
+      "row_count_validation": {
+        "actual": 1,
+        "expected": 1,
+        "status": "PASSED"
+      },
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "1",
+      "iter": 0,
+      "ms": 4.8,
+      "request_count": 1,
+      "result_bytes": 434,
+      "row_count_validation": {
+        "actual": 4,
+        "expected": 4,
+        "status": "PASSED"
+      },
+      "rows": 4,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "10",
+      "iter": 0,
+      "ms": 5.2,
+      "request_count": 1,
+      "result_bytes": 3915,
+      "row_count_validation": {
+        "actual": 20,
+        "expected": 20,
+        "status": "PASSED"
+      },
+      "rows": 20,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "19",
+      "iter": 0,
+      "ms": 4.9,
+      "request_count": 1,
+      "result_bytes": 17,
+      "row_count_validation": {
+        "actual": 1,
+        "expected": 1,
+        "status": "PASSED"
+      },
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "5",
+      "iter": 0,
+      "ms": 4.4,
+      "request_count": 1,
+      "result_bytes": 133,
+      "row_count_validation": {
+        "actual": 5,
+        "expected": 5,
+        "status": "PASSED"
+      },
+      "rows": 5,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "7",
+      "iter": 0,
+      "ms": 4.8,
+      "request_count": 1,
+      "result_bytes": 184,
+      "row_count_validation": {
+        "actual": 4,
+        "expected": 4,
+        "status": "PASSED"
+      },
+      "rows": 4,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "12",
       "iter": 0,
       "ms": 3.5,
       "request_count": 1,
-      "result_bytes": 104,
-      "row_count_validation": {
-        "actual": 5,
-        "expected": 5,
-        "status": "PASSED"
-      },
-      "rows": 5,
-      "run_type": "warmup",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "11",
-      "iter": 0,
-      "ms": 3.4,
-      "request_count": 1,
-      "result_bytes": 22,
-      "row_count_validation": {
-        "actual": 1,
-        "expected": 1,
-        "status": "PASSED"
-      },
-      "rows": 1,
-      "run_type": "warmup",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "15",
-      "iter": 0,
-      "ms": 3.6,
-      "request_count": 1,
-      "result_bytes": 106,
-      "row_count_validation": {
-        "actual": 1,
-        "expected": 1,
-        "status": "PASSED"
-      },
-      "rows": 1,
-      "run_type": "warmup",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "1",
-      "iter": 0,
-      "ms": 5.4,
-      "request_count": 1,
-      "result_bytes": 434,
-      "row_count_validation": {
-        "actual": 4,
-        "expected": 4,
-        "status": "PASSED"
-      },
-      "rows": 4,
-      "run_type": "warmup",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "10",
-      "iter": 0,
-      "ms": 7.6,
-      "request_count": 1,
-      "result_bytes": 3915,
-      "row_count_validation": {
-        "actual": 20,
-        "expected": 20,
-        "status": "PASSED"
-      },
-      "rows": 20,
-      "run_type": "warmup",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "19",
-      "iter": 0,
-      "ms": 5.6,
-      "request_count": 1,
-      "result_bytes": 17,
-      "row_count_validation": {
-        "actual": 1,
-        "expected": 1,
-        "status": "PASSED"
-      },
-      "rows": 1,
-      "run_type": "warmup",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "5",
-      "iter": 0,
-      "ms": 5.0,
-      "request_count": 1,
-      "result_bytes": 133,
-      "row_count_validation": {
-        "actual": 5,
-        "expected": 5,
-        "status": "PASSED"
-      },
-      "rows": 5,
-      "run_type": "warmup",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "7",
-      "iter": 0,
-      "ms": 5.5,
-      "request_count": 1,
-      "result_bytes": 184,
-      "row_count_validation": {
-        "actual": 4,
-        "expected": 4,
-        "status": "PASSED"
-      },
-      "rows": 4,
-      "run_type": "warmup",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "12",
-      "iter": 0,
-      "ms": 3.8,
-      "request_count": 1,
       "result_bytes": 83,
       "row_count_validation": {
         "actual": 2,
@@ -820,839 +820,6 @@
     {
       "id": "14",
       "iter": 1,
-      "ms": 4.0,
-      "request_count": 1,
-      "result_bytes": 9,
-      "row_count_validation": {
-        "actual": 1,
-        "expected": 1,
-        "status": "PASSED"
-      },
-      "rows": 1,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "2",
-      "iter": 1,
-      "ms": 5.7,
-      "request_count": 1,
-      "result_bytes": 765,
-      "row_count_validation": {
-        "actual": 4,
-        "expected": 4,
-        "status": "PASSED"
-      },
-      "rows": 4,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "9",
-      "iter": 1,
-      "ms": 5.8,
-      "request_count": 1,
-      "result_bytes": 6137,
-      "row_count_validation": {
-        "actual": 173,
-        "expected": 173,
-        "status": "PASSED"
-      },
-      "rows": 173,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "20",
-      "iter": 1,
-      "ms": 4.9,
-      "request_count": 1,
-      "result_bytes": 58,
-      "row_count_validation": {
-        "actual": 1,
-        "expected": 1,
-        "status": "PASSED"
-      },
-      "rows": 1,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "6",
-      "iter": 1,
-      "ms": 1.8,
-      "request_count": 1,
-      "result_bytes": 17,
-      "row_count_validation": {
-        "actual": 1,
-        "expected": 1,
-        "status": "PASSED"
-      },
-      "rows": 1,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "17",
-      "iter": 1,
-      "ms": 3.1,
-      "request_count": 1,
-      "result_bytes": 9,
-      "row_count_validation": {
-        "actual": 1,
-        "expected": 1,
-        "status": "PASSED"
-      },
-      "rows": 1,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "18",
-      "iter": 1,
-      "ms": 6.6,
-      "request_count": 1,
-      "result_bytes": 138,
-      "row_count_validation": {
-        "actual": 2,
-        "expected": 2,
-        "status": "PASSED"
-      },
-      "rows": 2,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "8",
-      "iter": 1,
-      "ms": 5.7,
-      "request_count": 1,
-      "result_bytes": 34,
-      "row_count_validation": {
-        "actual": 2,
-        "expected": 2,
-        "status": "PASSED"
-      },
-      "rows": 2,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "21",
-      "iter": 1,
-      "ms": 6.5,
-      "request_count": 1,
-      "result_bytes": 32,
-      "row_count_validation": {
-        "actual": 1,
-        "expected": 1,
-        "status": "PASSED"
-      },
-      "rows": 1,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "13",
-      "iter": 1,
-      "ms": 3.4,
-      "request_count": 1,
-      "result_bytes": 538,
-      "row_count_validation": {
-        "actual": 33,
-        "expected": 33,
-        "status": "PASSED"
-      },
-      "rows": 33,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "3",
-      "iter": 1,
-      "ms": 3.8,
-      "request_count": 1,
-      "result_bytes": 288,
-      "row_count_validation": {
-        "actual": 10,
-        "expected": 10,
-        "status": "PASSED"
-      },
-      "rows": 10,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "22",
-      "iter": 1,
-      "ms": 4.9,
-      "request_count": 1,
-      "result_bytes": 213,
-      "row_count_validation": {
-        "actual": 7,
-        "expected": 7,
-        "status": "PASSED"
-      },
-      "rows": 7,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "16",
-      "iter": 1,
-      "ms": 4.1,
-      "request_count": 1,
-      "result_bytes": 14491,
-      "row_count_validation": {
-        "actual": 296,
-        "expected": 296,
-        "status": "PASSED"
-      },
-      "rows": 296,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "4",
-      "iter": 1,
-      "ms": 4.2,
-      "request_count": 1,
-      "result_bytes": 104,
-      "row_count_validation": {
-        "actual": 5,
-        "expected": 5,
-        "status": "PASSED"
-      },
-      "rows": 5,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "11",
-      "iter": 1,
-      "ms": 3.4,
-      "request_count": 1,
-      "result_bytes": 22,
-      "row_count_validation": {
-        "actual": 1,
-        "expected": 1,
-        "status": "PASSED"
-      },
-      "rows": 1,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "15",
-      "iter": 1,
-      "ms": 3.4,
-      "request_count": 1,
-      "result_bytes": 106,
-      "row_count_validation": {
-        "actual": 1,
-        "expected": 1,
-        "status": "PASSED"
-      },
-      "rows": 1,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "1",
-      "iter": 1,
-      "ms": 5.4,
-      "request_count": 1,
-      "result_bytes": 434,
-      "row_count_validation": {
-        "actual": 4,
-        "expected": 4,
-        "status": "PASSED"
-      },
-      "rows": 4,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "10",
-      "iter": 1,
-      "ms": 7.1,
-      "request_count": 1,
-      "result_bytes": 3915,
-      "row_count_validation": {
-        "actual": 20,
-        "expected": 20,
-        "status": "PASSED"
-      },
-      "rows": 20,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "19",
-      "iter": 1,
-      "ms": 5.3,
-      "request_count": 1,
-      "result_bytes": 17,
-      "row_count_validation": {
-        "actual": 1,
-        "expected": 1,
-        "status": "PASSED"
-      },
-      "rows": 1,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "5",
-      "iter": 1,
-      "ms": 4.8,
-      "request_count": 1,
-      "result_bytes": 133,
-      "row_count_validation": {
-        "actual": 5,
-        "expected": 5,
-        "status": "PASSED"
-      },
-      "rows": 5,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "7",
-      "iter": 1,
-      "ms": 5.1,
-      "request_count": 1,
-      "result_bytes": 184,
-      "row_count_validation": {
-        "actual": 4,
-        "expected": 4,
-        "status": "PASSED"
-      },
-      "rows": 4,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "12",
-      "iter": 1,
-      "ms": 3.7,
-      "request_count": 1,
-      "result_bytes": 83,
-      "row_count_validation": {
-        "actual": 2,
-        "expected": 2,
-        "status": "PASSED"
-      },
-      "rows": 2,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "14",
-      "iter": 2,
-      "ms": 3.7,
-      "request_count": 1,
-      "result_bytes": 9,
-      "row_count_validation": {
-        "actual": 1,
-        "expected": 1,
-        "status": "PASSED"
-      },
-      "rows": 1,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "2",
-      "iter": 2,
-      "ms": 5.6,
-      "request_count": 1,
-      "result_bytes": 765,
-      "row_count_validation": {
-        "actual": 4,
-        "expected": 4,
-        "status": "PASSED"
-      },
-      "rows": 4,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "9",
-      "iter": 2,
-      "ms": 5.7,
-      "request_count": 1,
-      "result_bytes": 6137,
-      "row_count_validation": {
-        "actual": 173,
-        "expected": 173,
-        "status": "PASSED"
-      },
-      "rows": 173,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "20",
-      "iter": 2,
-      "ms": 5.2,
-      "request_count": 1,
-      "result_bytes": 58,
-      "row_count_validation": {
-        "actual": 1,
-        "expected": 1,
-        "status": "PASSED"
-      },
-      "rows": 1,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "6",
-      "iter": 2,
-      "ms": 1.8,
-      "request_count": 1,
-      "result_bytes": 17,
-      "row_count_validation": {
-        "actual": 1,
-        "expected": 1,
-        "status": "PASSED"
-      },
-      "rows": 1,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "17",
-      "iter": 2,
-      "ms": 3.0,
-      "request_count": 1,
-      "result_bytes": 9,
-      "row_count_validation": {
-        "actual": 1,
-        "expected": 1,
-        "status": "PASSED"
-      },
-      "rows": 1,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "18",
-      "iter": 2,
-      "ms": 6.7,
-      "request_count": 1,
-      "result_bytes": 138,
-      "row_count_validation": {
-        "actual": 2,
-        "expected": 2,
-        "status": "PASSED"
-      },
-      "rows": 2,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "8",
-      "iter": 2,
-      "ms": 5.8,
-      "request_count": 1,
-      "result_bytes": 34,
-      "row_count_validation": {
-        "actual": 2,
-        "expected": 2,
-        "status": "PASSED"
-      },
-      "rows": 2,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "21",
-      "iter": 2,
-      "ms": 6.2,
-      "request_count": 1,
-      "result_bytes": 32,
-      "row_count_validation": {
-        "actual": 1,
-        "expected": 1,
-        "status": "PASSED"
-      },
-      "rows": 1,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "13",
-      "iter": 2,
-      "ms": 3.3,
-      "request_count": 1,
-      "result_bytes": 538,
-      "row_count_validation": {
-        "actual": 33,
-        "expected": 33,
-        "status": "PASSED"
-      },
-      "rows": 33,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "3",
-      "iter": 2,
-      "ms": 3.6,
-      "request_count": 1,
-      "result_bytes": 288,
-      "row_count_validation": {
-        "actual": 10,
-        "expected": 10,
-        "status": "PASSED"
-      },
-      "rows": 10,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "22",
-      "iter": 2,
-      "ms": 5.0,
-      "request_count": 1,
-      "result_bytes": 213,
-      "row_count_validation": {
-        "actual": 7,
-        "expected": 7,
-        "status": "PASSED"
-      },
-      "rows": 7,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "16",
-      "iter": 2,
-      "ms": 3.9,
-      "request_count": 1,
-      "result_bytes": 14491,
-      "row_count_validation": {
-        "actual": 296,
-        "expected": 296,
-        "status": "PASSED"
-      },
-      "rows": 296,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "4",
-      "iter": 2,
-      "ms": 3.4,
-      "request_count": 1,
-      "result_bytes": 104,
-      "row_count_validation": {
-        "actual": 5,
-        "expected": 5,
-        "status": "PASSED"
-      },
-      "rows": 5,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "11",
-      "iter": 2,
-      "ms": 3.4,
-      "request_count": 1,
-      "result_bytes": 22,
-      "row_count_validation": {
-        "actual": 1,
-        "expected": 1,
-        "status": "PASSED"
-      },
-      "rows": 1,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "15",
-      "iter": 2,
-      "ms": 3.3,
-      "request_count": 1,
-      "result_bytes": 106,
-      "row_count_validation": {
-        "actual": 1,
-        "expected": 1,
-        "status": "PASSED"
-      },
-      "rows": 1,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "1",
-      "iter": 2,
-      "ms": 5.2,
-      "request_count": 1,
-      "result_bytes": 434,
-      "row_count_validation": {
-        "actual": 4,
-        "expected": 4,
-        "status": "PASSED"
-      },
-      "rows": 4,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "10",
-      "iter": 2,
-      "ms": 7.2,
-      "request_count": 1,
-      "result_bytes": 3915,
-      "row_count_validation": {
-        "actual": 20,
-        "expected": 20,
-        "status": "PASSED"
-      },
-      "rows": 20,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "19",
-      "iter": 2,
-      "ms": 6.0,
-      "request_count": 1,
-      "result_bytes": 17,
-      "row_count_validation": {
-        "actual": 1,
-        "expected": 1,
-        "status": "PASSED"
-      },
-      "rows": 1,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "5",
-      "iter": 2,
-      "ms": 5.2,
-      "request_count": 1,
-      "result_bytes": 133,
-      "row_count_validation": {
-        "actual": 5,
-        "expected": 5,
-        "status": "PASSED"
-      },
-      "rows": 5,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "7",
-      "iter": 2,
-      "ms": 5.3,
-      "request_count": 1,
-      "result_bytes": 184,
-      "row_count_validation": {
-        "actual": 4,
-        "expected": 4,
-        "status": "PASSED"
-      },
-      "rows": 4,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "12",
-      "iter": 2,
-      "ms": 3.8,
-      "request_count": 1,
-      "result_bytes": 83,
-      "row_count_validation": {
-        "actual": 2,
-        "expected": 2,
-        "status": "PASSED"
-      },
-      "rows": 2,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "14",
-      "iter": 3,
-      "ms": 3.6,
-      "request_count": 1,
-      "result_bytes": 9,
-      "row_count_validation": {
-        "actual": 1,
-        "expected": 1,
-        "status": "PASSED"
-      },
-      "rows": 1,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "2",
-      "iter": 3,
-      "ms": 5.7,
-      "request_count": 1,
-      "result_bytes": 765,
-      "row_count_validation": {
-        "actual": 4,
-        "expected": 4,
-        "status": "PASSED"
-      },
-      "rows": 4,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "9",
-      "iter": 3,
-      "ms": 5.7,
-      "request_count": 1,
-      "result_bytes": 6137,
-      "row_count_validation": {
-        "actual": 173,
-        "expected": 173,
-        "status": "PASSED"
-      },
-      "rows": 173,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "20",
-      "iter": 3,
-      "ms": 5.5,
-      "request_count": 1,
-      "result_bytes": 58,
-      "row_count_validation": {
-        "actual": 1,
-        "expected": 1,
-        "status": "PASSED"
-      },
-      "rows": 1,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "6",
-      "iter": 3,
-      "ms": 1.9,
-      "request_count": 1,
-      "result_bytes": 17,
-      "row_count_validation": {
-        "actual": 1,
-        "expected": 1,
-        "status": "PASSED"
-      },
-      "rows": 1,
-      "run_type": "measurement",
-      "status": "SUCCESS",
-      "stream": 0,
-      "test_type": "power"
-    },
-    {
-      "id": "17",
-      "iter": 3,
       "ms": 3.2,
       "request_count": 1,
       "result_bytes": 9,
@@ -1668,9 +835,842 @@
       "test_type": "power"
     },
     {
+      "id": "2",
+      "iter": 1,
+      "ms": 5.3,
+      "request_count": 1,
+      "result_bytes": 765,
+      "row_count_validation": {
+        "actual": 4,
+        "expected": 4,
+        "status": "PASSED"
+      },
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "9",
+      "iter": 1,
+      "ms": 5.3,
+      "request_count": 1,
+      "result_bytes": 6137,
+      "row_count_validation": {
+        "actual": 173,
+        "expected": 173,
+        "status": "PASSED"
+      },
+      "rows": 173,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "20",
+      "iter": 1,
+      "ms": 4.7,
+      "request_count": 1,
+      "result_bytes": 58,
+      "row_count_validation": {
+        "actual": 1,
+        "expected": 1,
+        "status": "PASSED"
+      },
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "6",
+      "iter": 1,
+      "ms": 1.8,
+      "request_count": 1,
+      "result_bytes": 17,
+      "row_count_validation": {
+        "actual": 1,
+        "expected": 1,
+        "status": "PASSED"
+      },
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "17",
+      "iter": 1,
+      "ms": 2.7,
+      "request_count": 1,
+      "result_bytes": 9,
+      "row_count_validation": {
+        "actual": 1,
+        "expected": 1,
+        "status": "PASSED"
+      },
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "18",
+      "iter": 1,
+      "ms": 4.3,
+      "request_count": 1,
+      "result_bytes": 138,
+      "row_count_validation": {
+        "actual": 2,
+        "expected": 2,
+        "status": "PASSED"
+      },
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "8",
+      "iter": 1,
+      "ms": 5.4,
+      "request_count": 1,
+      "result_bytes": 34,
+      "row_count_validation": {
+        "actual": 2,
+        "expected": 2,
+        "status": "PASSED"
+      },
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "21",
+      "iter": 1,
+      "ms": 5.5,
+      "request_count": 1,
+      "result_bytes": 32,
+      "row_count_validation": {
+        "actual": 1,
+        "expected": 1,
+        "status": "PASSED"
+      },
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "13",
+      "iter": 1,
+      "ms": 3.1,
+      "request_count": 1,
+      "result_bytes": 538,
+      "row_count_validation": {
+        "actual": 33,
+        "expected": 33,
+        "status": "PASSED"
+      },
+      "rows": 33,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "3",
+      "iter": 1,
+      "ms": 3.3,
+      "request_count": 1,
+      "result_bytes": 288,
+      "row_count_validation": {
+        "actual": 10,
+        "expected": 10,
+        "status": "PASSED"
+      },
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "22",
+      "iter": 1,
+      "ms": 4.5,
+      "request_count": 1,
+      "result_bytes": 213,
+      "row_count_validation": {
+        "actual": 7,
+        "expected": 7,
+        "status": "PASSED"
+      },
+      "rows": 7,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "16",
+      "iter": 1,
+      "ms": 3.6,
+      "request_count": 1,
+      "result_bytes": 14491,
+      "row_count_validation": {
+        "actual": 296,
+        "expected": 296,
+        "status": "PASSED"
+      },
+      "rows": 296,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "4",
+      "iter": 1,
+      "ms": 3.0,
+      "request_count": 1,
+      "result_bytes": 104,
+      "row_count_validation": {
+        "actual": 5,
+        "expected": 5,
+        "status": "PASSED"
+      },
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "11",
+      "iter": 1,
+      "ms": 3.2,
+      "request_count": 1,
+      "result_bytes": 22,
+      "row_count_validation": {
+        "actual": 1,
+        "expected": 1,
+        "status": "PASSED"
+      },
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "15",
+      "iter": 1,
+      "ms": 3.1,
+      "request_count": 1,
+      "result_bytes": 106,
+      "row_count_validation": {
+        "actual": 1,
+        "expected": 1,
+        "status": "PASSED"
+      },
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "1",
+      "iter": 1,
+      "ms": 4.8,
+      "request_count": 1,
+      "result_bytes": 434,
+      "row_count_validation": {
+        "actual": 4,
+        "expected": 4,
+        "status": "PASSED"
+      },
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "10",
+      "iter": 1,
+      "ms": 5.2,
+      "request_count": 1,
+      "result_bytes": 3915,
+      "row_count_validation": {
+        "actual": 20,
+        "expected": 20,
+        "status": "PASSED"
+      },
+      "rows": 20,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "19",
+      "iter": 1,
+      "ms": 5.0,
+      "request_count": 1,
+      "result_bytes": 17,
+      "row_count_validation": {
+        "actual": 1,
+        "expected": 1,
+        "status": "PASSED"
+      },
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "5",
+      "iter": 1,
+      "ms": 4.6,
+      "request_count": 1,
+      "result_bytes": 133,
+      "row_count_validation": {
+        "actual": 5,
+        "expected": 5,
+        "status": "PASSED"
+      },
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "7",
+      "iter": 1,
+      "ms": 4.7,
+      "request_count": 1,
+      "result_bytes": 184,
+      "row_count_validation": {
+        "actual": 4,
+        "expected": 4,
+        "status": "PASSED"
+      },
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "12",
+      "iter": 1,
+      "ms": 3.4,
+      "request_count": 1,
+      "result_bytes": 83,
+      "row_count_validation": {
+        "actual": 2,
+        "expected": 2,
+        "status": "PASSED"
+      },
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "14",
+      "iter": 2,
+      "ms": 3.3,
+      "request_count": 1,
+      "result_bytes": 9,
+      "row_count_validation": {
+        "actual": 1,
+        "expected": 1,
+        "status": "PASSED"
+      },
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "2",
+      "iter": 2,
+      "ms": 5.4,
+      "request_count": 1,
+      "result_bytes": 765,
+      "row_count_validation": {
+        "actual": 4,
+        "expected": 4,
+        "status": "PASSED"
+      },
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "9",
+      "iter": 2,
+      "ms": 5.4,
+      "request_count": 1,
+      "result_bytes": 6137,
+      "row_count_validation": {
+        "actual": 173,
+        "expected": 173,
+        "status": "PASSED"
+      },
+      "rows": 173,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "20",
+      "iter": 2,
+      "ms": 4.7,
+      "request_count": 1,
+      "result_bytes": 58,
+      "row_count_validation": {
+        "actual": 1,
+        "expected": 1,
+        "status": "PASSED"
+      },
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "6",
+      "iter": 2,
+      "ms": 1.7,
+      "request_count": 1,
+      "result_bytes": 17,
+      "row_count_validation": {
+        "actual": 1,
+        "expected": 1,
+        "status": "PASSED"
+      },
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "17",
+      "iter": 2,
+      "ms": 2.7,
+      "request_count": 1,
+      "result_bytes": 9,
+      "row_count_validation": {
+        "actual": 1,
+        "expected": 1,
+        "status": "PASSED"
+      },
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "18",
+      "iter": 2,
+      "ms": 4.1,
+      "request_count": 1,
+      "result_bytes": 138,
+      "row_count_validation": {
+        "actual": 2,
+        "expected": 2,
+        "status": "PASSED"
+      },
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "8",
+      "iter": 2,
+      "ms": 5.5,
+      "request_count": 1,
+      "result_bytes": 34,
+      "row_count_validation": {
+        "actual": 2,
+        "expected": 2,
+        "status": "PASSED"
+      },
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "21",
+      "iter": 2,
+      "ms": 5.7,
+      "request_count": 1,
+      "result_bytes": 32,
+      "row_count_validation": {
+        "actual": 1,
+        "expected": 1,
+        "status": "PASSED"
+      },
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "13",
+      "iter": 2,
+      "ms": 3.1,
+      "request_count": 1,
+      "result_bytes": 538,
+      "row_count_validation": {
+        "actual": 33,
+        "expected": 33,
+        "status": "PASSED"
+      },
+      "rows": 33,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "3",
+      "iter": 2,
+      "ms": 3.3,
+      "request_count": 1,
+      "result_bytes": 288,
+      "row_count_validation": {
+        "actual": 10,
+        "expected": 10,
+        "status": "PASSED"
+      },
+      "rows": 10,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "22",
+      "iter": 2,
+      "ms": 4.6,
+      "request_count": 1,
+      "result_bytes": 213,
+      "row_count_validation": {
+        "actual": 7,
+        "expected": 7,
+        "status": "PASSED"
+      },
+      "rows": 7,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "16",
+      "iter": 2,
+      "ms": 3.8,
+      "request_count": 1,
+      "result_bytes": 14491,
+      "row_count_validation": {
+        "actual": 296,
+        "expected": 296,
+        "status": "PASSED"
+      },
+      "rows": 296,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "4",
+      "iter": 2,
+      "ms": 3.0,
+      "request_count": 1,
+      "result_bytes": 104,
+      "row_count_validation": {
+        "actual": 5,
+        "expected": 5,
+        "status": "PASSED"
+      },
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "11",
+      "iter": 2,
+      "ms": 3.1,
+      "request_count": 1,
+      "result_bytes": 22,
+      "row_count_validation": {
+        "actual": 1,
+        "expected": 1,
+        "status": "PASSED"
+      },
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "15",
+      "iter": 2,
+      "ms": 3.0,
+      "request_count": 1,
+      "result_bytes": 106,
+      "row_count_validation": {
+        "actual": 1,
+        "expected": 1,
+        "status": "PASSED"
+      },
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "1",
+      "iter": 2,
+      "ms": 4.8,
+      "request_count": 1,
+      "result_bytes": 434,
+      "row_count_validation": {
+        "actual": 4,
+        "expected": 4,
+        "status": "PASSED"
+      },
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "10",
+      "iter": 2,
+      "ms": 5.4,
+      "request_count": 1,
+      "result_bytes": 3915,
+      "row_count_validation": {
+        "actual": 20,
+        "expected": 20,
+        "status": "PASSED"
+      },
+      "rows": 20,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "19",
+      "iter": 2,
+      "ms": 4.9,
+      "request_count": 1,
+      "result_bytes": 17,
+      "row_count_validation": {
+        "actual": 1,
+        "expected": 1,
+        "status": "PASSED"
+      },
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "5",
+      "iter": 2,
+      "ms": 4.7,
+      "request_count": 1,
+      "result_bytes": 133,
+      "row_count_validation": {
+        "actual": 5,
+        "expected": 5,
+        "status": "PASSED"
+      },
+      "rows": 5,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "7",
+      "iter": 2,
+      "ms": 4.7,
+      "request_count": 1,
+      "result_bytes": 184,
+      "row_count_validation": {
+        "actual": 4,
+        "expected": 4,
+        "status": "PASSED"
+      },
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "12",
+      "iter": 2,
+      "ms": 3.3,
+      "request_count": 1,
+      "result_bytes": 83,
+      "row_count_validation": {
+        "actual": 2,
+        "expected": 2,
+        "status": "PASSED"
+      },
+      "rows": 2,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "14",
+      "iter": 3,
+      "ms": 3.0,
+      "request_count": 1,
+      "result_bytes": 9,
+      "row_count_validation": {
+        "actual": 1,
+        "expected": 1,
+        "status": "PASSED"
+      },
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "2",
+      "iter": 3,
+      "ms": 5.5,
+      "request_count": 1,
+      "result_bytes": 765,
+      "row_count_validation": {
+        "actual": 4,
+        "expected": 4,
+        "status": "PASSED"
+      },
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "9",
+      "iter": 3,
+      "ms": 5.5,
+      "request_count": 1,
+      "result_bytes": 6137,
+      "row_count_validation": {
+        "actual": 173,
+        "expected": 173,
+        "status": "PASSED"
+      },
+      "rows": 173,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "20",
+      "iter": 3,
+      "ms": 4.7,
+      "request_count": 1,
+      "result_bytes": 58,
+      "row_count_validation": {
+        "actual": 1,
+        "expected": 1,
+        "status": "PASSED"
+      },
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "6",
+      "iter": 3,
+      "ms": 1.7,
+      "request_count": 1,
+      "result_bytes": 17,
+      "row_count_validation": {
+        "actual": 1,
+        "expected": 1,
+        "status": "PASSED"
+      },
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
+      "id": "17",
+      "iter": 3,
+      "ms": 2.7,
+      "request_count": 1,
+      "result_bytes": 9,
+      "row_count_validation": {
+        "actual": 1,
+        "expected": 1,
+        "status": "PASSED"
+      },
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 0,
+      "test_type": "power"
+    },
+    {
       "id": "18",
       "iter": 3,
-      "ms": 6.5,
+      "ms": 4.4,
       "request_count": 1,
       "result_bytes": 138,
       "row_count_validation": {
@@ -1687,7 +1687,7 @@
     {
       "id": "8",
       "iter": 3,
-      "ms": 5.8,
+      "ms": 5.2,
       "request_count": 1,
       "result_bytes": 34,
       "row_count_validation": {
@@ -1704,7 +1704,7 @@
     {
       "id": "21",
       "iter": 3,
-      "ms": 6.8,
+      "ms": 5.2,
       "request_count": 1,
       "result_bytes": 32,
       "row_count_validation": {
@@ -1721,7 +1721,7 @@
     {
       "id": "13",
       "iter": 3,
-      "ms": 3.6,
+      "ms": 2.9,
       "request_count": 1,
       "result_bytes": 538,
       "row_count_validation": {
@@ -1738,7 +1738,7 @@
     {
       "id": "3",
       "iter": 3,
-      "ms": 3.6,
+      "ms": 3.3,
       "request_count": 1,
       "result_bytes": 288,
       "row_count_validation": {
@@ -1755,7 +1755,7 @@
     {
       "id": "22",
       "iter": 3,
-      "ms": 5.0,
+      "ms": 4.6,
       "request_count": 1,
       "result_bytes": 213,
       "row_count_validation": {
@@ -1772,7 +1772,7 @@
     {
       "id": "16",
       "iter": 3,
-      "ms": 4.0,
+      "ms": 3.6,
       "request_count": 1,
       "result_bytes": 14491,
       "row_count_validation": {
@@ -1789,7 +1789,7 @@
     {
       "id": "4",
       "iter": 3,
-      "ms": 3.4,
+      "ms": 3.1,
       "request_count": 1,
       "result_bytes": 104,
       "row_count_validation": {
@@ -1806,7 +1806,7 @@
     {
       "id": "11",
       "iter": 3,
-      "ms": 3.4,
+      "ms": 3.2,
       "request_count": 1,
       "result_bytes": 22,
       "row_count_validation": {
@@ -1823,7 +1823,7 @@
     {
       "id": "15",
       "iter": 3,
-      "ms": 3.4,
+      "ms": 3.3,
       "request_count": 1,
       "result_bytes": 106,
       "row_count_validation": {
@@ -1840,7 +1840,7 @@
     {
       "id": "1",
       "iter": 3,
-      "ms": 5.2,
+      "ms": 4.9,
       "request_count": 1,
       "result_bytes": 434,
       "row_count_validation": {
@@ -1857,7 +1857,7 @@
     {
       "id": "10",
       "iter": 3,
-      "ms": 6.1,
+      "ms": 5.3,
       "request_count": 1,
       "result_bytes": 3915,
       "row_count_validation": {
@@ -1874,7 +1874,7 @@
     {
       "id": "19",
       "iter": 3,
-      "ms": 6.1,
+      "ms": 5.5,
       "request_count": 1,
       "result_bytes": 17,
       "row_count_validation": {
@@ -1891,7 +1891,7 @@
     {
       "id": "5",
       "iter": 3,
-      "ms": 4.8,
+      "ms": 4.7,
       "request_count": 1,
       "result_bytes": 133,
       "row_count_validation": {
@@ -1908,7 +1908,7 @@
     {
       "id": "7",
       "iter": 3,
-      "ms": 6.5,
+      "ms": 4.8,
       "request_count": 1,
       "result_bytes": 184,
       "row_count_validation": {
@@ -1925,7 +1925,7 @@
     {
       "id": "12",
       "iter": 3,
-      "ms": 3.8,
+      "ms": 3.4,
       "request_count": 1,
       "result_bytes": 83,
       "row_count_validation": {
@@ -1945,7 +1945,7 @@
     "id": "9fa39bc2",
     "iterations": 3,
     "net_estimate_status": "embedded",
-    "query_time_ms": 309,
+    "query_time_ms": 270,
     "streams": 1,
     "timestamp": "2026-11-16T17:13:38.941543",
     "timing_method": 2,
@@ -1962,15 +1962,15 @@
       "total": 66
     },
     "timing": {
-      "avg_ms": 4.7,
-      "geometric_mean_ms": 4.5,
-      "max_ms": 7.2,
-      "min_ms": 1.8,
-      "p90_ms": 6.5,
-      "p95_ms": 6.7,
-      "p99_ms": 7.2,
-      "stdev_ms": 1.3,
-      "total_ms": 308.6
+      "avg_ms": 4.1,
+      "geometric_mean_ms": 3.9,
+      "max_ms": 5.7,
+      "min_ms": 1.7,
+      "p90_ms": 5.4,
+      "p95_ms": 5.5,
+      "p99_ms": 5.7,
+      "stdev_ms": 1.1,
+      "total_ms": 270.4
     },
     "tpc_metrics": {
       "power_at_size": 9194.394057846957,

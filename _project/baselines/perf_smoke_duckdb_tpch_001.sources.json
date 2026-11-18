@@ -1,6 +1,6 @@
 {
-  "method": "No CPU model has enough source results, so the baseline takes every source result of the same timing method regardless of CPU model. Each query entry (warmup and every measured iteration) is the maximum of the same entry across those results, so a faster night cannot fail the gate; summary timings are recomputed from the measured entries; all other fields come from the newest of them. The floor is derived from every source result.",
-  "selection_rule": "per_query_maximum_over_all_models",
+  "method": "No CPU model has enough source results, so the baseline takes every source result of the same timing method regardless of CPU model. Each query entry (warmup and every measured iteration) is the median of the same entry across those results; summary timings are recomputed from the measured entries; all other fields come from the newest of them. The floor is derived from every source result.",
+  "selection_rule": "pooled_median_over_all_models",
   "timing_method": 2,
   "baseline_cpu_model": null,
   "regression_floor": {

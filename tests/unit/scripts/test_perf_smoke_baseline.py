@@ -206,7 +206,7 @@ def test_an_explicit_cpu_model_overrides_the_choice_but_still_needs_enough_resul
         baseline_tool.select_runner_class(results, cpu_model="other")
 
 
-def test_without_a_cpu_model_of_five_results_the_per_query_maximum_is_used() -> None:
+def test_without_a_cpu_model_of_five_results_the_pooled_median_is_used() -> None:
     results = [
         _result(
             f"2026-10-0{index + 1}T00:00:00",
@@ -218,15 +218,15 @@ def test_without_a_cpu_model_of_five_results_the_per_query_maximum_is_used() -> 
     ]
 
     chosen, rule, selected_class = baseline_tool.select_sources(results)
-    merged = baseline_tool.median_result(chosen, reducer=max)
+    merged = baseline_tool.median_result(chosen)
 
-    assert (len(chosen), rule, selected_class) == (5, baseline_tool.RULE_PER_QUERY_MAXIMUM, None)
+    assert (len(chosen), rule, selected_class) == (5, baseline_tool.RULE_POOLED_MEDIAN, None)
     by_key = {(entry["id"], entry["run_type"], entry["iter"]): entry["ms"] for entry in merged["queries"]}
-    assert by_key[("1", "measurement", 1)] == 14.0
-    assert by_key[("2", "measurement", 2)] == 20.0
+    assert by_key[("1", "measurement", 1)] == 12.0
+    assert by_key[("2", "measurement", 2)] == 18.0
 
 
-def test_the_per_query_maximum_still_needs_five_results() -> None:
+def test_the_pooled_median_still_needs_five_results() -> None:
     results = _results(count=2, cpu="A") + _results(count=2, cpu="B")
 
     with pytest.raises(baseline_tool.BaselineError, match="no CPU model has 5"):
@@ -250,7 +250,7 @@ def test_main_records_the_fallback_rule_when_no_cpu_model_has_five(tmp_path: Pat
 
     assert code == 0
     record = json.loads(sources_output.read_text(encoding="utf-8"))
-    assert record["selection_rule"] == baseline_tool.RULE_PER_QUERY_MAXIMUM
+    assert record["selection_rule"] == baseline_tool.RULE_POOLED_MEDIAN
     assert record["baseline_cpu_model"] is None
     assert record["timing_method"] == 2
     assert all(run["in_baseline"] for run in record["source_runs"])
