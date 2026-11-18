@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "The last ledger advance and the list of missed merges are recorded in context",
+    "Owner choice recorded with date",
+    "After the change, a mirror merge produces a successful reconciler run that advances ledger_head_sha (run id recorded)",
+    "Missed merges are replayed and a second replay leaves the ledger unchanged (test or recorded run)",
+    "A unit test covers the accepted commit shape and the refusal of a non-ancestor base"
+  ],
+  "description": "## Problem\nscripts/publication/reconciler.py verify_merge_commit rejects any commit with fewer than two parents (\"expected 2+\"), and corpus-event-bridge.yml refuses the same. The repository disallows merge commits (allow_merge_commit=false), so every published-results merge is a single-parent squash (mirror #4114 landed as 4331a43a54 with one parent). corpus-event-bridge.yml has zero runs in its history, and the hourly corpus-reconciler schedule runs with no events file and exits \"no events\" (last 30 runs 'success', none processed anything). The ledger (publication/ledger.json, ledger_head_sha) and publication generation have therefore not advanced for any recent merge, manual or automated. The results mirror workflow now merges validated mirrors automatically, which makes this gap matter more.\n\n## Decision gate\n- Agent: confirm from published-results history when the ledger last advanced and which merges it missed.\n- Then choose one (owner confirms, because it changes the publication ledger contract):\n  1. Teach the reconciler and bridge to accept a squash commit, taking the first parent as the base, and have the mirror workflow dispatch the reconciler after its merge (GITHUB_TOKEN pushes do not trigger the bridge).\n  2. Allow merge commits for published-results only (ruleset or merge-method restriction), keeping develop squash-only.\n- Replay the missed merges into the ledger in order.\n\n## Guardrails\n- The reconciler must still refuse a commit whose base is not an ancestor, and must not accept a commit that is not on published-results.\n- No rewrite of published-results history.\n- Ledger replay is idempotent: running it twice produces the same ledger.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/4114"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bfa5e7eb7cd30f69e1fe2571",
+      "at": "2026-11-18T02:46:21Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "56afb615bf21471889be6e67a0d20af6",
+      "session_id": "0362803867fb4929927e576283fffc32"
+    }
+  ]
+}

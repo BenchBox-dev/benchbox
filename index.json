@@ -18538,6 +18538,13 @@
       "status": "open",
       "title": "Make test_unknown_phase_merges_with_power_cohort exercise an unknown phase"
     },
+    "corpus-ledger-event-path-dormant-squash-merges-20261117": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "The corpus publication ledger never advances: the reconciler accepts only merge commits, and published-results only receives squash merges"
+    },
     "corpus-migrate-232-pending-manifest-writes": {
       "claim": null,
       "needs": [],
