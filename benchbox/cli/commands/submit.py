@@ -230,7 +230,6 @@ def _enforce_vendor_conditions(ctx: click.Context, result, vendor_conditions: di
         "platform": result.platform,
         "funding": resolved_funding,
         "result_source": "community",
-        "submitted_at": _submission_timestamp(),
         **vendor_conditions,
     }
     recorded = {
@@ -901,14 +900,17 @@ def submit(
         _refuse_non_submittable_result(ctx, result, submit_state)
         return
 
-    vendor_conditions = _vendor_condition_fields(
-        plan_tier=plan_tier,
-        preview_features=preview_features,
-        vendor_permission=vendor_permission,
-        vendor_notice_date=vendor_notice_date,
-        vendor_notice_ref=vendor_notice_ref,
-        self_run=self_run,
-    )
+    vendor_conditions = {
+        **_vendor_condition_fields(
+            plan_tier=plan_tier,
+            preview_features=preview_features,
+            vendor_permission=vendor_permission,
+            vendor_notice_date=vendor_notice_date,
+            vendor_notice_ref=vendor_notice_ref,
+            self_run=self_run,
+        ),
+        "submitted_at": _submission_timestamp(),
+    }
     _enforce_vendor_conditions(ctx, result, vendor_conditions, funding)
 
     companions = [

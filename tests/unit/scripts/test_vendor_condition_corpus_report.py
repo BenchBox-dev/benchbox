@@ -65,6 +65,17 @@ def test_manifest_without_bundle_is_none(tmp_path):
     assert statuses == {"orphan.json": "none"}
 
 
+def test_unreadable_or_platformless_bundle_is_none(tmp_path):
+    (tmp_path / "broken.json").write_text("{not json", encoding="utf-8")
+    (tmp_path / "broken.manifest.json").write_text(json.dumps({"bundle_file": "broken.json"}), encoding="utf-8")
+    (tmp_path / "nameless.json").write_text(json.dumps({"run": {"timestamp": "2026-09-19T00:00:00"}}), encoding="utf-8")
+    (tmp_path / "nameless.manifest.json").write_text(json.dumps({"bundle_file": "nameless.json"}), encoding="utf-8")
+
+    statuses = _statuses(classify_corpus(tmp_path, frozenset()))
+
+    assert statuses == {"broken.json": "none", "nameless.json": "none"}
+
+
 def test_fields_present_but_failing_validation_is_none(tmp_path):
     _write(
         tmp_path,

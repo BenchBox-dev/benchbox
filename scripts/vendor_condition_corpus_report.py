@@ -51,20 +51,31 @@ def _load_withdrawn(path: Path | None) -> frozenset[str]:
     return frozenset(line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip())
 
 
+def _load_bundle(bundle_path: Path) -> dict | None:
+    try:
+        bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return bundle if isinstance(bundle, dict) else None
+
+
 def classify_corpus(bundles_dir: Path, withdrawn: frozenset[str]) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
     for manifest_path in sorted(bundles_dir.glob("*.manifest.json")):
         bundle_path = manifest_path.with_name(manifest_path.name.removesuffix(".manifest.json") + ".json")
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        if not bundle_path.is_file():
+        bundle = _load_bundle(bundle_path)
+        if bundle is None:
             if "bundle_file" in manifest:
                 rows.append(_row(bundle_path.name, "unknown", "", [], [], STATUS_NONE))
             continue
         merged = _manifest_with_bundle_identity(manifest, bundle_path)
         platform_name = str(merged.get("platform") or "")
+        if not platform_name:
+            rows.append(_row(bundle_path.name, "unknown", "", [], [], STATUS_NONE))
+            continue
         if vendor_platform_key(platform_name) not in MANDATORY_VENDOR_PLATFORMS:
             continue
-        bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
         present = [field for field in MANDATORY_VENDOR_FIELDS if manifest.get(field) is not None]
         evidence = sorted(_bundle_evidence_keys(bundle))
         status = bundle_vendor_publication_status(manifest, bundle_path)
