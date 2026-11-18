@@ -2952,6 +2952,56 @@ def manifest_known_defect_reason(bundle_path: str | Path) -> str | None:
     return known_defect_reason(_manifest_sidecar_payload(bundle_path))
 
 
+CPU_ATTESTATION_KEYS = frozenset({"cpu_model", "cpu_vendor", "cpu_identity_provenance", "attested_by", "note"})
+CPU_ATTESTATION_NOTE_MAX_LEN = 500
+
+
+def cpu_attestation(payload: dict[str, Any]) -> dict[str, str] | None:
+    recorded = payload.get("cpu_attestation")
+    if not isinstance(recorded, dict):
+        return None
+    model = recorded.get("cpu_model")
+    if not isinstance(model, str) or not model.strip() or recorded.get("cpu_identity_provenance") != "user_attested":
+        return None
+    if recorded.get("attested_by") != "maintainer" or payload.get("result_source") != "internal":
+        return None
+    return {key: value.strip() for key, value in recorded.items() if isinstance(value, str) and value.strip()}
+
+
+def manifest_cpu_attestation(bundle_path: str | Path) -> dict[str, str] | None:
+    return cpu_attestation(_manifest_sidecar_payload(bundle_path))
+
+
+def _validate_manifest_cpu_attestation(manifest: dict[str, Any], primary_path: Path, vr: ValidationResult) -> None:
+    recorded = manifest.get("cpu_attestation")
+    if recorded is None:
+        return
+    if not isinstance(recorded, dict) or set(recorded) - CPU_ATTESTATION_KEYS:
+        vr.error(f"Manifest cpu_attestation must be an object with keys from {sorted(CPU_ATTESTATION_KEYS)}")
+        return
+    if recorded.get("attested_by") != "maintainer" or manifest.get("result_source") != "internal":
+        vr.error("Manifest cpu_attestation is accepted only from the maintainer on an internal result_source")
+        return
+    if cpu_attestation(manifest) is None:
+        vr.error("Manifest cpu_attestation needs a non-empty cpu_model and cpu_identity_provenance 'user_attested'")
+        return
+    note = recorded.get("note")
+    if note is not None and (not isinstance(note, str) or len(note) > CPU_ATTESTATION_NOTE_MAX_LEN):
+        vr.error(f"Manifest cpu_attestation note must be a string of at most {CPU_ATTESTATION_NOTE_MAX_LEN} characters")
+    try:
+        bundle = json.loads(primary_path.read_text(encoding="utf-8")) if primary_path.is_file() else {}
+    except (OSError, ValueError):
+        return
+    environment = bundle.get("environment") if isinstance(bundle, dict) else None
+    environment = environment if isinstance(environment, dict) else {}
+    client_host = environment.get("client_host") if isinstance(environment.get("client_host"), dict) else {}
+    for block in (environment, client_host):
+        bundle_model = block.get("cpu_model")
+        if isinstance(bundle_model, str) and bundle_model.strip():
+            vr.error("Manifest cpu_attestation is only valid for a bundle that records no cpu_model")
+            break
+
+
 def _validate_tpchavoc_variant_row_counts(
     data: dict[str, Any],
     vr: ValidationResult,
@@ -3607,6 +3657,7 @@ def _validate_manifest_provenance(manifest: dict[str, Any], primary_path: Path, 
     _validate_manifest_translator_version(manifest, primary_path, vr)
 
     _validate_manifest_known_defects(manifest, vr)
+    _validate_manifest_cpu_attestation(manifest, primary_path, vr)
 
 
 def discover_bundles(path: Path) -> list[Path]:
