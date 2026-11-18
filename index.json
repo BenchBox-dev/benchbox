@@ -20534,6 +20534,13 @@
       "status": "done",
       "title": "Time the DataFrame distinct-count remediation on an idle machine and change or revert any pattern that is slower"
     },
+    "df-large-host-sf10-validation-20261118": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Validate DataFrame SF10 memory estimates and distinct-count timing on a host with 32 GiB or more"
+    },
     "df-memory-guard-datagen-memory-20261117": {
       "claim": null,
       "needs": [],
