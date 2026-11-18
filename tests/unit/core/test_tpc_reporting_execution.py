@@ -603,6 +603,7 @@ class _FakeMaintenanceConn:
         self.rolled_back = False
         self.order_keys = [101, 102]
         self.fail_delete = False
+        self.platform_adapter = SimpleNamespace(record_refresh_applied=lambda _connection: None)
 
     def execute(self, sql: str, params=None):
         q = sql.upper()
