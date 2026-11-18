@@ -22,7 +22,7 @@ from benchbox.core.results.hardware_class import (
     tier_for_score,
 )
 
-pytestmark = pytest.mark.fast
+pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 
 @pytest.mark.parametrize(

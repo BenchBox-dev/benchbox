@@ -5,7 +5,7 @@ import pytest
 from benchbox.core.results.environment import build_environment_payload
 from benchbox.utils import environment as host_env, system_info
 
-pytestmark = pytest.mark.fast
+pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 PROFILE = {
     "os_type": "Darwin",

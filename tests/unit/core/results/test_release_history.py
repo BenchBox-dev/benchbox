@@ -4,7 +4,7 @@ import pytest
 
 from benchbox.core.results.release_history import resolve_benchbox_version
 
-pytestmark = pytest.mark.fast
+pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 
 def test_recorded_version_wins() -> None:
