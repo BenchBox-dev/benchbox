@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "A TPC-H database that a refresh run (RF1 or RF2) modified is no longer reused by a later run, whatever its row counts. The refresh functions now record that they ran against the database; the next run recreates it when it lives in the BenchBox output directory and refuses with the reason otherwise."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "compare no longer refuses a current MCP result that recorded neither a compression setting nor platform options. Results now record an execution.config_capture marker, so compare separates MCP results from before MCP and CLI runs shared defaults, which stay refused, from current ones without inferring it from the configuration."
+    },
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "Result bundles (schema 2.5) can record the vendor plan tier, preview features, vendor permission, vendor notice and self-run attestation in the provenance block. benchbox run takes --plan-tier and --preview-feature, and the bundle validator and benchbox submit refuse free-tier, trial and preview results without the vendor permission the vendor terms require. Schema 2.4 and older bundles still load."
+    }
+  ]
+}

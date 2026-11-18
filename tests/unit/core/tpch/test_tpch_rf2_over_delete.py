@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -21,6 +22,7 @@ class _Connection:
     def __init__(self, database, over_delete_table: str | None = None) -> None:
         self._database = database
         self._over_delete_table = over_delete_table
+        self.platform_adapter = SimpleNamespace(record_refresh_applied=lambda _connection: None)
 
     def execute(self, sql: str):
         if self._over_delete_table is not None and sql.startswith(f"DELETE FROM {self._over_delete_table} "):

@@ -678,7 +678,7 @@ def _keep_one_stream(payload: dict) -> None:
 
 
 def _make_one_query_untimed(payload: dict) -> None:
-    payload["queries"][0]["ms"] = 0.5
+    payload["queries"][0].pop("ms", None)
 
 
 INCOMPLETE_STREAM_MUTATIONS = {

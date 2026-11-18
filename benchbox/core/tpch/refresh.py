@@ -252,6 +252,16 @@ def read_rf1_source_keys(update_set: TPCHRefreshUpdateSet) -> tuple[list[int], i
     return order_keys, lineitem_rows
 
 
+def record_refresh_applied(connection: Any) -> None:
+    recorder = getattr(getattr(connection, "platform_adapter", None), "record_refresh_applied", None)
+    if not callable(recorder):
+        raise RuntimeError(
+            "TPC-H refresh functions need a connection that carries its platform adapter so the refresh marker can "
+            "be recorded; the database would otherwise be reused after it was changed"
+        )
+    recorder(getattr(connection, "connection", connection))
+
+
 def _reload_message(update_set: TPCHRefreshUpdateSet, function: str, detail: str) -> str:
     return (
         f"refresh set {update_set.set_id} {function} {detail}; "
