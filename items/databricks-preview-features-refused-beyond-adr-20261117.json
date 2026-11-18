@@ -4,6 +4,7 @@
     "If it covers Preview: the ADR and site checklist state that Preview counts as Beta on Databricks; no validator change",
     "Otherwise: owner decision recorded with date; option 1 updates the ADR and checklist to state Preview is also refused; option 2 refuses Beta with and without permission, refuses Preview without and accepts it with permission, leaves other vendors unchanged, each covered by a test in tests/unit/scripts/test_vendor_publication_conditions.py, with the checklist updated in the same release window"
   ],
+  "context": "Owner decision 2026-11-17: if the live Databricks terms no longer count Preview as Beta, keep refusing every declared preview feature on Databricks (option 1) and reword the ADR and checklist; no schema change.",
   "description": "## Problem\nPR #4189 made evaluate_vendor_conditions (benchbox/validation/bundle.py) refuse any Databricks result that declares a preview_features entry, even with vendor_permission recorded. The vendor-terms ADR (benchbox-site docs/development/adr/adr-client-link-locality-disclosure.md, Terms check) excludes Databricks Beta services with no override; it does not mention Preview. preview_features is one list for Beta, Preview and early-access, so the validator cannot tell them apart and now refuses Preview results that the ADR may allow with permission.\n\n## Decision gate (owner)\nStep 0 (agent): read the live Databricks MCSA/AUP definition of Beta Service and quote it with its date in context. The 2024 MCSA defines Beta Service as features designated 'beta', 'experimental', 'preview' or similar; if the live terms still include Preview, option 1 is required by the vendor terms: record that and update only the ADR wording, with no owner decision needed.\n\nOtherwise, the owner reads the Databricks terms row in the ADR and chooses:\n1. Keep: refuse every declared feature on Databricks (current behaviour); record that the owner accepts over-refusal of Preview.\n2. Split: add a field or a value convention that distinguishes Beta from Preview; refuse Beta unconditionally and let Preview pass with vendor_permission.\nThe decision is recorded in context and in the ADR before any code changes.\n\n## Guardrails\n- Beta stays refused under either option.\n- Other vendors' rules do not change.\n- A schema change to the manifest needs a versioned schema bump and a validator test for old manifests.\n- The site checklist (docs/vendor-publishing-checklist.md) must match the validator after the change.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/4189",
@@ -49,6 +50,14 @@
       "op": "update",
       "op_id": "7dc1225f9596494d92df6b2db03f7c2f",
       "session_id": "71cadb46eee448f8a6d2019016ddc6eb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bfa5e7eb7cd30f69e1fe2571",
+      "at": "2026-11-18T01:59:26Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "078eecb8b8a54a09a1b74a2a849a97b2",
+      "session_id": "0362803867fb4929927e576283fffc32"
     }
   ]
 }
