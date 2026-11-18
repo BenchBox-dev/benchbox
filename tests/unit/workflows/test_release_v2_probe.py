@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[3]
 WORKFLOWS = ROOT / ".github" / "workflows"
 RELEASE = WORKFLOWS / "release-v2.yml"
 PROBE_WORKFLOW = WORKFLOWS / "release-v2-probe.yml"
+VERDICT_WORKFLOW = WORKFLOWS / "release-v2-probe-verdict.yml"
 REAL_MODE = "${{ github.event_name == 'push' || inputs.probe == 'none' }}"
 PROBE_MODE = "${{ github.event_name == 'workflow_dispatch' && inputs.probe != 'none' }}"
 PUBLISH_ACTIONS = ("pypa/gh-action-pypi-publish", "actions/attest")
@@ -357,15 +358,20 @@ def test_the_probe_distributions_are_built_with_the_commands_the_trunk_producer_
     assert '"uv", "build"' in source
 
 
-def test_the_launcher_workflow_runs_on_pull_requests_with_actions_write_and_never_a_publishing_scope():
+def test_the_dispatch_workflow_runs_on_pull_requests_with_checks_write_and_never_a_publishing_scope():
     workflow = _workflow(PROBE_WORKFLOW)
     triggers = workflow["on" if "on" in workflow else True]
     assert set(triggers) == {"pull_request"}
     job = workflow["jobs"]["probe"]
-    assert job["name"] == "release-v2 probe"
-    assert job["permissions"] == {"contents": "read", "actions": "write", "pull-requests": "read"}
+    assert job["name"] == "release-v2 probe dispatch"
+    assert job["permissions"] == {
+        "contents": "read",
+        "actions": "write",
+        "checks": "write",
+        "pull-requests": "read",
+    }
     assert "environment" not in job
-    assert job["timeout-minutes"] <= 30
+    assert job["timeout-minutes"] <= 15
     text = PROBE_WORKFLOW.read_text(encoding="utf-8")
     assert "secrets." not in text
     assert "id-token" not in text
@@ -378,3 +384,43 @@ def test_the_launcher_workflow_runs_for_every_pull_request_so_a_required_check_a
     assert "paths" not in str(triggers["on" if "on" in triggers else True])
     assert "paths-ignore" not in PROBE_WORKFLOW.read_text(encoding="utf-8")
     assert "if" not in triggers["jobs"]["probe"]
+
+
+def test_the_dispatch_job_never_waits_for_the_probe_runs():
+    workflow = _workflow(PROBE_WORKFLOW)
+    assert set(workflow["jobs"]) == {"probe"}
+    text = PROBE_WORKFLOW.read_text(encoding="utf-8")
+    assert "--timeout-seconds" not in text
+    assert "wait_for" not in text
+    source = (ROOT / "scripts" / "release_probe_launch.py").read_text(encoding="utf-8")
+    assert "time.monotonic" not in source
+    assert "deadline" not in source
+
+
+def test_the_verdict_workflow_completes_the_probe_check_from_the_finished_release_runs():
+    workflow = _workflow(VERDICT_WORKFLOW)
+    triggers = workflow["on" if "on" in workflow else True]
+    assert triggers == {"workflow_run": {"workflows": ["Release v2"], "types": ["completed"]}}
+    assert _workflow(RELEASE)["name"] == "Release v2"
+    job = workflow["jobs"]["verdict"]
+    assert job["permissions"] == {"contents": "read", "actions": "read", "checks": "write"}
+    assert "environment" not in job
+    text = VERDICT_WORKFLOW.read_text(encoding="utf-8")
+    assert "secrets." not in text
+    assert "id-token" not in text
+    assert "release_probe_verdict" in text
+    assert "pull_request" not in text
+
+
+def test_the_verdict_workflow_checks_out_the_default_branch_never_the_probed_head():
+    steps = _workflow(VERDICT_WORKFLOW)["jobs"]["verdict"]["steps"]
+    checkout = next(step for step in steps if str(step.get("uses", "")).startswith("actions/checkout"))
+    assert checkout["with"]["ref"] == "${{ github.event.repository.default_branch }}"
+
+
+@pytest.mark.parametrize("workflow_name", ["release-v2.yml", "trunk-uat.yml"])
+@pytest.mark.parametrize(("stage", "cap"), [("uat-stage1", 4), ("uat-stage2", 2), ("uat-stage3", 3)])
+def test_every_uat_stage_matrix_caps_its_parallelism(workflow_name, stage, cap):
+    strategy = _workflow(WORKFLOWS / workflow_name)["jobs"][stage]["strategy"]
+    assert strategy["max-parallel"] == cap
+    assert strategy["fail-fast"] is False
