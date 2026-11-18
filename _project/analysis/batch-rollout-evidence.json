@@ -9,14 +9,14 @@
   "source": {
     "repository": "https://github.com/joeharris76/tractable",
     "canonical_branch": "main",
-    "merge_revision": "02d14769b2373175169dfbf554f267178f51f165",
-    "tree_revision": "0fd8016a5fb737d91cb2eb221f81636ed26a133a",
-    "release_tag": "v1.2.0",
+    "merge_revision": "92557b47a934d9c912ebe15ca3d187508dd03ee4",
+    "tree_revision": "527fa0185149c9a5f6783675b190f24fd0845889",
+    "release_tag": "v1.3.0",
     "merge_contains_source_pr_head": false,
     "pr": {
-      "number": 78,
-      "url": "https://github.com/joeharris76/tractable/pull/78",
-      "merge_revision": "02d14769b2373175169dfbf554f267178f51f165"
+      "number": 80,
+      "url": "https://github.com/joeharris76/tractable/pull/80",
+      "merge_revision": "92557b47a934d9c912ebe15ca3d187508dd03ee4"
     },
     "rename_adr": "https://github.com/joeharris76/tractable/blob/main/docs/adr/0013-rename-to-tractable.md"
   },
@@ -33,26 +33,26 @@
     }
   },
   "artifact": {
-    "filename": "tractable-1.2.0-py3-none-any.whl",
-    "project_path": "_project/scripts/vendor/tractable-1.2.0-py3-none-any.whl",
-    "sha256": "6d1556359a8db9643c9fa8d8fb0eee99bf37e4038b4687c914aa7f4dc21a0f31",
-    "origin": "GitHub release v1.2.0 asset, checked against the release SHA256SUMS",
+    "filename": "tractable-1.3.0-py3-none-any.whl",
+    "project_path": "_project/scripts/vendor/tractable-1.3.0-py3-none-any.whl",
+    "sha256": "8d7f6353e308b3a433074cdeacf0ecad362d17ef41450938238324fe43fdc0c6",
+    "origin": "GitHub release v1.3.0 asset, checked against the release SHA256SUMS",
     "build": {
-      "source_input": "git archive --format=tar v1.2.0 (02d14769b2373175169dfbf554f267178f51f165)",
+      "source_input": "git archive --format=tar v1.3.0 (92557b47a934d9c912ebe15ca3d187508dd03ee4)",
       "source_date_epoch": null,
       "command": "uv build --wheel --out-dir <dist> <git-archive-directory>",
       "reproducibility": {
         "independent_builds": 2,
-        "matching_sha256": "6d1556359a8db9643c9fa8d8fb0eee99bf37e4038b4687c914aa7f4dc21a0f31",
-        "note": "rebuilt twice from v1.2.0 with identical sha256"
+        "matching_sha256": "8d7f6353e308b3a433074cdeacf0ecad362d17ef41450938238324fe43fdc0c6",
+        "note": "rebuilt twice from v1.3.0 with identical sha256"
       },
       "sibling_checkout_used_for_install": false
     }
   },
   "runtime": {
     "project_command": "uv run --project _project/scripts --locked -- tractable-mcp",
-    "dependency_metadata_version": "1.2.0",
-    "reported_tool_version": "1.2.0",
+    "dependency_metadata_version": "1.3.0",
+    "reported_tool_version": "1.3.0",
     "schema_version": 4,
     "supported_schema_versions": [
       1,
@@ -102,7 +102,7 @@
         3,
         4
       ],
-      "tool_version": "1.2.0",
+      "tool_version": "1.3.0",
       "tools": [
         "advance_batch_head",
         "recover_batch_owner",
@@ -121,7 +121,7 @@
       "protocol_version": "2024-11-05",
       "server_info": {
         "name": "tractable",
-        "version": "1.2.0"
+        "version": "1.3.0"
       },
       "result": "pass",
       "state_remote": "local throwaway bare Git remote; no hosted state touched"
@@ -176,7 +176,7 @@
   },
   "verification": {
     "clean_install": "uv sync --project _project/scripts --locked passed",
-    "standalone_metadata": "wheel metadata and entry points identify tractable 1.2.0",
+    "standalone_metadata": "wheel metadata and entry points identify tractable 1.3.0",
     "no_sibling_path": "project source and lock paths resolve only under _project/scripts/vendor",
     "batch_delivery_integration": "full JSON-RPC handshake passed with schema 4, 22 tools and the tractable_batch capability",
     "skill_integrity": "make skill-integrity-check passed against the pinned catalog and tracked mirror",
