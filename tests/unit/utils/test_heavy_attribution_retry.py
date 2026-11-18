@@ -159,10 +159,11 @@ def test_attribution_excludes_the_holder_tree_and_ranks_by_footprint(monkeypatch
             return [self.info["name"], "--flag"]
 
     sizes = {100: 1 * GIB, 200: 5 * GIB, 300: 3 * GIB, 400: 0}
-    monkeypatch.setattr(hw.psutil, "process_iter", lambda attrs=None: [Proc(p, f"p{p}") for p in sizes])
     monkeypatch.setattr(hw.process_tree.footprint, "pid_footprint_bytes", lambda pid: sizes[pid])
     inside = pt.TreeSample(1, (pt.TreeMember(100, 1, "p100", 0.0, 1, GIB),), GIB)
-    found = hw.read_outside_processes(inside, limit=2)
+    found = hw.read_outside_processes(
+        inside, limit=2, process_iter=lambda attrs: [Proc(pid, f"p{pid}") for pid in sizes]
+    )
     assert [(item.pid, item.footprint_bytes) for item in found] == [(200, 5 * GIB), (300, 3 * GIB)]
     assert found[0].command == "p200 --flag"
 

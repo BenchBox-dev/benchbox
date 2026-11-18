@@ -9,7 +9,7 @@ import shutil
 import signal
 import sys
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
@@ -210,10 +210,15 @@ def read_swap_used_percent() -> float | None:
         return None
 
 
-def read_outside_processes(sample: TreeSample, limit: int = TOP_PROCESS_COUNT) -> list[OutsideProcess]:
+def read_outside_processes(
+    sample: TreeSample,
+    limit: int = TOP_PROCESS_COUNT,
+    *,
+    process_iter: Callable[[list[str]], Iterable[psutil.Process]] = psutil.process_iter,
+) -> list[OutsideProcess]:
     inside = {member.pid for member in sample.members}
     found: list[OutsideProcess] = []
-    for proc in psutil.process_iter(["pid", "name"]):
+    for proc in process_iter(["pid", "name"]):
         pid = proc.info.get("pid")
         if pid is None or pid in inside or pid == os.getpid():
             continue

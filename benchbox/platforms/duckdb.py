@@ -65,14 +65,29 @@ def _as_bool(value: Any) -> bool:
 DEFAULT_MEMORY_LIMIT = "4GB"
 
 
-def memory_limit_is_explicit(config: Mapping[str, Any]) -> bool:
-    nested = config.get("options")
+def explicit_options_marker(config: Mapping[str, Any]) -> Any:
     marker = config.get("_explicit_platform_options")
+    nested = config.get("options")
     if marker is None and isinstance(nested, Mapping):
         marker = nested.get("_explicit_platform_options")
+    return marker
+
+
+def memory_limit_is_explicit(config: Mapping[str, Any]) -> bool:
+    marker = explicit_options_marker(config)
     if isinstance(marker, Mapping):
         return "memory_limit" in marker
     return "memory_limit" in config
+
+
+def memory_limit_config(config: Mapping[str, Any]) -> dict[str, Any]:
+    forwarded: dict[str, Any] = {}
+    if "memory_limit" in config:
+        forwarded["memory_limit"] = config["memory_limit"]
+    marker = explicit_options_marker(config)
+    if marker is not None:
+        forwarded["_explicit_platform_options"] = marker
+    return forwarded
 
 
 def budgeted_memory_limit(requested: str, *, explicit: bool) -> str:
@@ -700,7 +715,7 @@ class DuckDBAdapter(PlatformAdapter):
             adapter_config["database_path"] = str(data_dir / db_filename)
             data_dir.mkdir(parents=True, exist_ok=True)
 
-        adapter_config["memory_limit"] = config.get("memory_limit", DEFAULT_MEMORY_LIMIT)
+        adapter_config.update(memory_limit_config(config))
 
         adapter_config["force_recreate"] = config.get("force", False)
 

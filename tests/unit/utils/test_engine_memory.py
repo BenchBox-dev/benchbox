@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
 
+from benchbox.core.platform_config import get_platform_config
+from benchbox.core.schemas import DatabaseConfig
 from benchbox.platforms.duckdb import DuckDBAdapter
+from benchbox.platforms.ducklake import DuckLakeAdapter
 from benchbox.utils import engine_memory as em
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -128,3 +132,17 @@ def test_duckdb_limit_the_user_did_not_set_is_derived_from_the_budget(heavy) -> 
 def test_duckdb_explicit_unbounded_limit_stays_unbounded(heavy) -> None:
     heavy(8)
     assert duckdb_limit(memory_limit=None) is None
+
+
+@pytest.mark.parametrize(("platform", "adapter_class"), [("duckdb", DuckDBAdapter), ("ducklake", DuckLakeAdapter)])
+@pytest.mark.parametrize(("options", "expected"), [({}, "3GB"), ({"memory_limit": "2GB"}, "2GB")])
+def test_a_registry_built_duckdb_adapter_keeps_where_its_memory_limit_came_from(
+    heavy, tmp_path, platform: str, adapter_class: type[DuckDBAdapter], options: dict[str, str], expected: str
+) -> None:
+    heavy(7)
+    database = DatabaseConfig(type=platform, name="t", options={**options, "_explicit_platform_options": dict(options)})
+    config = get_platform_config(database, SimpleNamespace(memory_total_gb=16.0, cpu_cores_logical=10), "tpch", 0.01)
+    config["database_path"] = str(tmp_path / "t.duckdb")
+    config["output_dir"] = str(tmp_path)
+    with patch("benchbox.platforms.duckdb.duckdb"):
+        assert adapter_class.from_config(config).memory_limit == expected
