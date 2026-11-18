@@ -226,7 +226,7 @@ class DataFrameTransactionOperationsManager:
             f"Alternatives:\n"
             f"  - Use pyspark-df with Delta Lake table format:\n"
             f"    benchbox run --platform pyspark-df --benchmark transaction_primitives\n"
-            f"    (Requires: pip install pyspark delta-spark)\n"
+            f'    (Requires: pip install "benchbox[pyspark]" delta-spark)\n'
             f"\n"
             f"  - Use delta-lake platform directly:\n"
             f"    benchbox run --platform delta-lake --benchmark transaction_primitives\n"

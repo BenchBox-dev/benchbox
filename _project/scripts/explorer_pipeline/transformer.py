@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from _project.scripts.explorer_pipeline.models import (
+    COMBINED_PHASE,
     KNOWN_DEFECT_RANKING_EXCLUSION,
     THROUGHPUT_PHASE,
     BasisAvailability,
@@ -70,6 +71,7 @@ from benchbox.validation.bundle import (
     OVERRIDE_SUFFIX,
     TRANSLATOR_VERSION_NOT_APPLICABLE,
     accepted_override_rules,
+    combined_evidence_defects,
     manifest_cpu_attestation,
     manifest_known_defect_reason,
     resolve_translator_version,
@@ -518,6 +520,80 @@ def _throughput_at_size(bundle: BundleDocument, bundle_data: Mapping[str, Any]) 
     if not _throughput_phase_clean(bundle, bundle_data):
         return None
     return _tpc_metric(bundle.summary.tpc_metrics.throughput_at_size)
+
+
+_COMBINED_QPH_BY_BENCHMARK = {"tpch": "qphh_at_size", "tpcds": "qphds_at_size"}
+
+
+def _raw_tpc_metrics(bundle_data: Mapping[str, Any]) -> Mapping[str, Any]:
+    summary = bundle_data.get("summary")
+    metrics = summary.get("tpc_metrics") if isinstance(summary, Mapping) else None
+    return metrics if isinstance(metrics, Mapping) else {}
+
+
+def _combined_defects(bundle_data: Mapping[str, Any], test_type: str | None) -> list[str]:
+    if canonical_phase(test_type) != COMBINED_PHASE:
+        return []
+    return combined_evidence_defects(cast(dict[str, Any], bundle_data))
+
+
+def _qph_columns(bundle_data: Mapping[str, Any], test_type: str | None, benchmark: str) -> dict[str, float | None]:
+    columns: dict[str, float | None] = {"qphh_at_size": None, "qphds_at_size": None}
+    metric = _COMBINED_QPH_BY_BENCHMARK.get(canonical_benchmark_slug(benchmark))
+    if metric is None or canonical_phase(test_type) != COMBINED_PHASE or _combined_defects(bundle_data, test_type):
+        return columns
+    raw = _raw_tpc_metrics(bundle_data)
+    if metric == "qphh_at_size" and raw.get("refresh_included") is not True:
+        return columns
+    columns[metric] = _tpc_metric(raw.get(metric))
+    return columns
+
+
+def _combined_exclusion(bundle_data: Mapping[str, Any], test_type: str | None, reason: str | None) -> str | None:
+    if reason not in (None, "missing_primary_metric"):
+        return reason
+    defects = _combined_defects(bundle_data, test_type)
+    return defects[0] if defects else reason
+
+
+def _load_scope(bundle_data: Mapping[str, Any]) -> list[str] | None:
+    scope = _raw_tpc_metrics(bundle_data).get("load_scope")
+    components = scope.get("components") if isinstance(scope, Mapping) else None
+    if not isinstance(components, list):
+        return None
+    return [component for component in components if isinstance(component, str)]
+
+
+def _recorded_transactional_steps(bundle_data: Mapping[str, Any]) -> dict[str, bool]:
+    steps: dict[str, bool] = {}
+
+    def note(step: object, flag: object) -> None:
+        if isinstance(step, str) and step and isinstance(flag, bool):
+            steps[step] = steps.get(step, True) and flag
+
+    phases = bundle_data.get("phases")
+    if not isinstance(phases, Mapping):
+        return steps
+    power = phases.get("power_test")
+    for function in (power.get("refresh_functions") if isinstance(power, Mapping) else None) or []:
+        if isinstance(function, Mapping):
+            note(function.get("function"), function.get("transactional"))
+    throughput = phases.get("throughput_test")
+    refresh_stream = throughput.get("refresh_stream") if isinstance(throughput, Mapping) else None
+    for pair in (refresh_stream.get("pairs") if isinstance(refresh_stream, Mapping) else None) or []:
+        for function in (pair.get("functions") if isinstance(pair, Mapping) else None) or []:
+            if isinstance(function, Mapping):
+                note(function.get("function"), function.get("transactional"))
+    for name in ("maintenance_test", "maintenance_test_2"):
+        block = phases.get(name)
+        for operation in (block.get("operations") if isinstance(block, Mapping) else None) or []:
+            if isinstance(operation, Mapping):
+                note(operation.get("operation"), operation.get("transactional"))
+    return steps
+
+
+def _transactional_steps(bundle_data: Mapping[str, Any]) -> dict[str, bool] | None:
+    return _recorded_transactional_steps(bundle_data) or None
 
 
 def _stream_count(bundle: BundleDocument, test_type: str | None) -> int | None:
@@ -1809,6 +1885,9 @@ class BundleTransformer:
             run_date=run_date,
             power_score=power_score,
             throughput_at_size=_throughput_at_size(bundle, bundle_data),
+            **_qph_columns(bundle_data, test_type, str(benchmark)),
+            load_scope=_load_scope(bundle_data),
+            transactional_steps=_transactional_steps(bundle_data),
             stream_count=_stream_count(bundle, test_type),
             total_duration_s=total_duration_s,
             geomean_ms=_geomean_ms(bundle),
@@ -1858,6 +1937,7 @@ class BundleTransformer:
         )
         reason = ranking_exclusion_reason(entry)
         reason = _throughput_stream_exclusion(bundle, bundle_data, test_type, reason)
+        reason = _combined_exclusion(bundle_data, test_type, reason)
         defect_reason = None
         if _sidecar_known_defects(bundle_path):
             reason = KNOWN_DEFECT_RANKING_EXCLUSION
@@ -1919,6 +1999,9 @@ class BundleTransformer:
             display_geomean_ms=_display_geomean_ms(display_timings),
             power_score=power_score,
             throughput_at_size=_throughput_at_size(bundle, bundle_data),
+            **_qph_columns(bundle_data, test_type, str(benchmark)),
+            load_scope=_load_scope(bundle_data),
+            transactional_steps=_transactional_steps(bundle_data),
             stream_count=_stream_count(bundle, test_type),
             has_display_timing=timing_contract.has_display_timing,
             logical_query_count=logical_query_count,
@@ -1972,6 +2055,8 @@ class BundleTransformer:
             run_date=run_date,
             power_score=detail.power_score,
             throughput_at_size=detail.throughput_at_size,
+            qphh_at_size=detail.qphh_at_size,
+            qphds_at_size=detail.qphds_at_size,
             stream_count=detail.stream_count,
             test_type=detail.test_type,
             total_duration_s=total_duration_s,
@@ -1996,6 +2081,7 @@ class BundleTransformer:
         )
         reason = ranking_exclusion_reason(manifest_peer)
         reason = _throughput_stream_exclusion(bundle, bundle_data, test_type, reason)
+        reason = _combined_exclusion(bundle_data, test_type, reason)
         defect_reason = None
         if _sidecar_known_defects(bundle_path):
             reason = KNOWN_DEFECT_RANKING_EXCLUSION

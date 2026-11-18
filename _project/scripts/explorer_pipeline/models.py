@@ -143,6 +143,10 @@ class ManifestEntry(BaseModel):
     run_date: str
     power_score: float | None
     throughput_at_size: float | None = None
+    qphh_at_size: float | None = None
+    qphds_at_size: float | None = None
+    load_scope: list[str] | None = None
+    transactional_steps: dict[str, bool] | None = None
     stream_count: int | None = None
     total_duration_s: float
     geomean_ms: float | None = None
@@ -403,6 +407,10 @@ class DetailResult(BaseModel):
     display_geomean_ms: float | None = None
     power_score: float | None
     throughput_at_size: float | None = None
+    qphh_at_size: float | None = None
+    qphds_at_size: float | None = None
+    load_scope: list[str] | None = None
+    transactional_steps: dict[str, bool] | None = None
     stream_count: int | None = None
     has_display_timing: bool = False
     valid_query_count: int = 0
@@ -584,6 +592,7 @@ RANKING_METRIC_BY_FAMILY: dict[str, RankingConfig] = {
 }
 
 THROUGHPUT_PHASE = "throughput"
+COMBINED_PHASE = "combined"
 
 RANKING_METRIC_BY_FAMILY_PHASE: dict[tuple[str, str], RankingConfig] = {
     ("tpch", THROUGHPUT_PHASE): RankingConfig(
@@ -596,9 +605,21 @@ RANKING_METRIC_BY_FAMILY_PHASE: dict[tuple[str, str], RankingConfig] = {
         secondary_metric="display_geomean_ms",
         primary_order="desc",
     ),
+    ("tpch", COMBINED_PHASE): RankingConfig(
+        primary_metric="qphh_at_size",
+        secondary_metric="power_score",
+        primary_order="desc",
+    ),
+    ("tpcds", COMBINED_PHASE): RankingConfig(
+        primary_metric="qphds_at_size",
+        secondary_metric="power_score",
+        primary_order="desc",
+    ),
 }
 
-SCALAR_PRIMARY_METRICS: frozenset[str] = frozenset({"power_score", "throughput_at_size"})
+SCALAR_PRIMARY_METRICS: frozenset[str] = frozenset(
+    {"power_score", "throughput_at_size", "qphh_at_size", "qphds_at_size"}
+)
 
 _DEFAULT_RANKING = RankingConfig(
     primary_metric="display_geomean_ms",
@@ -651,6 +672,10 @@ class PlatformRow(BaseModel):
     ranking_exclusion_reason: str | None = None
     power_score: float | None
     throughput_at_size: float | None = None
+    qphh_at_size: float | None = None
+    qphds_at_size: float | None = None
+    load_scope: list[str] | None = None
+    transactional_steps: dict[str, bool] | None = None
     display_geomean_ms: float | None
     sample_geomean_ms: float | None
     cost_usd: float | None
@@ -985,6 +1010,7 @@ __all__ = [
     "BundleSummaryBlock",
     "BundleTuningBlock",
     "CANONICAL_BENCHMARK_ALIASES",
+    "COMBINED_PHASE",
     "DetailResult",
     "ExplorerEnvironment",
     "ManifestEntry",

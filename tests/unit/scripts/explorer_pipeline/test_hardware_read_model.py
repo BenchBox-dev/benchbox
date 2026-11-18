@@ -105,7 +105,7 @@ def test_results_carry_the_hardware_class_per_bundle(tmp_path: Path) -> None:
         version = con.execute("SELECT read_model_version FROM metadata").fetchone()
         versions = con.execute("SELECT benchbox_version, benchbox_version_basis FROM results").fetchall()
 
-    assert version == (19,)
+    assert version == (20,)
     assert sorted(versions) == [("0.1.5", "inferred_from_run_date")] * 5 + [("0.5.1", "recorded")]
     by_class: dict[str, list[tuple]] = {}
     for row in rows:

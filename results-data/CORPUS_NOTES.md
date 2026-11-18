@@ -24,6 +24,48 @@ DataFusion and ClickHouse Local at SF 0.01, 0.1 and 1 come from the monthly seed
 corpus workflow, which now includes TPC-DI. Until they are ingested, the TPC-DI
 cohorts publish no ranking.
 
+## Non-standard scale factors (2026-11-17)
+
+A result bundle at a scale factor that is not a standard scale for its benchmark is
+accepted and never ranked. This applies to every benchmark, not only TPC-H and
+TPC-DS, and replaces the previous behaviour, which ranked any bundle that carried no
+compliance class once three platforms shared its scale.
+
+- Standard scales come only from the benchmark registry:
+  `get_scale_factor_rule(benchmark_id).standard` in `benchbox/core/benchmark_registry.py`
+  (the exact set for fixed-scale benchmarks such as `joinorder` and
+  `metadata_primitives`). `is_standard_scale_factor` wraps it, and no other list of
+  standard scales exists.
+- `validate_submission`, `benchbox submit` and `benchbox publish` accept the bundle.
+  Submission prints a `nonstandard-scale` warning that names the scale and the
+  exclusion reason.
+- The recorded exclusion reason is `unofficial_compliance`, the reason the
+  Explorer already renders as "Non-standard runs are unofficial and are not ranked."
+  The effective compliance class is `unofficial_nonstandard`, whatever the bundle
+  recorded, so `validate_corpus.py`, the Explorer pipeline and `benchbox submit` agree.
+- New bundles also record `benchmark.compliance_class: unofficial_nonstandard`, so
+  a validator without the registry (the slim `published-results` mirror) still
+  excludes them. Without the registry that validator cannot test the scale: it
+  accepts a recorded `unofficial_nonstandard` bundle of any benchmark other than
+  TPC-H and TPC-DS, and still refuses one for those two, which cannot be told
+  apart from an unofficial run at a standard scale. TPC-H and TPC-DS bundles at an
+  off-list scale are therefore validated where the registry exists.
+- Off-list scales never rank, even below SF 1. Standard TPC-H and TPC-DS scales
+  below SF 1 keep the subscale policy.
+- Submission still refuses a TPC-H or TPC-DS run at a standard scale that is not
+  `official` (`unofficial_nonstandard` at SF 1 or above without `--official`, and
+  `unofficial_subscale` below SF 1), and every gateway-routed bundle. Only the
+  scale decides whether the unranked acceptance applies.
+- A non-standard cohort has no rankable identity, so `validate_corpus.py` lists
+  it as `UNRANKED` and the depth gate does not apply, however many platforms
+  contributed.
+
+Effect on the published corpus: the registry lists only SF 1 as a standard
+ClickBench scale. The 13 ClickBench bundles at SF 0.1 and SF 10 (see "Cloud
+ClickBench") are therefore no longer ranked, and those two cohorts are listed as
+`UNRANKED`. No bundle file changed. Every other published cohort is unchanged.
+
+
 ## TPC-DI SF1 bundles built before the scale correction (2026-11-14)
 
 Six TPC-DI SF1 bundles were generated before #4149 and #4171 corrected the
