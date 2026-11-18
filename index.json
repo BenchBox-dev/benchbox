@@ -21891,6 +21891,13 @@
       "status": "done",
       "title": "Fix wrong install extras, options and stale claims in platform guides"
     },
+    "docs-agent-edit-without-reader-escalates-full-heavy-tier-20261118": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "A one-paragraph edit to a docs/agent page with no registered reader runs the full heavy CI tier, reported as 'changed Python code'"
+    },
     "docs-anchor-check-20261026": {
       "claim": null,
       "needs": [],
