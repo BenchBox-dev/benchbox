@@ -35629,10 +35629,15 @@
       "title": "Remote close-out make wrapper executes make functions in values, so text from a PR must never reach its command line"
     },
     "remote-closeout-reviewer-env-leaks-lc-ctype-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-19T14:14:41Z",
+        "generation": "a0bd3cc510ea4f20ada534a58820316d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9bd5e57e92367f6a9c2472f1"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Reviewer-isolation tests in test_remote_closeout fail when the caller's LANG is C"
     },
     "remote-review-claude-fallback-20261019": {
