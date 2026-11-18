@@ -2547,10 +2547,10 @@ def _throughput_measurement_queries(queries: Any) -> list[dict[str, Any]]:
         if query["status"].upper() not in _PASS_TIMING_STATUSES:
             continue
         try:
-            usable_ms = float(query.get("ms"))
+            recorded_ms = float(query.get("ms"))
         except (TypeError, ValueError):
             continue
-        if not math.isfinite(usable_ms) or usable_ms < 1.0:
+        if not math.isfinite(recorded_ms) or recorded_ms < 0.0:
             continue
         if str(query.get("run_type") or "measurement").strip().lower() != "measurement":
             continue
