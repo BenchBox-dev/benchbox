@@ -5729,7 +5729,20 @@
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
-      "final_pr_history": [],
+      "final_pr": {
+        "head": "a6e39af52eb7882d71d35dc7cca05b7a3aaa0a80",
+        "node_id": "PR_kwDOQ7J64c8AAAABP-parw",
+        "number": 4332,
+        "repository": "https://github.com/BenchBox-dev/BenchBox.git"
+      },
+      "final_pr_history": [
+        {
+          "at": "2026-11-18T00:35:31Z",
+          "head": "a6e39af52eb7882d71d35dc7cca05b7a3aaa0a80",
+          "op_id": "7bef2bbb7cda4a62bfada30b42d7c3a7",
+          "previous_head": null
+        }
+      ],
       "integrated_members": {
         "corpus-drift-mirror-grace-20261117": {
           "accepted_head": "0f5124ffaba68f569d32f74af48044ac1865b60d",
