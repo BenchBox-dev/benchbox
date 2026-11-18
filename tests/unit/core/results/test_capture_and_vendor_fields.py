@@ -138,14 +138,7 @@ class TestVendorFieldsInBundle:
         assert any("written permission" in e and tier in e for e in errors)
 
     def test_free_tier_with_permission_is_accepted(self) -> None:
-        payload = _payload(
-            plan_tier="free",
-            vendor_permission="email 2026-11-01",
-            vendor_notice={"sent_on": "2026-11-01", "reference": "ticket 1"},
-            self_run=True,
-        )
-
-        assert _errors(payload) == []
+        assert _errors(_payload(plan_tier="free", vendor_permission="email 2026-11-01")) == []
 
     def test_preview_feature_is_refused_without_permission(self) -> None:
         errors = _errors(_payload(plan_tier="paid", preview_features=["new thing"]))
@@ -159,16 +152,7 @@ class TestVendorFieldsInBundle:
         assert any("does not lift the exclusion" in e for e in _errors(payload))
 
     def test_paid_tier_is_accepted(self) -> None:
-        payload = _payload(
-            plan_tier="paid", vendor_notice={"sent_on": "2026-11-01", "reference": "ticket 1"}, self_run=True
-        )
-
-        assert _errors(payload) == []
-
-    def test_paid_tier_missing_mandatory_fields_is_refused(self) -> None:
-        errors = _errors(_payload(plan_tier="paid"))
-
-        assert any("vendor_notice" in e and "self_run" in e for e in errors)
+        assert _errors(_payload(plan_tier="paid")) == []
 
     def test_unknown_tier_is_refused(self) -> None:
         payload = _payload(plan_tier="paid")

@@ -938,7 +938,9 @@ def _mandatory_field_messages(manifest: Mapping[str, Any], platform: str) -> lis
     ]
 
 
-def evaluate_vendor_conditions(manifest: Mapping[str, Any]) -> tuple[list[str], list[str]]:
+def evaluate_vendor_conditions(
+    manifest: Mapping[str, Any], *, require_mandatory_fields: bool = True
+) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
     platform = vendor_platform_key(manifest.get("platform"))
@@ -996,7 +998,7 @@ def evaluate_vendor_conditions(manifest: Mapping[str, Any]) -> tuple[list[str], 
         errors.extend(check_errors)
         warnings.extend(check_warnings)
 
-    status = vendor_publication_status(manifest)
+    status = vendor_publication_status(manifest) if require_mandatory_fields else VENDOR_STATUS_NOT_APPLICABLE
     if status == VENDOR_STATUS_INCOMPLETE:
         errors.extend(_mandatory_field_messages(manifest, platform))
     elif status == VENDOR_STATUS_PRE_POLICY:
@@ -1278,7 +1280,7 @@ def _validate_capture_and_vendor_fields(
             "vendor_permission": "declared in the manifest",
             **{k: v for k, v in declared.items() if k in present},
         }
-    errors, _ = evaluate_vendor_conditions(declared)
+    errors, _ = evaluate_vendor_conditions(declared, require_mandatory_fields=False)
     for message in errors:
         vr.error(message.replace("Manifest ", "Bundle provenance ", 1))
 
