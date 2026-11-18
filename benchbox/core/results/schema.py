@@ -23,6 +23,7 @@ from benchbox.core.results.fetch_mode import summarize_fetch_modes
 from benchbox.core.results.metrics import UNOFFICIAL_COMPLIANCE_CLASSES, percentile_ms
 from benchbox.core.results.platform_options import sanitize_platform_options
 from benchbox.core.results.platform_timing import resolve_net_estimate_status, summarize_run_platform_timing
+from benchbox.core.results.qphds import load_scope_components
 from benchbox.core.results.query_execution import (
     QueryExecutionContractError,
     normalize_row_count_validation,
@@ -1759,6 +1760,14 @@ def _build_tpc_metrics(result: BenchmarkResults) -> dict[str, Any] | None:
             metrics["qphds_terms"] = dict(result.qphds_terms)
         if getattr(result, "qphds_unavailable", None):
             metrics["qphds_unavailable"] = list(result.qphds_unavailable)
+
+    if getattr(result, "test_execution_type", None) == "combined" and not metrics.get("suppressed"):
+        components = load_scope_components(getattr(result.execution_phases, "setup", None))
+        if components is not None:
+            metrics["load_scope"] = {
+                "components": components,
+                "counted_in_qph": getattr(result, "benchmark_id", None) == "tpcds",
+            }
 
     return metrics if metrics else None
 

@@ -34,8 +34,9 @@ throughput timings are never mixed, and a throughput cohort is further split by
 stream count. The phase is the bundle's declared `benchmark.test_type`, lowercased,
 with `standard` folded into `power` (the Explorer applies the same rule). Without a
 declared type it is the executed phase in `phases` (a phase recorded as `NOT_RUN`
-did not run), and without either it is its own `unknown` cohort. Other declared
-phases such as `combined` stay separate cohorts.
+did not run), and without either it is its own `unknown` cohort. A `combined` cohort
+holds full-specification runs and follows the rules under
+[Combined cohorts](#combined-cohorts). Other declared phases stay separate cohorts.
 
 Only bundles the Explorer can rank contribute an identity. `exclusion_reason` in
 `results-data/validate_corpus.py` is the source of truth; it mirrors the Explorer's
@@ -54,11 +55,12 @@ these conditions, in order:
 5. The timing and coverage contract holds: at least two queries with a valid positive
    display timing, covering at least half of the logical queries.
 6. The primary metric for the benchmark and phase is present, finite and positive.
-   TPC-H and TPC-DS power cohorts rank on `power_score` (from `power_at_size` only;
-   `qphh_at_size`/`qphds_at_size` are non-spec exports the driver no longer validates).
+   TPC-H and TPC-DS power cohorts rank on `power_score` (from `power_at_size` only).
    TPC-H and TPC-DS throughput cohorts rank on `throughput_at_size` (Throughput@Size,
-   higher is better). Every other benchmark and phase ranks on the geometric mean of
-   display timings.
+   higher is better). TPC-H and TPC-DS combined cohorts rank on `qphh_at_size`
+   (QphH@Size) and `qphds_at_size` (QphDS@SF), higher is better, once the bundle's
+   throughput and refresh evidence is clean. Every other benchmark and phase ranks on
+   the geometric mean of display timings.
 
 Trust label and visibility come from where a bundle is published, not from its content,
 so the validator does not check them.
@@ -88,6 +90,46 @@ that share a backend (Spark SQL and PySpark, DuckDB and DuckDB-based services), 
 reviewers must not rely on them to reach the floor.
 `results-data/validate_corpus.py` is the authority; `corpus-inventory.json` lists
 platform and version for every cohort and is not an admission count.
+
+### Combined cohorts
+
+A combined cohort is one benchmark and scale factor measured by a full-specification
+`--official` run: for TPC-H, the power test with RF1/RF2 plus a throughput test with
+two or more streams and a refresh stream; for TPC-DS, load, power, two throughput
+tests of four or more streams and two data maintenance tests. The cohort is not split
+by stream count, because both composite metrics already contain the stream count.
+
+- **Ranking metric.** TPC-H ranks on QphH@Size (`qphh_at_size`, the square root of
+  Power@Size times Throughput@Size). TPC-DS ranks on QphDS@SF (`qphds_at_size`). The
+  bundle computes both when it is built. The validator and the Explorer read them
+  and never recompute them.
+- **Secondary metrics.** Power@Size and Throughput@Size stay visible beside the
+  composite. A combined Power@Size includes the RF1 and RF2 times, so it is not the
+  same number as the Power@Size of a power cohort, and the two are never shown in one
+  column.
+- **Clean evidence.** A combined bundle ranks only when every throughput phase is
+  `COMPLETED` with all streams successful, no `errors` and no `outstanding_work`, and
+  every refresh step succeeded. For TPC-H that is RF1 and RF2 in the power phase,
+  a `COMPLETED` refresh stream and `refresh_included: true`. For TPC-DS that is a
+  `COMPLETED` `maintenance_test` and `maintenance_test_2`, each with at least one
+  operation and every operation `SUCCESS`. A failed stream or a failed refresh gives
+  the exclusion reason `combined_throughput_not_clean` or `combined_refresh_not_clean`,
+  and a combined bundle without the composite metric gives `missing_primary_metric`.
+- **Load time.** `summary.tpc_metrics.load_scope` records what load time includes:
+  `components` lists the timed steps among `schema_creation`, `data_loading`,
+  `statistics_gathering`, `post_load_maintenance` and `merge_settle`, and
+  `counted_in_qph` is true for TPC-DS, where load time is the `T_LD` term of QphDS@SF,
+  and false for TPC-H. Engines load data in different ways, so compare QphDS@SF
+  across engines with the scope in view. The Explorer shows it.
+- **Transactions.** When a bundle records `transactional: false` on a refresh or
+  maintenance step (RF1, RF2 or a maintenance operation), the Explorer shows a
+  non-transactional disclosure beside the result, and the bundle still ranks. Bundles
+  written before non-transactional refresh is supported carry no such flag.
+- **Identities.** The combined cohorts need the same three distinct identities as
+  every other cohort. The local identities that can run the full specification are
+  DuckDB, ClickHouse Local (chDB only) and CedarDB. DataFusion is not one of them,
+  because its DML does not delete the right rows for the subquery predicates the
+  refresh functions need.
 
 ## Generation Contract
 
@@ -169,6 +211,8 @@ are promoted.
 The workflow includes `polars-df` for TPC-H SF 0.01/0.1 and SSB. The frozen
 TPC-H SF 1 and TPC-DS SF 1 cohorts use `clickhouse-local` as their local third
 identity because the admitted matrix does not rely on Polars DataFrame support there.
+Combined (full-specification) cohorts take their three identities from DuckDB,
+ClickHouse Local (chDB only) and CedarDB; see [Combined cohorts](#combined-cohorts).
 
 ### Official runs
 
