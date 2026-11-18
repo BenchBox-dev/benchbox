@@ -44433,9 +44433,9 @@
     },
     "tpch-reused-database-refresh-mutation-check-20261117": {
       "claim": {
-        "expires_at": "2026-11-19T18:51:01Z",
-        "generation": "82b7aa9ec64242ed97d1cf86b6489195",
-        "renewals": 1,
+        "expires_at": "2026-11-19T18:51:11Z",
+        "generation": "4e122b5f7b1a40aaa5976453c958eeb5",
+        "renewals": 2,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6da452ef1bfe1d4c6329ec0"
       },
       "needs": [],
