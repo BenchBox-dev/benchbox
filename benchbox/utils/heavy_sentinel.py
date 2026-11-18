@@ -598,6 +598,7 @@ class Sentinel:
         holder_reader: Callable[[], frozenset[int]] = lambda: frozenset(),
         sleeper: Callable[[float], None] = time.sleep,
         clock: Callable[[], float] = mono_time,
+        wall_clock: Callable[[], float] = time.time,
         git_reader: Callable[[Sequence[str]], Sequence[git_flood.GitProc]] = git_flood.read_git_processes,
         total_ram: Callable[[], int | None] = git_flood.total_ram_bytes,
         orphan_reader: Callable[[Sequence[str]], Sequence[orphan_spin.OrphanShell]] = orphan_spin.read_orphan_shells,
@@ -615,6 +616,9 @@ class Sentinel:
         self._holder_reader = holder_reader
         self._sleeper = sleeper
         self._clock = clock
+        self._wall_clock = wall_clock
+        self._busy_since: dict[tuple[int, float], float] = {}
+        self._published: list[orphan_spin.ActiveSpin] | None = None
         self._exclude = frozenset({os.getpid(), *exclude})
         self._git_reader = git_reader
         self._total_ram = total_ram
@@ -756,6 +760,35 @@ class Sentinel:
             )
         for pid in ended:
             self._log(f"orphaned CPU-bound shell pid {pid} is gone")
+        self._publish_active(reports)
+
+    def _publish_active(self, fresh: Sequence[orphan_spin.SpinReport]) -> None:
+        wall = self._wall_clock()
+        for report in fresh:
+            self._busy_since[(report.shell.pid, report.shell.created)] = wall - report.busy_seconds
+        active = [
+            orphan_spin.ActiveSpin(
+                pid=report.shell.pid,
+                created=report.shell.created,
+                name=report.shell.name,
+                cwd=report.shell.cwd,
+                command=report.shell.command,
+                cpu_fraction=report.cpu_fraction,
+                busy_since=self._busy_since.get((report.shell.pid, report.shell.created), wall),
+            )
+            for report in self._spin.active()
+        ]
+        self._busy_since = {
+            key: since for key, since in self._busy_since.items() if key in {(a.pid, a.created) for a in active}
+        }
+        if active == self._published:
+            return
+        try:
+            orphan_spin.write_active(heavy_status.orphan_spin_path(self._environ), active)
+        except OSError as exc:
+            self._log(f"could not record the orphaned-shell report: {exc}")
+            return
+        self._published = active
 
     def _check_vm(self) -> None:
         if self._vm_watch is None:

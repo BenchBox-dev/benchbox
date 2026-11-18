@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "`make heavy-status` and `make heavy-run` now print any orphaned CPU-bound shell the sentinel has reported, with pid, CPU share, age and working directory; nothing is signalled and admission is not refused."
+    }
+  ]
+}
