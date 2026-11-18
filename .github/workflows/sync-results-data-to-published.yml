@@ -473,8 +473,16 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
           MIRROR_HEAD_SHA: ${{ steps.build.outputs.mirror_head_sha }}
+          PUBLISHED_BASE_SHA: ${{ steps.drift.outputs.published_base_sha }}
         run: |
           set -euo pipefail
+          CURRENT_PUBLISHED_SHA=$(gh api \
+            "repos/${{ github.repository }}/git/ref/heads/published-results" \
+            --jq '.object.sha')
+          if [[ "${CURRENT_PUBLISHED_SHA}" != "${PUBLISHED_BASE_SHA}" ]]; then
+            echo "::error::published-results advanced after validation; mirror PR #${PR_NUMBER} was left open. Re-run the mirror workflow."
+            exit 1
+          fi
           gh pr ready "${PR_NUMBER}"
           gh pr merge "${PR_NUMBER}" --squash --match-head-commit "${MIRROR_HEAD_SHA}"
 
