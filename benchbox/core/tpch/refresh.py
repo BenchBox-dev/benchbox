@@ -238,6 +238,16 @@ def apply_rf2(
         raise
 
 
+def record_refresh_applied(connection: Any) -> None:
+    recorder = getattr(getattr(connection, "platform_adapter", None), "record_refresh_applied", None)
+    if not callable(recorder):
+        raise RuntimeError(
+            "TPC-H refresh functions need a connection that carries its platform adapter so the refresh marker can "
+            "be recorded; the database would otherwise be reused after it was changed"
+        )
+    recorder(getattr(connection, "connection", connection))
+
+
 def _reload_message(update_set: TPCHRefreshUpdateSet, function: str, detail: str) -> str:
     return (
         f"refresh set {update_set.set_id} {function} {detail}; "

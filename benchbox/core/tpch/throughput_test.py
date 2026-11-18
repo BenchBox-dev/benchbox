@@ -29,6 +29,7 @@ from benchbox.core.tpch.refresh import (
     check_rf1_applied,
     check_rf2_applied,
     generate_refresh_update_sets,
+    record_refresh_applied,
     verify_refresh_stream_totals,
     verify_rf2_reported,
 )
@@ -371,6 +372,7 @@ class TPCHThroughputTest:
             if self.refresh_connection_factory is None:
                 raise RuntimeError("TPC-H refresh stream requires a separate connection factory")
             connection = self.refresh_connection_factory()
+            record_refresh_applied(connection)
             refresh_stream.start_monotonic = mono_time()
             refresh_stream.start_time = datetime.now().isoformat()
             for offset in range(num_streams):

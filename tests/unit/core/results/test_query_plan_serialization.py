@@ -175,8 +175,8 @@ class TestSchemaV2ExportWithPlans:
 
         payload = build_result_payload(results)
 
-        assert payload["result_schema_version"] == "2.4"
-        assert payload["version"] == "2.4"
+        assert payload["result_schema_version"] == "2.5"
+        assert payload["version"] == "2.5"
         assert len(payload["queries"]) == 1
         assert payload["queries"][0]["id"] == "01"
 
@@ -238,7 +238,7 @@ class TestSchemaV2ExportWithPlans:
         plans_payload = build_plans_payload(results)
 
         assert plans_payload is not None
-        assert plans_payload["version"] == "2.4"
+        assert plans_payload["version"] == "2.5"
         assert plans_payload["run_id"] == "test_006"
         assert plans_payload["plans_captured"] == 1
         assert "q01" in plans_payload["queries"]
@@ -504,8 +504,8 @@ class TestSchemaV2ExportWithPlans:
         )
 
         payload = build_result_payload(results)
-        assert payload["result_schema_version"] == "2.4"
-        assert payload["version"] == "2.4"
+        assert payload["result_schema_version"] == "2.5"
+        assert payload["version"] == "2.5"
         assert len(payload["queries"]) == 1
         assert payload["queries"][0]["id"] == "01"
         assert payload["queries"][0]["ms"] == 350.0
@@ -554,8 +554,8 @@ class TestBackwardCompatibility:
         )
 
         payload_no_plans = build_result_payload(results_no_plans)
-        assert payload_no_plans["result_schema_version"] == "2.4"
-        assert payload_no_plans["version"] == "2.4"
+        assert payload_no_plans["result_schema_version"] == "2.5"
+        assert payload_no_plans["version"] == "2.5"
         plans_payload_none = build_plans_payload(results_no_plans)
         assert plans_payload_none is None
 
@@ -588,8 +588,8 @@ class TestBackwardCompatibility:
         )
 
         payload_with_plans = build_result_payload(results_with_plans)
-        assert payload_with_plans["result_schema_version"] == "2.4"
-        assert payload_with_plans["version"] == "2.4"
+        assert payload_with_plans["result_schema_version"] == "2.5"
+        assert payload_with_plans["version"] == "2.5"
         plans_payload = build_plans_payload(results_with_plans)
         assert plans_payload is not None
 
@@ -637,7 +637,7 @@ class TestSchemaV2Validation:
         with pytest.raises(SchemaV2ValidationError) as exc:
             validator.validate(payload)
         assert "runtime result schema policy" in str(exc.value)
-        assert "schema versions 2.0, 2.1, 2.2, 2.3, and 2.4" in str(exc.value)
+        assert "schema versions 2.0, 2.1, 2.2, 2.3, 2.4, and 2.5" in str(exc.value)
 
     def test_validator_rejects_missing_run_fields(self) -> None:
 
@@ -714,8 +714,8 @@ class TestSchemaV2Validation:
 
         payload = build_result_payload(results)
 
-        assert payload["result_schema_version"] == "2.4"
-        assert payload["version"] == "2.4"
+        assert payload["result_schema_version"] == "2.5"
+        assert payload["version"] == "2.5"
         assert payload["summary"]["queries"]["total"] == 0
         assert payload["summary"]["queries"]["passed"] == 0
         assert payload["summary"]["queries"]["failed"] == 0
@@ -795,8 +795,8 @@ class TestSchemaV2Validation:
 
         payload = build_result_payload(results)
 
-        assert payload["result_schema_version"] == "2.4"
-        assert payload["version"] == "2.4"
+        assert payload["result_schema_version"] == "2.5"
+        assert payload["version"] == "2.5"
         assert payload["platform"]["name"] == "duckdb"
         assert payload["platform"]["version"] == "1.0.1"
         assert payload["platform"]["driver_package"] == "duckdb"

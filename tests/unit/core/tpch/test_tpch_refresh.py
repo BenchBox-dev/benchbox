@@ -315,6 +315,7 @@ class _RecordedConnection:
             self.database.execute(f"INSERT INTO orders (O_ORDERKEY) VALUES ({key})")
             self.database.execute(f"INSERT INTO lineitem (L_ORDERKEY) VALUES ({key})")
         self.events: list[tuple[str, float]] = []
+        self.platform_adapter = SimpleNamespace(record_refresh_applied=lambda _connection: None)
 
     def execute(self, statement: str):
         self.events.append((statement.split(None, 1)[0].upper(), mono_time()))
@@ -479,7 +480,9 @@ def test_throughput_refresh_checks_run_after_the_refresh_stream_ends(
 
 def test_throughput_total_time_excludes_check_execution(monkeypatch: pytest.MonkeyPatch) -> None:
     update_set = SimpleNamespace(set_id=3)
-    connection = SimpleNamespace(close=lambda: None)
+    connection = SimpleNamespace(
+        close=lambda: None, platform_adapter=SimpleNamespace(record_refresh_applied=lambda _connection: None)
+    )
     test = _throughput_refresh_test(connection, update_set, monkeypatch)
     monkeypatch.setattr(throughput_test, "capture_rf2_baseline", lambda *_args: object())
     monkeypatch.setattr(throughput_test, "verify_rf2_reported", lambda *_args: None)
@@ -520,7 +523,9 @@ def test_throughput_failed_stream_still_checks_committed_refresh_functions(monke
         connection_factory=lambda: None,
         num_streams=2,
         refresh_enabled=True,
-        refresh_connection_factory=lambda: SimpleNamespace(close=lambda: None),
+        refresh_connection_factory=lambda: SimpleNamespace(
+            close=lambda: None, platform_adapter=SimpleNamespace(record_refresh_applied=lambda _connection: None)
+        ),
     )
     stream = TPCHRefreshStreamResult(first_set=3)
     stream.status = "FAILED"
@@ -579,7 +584,9 @@ def test_refresh_stream_stops_before_next_update_set_after_cancellation(monkeypa
 
     cancel_event = threading.Event()
     applied = []
-    connection = SimpleNamespace(close=lambda: None)
+    connection = SimpleNamespace(
+        close=lambda: None, platform_adapter=SimpleNamespace(record_refresh_applied=lambda _connection: None)
+    )
     test = TPCHThroughputTest(
         benchmark=object(),
         connection_factory=lambda: None,
@@ -605,3 +612,19 @@ def test_refresh_stream_stops_before_next_update_set_after_cancellation(monkeypa
     assert applied == [("RF1", 3), ("RF2", 3)]
     assert result.status == "FAILED"
     assert "cancelled" in result.error
+
+
+def test_a_refresh_without_a_platform_adapter_is_refused_before_the_database_changes(tmp_path: Path) -> None:
+    connection = _RecordedConnection([])
+    del connection.platform_adapter
+
+    with pytest.raises(RuntimeError, match="platform adapter"):
+        refresh.record_refresh_applied(connection)
+
+    operation = TPCHMaintenanceTest(connection_factory=lambda: connection)._execute_rf1(
+        0, _update_set(tmp_path, 1, order_keys=[91], lineitem_keys=[91], delete_keys=[])
+    )
+
+    assert operation.success is False
+    assert "platform adapter" in operation.error
+    assert connection.events == []
