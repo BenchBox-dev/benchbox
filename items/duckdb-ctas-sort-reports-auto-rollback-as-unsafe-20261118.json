@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "A unit test with a fake connection whose COMMIT fails and leaves no active transaction gets the safe rolled-back result (return False), with the original error in the logged warning and the recorded failure",
+    "A unit test where rollback fails with a transaction still active still raises the unsafe RuntimeError",
+    "The run log of a failing sort shows the original engine error, not only the rollback message"
+  ],
+  "description": "## Problem\nbenchbox/platforms/base/sorted_ingestion.py _execute_ctas_sort runs the constraint-preserving CTAS sort inside BEGIN/COMMIT. When DuckDB fails the COMMIT (measurement run 44348387772, duckdb SSB SF10 on a 16 GB GitHub runner, 2026-11-18: \"Failed to commit: failed to pin block of size 256.0 KiB (11.1 GiB/11.1 GiB used)\"), DuckDB has already aborted the transaction. The rollback then raises \"TransactionContext Error: cannot rollback - no transaction is active\", and the code raises RuntimeError \"failed and could not be rolled back\", treating a clean abort as an unsafe state. The run log shows only the rollback message; the out-of-memory cause is visible only in the chained traceback inside harness.json. The arm is aborted instead of recording a safe, rolled-back sort failure.\n\n## Decision gate\nAgent decision. Before the rollback, check whether the connection still has an active transaction (_connection_has_active_transaction already exists). If none, the engine has rolled back: take the existing \"failed safely and was rolled back\" path and log the original error. Keep the unsafe RuntimeError only when a transaction is still active and the rollback itself fails.\n\n## Guardrails\n- A real rollback failure with an open transaction must still raise.\n- The original error text must appear in the warning and in the ledger failure record.\n- No change to the sort itself or to DuckDB memory settings in this item.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/actions/runs/44348387772"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a43b9a4b85fc0a7cdd51f943",
+      "at": "2026-11-18T19:50:07Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9868280e3ed542d08633b5ee951924e6",
+      "session_id": "92b5cfb3e86e40bfb2cd8c982809e0b7"
+    }
+  ]
+}

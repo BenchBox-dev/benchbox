@@ -22591,6 +22591,13 @@
       "status": "done",
       "title": "[DuckDB Architecture] Verify 'under 10 seconds' TPC-H claim"
     },
+    "duckdb-ctas-sort-reports-auto-rollback-as-unsafe-20261118": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "A DuckDB sort rewrite that fails at COMMIT is reported as \"could not be rolled back\", hiding the real error"
+    },
     "duckdb-datasketches-family-ci-smoke": {
       "claim": null,
       "needs": [],
