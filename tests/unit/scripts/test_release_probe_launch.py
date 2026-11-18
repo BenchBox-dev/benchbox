@@ -22,55 +22,49 @@ HEAD = "a" * 40
 
 
 class FakeGh:
-    def __init__(self, conclusions: dict[str, str] | None = None, *, pending_polls: int = 1, cancel_fails=False):
-        self.conclusions = {
-            "reuse": "success",
-            "fallback": "success",
-            "guarded-change": "success",
-            **(conclusions or {}),
-        }
-        self.pending_polls = pending_polls
+    def __init__(self, *, dispatch_fails_at: str | None = None, cancel_fails=False):
+        self.dispatch_fails_at = dispatch_fails_at
         self.cancel_fails = cancel_fails
         self.runs: dict[int, dict] = {}
-        self.variant_of: dict[int, str] = {}
-        self.polls: dict[int, int] = {}
         self.dispatched: list[list[str]] = []
         self.cancelled: list[int] = []
+        self.checks: list[dict] = []
         self.next_id = 100
         self.head_sha = HEAD
 
     def __call__(self, *args: str):
         if args[:2] == ("workflow", "run"):
-            self.dispatched.append(list(args))
             variant = next(a for a in args if a.startswith("probe=")).removeprefix("probe=")
+            if variant == self.dispatch_fails_at:
+                raise RuntimeError("gh workflow run failed: HTTP 422")
+            self.dispatched.append(list(args))
             self.next_id += 1
-            self.variant_of[self.next_id] = variant
             self.runs[self.next_id] = {"id": self.next_id, "head_sha": self.head_sha}
             return None
-        if args[0] == "api" and "--method" in args:
-            run_id = int(args[-1].split("/")[-2])
+        if args[0] == "api" and "--method" in args and args[args.index("--method") + 1] == "POST":
+            if args[3].endswith("/check-runs"):
+                fields = {}
+                rest = list(args[4:])
+                while rest:
+                    assert rest.pop(0) == "-f"
+                    key, _, value = rest.pop(0).partition("=")
+                    fields[key] = value
+                self.checks.append(fields)
+                return {"id": 1}
             if self.cancel_fails:
                 raise RuntimeError("forbidden")
-            self.cancelled.append(run_id)
+            self.cancelled.append(int(args[-1].split("/")[-2]))
             return None
-        path = args[1]
-        if "/actions/workflows/release-v2.yml/runs" in path:
-            return {"workflow_runs": list(self.runs.values())}
-        run_id = int(path.rsplit("/", 1)[1])
-        self.polls[run_id] = self.polls.get(run_id, 0) + 1
-        if self.polls[run_id] <= self.pending_polls:
-            return {"id": run_id, "status": "in_progress"}
-        conclusion = self.conclusions[self.variant_of[run_id]]
-        return {"id": run_id, "status": "completed", "conclusion": conclusion, "html_url": f"url/{run_id}"}
+        return {"workflow_runs": list(self.runs.values())}
 
 
-def _run(fake: FakeGh, **kwargs) -> int:
-    return launch.run_probes(REPOSITORY, BRANCH, HEAD, runner=fake, sleep=lambda _: None, **kwargs)
+def _report(fake: FakeGh, files: list[str]) -> int:
+    return launch.report_probe(REPOSITORY, BRANCH, HEAD, files, runner=fake, sleep=lambda _: None)
 
 
-def test_every_variant_is_dispatched_with_the_synthetic_tag_from_the_pull_request_branch(capsys):
+def test_every_variant_is_dispatched_with_the_synthetic_tag_from_the_pull_request_branch():
     fake = FakeGh()
-    assert _run(fake) == 0
+    assert _report(fake, ["scripts/release_flow.py"]) == 0
     assert [next(a for a in call if a.startswith("probe=")) for call in fake.dispatched] == [
         "probe=reuse",
         "probe=fallback",
@@ -81,16 +75,50 @@ def test_every_variant_is_dispatched_with_the_synthetic_tag_from_the_pull_reques
         assert call[call.index("--ref") + 1] == BRANCH
         assert call[call.index("--repo") + 1] == REPOSITORY
         assert call[2] == "release-v2.yml"
-    assert "reuse probe: success" in capsys.readouterr().out
 
 
-@pytest.mark.parametrize("failing", ["reuse", "fallback", "guarded-change"])
-@pytest.mark.parametrize("conclusion", ["failure", "cancelled", "timed_out", None])
-def test_either_variant_failing_fails_the_job(failing, conclusion):
-    assert _run(FakeGh({failing: conclusion})) == 1
+def test_a_touched_pull_request_gets_an_in_progress_check_recording_the_variant_run_ids():
+    fake = FakeGh()
+    assert _report(fake, ["scripts/release_flow.py"]) == 0
+    (check,) = fake.checks
+    assert check["name"] == "release-v2 probe"
+    assert check["head_sha"] == HEAD
+    assert check["status"] == "in_progress"
+    assert "conclusion" not in check
+    assert check["external_id"] == "reuse=101;fallback=102;guarded-change=103"
+    for run_id in (101, 102, 103):
+        assert f"https://github.com/{REPOSITORY}/actions/runs/{run_id}" in check["output[summary]"]
 
 
-def test_a_variant_that_never_appears_fails_and_names_the_commit(capsys):
+def test_an_untouched_pull_request_gets_a_completed_success_check_and_dispatches_nothing(capsys):
+    fake = FakeGh()
+    assert _report(fake, ["README.md"]) == 0
+    assert fake.dispatched == []
+    (check,) = fake.checks
+    assert check["name"] == "release-v2 probe"
+    assert (check["status"], check["conclusion"]) == ("completed", "success")
+    assert "No release input changed" in check["output[title]"]
+    assert "external_id" not in check
+    assert "nothing to probe" in capsys.readouterr().out
+
+
+def test_a_dispatch_error_gets_a_completed_failure_check_naming_the_error_and_cancels_started_runs():
+    fake = FakeGh(dispatch_fails_at="guarded-change")
+    assert _report(fake, ["scripts/release_flow.py"]) == 1
+    (check,) = fake.checks
+    assert (check["status"], check["conclusion"]) == ("completed", "failure")
+    assert "HTTP 422" in check["output[summary]"]
+    assert sorted(fake.cancelled) == [101, 102]
+
+
+def test_a_failed_cancel_is_reported_without_hiding_the_dispatch_failure(capsys):
+    fake = FakeGh(dispatch_fails_at="fallback", cancel_fails=True)
+    assert _report(fake, ["scripts/release_flow.py"]) == 1
+    assert "could not cancel" in capsys.readouterr().err
+    assert fake.checks[0]["conclusion"] == "failure"
+
+
+def test_a_variant_that_never_appears_fails_and_names_the_commit():
     fake = FakeGh()
     fake.head_sha = "b" * 40
     with pytest.raises(RuntimeError, match="no release-v2.yml run at aaaaaaaaaa"):
@@ -106,47 +134,89 @@ def test_runs_that_existed_before_the_dispatch_are_never_adopted():
 
 def test_the_variants_never_share_a_run():
     fake = FakeGh()
-    assert _run(fake) == 0
-    assert len({*fake.variant_of}) == 3
-    assert sorted(fake.polls) == sorted(fake.variant_of)
+    started = launch.start_probes(REPOSITORY, BRANCH, HEAD, runner=fake, sleep=lambda _: None)
+    assert len(set(started.values())) == 3
 
 
-def test_a_run_that_outlives_the_timeout_fails_and_is_cancelled():
-    fake = FakeGh(pending_polls=10**6)
-    ticks = iter(range(0, 10**6, 100))
-    with pytest.raises(RuntimeError, match="did not finish"):
-        launch.run_probes(
-            REPOSITORY, BRANCH, HEAD, runner=fake, sleep=lambda _: None, clock=lambda: next(ticks), timeout=250.0
-        )
-    assert sorted(fake.cancelled) == sorted(fake.variant_of)
-
-
-def test_every_variant_is_bounded_by_one_overall_deadline(monkeypatch):
+def test_the_check_is_reconciled_right_after_it_is_created_with_its_id_and_the_run_ids():
     fake = FakeGh()
-    budgets: list[float] = []
-    clock_now = [0.0]
+    calls = []
+    launch.report_probe(
+        REPOSITORY,
+        BRANCH,
+        HEAD,
+        ["scripts/release_flow.py"],
+        runner=fake,
+        sleep=lambda _: None,
+        reconcile=lambda check_id, started: calls.append((check_id, started)),
+    )
+    assert calls == [(1, {"reuse": 101, "fallback": 102, "guarded-change": 103})]
 
-    def waiting(repository, run_id, **kwargs):
-        budgets.append(kwargs["timeout"])
-        clock_now[0] += 400.0
-        return {"status": "completed", "conclusion": "success", "html_url": ""}
 
-    monkeypatch.setattr(launch, "wait_for", waiting)
-    status = launch.run_probes(
-        REPOSITORY, BRANCH, HEAD, runner=fake, sleep=lambda _: None, clock=lambda: clock_now[0], timeout=1000.0
+def test_an_untouched_pull_request_is_never_reconciled():
+    fake = FakeGh()
+    launch.report_probe(
+        REPOSITORY,
+        BRANCH,
+        HEAD,
+        ["README.md"],
+        runner=fake,
+        sleep=lambda _: None,
+        reconcile=lambda *a: pytest.fail("no"),
+    )
+
+
+def test_a_failed_reconcile_leaves_the_in_progress_check_and_does_not_fail_the_job(capsys):
+    fake = FakeGh()
+
+    def reconcile(check_id, started):
+        raise RuntimeError("gh api failed: HTTP 502")
+
+    status = launch.report_probe(
+        REPOSITORY, BRANCH, HEAD, ["scripts/release_flow.py"], runner=fake, sleep=lambda _: None, reconcile=reconcile
     )
     assert status == 0
-    assert budgets == [1000.0, 600.0, 200.0]
+    assert [check["status"] for check in fake.checks] == ["in_progress"]
+    assert "HTTP 502" in capsys.readouterr().err
 
 
-def test_a_failed_cancel_is_reported_without_hiding_the_original_failure(capsys):
-    fake = FakeGh(pending_polls=10**6, cancel_fails=True)
-    ticks = iter(range(0, 10**6, 100))
-    with pytest.raises(RuntimeError, match="did not finish"):
-        launch.run_probes(
-            REPOSITORY, BRANCH, HEAD, runner=fake, sleep=lambda _: None, clock=lambda: next(ticks), timeout=250.0
-        )
-    assert "could not cancel" in capsys.readouterr().err
+def test_an_existing_probe_check_outcome_stops_the_job_before_any_dispatch(capsys):
+    fake = FakeGh()
+    status = launch.report_probe(
+        REPOSITORY,
+        BRANCH,
+        HEAD,
+        ["scripts/release_flow.py"],
+        runner=fake,
+        sleep=lambda _: None,
+        existing=lambda: "completed the probe check as success",
+    )
+    assert status == 0
+    assert fake.dispatched == [] and fake.checks == []
+    assert "completed the probe check as success" in capsys.readouterr().out
+
+
+def test_no_existing_probe_check_dispatches_as_before():
+    fake = FakeGh()
+    status = launch.report_probe(
+        REPOSITORY, BRANCH, HEAD, ["scripts/release_flow.py"], runner=fake, sleep=lambda _: None, existing=lambda: None
+    )
+    assert status == 0
+    assert len(fake.dispatched) == 3
+    assert [check["status"] for check in fake.checks] == ["in_progress"]
+
+
+def test_an_untouched_pull_request_never_looks_for_an_existing_check():
+    fake = FakeGh()
+    launch.report_probe(
+        REPOSITORY, BRANCH, HEAD, ["README.md"], runner=fake, sleep=lambda _: None, existing=lambda: pytest.fail("no")
+    )
+    assert [check["conclusion"] for check in fake.checks] == ["success"]
+
+
+def test_the_launcher_no_longer_polls_or_waits():
+    assert not hasattr(launch, "wait_for")
+    assert not hasattr(launch, "run_probes")
 
 
 @pytest.mark.parametrize(
@@ -206,31 +276,33 @@ def test_changed_files_pages_through_the_whole_pull_request():
     assert seen == [1, 2]
 
 
-def test_the_main_command_skips_the_probe_for_a_pull_request_that_touches_no_release_input(monkeypatch, capsys):
-    monkeypatch.setattr(launch, "changed_files", lambda repository, number: ["README.md"])
-    monkeypatch.setattr(launch, "run_probes", lambda *a, **k: pytest.fail("the probe must not run"))
-    argv = ["--repository", REPOSITORY, "--pull-request", "5", "--branch", BRANCH, "--head-sha", HEAD]
-    assert launch.main(argv) == 0
-    assert "nothing to probe" in capsys.readouterr().out
-
-
-def test_the_main_command_probes_when_a_release_input_changed(monkeypatch):
+def test_the_main_command_hands_the_changed_files_to_the_reporter(monkeypatch):
     monkeypatch.setattr(launch, "changed_files", lambda repository, number: ["scripts/release_flow.py"])
     called = []
-    monkeypatch.setattr(launch, "run_probes", lambda *a, **k: called.append(a) or 0)
+    monkeypatch.setattr(launch, "report_probe", lambda *a, **k: called.append(a) or 0)
     argv = ["--repository", REPOSITORY, "--pull-request", "5", "--branch", BRANCH, "--head-sha", HEAD]
     assert launch.main(argv) == 0
-    assert called == [(REPOSITORY, BRANCH, HEAD)]
+    assert called == [(REPOSITORY, BRANCH, HEAD, ["scripts/release_flow.py"])]
 
 
-def test_the_main_command_reports_an_api_failure_as_an_error(monkeypatch, capsys):
+def test_the_main_command_reports_an_api_failure_as_an_error_and_a_failed_check(monkeypatch, capsys):
     def boom(repository, number):
         raise RuntimeError("gh api failed: HTTP 403")
 
+    posted = []
     monkeypatch.setattr(launch, "changed_files", boom)
+    monkeypatch.setattr(launch, "fail_check", lambda repository, head, message: posted.append((head, message)))
     argv = ["--repository", REPOSITORY, "--pull-request", "5", "--branch", BRANCH, "--head-sha", HEAD]
     assert launch.main(argv) == 1
     assert "HTTP 403" in capsys.readouterr().err
+    assert posted == [(HEAD, "gh api failed: HTTP 403")]
+
+
+def test_the_fail_option_records_a_failed_check_without_dispatching(monkeypatch):
+    posted = []
+    monkeypatch.setattr(launch, "fail_check", lambda repository, head, message: posted.append((head, message)))
+    assert launch.main(["--repository", REPOSITORY, "--head-sha", HEAD, "--fail", "graph broke"]) == 0
+    assert posted == [(HEAD, "graph broke")]
 
 
 @pytest.fixture

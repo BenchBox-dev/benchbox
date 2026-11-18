@@ -14,6 +14,7 @@ from rich.panel import Panel
 from rich.prompt import Confirm
 from rich.text import Text
 
+from benchbox.cli import vendor_provenance_options as vendor_options
 from benchbox.cli.benchmarks import BenchmarkConfig, BenchmarkManager
 from benchbox.cli.billable_guard import ACKNOWLEDGEMENT_FLAG_HELP, enforce_billable_acknowledgement
 from benchbox.cli.composite_params import (
@@ -391,11 +392,14 @@ def _export_orchestrated_result(
     export_formats: list[str] | None = None,
     funding: str | None = None,
     result_source: str | None = None,
+    plan_tier: str | None = None,
+    preview_features: tuple[str, ...] | None = None,
 ) -> dict[str, Any]:
     from datetime import datetime
 
     if funding:
         result.funding = funding
+    vendor_options.record_vendor_provenance(result, plan_tier, preview_features)
     if result_source:
         result.result_source = result_source
 
@@ -419,6 +423,12 @@ def _export_orchestrated_result(
     _print_tuning_verification_summary(result, quiet=bool(quiet))
     _print_template_evidence_warning(result, quiet=bool(quiet))
     return exported_files
+
+
+def _print_results_location(exported_files: dict[str, Any]) -> None:
+    for filepath in exported_files.values():
+        console.print(f"Results directory: [dim]{Path(str(filepath)).expanduser().resolve().parent}[/dim]")
+        return
 
 
 def _print_tuning_verification_summary(result: Any, *, quiet: bool) -> None:
@@ -1478,6 +1488,7 @@ def _direct_handle_result(
             export_formats=["json"],
             funding=getattr(s, "funding", None),
             result_source=getattr(s, "result_source", None),
+            **vendor_options.vendor_provenance_kwargs(s),
         )
 
         if s.quiet:
@@ -1493,6 +1504,7 @@ def _direct_handle_result(
                 console.print(f"\n[green]✅ Benchmark completed: {result.validation_status}[/green]")
             for format_name, filepath in exported_files.items():
                 console.print(f"{format_name.upper()}: [dim]{filepath}[/dim]")
+            _print_results_location(exported_files)
 
         _render_post_run_charts(result, console, s.quiet)
 
@@ -1701,6 +1713,7 @@ def _data_or_load_handle_result(
             export_formats=["json"],
             funding=getattr(s, "funding", None),
             result_source=getattr(s, "result_source", None),
+            **vendor_options.vendor_provenance_kwargs(s),
         )
 
         operation_status, operation_name = _data_or_load_operation_status(result, s.execution_mode)
@@ -1712,6 +1725,7 @@ def _data_or_load_handle_result(
             console.print(f"\n[green]✅ {operation_name} completed: {operation_status}[/green]")
             for format_name, filepath in exported_files.items():
                 console.print(f"{format_name.upper()}: {filepath}")
+            _print_results_location(exported_files)
 
         from benchbox.cli.preferences import save_last_run_config
 
@@ -1780,7 +1794,12 @@ def _data_or_load_handle_result(
 @click.option(
     "--output",
     type=str,
-    help="Output directory (required for cloud platforms). Supports: s3://, gs://, abfss://, dbfs:/Volumes/",
+    help=(
+        "Directory for generated data and databases (required for cloud platforms; supports s3://, gs://, "
+        "abfss://, dbfs:/Volumes/). Result JSON is not written here: it goes to <benchmark_runs>/results, "
+        "where benchmark_runs is $BENCHBOX_OUTPUT_DIR or the default benchmark_runs directory. "
+        "The absolute result path is printed when the run finishes."
+    ),
 )
 @click.option(
     "--phases",
@@ -2073,6 +2092,7 @@ def _data_or_load_handle_result(
         "provenance block; omitted when not set."
     ),
 )
+@vendor_options.vendor_provenance_options
 @click.option(
     "--result-source",
     type=click.Choice(RESULT_SOURCES, case_sensitive=False),
@@ -2149,6 +2169,8 @@ def run(
     publish_target: str,
     publish_label: str,
     funding: str | None,
+    plan_tier: str | None,
+    preview_features: tuple[str, ...],
     result_source: str | None,
     client_region: str | None = None,
     client_cloud: str | None = None,
@@ -2214,6 +2236,8 @@ def run(
         publish_target=publish_target,
         publish_label=publish_label,
         funding=funding,
+        plan_tier=plan_tier,
+        preview_features=preview_features,
         result_source=result_source,
         client_region=client_region,
         client_cloud=client_cloud,

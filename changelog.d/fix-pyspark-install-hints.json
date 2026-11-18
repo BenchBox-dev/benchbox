@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "PySpark and LakeSail install hints now point at the benchbox[pyspark] and benchbox[lakesail] extras so the supported PySpark version range comes from package metadata."
+    }
+  ]
+}

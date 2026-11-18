@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import copy
+import threading
 from abc import ABC, abstractmethod
 from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING, Any, Generic, Protocol, TypeVar, runtime_checkable
@@ -107,6 +109,7 @@ class DataFrameContextImpl(Generic[DF], ABC):
     def __init__(self, platform: str, family: str) -> None:
 
         self._tables: dict[str, DF] = {}
+        self._tables_lock = threading.RLock()
         self._platform = platform
         self._family = family
 
@@ -122,14 +125,31 @@ class DataFrameContextImpl(Generic[DF], ABC):
 
     def register_table(self, name: str, df: DF) -> None:
 
-        self._tables[name.lower()] = df
+        with self._tables_lock:
+            self._tables[name.lower()] = df
+
+    def swap_tables(self, replacements: dict[str, DF]) -> None:
+
+        with self._tables_lock:
+            unknown = sorted(name for name in replacements if name.lower() not in self._tables)
+            if unknown:
+                raise KeyError(f"Cannot swap unregistered tables: {', '.join(unknown)}")
+            self._tables.update({name.lower(): df for name, df in replacements.items()})
+
+    def snapshot(self) -> DataFrameContextImpl[DF]:
+
+        with self._tables_lock:
+            view = copy.copy(self)
+            view._tables = dict(self._tables)
+        return view
 
     def unregister_table(self, name: str) -> bool:
 
         name_lower = name.lower()
-        if name_lower in self._tables:
-            del self._tables[name_lower]
-            return True
+        with self._tables_lock:
+            if name_lower in self._tables:
+                del self._tables[name_lower]
+                return True
         return False
 
     def get_table(self, name: str) -> DF:
@@ -139,6 +159,15 @@ class DataFrameContextImpl(Generic[DF], ABC):
             available = ", ".join(sorted(self._tables.keys()))
             raise KeyError(f"Table '{name}' not found. Available tables: {available or 'none'}")
         return self._tables[name_lower]
+
+    def get_native_table(self, name: str) -> DF:
+
+        name_lower = name.lower()
+        try:
+            return self._tables[name_lower]
+        except KeyError:
+            available = ", ".join(sorted(self._tables.keys()))
+            raise KeyError(f"Table '{name}' not found. Available tables: {available or 'none'}") from None
 
     def list_tables(self) -> list[str]:
 
@@ -150,7 +179,8 @@ class DataFrameContextImpl(Generic[DF], ABC):
 
     def clear_tables(self) -> None:
 
-        self._tables.clear()
+        with self._tables_lock:
+            self._tables.clear()
 
     @abstractmethod
     def col(self, name: str) -> Any:

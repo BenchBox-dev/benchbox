@@ -1,0 +1,15 @@
+{
+  "bundle_file": "nyctaxi_sf01_clickhouse_local_sql_20260826_172211_21bbf078.json",
+  "bundle_hash": "04f806c85749679ef9ae8024b7c98705f38c64d3402053a09be7fb7e8a32b838",
+  "funding": "unspecified",
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer",
+  "cpu_attestation": {
+    "attested_by": "maintainer",
+    "cpu_identity_provenance": "user_attested",
+    "cpu_model": "Apple M4",
+    "cpu_vendor": "Apple",
+    "note": "Operator attestation, not a measurement: the maintainer attests this Darwin arm64 run executed on the project's Apple M4 (10 cores); the bundle recorded no CPU model."
+  }
+}

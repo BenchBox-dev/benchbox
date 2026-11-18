@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "ClickHouse Local now requires chdb 4.5.0 or newer (chdb-core 26.11.1 or newer), whose native library loads on macOS 27; older releases failed on import with a mis-aligned LINKEDIT string pool error."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "make heavy-run and host_lock run exit 0 when the watchdog reports a breach only after the guarded command already exited 0, and log the late breach as a warning."
+    }
+  ]
+}

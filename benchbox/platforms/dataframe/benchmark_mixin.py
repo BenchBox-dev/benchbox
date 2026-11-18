@@ -101,6 +101,19 @@ def _benchmark_defines_hook(benchmark: Any | None, hook_name: str) -> bool:
     )
 
 
+def _refresh_requested(benchmark_config: Any, benchmark: Any | None) -> bool:
+    from benchbox.core.tpc_spec import refresh_functions_enabled
+
+    if normalize_benchmark_id(getattr(benchmark_config, "name", "")) != "tpch":
+        return False
+    return refresh_functions_enabled(getattr(benchmark_config, "options", None), benchmark)
+
+
+def _generator_workers(benchmark: Any | None) -> int | None:
+    workers = getattr(benchmark, "parallel", None)
+    return workers if isinstance(workers, int) and workers > 0 else None
+
+
 def _benchmark_manages_dataframe_loading(benchmark: Any | None) -> bool:
     if not _benchmark_defines_hook(benchmark, "skip_dataframe_data_loading"):
         return False
@@ -162,6 +175,8 @@ def no_dataframe_queries_message(benchmark_id: str, query_filter: set[str] | Non
 class DataFramePhases:
     load: bool = True
     execute: bool = True
+    power: bool = True
+    throughput: bool = False
 
 
 @dataclass
@@ -243,9 +258,13 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
     is_dataframe_adapter: bool = True
     timing_method: int = TIMING_METHOD_LEGACY
     allow_third_party_extensions: bool = False
+    supports_dataframe_throughput: bool = False
 
     platform_name: str
     family: str
+
+    def tpch_refresh_backend(self) -> Any | None:
+        return None
 
     @abstractmethod
     def create_context(self) -> Any:
@@ -374,7 +393,16 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
 
         try:
             if not options.ignore_memory_warnings:
-                memory_check = check_sufficient_memory(benchmark_config.name, scale_factor, platform_name.lower())
+                memory_check = check_sufficient_memory(
+                    benchmark_config.name,
+                    scale_factor,
+                    platform_name.lower(),
+                    queries=getattr(benchmark_config, "queries", None),
+                    generation_required=phases.load
+                    and not _benchmark_manages_dataframe_loading(benchmark)
+                    and self._generation_pending(benchmark, data_dir, options),
+                    generation_workers=_generator_workers(benchmark),
+                )
                 if not memory_check.is_safe:
                     warning = format_memory_warning(memory_check)
                     raise InsufficientMemoryError(warning)
@@ -440,8 +468,10 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                 builder.set_phase_status("data_loading", "SKIPPED")
 
             if phases.execute:
-                query_results = self._execute_queries_phase(
+                query_results = self._execute_query_phases(
                     ctx=ctx,
+                    builder=builder,
+                    phases=phases,
                     benchmark_config=benchmark_config,
                     benchmark_instance=benchmark,
                     monitor=monitor,
@@ -469,7 +499,9 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                     builder.set_phase_status("validation", validation_summary.status)
 
                 for qr in query_results:
-                    builder.add_query_result(normalize_query_result(qr))
+                    builder.add_query_result(
+                        normalize_query_result({k: v for k, v in qr.items() if k != "data_refreshed"})
+                    )
 
                 plans_captured, capture_failures, capture_errors = compute_plan_capture_stats(
                     query_results,
@@ -481,7 +513,6 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                     capture_failures=capture_failures,
                     capture_errors=capture_errors,
                 )
-                builder.set_phase_status("power_test", "COMPLETED")
 
             self._attach_applied_tuning_ledger(builder)
             self._stamp_host_load(builder, host_load_start)
@@ -572,6 +603,23 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
             else:
                 normalized[name] = Path(path)
         return normalized
+
+    def _generation_pending(
+        self,
+        benchmark_instance: Any | None,
+        data_dir: Path | None,
+        options: DataFrameRunOptions,
+    ) -> bool:
+        if benchmark_instance is None or not hasattr(benchmark_instance, "generate_data"):
+            return False
+        if options.force_regenerate:
+            return True
+        tables = getattr(benchmark_instance, "tables", None)
+        if isinstance(tables, dict) and tables:
+            return bool(self._find_missing_paths(self._normalize_table_paths(tables)))
+        if data_dir is not None and Path(data_dir).exists():
+            return not any(next(Path(data_dir).glob(pattern), None) for pattern in ("*.tbl", "*.csv", "*.parquet"))
+        return True
 
     @staticmethod
     def _collect_plan_local_roots(data_paths: dict[str, Path | list[Path]], data_dir: Path | None) -> list[Path]:
@@ -831,6 +879,78 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
 
         return loaded
 
+    def _execute_query_phases(
+        self,
+        ctx: Any,
+        builder: Any,
+        phases: DataFramePhases,
+        benchmark_config: BenchmarkConfig,
+        benchmark_instance: Any | None,
+        monitor: Any | None,
+        run_options: DataFrameRunOptions | None = None,
+    ) -> list[dict[str, Any]]:
+        if not phases.throughput and not _refresh_requested(benchmark_config, benchmark_instance):
+            results = self._execute_queries_phase(
+                ctx=ctx,
+                benchmark_config=benchmark_config,
+                benchmark_instance=benchmark_instance,
+                monitor=monitor,
+                run_options=run_options,
+            )
+            builder.set_phase_status("power_test", "COMPLETED")
+            return results
+
+        from benchbox.platforms.dataframe.tpch_full_spec import (
+            PowerRefresh,
+            failed_power_row,
+            resolve_refresh_plan,
+            resolve_stream_count,
+            run_throughput,
+        )
+
+        if phases.throughput and not (
+            self.supports_dataframe_throughput and normalize_benchmark_id(benchmark_config.name) == "tpch"
+        ):
+            raise NotImplementedError(
+                f"The throughput phase is not supported for {benchmark_config.name} on DataFrame platform "
+                f"'{self.platform_name}'"
+            )
+        if phases.throughput:
+            resolve_stream_count(benchmark_config)
+        plan = resolve_refresh_plan(self, benchmark_instance, benchmark_config, ctx)
+        try:
+            query_results: list[dict[str, Any]] = []
+            if phases.power:
+                power_refresh = PowerRefresh(plan) if plan is not None else None
+                query_results = self._execute_queries_phase(
+                    ctx=ctx,
+                    benchmark_config=benchmark_config,
+                    benchmark_instance=benchmark_instance,
+                    monitor=monitor,
+                    run_options=run_options,
+                    power_refresh=power_refresh,
+                )
+                builder.set_phase_status("power_test", "COMPLETED")
+                if plan is not None:
+                    builder.set_power_refresh(plan.first_set, plan.power_functions)
+                if power_refresh is not None and power_refresh.error:
+                    query_results.append(failed_power_row(power_refresh.error))
+            if phases.throughput:
+                console.print("\n[cyan]Running throughput phase...[/cyan]")
+                phase, throughput_rows = run_throughput(
+                    self,
+                    ctx,
+                    benchmark_config,
+                    plan,
+                    bool(run_options and (run_options.verbose or run_options.very_verbose)),
+                )
+                builder.set_throughput_phase(phase)
+                query_results.extend(throughput_rows)
+            return query_results
+        finally:
+            if plan is not None:
+                plan.close()
+
     def _execute_queries_phase(
         self,
         ctx: Any,
@@ -838,6 +958,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
         benchmark_instance: Any | None,
         monitor: Any | None,
         run_options: DataFrameRunOptions | None = None,
+        power_refresh: Any | None = None,
     ) -> list[dict[str, Any]]:
         from benchbox.core.tpch.dataframe_queries import set_scale_factor_for_benchmark
 
@@ -851,6 +972,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                 benchmark_instance=benchmark_instance,
                 monitor=monitor,
                 run_options=run_options,
+                power_refresh=power_refresh,
             )
         finally:
             set_scale_factor_for_benchmark(benchmark_id, None)
@@ -862,6 +984,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
         benchmark_instance: Any | None,
         monitor: Any | None,
         run_options: DataFrameRunOptions | None = None,
+        power_refresh: Any | None = None,
     ) -> list[dict[str, Any]]:
         config_options = getattr(benchmark_config, "options", {}) or {}
         warmup_iterations_raw = config_options.get("power_warmup_iterations")
@@ -939,6 +1062,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
             run_options=run_options,
             query_results=query_results,
             executed_query_ids=executed_query_ids,
+            power_refresh=power_refresh,
         )
 
         if filtered_skip_query_ids:
@@ -1118,6 +1242,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
         run_options: DataFrameRunOptions | None,
         query_results: list[dict[str, Any]],
         executed_query_ids: list[str],
+        power_refresh: Any | None = None,
     ) -> None:
         capture_plans = bool(getattr(benchmark_config, "capture_plans", False))
         profiled_runner = getattr(self, "execute_query_profiled", None)
@@ -1146,25 +1271,34 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
             )
 
             iteration_results: list[dict[str, Any]] = []
-            with self._stream_parameter_scope(benchmark_config, measurement_stream_id):
-                for i, query in enumerate(measurement_queries, 1):
-                    if run_options and (run_options.verbose or run_options.very_verbose):
-                        console.print(f"[blue]Executing query {i}/{total_queries}: {query.query_id}[/blue]")
+            refresh = power_refresh if iteration == measurement_iterations - 1 else None
+            if refresh is not None and not refresh.start():
+                break
+            try:
+                with self._stream_parameter_scope(benchmark_config, measurement_stream_id):
+                    for i, query in enumerate(measurement_queries, 1):
+                        if run_options and (run_options.verbose or run_options.very_verbose):
+                            console.print(f"[blue]Executing query {i}/{total_queries}: {query.query_id}[/blue]")
 
-                    result = self._execute_single_measurement_query(
-                        ctx=ctx,
-                        query=query,
-                        capture_plans=capture_plans,
-                        supports_profiled=supports_profiled,
-                        supports_capture_plan_kw=supports_capture_plan_kw,
-                        profiled_runner=profiled_runner,
-                        iteration=iteration + 1,
-                        stream_id=measurement_stream_id,
-                        monitor=monitor,
-                    )
-                    query_results.append(result)
-                    executed_query_ids.append(str(query.query_id).strip().upper())
-                    iteration_results.append(result)
+                        result = self._execute_single_measurement_query(
+                            ctx=ctx,
+                            query=query,
+                            capture_plans=capture_plans,
+                            supports_profiled=supports_profiled,
+                            supports_capture_plan_kw=supports_capture_plan_kw,
+                            profiled_runner=profiled_runner,
+                            iteration=iteration + 1,
+                            stream_id=measurement_stream_id,
+                            monitor=monitor,
+                        )
+                        if refresh is not None:
+                            result["data_refreshed"] = True
+                        query_results.append(result)
+                        executed_query_ids.append(str(query.query_id).strip().upper())
+                        iteration_results.append(result)
+            finally:
+                if refresh is not None:
+                    refresh.finish()
 
             self._print_iteration_summary(
                 iteration + 1,

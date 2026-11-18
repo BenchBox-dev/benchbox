@@ -14,7 +14,9 @@ from benchbox.core.expected_results.tpcds_results import (
 from benchbox.core.results.query_status import row_count_skip_is_documented, within_tolerance_warning
 from benchbox.core.validation.query_validation import (
     QueryValidator,
+    get_data_refreshed_context,
     get_reference_seed_context,
+    set_data_refreshed_context,
     set_reference_seed_context,
 )
 
@@ -136,11 +138,10 @@ def _reference_unavailable_reason(benchmark_id: str, scale_factor: float, seed: 
         if ssb_expected_row_counts(scale_factor) is None:
             return f"SSB expected row counts are not recorded for scale factor {scale_factor}"
         return None
-    if not _tpch_reference_context(scale_factor, seed) and not _tpch_seeded_subscale_context(scale_factor, seed):
-        return (
-            "TPC-H reference row counts apply to SF 0.01 and 0.1 runs, and to SF 1 runs with qgen default "
-            "parameters (no seed)"
-        )
+    from benchbox.core.tpch.benchmark import has_row_count_reference
+
+    if not has_row_count_reference(scale_factor):
+        return "TPC-H reference row counts are not recorded for this scale factor"
     return None
 
 
@@ -324,16 +325,21 @@ def _apply_expected_row_counts(
         evidence["errors"] = len(successful_rows)
         return message
 
-    _apply_row_count_oracle(
-        successful_rows,
-        lambda query_id, actual, row: validator.validate_query_result(
-            benchmark_type=benchmark_id,
-            query_id=query_id,
-            actual_row_count=actual,
-            scale_factor=scale_factor,
-        ),
-        evidence,
-    )
+    def _validate(query_id: str, actual: int, row: dict[str, Any]) -> ValidationResult:
+        previous_refreshed = get_data_refreshed_context()
+        set_data_refreshed_context(bool(row.get("data_refreshed")))
+        try:
+            return validator.validate_query_result(
+                benchmark_type=benchmark_id,
+                query_id=query_id,
+                actual_row_count=actual,
+                scale_factor=scale_factor,
+                stream_id=row.get("stream_id") if row.get("test_type") == "throughput" else None,
+            )
+        finally:
+            set_data_refreshed_context(previous_refreshed)
+
+    _apply_row_count_oracle(successful_rows, _validate, evidence)
     return None
 
 
@@ -397,18 +403,6 @@ def _apply_row_count_oracle(
         if row_count_validation["status"] == "SKIPPED" and row_count_skip_is_documented(row_count_validation):
             evidence["documented_skips"] = evidence.get("documented_skips", 0) + 1
         row["row_count_validation"] = row_count_validation
-
-
-def _tpch_seeded_subscale_context(scale_factor: float, seed: int | None) -> bool:
-    from benchbox.core.tpch.benchmark import has_answer_set, has_row_count_reference
-
-    return seed is not None and has_row_count_reference(scale_factor) and not has_answer_set(scale_factor)
-
-
-def _tpch_reference_context(scale_factor: float, seed: int | None) -> bool:
-    from benchbox.core.tpch.benchmark import binds_answer_set_parameters, has_row_count_reference
-
-    return has_row_count_reference(scale_factor) and binds_answer_set_parameters(seed)
 
 
 def _bounded_message(value: str) -> str:

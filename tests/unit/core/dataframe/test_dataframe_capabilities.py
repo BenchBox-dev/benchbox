@@ -20,6 +20,10 @@ from benchbox.core.dataframe.capabilities import (
     recommend_platform_for_sf,
     validate_scale_factor,
 )
+from benchbox.core.dataframe.memory_model import (
+    PLATFORM_BASELINE_GB,
+    SUBSET_MODEL_MAX_SF,
+)
 
 pytestmark = [
     pytest.mark.unit,
@@ -232,9 +236,10 @@ class TestCheckSufficientMemory:
 
 def _guarded(estimate, available, margin=0.2):
     target = "benchbox.core.dataframe.capabilities"
+    fake = SimpleNamespace(estimated_memory_gb=estimate, scope="full", tables=())
     with (
         patch(f"{target}.get_available_memory_gb", return_value=available),
-        patch(f"{target}.estimate_memory_required", return_value=SimpleNamespace(estimated_memory_gb=estimate)),
+        patch(f"{target}.estimate_memory_required", return_value=fake),
     ):
         return check_sufficient_memory("tpch", 10.0, "polars", safety_margin=margin)
 
@@ -266,8 +271,7 @@ class TestMemoryGuardMessage:
         assert shown_available < shown_threshold
         assert f"~{estimate:.1f} GB estimated" in result.message
         assert "20% safety margin" in result.message
-        assert "full benchmark" in result.message
-        assert "subset of queries" in result.message
+        assert "full-benchmark estimate" in result.message
         assert result.estimated_memory_gb == estimate
         assert result.available_memory_gb == available
 
@@ -295,6 +299,192 @@ class TestMemoryGuardMessage:
         assert "20% safety margin" in result.message
         assert "3.6 GB" in result.message
         assert "full benchmark" in result.message
+
+
+def _guarded_subset(benchmark, scale_factor, platform, queries, available):
+    target = "benchbox.core.dataframe.capabilities"
+    with patch(f"{target}.get_available_memory_gb", return_value=available):
+        return check_sufficient_memory(benchmark, scale_factor, platform, queries)
+
+
+class TestSubsetEstimate:
+    def test_subset_counts_only_tables_the_queries_read(self):
+        subset = estimate_memory_required("tpcds", 10.0, "polars", ["Q16", "Q94", "Q95"])
+        full = estimate_memory_required("tpcds", 10.0, "polars")
+
+        assert subset.scope == "subset"
+        assert subset.tables == (
+            "call_center",
+            "catalog_returns",
+            "catalog_sales",
+            "customer_address",
+            "date_dim",
+            "web_returns",
+            "web_sales",
+            "web_site",
+        )
+        assert subset.estimated_memory_gb < full.estimated_memory_gb
+        assert subset.estimated_memory_gb == pytest.approx(subset.raw_data_gb * 2.0, rel=1e-9)
+
+    def test_subset_table_set_is_the_union_across_queries(self):
+        single = estimate_memory_required("tpch", 1.0, "polars", ["Q6"])
+        pair = estimate_memory_required("tpch", 1.0, "polars", ["q6", "11"])
+
+        assert single.tables == ("lineitem",)
+        assert pair.tables == ("lineitem", "nation", "partsupp", "supplier")
+        assert pair.raw_data_gb > single.raw_data_gb
+
+    def test_comma_separated_selection_is_split_into_query_ids(self):
+        from_string = estimate_memory_required("tpch", 1.0, "polars", "Q6,Q11")
+        from_list = estimate_memory_required("tpch", 1.0, "polars", ["Q6", "Q11"])
+
+        assert from_string.tables == from_list.tables
+        assert from_string.estimated_memory_gb == from_list.estimated_memory_gb
+
+    def test_full_benchmark_estimate_is_unchanged(self):
+        estimate = estimate_memory_required("tpcds", 10.0, "polars")
+
+        assert estimate.scope == "full"
+        assert estimate.tables == ()
+        assert estimate.raw_data_gb == 10.0
+        assert estimate.estimated_memory_gb == pytest.approx(20.0)
+
+    @pytest.mark.parametrize("queries", [None, [], ()])
+    def test_no_selection_is_the_full_estimate(self, queries):
+        assert estimate_memory_required("tpch", 10.0, "polars", queries).scope == "full"
+
+    @pytest.mark.parametrize("queries", [["Q999"], ["Q16", "Q999"], ["not-a-query"], ["Q0"]])
+    def test_unknown_query_id_falls_back_to_full_estimate(self, queries):
+        estimate = estimate_memory_required("tpcds", 10.0, "polars", queries)
+
+        assert estimate.scope == "full"
+        assert estimate.tables == ()
+        assert estimate.estimated_memory_gb == pytest.approx(20.0)
+
+    @pytest.mark.parametrize("benchmark_id", ["ssb", "clickbench", "joinorder"])
+    def test_benchmark_without_table_map_falls_back_to_full_estimate(self, benchmark_id):
+        assert estimate_memory_required(benchmark_id, 10.0, "polars", ["Q1"]).scope == "full"
+
+    def test_scale_factor_above_validated_range_falls_back_to_full_estimate(self):
+        above = SUBSET_MODEL_MAX_SF + 1
+
+        estimate = estimate_memory_required("tpch", above, "polars", ["Q6"])
+
+        assert estimate.scope == "full"
+        assert estimate.estimated_memory_gb == pytest.approx(above * 2.0)
+
+    def test_platform_without_measured_baseline_falls_back_to_full_estimate(self):
+        assert estimate_memory_required("tpch", 10.0, "pandas", ["Q6"]).scope == "full"
+
+    @pytest.mark.parametrize("platform", sorted(PLATFORM_BASELINE_GB))
+    def test_estimate_never_below_platform_baseline(self, platform):
+        estimate = estimate_memory_required("tpch", 0.01, platform, ["Q6"])
+
+        assert estimate.scope == "subset"
+        assert estimate.estimated_memory_gb == PLATFORM_BASELINE_GB[platform]
+
+    def test_reported_motivating_case_is_no_longer_refused(self):
+        full = _guarded_subset("tpcds", 10.0, "polars", None, 15.0)
+        subset = _guarded_subset("tpcds", 10.0, "polars", ["Q16", "Q94", "Q95"], 15.0)
+
+        assert full.is_safe is False
+        assert subset.is_safe is True
+
+    def test_subset_that_is_too_large_is_still_refused(self):
+        result = _guarded_subset("tpch", 100.0, "polars", ["Q1"], 16.0)
+
+        assert result.is_safe is False
+
+    def test_refusal_message_names_subset_scope_and_tables(self):
+        result = _guarded_subset("tpcds", 10.0, "polars", ["Q16", "Q94", "Q95"], 3.0)
+
+        assert result.is_safe is False
+        assert "subset estimate" in result.message
+        assert "full-benchmark estimate" not in result.message
+        assert "catalog_sales" in result.message
+        assert "web_sales" in result.message
+        assert "store_sales" not in result.message
+        assert "20% safety margin" in result.message
+
+    def test_refusal_message_names_full_scope_on_unknown_query(self):
+        result = _guarded_subset("tpcds", 10.0, "polars", ["Q999"], 3.0)
+
+        assert result.is_safe is False
+        assert "full-benchmark estimate" in result.message
+        assert "no table-level estimate applies" in result.message
+        assert "subset estimate" not in result.message
+
+    def test_refusal_message_for_full_run_has_no_subset_wording(self):
+        result = _guarded_subset("tpch", 10.0, "polars", None, 3.0)
+
+        assert result.is_safe is False
+        assert "full-benchmark estimate" in result.message
+        assert "no table-level estimate applies" not in result.message
+
+
+class TestGenerationEstimate:
+    def test_estimate_is_scaled_from_measured_workers_with_margin(self):
+        from benchbox.core.dataframe.memory_model import (
+            GENERATION_BASE_GB,
+            GENERATION_ESTIMATE_MARGIN,
+            GENERATION_GB_PER_WORKER,
+            generation_estimate_gb,
+        )
+
+        expected = (GENERATION_BASE_GB + GENERATION_GB_PER_WORKER["tpch"] * 10) * GENERATION_ESTIMATE_MARGIN
+
+        assert generation_estimate_gb("tpch", 10) == pytest.approx(expected)
+        assert generation_estimate_gb("tpch", 10) > 3.0
+        assert generation_estimate_gb("tpcds", 10) < 0.5
+        assert generation_estimate_gb("ssb", 10) is None
+
+    @pytest.mark.parametrize("platform", ["polars", "datafusion", "pyspark"])
+    def test_uncached_run_whose_generation_exceeds_free_memory_is_refused(self, platform):
+        result = _guarded_generation("tpch", platform, True, 10, 3.5)
+
+        assert result.is_safe is False
+        assert "data generation" in result.message
+        assert "10 parallel generator processes" in result.message
+        assert any("larger host" in suggestion for suggestion in result.suggestions)
+
+    @pytest.mark.parametrize("platform", ["polars", "datafusion"])
+    def test_cached_run_is_unaffected(self, platform):
+        cached = _guarded_generation("tpch", platform, False, 10, 3.5)
+        baseline = _guarded_subset("tpch", 1.0, platform, None, 3.5)
+
+        assert cached.is_safe is True
+        assert cached.message == baseline.message
+        assert cached.estimated_memory_gb == baseline.estimated_memory_gb
+
+    def test_uncached_run_that_fits_is_accepted(self):
+        result = _guarded_generation("tpch", "polars", True, 10, 16.0)
+
+        assert result.is_safe is True
+
+    def test_fewer_workers_lower_the_generation_estimate(self):
+        many = _guarded_generation("tpch", "polars", True, 10, 3.5)
+        few = _guarded_generation("tpch", "polars", True, 2, 3.5)
+
+        assert many.is_safe is False
+        assert few.is_safe is True
+
+    def test_benchmark_without_measured_generator_is_unchanged(self):
+        result = _guarded_generation("ssb", "polars", True, 10, 3.0)
+        baseline = _guarded_subset("ssb", 1.0, "polars", None, 3.0)
+
+        assert result.message == baseline.message
+
+
+def _guarded_generation(benchmark, platform, generation_required, workers, available):
+    target = "benchbox.core.dataframe.capabilities"
+    with patch(f"{target}.get_available_memory_gb", return_value=available):
+        return check_sufficient_memory(
+            benchmark,
+            1.0,
+            platform,
+            generation_required=generation_required,
+            generation_workers=workers,
+        )
 
 
 class TestFormatMemoryWarning:

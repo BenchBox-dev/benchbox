@@ -91,6 +91,48 @@ ancestor. A targeted rebuild only uploads the artifact: it does not send the
 `core-bundle` dispatch to the site, so the Results Explorer deploy is not
 affected, and it never opens or closes the `site-bundle-failed` incident.
 
+### The site deploy parity chain and its recovery
+
+The site deploy refuses a bundle whose corpus differs from the deployed one
+unless the bundle's `validator_parity` attestation covers the change since the
+deployed core commit. The attestation records a `base`, the parent commit
+the bundle was compared against. `site_inputs.py` runs `validator_parity.py`
+from the bundle's own checkout with `--base-sha` set to that parent; the
+script validates every submission bundle changed in `base...bundle core`.
+The separate `corpus_validation` attestation validates the whole corpus at the
+bundle core. `--base-sha` selects the diff range, not the
+validator implementation.
+
+The site accepts a `base` that equals the deployed `core_sha`, and also a
+`base` that is a strict ancestor of it, provided the bundle's core commit is
+the deployed commit or a descendant. The range `base..bundle core` then
+contains `deployed..bundle core`, so every corpus change the deploy introduces
+was validated; the only cost is revalidating bundles that are already live.
+The site reads both ancestry facts through the core compare API and refuses
+when the base is not an ancestor, when the bundle core is not a descendant,
+or when either comparison cannot be read.
+
+`site_inputs_parent.py` waits until no site `deploy.yml` run is in flight before
+it reads the deployed core as the bundle's parent. If the previous bundle's
+site deploy run has not been created yet at that moment, the bundle records an
+older parent. With the ancestor rule that bundle deploys without action. The
+site gate still refuses when the recorded base is not an ancestor of the
+deployed core, for example after a deploy of a commit on another line, and the
+run's message ends with the recovery command.
+
+Rebuild the bundle with the deployed core as its parent:
+
+```bash
+gh workflow run site-inputs.yml --ref develop -f parent_core_sha=<deployed core_sha>
+```
+
+Take `<deployed core_sha>` from the `not the deployed <sha>` text of the
+failed site run or from `npm run deploy -- deployed` in the site repository.
+The commit must be an ancestor of the bundle's target commit; the run refuses
+anything else. Use this only after a site run fails with
+`validator_parity covers ...`; do not dispatch it to preempt a deploy that is
+still running.
+
 ## Maintenance releases
 
 A maintenance line ships a fix on an older minor without shipping everything on
@@ -366,6 +408,13 @@ to the history that `scripts/trunk_uat.py history` reads. Dispatch it with
 rules, artifacts and the decision gate on runner cost are in
 [Trunk UAT workflow reference](#trunk-uat-workflow-reference).
 
+Each UAT stage matrix sets `strategy.max-parallel` (stage 1: 4, stage 2: 2,
+stage 3: 3) in both workflows, so one release or trunk run holds at most nine
+runners of the organization's 20-job limit and leaves room for pull request CI.
+Shard contents, timeouts and conditions are unchanged. Expect a longer UAT wall
+time: stage 1 runs its shards in waves of four, stage 2 in waves of two and
+stage 3 in waves of three.
+
 ### Release probe
 
 A change to the release workflow can be wrong in ways unit tests do not show: a
@@ -418,18 +467,52 @@ green gates, if `publish` runs after a red gate, or if any job that can publish
 runs in probe mode; `tests/unit/workflows/test_release_v2_probe.py` pins the
 probe's permissions and the issue-3947 graph shape.
 
-`release-v2-probe.yml` runs on every pull request. When the pull request
+`release-v2-probe.yml` runs on every pull request and is asynchronous: its job
+`release-v2 probe dispatch` never waits for the probe runs, so it holds a runner
+for minutes rather than for as long as the runs queue. When the pull request
 touches `release-v2.yml`, `trunk-uat.yml`, `trunk.yml`, `release-uat-env`, the
 probe workflow, `scripts/release_*.py`, `scripts/release_requirements.txt`,
 `scripts/update_version.py`, `tests/uat/gate_summary.py`, `tests/uat/_cli.py`,
 `tests/uat/config.py`, `Makefile`, `make/uat.mk` or a release-gate UAT
 config (a rename counts under both its old and new path), it dispatches every probe variant
-from the pull request branch and fails unless every one succeeds; otherwise it passes
-at once. It runs on every pull request so that it can be made a required
-check without leaving unrelated pull requests pending. The probe builds its own
+from the pull request branch and creates the required check run `release-v2 probe`
+on the head commit as in progress, listing the three run links; its `external_id`
+records the three run ids. Otherwise it creates the check run as completed with
+success at once. It runs on every pull request from a branch of this repository so
+that the check can be required without leaving unrelated pull requests pending. If a dispatch fails, or the job
+graph check fails, the check run is created as a failure carrying the error.
+
+`release-v2-probe-verdict.yml` runs on `workflow_run` completion of `Release v2`
+(always from the default branch). For a dispatched run it finds the in-progress
+`release-v2 probe` check run on the run's head commit whose recorded ids include
+that run. When all three recorded runs have completed it completes the check:
+success only if all three concluded success, otherwise failure naming each
+variant that did not succeed with its conclusion and link. While any run is
+queued or in progress it does nothing, and a check run that is already completed
+is left alone. The logic lives in `scripts/release_probe_verdict.py`. A run
+cancelled by a newer push completes the old head's check as failure, which is
+harmless because only the current head counts. Expect the check to stay in
+progress for as long as the runs queue: under runner congestion that can be hours,
+and waiting is the remedy; do not re-dispatch the probe. The verdict workflow
+only sees runs that finish after the check exists, so right after creating the
+check the dispatch job completes it itself if every recorded run has already
+finished. A check records three distinct run ids and each must be a
+`release-v2.yml` dispatch at the check's head commit, otherwise the check fails.
+
+Re-running the `release-v2 probe dispatch` job reconciles a check whose `workflow_run`
+event was missed: before dispatching, the job looks for an in-progress `release-v2 probe`
+check on the head commit that records run ids. If every recorded run has finished it
+completes that check through the verdict code and exits without dispatching; if any is
+still running it exits and changes nothing. When the check is already completed, or none
+exists, the job behaves as it always did: it dispatches the three variants and creates a
+new check run, so a deliberate re-run of a completed probe probes again.
+
+The probe builds its own
 distributions, so it does not execute the `dist-artifact` job of `trunk.yml`;
 a drift test keeps the build and verification commands aligned.
-Fork pull requests cannot dispatch and fail.
+A fork pull request cannot create check runs or dispatch workflows, so the dispatch
+job fails at once with a message and `release-v2 probe` is never reported for it;
+push the branch to the repository and open the pull request from there.
 
 ## Trunk UAT workflow reference
 
@@ -922,10 +1005,18 @@ problem it finds. It verifies that:
   commit alone, and `scripts/release_releasable.py check --sha <sha>` runs the
   commit check without the release content checks.
 
-The `sqlglot-delivery` workflow adopts verified fork deliveries. It runs daily
-on `develop` in `BenchBox-dev/BenchBox` and on `workflow_dispatch`
-(`dry_run`, default true, and `retry`), and is driven by
-`scripts/sqlglot_delivery.py`.
+The `sqlglot-delivery` workflow adopts verified fork deliveries. It runs every
+6 hours, at :37 past 00, 06, 12 and 18 UTC, on `develop` in
+`BenchBox-dev/BenchBox` and on `workflow_dispatch` (`dry_run`, default true,
+and `retry`), and is driven by `scripts/sqlglot_delivery.py`.
+
+GitHub often starts scheduled runs hours late: between 2026-11-09 and
+2026-11-16 the fork controller (cron 05:41 UTC) started between 12:30Z and
+13:59Z and this workflow (then cron 06:37 UTC) started between 13:46Z and
+16:48Z, 7 to 10 hours late. Nothing orders the two schedules, so a fork release
+could otherwise wait a day for adoption. The expected worst-case adoption delay
+after the fork publishes is about 6 hours plus GitHub's schedule delay. A run
+with nothing new ends at state current in about a minute.
 
 - **Trust root.** `.github/sqlglot-delivery.json` fixes the producer
   repository, workflow path, branch `main`, allowed events, artifact prefix and
@@ -944,10 +1035,26 @@ on `develop` in `BenchBox-dev/BenchBox` and on `workflow_dispatch`
 - **Prepare** has no credentials. It runs the adopter
   (`scripts/adopt_sqlglot_wheel.py`) with the version, fork SHA, upstream SHA
   and hash from the verified record, requires that only the pin, the wheel
-  archive, the license notice and the baseline identity changed, and emits a
-  git bundle and a pull request title and body. The body carries a marker that
+  archive, the license notice, the baseline identity and (below) the recorded
+  golden corpus changed, and emits a git bundle and a pull request title and
+  body. The body carries a marker that
   binds version, fork SHA, upstream SHA, hash, the producer run and attempt,
   and the adoption commit and its parent.
+- **Golden corpus.** After the adopter switches the runtime, prepare runs
+  `python -m tests.unit.sql_compat.golden_corpus` (every area) from the
+  checkout in a fresh interpreter, so it imports the newly pinned wheel from
+  `benchbox/_vendor`; it first checks that interpreter resolves the delivered
+  archive. Changed files under
+  `tests/unit/sql_compat/golden_corpus/recorded/*.json` go into the same single
+  adoption commit, which keeps the one-commit ownership rule. The pull request
+  body gains a "Golden corpus changes" section listing each changed case (area,
+  case id, and the before and after output of each field that differs); past 20
+  cases it gives counts per area and the first 20. A delivery that changes no
+  recorded output adds nothing. Publish and arm accept only the pin, archive,
+  notice, baseline, fragment and `recorded/*.json` paths. Nothing holds the
+  pull request automatically: it takes the normal path (CI including the SQL
+  execution evidence gate, review gate, arm). To stop a release over a corpus
+  change, apply `no-auto-merge` to the pull request.
 - **Publish** runs only when `SQLGLOT_DELIVERY_ENABLED` is `true`, the run is
   not a dry run and the plan says `adopt`. It re-checks the bundle, pushes
   `chore/sqlglot-<version>` and opens the pull request, resuming after an
@@ -978,7 +1085,7 @@ on `develop` in `BenchBox-dev/BenchBox` and on `workflow_dispatch`
   re-arms after a person disabled auto-merge or applied the hold. The one
   automation disarm it recovers from is the trunk-red disarm by
   `github-actions[bot]` (`trunk-red-disarm.yml`). The pull request is usually
-  not green on the run that opens it, so the next daily run arms it.
+  not green on the run that opens it, so a later scheduled run arms it.
 - **Kill switch and dry run.** Every mutating command refuses unless the
   repository variable `SQLGLOT_DELIVERY_ENABLED` is exactly `true`. A manual
   dispatch defaults to `dry_run`: the prepare job verifies the delivery and

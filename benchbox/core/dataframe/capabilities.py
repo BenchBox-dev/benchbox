@@ -6,12 +6,20 @@ from __future__ import annotations
 
 import logging
 import math
+import os
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import Literal
 
-if TYPE_CHECKING:
-    pass
+from benchbox.core.dataframe.memory_model import (
+    GENERATION_ESTIMATE_MARGIN,
+    PLATFORM_BASELINE_GB,
+    SUBSET_MODEL_MAX_SF,
+    generation_estimate_gb,
+    subset_tables,
+    tables_raw_gb,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -192,25 +200,41 @@ class MemoryEstimate:
     platform: str
     scale_factor: float
     benchmark: str
+    scope: Literal["full", "subset"] = "full"
+    tables: tuple[str, ...] = ()
 
 
 def estimate_memory_required(
     benchmark: str,
     scale_factor: float,
     platform: str,
+    queries: Iterable[object] | None = None,
 ) -> MemoryEstimate:
     caps = get_platform_capabilities(platform)
+    platform_key = platform.lower().removesuffix("-df")
 
-    if benchmark.lower() == "tpch" or benchmark.lower() == "tpcds":
-        raw_data_gb = scale_factor
-    else:
-        raw_data_gb = scale_factor
+    tables = (
+        subset_tables(benchmark, queries)
+        if platform_key in PLATFORM_BASELINE_GB and scale_factor <= SUBSET_MODEL_MAX_SF
+        else None
+    )
+    if tables is not None:
+        raw_data_gb = tables_raw_gb(benchmark, tables, scale_factor)
+        modeled_gb = raw_data_gb * caps.memory_overhead_factor
+        return MemoryEstimate(
+            raw_data_gb=raw_data_gb,
+            estimated_memory_gb=max(modeled_gb, PLATFORM_BASELINE_GB[platform_key]),
+            platform=caps.platform_name,
+            scale_factor=scale_factor,
+            benchmark=benchmark,
+            scope="subset",
+            tables=tables,
+        )
 
-    estimated_gb = raw_data_gb * caps.memory_overhead_factor
-
+    raw_data_gb = scale_factor
     return MemoryEstimate(
         raw_data_gb=raw_data_gb,
-        estimated_memory_gb=estimated_gb,
+        estimated_memory_gb=raw_data_gb * caps.memory_overhead_factor,
         platform=caps.platform_name,
         scale_factor=scale_factor,
         benchmark=benchmark,
@@ -264,15 +288,47 @@ class MemoryCheckResult:
         return self.is_safe
 
 
+def _describe_estimate_scope(estimate: MemoryEstimate, queries_selected: bool) -> str:
+    if estimate.scope == "subset":
+        return (
+            f"the selected queries (a subset estimate counting only the tables they read: {', '.join(estimate.tables)})"
+        )
+    if queries_selected:
+        return (
+            "the full benchmark (a full-benchmark estimate counting every table, because no table-level "
+            "estimate applies to the selected queries on this platform and scale factor)"
+        )
+    return "the full benchmark (a full-benchmark estimate counting every table)"
+
+
 def check_sufficient_memory(
     benchmark: str,
     scale_factor: float,
     platform: str,
+    queries: Iterable[object] | None = None,
     *,
     safety_margin: float = 0.2,
+    generation_required: bool = False,
+    generation_workers: int | None = None,
 ) -> MemoryCheckResult:
     caps = get_platform_capabilities(platform)
-    estimate = estimate_memory_required(benchmark, scale_factor, platform)
+    estimate = estimate_memory_required(benchmark, scale_factor, platform, queries)
+    estimate_scope = _describe_estimate_scope(estimate, bool(queries))
+    estimated_gb = estimate.estimated_memory_gb
+    generation_bound = False
+
+    if generation_required:
+        workers = generation_workers or os.cpu_count() or 1
+        generation_gb = generation_estimate_gb(benchmark, workers)
+        if generation_gb is not None and generation_gb > estimated_gb:
+            estimated_gb = generation_gb
+            generation_bound = True
+            estimate_scope = (
+                f"data generation (the data is not cached, so the {workers} parallel generator processes run first; "
+                f"the estimate is scaled from measured generator memory with a "
+                f"{GENERATION_ESTIMATE_MARGIN - 1:.0%} margin and replaces the query-execution estimate "
+                f"because the generator processes exit before loading starts)"
+            )
 
     if caps.gpu_required:
         gpu_mem = get_gpu_memory_gb()
@@ -280,7 +336,7 @@ def check_sufficient_memory(
             return MemoryCheckResult(
                 is_safe=False,
                 message=f"{caps.platform_name} requires a GPU but none was detected.",
-                estimated_memory_gb=estimate.estimated_memory_gb,
+                estimated_memory_gb=estimated_gb,
                 available_memory_gb=0,
                 scale_factor=scale_factor,
                 platform=platform,
@@ -299,30 +355,33 @@ def check_sufficient_memory(
         return MemoryCheckResult(
             is_safe=True,
             message=f"Could not determine available {memory_type} memory. Proceeding with caution.",
-            estimated_memory_gb=estimate.estimated_memory_gb,
+            estimated_memory_gb=estimated_gb,
             available_memory_gb=0,
             scale_factor=scale_factor,
             platform=platform,
             suggestions=["Install psutil for memory checks: uv add psutil"],
         )
 
-    required_with_margin = estimate.estimated_memory_gb * (1 + safety_margin)
+    required_with_margin = estimated_gb * (1 + safety_margin)
 
     if available >= required_with_margin:
         return MemoryCheckResult(
             is_safe=True,
             message=(
                 f"Memory check passed: {available:.1f} GB available, "
-                f"~{estimate.estimated_memory_gb:.1f} GB estimated for the full benchmark at SF {scale_factor} "
+                f"~{estimated_gb:.1f} GB estimated for {estimate_scope} at SF {scale_factor} "
                 f"(+{safety_margin:.0%} safety margin = {required_with_margin:.1f} GB)."
             ),
-            estimated_memory_gb=estimate.estimated_memory_gb,
+            estimated_memory_gb=estimated_gb,
             available_memory_gb=available,
             scale_factor=scale_factor,
             platform=platform,
         )
 
     suggestions = []
+
+    if generation_bound:
+        suggestions.append("Generate the data on a larger host, then reuse the cached data directory for this run")
 
     if scale_factor > caps.max_recommended_sf:
         suggestions.append(
@@ -356,12 +415,11 @@ def check_sufficient_memory(
         is_safe=False,
         message=(
             f"Insufficient memory: {available_shown:.1f} GB available, but at least {threshold_shown:.1f} GB "
-            f"is needed (~{estimate.estimated_memory_gb:.1f} GB estimated + {safety_margin:.0%} safety margin). "
-            f"The estimate is for the full benchmark at scale factor {scale_factor}, "
-            f"even when only a subset of queries is selected.\n"
+            f"is needed (~{estimated_gb:.1f} GB estimated + {safety_margin:.0%} safety margin). "
+            f"The estimate is for {estimate_scope} at scale factor {scale_factor}.\n"
             f"Platform: {caps.platform_name}, Scale Factor: {scale_factor}"
         ),
-        estimated_memory_gb=estimate.estimated_memory_gb,
+        estimated_memory_gb=estimated_gb,
         available_memory_gb=available,
         scale_factor=scale_factor,
         platform=platform,

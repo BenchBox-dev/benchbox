@@ -16,6 +16,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 def test_run_service_adapter_factory_is_a_core_composition_boundary() -> None:
     config = MagicMock(spec=BenchmarkConfig)
     config.options = {}
+    config.name = "tpch"
     adapter = object()
     result = MagicMock()
     factory = MagicMock(return_value=adapter)

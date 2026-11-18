@@ -34,13 +34,43 @@ def job_text(name: str) -> str:
     return yaml.safe_dump(job(name))
 
 
-def test_the_workflow_runs_daily_on_demand_and_after_ci_and_review_with_dry_run_on_by_default() -> None:
+def test_the_workflow_runs_on_a_schedule_on_demand_and_after_ci_and_review_with_dry_run_on_by_default() -> None:
     triggers = load()[True]
     assert set(triggers) == {"schedule", "workflow_dispatch", "workflow_run"}
     inputs = triggers["workflow_dispatch"]["inputs"]
     assert inputs["dry_run"]["default"] is True
     assert inputs["retry"]["default"] is False
     assert triggers["workflow_run"]["types"] == ["completed"]
+
+
+def cron_field(field: str, low: int, high: int) -> set[int]:
+    values: set[int] = set()
+    for part in field.split(","):
+        base, _, step = part.partition("/")
+        if base == "*":
+            start, end = low, high
+        elif "-" in base:
+            start, end = (int(x) for x in base.split("-"))
+        else:
+            start = end = int(base)
+            if step:
+                end = high
+        values.update(range(start, end + 1, int(step) if step else 1))
+    return values
+
+
+def test_the_schedule_runs_at_least_every_six_hours() -> None:
+    minutes_of_day: set[int] = set()
+    for entry in load()[True]["schedule"]:
+        minute, hour, day, month, weekday = entry["cron"].split()
+        assert (day, month, weekday) == ("*", "*", "*")
+        for h in cron_field(hour, 0, 23):
+            for m in cron_field(minute, 0, 59):
+                minutes_of_day.add(h * 60 + m)
+    ordered = sorted(minutes_of_day)
+    gaps = [b - a for a, b in zip(ordered, ordered[1:] + [ordered[0] + 24 * 60])]
+    assert ordered
+    assert max(gaps) <= 6 * 60
 
 
 def test_every_workflow_that_triggers_arming_exists_by_that_name() -> None:

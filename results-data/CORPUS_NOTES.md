@@ -1,5 +1,71 @@
 # Corpus Generation Notes - 2026-04-03
 
+## Remaining TPC-DI bundles from earlier generators (2026-11-17)
+
+The TPC-DI generator changed twice in November: the four secondary fact tables
+now grow linearly with the scale factor, and one scale-factor unit is the
+specification's 5,000 customers. Every TPC-DI bundle in the corpus predates both
+changes, so none is comparable with data the current generator produces. The six
+SF 1 bundles were flagged on 2026-11-14 (below). The other twelve unflagged
+bundles now carry `known_defects: ["defective-variant-or-loader-wrong-result"]`
+with a `known_defect_reason` in their `.manifest.json` sidecars and leave the
+rankings; no bundle file changed. Two DuckDB bundles had no sidecar; theirs were
+created with `result_source: internal`.
+
+| Scale | Platforms flagged |
+|---|---|
+| SF 0.01 | ClickHouse Local (`3c9d9330`), DataFusion (`328320ea`), DuckDB (`115bd3b6`) |
+| SF 0.1 | BigQuery (`ca696883`), ClickHouse Local (`61e36e9c`), Databricks (`01329d67`), DataFusion (`fb67aa79`), DuckDB (`1769a68f`), Snowflake (`5dd95d51`) |
+| SF 10 | BigQuery (`5d042935`), Databricks (`92040a00`), Snowflake (`9ec08998`) |
+
+The cloud bundles are not rerun, to avoid cloud spend; they stay in the corpus as
+old-generator data, outside the rankings. Replacement local bundles for DuckDB,
+DataFusion and ClickHouse Local at SF 0.01, 0.1 and 1 come from the monthly seed
+corpus workflow, which now includes TPC-DI. Until they are ingested, the TPC-DI
+cohorts publish no ranking.
+
+## Non-standard scale factors (2026-11-17)
+
+A result bundle at a scale factor that is not a standard scale for its benchmark is
+accepted and never ranked. This applies to every benchmark, not only TPC-H and
+TPC-DS, and replaces the previous behaviour, which ranked any bundle that carried no
+compliance class once three platforms shared its scale.
+
+- Standard scales come only from the benchmark registry:
+  `get_scale_factor_rule(benchmark_id).standard` in `benchbox/core/benchmark_registry.py`
+  (the exact set for fixed-scale benchmarks such as `joinorder` and
+  `metadata_primitives`). `is_standard_scale_factor` wraps it, and no other list of
+  standard scales exists.
+- `validate_submission`, `benchbox submit` and `benchbox publish` accept the bundle.
+  Submission prints a `nonstandard-scale` warning that names the scale and the
+  exclusion reason.
+- The recorded exclusion reason is `unofficial_compliance`, the reason the
+  Explorer already renders as "Non-standard runs are unofficial and are not ranked."
+  The effective compliance class is `unofficial_nonstandard`, whatever the bundle
+  recorded, so `validate_corpus.py`, the Explorer pipeline and `benchbox submit` agree.
+- New bundles also record `benchmark.compliance_class: unofficial_nonstandard`, so
+  a validator without the registry (the slim `published-results` mirror) still
+  excludes them. Without the registry that validator cannot test the scale: it
+  accepts a recorded `unofficial_nonstandard` bundle of any benchmark other than
+  TPC-H and TPC-DS, and still refuses one for those two, which cannot be told
+  apart from an unofficial run at a standard scale. TPC-H and TPC-DS bundles at an
+  off-list scale are therefore validated where the registry exists.
+- Off-list scales never rank, even below SF 1. Standard TPC-H and TPC-DS scales
+  below SF 1 keep the subscale policy.
+- Submission still refuses a TPC-H or TPC-DS run at a standard scale that is not
+  `official` (`unofficial_nonstandard` at SF 1 or above without `--official`, and
+  `unofficial_subscale` below SF 1), and every gateway-routed bundle. Only the
+  scale decides whether the unranked acceptance applies.
+- A non-standard cohort has no rankable identity, so `validate_corpus.py` lists
+  it as `UNRANKED` and the depth gate does not apply, however many platforms
+  contributed.
+
+Effect on the published corpus: the registry lists only SF 1 as a standard
+ClickBench scale. The 13 ClickBench bundles at SF 0.1 and SF 10 (see "Cloud
+ClickBench") are therefore no longer ranked, and those two cohorts are listed as
+`UNRANKED`. No bundle file changed. Every other published cohort is unchanged.
+
+
 ## TPC-DI SF1 bundles built before the scale correction (2026-11-14)
 
 Six TPC-DI SF1 bundles were generated before #4149 and #4171 corrected the
@@ -1809,3 +1875,15 @@ Read Primitives SF0.01 and SF0.1, TPC-DS OBT SF1, TPC-H SF1, TPC-Havoc SF0.01, S
 `DOCUMENTED_SHALLOW_COHORTS` is unchanged by this note. The validator and Explorer parity and the cohort-depth tests
 (`tests/unit/publication/test_validator_parity.py`, `tests/unit/scripts/test_corpus_cohort_depth.py`) pass, 380 tests, so the
 ranked identities the validator computes agree with the Explorer pipeline.
+
+### Hardware class and the owner's CPU attestation (2026-11-17)
+
+The Explorer read model 20 records a hardware class per result from the pinned CPU class table in
+`benchbox/core/results/hardware_class.py` (table version `2026-11-17.1`). The default ranking is unchanged; the class is an
+optional facet filter. Managed services are one `managed` class, so the client CPU they record is never used.
+
+45 Darwin arm64 bundles recorded no CPU model (ClickHouse Local, DataFusion and DuckDB runs). The owner attests that they ran
+on the project's Apple M4 (10 cores). The attestation is a `cpu_attestation` object in each bundle's `.manifest.json` sidecar
+with `cpu_identity_provenance: user_attested`; no bundle was edited, so no result id moved. The 27 that had a sidecar had it edited to carry the attestation; the other 18 had none, so a minimal one
+(`bundle_file`, `bundle_hash`, `manifest_version`, `funding`, `result_source`, `submitted_by`, as on every
+sibling run) was added. This is an operator attestation, not a measurement.

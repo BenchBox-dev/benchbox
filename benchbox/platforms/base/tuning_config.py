@@ -188,3 +188,19 @@ class TuningConfigMixin:
         except Exception as e:
             self.logger.error(f"Failed to save tuning metadata: {e}")
             return False
+
+    def record_refresh_applied(self, connection: Any) -> None:
+        if self.tuning_metadata_unsupported_reason() is not None:
+            return
+        from benchbox.core.tuning.metadata import TuningMetadataManager
+
+        if not TuningMetadataManager(self, connection=connection).write_refresh_marker():
+            raise RuntimeError(
+                "Could not record that TPC-H refresh functions modified this database; "
+                "refusing to run them because a later run could not tell the data had changed"
+            )
+        committer = getattr(connection, "commit", None) or getattr(
+            getattr(connection, "connection", None), "commit", None
+        )
+        if callable(committer):
+            committer()

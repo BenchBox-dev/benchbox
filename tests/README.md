@@ -378,7 +378,8 @@ same module, so it honors the override and the real-home default.
   (`-n 0`) locks only when its selected items, after deselection and before the first test, carry a heavy
   marker: `slow`, `stress`, `resource_heavy`, `live_integration`, `docker_integration` or any `live_*`.
   `make pr-preflight` runs only default-marker `-n 0` targets and a `fast and not (slow or stress ...)`
-  lane, so it never waits. `BENCHBOX_SKIP_TEST_LOCK=1` skips locking entirely.
+  lane, so it never waits. `BENCHBOX_SKIP_TEST_LOCK=1` skips locking entirely and needs owner approval in the current task;
+  the refusal message lists only compliant steps (wait, `make heavy-status`, `make heavy-run`).
 - Admission and the watchdog run only in sessions whose selected items include a heavy marker. A parallel
   session is judged from its `-m` expression, since the controller does not collect: it is heavy when a heavy
   marker it names can be selected, or when a test carrying only an unnamed heavy marker would be (`not stress`
@@ -461,7 +462,7 @@ command line or environment, only the program name, `phase`/`gate` labels and ru
 
 Terminal `outcome` is one of `success`, `command_failed` (child exit status in `exit_code`), `queue_timeout`,
 `admission_refused`, `ownership_error`, `cancelled`, `watchdog_kill` (`exit_code` 79, the child's own status in
-`details.command_exit_code`), `error`, or `released` for a lock taken with `acquire`/`hold` (such as a pytest session)
+`details.command_exit_code`; a breach flagged only after the child exited 0 stays `success` with `details.late_watchdog_breach` true), `error`, or `released` for a lock taken with `acquire`/`hold` (such as a pytest session)
 where no command outcome is known. `success` is only ever derived from the child's exit status, never from the lock
 being released.
 

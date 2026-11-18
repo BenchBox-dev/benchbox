@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import contextlib
 import os
 import signal
 import subprocess
 import sys
+import threading
 import time
 from dataclasses import dataclass
 from typing import Any, Mapping
@@ -103,6 +105,7 @@ def run_with_timeout(
         try:
             out, err = proc.communicate(timeout=_REAP_TIMEOUT_S)
         except subprocess.TimeoutExpired:
+            _reap_in_background(proc)
             out, err = None, None
         memory_exceeded = isinstance(exc, _MemoryLimitExceeded)
         return TimeoutResult(
@@ -131,10 +134,22 @@ def _kill_and_reap_process_group(proc: subprocess.Popen) -> None:
         try:
             proc.wait(timeout=deadline - time.monotonic())
         except subprocess.TimeoutExpired:
+            _reap_in_background(proc)
             return
         except BaseException:
             continue
         return
+
+
+def _reap_in_background(proc: subprocess.Popen) -> None:
+    def reap() -> None:
+        with contextlib.suppress(ChildProcessError):
+            _, status = os.waitpid(proc.pid, 0)
+            if proc.returncode is None:
+                proc.returncode = os.waitstatus_to_exitcode(status)
+
+    target = proc.wait if sys.platform == "win32" else reap
+    threading.Thread(target=target, name=f"reap-{proc.pid}", daemon=True).start()
 
 
 def _kill_process_group(proc: subprocess.Popen) -> None:

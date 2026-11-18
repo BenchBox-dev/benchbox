@@ -7,8 +7,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from benchbox.core.results.status import result_non_clean_reason
+from benchbox.core.results.submit_classification import result_refused_at_submission
 from benchbox.core.results.subscale_policy import normalize_tpc_benchmark_id, result_compliance_class
-from benchbox.validation.bundle import CLI_REFUSED_COMPLIANCE_CLASSES
 
 
 @dataclass(frozen=True)
@@ -20,7 +20,7 @@ class PublishAdmissionDecision:
 
 def publish_admission(result: Any, label: str) -> PublishAdmissionDecision:
     compliance_class = result_compliance_class(result)
-    if compliance_class in CLI_REFUSED_COMPLIANCE_CLASSES and label.lower() != "unofficial-research":
+    if result_refused_at_submission(result) and label.lower() != "unofficial-research":
         return PublishAdmissionDecision(
             allowed=False,
             code="unofficial_compliance",

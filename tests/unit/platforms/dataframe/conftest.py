@@ -8,7 +8,9 @@ from benchbox.core.dataframe import MemoryCheckResult
 @pytest.fixture
 def sufficient_dataframe_memory(monkeypatch: pytest.MonkeyPatch) -> None:
 
-    def _sufficient_memory(_benchmark: str, scale_factor: float, platform: str) -> MemoryCheckResult:
+    def _sufficient_memory(
+        _benchmark: str, scale_factor: float, platform: str, queries: object = None, **_options: object
+    ) -> MemoryCheckResult:
         return MemoryCheckResult(
             is_safe=True,
             message="sufficient memory supplied by test fixture",

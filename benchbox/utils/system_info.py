@@ -84,6 +84,14 @@ def get_system_info() -> SystemInfo:
         cpu_model = None
 
     if not cpu_model:
+        from benchbox.utils.environment import container_host_cpu
+
+        host_model, host_vendor = container_host_cpu()
+        if host_model:
+            cpu_model, cpu_vendor = host_model, cpu_vendor or host_vendor
+            cpu_identity_provenance = "user_attested"
+
+    if not cpu_model:
         try:
             cpu_model = platform.processor() or ""
             if not cpu_model:

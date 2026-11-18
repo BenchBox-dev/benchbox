@@ -66,6 +66,12 @@ else:
 
 class DataFusionDataFrameAdapter(ExpressionFamilyAdapter[DataFusionDF, DataFusionLazyDF, DataFusionExpr]):
     driver_isolation_capability = DriverIsolationCapability.SUPPORTED
+    supports_dataframe_throughput = True
+
+    def tpch_refresh_backend(self) -> Any:
+        from benchbox.platforms.dataframe.tpch_refresh_backends import DataFusionRefreshBackend
+
+        return DataFusionRefreshBackend(self)
 
     def __init__(
         self,
