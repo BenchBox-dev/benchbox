@@ -344,6 +344,7 @@ class Watchdog:
         breaches: Sequence[Breach],
         outside: Sequence[OutsideProcess],
         swap_percent: float | None,
+        vm: VmReading | None = None,
     ) -> bool:
         if not self.policy.retry_idempotent or self.policy.budget_bytes <= 0:
             return False
@@ -351,8 +352,9 @@ class Watchdog:
             return False
         if swap_percent is None or swap_percent >= self.policy.swap_exhausted_percent:
             return False
-        tree = sample.total_bytes
-        foreign = sum(item.footprint_bytes for item in outside)
+        vm_pids = set(vm.pids) if vm is not None else set()
+        tree = sample.total_bytes + (vm.footprint_bytes if vm is not None else 0)
+        foreign = sum(item.footprint_bytes for item in outside if item.pid not in vm_pids)
         if foreign <= 0 or tree > self.policy.small_tree_budget_share * self.policy.budget_bytes:
             return False
         return tree <= self.policy.small_tree_foreign_share * (tree + foreign)
@@ -534,7 +536,7 @@ class Watchdog:
                 outside = self._outside_reader(sample)
             except (psutil.Error, OSError):
                 outside = []
-        retryable = self.policy.mode == "kill" and self._retryable(sample, breaches, outside or [], swap_percent)
+        retryable = self.policy.mode == "kill" and self._retryable(sample, breaches, outside or [], swap_percent, vm)
         if self.policy.mode == "warn":
             if not self._in_breach:
                 self._in_breach = True

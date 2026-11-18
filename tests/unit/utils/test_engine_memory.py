@@ -111,6 +111,20 @@ def test_duckdb_explicit_limit_that_cannot_fit_is_rejected_not_lowered(heavy) ->
         duckdb_limit(memory_limit="6GB")
 
 
+def test_duckdb_explicit_limit_equal_to_the_default_is_still_checked_not_lowered(heavy) -> None:
+    heavy(7)
+    with pytest.raises(em.EngineMemoryBudgetError, match="Lower memory_limit"):
+        duckdb_limit(memory_limit="4GB", _explicit_platform_options={"memory_limit": "4GB"})
+    with pytest.raises(em.EngineMemoryBudgetError, match="Lower memory_limit"):
+        duckdb_limit(memory_limit="4GB")
+
+
+def test_duckdb_limit_the_user_did_not_set_is_derived_from_the_budget(heavy) -> None:
+    heavy(7)
+    assert duckdb_limit(memory_limit="8GB", _explicit_platform_options={}) == "3GB"
+    assert duckdb_limit(memory_limit="8GB", options={"_explicit_platform_options": {"threads": 4}}) == "3GB"
+
+
 def test_duckdb_explicit_unbounded_limit_stays_unbounded(heavy) -> None:
     heavy(8)
     assert duckdb_limit(memory_limit=None) is None

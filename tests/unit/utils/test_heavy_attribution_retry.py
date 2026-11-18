@@ -8,6 +8,7 @@ import psutil
 import pytest
 
 from benchbox.utils import heavy_watchdog as hw, host_lock as hl, process_tree as pt
+from benchbox.utils.vm_footprint import VmReading
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium, pytest.mark.skipif(sys.platform == "win32", reason="POSIX only")]
 
@@ -25,7 +26,14 @@ def tree_of(total_gib: float) -> pt.TreeSample:
 
 class Harness:
     def __init__(
-        self, *, retry: bool, tree_gib: float, pressure: int | None, outside: list, swap: float | None
+        self,
+        *,
+        retry: bool,
+        tree_gib: float,
+        pressure: int | None,
+        outside: list,
+        swap: float | None,
+        vm: VmReading | None = None,
     ) -> None:
         self.out = io.StringIO()
         self.killed = 0
@@ -47,7 +55,7 @@ class Harness:
             sampler=lambda pid, exclude=(): tree_of(tree_gib),
             pressure_reader=lambda: pressure,
             disk_reader=lambda roots: [hw.DiskFree(label, path, self.free_gib) for label, path in roots],
-            vm_reader=lambda sample: None,
+            vm_reader=lambda sample: vm,
             outside_reader=lambda sample: outside,
             swap_reader=lambda: swap,
             out=self.out,
@@ -88,6 +96,15 @@ def test_a_holder_caused_breach_is_never_retryable() -> None:
     assert flags == b""
     assert harness.killed == 1
     assert "BREACH tree footprint" in log
+    assert "stop for bounded retry" not in log
+
+
+def test_a_breach_driven_by_the_holders_own_vm_is_never_retryable() -> None:
+    vm = VmReading("benchbox-agent", (BROWSER.pid,), BROWSER.footprint_bytes, None)
+    harness = Harness(retry=True, tree_gib=0.5, pressure=4, outside=[BROWSER, EDITOR], swap=92.0, vm=vm)
+    log, flags = harness.step()
+    assert flags == b""
+    assert harness.killed == 1
     assert "stop for bounded retry" not in log
 
 

@@ -4,7 +4,7 @@ import importlib
 import logging
 import re
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -65,13 +65,26 @@ def _as_bool(value: Any) -> bool:
 DEFAULT_MEMORY_LIMIT = "4GB"
 
 
-def budgeted_memory_limit(requested: str) -> str:
+def memory_limit_is_explicit(config: Mapping[str, Any]) -> bool:
+    nested = config.get("options")
+    marker = config.get("_explicit_platform_options")
+    if marker is None and isinstance(nested, Mapping):
+        marker = nested.get("_explicit_platform_options")
+    if isinstance(marker, Mapping):
+        return "memory_limit" in marker
+    return "memory_limit" in config
+
+
+def budgeted_memory_limit(requested: str, *, explicit: bool) -> str:
     budget_gib = admitted_budget_gib()
     if budget_gib is None:
         return requested
-    if requested == DEFAULT_MEMORY_LIMIT:
+    if not explicit:
         cap = derived_cap_gib(
-            budget_gib, DUCKDB_NON_BUFFER_ALLOWANCE_GIB, engine="DuckDB", ceiling_gib=DEFAULT_DUCKDB_MEMORY_LIMIT_GIB
+            budget_gib,
+            DUCKDB_NON_BUFFER_ALLOWANCE_GIB,
+            engine="DuckDB",
+            ceiling_gib=min(parse_size_gib(requested), DEFAULT_DUCKDB_MEMORY_LIMIT_GIB),
         )
         return f"{cap}GB"
     check_explicit_cap(
@@ -796,7 +809,7 @@ class DuckDBAdapter(PlatformAdapter):
         if raw_memory is not None:
             if not isinstance(raw_memory, str) or not _MEMORY_LIMIT_PATTERN.fullmatch(raw_memory):
                 raise ValueError("memory_limit must use a bounded memory size (e.g., '4GB')")
-            raw_memory = budgeted_memory_limit(raw_memory)
+            raw_memory = budgeted_memory_limit(raw_memory, explicit=memory_limit_is_explicit(config))
         self.memory_limit = raw_memory
         raw_temp = config.get("max_temp_directory_size")
         if raw_temp is not None:

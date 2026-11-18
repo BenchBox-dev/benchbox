@@ -241,6 +241,12 @@ def test_force_skips_the_hold_window(clock: FakeClock) -> None:
     assert clock.sleeps == []
 
 
+def test_force_on_a_clean_host_admits_on_the_first_sample_without_waiting(clock: FakeClock) -> None:
+    result = rl.admit_heavy_work(HELD, reader=lambda: healthy(), force=True)
+    assert result.admitted and not result.forced and result.samples == 1
+    assert clock.sleeps == []
+
+
 def test_the_hold_window_is_configurable_from_the_environment() -> None:
     assert rl.admission_policy_from_env({rl.ADMIT_HOLD_SECONDS_ENV: "90"}).hold_seconds == 90.0
     assert rl.admission_policy_from_env({}).hold_seconds == rl.DEFAULT_ADMIT_HOLD_SECONDS

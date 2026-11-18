@@ -814,6 +814,8 @@ def admit_heavy_work(
         samples += 1
         now = now_of()
         refusals = evaluate_admission(pressure, policy)
+        if force:
+            return AdmissionResult(True, refusals, pressure, samples, forced=bool(refusals))
         if not refusals:
             if stable_since is None:
                 stable_since = now
@@ -823,8 +825,6 @@ def admit_heavy_work(
                 return AdmissionResult(True, (), pressure, samples)
             _sleep(min(retry_interval_seconds, policy.hold_seconds - held))
             continue
-        if force:
-            return AdmissionResult(True, refusals, pressure, samples, forced=True)
         if stable_since is not None:
             refusals = (
                 *refusals,
