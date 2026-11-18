@@ -12,7 +12,12 @@ case "$common_dir" in
   *) common_abs=$(cd "$top" && realpath "$common_dir") ;;
 esac
 
-primary_clone=${BENCHBOX_AGENT_PRIMARY_CLONE:-$(dirname "$common_abs")}
+primary_clone=$(dirname "$common_abs")
+override_abs=$(realpath "${BENCHBOX_AGENT_PRIMARY_CLONE:-}" 2>/dev/null || true)
+if [ -n "${BENCHBOX_AGENT_PRIMARY_CLONE:-}" ] && [ -d "$BENCHBOX_AGENT_PRIMARY_CLONE" ] && [ -n "$override_abs" ] &&
+  git worktree list --porcelain | sed -n 's/^worktree //p' | while IFS= read -r listed; do realpath "$listed" 2>/dev/null || true; done | grep -Fxq -- "$override_abs"; then
+  primary_clone=$override_abs
+fi
 top_abs=$(realpath "$top")
 primary_abs=$(realpath "$primary_clone")
 snapshot="$git_dir_abs/primary-clone-snapshot"
