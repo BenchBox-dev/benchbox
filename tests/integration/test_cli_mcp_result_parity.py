@@ -74,7 +74,7 @@ def _mcp_bundle(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, platform: str) 
         results_dir=results_dir,
         anonymize=False,
     )
-    assert response["mcp_metadata"]["status"] == "completed", response
+    assert response.get("mcp_metadata", {}).get("status") == "completed", response
     return _only_bundle(results_dir)
 
 

@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "DataFusion now refuses a DELETE or UPDATE whose WHERE clause plans as a join or subquery, because DataFusion 55 removes every row for such statements without an error (apache/datafusion#24657). Plain literal-key deletes and simple predicates still run."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "TPC-DS data maintenance now counts the rows each DELETE predicate matches and fails the function when the rows removed differ, and TPC-H RF2 now compares the lineitem and orders rows it removes against the rows matching the delete keys. The counting runs outside the measured interval on every platform."
+    }
+  ]
+}
