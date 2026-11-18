@@ -17958,10 +17958,15 @@
       "title": "Improve interactive file selection in compare command"
     },
     "compare-mcp-pre-parity-heuristic-false-positive-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-19T18:51:19Z",
+        "generation": "aabd6a603e0a4d2db854b6dc46c7e726",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6da452ef1bfe1d4c6329ec0"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "compare can refuse a current MCP bundle as pre-parity when compression is off and the platform has no registered defaults"
     },
     "compare-run-mode-reports-false-success": {
