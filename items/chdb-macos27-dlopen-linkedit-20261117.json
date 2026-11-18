@@ -5,7 +5,7 @@
     "If a release loads: Linux CI clickhouse-local tests pass on the PR head",
     "If no release loads: a standalone reproducer and draft upstream report are recorded in context, and import_chdb raises an actionable error naming the chdb, chdb-core and macOS versions, covered by a unit test; the test-utility skip reason is reused, not duplicated"
   ],
-  "context": "Prior work: chdb-4x-native-load-and-old-engine-hang-20261005, PR #2719.",
+  "context": "Prior work: chdb-4x-native-load-and-old-engine-hang-20261005, PR #2719.\n\nOwner decision 2026-11-17: if no release loads, draft the upstream issue text and reproducer in context; the owner files it. Agents do not file upstream.",
   "description": "## Problem\nOn macOS 27.0.1 (arm64), `import chdb` fails in the BenchBox environment:\n`ImportError: dlopen(.../chdb/_chdb.abi3.so): mis-aligned LINKEDIT string pool, fileOffset=0x12369CAC`.\nInstalled chdb is 4.1.6; pyproject pins `chdb>=0.10.0` (core, clickhouse-local extra). Upstream chdb has released 4.2.1, 4.3.0 and 4.4.0. Reproduced 2026-11-12 (corpus reruns had to move to the benchbox-agent Linux machine) and again 2026-11-17. ClickHouse Local is therefore unusable for local development, UAT and measurement on the current macOS, and any Mac user on macOS 27 hits the same import error.\n\n## Decision gate\n1. PR #2719 (done item chdb-4x-native-load-and-old-engine-hang-20261005) showed chdb 4.4.0 with chdb-core 26.9.0 fails identically. The native library ships in chdb-core: test chdb 4.4.0 with the newest chdb-core (26.11.1 on 2026-11-17) and any newer chdb release. If one loads, raise the floor (uv add) and verify.\n2. If none loads, this is an upstream defect: build a minimal reproducer (fresh venv, pip install chdb, import), record the upstream issue text for the owner to file, and make BenchBox report a clear, actionable error for clickhouse-local on affected macOS instead of a raw dlopen trace. Today the actionable message exists only in tests/utilities/optional_engines.py; the product import (benchbox/platforms/clickhouse/_dependencies.py import_chdb) raises the raw error. Do not file upstream without the owner.\n\n## Guardrails\n- Do not vendor or patch the binary.\n- Do not mark ClickHouse Local unsupported on macOS without the owner.\n- CI (Linux) results must not change; check the clickhouse-local test tier on Linux after any version change.",
   "links": [
     "https://github.com/chdb-io/chdb/releases"
@@ -26,6 +26,14 @@
       "op": "update",
       "op_id": "e8ab48a75f6540f6bc1500106d60680c",
       "session_id": "71cadb46eee448f8a6d2019016ddc6eb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bfa5e7eb7cd30f69e1fe2571",
+      "at": "2026-11-18T01:50:13Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b0a3e5f15c0b4f6caf2e2fa92ab2de51",
+      "session_id": "0362803867fb4929927e576283fffc32"
     }
   ]
 }
