@@ -68,6 +68,9 @@ class _NativeAdapter:
     def __init__(self, log: list[str]) -> None:
         self.log = log
 
+    def record_refresh_applied(self, connection) -> None:
+        return None
+
     def ingest_refresh_file(self, connection, table_name, columns, path):
         with path.open(encoding="utf-8") as source:
             fields = source.read().rstrip("\n").split("|")
