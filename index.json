@@ -15117,15 +15117,10 @@
       "title": "clickhouse-local (chdb) intermittently fails to initialise its embedded server with recursive_mutex lock failed"
     },
     "chdb-macos27-dlopen-linkedit-20261117": {
-      "claim": {
-        "expires_at": "2026-11-19T22:06:03Z",
-        "generation": "9e48c28247a24b94ad995c8cd041cd0a",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a43b9a4b85fc0a7cdd51f943"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "chDB 4.1.6 does not load on macOS 27: dlopen refuses _chdb.abi3.so with a mis-aligned LINKEDIT string pool"
     },
     "chdb-rows-nan-vs-arrow-null-q17-20261107": {
