@@ -8,6 +8,7 @@ from benchbox.utils.heavy_run_events import current_run_id
 from benchbox.utils.resource_limits import MEMORY_BUDGET_GIB_ENV, heavy_memory_budget_gib
 
 MIN_ENGINE_CAP_GIB = 1
+DUCKDB_ENGINE_PLATFORMS = frozenset({"duckdb", "ducklake"})
 SPARK_NON_HEAP_ALLOWANCE_GIB = 4.5
 DUCKDB_NON_BUFFER_ALLOWANCE_GIB = 3.5
 DEFAULT_DUCKDB_MEMORY_LIMIT_GIB = 4

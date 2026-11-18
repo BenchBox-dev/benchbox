@@ -89,7 +89,9 @@ def test_get_platform_config_keeps_non_adapter_options_nested() -> None:
     ("platform", "in_heavy_run", "carries_profile_limit"),
     [
         ("duckdb", True, False),
+        ("ducklake", True, False),
         ("duckdb", False, True),
+        ("ducklake", False, True),
         ("datafusion", True, True),
     ],
 )
