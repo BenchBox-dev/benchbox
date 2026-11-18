@@ -17,10 +17,12 @@ from benchbox.core.tpch.refresh import (
     TPCHRefreshUpdateSet,
     apply_rf1,
     apply_rf2,
+    capture_rf2_baseline,
     check_rf1_applied,
     check_rf2_applied,
     generate_refresh_update_sets,
     record_refresh_applied,
+    verify_rf2_deletes,
 )
 from benchbox.core.tpch.schema import LINEITEM, ORDERS
 from benchbox.utils.clock import elapsed_seconds, mono_time
@@ -297,11 +299,13 @@ class TPCHMaintenanceTest:
                 self.logger.info(f"Executing RF2 for pair {pair_id + 1} using update set {update_set.set_id}")
             connection = self.connection_factory()
             record_refresh_applied(connection)
+            baseline = capture_rf2_baseline(connection, update_set)
             operation.start_time = mono_time()
             deletes = apply_rf2(connection, update_set)
             operation.end_time = mono_time()
             operation.duration = elapsed_seconds(operation.start_time)
             operation.rows_affected = deletes.rows
+            verify_rf2_deletes(connection, update_set, baseline, deletes)
             check_rf2_applied(connection, update_set, deletes.orders)
             operation.success = True
         except Exception as exc:

@@ -250,6 +250,7 @@ def test_throughput_assigns_consecutive_update_sets_after_the_power_set(monkeypa
         refresh_connection_factory=lambda: None,
     )
     test._pregenerate_stream_queries = lambda config: {}
+    monkeypatch.setattr(test, "_capture_rf2_baselines", lambda _sets: {})
 
     def execute(stream_fn, config, result, logger, auxiliary_fn=None):
         auxiliary_fn()
@@ -288,6 +289,7 @@ def test_throughput_reports_refresh_worker_that_never_started(monkeypatch: pytes
         refresh_connection_factory=lambda: None,
     )
     test._pregenerate_stream_queries = lambda config: {}
+    monkeypatch.setattr(test, "_capture_rf2_baselines", lambda _sets: {})
     monkeypatch.setattr(
         throughput_test,
         "generate_refresh_update_sets",
@@ -375,9 +377,12 @@ def test_refresh_checks_run_after_the_timer_stops(
     names = connection.names()
     start = names.index("TIMER_START")
     stop = names.index("TIMER_STOP")
-    assert start == 0
-    assert "SELECT" not in names[:stop]
+    if function == "RF1":
+        assert start == 0
+    assert "SELECT" not in names[start:stop]
     assert "SELECT" in names[stop:]
+    if function == "RF2":
+        assert names[:start].count("SELECT") >= 3
     assert {"BEGIN", "COMMIT"} <= set(names[start:stop])
 
 
@@ -459,8 +464,8 @@ def test_throughput_refresh_checks_run_after_the_refresh_stream_ends(
 
     stream = result.refresh_stream
     assert stream.status == "COMPLETED"
-    stamps = [(name, at) for name, at in connection.events]
-    assert all(at >= stream.start_monotonic for _, at in stamps)
+    stamps = [(name, at) for name, at in connection.events if at >= stream.start_monotonic]
+    assert any(name == "SELECT" for name, at in connection.events if at < stream.start_monotonic)
     selects = [(index, at) for index, (name, at) in enumerate(stamps) if name == "SELECT"]
     applies = [(index, at) for index, (name, at) in enumerate(stamps) if name in {"INSERT", "DELETE", "COMMIT"}]
     assert selects and applies
@@ -479,6 +484,9 @@ def test_throughput_total_time_excludes_check_execution(monkeypatch: pytest.Monk
         close=lambda: None, platform_adapter=SimpleNamespace(record_refresh_applied=lambda _connection: None)
     )
     test = _throughput_refresh_test(connection, update_set, monkeypatch)
+    monkeypatch.setattr(throughput_test, "capture_rf2_baseline", lambda *_args: object())
+    monkeypatch.setattr(throughput_test, "verify_rf2_reported", lambda *_args: None)
+    monkeypatch.setattr(throughput_test, "verify_refresh_stream_totals", lambda *_args: None)
     monkeypatch.setattr(throughput_test, "apply_rf1", lambda *_args: 1)
     monkeypatch.setattr(throughput_test, "apply_rf2", lambda *_args: TPCHRF2Deletes(orders=1, lineitems=0))
     monkeypatch.setattr(throughput_test, "check_rf1_applied", lambda *_args: time.sleep(0.2))
@@ -524,7 +532,13 @@ def test_throughput_failed_stream_still_checks_committed_refresh_functions(monke
     stream.error = "refresh set 4 RF1 failed: boom"
     committed = [
         {"function": "RF1", "status": "SUCCESS", "check_status": "NOT_RUN", "rows_inserted": 3},
-        {"function": "RF2", "status": "SUCCESS", "check_status": "NOT_RUN", "orders_deleted": 1},
+        {
+            "function": "RF2",
+            "status": "SUCCESS",
+            "check_status": "NOT_RUN",
+            "orders_deleted": 1,
+            "lineitems_deleted": 1,
+        },
     ]
     rejected = [{"function": "RF1", "status": "FAILED", "check_status": "NOT_RUN", "error": "boom"}]
     stream.pairs.append({"update_set": 3, "status": "SUCCESS", "error": None, "functions": committed})
@@ -541,9 +555,17 @@ def test_throughput_failed_stream_still_checks_committed_refresh_functions(monke
         lambda _c, update_set, rows: checked.append(("RF2", update_set.set_id, rows)),
     )
 
-    test._check_refresh_postconditions({3: SimpleNamespace(set_id=3), 4: SimpleNamespace(set_id=4)}, result)
+    monkeypatch.setattr(throughput_test, "verify_rf2_reported", lambda *_args: None)
+    monkeypatch.setattr(
+        throughput_test,
+        "verify_refresh_stream_totals",
+        lambda _c, _initial, inserted, deleted: checked.append(("TOTALS", len(inserted), len(deleted))),
+    )
+    baselines = {3: SimpleNamespace(), 4: SimpleNamespace()}
 
-    assert checked == [("RF1", 3, 3), ("RF2", 3, 1)]
+    test._check_refresh_postconditions({3: SimpleNamespace(set_id=3), 4: SimpleNamespace(set_id=4)}, result, baselines)
+
+    assert checked == [("RF1", 3, 3), ("RF2", 3, 1), ("TOTALS", 1, 1)]
     assert [function["check_status"] for function in committed] == ["PASSED", "PASSED"]
     assert rejected[0]["check_status"] == "NOT_RUN"
     assert stream.error == "refresh set 4 RF1 failed: boom"

@@ -211,6 +211,9 @@ def test_the_refresh_marker_is_written_before_the_timer_starts(monkeypatch: pyte
         monkeypatch.setattr(module, "record_refresh_applied", lambda _connection: events.append("marker"))
         monkeypatch.setattr(module, "mono_time", lambda: events.append("timer") or 0.0)
         monkeypatch.setattr(module, apply_name, lambda *_args: events.append("apply") or applied)
+    for module in (power_test, maintenance_test):
+        monkeypatch.setattr(module, "capture_rf2_baseline", lambda *_args: None)
+        monkeypatch.setattr(module, "verify_rf2_deletes", lambda *_args: None)
     monkeypatch.setattr(power_test, "check_rf1_applied", lambda *_args: None)
     monkeypatch.setattr(power_test, "check_rf2_applied", lambda *_args: None)
     monkeypatch.setattr(maintenance_test, "check_rf1_applied", lambda *_args: None)

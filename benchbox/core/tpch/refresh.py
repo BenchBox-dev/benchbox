@@ -35,6 +35,14 @@ class TPCHRF2Deletes:
         return self.orders + self.lineitems
 
 
+@dataclass(frozen=True)
+class TPCHRF2Baseline:
+    orders_total: int
+    lineitems_total: int
+    orders_for_keys: int
+    lineitems_for_keys: int
+
+
 def _greybeam_routed(adapter: Any) -> bool:
     from benchbox.core.gateway import is_greybeam_gateway
 
@@ -388,3 +396,98 @@ def applied_counts(applied: int | TPCHRF2Deletes) -> dict[str, int]:
     if isinstance(applied, TPCHRF2Deletes):
         return {"rows": applied.rows, "orders_deleted": applied.orders, "lineitems_deleted": applied.lineitems}
     return {"rows": applied, "rows_inserted": applied}
+
+
+def capture_rf2_baseline(
+    connection: Any,
+    update_set: TPCHRefreshUpdateSet,
+    chunk_size: int = REFRESH_CHUNK_SIZE,
+) -> TPCHRF2Baseline:
+    _require_chunk_size(chunk_size)
+    orders_for_keys = 0
+    lineitems_for_keys = 0
+    for order_keys in _key_chunks(update_set.delete_path, chunk_size):
+        orders_for_keys += _count_matching_keys(connection, ORDERS.name, "O_ORDERKEY", order_keys)
+        lineitems_for_keys += _count_matching_keys(connection, LINEITEM.name, "L_ORDERKEY", order_keys)
+    return TPCHRF2Baseline(
+        orders_total=_count_table_rows(connection, ORDERS.name),
+        lineitems_total=_count_table_rows(connection, LINEITEM.name),
+        orders_for_keys=orders_for_keys,
+        lineitems_for_keys=lineitems_for_keys,
+    )
+
+
+def verify_rf2_deletes(
+    connection: Any,
+    update_set: TPCHRefreshUpdateSet,
+    baseline: TPCHRF2Baseline,
+    deletes: TPCHRF2Deletes,
+) -> None:
+    for table_name, total_before, expected in (
+        (ORDERS.name, baseline.orders_total, baseline.orders_for_keys),
+        (LINEITEM.name, baseline.lineitems_total, baseline.lineitems_for_keys),
+    ):
+        removed = total_before - _count_table_rows(connection, table_name)
+        if removed != expected:
+            raise ValueError(
+                _reload_message(
+                    update_set,
+                    "RF2",
+                    f"removed {removed} rows from {table_name}, expected {expected} rows matching the delete keys",
+                )
+            )
+    verify_rf2_reported(update_set, baseline, deletes)
+
+
+def verify_rf2_reported(update_set: TPCHRefreshUpdateSet, baseline: TPCHRF2Baseline, deletes: TPCHRF2Deletes) -> None:
+    for table_name, expected, reported in (
+        (ORDERS.name, baseline.orders_for_keys, deletes.orders),
+        (LINEITEM.name, baseline.lineitems_for_keys, deletes.lineitems),
+    ):
+        if reported != expected:
+            raise ValueError(
+                _reload_message(
+                    update_set,
+                    "RF2",
+                    f"the driver reported {reported} rows deleted from {table_name}, expected {expected}",
+                )
+            )
+
+
+def verify_refresh_stream_totals(
+    connection: Any,
+    initial: TPCHRF2Baseline,
+    inserted_sets: list[TPCHRefreshUpdateSet],
+    deleted_baselines: list[TPCHRF2Baseline],
+    chunk_size: int = REFRESH_CHUNK_SIZE,
+) -> None:
+    _require_chunk_size(chunk_size)
+    inserted_orders = 0
+    inserted_lineitems = 0
+    for update_set in inserted_sets:
+        inserted_orders += sum(len(rows) for rows in _source_row_chunks(update_set.orders_path, ORDERS, chunk_size))
+        inserted_lineitems += sum(
+            len(rows) for rows in _source_row_chunks(update_set.lineitem_path, LINEITEM, chunk_size)
+        )
+    for table_name, total_before, inserted, expected in (
+        (ORDERS.name, initial.orders_total, inserted_orders, sum(b.orders_for_keys for b in deleted_baselines)),
+        (
+            LINEITEM.name,
+            initial.lineitems_total,
+            inserted_lineitems,
+            sum(b.lineitems_for_keys for b in deleted_baselines),
+        ),
+    ):
+        removed = total_before + inserted - _count_table_rows(connection, table_name)
+        if removed != expected:
+            raise ValueError(
+                f"the refresh stream removed {removed} rows from {table_name}, expected {expected} rows matching "
+                "the delete keys; the database needs a reload before the update sets are applied again"
+            )
+
+
+def _count_table_rows(connection: Any, table_name: str) -> int:
+    row = connection.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()
+    if row is None or row[0] is None:
+        raise RuntimeError(f"Could not count rows for {table_name}")
+    return int(row[0])

@@ -11,7 +11,7 @@ import subprocess
 import sys
 import threading
 import time
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -878,11 +878,18 @@ def start_guard(handle: HostLock, *, environ: Mapping[str, str] | None = None) -
 
 
 def check_admission(
-    *, need_gib: float | None = None, environ: Mapping[str, str] | None = None, echo: bool = True
+    *,
+    need_gib: float | None = None,
+    environ: Mapping[str, str] | None = None,
+    echo: bool = True,
+    spin_lines: Callable[[Mapping[str, str]], Sequence[str]] | None = None,
 ) -> str:
-    from benchbox.utils import resource_limits
+    from benchbox.utils import heavy_status, resource_limits
 
     env = os.environ if environ is None else environ
+    if echo:
+        for line in (spin_lines or heavy_status.active_spin_lines)(env):
+            _log(line)
     force = env.get(ADMIT_ENV, "").strip().lower() == "force"
     policy = resource_limits.admission_policy_from_env(env, need_gib=need_gib)
     result = resource_limits.admit_heavy_work(policy, force=force)
