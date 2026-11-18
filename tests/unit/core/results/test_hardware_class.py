@@ -73,6 +73,9 @@ def test_container_with_a_limit_uses_the_host_factor_times_the_limit() -> None:
     with_host_model = classify_hardware(cpu_model="Apple M4", cpu_count=4, execution_class="container")
     vendor_only = classify_hardware(cpu_vendor="Apple", cpu_count=4, execution_class="container")
     host_os_only = classify_hardware(container_host_os="macOS", cpu_count=4, execution_class="container")
+    other_vendor = classify_hardware(
+        cpu_vendor="Intel", container_host_os="macOS", cpu_count=4, execution_class="container"
+    )
 
     assert with_host_model.score == 9.08
     assert (vendor_only.hardware_class, vendor_only.score, vendor_only.basis) == (
@@ -80,7 +83,8 @@ def test_container_with_a_limit_uses_the_host_factor_times_the_limit() -> None:
         9.08,
         BASIS_CONTAINER_HOST_VENDOR,
     )
-    assert host_os_only.hardware_class == "T1"
+    assert (host_os_only.hardware_class, host_os_only.basis) == (CLASS_UNCLASSIFIED, BASIS_MODEL_MISSING)
+    assert (other_vendor.hardware_class, other_vendor.basis) == (CLASS_UNCLASSIFIED, BASIS_MODEL_MISSING)
 
 
 def test_a_container_on_an_unknown_host_is_unclassified() -> None:

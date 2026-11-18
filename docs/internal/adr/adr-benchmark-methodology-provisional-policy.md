@@ -67,7 +67,9 @@ Explorer read model records the class, the score, the basis and the table
 version for every result.
 
 - **Score.** Per-thread factor times the logical CPUs the run could see
-  (`cpu_count`, which is the container limit inside a container), in
+  (`cpu_count`, as `os.cpu_count()` reports it: a container CPU quota or
+  cpuset below that count is not read, so a limited container is scored on
+  the CPUs it can see), in
   "BenchBox CPU units" relative to one EPYC 7763 SMT thread. The unit is
   BenchBox's own; it is never a SPEC metric.
 - **Factors.** x86: the median SPECrate2017_int_base per copy from
@@ -88,7 +90,7 @@ version for every result.
   at 8 or 10 cores is T2); the score stays empty. (2) A container records the
   host model when the launcher passes it in `BENCHBOX_CONTAINER_HOST_CPU_MODEL`
   (provenance `user_attested`); with a host vendor of Apple and no model, the
-  M4 factor times the container limit is used. (3) A bundle with no CPU model
+  M4 factor times the visible CPU count is used. (3) A bundle with no CPU model
   takes one only from a sidecar `cpu_attestation` (provenance `user_attested`);
   the 45 Darwin arm64 bundles with no CPU model carry the owner's attestation
   that they ran on the Apple M4 (10 cores). (4) Anything else is

@@ -224,9 +224,7 @@ def classify_hardware(
     attested = _text(attested_cpu_model)
     model = recorded or attested
     if model is None:
-        apple_container = execution_class == "container" and (
-            _text(cpu_vendor) == "Apple" or _text(container_host_os) == "macOS"
-        )
+        apple_container = execution_class == "container" and _text(cpu_vendor) == "Apple"
         if apple_container and count is not None:
             return _tiered(
                 APPLE_CONTAINER_HOST_ROW.score(count), BASIS_CONTAINER_HOST_VENDOR, APPLE_CONTAINER_HOST_ROW.label

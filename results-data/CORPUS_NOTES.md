@@ -1884,6 +1884,6 @@ optional facet filter. Managed services are one `managed` class, so the client C
 
 45 Darwin arm64 bundles recorded no CPU model (ClickHouse Local, DataFusion and DuckDB runs). The owner attests that they ran
 on the project's Apple M4 (10 cores). The attestation is a `cpu_attestation` object in each bundle's `.manifest.json` sidecar
-with `cpu_identity_provenance: user_attested`; no bundle was edited, so no result id moved. 20 of the 45 had no sidecar, and
-a minimal one (`bundle_file`, `bundle_hash`, `manifest_version`, `funding`, `result_source`, `submitted_by`, as on every
-sibling run) was added to carry the attestation. This is an operator attestation, not a measurement.
+with `cpu_identity_provenance: user_attested`; no bundle was edited, so no result id moved. The 27 that had a sidecar had it edited to carry the attestation; the other 18 had none, so a minimal one
+(`bundle_file`, `bundle_hash`, `manifest_version`, `funding`, `result_source`, `submitted_by`, as on every
+sibling run) was added. This is an operator attestation, not a measurement.

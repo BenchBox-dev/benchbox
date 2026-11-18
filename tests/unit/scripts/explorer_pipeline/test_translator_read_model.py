@@ -140,7 +140,7 @@ def test_read_model_20_leaves_every_other_column_unchanged(tmp_path: Path) -> No
     base = tmp_path / "v17"
     new = tmp_path / "v20"
     ExplorerPipeline().run(data, base, read_model_version=17)
-    ExplorerPipeline().run(data, new, read_model_version=18)
+    ExplorerPipeline().run(data, new)
     shared = ", ".join(_columns(base / "results.duckdb"))
     query = f"SELECT {shared} FROM results ORDER BY result_id"
 
