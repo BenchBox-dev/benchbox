@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 
@@ -28,6 +29,17 @@ class MaintenanceFunction:
         if dialect is not None and dialect.lower() in MYSQL_INTEGER_CAST_DIALECTS:
             return tuple(statement.replace("AS INTEGER)", "AS SIGNED)") for statement in self.statements)
         return self.statements
+
+
+_DELETE_PATTERN = re.compile(r"^\s*DELETE\s+FROM\s+(\w+)\s+WHERE\s+(.+?)\s*;?\s*$", re.IGNORECASE | re.DOTALL)
+
+
+def delete_target_and_count_sql(statement: str) -> tuple[str, str] | None:
+    match = _DELETE_PATTERN.match(statement)
+    if match is None:
+        return None
+    table, predicate = match.groups()
+    return table, f"SELECT COUNT(*) FROM {table} WHERE {predicate}"
 
 
 def _insert(target: str, columns: tuple[tuple[str, str], ...], source: str) -> str:
