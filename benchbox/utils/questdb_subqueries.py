@@ -461,6 +461,39 @@ def _factor_common_conjuncts(expression: exp.Expr) -> exp.Expr:
     return expression
 
 
+def _is_int_literal(node: exp.Expr | None, value: int) -> bool:
+    return isinstance(node, exp.Literal) and not node.is_string and node.is_int and int(node.name) == value
+
+
+def _case_flag_predicate(conjunct: exp.Expr) -> exp.Expr | None:
+    if not isinstance(conjunct, exp.EQ):
+        return None
+    case, one = conjunct.left, conjunct.right
+    if isinstance(case, exp.Literal):
+        case, one = one, case
+    if (
+        not isinstance(case, exp.Case)
+        or case.args.get("this") is not None
+        or len(case.args["ifs"]) != 1
+        or not _is_int_literal(one, 1)
+        or not _is_int_literal(case.args.get("default"), 0)
+        or not _is_int_literal(case.args["ifs"][0].args.get("true"), 1)
+    ):
+        return None
+    return case.args["ifs"][0].this
+
+
+def _case_flag_to_predicate(expression: exp.Expr) -> exp.Expr:
+    for where in list(expression.find_all(exp.Where)):
+        for conjunct in _flatten_and(where.this):
+            predicate = _case_flag_predicate(conjunct)
+            if predicate is None:
+                continue
+            predicate = predicate.copy()
+            conjunct.replace(exp.Paren(this=predicate) if isinstance(predicate, exp.Connector) else predicate)
+    return expression
+
+
 _COUNT_TESTS = {
     (exp.GT, 0): False,
     (exp.GTE, 1): False,
@@ -569,6 +602,7 @@ def rewrite_subqueries(expression: exp.Expr) -> exp.Expr:
     expression = _add_single_row_source(expression)
     expression = _count_test_to_exists(expression)
     expression = _unwrap_where_parentheses(expression)
+    expression = _case_flag_to_predicate(expression)
     expression = _factor_common_conjuncts(expression)
     expression = _single_evaluation_extremum(expression)
     expression = apply_rewrite("not_in_subquery_to_not_exists", expression, QUESTDB, non_null_columns=non_null)

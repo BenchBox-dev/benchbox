@@ -8,7 +8,7 @@ from importlib import import_module
 from types import ModuleType
 from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Type, Union
 
-__version__ = "0.5.2rc2"
+__version__ = "0.5.2rc3"
 
 from benchbox.base import BaseBenchmark
 from benchbox.flightdata import FlightData
