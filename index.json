@@ -25835,15 +25835,10 @@
       "title": "Engine-level memory caps (DuckDB memory_limit, -Xmx, Spark driver memory) and per-service Apple container limits derived from the budget"
     },
     "heavy-orphan-spin-report-has-no-reader-20261117": {
-      "claim": {
-        "expires_at": "2026-11-19T14:28:45Z",
-        "generation": "b03c6654a63b4f7aa54978a67a27b5be",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6da452ef1bfe1d4c6329ec0"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "The sentinel reports orphaned spinning shells, but nothing surfaces the report to a person or an agent"
     },
     "heavy-run-admission-wait-20261111": {
