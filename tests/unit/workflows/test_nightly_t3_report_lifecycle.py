@@ -336,12 +336,11 @@ def test_report_needs_every_domain_and_helper_job() -> None:
     assert set(DOMAIN_JOBS + SUPPORT_JOBS) == set(jobs) - {"report"}
 
 
-def test_report_domain_loop_covers_every_domain_job(tmp_path: Path) -> None:
-    for job in DOMAIN_JOBS:
-        case = tmp_path / job
-        _, calls = _run_report(case, {job: "failure"}, label=f"t3:{'durations' if job == 'durations-refresh' else job}")
-        creates = [args for args in calls if args[:2] == ["issue", "create"]]
-        assert len(creates) == 1, job
+@pytest.mark.parametrize("job", DOMAIN_JOBS)
+def test_report_domain_loop_covers_every_domain_job(tmp_path: Path, job: str) -> None:
+    _, calls = _run_report(tmp_path, {job: "failure"}, label=f"t3:{'durations' if job == 'durations-refresh' else job}")
+    creates = [args for args in calls if args[:2] == ["issue", "create"]]
+    assert len(creates) == 1, job
 
 
 def test_obt_execution_gate_failure_opens_its_domain_issue(tmp_path: Path) -> None:

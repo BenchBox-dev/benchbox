@@ -461,12 +461,16 @@ jobs:
           set -o pipefail
           uv run -- python -m pytest tests/integration/platforms/test_cedardb_live.py \
             tests/integration/platforms/test_cedardb_tpcds_maintenance_live.py \
-            -m "live_cedardb" --tb=short -v -p no:cacheprovider \
+            -m "live_cedardb" -n 0 --tb=short -v -p no:cacheprovider \
             | tee /tmp/cedardb_docker_output.txt
           if ! grep -Eq '[0-9]+ passed' /tmp/cedardb_docker_output.txt; then
             echo "::error::CedarDB Docker integration produced no passing tests."
             exit 1
           fi
+
+      - name: Show CedarDB server log
+        if: failure()
+        run: docker compose -f docker/cedardb/docker-compose.yml logs --no-color --tail 300 cedardb || true
 
       - name: Tear down compose stack
         if: always()
