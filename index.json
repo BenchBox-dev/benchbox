@@ -5781,7 +5781,7 @@
         }
       },
       "integration_branch": "feat/nightly-remediation",
-      "integration_head": "bffaa7c6d858a6d1bfbb1bccf313990e5a6bc1fc",
+      "integration_head": "a6e39af52eb7882d71d35dc7cca05b7a3aaa0a80",
       "integration_log": [
         {
           "at": "2026-11-17T17:50:03Z",
@@ -5890,6 +5890,28 @@
           "op_id": "a1ed2c6d40e3430da2f98974fe72a319",
           "previous_head": "5009338e935df9f6fead9a9ab7a16afeaf5ac81b",
           "seq": 5
+        },
+        {
+          "at": "2026-11-18T00:35:12Z",
+          "changed_files": [
+            "_project/scripts/review_gateway_host.sh",
+            "docs/internal/perf-smoke.md",
+            "docs/internal/results-phase-2-runbook.md",
+            "docs/internal/review-gateway-host.md",
+            "scripts/corpus_drift.py",
+            "tests/unit/scripts/test_corpus_drift.py",
+            "tests/unit/scripts/test_review_gateway_host.py"
+          ],
+          "head": "a6e39af52eb7882d71d35dc7cca05b7a3aaa0a80",
+          "kind": "fix",
+          "op_id": "ef582a426a7a463cb804836a692c0f9a",
+          "previous_head": "bffaa7c6d858a6d1bfbb1bccf313990e5a6bc1fc",
+          "requires_acceptance": [
+            "corpus-drift-mirror-grace-20261117",
+            "gateway-probe-served-providers-20261117",
+            "perf-smoke-method2-baseline-20261117"
+          ],
+          "seq": 6
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-nightly-remediation",
