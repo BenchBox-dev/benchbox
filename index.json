@@ -33337,10 +33337,15 @@
       "title": "Find who writes to the primary clone and stop them now that the dirty guard blocks commits"
     },
     "primary-clone-override-env-silences-guard-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-19T19:35:43Z",
+        "generation": "f1d234d90b864433909d869dd178f7b2",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b22c5dfe732da19b798cd911"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Ignore a BENCHBOX_AGENT_PRIMARY_CLONE override that is not a worktree of the repository"
     },
     "primary-clone-unignored-tool-output-paths-20261117": {
