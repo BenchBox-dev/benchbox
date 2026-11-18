@@ -1,4 +1,4 @@
 {
   "schema": 1,
-  "internal": "pr-arm and pr-open now retry transient GitHub read failures within the wait budget; the release-v2 probe no longer counts queue time, limiting only a started run"
+  "internal": "pr-arm and pr-open now retry transient GitHub read failures within the wait budget; the release-v2 probe no longer counts queue time and limits only the time its jobs are running"
 }

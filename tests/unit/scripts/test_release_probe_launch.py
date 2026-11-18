@@ -28,6 +28,7 @@ class FakeGh:
         *,
         pending_polls: int = 1,
         queued_polls: int = 0,
+        idle_polls: int = 0,
         visible_after: int = 0,
         cancel_fails=False,
     ):
@@ -39,6 +40,7 @@ class FakeGh:
         }
         self.pending_polls = pending_polls
         self.queued_polls = queued_polls
+        self.idle_polls = idle_polls
         self.visible_after = visible_after
         self.list_calls = 0
         self.cancel_fails = cancel_fails
@@ -70,6 +72,10 @@ class FakeGh:
             if self.list_calls <= self.visible_after:
                 return {"workflow_runs": []}
             return {"workflow_runs": list(self.runs.values())}
+        if path.endswith("/jobs?per_page=100"):
+            run_id = int(path.split("/")[-2])
+            idle = self.polls[run_id] <= self.queued_polls + self.idle_polls
+            return {"jobs": [{"status": "completed"}, {"status": "queued" if idle else "in_progress"}]}
         run_id = int(path.rsplit("/", 1)[1])
         self.polls[run_id] = self.polls.get(run_id, 0) + 1
         if self.polls[run_id] <= self.queued_polls:
@@ -185,15 +191,36 @@ def _timed(fake: FakeGh, **kwargs) -> int:
 
 def test_a_run_that_starts_and_outlives_the_run_limit_fails_and_is_cancelled():
     fake = FakeGh(pending_polls=10**6)
-    with pytest.raises(RuntimeError, match="started but did not finish within 100s"):
+    with pytest.raises(RuntimeError, match="ran jobs for 100s without finishing"):
         _timed(fake, run_timeout=100.0)
     assert sorted(fake.cancelled) == sorted(fake.variant_of)
 
 
 def test_queue_time_does_not_count_against_the_run_limit():
-    fake = FakeGh(queued_polls=20, pending_polls=3)
+    fake = FakeGh(queued_polls=20, pending_polls=2)
     assert _timed(fake, run_timeout=100.0) == 0
     assert fake.cancelled == []
+
+
+def test_time_a_started_run_spends_waiting_for_its_next_job_does_not_count():
+    fake = FakeGh(idle_polls=1000, pending_polls=1002)
+    assert _timed(fake, run_timeout=100.0) == 0
+    assert fake.cancelled == []
+
+
+def test_job_time_accumulates_across_idle_gaps_and_still_fails_a_run_that_never_finishes():
+    class Gappy(FakeGh):
+        def __call__(self, *args):
+            result = super().__call__(*args)
+            if isinstance(result, dict) and "jobs" in result:
+                running = self.polls[int(args[1].split("/")[-2])] % 3 != 0
+                return {"jobs": [{"status": "in_progress" if running else "queued"}]}
+            return result
+
+    fake = Gappy(pending_polls=10**6)
+    with pytest.raises(RuntimeError, match="without finishing"):
+        _timed(fake, run_timeout=500.0)
+    assert sorted(fake.cancelled) == sorted(fake.variant_of)
 
 
 @pytest.mark.parametrize("status", ["queued", "waiting", "requested", "pending"])
@@ -205,7 +232,7 @@ def test_a_run_queued_for_hours_is_waited_out_and_its_result_counts(status):
                 return {**result, "status": status}
             return result
 
-    fake = Fake(queued_polls=1000, pending_polls=3)
+    fake = Fake(queued_polls=1000, pending_polls=2)
     clock = FakeClock()
     assert (
         launch.run_probes(REPOSITORY, BRANCH, HEAD, runner=fake, sleep=clock.sleep, clock=clock, run_timeout=100.0) == 0
@@ -229,7 +256,7 @@ def test_a_finished_run_is_not_cancelled_when_another_run_outlives_the_run_limit
             return result
 
     fake = Fake(pending_polls=0)
-    with pytest.raises(RuntimeError, match="did not finish"):
+    with pytest.raises(RuntimeError, match="without finishing"):
         _timed(fake, run_timeout=500.0)
     assert fake.cancelled == [next(i for i, v in fake.variant_of.items() if v == "guarded-change")]
 
@@ -250,7 +277,7 @@ def test_a_dispatch_that_never_becomes_visible_ends_after_a_finite_wait_and_name
 
 def test_a_failed_cancel_is_reported_without_hiding_the_original_failure(capsys):
     fake = FakeGh(pending_polls=10**6, cancel_fails=True)
-    with pytest.raises(RuntimeError, match="did not finish"):
+    with pytest.raises(RuntimeError, match="without finishing"):
         _timed(fake, run_timeout=100.0)
     assert "could not cancel" in capsys.readouterr().err
 

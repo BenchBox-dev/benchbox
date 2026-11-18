@@ -127,6 +127,16 @@ def launch(
     )
 
 
+def _read(runner: Gh, path: str, what: str) -> Any:
+    try:
+        return runner("api", path)
+    except RuntimeError as exc:
+        if not gh_transient.is_transient(exc):
+            raise
+        print(f"::warning::{what} failed transiently: {exc}")
+        return None
+
+
 def wait_for(
     repository: str,
     run_ids: dict[str, int],
@@ -135,31 +145,38 @@ def wait_for(
     sleep: Callable[[float], None] = time.sleep,
     clock: Callable[[], float] = time.monotonic,
     run_timeout: float = RUN_TIMEOUT,
-    interval: float = 20.0,
+    interval: float = 60.0,
     verdicts: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, dict[str, Any]]:
-    started_at: dict[str, float] = {}
+    running_since: dict[str, float | None] = {}
+    job_time: dict[str, float] = {}
     verdicts = {} if verdicts is None else verdicts
     while len(verdicts) < len(run_ids):
         for variant, run_id in run_ids.items():
             if variant in verdicts:
                 continue
-            try:
-                run = runner("api", f"repos/{repository}/actions/runs/{run_id}")
-            except RuntimeError as exc:
-                if not gh_transient.is_transient(exc):
-                    raise
-                print(f"::warning::polling run {run_id} for the {variant} probe failed transiently: {exc}")
+            what = f"polling run {run_id} for the {variant} probe"
+            run = _read(runner, f"repos/{repository}/actions/runs/{run_id}", what)
+            if run is None:
                 continue
-            now = clock()
             if run.get("status") == FINISHED:
                 verdicts[variant] = run
-            elif run.get("status") not in QUEUED:
-                started_at.setdefault(variant, now)
-                if now - started_at[variant] >= run_timeout:
-                    raise RuntimeError(
-                        f"run {run_id} for the {variant} probe started but did not finish within {run_timeout:g}s"
-                    )
+                continue
+            if run.get("status") in QUEUED:
+                continue
+            jobs = _read(runner, f"repos/{repository}/actions/runs/{run_id}/jobs?per_page=100", what)
+            if jobs is None:
+                continue
+            now = clock()
+            previous = running_since.get(variant)
+            if previous is not None:
+                job_time[variant] = job_time.get(variant, 0.0) + now - previous
+            running = any(job.get("status") == "in_progress" for job in jobs.get("jobs", []))
+            running_since[variant] = now if running else None
+            if job_time.get(variant, 0.0) >= run_timeout:
+                raise RuntimeError(
+                    f"run {run_id} for the {variant} probe ran jobs for {run_timeout:g}s without finishing"
+                )
         if len(verdicts) < len(run_ids):
             sleep(interval)
     return verdicts
