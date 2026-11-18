@@ -1,4 +1,5 @@
 import logging
+import re
 import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -7,7 +8,11 @@ from typing import Any, Callable, Optional
 
 from benchbox.core.contracts.platform_capabilities import refresh_is_transactional, resolve_primary_key_probe
 from benchbox.core.results.maintenance_method import MAINTENANCE_METHOD
-from benchbox.core.tpcds.maintenance_functions import MAINTENANCE_FUNCTIONS, MaintenanceFunction
+from benchbox.core.tpcds.maintenance_functions import (
+    MAINTENANCE_FUNCTIONS,
+    MaintenanceFunction,
+    delete_target_and_count_sql,
+)
 from benchbox.core.tpcds.refresh_data import (
     SOURCE_TABLES_BY_NAME,
     RefreshDataError,
@@ -15,6 +20,7 @@ from benchbox.core.tpcds.refresh_data import (
     create_staging_tables,
     drop_staging_tables,
     generate_refresh_sets,
+    inline_staging_sql,
     load_refresh_file,
 )
 from benchbox.utils.clock import elapsed_seconds, mono_time
@@ -257,6 +263,7 @@ class TPCDSMaintenanceTest:
             connection = self.connection_factory()
             operation.transactional = refresh_is_transactional(getattr(connection, "platform_adapter", None))
             before = {table: self._count_rows(connection, table) for table in function.target_tables}
+            expected_removals = self._expected_removals(connection, function, refresh_set)
 
             operation.start_time = mono_time()
             try:
@@ -284,6 +291,7 @@ class TPCDSMaintenanceTest:
             operation.rows_by_table = {table: after[table] - before[table] for table in function.target_tables}
             operation.rows_affected = sum(abs(delta) for delta in operation.rows_by_table.values())
             self._verify_rows(function, operation)
+            self._verify_removals(function, expected_removals, before, after)
             operation.success = True
         except Exception as exc:
             operation.error = str(exc)
@@ -321,12 +329,51 @@ class TPCDSMaintenanceTest:
                 f"has {expected}"
             )
 
+    def _expected_removals(
+        self, connection: Any, function: MaintenanceFunction, refresh_set: RefreshSet
+    ) -> dict[str, int]:
+        guards = [
+            guard
+            for guard in map(delete_target_and_count_sql, function.statements_for(self.target_dialect))
+            if guard is not None
+        ]
+        if not guards:
+            return {}
+        inline = {
+            name: inline_staging_sql(SOURCE_TABLES_BY_NAME[name], refresh_set.path_for(name))
+            for name in function.staging_tables
+        }
+        expected: dict[str, int] = {}
+        for table, count_sql in guards:
+            matches = 0
+            if all(derived is not None for derived in inline.values()):
+                for name, derived in inline.items():
+                    count_sql = re.sub(rf"(?<!\w){name}(?!\w)", lambda _match, text=derived: text, count_sql)
+                matches = self._count_query(connection, count_sql)
+            expected[table] = expected.get(table, 0) + matches
+        return expected
+
     @staticmethod
-    def _count_rows(connection: Any, table: str) -> int:
-        row = connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
+    def _verify_removals(
+        function: MaintenanceFunction, expected: dict[str, int], before: dict[str, int], after: dict[str, int]
+    ) -> None:
+        for table, matched in expected.items():
+            removed = before[table] - after[table]
+            if removed != matched:
+                raise RefreshDataError(
+                    f"{function.name} removed {removed} rows from {table}; its predicate matches {matched} rows"
+                )
+
+    @staticmethod
+    def _count_query(connection: Any, sql: str) -> int:
+        row = connection.execute(sql).fetchone()
         if row is None or row[0] is None:
-            raise RefreshDataError(f"could not count rows in {table}")
+            raise RefreshDataError(f"could not count rows with: {sql}")
         return int(row[0])
+
+    @classmethod
+    def _count_rows(cls, connection: Any, table: str) -> int:
+        return cls._count_query(connection, f"SELECT COUNT(*) FROM {table}")
 
     @staticmethod
     def _transactional(connection: Any) -> bool:

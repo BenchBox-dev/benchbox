@@ -59,6 +59,7 @@ def _bundle_2_4() -> dict:
         build_result_payload(make_benchmark_results(platform="snowflake", query_results=[_execution()]))
     )
     payload["result_schema_version"] = payload["version"] = "2.4"
+    payload["execution"].pop("config_capture", None)
     payload["run"].update(copy.deepcopy(RUN_TIMING))
     payload["queries"][0].update(
         {"request_count": 1, "result_bytes": 96, "platform_timing": copy.deepcopy(PLATFORM_TIMING)}
@@ -70,9 +71,9 @@ def _bundle_2_4() -> dict:
     return payload
 
 
-def test_producer_writes_the_current_2_4_schema():
+def test_producer_writes_the_current_schema_and_runtime_accepts_2_4():
     assert RUNTIME_SCHEMA_POLICY.evaluate("2.4").accepted
-    assert CURRENT_SCHEMA_VERSION == "2.4"
+    assert CURRENT_SCHEMA_VERSION == "2.5"
 
 
 def test_timing_fields_round_trip_through_the_compact_entry_in_order():
@@ -113,7 +114,7 @@ def test_a_2_3_bundle_carrying_2_4_fields_is_rejected_on_load():
 def test_producer_writes_required_run_fields_for_an_unaudited_timer():
     payload = build_result_payload(make_benchmark_results(platform="duckdb", query_results=[_execution()]))
     SchemaV2Validator().validate(payload)
-    assert payload["version"] == "2.4"
+    assert payload["version"] == "2.5"
     assert payload["run"]["timing_method"] == 1
     assert payload["run"]["net_estimate_status"] in {"embedded", "endpoint_unknown"}
     assert "platform_timing" not in payload["run"]

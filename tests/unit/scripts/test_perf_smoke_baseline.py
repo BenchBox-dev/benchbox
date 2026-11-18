@@ -31,7 +31,13 @@ baseline_tool = _load()
 
 
 def _result(
-    timestamp: str, values: dict[str, list[float]], *, reverse: bool = False, cpu: str = "cpu-a", total: float = 100.0
+    timestamp: str,
+    values: dict[str, list[float]],
+    *,
+    reverse: bool = False,
+    cpu: str = "cpu-a",
+    total: float = 100.0,
+    timing_method: int | None = 2,
 ) -> dict[str, Any]:
     entries = []
     for query_id, samples in values.items():
@@ -52,10 +58,13 @@ def _result(
             )
     if reverse:
         entries.reverse()
+    run: dict[str, Any] = {"id": timestamp, "query_time_ms": 0}
+    if timing_method is not None:
+        run["timing_method"] = timing_method
     return {
         "execution": {"timestamp": timestamp},
         "queries": entries,
-        "run": {"id": timestamp, "query_time_ms": 0},
+        "run": run,
         "summary": {"timing": {"total_ms": total}},
         "environment": {"cpu_model": cpu, "cpu_count": 4, "os": "Linux"},
         "platform": {"version": "1.5.5"},
@@ -150,6 +159,26 @@ def test_floor_is_flat_until_the_spread_passes_four_milliseconds(spread: float, 
     assert baseline_tool.regression_floor_ms(spread) == floor
 
 
+def test_mixed_timing_methods_are_refused() -> None:
+    results = _results()
+    results[3]["run"]["timing_method"] = 1
+
+    with pytest.raises(baseline_tool.BaselineError, match="mix timing methods"):
+        baseline_tool.median_result(results)
+
+
+def test_a_result_without_a_timing_method_is_refused() -> None:
+    results = _results()
+    del results[2]["run"]["timing_method"]
+
+    with pytest.raises(baseline_tool.BaselineError, match="no run.timing_method"):
+        baseline_tool.median_result(results)
+
+
+def test_the_baseline_records_the_effective_timing_method() -> None:
+    assert baseline_tool.median_result(_results())["run"]["timing_method"] == 2
+
+
 def test_the_slowest_cpu_model_with_enough_results_is_selected() -> None:
     results = _results(cpu="Fast CPU", total=400.0) + _results(cpu="Slow  CPU", total=550.0)
 
@@ -175,6 +204,71 @@ def test_an_explicit_cpu_model_overrides_the_choice_but_still_needs_enough_resul
     assert baseline_tool.select_runner_class(results, cpu_model="fast cpu") == "fast cpu"
     with pytest.raises(baseline_tool.BaselineError, match="fewer than 5"):
         baseline_tool.select_runner_class(results, cpu_model="other")
+
+
+def test_without_a_cpu_model_of_five_results_the_pooled_median_is_used() -> None:
+    results = [
+        _result(
+            f"2026-10-0{index + 1}T00:00:00",
+            {"1": [10.0 + index] * 3, "2": [20.0, 20.0, 20.0 - index]},
+            cpu=f"cpu-{index % 3}",
+            total=100.0 + index,
+        )
+        for index in range(5)
+    ]
+
+    chosen, rule, selected_class = baseline_tool.select_sources(results)
+    merged = baseline_tool.median_result(chosen)
+
+    assert (len(chosen), rule, selected_class) == (5, baseline_tool.RULE_POOLED_MEDIAN, None)
+    by_key = {(entry["id"], entry["run_type"], entry["iter"]): entry["ms"] for entry in merged["queries"]}
+    assert by_key[("1", "measurement", 1)] == 12.0
+    assert by_key[("2", "measurement", 2)] == 18.0
+
+
+def test_the_pooled_median_still_needs_five_results() -> None:
+    results = _results(count=2, cpu="A") + _results(count=2, cpu="B")
+
+    with pytest.raises(baseline_tool.BaselineError, match="no CPU model has 5"):
+        baseline_tool.select_sources(results)
+
+
+def test_the_slowest_cpu_model_rule_wins_when_a_model_has_five_results() -> None:
+    results = _results(cpu="Fast CPU", total=400.0) + _results(count=2, cpu="Other", total=900.0)
+
+    chosen, rule, selected_class = baseline_tool.select_sources(results)
+
+    assert (len(chosen), rule, selected_class) == (5, baseline_tool.RULE_SLOWEST_CPU_MODEL, "fast cpu")
+
+
+def test_main_records_the_fallback_rule_when_no_cpu_model_has_five(tmp_path: Path) -> None:
+    results = _results(count=3, cpu="A") + _results(count=2, cpu="B")
+    arguments = _write_sources(tmp_path, results)
+    output, sources_output = tmp_path / "baseline.json", tmp_path / "sources.json"
+
+    code = baseline_tool.main([*arguments, "--output", str(output), "--sources-output", str(sources_output)])
+
+    assert code == 0
+    record = json.loads(sources_output.read_text(encoding="utf-8"))
+    assert record["selection_rule"] == baseline_tool.RULE_POOLED_MEDIAN
+    assert record["baseline_cpu_model"] is None
+    assert record["timing_method"] == 2
+    assert all(run["in_baseline"] for run in record["source_runs"])
+    assert json.loads(output.read_text(encoding="utf-8"))["run"]["timing_method"] == 2
+
+
+def test_main_refuses_mixed_timing_methods(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    results = _results()
+    results[0]["run"]["timing_method"] = 1
+    arguments = _write_sources(tmp_path, results)
+
+    code = baseline_tool.main(
+        [*arguments, "--output", str(tmp_path / "b.json"), "--sources-output", str(tmp_path / "s.json")]
+    )
+
+    assert code == 2
+    assert "mix timing methods" in capsys.readouterr().err
+    assert not (tmp_path / "b.json").exists()
 
 
 def _write_sources(tmp_path: Path, results: list[dict[str, Any]]) -> list[str]:
@@ -222,7 +316,11 @@ def test_checked_in_baseline_has_a_sources_record_with_enough_runs() -> None:
     in_baseline = [run for run in record["source_runs"] if run["in_baseline"]]
 
     assert len(in_baseline) >= baseline_tool.MIN_SOURCE_RESULTS
-    assert {run["cpu_model"] for run in in_baseline} == {record["baseline_cpu_model"]}
+    if record["selection_rule"] == baseline_tool.RULE_SLOWEST_CPU_MODEL:
+        assert {run["cpu_model"] for run in in_baseline} == {record["baseline_cpu_model"]}
+    else:
+        assert len(in_baseline) == len(record["source_runs"])
+    assert json.loads(BASELINE.read_text(encoding="utf-8"))["run"]["timing_method"] == record["timing_method"]
     assert len({run["workflow_run_id"] for run in record["source_runs"]}) == len(record["source_runs"])
     assert json.loads(BASELINE.read_text(encoding="utf-8"))["queries"]
 

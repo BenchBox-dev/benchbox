@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from benchbox.core.results.environment import HOST_LOAD_SAMPLE_FIELD_TYPES
+from benchbox.core.results.provenance import PLAN_TIERS, VENDOR_PROVENANCE_FIELDS
 from benchbox.core.results.query_execution import (
     ROW_COUNT_VALIDATION_FIELDS,
     ROW_COUNT_VALIDATION_MESSAGE_MAX_CHARS,
@@ -17,6 +18,7 @@ from benchbox.core.results.schema import SchemaV2Validator
 from benchbox.core.results.schema_policy import (
     CURRENT_SCHEMA_VERSION,
     KNOWN_SCHEMA_V2_VERSIONS,
+    supports_capture_and_vendor_fields,
     supports_round_trip_timing_fields,
     supports_row_count_validation,
 )
@@ -48,7 +50,7 @@ COMPATIBILITY_PROMISE = (
     "Compatibility promise for major version 2. Within major version 2 the schema changes only in ways that keep "
     "every bundle that was valid under an earlier 2.x version valid: new optional keys, new optional blocks, and "
     "new enum values on fields that consumers are told to treat as open. Such a change raises the minor version "
-    "(2.4 to 2.5) and is published at this same URL. A change that removes or renames a required key, changes the "
+    "(2.5 to 2.6) and is published at this same URL. A change that removes or renames a required key, changes the "
     "type of an existing key, narrows an accepted value set, or changes the meaning of an existing key requires "
     "major version 3, which is published at a new URL with a 3 in its name; this URL keeps serving major version 2. "
     "Consumers of major version 2 must ignore keys they do not recognise and must not rely on key order."
@@ -62,7 +64,11 @@ VALIDATOR_ONLY_RULES = (
     "lists only the normalised upper-case form; JSON Schema cannot tell 2 from 2.0, while the validator rejects a "
     "float for run.timing_method (including the net-estimate check), request_count, result_bytes and "
     "platform_timing.requests[].attempt; row_count_validation.expected and actual are the reverse, because the "
-    "validator also coerces integral floats and numeric strings while this schema requires JSON integers."
+    "validator also coerces integral floats and numeric strings while this schema requires JSON integers; the "
+    "vendor publication rules over provenance (a free or trial plan_tier or any preview_features entry needs "
+    "vendor_permission, preview_features are refused outright for Databricks, self_run must not be false for "
+    "BigQuery, vendor_notice needs sent_on and reference on the platforms whose terms require notice) depend on "
+    "the platform name and are enforced by the validator only."
 )
 
 _NON_EMPTY_STRING = {"type": "string", "pattern": "\\S"}
@@ -210,6 +216,31 @@ def _environment_schema() -> dict[str, Any]:
     return _object((), {"host_load": host_load, "client_link": client_link})
 
 
+def _execution_schema() -> dict[str, Any]:
+    return _object(
+        (),
+        {"config_capture": {"type": "integer", "minimum": 1}},
+    )
+
+
+def _provenance_schema() -> dict[str, Any]:
+    properties: dict[str, Any] = {
+        "plan_tier": {"enum": list(PLAN_TIERS)},
+        "preview_features": {"type": "array", "items": _NON_EMPTY_STRING},
+        "vendor_permission": _NON_EMPTY_STRING,
+        "vendor_notice": _object(
+            (),
+            {
+                "sent_on": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+                "reference": _NON_EMPTY_STRING,
+            },
+        ),
+        "self_run": {"type": "boolean"},
+    }
+    assert set(properties) == set(VENDOR_PROVENANCE_FIELDS)
+    return _object((), properties)
+
+
 def _forbid_keys(keys: tuple[str, ...], *, under: str | None = None) -> dict[str, Any]:
     forbidden = {"not": {"anyOf": [{"required": [key]} for key in keys]}}
     if under is None:
@@ -220,6 +251,7 @@ def _forbid_keys(keys: tuple[str, ...], *, under: str | None = None) -> dict[str
 def _version_gates() -> list[dict[str, Any]]:
     without_row_count = _versions_where(lambda v: not supports_row_count_validation(v))
     without_timing = _versions_where(lambda v: not supports_round_trip_timing_fields(v))
+    without_capture = _versions_where(lambda v: not supports_capture_and_vendor_fields(v))
     with_timing = _versions_where(supports_round_trip_timing_fields)
     gates: list[dict[str, Any]] = []
     if without_row_count:
@@ -242,6 +274,18 @@ def _version_gates() -> list[dict[str, Any]]:
                         "run": _forbid_keys(RUN_TIMING_FIELDS),
                         "queries": {"items": _forbid_keys(QUERY_TIMING_FIELDS)},
                         "environment": _forbid_keys(CLIENT_LINK_TIMING_FIELDS, under="client_link"),
+                    }
+                },
+            }
+        )
+    if without_capture:
+        gates.append(
+            {
+                "if": _version_in(without_capture),
+                "then": {
+                    "properties": {
+                        "execution": _forbid_keys(("config_capture",)),
+                        "provenance": _forbid_keys(VENDOR_PROVENANCE_FIELDS),
                     }
                 },
             }
@@ -383,6 +427,8 @@ def build_result_bundle_schema() -> dict[str, Any]:
     properties["summary"] = _object(validator.SUMMARY_REQUIRED, {})
     properties["queries"] = {"type": "array", "items": _query_schema()}
     properties["environment"] = _environment_schema()
+    properties["execution"] = _execution_schema()
+    properties["provenance"] = _provenance_schema()
 
     return {
         "$schema": JSON_SCHEMA_DIALECT,

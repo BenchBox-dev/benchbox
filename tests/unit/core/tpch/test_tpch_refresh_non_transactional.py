@@ -227,7 +227,17 @@ class _SqliteRefreshConnection:
 @pytest.mark.parametrize("function", ["RF1", "RF2"])
 @pytest.mark.parametrize(
     ("adapter", "expected"),
-    [(SimpleNamespace(supports_refresh_transactions=False, reports_refresh_delete_counts=False), False), (None, True)],
+    [
+        (
+            SimpleNamespace(
+                supports_refresh_transactions=False,
+                reports_refresh_delete_counts=False,
+                record_refresh_applied=lambda _connection: None,
+            ),
+            False,
+        ),
+        (SimpleNamespace(record_refresh_applied=lambda _connection: None), True),
+    ],
 )
 def test_power_and_throughput_refresh_evidence_records_whether_the_step_was_transactional(
     tmp_path: Path, function: str, adapter: Any, expected: bool

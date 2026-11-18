@@ -57,6 +57,13 @@ when the owner names the PR and its head in the current request. Otherwise wait
 for the review verdict, re-run it when a reviewer errors, and report a stalled
 verdict to the owner.
 
+When the `verdict / review` job fails before any reviewer ran (for example in
+its "Prepare the review" step on a GitHub 5xx), no verdict is posted and none
+will follow. Dispatch the review again for the same head with
+`gh workflow run review-verdict.yml --ref develop -f pr=<number> -f head=<head SHA>`.
+A failure before any reviewer ran does not count against the daily rerun
+budget.
+
 The comment body must be exactly `Stand-in review: APPROVE <40-character
 head SHA>` and nothing else: no fences, quotes, prefixes, or extra findings
 text. The checker matches the whole comment, so any extra text voids the
@@ -185,17 +192,28 @@ authorization lands, then arm with `make pr-arm`.
 | `merged` | The PR was already mergeable, so GitHub refused auto-merge; every gate had passed and `make pr-arm` merged the exact head directly | 0 |
 | `waiting` | Every reason is a check that has not finished: the full CI run, the `core` job that records the fast-duration verdict, or a `CI (text edit)` placeholder failure that the refresh workflow re-runs on its own (during the run, while the `ci-text-edit-refresh` run for the head is queued or in progress, or, before that run exists, for 10 minutes after a successful full run if it has not re-run yet). A CI run started by the stale-base guard (below) is also `waiting`. With `WAIT`, a review verdict that is still pending for this head also counts | 2 |
 | `refused` | Anything else: a hold, an unresolved review thread (outdated ones count, and each is named, because the ruleset requires every conversation to be resolved), a failed required check, a failing review verdict or one that waits for the owner, a red trunk, a head mismatch. Without `WAIT`, a pending review verdict is also `refused` | 2; 1 when live state could not be read; the `gh` exit code when the merge command itself fails |
+| `conflict` | The PR conflicts with its base (`mergeable` is `CONFLICTING` or `mergeStateStatus` is `DIRTY`). GitHub does not start the `pull_request` CI run for a conflicting PR, so nothing would ever finish; the outcome names the recovery: merge or rebase `origin/<base>` into the branch, push, run `make pr-arm` again | 3 |
+| `transient` | A read failed in a way that is expected to pass: a GitHub rate limit (403 or 429 with rate-limit text or `Retry-After`), an HTTP 5xx, a network timeout such as `TLS handshake timeout`, or a tracker read with `unparseable output`. The outcome names the cause; for a rate limit, with `WAIT`, it also names the reset time | 4 |
 
 `waiting` and `refused` usually both exit 2; read the outcome line, not the exit
-code, to tell them apart.
+code, to tell them apart. `conflict` and `transient` have their own exit codes (3
+and 4). A PR whose `mergeable` is still `UNKNOWN` is `waiting` until GitHub has
+computed it; an unreadable `mergeable` value is `refused`.
 
 `make pr-arm WAIT=<minutes>` (1 to 120) is the supported way to wait, and it can
 be started right after a push. While the outcome is `waiting` it checks again
 every 3 minutes, and it runs the red-trunk check
 (`scripts/trunk_revert.py arm-gate`) before each new check. It stops at once on
-`armed` or `refused`: a verdict that comes back with findings ends the wait. When
-the time runs out it prints the last `waiting` outcome with
-`(WAIT=<minutes> expired)`. It never re-runs a job, rebases, or changes a hold.
+`armed`, `refused` or `conflict`: a verdict that comes back with findings ends the
+wait, and a conflicting PR is reported on the first check without waiting. A
+`transient` outcome does not end the wait: it pauses with a bounded backoff (30 s,
+doubling, capped at 3 minutes; for a rate limit, until the reset reported by
+`gh api rate_limit`, never past the end of `WAIT`) and reads everything again.
+Nothing is armed from a read that failed: an unreadable trunk, review verdict,
+mergeable state or tracker state never arms, and other 4xx errors are not retried
+but end as `refused`. When the time runs out it prints the last `waiting` or
+`transient` outcome with `(WAIT=<minutes> expired)`, and a `transient` one exits 4.
+It never re-runs a job, rebases, or changes a hold.
 Do not write a polling loop around `make pr-arm`.
 
 ## Stale base guard
