@@ -84,6 +84,46 @@ def _run(fake: FakeGh, **kwargs) -> int:
     return launch.run_probes(REPOSITORY, BRANCH, HEAD, runner=fake, sleep=lambda _: None, **kwargs)
 
 
+class FlakyGh(FakeGh):
+    def __init__(self, *args, failures: int, message: str, listing: bool = False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.failures = failures
+        self.message = message
+        self.listing = listing
+
+    def __call__(self, *args: str):
+        if args[0] == "api" and "--method" not in args and self.failures > 0:
+            is_listing = "/actions/workflows/release-v2.yml/runs" in args[1]
+            if is_listing == self.listing and (not is_listing or self.dispatched):
+                self.failures -= 1
+                raise RuntimeError(f"gh api {args[1]} failed: {self.message}")
+        return super().__call__(*args)
+
+
+@pytest.mark.parametrize(
+    "message", ["HTTP 502: Bad Gateway", "API rate limit exceeded for installation", "i/o timeout"]
+)
+@pytest.mark.parametrize("conclusion", ["success", "failure"])
+def test_a_transient_poll_failure_keeps_waiting_and_the_real_conclusion_decides(message, conclusion):
+    fake = FlakyGh({"reuse": conclusion}, failures=6, message=message, queued_polls=3)
+    assert _run(fake) == (0 if conclusion == "success" else 1)
+    assert fake.failures == 0
+    assert fake.cancelled == []
+
+
+def test_a_transient_listing_failure_after_the_dispatch_still_adopts_the_run():
+    fake = FlakyGh(failures=2, message="HTTP 503: Service Unavailable", listing=True)
+    assert _run(fake) == 0
+    assert fake.failures == 0
+
+
+def test_a_permanent_poll_failure_still_fails_and_cancels_the_unfinished_runs():
+    fake = FlakyGh(failures=1, message="HTTP 404: Not Found", pending_polls=10**6)
+    with pytest.raises(RuntimeError, match="404"):
+        _run(fake)
+    assert sorted(fake.cancelled) == sorted(fake.variant_of)
+
+
 def test_every_variant_is_dispatched_with_the_synthetic_tag_from_the_pull_request_branch(capsys):
     fake = FakeGh()
     assert _run(fake) == 0

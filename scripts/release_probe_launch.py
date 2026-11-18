@@ -7,7 +7,11 @@ import subprocess
 import sys
 import time
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import gh_transient
 
 PROBE_TAG = "v0.0.0rc0"
 VARIANTS = ("reuse", "fallback", "guarded-change")
@@ -107,7 +111,13 @@ def launch(
 ) -> int:
     dispatch(repository, branch, variant, runner)
     for _ in range(attempts):
-        run = find_new_run(list_runs(repository, branch, runner), known, head_sha)
+        try:
+            run = find_new_run(list_runs(repository, branch, runner), known, head_sha)
+        except RuntimeError as exc:
+            if not gh_transient.is_transient(exc):
+                raise
+            print(f"::warning::listing {WORKFLOW_FILE} runs for the {variant} probe failed transiently: {exc}")
+            run = None
         if run is not None:
             return int(run["id"])
         sleep(interval)
@@ -134,7 +144,13 @@ def wait_for(
         for variant, run_id in run_ids.items():
             if variant in verdicts:
                 continue
-            run = runner("api", f"repos/{repository}/actions/runs/{run_id}")
+            try:
+                run = runner("api", f"repos/{repository}/actions/runs/{run_id}")
+            except RuntimeError as exc:
+                if not gh_transient.is_transient(exc):
+                    raise
+                print(f"::warning::polling run {run_id} for the {variant} probe failed transiently: {exc}")
+                continue
             now = clock()
             if run.get("status") == FINISHED:
                 verdicts[variant] = run
