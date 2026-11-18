@@ -179,6 +179,48 @@ def test_reconcile_completes_a_check_whose_runs_all_finished_before_it_existed()
     assert patch["conclusion"] == "success"
 
 
+def test_reconcile_head_completes_an_in_progress_check_whose_runs_all_finished():
+    fake = FakeGh()
+    assert "success" in verdict.reconcile_head(REPOSITORY, HEAD, fake)
+    (patch,) = fake.patched
+    assert (patch["path"], patch["conclusion"]) == (f"repos/{REPOSITORY}/check-runs/9", "success")
+
+
+def test_reconcile_head_fails_the_check_naming_a_failed_variant():
+    fake = FakeGh({102: ("completed", "failure")})
+    assert "failure" in verdict.reconcile_head(REPOSITORY, HEAD, fake)
+    assert "- fallback: failure" in fake.patched[0]["output[summary]"]
+
+
+def test_reconcile_head_leaves_the_check_while_a_run_is_unfinished():
+    fake = FakeGh({103: ("in_progress", None)})
+    assert "waiting" in verdict.reconcile_head(REPOSITORY, HEAD, fake)
+    assert fake.patched == []
+
+
+def test_reconcile_head_reports_no_check_so_the_caller_dispatches():
+    fake = FakeGh(checks=[])
+    assert verdict.reconcile_head(REPOSITORY, HEAD, fake) is None
+    assert fake.patched == []
+
+
+def test_reconcile_head_ignores_a_completed_check_so_a_deliberate_rerun_dispatches_again():
+    fake = FakeGh(checks=[FakeGh.check(status="completed")])
+    assert verdict.reconcile_head(REPOSITORY, HEAD, fake) is None
+    assert fake.patched == []
+
+
+def test_reconcile_head_ignores_a_check_without_recorded_runs():
+    fake = FakeGh(checks=[FakeGh.check(external_id=None)])
+    assert verdict.reconcile_head(REPOSITORY, HEAD, fake) is None
+
+
+def test_reconcile_head_applies_the_guards_to_the_recorded_runs():
+    fake = FakeGh()
+    fake.overrides[101] = {"path": ".github/workflows/ci.yml"}
+    assert "failure" in verdict.reconcile_head(REPOSITORY, HEAD, fake)
+
+
 def test_reconcile_leaves_the_check_while_a_run_is_unfinished():
     fake = FakeGh({102: ("queued", None)})
     assert "waiting" in verdict.reconcile(REPOSITORY, 9, IDS, HEAD, fake)

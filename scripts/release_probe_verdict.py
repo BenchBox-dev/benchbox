@@ -110,6 +110,21 @@ def reconcile(repository: str, check_id: int, recorded: dict[str, int], head_sha
     return f"completed the probe check as {conclusion}"
 
 
+def reconcile_head(repository: str, head_sha: str, runner: Gh = gh) -> str | None:
+    open_checks = [
+        (check, recorded)
+        for check in probe_checks(repository, head_sha, runner)
+        if check.get("name") == CHECK_NAME
+        and check.get("status") == IN_PROGRESS
+        and (recorded := parse_external_id(check.get("external_id")))
+    ]
+    if not open_checks:
+        return None
+    return "; ".join(
+        reconcile(repository, int(check["id"]), recorded, head_sha, runner) for check, recorded in open_checks
+    )
+
+
 def settle(repository: str, run_id: int, runner: Gh = gh) -> str:
     run = runner("api", f"repos/{repository}/actions/runs/{run_id}")
     if run.get("event") != "workflow_dispatch" or run.get("status") != COMPLETED:

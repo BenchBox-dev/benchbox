@@ -196,6 +196,7 @@ def report_probe(
     runner: Gh = gh,
     sleep: Callable[[float], None] = time.sleep,
     reconcile: Callable[[int, dict[str, int]], None] | None = None,
+    existing: Callable[[], str | None] | None = None,
 ) -> int:
     touched = touches_probed_paths(files)
     if not touched:
@@ -210,6 +211,11 @@ def report_probe(
             runner=runner,
         )
         return 0
+    if existing is not None:
+        outcome = existing()
+        if outcome is not None:
+            print(outcome)
+            return 0
     print(f"probing because of: {', '.join(touched[:10])}")
     try:
         started = start_probes(repository, branch, head_sha, runner=runner, sleep=sleep)
@@ -276,7 +282,10 @@ def main(argv: list[str] | None = None) -> int:
         def reconcile(check_id: int, started: dict[str, int]) -> None:
             print(release_probe_verdict.reconcile(args.repository, check_id, started, args.head_sha))
 
-        return report_probe(args.repository, args.branch, args.head_sha, files, reconcile=reconcile)
+        def existing() -> str | None:
+            return release_probe_verdict.reconcile_head(args.repository, args.head_sha)
+
+        return report_probe(args.repository, args.branch, args.head_sha, files, reconcile=reconcile, existing=existing)
     except RuntimeError as exc:
         print(f"::error::{exc}", file=sys.stderr)
         try:

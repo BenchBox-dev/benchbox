@@ -499,6 +499,14 @@ check the dispatch job completes it itself if every recorded run has already
 finished. A check records three distinct run ids and each must be a
 `release-v2.yml` dispatch at the check's head commit, otherwise the check fails.
 
+Re-running the `release-v2 probe dispatch` job reconciles a check whose `workflow_run`
+event was missed: before dispatching, the job looks for an in-progress `release-v2 probe`
+check on the head commit that records run ids. If every recorded run has finished it
+completes that check through the verdict code and exits without dispatching; if any is
+still running it exits and changes nothing. When the check is already completed, or none
+exists, the job behaves as it always did: it dispatches the three variants and creates a
+new check run, so a deliberate re-run of a completed probe probes again.
+
 The probe builds its own
 distributions, so it does not execute the `dist-artifact` job of `trunk.yml`;
 a drift test keeps the build and verification commands aligned.

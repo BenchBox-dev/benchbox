@@ -180,6 +180,40 @@ def test_a_failed_reconcile_leaves_the_in_progress_check_and_does_not_fail_the_j
     assert "HTTP 502" in capsys.readouterr().err
 
 
+def test_an_existing_probe_check_outcome_stops_the_job_before_any_dispatch(capsys):
+    fake = FakeGh()
+    status = launch.report_probe(
+        REPOSITORY,
+        BRANCH,
+        HEAD,
+        ["scripts/release_flow.py"],
+        runner=fake,
+        sleep=lambda _: None,
+        existing=lambda: "completed the probe check as success",
+    )
+    assert status == 0
+    assert fake.dispatched == [] and fake.checks == []
+    assert "completed the probe check as success" in capsys.readouterr().out
+
+
+def test_no_existing_probe_check_dispatches_as_before():
+    fake = FakeGh()
+    status = launch.report_probe(
+        REPOSITORY, BRANCH, HEAD, ["scripts/release_flow.py"], runner=fake, sleep=lambda _: None, existing=lambda: None
+    )
+    assert status == 0
+    assert len(fake.dispatched) == 3
+    assert [check["status"] for check in fake.checks] == ["in_progress"]
+
+
+def test_an_untouched_pull_request_never_looks_for_an_existing_check():
+    fake = FakeGh()
+    launch.report_probe(
+        REPOSITORY, BRANCH, HEAD, ["README.md"], runner=fake, sleep=lambda _: None, existing=lambda: pytest.fail("no")
+    )
+    assert [check["conclusion"] for check in fake.checks] == ["success"]
+
+
 def test_the_launcher_no_longer_polls_or_waits():
     assert not hasattr(launch, "wait_for")
     assert not hasattr(launch, "run_probes")
