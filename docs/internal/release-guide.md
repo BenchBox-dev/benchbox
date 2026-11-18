@@ -478,8 +478,8 @@ config (a rename counts under both its old and new path), it dispatches every pr
 from the pull request branch and creates the required check run `release-v2 probe`
 on the head commit as in progress, listing the three run links; its `external_id`
 records the three run ids. Otherwise it creates the check run as completed with
-success at once. It runs on every pull request so that the check can be required
-without leaving unrelated pull requests pending. If a dispatch fails, or the job
+success at once. It runs on every pull request from a branch of this repository so
+that the check can be required without leaving unrelated pull requests pending. If a dispatch fails, or the job
 graph check fails, the check run is created as a failure carrying the error.
 
 `release-v2-probe-verdict.yml` runs on `workflow_run` completion of `Release v2`
@@ -493,12 +493,18 @@ is left alone. The logic lives in `scripts/release_probe_verdict.py`. A run
 cancelled by a newer push completes the old head's check as failure, which is
 harmless because only the current head counts. Expect the check to stay in
 progress for as long as the runs queue: under runner congestion that can be hours,
-and waiting is the remedy; do not re-dispatch the probe.
+and waiting is the remedy; do not re-dispatch the probe. The verdict workflow
+only sees runs that finish after the check exists, so right after creating the
+check the dispatch job completes it itself if every recorded run has already
+finished. A check records three distinct run ids and each must be a
+`release-v2.yml` dispatch at the check's head commit, otherwise the check fails.
 
 The probe builds its own
 distributions, so it does not execute the `dist-artifact` job of `trunk.yml`;
 a drift test keeps the build and verification commands aligned.
-Fork pull requests cannot dispatch and fail.
+A fork pull request cannot create check runs or dispatch workflows, so the dispatch
+job fails at once with a message and `release-v2 probe` is never reported for it;
+push the branch to the repository and open the pull request from there.
 
 ## Trunk UAT workflow reference
 

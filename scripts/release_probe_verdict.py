@@ -21,7 +21,8 @@ def parse_external_id(external_id: str | None) -> dict[str, int]:
         variant, _, run_id = part.partition("=")
         if variant in VARIANTS and run_id.isdigit():
             recorded[variant] = int(run_id)
-    return recorded if set(recorded) == set(VARIANTS) else {}
+    distinct = len(set(recorded.values())) == len(VARIANTS)
+    return recorded if set(recorded) == set(VARIANTS) and distinct else {}
 
 
 def probe_checks(repository: str, head_sha: str, runner: Gh = gh) -> list[dict[str, Any]]:
@@ -100,6 +101,15 @@ def judge(repository: str, recorded: dict[str, int], head_sha: str, runner: Gh =
     return "success", "Probe passed", f"Every release-v2 probe variant succeeded.\n\n{links}"
 
 
+def reconcile(repository: str, check_id: int, recorded: dict[str, int], head_sha: str, runner: Gh = gh) -> str:
+    verdict = judge(repository, recorded, head_sha, runner)
+    if verdict is None:
+        return "waiting: probe variants still running"
+    conclusion, title, summary = verdict
+    complete_check(repository, check_id, conclusion, title, summary, runner)
+    return f"completed the probe check as {conclusion}"
+
+
 def settle(repository: str, run_id: int, runner: Gh = gh) -> str:
     run = runner("api", f"repos/{repository}/actions/runs/{run_id}")
     if run.get("event") != "workflow_dispatch" or run.get("status") != COMPLETED:
@@ -108,12 +118,7 @@ def settle(repository: str, run_id: int, runner: Gh = gh) -> str:
     if found is None:
         return "ignored: no in-progress probe check records this run"
     check, recorded = found
-    verdict = judge(repository, recorded, str(run["head_sha"]), runner)
-    if verdict is None:
-        return "waiting: probe variants still running"
-    conclusion, title, summary = verdict
-    complete_check(repository, int(check["id"]), conclusion, title, summary, runner)
-    return f"completed the probe check as {conclusion}"
+    return reconcile(repository, int(check["id"]), recorded, str(run["head_sha"]), runner)
 
 
 def main(argv: list[str] | None = None) -> int:

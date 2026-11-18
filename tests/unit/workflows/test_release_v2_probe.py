@@ -375,7 +375,7 @@ def test_the_dispatch_workflow_runs_on_pull_requests_with_checks_write_and_never
     text = PROBE_WORKFLOW.read_text(encoding="utf-8")
     assert "secrets." not in text
     assert "id-token" not in text
-    assert "release_probe_launch.py" in text
+    assert "scripts.release_probe_launch" in text
     assert "release_probe_graph.py" in text
 
 
@@ -410,6 +410,15 @@ def test_the_verdict_workflow_completes_the_probe_check_from_the_finished_releas
     assert "id-token" not in text
     assert "release_probe_verdict" in text
     assert "pull_request" not in text
+
+
+def test_a_fork_pull_request_is_refused_before_any_other_step_and_the_scripts_run_as_modules():
+    steps = _workflow(PROBE_WORKFLOW)["jobs"]["probe"]["steps"]
+    assert steps[0]["if"] == "${{ github.event.pull_request.head.repo.full_name != github.repository }}"
+    assert "exit 1" in steps[0]["run"]
+    text = PROBE_WORKFLOW.read_text(encoding="utf-8")
+    assert "python3 scripts/release_probe_launch.py" not in text
+    assert text.count("python3 -m scripts.release_probe_launch") == 2
 
 
 def test_the_verdict_workflow_checks_out_the_default_branch_never_the_probed_head():

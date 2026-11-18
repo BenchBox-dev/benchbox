@@ -138,6 +138,48 @@ def test_the_variants_never_share_a_run():
     assert len(set(started.values())) == 3
 
 
+def test_the_check_is_reconciled_right_after_it_is_created_with_its_id_and_the_run_ids():
+    fake = FakeGh()
+    calls = []
+    launch.report_probe(
+        REPOSITORY,
+        BRANCH,
+        HEAD,
+        ["scripts/release_flow.py"],
+        runner=fake,
+        sleep=lambda _: None,
+        reconcile=lambda check_id, started: calls.append((check_id, started)),
+    )
+    assert calls == [(1, {"reuse": 101, "fallback": 102, "guarded-change": 103})]
+
+
+def test_an_untouched_pull_request_is_never_reconciled():
+    fake = FakeGh()
+    launch.report_probe(
+        REPOSITORY,
+        BRANCH,
+        HEAD,
+        ["README.md"],
+        runner=fake,
+        sleep=lambda _: None,
+        reconcile=lambda *a: pytest.fail("no"),
+    )
+
+
+def test_a_failed_reconcile_leaves_the_in_progress_check_and_does_not_fail_the_job(capsys):
+    fake = FakeGh()
+
+    def reconcile(check_id, started):
+        raise RuntimeError("gh api failed: HTTP 502")
+
+    status = launch.report_probe(
+        REPOSITORY, BRANCH, HEAD, ["scripts/release_flow.py"], runner=fake, sleep=lambda _: None, reconcile=reconcile
+    )
+    assert status == 0
+    assert [check["status"] for check in fake.checks] == ["in_progress"]
+    assert "HTTP 502" in capsys.readouterr().err
+
+
 def test_the_launcher_no_longer_polls_or_waits():
     assert not hasattr(launch, "wait_for")
     assert not hasattr(launch, "run_probes")

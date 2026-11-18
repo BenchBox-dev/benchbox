@@ -22,6 +22,14 @@ jobs:
       checks: write
       pull-requests: read
     steps:
+      - name: Refuse a fork pull request, whose token cannot create check runs
+        if: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          echo "::error::release-v2 probe cannot report from a fork pull request: its token can neither create check runs nor dispatch workflows. Push the branch to $REPOSITORY and open the pull request from there."
+          exit 1
+
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -50,7 +58,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          python3 scripts/release_probe_launch.py \
+          python3 -m scripts.release_probe_launch \
             --repository "$REPOSITORY" \
             --pull-request "$PULL_REQUEST" \
             --branch "$HEAD_BRANCH" \
@@ -64,7 +72,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          python3 scripts/release_probe_launch.py \
+          python3 -m scripts.release_probe_launch \
             --repository "$REPOSITORY" \
             --head-sha "$HEAD_SHA" \
             --fail "The release-v2 job graph check failed; see the dispatch job log."

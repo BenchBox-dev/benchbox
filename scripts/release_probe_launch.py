@@ -195,6 +195,7 @@ def report_probe(
     *,
     runner: Gh = gh,
     sleep: Callable[[float], None] = time.sleep,
+    reconcile: Callable[[int, dict[str, int]], None] | None = None,
 ) -> int:
     touched = touches_probed_paths(files)
     if not touched:
@@ -225,7 +226,7 @@ def report_probe(
         )
         return 1
     links = "\n".join(f"- {variant}: {run_url(repository, run_id)}" for variant, run_id in started.items())
-    create_check(
+    check = create_check(
         repository,
         head_sha,
         status="in_progress",
@@ -235,6 +236,11 @@ def report_probe(
         external_id=check_external_id(started),
         runner=runner,
     )
+    if reconcile is not None:
+        try:
+            reconcile(int(check["id"]), started)
+        except RuntimeError as exc:
+            print(f"::warning::could not reconcile the probe check yet: {exc}", file=sys.stderr)
     return 0
 
 
@@ -265,7 +271,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.branch is None or args.pull_request is None:
             parser.error("--branch and --pull-request are required unless --fail is given")
         files = changed_files(args.repository, args.pull_request)
-        return report_probe(args.repository, args.branch, args.head_sha, files)
+        from scripts import release_probe_verdict
+
+        def reconcile(check_id: int, started: dict[str, int]) -> None:
+            print(release_probe_verdict.reconcile(args.repository, check_id, started, args.head_sha))
+
+        return report_probe(args.repository, args.branch, args.head_sha, files, reconcile=reconcile)
     except RuntimeError as exc:
         print(f"::error::{exc}", file=sys.stderr)
         try:

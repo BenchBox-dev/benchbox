@@ -166,6 +166,25 @@ def test_a_malformed_external_id_records_nothing(external_id):
     assert verdict.parse_external_id(external_id) == {}
 
 
+def test_one_run_id_recorded_for_every_variant_records_nothing():
+    assert verdict.parse_external_id("reuse=7;fallback=7;guarded-change=7") == {}
+    assert verdict.parse_external_id("reuse=7;fallback=8;guarded-change=7") == {}
+
+
+def test_reconcile_completes_a_check_whose_runs_all_finished_before_it_existed():
+    fake = FakeGh()
+    assert "success" in verdict.reconcile(REPOSITORY, 9, IDS, HEAD, fake)
+    (patch,) = fake.patched
+    assert patch["path"] == f"repos/{REPOSITORY}/check-runs/9"
+    assert patch["conclusion"] == "success"
+
+
+def test_reconcile_leaves_the_check_while_a_run_is_unfinished():
+    fake = FakeGh({102: ("queued", None)})
+    assert "waiting" in verdict.reconcile(REPOSITORY, 9, IDS, HEAD, fake)
+    assert fake.patched == []
+
+
 def test_the_external_id_the_launcher_writes_round_trips():
     assert verdict.parse_external_id(EXTERNAL_ID) == IDS
 
