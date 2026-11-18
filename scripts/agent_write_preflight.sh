@@ -12,7 +12,7 @@ esac
 
 primary_clone=$(dirname "$common_abs")
 override_abs=$(realpath "${BENCHBOX_AGENT_PRIMARY_CLONE:-}" 2>/dev/null || true)
-if [ -n "${BENCHBOX_AGENT_PRIMARY_CLONE:-}" ] && [ -n "$override_abs" ] &&
+if [ -n "${BENCHBOX_AGENT_PRIMARY_CLONE:-}" ] && [ -d "$BENCHBOX_AGENT_PRIMARY_CLONE" ] && [ -n "$override_abs" ] &&
   git worktree list --porcelain | sed -n 's/^worktree //p' | while IFS= read -r listed; do realpath "$listed" 2>/dev/null || true; done | grep -Fxq -- "$override_abs"; then
   primary_clone=$override_abs
 fi

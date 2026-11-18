@@ -308,23 +308,33 @@ def test_report_ignores_dirt_that_predates_the_snapshot(tmp_path: Path) -> None:
     assert result.stderr == ""
 
 
-def test_stray_override_outside_the_repository_does_not_hide_a_primary_edit(tmp_path: Path) -> None:
+def _stray_override(primary: Path, tmp_path: Path, kind: str) -> Path:
+    stray = tmp_path / "scratch" if kind == "unrelated" else primary.parent / "BenchBox.wt-gone"
+    if kind == "unrelated":
+        stray.mkdir()
+    else:
+        subprocess.run(["git", "worktree", "add", "-q", "-b", "fix/gone", str(stray), "HEAD"], cwd=primary, check=True)
+        shutil.rmtree(stray)
+    return stray
+
+
+@pytest.mark.parametrize("kind", ["unrelated", "deleted-worktree"])
+def test_stray_override_does_not_hide_a_primary_edit(tmp_path: Path, kind: str) -> None:
     primary, linked = _linked_worktree(tmp_path)
-    unrelated = tmp_path / "scratch"
-    unrelated.mkdir()
-    _run_check_in(linked, unrelated, "snapshot")
+    stray = _stray_override(primary, tmp_path, kind)
+    _run_check_in(linked, stray, "snapshot")
     (primary / "README.md").write_text("agent edit\n", encoding="utf-8")
 
-    result = _run_check_in(linked, unrelated, "report")
+    result = _run_check_in(linked, stray, "report")
 
     assert "README.md" in result.stderr
 
 
-def test_stray_override_outside_the_repository_does_not_admit_preflight_in_the_primary(tmp_path: Path) -> None:
+@pytest.mark.parametrize("kind", ["unrelated", "deleted-worktree"])
+def test_stray_override_does_not_admit_preflight_in_the_primary(tmp_path: Path, kind: str) -> None:
     primary, _ = _linked_worktree(tmp_path)
-    unrelated = tmp_path / "scratch"
-    unrelated.mkdir()
-    env = {**os.environ, **HUMAN_IDENTITY, "BENCHBOX_AGENT_PRIMARY_CLONE": str(unrelated)}
+    stray = _stray_override(primary, tmp_path, kind)
+    env = {**os.environ, **HUMAN_IDENTITY, "BENCHBOX_AGENT_PRIMARY_CLONE": str(stray)}
     for key in ("BENCHBOX_ALLOW_MAIN_CLONE_WRITE", "ALLOW_MAIN_CLONE_WRITE", "BENCHBOX_EPHEMERAL_CLONE"):
         env.pop(key, None)
 
