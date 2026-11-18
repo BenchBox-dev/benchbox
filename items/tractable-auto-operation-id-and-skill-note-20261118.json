@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "tractable: a write without operation_id gets a generated id, recorded in the Todo-Ack trailer and returned in the acknowledgement; a test shows a write with no id can be found and reconciled by its generated id; explicit ids keep their current replay behaviour.",
+    "tractable released per its repository process; BenchBox vendored wheel bumped following the 1.1.1 -> 1.2.0 bump (#4308).",
+    "The todo skill source (catalog named in skill-sync.conf) carries one short note on operation_id; BenchBox mirrors regenerated with make skill-sync, never hand-edited."
+  ],
+  "context": "Owner decision 2026-11-18: 'both. auto generated and add a note in the skill'. Owner will publish tractable 1.2.0 to PyPI themselves. Startup token budget increase accepted for 1.2.0; keep any further schema text minimal. Base: joeharris76/tractable main after v1.2.0.",
+  "description": "Problem: tractable 1.2.0 makes writes safe to retry only when the agent passes an operation_id; agents that do not know about it still face unknown outcomes after a client timeout.\n\nOutcome (owner decision 2026-11-18: both): the server generates an operation_id when a write omits one, returns it in every acknowledgement and in the E_UNKNOWN/timeout guidance, and makes it reconcilable (tractable recover --op-id or show_item sessions); and the todo skill gains one note telling agents to pass their own operation_id so a client-side timeout can be retried with the same id.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6da452ef1bfe1d4c6329ec0",
+      "at": "2026-11-18T21:39:05Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "447bd2ef23334bfdb619c9fc911d3f7f",
+      "session_id": "c565fe4336eb43b1a5921a95e6bb20da"
+    }
+  ]
+}

@@ -44842,6 +44842,13 @@
       "status": "done",
       "title": "125 existing items trip the new rung-falsifiability lint with no sweep planned"
     },
+    "tractable-auto-operation-id-and-skill-note-20261118": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "tractable: generate an operation_id when a write omits one, and note it in the todo skill"
+    },
     "tractable-expect-store-substring-match-20261112": {
       "claim": null,
       "needs": [],
