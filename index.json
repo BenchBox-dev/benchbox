@@ -45418,7 +45418,12 @@
       "title": "Correct the ClickHouse addendum in ADR-3: scope claims to SF1, mark the Q3/Q5 cause unproven, fix the TPC-DS failure count"
     },
     "tuning-evidence-benefit-rule-20261008": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-19T21:39:42Z",
+        "generation": "d23122055693443dac38761cd79d7b18",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a43b9a4b85fc0a7cdd51f943"
+      },
       "needs": [
         "tuning-evidence-measurement-harness-20261008",
         "tuning-evidence-tuned-mode-promise-20261008",
@@ -45427,7 +45432,7 @@
         "heavy-work-host-capacity-owner-decision-20261117"
       ],
       "priority": "high",
-      "status": "blocked",
+      "status": "active",
       "title": "Write the benefit rule for keeping a tuned template, with thresholds taken from the measured noise"
     },
     "tuning-evidence-measurement-harness-20261008": {
