@@ -38814,10 +38814,15 @@
       "title": "Check that site docs links to core directories resolve against every ancestor directory, as repo-files.json now lists them"
     },
     "site-deploy-artifact-retention-egress-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-19T13:14:44Z",
+        "generation": "9563e12e0e2540d6b6372ebd2c28c337",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6da452ef1bfe1d4c6329ec0"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "benchbox-site deploy keeps three artifacts for 90 days; decide the rollback window before cutting retention"
     },
     "site-deploy-validator-parity-after-superseded-bundle-20261112": {
