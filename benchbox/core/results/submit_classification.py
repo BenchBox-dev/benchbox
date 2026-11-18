@@ -15,7 +15,7 @@ from benchbox.core.results.status import (
     result_non_clean_reason,
     result_unvalidated_reason,
 )
-from benchbox.core.results.subscale_policy import result_compliance_class
+from benchbox.core.results.subscale_policy import is_nonstandard_scale, result_compliance_class, result_gateway_routed
 from benchbox.validation.bundle import CLI_REFUSED_COMPLIANCE_CLASSES
 
 
@@ -29,8 +29,16 @@ class SubmitTerminalState(str, Enum):
     missing_manifest = "missing_manifest"
 
 
+def result_refused_at_submission(result: Any) -> bool:
+    if result_gateway_routed(result):
+        return True
+    if result_compliance_class(result) not in CLI_REFUSED_COMPLIANCE_CLASSES:
+        return False
+    return not is_nonstandard_scale(getattr(result, "benchmark_id", None), getattr(result, "scale_factor", None))
+
+
 def classify_loaded_result(result: Any) -> SubmitTerminalState:
-    if result_compliance_class(result) in CLI_REFUSED_COMPLIANCE_CLASSES:
+    if result_refused_at_submission(result):
         return SubmitTerminalState.unofficial
 
     non_clean_reason = result_non_clean_reason(result)

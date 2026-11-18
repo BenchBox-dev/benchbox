@@ -43,7 +43,10 @@ Only bundles the Explorer can rank contribute an identity. `exclusion_reason` in
 `ranking_exclusion_reason`, and a bundle counts only when it returns no reason. It applies
 these conditions, in order:
 
-1. The compliance class is not `unofficial_nonstandard`. Subscale TPC-H and TPC-DS
+1. The compliance class is not `unofficial_nonstandard`, and the scale factor is a
+   standard scale for the benchmark in the registry
+   (`get_scale_factor_rule(benchmark_id).standard`; see "Non-standard scale factors" in
+   `CORPUS_NOTES.md`). Subscale TPC-H and TPC-DS
    (`unofficial_subscale`, or no class below SF 1) rank, labelled Subscale · Unofficial;
    a subscale bundle with no stored Power@Size ranks on Power@Size derived from its
    final-iteration timings (see <https://benchbox.dev/docs/development/adr/adr-subscale-tpc-ranking-policy.html>).
