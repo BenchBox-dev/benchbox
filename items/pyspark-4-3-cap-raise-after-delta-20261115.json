@@ -4,8 +4,8 @@
     "Recorded client_library_version equals the Spark version actually running.",
     "TPC-H SF1 pyspark-df timings for 4.2.0 vs 4.3.x recorded here."
   ],
-  "context": "2026-11-17: the unbounded `pip install pyspark` hints moved to pyspark-install-hints-bounded-20261117, which does not wait for the Delta trigger.\n\n2026-11-17: blocked on its trigger. Checked PyPI: latest delta-spark 4.4.1 requires pyspark<=4.2.0,>=4.0.1; Maven Central has no delta-spark_4.3_2.13 artifact. Unblock when both exist; re-check monthly and append the result.",
-  "description": "BenchBox caps pyspark `<4.3` (PR #4241) because no delta-spark release supports Spark 4.3: with 4.3.0 locked, uv resolves delta-spark 4.1.0 and Delta sessions fail with `unresolved dependency: io.delta#delta-spark_4.3_2.13;4.1.0: not found` (24 live_delta errors). Everything else passed on 4.3.0 (fast tier 39,230; 55 PySpark files 2,084; no answer changes; JDK 17/21/25 work, CI uses 21).\n\nFound while testing 4.3.0, to handle at the raise:\n- The pyspark 4.3.0 wheel reports `pyspark.__version__ == \"4.1.0\"` while its jars are 4.3.0; BenchBox records `pyspark.__version__` as `client_library_version`, so results would show the wrong client version. Read the version from the jars/`SparkContext.version` or package metadata instead.\n- `SUPPORTED_JAVA_VERSIONS` lacks 25, which Spark 4.3 supports.\n\nTrigger: a delta-spark release on PyPI accepting pyspark 4.3 and a `delta-spark_4.3_2.13` artifact on Maven. Scratch setup: ~/Developer/benchmark_runs/pyspark-4-3/ (venv42, chain.sh, run1.sh).\n\nGuardrails: one engine per PR; no reference-answer regeneration; timings via make heavy-run, TPC-H SF1 pyspark-df 4.2 vs 4.3 best of 3.",
+  "context": "2026-11-17: the unbounded `pip install pyspark` hints moved to pyspark-install-hints-bounded-20261117, which does not wait for the Delta trigger.\n\n2026-11-17: blocked on its trigger. Checked PyPI: latest delta-spark 4.4.1 requires pyspark<=4.2.0,>=4.0.1; Maven Central has no delta-spark_4.3_2.13 artifact. Unblock when both exist; re-check monthly and append the result.\n\n2026-11-18 TODO review: added an explicit decision gate (pass conditions, owner escalation on answer change or >10% slowdown, owner check-in if still blocked on 2027-03-01).",
+  "description": "BenchBox caps pyspark `<4.3` (PR #4241) because no delta-spark release supports Spark 4.3: with 4.3.0 locked, uv resolves delta-spark 4.1.0 and Delta sessions fail with `unresolved dependency: io.delta#delta-spark_4.3_2.13;4.1.0: not found` (24 live_delta errors). Everything else passed on 4.3.0 (fast tier 39,230; 55 PySpark files 2,084; no answer changes; JDK 17/21/25 work, CI uses 21).\n\nFound while testing 4.3.0, to handle at the raise:\n- The pyspark 4.3.0 wheel reports `pyspark.__version__ == \"4.1.0\"` while its jars are 4.3.0; BenchBox records `pyspark.__version__` as `client_library_version`, so results would show the wrong client version. Read the version from the jars/`SparkContext.version` or package metadata instead.\n- `SUPPORTED_JAVA_VERSIONS` lacks 25, which Spark 4.3 supports.\n\nTrigger: a delta-spark release on PyPI accepting pyspark 4.3 and a `delta-spark_4.3_2.13` artifact on Maven. Check monthly and append the result to context. Scratch setup: ~/Developer/benchmark_runs/pyspark-4-3/ (venv42, chain.sh, run1.sh).\n\nDecision gate:\n- Trigger met: raise the cap to `<4.4` in one PR with the version-reporting fix and Java 25 support; merge only if live Delta tests pass and no reference answer changes.\n- Trigger met but the raise changes any reference answer or slows TPC-H SF1 pyspark-df by more than 10% (geomean, best of 3): stop and ask the owner.\n- Still unmet on 2027-03-01: ask the owner whether to keep waiting or raise PySpark while marking Delta unsupported on 4.3; agents do not drop Delta support on their own.\n\nGuardrails: one engine per PR; no reference-answer regeneration; timings only through `make heavy-run` after `make heavy-status`, TPC-H SF1 pyspark-df 4.2 vs 4.3 best of 3; never force admission or kill processes by pattern.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4241",
     "pyproject.toml"
@@ -34,6 +34,14 @@
       "op": "update",
       "op_id": "8019a7c3153444b0a959074bc47dfb2a",
       "session_id": "584fe5162b994f91904666adf0c5e183"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:43c6657ebf2251468541889f",
+      "at": "2026-11-18T22:15:29Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b32467453cab434a85e7d36397e09ce4",
+      "session_id": "481aef7ff9734ee2a66787f104bfbd49"
     }
   ]
 }
